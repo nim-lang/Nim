@@ -34,10 +34,10 @@ To learn how to compile Nim programs and generate documentation see
 the [Compiler User Guide](nimc.html) and the [DocGen Tools Guide](docgen.html).
 
 The language constructs are explained using an extended BNF, in which `(a)*`
-means 0 or more `a`'s, `a+` means 1 or more `a`'s, and `(a)?` means an
+means 0 or more *a*'s, `a+` means 1 or more *a*'s, and `(a)?` means an
 optional *a*. Parentheses may be used to group elements.
 
-`&` is the lookahead operator; `&a` means that an `a` is expected but
+`&` is the lookahead operator; `&a` means that an *a* is expected but
 not consumed. It will be consumed in the following rule.
 
 The `|`, `/` symbols are used to mark alternatives and have the lowest
@@ -1023,6 +1023,9 @@ These are the major type classes:
 * reference (pointer) type
 * procedural type
 * generic type
+
+The compiler's internal type zoo is richer than this summary suggests:
+some types that are structurally equal still differ in backend representation.
 
 
 Ordinal types
@@ -2173,6 +2176,10 @@ Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. `nil` is
 an allowed value for a variable of a procedural type.
+
+Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
 Examples:
 
@@ -8867,7 +8874,7 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
+if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
 parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
 When an `importcpp` type has a `byref` pragma, these params translate to
 C++ references `&`.

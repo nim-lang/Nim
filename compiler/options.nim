@@ -259,6 +259,9 @@ type
       ## Old transformation for closures in JS backend
     noPanicOnExcept
       ## don't panic on bare except
+    procParamTypeBackendAliases
+      ## Keep the old proc type compatibility rules that ignore backend
+      ## c type aliases.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

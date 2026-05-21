@@ -370,6 +370,7 @@ proc semFieldDefault(c: PContext; owner, expectedType: PType; field: PNode): PTy
       propagateToOwner(owner, result)
 
 proc semDelayedFieldDefault(c: PContext; owner, expectedType: PType; field: PNode) =
+  resetSemFlag(field[^1])
   fitDefaultNode(c, field[^1], expectedType)
   propagateToOwner(owner, field[^1].typ.skipIntLit(c.idgen))
 

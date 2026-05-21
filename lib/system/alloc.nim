@@ -691,7 +691,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
     removeChunkFromMatrix2(a, result, fl, sl)
     if result.size >= size + PageSize:
       splitChunk(a, result, size)
-  # set 'used' to to true:
+  # set 'used' to true:
   result.prevSize = 1
   track("setUsedToFalse", addr result.size, sizeof(int))
   sysAssert result.owner == addr a, "getBigChunk: No owner set!"
@@ -708,7 +708,7 @@ proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   result.next = nil
   result.prev = nil
   result.size = size
-  # set 'used' to to true:
+  # set 'used' to true:
   result.prevSize = 1
   result.owner = addr a
   incl(a, a.chunkStarts, pageIndex(result))

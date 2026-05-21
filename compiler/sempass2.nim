@@ -809,6 +809,10 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
         markSideEffect(tracked, a, n.info)
   let paramType = if formals != nil and argIndex < formals.signatureLen: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
+    let arg = n.skipAddr()
+    if isSsoStringIndex(tracked.config, arg):
+      localError(tracked.config, arg.info,
+        "expression '$1' is immutable, not 'var'" % renderNotLValue(arg))
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalSym(tracked, n.sym):
       makeVolatile(tracked, n.sym)

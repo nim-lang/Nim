@@ -248,10 +248,13 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     assert operand.kind == tyTuple, $operand.kind
     result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
-    var arg = operand.skipTypes({tyGenericInst})
+    var arg = operand.skipTypes(skippedTypes)
     let rec = semConstExpr(c, traitCall[2]).intVal != 0
-    while arg.kind == tyDistinct:
-      arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
+    while true:
+      let distinctArg = arg.skipTypes(skippedTypes + {tyGenericInst})
+      if distinctArg.kind != tyDistinct:
+        break
+      arg = distinctArg.base.skipTypes(skippedTypes)
       if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   of "rangeBase":

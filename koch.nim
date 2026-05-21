@@ -16,11 +16,11 @@ const
   ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
   SatStableCommit = "e63eaea8baf00bed8bcd5a29ffd8823abb265b39"
 
-  NimonyStableCommit = "c189ef438598878b2f02f6a2ff91d08febafc04b" # unversioned \
+  NimonyStableCommit = "750aa47f2139fe5ad69f04b44428b752011fe873" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-04-27
+    # Commit from 2026-05-05
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"

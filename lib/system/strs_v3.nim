@@ -224,13 +224,14 @@ proc cmpStringPtrs(a, b: ptr SmallString): int {.inline.} =
         minLen - AlwaysAvail)
     if result == 0: result = aslen - bslen
     return
-  # At least one is long. Hot prefix: inlinePtr[0..AlwaysAvail-1] mirrors heap data.
-  let pfxLen = min(min(aslen, bslen), AlwaysAvail)
-  result = cmpInlineBytes(inlinePtrOf(a), inlinePtrOf(b), pfxLen)
-  if result != 0: return
+  # At least one is long. Hot prefix mirrors heap data, but only up to fullLen:
+  # shrinking can leave stale bytes in the inline cache past the logical length.
   let la = if aslen > PayloadSize: a.more.fullLen else: aslen
   let lb = if bslen > PayloadSize: b.more.fullLen else: bslen
   let minLen = min(la, lb)
+  let pfxLen = min(minLen, AlwaysAvail)
+  result = cmpInlineBytes(inlinePtrOf(a), inlinePtrOf(b), pfxLen)
+  if result != 0: return
   if minLen <= AlwaysAvail:
     result = la - lb
     return

@@ -35,6 +35,10 @@ errors.
 
 - Adds a new warning `--warning:ImplicitRangeConversion` that detects downsizing implicit conversions to range types (e.g., `int -> range[0..255]` or `range[1..256] -> range[0..255]`) that could cause runtime panics. Safe conversions like `range[0..255] -> range[0..65535]` and explicit casts do not trigger warnings. `int` to `Natural` and `Positive` conversions do not trigger warnings, which can be enabled with `--warning:systemRangeConversion`.
 
+- Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
@@ -77,6 +81,9 @@ errors.
 - `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
   Use https://github.com/nitely/nim-regex or `std/nre2`.
   See: https://github.com/nim-lang/Nim/issues/23668.
+- `std/pegs` now correctly lexes UTF-8 bytes inside bare identifier-style
+  terminals, so case-insensitive matching of non-ASCII terms (e.g. ``\i café``)
+  works without single-quoting.
 
 ## Language changes
 
