@@ -453,8 +453,10 @@ proc `$`*[T](deq: Deque[T]): string =
     assert $a == "[10, 20, 30]"
 
   result = "["
+  var first = true
   for x in deq:
-    if result.len > 1: result.add(", ")
+    if first: first = false
+    else: result.add(", ")
     result.addQuoted(x)
   result.add("]")
 

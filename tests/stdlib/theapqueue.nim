@@ -104,3 +104,15 @@ template main() =
 
 static: main()
 main()
+
+# https://github.com/nim-lang/Nim/issues/18583
+type EmptyStr18583HeapQ = object
+proc `$`(x: EmptyStr18583HeapQ): string = ""
+proc `<`(a, b: EmptyStr18583HeapQ): bool = false
+
+block:
+  var h = initHeapQueue[EmptyStr18583HeapQ]()
+  push(h, EmptyStr18583HeapQ())
+  push(h, EmptyStr18583HeapQ())
+  let s = $h
+  doAssert s == "[, ]", "got: " & s

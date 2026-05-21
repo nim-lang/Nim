@@ -260,7 +260,9 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     assert $heap == "[1, 2]"
 
   result = "["
+  var first = true
   for x in heap.data:
-    if result.len > 1: result.add(", ")
+    if first: first = false
+    else: result.add(", ")
     result.addQuoted(x)
   result.add("]")
