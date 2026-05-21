@@ -495,11 +495,10 @@ func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
     assert $bar == "https://example.com/foo?existing=1&bar=qux"
   result = u
   let newQuery = encodeQuery(query)
-  if result.query.len > 0 and newQuery.len > 0:
-    result.query.add('&')
+  if newQuery.len > 0:
+    if result.query.len > 0:
+      result.query.add('&')
     result.query.add(newQuery)
-  else:
-    result.query = newQuery
 
 func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
