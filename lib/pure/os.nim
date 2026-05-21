@@ -298,40 +298,47 @@ when supportedSystem:
         for ext in extensions:
           let p = addFileExt(exe, ext)
           if fileExists(p): yield p
+      var searchPath = true
       when defined(posix):
-        if '/' in exe: checkCurrentDir()
+        if '/' in exe:
+          checkCurrentDir()
+          searchPath = false
       else:
         checkCurrentDir()
-      let path = getEnv("PATH")
-      for candidate in split(path, PathSep):
-        if candidate.len == 0: continue
-        when defined(windows):
-          var x = (if candidate[0] == '"' and candidate[^1] == '"':
-                    substr(candidate, 1, candidate.len-2) else: candidate) /
-                  exe
-        else:
-          var x = expandTilde(candidate) / exe
-        for ext in extensions:
-          var x = addFileExt(x, ext)
-          if fileExists(x):
-            when defined(posix) and not defined(nintendoswitch):
-              while followSymlinks: # doubles as if here
-                if x.symlinkExists:
-                  var r = newString(maxSymlinkLen)
-                  var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
-                  if len < 0:
-                    raiseOSError(osLastError(), exe)
-                  if len > maxSymlinkLen:
-                    r = newString(len+1)
-                    len = readlink(x.cstring, r.cstring, len)
-                  setLen(r, len)
-                  if isAbsolute(r):
-                    x = r
+      if searchPath:
+        let path = getEnv("PATH")
+        for candidate in split(path, PathSep):
+          if candidate.len == 0: continue
+          when defined(windows):
+            var x = (if candidate.len >= 2 and candidate[0] == '"' and candidate[^1] == '"':
+                      substr(candidate, 1, candidate.len-2) else: candidate) /
+                    exe
+          else:
+            var x = expandTilde(candidate) / exe
+          for ext in extensions:
+            let xExt = addFileExt(x, ext)
+            if fileExists(xExt):
+              when defined(posix) and not defined(nintendoswitch):
+                var resolved = xExt
+                while followSymlinks: # doubles as if here
+                  if resolved.symlinkExists:
+                    var r = newString(maxSymlinkLen)
+                    var len = readlink(resolved.cstring, r.cstring, maxSymlinkLen)
+                    if len < 0:
+                      raiseOSError(osLastError(), exe)
+                    if len > maxSymlinkLen:
+                      r = newString(len+1)
+                      len = readlink(resolved.cstring, r.cstring, len)
+                    setLen(r, len)
+                    if isAbsolute(r):
+                      resolved = r
+                    else:
+                      resolved = parentDir(resolved) / r
                   else:
-                    x = parentDir(x) / r
-                else:
-                  break
-            yield x
+                    break
+                yield resolved
+              else:
+                yield xExt
 
   when weirdTarget:
     const times = "fake const"
