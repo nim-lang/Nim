@@ -1754,6 +1754,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       if a == f or a.kind == tyGenericInst and a.skipGenericAlias[0] == f:
         bindingRet isGeneric
+      var depth = -1
+      # Generic constraints like `F: Future` reach sigmatch as a `tyGenericBody`.
+      # Accept descendants of the generic family here as well, not just direct
+      # `Future[...]` instantiations.
+      if isGenericSubtype(c, a, f, depth, f):
+        if depth > 0:
+          var askip = skippedNone
+          let aobj = a.skipToObject(askip)
+          if aobj != nil and tfFinal notin aobj.flags:
+            # Keep overload ranking consistent with other inheritance-based
+            # matches: deeper descendants are slightly worse candidates.
+            inc c.inheritancePenalty, depth + int(c.inheritancePenalty < 0)
+        bindingRet(if depth == 0: isGeneric else: isSubtype)
       let ff = last(f)
       if ff != nil:
         result = typeRel(c, ff, a, flags)
