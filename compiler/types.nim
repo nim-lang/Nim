@@ -1070,6 +1070,8 @@ proc sameBackendTypeIgnoreRange*(x, y: PType): bool =
   result = sameTypeAux(x, y, c)
 
 proc sameBackendTypePickyAliases*(x, y: PType): bool =
+  let x = x.skipTypes(abstractVar)
+  let y = y.skipTypes(abstractVar)
   var c = initSameTypeClosure()
   c.flags.incl {IgnoreTupleFields, IgnoreRangeShallow, PickyCAliases, PickyBackendAliases}
   c.cmp = dcEqIgnoreDistinct
