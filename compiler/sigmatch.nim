@@ -1757,10 +1757,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let ff = last(f)
       if ff != nil:
         result = typeRel(c, ff, a, flags)
-      if result == isNone and a.kind == tyGenericInst:
+      if result == isNone and a.kind == tyGenericInst and trBindGenericParam in flags:
         var depth = -1
-        # Generic constraints like `F: Future` can miss in `last(f)` when the
-        # actual type inherits from a concrete generic instantiation.
+        # Generic-parameter constraints like `F: Future` can miss in `last(f)`
+        # when the actual type inherits from a concrete generic instantiation.
+        # Keep this fallback scoped to generic-parameter matching so typedesc
+        # overloads such as `type Future[T]` still prefer more specific
+        # descendants like `InternalRaisesFuture[T, E]`.
         if isGenericSubtype(c, a, f, depth, f) and depth > 0:
           var askip = skippedNone
           let aobj = a.skipToObject(askip)
