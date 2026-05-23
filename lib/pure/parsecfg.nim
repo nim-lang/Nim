@@ -170,7 +170,7 @@ runnableExamples:
   assert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
   assert dict.getSectionValue(section4, "purpose") == "formatting for readability"
 
-import std/[strutils, lexbase, streams, tables]
+import std/[strformat, strutils, lexbase, streams, tables]
 import std/private/decode_helpers
 import std/private/since
 
@@ -220,7 +220,7 @@ type
 const
   SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', ' ', '\x80'..'\xFF', '.', '/', '\\', '-'}
 
-proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
+proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe, raises: [ValueError, OSError, IOError].}
 
 proc open*(c: var CfgParser, input: Stream, filename: string,
            lineOffset = 0) {.rtl, extern: "npc$1".} =
@@ -428,14 +428,12 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
 proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## Returns a properly formatted error message containing current line and
   ## column information.
-  result = `%`("$1($2, $3) Error: $4",
-                [c.filename, $getLine(c), $getColumn(c), msg])
+  &"{c.filename}({getLine(c)}, {getColumn(c)}) Error: {msg}"
 
 proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## Returns a properly formatted warning message containing current line and
   ## column information.
-  result = `%`("$1($2, $3) Warning: $4",
-                [c.filename, $getLine(c), $getColumn(c), msg])
+  &"{c.filename}({getLine(c)}, {getColumn(c)}) Warning: {msg}"
 
 proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
   ## Returns a properly formatted warning message containing that
@@ -540,10 +538,17 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
 
 proc loadConfig*(filename: string): Config =
   ## Loads the specified configuration file into a new Config instance.
-  let file = open(filename, fmRead)
-  let fileStream = newFileStream(file)
-  defer: fileStream.close()
-  result = fileStream.loadConfig(filename)
+  when nimvm:
+    # HACK: As a workaround,
+    # since open() using {.importc.} is not available on NimScript.
+    let stringStream = newStringStream(readFile(filename))
+    defer: stringStream.close()
+    result = stringStream.loadConfig(filename)
+  else:
+    let file = open(filename, fmRead)
+    let fileStream = newFileStream(file)
+    defer: fileStream.close()
+    result = fileStream.loadConfig(filename)
 
 proc replace(s: string): string =
   var d = ""
@@ -551,7 +556,7 @@ proc replace(s: string): string =
   while i < s.len():
     if s[i] == '\\':
       d.add(r"\\")
-    elif s[i] == '\c' and s[i+1] == '\l':
+    elif s[i] == '\c' and i+1 < s.len() and s[i+1] == '\l':
       d.add(r"\c\l")
       inc(i)
     elif s[i] == '\c':

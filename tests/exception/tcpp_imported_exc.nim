@@ -1,5 +1,5 @@
 discard """
-matrix: "--mm:refc"
+matrix: "--mm:refc; --mm:orc"
 targets: "cpp"
 output: '''
 caught as std::exception

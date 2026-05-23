@@ -38,14 +38,15 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
         sinkType.add argType
 
         arg.sym.typ = sinkType
-        owner.typ[arg.sym.position+1] = sinkType
+        assert owner.typ.n[arg.sym.position+1].sym == arg.sym
 
         #message(config, arg.info, warnUser,
         #  ("turned '$1' to a sink parameter") % [$arg])
         #echo config $ arg.info, " turned into a sink parameter ", arg.sym.name.s
       elif sfWasForwarded notin arg.sym.flags:
         # we only report every potential 'sink' parameter only once:
-        incl arg.sym.flags, sfWasForwarded
+        ensureMutable arg.sym
+        incl arg.sym.flagsImpl, sfWasForwarded
         message(config, arg.info, hintPerformance,
           "could not turn '$1' to a sink parameter" % [arg.sym.name.s])
       #echo config $ arg.info, " candidate for a sink parameter here"

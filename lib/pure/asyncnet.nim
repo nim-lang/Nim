@@ -207,6 +207,9 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
                           Protocol(protocol), buffered, inheritable)
 
 when defineSsl:
+  proc raiseSslHandleError =
+    raiseSSLError("The SSL Handle is closed/unset")
+
   proc getSslError(socket: AsyncSocket, err: cint): cint =
     assert socket.isSsl
     assert err < 0
@@ -227,6 +230,8 @@ when defineSsl:
 
   proc sendPendingSslData(socket: AsyncSocket,
       flags: set[SocketFlag]) {.async.} =
+    if socket.sslHandle == nil:
+      raiseSslHandleError()
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
       var data = newString(len)
@@ -246,6 +251,8 @@ when defineSsl:
       await sendPendingSslData(socket, flags)
     of SSL_ERROR_WANT_READ:
       var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
+      if socket.sslHandle == nil:
+        raiseSslHandleError()
       let length = len(data)
       if length > 0:
         let ret = bioWrite(socket.bioIn, cast[cstring](addr data[0]), length.cint)
@@ -262,6 +269,8 @@ when defineSsl:
                    op: untyped) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
+      if socket.sslHandle == nil:
+        raiseSslHandleError()
       ErrClearError()
       # Call the desired operation.
       opResult = op
@@ -306,6 +315,8 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   await connect(socket.fd.AsyncFD, address, port, socket.domain)
   if socket.isSsl:
     when defineSsl:
+      if socket.sslHandle == nil:
+        raiseSslHandleError()
       if not isIpAddress(address):
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
@@ -727,6 +738,8 @@ proc close*(socket: AsyncSocket) =
   defer:
     socket.fd.AsyncFD.closeSocket()
     socket.closed = true # TODO: Add extra debugging checks for this.
+    when defineSsl:
+      socket.sslHandle = nil
 
   when defineSsl:
     if socket.isSsl:

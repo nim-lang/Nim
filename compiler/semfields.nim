@@ -24,7 +24,7 @@ proc wrapNewScope(c: PContext, n: PNode): PNode {.inline.} =
   # a scope has to be opened in the codegen as well for reused
   # template instantiations
   let trueLit = newIntLit(c.graph, n.info, 1)
-  trueLit.typ() = getSysType(c.graph, n.info, tyBool)
+  trueLit.typ = getSysType(c.graph, n.info, tyBool)
   result = newTreeI(nkIfStmt, n.info, newTreeI(nkElifBranch, n.info, trueLit, n))
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =

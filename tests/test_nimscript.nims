@@ -136,3 +136,14 @@ block:  # cpDir, cpFile, dirExists, fileExists, mkDir, mvDir, mvFile, rmDir, rmF
 block:
   # check parseopt can get command line:
   discard initOptParser()
+
+# issue #24780:
+
+proc discardableCall(cmd: string): int {.discardable.} =
+  result = 123
+
+discardableCall "echo hi"
+
+block:
+  let a = "abc"
+  doAssert @a == @['a', 'b', 'c']

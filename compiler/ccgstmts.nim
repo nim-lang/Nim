@@ -126,25 +126,26 @@ proc genVarTuple(p: BProc, n: PNode) =
     let vn = n[i]
     let v = vn.sym
     if sfCompileTime in v.flags: continue
+    backendEnsureMutable v
     if sfGlobal in v.flags:
       assignGlobalVar(p, vn, "")
-      genObjectInit(p, cpsInit, v.typ, v.loc, constructObj)
+      genObjectInit(p, cpsInit, v.typ, v.locImpl, constructObj)
       registerTraverseProc(p, v)
     else:
       assignLocalVar(p, vn)
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
     var field = initLoc(locExpr, vn, tup.storage)
     let rtup = rdLoc(tup)
-    let fieldName = 
+    let fieldName =
       if t.kind == tyTuple:
         "Field" & $i
       else:
         if t.n[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
         mangleRecFieldName(p.module, t.n[i].sym)
     field.snippet = dotField(rtup, fieldName)
-    putLocIntoDest(p, v.loc, field)
+    putLocIntoDest(p, v.locImpl, field)
     if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: CNil))
+      hcrGlobals.add((loc: v.locImpl, tp: CNil))
 
   if forHcr:
     # end the block where the tuple gets initialized
@@ -225,11 +226,11 @@ proc genState(p: BProc, n: PNode) =
   elif n0.kind == nkStrLit:
     p.s(cpsStmts).addLabel(n0.strVal)
 
-proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
+proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int, isReturnStmt = false) =
   # Called by return and break stmts.
   # Deals with issues faced when jumping out of try/except/finally stmts.
 
-  var stack = newSeq[tuple[fin: PNode, inExcept: bool, label: Natural]](0)
+  var stack = newSeq[tuple[fin: PNode, inExcept: bool, isHidden: bool, label: Natural]](0)
 
   inc p.withinBlockLeaveActions
   for i in 1..howManyTrys:
@@ -257,7 +258,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
   # Pop exceptions that was handled by the
   # except-blocks we are in
-  if noSafePoints notin p.flags:
+  if noSafePoints notin p.flags and not (isReturnStmt and isClosureIterator(p.prc.typ)):
     for i in countdown(howManyExcepts-1, 0):
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "popCurrentException"))
 
@@ -340,9 +341,9 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): Snippet =
           call[i][0]
         else:
           call[i]
-      if param.kind != nkBracketExpr or param.typ.kind in
+      if not param.typ.isCompileTimeOnly and (param.kind != nkBracketExpr or param.typ.kind in
         {tyRef, tyPtr, tyUncheckedArray, tyArray, tyOpenArray,
-          tyVarargs, tySequence, tyString, tyCstring, tyTuple}:
+          tyVarargs, tySequence, tyString, tyCstring, tyTuple}):
         let tempLoc = initLocExprSingleUse(p, param)
         didGenTemp = didGenTemp or tempLoc.k == locTemp
       genOtherArg(p, call, i, typ, res, argBuilder)
@@ -365,6 +366,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         value.kind == nkEmpty and
         v.loc.flags * {lfHeader, lfNoDecl} != {}:
+      # IC XXX: this is bad, we should set v.loc regardless here
       return
     if sfPure in v.flags:
       # v.owner.kind != skModule:
@@ -460,7 +462,8 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if value.kind != nkEmpty and valueAsRope.len == 0:
     genLineDir(targetProc, vn)
     if not isCppCtorCall:
-      loadInto(targetProc, vn, value, v.loc)
+      backendEnsureMutable v
+      loadInto(targetProc, vn, value, v.locImpl)
   if forHcr:
     endBlockWith(targetProc):
       finishBranch(p.s(cpsStmts), hcrInit)
@@ -487,14 +490,17 @@ proc genClosureVar(p: BProc, a: PNode) =
     constructLoc(p, v)
 
 proc genVarStmt(p: BProc, n: PNode) =
-  for it in n.sons:
-    if it.kind == nkCommentStmt: continue
-    if it.kind == nkIdentDefs:
+  for it in n:
+    case it.kind
+    of nkCommentStmt: discard
+    of nkIdentDefs:
       # can be a lifted var nowadays ...
       if it[0].kind == nkSym:
         genSingleVar(p, it)
       else:
         genClosureVar(p, it)
+    of nkSym:
+      genSingleVar(p, it.sym, newSymNode(it.sym), it.sym.astdef)
     else:
       genVarTuple(p, it)
 
@@ -554,7 +560,8 @@ proc genReturnStmt(p: BProc, t: PNode) =
   if (t[0].kind != nkEmpty): genStmts(p, t[0])
   blockLeaveActions(p,
     howManyTrys    = p.nestedTryStmts.len,
-    howManyExcepts = p.inExceptBlockLen)
+    howManyExcepts = p.inExceptBlockLen,
+    isReturnStmt = true)
   if (p.finallySafePoints.len > 0) and noSafePoints notin p.flags:
     # If we're in a finally block, and we came here by exception
     # consume it before we return.
@@ -736,8 +743,10 @@ proc genBlock(p: BProc, n: PNode, d: var TLoc) =
       # named block?
       assert(n[0].kind == nkSym)
       var sym = n[0].sym
-      sym.loc.k = locOther
-      sym.position = p.breakIdx+1
+      backendEnsureMutable sym
+      sym.locImpl.k = locOther
+      sym.positionImpl = p.breakIdx+1
+      # ^ IC: review this
     expr(p, n[1], d)
     endSimpleBlock(p, scope)
 
@@ -827,12 +836,26 @@ proc raiseExitCleanup(p: BProc, destroy: string) =
         p.s(cpsStmts).addGoto("LA" & $p.nestedTryStmts[^1].label & "_")
 
 proc finallyActions(p: BProc) =
-  if p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
-    # if the current try stmt have a finally block,
-    # we must execute it before reraising
-    let finallyBlock = p.nestedTryStmts[^1].fin
-    if finallyBlock != nil:
-      genSimpleBlock(p, finallyBlock[0])
+  if p.config.exc != excGoto:
+    # Walk past compiler-injected `nkHiddenTryStmt` wrappers (e.g. ARC's
+    # destructor try/finally that wraps `except T as e:` bodies) to reach
+    # the user's actual try.  We must NOT walk past a real user try whose
+    # body we are currently in, because a raise from there will be caught
+    # by that try's own except branches rather than escaping outward.
+    #
+    # If after skipping wrappers the next entry is a user try in its
+    # except branch (inExcept=true), inline its finally body before the
+    # raise propagates — without this, the C++ sibling-catch rule would
+    # cause the user's catch(...)/finally pair to be bypassed and the
+    # finally would be silently dropped.
+    for i in countdown(p.nestedTryStmts.high, 0):
+      if p.nestedTryStmts[i].isHidden:
+        continue
+      if p.nestedTryStmts[i].inExcept:
+        let finallyBlock = p.nestedTryStmts[i].fin
+        if finallyBlock != nil:
+          genSimpleBlock(p, finallyBlock[0])
+      return
 
 proc raiseInstr(p: BProc; result: var Builder) =
   if p.config.exc == excGoto:
@@ -1156,7 +1179,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         throw;
       }
     } catch(...) {
-      // C++ exception occured, not under Nim's control.
+      // C++ exception occurred, not under Nim's control.
     }
     {
       /* finally: */
@@ -1176,7 +1199,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   lineCg(p, cpsLocals, "std::exception_ptr T$1_;$n", [etmp])
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, false, 0.Natural))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, 0.Natural))
 
   if t.kind == nkHiddenTryStmt:
     lineCg(p, cpsStmts, "try {$n", [])
@@ -1250,7 +1273,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           initElifBranch(p.s(cpsStmts), ifStmt, orExpr)
         if exvar != nil:
           fillLocalName(p, exvar.sym)
-          fillLoc(exvar.sym.loc, locTemp, exvar, OnStack)
+          backendEnsureMutable exvar.sym
+          fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
           linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, exvar.sym.typ),
             rdLoc(exvar.sym.loc), rope(etmp+1)])
         # we handled the error:
@@ -1298,7 +1322,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
             if isImportedException(typeNode.typ, p.config):
               let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
               fillLocalName(p, exvar.sym)
-              fillLoc(exvar.sym.loc, locTemp, exvar, OnStack)
+              backendEnsureMutable exvar.sym
+              fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
               startBlockWith(p):
                 lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc)])
               genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
@@ -1360,7 +1385,7 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   cgsym(p.module, "popCurrentExceptionEx")
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, false, 0.Natural))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, 0.Natural))
   startBlockWith(p):
     p.s(cpsStmts).add("try {\n")
   expr(p, t[0], d)
@@ -1389,7 +1414,8 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
         if t[i][j].isInfixAs():
           let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
           fillLocalName(p, exvar.sym)
-          fillLoc(exvar.sym.loc, locTemp, exvar, OnUnknown)
+          backendEnsureMutable exvar.sym
+          fillLoc(exvar.sym.locImpl, locTemp, exvar, OnUnknown)
           startBlockWith(p):
             lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc)])
         else:
@@ -1438,7 +1464,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let lab = p.labels
   let hasExcept = t[1].kind == nkExceptBranch
   if hasExcept: inc p.withinTryWithExcept
-  p.nestedTryStmts.add((fin, false, Natural lab))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
 
@@ -1644,7 +1670,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
     initElifBranch(p.s(cpsStmts), nonQuirkyIf, removeSinglePar(
       cOp(Equal, dotField(safePoint, "status"), cIntValue(0))))
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, quirkyExceptions, 0.Natural))
+  p.nestedTryStmts.add((fin, quirkyExceptions, t.kind == nkHiddenTryStmt, 0.Natural))
   expr(p, t[0], d)
   var quirkyIf = default(IfBuilder)
   var quirkyScope = default(ScopeBuilder)
@@ -1928,6 +1954,15 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   elif optFieldCheck in p.options and isDiscriminantField(e[0]):
     genLineDir(p, e)
     asgnFieldDiscriminant(p, e)
+  elif p.config.usesSso() and e[0].kind == nkBracketExpr and
+      e[0][0].typ.skipTypes(abstractVar).kind == tyString:
+    # nimsso: s[i] = c  →  nimStrPutV3(&s, i, c)  (handles COW internally)
+    genLineDir(p, e)
+    var base = initLocExpr(p, e[0][0])
+    var idx  = initLocExpr(p, e[0][1])
+    var rhs  = initLocExpr(p, e[1])
+    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimStrPutV3"),
+      byRefLoc(p, base), rdLoc(idx), rdCharLoc(rhs))
   else:
     let le = e[0]
     let ri = e[1]

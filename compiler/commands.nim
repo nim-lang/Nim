@@ -118,7 +118,7 @@ const
   errInvalidCmdLineOption = "invalid command line option: '$1'"
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
   errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
-  errOffHintsError = "'off', 'hint', 'error' or 'usages' expected, but '$1' found"
+  errOffHintsError = "'off', 'hint', 'warning', 'error' or 'usages' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
   if switch == " ": localError(conf, info, errInvalidCmdLineOption % "-")
@@ -245,11 +245,12 @@ proc processCompile(conf: ConfigRef; filename: string) =
   extccomp.addExternalFileToCompile(conf, found)
 
 const
-  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
+  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'yrc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console', 'lib' or 'staticlib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
   errInvalidFeatureButXFound = Feature.toSeq.map(proc(val:Feature): string = "'$1'" % $val).join(", ") & " expected, but '$1' found"
+  errDefaultOrSsoExpectedButXFound = "'default' or 'sso' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
   warningDeprecated(conf, info, "'$#' is deprecated, now a noop" % switch)
@@ -266,6 +267,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "destructors", "arc": result = conf.selectedGC == gcArc
     of "orc": result = conf.selectedGC == gcOrc
+    of "yrc": result = conf.selectedGC == gcYrc
     of "hooks": result = conf.selectedGC == gcHooks
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
@@ -305,6 +307,13 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     else:
       result = false
       localError(conf, info, errInvalidExceptionSystem % arg)
+  of "strings":
+    case arg.normalize
+    of "default": result = conf.selectedStrings == stringDefault
+    of "sso": result = conf.selectedStrings == stringSso
+    else:
+      result = false
+      localError(conf, info, errDefaultOrSsoExpectedButXFound % arg)
   of "experimental":
     try:
       result = conf.features.contains parseEnum[Feature](arg)
@@ -364,6 +373,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
   of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
+  of "mangle": result = contains(conf.globalOptions, optItaniumMangle)
   else:
     result = false
     invalidCmdLineOption(conf, passCmd1, switch, info)
@@ -459,7 +469,7 @@ template handleStdinOrCmdInput =
     conf.outDir = getNimcacheDir(conf)
 
 proc handleStdinInput*(conf: ConfigRef) =
-  conf.projectName = "stdinfile"
+  conf.projectName = conf.stdinFile.string
   conf.projectIsStdin = true
   handleStdinOrCmdInput()
 
@@ -473,6 +483,7 @@ proc parseCommand*(command: string): Command =
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
+  of "nif": cmdCompileToNif
   of "r": cmdCrun
   of "m": cmdM
   of "run": cmdTcc
@@ -492,10 +503,11 @@ proc parseCommand*(command: string): Command =
   of "gendepend": cmdGendepend
   of "dump": cmdDump
   of "parse": cmdParse
-  of "rod": cmdRod
   of "secret": cmdInteractive
   of "nop", "help": cmdNop
   of "jsonscript": cmdJsonscript
+  of "nifc": cmdNifC  # generate C from NIF files
+  of "ic": cmdIc  # generate .build.nif for nifmake
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
@@ -507,6 +519,12 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNif: conf.backend = backendNif
+  of cmdNifC:
+    conf.backend = backendC  # NIF to C compilation
+  of cmdM:
+    # cmdM requires optCompress for proper IC handling (include files, etc.)
+    conf.globalOptions.incl optCompress
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -561,6 +579,7 @@ proc unregisterArcOrc*(conf: ConfigRef) =
   undefSymbol(conf.symbols, "gcdestructors")
   undefSymbol(conf.symbols, "gcarc")
   undefSymbol(conf.symbols, "gcorc")
+  undefSymbol(conf.symbols, "gcyrc")
   undefSymbol(conf.symbols, "gcatomicarc")
   undefSymbol(conf.symbols, "nimSeqsV2")
   undefSymbol(conf.symbols, "nimV2")
@@ -593,6 +612,10 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
     of "orc":
       conf.selectedGC = gcOrc
       defineSymbol(conf.symbols, "gcorc")
+      registerArcOrc(pass, conf)
+    of "yrc":
+      conf.selectedGC = gcYrc
+      defineSymbol(conf.symbols, "gcyrc")
       registerArcOrc(pass, conf)
     of "atomicarc":
       conf.selectedGC = gcAtomicArc
@@ -735,6 +758,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processMemoryManagementOption(switch, arg, pass, info, conf)
   of "mm":
     processMemoryManagementOption(switch, arg, pass, info, conf)
+  of "strings":
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      case arg.normalize
+      of "default":
+        conf.selectedStrings = stringDefault
+      of "sso":
+        conf.selectedStrings = stringSso
+        defineSymbol(conf.symbols, "nimsso")
+      else:
+        localError(conf, info, errDefaultOrSsoExpectedButXFound % arg)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
@@ -760,6 +794,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.globalOptions.excl optCDebug
     else:
       localError(conf, info, "expected native|gdb|on|off but found " & arg)
+  of "mangle":
+    case arg.normalize
+    of "nim":
+      conf.globalOptions.excl optItaniumMangle
+    of "cpp":
+      conf.globalOptions.incl optItaniumMangle
+    else:
+      localError(conf, info, "expected nim|cpp but found " & arg)
+  of "compress":
+    conf.globalOptions.incl optCompress
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir
@@ -882,11 +926,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitImports.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitImports.add(if arg.startsWith(stdPrefix): arg else: m)
   of "include":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitIncludes.add m
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
   of "asm":
@@ -918,7 +970,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     var value: int = 10_000_000
     discard parseSaturatedNatural(arg, value)
-    if not value > 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
+    if value <= 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
     conf.maxLoopIterationsVM = value
   of "maxcalldepthvm":
     expectArg(conf, switch, arg, pass, info)
@@ -935,6 +987,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     var value: int = 0
     discard parseSaturatedNatural(arg, value)
     conf.errorMax = if value == 0: high(int) else: value
+  of "stdinfile":
+    expectArg(conf, switch, arg, pass, info)
+    conf.stdinFile = if os.isAbsolute(arg): AbsoluteFile(arg)
+                     else: AbsoluteFile(getCurrentDir() / arg)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
@@ -968,7 +1024,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       # xxx maybe also ic, since not in help?
     if pass in {passCmd2, passPP}:
       case arg.normalize
-      of "on": conf.symbolFiles = v2Sf
+      of "on": conf.ic = true
+      of "legacy": conf.symbolFiles = v2Sf
       of "off": conf.symbolFiles = disabledSf
       of "writeonly": conf.symbolFiles = writeOnlySf
       of "readonly": conf.symbolFiles = readOnlySf
@@ -1076,6 +1133,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "shownonexports":
     expectNoArg(conf, switch, arg, pass, info)
     showNonExportedFields(conf)
+  of "raw":
+    expectNoArg(conf, switch, arg, pass, info)
+    docRawOutput(conf)
   of "exceptions":
     case arg.normalize
     of "cpp": conf.exc = excCpp
@@ -1107,9 +1167,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "nimSeqsV2")
   of "stylecheck":
     case arg.normalize
-    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
-    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
-    of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
+    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError, optStyleWarning}
+    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError, optStyleWarning}
+    of "warning": conf.globalOptions = conf.globalOptions + {optStyleWarning} - {optStyleHint, optStyleError}
+    of "error": conf.globalOptions = conf.globalOptions + {optStyleError} - {optStyleHint, optStyleWarning}
     of "usages": conf.globalOptions.incl optStyleUsages
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":

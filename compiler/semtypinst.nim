@@ -28,7 +28,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   if t.kind in tyTypeClasses: discard
   elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
-  elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
+  elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):
     localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
@@ -68,8 +68,8 @@ type
   TReplTypeVars* = object
     c*: PContext
     typeMap*: LayeredIdTable  # map PType to PType
-    symMap*: SymMapping         # map PSym to PSym
-    localCache*: TypeMapping     # local cache for remembering already replaced
+    symMap*: SymMapping       # map PSym to PSym
+    localCache*: TypeMapping  # local cache for remembering already replaced
                               # types during instantiation of meta types
                               # (they are not stored in the global cache)
     info*: TLineInfo
@@ -110,7 +110,7 @@ proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
     return if tfUnresolved in t.flags: prepareNode(cl, t.n)
            else: t.n
   result = copyNode(n)
-  result.typ() = t
+  result.typ = t
   if result.kind == nkSym:
     result.sym =
       if n.typ != nil and n.typ == n.sym.typ:
@@ -249,13 +249,24 @@ proc hasValuelessStatics(n: PNode): bool =
         a
     proc doThing(_: MyThing)
   ]#
+  result = false
   if n.safeLen == 0 and n.kind != nkEmpty: # Some empty nodes can get in here
-    n.typ == nil or n.typ.kind == tyStatic
+    if n.typ == nil:
+      result = true
+    elif n.typ.kind == tyStatic:
+      result = true
+    elif n.typ.kind == tyTypeDesc:
+      # Check if the base type is an unresolved generic parameter.
+      # This handles cases where a template containing sizeof(T) is called
+      # inside a generic object's when clause - the T needs to be resolved
+      # before we can evaluate the condition.
+      let base = n.typ.skipTypes({tyTypeDesc})
+      if base.kind == tyGenericParam:
+        result = true
   else:
     for x in n:
       if hasValuelessStatics(x):
         return true
-    false
 
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
@@ -263,8 +274,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   if n.typ != nil:
     if n.typ.kind == tyFromExpr:
       # type of node should not be evaluated as a static value
-      n.typ.flags.incl tfNonConstExpr
-    result.typ() = replaceTypeVarsT(cl, n.typ)
+      n.typ.incl tfNonConstExpr
+    result.typ = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
@@ -279,8 +290,10 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
     if result.sym.kind == skField and result.sym.ast != nil and
         (cl.owner == nil or result.sym.owner == cl.owner):
       # instantiate default value of object/tuple field
-      cl.c.fitDefaultNode(cl.c, result.sym.ast, result.sym.typ)
-      result.sym.typ = result.sym.ast.typ
+      var n = result.sym.ast
+      cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
+      result.sym.ast = n
+      result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
     # sym type can be nil if was gensym created by macro, see #24048
     if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
@@ -360,8 +373,9 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
       var g: G[string]
 
   ]#
+  # XXX FIXME This causes system.Natural to be duplicated during compilation of system.nim as cl.owner == nil!
   result = copySym(s, cl.c.idgen)
-  incl(result.flags, sfFromGeneric)
+  incl(result.flagsImpl, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   setOwner(result, s.owner)
   result.typ = t
@@ -394,12 +408,12 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
     #cl.typeMap.topLayer.idTablePut(result, t)
 
   if cl.allowMetaTypes: return
-  result.flags.incl tfFromGeneric
+  result.incl tfFromGeneric
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
-    result.flags.excl tfInstClearedFlags
+    result.excl tfInstClearedFlags
   else:
-    result.flags.excl tfHasAsgn
+    result.excl tfHasAsgn
   when false:
     if newDestructors:
       result.assignment = nil
@@ -524,13 +538,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:
-      incl mm.flags, tfFromGeneric
+      incl mm.flagsImpl, tfFromGeneric
       for col, meth in methodsForGeneric(cl.c.graph, mm):
         # we instantiate the known methods belonging to that type, this causes
         # them to be registered and that's enough, so we 'discard' the result.
         discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
           attachedAsgn, col)
-      excl mm.flags, tfFromGeneric
+      excl mm.flagsImpl, tfFromGeneric
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
@@ -540,15 +554,33 @@ proc eraseVoidParams*(t: PType) =
 
   for i in FirstParamAt..<t.signatureLen:
     # don't touch any memory unless necessary
-    if t[i].kind == tyVoid:
+    if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
       var pos = i
       for j in i+1..<t.signatureLen:
         if t[j].kind != tyVoid:
-          t[pos] = t[j]
           t.n[pos] = t.n[j]
           inc pos
-      newSons t, pos
       setLen t.n.sons, pos
+      break
+
+proc eraseTupleVoidFields*(t: PType) =
+  ## Remove void fields from a named tuple type, compacting both `t.n`
+  ## (the field symbol nodes) and `t.sonsImpl` (the child types).
+  if t.n == nil: return  # anonymous tuple, nothing to compact
+  for i in 0..<t.kidsLen:
+    if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
+      # found first void field, compact from here
+      var pos = i
+      for j in i+1..<t.kidsLen:
+        if t[j].kind != tyVoid and j < t.n.len and t.n[j].kind != nkRecList:
+          t.n[pos] = t.n[j]
+          t[pos] = t[j]
+          if t.n[pos].kind == nkSym:
+            t.n[pos].sym.position = pos
+          inc pos
+        # else: skip void entries
+      setLen t.n.sons, pos
+      t.setSonsLen pos
       break
 
 proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
@@ -682,7 +714,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
 
   of tyUserTypeClass:
     result = t
-  
+
   of tyStatic:
     if cl.c.matchedConcept != nil:
       # allow concepts to not instantiate statics for now
@@ -704,7 +736,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
     if not cl.allowMetaTypes and result.n != nil and
         result.base.kind != tyNone:
       result.n = cl.c.semConstExpr(cl.c, result.n)
-      result.n.typ() = result.base
+      result.n.typ = result.base
 
   of tyGenericInst, tyUserTypeClassInst:
     bailout()
@@ -741,7 +773,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
-          result[i] = r
+          if result.kind != tyProc or i == 0:
+            result[i] = r
           if result.kind != tyArray or i != 0:
             propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists
@@ -754,7 +787,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
         if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
-          result.flags.incl tfRequiresInit
+          result.incl tfRequiresInit
+        if result.kind == tyTuple:
+          eraseTupleVoidFields(result)
 
       of tyProc:
         eraseVoidParams(result)

@@ -12,7 +12,7 @@
 # However, the interface has been designed to take platform differences into
 # account and been ported to all major platforms.
 
-{.push stack_trace: off.}
+{.push stack_trace: off, checks: off.}
 
 const
   NilLibHandle: LibHandle = nil

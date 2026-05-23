@@ -10,8 +10,8 @@
 # Built-in types and compilerprocs are registered here.
 
 import
-  ast, astalgo, msgs, platform, idents,
-  modulegraphs, lineinfos
+  ast, msgs, platform, idents,
+  modulegraphs, lineinfos, types
 
 export createMagic
 
@@ -134,7 +134,7 @@ proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
 proc resetNimScriptSymbols*(g: ModuleGraph) = g.exposed = initStrTable()
 
 proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
-  case t.kind
+  case t.skipTypes(abstractRange).kind
   of tyInt,  tyInt8, tyInt16, tyInt32, tyInt64,
      tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64:
     result = getSysMagic(g, info, "==", mEqI)
@@ -166,4 +166,4 @@ proc makeAddr*(n: PNode; idgen: IdGenerator): PNode =
     result = n
   else:
     result = newTree(nkHiddenAddr, n)
-    result.typ() = makePtrType(n.typ, idgen)
+    result.typ = makePtrType(n.typ.skipTypes({tySink}), idgen)

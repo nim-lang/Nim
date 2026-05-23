@@ -41,6 +41,7 @@ type
     CoType
     CoOwnerSig
     CoIgnoreRange
+    CoIgnoreRangeInArray
     CoConsiderOwned
     CoDistinct
     CoHashTypeInsideNode
@@ -106,6 +107,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     c &= "\254"
     return
 
+  # Ensure type is fully loaded before hashing to avoid hash changing
+  # as properties are accessed and trigger lazy loading.
+  backendEnsureMutable(t)
+
   case t.kind
   of tyGenericInvocation:
     for a in t.kids:
@@ -143,15 +148,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
-    if t.typeInst != nil:
+    if t.typeInstImpl != nil:
       # prevent against infinite recursions here, see bug #8883:
-      let inst = t.typeInst
-      t.typeInst = nil
+      let inst = t.typeInstImpl
+      t.typeInstImpl = nil # IC: spurious writes are ok since we set it back immediately
       assert inst.kind == tyGenericInst
       c.hashType inst.genericHead, flags, conf
       for _, a in inst.genericInstParams:
-        c.hashType a, flags, conf
-      t.typeInst = inst
+        c.hashType a, flags+{CoDistinct}, conf
+      t.typeInstImpl = inst
       return
     c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
@@ -180,9 +185,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
           # Hack to prevent endless recursion
           # xxx instead, use a hash table to indicate we've already visited a type, which
           # would also be more efficient.
-          symWithFlags.flags.excl {sfAnon, sfGenSym}
+          symWithFlags.flagsImpl.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode}, conf)
-          symWithFlags.flags = oldFlags
+          symWithFlags.flagsImpl = oldFlags
         else:
           # The object has no fields: we _must_ add something here in order to
           # make the hash different from the one we produce by hashing only the
@@ -216,10 +221,17 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     else:
       for a in t.kids: c.hashType a, flags+{CoIgnoreRange}, conf
   of tyRange:
-    if CoIgnoreRange notin flags:
+    if {CoIgnoreRange, CoIgnoreRangeInArray} * flags == {}:
       c &= char(t.kind)
       c.hashTree(t.n, {}, conf)
-    c.hashType(t.elementType, flags, conf)
+      c.hashType(t.elementType, flags, conf)
+    elif CoIgnoreRangeInArray in flags:
+      # include only the length of the range (not its specific bounds)
+      c &= char(t.kind)
+      let l = lengthOrd(conf, t)
+      lowlevel l
+    else:
+      c.hashType(t.elementType, flags, conf)
   of tyStatic:
     c &= char(t.kind)
     c.hashTree(t.n, {}, conf)
@@ -249,7 +261,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
-    c.hashType(t.indexType, flags-{CoIgnoreRange}, conf)
+    c.hashType(t.indexType, flags-{CoIgnoreRange}+{CoIgnoreRangeInArray}, conf)
     c.hashType(t.elementType, flags-{CoIgnoreRange}, conf)
   else:
     c &= char(t.kind)

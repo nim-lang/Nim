@@ -58,13 +58,11 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
-  of nkOpenSymChoice, nkClosedSymChoice:
+  of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
     if n[0].kind == nkSym:
       result = n[0].sym.name
     else:
       handleError(n, origin)
-  of nkOpenSym:
-    result = considerQuotedIdent(c, n[0], origin)
   else:
     handleError(n, origin)
 
@@ -77,10 +75,13 @@ proc addUniqueSym*(scope: PScope, s: PSym): PSym =
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
                   symbols: initStrTable(),
-                  depthLevel: c.scopeDepth + 1)
+                  depthLevel: c.scopeDepth + 1,
+                  optionStackLen: c.optionStack.len)
   c.currentScope = result
 
 proc rawCloseScope*(c: PContext) =
+  if c.currentScope.optionStackLen >= 1:
+    c.optionStack.setLen(c.currentScope.optionStackLen)
   c.currentScope = c.currentScope.parent
 
 proc closeScope*(c: PContext) =
@@ -310,7 +311,7 @@ proc errorSym*(c: PContext, ident: PIdent, info: TLineInfo): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   result = newSym(skError, ident, c.idgen, getCurrOwner(c), info, {})
   result.typ = errorType(c)
-  incl(result.flags, sfDiscardable)
+  incl(result.flagsImpl, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
     c.moduleScope.addSym(result)
@@ -387,7 +388,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.id == ord(wUnderscore): return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule:
+    if sym.kind == skModule and conflict.kind == skModule and not c.config.isDefined("nimPreviewDuplicateModuleError"):
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
       # where a duplicate import happens inside an include.
@@ -411,8 +412,6 @@ proc addDecl*(c: PContext, sym: PSym) {.inline.} =
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
-from ic / ic import addHidden
-
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   ## adds symbol to the module for either private or public access.
   if sfExported in sym.flags:
@@ -421,8 +420,6 @@ proc addInterfaceDeclAux(c: PContext, sym: PSym) =
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
   elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevelInsideDeclaration(c, sym):
     strTableAdd(semtabAll(c.graph, c.module), sym)
-    if c.config.symbolFiles != disabledSf:
-      addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds a symbol on the scope and the interface if appropriate

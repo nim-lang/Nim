@@ -105,7 +105,7 @@ type
     opcIsNil, opcOf, opcIs,
     opcParseFloat, opcConv, opcCast,
     opcQuit, opcInvalidField,
-    opcNarrowS, opcNarrowU,
+    opcNarrowS, opcNarrowU, opcNarrowR
     opcSignExtend,
 
     opcAddStrCh,
@@ -243,12 +243,18 @@ type
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx
+
+  VmProcInfo* = object
+    pc*: int32
+    usedRegisters*: int32
+
   TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation
     globals*: PNode         #
     constants*: PNode       # constant data
+    contstantTab*: TNodeTable
     types*: seq[PType]      # some instructions reference types (e.g. 'except')
     currentExceptionA*, currentExceptionB*: PNode
     exceptionInstr*: int # index of instruction that raised the exception
@@ -270,7 +276,7 @@ type
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
     vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
-    procToCodePos*: Table[int, int]
+    procToCodePos*: Table[int, VmProcInfo]
     cannotEval*: bool
     locals*: IntSet
 
@@ -292,13 +298,17 @@ type
 
   PEvalContext* = PCtx
 
+const
+  NoVmProcInfo* = VmProcInfo(pc: 0'i32, usedRegisters: -1'i32)
+
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     callDepth: g.config.maxCallDepthVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], callbackIndex: initTable[string, int](), errorFlag: "",
-    cache: cache, config: g.config, graph: g, idgen: idgen)
+    cache: cache, config: g.config, graph: g, idgen: idgen,
+    contstantTab: initNodeTable(true))
 
 proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module

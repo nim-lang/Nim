@@ -264,7 +264,11 @@ elif defined(windows):
       tm_yday*: cint  ## Day of year [0,365].
       tm_isdst*: cint ## Daylight Savings flag.
 
-  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>", sideEffect.}
+  # Prefer 64-bit version always - time_t might be 32 or 64 bit depending on
+  # the setting of _USE_32BIT_TIME_T and we have no way of detecting which
+  # version is actually used by default:
+  # https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/localtime-localtime32-localtime64
+  proc localtime(a1: var CTime): ptr Tm {.importc: "_localtime64", header: "<time.h>", sideEffect.}
 
 type
   Month* = enum ## Represents a month. Note that the enum starts at `1`,
@@ -382,9 +386,9 @@ type
       ## timezones. The `times` module only supplies implementations for the
       ## system's local time and UTC.
     zonedTimeFromTimeImpl: proc (x: Time): ZonedTime
-        {.tags: [], raises: [], benign.}
+        {.tags: [], raises: [], gcsafe.}
     zonedTimeFromAdjTimeImpl: proc (x: Time): ZonedTime
-        {.tags: [], raises: [], benign.}
+        {.tags: [], raises: [], gcsafe.}
     name: string
 
   ZonedTime* = object ## Represents a point in time with an associated
@@ -432,7 +436,7 @@ else:
 # Helper procs
 #
 
-{.pragma: operator, rtl, noSideEffect, benign.}
+{.pragma: operator, rtl, noSideEffect, gcsafe.}
 
 proc convert*[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit, quantity: T): T
     {.inline.} =
@@ -518,7 +522,7 @@ proc fromEpochDay(epochday: int64):
   return (d.MonthdayRange, m.Month, (y + ord(m <= 2)).int)
 
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int):
-    YeardayRange {.tags: [], raises: [], benign.} =
+    YeardayRange {.tags: [], raises: [], gcsafe.} =
   ## Returns the day of the year.
   ## Equivalent with `dateTime(year, month, monthday, 0, 0, 0, 0).yearday`.
   runnableExamples:
@@ -538,7 +542,7 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int):
     result = daysUntilMonth[month] + monthday - 1
 
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay
-    {.tags: [], raises: [], benign.} =
+    {.tags: [], raises: [], gcsafe.} =
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with `dateTime(year, month, monthday, 0, 0, 0, 0).weekday`.
   runnableExamples:
@@ -922,21 +926,21 @@ proc nanosecond*(time: Time): NanosecondRange =
   time.nanosecond
 
 proc fromUnix*(unix: int64): Time
-    {.benign, tags: [], raises: [], noSideEffect.} =
+    {.gcsafe, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp (seconds since `1970-01-01T00:00:00Z`)
   ## to a `Time`.
   runnableExamples:
     doAssert $fromUnix(0).utc == "1970-01-01T00:00:00Z"
   initTime(unix, 0)
 
-proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
+proc toUnix*(t: Time): int64 {.gcsafe, tags: [], raises: [], noSideEffect.} =
   ## Convert `t` to a unix timestamp (seconds since `1970-01-01T00:00:00Z`).
   ## See also `toUnixFloat` for subsecond resolution.
   runnableExamples:
     doAssert fromUnix(0).toUnix() == 0
   t.seconds
 
-proc fromUnixFloat(seconds: float): Time {.benign, tags: [], raises: [], noSideEffect.} =
+proc fromUnixFloat(seconds: float): Time {.gcsafe, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp in seconds to a `Time`; same as `fromUnix`
   ## but with subsecond resolution.
   runnableExamples:
@@ -946,7 +950,7 @@ proc fromUnixFloat(seconds: float): Time {.benign, tags: [], raises: [], noSideE
   let nsecs = (seconds - secs) * 1e9
   initTime(secs.int64, nsecs.NanosecondRange)
 
-proc toUnixFloat(t: Time): float {.benign, tags: [], raises: [].} =
+proc toUnixFloat(t: Time): float {.gcsafe, tags: [], raises: [].} =
   ## Same as `toUnix` but using subsecond resolution.
   runnableExamples:
     let t = getTime()
@@ -975,7 +979,7 @@ proc toWinTime*(t: Time): int64 =
 proc getTimeImpl(typ: typedesc[Time]): Time =
   raiseAssert "implemented in the vm"
 
-proc getTime*(): Time {.tags: [TimeEffect], benign.} =
+proc getTime*(): Time {.tags: [TimeEffect], gcsafe.} =
   ## Gets the current time as a `Time` with up to nanosecond resolution.
   when nimvm:
     result = getTimeImpl(Time)
@@ -1154,7 +1158,7 @@ proc isLeapDay*(dt: DateTime): bool {.since: (1, 1).} =
   assertDateTimeInitialized dt
   dt.year.isLeapYear and dt.month == mFeb and dt.monthday == 29
 
-proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
+proc toTime*(dt: DateTime): Time {.tags: [], raises: [], gcsafe.} =
   ## Converts a `DateTime` to a `Time` representing the same point in time.
   assertDateTimeInitialized dt
   let epochDay = toEpochDay(dt.monthday, dt.month, dt.year)
@@ -1197,9 +1201,9 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
 proc newTimezone*(
       name: string,
       zonedTimeFromTimeImpl: proc (time: Time): ZonedTime
-          {.tags: [], raises: [], benign.},
+          {.tags: [], raises: [], gcsafe.},
       zonedTimeFromAdjTimeImpl: proc (adjTime: Time): ZonedTime
-          {.tags: [], raises: [], benign.}
+          {.tags: [], raises: [], gcsafe.}
     ): owned Timezone =
   ## Create a new `Timezone`.
   ##
@@ -1263,12 +1267,12 @@ proc `==`*(zone1, zone2: Timezone): bool =
   zone1.name == zone2.name
 
 proc inZone*(time: Time, zone: Timezone): DateTime
-    {.tags: [], raises: [], benign.} =
+    {.tags: [], raises: [], gcsafe.} =
   ## Convert `time` into a `DateTime` using `zone` as the timezone.
   result = initDateTime(zone.zonedTimeFromTime(time), zone)
 
 proc inZone*(dt: DateTime, zone: Timezone): DateTime
-    {.tags: [], raises: [], benign.} =
+    {.tags: [], raises: [], gcsafe.} =
   ## Returns a `DateTime` representing the same point in time as `dt` but
   ## using `zone` as the timezone.
   assertDateTimeInitialized dt
@@ -1283,14 +1287,14 @@ proc toAdjTime(dt: DateTime): Time =
   result = initTime(seconds, dt.nanosecond)
 
 when defined(js):
-  proc localZonedTimeFromTime(time: Time): ZonedTime {.benign.} =
+  proc localZonedTimeFromTime(time: Time): ZonedTime {.gcsafe.} =
     let jsDate = newDate(time.seconds * 1000)
     let offset = jsDate.getTimezoneOffset() * secondsInMin
     result.time = time
     result.utcOffset = offset
     result.isDst = false
 
-  proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime {.benign.} =
+  proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime {.gcsafe.} =
     let utcDate = newDate(adjTime.seconds * 1000)
     let localDate = newDate(utcDate.getUTCFullYear(), utcDate.getUTCMonth(),
         utcDate.getUTCDate(), utcDate.getUTCHours(), utcDate.getUTCMinutes(),
@@ -1337,11 +1341,11 @@ else:
       return ((a.int64 - tm.toAdjUnix).int, tm.tm_isdst > 0)
     return (0, false)
 
-  proc localZonedTimeFromTime(time: Time): ZonedTime {.benign.} =
+  proc localZonedTimeFromTime(time: Time): ZonedTime {.gcsafe.} =
     let (offset, dst) = getLocalOffsetAndDst(time.seconds)
     result = ZonedTime(time: time, utcOffset: offset, isDst: dst)
 
-  proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime {.benign.} =
+  proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime {.gcsafe.} =
     var adjUnix = adjTime.seconds
     let past = adjUnix - secondsInDay
     let (pastOffset, _) = getLocalOffsetAndDst(past)
@@ -1408,7 +1412,7 @@ proc local*(t: Time): DateTime =
   ## Shorthand for `t.inZone(local())`.
   t.inZone(local())
 
-proc now*(): DateTime {.tags: [TimeEffect], benign.} =
+proc now*(): DateTime {.tags: [TimeEffect], gcsafe.} =
   ## Get the current time as a  `DateTime` in the local timezone.
   ## Shorthand for `getTime().local`.
   ##
@@ -2016,7 +2020,6 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     var year = takeInt(2..2)
     var thisCen = now().year div 100
     parsed.year = some(thisCen*100 + year)
-    result = year > 0
   of yyyy:
     let year =
       if input[i] in {'+', '-'}:
@@ -2328,7 +2331,7 @@ proc parseTime*(input: string, f: static[string], zone: Timezone): Time
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone).toTime()
 
-proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
+proc `$`*(dt: DateTime): string {.tags: [], raises: [], gcsafe.} =
   ## Converts a `DateTime` object to a string representation.
   ## It uses the format `yyyy-MM-dd'T'HH:mm:sszzz`.
   runnableExamples:
@@ -2340,7 +2343,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   else:
     result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz")
 
-proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
+proc `$`*(time: Time): string {.tags: [], raises: [], gcsafe.} =
   ## Converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format `yyyy-MM-dd'T'HH:mm:sszzz`.
   runnableExamples:

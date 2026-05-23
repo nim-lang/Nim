@@ -19,7 +19,7 @@ import
   wordrecg, syntaxes, renderer, lexer,
   packages/docutils/[rst, rstidx, rstgen, dochelpers],
   trees, types,
-  typesrenderer, astalgo, lineinfos,
+  typesrenderer, lineinfos,
   pathutils, nimpaths, renderverbatim, packages
 import packages/docutils/rstast except FileIndex, TLineInfo
 
@@ -148,7 +148,7 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
         limitB = iB
       while limitA < aLen and isDigit(a[limitA]): inc limitA
       while limitB < bLen and isDigit(b[limitB]): inc limitB
-      var pos = max(limitA-iA, limitB-iA)
+      var pos = max(limitA-iA, limitB-iB)
       while pos > 0:
         if limitA-pos < iA:  # digit in `a` is 0 effectively
           result = ord('0') - ord(b[limitB-pos])
@@ -433,6 +433,9 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
 
 proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
+    if optDocRaw in d.conf.globalOptions:
+      return newRstLeaf(n.comment)
+
     d.sharedState.currFileIdx = addRstFileIndex(d, n.info)
     try:
       result = parseRst(n.comment,
@@ -537,10 +540,11 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var string;
       elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
            sfExported in s.flags and s.owner != nil and
            belongsToProjectPackage(d.conf, s.owner) and d.target == outHtml:
-        let external = externalDep(d, s.owner)
-        result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
-          [changeFileExt(external, "html"), literal,
-           escLit]
+        let href = (if d.module == s.owner: ""
+            else: externalDep(d, s.owner).changeFileExt("html")
+          ) & "#" & literal
+        result.addf "<a href=\"$1\"><span class=\"Identifier\">$2</span></a>",
+            [href, escLit]
       else:
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
               "\\spanIdentifier{$1}", [escLit])
@@ -1176,8 +1180,12 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind, nonExports = false): 
                    "col": %n.info.col}
   )
   if comm != nil:
-    result.rst = comm
-    result.rstField = "description"
+    if optDocRaw in d.conf.globalOptions:
+      result.json["description"] = %comm.text
+    else:
+      result.rst = comm
+      result.rstField = "description"
+
   if r.buf.len > 0:
     result.json["code"] = %r.buf
   if k in routineKinds:
@@ -1320,7 +1328,7 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       if t.startsWith("ref "): t = substr(t, 4)
       effects[i] = newIdentNode(getIdent(cache, t), n.info)
       # set the type so that the following analysis doesn't screw up:
-      effects[i].typ() = real[i].typ
+      effects[i].typ = real[i].typ
 
     result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, $effectType), n.info), effects)
@@ -1406,16 +1414,19 @@ proc generateDoc*(d: PDoc, n, orig: PNode, config: ConfigRef, docFlags: DocFlags
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      # bug #23051; don't generate documentation for exported symbols again
-      if it.kind == nkSym and sfExported notin it.sym.flags:
-        if d.module != nil and d.module == it.sym.owner:
-          generateDoc(d, it.sym.ast, orig, config, kForceExport)
+      if it.kind == nkSym:
+        if d.module != nil and d.module == it.sym.owner:  # in current module
+          # bug #23051; don't generate documentation for exported symbols again
+          if sfExported notin it.sym.flags:
+            generateDoc(d, it.sym.ast, orig, config, kForceExport)
+          # else it's to be handled in `of XxxSection` branch
         elif it.sym.ast != nil:
+          # only export symbols in imported modules, not in current module
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
-    var comm: ItemPre = default(ItemPre)
+    var comm = default(ItemPre)
     getAllRunnableExamples(d, n, comm)
     if comm.len != 0: d.modDescPre.add(comm)
   else: discard
@@ -1889,6 +1900,9 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   else:
     #echo getOutFile(gProjectFull, JsonExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, JsonExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:
@@ -1909,8 +1923,10 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   if optStdout in d.conf.globalOptions:
     write(stdout, content)
   else:
-    #echo getOutFile(gProjectFull, TagsExt)
     let filename = getOutFile(conf, RelativeFile conf.projectName, TagsExt)
+    conf.outFile = filename.relativeTo(conf.outDir)
+    let dir = filename.splitFile.dir
+    createDir(dir)
     try:
       writeFile(filename, content)
     except IOError:

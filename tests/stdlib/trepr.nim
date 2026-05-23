@@ -326,3 +326,36 @@ do:
 
 static: main()
 main()
+
+import std/macros
+
+# bug #24850
+macro a() =
+  let
+    y = quote do: discard
+    b = nnkIfStmt.newTree(
+          nnkElifExpr.newTree(ident "true", y), nnkElseExpr.newTree(y))
+    d = nnkWhenStmt.newTree(
+          nnkElifExpr.newTree(ident "true", y), nnkElseExpr.newTree(y))
+  doAssert repr(b) == """
+if true:
+  discard
+else:
+  discard"""
+
+  doAssert repr(d) == """
+when true:
+  discard
+else:
+  discard"""
+
+a()
+
+# bug: form feed character in comment should not hang renderTree
+macro formfeedComment(): untyped =
+  result = newNimNode(nnkStmtList)
+  var c = newNimNode(nnkCommentStmt)
+  c.strVal = "hello\x0Cworld"
+  result.add c
+
+formfeedComment()

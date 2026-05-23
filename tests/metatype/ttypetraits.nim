@@ -194,6 +194,11 @@ block: # tupleLen
     MyGenericTuple2Alias2 =   MyGenericTuple2Alias[float]
   static: doAssert MyGenericTuple2Alias2.tupleLen == 3
 
+  type
+    MyGenericTuple3[T] = T
+    MyGenericTuple3Alias = MyGenericTuple3[(string, int)]
+  static: doAssert MyGenericTuple3Alias.tupleLen == 2
+
   static: doAssert (int, float).tupleLen == 2
   static: doAssert (1, ).tupleLen == 1
   static: doAssert ().tupleLen == 0
@@ -429,3 +434,32 @@ block: # bug #24378
   type Win222[T] = typeof("foobar")
   doAssert not supportsCopyMem((int, Win222[int]))
   doAssert not supportsCopyMem(tuple[a: int, b: Win222[int]])
+
+block: # bug #25789
+  type
+    L[T; N: static int] = distinct seq[T]
+    EPF = distinct L[int, 100]
+
+  var e: EPF = EPF(L[int, 100](@[1, 2, 3]))
+
+  template classifyGeneric[T](x: T): bool =
+    when typeof(x) is L:
+      true
+    else:
+      false
+
+  template classifyConcrete[T](x: T): bool =
+    when typeof(x) is L[int, 100]:
+      true
+    else:
+      false
+
+  let viaConv = L[int, 100](e)
+  doAssert $type(viaConv) == "L[system.int, 100]"
+  doAssert classifyGeneric(viaConv)
+  doAssert classifyConcrete(viaConv)
+
+  let viaDB = distinctBase(e, recursive = false)
+  doAssert $type(viaDB) == "L[system.int, 100]"
+  doAssert classifyGeneric(viaDB)
+  doAssert classifyConcrete(viaDB)
