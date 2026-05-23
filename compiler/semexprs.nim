@@ -578,7 +578,14 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
-    res = typeRel(m, t2, t1) >= isSubtype # isNone
+    let rel = typeRel(m, t2, t1)
+    res = rel >= isSubtype # isNone
+    if res and rel == isEqual and
+        not compareTypes(t1, t2,
+                         flags = {ExactTypeDescValues,
+                                  PickyCAliases,
+                                  PickyBackendAliases}):
+      res = false
     # `res = sameType(t1, t2)` would be wrong, e.g. for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))

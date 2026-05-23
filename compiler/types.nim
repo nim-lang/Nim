@@ -897,7 +897,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     c.flags = oldFlags
 
   if x == y: return true
-  let aliasSkipSet = maybeSkipRange({tyAlias, tyInferred})
+  let aliasSkipSet = maybeSkipRange(
+    if PickyBackendAliases in c.flags:
+      {tyInferred}
+    else:
+      {tyAlias, tyInferred})
   var a = skipTypes(x, aliasSkipSet)
   while a.kind == tyUserTypeClass and tfResolved in a.flags:
     a = skipTypes(a.last, aliasSkipSet)
@@ -1070,8 +1074,8 @@ proc sameBackendTypeIgnoreRange*(x, y: PType): bool =
   result = sameTypeAux(x, y, c)
 
 proc sameBackendTypePickyAliases*(x, y: PType): bool =
-  let x = x.skipTypes(abstractVar)
-  let y = y.skipTypes(abstractVar)
+  let x = x.skipTypes({tyVar, tyLent, tySink, tyOwned})
+  let y = y.skipTypes({tyVar, tyLent, tySink, tyOwned})
   var c = initSameTypeClosure()
   c.flags.incl {IgnoreTupleFields, IgnoreRangeShallow, PickyCAliases, PickyBackendAliases}
   c.cmp = dcEqIgnoreDistinct
