@@ -166,7 +166,7 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.}
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect, nodestroy.} =
   result = x
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(x)
