@@ -129,7 +129,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result.typ = nil
     onUse(n.info, s)
   of skParam:
-    if s.owner == c.p.owner or true:
+    if s.owner == c.p.owner:
       # Parameters of the routine currently being semchecked stay as local
       # identifiers
       result = n
