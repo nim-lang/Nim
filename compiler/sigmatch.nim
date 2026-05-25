@@ -3022,7 +3022,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             # exclude custom pragma template (used as a pragma in a type section) to avoid generating compile errors from existing code
             # maybe it should not be excluded if `formal.typ` is not generic.
 
-            # set tyForward type to `m.call.typ` so that caller can easily see this call contains a tyForward type param.
+            # set tyForward type to `m.call.typ` so that caller can easily see this call contains a tyForward type argument.
             m.call.typ = if n[a].typ != nil and n[a].typ.kind == tyForward: n[a].typ else: n[a].sym.typ
             noMatch(true)
           else:

@@ -943,6 +943,8 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               candidates)
     result = semResolvedCall(c, r, n, flags, expectedType)
   elif r.state == csGotTyForward:
+    # `r.call.typ.kind == tyForward` so that caller can see this call contains a tyForward type argument
+    # see `matchesAux` proc in sigmatch.nim
     return r.call
   else:
     if c.inGenericContext > 0 and c.matchedConcept == nil:
