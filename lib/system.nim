@@ -166,7 +166,7 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.}
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect, nodestroy.} =
   result = x
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(x)
@@ -2694,7 +2694,9 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      when defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
+      when defined(nimsso):
+        x[j+item.len] = x[j]
+      elif defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
         x[j+item.len] = move x[j]
       else:
         shallowCopy(x[j+item.len], x[j])
