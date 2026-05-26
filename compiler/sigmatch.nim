@@ -794,9 +794,7 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # Note that `result` is equal; now check whether they have the same
     # backend type.
     if fCheck != nil and aCheck != nil and
-        not sameBackendTypePickyAliases(
-          fCheck.skipTypes({tyVar, tyLent, tySink, tyOwned}),
-          aCheck.skipTypes({tyVar, tyLent, tySink, tyOwned})):
+      not sameBackendTypePickyAliases(fCheck, aCheck, {IgnoreFlags}):
       result = isNone
 
   if result <= isSubrange or inconsistentVarTypes(f, a):
