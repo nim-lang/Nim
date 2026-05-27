@@ -12,7 +12,7 @@
 ## support.
 
 import ".." / [ast, modulegraphs, trees, extccomp, btrees,
-  msgs, lineinfos, pathutils, options, cgmeth]
+  msgs, lineinfos, pathutils, options]
 
 import std/tables
 

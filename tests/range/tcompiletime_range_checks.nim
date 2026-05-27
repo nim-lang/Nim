@@ -2,18 +2,17 @@ discard """
   cmd: "nim check --hint:Processing:off --hint:Conf:off $file"
   errormsg: "18446744073709551615 can't be converted to int8"
   nimout: '''
-tcompiletime_range_checks.nim(36, 21) Error: 2147483648 can't be converted to int32
-tcompiletime_range_checks.nim(38, 34) Error: 255 can't be converted to FullNegativeRange
-tcompiletime_range_checks.nim(39, 34) Error: 18446744073709551615 can't be converted to HalfNegativeRange
-tcompiletime_range_checks.nim(40, 34) Error: 300 can't be converted to FullPositiveRange
-tcompiletime_range_checks.nim(41, 30) Error: 101 can't be converted to UnsignedRange
-tcompiletime_range_checks.nim(42, 32) Error: -9223372036854775808 can't be converted to SemiOutOfBounds
-tcompiletime_range_checks.nim(44, 22) Error: nan can't be converted to int32
-tcompiletime_range_checks.nim(46, 23) Error: 1e+100 can't be converted to uint64
-tcompiletime_range_checks.nim(49, 22) Error: 18446744073709551615 can't be converted to int64
-tcompiletime_range_checks.nim(50, 22) Error: 18446744073709551615 can't be converted to int32
-tcompiletime_range_checks.nim(51, 22) Error: 18446744073709551615 can't be converted to int16
-tcompiletime_range_checks.nim(52, 21) Error: 18446744073709551615 can't be converted to int8
+tcompiletime_range_checks.nim(35, 21) Error: 2147483648 can't be converted to int32
+tcompiletime_range_checks.nim(37, 34) Error: 255 can't be converted to FullNegativeRange
+tcompiletime_range_checks.nim(38, 34) Error: 18446744073709551615 can't be converted to HalfNegativeRange
+tcompiletime_range_checks.nim(39, 34) Error: 300 can't be converted to FullPositiveRange
+tcompiletime_range_checks.nim(40, 30) Error: 101 can't be converted to UnsignedRange
+tcompiletime_range_checks.nim(41, 32) Error: -9223372036854775808 can't be converted to SemiOutOfBounds
+tcompiletime_range_checks.nim(43, 22) Error: nan can't be converted to int32
+tcompiletime_range_checks.nim(48, 22) Error: 18446744073709551615 can't be converted to int64
+tcompiletime_range_checks.nim(49, 22) Error: 18446744073709551615 can't be converted to int32
+tcompiletime_range_checks.nim(50, 22) Error: 18446744073709551615 can't be converted to int16
+tcompiletime_range_checks.nim(51, 21) Error: 18446744073709551615 can't be converted to int8
   '''
 """
 

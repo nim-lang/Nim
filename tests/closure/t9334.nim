@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target --hints:off $options -r $file"
+  cmd: "nim $target -f --hints:off $options -r $file"
   nimout: '''@[1]
 @[1, 1]
 '''

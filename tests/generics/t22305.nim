@@ -27,9 +27,8 @@ proc readFilesAd() {.async.} =
     tuple[r: ptr Channel[Option[A]], w: ptr Channel[Option[B]], p: WorkProc[A, B]]
 
   var readThread: Thread[TArg[int, SharedBuf]]
-  let test = await (addr readChan).recv()
-
-  joinThread(readThread)
+  discard readThread
+  discard await (addr readChan).recv()
 
 waitFor readFilesAd()
 

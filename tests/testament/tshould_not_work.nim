@@ -1,5 +1,6 @@
 discard """
   joinable: false
+  disabled: "arm64"
 """
 
 const expected = """

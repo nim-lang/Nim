@@ -17,8 +17,6 @@ import lineinfos as astli
 import pathutils #, modulegraphs
 import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
   nifindexes, nifreader]
-import "../dist/nimony/src/gear2" / modnames
-import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
 import ic / [enum2nif]
 

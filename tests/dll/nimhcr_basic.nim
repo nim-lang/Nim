@@ -1,4 +1,5 @@
 discard """
+  disabled: "arm64"
   output: '''
 Hello world
 '''

@@ -19,10 +19,10 @@ import std/[syncio, assertions]
 proc genBadFileName(limit = 100): string =
     ## Generates a filename of a nonexistent file.
     ## Returns "" if generation fails.
-    result = "a"
+    result = getTempDir() / "nim-test-getfileinfo-nonexistent"
     var hitLimit = true
 
-    for i in 0..100:
+    for i in 0..limit:
       if fileExists(result):
         result.add("a")
       else:

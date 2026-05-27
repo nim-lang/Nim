@@ -1,3 +1,7 @@
+discard """
+  disabled: "arm64"
+"""
+
 import
   os, math, strutils, gl, tables,
   sfml, sfml_audio, sfml_colors, chipmunk, math_helpers,

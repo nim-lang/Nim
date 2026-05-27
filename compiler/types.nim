@@ -11,12 +11,12 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs, wordrecg
+  lineinfos, int128, modulegraphs, astmsgs
 
 import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, formatfloat]
+  import std/assertions
 
 export isResolvedUserTypeClass, TPreferedDesc, typeToString
 

@@ -9,10 +9,10 @@
 
 ## This module implements the NIF code generator.
 
-import std / [assertions, syncio, os, tables, intsets]
+import std / [assertions, os, tables, intsets]
 
 import
-  ast, astalgo, modulegraphs, options, pathutils, lineinfos, idents, msgs, types
+  ast, modulegraphs, options, lineinfos, idents, msgs, types
 
 import "../dist/nimony/src/lib" / nifbuilder
 import "../dist/nimony/src/models" / nifler_tags

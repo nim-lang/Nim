@@ -1,5 +1,9 @@
+import std/os
+
+let nimbleDir = currentSourcePath.parentDir / "nimbleDir" / "simplePkgs"
+
 switch("clearNimblePath")
-switch("nimblePath", "$projectdir/nimbleDir/simplePkgs")
-switch("path", "$nimblepath/pkgA-0.1.0")
-switch("path", "$nimblepath/pkgB-#head")
-switch("path", "$nimblepath/pkgC-#head")
+switch("nimblePath", nimbleDir)
+switch("path", nimbleDir / "pkgA-0.1.0")
+switch("path", nimbleDir / "pkgB-#head")
+switch("path", nimbleDir / "pkgC-#head")

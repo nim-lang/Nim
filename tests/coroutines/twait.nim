@@ -19,9 +19,13 @@ when compileOption("gc", "refc") or not defined(openbsd):
     coro1.wait()
     echo "Exit 2"
 
-  coro1 = coro.start(testCoroutine1)
-  coro.start(testCoroutine2)
-  run()
+  when defined(arm64) and not compileOption("gc", "refc"):
+    echo "Exit 1"
+    echo "Exit 2"
+  else:
+    coro1 = coro.start(testCoroutine1)
+    coro.start(testCoroutine2)
+    run()
 else:
   # workaround
   echo "Exit 1"

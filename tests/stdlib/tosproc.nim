@@ -10,7 +10,7 @@ because it'd need cleanup up stdout
 see also: tests/osproc/*.nim; consider merging those into a single test here
 (easier to factor and test more things as a single self contained test)
 ]#
-import std/[assertions, syncio]
+import std/syncio
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
@@ -88,6 +88,7 @@ elif defined(case_testfile4):
   quit(QuitFailure)
 
 else: # main driver
+  import std/[assertions, syncio]
   import stdtest/[specialpaths, unittest_light]
   import os, osproc, strutils
   const nim = getCurrentCompilerExe()
@@ -229,7 +230,7 @@ else: # main driver
           if result[1] != -1: break
       close(p)
 
-    var result = startProcessTest("nim r --hints:off -", options = {}, input = "echo 3*4")
+    var result = startProcessTest(nim & " r --hints:off -", options = {}, input = "echo 3*4")
     doAssert result == ("12\n", 0)
 
   block: # startProcess stdin (replaces old test `tstdin` + `ta_in`)
@@ -284,7 +285,7 @@ else: # main driver
 
   import std/strtabs
   block execProcessTest:
-    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+    var result = execCmdEx(nim & " r --hints:off -", options = {}, input = "echo 3*4")
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
     when not defined(windows):

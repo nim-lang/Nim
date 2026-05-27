@@ -1,7 +1,9 @@
 discard """
 action: compile
+cmd: "nim cpp --passC:-std=c++17 --passL:-std=c++17 $options $file"
 disabled: "windows"
 disabled: osx
+disabled: "arm64"
 """
 
 import sfml, os

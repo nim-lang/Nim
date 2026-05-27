@@ -182,7 +182,7 @@ proc bundleAtlasExe(latest: bool, args: string) =
   nimCompile("dist/atlas/src/atlas.nim",
              options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
-proc bundleChecksums(latest: bool) =
+proc bundleChecksums(latest: bool; args = "") =
   let checksumsCommit = if latest: "HEAD" else: ChecksumsStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", checksumsCommit, allowBundled = true)
 
@@ -190,12 +190,12 @@ proc bundleChecksums(latest: bool) =
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
   if not fileExists("bin/nifler".exe):
-    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release " & args)
   if not fileExists("bin/nifmake".exe):
-    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
+    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release " & args)
 
 proc bundleNimsuggest(args: string) =
-  bundleChecksums(false)
+  bundleChecksums(false, args)
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
                  options = "-d:danger " & args)
 
@@ -225,7 +225,7 @@ proc bundleWinTools(args: string) =
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
 proc zip(latest: bool; args: string) =
-  bundleChecksums(latest)
+  bundleChecksums(latest, args)
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
@@ -279,7 +279,7 @@ proc testTools(args: string = "") =
   nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
-  bundleChecksums(latest)
+  bundleChecksums(latest, args)
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
@@ -359,7 +359,7 @@ proc boot(args: string, skipIntegrityCheck: bool) =
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
-  bundleChecksums(false)
+  bundleChecksums(false, args)
 
   let usingLibFFI = "nimHasLibFFI" in args
   if usingLibFFI and not dirExists("dist/libffi"):
@@ -499,7 +499,7 @@ proc winRelease*() =
 template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
-  nimexec "cc --opt:speed testament/testament"
+  nimexec "cc --opt:speed --nimcache:nimcache/testament --hints:off --warnings:off testament/testament"
   var testCmd = quoteShell(getCurrentDir() / "testament/testament".exe)
   testCmd.add " " & quoteShell("--nim:" & findNim())
   testCmd.add " " & (args|"all")
@@ -775,7 +775,7 @@ when isMainModule:
         bundleNimbleExe(latest, op.cmdLineRest)
         bundleAtlasExe(latest, op.cmdLineRest)
       of "checksums":
-        bundleChecksums(latest)
+        bundleChecksums(latest, op.cmdLineRest)
       of "pushcsource":
         quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)

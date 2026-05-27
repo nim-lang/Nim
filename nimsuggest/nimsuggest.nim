@@ -9,9 +9,6 @@
 
 import compiler/renderer
 import compiler/types
-import compiler/trees
-import compiler/wordrecg
-import compiler/sempass2
 import strformat
 import algorithm
 import tables

@@ -1,4 +1,4 @@
-import std/[os, uri, strformat, strutils]
+import std/[os, uri, strformat]
 import std/private/gitutils
 
 when defined(nimPreviewSlimSystem):

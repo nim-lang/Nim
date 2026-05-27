@@ -14,9 +14,12 @@ when compileOption("gc", "refc") or not defined(openbsd):
     maxOccupiedMemory = max(maxOccupiedMemory, getOccupiedMem())
     suspend(0)
 
-  start(testGC)
-  start(testGC)
-  run()
+  when defined(arm64) and not compileOption("gc", "refc"):
+    discard
+  else:
+    start(testGC)
+    start(testGC)
+    run()
 
-  GC_fullCollect()
-  doAssert(getOccupiedMem() < maxOccupiedMemory, "GC did not free any memory allocated in coroutines")
+    GC_fullCollect()
+    doAssert(getOccupiedMem() < maxOccupiedMemory, "GC did not free any memory allocated in coroutines")

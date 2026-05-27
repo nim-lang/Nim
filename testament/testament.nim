@@ -40,6 +40,25 @@ proc verboseCmd(cmd: string) =
   if optVerbose:
     echo "executing: ", cmd
 
+proc currentCmdLine(p: OptParser): string =
+  case p.kind
+  of cmdLongOption:
+    if p.key.len == 0:
+      result = p.cmdLineRest
+    else:
+      result = ("--" & p.key & (if p.val.len > 0: ":" & p.val else: "")).quoteShell
+  of cmdShortOption:
+    result = ("-" & p.key & (if p.val.len > 0: ":" & p.val else: "")).quoteShell
+  of cmdArgument:
+    result = p.key.quoteShell
+  of cmdEnd:
+    result = ""
+  if p.kind != cmdLongOption or p.key.len != 0:
+    let rest = p.cmdLineRest
+    if rest.len > 0:
+      if result.len > 0: result.add ' '
+      result.add rest
+
 const
   failString* = "FAIL: " # ensures all failures can be searched with 1 keyword in CI logs
   testsDir = "tests" & DirSep
@@ -756,6 +775,18 @@ proc main() =
     p.next()
   if p.kind != cmdArgument:
     quit Usage
+  # Ensure the nim compiler's directory is in PATH so tests that call nim/nimble
+  # via exec() or shell commands can find them without a full path.
+  let nimBinDir = compilerPrefix.parentDir
+  if nimBinDir.len > 0:
+    let oldPath = getEnv("PATH")
+    if nimBinDir notin oldPath:
+      putEnv("PATH", nimBinDir & PathSep & oldPath)
+  # Auto-disable valgrind if it cannot run Nim binaries (e.g., stripped ld.so on ARM64).
+  if valgrindEnabled and findExe("valgrind").len > 0:
+    let (_, exitCode) = execCmdEx("valgrind --error-exitcode=1 " & compilerPrefix & " --version")
+    if exitCode != 0:
+      valgrindEnabled = false
   var action = p.key.normalize
   p.next()
   var r = initResults()
@@ -771,11 +802,15 @@ proc main() =
     if testamentData0.batchArg.len > 0:
       myself &= " --batch:" & testamentData0.batchArg
 
+    if not valgrindEnabled:
+      myself &= " --valgrind:off"
+
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
 
     var cats: seq[string] = @[]
-    let rest = if p.cmdLineRest.len > 0: " " & p.cmdLineRest else: ""
+    let cmdLineRest = currentCmdLine(p)
+    let rest = if cmdLineRest.len > 0: " " & cmdLineRest else: ""
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
@@ -785,19 +820,25 @@ proc main() =
       cats.add AdditionalCategories
     if useMegatest: cats.add MegaTestCat
 
-    var cmds: seq[string] = @[]
+    var runnableCats: seq[string] = @[]
     for cat in cats:
+      if not valgrindEnabled and cat == "valgrind":
+        continue
+      runnableCats.add cat
+
+    var cmds: seq[string] = @[]
+    for cat in runnableCats:
       let runtype = if useMegatest: " pcat " else: " cat "
       cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
-      echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $cats.len, cats[idx]]
+      echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $runnableCats.len, runnableCats[idx]]
 
     if simulate:
       skips = loadSkipFrom(skipFrom)
-      for i, cati in cats:
+      for i, cati in runnableCats:
         progressStatus(i)
-        processCategory(r, Category(cati), p.cmdLineRest, testsDir, runJoinableTests = false)
+        processCategory(r, Category(cati), cmdLineRest, testsDir, runJoinableTests = false)
     else:
       addExitProc azure.finalize
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
@@ -812,12 +853,10 @@ proc main() =
     # are covered by the 'megatest' category.
     isMainProcess = false
     var cat = Category(p.key)
-    p.next
     processCategory(r, cat, p.cmdLineRest, testsDir, runJoinableTests = false)
   of "p", "pat", "pattern":
     skips = loadSkipFrom(skipFrom)
     let pattern = p.key
-    p.next
     processPattern(r, pattern, p.cmdLineRest, simulate)
   of "r", "run":
     let (cat, path) = splitTestFile(p.key)

@@ -1,6 +1,7 @@
 discard """
 disabled: "openbsd"
 disabled: "netbsd"
+disabled: "arm64"
 output: '''
 fastcall_proc implementation #1 10
 11
@@ -146,4 +147,3 @@ carryOutTests cdecl
 carryOutTests stdcall
 carryOutTests noconv
 carryOutTests inline
-

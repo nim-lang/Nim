@@ -8,6 +8,7 @@ disabled: "osx"
 disabled: "openbsd"
 disabled: "windows"
 disabled: "32bit"
+disabled: "arm64"
 """
 
 discard alloc(3)

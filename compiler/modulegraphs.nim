@@ -17,7 +17,6 @@ import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, 
 
 when not defined(nimKochBootstrap):
   import ast2nif
-  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
 
 import typekeys
 

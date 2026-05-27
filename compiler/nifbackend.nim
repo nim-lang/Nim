@@ -17,13 +17,13 @@
 ##   1. Compile modules to NIF: nim m mymodule.nim
 ##   2. Generate C from NIF: nim nifc myproject.nim
 
-import std/[intsets, tables, sets, os]
+import std/[intsets, sets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
-  pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif
+  extccomp, msgs, ast2nif
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PrecompiledModule] =
   ## Traverse the module dependency graph using a stack.
