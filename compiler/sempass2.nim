@@ -1555,8 +1555,8 @@ proc track(tracked: PEffects, n: PNode) =
     # Check for implicit range conversions. Compile-time constants are already
     # fully known here, so only non-constant values need the downsizing warning.
     if n.kind == nkHiddenStdConv and (not tracked.isArrayIndexing) and
-          getConstExpr(tracked.ownerModule, n[1], tracked.c.idgen, tracked.graph) == nil and
-          shouldWarnRangeConversion(tracked.config, n.info, n.typ, n[1].typ):
+          shouldWarnRangeConversion(tracked.config, n.info, n.typ, n[1].typ) and
+          getConstExpr(tracked.ownerModule, n[1], tracked.c.idgen, tracked.graph) == nil:
       message(tracked.config, n.info, warnImplicitRangeConversion,
               typeToString(n[1].typ) & " -> " & typeToString(n.typ))
 
