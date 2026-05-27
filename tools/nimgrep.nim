@@ -729,7 +729,7 @@ iterator searchFile(pattern: Pattern; buffer: string): Output =
     i = t.last+1
   when typeof(pattern) is Regex:
     if buffer.len > MaxReBufSize:
-      yield Output(kind: openError, msg: "PCRE size limit is " & $MaxReBufSize)
+      yield Output(kind: openError, msg: "PCRE2 size limit is " & $MaxReBufSize)
 
 func detectBin(buffer: string): bool =
   for i in 0 ..< min(1024, buffer.len):

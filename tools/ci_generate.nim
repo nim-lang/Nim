@@ -110,7 +110,7 @@ image: freebsd/latest
 packages:
 - databases/sqlite3
 - devel/boehm-gc-threaded
-- devel/pcre
+- devel/pcre2
 - devel/sdl20
 - devel/sfml
 - www/node
@@ -124,7 +124,7 @@ packages:
 - sqlite3
 - node
 - boehm-gc
-- pcre
+- pcre2
 - sfml
 - sdl2
 - libffi

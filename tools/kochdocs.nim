@@ -126,6 +126,7 @@ mm.md
   withoutIndex = """
 lib/wrappers/tinyc.nim
 lib/wrappers/pcre.nim
+lib/wrappers/pcre2.nim
 lib/wrappers/openssl.nim
 lib/posix/posix.nim
 lib/posix/linux.nim

@@ -86,7 +86,7 @@ That means you can always use only 1 such an option with logical OR, e.g.
 Meaning of `^`:literal: and `$`:literal:
 ========================================
 
-`nimgrep`:cmd: PCRE engine is run in a single-line mode so
+`nimgrep`:cmd: PCRE2 engine is run in a single-line mode so
 `^`:literal: matches the beginning of whole input *file* and
 `$`:literal: matches the end of *file* (or whole input *string* for
 options like `--filename`).
@@ -97,7 +97,7 @@ Add the `(?m)`:literal: modifier to the beginning of your pattern for
 Examples
 ========
 
-All examples below use default PCRE Regex patterns:
+All examples below use default PCRE2 Regex patterns:
 
 + To search recursively in Nim files using style-insensitive identifiers:
 

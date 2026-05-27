@@ -596,12 +596,12 @@ Regular expressions
 
 * [re](re.html)
   Procedures and operators for handling regular
-  expressions. The current implementation uses PCRE.
+  expressions. The current implementation uses PCRE2.
 
 * [nre](nre.html)
 
   Many help functions for handling regular expressions.
-  The current implementation uses PCRE.
+  The current implementation uses PCRE2.
 
 Database support
 ----------------
@@ -660,6 +660,9 @@ Regular expressions
 
 * [pcre](pcre.html)
   Wrapper for the PCRE library.
+
+* [pcre2](pcre2.html)
+  Wrapper for the PCRE2 library.
 
 
 Database support
