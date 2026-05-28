@@ -52,7 +52,8 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       for j in FirstGenericParamAt..<key.kidsLen:
         # XXX sameType is not really correct for nested generics?
         if not compareTypes(inst[j], key[j],
-                            flags = {ExactGenericParams, PickyCAliases}):
+                            flags = {ExactGenericParams, PickyCAliases,
+                                     PickyBackendAliases}):
           break matchType
 
       return inst

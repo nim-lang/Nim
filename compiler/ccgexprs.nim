@@ -974,9 +974,7 @@ proc cow(p: BProc; n: PNode) {.inline.} =
   if n.kind == nkHiddenAddr: cowBracket(p, n[0])
 
 template ignoreConv(e: PNode): bool =
-  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  let srcType = e[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  sameBackendTypePickyAliases(destType, srcType)
+  sameBackendTypePickyAliases(e.typ, e[1].typ)
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
