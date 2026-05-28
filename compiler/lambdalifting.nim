@@ -520,6 +520,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
       detectCapturedVars(n[namePos], owner, c)
+  of nkClosure:
+    detectCapturedVars(n[1], owner, c)
   of nkReturnStmt:
     detectCapturedVars(n[0], owner, c)
   of nkIdentDefs:
