@@ -771,6 +771,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
         let oldInContainer = c.inContainer
         c.inContainer = 0
         var body = transformBody(d.graph, d.idgen, s, {})
+        if not d.processed.containsOrIncl(s.id):
+          detectCapturedVars(body, s, d)
         body = liftCapturedVars(body, s, d, c)
         if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
