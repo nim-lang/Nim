@@ -791,8 +791,12 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # different C types (size_t vs unsigned long long).
     let fCheck = concreteType(c, f)
     let aCheck = concreteType(c, a)
+    # `tfVarIsPtr` is an internal lowering artifact set during a proc's body
+    # analysis; a `proc` type literal's `var`/`lent` return never carries it,
+    # so `IgnoreFlags` keeps it from blocking matching `var T` against `var T`.
+    # The var/lent consistency itself is handled by `inconsistentVarTypes` below.
     if fCheck != nil and aCheck != nil and
-        not sameBackendTypePickyAliases(fCheck, aCheck):
+        not sameBackendTypePickyAliases(fCheck, aCheck, {IgnoreFlags}):
       result = isNone
 
   if result <= isSubrange or inconsistentVarTypes(f, a):
