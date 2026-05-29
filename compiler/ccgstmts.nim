@@ -1125,6 +1125,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       if hasIf: lineF(p, cpsStmts, "else ", [])
       startBlock(p)
       # we handled the error:
+      linefmt(p, cpsStmts, "T$1_ = nullptr;$n", [etmp])
       expr(p, t[i][0], d)
       linefmt(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)
