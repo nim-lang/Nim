@@ -791,8 +791,10 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # different C types (size_t vs unsigned long long).
     let fCheck = concreteType(c, f)
     let aCheck = concreteType(c, a)
+    # Note that `result` is equal; now check whether they have the same
+    # backend type.
     if fCheck != nil and aCheck != nil and
-        not sameBackendTypePickyAliases(fCheck, aCheck):
+      not sameBackendTypePickyAliases(fCheck, aCheck, {IgnoreFlags}):
       result = isNone
 
   if result <= isSubrange or inconsistentVarTypes(f, a):
@@ -2471,6 +2473,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif f.kind == tyStatic and arg.typ.n != nil:
       return arg.typ.n
+    elif f.kind == tyUntyped:
+      # bug #25693: a different overload candidate may have sem-checked the
+      # operand and left symbols behind; templates expect the pristine AST.
+      return argOrig
     else:
       return argSemantized # argOrig
 
