@@ -2644,14 +2644,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           " operator has to be enabled with {.experimental: \"callOperator\".}")
     elif sfImportc notin s.flags and (s.name.s == ">" or s.name.s == ">=" or s.name.s == "!="):
       # ignore imported procs as these operators in backend language might have different semantics
-      let (op1, op2) = if s.name.s == "!=":
-                         ("!=", "==")
-                       else:
-                         if s.name.s == ">":
-                           (">", "<")
-                         else:
-                           (">=", "<=")
-      message(c.config, n.info, warnInvalidCmpOp, "define `" & op2 & "` instead of `" & op1 & "` to implement user defined comparison operator. " &
+      let op1 = if s.name.s == "!=": "==" elif s.name.s == ">": "<" else: "<="
+      message(c.config, n.info, warnInvalidCmpOp, "define `" & op1 & "` instead of `" & s.name.s & "` to implement user defined comparison operator. " &
               "it allows you to use `" & op1 & "` automatically.")
 
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
