@@ -46,7 +46,7 @@ proc isLocation(n: PNode): bool = not n.isValue
 
 proc isLet(n: PNode): bool =
   if n.kind == nkSym:
-    if n.sym.kind in {skLet, skTemp, skForVar}:
+    if n.sym.kind in {skLet, skConst, skTemp, skForVar}: # guard immutable variables
       result = true
     elif n.sym.kind == skParam and skipTypes(n.sym.typ,
                                              abstractInst).kind notin {tyVar}:
