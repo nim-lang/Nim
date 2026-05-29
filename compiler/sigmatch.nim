@@ -2471,6 +2471,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif f.kind == tyStatic and arg.typ.n != nil:
       return arg.typ.n
+    elif f.kind == tyUntyped:
+      # bug #25693: a different overload candidate may have sem-checked the
+      # operand and left symbols behind; templates expect the pristine AST.
+      return argOrig
     else:
       return argSemantized # argOrig
 
