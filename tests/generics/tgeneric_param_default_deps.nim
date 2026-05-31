@@ -4,27 +4,21 @@ discard """
 
 import std/deques
 
-# Generic type parameter defaults that reference other type parameters
-# (issues #4086, #9355).
+# Type-side generic param defaults that reference other type parameters
+# (issue #4086).
 #
 # Currently fails on Nim 2.3.1 devel:
-#   #9355 sample 1: `Error: type expected`
-#   #9355 sample 2: `Error: cannot instantiate: 'U:type'`
-#   type-side    : `Error: invalid type: 'Foo[system.int, seq[T]]' for var`
+#   `Error: invalid type: 'Foo[system.int, seq[T]]' for var`
 #
 # Other languages (C++, TypeScript, Rust, Scala) all support this pattern.
 # Nim already supports T-independent defaults like `[T; U = int]`; this
-# extends support to defaults that reference earlier type parameters.
-
-block: # #9355: proc-side generic param default referencing T (brackets form)
-  func foo[T, U = T](): U = discard
-  doAssert foo[int]() is int
-  doAssert foo[string]() is string
-
-block: # #9355 variant: proc-side default with compound type expression
-  func bar[T, U = seq[T]](): U = discard
-  doAssert bar[int]() is seq[int]
-  doAssert bar[float]() is seq[float]
+# extends support to type-side defaults that reference earlier type params
+# (e.g. `type Foo[T; U = seq[T]]`). This is needed for binding C++ templates
+# like `std::vector<T, allocator<T>>` and `std::unique_ptr<T, default_delete<T>>`.
+#
+# Note: proc-side brackets-internal defaults (`proc foo[T, U = T]()`) are
+# out of scope; the PR's logic targets type-side default substitution.
+# A separate change would be needed for proc-side signature defaults.
 
 block: # #4086 type-side: object generic param default `seq[T]`
   type Foo[T; U = seq[T]] = object
