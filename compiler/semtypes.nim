@@ -1540,18 +1540,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         if isEmptyContainer(typ):
           localError(c.config, a.info, "cannot infer the type of parameter '" & $a[0] & "'")
 
-        if typ.kind == tyTypeDesc or typ.kind == tyGenericParam:
+        if typ.kind == tyTypeDesc:
           # consider a proc such as:
           # proc takesType(T = int)
           # a naive analysis may conclude that the proc type is type[int]
           # which will prevent other types from matching - clearly a very
           # surprising behavior. We must instead fix the expected type of
-          # the proc to be the unbound typedesc type.
-          # Issue #9355: also handles `proc foo[T](U = T)` where the default
-          # references another generic param. The default is a generic-param
-          # symbol whose typ is tyGenericParam (not tyTypeDesc); we treat
-          # such a parameter as an unbound typedesc param so it behaves like
-          # the explicit `proc foo[T](U: type = T)` form.
+          # the proc to be the unbound typedesc type:
           typ = newTypeS(tyTypeDesc, c, newTypeS(tyNone, c))
           typ.incl tfCheckedForDestructor
 

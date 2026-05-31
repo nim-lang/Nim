@@ -16,16 +16,15 @@ import std/deques
 # Nim already supports T-independent defaults like `[T; U = int]`; this
 # extends support to defaults that reference earlier type parameters.
 
-block: # #9355 sample 1: proc default referencing T (untyped form)
-  func foo[T](U = T): U = discard
-  # `U` defaults to whatever T resolves to.
+block: # #9355: proc-side generic param default referencing T (brackets form)
+  func foo[T, U = T](): U = discard
   doAssert foo[int]() is int
   doAssert foo[string]() is string
 
-block: # #9355 sample 2: proc default with `type =` referencing T
-  func foo[T](U: type = T): U = discard
-  doAssert foo[int]() is int
-  doAssert foo[float]() is float
+block: # #9355 variant: proc-side default with compound type expression
+  func bar[T, U = seq[T]](): U = discard
+  doAssert bar[int]() is seq[int]
+  doAssert bar[float]() is seq[float]
 
 block: # #4086 type-side: object generic param default `seq[T]`
   type Foo[T; U = seq[T]] = object
