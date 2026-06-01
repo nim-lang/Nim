@@ -11,7 +11,7 @@ import
   ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
-  semstrictfuncs, suggestsymdb, pushpoppragmas, lowerings
+  semstrictfuncs, suggestsymdb, pushpoppragmas
 
 import std/[tables, intsets, strutils, sequtils]
 
@@ -84,6 +84,8 @@ type
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     isInnerProc: bool
     inEnforcedNoSideEffects: bool
+    isArrayIndexing: bool
+    currentExceptType: PType
     unknownRaises: seq[(PSym, TLineInfo)]
     currOptions: TOptions
     optionsStack: seq[(TOptions, TNoteKinds)]
@@ -146,6 +148,49 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit
 proc isLocalSym(a: PEffects, s: PSym): bool =
   s.typ != nil and (s.kind in {skLet, skVar, skResult} or (s.kind == skParam and isOutParam(s.typ))) and
     sfGlobal notin s.flags and s.owner == a.owner
+
+proc isRangeSupertype(conf: ConfigRef; wider, narrower: PType): bool =
+  ## Check if `wider` type fully contains `narrower` type
+  ## Returns true if narrower fits entirely within wider (safe conversion)
+  if wider.isOrdinalType:
+    let wideFirst = firstOrd(conf, wider)
+    let wideLast = lastOrd(conf, wider)
+    let narrowFirst = firstOrd(conf, narrower)
+    let narrowLast = lastOrd(conf, narrower)
+    result = narrowFirst >= wideFirst and narrowLast <= wideLast
+  elif not narrower.isOrdinalType:
+    let wideFirst = firstFloat(wider)
+    let wideLast = lastFloat(wider)
+    let narrowFirst = firstFloat(narrower)
+    let narrowLast = lastFloat(narrower)
+    result = narrowFirst >= wideFirst and narrowLast <= wideLast
+  else:
+    # int -> float ranges; warn
+    result = false
+
+proc shouldWarnRangeConversion(conf: ConfigRef; info: TLineInfo; formalType, argType: PType): bool =
+  ## Determine if an implicit range conversion should warn
+  ## We warn on conversions that are likely to cause panics
+  let f = formalType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+  let a = argType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+  if f.kind == tyRange:
+    # Only warn if formal range doesn't fully contain argument range
+    # Check if the ranges don't perfectly overlap
+    if a.kind == tyInt and f.sym != nil and f.sym.owner != nil and
+        sfSystemModule in f.sym.owner.flags and
+        (f.sym.name.s == "Positive" or
+          f.sym.name.s == "Natural"):
+      # Positive and Natural are special cases that we do not warn on with
+      # ImplicitRangeConversion, but may warn on with systemRangeConversion
+      # if that warning is enabled.
+      if conf.hasWarn(warnSystemRangeConversion):
+        message(conf, info, warnSystemRangeConversion,
+              typeToString(argType) & " -> " & typeToString(formalType))
+      result = false
+    else:
+      result = not isRangeSupertype(conf, f, a)
+  else:
+    result = false
 
 proc lockLocations(a: PEffects; pragma: PNode) =
   if pragma.kind != nkExprColonExpr:
@@ -577,11 +622,25 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
     let b = n[i]
     if b.kind == nkExceptBranch:
       setLen(tracked.init, oldState)
+      # If this except branch catches exactly one type, record it so an
+      # empty `raise` inside the branch can be inferred as re-raising that
+      # specific exception type instead of the generic `Exception`.
+      var savedExcept: PType = tracked.currentExceptType
+      var inferredExcept: PType = nil
+      if b.len == 2:
+        if b[0].isInfixAs():
+          assert(b[0][1].kind == nkType)
+          inferredExcept = b[0][1].typ
+        else:
+          assert(b[0].kind == nkType)
+          inferredExcept = b[0].typ
+      tracked.currentExceptType = inferredExcept
       for j in 0..<b.len - 1:
         if b[j].isInfixAs(): # skips initialization checks
           assert(b[j][2].kind == nkSym)
           tracked.init.add b[j][2].sym.id
       track(tracked, b[^1])
+      tracked.currentExceptType = savedExcept
       for i in oldState..<tracked.init.len:
         addToIntersection(inter, tracked.init[i], bsNone)
     else:
@@ -750,6 +809,10 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
         markSideEffect(tracked, a, n.info)
   let paramType = if formals != nil and argIndex < formals.signatureLen: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
+    let arg = n.skipAddr()
+    if isSsoStringIndex(tracked.config, arg):
+      localError(tracked.config, arg.info,
+        "expression '$1' is immutable, not 'var'" % renderNotLValue(arg))
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalSym(tracked, n.sym):
       makeVolatile(tracked, n.sym)
@@ -1105,7 +1168,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     var (isHook, opKind) = findHookKind(a.sym.name.s)
     if isHook:
       # rebind type bounds operations after createTypeBoundOps call
-      let t = n[1].typ.skipTypes({tyAlias, tyVar})
+      let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
       if a.sym != getAttachedOp(tracked.graph, t, opKind):
         createTypeBoundOps(tracked, t, n.info, explicit = true)
         # replace builtin hooks with lifted ones
@@ -1145,6 +1208,7 @@ type
     enforcedGcSafety, enforceNoSideEffects: bool
     oldExc, oldTags, oldForbids: int
     exc, tags, forbids: PNode
+    excSource, tagsSource, forbidsSource: PNode
 
 proc createBlockContext(tracked: PEffects): PragmaBlockContext =
   var oldForbidsLen = 0
@@ -1167,17 +1231,18 @@ proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
     # anything about 'raises' in the 'cast' at all. Same applies for 'tags'.
     setLen(tracked.exc.sons, bc.oldExc)
     for e in bc.exc:
-      addRaiseEffect(tracked, e, e)
+      addRaiseEffect(tracked, e, if bc.excSource != nil: bc.excSource else: e)
   if bc.tags != nil:
     setLen(tracked.tags.sons, bc.oldTags)
     for t in bc.tags:
-      addTag(tracked, t, t)
+      addTag(tracked, t, if bc.tagsSource != nil: bc.tagsSource else: t)
   if bc.forbids != nil:
     setLen(tracked.forbids.sons, bc.oldForbids)
     for t in bc.forbids:
-      addNotTag(tracked, t, t)
+      addNotTag(tracked, t, if bc.forbidsSource != nil: bc.forbidsSource else: t)
 
-proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
+proc castBlock(tracked: PEffects, castPragma: PNode, bc: var PragmaBlockContext) =
+  let pragma = castPragma[1]
   case whichPragma(pragma)
   of wGcSafe:
     bc.enforcedGcSafety = true
@@ -1190,6 +1255,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.tags = newNodeI(nkArgList, pragma.info)
       bc.tags.add n
+    bc.tagsSource = castPragma
   of wForbids:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1197,6 +1263,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.forbids = newNodeI(nkArgList, pragma.info)
       bc.forbids.add n
+    bc.forbidsSource = castPragma
   of wRaises:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1204,6 +1271,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.exc = newNodeI(nkArgList, pragma.info)
       bc.exc.add n
+    bc.excSource = castPragma
   of wUncheckedAssign:
     discard "handled in sempass1"
   else:
@@ -1264,7 +1332,14 @@ proc track(tracked: PEffects, n: PNode) =
       # A `raise` with no arguments means we're going to re-raise the exception
       # being handled or, if outside of an `except` block, a `ReraiseDefect`.
       # Here we add a `Exception` tag in order to cover both the cases.
-      addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
+      if tracked.currentExceptType != nil:
+        var en = newNode(nkType)
+        en.typ = tracked.currentExceptType
+        en.info = n.info
+        addRaiseEffect(tracked, en, nil)
+        createTypeBoundOps(tracked, tracked.currentExceptType, n.info)
+      else:
+        addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:
     trackCall(tracked, n)
   of nkDotExpr:
@@ -1450,7 +1525,7 @@ proc track(tracked: PEffects, n: PNode) =
       of wNoSideEffect:
         bc.enforceNoSideEffects = true
       of wCast:
-        castBlock(tracked, pragmaList[i][1], bc)
+        castBlock(tracked, pragmaList[i], bc)
       else:
         discard
     applyBlockContext(tracked, bc)
@@ -1482,6 +1557,12 @@ proc track(tracked: PEffects, n: PNode) =
       message(tracked.config, n.info, warnPtrToCstringConv,
           $n[1].typ)
 
+    # Check for implicit range conversions
+    if n.kind == nkHiddenStdConv and (not tracked.isArrayIndexing) and
+          n[1].kind notin {nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit} and
+          shouldWarnRangeConversion(tracked.config, n.info, n.typ, n[1].typ):
+      message(tracked.config, n.info, warnImplicitRangeConversion,
+              typeToString(n[1].typ) & " -> " & typeToString(n.typ))
 
     let t = n.typ.skipTypes(abstractInst)
     if t.kind == tyEnum:
@@ -1520,7 +1601,12 @@ proc track(tracked: PEffects, n: PNode) =
         checkBounds(tracked, n[0], n[1])
     track(tracked, n[0])
     dec tracked.leftPartOfAsgn
-    for i in 1 ..< n.len: track(tracked, n[i])
+    for i in 1 ..< n.len:
+      if i == 1:
+        tracked.isArrayIndexing = true
+      track(tracked, n[i])
+      if i == 1:
+        tracked.isArrayIndexing = false
     inc tracked.leftPartOfAsgn
   of nkError:
     localError(tracked.config, n.info, errorToString(tracked.config, n))
@@ -1692,7 +1778,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       let param = params[i].sym
       let typ = param.typ
       if isSinkTypeForParam(typ) or
-          (t.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+          (t.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc} and
             (isClosure(typ.skipTypes(abstractInst)) or param.id in t.escapingParams)):
         createTypeBoundOps(t, typ, param.info)
       if isOutParam(typ) and param.id notin t.init and s.magic == mNone:

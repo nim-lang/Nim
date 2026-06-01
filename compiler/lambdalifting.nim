@@ -216,6 +216,10 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result[0] = le
   result[1] = ri
 
+proc markInjectDestructors(s: PSym) {.inline.} =
+  backendEnsureMutable s
+  s.flagsImpl.incl sfInjectDestructors
+
 proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
   result.add(newSymNode(prc))
@@ -228,7 +232,7 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   #if isClosureIterator(result.typ):
   createTypeBoundOps(g, nil, result.typ, info, idgen)
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-    prc.incl sfInjectDestructors
+    markInjectDestructors(prc)
 
 template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
   ## lambda lifting can be harmful for JS-like code generators.
@@ -240,7 +244,7 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
     createTypeBoundOps(g, nil, refType.elementType, info, idgen)
     createTypeBoundOps(g, nil, refType, info, idgen)
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
-      owner.incl sfInjectDestructors
+      markInjectDestructors(owner)
 
 proc genCreateEnv(env: PNode): PNode =
   var c = newNodeIT(nkObjConstr, env.info, env.typ)
@@ -408,6 +412,12 @@ Consider:
 proc isTypeOf(n: PNode): bool =
   n.kind == nkSym and n.sym.magic in {mTypeOf, mType}
 
+proc isEnvTypeForRoutine(envTyp: PType; routine: PSym): bool =
+  ## True if `envTyp` is (maybe wrapped) env object type owned by `routine`, as
+  ## created by `getEnvTypeForOwner` / `createEnvObj`.
+  let obj = envTyp.skipTypes({tyOwned, tyRef, tyPtr})
+  result = obj.kind == tyObject and obj.owner.id == routine.id
+
 proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   var cp = getEnvParam(fn)
   let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
@@ -418,7 +428,13 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     cp.typ = t
     addHiddenParam(fn, cp)
   elif cp.typ != t and fn.kind != skIterator:
-    localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
+    # Nested `liftLambdas` uses a fresh `DetectionPass`, so `getEnvTypeForOwner`
+    # can allocate another PType for the same logical env; the hidden param from
+    # the inner pass is authoritative (bug #21242).
+    if isEnvTypeForRoutine(cp.typ, owner) and isEnvTypeForRoutine(t, owner):
+      c.ownerToType[owner.id] = cp.typ
+    else:
+      localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
 proc iterEnvHasUpField(g: ModuleGraph, iter: PSym): bool =
@@ -624,7 +640,7 @@ proc rawClosureCreation(owner: PSym;
         if owner.kind != skMacro:
           createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info, d.idgen)
         if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
-          owner.incl sfInjectDestructors
+          markInjectDestructors(owner)
 
   let upField = lookupInRecord(env.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:

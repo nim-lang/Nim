@@ -244,7 +244,8 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
-  for i, resulti in paramTypes(result):
+  for i in 1 ..< originalParams.len:
+    let resulti = originalParams[i].sym.typ
     # twrong_field_caching requires these 'resetIdTable' calls:
     if i > FirstParamAt:
       resetIdTable(cl.symMap)
@@ -258,23 +259,23 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     let needsTypeDescSkipping = resulti.kind == tyTypeDesc and tfUnresolved in resulti.flags
     if resulti.kind == tyFromExpr:
       resulti.incl tfNonConstExpr
-    result[i] = replaceTypeVarsT(cl, resulti)
+    var paramType = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
-      result[i] = result[i].skipTypes({tyStatic})
+      paramType = paramType.skipTypes({tyStatic})
     if needsTypeDescSkipping:
-      result[i] = result[i].skipTypes({tyTypeDesc})
-      typeToFit = result[i]
+      paramType = paramType.skipTypes({tyTypeDesc})
+      typeToFit = paramType
 
     # ...otherwise, we use the instantiated type in `fitNode`
     if (typeToFit.kind != tyTypeDesc or typeToFit.base.kind != tyNone) and
        (typeToFit.kind != tyStatic):
-      typeToFit = result[i]
+      typeToFit = paramType
 
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
     let param = copySym(oldParam, c.idgen)
     setOwner(param, prc)
-    param.typ = result[i]
+    param.typ = paramType
 
     # The default value is instantiated and fitted against the final
     # concrete param type. We avoid calling `replaceTypeVarsN` on the
@@ -305,12 +306,12 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
         param.ast.typ = def.typ
       else:
         param.ast = fitNodePostMatch(c, typeToFit, converted)
-      param.typ = result[i]
+      param.typ = paramType
 
     result.n[i] = newSymNode(param)
-    if isRecursiveStructuralType(result[i]):
+    if isRecursiveStructuralType(paramType):
       localError(c.config, originalParams[i].sym.info, "illegal recursion in type '" & typeToString(result[i]) & "'")
-    propagateToOwner(result, result[i])
+    propagateToOwner(result, paramType)
     addDecl(c, param)
 
   resetIdTable(cl.symMap)
@@ -450,6 +451,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     entry.compilesId = c.compilesContextId
     addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))
+    # Log the generic instance so it gets written to the NIF file.
+    # This is needed for cyclic module dependencies where generic instances
+    # may be created in one module but referenced from another.
+    logGenericInstance(c.graph, result)
     # bug #12985 bug #22913
     # TODO: use the context of the declaration of generic functions instead
     # TODO: consider fixing options as well

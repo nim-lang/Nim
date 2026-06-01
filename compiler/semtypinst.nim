@@ -249,13 +249,24 @@ proc hasValuelessStatics(n: PNode): bool =
         a
     proc doThing(_: MyThing)
   ]#
+  result = false
   if n.safeLen == 0 and n.kind != nkEmpty: # Some empty nodes can get in here
-    n.typ == nil or n.typ.kind == tyStatic
+    if n.typ == nil:
+      result = true
+    elif n.typ.kind == tyStatic:
+      result = true
+    elif n.typ.kind == tyTypeDesc:
+      # Check if the base type is an unresolved generic parameter.
+      # This handles cases where a template containing sizeof(T) is called
+      # inside a generic object's when clause - the T needs to be resolved
+      # before we can evaluate the condition.
+      let base = n.typ.skipTypes({tyTypeDesc})
+      if base.kind == tyGenericParam:
+        result = true
   else:
     for x in n:
       if hasValuelessStatics(x):
         return true
-    false
 
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
@@ -362,6 +373,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym =
       var g: G[string]
 
   ]#
+  # XXX FIXME This causes system.Natural to be duplicated during compilation of system.nim as cl.owner == nil!
   result = copySym(s, cl.c.idgen)
   incl(result.flagsImpl, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
@@ -542,15 +554,33 @@ proc eraseVoidParams*(t: PType) =
 
   for i in FirstParamAt..<t.signatureLen:
     # don't touch any memory unless necessary
-    if t[i].kind == tyVoid:
+    if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
       var pos = i
       for j in i+1..<t.signatureLen:
         if t[j].kind != tyVoid:
-          t[pos] = t[j]
           t.n[pos] = t.n[j]
           inc pos
-      newSons t, pos
       setLen t.n.sons, pos
+      break
+
+proc eraseTupleVoidFields*(t: PType) =
+  ## Remove void fields from a named tuple type, compacting both `t.n`
+  ## (the field symbol nodes) and `t.sonsImpl` (the child types).
+  if t.n == nil: return  # anonymous tuple, nothing to compact
+  for i in 0..<t.kidsLen:
+    if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
+      # found first void field, compact from here
+      var pos = i
+      for j in i+1..<t.kidsLen:
+        if t[j].kind != tyVoid and j < t.n.len and t.n[j].kind != nkRecList:
+          t.n[pos] = t.n[j]
+          t[pos] = t[j]
+          if t.n[pos].kind == nkSym:
+            t.n[pos].sym.position = pos
+          inc pos
+        # else: skip void entries
+      setLen t.n.sons, pos
+      t.setSonsLen pos
       break
 
 proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
@@ -743,7 +773,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
-          result[i] = r
+          if result.kind != tyProc or i == 0:
+            result[i] = r
           if result.kind != tyArray or i != 0:
             propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists
@@ -757,6 +788,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
         propagateFieldFlags(result, result.n)
         if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
           result.incl tfRequiresInit
+        if result.kind == tyTuple:
+          eraseTupleVoidFields(result)
 
       of tyProc:
         eraseVoidParams(result)

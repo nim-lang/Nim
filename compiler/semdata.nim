@@ -19,8 +19,6 @@ import
   magicsys, vmdef, modulegraphs, lineinfos, pathutils, layeredtable,
   types, lowerings, trees, parampatterns, astalgo
 
-import ic / ic
-
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
     options*: TOptions
@@ -56,7 +54,18 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efWantIterable, efInTypeof,
+    efLValue,
+      # The expression is used as an assignable location.
+    efWantIterator,
+      # Admit iterator candidates and prefer them during overload resolution.
+    efWantIterable,
+      # Admit iterator candidates for expressions that may feed iterable-style
+      # chaining.
+    efPreferIteratorForIterable,
+      # Prefer iterator candidates for `iterable[T]` matching and wrap a
+      # successful iterator call as `tyIterable`.
+    efInTypeof,
+      # The expression is being semchecked under `typeof`.
     efNeedStatic,
       # Use this in contexts where a static value is mandatory
     efPreferStatic,
@@ -171,9 +180,12 @@ type
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
-    forwardTypeUpdates*: seq[(PType, PNode)]
-      # types that need to be updated in a type section
-      # due to containing forward types, and their corresponding nodes
+    forwardTypeUpdates*: seq[(PSym, PType, PNode)]
+      # top-level owner, type, and type node for delayed retries inside a
+      # type section due to containing forward types
+    forwardFieldUpdates*: seq[(PType, PNode, PType)]
+      # object/tuple field definitions whose default values mention forward
+      # types and need delayed const checking
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
@@ -336,28 +348,14 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     signatures: initStrTable(),
     features: graph.config.features
   )
-  if graph.config.symbolFiles != disabledSf:
-    let id = module.position
-    if graph.config.cmd != cmdM:
-      assert graph.packed[id].status in {undefined, outdated}
-    graph.packed[id].status = storing
-    graph.packed[id].module = module
-    initEncoder graph, module
-
-template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
-template encoder*(c): untyped = c.graph.encoders[c.module.position]
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
-  if c.config.symbolFiles != disabledSf:
-    addIncludeFileDep(c.encoder, c.packedRepr, f)
+  discard
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
-  if c.config.symbolFiles != disabledSf:
-    addImportFileDep(c.encoder, c.packedRepr, f)
+  discard
 
 proc addPragmaComputation*(c: PContext; n: PNode) =
-  if c.config.symbolFiles != disabledSf:
-    addPragmaComputation(c.encoder, c.packedRepr, n)
   # Also store for NIF-based IC (cmdM mode or optCompress)
   if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
     addNifReplayAction(c.graph, c.module.position.int32, n)
@@ -368,38 +366,28 @@ proc inclSym(sq: var seq[PSym], s: PSym): bool =
   sq.add s
   result = true
 
-proc addConverter*(c: PContext, conv: LazySym) =
-  assert conv.sym != nil
-  if inclSym(c.converters, conv.sym):
+proc addConverter*(c: PContext, conv: PSym) =
+  assert conv != nil
+  if inclSym(c.converters, conv):
     add(c.graph.ifaces[c.module.position].converters, conv)
 
-proc addConverterDef*(c: PContext, conv: LazySym) =
+proc addConverterDef*(c: PContext, conv: PSym) =
   addConverter(c, conv)
-  if c.config.symbolFiles != disabledSf:
-    addConverter(c.encoder, c.packedRepr, conv.sym)
 
-proc addPureEnum*(c: PContext, e: LazySym) =
-  assert e.sym != nil
+proc addPureEnum*(c: PContext, e: PSym) =
+  assert e != nil
   add(c.graph.ifaces[c.module.position].pureEnums, e)
-  if c.config.symbolFiles != disabledSf:
-    addPureEnum(c.encoder, c.packedRepr, e.sym)
 
-proc addPattern*(c: PContext, p: LazySym) =
-  assert p.sym != nil
-  if inclSym(c.patterns, p.sym):
+proc addPattern*(c: PContext, p: PSym) =
+  assert p != nil
+  if inclSym(c.patterns, p):
     add(c.graph.ifaces[c.module.position].patterns, p)
-  if c.config.symbolFiles != disabledSf:
-    addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
   strTableAdds(c.graph, c.module, s)
-  if c.config.symbolFiles != disabledSf:
-    addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
   strTableAdds(c.graph, c.module, s)
-  if c.config.symbolFiles != disabledSf:
-    addReexport(c.encoder, c.packedRepr, s)
 
 proc newLib*(kind: TLibKind): PLib =
   result = PLib(kind: kind)   #result.syms = initObjectSet()
@@ -614,19 +602,11 @@ template addExport*(c: PContext; s: PSym) =
   ## convenience to export a symbol from the current module
   addExport(c.graph, c.module, s)
 
-proc storeRodNode*(c: PContext, n: PNode) =
-  if c.config.symbolFiles != disabledSf:
-    toPackedNodeTopLevel(n, c.encoder, c.packedRepr)
-
 proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
-  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add LazyInstantiation(module: c.module.position, inst: inst)
-  if c.config.symbolFiles != disabledSf:
-    storeInstantiation(c.encoder, c.packedRepr, s, inst)
+  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add inst
 
 proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
-  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add LazyType(typ: inst)
-  if c.config.symbolFiles != disabledSf:
-    storeTypeInst(c.encoder, c.packedRepr, s, inst)
+  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add inst
 
 proc sealRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
@@ -642,9 +622,8 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## in the sem'checked AST. This is very bad for IDE-like tooling
   ## ("find all usages of this template" would not work). We need special
   ## logic to remember macro/template expansions. This is done here and
-  ## delegated to the "rod" file mechanism.
-  if c.config.symbolFiles != disabledSf:
-    storeExpansion(c.encoder, c.packedRepr, info, expandedSym)
+  ## delegated to the "NIF" file mechanism.
+  discard "XXX To implement"
 
 const
   errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"
@@ -657,6 +636,11 @@ proc renderNotLValue*(n: PNode): string =
     result = $n[0] & "(" & result & ")"
   elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
+
+proc isSsoStringIndex*(conf: ConfigRef; n: PNode): bool =
+  result = conf.usesSso() and n.kind == nkBracketExpr and n.len >= 1 and
+      n[0].typ != nil and
+      n[0].typ.skipTypes(abstractVar + abstractInst - {tyTypeDesc}).kind == tyString
 
 proc isAssignable(c: PContext, n: PNode): TAssignableResult =
   result = parampatterns.isAssignable(c.p.owner, n)
@@ -765,7 +749,7 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
   case kind
   of attachedDestructor:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedDestructor)
     if op != nil:
       result[0] = newSymNode(op)
@@ -777,13 +761,13 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
           result[1] = skipAddr(n[1])
   of attachedTrace:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedTrace)
     if op != nil:
       result[0] = newSymNode(op)
   of attachedDup:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedDup)
     if op != nil:
       result[0] = newSymNode(op)
@@ -793,18 +777,26 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
         result.add boolLit
   of attachedWasMoved:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedWasMoved)
     if op != nil:
       result[0] = newSymNode(op)
       analyseIfAddressTakenInCall(c, result, false)
   of attachedSink:
-    result = c.semAsgnOpr(c, n, nkSinkAsgn)
+    result = n
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
+    let op = getAttachedOp(c.graph, t, kind)
+    if op != nil:
+      result[0] = newSymNode(op)
   of attachedAsgn:
-    result = c.semAsgnOpr(c, n, nkAsgn)
+    result = n
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
+    let op = getAttachedOp(c.graph, t, kind)
+    if op != nil:
+      result[0] = newSymNode(op)
   of attachedDeepCopy:
     result = n
-    let t = n[1].typ.skipTypes(abstractVar)
+    let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, kind)
     if op != nil:
       result[0] = newSymNode(op)

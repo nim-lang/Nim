@@ -21,8 +21,6 @@ import std/[os, math, strutils]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from ic / ic import addCompilerProc
-
 const
   FirstCallConv* = wNimcall
   LastCallConv* = wNoconv
@@ -569,7 +567,7 @@ proc processCompile(c: PContext, n: PNode) =
     n[i] = c.semConstExpr(c, n[i])
     case n[i].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit:
-      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
         result = n[i].strVal
       else:
         shallowCopy(result, n[i].strVal)
@@ -767,8 +765,6 @@ proc markCompilerProc(c: PContext; s: PSym) =
   incl(s, sfCompilerProc)
   incl(s.flagsImpl, sfUsed)
   registerCompilerProc(c.graph, s)
-  if c.config.symbolFiles != disabledSf:
-    addCompilerProc(c.encoder, c.packedRepr, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]

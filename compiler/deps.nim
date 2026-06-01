@@ -10,10 +10,10 @@
 ## Generate a .build.nif file for nifmake from a Nim project.
 ## This enables incremental and parallel compilation using the `m` switch.
 
-import std / [os, tables, sets, times, osproc, strutils]
-import options, msgs, pathutils, lineinfos
+import std / [os, tables, sets, times, osproc]
+import options, msgs, lineinfos, pathutils
 
-import "../dist/nimony/src/lib" / [nifstreams, nifcursors, bitabs, nifreader, nifbuilder]
+import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames
 
 type
@@ -32,6 +32,7 @@ type
     nodes: seq[Node]
     processedModules: Table[string, int]  # modname -> node index
     includeStack: seq[string]
+    systemNodeId: int  # ID of the system.nim node
 
 proc toPair(c: DepContext; f: string): FilePair =
   FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
@@ -47,15 +48,18 @@ proc semmedFile(c: DepContext; f: FilePair): string =
 
 proc findNifler(): string =
   # Look for nifler in common locations
-  result = findExe("nifler")
-  if result.len == 0:
-    # Try relative to nim executable
-    let nimDir = getAppDir()
-    result = nimDir / "nifler"
-    if not fileExists(result):
-      result = nimDir / ".." / "nimony" / "bin" / "nifler"
-      if not fileExists(result):
-        result = ""
+  let nimDir = getAppDir()
+  result = nimDir / "nifler"
+  if not fileExists(result):
+    result = findExe("nifler")
+
+proc findNifmake(): string =
+  # Look for nifmake in common locations
+  # Try relative to nim executable
+  let nimDir = getAppDir()
+  result = nimDir / "nifmake"
+  if not fileExists(result):
+    result = findExe("nifmake")
 
 proc runNifler(c: DepContext; nimFile: string): bool =
   ## Run nifler deps on a file if needed. Returns true on success.
@@ -75,22 +79,19 @@ proc runNifler(c: DepContext; nimFile: string): bool =
   let exitCode = execShellCmd(cmd)
   result = exitCode == 0
 
-proc resolveFile(c: DepContext; origin, toResolve: string): string =
-  ## Resolve an import path relative to origin file
-  # Handle std/ prefix
-  var path = toResolve
-  if path.startsWith("std/"):
-    path = path.substr(4)
+proc resolveImport(c: DepContext; origin, toResolve: string): string =
+  ## Resolve an import path using the compiler's normal module lookup rules.
+  result = findModule(c.config, toResolve, origin).string
 
-  # Try relative to origin first
+proc resolveInclude(c: DepContext; origin, toResolve: string): string =
+  ## Resolve an include path relative to the including file or the search paths.
   let originDir = parentDir(origin)
-  result = originDir / path.addFileExt("nim")
+  result = originDir / toResolve.addFileExt("nim")
   if fileExists(result):
     return result
 
-  # Try search paths
   for searchPath in c.config.searchPaths:
-    result = searchPath.string / path.addFileExt("nim")
+    result = searchPath.string / toResolve.addFileExt("nim")
     if fileExists(result):
       return result
 
@@ -99,7 +100,7 @@ proc resolveFile(c: DepContext; origin, toResolve: string): string =
 proc traverseDeps(c: var DepContext; pair: FilePair; current: Node)
 
 proc processInclude(c: var DepContext; includePath: string; current: Node) =
-  let resolved = resolveFile(c, current.files[current.files.len - 1].nimFile, includePath)
+  let resolved = resolveInclude(c, current.files[current.files.len - 1].nimFile, includePath)
   if resolved.len == 0 or not fileExists(resolved):
     return
 
@@ -114,7 +115,7 @@ proc processInclude(c: var DepContext; includePath: string; current: Node) =
   discard c.includeStack.pop()
 
 proc processImport(c: var DepContext; importPath: string; current: Node) =
-  let resolved = resolveFile(c, current.files[0].nimFile, importPath)
+  let resolved = resolveImport(c, current.files[0].nimFile, importPath)
   if resolved.len == 0 or not fileExists(resolved):
     return
 
@@ -125,6 +126,9 @@ proc processImport(c: var DepContext; importPath: string; current: Node) =
     # New module - create node and process it
     let newNode = Node(files: @[pair], id: c.nodes.len)
     current.deps.add newNode.id
+    # Every module depends on system.nim
+    if c.systemNodeId >= 0:
+      newNode.deps.add c.systemNodeId
     c.processedModules[pair.modname] = newNode.id
     c.nodes.add newNode
     traverseDeps(c, pair, newNode)
@@ -132,6 +136,171 @@ proc processImport(c: var DepContext; importPath: string; current: Node) =
     # Already processed - just add dependency
     if existingIdx notin current.deps:
       current.deps.add existingIdx
+
+proc skipSubtree(s: var Stream; first: PackedToken) =
+  ## Consume tokens until the ParLe at `first` is balanced. Caller has
+  ## already obtained `first`.
+  if first.kind != ParLe: return
+  var depth = 1
+  while depth > 0:
+    let t = next(s)
+    if t.kind == ParLe: inc depth
+    elif t.kind == ParRi: dec depth
+    elif t.kind == EofToken: return
+
+proc evalCondExpr(c: DepContext; s: var Stream): bool =
+  ## Read exactly one condition expression from `s` and return its truth
+  ## value. Consumes tokens whether the expression is recognised or not so
+  ## the caller stays in sync. Recognises `defined(IDENT)`, the boolean
+  ## operators `not`/`and`/`or`, and the literals `true`/`false`. Anything
+  ## else (e.g. a call to an arbitrary proc) is treated as `true` — the
+  ## conservative direction, since a false negative here drops a real
+  ## dependency from the build graph.
+  let t = next(s)
+  case t.kind
+  of Ident:
+    case pool.strings[t.litId]
+    of "true": result = true
+    of "false": result = false
+    else: result = true
+  of ParLe:
+    let tag = pool.tags[t.tagId]
+    case tag
+    of "call", "cmd", "callstrlit", "infix", "prefix":
+      # First child is the head (function/operator name).
+      let head = next(s)
+      var name = ""
+      if head.kind == Ident: name = pool.strings[head.litId]
+      case name
+      of "defined":
+        let arg = next(s)
+        var sym = ""
+        if arg.kind == Ident: sym = pool.strings[arg.litId]
+        result = sym.len > 0 and isDefined(c.config, sym)
+      of "not":
+        result = not evalCondExpr(c, s)
+      of "and":
+        result = evalCondExpr(c, s)
+        if result: result = evalCondExpr(c, s)
+        else: skipSubtree(s, next(s))
+      of "or":
+        result = evalCondExpr(c, s)
+        if not result: result = evalCondExpr(c, s)
+        else: skipSubtree(s, next(s))
+      else:
+        result = true
+      # Drain whatever remains until the matching ParRi.
+      var depth = 1
+      while depth > 0:
+        let n = next(s)
+        if n.kind == ParLe: inc depth
+        elif n.kind == ParRi: dec depth
+        elif n.kind == EofToken: return
+    of "not":
+      result = not evalCondExpr(c, s)
+      var depth = 1
+      while depth > 0:
+        let n = next(s)
+        if n.kind == ParLe: inc depth
+        elif n.kind == ParRi: dec depth
+        elif n.kind == EofToken: return
+    of "and":
+      result = evalCondExpr(c, s)
+      if result: result = evalCondExpr(c, s)
+      else: skipSubtree(s, next(s))
+      # consume closing ParRi
+      var depth = 1
+      while depth > 0:
+        let n = next(s)
+        if n.kind == ParLe: inc depth
+        elif n.kind == ParRi: dec depth
+        elif n.kind == EofToken: return
+    of "or":
+      result = evalCondExpr(c, s)
+      if not result: result = evalCondExpr(c, s)
+      else: skipSubtree(s, next(s))
+      var depth = 1
+      while depth > 0:
+        let n = next(s)
+        if n.kind == ParLe: inc depth
+        elif n.kind == ParRi: dec depth
+        elif n.kind == EofToken: return
+    else:
+      skipSubtree(s, t)
+      result = true
+  else:
+    result = true
+
+proc whenMarkerHolds(c: DepContext; s: var Stream): bool =
+  ## Caller has just consumed the `(when` ParLe. Read children until the
+  ## matching `)`, AND-ing each evaluated condition.
+  result = true
+  while true:
+    # peek by reading; if it's ParRi, we're done
+    let t = next(s)
+    if t.kind == ParRi: return
+    if t.kind == EofToken: return
+    if t.kind == ParLe:
+      # Re-feed by manually evaluating the subtree starting at `t`.
+      # evalCondExpr expects to read its own opener, so handle it directly.
+      let tag = pool.tags[t.tagId]
+      case tag
+      of "call", "cmd", "callstrlit", "infix", "prefix":
+        let head = next(s)
+        var name = ""
+        if head.kind == Ident: name = pool.strings[head.litId]
+        var ok = true
+        case name
+        of "defined":
+          let arg = next(s)
+          var sym = ""
+          if arg.kind == Ident: sym = pool.strings[arg.litId]
+          ok = sym.len > 0 and isDefined(c.config, sym)
+        of "not":
+          ok = not evalCondExpr(c, s)
+        of "and":
+          ok = evalCondExpr(c, s)
+          if ok: ok = evalCondExpr(c, s)
+        of "or":
+          ok = evalCondExpr(c, s)
+          if not ok: ok = evalCondExpr(c, s)
+        else:
+          ok = true
+        # finish the subtree
+        var depth = 1
+        while depth > 0:
+          let n = next(s)
+          if n.kind == ParLe: inc depth
+          elif n.kind == ParRi: dec depth
+          elif n.kind == EofToken: return
+        if not ok: result = false
+      of "not", "and", "or":
+        # Re-emit a synthetic dispatch: rewrap by descending.
+        var ok = true
+        case tag
+        of "not":
+          ok = not evalCondExpr(c, s)
+        of "and":
+          ok = evalCondExpr(c, s)
+          if ok: ok = evalCondExpr(c, s)
+        of "or":
+          ok = evalCondExpr(c, s)
+          if not ok: ok = evalCondExpr(c, s)
+        else: discard
+        var depth = 1
+        while depth > 0:
+          let n = next(s)
+          if n.kind == ParLe: inc depth
+          elif n.kind == ParRi: dec depth
+          elif n.kind == EofToken: return
+        if not ok: result = false
+      else:
+        # Unknown — treat as true and skip.
+        skipSubtree(s, t)
+    elif t.kind == Ident:
+      let v = pool.strings[t.litId]
+      if v == "false": result = false
+      # else (true / unknown ident): keep result
 
 proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
   ## Read a .deps.nif file and process imports/includes
@@ -154,12 +323,27 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
     if t.kind == ParLe:
       let tag = pool.tags[t.tagId]
       case tag
-      of "import", "fromimport":
-        # Read import path
+      of "import", "fromimport", "include":
+        # Read first child. May be a `(when COND...)` marker — parse and
+        # evaluate; if the condition is statically false, skip the import
+        # entirely. Otherwise advance past the marker and parse the path.
         t = next(s)
-        # Check for "when" marker (conditional import)
-        if t.kind == Ident and pool.strings[t.litId] == "when":
-          t = next(s)  # skip it, still process the import
+        var live = true
+        if t.kind == ParLe and pool.tags[t.tagId] == "when":
+          # whenMarkerHolds consumes everything up to and including the
+          # closing `)` of the `(when ...)` subtree.
+          live = whenMarkerHolds(c, s)
+          t = next(s)
+        if not live:
+          # Drain the rest of this import/include node.
+          var depth = 1
+          while depth > 0:
+            let n = next(s)
+            if n.kind == ParLe: inc depth
+            elif n.kind == ParRi: dec depth
+            elif n.kind == EofToken: break
+          t = next(s)
+          continue
         # Handle path expression (could be ident, string, or infix like std/foo)
         var importPath = ""
         if t.kind == Ident:
@@ -177,26 +361,11 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
           if t.kind == Ident:  # second part (foo)
             importPath = importPath & "/" & pool.strings[t.litId]
         if importPath.len > 0:
-          processImport(c, importPath, current)
-        # Skip to end of import node
-        var depth = 1
-        while depth > 0:
-          t = next(s)
-          if t.kind == ParLe: inc depth
-          elif t.kind == ParRi: dec depth
-      of "include":
-        # Read include path
-        t = next(s)
-        if t.kind == Ident and pool.strings[t.litId] == "when":
-          t = next(s)  # skip conditional marker
-        var includePath = ""
-        if t.kind == Ident:
-          includePath = pool.strings[t.litId]
-        elif t.kind == StringLit:
-          includePath = pool.strings[t.litId]
-        if includePath.len > 0:
-          processInclude(c, includePath, current)
-        # Skip to end
+          if tag == "include":
+            processInclude(c, importPath, current)
+          else:
+            processImport(c, importPath, current)
+        # Skip to end of node
         var depth = 1
         while depth > 0:
           t = next(s)
@@ -220,12 +389,14 @@ proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
 
 proc generateBuildFile(c: DepContext): string =
   ## Generate the .build.nif file for nifmake
-  result = getNimcacheDir(c.config).string / c.nodes[0].files[0].modname & ".build.nif"
+  let nimcache = getNimcacheDir(c.config).string
+  createDir(nimcache)
+  result = nimcache / c.nodes[0].files[0].modname & ".build.nif"
 
   var b = nifbuilder.open(result)
   defer: b.close()
 
-  b.addHeader("nim deps", "nifmake")
+  b.addHeader("nim ic", "nifmake")
   b.addTree "stmts"
 
   # Define nifler command
@@ -245,6 +416,22 @@ proc generateBuildFile(c: DepContext): string =
   b.addSymbolDef "nim_m"
   b.addStrLit getAppFilename()
   b.addStrLit "m"
+  b.addStrLit "--nimcache:" & nimcache
+  # Add search paths
+  for p in c.config.searchPaths:
+    b.addStrLit "--path:" & p.string
+  b.addTree "args"
+  b.endTree()
+  b.withTree "input":
+    b.addIntLit 0  # main parsed file
+  b.endTree()
+
+  # Define nim nifc command
+  b.addTree "cmd"
+  b.addSymbolDef "nim_nifc"
+  b.addStrLit getAppFilename()
+  b.addStrLit "nifc"
+  b.addStrLit "--nimcache:" & nimcache
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
@@ -279,6 +466,8 @@ proc generateBuildFile(c: DepContext): string =
     b.addTree "do"
     b.addIdent "nim_m"
     # Input: all parsed files for this module
+    b.withTree "input":
+      b.addStrLit node.files[0].nimFile
     for f in node.files:
       b.addTree "input"
       b.addStrLit c.parsedFile(f)
@@ -292,15 +481,35 @@ proc generateBuildFile(c: DepContext): string =
     b.addTree "output"
     b.addStrLit c.semmedFile(pair)
     b.endTree()
-    b.addTree "args"
-    b.addStrLit pair.nimFile
     b.endTree()
+
+  # Final compilation step: generate executable from main module
+  let mainNif = c.nodes[0].files[0].nimFile
+  let exeFile = changeFileExt(c.nodes[0].files[0].nimFile, ExeExt)
+  b.addTree "do"
+  b.addIdent "nim_nifc"
+  # Input: .nim file (expanded as argument)
+  b.addTree "input"
+  b.addStrLit mainNif
+  b.endTree()
+  # Also depend on the semmed .nif files of the main module and all its
+  # dependencies. nifmake's topological sort orders nodes by depth; without
+  # these inputs the nim_nifc node sits at depth 1 (no recognized inputs)
+  # alongside the nifler nodes and runs *before* the nim_m steps that
+  # produce the .nif files it needs to read.
+  for node in c.nodes:
+    b.addTree "input"
+    b.addStrLit c.semmedFile(node.files[0])
     b.endTree()
+  b.addTree "output"
+  b.addStrLit exeFile
+  b.endTree()
+  b.endTree()
 
   b.endTree()  # stmts
 
-proc commandDeps*(conf: ConfigRef) =
-  ## Main entry point for `nim deps`
+proc commandIc*(conf: ConfigRef) =
+  ## Main entry point for `nim ic`
   when not defined(nimKochBootstrap):
     let nifler = findNifler()
     if nifler.len == 0:
@@ -320,7 +529,8 @@ proc commandDeps*(conf: ConfigRef) =
       nifler: nifler,
       nodes: @[],
       processedModules: initTable[string, int](),
-      includeStack: @[]
+      includeStack: @[],
+      systemNodeId: -1
     )
 
     # Create root node for main project file
@@ -329,12 +539,28 @@ proc commandDeps*(conf: ConfigRef) =
     c.nodes.add rootNode
     c.processedModules[rootPair.modname] = 0
 
+    # model the system.nim dependency:
+    let sysNode = Node(files: @[toPair(c, (conf.libpath / RelativeFile"system.nim").string)], id: 1)
+    c.nodes.add sysNode
+    c.systemNodeId = sysNode.id
+    rootNode.deps.add sysNode.id
+
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
 
     # Generate build file
     let buildFile = generateBuildFile(c)
     rawMessage(conf, hintSuccess, "generated: " & buildFile)
-    rawMessage(conf, hintSuccess, "run: nifmake run " & buildFile)
+
+    # Automatically run nifmake
+    let nifmake = findNifmake()
+    if nifmake.len == 0:
+      rawMessage(conf, hintSuccess, "run: nifmake run " & buildFile)
+    else:
+      let cmd = quoteShell(nifmake) & " run " & quoteShell(buildFile)
+      rawMessage(conf, hintExecuting, cmd)
+      let exitCode = execShellCmd(cmd)
+      if exitCode != 0:
+        rawMessage(conf, errGenerated, "nifmake failed with exit code: " & $exitCode)
   else:
-    rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
+    rawMessage(conf, errGenerated, "nim ic not available in bootstrap build")

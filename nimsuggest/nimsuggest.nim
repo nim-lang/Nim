@@ -237,7 +237,7 @@ proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
   for tbl in mitems(graph.attachedOps):
     var attachedOpsToDelete = newSeq[ItemId]()
     for id in tbl.keys:
-      if id.module == projectFileIdx.int and sfOverridden in resolveAttachedOp(graph, tbl[id]).flags:
+      if id.module == projectFileIdx.int and sfOverridden in tbl[id].flags:
         attachedOpsToDelete.add id
     for id in attachedOpsToDelete:
       tbl.del id
@@ -1018,7 +1018,7 @@ proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: Su
   if n.kind == nkSym and n.sym.checkSymbol(n.info):
     graph.suggestResult(n.sym, n.sym.info, ideOutline, endInfo.line, endInfo.col)
     return true
-  elif n.kind == nkIdent:
+  elif n.kind in {nkIdent, nkAccQuoted}:
     let symData = findByTLineInfo(n.info, infoPairs)
     if symData != nil and symData.sym.checkSymbol(symData.info):
        let sym = symData.sym
@@ -1028,7 +1028,7 @@ proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: Su
 proc handleIdentOrSym(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: SuggestFileSymbolDatabase): bool =
   result = false
   for child in n:
-    if child.kind in {nkIdent, nkSym}:
+    if child.kind in {nkIdent, nkAccQuoted, nkSym}:
       if graph.outlineNode(child, endInfo, infoPairs):
         return true
     elif child.kind == nkPostfix:
@@ -1042,7 +1042,7 @@ proc iterateOutlineNodes(graph: ModuleGraph, n: PNode, infoPairs: SuggestFileSym
     if symData != nil and symData.sym.kind == skEnumField and symData.info.exactEquals(symData.sym.info):
        let sym = symData.sym
        graph.suggestResult(sym, sym.info, ideOutline, n.endInfo.line, n.endInfo.col)
-  elif (n.kind in {nkFuncDef, nkProcDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
+  elif (n.kind in {nkFuncDef, nkProcDef, nkMethodDef, nkIteratorDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
     matched = handleIdentOrSym(graph, n, n.endInfo, infoPairs)
   else:
     matched = false

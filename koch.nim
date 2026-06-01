@@ -11,15 +11,16 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "9207e8b2bbdf66b5a4d1020214cff44d2d30df92"    # 0.20.1
-  AtlasStableCommit = "2aa62121b40d580aa2fb27920a37b938d36c5f57"     # 0.9.4
+  NimbleStableCommit = "aa03f886e4a111d6af9090c6a1f1271d64b66f7b"    # 0.22.2
+  AtlasStableCommit = "ff1f4289482dce94ba9f95b3b0ae16d16e21eb3d"     # 0.10.1
   ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
-  SatStableCommit = "faf1617f44d7632ee9601ebc13887644925dcc01"
+  SatStableCommit = "e63eaea8baf00bed8bcd5a29ffd8823abb265b39"
 
-  NimonyStableCommit = "322178d9af6676363d5237382c6d6c1b4e56d3cd" # unversioned \
+  NimonyStableCommit = "750aa47f2139fe5ad69f04b44428b752011fe873" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
+    # Commit from 2026-05-05
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
@@ -187,6 +188,11 @@ proc bundleChecksums(latest: bool) =
 
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
+
+  if not fileExists("bin/nifler".exe):
+    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+  if not fileExists("bin/nifmake".exe):
+    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
@@ -553,9 +559,7 @@ proc icTest(args: string) =
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
-    var cmd = nimExe & " cpp --ic:on -d:nimIcIntegrityChecks --listcmd "
-    if i == 0:
-      cmd.add "-f "
+    var cmd = nimExe & " ic --hint:Conf:off --warnings:off "
     cmd.add quoteShell(file)
     exec(cmd)
     inc i

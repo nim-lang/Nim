@@ -729,44 +729,47 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mShrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> BigInt($2))")
+      applyFormat("BigInt.asIntN(64, BigInt.asUintN(64, $1) >> (BigInt($2) & 63n))")
     elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-      applyFormat("($1 >> BigInt($2))")
+      applyFormat("($1 >> (BigInt($2) & 63n))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyInt..tyInt32}:
         let trimmerU = unsignedTrimmer(typ.size)
         let trimmerS = signedTrimmer(typ.size)
-        r.res = "((($1 $2) >>> $3) $4)" % [xLoc, trimmerU, yLoc, trimmerS]
+        r.res = "((($1 $2) >>> ($3 & $5)) $4)" % [xLoc, trimmerU, yLoc, trimmerS, $bitmask]
       else:
-        applyFormat("($1 >>> $2)")
+        r.res = "($1 >>> ($2 & $3))" % [xLoc, yLoc, $bitmask]
   of mShlI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if typ.kind == tyInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asIntN(64, $1 << BigInt($2))")
+        applyFormat("BigInt.asIntN(64, $1 << (BigInt($2) & 63n))")
       elif typ.kind == tyUInt64 and optJsBigInt64 in p.config.globalOptions:
-        applyFormat("BigInt.asUintN(64, $1 << BigInt($2))")
+        applyFormat("BigInt.asUintN(64, $1 << (BigInt($2) & 63n))")
       else:
-        applyFormat("($1 * Math.pow(2, $2))")
+        applyFormat("($1 * Math.pow(2, ($2 & 63)))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyUInt..tyUInt32}:
         let trimmer = unsignedTrimmer(typ.size)
-        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
+        r.res = "(($1 << ($2 & $4)) $3)" % [xLoc, yLoc, trimmer, $bitmask]
       else:
         let trimmer = signedTrimmer(typ.size)
-        r.res = "(($1 << $2) $3)" % [xLoc, yLoc, trimmer]
+        r.res = "(($1 << ($2 & $4)) $3)" % [xLoc, yLoc, trimmer, $bitmask]
   of mAshrI:
     let typ = n[1].typ.skipTypes(abstractVarRange)
     if typ.size == 8:
       if optJsBigInt64 in p.config.globalOptions:
-        applyFormat("($1 >> BigInt($2))")
+        applyFormat("($1 >> (BigInt($2) & 63n))")
       else:
-        applyFormat("Math.floor($1 / Math.pow(2, $2))")
+        applyFormat("Math.floor($1 / Math.pow(2, ($2 & 63)))")
     else:
+      let bitmask = typ.size * 8 - 1
       if typ.kind in {tyUInt..tyUInt32}:
-        applyFormat("($1 >>> $2)")
+        r.res = "($1 >>> ($2 & $3)))" % [xLoc, yLoc, $bitmask]
       else:
-        applyFormat("($1 >> $2)")
+        r.res = "($1 >> ($2 & $3))" % [xLoc, yLoc, $bitmask]
   of mBitandI: bitwiseExpr("&")
   of mBitorI: bitwiseExpr("|")
   of mBitxorI: bitwiseExpr("^")
@@ -1541,7 +1544,7 @@ proc genSymAddr(p: PProc, n: PNode, typ: PType, r: var TCompRes) =
     r.res = s.loc.snippet
     r.address = ""
     r.typ = etyNone
-  of skVar, skLet, skResult:
+  of skVar, skLet, skResult, skTemp, skForVar:
     r.kind = resExpr
     let jsType = mapType(p):
       if typ.isNil:
@@ -2015,8 +2018,12 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     if indirect: result = "[$1]" % [result]
   of tyTuple:
     result = rope("{")
+    var first = true
     for i in 0..<t.len:
-      if i > 0: result.add(", ")
+      # Do not produce code for void types
+      if isEmptyType(t[i]): continue
+      if not first: result.add(", ")
+      first = false
       result.addf("Field$1: $2", [i.rope,
             createVar(p, t[i], false)])
     result.add("}")

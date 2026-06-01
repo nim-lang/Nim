@@ -75,10 +75,13 @@ type
     flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, label: Natural]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, isHidden: bool, label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
-                              # bool is true when are in the except part of a try block
+                              # `inExcept` is true when we are in the except part of a try block.
+                              # `isHidden` is true for compiler-injected `nkHiddenTryStmt` wrappers
+                              # (e.g. ARC's destructor try/finally around `except T as e:` bodies);
+                              # finallyActions walks past such wrappers to reach the user's try.
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
@@ -117,7 +120,7 @@ type
   BModuleList* = ref object of RootObj
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Builder
     mapping*: Rope             # the generated mapping file (if requested)
-    modules*: seq[BModule]     # list of all compiled modules
+    mods*: seq[BModule]     # list of all compiled modules
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # procs that did not yet have a body
     generatedHeader*: BModule

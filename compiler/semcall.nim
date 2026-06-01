@@ -131,7 +131,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var sym = syms[0].s
   let name = sym.name
   var scope = syms[0].scope
-
+  c.openShadowScope
   if allowTypeBoundOps:
     for a in 1 ..< n.len:
       # for every already typed argument, add type bound ops
@@ -160,9 +160,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           addTypeBoundSymbols(c.graph, arg.typ, name, filter, symMarker, syms)
 
       if z.state == csMatch:
-        # little hack so that iterators are preferred over everything else:
+        # Iterator preference is heuristic in iterator-admitting contexts.
+        # The dedicated iterable path uses `iteratorPreference`, other
+        # context use exact-match bump
         if sym.kind == skIterator:
-          if not (efWantIterator notin flags and efWantIterable in flags):
+          if efPreferIteratorForIterable in flags:
+            inc(z.iteratorPreference)
+          elif not (efWantIterator notin flags and efWantIterable in flags):
             inc(z.exactMatches, 200)
           else:
             dec(z.exactMatches, 200)
@@ -214,6 +218,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
 
+  if best.state == csMatch and best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}:
+    c.closeShadowScope
+  else:
+    c.mergeShadowScope
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
@@ -671,7 +679,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
   # copied from semOverloadedCallAnalyzeEffects, might be overkill:
   const baseFilter = {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}
   let filter =
-    if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
+    if flags*{efInTypeof, efWantIterator, efWantIterable, efPreferIteratorForIterable} != {}:
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
@@ -830,6 +838,21 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   for i in 0 ..< flatUnbound.len():
     x.bindings.put(flatUnbound[i], flatBound[i])
 
+proc compactVoidArgs(n: PNode): PNode =
+  # deletes void args from the argument list, which are created by `setSon`
+  var hasNil = false
+  for i in 0..<n.len:
+    if n[i] == nil:
+      hasNil = true
+      break
+  if not hasNil:
+    result = n
+  else:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      if n[i] != nil:
+        result.add n[i]
+
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
                      expectedType: PType = nil): PNode =
@@ -880,7 +903,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
-  result = x.call
+  result = compactVoidArgs(x.call)
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
@@ -966,7 +989,7 @@ proc setGenericParams(c: PContext, n, expectedParams: PNode) =
     if e.typ == nil:
       n[i].typ = errorType(c)
     else:
-      n[i].typ = e.typ.skipTypes({tyTypeDesc})
+      n[i].typ = e.typ
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool): PNode =
   assert n.kind == nkBracketExpr

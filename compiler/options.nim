@@ -25,7 +25,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2025"
+  copyrightYear* = "2026"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
@@ -68,6 +68,7 @@ type                          # please make sure we have under 32 options
     optUseNimcache,           # save artifacts (including binary) in $nimcache
     optStyleHint,             # check that the names adhere to NEP-1
     optStyleError,            # enforce that the names adhere to NEP-1
+    optStyleWarning,          # emit style checks as warnings
     optStyleUsages,           # only enforce consistent **usages** of the symbol
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
@@ -110,8 +111,10 @@ type                          # please make sure we have under 32 options
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
     optShowNonExportedFields  # for documentation: show fields that are not exported
     optJsBigInt64             # use bigints for 64-bit integers in JS
+    optDocRaw                 # for documentation: Don't render markdown for JSON output
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -154,7 +157,6 @@ type
     cmdCheck # semantic checking for whole project
     cmdM     # only compile a single
     cmdParse # parse a single file (for debugging)
-    cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
@@ -176,7 +178,7 @@ type
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
     cmdCompileToNif
     cmdNifC  # generate C code from NIF files
-    cmdDeps  # generate .build.nif for nifmake
+    cmdIc  # generate .build.nif for nifmake
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -193,6 +195,7 @@ type
     gcRegions = "regions"
     gcArc = "arc"
     gcOrc = "orc"
+    gcYrc = "yrc"       # thread-safe ORC (concurrent cycle collector)
     gcAtomicArc = "atomicArc"
     gcMarkAndSweep = "markAndSweep"
     gcHooks = "hooks"
@@ -256,6 +259,9 @@ type
       ## Old transformation for closures in JS backend
     noPanicOnExcept
       ## don't panic on bare except
+    procParamTypeBackendAliases
+      ## Keep the old proc type compatibility rules that ignore backend
+      ## c type aliases.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -263,6 +269,10 @@ type
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
     ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl, ccHipcc, ccNvcc
+
+  StringsMode* = enum
+    stringDefault = "default"
+    stringSso = "sso"
 
   ExceptionSystem* = enum
     excNone,   # no exception system selected yet
@@ -363,11 +373,13 @@ type
     implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
+    selectedStrings*: StringsMode
     hintProcessingDots*: bool # true for dots, false for filenames
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    ic*: bool # whether ic is enabled
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
@@ -694,6 +706,7 @@ template quitOrRaise*(conf: ConfigRef, msg = "") =
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
+proc usesSso*(conf: ConfigRef): bool {.inline.} = conf.selectedStrings == stringSso
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
   false
@@ -1043,6 +1056,9 @@ proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
 
 proc showNonExportedFields*(conf: ConfigRef) =
   incl(conf.globalOptions, optShowNonExportedFields)
+
+proc docRawOutput*(conf: ConfigRef) =
+  incl(conf.globalOptions, optDocRaw)
 
 proc expandDone*(conf: ConfigRef): bool =
   result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress

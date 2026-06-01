@@ -34,10 +34,10 @@ To learn how to compile Nim programs and generate documentation see
 the [Compiler User Guide](nimc.html) and the [DocGen Tools Guide](docgen.html).
 
 The language constructs are explained using an extended BNF, in which `(a)*`
-means 0 or more `a`'s, `a+` means 1 or more `a`'s, and `(a)?` means an
+means 0 or more *a*'s, `a+` means 1 or more *a*'s, and `(a)?` means an
 optional *a*. Parentheses may be used to group elements.
 
-`&` is the lookahead operator; `&a` means that an `a` is expected but
+`&` is the lookahead operator; `&a` means that an *a* is expected but
 not consumed. It will be consumed in the following rule.
 
 The `|`, `/` symbols are used to mark alternatives and have the lowest
@@ -1024,6 +1024,9 @@ These are the major type classes:
 * procedural type
 * generic type
 
+The compiler's internal type zoo is richer than this summary suggests:
+some types that are structurally equal still differ in backend representation.
+
 
 Ordinal types
 -------------
@@ -1143,6 +1146,8 @@ semantic analysis). Assignments from the base type to one of its subrange types
 
 A subrange type has the same size as its base type (`int` in the
 Subrange example).
+
+Implicit "downsizing" conversions to range types (for example, `int -> range[0..255]` or `range[1..256] -> range[0..255]`) emit the `ImplicitRangeConversion` warning. Conversions that are clearly safe (for example, `range[0..255] -> range[0..65535]`) and any explicit casts do not trigger this warning. Conversions from `int` to common subranges such as `Natural` or `Positive` do not trigger this warning by default, but can be enabled with `--warning:systemRangeConversion`.
 
 
 Pre-defined floating-point types
@@ -2172,6 +2177,10 @@ Procedural type
 A procedural type is internally a pointer to a procedure. `nil` is
 an allowed value for a variable of a procedural type.
 
+Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
+
 Examples:
 
   ```nim
@@ -2626,10 +2635,10 @@ Overload resolution
 In a call `p(args)` where `p` may refer to more than one
 candidate, it is said to be a symbol choice. Overload resolution will attempt to
 find the best candidate, thus transforming the symbol choice into a resolved symbol.
-The routine `p` that matches best is selected following a series of trials explained below. 
+The routine `p` that matches best is selected following a series of trials explained below.
 In order: Category matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
 
-If multiple candidates match equally well after all trials have been tested, the ambiguity 
+If multiple candidates match equally well after all trials have been tested, the ambiguity
 is reported during semantic analysis.
 
 First Trial: Category matching
@@ -2662,7 +2671,7 @@ resolved symbol.
 For example, if a candidate with one exact match is compared to a candidate with multiple
 generic matches and zero exact matches, the candidate with an exact match will win.
 
-Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number 
+Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number
 of matches of the matching category `m` for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
@@ -2690,11 +2699,11 @@ type A[T] = object
 ```
 
 Matching formals for this type include `T`, `object`, `A`, `A[...]` and `A[C]` where `C` is a concrete type, `A[...]`
-is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of 
+is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of
 specificity with respect to `A` as each subsequent category narrows the set of types that are members of their match set.
 
 In this trial, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
-a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
+a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen
 as the resolved symbol.
 
 Third Trial: Complexity Analysis
@@ -2949,13 +2958,13 @@ proc sort*[I: Index; T: Comparable](x: var Indexable[I, T])
 
 In the above example, `Comparable` and `Indexable` are types that will match any type that
 can can bind each definition declared in the concept body. The special `Self` type defined
-in the concept body refers to the type being matched, also called the "implementation" of 
-the concept. Implementations that match the concept are generic matches, and the concept 
+in the concept body refers to the type being matched, also called the "implementation" of
+the concept. Implementations that match the concept are generic matches, and the concept
 typeclasses themselves work in a similar way to generic type variables in that they are never
 concrete types themselves (even if they have concrete type parameters such as `Indexable[int, int]`)
-and expressions like `typeof(x)` in the body of `proc sort` from the above example will return the 
+and expressions like `typeof(x)` in the body of `proc sort` from the above example will return the
 type of the implementation, not the concept typeclass. Concepts are useful for providing information
-to the compiler in generic contexts, most notably for generic type checking, and as a tool for 
+to the compiler in generic contexts, most notably for generic type checking, and as a tool for
 [Overload resolution]. Generic type checking is forthcoming, so this will only explain overload
 resolution for now.
 
@@ -2982,7 +2991,7 @@ Concept overload resolution
 
 When an operand's type is being matched to a concept, the operand's type  is set as the "potential
 implementation". For each definition in the concept body, overload resolution is performed by substituting `Self`
-for the potential implementation to try and find a match for each definition. If this succeeds, the concept 
+for the potential implementation to try and find a match for each definition. If this succeeds, the concept
 matches. Implementations do not need to exactly match the definitions in the concept. For example:
 
 ```nim
@@ -3006,7 +3015,7 @@ This leads to confusing and impractical behavior in most situations, so the rule
 1. if a concept is being compared with `T` or any type that accepts all other types (`auto`) the concept
 is more specific
 2. if the concept is being compared with another concept the result is deferred to [Concept subset matching]
-3. in any other case the concept is less specific then it's competitor 
+3. in any other case the concept is less specific then it's competitor
 
 Currently, the concept evaluation mechanism evaluates to a successful match on the first acceptable candidate
 for each defined binding. This has a couple of notable effects:
@@ -3024,6 +3033,44 @@ are also valid implementations of `C2` but not vice versa then `C1` is a subset 
 If neither of them are subsets of one another, then the disambiguation proceeds to complexity analysis
 and the concept with the most definitions wins, if any. No definite winner is an ambiguity error at
 compile time.
+
+Recursive concepts
+------------------
+
+Concepts can reference themselves in their definitions, enabling recursive type constraints.
+This is useful for matching `distinct` types that should inherit traits from their base type:
+
+```nim
+import std/typetraits
+
+type
+  PrimitiveBase = SomeNumber | bool | ptr | pointer | enum
+
+  # Matches PrimitiveBase directly, or any distinct type whose base is Primitive
+  Primitive = concept x
+    x is PrimitiveBase or distinctBase(x) is Primitive
+
+  # Application: a handle type that should be treated like a primitive
+  Handle = distinct int
+  SpecialHandle = distinct Handle
+
+assert int is Primitive
+assert Handle is Primitive
+assert SpecialHandle is Primitive  # works through 2 levels
+assert not (string is Primitive)
+```
+
+Concepts can also be mutually recursive (co-dependent):
+
+```nim
+type
+  Serializable = concept
+    proc serialize(s: Self; writer: var Writer)
+  Writer = concept
+    proc write(w: var Self; data: Serializable)
+```
+
+The compiler uses cycle detection to handle these cases without infinite recursion.
 
 Statements and expressions
 ==========================
@@ -4570,10 +4617,10 @@ for any type (with some exceptions) by defining a routine with the name `[]`.
   ```nim
   type Foo = object
     data: seq[int]
-  
+
   proc `[]`(foo: Foo, i: int): int =
     result = foo.data[i]
-  
+
   let foo = Foo(data: @[1, 2, 3])
   echo foo[1] # 2
   ```
@@ -4584,12 +4631,12 @@ which has precedence over assigning to the result of `[]`.
   ```nim
   type Foo = object
     data: seq[int]
-  
+
   proc `[]`(foo: Foo, i: int): int =
     result = foo.data[i]
   proc `[]=`(foo: var Foo, i: int, val: int) =
     foo.data[i] = val
-  
+
   var foo = Foo(data: @[1, 2, 3])
   echo foo[1] # 2
   foo[1] = 5
@@ -4821,7 +4868,14 @@ default to being inline, but this may change in future versions of the
 implementation.
 
 The `iterator` type is always of the calling convention `closure`
-implicitly; the following example shows how to use iterators to implement
+implicitly.
+
+Unlike named iterators, anonymous iterator expressions evaluate
+to the `iterator` type. In practice, this means a named iterator declaration
+without `{.closure.}` defaults to inline, but an expression like `let it =
+iterator(): int = yield 1` produces a callable closure iterator value.
+
+The following example shows how to use iterators to implement
 a `collaborative tasking`:idx: system:
 
   ```nim
@@ -6361,7 +6415,7 @@ The default for symbols of entity `type`, `var`, `let` and `const`
 is `gensym`. For `proc`, `iterator`, `converter`, `template`,
 `macro`, the default is `inject`, but if a `gensym` symbol with the same name
 is defined in the same syntax-level scope, it will be `gensym` by default.
-This can be overridden by marking the routine as `inject`. 
+This can be overridden by marking the routine as `inject`.
 
 If the name of the entity is passed as a template parameter, it is an `inject`'ed symbol:
 
@@ -7202,7 +7256,7 @@ identifier is considered ambiguous, which can be resolved in the following ways:
 
   write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
-  
+
   proc bar(a: int): int = a + 1
   assert bar(x) == x + 1 # no error: only A.x of type int matches
 
@@ -7866,7 +7920,7 @@ alignment requirement of the type are ignored.
   main()
   ```
 
-This pragma has no effect on the JS backend.
+This pragma has no effect on the JavaScript backend and may significantly increase memory usage with the `--mm:refc` option.
 
 
 Noalias pragma
@@ -7941,6 +7995,35 @@ underlying C `struct`:c: in a `sizeof` expression:
     DIR* {.importc: "DIR", header: "<dirent.h>",
            pure, incompleteStruct.} = object
   ```
+
+
+CompleteStruct pragma
+---------------------
+The `completeStruct` pragma is a contract indicating that an `importc` type
+declaration contains all fields of the corresponding C type, allowing
+`sizeof`, `alignof`, and `offsetof` to be computed at compile-time.
+
+By default, `importc` types are assumed to be incomplete (their size is
+unknown at compile-time). Use `completeStruct` when you need compile-time
+size information and can guarantee the Nim definition matches the C layout:
+
+  ```Nim
+  type
+    InotifyEvent {.importc: "struct inotify_event", header: "<sys/inotify.h>",
+                   completeStruct.} = object
+      wd: cint
+      mask: uint32
+      cookie: uint32
+      len: uint32
+      # All fields must match the C struct exactly
+  ```
+
+If the Nim fields don't match the C struct, a static assertion will fail
+during C code generation.
+
+Without `completeStruct`, attempting to use `sizeof` on an `importc` type
+at compile-time will error with "'sizeof' requires '.importc' types to be
+'.completeStruct'".
 
 
 Compile pragma
@@ -8791,7 +8874,7 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
+if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
 parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
 When an `importcpp` type has a `byref` pragma, these params translate to
 C++ references `&`.
@@ -9255,4 +9338,3 @@ It is not valid to pass an lvalue of a supertype to an `out T` parameter:
 
 However, in the future this could be allowed and provide a better way to write object
 constructors that take inheritance into account.
-

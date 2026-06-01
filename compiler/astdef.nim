@@ -8,10 +8,9 @@
 #
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg
+  lineinfos, options, ropes, idents, int128
 
 import std/[tables, hashes]
-from std/strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -203,7 +202,11 @@ type
     tySequence,
     tyProc,
     tyPointer, tyOpenArray,
-    tyString, tyCstring, tyForward,
+    tyString, tyCstring,
+    tyForward,
+      # a type not yet semchecked
+      # When semcheck a type section, all types defined in it are initialized to tyForward
+
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
@@ -698,6 +701,7 @@ type
 
   PLib* = ref TLib
   TSym* {.acyclic.} = object # Keep in sync with ast2nif.nim
+                             # Check `transitionSymKindCommon` in ast.nim when add a new field.
     itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
     state*: ItemState
@@ -989,6 +993,22 @@ proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
 proc newStrNode*(strVal: string; info: TLineInfo): PNode =
   result = newNodeI(nkStrLit, info)
   result.strVal = strVal
+
+# Hooks, converters, method dispatchers and enum-to-string generated procs need special
+# handling for IC, they end up in IC indexes etc. Thus we "log" them in the module graph
+# and to pass them around to the NIF writer. This is not very elegant but it works.
+
+type
+  LogEntryKind* = enum
+    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry
+  LogEntry* = object
+    kind*: LogEntryKind
+    op*: TTypeAttachedOp
+    isGeneric*: bool
+    module*: int  # Which module this entry belongs to
+    key*: string
+    sym*: PSym
+
 
 proc forcePartial*(s: PSym) =
   ## Resets all impl-fields to their default values and sets state to Partial.

@@ -10,7 +10,7 @@
 ## This module implements threadpool's ``spawn``.
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings, liftdestructors, renderer
+  lowerings, liftdestructors, renderer, trees
 from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
@@ -37,7 +37,7 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   else: srFlowVar
 
 proc flowVarKind(c: ConfigRef, t: PType): TFlowVarKind =
-  if c.selectedGC in {gcArc, gcOrc, gcAtomicArc}: fvBlob
+  if c.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcYrc}: fvBlob
   elif t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
@@ -53,6 +53,24 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   if t.kind in {tyVar, tyLent, tySequence}: t = t.elementType
   result = not containsGarbageCollectedRef(t)
 
+proc newSpawnMoveStmt(g: ModuleGraph; idgen: IdGenerator; le, ri: PNode): PNode =
+  let op = getAttachedOp(g, ri.typ.skipTypes({tyGenericInst, tyAlias, tyVar, tySink}), attachedWasMoved)
+  if op != nil and sfOverridden in op.flags:
+    result = newNodeI(nkStmtList, le.info)
+    result.add newFastAsgnStmt(le, ri)
+
+    let wasMovedCall = newNodeI(nkCall, ri.info)
+    wasMovedCall.add newSymNode(op)
+    
+    if op.typ != nil and op.typ.signatureLen > 1 and op.typ.firstParamType.kind != tyVar:
+      wasMovedCall.add ri.skipAddr
+    else:
+      wasMovedCall.add makeAddr(ri.skipAddr, idgen)
+    
+    result.add wasMovedCall
+  else:
+    result = newFastMoveStmt(g, le, ri)
+
 proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator; owner: PSym; typ: PType;
                  v: PNode; useShallowCopy=false): PSym =
   result = newSym(skTemp, getIdent(g.cache, genPrefix), idgen, owner, varSection.info,
@@ -66,12 +84,12 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator;
   vpart[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
-    if g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+    if g.config.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcYrc}:
       # inject destructors pass will do its own analysis
-      varInit.add newFastMoveStmt(g, newSymNode(result), v)
+      varInit.add newSpawnMoveStmt(g, idgen, newSymNode(result), v)
     else:
       if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
-        varInit.add newFastMoveStmt(g, newSymNode(result), v)
+        varInit.add newSpawnMoveStmt(g, idgen, newSymNode(result), v)
       else:
         let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
         deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))

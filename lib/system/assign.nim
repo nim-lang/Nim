@@ -9,11 +9,11 @@
 
 include seqs_v2_reimpl
 
-proc genericResetAux(dest: pointer, n: ptr TNimNode) {.benign.}
+proc genericResetAux(dest: pointer, n: ptr TNimNode) {.gcsafe.}
 
-proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.benign.}
+proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) {.gcsafe.}
 proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
-                      shallow: bool) {.benign.} =
+                      shallow: bool) {.gcsafe.} =
   var
     d = cast[int](dest)
     s = cast[int](src)
@@ -62,9 +62,14 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   case mt.kind
   of tyString:
     when defined(nimSeqsV2):
-      var x = cast[ptr NimStringV2](dest)
-      var s2 = cast[ptr NimStringV2](s)[]
-      nimAsgnStrV2(x[], s2)
+      when defined(nimsso):
+        var x = cast[ptr SmallString](dest)
+        var s2 = cast[ptr SmallString](s)[]
+        nimAsgnStrV2(x[], s2)
+      else:
+        var x = cast[ptr NimStringV2](dest)
+        var s2 = cast[ptr NimStringV2](s)[]
+        nimAsgnStrV2(x[], s2)
     else:
       var x = cast[PPointer](dest)
       var s2 = cast[PPointer](s)[]
@@ -187,8 +192,8 @@ proc genericAssignOpenArray(dest, src: pointer, len: int,
     genericAssign(cast[pointer](d +% i *% mt.base.size),
                   cast[pointer](s +% i *% mt.base.size), mt.base)
 
-proc objectInit(dest: pointer, typ: PNimType) {.compilerproc, benign.}
-proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
+proc objectInit(dest: pointer, typ: PNimType) {.compilerproc, gcsafe.}
+proc objectInitAux(dest: pointer, n: ptr TNimNode) {.gcsafe.} =
   var d = cast[int](dest)
   case n.kind
   of nkNone: sysAssert(false, "objectInitAux")
@@ -224,7 +229,7 @@ proc objectInit(dest: pointer, typ: PNimType) =
 
 # ---------------------- assign zero -----------------------------------------
 
-proc genericReset(dest: pointer, mt: PNimType) {.compilerproc, benign.}
+proc genericReset(dest: pointer, mt: PNimType) {.compilerproc, gcsafe.}
 proc genericResetAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[int](dest)
   case n.kind
@@ -245,8 +250,11 @@ proc genericReset(dest: pointer, mt: PNimType) =
     unsureAsgnRef(cast[PPointer](dest), nil)
   of tyString:
     when defined(nimSeqsV2):
-      var s = cast[ptr NimStringV2](dest)
-      frees(s[])
+      when defined(nimsso):
+        nimDestroyStrV1(cast[ptr SmallString](dest)[])
+      else:
+        var s = cast[ptr NimStringV2](dest)
+        frees(s[])
       zeroMem(dest, mt.size)
     else:
       unsureAsgnRef(cast[PPointer](dest), nil)

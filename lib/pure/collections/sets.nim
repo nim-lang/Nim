@@ -130,6 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
     var a = initHashSet[int]()
     a.incl(3)
     assert len(a) == 1
+  
   result = default(HashSet[A])
   result.init(initialSize)
 
@@ -139,7 +140,7 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
-  var hc: Hash
+  var hc = default(Hash)
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
   else:
@@ -165,7 +166,7 @@ proc contains*[A](s: HashSet[A], key: A): bool =
     assert values.contains(2)
     assert 2 in values
 
-  var hc: Hash
+  var hc = default(Hash)
   var index = rawGet(s, key, hc)
   result = index >= 0
 
@@ -670,6 +671,7 @@ proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
     var a = initOrderedSet[int]()
     a.incl(3)
     assert len(a) == 1
+  
   result = OrderedSet[A]()
   result.init(initialSize)
 
@@ -710,7 +712,7 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
     assert values.contains(2)
     assert 2 in values
 
-  var hc: Hash
+  var hc = default(Hash)
   var index = rawGet(s, key, hc)
   result = index >= 0
 
@@ -888,8 +890,6 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ##   # --> {no, esc'aping, is " provided}
   ##   ```
   dollarImpl()
-
-
 
 iterator items*[A](s: OrderedSet[A]): A =
   ## Iterates over keys in the ordered set `s` in insertion order.

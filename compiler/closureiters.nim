@@ -139,8 +139,7 @@
 
 import
   ast, msgs, idents,
-  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  options
+  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos, trees
 
 import std/tables
 
@@ -728,7 +727,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv,
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv, nkObjUpConv,
       nkDerefExpr, nkHiddenDeref:
     var ns = false
     for i in ord(n.kind == nkCast)..<n.len:
@@ -1391,18 +1390,34 @@ proc optimizeStates(ctx: var Ctx) =
   for i in 0 .. ctx.states.high:
     ctx.states[i].label.intVal = i
 
+proc detectCapturedSym(c: var Ctx, s: PSym, stateIdx: int) =
+  if s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym:
+    let vs = c.varStates.getOrDefault(s.itemId, localNotSeen)
+    if vs == localNotSeen: # First seing this variable
+      c.varStates[s.itemId] = stateIdx
+    elif vs == localRequiresLifting:
+      discard # Sym already marked
+    elif vs != stateIdx:
+      c.captureVar(s)
+
+proc isClosureIterLocal(c: Ctx, s: PSym): bool =
+  s.kind in {skResult, skVar, skLet, skForVar, skTemp} and
+  sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym
+
 proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
   case n.kind
   of nkSym:
     let s = n.sym
-    if s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym:
-      let vs = c.varStates.getOrDefault(s.itemId, localNotSeen)
-      if vs == localNotSeen: # First seing this variable
-        c.varStates[s.itemId] = stateIdx
-      elif vs == localRequiresLifting:
-        discard # Sym already marked
-      elif vs != stateIdx:
-        c.captureVar(s)
+    detectCapturedSym(c, s, stateIdx)
+  of nkAddr, nkHiddenAddr:
+    let s = getRoot(n)
+    if s != nil and isClosureIterLocal(c, s):
+      detectCapturedSym(c, s, stateIdx)
+      # bug #25596; lifetime extension for `addr`-taken locals as
+      # we claim ARC/ORC do destruction based on scopes, not on last-usages.
+      c.captureVar(s)
+    for i in 0 ..< n.safeLen:
+      detectCapturedVars(c, n[i], stateIdx)
   of nkReturnStmt:
     if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
