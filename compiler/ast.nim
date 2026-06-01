@@ -1647,9 +1647,13 @@ proc canRaise*(fn: PNode): bool =
     if fn.typ.n[0].kind == nkSym:
       result = false
     else:
+      # A proc-typed value with no explicit raises slot still has
+      # unspecified effects, which sempass2 treats conservatively.
+      # Codegen needs to do the same in order to keep goto-exception
+      # checks after indirect/closure calls.
       result = ((fn.typ.n[0].len < effectListLen) or
-        (fn.typ.n[0][exceptionEffects] != nil and
-        fn.typ.n[0][exceptionEffects].safeLen > 0))
+        fn.typ.n[0][exceptionEffects] == nil or
+        fn.typ.n[0][exceptionEffects].safeLen > 0)
   else:
     result = false
 
