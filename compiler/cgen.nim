@@ -659,9 +659,22 @@ proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
+  # `auto` and `decltype(auto)` works differently in C++
+  #[
+    int& foo(int& x) {
+      return x;
+    }
+
+    int main()
+    {
+        int x = 100;
+        auto y = foo(x);            // y is int
+        decltype(auto) z = foo(x);  // z is int&
+    }
+  ]#
   p.s(cpsStmts).addVar(kind = Local,
     name = result.snippet,
-    typ = "auto",
+    typ = "decltype(auto)",
     initializer = value)
 
 proc getIntTemp(p: BProc): TLoc =
