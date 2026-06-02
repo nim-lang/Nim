@@ -928,7 +928,10 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
   when nimvm:
-    obj = default(typeof(obj))
+    when compiles(default(typeof(obj))):
+      obj = default(typeof(obj))
+    else:
+      `=wasMoved`(obj)
   else:
     when defined(gcDestructors):
       {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:

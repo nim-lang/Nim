@@ -265,7 +265,12 @@ proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
 
         {.push overflowChecks: off.}
         for i in oldLen..<newlen:
-          xu.p.data[i] = default(T)
+          when compiles(default(T)):
+            xu.p.data[i] = default(T)
+          else:
+            # T has no valid default (e.g. a {.requiresInit.} variant); the
+            # UnsafeSetLen warning already covers this. Zero-fill the new slots.
+            `=wasMoved`(xu.p.data[i])
         {.pop.}
 
 proc newSeq[T](s: var seq[T], len: Natural) =
