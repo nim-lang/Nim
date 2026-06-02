@@ -1842,6 +1842,8 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   if dest < 0: dest = c.getTemp(n.typ)
   if opc in {opcLdArrAddr, opcLdStrIdxAddr} and gfNodeAddr in flags:
     c.gABC(n, opc, dest, a, b)
+    if c.prc.regInfo[a].kind >= slotTempUnknown:
+      c.prc.regInfo[a].kind = slotTempPerm
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
@@ -1858,6 +1860,8 @@ proc genObjAccessAux(c: PCtx; n: PNode; a, b: int, dest: var TDest; flags: TGenF
   if dest < 0: dest = c.getTemp(n.typ)
   if {gfNodeAddr} * flags != {}:
     c.gABC(n, opcLdObjAddr, dest, a, b)
+    if a < c.prc.regInfo.len and c.prc.regInfo[a].kind >= slotTempUnknown:
+      c.prc.regInfo[a].kind = slotTempPerm
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opcLdObj, cc, a, b)
