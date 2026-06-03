@@ -185,6 +185,9 @@ proc root(v: var Partitions; start: int): int =
 proc potentialMutation(v: var Partitions; s: PSym; level: int; info: TLineInfo) =
   let id = variableId(v, s)
   if id >= 0:
+    # mutated here => alive here: keep aliveEnd in sync so dangerousMutation catches
+    # mutations recorded after the var's last use (e.g. via a call arg). See #25595.
+    v.s[id].aliveEnd = max(v.s[id].aliveEnd, v.abstractTime)
     let r = root(v, id)
     let flags = if s.kind == skParam:
                   if isConstParam(s):
