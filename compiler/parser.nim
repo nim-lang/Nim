@@ -2248,7 +2248,10 @@ proc parseTypeClass(p: var Parser): PNode =
   if p.tok.tokType == tkComment:
     skipComment(p, result)
 
-  if p.tok.indent < 0:
+  if p.tok.tokType == tkOf and p.tok.indent < 0:
+    # new-styled `concept of A, B` on the same line as `concept`
+    result.add(p.emptyNode)
+  elif p.tok.indent < 0:
     var args = newNodeP(nkArgList, p)
     result.add(args)
     args.add(p.parseTypeClassParam)
@@ -2274,9 +2277,10 @@ proc parseTypeClass(p: var Parser): PNode =
     result.add(p.emptyNode)
   if p.tok.tokType == tkComment:
     skipComment(p, result)
-  # an initial IND{>} HAS to follow:
+  # an initial IND{>} HAS to follow, unless this concept inherits requirements:
   if not realInd(p):
-    if result.isNewStyleConcept:
+    let hasParents = result[2].kind != nkEmpty
+    if result.isNewStyleConcept and not hasParents:
       parMessage(p, "routine expected, but found '$1' (empty new-styled concepts are not allowed)", p.tok)
     result.add(p.emptyNode)
   else:
