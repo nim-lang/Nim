@@ -24,6 +24,20 @@ const
   errFieldInitTwice = "field initialized twice: '$1'"
   errUndeclaredFieldX = "undeclared field: '$1'"
 
+proc namedTupleLike(c: PContext; named, anon: PType; info: TLineInfo): PType =
+  ## A fresh tuple with `named`'s field names but `anon`'s concrete field types, so a
+  ## positional (anonymous) tuple literal passed to a named-tuple parameter is reachable by
+  ## field name. Returns `anon` unchanged if `named` is malformed. #25868
+  result = newType(tyTuple, c.idgen, getCurrOwner(c))
+  result.n = newNodeI(nkRecList, info)
+  for i in 0 ..< anon.len:
+    if named.n[i].kind != nkSym: return anon                    # malformed type; do not relabel
+    let field = newSym(skField, named.n[i].sym.name, c.idgen, result.owner, info)
+    field.typ = anon[i]
+    field.position = i
+    result.n.add newSymNode(field)
+    rawAddSon(result, anon[i])
+
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
   rememberExpansion(c, n.info, s)
@@ -33,6 +47,18 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   # Note: This is n.info on purpose. It prevents template from creating an info
   # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
+  # #25868: relabel a positional tuple-literal arg to the formal's named tuple so a template
+  # tuple param is reachable by field name; nfSem keeps it through substitution.
+  if n.kind in nkCallKinds and s.typ != nil and s.typ.n != nil:
+    for i in 1 ..< n.len:
+      if i < s.typ.n.len and s.typ.n[i].kind == nkSym and s.typ.n[i].sym.typ != nil and
+          n[i].kind in {nkPar, nkTupleConstr} and n[i].typ != nil:
+        let formal = s.typ.n[i].sym.typ.skipTypes({tyStatic, tyGenericInst, tyAlias, tySink})
+        let actual = n[i].typ.skipTypes({tyGenericInst, tyAlias, tySink})
+        if formal.kind == tyTuple and actual.kind == tyTuple and actual.n == nil and
+            formal.n != nil and formal.n.len == actual.len:
+          n[i].typ = namedTupleLike(c, formal, actual, n[i].info)
+          n[i].flags.incl nfSem
   result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache,
                         c.templInstCounter, c.idgen, efFromHlo in flags)
   if efNoSemCheck notin flags:

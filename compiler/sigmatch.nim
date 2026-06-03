@@ -2063,7 +2063,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               result = typeRel(c, f.base, a, flags)
         else:
           result = isGeneric
-        if result != isNone: put(c, f, aOrig)
+        if result != isNone:
+          # #25868: a static tuple param is its value node; copy it (aOrig is reused across
+          # overload candidates) and relabel to the formal's named tuple.
+          if f.base.kind == tyTuple and aOrig.base != nil and aOrig.base.kind == tyTuple and
+              aOrig.n != nil and sameType(aOrig.base, f.base, {IgnoreTupleFields}):
+            let value = copyTree(aOrig.n)
+            value.typ = f.base
+            var nt = newTypeS(tyStatic, c.c, f.base)
+            nt.n = value
+            put(c, f, nt)
+          else:
+            put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
         result = if f.base.kind != tyNone:
                    typeRel(c, f.last, aOrig.n.typ, flags)
