@@ -3,7 +3,7 @@
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(nimNoLentIterators):
+when (not defined(nimNoLentIterators)) and not defined(js) and not defined(nimscript):
   template lent2(T): untyped = lent T
 else:
   template lent2(T): untyped = T
