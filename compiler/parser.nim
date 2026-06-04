@@ -2241,7 +2241,7 @@ proc parseTypeClassParam(p: var Parser): PNode =
 
 proc parseTypeClass(p: var Parser): PNode =
   #| conceptParam = ('var' | 'out' | 'ptr' | 'ref' | 'static' | 'type')? symbol
-  #| conceptDecl = 'concept' conceptParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
+  #| conceptDecl = 'concept' (conceptParam ^* ',' (pragma)?)? ('of' typeDesc ^* ',')?
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
