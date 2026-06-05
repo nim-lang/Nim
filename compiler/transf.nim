@@ -725,7 +725,9 @@ proc putArgInto(arg: PNode, formal: PType; borrowedFirstArg = false): TPutArgInt
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
-  if borrowedFirstArg and result == paDirectMapping and parampatterns.exprRoot(arg) == nil:
+
+  if borrowedFirstArg and result == paDirectMapping and parampatterns.exprRoot(arg) == nil and
+           parampatterns.isAssignable(nil, arg) == arNone:
     # Inline iterators like `items(array)` borrow from the first argument.
     # If that argument is just a transient expression, materialize it so the
     # lifted closure keeps the backing storage alive across yields.
