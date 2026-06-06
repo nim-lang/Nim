@@ -1340,12 +1340,19 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
     if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:
+      var derefResultInReturn = false
       if sfNoInit in prc.flags: incl(res, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var a: TLoc = initLocExprSingleUse(p, val)
         let ra = rdLoc(a)
         localVarDecl(p.s(cpsStmts), p, resNode, initializer = ra)
       else:
+        if m.config.backend == backendCpp and res.typ.kind == tyVar:
+          # When return type is `var T`, return type of generated function is `T&` and the type of result is `T*`.
+          #res.typ = newType(tyPtr, m.idgen, t.owner, res.typ[0])
+          res.typ = res.typ.exactReplica
+          res.typ.incl tfVarIsPtr
+          derefResultInReturn = true
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.snippet != "")
@@ -1357,7 +1364,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         else:
           initLocalVar(p, res, immediateAsgn=false)
       var returnBuilder = newBuilder("\t")
-      let rres = rdLoc(res.loc)
+      var rres = rdLoc(res.loc)
+      if derefResultInReturn:
+        rres = cDeref(rres)
       returnBuilder.addReturn(rres)
       returnStmt = extract(returnBuilder)
     elif sfConstructor in prc.flags:
