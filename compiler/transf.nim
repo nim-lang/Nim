@@ -22,7 +22,7 @@ import std / tables
 
 import
   options, ast, astalgo, trees, msgs,
-  idents, renderer, types, semfold, magicsys, cgmeth,
+  idents, renderer, types, semfold, magicsys, cgmeth, parampatterns,
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
@@ -676,7 +676,7 @@ type
     paDirectMapping, paFastAsgn, paFastAsgnTakeTypeFromArg
     paVarAsgn, paComplexOpenarray, paViaIndirection
 
-proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
+proc putArgInto(arg: PNode, formal: PType; borrowedFirstArg = false): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
   # inline context.
   if formal.kind == tyTypeDesc: return paDirectMapping
@@ -726,6 +726,13 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
+
+  if borrowedFirstArg and result == paDirectMapping and parampatterns.exprRoot(arg) == nil and
+           parampatterns.isAssignable(nil, arg) == arNone:
+    # Inline iterators like `items(array)` borrow from the first argument.
+    # If that argument is just a transient expression, materialize it so the
+    # lifted closure keeps the backing storage alive across yields.
+    result = paFastAsgnTakeTypeFromArg
 
 proc findWrongOwners(c: PTransf, n: PNode) =
   if n.kind == nkVarSection:
@@ -824,13 +831,16 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   if iter.kind != skIterator: return result
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
+  let borrowedIterResult =
+    iter.typ != nil and iter.typ.returnType != nil and
+    skipTypes(iter.typ.returnType, abstractInst).kind in {tyLent, tyVar}
   for i in 1..<call.len:
     var arg = transform(c, call[i])
     let ff = skipTypes(iter.typ, abstractInst)
     # can happen for 'nim check':
     if i >= ff.n.len: return result
     var formal = ff.n[i].sym
-    let pa = putArgInto(arg, formal.typ)
+    let pa = putArgInto(arg, formal.typ, borrowedIterResult and i == 1)
     case pa
     of paDirectMapping:
       newC.mapping[formal.itemId] = arg
