@@ -1,5 +1,7 @@
 include system/inclrtl
 
+import std/private/syslocks
+
 const hasSharedHeap* = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
 
 when defined(windows):
@@ -161,10 +163,69 @@ type
 
 const hasAllocStack* = defined(zephyr) # maybe freertos too?
 
+# ---------------- Virtual-thread primitives ----------------
+#
+# BinSem is a reusable binary semaphore — `wait` blocks until `post` has been
+# called (or returns immediately if `post` arrived first); on wake it clears
+# the flag so the same instance can be cycled across many dispatches.
+# Defined here (rather than in threadpool_impl.nim) because `Thread[TArg]`
+# embeds a `ThreadBase` that contains one.
+
+type
+  BinSem* = object
+    L: SysLock
+    C: SysCond
+    signaled: bool
+
+  ThreadBase* = object
+    ## Per-virtual-thread control block: done semaphore + currently-assigned
+    ## worker. Embedded in `Thread[TArg]`. `worker` is held as an opaque
+    ## `pointer` because the `Worker` type lives in `threadpool_impl.nim`,
+    ## which is included downstream of this file.
+    done*: BinSem
+    worker*: pointer   # ptr Worker (opaque here)
+
+proc initBinSem*(s: var BinSem) {.inline.} =
+  initSysLock(s.L)
+  initSysCond(s.C)
+  s.signaled = false
+
+proc deinitBinSem*(s: var BinSem) {.inline.} =
+  deinitSys(s.L)
+  deinitSysCond(s.C)
+
+proc postBinSem*(s: var BinSem) =
+  acquireSys(s.L)
+  s.signaled = true
+  signalSysCond(s.C)
+  releaseSys(s.L)
+
+proc waitBinSem*(s: var BinSem) =
+  acquireSys(s.L)
+  while not s.signaled:
+    waitSysCond(s.C, s.L)
+  s.signaled = false
+  releaseSys(s.L)
+
+proc resetBinSem*(s: var BinSem) =
+  acquireSys(s.L)
+  s.signaled = false
+  releaseSys(s.L)
+
+proc initThreadBase*(t: var ThreadBase) {.inline.} =
+  initBinSem(t.done)
+  t.worker = nil
+
 type
   Thread*[TArg] = object
     core*: PGcThread
     sys*: SysThread
+    base*: ptr ThreadBase   # heap-allocated so copies of Thread[TArg] (e.g.
+                            # joinThread's by-value parameter) keep pointing
+                            # at the SAME done-semaphore. Allocated by
+                            # createThread; never freed under the current
+                            # design (V control blocks are small and
+                            # typically program-lifetime).
     when TArg is void:
       dataFn*: proc () {.nimcall, gcsafe.}
     else:

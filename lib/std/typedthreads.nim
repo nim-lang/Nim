@@ -76,13 +76,18 @@ deinitLock(l)
 ]##
 
 
-import std/private/[threadtypes]
+import std/private/[threadtypes, syslocks]
 export Thread
 
 import system/ansi_c
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
+
+# Virtual-thread worker pool primitives. Included as a file (not imported)
+# so it inherits the OS thread bindings (`pthread_create`, `createThread` on
+# Windows, etc.) already in scope from `threadtypes`.
+include private/threadpool_impl
 
 when defined(genode):
   import genode/env
@@ -147,6 +152,31 @@ else:
   proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
     result = nil
     nimThreadProcWrapperBody(closure)
+
+# Per-TArg adapter for the virtual-thread pool. The worker calls this through
+# the `TaskEntry` function pointer; the closure is `addr(Thread[TArg])`.
+# Per-worker GC bootstrap (initGC, threadType, globalsSlot, setStackBottom)
+# happens once in `workerMain` before any task runs, so this entry just runs
+# the user proc. Note: `deallocOsPages` / `deallocThreadStorage(core)` are
+# absent — the worker is immortal and reuses TLS across virtual threads.
+proc poolTaskEntry[TArg](closure: pointer) {.nimcall, gcsafe, raises: [].} =
+  let thrd = cast[ptr Thread[TArg]](closure)
+  try:
+    when TArg is void:
+      thrd.dataFn()
+    else:
+      when defined(nimV2):
+        thrd.dataFn(thrd.data)
+      else:
+        var x = default(TArg)
+        deepCopy(x, thrd.data)
+        thrd.dataFn(x)
+  except:
+    when declared(threadTrouble):
+      threadTrouble()
+  finally:
+    when hasAllocStack:
+      deallocThreadStorage(thrd.rawStack)
 {.pop.}
 
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
@@ -162,18 +192,24 @@ when hostOS == "windows":
 
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
     ## Waits for the thread `t` to finish.
-    discard waitForSingleObject(t.sys, -1'i32)
+    when defined(noThreadReuse):
+      discard waitForSingleObject(t.sys, -1'i32)
+    else:
+      poolWaitDone(t.base)
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
     ## Waits for every thread in `t` to finish.
-    var a: array[MAXIMUM_WAIT_OBJECTS, SysThread] = default(array[MAXIMUM_WAIT_OBJECTS, SysThread])
-    var k = 0
-    while k < len(t):
-      var count = min(len(t) - k, MAXIMUM_WAIT_OBJECTS)
-      for i in 0..(count - 1): a[i] = t[i + k].sys
-      discard waitForMultipleObjects(int32(count),
-                                     cast[ptr SysThread](addr(a)), 1, -1)
-      inc(k, MAXIMUM_WAIT_OBJECTS)
+    when defined(noThreadReuse):
+      var a: array[MAXIMUM_WAIT_OBJECTS, SysThread] = default(array[MAXIMUM_WAIT_OBJECTS, SysThread])
+      var k = 0
+      while k < len(t):
+        var count = min(len(t) - k, MAXIMUM_WAIT_OBJECTS)
+        for i in 0..(count - 1): a[i] = t[i + k].sys
+        discard waitForMultipleObjects(int32(count),
+                                       cast[ptr SysThread](addr(a)), 1, -1)
+        inc(k, MAXIMUM_WAIT_OBJECTS)
+    else:
+      for i in 0..t.high: joinThread(t[i])
 
 elif defined(genode):
   proc joinThread*[TArg](t: Thread[TArg]) {.importcpp.}
@@ -186,7 +222,10 @@ elif defined(genode):
 else:
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
     ## Waits for the thread `t` to finish.
-    discard pthread_join(t.sys, nil)
+    when defined(noThreadReuse):
+      discard pthread_join(t.sys, nil)
+    else:
+      poolWaitDone(t.base)
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
     ## Waits for every thread in `t` to finish.
@@ -217,16 +256,25 @@ when hostOS == "windows":
     ## Entry point is the proc `tp`.
     ## `param` is passed to `tp`. `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
-    t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
+    when defined(noThreadReuse):
+      t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
-    when TArg isnot void: t.data = param
-    t.dataFn = tp
-    when hasSharedHeap: t.core.stackSize = ThreadStackSize
-    var dummyThreadId: int32 = 0'i32
-    t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
-                         addr(t), 0'i32, dummyThreadId)
-    if t.sys <= 0:
-      raise newException(ResourceExhaustedError, "cannot create thread")
+      when TArg isnot void: t.data = param
+      t.dataFn = tp
+      when hasSharedHeap: t.core.stackSize = ThreadStackSize
+      var dummyThreadId: int32 = 0'i32
+      t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
+                           addr(t), 0'i32, dummyThreadId)
+      if t.sys <= 0:
+        raise newException(ResourceExhaustedError, "cannot create thread")
+    else:
+      when TArg isnot void: t.data = param
+      t.dataFn = tp
+      initThreadBase(t.base)
+      poolDispatch(cast[ptr ThreadBase](addr t.base), poolTaskEntry[TArg], addr t)
+      # Surface the underlying worker's OS handle (matches today's
+      # post-createThread semantics; goes stale once the V completes).
+      t.sys = workerOsThread(cast[ptr Worker](t.base.worker))
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.
@@ -266,28 +314,38 @@ else:
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
     ## `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
-    t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
+    when defined(noThreadReuse):
+      t.core = cast[PGcThread](allocThreadStorage(sizeof(GcThread)))
 
-    when TArg isnot void: t.data = param
-    t.dataFn = tp
-    when hasSharedHeap: t.core.stackSize = ThreadStackSize
-    var a {.noinit.}: Pthread_attr
-    doAssert pthread_attr_init(a) == 0
-    when hasAllocStack:
-      var
-        rawstk = allocThreadStorage(ThreadStackSize + StackGuardSize)
-        stk = cast[pointer](cast[uint](rawstk) + StackGuardSize)
-      let setstacksizeResult = pthread_attr_setstack(addr a, stk, ThreadStackSize)
-      t.rawStack = rawstk
+      when TArg isnot void: t.data = param
+      t.dataFn = tp
+      when hasSharedHeap: t.core.stackSize = ThreadStackSize
+      var a {.noinit.}: Pthread_attr
+      doAssert pthread_attr_init(a) == 0
+      when hasAllocStack:
+        var
+          rawstk = allocThreadStorage(ThreadStackSize + StackGuardSize)
+          stk = cast[pointer](cast[uint](rawstk) + StackGuardSize)
+        let setstacksizeResult = pthread_attr_setstack(addr a, stk, ThreadStackSize)
+        t.rawStack = rawstk
+      else:
+        let setstacksizeResult = pthread_attr_setstacksize(a, ThreadStackSize)
+
+      when not defined(ios):
+        # This fails on iOS
+        doAssert(setstacksizeResult == 0)
+      if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
+        raise newException(ResourceExhaustedError, "cannot create thread")
+      doAssert pthread_attr_destroy(a) == 0
     else:
-      let setstacksizeResult = pthread_attr_setstacksize(a, ThreadStackSize)
-
-    when not defined(ios):
-      # This fails on iOS
-      doAssert(setstacksizeResult == 0)
-    if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
-      raise newException(ResourceExhaustedError, "cannot create thread")
-    doAssert pthread_attr_destroy(a) == 0
+      when TArg isnot void: t.data = param
+      t.dataFn = tp
+      if t.base == nil:
+        t.base = cast[ptr ThreadBase](c_malloc(csize_t sizeof(ThreadBase)))
+        zeroMem(t.base, sizeof(ThreadBase))
+        initThreadBase(t.base[])
+      poolDispatch(t.base, poolTaskEntry[TArg], addr t)
+      t.sys = workerOsThread(cast[ptr Worker](t.base.worker))
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.

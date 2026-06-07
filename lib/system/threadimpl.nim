@@ -10,12 +10,12 @@ when not defined(useNimRtl):
   when declared(initGC):
     initGC()
     when not emulatedThreadVars:
-      type ThreadType {.pure.} = enum
+      type ThreadType* {.pure.} = enum
         None = 0,
         NimThread = 1,
         ForeignThread = 2
       var
-        threadType {.rtlThreadVar.}: ThreadType
+        threadType* {.rtlThreadVar.}: ThreadType
 
       threadType = ThreadType.NimThread
 
