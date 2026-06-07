@@ -189,6 +189,13 @@ type
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
+    shadowDiscardedDefs*: IntSet
+      # ids of local symbols that were declared inside a template/macro operand's
+      # shadow scope and then discarded; such a symbol may be realized in a real
+      # scope at most once. See bug #25693 and `rememberShadowDefs`.
+    realizedDefs*: IntSet
+      # ids from `shadowDiscardedDefs` that have already been realized as a
+      # definition; a second realization is a redefinition.
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
@@ -343,6 +350,8 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     userPragmas: initStrTable(),
     generics: @[],
     unknownIdents: initIntSet(),
+    shadowDiscardedDefs: initIntSet(),
+    realizedDefs: initIntSet(),
     cache: graph.cache,
     graph: graph,
     signatures: initStrTable(),

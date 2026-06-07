@@ -247,6 +247,18 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     if result.kind notin {kind, skTemp}:
       localError(c.config, n.info, "cannot use symbol of kind '$1' as a '$2'" %
         [result.kind.toHumanStr, kind.toHumanStr])
+    # bug #25693: a local declared inside a template/macro operand (recorded in
+    # `shadowDiscardedDefs`) may be realized in a real scope at most once. A
+    # second realization - e.g. a `typed` argument captured by a `{.dirty.}`
+    # template and emitted by two `t()` calls - produces two definitions of the
+    # same symbol, which is a redefinition just like `var x = 0; var x = 1`.
+    if kind in {skVar, skLet, skForVar} and sfGenSym notin result.flags and
+        result.id in c.shadowDiscardedDefs:
+      if containsOrIncl(c.realizedDefs, result.id) and
+          injectedSymbolRedefinition notin c.config.legacyFeatures:
+        localError(c.config, n.info,
+          "redefinition of '$1'; it is injected by a template more than once" %
+          result.name.s)
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:
