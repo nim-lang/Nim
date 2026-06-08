@@ -186,6 +186,18 @@ type
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
+    shadowDiscardedDefs*: IntSet
+      # ids of local symbols that were declared inside a template/macro operand's
+      # shadow scope and then discarded; re-emitting such a symbol as a
+      # definition gives a fresh copy so distinct emissions don't share a symbol.
+      # See bug #25693 and `rememberShadowDefs`.
+    realizedDefs*: IntSet
+      # ids from `shadowDiscardedDefs` already realized once; the first emission
+      # keeps the original symbol (so leaked dirty-template names still resolve),
+      # later emissions get a fresh copy.
+    hasSymRedefs*: bool
+      # set once a redefinition mapping has been installed; makes `getGenSym`
+      # consult the proc-con mapping for non-gensym symbols too.
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
@@ -278,7 +290,10 @@ proc get*(p: PProcCon; key: PSym): PSym =
   result = p.mapping.getOrDefault(key.itemId)
 
 proc getGenSym*(c: PContext; s: PSym): PSym =
-  if sfGenSym notin s.flags: return s
+  # `c.hasSymRedefs` additionally routes ordinary (non-gensym) symbols through
+  # the mapping so a re-emitted definition can redirect them to its fresh copy,
+  # see bug #25693 and `newSymG`.
+  if sfGenSym notin s.flags and not c.hasSymRedefs: return s
   var it = c.p
   while it != nil:
     result = get(it, s)
@@ -340,6 +355,8 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     userPragmas: initStrTable(),
     generics: @[],
     unknownIdents: initIntSet(),
+    shadowDiscardedDefs: initIntSet(),
+    realizedDefs: initIntSet(),
     cache: graph.cache,
     graph: graph,
     signatures: initStrTable(),
