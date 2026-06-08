@@ -100,6 +100,7 @@ type
     warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
     warnImplicitRangeConversion = "ImplicitRangeConversion",
     warnSystemRangeConversion = "SystemRangeConversion",
+    warnInvalidCmpOp = "InvalidCmpOp",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -210,6 +211,7 @@ const
     warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
     warnImplicitRangeConversion: "implicit range conversion $1",
     warnSystemRangeConversion: "implicit range conversion $1",
+    warnInvalidCmpOp: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
