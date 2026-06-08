@@ -314,7 +314,16 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParLe sdefTag, trLineInfo(w, sym.infoImpl)
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
-  if {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
+  # The `x` marker means "importable as a bare identifier into an importer's
+  # scope". Object fields carry `sfExported` (so they are visible via `obj.field`
+  # across modules) but must NOT become bare-importable: otherwise an exported
+  # field name (e.g. `HSlice.a`, whose type is a generic param `T`) leaks into
+  # module scope and a template's open/mixin symbol of the same name resolves to
+  # the field instead of a local, producing "type mismatch: got 'T'". Fields are
+  # still indexed (for `obj.field` resolution via the loaded object type); they
+  # are merely not advertised as importable. `skEnumField` stays importable —
+  # enum values are legitimately usable as bare identifiers.
+  if sym.kindImpl != skField and {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
     dest.addIdent "x"
   else:
     dest.addDotToken
@@ -379,7 +388,29 @@ proc shouldWriteSymDef(w: var Writer; sym: PSym): bool {.inline.} =
       return true  # Normal case for global symbols
   return false
 
+proc canonicalRoutine(sym: PSym): PSym {.inline.} =
+  ## A forward declaration and its implementation are merged in sem into a single
+  ## surviving symbol (the prototype). The discarded impl symbol is orphaned but
+  ## can still be reachable from the surviving routine's AST — e.g. as the `owner`
+  ## of a `[T: tuple]`-style generic-param constraint type created while the impl
+  ## header was being processed. If we serialized that dead symbol it would get
+  ## its own module-global sdef, be indexed, and the importer would then see two
+  ## identical overloads -> "ambiguous call". The dead symbol is recognisable
+  ## because its `ast` is the shared routine node whose name no longer points back
+  ## at it (it points at the survivor). Collapse to the survivor. Writer-only /
+  ## IC-specific: from-source compilation never serialises, so this cannot affect
+  ## the non-IC path.
+  result = sym
+  if sym != nil and sym.kindImpl in routineKinds:
+    let a = sym.astImpl
+    if a != nil and a.len > namePos and a[namePos].kind == nkSym:
+      let canon = a[namePos].sym
+      if canon != nil and canon != sym and canon.name.id == sym.name.id and
+         canon.itemId.module == sym.itemId.module:
+        result = canon
+
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
+  let sym = canonicalRoutine(sym)
   if sym == nil:
     dest.addDotToken()
   elif shouldWriteSymDef(w, sym):

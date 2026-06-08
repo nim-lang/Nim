@@ -368,7 +368,7 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
     if t.kind == ParLe:
       let tag = pool.tags[t.tagId]
       case tag
-      of "import", "fromimport", "include":
+      of "import", "fromimport", "importexcept", "include":
         # Read first child. May be a `(when COND...)` marker — parse and
         # evaluate; if the condition is statically false, skip the import
         # entirely. Otherwise advance past the marker and parse the path.
@@ -395,7 +395,10 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
         # that expand to several imports. A plain `import a, b, c` lists several
         # modules as siblings; a `fromimport` has a single path followed by the
         # imported symbol list, which must not be treated as modules.
-        if tag == "fromimport":
+        if tag == "fromimport" or tag == "importexcept":
+          # `from m import syms` / `import m except syms`: the first child is the
+          # module path; the rest is the (in/ex)cluded symbol list, which must not
+          # be treated as modules. Both still create a real dependency on `m`.
           for importPath in parseImportPath(s, t):
             if importPath.len > 0:
               processImport(c, importPath, current)
