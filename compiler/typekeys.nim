@@ -261,12 +261,28 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.typeKey(t.skipModifierB, flags, conf)
   of tyProc:
     withTree c.m, (if tfIterator in t.flagsImpl: "itertype" else: "proctype"):
-      if CoProc in flags and t.nImpl != nil:
+      # Proc parameter *types* are part of the type's identity. Under IC the
+      # parameters live in `nImpl` (`sonsImpl` holds only the return type), so a
+      # loaded proc type has an empty `sonsImpl[1..]`; reading params from there
+      # would silently drop them and collide every same-return/same-callconv
+      # closure onto one key (e.g. `proc(cb: proc())` onto bare `proc()`),
+      # which made hook lookup resolve to the wrong `=copy`. Prefer `nImpl`
+      # (consistent in-memory and after load); hash param types only, not their
+      # symbols — parameter names do not affect type identity.
+      if t.nImpl != nil and t.nImpl.kind == nkFormalParams:
         let params = t.nImpl
         for i in 1..<params.len:
-          let param = params[i].sym
-          c.symKey(param, conf)
-          c.typeKey(param.typImpl, flags, conf)
+          if params[i].kind == nkSym:
+            # The param sym may be a lazily-loaded stub: force it in (as `symKey`
+            # does) so its type is available, then hash the param *type* only —
+            # parameter names are not part of the type's identity. Without the
+            # load the type reads back nil at codegen and the key silently loses
+            # its parameters (collapsing distinct closure types onto one key).
+            let ps = params[i].sym
+            if ps.state == Partial and c.sl != nil: c.sl(ps)
+            c.typeKey(ps.typImpl, flags, conf)
+          else:
+            c.typeKey(params[i].typField, flags, conf)
       else:
         for i in 1..<t.sonsImpl.len:
           c.typeKey(t.sonsImpl[i], flags, conf)

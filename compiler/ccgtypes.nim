@@ -618,6 +618,18 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
     for i in 1..<t.n.len:
       if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
       var param = t.n[i].sym
+      # The hidden closure environment param (`:envP`) is not a real C parameter:
+      # the environment is passed via the trailing `ClE_0` (added below) and
+      # `closureSetup` materialises `:envP` as a local cast of it. In a from-source
+      # build `:envP` only lives in the routine's AST params, never in the proc
+      # *type's* `n`, so it never reaches here. Under IC `closureParams` re-shares
+      # the AST param node with `typ.n`, so the lifted `:envP` leaks into `t.n`;
+      # emitting it would produce a bogus extra parameter that collides with the
+      # `closureSetup` local (the "redeclared as different kind of symbol" / env
+      # pointer-type mismatch). We still must fill its name/loc (later passes such
+      # as `assignParam` and `closureSetup` reference it), but it is omitted from
+      # the C signature to match the from-source ABI.
+      let isClosureEnv = t.callConv == ccClosure and param.name.s == ":envP"
       var descKind = dkParam
       if m.config.backend == backendCpp and optByRef in param.options:
         if param.typ.kind == tyGenericInst:
@@ -629,6 +641,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       fillParamName(m, param)
       fillLoc(param.locImpl, locParam, t.n[i],
               param.paramStorageLoc)
+      if isClosureEnv: continue  # name/loc filled, but not part of the C signature
       var typ: Rope
       if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
         typ = ptrType(getTypeDescWeak(m, param.typ, check, descKind))
