@@ -1,5 +1,6 @@
 discard """
   output: '''ok
+ok
 ok'''
 """
 
@@ -17,6 +18,27 @@ block: # scalar `untyped` parameter
     template t: untyped = b
 
   proc g(_: int) = discard
+
+  let q = "a"
+  g:
+    var a: seq[int]
+    try:
+      f(a, q & "1")
+    except CatchableError:
+      discard
+    try:
+      f(a, q & "1")
+    except CatchableError:
+      discard
+  block: t()
+  block: t()
+  echo "ok"
+
+block: # `typed` parameter captured and re-emitted: each emission gets its own
+       # symbols, otherwise the destructor/liveness pass miscompiles the shared
+       # local `a` and the program crashes at runtime
+  template g(b: typed) {.dirty.} =
+    template t: untyped = b
 
   let q = "a"
   g:
