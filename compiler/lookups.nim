@@ -465,7 +465,7 @@ proc rememberShadowDefs*(c: PContext) =
   ## later re-emission (e.g. a captured `typed` fragment expanded more than once)
   ## can be detected as a redefinition rather than silently miscompiled.
   for s in c.currentScope.symbols:
-    if s.kind in {skVar, skLet, skForVar}:
+    if s.kind in {skVar, skLet, skForVar} and {sfGenSym, sfWasGenSym} * s.flags == {}:
       c.shadowDiscardedDefs.incl s.id
 
 proc closeShadowScope*(c: PContext) =

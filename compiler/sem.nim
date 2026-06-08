@@ -255,8 +255,11 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # symbol - which the destructor/liveness analysis would otherwise miscompile.
     # Unlike a plain redefinition check this is control-flow agnostic, so the
     # common "emit a `typed` body in several mutually-exclusive branches" pattern
-    # keeps working.
-    if kind in {skVar, skLet, skForVar} and sfGenSym notin result.flags and
+    # keeps working. gensym'ed locals (and ones derived from a gensym name) are
+    # excluded: the gensym machinery already keeps their names unique, and a
+    # fresh copy would reuse the unique name and clash in the same scope.
+    if kind in {skVar, skLet, skForVar} and
+        {sfGenSym, sfWasGenSym} * result.flags == {} and
         result.id in c.shadowDiscardedDefs:
       if containsOrIncl(c.realizedDefs, result.id):
         let fresh = copySym(result, c.idgen)
