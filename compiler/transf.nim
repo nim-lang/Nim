@@ -92,11 +92,21 @@ proc getCurrOwner(c: PTransf): PSym =
   if c.transCon != nil: result = c.transCon.owner
   else: result = c.module
 
+proc freshOwnedSym(c: PTransf; s, owner: PSym): PNode =
+  # We need to copy the symbol here because we might need to change its owner and
+  # we don't want to mess with the original symbol which might be used in other places.
+  # This can happen for example for iterators which are transformed multiple times when
+  # they are used in different contexts.
+  var fresh = copySym(s, c.idgen)
+  if fresh.kind notin routineKinds:
+    incl(fresh.flags, sfFromGeneric)
+  setOwner(fresh, owner)
+  result = newSymNode(fresh)
+
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
-  let owner = getCurrOwner(c)
   result = newSymNode(r)
 
 proc transform(c: PTransf, n: PNode, noConstFold = false): PNode
@@ -187,11 +197,39 @@ proc transformSym(c: PTransf, n: PNode): PNode =
   result = transformSymAux(c, n)
 
 proc freshVar(c: PTransf; v: PSym): PNode =
-  let owner = getCurrOwner(c)
-  var newVar = copySym(v, c.idgen)
-  incl(newVar.flags, sfFromGeneric)
-  setOwner(newVar, owner)
-  result = newSymNode(newVar)
+  result = freshOwnedSym(c, v, getCurrOwner(c))
+
+proc introduceNewRoutineHeaderSyms(c: PTransf; n: PNode; oldOwner, newOwner: PSym) =
+  # We need to introduce new symbols for the parameters and result of a routine when
+  # we copy it for inlining or closure generation.
+  # Otherwise, we would have multiple nodes referring to the same parameter symbols which
+  # can lead to problems when we need to change the owner of these symbols.
+  case n.kind
+  of nkSym:
+    if n.sym.owner == oldOwner:
+      c.transCon.mapping[n.sym.itemId] = freshOwnedSym(c, n.sym, newOwner)
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+    discard
+  else:
+    for i in 0..<n.len:
+      introduceNewRoutineHeaderSyms(c, n[i], oldOwner, newOwner)
+
+proc copyRoutineTypeHeader(c: PTransf; oldProc, newProc: PSym) =
+  # We need to copy the routine type header to ensure that
+  # modifications to the newProc do not affect the oldProc.
+  if oldProc.typ != nil and oldProc.typ.kind == tyProc and oldProc.typ.n != nil:
+    newProc.typ = copyType(oldProc.typ, c.idgen, newProc)
+    newProc.typ.n = newNodeI(oldProc.typ.n.kind, oldProc.typ.n.info)
+    if oldProc.typ.n.len > 0:
+      newProc.typ.n.add copyTree(oldProc.typ.n[0])
+      for i in 1..<oldProc.typ.n.len:
+        let oldParam = oldProc.typ.n[i].sym
+        var newParam = getOrDefault(c.transCon.mapping, oldParam.itemId)
+        if newParam == nil:
+          newParam = freshOwnedSym(c, oldParam, newProc)
+          c.transCon.mapping[oldParam.itemId] = newParam
+        doAssert newParam.kind == nkSym
+        newProc.typ.addParam newParam.sym
 
 proc transformVarSection(c: PTransf, v: PNode): PNode =
   result = newTransNode(v)
@@ -339,11 +377,18 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     return n
   of nkLambdaKinds, nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
-    let x = newSymNode(copySym(n[namePos].sym, c.idgen))
-    c.transCon.mapping[n[namePos].sym.itemId] = x
+    let oldProc = n[namePos].sym
+    let x = freshOwnedSym(c, oldProc, oldProc.owner)
+    c.transCon.mapping[oldProc.itemId] = x
+    introduceNewRoutineHeaderSyms(c, n[paramsPos], oldProc, x.sym)
+    if resultPos < n.len and n[resultPos] != nil:
+      introduceNewRoutineHeaderSyms(c, n[resultPos], oldProc, x.sym)
+    copyRoutineTypeHeader(c, oldProc, x.sym)
     result[namePos] = x # we have to copy proc definitions for iters
     for i in 1..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])
+    if x.sym.typ != nil and x.sym.typ.kind == tyProc:
+      result[paramsPos] = x.sym.typ.n
     result[namePos].sym.ast = result
   else:
     result = newTransNode(n)
@@ -574,7 +619,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
               getSysType(c.graph, n.info, tyInt32)
             else:
               getSysType(c.graph, n.info, tyInt64)
-          result[0] = 
+          result[0] =
             newTreeIT(n.kind, n.info, n.typ, n[0],
               newTreeIT(nkConv, n.info, intType,
               newNodeIT(nkType, n.info, intType), transform(c, n[1]))
