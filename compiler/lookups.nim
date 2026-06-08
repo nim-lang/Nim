@@ -459,6 +459,15 @@ proc openShadowScope*(c: PContext) =
                           symbols: initStrTable(),
                           depthLevel: c.scopeDepth)
 
+proc rememberShadowDefs*(c: PContext) =
+  ## bug #25693: a template/macro operand's local definitions are sem-checked in
+  ## a shadow scope that is then discarded. Record those definitions so that a
+  ## later re-emission (e.g. a captured `typed` fragment expanded more than once)
+  ## can be detected as a redefinition rather than silently miscompiled.
+  for s in c.currentScope.symbols:
+    if s.kind in {skVar, skLet, skForVar} and {sfGenSym, sfWasGenSym} * s.flags == {}:
+      c.shadowDiscardedDefs.incl s.id
+
 proc closeShadowScope*(c: PContext) =
   ## closes the shadow scope, but doesn't merge any of the symbols
   ## Does not check for unused symbols or missing forward decls since a macro
