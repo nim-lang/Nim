@@ -284,7 +284,14 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
 proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   if typ == nil:
     dest.addDotToken()
-  elif typ.itemId.module == w.currentModule and typ.state == Complete:
+  elif typ.uniqueId.module == w.currentModule and typ.state == Complete:
+    # Ownership for serialization is decided by `uniqueId`, not `itemId`: the NIF
+    # name (`typeToNifSym`) and the loader (`createTypeStub`) both key off
+    # `uniqueId`, so the module that *created* the type (uniqueId.module) must be
+    # the one that emits its definition. `itemId.module` can be reassigned and
+    # diverge from `uniqueId.module`; gating on it filed the def in the wrong
+    # module (or nowhere), leaving dangling references (e.g. `symbol has no
+    # offset` for a `pointer` type whose itemId.module drifted away).
     typ.state = Sealed
     writeTypeDef(w, dest, typ)
   else:

@@ -147,7 +147,14 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     else:
       symKey(c, t.symImpl, conf)
   of tyGenericInst:
-    if sfInfixCall in t.sonsImpl[0].symImpl.flagsImpl:
+    # The generic head (son[0]) may be a lazily-loaded stub under IC; ensure it
+    # is materialised before peeking at its symbol. A nil sym means this is not
+    # an imported C++ generic, so fall through to the normal `skipModifierB`.
+    var base = t.sonsImpl[0]
+    if base.state == Partial:
+      assert c.tl != nil
+      c.tl(base)
+    if base.symImpl != nil and sfInfixCall in base.symImpl.flagsImpl:
       # This is an imported C++ generic type.
       # We cannot trust the `lastSon` to hold a properly populated and unique
       # value for each instantiation, so we hash the generic parameters here:

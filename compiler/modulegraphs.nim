@@ -290,9 +290,22 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # Use key-based deduplication for opsLog because different type objects
     # (e.g. canon vs orig) can have different itemIds but same structural key
     if key notin g.loadedOps[op]:
-      # Hooks should be written to the module where the type is defined,
-      # not the module that triggered the registration
-      let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
+      # For a *nominal*, non-instantiated type the hook belongs to the module
+      # that defines the type (so it is emitted once there). But for a generic
+      # instance or a structural type (ref/ptr/seq/... over an instance) there is
+      # no honest definition site: the generic's home module is upstream of the
+      # type arguments and structurally blind to the instance, so it can never
+      # realize the hook. Such hooks can only be produced by the *instantiating*
+      # module — which is exactly the one running now (`module`). Stamping them
+      # with the type's def module produced a `LogEntry` that no module ever
+      # writes (the def module never instantiates it; the instantiating module's
+      # writer skips it because `op.module != thisModule`), so the hook was lost
+      # and codegen failed with "'=destroy' operator not found". Duplicate
+      # registrations across instantiating modules are reconciled deterministically
+      # at load time (see the HookEntry replay in `replayStateChanges`).
+      let nominal = t.sym != nil and t.kind in {tyObject, tyEnum, tyDistinct} and
+                    tfFromGeneric notin t.flags
+      let ownerModule = if nominal: t.sym.itemId.module.int else: module
       g.opsLog.add LogEntry(kind: HookEntry, op: op, module: ownerModule, key: key, sym: value)
       g.loadedOps[op][key] = value
   g.attachedOps[op][t.itemId] = value
@@ -691,7 +704,16 @@ when not defined(nimKochBootstrap):
     for x in result.logOps:
       case x.kind
       of HookEntry:
-        g.loadedOps[x.op][x.key] = x.sym
+        # The same structural hook may be serialized by several instantiating
+        # modules (a generic/structural instance has no single def site, so each
+        # using module owns its copy). Pick one deterministic program-wide winner
+        # by the smaller owning-module name, so every lookup resolves to the same
+        # sym regardless of module load order.
+        let existing = g.loadedOps[x.op].getOrDefault(x.key)
+        if existing == nil or
+           cachedModuleSuffix(g.config, x.sym.itemId.module.FileIndex) <
+           cachedModuleSuffix(g.config, existing.itemId.module.FileIndex):
+          g.loadedOps[x.op][x.key] = x.sym
       of ConverterEntry:
         g.ifaces[fileIdx.int].converters.add x.sym
       of MethodEntry:

@@ -446,6 +446,12 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         header[i] = x
         propagateToOwner(header, x)
     else:
+      # Honor the same copy-before-mutate invariant as the branch above: never
+      # mutate the original invocation type `t` in place. Besides being cleaner,
+      # under IC `t` may be a loaded dep type (Sealed/immutable), and mutating it
+      # would assert. The flags propagated here end up on `header`, which is what
+      # is used downstream (`result.flags = header.flags`).
+      if header == t: header = instCopyType(cl, t)
       propagateToOwner(header, x)
 
   if header != t:
