@@ -923,6 +923,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
   of "noimportdoc":
     processOnOffSwitchG(conf, {optNoImportdoc}, arg, pass, info)
+  of "ismainmodule":
+    # `nim m` (IC) only: marks the single module being checked as the program's
+    # real entry point so that `isMainModule` and `when isMainModule:` resolve
+    # correctly even though every module is compiled with `sfMainModule` set.
+    conf.isMainModule = switchOn(arg)
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:

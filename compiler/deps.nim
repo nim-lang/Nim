@@ -509,6 +509,12 @@ proc generateBuildFile(c: DepContext): string =
     let pair = node.files[0]
     b.addTree "do"
     b.addIdent "nim_m"
+    # The root module (node 0) is the program's real entry point; mark it so
+    # `isMainModule` resolves to true only for it (every module otherwise gets
+    # `sfMainModule` for NIF writing under `nim m`).
+    if i == 0:
+      b.withTree "args":
+        b.addStrLit "--isMainModule:on"
     # Input: all parsed files for this module
     b.withTree "input":
       b.addStrLit node.files[0].nimFile

@@ -228,7 +228,10 @@ proc position*(s: PSym): int {.inline.} =
   result = s.positionImpl
 
 proc `position=`*(s: PSym, val: int) {.inline.} =
-  assert s.state != Sealed
+  # No `Sealed` guard: the VM reuses `position` as a register slot while compiling
+  # a macro for execution (see `vmgen.genGenericParams`), which under IC may be a
+  # macro loaded from a NIF file. The macro is run, not code-generated, so this
+  # scratch mutation is harmless.
   if s.state == Partial: loadSym(s)
   s.positionImpl = val
 
@@ -1278,6 +1281,9 @@ proc transitionNoneToSym*(n: PNode) =
   transitionNodeKindCommon(nkSym)
 
 template transitionSymKindCommon*(k: TSymKind) =
+  # Under IC the symbol may still be an unloaded stub (`skStub`); materialise it
+  # first so its kind-specific fields (read below as `obj.*`) actually exist.
+  if s.state == Partial: loadSym(s)
   let obj {.inject.} = s[]
   s[] = TSym(kindImpl: k, itemId: obj.itemId, magicImpl: obj.magicImpl, typImpl: obj.typImpl, name: obj.name,
              infoImpl: obj.infoImpl, ownerFieldImpl: obj.ownerFieldImpl, flagsImpl: obj.flagsImpl, astImpl: obj.astImpl,

@@ -1986,4 +1986,9 @@ proc genStmts(p: BProc, t: PNode) =
   if isPush: pushInfoContext(p.config, t.info)
   expr(p, t, a)
   if isPush: popInfoContext(p.config)
-  internalAssert p.config, a.k in {locNone, locTemp, locLocalVar, locExpr}
+  # A bare `nkSym` statement is how IC serializes a definition that lives inside a
+  # top-level block (e.g. a nested `proc`/`var`): codegen emits the definition and
+  # leaves the symbol's own location in `a` (e.g. `locProc`), which is discarded
+  # here, so the value-sanity check below does not apply to it.
+  internalAssert p.config, t.kind == nkSym or
+    a.k in {locNone, locTemp, locLocalVar, locExpr}

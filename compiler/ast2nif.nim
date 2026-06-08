@@ -162,16 +162,15 @@ type
     writtenPackages: HashSet[string]
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
-  ## Params (and generic params, see `writeSymDef`) are emitted as *global*
-  ## (module-suffixed) names so their `sdef` gets an index entry and is
-  ## resolvable by index lookup even when referenced from a different index entry
-  ## than the one that physically contains the definition: generic params of a
-  ## forward declaration vs its implementation, and proc-type params shared
-  ## between an enclosing proc and a nested object's proc-type field. The
-  ## per-module `disamb` counter keeps `name.disamb.module` unique, so this is
-  ## clash-free. The kinds below are only ever used within the single index entry
-  ## of their owning routine, so they stay local (smaller index, and the codegen
-  ## name mangler only handles real module owners).
+  ## Every symbol is emitted as a *global* (module-suffixed) name so that its
+  ## `sdef` gets an index entry and is resolvable by index lookup even when
+  ## referenced from a different index entry than the one that physically
+  ## contains the definition. This matters for symbols shared across entries:
+  ## generic params of a forward declaration vs its implementation, and proc-type
+  ## params shared between an enclosing proc and a nested object's proc-type
+  ## field. The per-module `disamb` counter keeps `name.disamb.module` unique, so
+  ## globalising cannot cause clashes. This trades index size for correctness;
+  ## size/speed can be optimised later.
   false
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
@@ -828,6 +827,15 @@ proc setMainModule*(c: var DecodeContext; fileIdx: FileIndex) =
   ## own symbols by dependencies are not turned into duplicate stubs.
   c.mainModuleSuffix = modname(fileIdx.int, c.infos.config)
 
+proc loadedState(c: DecodeContext): ItemState {.inline.} =
+  ## State to give a freshly loaded symbol or type. During the C code generation
+  ## phase (`nim nifc`) the backend (lambda lifting, the transformer, etc.)
+  ## legitimately mutates the loaded entities and never writes them back to a NIF,
+  ## so they must be mutable (`Complete`). During semantic checking (`nim m`) a
+  ## loaded entity belongs to an already-compiled dependency and must stay
+  ## `Sealed` so accidental mutations are caught.
+  if c.infos.config.cmd == cmdNifC: Complete else: Sealed
+
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
   let s = addr c.mods[module].stream
@@ -973,7 +981,7 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
           # We're currently at the `(sd` position, need to skip to SymbolDef
           inc n  # skip past `sd` tag to get to SymbolDef
           loadSymFromCursor(c, sym, n, thisModule, localSyms)
-          sym.state = Sealed  # mark as fully loaded
+          sym.state = c.loadedState  # mark as fully loaded
           # Continue processing - loadSymFromCursor already advanced n past the closing `)`
           continue
       inc depth
@@ -998,7 +1006,7 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor; localSyms: var Table[stri
     let s = n.firstSon.symId
     result = createTypeStub(c, s)
     if result.state == Partial:
-      result.state = Sealed  # Mark as loaded to prevent loadType from re-loading with empty localSyms
+      result.state = c.loadedState  # Mark as loaded to prevent loadType from re-loading with empty localSyms
       loadTypeFromCursor(c, n, result, localSyms)
     else:
       skip n  # Type already loaded, skip over the td block
@@ -1122,7 +1130,7 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
 
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.state != Partial: return
-  t.state = Sealed
+  t.state = c.loadedState
   var buf = createTokenBuf(30)
   let typeName = typeToNifSym(t, c.infos.config)
   var n = cursorFromIndexEntry(c, t.itemId.module.FileIndex, c.types[typeName][1], buf)
@@ -1209,7 +1217,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
 
 proc loadSym*(c: var DecodeContext; s: PSym) =
   if s.state != Partial: return
-  s.state = Sealed
+  s.state = c.loadedState
   var buf = createTokenBuf(30)
   let symsModule = s.itemId.module.FileIndex
   let nifname = globalName(s, c.infos.config)
@@ -1302,7 +1310,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           # Now fully load the symbol from the sdef
           inc n # skip `sd` tag
           loadSymFromCursor(c, sym, n, thisModule, localSyms)
-          sym.state = Sealed  # mark as fully loaded
+          sym.state = c.loadedState  # mark as fully loaded
           result = newSymNode(sym, info)
         else:
           sym = c.loadSymStub(name.symId, thisModule, localSyms)

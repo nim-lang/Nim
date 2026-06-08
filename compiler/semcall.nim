@@ -90,8 +90,14 @@ proc addTypeBoundSymbols(graph: ModuleGraph, arg: PType, name: PIdent,
     # argument must be typed first, meaning arguments always
     # matching `untyped` are ignored
     let t = nominalRoot(arg)
-    if t != nil and t.owner.kind == skModule:
-      # search module for routines attachable to `t`
+    if t != nil and t.owner.kind == skModule and
+        t.owner.position >= 0 and t.owner.position < graph.ifaces.len:
+      # search module for routines attachable to `t`.
+      # Under IC the nominal type may have been loaded from a NIF file, in which
+      # case its owner module is a stub whose `position` (a NIF-suffix file index)
+      # has no `ifaces` slot; such type-bound ops are reachable through normal
+      # imports instead, so skip the direct module scan to avoid an out-of-range
+      # access.
       let module = t.owner
       var iter = default(ModuleIter)
       var s = initModuleIter(iter, graph, module, name)

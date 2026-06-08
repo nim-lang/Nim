@@ -426,6 +426,12 @@ type
     lastMsgWasDot*: set[StdOrrKind] # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
+    isMainModule*: bool # `nim m`/IC only: whether the single module being
+                        # semantically checked is the program's real entry point.
+                        # Under IC every module is compiled via `nim m` (which sets
+                        # `sfMainModule` so the module writes its own NIF), so
+                        # `sfMainModule` can no longer answer `isMainModule`. The IC
+                        # build file passes `--isMainModule:on` for the root module.
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string

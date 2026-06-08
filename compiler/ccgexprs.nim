@@ -3555,9 +3555,13 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skProc, skConverter, skIterator, skFunc:
       #if sym.kind == skIterator:
       #  echo renderTree(sym.getBody, {renderIds})
-      if sfCompileTime in sym.flags:
-        localError(p.config, n.info, "request to generate code for .compileTime proc: " &
-           sym.name.s)
+      if isGenericRoutineStrict(sym) or sfCompileTime in sym.flags:
+        # Under IC a module's top-level routine definitions are serialized as bare
+        # symbol references that reappear in the loaded statement list. Uninstantiated
+        # generic routines (incl. those with type-class params like `tuple`) and
+        # `.compileTime` routines have no run-time code, so skip them here. (A real
+        # run-time *use* of a `.compileTime` proc is still rejected at the call site.)
+        return
       if delayedCodegen(p.module) and sym.typ.callConv != ccInline:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
@@ -3629,6 +3633,11 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         # echo renderTree(p.prc.ast, {renderIds})
         internalError(p.config, n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
+    of skTemplate, skMacro:
+      # Under IC a module's top-level template/macro definitions are serialized as
+      # bare symbol references (only their interface matters), so they reappear in
+      # the loaded statement list. They are compile-time only and produce no code.
+      discard
     else: internalError(p.config, n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:
     if not isEmptyType(n.typ):

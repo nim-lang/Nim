@@ -613,7 +613,13 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
       result = newIntNodeT(toInt128(s.position), n, idgen, g)
     of skConst:
       case s.magic
-      of mIsMainModule: result = newIntNodeT(toInt128(ord(sfMainModule in m.flags)), n, idgen, g)
+      of mIsMainModule:
+        # Under `nim m` (IC) `sfMainModule` is set on every module that is being
+        # compiled (so it writes its own NIF), so it cannot answer `isMainModule`;
+        # the IC build file marks the real entry point with `--isMainModule:on`.
+        let isMain = if g.config.cmd == cmdM: g.config.isMainModule
+                     else: sfMainModule in m.flags
+        result = newIntNodeT(toInt128(ord(isMain)), n, idgen, g)
       of mCompileDate: result = newStrNodeT(getDateStr(), n, g)
       of mCompileTime: result = newStrNodeT(getClockStr(), n, g)
       of mCpuEndian: result = newIntNodeT(toInt128(ord(CPU[g.config.target.targetCPU].endian)), n, idgen, g)
