@@ -375,6 +375,9 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   elif graph.config.cmd == cmdM:
     # For cmdM: load system.nim from NIF first, then compile the main module
     connectPipelineCallbacks(graph)
+    # Record the main module so the IC loader won't materialise duplicate stubs
+    # for its own symbols when a dependency (e.g. system) re-exports them.
+    setIcMainModule(projectFile)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     when not defined(nimKochBootstrap):

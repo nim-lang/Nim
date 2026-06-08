@@ -302,6 +302,51 @@ proc whenMarkerHolds(c: DepContext; s: var Stream): bool =
       if v == "false": result = false
       # else (true / unknown ident): keep result
 
+proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
+  ## Parse an import path expression and return the list of module paths it
+  ## refers to. Handles plain idents (`foo`), string literals, `std/foo`
+  ## infixes (including nested ones like `std/private/since`) and bracketed
+  ## groups like `std/[bitops, fenv]` which expand to several imports.
+  ## On entry `t` is the first token of the expression; on exit `t` is the
+  ## token immediately following the whole expression.
+  result = @[]
+  case t.kind
+  of Ident:
+    result.add pool.strings[t.litId]
+    t = next(s)
+  of StringLit:
+    result.add pool.strings[t.litId]
+    t = next(s)
+  of ParLe:
+    let tag = pool.tags[t.tagId]
+    if tag == "infix":
+      t = next(s)                      # skip 'infix' tag
+      if t.kind == Ident: t = next(s)  # skip the operator (`/`)
+      let left = parseImportPath(s, t)
+      let right = parseImportPath(s, t)
+      let prefix = if left.len == 1: left[0] else: ""
+      for r in right:
+        if prefix.len > 0: result.add prefix & "/" & r
+        else: result.add r
+      if t.kind == ParRi: t = next(s)  # skip closing ')'
+    elif tag == "bracket":
+      t = next(s)                      # skip 'bracket' tag
+      while t.kind != ParRi and t.kind != EofToken:
+        result.add parseImportPath(s, t)
+      if t.kind == ParRi: t = next(s)  # skip closing ')'
+    else:
+      # Unknown subtree: skip it entirely.
+      var depth = 1
+      t = next(s)
+      while depth > 0 and t.kind != EofToken:
+        if t.kind == ParLe: inc depth
+        elif t.kind == ParRi: dec depth
+        if depth == 0: break
+        t = next(s)
+      if t.kind == ParRi: t = next(s)
+  else:
+    t = next(s)
+
 proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
   ## Read a .deps.nif file and process imports/includes
   let depsPath = c.depsFile(pair)
@@ -344,33 +389,32 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
             elif n.kind == EofToken: break
           t = next(s)
           continue
-        # Handle path expression (could be ident, string, or infix like std/foo)
-        var importPath = ""
-        if t.kind == Ident:
-          importPath = pool.strings[t.litId]
-        elif t.kind == StringLit:
-          importPath = pool.strings[t.litId]
-        elif t.kind == ParLe and pool.tags[t.tagId] == "infix":
-          # Handle std / foo style imports
-          t = next(s)  # skip infix tag
-          if t.kind == Ident:  # operator (/)
-            t = next(s)
-          if t.kind == Ident:  # first part (std)
-            importPath = pool.strings[t.litId]
-            t = next(s)
-          if t.kind == Ident:  # second part (foo)
-            importPath = importPath & "/" & pool.strings[t.litId]
-        if importPath.len > 0:
-          if tag == "include":
-            processInclude(c, importPath, current)
-          else:
-            processImport(c, importPath, current)
-        # Skip to end of node
+        # Process the path expression(s). Each path supports plain idents,
+        # string literals, `std/foo` infixes (possibly nested, e.g.
+        # `std/private/since`) and bracketed groups like `std/[bitops, fenv]`
+        # that expand to several imports. A plain `import a, b, c` lists several
+        # modules as siblings; a `fromimport` has a single path followed by the
+        # imported symbol list, which must not be treated as modules.
+        if tag == "fromimport":
+          for importPath in parseImportPath(s, t):
+            if importPath.len > 0:
+              processImport(c, importPath, current)
+        else:
+          while t.kind != ParRi and t.kind != EofToken:
+            for importPath in parseImportPath(s, t):
+              if importPath.len > 0:
+                if tag == "include":
+                  processInclude(c, importPath, current)
+                else:
+                  processImport(c, importPath, current)
+        # Drain any remaining tokens of this node (e.g. the symbol list of a
+        # `fromimport`), up to and including the node's closing ')'.
         var depth = 1
-        while depth > 0:
-          t = next(s)
+        while depth > 0 and t.kind != EofToken:
           if t.kind == ParLe: inc depth
           elif t.kind == ParRi: dec depth
+          if depth == 0: break
+          t = next(s)
       else:
         # Skip unknown node
         var depth = 1

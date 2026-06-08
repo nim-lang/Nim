@@ -36,6 +36,13 @@ proc setupProgram*(config: ConfigRef; cache: IdentCache) =
   when not defined(nimKochBootstrap):
     program = createDecodeContext(config, cache)
 
+proc setIcMainModule*(fileIdx: FileIndex) =
+  ## Tells the IC loader which module is being compiled fresh, so that
+  ## re-exports of that module's symbols by dependencies are not loaded as
+  ## duplicate stubs.
+  when not defined(nimKochBootstrap):
+    ast2nif.setMainModule(program, fileIdx)
+
 template loadSym(s: PSym) =
   ## Loads a symbol from NIF file if it's in Partial state.
   when not defined(nimKochBootstrap):

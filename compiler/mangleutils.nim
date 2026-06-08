@@ -54,6 +54,19 @@ proc mangleParamExt*(s: PSym): string =
 
 proc mangleProcNameExt*(graph: ModuleGraph, s: PSym): string =
   result = "__"
-  result.add graph.ifaces[s.itemId.module].uniqueName
+  # Under incremental compilation the main module is registered at its source
+  # file index, but its symbols are keyed by the NIF-suffix file index, which has
+  # no `ifaces` slot. Only the main module has this gap (dependencies are
+  # registered at their suffix index), so omitting the unique name for it stays
+  # collision-free: the mangled base name plus `disamb` already disambiguate.
+  if s.itemId.module >= 0 and s.itemId.module < graph.ifaces.len:
+    result.add graph.ifaces[s.itemId.module].uniqueName
   result.add "_u"
-  result.addInt s.itemId.item # s.disamb #
+  # Use `disamb` rather than `itemId.item`: under incremental compilation a
+  # symbol loaded from a NIF file gets a fresh, load-order-dependent `itemId.item`
+  # (from the per-module symbol counter), which is neither stable across the
+  # processes that compile vs. use a module nor guaranteed distinct from another
+  # loaded symbol's. `disamb` is assigned deterministically per (module, name)
+  # and, together with the already-prepended mangled name, yields a unique and
+  # stable C identifier.
+  result.addInt s.disamb

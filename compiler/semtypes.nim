@@ -512,6 +512,10 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         if c.inGenericContext > 0: result.incl tfUnresolved
       else:
         result = e.typ.skipTypes({tyTypeDesc})
+        if result.state == Sealed:
+          # The index type was loaded from the IC cache and must not be mutated
+          # in place; work on a copy so we can mark it as an implicit static.
+          result = copyType(result, c.idgen, getCurrOwner(c))
         result.incl tfImplicitStatic
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):

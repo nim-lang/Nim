@@ -161,14 +161,18 @@ type
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
 
-const
-  # Symbol kinds that are always local to a proc and should never have module suffix
-  skLocalSymKinds = {skParam, skForVar, skResult, skTemp}
-
 proc isLocalSym(sym: PSym): bool {.inline.} =
-  sym.kindImpl in skLocalSymKinds or
-    (sym.kindImpl in {skVar, skLet} and {sfGlobal, sfThread} * sym.flagsImpl == {} and
-     (sym.ownerFieldImpl == nil or sym.ownerFieldImpl.kindImpl != skModule))
+  ## Params (and generic params, see `writeSymDef`) are emitted as *global*
+  ## (module-suffixed) names so their `sdef` gets an index entry and is
+  ## resolvable by index lookup even when referenced from a different index entry
+  ## than the one that physically contains the definition: generic params of a
+  ## forward declaration vs its implementation, and proc-type params shared
+  ## between an enclosing proc and a nested object's proc-type field. The
+  ## per-module `disamb` counter keeps `name.disamb.module` unique, so this is
+  ## clash-free. The kinds below are only ever used within the single index entry
+  ## of their owning routine, so they stay local (smaller index, and the codegen
+  ## name mangler only handles real module owners).
+  false
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
@@ -301,24 +305,6 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
       dest.addStrLit lib.name
       writeNode w, dest, lib.path
 
-proc collectGenericParams(w: var Writer; n: PNode) =
-  ## Pre-collect generic param symbols into w.locals before writing the type.
-  ## This ensures generic params get consistent short names, and their sdefs
-  ## are written in the type (where lazy loading can find them).
-  if n == nil: return
-  case n.kind
-  of nkSym:
-    if n.sym != nil and w.inProc > 0:
-      w.locals.incl(n.sym.itemId)
-  of nkIdentDefs, nkVarTuple:
-    for i in 0 ..< max(0, n.len - 2):
-      collectGenericParams(w, n[i])
-  of nkGenericParams:
-    for child in n:
-      collectGenericParams(w, child)
-  else:
-    discard
-
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParLe sdefTag, trLineInfo(w, sym.infoImpl)
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
@@ -353,14 +339,12 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
 
   writeLib(w, dest, sym.annexImpl)
 
-  # For routine symbols, pre-collect generic params into w.locals before writing
-  # the type. This ensures they get consistent short names, and their sdefs are
-  # written in the type where lazy loading can find them via extractLocalSymsFromTree.
-  if sym.kindImpl in routineKinds and sym.astImpl != nil and sym.astImpl.len > genericParamsPos:
-    inc w.inProc
-    collectGenericParams(w, sym.astImpl[genericParamsPos])
-    dec w.inProc
-
+  # Generic params are written as *global* symbols (with a module suffix) so that
+  # they get their own index entries and can be looked up lazily. This matters for
+  # generic routines that have a separate forward declaration and implementation:
+  # the two share the same generic param symbols, but each is serialized as its own
+  # index entry. If the params were local, a reference from the implementation's
+  # entry could not resolve the sdef emitted in the forward declaration's entry.
   writeType(w, dest, sym.typImpl)
   writeSym(w, dest, sym.ownerFieldImpl)
   # Store the AST for routine symbols and constants
@@ -433,9 +417,10 @@ template withNode(w: var Writer; dest: var TokenBuf; n: PNode; body: untyped) =
   dest.addParRi
 
 proc addLocalSym(w: var Writer; n: PNode) =
-  ## Add symbol from a node to locals set if it's a symbol node
-  if n != nil and n.kind == nkSym and n.sym != nil and w.inProc > 0:
-    w.locals.incl(n.sym.itemId)
+  ## Previously forced proc-local symbols to be written without a module suffix.
+  ## All symbols are now emitted as global (see `isLocalSym`), so `w.locals` is
+  ## intentionally left empty.
+  discard
 
 proc addLocalSyms(w: var Writer; n: PNode) =
   case n.kind
@@ -819,6 +804,8 @@ type
     symCounter: int32
     index: Table[string, NifIndexEntry]  # Simple embedded index for offsets
     suffix: string
+    contentStart: int  # stream offset of the module body, so a full-AST load can
+                       # rewind after lazy symbol loads moved the cursor
 
   DecodeContext* = object
     infos: LineInfoWriter
@@ -827,10 +814,19 @@ type
     syms: Table[string, (PSym, NifIndexEntry)]
     mods: Table[FileIndex, NifModule]
     cache: IdentCache
+    mainModuleSuffix: string
+      ## Mangled module name of the module being compiled fresh (cmdM). Symbols
+      ## belonging to it that are re-exported by a dependency must NOT be loaded
+      ## as stubs, otherwise they collide with the freshly compiled originals.
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
   result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+
+proc setMainModule*(c: var DecodeContext; fileIdx: FileIndex) =
+  ## Records the module that is being compiled fresh so that re-exports of its
+  ## own symbols by dependencies are not turned into duplicate stubs.
+  c.mainModuleSuffix = modname(fileIdx.int, c.infos.config)
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
@@ -895,7 +891,10 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
         "whose NIF file hasn't been written yet."
     var stream = nifstreams.open(modFile)
     let index = readEmbeddedIndex(stream)
-    c.mods[result] = NifModule(stream: stream, index: index, suffix: suffix)
+    # `readEmbeddedIndex` leaves the cursor at the start of the module body.
+    let contentStart = offset(stream.r)
+    c.mods[result] = NifModule(stream: stream, index: index, suffix: suffix,
+                               contentStart: contentStart)
 
 proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifIndexEntry =
   let ii = addr c.mods[module].index
@@ -927,8 +926,19 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
     if i < name.len and name[i] == '.': inc i
     let suffix = name.substr(i)
     let id = ItemId(module: moduleId(c, suffix).int32, item: itemId)
-    let offs = c.getOffset(id.module.FileIndex, name)
-    result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
+    let ii = addr c.mods[id.module.FileIndex].index
+    let offs = ii[].getOrDefault(name)
+    if offs.offset == 0 and k == ord(tyNone):
+      # A `tyNone` placeholder (e.g. the type of a symbol-choice node) that is
+      # not present in its owning module's index. Such types are copied during
+      # template/generic instantiation in another module but keep their original
+      # owner, so the owner never serialised them. They carry no information, so
+      # synthesise a fresh, fully-loaded empty type instead of failing.
+      result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Complete)
+    else:
+      if offs.offset == 0:
+        raiseAssert "symbol has no offset: " & name
+      result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
     c.types[name] = (result, offs)
 
 proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: string;
@@ -1544,6 +1554,25 @@ proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]
   else:
     raiseAssert "expected ParRi but got " & $tok.kind
 
+proc addReexportedEnumFields(c: var DecodeContext; sym: PSym; interf: var TStrTable) =
+  ## When a non-pure enum type is (re-)exported, its fields must also become
+  ## visible (unqualified) to importers. In a from-source build this happens via
+  ## `rawImportSymbol`'s enum handling when the type is imported; the lazy IC
+  ## importer never runs that, so we materialise the fields into the interface
+  ## here, when the export list is processed.
+  loadSym(c, sym)
+  if sym.kindImpl != skType or sfPure in sym.flagsImpl: return
+  let et = sym.typImpl
+  if et == nil: return
+  loadType(c, et)
+  if et.kind notin {tyEnum, tyBool}: return
+  let fields = et.nImpl
+  if fields == nil: return
+  for i in 0 ..< fields.len:
+    let f = fields[i]
+    if f != nil and f.kind == nkSym and f.sym != nil:
+      strTableAdd(interf, f.sym)
+
 proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
                      interf: var TStrTable; suffix: string; module: int): PrecompiledModule =
   result = PrecompiledModule(topLevel: newNode(nkStmtList))
@@ -1601,9 +1630,15 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         while true:
           if t.kind == Symbol:
             let symAsStr = pool.syms[t.symId]
-            let sym = resolveSym(c, symAsStr, false)
-            if sym != nil:
-              strTableAdd(interf, sym)
+            # Skip symbols that are re-exported by this dependency but actually
+            # belong to the module we are compiling fresh: loading them as stubs
+            # would shadow/collide with the freshly compiled originals.
+            if c.mainModuleSuffix.len == 0 or
+               parseSymName(symAsStr).module != c.mainModuleSuffix:
+              let sym = resolveSym(c, symAsStr, false)
+              if sym != nil:
+                strTableAdd(interf, sym)
+                addReexportedEnumFields(c, sym, interf)
             t = next(s)
           elif t.kind == ParRi:
             break
@@ -1636,8 +1671,11 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
   let module = moduleId(c, string(suffix), flags)
 
   # Load the module AST (or just replay actions if loadFullAst is false)
-  # processTopLevel also collects export instructions
+  # processTopLevel also collects export instructions.
+  # Lazy symbol loading may have moved the stream cursor since the module was
+  # opened, so rewind to the start of the module body before reading it.
   let s = addr c.mods[module].stream
+  s[].r.jumpTo(c.mods[module].contentStart)
   var t = next(s[])
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip (stmts

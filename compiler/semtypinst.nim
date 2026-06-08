@@ -808,7 +808,11 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and t.elementType.n != nil:
         discard replaceObjBranches(cl, t.elementType.n)
 
-      elif result.n != nil and t.kind == tyObject:
+      elif result.n != nil and t.kind == tyObject and result.state != Sealed:
+        # A type loaded from the IC cache already had its object branches
+        # resolved when it was originally compiled, and must not be mutated in
+        # place (nor copied, which would break object-inheritance identity), so
+        # only non-Sealed types are processed here.
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)
@@ -860,7 +864,10 @@ proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
     for i in 1..<obj.len:
       recomputeFieldPositions(nil, lastSon(obj[i]), currPosition)
   of nkSym:
-    obj.sym.position = currPosition
+    # A field loaded from the IC cache is already at its final position and must
+    # not be mutated; only freshly instantiated fields need (re)positioning.
+    if obj.sym.state != Sealed:
+      obj.sym.position = currPosition
     inc currPosition
   else: discard "cannot happen"
 
