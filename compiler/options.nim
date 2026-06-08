@@ -265,6 +265,11 @@ type
     typedescFieldAccess
       ## Allow typedesc field access on object/tuple types outside of
       ## typeof context.
+    injectedSymbolRedefinition
+      ## Allow a template to inject a symbol *definition* that is then emitted
+      ## more than once (e.g. a `typed` argument captured by a `{.dirty.}`
+      ## template and re-emitted). This is a redefinition and rejected by
+      ## default; enabling this restores the old, unsound behavior. See #25693.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

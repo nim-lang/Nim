@@ -29,3 +29,30 @@ block tnestprc:
       result = x + y
     result = add(x, 3)
   doAssert Add3(7) == 10
+
+block:
+  type A = object
+    c: int
+  type H = proc(): lent A {.nimcall.}
+  const u = A(c: 0)
+  proc e(T: typedesc): lent A = u
+  proc y(T: typedesc): H =
+    proc(): lent A {.nimcall.} = T.e
+  discard y(int)
+
+block:
+  type A = object
+    c: int
+  type H = proc(): lent A {.nimcall.}
+  let u = A(c: 0)
+  proc y(_: int | int): H =
+    proc(): lent A {.nimcall.} = u
+  discard y(0)
+
+block:
+  type A = object
+    c: int
+  type H = proc(): lent A {.nimcall.}
+  let u = A()
+  let _: H = proc(): lent A {.nimcall.} = u
+

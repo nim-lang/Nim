@@ -45,3 +45,13 @@ block:
       r: R
 
   func f(o: O): int = 42
+
+block:
+  iterator j(x: array[1, int]): lent int = yield x[0]
+  iterator g(): int {.closure.} =
+    let a = 1
+    for w in j([a]):
+      yield 0
+      doAssert w == 1
+  for _ in g(): discard
+
