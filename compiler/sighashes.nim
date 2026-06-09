@@ -211,6 +211,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     c.hashTree(t.n, {}, conf)
   of tyTuple:
     c &= char(t.kind)
+    c &= t.len
     if t.n != nil and CoType notin flags:
       for i in 0..<t.n.len:
         assert(t.n[i].kind == nkSym)
