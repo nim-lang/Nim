@@ -12,7 +12,7 @@
 import
   options, ast, astalgo, msgs,
   idents, renderer, types, magicsys, lowerings, modulegraphs, lineinfos,
-  transf, liftdestructors, typeallowed
+  transf, liftdestructors, typeallowed, dfa, aliasanalysis
 
 import std/[strutils, tables, intsets]
 
@@ -553,7 +553,10 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
       assert obj.kind == tyObject
       let field = getFieldFromObj(obj, s)
       if field != nil:
-        return rawIndirectAccess(access, field, n.info)
+        result = rawIndirectAccess(access, field, n.info)
+        # carry the pre-lifting move-analysis verdict onto the env access:
+        if nfLastUse in n.flags: result.flags.incl nfLastUse
+        return result
       let upField = lookupInRecord(obj.n, getIdent(g.cache, upName))
       if upField == nil: break
       access = rawIndirectAccess(access, upField, n.info)
@@ -718,6 +721,8 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: var DetectionPass;
   let field = getFieldFromObj(obj, n.sym)
   if field != nil:
     result = rawIndirectAccess(access, field, n.info)
+    # carry the pre-lifting move-analysis verdict onto the env access:
+    if nfLastUse in n.flags: result.flags.incl nfLastUse
   else:
     localError(d.graph.config, n.info, "internal error: not part of closure object type")
     result = n
@@ -873,6 +878,64 @@ proc semCaptureSym*(s, owner: PSym) =
         o = o.skipGenericOwner
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'
     # here
+
+proc collectRoots(n: PNode; fn: PSym; roots: var seq[PSym]; seen: var IntSet) =
+  case n.kind
+  of nkSym:
+    let s = n.sym
+    # captured == defined in an enclosing routine; `fn`'s own locals/params
+    # (owner == fn) are not lifted into a shared env this way.
+    if s.owner != fn and interestingVar(s) and hasDestructor(s.typ) and
+        not seen.containsOrIncl(s.id):
+      roots.add s
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection,
+      nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef, nkMacroDef,
+      nkIteratorDef, nkTemplateDef, nkLambdaKinds:
+    # do not descend into nested routine definitions: their captured
+    # variables get their own marking pass when they are transformed.
+    discard
+  else:
+    for child in n: collectRoots(child, fn, roots, seen)
+
+proc markLastUses*(g: ModuleGraph; fn: PSym; body: PNode) =
+  ## Move analysis *before* lambda lifting. A variable defined in an enclosing
+  ## routine and captured by `fn` is, at this point, still an ordinary
+  ## non-escaping local that the move analyser can reason about. We compute its
+  ## last reads inside `fn`'s body and stamp them with `nfLastUse`. After
+  ## lifting these reads become `env[].field` accesses through a shared `ref`;
+  ## the move analyser in `injectdestructors` can no longer prove they are last
+  ## reads (the env may be aliased), so it trusts the `nfLastUse` flag instead
+  ## (bug #25333). The flag is carried onto the rewritten access by
+  ## `accessViaEnvParam`/`accessViaEnvVar`.
+  ##
+  ## Must run before `transformClosureIterator` turns the body into a state
+  ## machine (whose back-edges would defeat the analysis) and before the
+  ## enclosing lifting pass rewrites the captured reads.
+  # Only *closure iterators* are safe: their environment is created per
+  # instantiation and the body runs to completion exactly once, so a statically
+  # last read is also dynamically the last read. A regular closure's env
+  # persists across invocations, so the body may run again and re-read the
+  # variable; moving it out on a "last read" would corrupt the next call. Hence
+  # we must not mark captured reads in regular closures (bug #25333).
+  if not fn.isIterator: return
+  if optSeqDestructors notin g.config.globalOptions: return
+
+  var roots: seq[PSym] = @[]
+  var seen = initIntSet()
+  collectRoots(body, fn, roots, seen)
+  if roots.len == 0: return
+
+  for root in roots:
+    let cfg = constructCfg(fn, body, root)
+    var otherUsage = unknownLineInfo
+    for j in 0 ..< cfg.len:
+      if cfg[j].kind == use:
+        let m = skipConvDfa(cfg[j].n)
+        # only whole-variable reads can be safely propagated through lifting;
+        # partial accesses (`v.field`, `v[i]`) keep the old behaviour.
+        if m.kind == nkSym and m.sym == root and
+            isLastReadOfRoot(cfg, cfg[j].n, j+1, otherUsage):
+          m.flags.incl nfLastUse
 
 proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType;
                      idgen: IdGenerator): PNode =
