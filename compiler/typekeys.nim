@@ -227,10 +227,37 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       assert inst.kind == tyGenericInst
       c.typeKey inst.sonsImpl[0], flags, conf
       for i in 1..<inst.sonsImpl.len-1:
-        c.typeKey inst.sonsImpl[i], flags, conf
+        # Match sighashes: generic-instantiation arguments are keyed with
+        # `CoDistinct` so distinct args are not collapsed to their base.
+        c.typeKey inst.sonsImpl[i], flags+{CoDistinct}, conf
       t.typeInstImpl = inst
     elif t.symImpl != nil:
       c.symKey(t.symImpl, conf)
+      # Anonymous / gensym'd object types (e.g. closure environments and
+      # `ref object` ObjectTypes) share the placeholder name `´anon`, so `symKey`
+      # alone collapses every one of them onto the same key — which made distinct
+      # closure-env `=destroy`/`=sink` hooks collide. Mirror sighashes: when the
+      # type symbol is anonymous/gensym'd, disambiguate further by keying the
+      # field types and names (or `.empty` when there are none).
+      var symWithFlags: PSym = nil
+      template hasFlag(sym: PSym): bool =
+        let ret = {sfAnon, sfGenSym} * sym.flagsImpl != {}
+        if ret: symWithFlags = sym
+        ret
+      if hasFlag(t.symImpl) or
+         (t.kind == tyObject and t.ownerFieldImpl != nil and t.ownerFieldImpl.kindImpl == skType and
+          t.ownerFieldImpl.typImpl != nil and t.ownerFieldImpl.typImpl.kind == tyRef and hasFlag(t.ownerFieldImpl)):
+        if t.nImpl != nil and t.nImpl.len > 0:
+          # Hack to prevent endless recursion (a field may reference this type).
+          let oldFlags = symWithFlags.flagsImpl
+          symWithFlags.flagsImpl.excl {sfAnon, sfGenSym}
+          c.treeKey(t.nImpl, flags + {CoHashTypeInsideNode}, conf)
+          symWithFlags.flagsImpl = oldFlags
+        else:
+          c.m.addIdent "´empty"
+      # Object inheritance is part of identity: key the base class too.
+      if t.kind == tyObject and t.sonsImpl.len > 0 and t.sonsImpl[0] != nil:
+        c.typeKey t.sonsImpl[0], flags, conf
     else:
       c.m.addIdent "`bug"
   of tyFromExpr:

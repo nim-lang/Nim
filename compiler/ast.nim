@@ -455,9 +455,13 @@ var gconfig {.threadvar.}: Gconfig
 proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
 
 proc comment*(n: PNode): string =
-  if nfHasComment in n.flags and not gconfig.useIc:
-    # IC doesn't track comments, see `packed_ast`, so this could fail
-    result = gconfig.comments[n.nodeId]
+  if nfHasComment in n.flags:
+    # NIF-based IC doesn't serialize comments, but the comment table is keyed by
+    # the node's address (`nodeId`), which is unique among live nodes; a loaded
+    # node that carries `nfHasComment` simply has no entry here (its comment was
+    # set in another process), so `getOrDefault` safely returns "" for it while
+    # in-process VM macro nodes (e.g. newCommentStmtNode) still round-trip.
+    result = gconfig.comments.getOrDefault(n.nodeId)
   else:
     result = ""
 

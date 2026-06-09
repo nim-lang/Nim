@@ -615,9 +615,16 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
         w.withNode dest, ast:
           for i in 0 ..< ast.len:
             if i == paramsPos and skipParams:
-              # Parameter are redundant with s.typ.n and even dangerous as for generic instances
-              # we do not adapt the symbols properly
-              addDotToken(dest)
+              # Parameters are redundant with s.typ.n (and re-emitting their syms
+              # is dangerous for generic instances — we do not adapt the symbols
+              # properly). Emit an `nkEmpty` placeholder rather than a dot token:
+              # a dot loads back as a `nil` son, but ast children must be real
+              # nodes — the loaded routine ast is walked by passes (lambdalifting,
+              # liftdestructors, transf) that dereference `ast[paramsPos]`, and
+              # `nkEmpty` is the canonical empty slot. The actual params are
+              # recovered from `sym.typ.n` where needed.
+              dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty)), NoLineInfo
+              dest.addParRi
             else:
               writeNode(w, dest, ast[i], forAst)
         dec w.inProc

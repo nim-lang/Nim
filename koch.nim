@@ -76,6 +76,7 @@ Options:
   --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
+  bootic [options]         bootstraps via the incremental compiler (`nim ic`)
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
   toolsNoExternal          builds Nim related tools (except external tools,
@@ -396,6 +397,41 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     exec "$# jsonscript --noNimblePath --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
 
+    if sameFileContent(output, i.thVersion):
+      copyExe(output, finalDest)
+      echo "executables are equal: SUCCESS!"
+      return
+    copyExe(output, (i+1).thVersion)
+  copyExe(output, finalDest)
+  when not defined(windows):
+    if not skipIntegrityCheck:
+      echo "[Warning] executables are still not equal"
+
+proc bootic(args: string, skipIntegrityCheck: bool) =
+  ## Like `boot`, but bootstraps the compiler through the NIF-based incremental
+  ## compiler (`nim ic`) instead of `nim c`. Differences from `boot`:
+  ## * It starts from an already-bootstrapped Nim (found via `findStartNim`): the
+  ##   csources compiler is far too old to provide the `ic` command, and the
+  ##   `-d:nimKochBootstrap` define used by `boot`'s first stage *disables*
+  ##   `commandIc`, so neither can be used here.
+  ## * `nim ic` drives the per-module build and the final link itself (via
+  ##   `nifmake`), so there is no `--compileOnly` + `jsonscript` split.
+  ## The 3-step fixed-point check is kept: a successful run proves the compiler
+  ## can compile itself under IC and reproduces a stable binary.
+  var output = "compiler" / "nim".exe
+  var finalDest = "bin" / "nim".exe
+  let smartNimcache = (if "release" in args or "danger" in args: "nimcache/ric_" else: "nimcache/dic_") &
+                      hostOS & "_" & hostCPU
+
+  bundleChecksums(false)
+
+  let nimStart = findStartNim().quoteShell()
+  let times = 2 - ord(skipIntegrityCheck)
+  for i in 0..times:
+    echo "iteration: ", i+1
+    let nimi = if i == 0: nimStart else: i.thVersion
+    exec "$# ic --nimcache:$# $# compiler" / "nim.nim" %
+      [nimi, smartNimcache, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -744,6 +780,7 @@ when isMainModule:
     of cmdArgument:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest, skipIntegrityCheck)
+      of "bootic": bootic(op.cmdLineRest, skipIntegrityCheck)
       of "clean": clean(op.cmdLineRest)
       of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":

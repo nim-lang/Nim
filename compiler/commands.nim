@@ -24,7 +24,7 @@ bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
-import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs, enumutils]
+import std/[setutils, sets, os, strutils, parseutils, parseopt, sequtils, strtabs, enumutils]
 import
   msgs, options, nversion, condsyms, extccomp, platform,
   wordrecg, nimblecmd, lineinfos, pathutils
@@ -928,6 +928,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # real entry point so that `isMainModule` and `when isMainModule:` resolve
     # correctly even though every module is compiled with `sfMainModule` set.
     conf.isMainModule = switchOn(arg)
+  of "icgroup":
+    # `nim m` only: register a module that belongs to the current strongly-
+    # connected import group, so it is compiled from source (not loaded from a
+    # precompiled NIF) and gets its own NIF written. `deps.nim` emits one
+    # `--icGroup:<path>` per member of a dependency cycle. The argument is an
+    # absolute .nim path produced by the dependency scanner.
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icGroup.incl(canonicalizePath(conf, AbsoluteFile arg).string)
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:

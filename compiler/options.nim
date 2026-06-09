@@ -380,6 +380,12 @@ type
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
     ic*: bool # whether ic is enabled
+    icGroup*: HashSet[string] # under `nim m`: absolute paths of the modules in
+                              # this strongly-connected import group. They are all
+                              # compiled from source in one process (so mutual
+                              # recursion resolves in-memory) and each gets its NIF
+                              # written, instead of being loaded from a precompiled
+                              # NIF. See `compiler/deps.nim` (SCC grouping).
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
@@ -588,6 +594,7 @@ proc newConfigRef*(): ConfigRef =
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     cppDefines: initHashSet[string](),
+    icGroup: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {},
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),

@@ -15,7 +15,7 @@ import ../dist/checksums/src/checksums/sha1
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs, sets]
 import renderer
 import ic/replayer
 
@@ -243,9 +243,14 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
 
   when not defined(nimKochBootstrap):
     # For cmdM: only write NIF for the main module, not for imported modules
-    # (imported modules should be loaded from existing NIF files)
+    # (imported modules should be loaded from existing NIF files). Members of the
+    # current strongly-connected import group (`--icGroup`) are the exception:
+    # they are compiled from source here, so each must write its own NIF.
     let shouldWriteNif = (optCompress in graph.config.globalOptions) or
-                         (graph.config.cmd == cmdM and sfMainModule in module.flags)
+                         (graph.config.cmd == cmdM and
+                          (sfMainModule in module.flags or
+                           (graph.config.icGroup.len > 0 and
+                            toFullPath(graph.config, module.position.FileIndex) in graph.config.icGroup)))
     if shouldWriteNif and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       # Collect replay actions from both pragma computations and VM state diff
@@ -278,11 +283,18 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   if result == nil:
     when not defined(nimKochBootstrap):
       # For cmdM: load imports from NIF files (but compile the main module from source)
-      # Skip when withinSystem is true (compiling system.nim itself)
+      # Skip when withinSystem is true (compiling system.nim itself).
+      # Also skip for members of the current strongly-connected import group
+      # (`--icGroup`): those are mutually recursive with the main module and have
+      # no precompiled NIF yet, so they must be compiled from source in this same
+      # process (falling through below) — that resolves the cycle in-memory, the
+      # same way the non-incremental compiler handles recursive module imports.
       if graph.config.cmd == cmdM and
          sfMainModule notin flags and
          not graph.withinSystem and
-         not graph.config.isDefined("nimscript"):
+         not graph.config.isDefined("nimscript") and
+         (graph.config.icGroup.len == 0 or
+          toFullPath(graph.config, fileIdx) notin graph.config.icGroup):
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
           let nifPath = toNifFilename(graph.config, fileIdx)

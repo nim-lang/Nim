@@ -10,7 +10,7 @@
 ## Generate a .build.nif file for nifmake from a Nim project.
 ## This enables incremental and parallel compilation using the `m` switch.
 
-import std / [os, tables, sets, times, osproc]
+import std / [os, tables, sets, times, osproc, algorithm]
 import options, msgs, lineinfos, pathutils
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
@@ -219,6 +219,19 @@ proc evalCondExpr(c: DepContext; s: var Stream): bool =
       result = evalCondExpr(c, s)
       if not result: result = evalCondExpr(c, s)
       else: skipSubtree(s, next(s))
+      var depth = 1
+      while depth > 0:
+        let n = next(s)
+        if n.kind == ParLe: inc depth
+        elif n.kind == ParRi: dec depth
+        elif n.kind == EofToken: return
+    of "par":
+      # a parenthesised grouping such as `(defined(a) or defined(b))`: evaluate
+      # the inner expression. Without this, `par` fell through to the `else`
+      # branch below and evaluated to `true`, which silently inverted conditions
+      # like `not (defined(macosx) or defined(bsd))` and dropped real imports
+      # (e.g. `cpuinfo`'s conditional `import std/posix`).
+      result = evalCondExpr(c, s)
       var depth = 1
       while depth > 0:
         let n = next(s)
@@ -434,6 +447,58 @@ proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
     return
   readDepsFile(c, pair, current)
 
+proc computeSCCs(c: DepContext): seq[seq[int]] =
+  ## Tarjan's strongly-connected-components over the module dependency graph
+  ## (`node.deps`). Each returned component is a list of node indices; a module
+  ## that is not part of any import cycle yields a singleton component. Tarjan
+  ## emits components in reverse-topological order (a component's external
+  ## dependencies come out before it), which is exactly the order `nifmake`
+  ## needs for the per-group `nim m` build rules.
+  type Frame = object
+    v, pi: int
+  let n = c.nodes.len
+  var index = newSeq[int](n)
+  var lowlink = newSeq[int](n)
+  var onStack = newSeq[bool](n)
+  var visited = newSeq[bool](n)
+  var stack: seq[int] = @[]
+  var counter = 0
+  result = @[]
+
+  # Iterative Tarjan (explicit work stack) so a deep module-dependency chain
+  # cannot overflow the call stack.
+  for start in 0..<n:
+    if visited[start]: continue
+    var work = @[Frame(v: start, pi: 0)]
+    while work.len > 0:
+      let v = work[^1].v
+      if work[^1].pi == 0:
+        visited[v] = true
+        index[v] = counter
+        lowlink[v] = counter
+        inc counter
+        stack.add v
+        onStack[v] = true
+      if work[^1].pi < c.nodes[v].deps.len:
+        let w = c.nodes[v].deps[work[^1].pi]
+        inc work[^1].pi
+        if not visited[w]:
+          work.add Frame(v: w, pi: 0)
+        elif onStack[w]:
+          lowlink[v] = min(lowlink[v], index[w])
+      else:
+        if lowlink[v] == index[v]:
+          var comp: seq[int] = @[]
+          while true:
+            let w = stack.pop()
+            onStack[w] = false
+            comp.add w
+            if w == v: break
+          result.add comp
+        work.setLen work.len - 1
+        if work.len > 0:
+          lowlink[work[^1].v] = min(lowlink[work[^1].v], lowlink[v])
+
 proc generateBuildFile(c: DepContext): string =
   ## Generate the .build.nif file for nifmake
   let nimcache = getNimcacheDir(c.config).string
@@ -506,34 +571,67 @@ proc generateBuildFile(c: DepContext): string =
         b.endTree()
         b.endTree()
 
-  # Build rules for semantic checking (nim m)
-  for i in countdown(c.nodes.len - 1, 0):
-    let node = c.nodes[i]
-    let pair = node.files[0]
+  # Build rules for semantic checking (nim m).
+  #
+  # Modules are grouped into strongly-connected components: a module that is not
+  # in an import cycle is its own singleton group and compiles in its own
+  # `nim m <mod>` invocation as before. A cycle (A imports B, B imports A) cannot
+  # be ordered for separate per-module compilation, so the whole component is
+  # handed to a single `nim m` invocation: the first member is the project file,
+  # every member is passed via `--icGroup:<path>` so the compiler compiles them
+  # all from source in one process (resolving the recursion in-memory) and writes
+  # a NIF for each. Only dependencies *outside* the component become build-graph
+  # inputs — intra-component edges are produced by this very rule and listing
+  # them would reintroduce the cycle nifmake just rejected.
+  let sccs = computeSCCs(c)
+  var sccOf = newSeq[int](c.nodes.len)
+  for sccId, comp in sccs:
+    for nodeIdx in comp: sccOf[nodeIdx] = sccId
+  for comp in sccs:
+    # Representative (project file for this invocation) = smallest node id, so a
+    # component containing the root (node 0) is driven by the root.
+    var members = comp
+    members.sort()
+    let repPair = c.nodes[members[0]].files[0]
+    let isGroup = members.len > 1
     b.addTree "do"
     b.addIdent "nim_m"
+    b.addTree "args"
     # The root module (node 0) is the program's real entry point; mark it so
     # `isMainModule` resolves to true only for it (every module otherwise gets
     # `sfMainModule` for NIF writing under `nim m`).
-    if i == 0:
-      b.withTree "args":
-        b.addStrLit "--isMainModule:on"
-    # Input: all parsed files for this module
-    b.withTree "input":
-      b.addStrLit node.files[0].nimFile
-    for f in node.files:
-      b.addTree "input"
-      b.addStrLit c.parsedFile(f)
-      b.endTree()
-    # Also depend on semmed files of dependencies
-    for depIdx in node.deps:
-      b.addTree "input"
-      b.addStrLit c.semmedFile(c.nodes[depIdx].files[0])
-      b.endTree()
-    # Output: semmed file
-    b.addTree "output"
-    b.addStrLit c.semmedFile(pair)
+    if members[0] == 0:
+      b.addStrLit "--isMainModule:on"
+    # For a real cycle, tell the compiler which modules form the group so it
+    # compiles them all from source and writes each one's NIF.
+    if isGroup:
+      for m in members:
+        b.addStrLit "--icGroup:" & c.nodes[m].files[0].nimFile
     b.endTree()
+    # Input 0 (the project file passed to `nim m`): the representative's .nim.
+    b.withTree "input":
+      b.addStrLit repPair.nimFile
+    # All parsed files of every member (nifler outputs this group consumes).
+    for m in members:
+      for f in c.nodes[m].files:
+        b.addTree "input"
+        b.addStrLit c.parsedFile(f)
+        b.endTree()
+    # Depend only on the semmed files of dependencies *outside* this component.
+    var seenDep = initHashSet[string]()
+    for m in members:
+      for depIdx in c.nodes[m].deps:
+        if sccOf[depIdx] == sccOf[m]: continue  # intra-component edge
+        let depSem = c.semmedFile(c.nodes[depIdx].files[0])
+        if not seenDep.containsOrIncl(depSem):
+          b.addTree "input"
+          b.addStrLit depSem
+          b.endTree()
+    # Output: one semmed NIF per member.
+    for m in members:
+      b.addTree "output"
+      b.addStrLit c.semmedFile(c.nodes[m].files[0])
+      b.endTree()
     b.endTree()
 
   # Final compilation step: generate executable from main module
