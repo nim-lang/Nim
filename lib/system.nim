@@ -59,7 +59,7 @@ type
     RemoveTypeModifiers,      ## Remove type modifiers.
     KeepTypeModifiers,        ## Keep type modifiers.
 
-proc typeof*(x: untyped; mode = typeOfIter; modifierMode = TypeOfModifiers): typedesc {.
+proc typeof*(x: untyped; mode = typeOfIter; modifierMode = CompatibleTypeModifiers): typedesc {.
   magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin `typeof` operation for accessing the type of an expression.
   ## Since version 0.20.0.
