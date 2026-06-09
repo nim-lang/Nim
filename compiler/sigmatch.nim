@@ -2208,35 +2208,13 @@ proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m = newCandidate(c, f)
   result = typeRel(m, f, a)
 
-proc allParamsBound(bindings: LayeredIdTable, t: PType): bool =
-  case t.kind
-  of tyNone, tyEmpty: return true
-  of tyGenericParam:
-    return lookup(bindings, t) != nil
-  of tyGenericInvocation:
-    # Check if the invocation itself is cached; if not,
-    # check only the type args (sons from FirstGenericParamAt=1),
-    # not the generic body which has the definition's type params
-    if lookup(bindings, t) != nil: return true
-    for i in FirstGenericParamAt..<t.kidsLen:
-      if t[i] != nil and not allParamsBound(bindings, t[i]): return false
-    return true
-  else:
-    if lookup(bindings, t) != nil: return true
-    for i in 0..<t.len:
-      if t[i] != nil and not allParamsBound(bindings, t[i]): return false
-    if t.kind == tyGenericInst and t.elementType != nil:
-      if not allParamsBound(bindings, t.elementType): return false
-    return true
-
 proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
                          f: PType): PType =
   result = lookup(m.bindings, f)
   if result == nil:
-    if allParamsBound(m.bindings, f):
-      result = generateTypeInstance(c, m.bindings, arg, f)
-    else:
-      result = errorType(c)
+    result = generateTypeInstance(c, m.bindings, arg, f, suppressErrors = true)
+  if result == nil:
+    result = errorType(c)
 
 proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
                   c: PContext): PNode =
