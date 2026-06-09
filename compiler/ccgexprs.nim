@@ -3555,17 +3555,20 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skProc, skConverter, skIterator, skFunc:
       #if sym.kind == skIterator:
       #  echo renderTree(sym.getBody, {renderIds})
-      if isGenericRoutineStrict(sym) or sfCompileTime in sym.flags or
-          (sym.kind == skIterator and sym.typ.callConv == ccInline):
+      if p.config.cmd == cmdNifC and
+          (isGenericRoutineStrict(sym) or sfCompileTime in sym.flags or
+           (sym.kind == skIterator and sym.typ.callConv == ccInline)):
         # Under IC a module's top-level routine definitions are serialized as bare
         # symbol references that reappear in the loaded statement list. Uninstantiated
         # generic routines (incl. those with type-class params like `tuple`) and
-        # `.compileTime` routines have no run-time code, so skip them here. (A real
-        # run-time *use* of a `.compileTime` proc is still rejected at the call site.)
+        # `.compileTime` routines have no run-time code, so skip them here.
         # Inline iterators likewise have no standalone code — they are always inlined
         # at their for-loop call sites by the transformer (only closure iterators get
         # a standalone C function), so a bare serialized def reference is a no-op.
         return
+      if sfCompileTime in sym.flags:
+        localError(p.config, n.info, "request to generate code for .compileTime proc: " &
+           sym.name.s)
       if delayedCodegen(p.module) and sym.typ.callConv != ccInline:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
