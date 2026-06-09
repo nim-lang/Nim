@@ -2065,7 +2065,7 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
 
 proc semTypeOfImpl(c: PContext; n: PNode): PNode =
   var m = BiggestInt 1 # typeOfIter
-  var modifierMode = BiggestInt 0 # typeOfModCompatible
+  var modifierMode = BiggestInt 0 # CompatibleTypeModifiers
   type
     TypeOfParams = enum
       topMode
@@ -2106,10 +2106,10 @@ proc semTypeOfImpl(c: PContext; n: PNode): PNode =
   defer: dec c.inTypeofContext # compiles can raise an exception
   var typExpr = semExprNoDeref(c, n[1], if m == 1: {efInTypeof} else: {})
   if modifierMode == 0:
-    # typeOfModCompatible
+    # CompatibleTypeModifiers
     typExpr.typ = typExpr.typ.skipTypes({tyVar, tyLent})
   elif modifierMode == 1:
-    # typeOfModRemoveModifier
+    # RemoveTypeModifiers
     typExpr.typ = typExpr.typ.skipTypes({tyVar, tyLent, tySink})
 
   result = typExpr

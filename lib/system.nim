@@ -54,12 +54,12 @@ type
     typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
     typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-  TypeOfModifierMode* = enum  ## Modes to handle type modifiers `var`, `sink` and `lent`.
-    typeOfModCompatible,      ## Remove or keep type modifiers in the same way as old typeof. That means keep `sink` but remove `var` and `lent`.
-    typeOfModRemoveModifier,  ## Remove type modifiers.
-    typeOfModKeepModifier,    ## Keep type modifiers.
+  TypeOfModifiers* = enum  ## Modes to handle type modifiers `var`, `sink` and `lent`.
+    CompatibleTypeModifiers,  ## Remove or keep type modifiers in the same way as old typeof. That means keep `sink` but remove `var` and `lent`.
+    RemoveTypeModifiers,      ## Remove type modifiers.
+    KeepTypeModifiers,        ## Keep type modifiers.
 
-proc typeof*(x: untyped; mode = typeOfIter; modifierMode = typeOfModCompatible): typedesc {.
+proc typeof*(x: untyped; mode = typeOfIter; modifierMode = TypeOfModifiers): typedesc {.
   magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin `typeof` operation for accessing the type of an expression.
   ## Since version 0.20.0.
@@ -82,8 +82,8 @@ proc typeof*(x: untyped; mode = typeOfIter; modifierMode = typeOfModCompatible):
       # only be used in a `for` context.
 
     proc varParam(x: var int;
-                  y: typeof(x, modifierMode = typeOfModRemoveModifier);
-                  z: typeof(x, modifierMode = typeOfModKeepModifier)) = discard
+                  y: typeof(x, modifierMode = RemoveTypeModifiers);
+                  z: typeof(x, modifierMode = KeepTypeModifiers)) = discard
     doAssert varParam is proc (x: var int; y: int; z: var int) {.nimcall.}
 
 proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
