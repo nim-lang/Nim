@@ -10,7 +10,7 @@
 ## Based on sighashes.nim but works on astdef directly as we need it in ast2nif.nim.
 ## Also produces more readable names thanks to treemangler.
 
-import std/assertions
+import std/[assertions, sets]
 
 import "../dist/nimony/src/lib" / [treemangler]
 import "../dist/nimony/src/gear2" / modnames
@@ -54,6 +54,9 @@ type
     m: Mangler
     tl: TypeLoader
     sl: SymLoader
+    visited: HashSet[ItemId]  # anonymous object types whose fields are currently
+                              # being hashed — a non-mutating guard against endless
+                              # recursion when a field references the type itself.
 
 proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef)
 proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
@@ -239,20 +242,22 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       # closure-env `=destroy`/`=sink` hooks collide. Mirror sighashes: when the
       # type symbol is anonymous/gensym'd, disambiguate further by keying the
       # field types and names (or `.empty` when there are none).
-      var symWithFlags: PSym = nil
       template hasFlag(sym: PSym): bool =
-        let ret = {sfAnon, sfGenSym} * sym.flagsImpl != {}
-        if ret: symWithFlags = sym
-        ret
+        {sfAnon, sfGenSym} * sym.flagsImpl != {}
       if hasFlag(t.symImpl) or
          (t.kind == tyObject and t.ownerFieldImpl != nil and t.ownerFieldImpl.kindImpl == skType and
           t.ownerFieldImpl.typImpl != nil and t.ownerFieldImpl.typImpl.kind == tyRef and hasFlag(t.ownerFieldImpl)):
         if t.nImpl != nil and t.nImpl.len > 0:
-          # Hack to prevent endless recursion (a field may reference this type).
-          let oldFlags = symWithFlags.flagsImpl
-          symWithFlags.flagsImpl.excl {sfAnon, sfGenSym}
-          c.treeKey(t.nImpl, flags + {CoHashTypeInsideNode}, conf)
-          symWithFlags.flagsImpl = oldFlags
+          # Guard against endless recursion when a field references this type
+          # itself. Unlike sighashes (which temporarily clears `sfAnon`/`sfGenSym`
+          # on the symbol), do NOT mutate: `typeKey` runs during sem — it is
+          # called unconditionally from `modulegraphs.setAttachedOp` — so a
+          # mutation that an assertion deeper in `treeKey` left unrestored would
+          # corrupt the type. `symKey` above already emitted the type's identity,
+          # so on a back-reference we simply stop.
+          if not containsOrIncl(c.visited, t.itemId):
+            c.treeKey(t.nImpl, flags + {CoHashTypeInsideNode}, conf)
+            c.visited.excl t.itemId
         else:
           c.m.addIdent "´empty"
       # Object inheritance is part of identity: key the base class too.
@@ -330,6 +335,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.m.addIdent "´notnil"
 
 proc typeKey*(t: PType; conf: ConfigRef; tl: TypeLoader; sl: SymLoader): string =
-  var c: Context = Context(m: createMangler(30, -1), tl: tl, sl: sl)
+  var c: Context = Context(m: createMangler(30, -1), tl: tl, sl: sl,
+                           visited: initHashSet[ItemId]())
   typeKey(c, t, {}, conf)
   result = c.m.extract()
