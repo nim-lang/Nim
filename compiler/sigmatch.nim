@@ -2208,24 +2208,48 @@ proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m = newCandidate(c, f)
   result = typeRel(m, f, a)
 
+proc allParamsBound(bindings: LayeredIdTable, t: PType): bool =
+  case t.kind
+  of tyNone, tyEmpty: return true
+  of tyGenericParam:
+    return lookup(bindings, t) != nil
+  of tyGenericInvocation:
+    # Check if the invocation itself is cached; if not,
+    # check only the type args (sons from FirstGenericParamAt=1),
+    # not the generic body which has the definition's type params
+    if lookup(bindings, t) != nil: return true
+    for i in FirstGenericParamAt..<t.kidsLen:
+      if t[i] != nil and not allParamsBound(bindings, t[i]): return false
+    return true
+  else:
+    if lookup(bindings, t) != nil: return true
+    for i in 0..<t.len:
+      if t[i] != nil and not allParamsBound(bindings, t[i]): return false
+    if t.kind == tyGenericInst and t.elementType != nil:
+      if not allParamsBound(bindings, t.elementType): return false
+    return true
+
 proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
                          f: PType): PType =
   result = lookup(m.bindings, f)
   if result == nil:
-    result = generateTypeInstance(c, m.bindings, arg, f)
-  if result == nil:
-    internalError(c.graph.config, arg.info, "getInstantiatedType")
-    result = errorType(c)
+    if allParamsBound(m.bindings, f):
+      result = generateTypeInstance(c, m.bindings, arg, f)
+    else:
+      result = errorType(c)
 
 proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
                   c: PContext): PNode =
-  result = newNodeI(kind, arg.info)
   if containsGenericType(f):
-    if not m.matchedErrorType:
-      result.typ = getInstantiatedType(c, arg, m, f).skipTypes({tySink})
-    else:
-      result.typ = errorType(c)
+    if m.matchedErrorType:
+      return nil
+    let t = getInstantiatedType(c, arg, m, f).skipTypes({tySink})
+    if t.kind == tyError:
+      return nil
+    result = newNodeI(kind, arg.info)
+    result.typ = t
   else:
+    result = newNodeI(kind, arg.info)
     result.typ = f.skipTypes({tySink})
   # keep varness, but don't wrap lent types with var
   if arg.typ != nil and arg.typ.kind == tyVar:
@@ -2594,6 +2618,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         (arg.typ.isIntLit and not m.isNoCall):
       result = arg.copyTree
       result.typ = getInstantiatedType(c, arg, m, f).skipTypes({tySink})
+      if result.typ.kind == tyError:
+        result = nil
     else:
       result = arg
   of isBothMetaConvertible:
@@ -2992,9 +3018,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           n[a] = prepareOperand(c, n[a], newlyTyped)
           if newlyTyped: m.newlyTypedOperands.add(a)
           if skipTypes(n[a].typ, abstractVar-{tyTypeDesc}).kind==tyString:
-            m.call.add implicitConv(nkHiddenStdConv,
+            let cvt = implicitConv(nkHiddenStdConv,
                   getSysType(c.graph, n[a].info, tyCstring),
                   copyTree(n[a]), m, c)
+            if cvt == nil: noMatch()
+            m.call.add cvt
           else:
             m.call.add copyTree(n[a])
         elif formal != nil and formal.typ.kind == tyVarargs:
@@ -3053,7 +3081,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           if formal.typ.isVarargsTyped and m.calleeSym.kind in {skTemplate, skMacro}:
             if container.isNil:
               container = newNodeIT(nkBracket, n[a].info, arrayConstr(c, n.info))
-              setSon(m.call, formal.position + 1, implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+              let cvt = implicitConv(nkHiddenStdConv, formal.typ, container, m, c)
+              if cvt == nil: noMatch()
+              setSon(m.call, formal.position + 1, cvt)
             else:
               incrIndexType(container.typ)
             container.add n[a]
@@ -3129,8 +3159,11 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           # container node kind accordingly
           let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1,
-                 implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+          let conv = implicitConv(nkHiddenStdConv, formal.typ, container, m, c)
+          if conv == nil:
+            m.state = csNoMatch
+            break
+          setSon(m.call, formal.position + 1, conv)
         else:
           # no default value
           m.state = csNoMatch
@@ -3153,6 +3186,9 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         var defaultValue = copyTree(formal.ast)
         if defaultValue.kind == nkNilLit:
           defaultValue = implicitConv(nkHiddenStdConv, formal.typ, defaultValue, m, c)
+          if defaultValue == nil:
+            m.state = csNoMatch
+            break
         # proc foo(x: T = 0.0)
         # foo()
         if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {}:
