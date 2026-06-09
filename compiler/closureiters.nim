@@ -252,7 +252,8 @@ proc newCurExcAccess(ctx: var Ctx): PNode =
   ctx.newEnvVarAccess(ctx.curExcSym)
 
 proc newStateLabel(ctx: Ctx): PNode =
-  ctx.g.newIntLit(TLineInfo(), 0)
+  result = nkIntLit.newIntNode(0)
+  result.typ() = getSysType(ctx.g, TLineInfo(), tyInt16)
 
 proc newState(ctx: var Ctx, n: PNode, inlinable: bool, label: PNode): PNode =
   # Creates a new state, adds it to the context
