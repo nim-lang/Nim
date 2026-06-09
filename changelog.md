@@ -72,6 +72,8 @@ parameter and result types, not just their source-level shape. Use
 
 - `std/nre2` is added to replace deprecated NRE.
 
+- `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
+
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
