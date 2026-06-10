@@ -156,6 +156,25 @@ proc skipSubtree(s: var Stream; first: PackedToken) =
     elif t.kind == ParRi: dec depth
     elif t.kind == EofToken: return
 
+proc evalCondIdent(c: DepContext; v: string): bool =
+  ## Truth value of a bare identifier appearing in a `when` condition.
+  case v
+  of "false": false
+  of "hasThreadSupport":
+    # system.nim's `hasThreadSupport` is `compileOption("threads") and
+    # not defined(nimscript)`; the conservative `true` would schedule the
+    # threads-only modules (syslocks, threadtypes, sharedlist, locks)
+    # whose NIFs a --threads:off compile never produces — nifmake then
+    # sees missing outputs and re-runs the system rule (and everything
+    # downstream) on every rerun.
+    optThreads in c.config.globalOptions
+  of "usesDestructors":
+    # system.nim's `usesDestructors = defined(gcDestructors) or
+    # defined(gcHooks)`; guards mmdisp.nim's `include "system/gc"` whose
+    # transitive imports (sharedlist, locks) an orc compile never produces.
+    isDefined(c.config, "gcDestructors") or isDefined(c.config, "gcHooks")
+  else: true
+
 proc evalCondExpr(c: DepContext; s: var Stream): bool =
   ## Read exactly one condition expression from `s` and return its truth
   ## value. Consumes tokens whether the expression is recognised or not so
@@ -167,10 +186,7 @@ proc evalCondExpr(c: DepContext; s: var Stream): bool =
   let t = next(s)
   case t.kind
   of Ident:
-    case pool.strings[t.litId]
-    of "true": result = true
-    of "false": result = false
-    else: result = true
+    result = evalCondIdent(c, pool.strings[t.litId])
   of ParLe:
     let tag = pool.tags[t.tagId]
     case tag
@@ -319,9 +335,8 @@ proc whenMarkerHolds(c: DepContext; s: var Stream): bool =
         # Unknown — treat as true and skip.
         skipSubtree(s, t)
     elif t.kind == Ident:
-      let v = pool.strings[t.litId]
-      if v == "false": result = false
-      # else (true / unknown ident): keep result
+      if not evalCondIdent(c, pool.strings[t.litId]): result = false
+      # a true / unknown ident keeps the current result
 
 proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
   ## Parse an import path expression and return the list of module paths it
@@ -549,6 +564,13 @@ proc generateBuildFile(c: DepContext): string =
         forwardedArgs.add "--define:" & k & (if v == "true": "" else: "=" & v)
     sort forwardedArgs
     forwardedArgs.add "--threads:" & (if optThreads in c.config.globalOptions: "on" else: "off")
+    # Forward the memory-management mode too: the children would otherwise
+    # compile with the default GC while the dependency graph here was computed
+    # with the selected one (e.g. under --mm:refc the scanner keeps
+    # system/gc's transitive imports but default-orc children never compile
+    # them — phantom outputs that re-fire the build on every rerun).
+    if c.config.selectedGC != gcUnselected:
+      forwardedArgs.add "--mm:" & $c.config.selectedGC
 
   # Define nifler command
   b.addTree "cmd"

@@ -427,8 +427,18 @@ proc bootic(args: string, skipIntegrityCheck: bool) =
 
   let nimStart = findStartNim().quoteShell()
   let times = 2 - ord(skipIntegrityCheck)
+  # `boot` shares the `compiler/nim` output path; remove it so a fully warm
+  # cache still relinks and iteration 1 cannot adopt a stale foreign binary.
+  removeFile output
   for i in 0..times:
     echo "iteration: ", i+1
+    # Iteration 1 may build incrementally (that's the point of IC), but every
+    # later iteration must start from a clean cache: with a warm cache a
+    # no-change rerun correctly rebuilds nothing, so iteration i+1 would just
+    # keep iteration i's binary and the fixed-point check would be vacuous.
+    # The check is only meaningful if the freshly built compiler re-translates
+    # everything.
+    if i > 0: removeDir smartNimcache
     let nimi = if i == 0: nimStart else: i.thVersion
     exec "$# ic --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
