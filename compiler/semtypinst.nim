@@ -503,8 +503,14 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody, isInstValue = true)
   cl.skipTypedesc = oldSkipTypedesc
-  newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
-  result.flags = result.flags + newbody.flags - tfInstClearedFlags
+  let newbodyFlags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
+  if newbody.state != Sealed:
+    newbody.flags = newbodyFlags
+  # else: `newbody` is a type loaded from a dep module (it can even be a
+  # builtin like `int` when the generic's body is computed by a macro) and is
+  # immutable under IC. Skip the in-place flag accumulation on the shared
+  # type; the instance `result` still receives the flags below.
+  result.flags = result.flags + newbodyFlags - tfInstClearedFlags
 
   setToPreviousLayer(cl.typeMap)
 
@@ -524,8 +530,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       # generics *when the type is constructed*:
       cl.c.graph.setAttachedOp(cl.c.module.position, newbody, attachedDeepCopy,
           cl.c.instTypeBoundOp(cl.c, dc, result, cl.info, attachedDeepCopy, 1))
-    if newbody.typeInst == nil:
+    if newbody.typeInst == nil and newbody.state != Sealed:
       # doAssert newbody.typeInst == nil
+      # An IC-loaded (Sealed) `newbody` keeps whatever `typeInst` its defining
+      # module serialized; recording this process's first instantiation on the
+      # shared type is not possible (and was always first-wins anyway).
       newbody.typeInst = result
       if tfRefsAnonObj in newbody.flags and newbody.kind != tyGenericInst:
         # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
