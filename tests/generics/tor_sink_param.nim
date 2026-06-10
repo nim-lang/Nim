@@ -6,7 +6,7 @@ proc testOrSink(v: sink (string | seq[int])) =
 proc testOrSink2(v: sink seq[int]) =
   testOrSink(v)
 
-proc testOrSink3(v: sink string | sink seq[int]) =
+proc testOrSink3(v: (sink string) | (sink seq[int])) =
   discard move(v)
 
 proc testOrSink4(v: sink string) =

@@ -1895,8 +1895,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if doBind:
           assert bestBranch != nil
           let b = bound
-          if bestBranch.kind == tySink and b.kind != tySink:
-            put(c, f, newTypeS(tySink, c.c, b))
+          if bestBranch.kind in {tySink, tyVar} and b.kind != bestBranch.kind:
+            put(c, f, newTypeS(bestBranch.kind, c.c, b))
           else:
             put(c, f, b)
       else:
