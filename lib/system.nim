@@ -3131,10 +3131,7 @@ when notJSnotNims:
                     not defined(nuttx) and
                     hostOS != "any"
 
-  proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    raise newException(IOError, msg)
-
-  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
+  proc echoBinSafe(args: openArray[string]) {.compilerproc, raises: [].} =
     when defined(androidNDK):
       # When running nim in android app, stdout goes nowhere, so echo gets ignored
       # To redirect echo to the android logcat, use -d:androidNDK
@@ -3156,7 +3153,7 @@ when notJSnotNims:
       for s in args:
         when defined(windows):
           # equivalent to syncio.writeWindows
-          proc writeWindows(f: CFilePtr; s: string; doRaise = false) =
+          proc writeWindows(f: CFilePtr; s: string) =
             # Don't ask why but the 'printf' family of function is the only thing
             # that writes utf-8 strings reliably on Windows. At least on my Win 10
             # machine. We also enable `setConsoleOutputCP(65001)` now by default.
@@ -3167,13 +3164,11 @@ when notJSnotNims:
               if s[i] == '\0':
                 let w = c_fputc('\0', f)
                 if w != 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i
               else:
                 let w = c_fprintf(f, "%s", unsafeAddr s[i])
                 if w <= 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i, w
           writeWindows(cstdout, s)
