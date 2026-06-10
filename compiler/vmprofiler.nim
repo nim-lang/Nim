@@ -1,5 +1,5 @@
 
-import options, vmdef, lineinfos, msgs
+import ast, options, vmdef, lineinfos, msgs
 
 import std/[times, strutils, tables]
 

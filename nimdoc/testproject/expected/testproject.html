@@ -23,6 +23,9 @@
 </head>
 <body>
   <div class="document" id="documentId">
+    <input type="checkbox" id="nav-toggle" hidden>
+    <label for="nav-toggle" id="nav-burger">&#9776;</label>
+    <label for="nav-toggle" id="nav-overlay"></label>
     <div class="container">
       <h1 class="title">testproject</h1>
       <div class="row">
@@ -82,6 +85,9 @@
   Rectangle                  ## A four-sided shape">Shapes</a></li>
 <li><a class="reference" href="#T19396" title="T19396 = object
   a*: int">T19396</a></li>
+<li><a class="reference" href="#Xxx" title="Xxx = object
+  field*: int
+  field3*: int               ## Doc comment2">Xxx</a></li>
 
     </ul>
   </details>
@@ -378,7 +384,7 @@
   <h1><a class="toc-backref" href="#7">Types</a></h1>
   <dl class="item">
     <div id="A">
-  <dt><pre><a href="testproject.html#A"><span class="Identifier">A</span></a> {.<span class="Identifier">inject</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#A"><span class="Identifier">A</span></a> {.<span class="Identifier">inject</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">aA</span></pre></dt>
   <dd>
     
@@ -387,7 +393,7 @@
   </dd>
 </div>
 <div id="AnotherObject">
-  <dt><pre><a href="testproject.html#AnotherObject"><span class="Identifier">AnotherObject</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <dt><pre><a href="#AnotherObject"><span class="Identifier">AnotherObject</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
   <span class="Keyword">case</span> <span class="Identifier">x</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">bool</span>
   <span class="Keyword">of</span> <span class="Identifier">true</span><span class="Other">:</span>
     <span class="Identifier">y</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span>
@@ -399,7 +405,7 @@
   </dd>
 </div>
 <div id="B">
-  <dt><pre><a href="testproject.html#B"><span class="Identifier">B</span></a> {.<span class="Identifier">inject</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#B"><span class="Identifier">B</span></a> {.<span class="Identifier">inject</span>.} <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">bB</span></pre></dt>
   <dd>
     
@@ -408,7 +414,7 @@
   </dd>
 </div>
 <div id="Foo">
-  <dt><pre><a href="testproject.html#Foo"><span class="Identifier">Foo</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#Foo"><span class="Identifier">Foo</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">enumValueA2</span></pre></dt>
   <dd>
     
@@ -417,7 +423,7 @@
   </dd>
 </div>
 <div id="FooBuzz">
-  <dt><pre><a href="testproject.html#FooBuzz"><span class="Identifier">FooBuzz</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">deprecated</span><span class="Other">:</span> <span class="StringLit">&quot;FooBuzz msg&quot;</span></span>.} <span class="Other">=</span> <span class="Identifier">int</span></pre></dt>
+  <dt><pre><a href="#FooBuzz"><span class="Identifier">FooBuzz</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">deprecated</span><span class="Other">:</span> <span class="StringLit">&quot;FooBuzz msg&quot;</span></span>.} <span class="Other">=</span> <span class="Identifier">int</span></pre></dt>
   <dd>
     <div class="deprecation-message">
   <b>Deprecated:</b> FooBuzz msg
@@ -428,7 +434,7 @@
   </dd>
 </div>
 <div id="MyObject">
-  <dt><pre><a href="testproject.html#MyObject"><span class="Identifier">MyObject</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <dt><pre><a href="#MyObject"><span class="Identifier">MyObject</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
   <span class="Identifier">someString</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">string</span>        <span class="Comment">## This is a string</span>
   <span class="Identifier">annotated</span><span class="Operator">*</span> {.<span class="Identifier">somePragma</span>.}<span class="Other">:</span> <span class="Identifier">string</span> <span class="Comment">## This is an annotated string</span></pre></dt>
   <dd>
@@ -438,7 +444,7 @@
   </dd>
 </div>
 <div id="Shapes">
-  <dt><pre><a href="testproject.html#Shapes"><span class="Identifier">Shapes</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <dt><pre><a href="#Shapes"><span class="Identifier">Shapes</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">Circle</span><span class="Other">,</span>                   <span class="Comment">## A circle</span>
   <span class="Identifier">Triangle</span><span class="Other">,</span>                 <span class="Comment">## A three-sided shape</span>
   <span class="Identifier">Rectangle</span>                  <span class="Comment">## A four-sided shape</span></pre></dt>
@@ -449,8 +455,18 @@
   </dd>
 </div>
 <div id="T19396">
-  <dt><pre><a href="testproject.html#T19396"><span class="Identifier">T19396</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <dt><pre><a href="#T19396"><span class="Identifier">T19396</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
   <span class="Identifier">a</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span></pre></dt>
+  <dd>
+    
+    
+    
+  </dd>
+</div>
+<div id="Xxx">
+  <dt><pre><a href="#Xxx"><span class="Identifier">Xxx</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">field</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>
+  <span class="Identifier">field3</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>               <span class="Comment">## Doc comment2</span></pre></dt>
   <dd>
     
     
@@ -464,7 +480,7 @@
   <h1><a class="toc-backref" href="#8">Vars</a></h1>
   <dl class="item">
     <div id="aVariable">
-  <dt><pre><a href="testproject.html#aVariable"><span class="Identifier">aVariable</span></a><span class="Other">:</span> <span class="Identifier">array</span><span class="Other">[</span><span class="DecNumber">1</span><span class="Other">,</span> <span class="Identifier">int</span><span class="Other">]</span></pre></dt>
+  <dt><pre><a href="#aVariable"><span class="Identifier">aVariable</span></a><span class="Other">:</span> <span class="Identifier">array</span><span class="Other">[</span><span class="DecNumber">1</span><span class="Other">,</span> <span class="Identifier">int</span><span class="Other">]</span></pre></dt>
   <dd>
     
     
@@ -472,7 +488,7 @@
   </dd>
 </div>
 <div id="someVariable">
-  <dt><pre><a href="testproject.html#someVariable"><span class="Identifier">someVariable</span></a><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+  <dt><pre><a href="#someVariable"><span class="Identifier">someVariable</span></a><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
   <dd>
     
     This should be visible.
@@ -486,7 +502,7 @@
   <h1><a class="toc-backref" href="#10">Consts</a></h1>
   <dl class="item">
     <div id="C_A">
-  <dt><pre><a href="testproject.html#C_A"><span class="Identifier">C_A</span></a> <span class="Other">=</span> <span class="FloatNumber">0x7FF0000000000000'f64</span></pre></dt>
+  <dt><pre><a href="#C_A"><span class="Identifier">C_A</span></a> <span class="Other">=</span> <span class="FloatNumber">0x7FF0000000000000'f64</span></pre></dt>
   <dd>
     
     
@@ -494,7 +510,7 @@
   </dd>
 </div>
 <div id="C_B">
-  <dt><pre><a href="testproject.html#C_B"><span class="Identifier">C_B</span></a> <span class="Other">=</span> <span class="DecNumber">0o377'i8</span></pre></dt>
+  <dt><pre><a href="#C_B"><span class="Identifier">C_B</span></a> <span class="Other">=</span> <span class="DecNumber">0o377'i8</span></pre></dt>
   <dd>
     
     
@@ -502,7 +518,7 @@
   </dd>
 </div>
 <div id="C_C">
-  <dt><pre><a href="testproject.html#C_C"><span class="Identifier">C_C</span></a> <span class="Other">=</span> <span class="DecNumber">0o277'i8</span></pre></dt>
+  <dt><pre><a href="#C_C"><span class="Identifier">C_C</span></a> <span class="Other">=</span> <span class="DecNumber">0o277'i8</span></pre></dt>
   <dd>
     
     
@@ -510,7 +526,7 @@
   </dd>
 </div>
 <div id="C_D">
-  <dt><pre><a href="testproject.html#C_D"><span class="Identifier">C_D</span></a> <span class="Other">=</span> <span class="DecNumber">0o177777'i16</span></pre></dt>
+  <dt><pre><a href="#C_D"><span class="Identifier">C_D</span></a> <span class="Other">=</span> <span class="DecNumber">0o177777'i16</span></pre></dt>
   <dd>
     
     
@@ -598,7 +614,7 @@
 </div>
 <div id="bar-procs-all">
   <div id="bar">
-  <dt><pre><span class="Keyword">proc</span> <a href="#bar"><span class="Identifier">bar</span></a><span class="Other">(</span><span class="Identifier">f</span><span class="Other">:</span> <a href="testproject.html#FooBuzz"><span class="Identifier">FooBuzz</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#bar"><span class="Identifier">bar</span></a><span class="Other">(</span><span class="Identifier">f</span><span class="Other">:</span> <a href="#FooBuzz"><span class="Identifier">FooBuzz</span></a><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     
@@ -822,7 +838,7 @@ at indent 0
 </div>
 <div id="z1-procs-all">
   <div id="z1">
-  <dt><pre><span class="Keyword">proc</span> <a href="#z1"><span class="Identifier">z1</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="testproject.html#Foo"><span class="Identifier">Foo</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dt><pre><span class="Keyword">proc</span> <a href="#z1"><span class="Identifier">z1</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <a href="#Foo"><span class="Identifier">Foo</span></a> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
     cz1

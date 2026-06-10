@@ -31,6 +31,9 @@ cmdShortOption key: v value: ''
 cmdArgument key: ABC value: ''
 cmdShortOption key: j value: '4'
 cmdArgument key: ok value: ''
+parseopt stdin
+cmdShortOption key: j value: '4'
+cmdShortOption key:  value: ''
 '''
 joinable: false
 """
@@ -153,4 +156,10 @@ arg 6 ai.len:4 :{a7'b}"""
 
     var n = parseopt.initOptParser("-j4 ok", shortnoVal = {'n'}, longnoVal = @["novalue"])
     for kind, key, val in parseopt.getopt(n):
+      echo kind," key: ", key, " value: '", val, "'"
+
+  block: # fix #25738
+    echo "parseopt stdin"
+    var p = parseopt.initOptParser("-j4 -", shortNoVal = {'n'})
+    for kind, key, val in parseopt.getopt(p):
       echo kind," key: ", key, " value: '", val, "'"

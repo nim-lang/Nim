@@ -8,49 +8,48 @@
 #
 
 # Compilerprocs for strings that do not depend on the string implementation.
+import std/private/digitsutils as digitsutils2
 
-import std/private/digitsutils
-
-
-proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
-  let alen = a.len
-  let blen = b.len
-  let minlen = min(alen, blen)
-  if minlen > 0:
-    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen)).int
-    if result == 0:
+when not defined(nimsso):
+  proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
+    let alen = a.len
+    let blen = b.len
+    let minlen = min(alen, blen)
+    if minlen > 0:
+      result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen)).int
+      if result == 0:
+        result = alen - blen
+    else:
       result = alen - blen
-  else:
-    result = alen - blen
 
-proc leStrings(a, b: string): bool {.inline, compilerproc.} =
-  # required by upcoming backends (NIR).
-  cmpStrings(a, b) <= 0
+  proc leStrings(a, b: string): bool {.inline, compilerproc.} =
+    # required by upcoming backends (NIR).
+    cmpStrings(a, b) <= 0
 
-proc ltStrings(a, b: string): bool {.inline, compilerproc.} =
-  # required by upcoming backends (NIR).
-  cmpStrings(a, b) < 0
+  proc ltStrings(a, b: string): bool {.inline, compilerproc.} =
+    # required by upcoming backends (NIR).
+    cmpStrings(a, b) < 0
 
-proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
-  result = false
-  let alen = a.len
-  let blen = b.len
-  if alen == blen:
-    if alen == 0: return true
-    return equalMem(unsafeAddr(a[0]), unsafeAddr(b[0]), alen)
+  proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
+    result = false
+    let alen = a.len
+    let blen = b.len
+    if alen == blen:
+      if alen == 0: return true
+      return equalMem(unsafeAddr(a[0]), unsafeAddr(b[0]), alen)
 
-proc hashString(s: string): int {.compilerproc.} =
-  # the compiler needs exactly the same hash function!
-  # this used to be used for efficient generation of string case statements
-  var h = 0'u
-  for i in 0..len(s)-1:
-    h = h + uint(s[i])
-    h = h + h shl 10
-    h = h xor (h shr 6)
-  h = h + h shl 3
-  h = h xor (h shr 11)
-  h = h + h shl 15
-  result = cast[int](h)
+  proc hashString(s: string): int {.compilerproc.} =
+    # the compiler needs exactly the same hash function!
+    # this used to be used for efficient generation of string case statements
+    var h = 0'u
+    for i in 0..len(s)-1:
+      h = h + uint(s[i])
+      h = h + h shl 10
+      h = h xor (h shr 6)
+    h = h + h shl 3
+    h = h xor (h shr 11)
+    h = h + h shl 15
+    result = cast[int](h)
 
 proc eqCstrings(a, b: cstring): bool {.inline, compilerproc.} =
   if pointer(a) == pointer(b): result = true
@@ -119,7 +118,7 @@ proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
     if s[i+1] == 'A' or s[i+1] == 'a':
       if s[i+2] == 'N' or s[i+2] == 'n':
         if i+3 >= s.len or s[i+3] notin IdentChars:
-          number = NaN
+          number = if sign < 0: -NaN else: NaN
           return i+3
     return 0
 

@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.push raises: [], gcsafe.}
+
 proc roundup(x, v: int): int {.inline.} =
   result = (x + (v-1)) and not (v-1)
   sysAssert(result >= x, "roundup: result < x")
@@ -29,8 +31,8 @@ const doNotUnmap = not (defined(amd64) or defined(i386)) or
 
 
 when defined(nimAllocPagesViaMalloc):
-  when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
-    {.error: "-d:nimAllocPagesViaMalloc is only supported with --mm:arc or --mm:atomicArc or --mm:orc".}
+  when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc) and not defined(gcYrc):
+    {.error: "-d:nimAllocPagesViaMalloc is only supported with --mm:arc or --mm:atomicArc or --mm:orc or --mm:yrc".}
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
     let base = c_malloc(csize_t size + PageSize - 1 + sizeof(uint32))
@@ -216,3 +218,5 @@ elif hostOS == "standalone" or defined(StandaloneHeapSize):
 
 else:
   {.error: "Port memory manager to your platform".}
+
+{.pop.}

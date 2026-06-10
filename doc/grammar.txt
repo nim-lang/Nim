@@ -188,7 +188,7 @@ objectPart = IND{>} objectPart^+IND{=} DED
            / objectWhen / objectCase / 'nil' / 'discard' / declColonEquals
 objectDecl = 'object' ('of' typeDesc)? COMMENT? objectPart
 conceptParam = ('var' | 'out' | 'ptr' | 'ref' | 'static' | 'type')? symbol
-conceptDecl = 'concept' conceptParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
+conceptDecl = 'concept' (conceptParam ^* ',' (pragma)?)? ('of' typeDesc ^* ',')?
               &IND{>} stmt
 typeDef = identVisDot genericParamList? pragma '=' optInd typeDefValue
             indAndComment?

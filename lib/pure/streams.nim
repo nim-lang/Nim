@@ -16,9 +16,9 @@
 ## stream interface.
 ##
 ## .. warning:: Due to the use of `pointer`, the `readData`, `peekData` and
-## `writeData` interfaces are not available on the compile-time VM, and must
-## be cast from a `ptr string` on the JS backend. However, `readDataStr` is
-## available generally in place of `readData`.
+##   `writeData` interfaces are not available on the compile-time VM, and must
+##   be cast from a `ptr string` on the JS backend. However, `readDataStr` is
+##   available generally in place of `readData`.
 ##
 ## Basic usage
 ## ===========
@@ -259,10 +259,8 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
-    when declared(prepareMutation):
-      # buffer might potentially be a CoW literal with ARC
-      prepareMutation(buffer)
-    result = s.readData(addr buffer[slice.a], slice.b + 1 - slice.a)
+    result = s.readData(beginStore(buffer, buffer.len, slice.a), slice.b + 1 - slice.a)
+    endStore(buffer)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
   when nimvm:
@@ -1228,7 +1226,8 @@ else: # after 1.3 or JS not defined
       jsOrVmBlock:
         buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       do:
-        copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
+        copyMem(beginStore(buffer, buffer.len, slice.a), readRawData(s.data, s.pos), result)
+        endStore(buffer)
       inc(s.pos, result)
     else:
       result = 0
@@ -1244,7 +1243,7 @@ else: # after 1.3 or JS not defined
           raise newException(Defect, "could not read string stream, " &
             "did you use a non-string buffer pointer?", getCurrentException())
       elif not defined(nimscript):
-        copyMem(buffer, addr(s.data[s.pos]), result)
+        copyMem(buffer, readRawData(s.data, s.pos), result)
       inc(s.pos, result)
     else:
       result = 0
@@ -1260,7 +1259,7 @@ else: # after 1.3 or JS not defined
           raise newException(Defect, "could not peek string stream, " &
             "did you use a non-string buffer pointer?", getCurrentException())
       elif not defined(nimscript):
-        copyMem(buffer, addr(s.data[s.pos]), result)
+        copyMem(buffer, readRawData(s.data, s.pos), result)
     else:
       result = 0
 
@@ -1268,16 +1267,17 @@ else: # after 1.3 or JS not defined
     var s = StringStream(s)
     if bufLen <= 0:
       return
-    if s.pos + bufLen > s.data.len:
-      setLen(s.data, s.pos + bufLen)
     when defined(js):
+      if s.pos + bufLen > s.data.len:
+        setLen(s.data, s.pos + bufLen)
       try:
         s.data[s.pos..<s.pos+bufLen] = cast[ptr string](buffer)[][0..<bufLen]
       except:
         raise newException(Defect, "could not write to string stream, " &
           "did you use a non-string buffer pointer?", getCurrentException())
     elif not defined(nimscript):
-      copyMem(addr(s.data[s.pos]), buffer, bufLen)
+      copyMem(beginStore(s.data, s.pos + bufLen, s.pos), buffer, bufLen)
+      endStore(s.data)
     inc(s.pos, bufLen)
 
   proc ssClose(s: Stream) =
@@ -1345,7 +1345,9 @@ proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
   result = readBuffer(FileStream(s).f, buffer, bufLen)
 
 proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
-  result = readBuffer(FileStream(s).f, addr buffer[slice.a], slice.b + 1 - slice.a)
+  let len = slice.b + 1 - slice.a
+  result = readBuffer(FileStream(s).f, beginStore(buffer, buffer.len, slice.a), len)
+  endStore(buffer)
 
 proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
   let pos = fsGetPosition(s)

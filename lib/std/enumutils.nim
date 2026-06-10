@@ -47,7 +47,7 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     of nnkEnumFieldDef:
       fVal = f[0].strVal
       case f[1].kind
-      of nnkStrLit:
+      of nnkStrLit .. nnkTripleStrLit:
         fStr = f[1].strVal
       of nnkTupleConstr:
         fStr = f[1][1].strVal
@@ -57,7 +57,7 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
         fNum = f[1].intVal
       else:
         let fAst = f[0].getImpl
-        if fAst.kind == nnkStrLit:
+        if fAst.kind in {nnkStrLit .. nnkTripleStrLit}:
           fStr = fAst.strVal
         else:
           error("Invalid tuple syntax!", f[1])

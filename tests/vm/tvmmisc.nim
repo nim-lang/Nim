@@ -794,3 +794,64 @@ block: # bug #23925
 static: # bug #21353
   var s: proc () = default(proc ())
   doAssert s == nil
+
+# bug #25208
+
+
+type Conf = object
+  val: int
+
+const defaultConf = Conf(val: 123)
+
+template foo2323(conf) =
+  assert conf.val == 123
+  var conf2 = conf
+  assert conf2.val == 123
+
+static:
+  var conf: Conf = defaultConf
+  conf = defaultConf  # removing this results in the expected output
+  conf.val = 2
+  foo2323(defaultConf)
+
+  discard cast[pointer](default(pointer)) # bug #25446
+
+
+proc g1314(_: static bool) = discard
+proc g1314(_: int) = discard
+proc y1314() = g1314((; let k = 0; k))
+y1314()
+
+proc myProc(first: range[0..100]) =
+  var x = first
+  while x > 0:
+    dec(x)
+
+const r = (myProc(3); 1)
+
+block: # bug #25682
+  type Obj = object
+    x: int
+
+  template value(self: Obj): int =
+    let m = 1223
+    discard m
+    self.x
+
+  static:
+    var r = Obj(x: 10)
+    r.value = 42
+    doAssert r.x == 42
+
+block:
+  type Obj = object
+    x: int
+
+  template value(self: Obj): int =
+    ## doc comment
+    self.x
+
+  static:
+    var r = Obj(x: 10)
+    r.value = 42
+    doAssert r.x == 42

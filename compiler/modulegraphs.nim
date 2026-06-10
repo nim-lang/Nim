@@ -11,11 +11,15 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs, algorithm, os, strutils, parseutils]
+import std/[intsets, tables, hashes, strtabs, os, strutils, parseutils]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
-import ic / [packed_ast, ic]
 
+when not defined(nimKochBootstrap):
+  import ast2nif
+  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
+
+import typekeys
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -23,16 +27,12 @@ when defined(nimPreviewSlimSystem):
 type
   SigHash* = distinct MD5Digest
 
-  LazySym* = object
-    id*: FullId
-    sym*: PSym
-
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
     module*: PSym       ## module this "Iface" belongs to
-    converters*: seq[LazySym]
-    patterns*: seq[LazySym]
-    pureEnums*: seq[LazySym]
+    converters*: seq[PSym]
+    patterns*: seq[PSym]
+    pureEnums*: seq[PSym]
     interf: TStrTable
     interfHidden: TStrTable
     uniqueName*: Rope
@@ -40,20 +40,6 @@ type
   Operators* = object
     opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
     opAdd*, opSub*, opMul*, opDiv*, opLen*: PSym
-
-  FullId* = object
-    module*: int
-    packed*: PackedItemId
-
-  LazyType* = object
-    id*: FullId
-    typ*: PType
-
-  LazyInstantiation* = object
-    module*: int
-    sym*: FullId
-    concreteTypes*: seq[FullId]
-    inst*: PInstantiation
 
   PipelinePass* = enum
     NonePass
@@ -70,19 +56,19 @@ type
 
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
-    packed*: PackedModuleGraph
-    encoders*: seq[PackedEncoder]
 
-    typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
-    procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
-    attachedOps*: array[TTypeAttachedOp, Table[ItemId, LazySym]] # Type ID, destructors, etc.
-    methodsPerGenericType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
+    typeInstCache*: Table[ItemId, seq[PType]] # A symbol's ItemId.
+    procInstCache*: Table[ItemId, seq[PInstantiation]] # A symbol's ItemId.
+    attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
+    loadedOps: array[TTypeAttachedOp, Table[string, PSym]] # This can later by unified with `attachedOps` once it's stable
+    opsLog*: seq[LogEntry]
+    methodsPerGenericType*: Table[ItemId, seq[(int, PSym)]] # Type ID, attached methods
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).
     initializersPerType*: Table[ItemId, PNode] # Type ID, AST call to the default ctor (c++ only)
-    enumToStringProcs*: Table[ItemId, LazySym]
+    enumToStringProcs*: Table[ItemId, PSym]
+    loadedEnumToStringProcs: Table[string, PSym]
     emittedTypeInfo*: Table[string, FileIndex]
 
-    startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
@@ -108,8 +94,8 @@ type
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: CountTable[ItemId]
     objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
-    methodsPerType*: Table[ItemId, seq[LazySym]]
-    dispatchers*: seq[LazySym]
+    methodsPerType*: Table[ItemId, seq[PSym]]
+    dispatchers*: seq[PSym]
 
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
@@ -138,6 +124,8 @@ type
     cachedFiles*: StringTableRef
 
     procGlobals*: seq[PNode]
+    nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
+    cachedMods: IntSet
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -160,8 +148,12 @@ proc resetForBackend*(g: ModuleGraph) =
     a.clear()
   g.methodsPerGenericType.clear()
   g.enumToStringProcs.clear()
+  g.loadedEnumToStringProcs.clear()
   g.dispatchers.setLen(0)
   g.methodsPerType.clear()
+  for a in mitems(g.loadedOps):
+    a.clear()
+  g.opsLog.setLen(0)
 
 const
   cb64 = [
@@ -217,85 +209,43 @@ proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
   strTableAdd(semtabAll(g, m), s)
 
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
-  result = module < g.packed.len and g.packed[module].status == loaded
+  result = module in g.cachedMods
 
 proc isCachedModule*(g: ModuleGraph; m: PSym): bool {.inline.} =
   isCachedModule(g, m.position)
 
-proc simulateCachedModule(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
-  when false:
-    echo "simulating ", moduleSym.name.s, " ", moduleSym.position
-  simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)
-
-proc initEncoder*(g: ModuleGraph; module: PSym) =
-  let id = module.position
-  if id >= g.encoders.len:
-    setLen g.encoders, id+1
-  ic.initEncoder(g.encoders[id],
-    g.packed[id].fromDisk, module, g.config, g.startupPackedConfig)
-
 type
   ModuleIter* = object
-    fromRod: bool
     modIndex: int
     ti: TIdentIter
-    rodIt: RodIter
     importHidden: bool
 
 proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent): PSym =
   assert m.kind == skModule
   mi.modIndex = m.position
-  mi.fromRod = isCachedModule(g, mi.modIndex)
   mi.importHidden = optImportHidden in m.options
-  if mi.fromRod:
-    result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name, mi.importHidden)
-  else:
-    result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
+  result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
-  if mi.fromRod:
-    result = nextRodIter(mi.rodIt, g.packed)
-  else:
-    result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden))
+  result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden))
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   let importHidden = optImportHidden in m.options
-  if isCachedModule(g, m):
-    var rodIt: RodIter = default(RodIter)
-    var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position, importHidden)
-    while r != nil:
-      yield r
-      r = nextRodIter(rodIt, g.packed)
-  else:
-    for s in g.ifaces[m.position].interfSelect(importHidden).data:
-      if s != nil:
-        yield s
+  for s in g.ifaces[m.position].interfSelect(importHidden).data:
+    if s != nil:
+      yield s
 
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
-  if isCachedModule(g, m):
-    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name, importHidden)
-  else:
-    result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
+  result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
 
 proc someSymAmb*(g: ModuleGraph; m: PSym; name: PIdent; amb: var bool): PSym =
   let importHidden = optImportHidden in m.options
-  if isCachedModule(g, m):
-    result = nil
-    for s in interfaceSymbols(g.config, g.cache, g.packed, FileIndex(m.position), name, importHidden):
-      if result == nil:
-        # set result to the first symbol
-        result = s
-      else:
-        # another symbol found
-        amb = true
-        break
-  else:
-    var ti: TIdentIter = default(TIdentIter)
-    result = initIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden), name)
-    if result != nil and nextIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden)) != nil:
-      # another symbol exists with same name
-      amb = true
+  var ti: TIdentIter = default(TIdentIter)
+  result = initIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden), name)
+  if result != nil and nextIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden)) != nil:
+    # another symbol exists with same name
+    amb = true
 
 proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
   result = someSym(g, g.systemModule, name)
@@ -307,109 +257,113 @@ iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
     yield r
     r = nextModuleIter(mi, g)
 
-proc resolveType(g: ModuleGraph; t: var LazyType): PType =
-  result = t.typ
-  if result == nil and isCachedModule(g, t.id.module):
-    result = loadTypeFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
-    t.typ = result
-  assert result != nil
-
-proc resolveSym(g: ModuleGraph; t: var LazySym): PSym =
-  result = t.sym
-  if result == nil and isCachedModule(g, t.id.module):
-    result = loadSymFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
-    t.sym = result
-  assert result != nil
-
-proc resolveInst(g: ModuleGraph; t: var LazyInstantiation): PInstantiation =
-  result = t.inst
-  if result == nil and isCachedModule(g, t.module):
-    result = PInstantiation(sym: loadSymFromId(g.config, g.cache, g.packed, t.sym.module, t.sym.packed))
-    result.concreteTypes = newSeq[PType](t.concreteTypes.len)
-    for i in 0..high(result.concreteTypes):
-      result.concreteTypes[i] = loadTypeFromId(g.config, g.cache, g.packed,
-          t.concreteTypes[i].module, t.concreteTypes[i].packed)
-    t.inst = result
-  assert result != nil
-
-proc resolveAttachedOp*(g: ModuleGraph; t: var LazySym): PSym =
-  result = t.sym
-  if result == nil:
-    result = loadSymFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
-    t.sym = result
-  assert result != nil
-
 iterator typeInstCacheItems*(g: ModuleGraph; s: PSym): PType =
   if g.typeInstCache.contains(s.itemId):
     let x = addr(g.typeInstCache[s.itemId])
     for t in mitems(x[]):
-      yield resolveType(g, t)
+      yield t
 
 iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
   if g.procInstCache.contains(s.itemId):
     let x = addr(g.procInstCache[s.itemId])
     for t in mitems(x[]):
-      yield resolveInst(g, t)
+      yield t
 
 
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
   if g.attachedOps[op].contains(t.itemId):
-    result = resolveAttachedOp(g, g.attachedOps[op][t.itemId])
+    result = g.attachedOps[op][t.itemId]
+  elif g.config.cmd in {cmdNifC, cmdM}:
+    # Fall back to key-based lookup for NIF-loaded hooks
+    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+    result = g.loadedOps[op].getOrDefault(key)
+    #echo "fallback ", key, " ", op, " ", result
   else:
     result = nil
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = LazySym(sym: value)
+  if not g.attachedOps[op].contains(t.itemId):
+    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+    # Use key-based deduplication for opsLog because different type objects
+    # (e.g. canon vs orig) can have different itemIds but same structural key
+    if key notin g.loadedOps[op]:
+      # Hooks should be written to the module where the type is defined,
+      # not the module that triggered the registration
+      let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
+      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: ownerModule, key: key, sym: value)
+      g.loadedOps[op][key] = value
+  g.attachedOps[op][t.itemId] = value
+
+proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
+  ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
+  g.attachedOps[op][typeId] = value
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = LazySym(sym: value)
+  g.attachedOps[op][t.itemId] = value
 
-proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
-  if g.config.symbolFiles != disabledSf:
-    assert module < g.encoders.len
-    assert isActive(g.encoders[module])
-    toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
-    #storeAttachedProcDef(t, op, value, g.encoders[module], g.packed[module].fromDisk)
+proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) {.inline.} =
+  discard
 
 iterator getDispatchers*(g: ModuleGraph): PSym =
   for i in g.dispatchers.mitems:
-    yield resolveSym(g, i)
+    yield i
 
 proc addDispatchers*(g: ModuleGraph, value: PSym) =
   # TODO: add it for packed modules
-  g.dispatchers.add LazySym(sym: value)
+  g.dispatchers.add value
 
-iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[LazySym]): PSym =
+iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[PSym]): PSym =
   for it in list.mitems:
-    yield resolveSym(g, it)
+    yield it
 
-proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[LazySym]) =
+proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[PSym]) =
   # TODO: add it for packed modules
   g.methodsPerType[id] = methods
+
+proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
+  ## Stores a replay action for NIF-based incremental compilation.
+  g.nifReplayActions.mgetOrPut(module, @[]).add n
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
   if g.methodsPerType.contains(t.itemId):
     for it in mitems g.methodsPerType[t.itemId]:
-      yield resolveSym(g, it)
+      yield it
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
-  result = resolveSym(g, g.enumToStringProcs[t.itemId])
+  result = g.enumToStringProcs.getOrDefault(t.itemId)
+  if result == nil and g.config.cmd in {cmdNifC, cmdM}:
+    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+    result = g.loadedEnumToStringProcs.getOrDefault(key)
   assert result != nil
 
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
-  g.enumToStringProcs[t.itemId] = LazySym(sym: value)
+  g.enumToStringProcs[t.itemId] = value
+  let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: value.itemId.module.int
+  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: ownerModule, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerGenericType.contains(t.itemId):
     for it in mitems g.methodsPerGenericType[t.itemId]:
-      yield (it[0], resolveSym(g, it[1]))
+      yield (it[0], it[1])
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
-  g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
+  g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, m)
+  let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
+  g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
+
+proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
+  ## Log a generic instance so it gets written to the NIF file.
+  ## This is needed when generic instances are created during compile-time
+  ## evaluation and may be referenced from other modules compiled in the same run.
+  if g.config.cmd in {cmdNifC, cmdM}:
+    let ownerModule = inst.itemId.module.int
+    g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)
@@ -423,21 +377,31 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   result = nil
-  if g.config.symbolFiles == disabledSf: return nil
+  if g.config.symbolFiles == disabledSf and optWithinConfigSystem notin g.config.globalOptions:
+    # For NIF-based compilation, search in loaded NIF modules
+    when not defined(nimKochBootstrap):
+      # Try to resolve from NIF for both cmdNifC and cmdM (which uses NIF files)
+      if g.config.cmd in {cmdNifC, cmdM}:
+        # First try system module (most compilerprocs are there)
+        let systemFileIdx = g.config.m.systemFileIdx
+        if systemFileIdx != InvalidFileIdx and not g.withinSystem:
+          # Only try to load from NIF if the file exists (it may not during initial ic build)
+          result = tryResolveCompilerProc(ast.program, name, systemFileIdx)
+          if result != nil:
+            strTableAdd(g.compilerprocs, result)
+            return result
 
-  # slow, linear search, but the results are cached:
-  for module in 0..<len(g.packed):
-    #if isCachedModule(g, module):
-    let x = searchForCompilerproc(g.packed[module], name)
-    if x >= 0:
-      result = loadSymFromId(g.config, g.cache, g.packed, module, toPackedItemId(x))
-      if result != nil:
-        strTableAdd(g.compilerprocs, result)
-      return result
-
-proc loadPackedSym*(g: ModuleGraph; s: var LazySym) =
-  if s.sym == nil:
-    s.sym = loadSymFromId(g.config, g.cache, g.packed, s.id.module, s.id.packed)
+        # Try threadpool module (some compilerprocs like FlowVar are there)
+        # Find threadpool module by searching loaded modules
+        for moduleIdx in 0..<g.ifaces.len:
+          let module = g.ifaces[moduleIdx].module
+          if module != nil and module.name.s == "threadpool":
+            let threadpoolFileIdx = module.position.FileIndex
+            result = tryResolveCompilerProc(ast.program, name, threadpoolFileIdx)
+            if result != nil:
+              strTableAdd(g.compilerprocs, result)
+              return result
+    return nil
 
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
@@ -525,15 +489,13 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   if m.position >= g.ifaces.len:
     setLen(g.ifaces, m.position + 1)
 
-  if m.position >= g.packed.len:
-    setLen(g.packed.pm, m.position + 1)
-
-  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
-                               uniqueName: rope(uniqueModuleName(g.config, m)))
-  initStrTables(g, m)
+  if g.ifaces[m.position].module == nil:
+    g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
+                                uniqueName: rope(uniqueModuleName(g.config, m)))
+    initStrTables(g, m)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
-  registerModule(g, g.packed[int m].module)
+  registerModule(g, g.ifaces[int m].module)
 
 proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
@@ -580,12 +542,14 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.operators = initOperators(result)
   result.emittedTypeInfo = initTable[string, FileIndex]()
   result.cachedFiles = newStringTable()
+  result.cachedMods = initIntSet()
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   result.config = config
   result.cache = cache
   initModuleGraphFields(result)
+  ast.setupProgram(config, cache)
 
 proc resetAllModules*(g: ModuleGraph) =
   g.packageSyms = initStrTable()
@@ -601,49 +565,13 @@ proc resetAllModules*(g: ModuleGraph) =
   initModuleGraphFields(g)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
-  result = nil
-  if fileIdx.int32 >= 0:
-    if isCachedModule(g, fileIdx.int32):
-      result = g.packed[fileIdx.int32].module
-    elif fileIdx.int32 < g.ifaces.len:
-      result = g.ifaces[fileIdx.int32].module
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.ifaces.len:
+    result = g.ifaces[fileIdx.int32].module
+  else:
+    result = nil
 
 proc moduleOpenForCodegen*(g: ModuleGraph; m: FileIndex): bool {.inline.} =
-  if g.config.symbolFiles == disabledSf:
-    result = true
-  else:
-    result = g.packed[m.int32].status notin {undefined, stored, loaded}
-
-proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
-  #assert(not isCachedModule(g, m.int32))
-  if g.config.symbolFiles != disabledSf:
-    #assert g.encoders[m.int32].isActive
-    assert g.packed[m.int32].status != stored
-    g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
-    #echo "added typeinfo ", m.int32, " ", ti, " suspicious ", not g.encoders[m.int32].isActive
-
-proc rememberFlag*(g: ModuleGraph; m: PSym; flag: ModuleBackendFlag) =
-  if g.config.symbolFiles != disabledSf:
-    #assert g.encoders[m.int32].isActive
-    assert g.packed[m.position].status != stored
-    g.packed[m.position].fromDisk.backendFlags.incl flag
-
-proc closeRodFile*(g: ModuleGraph; m: PSym) =
-  if g.config.symbolFiles in {readOnlySf, v2Sf}:
-    # For stress testing we seek to reload the symbols from memory. This
-    # way much of the logic is tested but the test is reproducible as it does
-    # not depend on the hard disk contents!
-    let mint = m.position
-    saveRodFile(toRodFile(g.config, AbsoluteFile toFullPath(g.config, FileIndex(mint))),
-                g.encoders[mint], g.packed[mint].fromDisk)
-    g.packed[mint].status = stored
-
-  elif g.config.symbolFiles == stressTest:
-    # debug code, but maybe a good idea for production? Could reduce the compiler's
-    # memory consumption considerably at the cost of more loads from disk.
-    let mint = m.position
-    simulateCachedModule(g, m, g.packed[mint].fromDisk)
-    g.packed[mint].status = loaded
+  result = true
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
@@ -681,13 +609,13 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   if m != nil:
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
-    incl m.flags, sfDirty
+    incl m.flagsImpl, sfDirty
 
 proc unmarkAllDirty*(g: ModuleGraph) =
   for i in 0i32..<g.ifaces.len.int32:
     let m = g.ifaces[i].module
     if m != nil:
-      m.flags.excl sfDirty
+      m.flagsImpl.excl sfDirty
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags
@@ -727,23 +655,59 @@ proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   result = s.ast[bodyPos]
-  if result == nil and g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
-    result = loadProcBody(g.config, g.cache, g.packed, s)
-    s.ast[bodyPos] = result
   assert result != nil
 
-proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
-                        cachedModules: var seq[FileIndex]): PSym =
-  ## Returns 'nil' if the module needs to be recompiled.
-  if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
-    result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
-  else:
-    result = nil
+when not defined(nimKochBootstrap):
+  proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
+                          flags: set[LoadFlag] = {}): PrecompiledModule =
+    ## Returns 'nil' if the module needs to be recompiled.
+    ## Loads module from NIF file when optCompress is enabled.
+    ## When loadFullAst is true, loads the complete module AST for code generation.
+    if not fileExists(toNifFilename(g.config, fileIdx)):
+      return PrecompiledModule(module: nil)
+
+    # Create module symbol
+    let filename = AbsoluteFile toFullPath(g.config, fileIdx)
+
+    let m = PSym(
+      kindImpl: skModule,
+      itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+      name: getIdent(g.cache, splitFile(filename).name),
+      infoImpl: newLineInfo(fileIdx, 1, 1),
+      positionImpl: int(fileIdx))
+    setOwner(m, getPackage(g.config, g.cache, fileIdx))
+    # Register module in graph
+    registerModule(g, m)
+
+    result = loadNifModule(ast.program, fileIdx,
+                           g.ifaces[fileIdx.int].interf,
+                           g.ifaces[fileIdx.int].interfHidden, flags)
+    result.module = m
+
+    # Mark module as cached
+    g.cachedMods.incl fileIdx.int
+
+    # Register hooks from NIF index with the module graph
+    for x in result.logOps:
+      case x.kind
+      of HookEntry:
+        g.loadedOps[x.op][x.key] = x.sym
+      of ConverterEntry:
+        g.ifaces[fileIdx.int].converters.add x.sym
+      of MethodEntry:
+        discard "todo"
+      of EnumToStrEntry:
+        g.loadedEnumToStringProcs[x.key] = x.sym
+      of GenericInstEntry:
+        raiseAssert "GenericInstEntry should not be in the NIF index"
+    # Register methods per type from NIF index
+    discard "todo"
 
 proc configComplete*(g: ModuleGraph) =
-  rememberStartupConfig(g.startupPackedConfig, g.config)
+  #rememberStartupConfig(g.startupPackedConfig, g.config)
+  discard
 
-proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym, ) =
+proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym) =
   let conf = graph.config
   let isNimscript = conf.isDefined("nimscript")
   if (not isNimscript) or hintProcessing in conf.cmdlineNotes:
@@ -764,7 +728,7 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     result = pkgSym
     graph.packageSyms.strTableAdd(pkgSym)
 
-func belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
+proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
   sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
 

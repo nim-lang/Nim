@@ -128,7 +128,7 @@ proc getContentLength*(): string =
 
 proc getContentType*(): string =
   ## Returns contents of the `CONTENT_TYPE` environment variable.
-  return getEnv("CONTENT_Type")
+  return getEnv("CONTENT_TYPE")
 
 proc getDocumentRoot*(): string =
   ## Returns contents of the `DOCUMENT_ROOT` environment variable.
@@ -289,11 +289,14 @@ Content-Type: text/html
 proc writeErrorMessage*(data: string) =
   ## Tries to reset browser state and writes `data` to stdout in
   ## <plaintext> tag.
-  resetForStacktrace()
-  # We use <plaintext> here, instead of escaping, so stacktrace can
-  # be understood by human looking at source.
-  stdout.write("<plaintext>\n")
-  stdout.write(data)
+  try:
+    resetForStacktrace()
+    # We use <plaintext> here, instead of escaping, so stacktrace can
+    # be understood by human looking at source.
+    stdout.write("<plaintext>\n")
+    stdout.write(data)
+  except IOError as exc:
+    discard # Too bad..
 
 proc setStackTraceStdout*() =
   ## Makes Nim output stacktraces to stdout, instead of server log.

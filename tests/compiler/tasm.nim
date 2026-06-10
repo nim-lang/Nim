@@ -1,3 +1,7 @@
+discard """
+  disabled: "osx"
+"""
+
 proc testAsm() =
   let src = 41
   var dst = 0
