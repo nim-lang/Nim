@@ -10,7 +10,7 @@
 ## AST to NIF bridge.
 
 import std / [assertions, tables, sets]
-from std / strutils import startsWith
+from std / strutils import startsWith, endsWith, contains
 from std / os import fileExists
 import astdef, idents, msgs, options
 import lineinfos as astli
@@ -144,7 +144,7 @@ const
   symDefTagName = "sd"
   typeDefTagName = "td"
 
-let
+var
   sdefTag = registerTag(symDefTagName)
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
@@ -173,10 +173,24 @@ proc isLocalSym(sym: PSym): bool {.inline.} =
   ## size/speed can be optimised later.
   false
 
+const
+  PkgMarker = "`pkg"
+    ## Appended to the ident of `skPackage` symbols in NIF names. A package sym
+    ## has no module of its own: it is written once into every module NIF that
+    ## references it, named with that module's suffix and its own (independent)
+    ## disamb counter. Without the marker it can collide with a module-level
+    ## symbol of the same name and disamb — e.g. extccomp's `compiler` template
+    ## vs the `compiler` package — and the module sym's owner then resolves to
+    ## the wrong symbol on load, producing a cyclic owner chain that hangs every
+    ## owner-walk (sighashes.hashSym etc.). Backtick cannot appear in a Nim
+    ## identifier, mirroring the "`t" namespace used by `typeToNifSym`.
+
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
   ## global names are `ident.disamb.moduleSuffix`
   result = sym.name.s
+  if sym.kindImpl == skPackage:
+    result.add PkgMarker
   result.add '.'
   result.addInt sym.disamb
   if not isLocalSym(sym) and sym.itemId notin w.locals:
@@ -424,11 +438,24 @@ proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
 proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif shouldWriteSymDef(w, sym):
+    return
+  # Compare lazy-aware, not the raw field: a sym node loaded from a NIF carries
+  # `typField == nil` plus `nfLazyType`, meaning "my type is the symbol's
+  # type". Comparing `typField` directly would re-serialize such a node as
+  # `(ht . sym)` — an explicitly nil node type — and the next loader gets a
+  # nil-typed node *without* the lazy fallback (semfold & friends crash on
+  # `n.typ == nil`). Only a genuinely nil node type keeps the explicit form.
+  # (ast.nim's `typ` accessor is not importable here; replicate its fallback.
+  # For a still-Partial sym `typImpl` is nil, which also compares equal below
+  # and yields the plain SymUse form — exactly the lazy round-trip we want.)
+  var nodeTyp = n.typField
+  if nodeTyp == nil and nfLazyType in n.flags:
+    nodeTyp = sym.typImpl
+  if shouldWriteSymDef(w, sym):
     sym.state = Sealed
-    if n.typField != n.sym.typImpl:
+    if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
-        writeType(w, dest, n.typField)
+        writeType(w, dest, nodeTyp)
         writeSymDef(w, dest, sym)
     else:
       writeSymDef(w, dest, sym)
@@ -436,9 +463,9 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
     let info = trLineInfo(w, n.info)
-    if n.typField != n.sym.typImpl:
+    if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, info:
-        writeType(w, dest, n.typField)
+        writeType(w, dest, nodeTyp)
         dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
     else:
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
@@ -517,21 +544,49 @@ proc trExport(w: var Writer; n: PNode) =
         w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(s)), NoLineInfo
   w.deps.addParRi
 
-let replayTag = registerTag("replay")
-let repConverterTag = registerTag("repconverter")
-let repDestroyTag = registerTag("repdestroy")
-let repWasMovedTag = registerTag("repwasmoved")
-let repCopyTag = registerTag("repcopy")
-let repSinkTag = registerTag("repsink")
-let repDupTag = registerTag("repdup")
-let repTraceTag = registerTag("reptrace")
-let repDeepCopyTag = registerTag("repdeepcopy")
-let repEnumToStrTag = registerTag("repenumtostr")
-let repMethodTag = registerTag("repmethod")
-#let repClassTag = registerTag("repclass")
-let includeTag = registerTag("include")
-let importTag = registerTag("import")
-let implTag = registerTag("implementation")
+var replayTag = registerTag("replay")
+var repConverterTag = registerTag("repconverter")
+var repDestroyTag = registerTag("repdestroy")
+var repWasMovedTag = registerTag("repwasmoved")
+var repCopyTag = registerTag("repcopy")
+var repSinkTag = registerTag("repsink")
+var repDupTag = registerTag("repdup")
+var repTraceTag = registerTag("reptrace")
+var repDeepCopyTag = registerTag("repdeepcopy")
+var repEnumToStrTag = registerTag("repenumtostr")
+var repMethodTag = registerTag("repmethod")
+#var repClassTag = registerTag("repclass")
+var includeTag = registerTag("include")
+var importTag = registerTag("import")
+var implTag = registerTag("implementation")
+
+proc registerNifAstTags*() =
+  ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
+  ## initializers above depend on `nifstreams.pool` having been initialized
+  ## FIRST (`pool = createLiterals(TagData)` in nifstreams' module init) — an
+  ## inter-module init-order requirement. The IC-built compiler currently emits
+  ## module init calls in a different order, so the initializers registered
+  ## into a pool that was subsequently replaced: the tag ids then denoted
+  ## builtin tags (`replay` came out as `deref`, `repdestroy` as `pat`, ...)
+  ## and every written NIF was silently corrupted. Called from `nim.nim`
+  ## before any command runs; idempotent (`getOrIncl` by name).
+  sdefTag = registerTag(symDefTagName)
+  tdefTag = registerTag(typeDefTagName)
+  hiddenTypeTag = registerTag(hiddenTypeTagName)
+  replayTag = registerTag("replay")
+  repConverterTag = registerTag("repconverter")
+  repDestroyTag = registerTag("repdestroy")
+  repWasMovedTag = registerTag("repwasmoved")
+  repCopyTag = registerTag("repcopy")
+  repSinkTag = registerTag("repsink")
+  repDupTag = registerTag("repdup")
+  repTraceTag = registerTag("reptrace")
+  repDeepCopyTag = registerTag("repdeepcopy")
+  repEnumToStrTag = registerTag("repenumtostr")
+  repMethodTag = registerTag("repmethod")
+  includeTag = registerTag("include")
+  importTag = registerTag("import")
+  implTag = registerTag("implementation")
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
   if n == nil:
@@ -871,6 +926,9 @@ proc setMainModule*(c: var DecodeContext; fileIdx: FileIndex) =
   ## Records the module that is being compiled fresh so that re-exports of its
   ## own symbols by dependencies are not turned into duplicate stubs.
   c.mainModuleSuffix = modname(fileIdx.int, c.infos.config)
+
+proc getMainModuleSuffix*(c: DecodeContext): string {.inline.} =
+  c.mainModuleSuffix
 
 proc loadedState(c: DecodeContext): ItemState {.inline.} =
   ## State to give a freshly loaded symbol or type. During the C code generation
@@ -1221,6 +1279,11 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   {.cast(uncheckedAssign).}:
     s.kindImpl = parse(TSymKind, pool.tags[n.tagId])
   inc n
+
+  if s.kindImpl == skPackage and s.name.s.endsWith(PkgMarker):
+    # Stubs keep the marked NIF ident (see PkgMarker) so that `globalName`
+    # reconstructs the index key; the in-memory sym gets the real name back.
+    s.name = c.cache.getIdent(s.name.s[0 ..< s.name.s.len - PkgMarker.len])
 
   case s.kindImpl
   of skLet, skVar, skField, skForVar:
@@ -1675,6 +1738,7 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         #elif t.tagId == repClassTag:
         #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace, module)
       elif t.tagId == exportTag:
+        var lastGood = ""
         t = next(s)  # skip (export
         if t.kind == DotToken:
           t = next(s) # skip dot
@@ -1683,20 +1747,30 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         while true:
           if t.kind == Symbol:
             let symAsStr = pool.syms[t.symId]
+            lastGood = symAsStr
             # Skip symbols that are re-exported by this dependency but actually
             # belong to the module we are compiling fresh: loading them as stubs
             # would shadow/collide with the freshly compiled originals.
             if c.mainModuleSuffix.len == 0 or
                parseSymName(symAsStr).module != c.mainModuleSuffix:
+              # Resolving an exported symbol of this very module (`export` of a
+              # symbol that lives in a `when` branch of the same file) lazily
+              # loads it from the stream we are currently iterating, moving the
+              # cursor into the symbol's `(sd ...)` definition. Save/restore the
+              # position so the export-list parse continues where it left off.
+              let saved = offset(s.r)
               let sym = resolveSym(c, symAsStr, false)
               if sym != nil:
                 strTableAdd(interf, sym)
                 addReexportedEnumFields(c, sym, interf)
+              s.r.jumpTo(saved)
             t = next(s)
           elif t.kind == ParRi:
             break
           else:
-            raiseAssert "expected Symbol or ParRi but got " & $t.kind
+            raiseAssert "expected Symbol or ParRi but got " & $t.kind &
+              " (" & (if t.kind == ParLe: pool.tags[t.tagId] else: "") &
+              ") in export list of module " & suffix & ", last symbol: " & lastGood
         t = next(s)
       elif t.tagId == includeTag:
         t = skipTree(s)

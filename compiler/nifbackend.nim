@@ -24,6 +24,7 @@ when defined(nimPreviewSlimSystem):
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif
+import ic / replayer
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PrecompiledModule] =
   ## Traverse the module dependency graph using a stack.
@@ -62,7 +63,7 @@ proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
   ## Set up a BModule for code generation from a NIF module.
   if g.backend == nil:
     g.backend = cgendata.newModuleList(g)
-  result = cgen.newModule(BModuleList(g.backend), module, g.config, idGeneratorFromModule(module))
+  result = cgen.newModule(BModuleList(g.backend), module, g.config, idGeneratorForBackend(module))
 
 proc finishModule(g: ModuleGraph; bmod: BModule) =
   # Finalize the module (this adds it to modulesClosed)
@@ -80,6 +81,10 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   var bmod = BModuleList(g.backend).mods[moduleId]
   if bmod == nil:
     bmod = setupNifBackendModule(g, precomp.module)
+
+  # Apply the module's recorded C compile/link directives (passl/passc/...)
+  # before generating code: the link step needs them (e.g. math's -lm).
+  replayBackendActions(g, precomp.module, precomp.topLevel)
 
   # Generate code for the module's top-level statements
   if precomp.topLevel != nil:

@@ -52,7 +52,17 @@ proc hashSym(c: var MD5Context, s: PSym) =
     c &= ":anon"
   else:
     var it = s
+    when defined(icDbgHash):
+      var ownerSteps = 0
     while it != nil:
+      when defined(icDbgHash):
+        inc ownerSteps
+        if ownerSteps >= 1000 and ownerSteps <= 1030:
+          echo "OWNERLOOP(hashSym) n=", ownerSteps, " sym=", it.name.s, " kind=", it.kind,
+            " id=", it.itemId, " flags=", it.flags, " state=", it.state,
+            " start=", s.name.s, " startId=", s.itemId
+        elif ownerSteps == 1031:
+          raiseAssert "owner-chain cycle detected, see OWNERLOOP dump above"
       c &= it.name.s
       c &= "."
       it = it.owner
@@ -65,7 +75,17 @@ proc hashTypeSym(c: var MD5Context, s: PSym; conf: ConfigRef) =
   else:
     var it = s
     c &= customPath(conf.toFullPath(s.info))
+    when defined(icDbgHash):
+      var ownerSteps = 0
     while it != nil:
+      when defined(icDbgHash):
+        inc ownerSteps
+        if ownerSteps >= 1000 and ownerSteps <= 1030:
+          echo "OWNERLOOP n=", ownerSteps, " sym=", it.name.s, " kind=", it.kind,
+            " id=", it.itemId, " flags=", it.flags, " state=", it.state,
+            " start=", s.name.s, " startId=", s.itemId
+        elif ownerSteps == 1031:
+          raiseAssert "owner-chain cycle detected, see OWNERLOOP dump above"
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
         hashType c, it.typ, {CoProc}, conf
@@ -102,10 +122,28 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]; conf: Confi
   else:
     for i in 0..<n.len: hashTree(c, n[i], flags, conf)
 
+when defined(icDbgHash):
+  var hashDepth = 0
+  var hashCalls = 0
+  var hashMaxDepth = 0
+
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
     c &= "\254"
     return
+  when defined(icDbgHash):
+    inc hashDepth
+    inc hashCalls
+    if hashDepth > hashMaxDepth: hashMaxDepth = hashDepth
+    if hashCalls >= 500_000_000 and hashCalls <= 500_000_300:
+      echo "HASHLOOP n=", hashCalls, " d=", hashDepth, " kind=", t.kind, " id=", t.itemId,
+        " uniq=", t.uniqueId, " sym=", (if t.sym != nil: t.sym.name.s else: "NIL"),
+        " state=", t.state, " owner=", (if t.owner != nil: t.owner.name.s else: "NIL")
+    elif hashCalls == 500_000_301:
+      echo "HASHLOOP maxDepth=", hashMaxDepth
+      raiseAssert "hashType runaway detected, see HASHLOOP dump above"
+    defer:
+      dec hashDepth
 
   # Ensure type is fully loaded before hashing to avoid hash changing
   # as properties are accessed and trigger lazy loading.
@@ -248,6 +286,29 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
         c.hashType(param.typ, flags, conf)
         c &= ','
       c.hashType(t.returnType, flags, conf)
+    elif t.n != nil and t.n.kind == nkFormalParams:
+      # Under IC a loaded proc type stores its parameters only in `n`; `sons`
+      # holds just the return type. Hashing `t.signature` would silently drop
+      # every parameter, collapsing distinct proc types onto one hash, so the
+      # same logical type got different C struct names in different TUs
+      # ("incompatible type for argument" on closure args). Hash the return
+      # type first and then the parameter types from `n` — for from-source
+      # types `n`'s param types equal `sons[1..]`, so non-IC hashes are
+      # unchanged. (Same fix as typekeys' tyProc branch.)
+      c.hashType(t.returnType, flags, conf)
+      for i in 1..<t.n.len:
+        let p = t.n[i]
+        if p.kind == nkSym:
+          backendEnsureMutable(p.sym)
+          # The hidden closure env param: under IC, lambda lifting shares the
+          # routine's AST params with `typ.n`, so the lifted `:envP` leaks into
+          # the TYPE's params (from-source types never carry it). It is not part
+          # of the type's identity — `genProcParams` skips it the same way.
+          if t.callConv == ccClosure and p.sym.name.s == ":envP":
+            continue
+          c.hashType(p.sym.typ, flags, conf)
+        else:
+          c.hashType(p.typ, flags, conf)
     else:
       for a in t.signature: c.hashType(a, flags, conf)
     c &= char(t.callConv)

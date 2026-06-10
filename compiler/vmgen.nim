@@ -46,7 +46,7 @@ const
 
 when debugEchoCode:
   import std/private/asciitables
-when hasFFI:
+when defined(nimHasLibFFI): # == hasFFI; spelled out for the IC dep scanner
   import evalffi
 
 type

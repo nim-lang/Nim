@@ -517,6 +517,25 @@ proc idGeneratorFromModule*(m: PSym): IdGenerator =
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
   result.disambTable.inc m.name
 
+const BackendIdOffset* = 10_000_000'i32
+  ## Base for symbol/type ids minted by `idGeneratorForBackend`; ids at or
+  ## above this offset identify backend-minted (IC codegen) entities.
+
+proc idGeneratorForBackend*(m: PSym): IdGenerator =
+  ## Like `idGeneratorFromModule`, but for IC codegen (`nim nifc`): symbols and
+  ## types minted fresh during codegen (transf labels/temps, lifted hooks, type
+  ## copies) must not collide with the itemIds the NIF loader synthesizes for
+  ## lazily-loaded symbols/types of the same module — those come from a
+  ## per-module load-order counter that keeps running while codegen mints its
+  ## own ids. A collision corrupts itemId-keyed tables, e.g. `transf`'s inline
+  ## iterator mapping then substitutes a random loaded sym (a call's callee)
+  ## with a `:tmp` block label. Start far above any realistic loaded count so
+  ## the two id spaces stay disjoint.
+  assert m.kind == skModule
+  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item + BackendIdOffset,
+                       typeId: BackendIdOffset, disambTable: initCountTable[PIdent]())
+  result.disambTable.inc m.name
+
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
   result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
 
@@ -1057,6 +1076,11 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
+  when defined(icDbg):
+    if kind == tyOpenArray:
+      echo "NEWTYPE openArray id=", id.module, ".", id.item,
+        " owner=", (if owner != nil: owner.name.s else: "nil")
+      echo getStackTrace()
 
 proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} =
   assert dest.kind != tyProc or sons.len <= 1

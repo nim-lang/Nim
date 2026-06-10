@@ -61,12 +61,24 @@ proc mangleProcNameExt*(graph: ModuleGraph, s: PSym): string =
   # collision-free: the mangled base name plus `disamb` already disambiguate.
   if s.itemId.module >= 0 and s.itemId.module < graph.ifaces.len:
     result.add graph.ifaces[s.itemId.module].uniqueName
-  result.add "_u"
-  # Use `disamb` rather than `itemId.item`: under incremental compilation a
-  # symbol loaded from a NIF file gets a fresh, load-order-dependent `itemId.item`
-  # (from the per-module symbol counter), which is neither stable across the
-  # processes that compile vs. use a module nor guaranteed distinct from another
-  # loaded symbol's. `disamb` is assigned deterministically per (module, name)
-  # and, together with the already-prepended mangled name, yields a unique and
-  # stable C identifier.
-  result.addInt s.disamb
+  if s.itemId.item >= BackendIdOffset:
+    # A symbol minted during IC codegen (`idGeneratorForBackend`): its idgen
+    # starts with an EMPTY per-name disamb table, so its `disamb` restarts at 0
+    # and collides with same-named sem-time symbols loaded from NIFs (two
+    # `=destroy` hooks both mangling to `_u2` → "conflicting types for ..." in
+    # the generated C). These symbols never cross a process boundary (nifc
+    # lifts, emits and compiles them in one run), so the per-module-unique
+    # item id is a safe and deterministic discriminator; the `_c` marker keeps
+    # the namespace disjoint from `_u<disamb>`.
+    result.add "_c"
+    result.addInt s.itemId.item - BackendIdOffset
+  else:
+    result.add "_u"
+    # Use `disamb` rather than `itemId.item`: under incremental compilation a
+    # symbol loaded from a NIF file gets a fresh, load-order-dependent `itemId.item`
+    # (from the per-module symbol counter), which is neither stable across the
+    # processes that compile vs. use a module nor guaranteed distinct from another
+    # loaded symbol's. `disamb` is assigned deterministically per (module, name)
+    # and, together with the already-prepended mangled name, yields a unique and
+    # stable C identifier.
+    result.addInt s.disamb

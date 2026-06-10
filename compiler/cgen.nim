@@ -51,7 +51,7 @@ when not declared(dynlib.libCandidates):
     else:
       dest.add(s)
 
-when options.hasTinyCBackend:
+when defined(tinyc): # == hasTinyCBackend; spelled out for the IC dep scanner
   import tccgen
 
 proc hcrOn(m: BModule): bool = m.config.hcrOn
@@ -71,11 +71,11 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
     var ms = getModule(s)
     registerModule m.g.graph, ms
     if ms.position >= m.g.mods.len:
-      result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
+      result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
     else:
       result = m.g.mods[ms.position]
       if result == nil:
-        result = newModule(m.g, ms, m.config, idGeneratorFromModule(ms))
+        result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
   else:
     var ms = getModule(s)
     result = m.g.mods[ms.position]

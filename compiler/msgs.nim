@@ -511,6 +511,9 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
   ## 1-based index (matches editor line numbers); 1st line is for i.line = 1
   ## last valid line is `numLines` inclusive
   if i.fileIndex.int32 < 0: return ""
+  # line 0 means "unknown": nodes synthesized from an IC-loaded template or
+  # macro body carry no source position.
+  if i.line.int < 1: return ""
   let num = numLines(conf, i.fileIndex)
   # can happen if the error points to EOF:
   if i.line.int > num: return ""

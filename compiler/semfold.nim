@@ -610,6 +610,11 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     var s = n.sym
     case s.kind
     of skEnumField:
+      when defined(icDbg):
+        if n.typ == nil:
+          echo "ENUMFIELD niltyp sym=", s.name.s, " symtyp=",
+            (if s.typ == nil: "nil" else: $s.typ.kind), " lazy=", nfLazyType in n.flags,
+            " symstate=", s.state, " symid=", s.itemId
       result = newIntNodeT(toInt128(s.position), n, idgen, g)
     of skConst:
       case s.magic

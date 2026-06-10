@@ -711,6 +711,11 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       doAssert t.asink != nil
       body.add newHookCall(c, t.asink, x, y)
   of attachedDestructor:
+    when defined(icDbg):
+      if t.destructor == nil:
+        echo "MISSING destructor: ", typeToString(t), " kind=", t.kind,
+          " itemId=", t.itemId, " uniqueId=", t.uniqueId, " state=", t.state,
+          " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:

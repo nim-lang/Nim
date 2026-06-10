@@ -732,6 +732,15 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
+  when defined(icDbg):
+    if result == nil and f != nil and a != nil and f.kind == tyEnum:
+      echo "INDEXMISMATCH f=", typeToString(f), " itemId=", f.itemId,
+        " uniqueId=", f.uniqueId, " mod=", toFullPath(c.config, f.itemId.module.FileIndex),
+        " sym=", (if f.sym != nil: $f.sym.itemId else: "nil"), " state=", f.state
+      let a2 = a.skipTypes({tyRange})
+      echo "  a=", typeToString(a), " itemId=", a2.itemId, " uniqueId=", a2.uniqueId,
+        " mod=", toFullPath(c.config, a2.itemId.module.FileIndex),
+        " sym=", (if a2.sym != nil: $a2.sym.itemId else: "nil"), " state=", a2.state
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode =

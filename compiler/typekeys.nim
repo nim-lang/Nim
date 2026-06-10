@@ -70,14 +70,26 @@ proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
     name.add '.'
     name.addInt s.disamb
 
+    # The owner may still be an unloaded stub (kind `skStub`): force it in
+    # before inspecting its kind, otherwise the module suffix is silently
+    # dropped from the key and def-vs-use keys diverge — e.g. `Lexer`'s base
+    # class keyed as `TBaseLexer.0.` at nifc vs `TBaseLexer.0.nimqydn3y` at
+    # sem time, making `getAttachedOp` miss ("'=destroy' operator not found").
+    template forceLoaded(x: PSym): PSym =
+      let tmp = x
+      if tmp != nil and tmp.state == Partial and c.sl != nil: c.sl(tmp)
+      tmp
+
+    let owner = forceLoaded(s.ownerFieldImpl)
     let it =
       if s.kindImpl == skModule:
         s
-      elif s.kindImpl in skProcKinds and sfFromGeneric in s.flagsImpl and s.ownerFieldImpl.kindImpl != skModule:
-        s.ownerFieldImpl.ownerFieldImpl
+      elif s.kindImpl in skProcKinds and sfFromGeneric in s.flagsImpl and
+           owner != nil and owner.kindImpl != skModule:
+        forceLoaded(owner.ownerFieldImpl)
       else:
-        s.ownerFieldImpl
-    if it.kindImpl == skModule:
+        owner
+    if it != nil and it.kindImpl == skModule:
       name.add '.'
       name.add modname(it, conf)
     c.m.addSymbol(name)
@@ -277,7 +289,12 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
             c.symKey(t.nImpl[i].sym, conf)
             c.typeKey(t.nImpl[i].sym.typImpl, flags+{CoIgnoreRange}, conf)
       else:
-        for i in 1..<t.sonsImpl.len:
+        # ALL sons are tuple fields (son 0 included — unlike tyProc, where
+        # son 0 is the return type). Starting at 1 dropped the first field,
+        # collapsing e.g. `(PSym, NifIndexEntry)` and `(PType, NifIndexEntry)`
+        # onto one key, so hook lookup called the wrong `=destroy`/`=sink`
+        # (incompatible-argument C errors). Mirrors sighashes' `for a in t.kids`.
+        for i in 0..<t.sonsImpl.len:
           c.typeKey t.sonsImpl[i], flags+{CoIgnoreRange}, conf
   of tyRange:
     if CoIgnoreRange notin flags:
@@ -337,5 +354,14 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
 proc typeKey*(t: PType; conf: ConfigRef; tl: TypeLoader; sl: SymLoader): string =
   var c: Context = Context(m: createMangler(30, -1), tl: tl, sl: sl,
                            visited: initHashSet[ItemId]())
-  typeKey(c, t, {}, conf)
+  # Mirror the flags liftdestructors uses for its `canonTypes` hash
+  # (`hashType(skipped, {CoType, CoConsiderOwned, CoDistinct})`): hook keys must
+  # distinguish what hook *lifting* distinguishes. With empty flags a generic
+  # `distinct` instance (e.g. nilcheck's `SeqOfDistinct[T, U]`) took the bare
+  # `symKey` branch — the sym is the generic's and thus SHARED by all
+  # instances, so `SeqOfDistinct[I, PNode]` and `SeqOfDistinct[I, Nilability]`
+  # collided onto one key and hook lookup returned the wrong `=sink`
+  # ("incompatible type for argument" in the generated C). Under `CoDistinct` a
+  # `tfFromGeneric` distinct keys as sym + base type, keeping instances apart.
+  typeKey(c, t, {CoType, CoConsiderOwned, CoDistinct}, conf)
   result = c.m.extract()

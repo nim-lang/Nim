@@ -10,8 +10,8 @@
 ## Generate a .build.nif file for nifmake from a Nim project.
 ## This enables incremental and parallel compilation using the `m` switch.
 
-import std / [os, tables, sets, times, osproc, algorithm]
-import options, msgs, lineinfos, pathutils
+import std / [os, tables, sets, times, osproc, algorithm, strtabs]
+import options, msgs, lineinfos, pathutils, condsyms
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames
@@ -81,6 +81,14 @@ proc runNifler(c: DepContext; nimFile: string): bool =
 
 proc resolveImport(c: DepContext; origin, toResolve: string): string =
   ## Resolve an import path using the compiler's normal module lookup rules.
+  var toResolve = toResolve
+  if '$' in toResolve:
+    # string-literal import paths support `$nim`-style substitutions
+    # (see modulepaths.getModuleName)
+    try:
+      toResolve = pathSubs(c.config, toResolve, origin.splitFile().dir)
+    except ValueError:
+      discard
   result = findModule(c.config, toResolve, origin).string
 
 proc resolveInclude(c: DepContext; origin, toResolve: string): string =
@@ -342,6 +350,19 @@ proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
         if prefix.len > 0: result.add prefix & "/" & r
         else: result.add r
       if t.kind == ParRi: t = next(s)  # skip closing ')'
+    elif tag == "prefix":
+      # Relative import paths: `import ../dist/checksums/...` parses as
+      # `(prefix ../ dist)` — a path-prefix operator (`../`, `./`) applied to
+      # the first path component. Concatenate operator and operand verbatim;
+      # `findModule` resolves the relative path against the importing module.
+      t = next(s)                      # skip 'prefix' tag
+      var op = ""
+      if t.kind == Ident:
+        op = pool.strings[t.litId]
+        t = next(s)
+      for r in parseImportPath(s, t):
+        result.add op & r
+      if t.kind == ParRi: t = next(s)  # skip closing ')'
     elif tag == "bracket":
       t = next(s)                      # skip 'bracket' tag
       while t.kind != ParRi and t.kind != EofToken:
@@ -511,6 +532,24 @@ proc generateBuildFile(c: DepContext): string =
   b.addHeader("nim ic", "nifmake")
   b.addTree "stmts"
 
+  # Forward the project's configuration to the per-module child processes.
+  # Non-incremental compilation semchecks every module in one process with one
+  # define set (the project's config files apply to the stdlib too); the IC
+  # children compile with the *module* as their project file and would miss
+  # e.g. compiler/nim.cfg's `define:nimPreviewSlimSystem`, so their `when`
+  # bodies — and thus their import sets and NIF contents — would silently
+  # diverge from the dependency graph computed here. Forward every define that
+  # is not part of the compiler's built-in baseline, plus the threads switch.
+  var forwardedArgs: seq[string] = @[]
+  block:
+    let baseline = newStringTable(modeStyleInsensitive)
+    initDefines(baseline)
+    for k, v in pairs(c.config.symbols):
+      if not baseline.hasKey(k) or baseline[k] != v:
+        forwardedArgs.add "--define:" & k & (if v == "true": "" else: "=" & v)
+    sort forwardedArgs
+    forwardedArgs.add "--threads:" & (if optThreads in c.config.globalOptions: "on" else: "off")
+
   # Define nifler command
   b.addTree "cmd"
   b.addSymbolDef "nifler"
@@ -532,6 +571,8 @@ proc generateBuildFile(c: DepContext): string =
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
+  for a in forwardedArgs:
+    b.addStrLit a
   b.addTree "args"
   b.endTree()
   b.withTree "input":
@@ -547,6 +588,8 @@ proc generateBuildFile(c: DepContext): string =
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
+  for a in forwardedArgs:
+    b.addStrLit a
   b.addTree "input"
   b.addIntLit 0
   b.endTree()
@@ -691,10 +734,27 @@ proc commandIc*(conf: ConfigRef) =
     c.processedModules[rootPair.modname] = 0
 
     # model the system.nim dependency:
-    let sysNode = Node(files: @[toPair(c, (conf.libpath / RelativeFile"system.nim").string)], id: 1)
-    c.nodes.add sysNode
-    c.systemNodeId = sysNode.id
-    rootNode.deps.add sysNode.id
+    let sysPair = toPair(c, (conf.libpath / RelativeFile"system.nim").string)
+    if sysPair.modname != rootPair.modname:
+      let sysNode = Node(files: @[sysPair], id: 1)
+      c.nodes.add sysNode
+      c.systemNodeId = sysNode.id
+      rootNode.deps.add sysNode.id
+      c.processedModules[sysPair.modname] = sysNode.id
+      # Traverse system.nim's own dependency tree. `nim m system.nim` compiles
+      # system's entire import closure from source in one process (none of it
+      # can be precompiled: every module implicitly imports system) and writes
+      # a NIF for each closure member. Every member also gets the implicit
+      # dependency edge on system, so Tarjan folds the whole closure into
+      # system's strongly-connected component and the build file contains a
+      # single rule producing all of those NIFs. Without this traversal each
+      # closure member that is also imported by an ordinary module got its own
+      # `nim m` rule whose output silently OVERWROTE the system-written NIF
+      # with freshly numbered type ids, leaving dangling type references (the
+      # ids are baked into sysma2dyk.nif and into every module semchecked
+      # against the first version) — "symbol has no offset" failures that
+      # depended on nifmake's scheduling.
+      traverseDeps(c, sysPair, sysNode)
 
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)

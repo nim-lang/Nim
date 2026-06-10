@@ -245,7 +245,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   let originalParams = result.n
   result.n = originalParams.shallowCopy
   for i in 1 ..< originalParams.len:
-    let resulti = originalParams[i].sym.typ
+    var resulti = originalParams[i].sym.typ
     # twrong_field_caching requires these 'resetIdTable' calls:
     if i > FirstParamAt:
       resetIdTable(cl.symMap)
@@ -258,6 +258,11 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     let needsStaticSkipping = resulti.kind == tyFromExpr
     let needsTypeDescSkipping = resulti.kind == tyTypeDesc and tfUnresolved in resulti.flags
     if resulti.kind == tyFromExpr:
+      if resulti.state == Sealed:
+        # The generic was loaded from a NIF; do not brand the shared original.
+        # A tyFromExpr is a placeholder that `replaceTypeVarsT` resolves away,
+        # so a copy carries no identity that later comparisons could miss.
+        resulti = copyType(resulti, c.idgen, resulti.owner)
       resulti.incl tfNonConstExpr
     var paramType = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
@@ -283,6 +288,9 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
       if def.typ.kind == tyFromExpr:
+        if def.typ.state == Sealed:
+          # `copyTree` shares types; see the `resulti` comment above.
+          def.typ = copyType(def.typ, c.idgen, def.typ.owner)
         def.typ.incl tfNonConstExpr
       if not isIntLit(def.typ):
         def = prepareNode(cl, def)

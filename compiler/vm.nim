@@ -28,7 +28,7 @@ from magicsys import getSysType
 const
   traceCode = defined(nimVMDebug)
 
-when hasFFI:
+when defined(nimHasLibFFI): # == hasFFI; spelled out for the IC dep scanner
   import evalffi
 
 

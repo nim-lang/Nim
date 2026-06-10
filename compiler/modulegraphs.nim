@@ -126,6 +126,7 @@ type
     procGlobals*: seq[PNode]
     nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
     cachedMods: IntSet
+    hookClosure: IntSet # modules whose serialized hooks were already registered
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -280,34 +281,58 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
     let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
     result = g.loadedOps[op].getOrDefault(key)
     #echo "fallback ", key, " ", op, " ", result
+    when defined(icDbgHash):
+      if result == nil and op == attachedDestructor:
+        echo "HOOK MISS key=", key, " table.len=", g.loadedOps[op].len,
+          " kind=", t.kind, " sym=", (if t.sym != nil: t.sym.name.s else: "NIL")
+        if key.len > 10:
+          let probe = key[3 ..< min(key.len, 18)]
+          for k in g.loadedOps[op].keys:
+            if probe in k: echo "  candidate: ", k
   else:
     result = nil
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  if not g.attachedOps[op].contains(t.itemId):
-    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-    # Use key-based deduplication for opsLog because different type objects
-    # (e.g. canon vs orig) can have different itemIds but same structural key
-    if key notin g.loadedOps[op]:
-      # For a *nominal*, non-instantiated type the hook belongs to the module
-      # that defines the type (so it is emitted once there). But for a generic
-      # instance or a structural type (ref/ptr/seq/... over an instance) there is
-      # no honest definition site: the generic's home module is upstream of the
-      # type arguments and structurally blind to the instance, so it can never
-      # realize the hook. Such hooks can only be produced by the *instantiating*
-      # module — which is exactly the one running now (`module`). Stamping them
-      # with the type's def module produced a `LogEntry` that no module ever
-      # writes (the def module never instantiates it; the instantiating module's
-      # writer skips it because `op.module != thisModule`), so the hook was lost
-      # and codegen failed with "'=destroy' operator not found". Duplicate
-      # registrations across instantiating modules are reconciled deterministically
-      # at load time (see the HookEntry replay in `replayStateChanges`).
-      let nominal = t.sym != nil and t.kind in {tyObject, tyEnum, tyDistinct} and
-                    tfFromGeneric notin t.flags
-      let ownerModule = if nominal: t.sym.itemId.module.int else: module
-      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: ownerModule, key: key, sym: value)
-      g.loadedOps[op][key] = value
+  # Key-based deduplication for opsLog: different type objects (e.g. canon vs
+  # orig) can have different itemIds but the same structural key.
+  let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  let existing = g.loadedOps[op].getOrDefault(key)
+  if existing == nil:
+    # Stamp the entry with the module whose compilation produced the hook
+    # (`module`), NOT the type's def module: each `nim m` is a separate
+    # process, so a hook lifted while compiling a *downstream* module simply
+    # does not exist in the def module's process — stamping it with the def
+    # module produced a `LogEntry` that no module ever writes (the def
+    # module's writer ran in another process that never lifted it; this
+    # module's writer skips it because `op.module != thisModule`) and codegen
+    # failed with "'=destroy' operator not found" (e.g. astdef's `TStrTable`,
+    # whose destroy is first needed by modulegraphs). This holds for nominal
+    # types as much as for generic/structural instances. Duplicate
+    # registrations across lifting modules are reconciled deterministically
+    # at load time (see the HookEntry replay in `replayStateChanges`).
+    g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
+    g.loadedOps[op][key] = value
+  elif existing != value:
+    # Re-registration replacing an earlier sym for the same key. This happens
+    # legitimately: `createTypeBoundOps` first registers empty `symPrototype`
+    # placeholders, then `produceSym` replaces them — in particular
+    # `produceSymDistinctType` replaces a distinct type's placeholder with the
+    # BASE type's hook (a `distinct string` uses string's `=sink`). The log
+    # must follow the replacement, otherwise the NIF ships the dead,
+    # empty-bodied prototype and codegen in another process calls a no-op
+    # `=sink`/`=copy`, silently losing the value (e.g. `conf.projectPath`
+    # ended up empty: "cannot open '/'").
+    g.loadedOps[op][key] = value
+    var updated = false
+    for e in mitems(g.opsLog):
+      if e.kind == HookEntry and e.op == op and e.key == key:
+        e.sym = value
+        e.module = module
+        updated = true
+        break
+    if not updated:
+      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
   g.attachedOps[op][t.itemId] = value
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
@@ -356,8 +381,10 @@ proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   g.enumToStringProcs[t.itemId] = value
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-  let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: value.itemId.module.int
-  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: ownerModule, key: key, sym: value)
+  # Stamp with the module that owns the generated proc, not the enum's def
+  # module: the def module's process may never have generated it (same
+  # "written by nobody" failure as hook entries, see setAttachedOp).
+  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: value.itemId.module.int, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerGenericType.contains(t.itemId):
@@ -556,6 +583,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.emittedTypeInfo = initTable[string, FileIndex]()
   result.cachedFiles = newStringTable()
   result.cachedMods = initIntSet()
+  result.hookClosure = initIntSet()
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
@@ -671,6 +699,50 @@ proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   assert result != nil
 
 when not defined(nimKochBootstrap):
+  proc registerLoadedHooks(g: ModuleGraph; logOps: seq[LogEntry]) =
+    let mainSuffix = getMainModuleSuffix(ast.program)
+    for x in logOps:
+      # A dependency's NIF may carry hooks whose syms belong to the module we
+      # are compiling fresh (e.g. a stale NIF of that very module written by an
+      # earlier in-process compilation). Loading those would collide with the
+      # freshly semchecked hook declarations.
+      if mainSuffix.len > 0 and
+         cachedModuleSuffix(g.config, x.sym.itemId.module.FileIndex) == mainSuffix:
+        continue
+      case x.kind
+      of HookEntry:
+        # The same structural hook may be serialized by several instantiating
+        # modules (a generic/structural instance has no single def site, so each
+        # using module owns its copy). Pick one deterministic program-wide winner
+        # by the smaller owning-module name, so every lookup resolves to the same
+        # sym regardless of module load order.
+        let existing = g.loadedOps[x.op].getOrDefault(x.key)
+        if existing == nil or
+           cachedModuleSuffix(g.config, x.sym.itemId.module.FileIndex) <
+           cachedModuleSuffix(g.config, existing.itemId.module.FileIndex):
+          g.loadedOps[x.op][x.key] = x.sym
+      of EnumToStrEntry:
+        g.loadedEnumToStringProcs[x.key] = x.sym
+      else:
+        discard
+
+  proc loadTransitiveHooks(g: ModuleGraph; deps: seq[ModuleSuffix]) =
+    ## Registers the serialized hooks (and enum-to-string procs) of every module
+    ## in the import closure of `deps`. Deliberately does NOT use
+    ## `moduleFromNifFile`: that would register the dep as a fully loaded module
+    ## and a later direct import of it would then skip `replayStateChanges`.
+    var stack = deps
+    var interf = initStrTable()
+    var interfHidden = initStrTable()
+    while stack.len > 0:
+      let suffix = stack.pop()
+      var isKnownFile = false
+      let fileIdx = g.config.registerNifSuffix(string suffix, isKnownFile)
+      if not g.hookClosure.containsOrIncl(fileIdx.int):
+        let precomp = loadNifModule(ast.program, suffix, interf, interfHidden, {})
+        registerLoadedHooks(g, precomp.logOps)
+        for d in precomp.deps: stack.add d
+
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
                           flags: set[LoadFlag] = {}): PrecompiledModule =
     ## Returns 'nil' if the module needs to be recompiled.
@@ -699,31 +771,30 @@ when not defined(nimKochBootstrap):
 
     # Mark module as cached
     g.cachedMods.incl fileIdx.int
+    g.hookClosure.incl fileIdx.int
 
     # Register hooks from NIF index with the module graph
+    registerLoadedHooks(g, result.logOps)
     for x in result.logOps:
       case x.kind
-      of HookEntry:
-        # The same structural hook may be serialized by several instantiating
-        # modules (a generic/structural instance has no single def site, so each
-        # using module owns its copy). Pick one deterministic program-wide winner
-        # by the smaller owning-module name, so every lookup resolves to the same
-        # sym regardless of module load order.
-        let existing = g.loadedOps[x.op].getOrDefault(x.key)
-        if existing == nil or
-           cachedModuleSuffix(g.config, x.sym.itemId.module.FileIndex) <
-           cachedModuleSuffix(g.config, existing.itemId.module.FileIndex):
-          g.loadedOps[x.op][x.key] = x.sym
       of ConverterEntry:
         g.ifaces[fileIdx.int].converters.add x.sym
       of MethodEntry:
         discard "todo"
-      of EnumToStrEntry:
-        g.loadedEnumToStringProcs[x.key] = x.sym
       of GenericInstEntry:
         raiseAssert "GenericInstEntry should not be in the NIF index"
+      of HookEntry, EnumToStrEntry:
+        discard "already done by registerLoadedHooks"
     # Register methods per type from NIF index
     discard "todo"
+    # `nim m` loads only its *direct* imports through this proc, but a hook for
+    # a structural type (e.g. `=destroy` for `seq[PNode]`) lives in the NIF of
+    # whichever module first lifted it — possibly a dependency of a dependency
+    # that the current module never imports directly. Walk the whole import
+    # closure so every serialized hook is visible. (Codegen, `nim nifc`, already
+    # walks the closure in nifbackend.loadModuleDependencies.)
+    if g.config.cmd == cmdM:
+      loadTransitiveHooks(g, result.deps)
 
 proc configComplete*(g: ModuleGraph) =
   #rememberStartupConfig(g.startupPackedConfig, g.config)

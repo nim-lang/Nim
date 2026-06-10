@@ -512,11 +512,13 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         if c.inGenericContext > 0: result.incl tfUnresolved
       else:
         result = e.typ.skipTypes({tyTypeDesc})
-        if result.state == Sealed:
-          # The index type was loaded from the IC cache and must not be mutated
-          # in place; work on a copy so we can mark it as an implicit static.
-          result = copyType(result, c.idgen, getCurrOwner(c))
-        result.incl tfImplicitStatic
+        if result.state != Sealed:
+          # For a type loaded from the IC cache we skip the flag instead of
+          # mutating (or copying) the type: tfImplicitStatic has no readers in
+          # the compiler, and a copy would get a fresh itemId, breaking enum
+          # identity (`sameEnumTypes` compares ids) — `arr[enumVal]` on an
+          # `array[LoadedEnum, T]` would no longer typecheck.
+          result.incl tfImplicitStatic
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
         localError(c.config, n[1].info, errOrdinalTypeExpected % typeToString(e.typ, preferDesc))
@@ -1895,6 +1897,12 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
         # by macros. Only macros can summon unnamed types
         # and cast spell upon AST. Here we need to give
         # it a name taken from left hand side's node
+        if result.state == Sealed:
+          # The unnamed type was loaded from a dependency's NIF and must not
+          # be mutated in place; attach the name to a fresh copy instead.
+          let orig = result
+          result = copyType(orig, c.idgen, getCurrOwner(c))
+          copyTypeProps(c.graph, c.idgen.module, result, orig)
         result.sym = prev.sym
         result.sym.typ = result
       else:
