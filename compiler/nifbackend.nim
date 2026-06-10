@@ -23,12 +23,18 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
-  pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif
+  pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys
 import ic / replayer
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PrecompiledModule] =
   ## Traverse the module dependency graph using a stack.
   ## Returns all modules that need code generation, in dependency order.
+  # The main module is loaded by its SOURCE FileIndex, but its serialized
+  # symbols carry the module's NIF suffix. Pre-alias the suffix to the source
+  # index so that `registerNifSuffix` does not allocate a second FileIndex for
+  # the same module, which would split its codegen across two C translation
+  # units (top-level globals in one, procs in the other → undeclared symbols).
+  g.config.m.filenameToIndexTbl[cachedModuleSuffix(g.config, mainFileIdx)] = mainFileIdx
   let mainModule = moduleFromNifFile(g, mainFileIdx, {LoadFullAst})
 
   var stack: seq[ModuleSuffix] = @[]
