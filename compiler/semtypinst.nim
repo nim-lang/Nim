@@ -446,12 +446,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         header[i] = x
         propagateToOwner(header, x)
     else:
-      # Honor the same copy-before-mutate invariant as the branch above: never
-      # mutate the original invocation type `t` in place. Besides being cleaner,
-      # under IC `t` may be a loaded dep type (Sealed/immutable), and mutating it
-      # would assert. The flags propagated here end up on `header`, which is what
-      # is used downstream (`result.flags = header.flags`).
-      if header == t: header = instCopyType(cl, t)
+      # Under IC `t` may be a loaded dep type (Sealed/immutable); mutating it
+      # would assert, so propagate into a copy. For non-Sealed types keep
+      # devel's in-place propagation: unconditionally copying here changes
+      # `header != t` and with it the cached-instance lookup below, which
+      # regressed non-IC generic instantiations (arraymancer: a cached
+      # NimSeqV2 instance with stale flags was returned for a cast target).
+      if header == t and t.state == Sealed: header = instCopyType(cl, t)
       propagateToOwner(header, x)
 
   if header != t:
