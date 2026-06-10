@@ -202,6 +202,9 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
 
 proc globalName(sym: PSym; config: ConfigRef): string =
   result = sym.name.s
+  if sym.kindImpl == skPackage:
+    # stubs store the clean name; the NIF index is keyed by the marked one
+    result.add PkgMarker
   result.add '.'
   result.addInt sym.disamb
   result.add '.'
@@ -237,6 +240,18 @@ proc parseSymName*(s: string): ParsedSymName =
         return ParsedSymName(name: substr(s, 0, b-1), module: substr(s, i+1, mend), count: count)
     dec i
   return ParsedSymName(name: s, module: "")
+
+proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
+  ## The user-visible name of a symbol stub must NOT keep NIF-only name
+  ## decorations: the `PkgMarker` of package symbols would otherwise leak into
+  ## every reader of `name.s` that runs before the stub is fully loaded
+  ## (e.g. vmgen's callback keys built from owner chains). The marker also
+  ## tells us the symbol kind up front, which `globalName` uses to rebuild
+  ## the marked NIF name for the index lookup.
+  if rawName.endsWith(PkgMarker):
+    (skPackage, cache.getIdent(rawName[0 ..< rawName.len - PkgMarker.len]))
+  else:
+    (skStub, cache.getIdent(rawName))
 
 template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
   dest.addParLe tag
@@ -1138,7 +1153,8 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
     let id = ItemId(module: module.int32, item: val[])
 
     let offs = c.getOffset(module, symAsStr)
-    result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
+    let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
+    result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, offs)
 
 proc loadSymStub(c: var DecodeContext; n: var Cursor; thisModule: string;
@@ -1281,8 +1297,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
   inc n
 
   if s.kindImpl == skPackage and s.name.s.endsWith(PkgMarker):
-    # Stubs keep the marked NIF ident (see PkgMarker) so that `globalName`
-    # reconstructs the index key; the in-memory sym gets the real name back.
+    # Fallback: stubs are normally created with the clean name already
+    # (see stubKindAndName); strip the NIF-only marker if one slipped through.
     s.name = c.cache.getIdent(s.name.s[0 ..< s.name.s.len - PkgMarker.len])
 
   case s.kindImpl
@@ -1518,7 +1534,8 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
     inc val[]
 
     let id = ItemId(module: symModule.int32, item: val[])
-    result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
+    let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
+    result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, entry)
 
 proc extractBasename(nifName: string): string =
