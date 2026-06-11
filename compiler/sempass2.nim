@@ -497,6 +497,34 @@ proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
     if not isDefectException(e.typ):
       throws(a.exc, e, comesFrom)
 
+proc skipHiddenConv(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkHiddenStdConv, nkHiddenSubConv:
+      result = result[1]
+    else: break
+
+proc addRaiseEffectsFromExpr(a: PEffects, e, comesFrom: PNode) =
+  if e.isNil:
+    return
+  let x = skipHiddenConv(e)
+  case x.kind
+  of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr:
+    if x.len > 0:
+      addRaiseEffectsFromExpr(a, x.lastSon, comesFrom)
+  of nkIfExpr, nkIfStmt:
+    for branch in items(x):
+      if branch.len > 0:
+        addRaiseEffectsFromExpr(a, branch.lastSon, comesFrom)
+  of nkCaseStmt:
+    for i in 1..<x.len:
+      let branch = x[i]
+      if branch.len > 0:
+        addRaiseEffectsFromExpr(a, branch.lastSon, comesFrom)
+  else:
+    addRaiseEffect(a, x, comesFrom)
+
 proc addTag(a: PEffects, e, comesFrom: PNode) =
   var aa = a.tags
   for i in 0..<aa.len:
@@ -1326,7 +1354,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
-      addRaiseEffect(tracked, n[0], n)
+      addRaiseEffectsFromExpr(tracked, n[0], n)
       for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
