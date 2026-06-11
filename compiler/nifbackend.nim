@@ -17,16 +17,18 @@
 ##   1. Compile modules to NIF: nim m mymodule.nim
 ##   2. Generate C from NIF: nim nifc myproject.nim
 
-import std/[intsets, tables, sets, os]
+import std/[intsets, tables, sets, os, algorithm, syncio]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
-  pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys
+  pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys, dce,
+  cnif
 import ic / replayer
 
-proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[PrecompiledModule] =
+proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
+                            nifFiles: var seq[string]): seq[PrecompiledModule] =
   ## Traverse the module dependency graph using a stack.
   ## Returns all modules that need code generation, in dependency order.
   # The main module is loaded by its SOURCE FileIndex, but its serialized
@@ -36,6 +38,7 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[Precomp
   # units (top-level globals in one, procs in the other → undeclared symbols).
   g.config.m.filenameToIndexTbl[cachedModuleSuffix(g.config, mainFileIdx)] = mainFileIdx
   let mainModule = moduleFromNifFile(g, mainFileIdx, {LoadFullAst})
+  nifFiles.add toNifFilename(g.config, mainFileIdx)
 
   var stack: seq[ModuleSuffix] = @[]
   result = @[]
@@ -56,6 +59,7 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex): seq[Precomp
       let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
       if precomp.module != nil:
         result.add precomp
+        nifFiles.add toNifFilename(g.config, fileIdx)
         for dep in precomp.deps:
           if not visited.contains(dep.string):
             stack.add dep
@@ -116,11 +120,19 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
 
   # Load all modules in dependency order using stack traversal
   # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
-  let modules = loadModuleDependencies(g, mainFileIdx)
+  var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
+  let modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
   if modules.len == 0:
     rawMessage(g.config, errGenerated,
       "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
     return
+
+  # Compute the global live set so that the top-level routine listing can be
+  # filtered (see `ccgstmts.genStmts`). On analysis failure everything stays
+  # alive — demand-driven `genProc` makes this a size optimization only.
+  var dceStats = DceStats()
+  if not isDefined(g.config, "icNoDce"):
+    g.icDceEnabled = computeLiveSymbols(g.config, nifFiles, g.icLiveNames, dceStats)
 
   # Set up backend modules for all modules that need code generation
   for m in modules:
@@ -157,8 +169,24 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   if mainModule != nil:
     finishModule g, mainModule
 
+  if g.icDceEnabled and isDefined(g.config, "icDceCheck"):
+    var misses: seq[string] = @[]
+    for n in g.icDceMisses: misses.add n
+    sort misses
+    for n in misses:
+      stderr.writeLine "[icDce] MISS (generated on demand, not marked live): " & n
+    stderr.writeLine "[icDce] live: " & $g.icLiveNames.len & " misses: " & $misses.len &
+      " modules: " & $nifFiles.len
+    stderr.writeLine "[icDce] instances: " & $dceStats.instances &
+      " unique: " & $dceStats.uniqueInstances &
+      " mergeable: " & $(dceStats.instances - dceStats.uniqueInstances)
+
   # Write C files
   cgenWriteModules(g.backend, g.config)
+
+  if isDefined(g.config, "icDceCheck") and g.icCnifFiles.len > 0:
+    stderr.writeLine "[icDceC] cdefs: " & $g.icCDefs & " live: " & $g.icCLiveDefs &
+      " dropped: " & $g.icCDropped
 
   # Run C compiler
   if g.config.cmd != cmdTcc:

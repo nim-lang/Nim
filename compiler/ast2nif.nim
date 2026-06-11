@@ -202,7 +202,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     result.add modname(module, w.infos.config)
 
 
-proc globalName(sym: PSym; config: ConfigRef): string =
+proc globalName*(sym: PSym; config: ConfigRef): string =
   result = sym.name.s
   if sym.kindImpl == skPackage:
     # stubs store the clean name; the NIF index is keyed by the marked one

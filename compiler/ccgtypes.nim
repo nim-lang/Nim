@@ -72,6 +72,40 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   else:
     m.g.mangledPrcs.incl(result)
 
+proc sharedInstanceCName(m: BModule; s: PSym): string =
+  ## The module-free canonical C name for a content-keyed generic instance,
+  ## or "" when the symbol must keep its module-suffixed name. With a shared
+  ## name, every TU that instantiated the same generic with the same type
+  ## arguments calls one extern definition (first claimant's TU embeds it,
+  ## see `genProcLvl3`) instead of compiling its own static copy.
+  ##
+  ## The name is program-unique only if the 30-bit content hash does not
+  ## collide for same-named instances of *different* instantiations across
+  ## modules — the per-module probe in `setInstanceDisamb` cannot see that.
+  ## Claimants therefore must present the same signature; on mismatch the
+  ## later one keeps its module-suffixed name (no merge, still correct).
+  ## Residual risk: same name and signature, different generic args, AND a
+  ## 30-bit collision — vanishingly unlikely; a full-typeKey verification
+  ## channel can close it later.
+  result = ""
+  if m.config.cmd == cmdNifC and s.kind in routineKinds and
+      (s.disamb and InstanceDisambBit) != 0'i32 and
+      s.typ != nil and s.typ.callConv != ccInline and not m.hcrOn and
+      {sfImportc, sfExportc, sfCodegenDecl} * s.flags == {}:
+    let candidate = s.name.s.mangle & "_i" & $s.disamb
+    let compat = typeToString(s.typ)
+    let existing = m.g.graph.icSharedSigs.getOrDefault(candidate)
+    if existing.len == 0:
+      m.g.graph.icSharedSigs[candidate] = compat
+      result = candidate
+    elif existing == compat:
+      result = candidate
+
+proc isSharedInstanceCName(m: BModule; s: PSym): bool =
+  m.config.cmd == cmdNifC and s.kind in routineKinds and
+    (s.disamb and InstanceDisambBit) != 0'i32 and
+    stripCnifMarks(s.loc.snippet) == s.name.s.mangle & "_i" & $s.disamb
+
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
     var result: Rope
@@ -79,13 +113,22 @@ proc fillBackendName(m: BModule; s: PSym) =
       m.g.config.symbolFiles == disabledSf:
       result = mangleProc(m, s, false).rope
     else:
-      result = s.name.s.mangle.rope
-      result.add mangleProcNameExt(m.g.graph, s)
+      let shared = sharedInstanceCName(m, s)
+      if shared.len > 0:
+        result = shared.rope
+      else:
+        result = s.name.s.mangle.rope
+        result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
     backendEnsureMutable s
-    s.locImpl.snippet = result
+    if m.config.cmd == cmdNifC:
+      # mark the name so the cnif artifact writer can turn every occurrence
+      # into a Symbol token; stripped from the actual C output in genModule
+      s.locImpl.snippet = markCName(result)
+    else:
+      s.locImpl.snippet = result
 
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
@@ -1273,7 +1316,9 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
     elif prc.typ.callConv == ccInline or isNonReloadable(m, prc):
       visibility = StaticProc
     elif sfImportc notin prc.flags:
-      visibility = Private
+      if not isSharedInstanceCName(m, prc):
+        visibility = Private
+      # else: plain extern — the definition is shared across TUs
     if asPtr:
       result.addProcVar(m, prc, name, params, rettype, isStatic = isStaticVar, ignoreAttributes = true)
     else:

@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs, os, strutils, parseutils]
+import std/[intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 
@@ -68,6 +68,20 @@ type
     enumToStringProcs*: Table[ItemId, PSym]
     loadedEnumToStringProcs: Table[string, PSym]
     emittedTypeInfo*: Table[string, FileIndex]
+    icLiveNames*: HashSet[string] # NIF names of reachable symbols (dce.nim);
+                                  # filters the top-level listing under `nim nifc`
+    icDceEnabled*: bool
+    icDceMisses*: HashSet[string] # demand-generated but not marked live:
+                                  # analysis bugs that per-module codegen would hit
+    instDisambs: Table[(int, int32), ItemId] # (name id, content disamb) ->
+                                  # instance, for collision probing in
+                                  # `setInstanceDisamb`
+    icCnifFiles*: seq[string]     # `.c.nif` artifacts written by this run
+    icCDefs*, icCLiveDefs*, icCDropped*: int # render-time DCE stats
+    icSharedSigs*: Table[string, string] # shared instance C name -> signature
+                                  # (collision guard for the 30-bit hash)
+    icSharedDefOwner*: Table[string, ItemId] # shared instance C name ->
+                                  # the symbol whose TU embeds the definition
 
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -404,6 +418,50 @@ proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
   if g.config.cmd in {cmdNifC, cmdM}:
     let ownerModule = inst.itemId.module.int
     g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
+
+const
+  InstanceDisambBit* = 0x4000_0000'i32
+    ## Set in the `disamb` of routine instances whose value is content-derived
+    ## (see `setInstanceDisamb`); keeps them disjoint from the small counter
+    ## range ordinary symbols draw from, so the NIF name `name.disamb.module`
+    ## stays collision-free within a module.
+
+proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
+                        concreteTypes: openArray[PType]) =
+  ## Under IC, replace a fresh routine instance's counter-based `disamb` with
+  ## a content-derived one: a hash of the generic's identity plus the
+  ## `typeKey` of every concrete type argument — exactly the identity the
+  ## instantiation cache compares. The instance's NIF name
+  ## `name.disamb.modsuffix` then differs only in the module suffix when the
+  ## same instantiation is made by different modules, which is the
+  ## prerequisite for cross-module generic-instance merging (and gives the
+  ## dce analysis its `offers` keys). The hash is computed once, here; it is
+  ## never recomputed — the value travels in the serialized `disamb` field.
+  if g.config.cmd notin {cmdNifC, cmdM}: return
+  if isDefined(g.config, "icNoInstKey"): return
+  var key = generic.name.s
+  key.add '.'
+  key.addInt generic.disamb
+  key.add '.'
+  key.add modname(generic.itemId.module, g.config)
+  for t in concreteTypes:
+    key.add '|'
+    key.add typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  let d = toMD5(key)
+  var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
+           (int32(d[3] and 0x3F'u8) shl 24)) or InstanceDisambBit
+  # Same-name hash collisions inside this process get probed to the next
+  # free value; the loser stays correct (its name keeps the module suffix),
+  # it merely won't merge cross-module.
+  while true:
+    let probe = (inst.name.id, h)
+    if g.instDisambs.hasKey(probe):
+      if g.instDisambs[probe] == inst.itemId: break
+      h = if h == high(int32): InstanceDisambBit else: h + 1
+    else:
+      g.instDisambs[probe] = inst.itemId
+      break
+  inst.disamb = h
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)

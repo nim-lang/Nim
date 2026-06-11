@@ -463,6 +463,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     # This is needed for cyclic module dependencies where generic instances
     # may be created in one module but referenced from another.
     logGenericInstance(c.graph, result)
+    # Under IC the instance's NIF name must be canonical across modules:
+    # derive its `disamb` from the instantiation identity (generic +
+    # concrete types) instead of the per-module counter.
+    setInstanceDisamb(c.graph, result, fn, entry.concreteTypes)
     # bug #12985 bug #22913
     # TODO: use the context of the declaration of generic functions instead
     # TODO: consider fixing options as well
