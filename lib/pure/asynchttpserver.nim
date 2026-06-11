@@ -153,16 +153,10 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
         protocol)
   result.orig = protocol
   var n = protocol.parseSaturatedNatural(result.major, i)
-  if n == 0:
-    raise newException(ValueError, "Invalid request protocol. Got: " &
-        protocol)
   i.inc n
   if i < protocol.len and protocol[i] == '.':
     inc i
     n = protocol.parseSaturatedNatural(result.minor, i)
-    if n == 0:
-      raise newException(ValueError, "Invalid request protocol. Got: " &
-          protocol)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
