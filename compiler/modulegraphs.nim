@@ -756,7 +756,7 @@ when not defined(nimKochBootstrap):
 
     let m = PSym(
       kindImpl: skModule,
-      itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+      itemId: itemId(int32(fileIdx), 0'i32),
       name: getIdent(g.cache, splitFile(filename).name),
       infoImpl: newLineInfo(fileIdx, 1, 1),
       positionImpl: int(fileIdx))

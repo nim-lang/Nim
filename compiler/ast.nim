@@ -492,13 +492,6 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
-const
-  moduleShift = when defined(cpu32): 20 else: 24
-
-template toId*(a: ItemId): int =
-  let x = a
-  (x.module.int shl moduleShift) + x.item.int
-
 template id*(a: PType | PSym): int = toId(a.itemId)
 
 type
@@ -507,19 +500,13 @@ type
     symId*: int32
     typeId*: int32
     sealed*: bool
+    backendMinted*: bool
     disambTable*: CountTable[PIdent]
-
-const
-  PackageModuleId* = -3'i32
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
   result.disambTable.inc m.name
-
-const BackendIdOffset* = 10_000_000'i32
-  ## Base for symbol/type ids minted by `idGeneratorForBackend`; ids at or
-  ## above this offset identify backend-minted (IC codegen) entities.
 
 proc idGeneratorForBackend*(m: PSym): IdGenerator =
   ## Like `idGeneratorFromModule`, but for IC codegen (`nim nifc`): symbols and
@@ -529,11 +516,12 @@ proc idGeneratorForBackend*(m: PSym): IdGenerator =
   ## per-module load-order counter that keeps running while codegen mints its
   ## own ids. A collision corrupts itemId-keyed tables, e.g. `transf`'s inline
   ## iterator mapping then substitutes a random loaded sym (a call's callee)
-  ## with a `:tmp` block label. Start far above any realistic loaded count so
-  ## the two id spaces stay disjoint.
+  ## with a `:tmp` block label. Backend-minted ids carry a marker bit in the
+  ## module half (see `itemids.backendItemId`), so the two id spaces are
+  ## disjoint by construction.
   assert m.kind == skModule
-  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item + BackendIdOffset,
-                       typeId: BackendIdOffset, disambTable: initCountTable[PIdent]())
+  result = IdGenerator(module: m.itemId.module, symId: 0, typeId: 0,
+                       backendMinted: true, disambTable: initCountTable[PIdent]())
   result.disambTable.inc m.name
 
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
@@ -542,12 +530,14 @@ proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
 proc nextSymId(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
   inc x.symId
-  result = ItemId(module: x.module, item: x.symId)
+  result = if x.backendMinted: backendItemId(x.module, x.symId)
+           else: itemId(x.module, x.symId)
 
 proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
   inc x.typeId
-  result = ItemId(module: x.module, item: x.typeId)
+  result = if x.backendMinted: backendItemId(x.module, x.typeId)
+           else: itemId(x.module, x.typeId)
 
 when false:
   proc nextId*(x: IdGenerator): ItemId {.inline.} =

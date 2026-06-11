@@ -23,6 +23,7 @@ import typekeys
 import ic / [enum2nif]
 
 proc typeToNifSym(typ: PType; config: ConfigRef): string =
+  assert not typ.uniqueId.isBackendMinted
   result = "`t"
   result.addInt ord(typ.kind)
   result.add '.'
@@ -188,6 +189,7 @@ const
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
   ## global names are `ident.disamb.moduleSuffix`
+  assert not sym.itemId.isBackendMinted
   result = sym.name.s
   if sym.kindImpl == skPackage:
     result.add PkgMarker
@@ -1045,13 +1047,13 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
       k = k * 10 + name[i].ord - ord('0')
       inc i
     if i < name.len and name[i] == '.': inc i
-    var itemId = 0'i32
+    var itemVal = 0'i32
     while i < name.len and name[i] in {'0'..'9'}:
-      itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
+      itemVal = itemVal * 10'i32 + int32(name[i].ord - ord('0'))
       inc i
     if i < name.len and name[i] == '.': inc i
     let suffix = name.substr(i)
-    let id = ItemId(module: moduleId(c, suffix).int32, item: itemId)
+    let id = itemId(moduleId(c, suffix).int32, itemVal)
     let ii = addr c.mods[id.module.FileIndex].index
     let offs = ii[].getOrDefault(name)
     if offs.offset == 0 and k == ord(tyNone):
@@ -1091,7 +1093,7 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
           let module = moduleId(c, thisModule)
           let val = addr c.mods[module].symCounter
           inc val[]
-          let id = ItemId(module: module.int32, item: val[])
+          let id = itemId(module.int32, val[])
           let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                         disamb: sn.count.int32, state: Complete)
           localSyms[symName] = sym
@@ -1150,7 +1152,7 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
     let module = moduleId(c, sn.module)
     let val = addr c.mods[module].symCounter
     inc val[]
-    let id = ItemId(module: module.int32, item: val[])
+    let id = itemId(module.int32, val[])
 
     let offs = c.getOffset(module, symAsStr)
     let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
@@ -1234,7 +1236,7 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
   loadField t.sizeImpl
   loadField t.alignImpl
   loadField t.paddingAtEndImpl
-  loadField t.itemId.item  # nonUniqueId
+  t.itemId = itemId(t.itemId.module, loadAtom(int32, n))  # nonUniqueId
 
   t.typeInstImpl = loadTypeStub(c, n, localSyms)
   t.nImpl = loadNode(c, n, typesModule, localSyms)
@@ -1427,7 +1429,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             let module = moduleId(c, thisModule)
             let val = addr c.mods[module].symCounter
             inc val[]
-            let id = ItemId(module: module.int32, item: val[])
+            let id = itemId(module.int32, val[])
             sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                        disamb: sn.count.int32, state: Complete)
             localSyms[symName] = sym  # register for later references
@@ -1533,7 +1535,7 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
     let val = addr c.mods[symModule].symCounter
     inc val[]
 
-    let id = ItemId(module: symModule.int32, item: val[])
+    let id = itemId(symModule.int32, val[])
     let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
     result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, entry)
@@ -1599,7 +1601,7 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
   # Create a stub symbol
   let val = addr c.mods[module].symCounter
   inc val[]
-  let id = ItemId(module: int32(module), item: val[])
+  let id = itemId(int32(module), val[])
   result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(sn.name),
                 disamb: sn.count.int32, state: Partial)
   c.syms[symAsStr] = (result, offs)
