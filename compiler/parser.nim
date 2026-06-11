@@ -87,7 +87,7 @@ type
     smNormal, smAllowNil, smAfterDot
 
   PrimaryMode = enum
-    pmNormal, pmTypeDesc, pmTypeDef, pmTrySimple
+    pmNormal, pmTypeDesc, pmTypeDef, pmTrySimple, pmCommandParam
 
 when defined(nimCustomAst):
   # For the `customast` version we cannot share nodes, not even empty nodes:
@@ -287,7 +287,15 @@ proc newStrNodeP(kind: TNodeKind, strVal: sink string, p: Parser): PNode =
 proc newIdentNodeP(ident: PIdent, p: Parser): PNode =
   result = newAtom(ident, parLineInfo(p))
 
-proc parseExpr(p: var Parser): PNode
+proc parsePostfix(p: var Parser, a: PNode): PNode =
+  when defined(nimpretty):
+    starWasExportMarker(p.em)
+  result = newNodeP(nkPostfix, p)
+  result.add(newIdentNodeP(p.tok.ident, p))
+  result.add(a)
+  getTok(p)
+
+proc parseExpr(p: var Parser, mode = pmNormal): PNode
 proc parseStmt(p: var Parser): PNode
 proc parseTypeDesc(p: var Parser, fullExpr = false): PNode
 proc parseTypeDefValue(p: var Parser): PNode
@@ -446,10 +454,10 @@ proc exprColonEqExpr(p: var Parser): PNode =
   else:
     result = colonOrEquals(p, a)
 
-proc exprEqExpr(p: var Parser): PNode =
+proc exprEqExpr(p: var Parser, mode = pmNormal): PNode =
   #| exprEqExpr = expr ('=' expr
   #|                   / doBlock extraPostExprBlock*)?
-  var a = parseExpr(p)
+  var a = parseExpr(p, mode)
   if p.tok.tokType == tkDo:
     result = postExprBlocks(p, a)
   else:
@@ -858,12 +866,19 @@ proc commandParam(p: var Parser, isFirstParam: var bool; mode: PrimaryMode): PNo
   if mode == pmTypeDesc:
     result = simpleExpr(p, mode)
   elif not isFirstParam:
-    result = exprEqExpr(p)
+    result = exprEqExpr(p, pmCommandParam)
   else:
-    result = parseExpr(p)
+    result = parseExpr(p, pmCommandParam)
     if p.tok.tokType == tkDo:
       result = postExprBlocks(p, result)
   isFirstParam = false
+
+proc isExportMarkerBeforeColon(p: Parser): bool {.inline.} =
+  result = false
+  if p.tok.tokType == tkOpr and p.tok.ident.s == "*" and p.tok.indent < 0:
+    var pos = p.lex.bufpos
+    while p.lex.buf[pos] == ' ': inc pos
+    result = p.lex.buf[pos] == ':' and p.lex.buf[pos+1] notin OpChars
 
 proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
   if mode == pmTrySimple:
@@ -947,10 +962,17 @@ proc parseOperators(p: var Parser, headNode: PNode,
   result = headNode
   # expand while operators have priorities higher than 'limit'
   var opPrec = getPrecedence(p.tok)
-  let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
+  let modeB =
+    if mode == pmTypeDef: pmTypeDesc
+    elif mode == pmCommandParam: pmNormal
+    else: mode
   # the operator itself must not start on a new line:
   # progress guaranteed
   while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
+    if mode == pmCommandParam and result.kind in {nkIdent, nkAccQuoted} and
+        isExportMarkerBeforeColon(p):
+      result = parsePostfix(p, result)
+      break
     checkBinary(p)
     let leftAssoc = ord(not isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
@@ -968,17 +990,20 @@ proc parseOperators(p: var Parser, headNode: PNode,
   setEndInfo()
 
 proc simpleExprAux(p: var Parser, limit: int, mode: PrimaryMode): PNode =
-  var mode = mode
-  result = primary(p, mode)
-  if mode == pmTrySimple:
-    mode = pmNormal
+  var operatorMode = mode
+  let primaryMode =
+    if mode == pmCommandParam: pmNormal
+    else: mode
+  result = primary(p, primaryMode)
+  if operatorMode == pmTrySimple:
+    operatorMode = pmNormal
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)) and
-     mode == pmNormal:
+     operatorMode in {pmNormal, pmCommandParam}:
     var pragmaExp = newNodeP(nkPragmaExpr, p)
     pragmaExp.add result
     pragmaExp.add p.parsePragma
     result = pragmaExp
-  result = parseOperators(p, result, limit, mode)
+  result = parseOperators(p, result, limit, operatorMode)
 
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode =
   when defined(nimpretty):
@@ -1022,12 +1047,7 @@ proc identVis(p: var Parser; allowDot=false): PNode =
   #| identVisDot = symbol '.' optInd symbolOrKeyword OPR?
   var a = parseSymbol(p)
   if p.tok.tokType == tkOpr:
-    when defined(nimpretty):
-      starWasExportMarker(p.em)
-    result = newNodeP(nkPostfix, p)
-    result.add(newIdentNodeP(p.tok.ident, p))
-    result.add(a)
-    getTok(p)
+    result = parsePostfix(p, a)
   elif p.tok.tokType == tkDot and allowDot:
     result = dotExpr(p, a)
   else:
@@ -1314,7 +1334,7 @@ template nimprettyDontTouch(body) =
   when defined(nimpretty):
     dec p.em.keepIndents
 
-proc parseExpr(p: var Parser): PNode =
+proc parseExpr(p: var Parser, mode = pmNormal): PNode =
   #| expr = (blockExpr
   #|       | ifExpr
   #|       | whenExpr
@@ -1343,7 +1363,7 @@ proc parseExpr(p: var Parser): PNode =
   of tkTry:
     nimprettyDontTouch:
       result = parseTry(p, isExpr=true)
-  else: result = simpleExpr(p)
+  else: result = simpleExpr(p, mode)
   setEndInfo()
 
 proc parseEnum(p: var Parser): PNode
@@ -1354,7 +1374,8 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   #| simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
   #| commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
   #|                  'static'|'enum'|'tuple'|'object'|'proc')
-  #| primary = simplePrimary (commandStart expr (doBlock extraPostExprBlock*)?)?
+  #| commandParam = symbol '*' &':' / expr
+  #| primary = simplePrimary (commandStart commandParam (doBlock extraPostExprBlock*)?)?
   #|         / operatorB primary
   #|         / routineExpr
   #|         / rawTypeDesc

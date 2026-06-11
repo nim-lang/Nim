@@ -97,7 +97,8 @@ expr = (blockExpr
 simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
 commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
                  'static'|'enum'|'tuple'|'object'|'proc')
-primary = simplePrimary (commandStart expr (doBlock extraPostExprBlock*)?)?
+commandParam = symbol '*' &':' / expr
+primary = simplePrimary (commandStart commandParam (doBlock extraPostExprBlock*)?)?
         / operatorB primary
         / routineExpr
         / rawTypeDesc
