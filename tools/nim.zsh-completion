@@ -78,7 +78,7 @@ _nim() {
     '--opt\:-[optimization mode]:x:(none speed size)'
     '--debugger\:native[use native debugger (gdb)]'
     '--app\:-[generate this type of app (lib=dynamic)]:x:(console gui lib staticlib)'
-    '--cpu\:-[target architecture]:x:(alpha amd64 arm arm64 avr e2k esp hppa i386 ia64 js loongarch64 m68k mips mipsel mips64 mips64el msp430 nimvm powerpc powerpc64 powerpc64el riscv32 riscv64 sparc sparc64 s390x vm wasm32)'
+    '--cpu\:-[target architecture]:x:(alpha amd64 arm arm64 avr e2k esp hppa i386 ia64 js loongarch64 m68k mips mipsel mips64 mips64el msp430 nimvm powerpc powerpc64 powerpc64el riscv32 riscv64 sparc sparc64 s390x vm wasm32 wasm64)'
     '--gc\:-[memory management algorithm to use (default\: refc)]:x:(refc arc orc markAndSweep boehm go regions none)'
     '--os\:-[operating system to compile for]:x:(AIX Amiga Android Any Atari DOS DragonFly FreeBSD FreeRTOS Genode Haiku iOS Irix JS Linux MacOS MacOSX MorphOS NetBSD Netware NimVM NintendoSwitch OS2 OpenBSD PalmOS Standalone QNX SkyOS Solaris VxWorks Windows)'
     '--panics\:-[turn panics into process termination (default\: off)]:x:(off on)'
