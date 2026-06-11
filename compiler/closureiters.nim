@@ -253,7 +253,7 @@ proc newCurExcAccess(ctx: var Ctx): PNode =
 
 proc newStateLabel(ctx: Ctx): PNode =
   result = nkIntLit.newIntNode(0)
-  result.typ() = getSysType(ctx.g, TLineInfo(), tyInt16)
+  result.typ = getSysType(ctx.g, TLineInfo(), tyInt16)
 
 proc newState(ctx: var Ctx, n: PNode, inlinable: bool, label: PNode): PNode =
   # Creates a new state, adds it to the context
