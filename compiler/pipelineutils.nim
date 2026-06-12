@@ -1,3 +1,4 @@
+import std/intsets
 import ast, options, lineinfos, pathutils, msgs, modulegraphs, packages
 
 proc skipCodegen*(config: ConfigRef; n: PNode): bool {.inline.} =
@@ -22,5 +23,6 @@ proc prepareConfigNotes*(graph: ModuleGraph; module: PSym) =
     graph.config.notes = graph.config.foreignPackageNotes
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
-  result = true
-  #module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
+  # under `nim nifc` a module whose cached translation unit is reused
+  # does not generate code; the set is empty for every other command
+  result = module.position notin graph.icReusedModules

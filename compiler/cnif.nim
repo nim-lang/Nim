@@ -75,10 +75,31 @@ proc cnifDefDirective*(name, flags: string): string =
 proc cnifEndDefs*(): string =
   CnifDefStart & CnifDefEnd
 
-proc writeCnifArtifact*(code: string; outfile: string) =
+proc writeCnifArtifact*(code: string; outfile: string;
+                        initRequired = false; datInitRequired = false;
+                        dataDefs: openArray[string] = [];
+                        semmedNif = ""; moduleBase = "") =
   ## Splits the marked module text into the `.c.nif` artifact.
+  ## The artifact starts with a `(meta <flags> "semmedNif" "moduleBase")`
+  ## head — whether the module has an init/datInit proc ('i'/'d'), which
+  ## semmed NIF it was generated from and the module's mangled base name
+  ## (what `registerModuleToMain` and the reuse decision need when the TU
+  ## is reused in a later run, possibly without the module ever being
+  ## loaded again) — and a `(cdata <SymbolDef>*)` group naming the data
+  ## definitions (consts, globals, RTTI) the TU embeds.
   var b = nifbuilder.open(outfile)
   b.withTree "stmts":
+    b.withTree "meta":
+      var metaFlags = ""
+      if initRequired: metaFlags.add 'i'
+      if datInitRequired: metaFlags.add 'd'
+      if metaFlags.len > 0: b.addIdent metaFlags
+      else: b.addEmpty
+      b.addStrLit semmedNif
+      b.addStrLit moduleBase
+    b.withTree "cdata":
+      for d in dataDefs:
+        b.addSymbolDef d
     var raw = ""
     var inDef = false
     template flushRaw() =
@@ -162,6 +183,72 @@ proc symOrIdentName(c: Cursor): string {.inline.} =
   if c.kind == Ident: strVal(c) else: symName(c)
 
 type
+  CnifHeads* = object
+    ## The cheap-to-parse part of an artifact that a later run needs in
+    ## order to reuse the TU without regenerating it.
+    valid*: bool             ## file parsed and carries the meta head
+    initRequired*: bool
+    datInitRequired*: bool
+    semmedNif*: string       ## the semmed NIF this TU was generated from
+    moduleBase*: string      ## the module's mangled base name
+    cdefs*: seq[string]      ## C names of the proc definitions
+    cdata*: seq[string]      ## C names of the data definitions
+
+proc readCnifHeads*(f: string): CnifHeads =
+  ## Reads `(meta ...)`, `(cdata ...)` and the `(cdef ...)` head names from
+  ## an artifact. Artifacts written before the meta head report `valid=false`.
+  result = CnifHeads()
+  if not fileExists(f): return
+  var pool = newPool()
+  var tags = newTagPool()
+  let stmtsTag = tags.registerTag("stmts")
+  let cdefTag = tags.registerTag("cdef")
+  let cdataTag = tags.registerTag("cdata")
+  let metaTag = tags.registerTag("meta")
+  var buf = parseFromFile(f, 1000, pool, tags)
+  var c = beginRead(buf)
+  if c.kind != TagLit or c.cursorTagId != stmtsTag:
+    endRead(c)
+    return
+  c.loopInto:
+    if c.kind == TagLit:
+      if c.cursorTagId == metaTag:
+        result.valid = true
+        var strIdx = 0
+        c.loopInto:
+          if c.kind == Ident:
+            for ch in strVal(c):
+              if ch == 'i': result.initRequired = true
+              elif ch == 'd': result.datInitRequired = true
+            inc c
+          elif c.kind == StrLit:
+            if strIdx == 0: result.semmedNif = strVal(c)
+            elif strIdx == 1: result.moduleBase = strVal(c)
+            inc strIdx
+            inc c
+          else:
+            skip c
+      elif c.cursorTagId == cdataTag:
+        c.loopInto:
+          if c.kind == SymbolDef:
+            result.cdata.add symName(c)
+            inc c
+          else:
+            skip c
+      elif c.cursorTagId == cdefTag:
+        c.loopInto:
+          if c.kind == SymbolDef:
+            result.cdefs.add symName(c)
+            inc c
+          else:
+            skip c
+      else:
+        skip c
+    else:
+      skip c
+  endRead(c)
+
+type
   CnifLiveness* = object
     defs*: int      ## proc definitions emitted across all modules
     liveDefs*: int  ## of those, reachable from the roots
@@ -185,6 +272,8 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
   var tags = newTagPool()
   let stmtsTag = tags.registerTag("stmts")
   let cdefTag = tags.registerTag("cdef")
+  let cdataTag = tags.registerTag("cdata")
+  let metaTag = tags.registerTag("meta")
   var uses = initTable[string, HashSet[string]]()
   var roots = initHashSet[string]()
   var defs = initHashSet[string]()
@@ -204,7 +293,10 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
         roots.incl symOrIdentName(c)
         inc c
       of TagLit:
-        if c.cursorTagId == cdefTag:
+        if c.cursorTagId == metaTag or c.cursorTagId == cdataTag:
+          # bookkeeping for TU reuse, irrelevant for liveness
+          skip c
+        elif c.cursorTagId == cdefTag:
           var owner = ""
           var flagsSeen = false
           c.loopInto:

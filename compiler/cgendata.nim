@@ -176,6 +176,9 @@ type
     extensionLoaders*: array['0'..'9', Builder] # special procs for the
                                              # OpenGL wrapper
     sigConflicts*: CountTable[SigHash]
+    icDataDefs*: seq[string]  # C names of data definitions (consts, globals,
+                              # RTTI) this TU embeds; recorded in the cnif
+                              # artifact so a later run can reuse the TU
     g*: BModuleList
 
 template config*(m: BModule): ConfigRef = m.g.config

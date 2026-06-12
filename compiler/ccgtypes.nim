@@ -1398,6 +1398,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   else:
     m.s[cfsStrData].addDeclWithVisibility(Private):
       m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
+    if m.config.cmd == cmdNifC:
+      m.icDataDefs.add name
 
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1825,6 +1827,8 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addDeclWithVisibility(Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+  if m.config.cmd == cmdNifC:
+    m.icDataDefs.add name
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1889,6 +1893,8 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addDeclWithVisibility(Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+  if m.config.cmd == cmdNifC:
+    m.icDataDefs.add name
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1988,6 +1994,12 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   m.typeInfoMarkerV2[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
+  if m.config.cmd == cmdNifC and result in m.g.graph.icCachedDataDefs:
+    # already defined inside a reused TU from the previous run
+    cgsym(m, "TNimTypeV2")
+    declareNimType(m, "TNimTypeV2", result, owner)
+    m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
+    return prefixTI(result)
   if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.mods[owner], origType, info)
@@ -2064,6 +2076,15 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
+
+  if m.config.cmd == cmdNifC and result in m.g.graph.icCachedDataDefs:
+    # already defined inside a reused TU from the previous run
+    cgsym(m, "TNimType")
+    cgsym(m, "TNimNode")
+    declareNimType(m, "TNimType", result, t.skipTypes(typedescPtrs).itemId.module)
+    m.g.typeInfoMarker[sig] = (str: result,
+                               owner: t.skipTypes(typedescPtrs).itemId.module)
+    return prefixTI(result)
 
   let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
   if old != FileIndex(0):

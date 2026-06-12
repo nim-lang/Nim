@@ -205,12 +205,16 @@ proc markLive(ctx: DceContext): HashSet[SymId] =
             work.add dep
 
 proc computeLiveSymbols*(conf: ConfigRef; seedFiles: openArray[string];
-                         live: var HashSet[string]; stats: var DceStats): bool =
+                         live: var HashSet[string]; stats: var DceStats;
+                         nifDeps: var Table[string, seq[string]]): bool =
   ## Global liveness over a program's NIF modules: the seeds plus the
   ## transitive closure of their `(import ...)` entries. On success fills
   ## `live` with the NIF names (`name.disamb.modsuffix`) of every reachable
   ## symbol and returns true. Returns false when any module could not be
   ## analyzed — the caller must then treat everything as live.
+  ## `nifDeps` receives the import graph over NIF file paths — the full
+  ## closure including the modules the backend's own module list omits;
+  ## the artifact-reuse decision needs it for transitive invalidation.
   var ctx = DceContext(pool: newPool(), tags: newTagPool())
   ctx.stmtsTag = ctx.tags.registerTag("stmts")
   ctx.sdefTag = ctx.tags.registerTag("sd")
@@ -236,8 +240,12 @@ proc computeLiveSymbols*(conf: ConfigRef; seedFiles: openArray[string];
     analyzeNifFile(ctx, f, imports)
     if ctx.broken: return false
     if conf != nil:
+      var depFiles = newSeqOfCap[string](imports.len)
       for suffix in imports:
-        queue.add toGeneratedFile(conf, AbsoluteFile(suffix), ".nif").string
+        let depFile = toGeneratedFile(conf, AbsoluteFile(suffix), ".nif").string
+        depFiles.add depFile
+        queue.add depFile
+      nifDeps[f] = depFiles
   let liveIds = markLive(ctx)
   live = initHashSet[string](liveIds.len)
   for s in liveIds:

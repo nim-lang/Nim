@@ -80,8 +80,23 @@ type
     icCDefs*, icCLiveDefs*, icCDropped*: int # render-time DCE stats
     icSharedSigs*: Table[string, string] # shared instance C name -> signature
                                   # (collision guard for the 30-bit hash)
-    icSharedDefOwner*: Table[string, ItemId] # shared instance C name ->
-                                  # the symbol whose TU embeds the definition
+    icSharedDefOwner*: Table[string, tuple[sym: ItemId, tu: int]]
+                                  # shared instance C name -> the symbol and
+                                  # the TU (module position) embedding the
+                                  # single program-wide definition
+    icReusedModules*: IntSet      # module positions whose cached `.c`/`.o`
+                                  # is reused: codegen is skipped for them
+    icCachedCDefs*: HashSet[string] # C names of proc definitions inside
+                                  # reused TUs (from their artifacts' cdef heads)
+    icCachedDataDefs*: HashSet[string] # C names of data definitions (consts,
+                                  # globals, RTTI) inside reused TUs
+    icReusedMeta*: Table[int, tuple[initRequired, datInitRequired: bool]]
+    icFileReused*: seq[tuple[cname, moduleBase: string;
+                             initRequired, datInitRequired: bool]]
+      # TUs reused purely from cached files: modules the backend never
+      # loads (reached only through system or demand-driven codegen)
+    icFileReusedCnames*: HashSet[string] # their .c paths, so demand-created
+                                  # BModules for them never write anything
 
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -670,7 +685,10 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
     result = nil
 
 proc moduleOpenForCodegen*(g: ModuleGraph; m: FileIndex): bool {.inline.} =
-  result = true
+  ## A module whose cached translation unit is reused does not accept new
+  ## definitions: anything that would be emitted into it must be emitted
+  ## into the demanding module instead.
+  result = m.int notin g.icReusedModules
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 

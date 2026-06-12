@@ -859,7 +859,11 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   dest.addParRi()
 
-  writeFile(dest, d)
+  # OnlyIfChanged keeps the mtime of content-identical rewrites: nifmake's
+  # mtime-based `needsRebuild` then prunes the rebuild cascade level by
+  # level, and the nifc backend can trust "semmed NIF older than the cnif
+  # artifact" as an honest per-module unchanged stamp.
+  writeFile(dest, d, OnlyIfChanged)
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
 
