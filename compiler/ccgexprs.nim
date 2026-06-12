@@ -3493,7 +3493,7 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
       genBracedInit(q.initProc, sym.astdef, isConst = true, sym.typ, data)
   q.s[cfsData].add(extract(data))
   if q.config.cmd == cmdNifC:
-    q.icDataDefs.add stripCnifMarks(actualConstName)
+    q.icDataDefs.add (stripCnifMarks(actualConstName), icNifName(q, sym))
   if q.hcrOn:
     # generate the global pointer with the real name
     q.s[cfsVars].addVar(kind = Global, name = sym.loc.snippet,

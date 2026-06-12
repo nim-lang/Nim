@@ -1399,7 +1399,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     m.s[cfsStrData].addDeclWithVisibility(Private):
       m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
     if m.config.cmd == cmdNifC:
-      m.icDataDefs.add name
+      m.icDataDefs.add (name, "")
 
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1828,7 +1828,7 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
   m.s[cfsStrData].addDeclWithVisibility(Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
   if m.config.cmd == cmdNifC:
-    m.icDataDefs.add name
+    m.icDataDefs.add (name, "")
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1894,7 +1894,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   m.s[cfsStrData].addDeclWithVisibility(Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
   if m.config.cmd == cmdNifC:
-    m.icDataDefs.add name
+    m.icDataDefs.add (name, "")
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1

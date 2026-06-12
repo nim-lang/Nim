@@ -75,6 +75,139 @@ proc setupNifBackendModule(g: ModuleGraph; module: PSym): BModule =
     g.backend = cgendata.newModuleList(g)
   result = cgen.newModule(BModuleList(g.backend), module, g.config, idGeneratorForBackend(module))
 
+proc enforceDefRetention(g: ModuleGraph; mainPos: int;
+                         reusedHeads: var Table[int, CnifHeads];
+                         fileCandidates: var seq[tuple[cname: string, heads: CnifHeads]];
+                         staleArtifacts: seq[string];
+                         loadedArtifacts: seq[tuple[pos: int, artifact: string]];
+                         icDebug: bool) =
+  ## The backend def-migration check ("previously defined, still referenced").
+  ##
+  ## A definition can live in a TU other than its symbol's home module:
+  ## redirected defs, shared `_i<hash>` instances, demand-generated hooks.
+  ## When that TU regenerates and the demand chain that put the definition
+  ## there does not re-arise (its demanders sit in reused TUs now), the
+  ## definition vanishes while the reused TUs still call it — a guaranteed
+  ## link error that only a cold rebuild heals.
+  ##
+  ## For every definition in a regenerating TU's *previous* artifact that
+  ## some reused TU references (its `cref` head) and that no reused TU
+  ## defines, the recorded NIF name is resolved against the current sem
+  ## state and the symbol is re-demanded into the TU the definition lived
+  ## in (`icPreserveDefs`, consumed by `generateCodeForModule`). When the
+  ## symbol no longer exists — only possible with an incoherent cache,
+  ## e.g. mixed compiler generations or renamed RTTI — the referencing TUs
+  ## lose their reuse instead and regenerate; their old definitions then
+  ## become sources for the same check, hence the fixpoint loop.
+  if mainPos < 0: return
+  # Sources: the previous artifacts of every TU that regenerates this run.
+  # `ownTU` marks sources whose module runs full codegen this run (loaded
+  # backend modules): only those re-emit their global variables and their
+  # live top-level listing by themselves. Definitions in stale unclaimed
+  # artifacts have no TU of their own; the main module (always regenerated)
+  # hosts their re-demands.
+  var sources: seq[tuple[target: int, ownTU: bool, heads: CnifHeads]] = @[]
+  for la in loadedArtifacts:
+    if la.pos notin g.icReusedModules:
+      let h = readCnifHeads(la.artifact)
+      if h.valid: sources.add (la.pos, true, h)
+  for a in staleArtifacts:
+    let h = readCnifHeads(a)
+    if h.valid: sources.add (mainPos, false, h)
+  if sources.len == 0: return
+
+  while true:
+    # what the surviving reused TUs define and reference
+    var cachedDefs = initHashSet[string]()
+    template addDefs(h: CnifHeads) =
+      for d in h.cdefs: cachedDefs.incl d.cname
+      for d in h.cdata: cachedDefs.incl d.cname
+    for h in reusedHeads.values: addDefs(h)
+    for fc in fileCandidates: addDefs(fc.heads)
+    # referencing TUs per name: loaded modules by position, file-level
+    # TUs by -(index+1)
+    var refdBy = initTable[string, seq[int]]()
+    for pos, h in reusedHeads.pairs:
+      for r in h.crefs: refdBy.mgetOrPut(r, @[]).add pos
+    for i, fc in fileCandidates.pairs:
+      for r in fc.heads.crefs: refdBy.mgetOrPut(r, @[]).add -(i+1)
+
+    # modules whose TU runs full codegen this run: definitions they still
+    # own are re-emitted with them (globals through the serialized var
+    # sections unconditionally, live routines through the top-level listing)
+    var regenSuffixes = initHashSet[string]()
+    for src in sources.items:
+      if src.ownTU:
+        let base = extractFilename(src.heads.semmedNif)
+        if base.len > 4: regenSuffixes.incl base[0..^5] # strip ".nif"
+
+    # Every definition of a regenerating TU's previous artifact must stay
+    # defined ("previously defined => still defined"): references to it can
+    # be invisible (compilerproc/exportc names are not cnif-marked), so the
+    # preserve decision must NOT depend on the cref index — that one only
+    # targets the un-reuse fallback. Demand-side dedup (`declaredThings`,
+    # the cached/claim shortcuts) makes redundant re-demands cheap.
+    clear g.icPreserveDefs
+    var unreuse = initHashSet[int]()
+    for src in sources.items:
+      template check(defseq) =
+        for d in defseq:
+          if d.cname notin cachedDefs:
+            var sym: PSym = nil
+            if d.nifname.len > 0:
+              sym = resolveGlobalSym(ast.program, d.nifname)
+            # NB: reading `sym.kind` forces the lazy stub, so the kind is real
+            var action = 0 # un-reuse any visibly referencing TUs
+            if sym != nil:
+              if sym.kind in routineKinds or sym.kind == skConst:
+                # routine and const definitions exist only by demand (the
+                # serialized top level holds just the eager init statements,
+                # not a proc listing!), and reused TUs never demand — so
+                # every definition of the previous artifact whose symbol
+                # still exists is re-demanded explicitly
+                action = 2
+              elif sym.kind in {skVar, skLet} and
+                  parseSymName(d.nifname).module in regenSuffixes:
+                action = 1 # globals are re-emitted with their module's
+                           # eager top-level statements
+            case action
+            of 1: discard
+            of 2:
+              g.icPreserveDefs.mgetOrPut(src.target, @[]).add sym
+              if icDebug:
+                stderr.writeLine "[icRetain] preserve " & d.cname
+            else:
+              if d.cname in refdBy:
+                for tu in refdBy[d.cname]: unreuse.incl tu
+                if icDebug:
+                  stderr.writeLine "[icRetain] cannot re-demand " & d.cname &
+                    " (nif: " & d.nifname & "); un-reusing referencing TUs"
+              # no visible references and no symbol to re-demand: a deleted
+              # definition; invisible (unmarked) references would stem from
+              # exportc-style names whose callers re-sem on deletion anyway
+      check(src.heads.cdefs)
+      check(src.heads.cdata)
+    if unreuse.len == 0: break
+    # un-reused TUs regenerate; their previous definitions become sources
+    # for the next round
+    var dropFile: seq[int] = @[]
+    for tu in unreuse.items:
+      if tu >= 0:
+        if tu in reusedHeads:
+          g.icReusedModules.excl tu
+          g.icReusedMeta.del tu
+          sources.add (tu, true, reusedHeads[tu])
+          reusedHeads.del tu
+      else:
+        dropFile.add -(tu+1)
+    sort dropFile
+    for j in countdown(dropFile.high, 0):
+      # an un-reused file-level TU has no backend module: only demand-driven
+      # codegen recreates its content, so its definitions are re-demanded
+      # through the main module (ownTU = false)
+      sources.add (mainPos, false, fileCandidates[dropFile[j]].heads)
+      fileCandidates.delete dropFile[j]
+
 proc computeModuleReuse(g: ModuleGraph; modules: seq[PrecompiledModule];
                         precompSys: PrecompiledModule;
                         nifDeps: Table[string, seq[string]]) =
@@ -119,8 +252,57 @@ proc computeModuleReuse(g: ModuleGraph; modules: seq[PrecompiledModule];
         maxTime[f] = newest
         changed = true
 
+  # Fine-grained reuse gate, mirroring the m-step's cookie gating: a TU's
+  # generated C depends on its own semmed NIF, on every direct import's
+  # *interface* (type layouts, signatures, const values, inline-semantics
+  # bodies — all hashed into the `.iface.nif` cookie, whose hash chains the
+  # direct deps' cookies and is therefore transitively sensitive), on the
+  # implicit system import, and on the *implementations* of the modules
+  # whose routine bodies the TU physically embeds (redirected defs, shared
+  # instances, hooks — recorded in the artifact's cdeps head, gated on
+  # `.impl.nif`). The cookie sidecars are written OnlyIfChanged by the
+  # m-step, so a body-only edit in a leaf module leaves every dependent's
+  # iface input untouched and only the edited module's TU regenerates.
+  # When a sidecar is missing (`-d:icNoIfaceGate` m-runs, foreign caches)
+  # the gate falls back to the transitive NIF-mtime closure; `-d:icCoarseReuse`
+  # forces that fallback.
+  let coarseReuse = isDefined(g.config, "icCoarseReuse")
+  var inputTimes = initTable[string, Time]()
+  proc sidecarOf(nifFile, kind: string): string =
+    nifFile[0..^5] & "." & kind & ".nif" # "<dir>/<suffix>.nif" -> "<dir>/<suffix>.<kind>.nif"
+  proc staleVsArtifact(nifFile: string; artTime: Time; heads: CnifHeads): string =
+    ## Empty when every input is older than the artifact, else the reason.
+    if nifFile notin inputTimes:
+      inputTimes[nifFile] = getLastModificationTime(nifFile)
+    if inputTimes[nifFile] > artTime:
+      return "semmed NIF newer than artifact"
+    var missingSidecar = coarseReuse
+    if not missingSidecar:
+      block fine:
+        var inputs = @[sidecarOf(systemNif, "iface")]
+        for dep in nifDeps.getOrDefault(nifFile):
+          inputs.add sidecarOf(dep, "iface")
+        for s in heads.cdeps:
+          inputs.add getNimcacheDir(g.config).string / s & ".impl.nif"
+        for inp in inputs:
+          if inp notin inputTimes:
+            if fileExists(inp):
+              inputTimes[inp] = getLastModificationTime(inp)
+            else:
+              missingSidecar = true
+              break fine
+          if inputTimes[inp] > artTime:
+            return "cookie newer than artifact: " & inp
+        return ""
+    if maxTime.getOrDefault(nifFile, artTime) > artTime:
+      return "dependency closure newer than artifact (coarse)"
+    return ""
+
   let bl = BModuleList(g.backend)
   var handledArtifacts = initHashSet[string]()
+  var loadedArtifacts: seq[tuple[pos: int, artifact: string]] = @[]
+  var reusedHeads = initTable[int, CnifHeads]() # loaded reused modules
+  var mainPos = -1
   for i in 0..modules.len:
     let pm = if i < modules.len: modules[i] else: precompSys
     if pm.module == nil: continue
@@ -131,7 +313,10 @@ proc computeModuleReuse(g: ModuleGraph; modules: seq[PrecompiledModule];
     # claimed by a loaded module — regenerated or reused, but never
     # eligible for the file-level reuse below
     handledArtifacts.incl artifact
-    if sfMainModule in pm.module.flags: continue
+    loadedArtifacts.add (pos, artifact)
+    if sfMainModule in pm.module.flags:
+      mainPos = pos
+      continue
     let nifFile = toNifFilename(g.config, FileIndex pos)
     template reject(reason: string) =
       if icDebug:
@@ -144,14 +329,13 @@ proc computeModuleReuse(g: ModuleGraph; modules: seq[PrecompiledModule];
     if not fileExists(artifact): reject("no artifact " & artifact)
     if not fileExists(cfile.string): reject("no C file")
     if not fileExists(obj.string): reject("no object file")
-    if maxTime[nifFile] > getLastModificationTime(artifact):
-      reject("dependency closure newer than artifact")
     let heads = readCnifHeads(artifact)
     if not heads.valid: reject("artifact has no meta head")
+    let staleReason = staleVsArtifact(nifFile, getLastModificationTime(artifact), heads)
+    if staleReason.len > 0: reject(staleReason)
     g.icReusedModules.incl pos
     g.icReusedMeta[pos] = (heads.initRequired, heads.datInitRequired)
-    for d in heads.cdefs: g.icCachedCDefs.incl d
-    for d in heads.cdata: g.icCachedDataDefs.incl d
+    reusedHeads[pos] = heads
 
   # Translation units of modules the backend module list does not even
   # contain (reached only through system's imports or demand-driven
@@ -159,23 +343,42 @@ proc computeModuleReuse(g: ModuleGraph; modules: seq[PrecompiledModule];
   # purely at the file level. When one of them is stale, its import
   # closure is stale too, so every TU that could reference it regenerates
   # and demand recreates the definitions.
+  var fileCandidates: seq[tuple[cname: string, heads: CnifHeads]] = @[]
+  var staleArtifacts: seq[string] = @[]
   for artifact in walkFiles(getNimcacheDir(g.config).string / "*.c.nif"):
     if artifact in handledArtifacts: continue
     let heads = readCnifHeads(artifact)
     if not heads.valid or heads.semmedNif.len == 0 or heads.moduleBase.len == 0:
       continue
     if heads.semmedNif notin maxTime:
-      continue # not part of this program (e.g. a removed module)
+      # not part of this program anymore (e.g. a removed module), but its
+      # definitions may still be referenced by reused TUs
+      staleArtifacts.add artifact
+      continue
     let cname = artifact[0..^5] # strip ".nif"
     let obj = completeCfilePath(g.config, toObjFile(g.config, AbsoluteFile cname))
-    if not (fileExists(cname) and fileExists(obj.string)): continue
-    if maxTime[heads.semmedNif] > getLastModificationTime(artifact):
+    if not (fileExists(cname) and fileExists(obj.string)) or
+        staleVsArtifact(heads.semmedNif,
+                        getLastModificationTime(artifact), heads).len > 0:
+      staleArtifacts.add artifact
       continue
-    g.icFileReused.add (cname, heads.moduleBase,
-                        heads.initRequired, heads.datInitRequired)
-    g.icFileReusedCnames.incl cname
-    for d in heads.cdefs: g.icCachedCDefs.incl d
-    for d in heads.cdata: g.icCachedDataDefs.incl d
+    fileCandidates.add (cname, heads)
+
+  if not isDefined(g.config, "icNoRetain"):
+    enforceDefRetention(g, mainPos, reusedHeads, fileCandidates, staleArtifacts,
+                        loadedArtifacts, icDebug)
+
+  # The cached-definition sets and the file-level reuse list reflect the
+  # TUs that survived the retention check.
+  for heads in reusedHeads.values:
+    for d in heads.cdefs: g.icCachedCDefs.incl d.cname
+    for d in heads.cdata: g.icCachedDataDefs.incl d.cname
+  for fc in fileCandidates:
+    g.icFileReused.add (fc.cname, fc.heads.moduleBase,
+                        fc.heads.initRequired, fc.heads.datInitRequired)
+    g.icFileReusedCnames.incl fc.cname
+    for d in fc.heads.cdefs: g.icCachedCDefs.incl d.cname
+    for d in fc.heads.cdata: g.icCachedDataDefs.incl d.cname
   if icDebug and g.icFileReused.len > 0:
     stderr.writeLine "[icReuse] file-level reused TUs: " & $g.icFileReused.len
 
@@ -204,9 +407,15 @@ proc finishModule(g: ModuleGraph; bmod: BModule) =
   let initStmt = newNode(nkStmtList)
   finalCodegenActions(g, bmod, initStmt)
 
-  # Generate dispatcher methods
-  for disp in getDispatchers(g):
-    genProcLvl3(bmod, disp)
+  # Dispatcher definitions live in the main TU only: their bodies enumerate
+  # the whole program's method set, so a copy inside a reusable TU would go
+  # stale when a method is added in an unrelated module (genProcLvl3 routes
+  # demand-driven dispatcher definitions to main the same way). Main is
+  # finished last, after all method registrations have been replayed.
+  if sfMainModule in bmod.module.flags:
+    for disp in getDispatchers(g):
+      if not containsOrIncl(bmod.declaredThings, disp.id):
+        genProcLvl3(bmod, disp)
 
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
@@ -236,6 +445,12 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
           stderr.writeLine "[icHook] " & $op.kind & " " & op.sym.name.s &
             " typ: " & typeToString(op.sym.typ) & " in " & precomp.module.name.s
         requestProcDef(bmod, op.sym)
+
+  # Definitions this TU embedded in the previous run that reused TUs still
+  # reference must keep being emitted (see `enforceDefRetention`).
+  if g.icPreserveDefs.hasKey(moduleId):
+    for sym in g.icPreserveDefs[moduleId]:
+      requestAnyDef(bmod, sym)
 
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.

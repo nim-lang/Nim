@@ -1992,6 +1992,18 @@ proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
   let symAsStr = pool.syms[symId]
   result = resolveSym(c, symAsStr, true)
 
+proc resolveGlobalSym*(c: var DecodeContext; symAsStr: string): PSym =
+  ## By-name resolution for the backend's def-retention check: a NIF name
+  ## recorded in a `.c.nif` artifact is looked up in the current sem state.
+  ## Returns nil when the symbol no longer exists — including when its whole
+  ## module vanished from the program (the module's NIF must be checked
+  ## before `resolveSym`, which asserts on a missing file).
+  let sn = parseSymName(symAsStr)
+  if sn.module.len == 0: return nil
+  let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(sn.module & ".nif")).string
+  if not fileExists(modFile): return nil
+  result = resolveSym(c, symAsStr, true)
+
 proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: FileIndex): PSym =
   ## Tries to resolve a compiler proc from a module by checking the NIF index.
   ## Returns nil if the symbol doesn't exist.

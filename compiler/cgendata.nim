@@ -176,9 +176,17 @@ type
     extensionLoaders*: array['0'..'9', Builder] # special procs for the
                                              # OpenGL wrapper
     sigConflicts*: CountTable[SigHash]
-    icDataDefs*: seq[string]  # C names of data definitions (consts, globals,
-                              # RTTI) this TU embeds; recorded in the cnif
-                              # artifact so a later run can reuse the TU
+    icImplMods*: IntSet       # module ids whose routine BODIES this TU
+                              # embeds (redirected defs, shared instances,
+                              # hooks); recorded as the artifact's cdeps so
+                              # the reuse gate can check their impl cookies
+    icDataDefs*: seq[tuple[cname, nifname: string]]
+                              # C names of data definitions (consts, globals,
+                              # RTTI) this TU embeds plus their NIF symbol
+                              # names (empty for RTTI, which has no symbol);
+                              # recorded in the cnif artifact so a later run
+                              # can reuse the TU and re-demand definitions
+                              # that cached TUs still reference
     g*: BModuleList
 
 template config*(m: BModule): ConfigRef = m.g.config

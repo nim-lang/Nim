@@ -20,6 +20,8 @@ import
 
 from expanddefaults import caseObjDefaultBranch
 from ast2nif import globalName, toNifFilename
+from typekeys import modname
+from std/algorithm import sort
 import cnif
 
 import pipelineutils
@@ -91,6 +93,16 @@ proc isReusedTU(m: BModule): bool =
     (m.module.position in m.g.graph.icReusedModules or
      (m.g.graph.icFileReusedCnames.len > 0 and
       getCFile(m).string in m.g.graph.icFileReusedCnames))
+
+proc icNifName(m: BModule; s: PSym): string =
+  ## The serialized NIF name of `s`, recorded next to its C name in the cnif
+  ## artifact so a later run can re-demand the definition when a reused TU
+  ## still references it (the def-retention check). Backend-minted symbols
+  ## have no NIF name.
+  if m.config.cmd == cmdNifC and s != nil and not isBackendMinted(s.itemId):
+    result = globalName(s, m.config)
+  else:
+    result = ""
 
 proc redirectToLiveModule(m: BModule, q: BModule): BModule =
   ## A module whose cached translation unit is reused never generates code,
@@ -785,7 +797,8 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   if lfNoDecl in s.loc.flags: return
   if not containsOrIncl(p.module.declaredThings, s.id):
     if p.config.cmd == cmdNifC and sfImportc notin s.flags:
-      p.module.icDataDefs.add stripCnifMarks(s.loc.snippet)
+      p.module.icDataDefs.add (stripCnifMarks(s.loc.snippet),
+                               icNifName(p.module, s))
     if sfThread in s.flags:
       declareThreadVar(p.module, s, sfImportc in s.flags)
       if value != "":
@@ -1355,13 +1368,32 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].addAssignmentWithValue("nimErr_"):
       p.blocks[0].sections[cpsInit].addCall(cgsymValue(p.module, "nimErrorFlag"))
 
+proc findMainBModule(g: BModuleList): BModule =
+  result = nil
+  for cand in g.mods:
+    if cand != nil and cand.module != nil and sfMainModule in cand.module.flags:
+      return cand
+
 proc genProcLvl3*(m: BModule, prc: PSym) =
   if m.config.cmd == cmdNifC:
     fillBackendName(m, prc)
+    if sfDispatcher in prc.flags and sfMainModule notin m.module.flags:
+      # A method dispatcher enumerates the whole program's method set; a
+      # definition inside a reusable TU goes stale as soon as a method is
+      # added in an unrelated module. Route every dispatcher definition
+      # into the main TU, which is regenerated on every run.
+      genProcPrototype(m, prc)
+      let mainMod = findMainBModule(m.g)
+      if mainMod != nil:
+        if not containsOrIncl(mainMod.declaredThings, prc.id):
+          genProcLvl3(mainMod, prc)
+        return
     # inline procs are emitted into every using TU; they are never shared
-    # across translation units, so cached/cross-TU dedup must not touch them
+    # across translation units, so cached/cross-TU dedup must not touch
+    # them. Dispatchers always (re)define in main, never from the cache.
     let key = stripCnifMarks(prc.loc.snippet)
-    if prc.typ == nil or prc.typ.callConv != ccInline:
+    if (prc.typ == nil or prc.typ.callConv != ccInline) and
+        sfDispatcher notin prc.flags:
       if key in m.g.graph.icCachedCDefs:
         # already defined inside a reused TU from the previous run
         genProcPrototype(m, prc)
@@ -1378,6 +1410,16 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
             m.g.graph.icSharedDefOwner[key] != claim:
           genProcPrototype(m, prc)
           return
+    if prc.itemId.module != m.module.position and
+        not isBackendMinted(prc.itemId) and
+        (prc.typ == nil or prc.typ.callConv != ccInline) and
+        sfDispatcher notin prc.flags:
+      # this TU embeds a definition whose body lives in another module's
+      # NIF: record the impl dependency (the artifact's cdeps head) so the
+      # reuse gate re-checks that module's impl cookie. Inline bodies are
+      # already part of the iface cookie; dispatcher bodies are synthesized
+      # from the whole program and live in main, which never reuses.
+      m.icImplMods.incl prc.itemId.module
   var p = newProc(prc, m)
   var header = newBuilder("")
   let isCppMember = m.config.backend == backendCpp and sfCppMember * prc.flags != {}
@@ -1513,7 +1555,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # `extern`/`rtl` pragma at sem time), so its uses are invisible to the
       # artifact's liveness walk — conservatively keep the definition.
       defFlags.add 'x'
-    m.s[cfsProcs].add(cnifDefDirective(stripCnifMarks(prc.loc.snippet), defFlags))
+    m.s[cfsProcs].add(cnifDefDirective(stripCnifMarks(prc.loc.snippet), defFlags,
+                                       icNifName(m, prc)))
     m.s[cfsProcs].add(extract(generatedProc))
     m.s[cfsProcs].add(cnifEndDefs())
   else:
@@ -1719,6 +1762,17 @@ proc requestProcDef*(m: BModule, prc: PSym) =
   ## module that owns it and generated once, exactly as if some generated
   ## code had referenced it.
   genProc(m, prc)
+
+proc requestAnyDef*(m: BModule, sym: PSym) =
+  ## Demand entry for the def-retention check: a definition that lived in
+  ## this TU in the previous run and that a reused TU still references must
+  ## keep being emitted. Routines and constants can be re-demanded; symbols
+  ## of any other kind never get here (the check un-reuses the referencing
+  ## TU instead).
+  case sym.kind
+  of routineKinds: genProc(m, sym)
+  of skConst: requestConstImpl(m.initProc, sym)
+  else: discard
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -2510,10 +2564,16 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
 
   if m.config.cmd == cmdNifC and result.len > 0:
     let artifact = cfile.cname.string & ".nif"
+    var implDeps: seq[string] = @[]
+    for pos in m.icImplMods.items:
+      if pos != m.module.position:
+        implDeps.add modname(pos, m.config)
+    sort implDeps
     writeCnifArtifact(result, artifact, initRequired, datInitRequired,
                       m.icDataDefs,
                       semmedNif = toNifFilename(m.config, FileIndex m.module.position),
-                      moduleBase = getSomeNameForModule(m))
+                      moduleBase = getSomeNameForModule(m),
+                      implDeps = implDeps)
     m.g.graph.icCnifFiles.add artifact
   # NB: under cmdNifC the returned text still carries the cnif marks; the
   # caller renders it (dropping dead definitions) or strips it.
@@ -2529,6 +2589,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.headerFiles = @[]
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()
+  result.icImplMods = initIntSet()
   result.cfilename = filename
   result.filename = filename
   result.typeCache = initTable[SigHash, Rope]()

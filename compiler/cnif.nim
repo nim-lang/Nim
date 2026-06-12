@@ -30,11 +30,14 @@
 ##
 ## Marker scheme (cannot collide: C string literals escape control chars,
 ## and `\1`/`\31`/`\23` of cgen's postprocess directives are distinct):
-##   \2 name \3                  a global's C name
-##   \4 name \31 flags \5        start of the definition of `name`
-##   \4 \5                       end of the definitions section
+##   \2 name \3                       a global's C name
+##   \4 name \31 flags \31 nif \5     start of the definition of `name`;
+##                                    `nif` is the defining symbol's NIF name
+##                                    (empty for backend-minted symbols) so a
+##                                    later run can re-demand the definition
+##   \4 \5                            end of the definitions section
 
-import std / [tables, sets, os, assertions, syncio]
+import std / [tables, sets, os, assertions, syncio, algorithm]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
 
 const
@@ -69,24 +72,74 @@ proc stripCnifMarks*(s: string): string =
       result.add s[i]
       inc i
 
-proc cnifDefDirective*(name, flags: string): string =
-  CnifDefStart & name & CnifDefSep & flags & CnifDefEnd
+const
+  CnifVersion* = "3"
+    ## Artifact format version, stored in the meta head. Artifacts written
+    ## by an older compiler lack the NIF names and the cref group the
+    ## def-retention check needs (v2) or the cdeps group the fine-grained
+    ## reuse gate needs (v3); `readCnifHeads` reports them as invalid so
+    ## their TUs simply regenerate once.
+
+proc cnifDefDirective*(name, flags, nifName: string): string =
+  CnifDefStart & name & CnifDefSep & flags & CnifDefSep & nifName & CnifDefEnd
 
 proc cnifEndDefs*(): string =
   CnifDefStart & CnifDefEnd
 
 proc writeCnifArtifact*(code: string; outfile: string;
                         initRequired = false; datInitRequired = false;
-                        dataDefs: openArray[string] = [];
-                        semmedNif = ""; moduleBase = "") =
+                        dataDefs: openArray[tuple[cname, nifname: string]] = [];
+                        semmedNif = ""; moduleBase = "";
+                        implDeps: openArray[string] = []) =
   ## Splits the marked module text into the `.c.nif` artifact.
-  ## The artifact starts with a `(meta <flags> "semmedNif" "moduleBase")`
-  ## head — whether the module has an init/datInit proc ('i'/'d'), which
-  ## semmed NIF it was generated from and the module's mangled base name
-  ## (what `registerModuleToMain` and the reuse decision need when the TU
-  ## is reused in a later run, possibly without the module ever being
-  ## loaded again) — and a `(cdata <SymbolDef>*)` group naming the data
-  ## definitions (consts, globals, RTTI) the TU embeds.
+  ## The artifact starts with a `(meta <flags> "semmedNif" "moduleBase"
+  ## "version")` head — whether the module has an init/datInit proc
+  ## ('i'/'d'), which semmed NIF it was generated from and the module's
+  ## mangled base name (what `registerModuleToMain` and the reuse decision
+  ## need when the TU is reused in a later run, possibly without the module
+  ## ever being loaded again) — a `(cdata (SymbolDef StrLit)*)` group naming
+  ## the data definitions (consts, globals, RTTI) the TU embeds together
+  ## with their NIF names, a `(cref Ident*)` group naming every C name
+  ## the TU references but does not define itself (what the def-retention
+  ## check consults when some *other* TU regenerates), and a
+  ## `(cdeps Ident*)` group naming the modules whose routine *bodies* this
+  ## TU embeds (redirected defs, shared instances, hooks): the fine-grained
+  ## reuse gate checks their `.impl.nif` cookies on top of the direct
+  ## imports' `.iface.nif` cookies.
+  # pre-pass: every marked name is a use, every definition directive (and
+  # every data def) is a definition; external references = uses - defs
+  var uses = initHashSet[string]()
+  var defs = initHashSet[string]()
+  block prePass:
+    var i = 0
+    while i < code.len:
+      case code[i]
+      of CnifSymStart:
+        inc i
+        var name = ""
+        while i < code.len and code[i] != CnifSymEnd:
+          name.add code[i]
+          inc i
+        inc i
+        uses.incl name
+      of CnifDefStart:
+        inc i
+        var payload = ""
+        while i < code.len and code[i] != CnifDefEnd:
+          payload.add code[i]
+          inc i
+        inc i
+        let sep = find(payload, CnifDefSep)
+        if sep > 0: defs.incl payload[0..<sep]
+        elif payload.len > 0: defs.incl payload
+      else:
+        inc i
+  for d in dataDefs: defs.incl d.cname
+  var crefs: seq[string] = @[]
+  for u in uses:
+    if u notin defs: crefs.add u
+  sort crefs
+
   var b = nifbuilder.open(outfile)
   b.withTree "stmts":
     b.withTree "meta":
@@ -97,9 +150,17 @@ proc writeCnifArtifact*(code: string; outfile: string;
       else: b.addEmpty
       b.addStrLit semmedNif
       b.addStrLit moduleBase
+      b.addStrLit CnifVersion
     b.withTree "cdata":
       for d in dataDefs:
-        b.addSymbolDef d
+        b.addSymbolDef d.cname
+        b.addStrLit d.nifname
+    b.withTree "cref":
+      for r in crefs:
+        b.addIdent r
+    b.withTree "cdeps":
+      for s in implDeps:
+        b.addIdent s
     var raw = ""
     var inDef = false
     template flushRaw() =
@@ -132,11 +193,17 @@ proc writeCnifArtifact*(code: string; outfile: string;
         if payload.len > 0:
           let sep = find(payload, CnifDefSep)
           let name = if sep >= 0: payload[0..<sep] else: payload
-          let flags = if sep >= 0: payload[sep+1..^1] else: ""
+          var flags = if sep >= 0: payload[sep+1..^1] else: ""
+          var nifName = ""
+          let sep2 = find(flags, CnifDefSep)
+          if sep2 >= 0:
+            nifName = flags[sep2+1..^1]
+            flags = flags[0..<sep2]
           b.addTree "cdef"
           b.addSymbolDef name
           if flags.len > 0: b.addIdent flags
           else: b.addEmpty
+          b.addStrLit nifName
           inDef = true
       else:
         raw.add code[i]
@@ -186,17 +253,22 @@ type
   CnifHeads* = object
     ## The cheap-to-parse part of an artifact that a later run needs in
     ## order to reuse the TU without regenerating it.
-    valid*: bool             ## file parsed and carries the meta head
+    valid*: bool             ## file parsed, carries the meta head and has
+                             ## the current format version
     initRequired*: bool
     datInitRequired*: bool
     semmedNif*: string       ## the semmed NIF this TU was generated from
     moduleBase*: string      ## the module's mangled base name
-    cdefs*: seq[string]      ## C names of the proc definitions
-    cdata*: seq[string]      ## C names of the data definitions
+    cdefs*: seq[tuple[cname, nifname: string]] ## the proc definitions
+    cdata*: seq[tuple[cname, nifname: string]] ## the data definitions
+    crefs*: seq[string]      ## C names referenced but not defined here
+    cdeps*: seq[string]      ## module suffixes whose routine bodies this
+                             ## TU embeds (impl-cookie gated on reuse)
 
 proc readCnifHeads*(f: string): CnifHeads =
-  ## Reads `(meta ...)`, `(cdata ...)` and the `(cdef ...)` head names from
-  ## an artifact. Artifacts written before the meta head report `valid=false`.
+  ## Reads `(meta ...)`, `(cdata ...)`, `(cref ...)` and the `(cdef ...)`
+  ## head names from an artifact. Artifacts written by an older compiler
+  ## (no meta head or a different format version) report `valid=false`.
   result = CnifHeads()
   if not fileExists(f): return
   var pool = newPool()
@@ -204,16 +276,20 @@ proc readCnifHeads*(f: string): CnifHeads =
   let stmtsTag = tags.registerTag("stmts")
   let cdefTag = tags.registerTag("cdef")
   let cdataTag = tags.registerTag("cdata")
+  let crefTag = tags.registerTag("cref")
+  let cdepsTag = tags.registerTag("cdeps")
   let metaTag = tags.registerTag("meta")
   var buf = parseFromFile(f, 1000, pool, tags)
   var c = beginRead(buf)
   if c.kind != TagLit or c.cursorTagId != stmtsTag:
     endRead(c)
     return
+  var version = ""
+  var sawMeta = false
   c.loopInto:
     if c.kind == TagLit:
       if c.cursorTagId == metaTag:
-        result.valid = true
+        sawMeta = true
         var strIdx = 0
         c.loopInto:
           if c.kind == Ident:
@@ -224,6 +300,7 @@ proc readCnifHeads*(f: string): CnifHeads =
           elif c.kind == StrLit:
             if strIdx == 0: result.semmedNif = strVal(c)
             elif strIdx == 1: result.moduleBase = strVal(c)
+            elif strIdx == 2: version = strVal(c)
             inc strIdx
             inc c
           else:
@@ -231,15 +308,45 @@ proc readCnifHeads*(f: string): CnifHeads =
       elif c.cursorTagId == cdataTag:
         c.loopInto:
           if c.kind == SymbolDef:
-            result.cdata.add symName(c)
+            result.cdata.add (symName(c), "")
+            inc c
+          elif c.kind == StrLit:
+            if result.cdata.len > 0:
+              result.cdata[^1].nifname = strVal(c)
+            inc c
+          else:
+            skip c
+      elif c.cursorTagId == crefTag:
+        c.loopInto:
+          if c.kind in {Ident, Symbol, SymbolDef}:
+            result.crefs.add symOrIdentName(c)
+            inc c
+          else:
+            skip c
+      elif c.cursorTagId == cdepsTag:
+        c.loopInto:
+          if c.kind in {Ident, Symbol, SymbolDef}:
+            result.cdeps.add symOrIdentName(c)
             inc c
           else:
             skip c
       elif c.cursorTagId == cdefTag:
+        # fixed head: SymbolDef, flags (Ident or empty), NIF name StrLit;
+        # everything after that is the definition's body text
+        var state = 0
         c.loopInto:
           if c.kind == SymbolDef:
-            result.cdefs.add symName(c)
+            result.cdefs.add (symName(c), "")
+            state = 1
             inc c
+          elif state == 1: # the flags field
+            state = 2
+            skip c
+          elif state == 2: # the NIF name
+            if c.kind == StrLit and result.cdefs.len > 0:
+              result.cdefs[^1].nifname = strVal(c)
+            state = 3
+            skip c
           else:
             skip c
       else:
@@ -247,6 +354,7 @@ proc readCnifHeads*(f: string): CnifHeads =
     else:
       skip c
   endRead(c)
+  result.valid = sawMeta and version == CnifVersion
 
 type
   CnifLiveness* = object
@@ -273,6 +381,8 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
   let stmtsTag = tags.registerTag("stmts")
   let cdefTag = tags.registerTag("cdef")
   let cdataTag = tags.registerTag("cdata")
+  let crefTag = tags.registerTag("cref")
+  let cdepsTag = tags.registerTag("cdeps")
   let metaTag = tags.registerTag("meta")
   var uses = initTable[string, HashSet[string]]()
   var roots = initHashSet[string]()
@@ -293,7 +403,8 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
         roots.incl symOrIdentName(c)
         inc c
       of TagLit:
-        if c.cursorTagId == metaTag or c.cursorTagId == cdataTag:
+        if c.cursorTagId == metaTag or c.cursorTagId == cdataTag or
+            c.cursorTagId == crefTag or c.cursorTagId == cdepsTag:
           # bookkeeping for TU reuse, irrelevant for liveness
           skip c
         elif c.cursorTagId == cdefTag:

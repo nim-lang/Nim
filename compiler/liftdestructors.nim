@@ -1226,6 +1226,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flagsImpl, {sfFromGeneric, sfGeneratedOp}
+  setHookDisamb(g, result, AttachedOpToStr[kind], typ)
 
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; isDiscriminant = false): PSym =
@@ -1272,6 +1273,10 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   if kind == attachedWasMoved:
     incl result.flagsImpl, sfNoSideEffect
     incl result.typ, tfNoSideEffect
+  if not isDiscriminant:
+    # discriminant destructors derive their body from the enclosing object
+    # AND the selected field; their key is set at the call site
+    setHookDisamb(g, result, AttachedOpToStr[kind], typ)
 
 proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessTypeField, "accessTypeField", x)
@@ -1364,6 +1369,7 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
   # discrimantor assignments needs pointers to destroy fields; alas, we cannot use non-var destructor here
   result = symPrototype(g, field.typ, typ.owner, attachedDestructor, info, idgen, isDiscriminant = true)
+  setHookDisamb(g, result, "=destroy¦" & field.name.s & "¦" & $field.position, typ)
   var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen,
                    fn: result)
   a.asgnForType = typ

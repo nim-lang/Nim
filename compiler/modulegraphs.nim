@@ -97,6 +97,11 @@ type
       # loads (reached only through system or demand-driven codegen)
     icFileReusedCnames*: HashSet[string] # their .c paths, so demand-created
                                   # BModules for them never write anything
+    icPreserveDefs*: Table[int, seq[PSym]] # module position -> symbols whose
+                                  # definitions the TU must keep emitting:
+                                  # they were in its previous artifact and a
+                                  # reused TU still references them (the
+                                  # backend def-migration check)
     icImplDeps*: IntSet           # NeedsImpl edge tracking under `nim m`:
                                   # module ids (FileIndex) whose routine BODIES
                                   # this compilation consumed at compile time
@@ -489,6 +494,42 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
       g.instDisambs[probe] = inst.itemId
       break
   inst.disamb = h
+
+const
+  HookDisambBit* = 0x2000_0000'i32
+    ## Set in the `disamb` of synthesized type-bound operators and `$enum`
+    ## procs whose value is content-derived (see `setHookDisamb`); disjoint
+    ## from both the small counter range and the `InstanceDisambBit` range.
+
+proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
+  ## Under IC, replace a synthesized hook's counter-based `disamb` with a
+  ## content-derived one: a hash of the operation name plus the `typeKey` of
+  ## the type it is bound to. Counter disambs renumber whenever an *earlier*
+  ## hook appears in a re-semmed module, so cached translation units keep
+  ## calling the old `_u<disamb>` C name while the regenerated producer
+  ## defines a new one — the hook flavor of the backend def-migration hole.
+  ## With a content-derived value the hook's NIF name (and hence its C name)
+  ## is stable as long as the type itself is unchanged.
+  if g.config.cmd notin {cmdNifC, cmdM}: return
+  if isDefined(g.config, "icNoHookKey"): return
+  var key = opName
+  key.add '|'
+  key.add typeKey(typ, g.config, loadTypeCallback, loadSymCallback)
+  let d = toMD5(key)
+  var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
+           (int32(d[3] and 0x1F'u8) shl 24)) or HookDisambBit
+  # Same-name hash collisions inside this process get probed to the next
+  # free value (staying below InstanceDisambBit); the loser merely loses
+  # cross-run name stability.
+  while true:
+    let probe = (hook.name.id, h)
+    if g.instDisambs.hasKey(probe):
+      if g.instDisambs[probe] == hook.itemId: break
+      h = if h == InstanceDisambBit - 1'i32: HookDisambBit else: h + 1
+    else:
+      g.instDisambs[probe] = hook.itemId
+      break
+  hook.disamb = h
 
 proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)
