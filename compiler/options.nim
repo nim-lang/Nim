@@ -662,6 +662,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "x86": result = conf.target.targetCPU == cpuI386
     of "itanium": result = conf.target.targetCPU == cpuIa64
     of "x8664": result = conf.target.targetCPU == cpuAmd64
+    of "wasm": result = conf.target.targetCPU in {cpuWasm32, cpuWasm64}
     of "posix", "unix":
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
