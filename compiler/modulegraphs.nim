@@ -97,6 +97,18 @@ type
       # loads (reached only through system or demand-driven codegen)
     icFileReusedCnames*: HashSet[string] # their .c paths, so demand-created
                                   # BModules for them never write anything
+    icImplDeps*: IntSet           # NeedsImpl edge tracking under `nim m`:
+                                  # module ids (FileIndex) whose routine BODIES
+                                  # this compilation consumed at compile time
+                                  # (VM-compiled or getImpl'ed). Written to the
+                                  # `.edges` sidecar; deps.nim then gates the
+                                  # dependent on those modules' IMPL cookie
+                                  # instead of the iface cookie, so e.g.
+                                  # `const x = dep.foo()` re-sems when foo's
+                                  # body changes. Bodies with inline semantics
+                                  # (templates/macros/generics/iterators) need
+                                  # no tracking: they are part of the iface
+                                  # cookie itself.
 
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -689,6 +701,15 @@ proc moduleOpenForCodegen*(g: ModuleGraph; m: FileIndex): bool {.inline.} =
   ## definitions: anything that would be emitted into it must be emitted
   ## into the demanding module instead.
   result = m.int notin g.icReusedModules
+
+proc recordIcImplDep*(g: ModuleGraph; s: PSym) =
+  ## NeedsImpl edge tracking, see `icImplDeps`. Called from the compile-time
+  ## body consumption sites (vmgen's proc compilation, the getImpl opcodes).
+  ## Own-module and group-member entries are filtered out when the `.edges`
+  ## sidecar is written.
+  if g.config.cmd == cmdM and s != nil and s.kind in routineKinds and
+     s.itemId.module >= 0 and not isBackendMinted(s.itemId):
+    g.icImplDeps.incl module(s.itemId).int
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 

@@ -15,7 +15,7 @@ import ../dist/checksums/src/checksums/sha1
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils, strtabs, sets]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs, sets, intsets]
 import renderer
 import ic/replayer
 
@@ -264,7 +264,13 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           if m == module:
             replayActions.add n
 
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog, replayActions)
+      # NeedsImpl edge recording: which modules' bodies this process consumed
+      # at compile time (VM/getImpl). For an --icGroup cycle every member gets
+      # the union; intra-group entries are filtered by the writer.
+      var implDeps: seq[int] = @[]
+      for id in graph.icImplDeps: implDeps.add id
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
+                     replayActions, implDeps)
 
   result = true
 

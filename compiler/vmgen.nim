@@ -36,7 +36,7 @@ import
   magicsys, options, lowerings, lineinfos, transf, astmsgs,
   treetab
 
-from modulegraphs import getBody
+from modulegraphs import getBody, recordIcImplDep
 
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
@@ -2460,6 +2460,10 @@ proc optimizeJumps(c: PCtx; start: int) =
 proc genProc(c: PCtx; s: PSym): VmProcInfo =
   result = c.procToCodePos.getOrDefault(s.id, NoVmProcInfo)
   if result.usedRegisters < 0:
+    # compile-time execution consumes this routine's BODY: under IC that is a
+    # NeedsImpl dependency on the routine's home module (iface-cookie gating
+    # alone would miss body-only edits, e.g. `const x = dep.foo()`).
+    recordIcImplDep(c.graph, s)
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1

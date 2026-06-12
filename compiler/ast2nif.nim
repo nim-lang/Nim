@@ -12,6 +12,9 @@
 import std / [assertions, tables, sets]
 from std / strutils import startsWith, endsWith, contains
 from std / os import fileExists
+from std / syncio import readFile
+from std / algorithm import sort
+import "../dist/checksums/src/checksums" / sha1
 import astdef, idents, msgs, options
 import lineinfos as astli
 import pathutils #, modulegraphs
@@ -807,9 +810,378 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
   of GenericInstEntry:
     discard "will only be written later to ensure it is materialized"
 
+# --------------------------- Interface cookie ---------------------------
+#
+# Port of Nimony's `processForChecksum` (dist/nimony/src/lib/nifindexes.nim):
+# ONE checksum per module over the importer-visible surface, stored in a tiny
+# `<suffix>.iface.nif` sidecar written OnlyIfChanged. deps.nim points the
+# dependents' `nim_m` build edges at the sidecar instead of the bulky semmed
+# NIF, so nifmake's mtime pruning stops the m-step cascade at the first
+# module whose interface did not change.
+#
+# Hashed (importer-visible surface):
+# - import/include/export entries, `(replay ...)` macro-cache actions and the
+#   rep* hook/converter/enumtostr registrations (all eagerly consumed by every
+#   importer's sem via processTopLevel/loadTransitiveHooks).
+# - every EXPORTED `(sd ...)`: full content for consts/types/vars/lets and for
+#   routines with inline semantics — templates, macros, iterators, generics
+#   (explicit `(genericparams)` in the routine ast or, for implicitly generic
+#   procs, `tyGenericParam`-kinded types in the signature) and `inline`-callconv
+#   procs. Plain procs/funcs/methods/converters hash the signature only, the
+#   body is skipped. (Nimony hashes generic bodies only via the `.inline` path;
+#   we close that gap here — generic bodies are instantiated by importers.)
+# - nothing else: private defs and top-level init code are invisible to
+#   importers' sem (their effects on dependents' CODEGEN are covered by the
+#   nifc backend's transitive NIF-mtime invalidation, which is unchanged).
+#
+# Token-content hashing only — line infos never enter the hash. Names DEFINED
+# inside a hashed (sd) (params, locals, the embedded `(td `tK.item.mod)` defs)
+# are replaced by per-sd ordinals and module-local `tK.item references are
+# replaced by their structural td hash: both carry process-local mint counters
+# that shift file-wide when an unrelated body creates a new type (measured:
+# a single new instantiation renumbered every later signature), while
+# dependents never reference them by name (verified over a full compiler
+# cache: cross-module refs hit only top-level routine names).
+#
+# The cookie finally mixes in the DIRECT dependencies' sidecar contents
+# ("hash chaining"): an interface change then propagates transitively
+# level-by-level even when an intermediate module's own surface is unchanged
+# (its sem still consumed the dep's surface, e.g. via the transitive hook
+# replay). Chaining also guarantees a fired rule refreshes its sidecar mtime,
+# which nifmake's max-output `needsRebuild` needs to not re-fire forever.
+#
+# The IMPL cookie (`<suffix>.impl.nif`) complements it: a line-info-free hash
+# of the module's ENTIRE content with the iface cookie mixed in. Dependents
+# that consumed this module's bodies at compile time (recorded in the
+# `.edges.nif` sidecar; see `ModuleGraph.icImplDeps`) are gated on it instead.
+
+type
+  CookieCtx = object
+    selfSuffix: string
+    tdRanges: Table[string, int]   # td name -> start of its first (td ...) tree
+    memo: Table[string, string]    # td name -> structural digest
+    expanding: HashSet[string]     # cycle guard for recursive td expansion
+    depSuffixes: seq[string]       # module suffixes of the direct imports
+
+proc nextTree(buf: TokenBuf; i: int): int =
+  ## Index just past the atom or balanced subtree starting at `i`.
+  result = i+1
+  if buf[i].kind != ParLe: return
+  var nested = 0
+  var j = i
+  while j < buf.len:
+    case buf[j].kind
+    of ParLe: inc nested
+    of ParRi:
+      dec nested
+      if nested == 0: return j+1
+    else: discard
+    inc j
+  result = buf.len
+
+proc updateAtom(s: var Sha1State; t: PackedToken) =
+  # mirrors nimony's nifchecksums.update: token content only, no line infos
+  case t.kind
+  of ParLe:
+    s.update "("
+    s.update pool.tags[t.tagId]
+  of ParRi: s.update ")"
+  of Ident:
+    s.update " "
+    s.update pool.strings[t.litId]
+  of StringLit:
+    s.update " \""
+    s.update pool.strings[t.litId]
+  of IntLit:
+    s.update " "
+    s.update $pool.integers[t.intId]
+  of UIntLit:
+    s.update " "
+    s.update $pool.uintegers[t.uintId]
+  of FloatLit:
+    # hash the bit pattern, not a formatted float (no formatting variance)
+    s.update " f"
+    s.update $cast[uint64](pool.floats[t.floatId])
+  of CharLit:
+    s.update " c"
+    s.update $t.uoperand
+  of DotToken: s.update "."
+  of UnknownToken: s.update "?"
+  of EofToken: s.update "!"
+  of Symbol, SymbolDef: discard "handled by hashRegion"
+
+proc isModuleLocalName(c: CookieCtx; name: string): bool =
+  let sn = parseSymName(name)
+  result = sn.module.len == 0 or sn.module == c.selfSuffix
+
+proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
+                start, theEnd: int; skipFrom = -1; skipTo = -1;
+                keepFirstDefLiteral = false)
+
+proc expandTd(c: var CookieCtx; buf: TokenBuf; name: string): string =
+  ## Structural digest of a module-local type def: hashes the `(td ...)` tree
+  ## instead of the volatile `tK.item counter name. Memoized; cycles fall back
+  ## to the literal name (sound — at worst a spurious cookie change).
+  if c.memo.hasKey(name): return c.memo[name]
+  if not c.tdRanges.hasKey(name) or c.expanding.contains(name):
+    return name
+  c.expanding.incl name
+  let start = c.tdRanges[name]
+  var sub = newSha1State()
+  hashRegion(sub, c, buf, start, nextTree(buf, start))
+  result = "&" & $SecureHash(sub.finalize())
+  c.expanding.excl name
+  c.memo[name] = result
+
+proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
+                start, theEnd: int; skipFrom = -1; skipTo = -1;
+                keepFirstDefLiteral = false) =
+  # pass 1: assign ordinals to every symbol DEFINED in the hashed region
+  # (params, locals, embedded type defs). The region's own top-level name
+  # (first SymbolDef) stays literal when requested — it is what importers
+  # reference.
+  var ords = initTable[string, int]()
+  var first = keepFirstDefLiteral
+  var i = start
+  while i < theEnd:
+    if i == skipFrom:
+      i = skipTo
+      continue
+    if buf[i].kind == SymbolDef:
+      let name = pool.syms[buf[i].symId]
+      if first:
+        first = false
+      elif isModuleLocalName(c, name) and not ords.hasKey(name):
+        ords[name] = ords.len
+    inc i
+  # pass 2: hash
+  first = keepFirstDefLiteral
+  i = start
+  while i < theEnd:
+    if i == skipFrom:
+      i = skipTo
+      continue
+    let t = buf[i]
+    if t.kind in {Symbol, SymbolDef}:
+      let name = pool.syms[t.symId]
+      s.update(if t.kind == SymbolDef: " :" else: " ")
+      if t.kind == SymbolDef and first:
+        first = false
+        s.update name
+      elif ords.hasKey(name):
+        s.update "%"
+        s.update $ords[name]
+      elif name.startsWith("`t") and isModuleLocalName(c, name):
+        s.update expandTd(c, buf, name)
+      else:
+        s.update name
+    else:
+      updateAtom s, t
+    inc i
+
+proc scanSigTypeMarkers(buf: TokenBuf; start, theEnd: int): bool =
+  ## True if the routine's serialized signature marks it as inline-semantics:
+  ## an `inline` calling convention or a `tyGenericParam`-kinded type
+  ## (implicitly generic proc).
+  let gpPrefix = "`t" & $ord(tyGenericParam) & "."
+  var i = start
+  while i < theEnd:
+    let t = buf[i]
+    if t.kind == Ident and pool.strings[t.litId] == "inline":
+      return true
+    if t.kind in {Symbol, SymbolDef} and pool.syms[t.symId].startsWith(gpPrefix):
+      return true
+    inc i
+  result = false
+
+proc cookieSd(s: var Sha1State; c: var CookieCtx; buf: TokenBuf; start: int): int =
+  ## Contributes one `(sd ...)` subtree to the cookie; returns the index past it.
+  result = nextTree(buf, start)
+  if buf[start+1].kind != SymbolDef: return
+  let marker = buf[start+2]
+  if not (marker.kind == Ident and pool.strings[marker.litId] == "x"):
+    return # not importable -> invisible to dependents' sem (nimony parity)
+  # field layout, see writeSymDef: kind magic flags options offset position
+  # annex type owner ast loc constraint instantiatedFrom
+  var fields: array[13, int] = default(array[13, int])
+  var i = start + 3
+  for f in 0 ..< 13:
+    fields[f] = i
+    i = nextTree(buf, i)
+  var kind = skUnknown
+  {.cast(uncheckedAssign).}:
+    kind = parse(TSymKind, pool.tags[buf[fields[0]].tagId])
+  var skipFrom = -1
+  var skipTo = -1
+  if kind in {skProc, skFunc, skMethod, skConverter}:
+    var fullBody = scanSigTypeMarkers(buf, fields[7], fields[8])
+    let ast = fields[9]
+    if not fullBody and buf[ast].kind == ParLe:
+      # routine ast tree: tag flags type name pattern genericParams params ...
+      var p = ast + 1            # flags atom
+      p = nextTree(buf, p)       # -> type slot
+      p = nextTree(buf, p)       # -> son 0 (name)
+      p = nextTree(buf, p)       # -> son 1 (pattern)
+      p = nextTree(buf, p)       # -> son 2 (genericParams)
+      if buf[p].kind == ParLe and
+         pool.tags[buf[p].tagId] == toNifTag(nkGenericParams):
+        fullBody = true
+    if not fullBody and buf[ast].kind == ParLe:
+      # skip son `bodyPos` (6) of the routine ast tree; NOT the last element —
+      # sem appends the result sym at `resultPos` (7) after the body.
+      let astEnd = nextTree(buf, ast)
+      var p = ast + 1 # the flags atom
+      var ok = true
+      for _ in 0 ..< 2 + bodyPos: # flags, type, sons 0..5
+        p = nextTree(buf, p)
+        if p >= astEnd - 1:
+          ok = false
+          break
+      if ok:
+        skipFrom = p
+        skipTo = nextTree(buf, p)
+  # templates/macros/iterators and all non-routine kinds (consts carry their
+  # value, types their structure incl. default field values): hash everything.
+  hashRegion(s, c, buf, start, result, skipFrom, skipTo, keepFirstDefLiteral = true)
+
+proc scanStmtsForCookie(s: var Sha1State; c: var CookieCtx; buf: TokenBuf) =
+  ## Walks the whole written module, hashing only the importer-visible pieces;
+  ## unknown structure is descended into (var/let/type section wrappers,
+  ## top-level code) but contributes nothing itself — nimony-style.
+  let exportTag = pool.tags.getOrIncl(toNifTag(nkExportStmt))
+  let exportExceptTag = pool.tags.getOrIncl(toNifTag(nkExportExceptStmt))
+  var i = 0
+  while i < buf.len:
+    let t = buf[i]
+    if t.kind == ParLe:
+      let tid = t.tagId
+      if tid == sdefTag:
+        i = cookieSd(s, c, buf, i)
+      elif tid == implTag:
+        i = nextTree(buf, i)
+      elif tid == replayTag or tid == repConverterTag or tid == repDestroyTag or
+           tid == repWasMovedTag or tid == repCopyTag or tid == repSinkTag or
+           tid == repDupTag or tid == repTraceTag or tid == repDeepCopyTag or
+           tid == repEnumToStrTag or tid == repMethodTag or
+           tid == exportTag or tid == exportExceptTag or tid == includeTag:
+        let e = nextTree(buf, i)
+        hashRegion(s, c, buf, i, e)
+        i = e
+      elif tid == importTag:
+        let e = nextTree(buf, i)
+        hashRegion(s, c, buf, i, e)
+        for j in i ..< e:
+          if buf[j].kind == StringLit:
+            let suffix = pool.strings[buf[j].litId]
+            if suffix notin c.depSuffixes: c.depSuffixes.add suffix
+        i = e
+      else:
+        inc i # descend without hashing
+    else:
+      inc i
+
+proc icGroupSuffixes(config: ConfigRef): HashSet[string] =
+  ## Module suffixes of the --icGroup cycle members compiled by this very
+  ## process (their sidecars are being produced concurrently, so neither
+  ## chaining nor edge recording may depend on them).
+  result = initHashSet[string]()
+  for p in config.icGroup:
+    result.incl cachedModuleSuffix(config, fileInfoIdx(config, AbsoluteFile p))
+
+proc writeCookieFile(config: ConfigRef; selfSuffix, tag, hex, ext: string) =
+  var dest = createTokenBuf(4)
+  dest.addParLe pool.tags.getOrIncl(tag), NoLineInfo
+  dest.addStrLit hex
+  dest.addParRi
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ext).string
+  writeFile(dest, path, OnlyIfChanged)
+
+proc writeIfaceCookie(config: ConfigRef; thisModule: int32; buf: TokenBuf): string =
+  let selfSuffix = modname(thisModule, config)
+  var c = CookieCtx(selfSuffix: selfSuffix)
+  # pre-pass: first (td ...) occurrence per type name, wherever it is embedded
+  var i = 0
+  while i < buf.len:
+    if buf[i].kind == ParLe and buf[i].tagId == tdefTag and i+1 < buf.len and
+       buf[i+1].kind == SymbolDef:
+      let nm = pool.syms[buf[i+1].symId]
+      if not c.tdRanges.hasKey(nm): c.tdRanges[nm] = i
+    inc i
+  var s = newSha1State()
+  scanStmtsForCookie(s, c, buf)
+  # chain the direct deps' cookies; co-members of an --icGroup cycle are
+  # excluded (their sidecars are being produced by this very rule — chaining
+  # them would make the hash depend on within-group write order).
+  let groupSuffixes = icGroupSuffixes(config)
+  for dep in c.depSuffixes:
+    if dep == selfSuffix or dep in groupSuffixes: continue
+    let depIface = toGeneratedFile(config, AbsoluteFile(dep), ".iface.nif").string
+    s.update "|"
+    s.update dep
+    s.update ":"
+    s.update(try: readFile(depIface) except IOError, OSError: "")
+  result = $SecureHash(s.finalize())
+  writeCookieFile(config, selfSuffix, "iface", result, ".iface.nif")
+
+proc writeImplCookie(config: ConfigRef; thisModule: int32; buf: TokenBuf;
+                     ifaceHex: string) =
+  ## The implementation cookie: a line-info-free hash of the module's ENTIRE
+  ## serialized content (private defs and routine bodies included), with the
+  ## module's own iface cookie mixed in so impl sensitivity is a strict
+  ## superset of iface sensitivity (incl. the chained dep ifaces — a NeedsImpl
+  ## edge REPLACES the iface edge, it must not lose its triggers). Dependents
+  ## that consumed this module's bodies at compile time are gated on this file
+  ## instead of the iface cookie. Comment-only edits move neither cookie.
+  ## No id normalization here: a counter shift implies some real content
+  ## change elsewhere in the module, which flips the hash anyway — and any
+  ## body change is exactly what NeedsImpl dependents must see.
+  let selfSuffix = modname(thisModule, config)
+  var s = newSha1State()
+  for i in 0 ..< buf.len:
+    let t = buf[i]
+    if t.kind in {Symbol, SymbolDef}:
+      s.update(if t.kind == SymbolDef: " :" else: " ")
+      s.update pool.syms[t.symId]
+    else:
+      updateAtom s, t
+  s.update "|iface:"
+  s.update ifaceHex
+  writeCookieFile(config, selfSuffix, "impl", $SecureHash(s.finalize()), ".impl.nif")
+
+proc writeEdgesFile(config: ConfigRef; thisModule: int32; implDeps: seq[int]) =
+  ## Records which modules' bodies this compilation consumed at compile time
+  ## (`ModuleGraph.icImplDeps`): the NeedsImpl edge set. deps.nim reads this
+  ## sidecar when regenerating the build file and gates this module on those
+  ## dependencies' IMPL cookies instead of their iface cookies.
+  let selfSuffix = modname(thisModule, config)
+  let groupSuffixes = icGroupSuffixes(config)
+  var suffixes: seq[string] = @[]
+  for id in implDeps:
+    if id == thisModule.int: continue
+    let suffix = cachedModuleSuffix(config, FileIndex id)
+    if suffix.len == 0 or suffix == selfSuffix or suffix in groupSuffixes:
+      continue
+    if suffix notin suffixes: suffixes.add suffix
+  sort suffixes
+  var dest = createTokenBuf(4 + 2*suffixes.len)
+  dest.addParLe pool.tags.getOrIncl("edges"), NoLineInfo
+  for suffix in suffixes:
+    dest.addStrLit suffix
+  dest.addParRi
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".edges.nif").string
+  # Deliberately ALWAYS written (unlike every other output of the nim_m rule):
+  # nothing gates on this file's mtime — deps.nim only reads its content — so
+  # it doubles as the rule's freshness stamp. nifmake's `needsRebuild` takes
+  # the freshest output as proof of "ran since the inputs changed"; without an
+  # always-written output a rule whose re-run produces only content-identical
+  # (mtime-preserved) files would re-fire on every warm build (e.g. after an
+  # edit was reverted). Nimony's analog is its always-written `.s.nif`.
+  writeFile(dest, path)
+
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      opsLog: seq[LogEntry];
-                     replayActions: seq[PNode] = @[]) =
+                     replayActions: seq[PNode] = @[];
+                     implDeps: seq[int] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
 
@@ -864,6 +1236,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # level, and the nifc backend can trust "semmed NIF older than the cnif
   # artifact" as an honest per-module unchanged stamp.
   writeFile(dest, d, OnlyIfChanged)
+  if not isDefined(config, "icNoIfaceGate"):
+    let ifaceHex = writeIfaceCookie(config, thisModule, dest)
+    writeImplCookie(config, thisModule, dest, ifaceHex)
+    writeEdgesFile(config, thisModule, implDeps)
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
 
@@ -1850,3 +2226,4 @@ when isMainModule:
   echo obj.name, " ", obj.module, " ", obj.count
   let objb = parseSymName("abcdef.0121")
   echo objb.name, " ", objb.module, " ", objb.count
+

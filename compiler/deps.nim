@@ -46,6 +46,43 @@ proc parsedFile(c: DepContext; f: FilePair): string =
 proc semmedFile(c: DepContext; f: FilePair): string =
   getNimcacheDir(c.config).string / f.modname & ".nif"
 
+proc ifaceFile(c: DepContext; f: FilePair): string =
+  ## Interface-cookie sidecar written by `nim m` (ast2nif.writeIfaceCookie,
+  ## OnlyIfChanged). Dependents' nim_m rules use it as their input instead of
+  ## the semmed NIF: a body-only change in a dependency then keeps the sidecar
+  ## mtime and nifmake prunes the whole re-sem cascade behind it.
+  getNimcacheDir(c.config).string / f.modname & ".iface.nif"
+
+proc implFile(c: DepContext; suffix: string): string =
+  ## Implementation-cookie sidecar (ast2nif.writeImplCookie): flips on ANY
+  ## content change of the module (private bodies included; supersedes the
+  ## iface cookie). Used as the edge for dependents that consumed the
+  ## module's bodies at compile time (NeedsImpl edges).
+  getNimcacheDir(c.config).string / suffix & ".impl.nif"
+
+proc edgesFile(c: DepContext; f: FilePair): string =
+  getNimcacheDir(c.config).string / f.modname & ".edges.nif"
+
+proc readNeedsImpl(c: DepContext; f: FilePair): seq[string] =
+  ## Reads the module's recorded NeedsImpl edge set (module suffixes whose
+  ## bodies its last sem consumed at compile time). Missing file (never
+  ## compiled yet) -> empty: the rule fires anyway on the first build and the
+  ## recording exists from then on. Recordings are self-correcting with a
+  ## one-run lag: whatever changes a module's consumption set is itself a
+  ## gated input of its rule, so the rule re-fires and re-records.
+  result = @[]
+  if fileExists(c.edgesFile(f)):
+    var s = nifstreams.open(c.edgesFile(f))
+    try:
+      discard processDirectives(s.r)
+      while true:
+        let t = next(s)
+        if t.kind == EofToken: break
+        if t.kind == StringLit:
+          result.add pool.strings[t.litId]
+    finally:
+      close s
+
 proc findNifler(): string =
   # Look for nifler in common locations
   let nimDir = getAppDir()
@@ -78,6 +115,27 @@ proc runNifler(c: DepContext; nimFile: string): bool =
   let cmd = quoteShell(c.nifler) & " deps " & quoteShell(nimFile) & " " & quoteShell(depsPath)
   let exitCode = execShellCmd(cmd)
   result = exitCode == 0
+  if result:
+    # The build graph's `nifler parse --deps` rule outputs BOTH the parsed
+    # file and the deps file. Refreshing the deps file here would MASK that
+    # rule: nifmake's `needsRebuild` takes the freshest output as proof of
+    # "ran since the inputs changed", so the rule never re-fires and the
+    # parsed file goes stale. For an import-cycle group that loses the edit
+    # entirely — a non-representative member's source is not a direct input
+    # of the group's `nim_m` rule; its only build-graph connection is the
+    # (now stale) parsed file. Drop a genuinely stale parsed file so the
+    # nifler rule re-fires on the missing output.
+    let parsedPath = c.parsedFile(pair)
+    if fileExists(parsedPath) and
+       getLastModificationTime(parsedPath) < getLastModificationTime(nimFile):
+      removeFile(parsedPath)
+    # nifler writes OnlyIfChanged: after an edit that leaves the import set
+    # unchanged the deps file keeps its old mtime and would stay older than
+    # the source forever, re-running this scan (and re-deleting the parsed
+    # file) on every warm build. Bump it explicitly: it is the scan's own
+    # up-to-date marker.
+    if getLastModificationTime(depsPath) < getLastModificationTime(nimFile):
+      setLastModificationTime(depsPath, getTime())
 
 proc resolveImport(c: DepContext; origin, toResolve: string): string =
   ## Resolve an import path using the compiler's normal module lookup rules.
@@ -682,21 +740,78 @@ proc generateBuildFile(c: DepContext): string =
         b.addTree "input"
         b.addStrLit c.parsedFile(f)
         b.endTree()
-    # Depend only on the semmed files of dependencies *outside* this component.
+    # Depend on the dependencies *outside* this component — on their interface
+    # COOKIE sidecars, not the semmed NIFs themselves: the sidecar's mtime only
+    # moves when the dep's importer-visible surface (or, via hash chaining, any
+    # surface in its import closure) changed, so body-only edits stop the
+    # re-sem cascade right here. Dependencies whose BODIES the last sem of a
+    # member consumed at compile time (the recorded NeedsImpl edge set) are
+    # gated on their IMPL cookie instead, which flips on any content change:
+    # `const x = dep.foo()` then re-sems when foo's body changes.
+    # `-d:icNoIfaceGate` restores the old full-NIF edges.
+    let ifaceGate = not isDefined(c.config, "icNoIfaceGate")
+    var needsImpl = initHashSet[string]()
+    if ifaceGate:
+      # union over the members; restricted to the group's transitive dep
+      # closure: a stale recording naming a module this group no longer
+      # imports cannot be consumed anymore (and honoring it could even create
+      # a build-graph cycle after refactorings).
+      var reachable = initHashSet[string]()
+      var stack: seq[int] = @[]
+      for m in members:
+        for depIdx in c.nodes[m].deps:
+          if sccOf[depIdx] != sccOf[members[0]]: stack.add depIdx
+      var visited = initHashSet[int]()
+      while stack.len > 0:
+        let n = stack.pop()
+        if visited.containsOrIncl(n): continue
+        reachable.incl c.nodes[n].files[0].modname
+        for depIdx in c.nodes[n].deps: stack.add depIdx
+      for m in members:
+        for suffix in readNeedsImpl(c, c.nodes[m].files[0]):
+          if suffix in reachable: needsImpl.incl suffix
     var seenDep = initHashSet[string]()
+    var directDeps = initHashSet[string]()
     for m in members:
       for depIdx in c.nodes[m].deps:
         if sccOf[depIdx] == sccOf[m]: continue  # intra-component edge
-        let depSem = c.semmedFile(c.nodes[depIdx].files[0])
-        if not seenDep.containsOrIncl(depSem):
+        let depName = c.nodes[depIdx].files[0].modname
+        directDeps.incl depName
+        let depFile =
+          if not ifaceGate: c.semmedFile(c.nodes[depIdx].files[0])
+          elif depName in needsImpl: c.implFile(depName)
+          else: c.ifaceFile(c.nodes[depIdx].files[0])
+        if not seenDep.containsOrIncl(depFile):
           b.addTree "input"
-          b.addStrLit depSem
+          b.addStrLit depFile
           b.endTree()
-    # Output: one semmed NIF per member.
+    # NeedsImpl on modules that are not direct imports (bodies consumed via
+    # re-exports or transitively, e.g. a macro's private helper two hops
+    # away): additional impl-cookie inputs.
+    if ifaceGate:
+      var extra: seq[string] = @[]
+      for suffix in needsImpl:
+        if suffix notin directDeps: extra.add suffix
+      sort extra
+      for suffix in extra:
+        b.addTree "input"
+        b.addStrLit c.implFile(suffix)
+        b.endTree()
+    # Output: one semmed NIF (plus its cookie/edge sidecars) per member.
     for m in members:
       b.addTree "output"
       b.addStrLit c.semmedFile(c.nodes[m].files[0])
       b.endTree()
+      if ifaceGate:
+        b.addTree "output"
+        b.addStrLit c.ifaceFile(c.nodes[m].files[0])
+        b.endTree()
+        b.addTree "output"
+        b.addStrLit c.implFile(c.nodes[m].files[0].modname)
+        b.endTree()
+        b.addTree "output"
+        b.addStrLit c.edgesFile(c.nodes[m].files[0])
+        b.endTree()
     b.endTree()
 
   # Final compilation step: generate executable from main module
