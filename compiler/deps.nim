@@ -629,6 +629,11 @@ proc generateBuildFile(c: DepContext): string =
     # them — phantom outputs that re-fire the build on every rerun).
     if c.config.selectedGC != gcUnselected:
       forwardedArgs.add "--mm:" & $c.config.selectedGC
+    # method dispatch semantics must match across the child processes:
+    # a child compiled without --multimethods:on builds different dispatch
+    # buckets (and rejects calls as ambiguous that multi-dispatch accepts)
+    if optMultiMethods in c.config.globalOptions:
+      forwardedArgs.add "--multimethods:on"
 
   # Define nifler command
   b.addTree "cmd"

@@ -197,6 +197,29 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
       # set symchoice node type back to None
       n.typ = newTypeS(tyNone, c)
 
+proc resolveOpenSymDotRhs(c: PContext, n: PNode): PNode =
+  ## Resolves an `nkOpenSym` in the field position of a dot expression.
+  ## The dot handling (`builtinFieldAccess`, `dotTransformation`) matches on
+  ## the node kind of the RHS directly, so the wrapper cannot be left for
+  ## `semExpr` to unwrap; without this the captured symbol degrades to a
+  ## plain identifier that is then only looked up in the instantiation
+  ## context. Mirrors `semOpenSym`: a symbol injected during instantiation
+  ## under the current proc replaces the captured symbol, otherwise the
+  ## captured node is used.
+  let inner = n[0]
+  result = inner
+  if inner.kind != nkSym: return
+  let id = newIdentNode(inner.sym.name, n.info)
+  c.isAmbiguous = false
+  let s2 = qualifiedLookUp(c, id, {})
+  if s2 != nil and not c.isAmbiguous and s2 != inner.sym:
+    # only consider symbols defined under the current proc:
+    var o = s2.owner
+    while o != nil:
+      if o == c.p.owner:
+        return id
+      o = o.owner
+
 proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   if n.kind == nkOpenSymChoice:
     result = semOpenSym(c, n, flags, expectedType,
@@ -1523,6 +1546,9 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
     if c.config.cmd == cmdIdeTools:
       suggestExpr(c, n)
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
+
+  if n[1].kind == nkOpenSym:
+    n[1] = resolveOpenSymDotRhs(c, n[1])
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:

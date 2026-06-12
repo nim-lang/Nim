@@ -97,6 +97,9 @@ type
       # loads (reached only through system or demand-driven codegen)
     icFileReusedCnames*: HashSet[string] # their .c paths, so demand-created
                                   # BModules for them never write anything
+    pendingMethodReplays*: seq[PSym] # method registrations loaded under
+                                  # `nim nifc`, bucketed only after every
+                                  # module is loaded (`flushMethodReplays`)
     icPreserveDefs*: Table[int, seq[PSym]] # module position -> symbols whose
                                   # definitions the TU must keep emitting:
                                   # they were in its previous artifact and a
@@ -442,6 +445,49 @@ proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSy
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
   let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
   g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
+
+proc logMethodDef*(g: ModuleGraph; s: PSym) =
+  ## Log a method registration (`cgmeth.methodDef`) so that importers and
+  ## the backend can rebuild the dispatch buckets (`g.methods`) from the
+  ## NIF replay log — the serialized method ast carries its dispatcher sym
+  ## at `dispatcherPos`, so replay reuses the original dispatcher that all
+  ## call sites reference by name (see `registerLoadedMethod`).
+  if g.config.cmd in {cmdNifC, cmdM}:
+    g.opsLog.add LogEntry(kind: MethodEntry, module: s.itemId.module.int,
+                          key: "", sym: s)
+
+proc registerLoadedMethod*(g: ModuleGraph; m: PSym) =
+  ## Rebuild the dispatch buckets from a serialized method registration.
+  ## Buckets group the methods sharing a dispatcher; the dispatcher's BODY
+  ## does not exist in serialized form — `generateIfMethodDispatchers`
+  ## synthesizes it in the backend from the complete bucket.
+  template dbg(msg: string) =
+    when defined(icDbgMeth):
+      echo "[icMeth] replay ", (if m != nil: m.name.s else: "nil"), ": ", msg
+  if m == nil or sfDispatcher in m.flags: dbg "skip self/nil"; return
+  if m.ast == nil or dispatcherPos >= m.ast.len:
+    dbg "no dispatcherPos (len " & $(if m.ast != nil: m.ast.len else: -1) & ")"
+    return
+  let dn = m.ast[dispatcherPos]
+  if dn == nil or dn.kind != nkSym or dn.sym == nil: dbg "empty dispatcher slot"; return
+  let disp = dn.sym
+  if sfDispatcher notin disp.flags: dbg "slot sym not a dispatcher"; return
+  dbg "ok -> bucket of " & disp.name.s & "." & $disp.disamb
+  for i in 0..<g.methods.len:
+    if g.methods[i].dispatcher.itemId == disp.itemId:
+      for existing in g.methods[i].methods:
+        if existing.itemId == m.itemId: return
+      g.methods[i].methods.add m
+      return
+  g.methods.add (methods: @[m], dispatcher: disp)
+
+proc flushMethodReplays*(g: ModuleGraph) =
+  ## Builds the dispatch buckets from the method registrations collected
+  ## during module loading; called once every module of the program is
+  ## loaded (`nifbackend.generateCode`).
+  for s in g.pendingMethodReplays:
+    registerLoadedMethod(g, s)
+  g.pendingMethodReplays.setLen 0
 
 proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
   ## Log a generic instance so it gets written to the NIF file.
@@ -861,6 +907,20 @@ when not defined(nimKochBootstrap):
           g.loadedOps[x.op][x.key] = x.sym
       of EnumToStrEntry:
         g.loadedEnumToStringProcs[x.key] = x.sym
+      of MethodEntry:
+        # only `methodDef` registrations (empty key) rebuild dispatch
+        # buckets; the `addMethodToGeneric` flavor (typeKey key) announces
+        # the uninstantiated generic method, which must never enter a
+        # bucket (methodsPerGenericType replay is still a todo).
+        # Under `nim nifc` the replay is deferred: building a bucket forces
+        # the method's body, and a body loaded mid `loadModuleDependencies`
+        # registers modules it references in a different path context than
+        # the lazy loads during codegen do (`flushMethodReplays`).
+        if x.key.len == 0:
+          if g.config.cmd == cmdNifC:
+            g.pendingMethodReplays.add x.sym
+          else:
+            registerLoadedMethod(g, x.sym)
       else:
         discard
 
@@ -918,7 +978,7 @@ when not defined(nimKochBootstrap):
       of ConverterEntry:
         g.ifaces[fileIdx.int].converters.add x.sym
       of MethodEntry:
-        discard "todo"
+        discard "dispatch buckets already rebuilt by registerLoadedHooks"
       of GenericInstEntry:
         raiseAssert "GenericInstEntry should not be in the NIF index"
       of HookEntry, EnumToStrEntry:

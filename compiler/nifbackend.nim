@@ -25,6 +25,7 @@ when defined(nimPreviewSlimSystem):
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys, dce,
   cnif
+from cgmeth import generateIfMethodDispatchers
 import ic / replayer
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
@@ -159,7 +160,13 @@ proc enforceDefRetention(g: ModuleGraph; mainPos: int;
             # NB: reading `sym.kind` forces the lazy stub, so the kind is real
             var action = 0 # un-reuse any visibly referencing TUs
             if sym != nil:
-              if sym.kind in routineKinds or sym.kind == skConst:
+              if sfDispatcher in sym.flags:
+                # method dispatchers are synthesized from the whole
+                # program's method set and emitted into the main TU on
+                # every run; re-demanding the serialized sym would emit
+                # its (empty) serialized body
+                action = 1
+              elif sym.kind in routineKinds or sym.kind == skConst:
                 # routine and const definitions exist only by demand (the
                 # serialized top level holds just the eager init statements,
                 # not a proc listing!), and reused TUs never demand — so
@@ -407,15 +414,29 @@ proc finishModule(g: ModuleGraph; bmod: BModule) =
   let initStmt = newNode(nkStmtList)
   finalCodegenActions(g, bmod, initStmt)
 
-  # Dispatcher definitions live in the main TU only: their bodies enumerate
-  # the whole program's method set, so a copy inside a reusable TU would go
-  # stale when a method is added in an unrelated module (genProcLvl3 routes
-  # demand-driven dispatcher definitions to main the same way). Main is
-  # finished last, after all method registrations have been replayed.
-  if sfMainModule in bmod.module.flags:
-    for disp in getDispatchers(g):
-      if not containsOrIncl(bmod.declaredThings, disp.id):
-        genProcLvl3(bmod, disp)
+  # NB: the method dispatchers are emitted in `emitMethodDispatchers`,
+  # between the module loop and this finish loop: their bodies demand the
+  # method definitions, which can in turn demand definitions from modules
+  # the backend never loaded — and a TU demand-created during the LAST
+  # finishModule call would miss `modulesClosed` and never be written.
+
+proc emitMethodDispatchers(g: ModuleGraph) =
+  ## Synthesizes the method dispatcher bodies from the replayed dispatch
+  ## buckets (`registerLoadedMethod`) and emits their definitions into the
+  ## main TU. Main is regenerated on every run, so a dispatcher — whose
+  ## body enumerates the whole program's method set — can never go stale
+  ## inside a cached TU; cross-TU callers prototype it (see genProcLvl3).
+  let bl = BModuleList(g.backend)
+  var mainMod: BModule = nil
+  for m in bl.mods:
+    if m != nil and m.module != nil and sfMainModule in m.module.flags:
+      mainMod = m
+      break
+  if mainMod == nil: return
+  generateIfMethodDispatchers(g, mainMod.idgen)
+  for disp in getDispatchers(g):
+    if not containsOrIncl(mainMod.declaredThings, disp.id):
+      genProcLvl3(mainMod, disp)
 
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
@@ -484,6 +505,8 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
   var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
   let modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
+  # build the method dispatch buckets now that every module is loaded
+  flushMethodReplays(g)
   phaseDone "load (" & $ (modules.len + 1) & " modules)"
   if modules.len == 0:
     rawMessage(g.config, errGenerated,
@@ -531,6 +554,8 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   for m in modules:
     if not processed.containsOrIncl(m.module.position):
       generateOrReuse(m)
+
+  emitMethodDispatchers(g)
   phaseDone "cgen"
 
   # during code generation of `main.nim` we can trigger the code generation

@@ -419,9 +419,14 @@ proc mainCommand*(graph: ModuleGraph) =
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
     setUseIc(true)
+    # vtable dispatch needs a whole-program vtable layout, which the
+    # per-module compilation model cannot provide (yet); methods dispatch
+    # through the classic if-chain dispatchers instead
+    excl conf.features, Feature.vtables
     commandCheck(graph)
   of cmdNifC:
     setUseIc(true)
+    excl conf.features, Feature.vtables
     # Generate C code from NIF files
     wantMainModule(conf)
     setOutFile(conf)

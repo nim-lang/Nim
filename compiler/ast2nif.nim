@@ -801,7 +801,10 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
     content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
     content.addParRi()
   of MethodEntry:
-    discard "to implement"
+    content.addParLe repMethodTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
   of EnumToStrEntry:
     content.addParLe repEnumToStrTag, NoLineInfo
     content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)

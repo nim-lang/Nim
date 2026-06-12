@@ -1368,26 +1368,18 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].addAssignmentWithValue("nimErr_"):
       p.blocks[0].sections[cpsInit].addCall(cgsymValue(p.module, "nimErrorFlag"))
 
-proc findMainBModule(g: BModuleList): BModule =
-  result = nil
-  for cand in g.mods:
-    if cand != nil and cand.module != nil and sfMainModule in cand.module.flags:
-      return cand
-
 proc genProcLvl3*(m: BModule, prc: PSym) =
   if m.config.cmd == cmdNifC:
     fillBackendName(m, prc)
     if sfDispatcher in prc.flags and sfMainModule notin m.module.flags:
-      # A method dispatcher enumerates the whole program's method set; a
-      # definition inside a reusable TU goes stale as soon as a method is
-      # added in an unrelated module. Route every dispatcher definition
-      # into the main TU, which is regenerated on every run.
+      # A method dispatcher enumerates the whole program's method set: its
+      # body is synthesized by `generateIfMethodDispatchers` only after all
+      # modules have been generated, and its single definition is emitted
+      # into the main TU by `finishModule` (main is finished last and never
+      # reused, so the definition can never go stale inside a cached TU).
+      # Any demand before that point yields a prototype.
       genProcPrototype(m, prc)
-      let mainMod = findMainBModule(m.g)
-      if mainMod != nil:
-        if not containsOrIncl(mainMod.declaredThings, prc.id):
-          genProcLvl3(mainMod, prc)
-        return
+      return
     # inline procs are emitted into every using TU; they are never shared
     # across translation units, so cached/cross-TU dedup must not touch
     # them. Dispatchers always (re)define in main, never from the cache.
@@ -1398,18 +1390,19 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         # already defined inside a reused TU from the previous run
         genProcPrototype(m, prc)
         return
-      if isSharedInstanceCName(m, prc) or
-          prc.itemId.module != m.module.position:
-        # one definition program-wide: shared instances by design; otherwise a
-        # definition redirected away from a reused TU — the first claimant's
-        # TU embeds it, everyone else declares it. The claim records the TU
-        # as well: with redirects the same symbol can be demanded into
-        # several TUs.
-        let claim = (sym: prc.itemId, tu: m.module.position)
-        if m.g.graph.icSharedDefOwner.hasKeyOrPut(key, claim) and
-            m.g.graph.icSharedDefOwner[key] != claim:
-          genProcPrototype(m, prc)
-          return
+      # one definition program-wide: the first claimant's TU embeds it,
+      # everyone else declares it. The claim records the TU as well: with
+      # redirects the same symbol can be demanded into several TUs. Home
+      # emissions must claim too — a hook's demand routing goes through the
+      # type-owner module (`findPendingModule` walks `s.owner`) while its
+      # eager emission uses the announcing module's TU; when the owner TU
+      # is reused, the very same symbol reaches this point through both
+      # paths and only the registry serializes them.
+      let claim = (sym: prc.itemId, tu: m.module.position)
+      if m.g.graph.icSharedDefOwner.hasKeyOrPut(key, claim) and
+          m.g.graph.icSharedDefOwner[key] != claim:
+        genProcPrototype(m, prc)
+        return
     if prc.itemId.module != m.module.position and
         not isBackendMinted(prc.itemId) and
         (prc.typ == nil or prc.typ.callConv != ccInline) and
@@ -2886,7 +2879,12 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid
-      if optMultiMethods in m.g.config.globalOptions or
+      if m.config.cmd == cmdNifC:
+        # nifbackend synthesizes the dispatchers between the module loop
+        # and the finish loop (emitMethodDispatchers): TUs demand-created
+        # by the dispatcher bodies must still reach `modulesClosed`
+        discard
+      elif optMultiMethods in m.g.config.globalOptions or
           m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc, gcYrc} or
           vtables notin m.g.config.features:
         generateIfMethodDispatchers(graph, m.idgen)
