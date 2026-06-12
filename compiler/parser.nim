@@ -1374,7 +1374,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   #| simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
   #| commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
   #|                  'static'|'enum'|'tuple'|'object'|'proc')
-  #| commandParam = symbol '*' &':' / expr
+  #| commandParam = (symbol '*' &':') / expr
   #| primary = simplePrimary (commandStart commandParam (doBlock extraPostExprBlock*)?)?
   #|         / operatorB primary
   #|         / routineExpr
