@@ -646,3 +646,69 @@ proc readMergeDecision*(f: string): MergeDecision =
     else:
       skip c
   endRead(c)
+
+proc renderCFromArtifact*(artifact: string; d: MergeDecision; ownerId: string;
+                          dropped: var int): string =
+  ## The per-module backend's `emit` stage: render one module's final `.c` from
+  ## its `.c.nif` and the merge decision. String literals are emitted verbatim,
+  ## symbols by name; a `(cdef ...)` body is dropped when the name is dead, or
+  ## when it is a `'u'` unique definition this module does not own. The body's
+  ## prototype lives in the surrounding raw text (cgen emits a forward
+  ## declaration for every *used* proc, independent of where the body lands), so
+  ## a dropped body still leaves a valid declaration — no synthesis needed. The
+  ## head groups (meta/cdata/cref/cdeps) carry no C text.
+  result = ""
+  if not fileExists(artifact): return
+  var pool = newPool()
+  var tags = newTagPool()
+  let stmtsTag = tags.registerTag("stmts")
+  let cdefTag = tags.registerTag("cdef")
+  var buf = parseFromFile(artifact, 1000, pool, tags)
+  var c = beginRead(buf)
+  if c.kind != TagLit or c.cursorTagId != stmtsTag:
+    endRead(c)
+    return
+  c.loopInto:
+    case c.kind
+    of StrLit:
+      result.add strVal(c)
+      inc c
+    of Symbol, Ident:
+      result.add symOrIdentName(c)
+      inc c
+    of TagLit:
+      if c.cursorTagId == cdefTag:
+        # fixed head: SymbolDef, flags (Ident or empty), nifname StrLit; the
+        # rest is the definition's body text. `state` counts past the head.
+        var name = ""
+        var isUnique = false
+        var keep = true
+        var state = 0
+        c.loopInto:
+          if state == 0 and c.kind == SymbolDef:
+            name = symName(c)
+            state = 1
+            inc c
+          elif state == 1: # the flags field (one token: Ident/Symbol or empty)
+            if c.kind in {Ident, Symbol}:
+              for ch in symOrIdentName(c):
+                if ch == 'u': isUnique = true
+            state = 2
+            inc c
+          elif state == 2: # the NIF name (one StrLit) — decide keep here
+            keep = (name in d.live) and
+                   not (isUnique and d.owners.getOrDefault(name, ownerId) != ownerId)
+            if not keep: inc dropped
+            state = 3
+            inc c
+          else: # body tokens
+            if keep:
+              if c.kind == StrLit: result.add strVal(c)
+              elif c.kind in {Symbol, Ident}: result.add symOrIdentName(c)
+            inc c
+      else:
+        # head groups (meta/cdata/cref/cdeps) carry no C text
+        skip c
+    else:
+      inc c
+  endRead(c)

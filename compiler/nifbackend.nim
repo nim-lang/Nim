@@ -505,6 +505,41 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
     for t in g.icPreserveTypeInfos[moduleId]:
       discard genTypeInfo(g.config, bmod, t, unknownLineInfo)
 
+proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
+    tuple[modules: seq[PrecompiledModule], precompSys: PrecompiledModule,
+          nifFiles: seq[string]] =
+  ## Shared by the per-module `cg` and `emit` stages: load system + the main
+  ## module's whole import closure and set up a `BModule` for each, so every
+  ## type/symbol resolves and `getCFile` yields the same path both stages use.
+  ## The main module is loaded by its source index (its NIF suffix is aliased to
+  ## it in `loadModuleDependencies`), so it gets exactly one `BModule`.
+  resetForBackend(g)
+  var isKnownFile = false
+  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  g.config.m.systemFileIdx = systemFileIdx
+  var precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
+  g.systemModule = precompSys.module
+  var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
+  let modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
+  flushMethodReplays(g)
+  for m in modules:
+    discard setupNifBackendModule(g, m.module)
+  if precompSys.module != nil:
+    discard setupNifBackendModule(g, precompSys.module)
+  result = (modules, precompSys, nifFiles)
+
+proc findTargetModule(g: ModuleGraph; modules: seq[PrecompiledModule];
+                      precompSys: PrecompiledModule; suffix: string): PrecompiledModule =
+  ## The loaded module whose NIF suffix is `suffix` (the `--icBackendModule`
+  ## value), or a nil module if none matches.
+  result = PrecompiledModule(module: nil)
+  for m in modules:
+    if cachedModuleSuffix(g.config, FileIndex m.module.position) == suffix:
+      return m
+  if precompSys.module != nil and
+      cachedModuleSuffix(g.config, FileIndex precompSys.module.position) == suffix:
+    return precompSys
+
 proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend codegen (`--icBackendStage:cg --icBackendModule:<suffix>`):
   ## generate C for the single module named by `icBackendModule` and write only
@@ -515,16 +550,7 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## the target module is code-generated; `findPendingModule` routes every demand
   ## into it (emit-everywhere). Loading only the target's import closure is a
   ## later optimization — correctness first.
-  resetForBackend(g)
-  var isKnownFile = false
-  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
-  g.config.m.systemFileIdx = systemFileIdx
-  var precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
-  g.systemModule = precompSys.module
-
-  var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
-  let modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
-  flushMethodReplays(g)
+  let (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
   if modules.len == 0:
     rawMessage(g.config, errGenerated,
       "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
@@ -536,24 +562,10 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     g.icDceEnabled = computeLiveSymbols(g.config, nifFiles, g.icLiveNames,
                                         dceStats, nifDeps)
 
-  for m in modules:
-    discard setupNifBackendModule(g, m.module)
-  if precompSys.module != nil:
-    discard setupNifBackendModule(g, precompSys.module)
-
-  # Locate the target module by its NIF suffix.
-  let targetSuffix = g.config.icBackendModule
-  var target = PrecompiledModule(module: nil)
-  for m in modules:
-    if cachedModuleSuffix(g.config, FileIndex m.module.position) == targetSuffix:
-      target = m
-      break
-  if target.module == nil and precompSys.module != nil and
-      cachedModuleSuffix(g.config, FileIndex precompSys.module.position) == targetSuffix:
-    target = precompSys
+  let target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
   if target.module == nil:
     rawMessage(g.config, errGenerated,
-      "per-module codegen: module not found for suffix: " & targetSuffix)
+      "per-module codegen: module not found for suffix: " & g.config.icBackendModule)
     return
 
   generateCodeForModule(g, target)
@@ -593,6 +605,37 @@ proc generateMergeStage(g: ModuleGraph) =
       " live: " & $decision.live.len & " defs: " & $decision.defs &
       " liveDefs: " & $decision.liveDefs & " owned: " & $decision.owners.len
 
+proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
+  ## Per-module backend emit (`--icBackendStage:emit --icBackendModule:<suffix>`):
+  ## render the target module's final `.c` from its `.c.nif` and the merge
+  ## decision. Loads the module graph the same way `cg` does so `getCFile`
+  ## returns the identical path `cg` wrote to (the main module's source-vs-suffix
+  ## aliasing in particular); no codegen runs.
+  let (modules, precompSys, _) = loadBackendModules(g, mainFileIdx)
+  if modules.len == 0:
+    rawMessage(g.config, errGenerated,
+      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
+    return
+  let target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+  if target.module == nil:
+    rawMessage(g.config, errGenerated,
+      "per-module emit: module not found for suffix: " & g.config.icBackendModule)
+    return
+  let decision = readMergeDecision(getNimcacheDir(g.config).string / MergeDecisionFile)
+  if decision.broken:
+    rawMessage(g.config, errGenerated,
+      "per-module emit: missing or unparsable merge decision " & MergeDecisionFile)
+    return
+  let bmod = BModuleList(g.backend).mods[target.module.position]
+  let cfile = getCFile(bmod).string
+  let artifact = cfile & ".nif"
+  var dropped = 0
+  let code = renderCFromArtifact(artifact, decision, extractFilename(artifact), dropped)
+  writeFile(cfile, code)
+  if isDefined(g.config, "icDceCheck"):
+    stderr.writeLine "[icEmit] " & extractFilename(cfile) & " dropped " &
+      $dropped & " bodies (" & $code.len & " bytes)"
+
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
@@ -601,6 +644,9 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
   elif g.config.icBackendStage == "merge":
     generateMergeStage(g)
+    return
+  elif g.config.icBackendStage == "emit":
+    generateEmitStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage.len > 0:
     rawMessage(g.config, errGenerated,
