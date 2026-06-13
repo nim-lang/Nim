@@ -1723,11 +1723,18 @@ when not (notJSnotNims and defined(nimSeqsV2)):
       let ns = cast[NimString](s)
       if ns == nil: nil
       else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+    template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] =
+      ## Same as `readRawData` here: the data lives in a heap `NimStringDesc` at a
+      ## stable address, so the pointer already survives moves of `s`. Takes `s` by
+      ## `var` to match the `--strings:sso` version, so code can prepare for that
+      ## upgrade without `when declared` guards.
+      readRawData(s, start)
   else:
     # JS/nimscript: callers are guarded by whenNotVmJsNims/when not defined(js)
     proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} = nil
     proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
     template readRawData*(s: string; start = 0): ptr UncheckedArray[char] = nil
+    template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] = nil
 
 when not defined(js):
   template newSeqImpl(T, len) =
