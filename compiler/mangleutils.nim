@@ -53,14 +53,9 @@ proc mangleParamExt*(s: PSym): string =
   result.addInt s.position
 
 proc mangleProcNameExt*(graph: ModuleGraph, s: PSym): string =
-  result = "__"
-  # Under incremental compilation the main module is registered at its source
-  # file index, but its symbols are keyed by the NIF-suffix file index, which has
-  # no `ifaces` slot. Only the main module has this gap (dependencies are
-  # registered at their suffix index), so omitting the unique name for it stays
-  # collision-free: the mangled base name plus `disamb` already disambiguate.
-  if s.itemId.module >= 0 and s.itemId.module < graph.ifaces.len:
-    result.add graph.ifaces[s.itemId.module].uniqueName
+  # The disambiguator comes first and the module suffix LAST, so the suffix is
+  # a strippable trailing token: content-addressed cross-module merging chops
+  # everything from the final `__` to recover a mint-site-independent name.
   if s.itemId.isBackendMinted:
     # A symbol minted during IC codegen (`idGeneratorForBackend`): its idgen
     # starts with an EMPTY per-name disamb table, so its `disamb` restarts at 0
@@ -70,10 +65,10 @@ proc mangleProcNameExt*(graph: ModuleGraph, s: PSym): string =
     # lifts, emits and compiles them in one run), so the per-module-unique
     # item id is a safe and deterministic discriminator; the `_c` marker keeps
     # the namespace disjoint from `_u<disamb>`.
-    result.add "_c"
+    result = "_c"
     result.addInt s.itemId.item
   else:
-    result.add "_u"
+    result = "_u"
     # Use `disamb` rather than `itemId.item`: under incremental compilation a
     # symbol loaded from a NIF file gets a fresh, load-order-dependent `itemId.item`
     # (from the per-module symbol counter), which is neither stable across the
@@ -82,3 +77,5 @@ proc mangleProcNameExt*(graph: ModuleGraph, s: PSym): string =
     # and, together with the already-prepended mangled name, yields a unique and
     # stable C identifier.
     result.addInt s.disamb
+  result.add "__"
+  result.add graph.ifaces[s.itemId.module].uniqueName
