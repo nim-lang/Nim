@@ -14,7 +14,7 @@ from std / strutils import startsWith
 from std / os import fileExists
 import astdef, idents, msgs, options
 import lineinfos as astli
-import pathutils #, modulegraphs
+import pathutils, typeext
 import "../dist/nimony/src/lib" / [bitabs, nifstreams, nifcursors, lineinfos,
   nifindexes, nifreader]
 import "../dist/nimony/src/gear2" / modnames
@@ -148,6 +148,8 @@ let
   sdefTag = registerTag(symDefTagName)
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
+  typeExtensionsTag = registerTag("type_extensions")
+  extTag = registerTag("ext")
 
 type
   Writer = object
@@ -160,6 +162,8 @@ type
     #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
+    # Type extension side-table (passed from ModuleGraph)
+    typeExtensions: ptr Table[ItemId, seq[TypeExtension]]
 
 const
   # Symbol kinds that are always local to a proc and should never have module suffix
@@ -250,6 +254,30 @@ proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
   writeFlags(dest, loc.flags)  # TLocFlags
   dest.addStrLit loc.snippet
 
+proc typeExtKindToStr(kind: TypeExtKind): string =
+  case kind
+  of extDeferredSize: "deferred_size"
+  of extDeferredAlign: "deferred_align"
+
+proc writeTypeExtensions(w: var Writer; dest: var TokenBuf; typ: PType) =
+  ## Serialize type extensions as NIF for persistence.
+  ## Format: (type_extensions (ext "kind" <expr>) ...)
+  ## If no extensions, writes DotToken (empty).
+  if w.typeExtensions == nil or not w.typeExtensions[].hasKey(typ.itemId):
+    dest.addDotToken()
+    return
+
+  let extensions = w.typeExtensions[][typ.itemId]
+  if extensions.len == 0:
+    dest.addDotToken()
+    return
+
+  dest.buildTree typeExtensionsTag:
+    for ext in extensions:
+      dest.buildTree extTag:
+        dest.addStrLit typeExtKindToStr(ext.kind)
+        writeNode(w, dest, ext.expr)
+
 proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
   dest.buildTree tdefTag:
     dest.addSymDef pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
@@ -272,6 +300,8 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
 
     # Write TLoc structure
     writeLoc w, dest, typ.locImpl
+    # Write type extensions (deferred pragmas)
+    writeTypeExtensions w, dest, typ
     # we store the type's elements here at the end so that
     # it is not ambiguous and saves space:
     for ch in typ.sonsImpl:
@@ -708,8 +738,10 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
 
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      opsLog: seq[LogEntry];
-                     replayActions: seq[PNode] = @[]) =
-  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
+                     replayActions: seq[PNode] = @[];
+                     typeExtensions: ptr Table[ItemId, seq[TypeExtension]] = nil) =
+  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule,
+                 typeExtensions: typeExtensions)
   var content = createTokenBuf(300)
 
   let rootInfo = trLineInfo(w, n.info)
@@ -827,10 +859,18 @@ type
     syms: Table[string, (PSym, NifIndexEntry)]
     mods: Table[FileIndex, NifModule]
     cache: IdentCache
+    # Type extension side-table (set via setTypeExtensions after ModuleGraph is created)
+    typeExtensions*: ptr Table[ItemId, seq[TypeExtension]]
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
   result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+
+proc setTypeExtensions*(c: var DecodeContext;
+                        typeExtensions: ptr Table[ItemId, seq[TypeExtension]]) =
+  ## Sets the type extension table for loading.
+  ## Must be called after createDecodeContext and after ModuleGraph is created.
+  c.typeExtensions = typeExtensions
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
@@ -1076,6 +1116,48 @@ proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
   loadField loc.flags
   loadField loc.snippet
 
+proc strToTypeExtKind(s: string): TypeExtKind =
+  case s
+  of "deferred_size": extDeferredSize
+  of "deferred_align": extDeferredAlign
+  else: extDeferredSize  # fallback, shouldn't happen
+
+proc loadTypeExtensions(c: var DecodeContext; n: var Cursor; t: PType;
+                        thisModule: string; localSyms: var Table[string, PSym]) =
+  ## Load type extensions from NIF into side-table.
+  ## Handles backwards compatibility: if no extensions present (old format), skips gracefully.
+  ## Format: (type_extensions (ext "kind" <expr>) ...) or DotToken
+  if n.kind == DotToken:
+    # No extensions (or old format that didn't have this slot)
+    inc n
+    return
+
+  if n.kind == ParLe and n.tagId == typeExtensionsTag:
+    inc n  # skip (type_extensions
+    while n.kind != ParRi:
+      if n.kind == ParLe and n.tagId == extTag:
+        inc n  # skip (ext
+        if n.kind == StringLit:
+          let kindStr = pool.strings[n.litId]
+          inc n
+          let expr = loadNode(c, n, thisModule, localSyms)
+          if c.typeExtensions != nil and expr != nil:
+            let kind = strToTypeExtKind(kindStr)
+            if not c.typeExtensions[].hasKey(t.itemId):
+              c.typeExtensions[][t.itemId] = @[]
+            c.typeExtensions[][t.itemId].add(TypeExtension(kind: kind, expr: expr))
+        else:
+          skip n  # skip malformed extension
+        if n.kind == ParRi:
+          inc n  # skip ) of ext
+      else:
+        inc n  # skip unexpected content
+    if n.kind == ParRi:
+      inc n  # skip ) of type_extensions
+  elif n.kind != ParRi:
+    # Old format without extensions slot - this position is a type son, don't consume
+    return
+
 proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms: var Table[string, PSym]) =
   expect n, ParLe
   if n.tagId != tdefTag:
@@ -1104,6 +1186,8 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
   t.ownerFieldImpl = loadSymStub(c, n, typesModule, localSyms)
   t.symImpl = loadSymStub(c, n, typesModule, localSyms)
   loadLoc c, n, t.locImpl
+  # Load type extensions (deferred pragmas) from NIF pragmas
+  loadTypeExtensions c, n, t, typesModule, localSyms
 
   while n.kind != ParRi:
     t.sonsImpl.add loadTypeStub(c, n, localSyms)

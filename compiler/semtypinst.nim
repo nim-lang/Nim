@@ -31,6 +31,108 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):
     localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
 
+proc substituteTypeParams(n: PNode; body, inst: PType): PNode =
+  ## Substitute generic parameter references with instantiated types.
+  ## body is the generic body type, inst is the tyGenericInst.
+  if n == nil: return nil
+  case n.kind
+  of nkSym:
+    if n.sym.kind == skGenericParam or
+       (n.sym.kind == skType and n.sym.typ != nil and n.sym.typ.kind == tyGenericParam):
+      # Find which parameter this is by matching against body's params
+      for i in 0..<body.kidsLen - 1:
+        if body[i].sym == n.sym or sameTypeOrNil(body[i], n.sym.typ):
+          # inst[0] is the generic body, inst[1..] are the type arguments
+          return newNodeIT(nkType, n.info, inst[i + 1])
+      return n
+    else:
+      return n
+  of nkType:
+    if n.typ != nil and n.typ.kind == tyGenericParam:
+      for i in 0..<body.kidsLen - 1:
+        if sameTypeOrNil(body[i], n.typ):
+          return newNodeIT(nkType, n.info, inst[i + 1])
+      return n
+    else:
+      return n
+  of nkIdent:
+    # Try to match identifier against generic param names
+    for i in 0..<body.kidsLen - 1:
+      if body[i].sym != nil and body[i].sym.name.id == n.ident.id:
+        return newNodeIT(nkType, n.info, inst[i + 1])
+    return n
+  of nkEmpty, nkNilLit, nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit,
+     nkStrLit..nkTripleStrLit:
+    # Leaf nodes - return as-is
+    return n
+  else:
+    result = shallowCopy(n)
+    for i in 0..<n.len:
+      result[i] = substituteTypeParams(n[i], body, inst)
+
+proc containsUnresolvedGenericType(n: PNode): bool =
+  ## Check if the substituted expression still contains unresolved generic types.
+  ## This happens when Atomic[T] is instantiated with T being another generic param.
+  ## 
+  ## After substituteTypeParams, generic params that were successfully substituted
+  ## become nkType nodes with concrete types. Unresolved generic params remain as
+  ## nkType nodes with tyGenericParam types.
+  ## 
+  ## nkIdent nodes for things like `sizeof` or type names like `int8` are NOT
+  ## unresolved generic types - they're regular identifiers that will be resolved
+  ## during semantic analysis.
+  if n == nil: return false
+  case n.kind
+  of nkType:
+    # After substitution, generic params become nkType nodes
+    # Check if the type is still a generic param
+    if n.typ != nil and n.typ.kind == tyGenericParam:
+      return true
+    # Also check for generic invocations with unresolved params
+    if n.typ != nil and n.typ.containsGenericType:
+      return true
+  of nkSym:
+    if n.sym.kind == skGenericParam:
+      return true
+    if n.sym.kind == skType and n.sym.typ != nil and n.sym.typ.kind == tyGenericParam:
+      return true
+  of nkIdent:
+    # nkIdent nodes are regular identifiers (like `sizeof`, `int8`, etc.)
+    # They are NOT unresolved generic types - they will be resolved during semExpr.
+    # If a generic param wasn't substituted, it would remain as nkIdent, but
+    # substituteTypeParams handles that by matching against body's params.
+    # If it didn't match, it's a regular identifier, not a generic param.
+    return false
+  of nkEmpty, nkNilLit, nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit,
+     nkStrLit..nkTripleStrLit:
+    return false
+  else:
+    for child in n:
+      if containsUnresolvedGenericType(child):
+        return true
+  return false
+
+proc evaluateTypeExtension*(c: PContext; instType, body: PType;
+                             ext: TypeExtension): BiggestInt =
+  ## Evaluates a type extension expression after type instantiation.
+  ## Returns the evaluated integer value, or szUnknownSize on error.
+  ## Returns szUnknownSize without error if the expression still contains
+  ## unresolved generic types (will be evaluated on further instantiation).
+  var expr = copyTree(ext.expr)
+  expr = substituteTypeParams(expr, body, instType)
+  
+  # If the substituted expression still contains generic types, defer evaluation.
+  # This happens when e.g. Atomic[T] is used inside a generic proc like store[T].
+  if containsUnresolvedGenericType(expr):
+    return szUnknownSize
+  
+  let evaluated = c.semConstExpr(c, expr)
+  if evaluated.kind in {nkCharLit..nkUInt64Lit}:
+    result = evaluated.intVal
+  else:
+    localError(c.config, ext.expr.info, "type extension must evaluate to integer constant")
+    result = szUnknownSize
+
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   result = nil
   let genericTyp = key[0]
@@ -511,6 +613,27 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
+
+  # Evaluate type extensions (e.g., size: sizeof(T) on generic imported types)
+  if cl.c.graph.hasTypeExtensions(body):
+    for ext in cl.c.graph.typeExtensions(body):
+      let val = evaluateTypeExtension(cl.c, result, body, ext)
+      if val != szUnknownSize:
+        case ext.kind
+        of extDeferredSize:
+          newbody.size = val
+          # Set alignment based on size for imported types
+          if val <= 1:
+            newbody.align = 1
+          elif val <= 2:
+            newbody.align = 2
+          elif val <= 4:
+            newbody.align = 4
+          else:
+            newbody.align = int16 floatInt64Align(cl.c.config)
+        of extDeferredAlign:
+          newbody.align = int16 val
+
   if not cl.allowMetaTypes:
     let dc = cl.c.graph.getAttachedOp(newbody, attachedDeepCopy)
     if dc != nil and sfFromGeneric notin dc.flags:

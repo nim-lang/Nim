@@ -14,6 +14,8 @@
 import std/[intsets, tables, hashes, strtabs, os, strutils, parseutils]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
+import typeext
+export typeext
 
 when not defined(nimKochBootstrap):
   import ast2nif
@@ -96,6 +98,11 @@ type
     objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
     methodsPerType*: Table[ItemId, seq[PSym]]
     dispatchers*: seq[PSym]
+
+    # Type extension side-table (sparse metadata storage)
+    typeExtensions*: Table[ItemId, seq[TypeExtension]]
+      ## Generic type extensions that couldn't be stored on PType directly.
+      ## Used for deferred pragmas, future metadata, etc.
 
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
@@ -543,6 +550,8 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.emittedTypeInfo = initTable[string, FileIndex]()
   result.cachedFiles = newStringTable()
   result.cachedMods = initIntSet()
+  # Type extension side-table
+  result.typeExtensions = initTable[ItemId, seq[TypeExtension]]()
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
@@ -550,6 +559,9 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cache = cache
   initModuleGraphFields(result)
   ast.setupProgram(config, cache)
+  when not defined(nimKochBootstrap):
+    # Set type extension table pointer on DecodeContext for NIF loading
+    setTypeExtensions(ast.program, addr result.typeExtensions)
 
 proc resetAllModules*(g: ModuleGraph) =
   g.packageSyms = initStrTable()

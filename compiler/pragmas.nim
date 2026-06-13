@@ -12,7 +12,8 @@
 import
   condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, extccomp, magicsys, trees,
-  types, lookups, lineinfos, pathutils, linter, modulepaths
+  types, lookups, lineinfos, pathutils, linter, modulepaths,
+  modulegraphs
 
 from sigmatch import trySuggestPragmas
 
@@ -116,6 +117,44 @@ proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
 const
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
+
+proc containsGenericParam(c: PContext; n: PNode): bool =
+  ## Check if AST node contains any unresolved generic type parameter.
+  ## Returns true for:
+  ## - Symbols that are generic params (skGenericParam or tyGenericParam)
+  ## - Identifiers that resolve to generic params
+  ## - Identifiers that don't resolve to anything (likely generic params not yet in scope)
+  ##   BUT only if they also don't resolve to a known type like `cint`
+  if n == nil: return false
+  case n.kind
+  of nkSym:
+    result = n.sym.kind == skGenericParam or
+             (n.sym.kind == skType and n.sym.typ != nil and n.sym.typ.kind == tyGenericParam)
+  of nkType:
+    result = n.typ != nil and n.typ.kind == tyGenericParam
+  of nkIdent:
+    # Try to look up the identifier in current scope
+    var ambiguous = false
+    let sym = searchInScopes(c, n.ident, ambiguous)
+    if sym == nil:
+      # Unresolved identifier - likely a generic param not yet fully in scope
+      result = true
+    elif sym.kind == skGenericParam:
+      result = true
+    elif sym.kind == skType and sym.typ != nil and sym.typ.kind == tyGenericParam:
+      result = true
+    else:
+      # Resolves to a known type (like cint) - not a generic param
+      result = false
+  of nkEmpty, nkNilLit, nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit,
+     nkStrLit..nkTripleStrLit:
+    # Leaf nodes that are never generic params
+    result = false
+  else:
+    for child in n:
+      if containsGenericParam(c, child):
+        return true
+    result = false
 
 proc invalidPragma*(c: PContext; n: PNode) =
   localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
@@ -942,20 +981,28 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
-        var size = expectIntLit(c, it)
-        if sfImportc in sym.flags:
-          # no restrictions on size for imported types
-          setImportedTypeSize(c.config, sym.typ, size)
-        else:
-          case size
-          of 1, 2, 4:
-            sym.typ.size = size
-            sym.typ.align = int16 size
-          of 8:
-            sym.typ.size = 8
-            sym.typ.align = floatInt64Align(c.config)
+        elif it.kind in nkPragmaCallKinds and it.len == 2 and containsGenericParam(c, it[1]):
+          # Defer evaluation until generic type is instantiated
+          if sfImportc notin sym.flags:
+            localError(c.config, it.info,
+              "deferred size expressions only supported for imported types")
           else:
-            localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+            c.graph.addTypeExtension(sym.typ, extDeferredSize, it[1])
+        else:
+          var size = expectIntLit(c, it)
+          if sfImportc in sym.flags:
+            # no restrictions on size for imported types
+            setImportedTypeSize(c.config, sym.typ, size)
+          else:
+            case size
+            of 1, 2, 4:
+              sym.typ.size = size
+              sym.typ.align = int16 size
+            of 8:
+              sym.typ.size = 8
+              sym.typ.align = floatInt64Align(c.config)
+            else:
+              localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wAlign:
         let alignment = expectIntLit(c, it)
         if isPowerOfTwo(alignment) and alignment > 0:
