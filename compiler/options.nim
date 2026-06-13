@@ -418,6 +418,18 @@ type
                               # process; only the `ic` driver serialises them.
                               # Path-search switches are excluded — the driver
                               # forwards the resolved `searchPaths` as `--path`.
+    icBackendStage*: string   # under `nim nifc`: which stage of the per-module
+                              # backend this invocation runs — "cg" (codegen one
+                              # module to its `.c.nif`), "merge" (global liveness
+                              # + owner assignment across all `.c.nif`), "emit"
+                              # (render one module's `.c` from its `.c.nif` + the
+                              # merge decision). Empty = today's whole-program
+                              # backend (load all, codegen+DCE+cc+link in one
+                              # process). See `compiler/nifbackend.nim`.
+    icBackendModule*: string  # under `nim nifc` with icBackendStage in {cg,emit}:
+                              # the NIF module suffix this invocation codegens or
+                              # emits. The other modules are loaded only so types
+                              # resolve; their definitions are referenced extern.
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)

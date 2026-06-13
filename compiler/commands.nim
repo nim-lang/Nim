@@ -960,6 +960,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # config loading can replay it instead of re-parsing the `nim.cfg` chain.
     expectArg(conf, switch, arg, pass, info)
     conf.icPreparsedConfig = arg
+  of "icbackendstage":
+    # `nim nifc` only: per-module backend stage, one of cg|merge|emit (see
+    # options.icBackendStage). Empty (switch unused) keeps the whole-program
+    # backend. Emitted by `deps.nim`'s backend build file.
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icBackendStage = arg
+  of "icbackendmodule":
+    # `nim nifc` only: the NIF module suffix the cg/emit stage operates on (see
+    # options.icBackendModule).
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icBackendModule = arg
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
