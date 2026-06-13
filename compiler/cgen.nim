@@ -1560,6 +1560,17 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     if sfExportc in prc.flags or sfConstructor in prc.flags: defFlags.add 'x'
     if sfCompilerProc in prc.flags: defFlags.add 'c'
     if prc.kind == skMethod or sfDispatcher in prc.flags: defFlags.add 'm'
+    if (prc.typ == nil or prc.typ.callConv != ccInline) and
+        sfDispatcher notin prc.flags:
+      # A unique program-wide definition: external linkage, so exactly one
+      # translation unit may embed its body and everyone else declares it.
+      # In the whole-program backend `icSharedDefOwner` (first claimant wins)
+      # enforces this in process; in the per-module backend each module's `cg`
+      # process emits the body (emit-everywhere), so this flag tells the merge
+      # stage which definitions to assign a single owner and prototype in the
+      # rest. The complement — inline procs and method dispatchers — is emitted
+      # into every using TU (`static`/main-only) and must never be deduplicated.
+      defFlags.add 'u'
     if not hasCnifMarks(prc.loc.snippet):
       # The C name was not minted through `fillBackendName` (e.g. set by an
       # `extern`/`rtl` pragma at sem time), so its uses are invisible to the

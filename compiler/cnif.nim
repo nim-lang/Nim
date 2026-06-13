@@ -459,3 +459,190 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
   result.defs = defs.len
   for d in defs:
     if d in result.live: inc result.liveDefs
+
+# ---- The merge stage: liveness + owner assignment -------------------------
+
+type
+  MergeDecision* = object
+    ## What the per-module backend's `merge` stage computes from every
+    ## module's `.c.nif` and what its `emit` stage consumes to render the
+    ## final `.c` of one module.
+    live*: HashSet[string]        ## globally reachable C names (dead cdefs
+                                  ## are dropped from every module)
+    owners*: Table[string, string] ## for each `'u'`-flagged (unique,
+                                  ## externally-linked) definition, the single
+                                  ## artifact base name allowed to embed its
+                                  ## body; every other module prototypes it
+    broken*: bool                 ## an artifact was missing or unparsable —
+                                  ## the caller should fall back / regenerate
+    defs*, liveDefs*: int
+
+proc computeMergeDecision*(files: openArray[string]): MergeDecision =
+  ## One pass over every `.c.nif`: the same mark&sweep as
+  ## `computeLiveFromCArtifacts` plus, per definition, owner assignment.
+  ##
+  ## Each `cg` process emits the body of every definition it demands
+  ## (emit-everywhere), so the same externally-linked definition appears in
+  ## several artifacts. A `'u'` flag on the `(cdef ...)` marks those that need
+  ## exactly one owner (the whole-program backend's `icSharedDefOwner`
+  ## invariant, here recomputed across processes); the owner is the
+  ## lexicographically smallest artifact that emits it — a pure function of the
+  ## claimant set, hence stable across rebuilds. Definitions without `'u'`
+  ## (inline procs, dispatchers) are `static`/main-only and emitted into every
+  ## using TU, so they get no owner entry and are never deduplicated.
+  result = MergeDecision(live: initHashSet[string](),
+                         owners: initTable[string, string]())
+  var pool = newPool()
+  var tags = newTagPool()
+  let stmtsTag = tags.registerTag("stmts")
+  let cdefTag = tags.registerTag("cdef")
+  let cdataTag = tags.registerTag("cdata")
+  let crefTag = tags.registerTag("cref")
+  let cdepsTag = tags.registerTag("cdeps")
+  let metaTag = tags.registerTag("meta")
+  var uses = initTable[string, HashSet[string]]()
+  var roots = initHashSet[string]()
+  var defs = initHashSet[string]()
+  for f in files:
+    if not fileExists(f):
+      result.broken = true
+      return
+    let owner = extractFilename(f)
+    var buf = parseFromFile(f, 1000, pool, tags)
+    var c = beginRead(buf)
+    if c.kind != TagLit or c.cursorTagId != stmtsTag:
+      result.broken = true
+      endRead(c)
+      return
+    c.loopInto:
+      case c.kind
+      of Symbol, Ident:
+        roots.incl symOrIdentName(c)
+        inc c
+      of TagLit:
+        if c.cursorTagId == metaTag or c.cursorTagId == cdataTag or
+            c.cursorTagId == crefTag or c.cursorTagId == cdepsTag:
+          skip c
+        elif c.cursorTagId == cdefTag:
+          var ownerName = ""
+          var flagsSeen = false
+          var isUnique = false
+          c.loopInto:
+            case c.kind
+            of SymbolDef:
+              ownerName = symName(c)
+              defs.incl ownerName
+              flagsSeen = false
+              inc c
+            of Symbol, Ident:
+              let name = symOrIdentName(c)
+              if not flagsSeen:
+                flagsSeen = true
+                for ch in name:
+                  if ch in {'x', 'c', 'm'}: roots.incl ownerName
+                  elif ch == 'u': isUnique = true
+              else:
+                uses.mgetOrPut(ownerName, initHashSet[string]()).incl name
+              inc c
+            of DotToken:
+              flagsSeen = true # empty flags field
+              inc c
+            else:
+              skip c
+          if isUnique and ownerName.len > 0:
+            # smallest claimant wins; ties impossible (one entry per name)
+            let prev = result.owners.getOrDefault(ownerName, "")
+            if prev.len == 0 or owner < prev:
+              result.owners[ownerName] = owner
+        else:
+          c.loopInto:
+            if c.kind in {Symbol, Ident}:
+              roots.incl symOrIdentName(c)
+              inc c
+            else:
+              skip c
+      else:
+        skip c
+    endRead(c)
+  var work = newSeqOfCap[string](roots.len)
+  for r in roots: work.add r
+  while work.len > 0:
+    let s = work.pop()
+    if not result.live.containsOrIncl(s):
+      if uses.hasKey(s):
+        for dep in uses[s]:
+          if dep notin result.live:
+            work.add dep
+  result.defs = defs.len
+  for d in defs:
+    if d in result.live: inc result.liveDefs
+
+const MergeDecisionFile* = "ic.backend.merge.nif"
+  ## Fixed name of the merge stage's output in the nimcache, read by `emit`.
+
+proc writeMergeDecision*(outfile: string; d: MergeDecision) =
+  ## Serializes the merge decision: `(merge (live Symbol*) (owners (own
+  ## Symbol StrLit)*))`. C names are mangled (no dots) so they serialize as
+  ## symbols; owner artifact base names go in string literals.
+  var live: seq[string] = @[]
+  for n in d.live: live.add n
+  sort live
+  var keys: seq[string] = @[]
+  for k in d.owners.keys: keys.add k
+  sort keys
+  var b = nifbuilder.open(outfile)
+  b.withTree "merge":
+    b.withTree "live":
+      for n in live: b.addSymbol n, ""
+    b.withTree "owners":
+      for k in keys:
+        b.withTree "own":
+          b.addSymbol k, ""
+          b.addStrLit d.owners[k]
+  b.close()
+
+proc readMergeDecision*(f: string): MergeDecision =
+  ## Reads back a `writeMergeDecision` file; `broken=true` if absent/unparsable.
+  result = MergeDecision(live: initHashSet[string](),
+                         owners: initTable[string, string]())
+  if not fileExists(f):
+    result.broken = true
+    return
+  var pool = newPool()
+  var tags = newTagPool()
+  let mergeTag = tags.registerTag("merge")
+  let liveTag = tags.registerTag("live")
+  let ownersTag = tags.registerTag("owners")
+  let ownTag = tags.registerTag("own")
+  var buf = parseFromFile(f, 1000, pool, tags)
+  var c = beginRead(buf)
+  if c.kind != TagLit or c.cursorTagId != mergeTag:
+    result.broken = true
+    endRead(c)
+    return
+  c.loopInto:
+    if c.kind == TagLit and c.cursorTagId == liveTag:
+      c.loopInto:
+        if c.kind in {Symbol, Ident}:
+          result.live.incl symOrIdentName(c)
+          inc c
+        else:
+          skip c
+    elif c.kind == TagLit and c.cursorTagId == ownersTag:
+      c.loopInto:
+        if c.kind == TagLit and c.cursorTagId == ownTag:
+          var key = ""
+          c.loopInto:
+            if c.kind in {Symbol, Ident}:
+              key = symOrIdentName(c)
+              inc c
+            elif c.kind == StrLit:
+              if key.len > 0: result.owners[key] = strVal(c)
+              inc c
+            else:
+              skip c
+        else:
+          skip c
+    else:
+      skip c
+  endRead(c)

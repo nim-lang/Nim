@@ -569,11 +569,38 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
   cgenWriteModules(g.backend, g.config)
 
+proc generateMergeStage(g: ModuleGraph) =
+  ## Per-module backend merge (`--icBackendStage:merge`): a pure artifact
+  ## operation, no module graph loaded. Reads every `.c.nif` the `cg` stages
+  ## wrote, computes the global live set and — for each `'u'`-flagged unique
+  ## definition that several `cg` processes emitted (emit-everywhere) — the one
+  ## artifact allowed to embed its body, and writes the decision the `emit`
+  ## stages consume. This replaces the whole-program backend's in-process
+  ## `icSharedDefOwner`/DCE coordination with a cross-process rule.
+  let nimcache = getNimcacheDir(g.config).string
+  var files: seq[string] = @[]
+  for artifact in walkFiles(nimcache / "*.c.nif"):
+    files.add artifact
+  sort files
+  let decision = computeMergeDecision(files)
+  if decision.broken:
+    rawMessage(g.config, errGenerated,
+      "per-module backend merge: a .c.nif artifact is missing or unparsable")
+    return
+  writeMergeDecision(nimcache / MergeDecisionFile, decision)
+  if isDefined(g.config, "icDceCheck"):
+    stderr.writeLine "[icMerge] artifacts: " & $files.len &
+      " live: " & $decision.live.len & " defs: " & $decision.defs &
+      " liveDefs: " & $decision.liveDefs & " owned: " & $decision.owners.len
+
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
   if g.config.icBackendStage == "cg":
     generateCgStage(g, mainFileIdx)
+    return
+  elif g.config.icBackendStage == "merge":
+    generateMergeStage(g)
     return
   elif g.config.icBackendStage.len > 0:
     rawMessage(g.config, errGenerated,
