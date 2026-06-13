@@ -508,20 +508,19 @@ proc skipHiddenConv(n: PNode): PNode =
 proc addRaiseEffectsFromExpr(a: PEffects, e, comesFrom: PNode) =
   if e.isNil:
     return
-  let x = skipHiddenConv(e)
-  case x.kind
+  case e.kind
   of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr:
-    if x.len > 0:
-      addRaiseEffectsFromExpr(a, x.lastSon, comesFrom)
+    if e.len > 0:
+      addRaiseEffectsFromExpr(a, e.lastSon.skipHiddenConv, comesFrom)
   of nkIfExpr, nkIfStmt:
-    for branch in items(x):
+    for branch in items(e):
       if branch.len > 0:
-        addRaiseEffectsFromExpr(a, branch.lastSon, comesFrom)
+        addRaiseEffectsFromExpr(a, branch.lastSon.skipHiddenConv, comesFrom)
   of nkCaseStmt:
-    for i in 1..<x.len:
-      let branch = x[i]
+    for i in 1..<e.len:
+      let branch = e[i]
       if branch.len > 0:
-        addRaiseEffectsFromExpr(a, branch.lastSon, comesFrom)
+        addRaiseEffectsFromExpr(a, branch.lastSon.skipHiddenConv, comesFrom)
   else:
     addRaiseEffect(a, e, comesFrom)
 
