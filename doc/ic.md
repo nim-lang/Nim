@@ -29,7 +29,10 @@ and hands it to ``nifmake``:
 
 ``nifmake`` orders the steps by their input/output files: every `nim m` runs
 before the `nim nifc` step that consumes its NIF, and a step re-fires only when
-one of its inputs is newer than its outputs.
+one of its inputs is newer than its outputs. The driver invokes ``nifmake run
+--parallel`` by default, so independent steps at the same DAG depth fan out
+across cores; pass ``-d:icNoParallel`` to serialize (readable child output when
+debugging a build).
 
 Artifacts (the NIF zoo)
 =======================
@@ -194,6 +197,50 @@ Known residual hacks (targets for the rewrite)
 
 These are legacy artifacts of a code generator that predates IC, not intrinsic
 requirements.
+
+- **Cross-mm reuse / `--force` (`var not init i_<hash>`).** Reusing TUs built
+  under one memory-management mode (e.g. an `orc` cache) while rebuilding under
+  another (`refc`), or forcing a full backend re-run, can abort with
+  ``var not init``. The name is a backend-minted closure-capture local whose
+  `loc` is unset; the root cause is that `nifmake` is *mtime-only* and
+  `computeModuleReuse` is not config-aware, so a reuse decision can mix TUs
+  generated under different config signatures. It is **crash-safe** (it aborts,
+  never emits a wrong-mm binary) and does **not** affect normal same-mode warm
+  rebuilds. Deferred to the rewrite, which makes reuse config-aware by
+  construction (each codegen rule's config is a declared input).
+
+Status and performance
+======================
+
+`nim ic` self-builds the compiler (`koch bootic`'s fixed-point check) under both
+`orc` and `--mm:refc`, and passes the external-package CI set. The
+macro sweep is 93/95 (two known-baseline failures: `tmacro7`, `tmacrogetimpl`).
+
+Rough numbers on a 32-core box (`-d:release`, building the compiler):
+
+| | wall | notes |
+| - | ---- | ----- |
+| classic `nim c` full | ~27.5s | ~7 cores busy |
+| `nim ic` cold, serial | ~81s | one `nim m` at a time |
+| `nim ic` cold, `--parallel` | ~53s | now the default |
+| `nim ic` warm no-op | ~0.14s | ~200× vs classic |
+
+The cold gap is a *parallelism* deficiency, not extra fundamental work
+(aggregate work is ≈1.33× classic). The backend's own phases are cheap
+(load 0.3s, DCE 1.0s, cgen 5.7s, write 0.8s); the C compile+link floor (~21s) is
+already parallel and shared with the classic backend. The remaining cold cost is
+the `nim m` sem phase, throttled by `nifmake`'s per-DAG-depth barrier across a
+narrow, deep tail of heavy modules. A ready-queue scheduler (dependency-ready
+dispatch instead of a depth barrier) would recover several seconds but cannot
+beat the import-chain critical path; it folds into the rewrite. **Warm rebuilds
+— the actual point of IC — already dominate the classic backend by ~200×.**
+
+The strategic direction (decided 2026-06-13) is to make this NIF backend
+(`cmdNifC`) the **default** code generator. The clean translation-unit model it
+needs — global DCE, content-keyed instance merging, deterministic RTTI — already
+exists and is always-on inside `cmdNifC`; the remaining work is the per-module
+backend rewrite below (which also dissolves the cross-mm reuse hazard), then
+*promotion + deletion*, not new machinery.
 
 Plan: a nifmake-driven, per-module backend
 ==========================================
