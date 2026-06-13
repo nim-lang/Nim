@@ -1085,8 +1085,17 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
+  of tyUncheckedArray:
+    # An UncheckedArray has no known length, so it cannot be copied, moved or
+    # destroyed as a value: it only ever lives behind a pointer and its bytes
+    # are managed manually (element ops for seqs/strings go through the
+    # seq/string hooks, which know the length). Emitting `x = y` for it (as the
+    # pointer-like group below does) produces an assignment of an unsized array,
+    # which the C backend cannot lower (genAssignment: tyUncheckedArray). So all
+    # value hooks for it are no-ops.
+    discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCstring,
-      tyPtr, tyUncheckedArray, tyVar, tyLent:
+      tyPtr, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
     if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
