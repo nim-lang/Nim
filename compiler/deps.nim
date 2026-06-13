@@ -995,6 +995,34 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
 
   b.endTree()  # stmts
 
+proc backendParallelFlag(conf: ConfigRef): string =
+  ## The `--parallel` flag for the *backend* nifmake run. Unlike the frontend
+  ## (cheap `nim m` processes), every per-module backend process loads the whole
+  ## program (~1GB+), so an unbounded fan-out on a many-core box exhausts RAM.
+  ## Cap the job count: `-d:icBackendJobs:N` sets it explicitly, otherwise derive
+  ## it from available memory (Linux) and the core count with headroom. (nifmake
+  ## honours the count via `--parallel:N`; `countProcessors` ignores CPU affinity
+  ## so `taskset` cannot bound it.) `-d:icNoParallel` forces serial.
+  if isDefined(conf, "icNoParallel"): return ""
+  var jobs = 0
+  let ov = conf.symbols.getOrDefault("icBackendJobs")
+  if ov.len > 0:
+    try: jobs = max(1, parseInt(ov))
+    except ValueError: jobs = 0
+  if jobs == 0:
+    jobs = countProcessors()
+    if jobs <= 0: jobs = 1
+    when defined(linux):
+      try:
+        for line in lines("/proc/meminfo"):
+          if line.startsWith("MemAvailable:"):
+            let kb = parseInt(line.splitWhitespace()[1])
+            jobs = max(1, min(jobs, kb div (1536 * 1024))) # ~1.5 GB per process
+            break
+      except CatchableError:
+        discard
+  result = " --parallel:" & $jobs
+
 proc commandIc*(conf: ConfigRef) =
   ## Main entry point for `nim ic`
   when not defined(nimKochBootstrap):
@@ -1077,6 +1105,7 @@ proc commandIc*(conf: ConfigRef) =
     # with `-d:icNoParallel` (e.g. for readable, non-interleaved child output
     # when debugging a build).
     let parallel = if isDefined(conf, "icNoParallel"): "" else: " --parallel"
+    let backendParallel = backendParallelFlag(conf)
 
     # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.
     var rounds = 0
@@ -1134,7 +1163,7 @@ proc commandIc*(conf: ConfigRef) =
     if frontendOk:
       let backendFile = generateBackendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & backendFile)
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)
+      let cmd = quoteShell(nifmake) & " run" & backendParallel & " " & quoteShell(backendFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       if exitCode != 0:

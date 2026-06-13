@@ -551,6 +551,62 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
     discard setupNifBackendModule(g, precompSys.module)
   result = (modules, precompSys, nifFiles)
 
+proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
+    tuple[modules: seq[PrecompiledModule], precompSys: PrecompiledModule,
+          target: PrecompiledModule] =
+  ## Per-module `cg`/`emit` for a NON-main target: load system + the target
+  ## module + the target's transitive import closure ONLY — not the whole
+  ## program. This is the "process the one file it is passed" model (à la
+  ## Nimony's `hexer c file.nif`): the foreign symbols the target's codegen
+  ## demands are loaded lazily by `ast2nif.moduleId`, which opens any referenced
+  ## module's NIF index on first touch, so a body in a not-loaded module still
+  ## resolves. The closure is loaded as full `BModule`s only so that the
+  ## incidental `g.mods[pos]` accesses during codegen resolve; system's own
+  ## internal closure (allocators, locks, …) is included because a target's
+  ## emit-everywhere codegen can demand those without importing them directly.
+  ##
+  ## The whole program is no longer loaded in this process, which is what bounds
+  ## per-process memory under nifmake's parallel fan-out (the main module's `cg`,
+  ## which still loads everything for NimMain's init list and the method
+  ## dispatchers, runs essentially alone since every other `.c.nif` precedes it).
+  resetForBackend(g)
+  var isKnownFile = false
+  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  g.config.m.systemFileIdx = systemFileIdx
+  let precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
+  g.systemModule = precompSys.module
+
+  var modules: seq[PrecompiledModule] = @[]
+  var visited = initHashSet[string]()
+  visited.incl "sysma2dyk"
+
+  var isKnown = false
+  let targetIdx = registerNifSuffix(g.config, targetSuffix, isKnown)
+  let target = moduleFromNifFile(g, targetIdx, {LoadFullAst})
+  visited.incl targetSuffix
+
+  var stack: seq[ModuleSuffix] = @[]
+  if target.module != nil:
+    modules.add target
+    for dep in target.deps: stack.add dep
+  if precompSys.module != nil:
+    for dep in precompSys.deps: stack.add dep
+  while stack.len > 0:
+    let suffix = stack.pop()
+    if not visited.containsOrIncl(suffix.string):
+      var isKnown2 = false
+      let fileIdx = registerNifSuffix(g.config, suffix.string, isKnown2)
+      let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
+      if precomp.module != nil:
+        modules.add precomp
+        for dep in precomp.deps: stack.add dep
+  flushMethodReplays(g)
+  for m in modules:
+    discard setupNifBackendModule(g, m.module)
+  if precompSys.module != nil:
+    discard setupNifBackendModule(g, precompSys.module)
+  result = (modules, precompSys, target)
+
 proc findTargetModule(g: ModuleGraph; modules: seq[PrecompiledModule];
                       precompSys: PrecompiledModule; suffix: string): PrecompiledModule =
   ## The loaded module whose NIF suffix is `suffix` (the `--icBackendModule`
@@ -569,23 +625,40 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## its `.c.nif` artifact (no merge, no `.c` render, no cc/link — those are
   ## separate nifmake rules).
   ##
-  ## The whole program is still LOADED (so every type/symbol resolves), but only
-  ## the target module is code-generated; `findPendingModule` routes every demand
-  ## into it (emit-everywhere). Loading only the target's import closure is a
-  ## later optimization — correctness first.
-  let (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
-  if modules.len == 0:
-    rawMessage(g.config, errGenerated,
-      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-    return
-
-  var dceStats = DceStats()
-  var nifDeps = initTable[string, seq[string]]()
-  if not isDefined(g.config, "icNoDce"):
-    g.icDceEnabled = computeLiveSymbols(g.config, nifFiles, g.icLiveNames,
-                                        dceStats, nifDeps)
-
-  let target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+  ## `findPendingModule` routes every demand into the target (emit-everywhere).
+  ##
+  ## A NON-main target loads only its own import closure (`loadDepClosure`); the
+  ## whole program is no longer pulled into every parallel `cg` process. The main
+  ## module still loads everything (`loadBackendModules`) because NimMain's init
+  ## list and the method dispatchers are whole-program; its `cg` runs essentially
+  ## alone (every other `.c.nif` precedes it), so it does not contend for memory.
+  let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
+  let targetIsMain = g.config.icBackendModule.len == 0 or
+                     g.config.icBackendModule == mainSuffix
+  var modules: seq[PrecompiledModule]
+  var precompSys: PrecompiledModule
+  var target: PrecompiledModule
+  if targetIsMain:
+    var nifFiles: seq[string]
+    (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
+    if modules.len == 0:
+      rawMessage(g.config, errGenerated,
+        "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
+      return
+    # Whole-program liveness filters the eager top-level routine listing
+    # (`icDceLive`); the merge stage still recomputes the program-wide live set
+    # across all `.c.nif`s, so this is only a size optimization for the main TU.
+    var dceStats = DceStats()
+    var nifDeps = initTable[string, seq[string]]()
+    if not isDefined(g.config, "icNoDce"):
+      g.icDceEnabled = computeLiveSymbols(g.config, nifFiles, g.icLiveNames,
+                                          dceStats, nifDeps)
+    target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+  else:
+    # No whole-program load, hence no whole-program DCE: `icDceEnabled` stays
+    # false, so `icDceLive` keeps every top-level routine and the target emits
+    # its full demanded closure. The merge stage drops what is globally dead.
+    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
   if target.module == nil:
     rawMessage(g.config, errGenerated,
       "per-module codegen: module not found for suffix: " & g.config.icBackendModule)
@@ -651,15 +724,26 @@ proc generateMergeStage(g: ModuleGraph) =
 proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend emit (`--icBackendStage:emit --icBackendModule:<suffix>`):
   ## render the target module's final `.c` from its `.c.nif` and the merge
-  ## decision. Loads the module graph the same way `cg` does so `getCFile`
-  ## returns the identical path `cg` wrote to (the main module's source-vs-suffix
-  ## aliasing in particular); no codegen runs.
-  let (modules, precompSys, _) = loadBackendModules(g, mainFileIdx)
-  if modules.len == 0:
-    rawMessage(g.config, errGenerated,
-      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-    return
-  let target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+  ## decision. Loads the target the same way `cg` does so `getCFile` returns the
+  ## identical path `cg` wrote to (the main module's source-vs-suffix aliasing in
+  ## particular); no codegen runs. A non-main target loads only its own closure
+  ## (`loadDepClosure`) so emit, like `cg`, stays bounded under parallel fan-out.
+  let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
+  let targetIsMain = g.config.icBackendModule.len == 0 or
+                     g.config.icBackendModule == mainSuffix
+  var modules: seq[PrecompiledModule]
+  var precompSys: PrecompiledModule
+  var target: PrecompiledModule
+  if targetIsMain:
+    var nifFiles: seq[string]
+    (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
+    if modules.len == 0:
+      rawMessage(g.config, errGenerated,
+        "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
+      return
+    target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+  else:
+    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
   if target.module == nil:
     rawMessage(g.config, errGenerated,
       "per-module emit: module not found for suffix: " & g.config.icBackendModule)
@@ -690,6 +774,15 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     rawMessage(g.config, errGenerated,
       "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
     return
+  # The per-module `cg` processes each collect their module's C compile/link
+  # directives (`{.passL: "-lm".}` etc.) via `replayBackendActions`, but those
+  # live in the cg process and never reach this separate link process. Re-collect
+  # every loaded module's directives here so the final `callCCompiler` sees them
+  # (without this, math's `-lm` is lost → undefined `floor`/`pow`/… at link).
+  for m in modules:
+    replayBackendActions(g, m.module, m.topLevel)
+  if precompSys.module != nil:
+    replayBackendActions(g, precompSys.module, precompSys.topLevel)
   let bl = BModuleList(g.backend)
   for m in bl.mods:
     if m != nil:
