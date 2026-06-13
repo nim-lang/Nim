@@ -69,6 +69,14 @@ proc getCFile*(m: BModule): AbsoluteFile
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   # TODO fixme
+  if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
+    # Per-module backend codegen: only module M (`m`) is emitted in this
+    # process, so every demanded definition — whether a normal proc owned by
+    # another (here unwritten) module or a minted instance/hook — is emitted
+    # into M's TU. Definitions owned elsewhere are emitted again by their own
+    # module's cg process; the merge stage keeps one per C name and turns the
+    # rest into prototypes (which already live in the unmarked protos section).
+    return m
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.mods[ms]

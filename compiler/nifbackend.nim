@@ -505,9 +505,80 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
     for t in g.icPreserveTypeInfos[moduleId]:
       discard genTypeInfo(g.config, bmod, t, unknownLineInfo)
 
+proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
+  ## Per-module backend codegen (`--icBackendStage:cg --icBackendModule:<suffix>`):
+  ## generate C for the single module named by `icBackendModule` and write only
+  ## its `.c.nif` artifact (no merge, no `.c` render, no cc/link — those are
+  ## separate nifmake rules).
+  ##
+  ## The whole program is still LOADED (so every type/symbol resolves), but only
+  ## the target module is code-generated; `findPendingModule` routes every demand
+  ## into it (emit-everywhere). Loading only the target's import closure is a
+  ## later optimization — correctness first.
+  resetForBackend(g)
+  var isKnownFile = false
+  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  g.config.m.systemFileIdx = systemFileIdx
+  var precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
+  g.systemModule = precompSys.module
+
+  var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
+  let modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
+  flushMethodReplays(g)
+  if modules.len == 0:
+    rawMessage(g.config, errGenerated,
+      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
+    return
+
+  var dceStats = DceStats()
+  var nifDeps = initTable[string, seq[string]]()
+  if not isDefined(g.config, "icNoDce"):
+    g.icDceEnabled = computeLiveSymbols(g.config, nifFiles, g.icLiveNames,
+                                        dceStats, nifDeps)
+
+  for m in modules:
+    discard setupNifBackendModule(g, m.module)
+  if precompSys.module != nil:
+    discard setupNifBackendModule(g, precompSys.module)
+
+  # Locate the target module by its NIF suffix.
+  let targetSuffix = g.config.icBackendModule
+  var target = PrecompiledModule(module: nil)
+  for m in modules:
+    if cachedModuleSuffix(g.config, FileIndex m.module.position) == targetSuffix:
+      target = m
+      break
+  if target.module == nil and precompSys.module != nil and
+      cachedModuleSuffix(g.config, FileIndex precompSys.module.position) == targetSuffix:
+    target = precompSys
+  if target.module == nil:
+    rawMessage(g.config, errGenerated,
+      "per-module codegen: module not found for suffix: " & targetSuffix)
+    return
+
+  generateCodeForModule(g, target)
+  # The main module also owns the whole-program method dispatchers + NimMain.
+  if sfMainModule in target.module.flags:
+    emitMethodDispatchers(g)
+  let bl = BModuleList(g.backend)
+  let tb = bl.mods[target.module.position]
+  if tb != nil:
+    finishModule(g, tb)
+
+  # Writes only the target's `.c.nif` (every other loaded module's TU is empty,
+  # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
+  cgenWriteModules(g.backend, g.config)
+
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
+  if g.config.icBackendStage == "cg":
+    generateCgStage(g, mainFileIdx)
+    return
+  elif g.config.icBackendStage.len > 0:
+    rawMessage(g.config, errGenerated,
+      "per-module backend stage not implemented yet: " & g.config.icBackendStage)
+    return
 
   # Phase timing, enabled with `-d:icTimings` on the nifc command line.
   let icTimings = isDefined(g.config, "icTimings")
