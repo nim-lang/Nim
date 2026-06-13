@@ -430,9 +430,11 @@ type
                               # module to its `.c.nif`), "merge" (global liveness
                               # + owner assignment across all `.c.nif`), "emit"
                               # (render one module's `.c` from its `.c.nif` + the
-                              # merge decision). Empty = today's whole-program
-                              # backend (load all, codegen+DCE+cc+link in one
-                              # process). See `compiler/nifbackend.nim`.
+                              # merge decision), "link" (cc + link every emitted
+                              # `.c`). Empty = whole-program backend (load all,
+                              # codegen+DCE+cc+link in one process). The stages
+                              # are wired as nifmake rules by `deps.nim`'s backend
+                              # build file. See `compiler/nifbackend.nim`.
     icBackendModule*: string  # under `nim nifc` with icBackendStage in {cg,emit}:
                               # the NIF module suffix this invocation codegens or
                               # emits. The other modules are loaded only so types

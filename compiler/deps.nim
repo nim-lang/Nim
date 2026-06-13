@@ -11,7 +11,8 @@
 ## This enables incremental and parallel compilation using the `m` switch.
 
 import std / [os, tables, sets, times, osproc, algorithm, strtabs, strutils, syncio]
-import options, msgs, lineinfos, pathutils, condsyms, icconfig
+import options, msgs, lineinfos, pathutils, condsyms, icconfig,
+  modulepaths, extccomp, cnif
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames
@@ -866,17 +867,45 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
 
   b.endTree()  # stmts
 
+proc backendCFile(c: DepContext; node: Node): string =
+  ## The `.c` path the backend writes for `node`, computed exactly as
+  ## `cgen.getCFile` does: `mangleModuleName` of the module's cfilename, which
+  ## is the source path for the main module (registered at its source index) and
+  ## the NIF suffix for every dependency (a `fikNifModule` whose `toFullPath` is
+  ## the suffix). Lets nifmake declare a per-module output without loading any
+  ## backend module.
+  let cfilename =
+    if node.id == 0: AbsoluteFile node.files[0].nimFile
+    else: AbsoluteFile node.files[0].modname
+  result = changeFileExt(completeCfilePath(c.config,
+    mangleModuleName(c.config, cfilename).AbsoluteFile), ".nim.c").string
+
 proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
-  ## Backend build file: today a single whole-program `nim nifc` rule that reads
-  ## every module's semmed NIF and emits/compiles/links the executable. The
-  ## driver runs it once, after the frontend fixpoint (the semmed NIFs already
-  ## exist on disk, so they enter this graph as leaf inputs with no producing
-  ## rule, exactly like the nifler rules' source `.nim` inputs). The per-module
-  ## backend rewrite replaces this one rule with per-module codegen + a DCE rule
-  ## + a link rule; nothing else here changes.
+  ## Per-module backend build file. One `nim_nifc` command template (the actual
+  ## stage/module switches ride in each rule's `(args …)`), then the stages of
+  ## the per-module backend as separate nifmake rules:
+  ##   cg(per module) -> merge -> emit(per module) -> link
+  ## Every module's semmed NIF is a leaf input (produced by the frontend run).
+  ## `cg` emits a module's whole demanded closure into its `.c.nif`
+  ## (emit-everywhere); `merge` picks one owner per duplicated definition across
+  ## all `.c.nif`; `emit` renders each module's `.c` (dropping non-owned/dead
+  ## bodies); `link` compiles and links every `.c` in one `callCCompiler`. The
+  ## main module's `cg` depends on every other `.c.nif` because it reads their
+  ## init/datInit meta heads to wire up NimMain, so it must run last.
   let nimcache = getNimcacheDir(c.config).string
   createDir(nimcache)
   result = nimcache / c.nodes[0].files[0].modname & ".backend.build.nif"
+
+  let mainNif = c.nodes[0].files[0].nimFile
+  let exeFile = changeFileExt(c.nodes[0].files[0].nimFile, ExeExt)
+  let mergeFile = nimcache / MergeDecisionFile
+
+  # Per-node output paths.
+  var cnifFiles = newSeq[string](c.nodes.len)
+  var cFiles = newSeq[string](c.nodes.len)
+  for i, node in c.nodes:
+    cFiles[i] = backendCFile(c, node)
+    cnifFiles[i] = cFiles[i] & ".nif"
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -884,43 +913,84 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addHeader("nim ic", "nifmake")
   b.addTree "stmts"
 
-  # Define nim nifc command
+  # Command template: `nifc --nimcache … --path … <forwarded> <per-rule args>
+  # <project>`. The trailing `(args)` is filled per rule with the stage and
+  # module switches; `(input 0)` is the project file.
   b.addTree "cmd"
   b.addSymbolDef "nim_nifc"
   b.addStrLit getAppFilename()
   b.addStrLit "nifc"
   b.addStrLit "--nimcache:" & nimcache
-  # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
   for a in forwardedArgs:
     b.addStrLit a
+  b.addTree "args"
+  b.endTree()
   b.addTree "input"
   b.addIntLit 0
   b.endTree()
   b.endTree()
 
-  # Final compilation step: generate executable from main module
-  let mainNif = c.nodes[0].files[0].nimFile
-  let exeFile = changeFileExt(c.nodes[0].files[0].nimFile, ExeExt)
+  template inputStr(s: string) =
+    b.addTree "input"
+    b.addStrLit s
+    b.endTree()
+  template outputStr(s: string) =
+    b.addTree "output"
+    b.addStrLit s
+    b.endTree()
+
+  # cg: one rule per module. Inputs are the project (slot 0) and every semmed
+  # NIF (so the whole program loads and the rule is ordered after the frontend);
+  # the main module additionally depends on every other `.c.nif` (init metas).
+  for i, node in c.nodes:
+    b.addTree "do"
+    b.addIdent "nim_nifc"
+    b.withTree "args":
+      b.addStrLit "--icBackendStage:cg"
+      b.addStrLit "--icBackendModule:" & node.files[0].modname
+    inputStr mainNif
+    for n2 in c.nodes:
+      inputStr c.semmedFile(n2.files[0])
+    if node.id == 0:
+      for j in 0 ..< c.nodes.len:
+        if c.nodes[j].id != 0:
+          inputStr cnifFiles[j]
+    outputStr cnifFiles[i]
+    b.endTree()
+
+  # merge: read every `.c.nif`, write the ownership/liveness decision.
   b.addTree "do"
   b.addIdent "nim_nifc"
-  # Input: .nim file (expanded as argument)
-  b.addTree "input"
-  b.addStrLit mainNif
+  b.withTree "args":
+    b.addStrLit "--icBackendStage:merge"
+  inputStr mainNif
+  for cn in cnifFiles: inputStr cn
+  outputStr mergeFile
   b.endTree()
-  # Also depend on the semmed .nif files of the main module and all its
-  # dependencies. nifmake's topological sort orders nodes by depth; without
-  # these inputs the nim_nifc node sits at depth 1 (no recognized inputs)
-  # alongside the nifler nodes and runs *before* the nim_m steps that
-  # produce the .nif files it needs to read.
-  for node in c.nodes:
-    b.addTree "input"
-    b.addStrLit c.semmedFile(node.files[0])
+
+  # emit: render each module's `.c` from its `.c.nif` + the merge decision.
+  for i, node in c.nodes:
+    b.addTree "do"
+    b.addIdent "nim_nifc"
+    b.withTree "args":
+      b.addStrLit "--icBackendStage:emit"
+      b.addStrLit "--icBackendModule:" & node.files[0].modname
+    inputStr mainNif
+    inputStr cnifFiles[i]
+    inputStr mergeFile
+    outputStr cFiles[i]
     b.endTree()
-  b.addTree "output"
-  b.addStrLit exeFile
-  b.endTree()
+
+  # link: compile + link every emitted `.c` in one process.
+  b.addTree "do"
+  b.addIdent "nim_nifc"
+  b.withTree "args":
+    b.addStrLit "--icBackendStage:link"
+  inputStr mainNif
+  for cf in cFiles: inputStr cf
+  outputStr exeFile
   b.endTree()
 
   b.endTree()  # stmts

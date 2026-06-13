@@ -1864,7 +1864,7 @@ proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
   ## Returns a mangled module name.
   result = mangleModuleName(conf, filename).mangle
 
-proc getSomeNameForModule(m: BModule): Rope =
+proc getSomeNameForModule*(m: BModule): Rope =
   ## Returns a mangled module name.
   assert m.module.kind == skModule
   assert m.module.owner.kind == skPackage

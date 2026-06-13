@@ -520,7 +520,30 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   var precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
   g.systemModule = precompSys.module
   var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
-  let modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
+  var modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
+  # loadModuleDependencies traverses the project's import closure and stops at
+  # system. The whole-program backend then demand-loads system's own closure
+  # (locks, allocators, threads, …) during codegen; the per-module backend
+  # instead makes every one of those a first-class cg/emit target, so load that
+  # closure here too — otherwise `findTargetModule` cannot resolve their suffix.
+  block:
+    var visited = initHashSet[string]()
+    visited.incl "sysma2dyk"
+    for m in modules:
+      visited.incl cachedModuleSuffix(g.config, FileIndex m.module.position)
+    var stack: seq[ModuleSuffix] = @[]
+    if precompSys.module != nil:
+      for dep in precompSys.deps: stack.add dep
+    while stack.len > 0:
+      let suffix = stack.pop()
+      if not visited.containsOrIncl(suffix.string):
+        var isKnown = false
+        let fileIdx = registerNifSuffix(g.config, suffix.string, isKnown)
+        let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
+        if precomp.module != nil:
+          modules.add precomp
+          nifFiles.add toNifFilename(g.config, fileIdx)
+          for dep in precomp.deps: stack.add dep
   flushMethodReplays(g)
   for m in modules:
     discard setupNifBackendModule(g, m.module)
@@ -590,6 +613,17 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
   cgenWriteModules(g.backend, g.config)
 
+  # Always leave a `.c.nif` for the target, even when the module has no code
+  # (a leaf library whose procs all emit into their users): the per-module
+  # nifmake graph declares one `.c.nif` output per `cg` rule, so a missing one
+  # would re-fire the rule forever. An empty artifact renders to an empty `.c`.
+  if tb != nil:
+    let artifact = getCFile(tb).string & ".nif"
+    if not fileExists(artifact):
+      writeCnifArtifact("", artifact,
+        semmedNif = toNifFilename(g.config, FileIndex target.module.position),
+        moduleBase = $getSomeNameForModule(tb))
+
 proc generateMergeStage(g: ModuleGraph) =
   ## Per-module backend merge (`--icBackendStage:merge`): a pure artifact
   ## operation, no module graph loaded. Reads every `.c.nif` the `cg` stages
@@ -645,6 +679,32 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     stderr.writeLine "[icEmit] " & extractFilename(cfile) & " dropped " &
       $dropped & " bodies (" & $code.len & " bytes)"
 
+proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
+  ## Per-module backend link (`--icBackendStage:link`): the `emit` stages have
+  ## written every module's `.c`; register them and run the C compiler + linker
+  ## once via `extccomp.callCCompiler` (which parallelizes the per-file cc and
+  ## skips up-to-date objects itself). No codegen runs — the graph is loaded only
+  ## so `getCFile` yields each module's emitted `.c` path.
+  let (modules, precompSys, _) = loadBackendModules(g, mainFileIdx)
+  if modules.len == 0:
+    rawMessage(g.config, errGenerated,
+      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
+    return
+  let bl = BModuleList(g.backend)
+  for m in bl.mods:
+    if m != nil:
+      let cfile = getCFile(m)
+      # Only modules that are their own cg/emit target produced a `.c`; the rest
+      # (extra members of system's closure that no build rule targets) had their
+      # code emit-everywhere'd into the targets, so they have no file to compile.
+      if not fileExists(cfile.string): continue
+      var cf = Cfile(nimname: m.module.name.s, cname: cfile,
+                     obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
+                     flags: {})
+      addFileToCompile(g.config, cf)
+  if g.config.cmd != cmdTcc:
+    extccomp.callCCompiler(g.config)
+
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
@@ -656,6 +716,9 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
   elif g.config.icBackendStage == "emit":
     generateEmitStage(g, mainFileIdx)
+    return
+  elif g.config.icBackendStage == "link":
+    generateLinkStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage.len > 0:
     rawMessage(g.config, errGenerated,
