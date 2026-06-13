@@ -394,9 +394,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           accum.offset = 1
         computeObjectOffsetsFoldFunction(conf, typ.n, false, accum)
       let paddingAtEnd = int16(accum.finish())
-      if typ.sym != nil and
-         typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc} and
-         tfCompleteStruct notin typ.flags:
+      if (typ.sym != nil and
+          typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc} and
+          tfCompleteStruct notin typ.flags) or
+         tfIncompleteStruct in typ.flags:
         typ.size = szUnknownSize
         typ.align = szUnknownSize
         typ.paddingAtEnd = szUnknownSize

@@ -786,8 +786,12 @@ proc genBinaryABCD(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp2)
   c.freeTemp(tmp3)
 
-template sizeOfLikeMsg(name): string =
-  "'$1' requires '.importc' types to be '.completeStruct'" % [name]
+template sizeOfLikeMsg(name, incompleteStruct): string =
+  block:
+    if incompleteStruct:
+      "'$1' cannot be used with '.incompleteStruct' types" % [name]
+    else:
+      "'$1' requires '.importc' types to be '.completeStruct'" % [name]
 
 proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
@@ -1476,11 +1480,14 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     else:
       globalError(c.config, n.info, "expandToAst requires a call expression")
   of mSizeOf:
-    globalError(c.config, n.info, sizeOfLikeMsg("sizeof"))
+    let arg = n[1].typ.skipTypes({tyTypeDesc})
+    globalError(c.config, n.info, sizeOfLikeMsg("sizeof", tfIncompleteStruct in arg.flags))
   of mAlignOf:
-    globalError(c.config, n.info, sizeOfLikeMsg("alignof"))
+    let arg = n[1].typ.skipTypes({tyTypeDesc})
+    globalError(c.config, n.info, sizeOfLikeMsg("alignof", tfIncompleteStruct in arg.flags))
   of mOffsetOf:
-    globalError(c.config, n.info, sizeOfLikeMsg("offsetof"))
+    let arg = n[1].typ.skipTypes({tyTypeDesc})
+    globalError(c.config, n.info, sizeOfLikeMsg("offsetof", tfIncompleteStruct in arg.flags))
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy, mTrace: discard "ignore calls to the default destructor"

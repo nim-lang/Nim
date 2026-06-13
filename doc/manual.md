@@ -7996,6 +7996,9 @@ underlying C `struct`:c: in a `sizeof` expression:
            pure, incompleteStruct.} = object
   ```
 
+Attempting to use `sizeof` on an `incompleteStruct` type at compile-time
+will error with "'sizeof' cannot be used with '.incompleteStruct' types".
+
 
 CompleteStruct pragma
 ---------------------
