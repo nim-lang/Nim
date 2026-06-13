@@ -626,18 +626,12 @@ proc computeSCCs(c: DepContext): seq[seq[int]] =
         if work.len > 0:
           lowlink[work[^1].v] = min(lowlink[work[^1].v], lowlink[v])
 
-proc generateBuildFile(c: DepContext): string =
-  ## Generate the .build.nif file for nifmake
-  let nimcache = getNimcacheDir(c.config).string
-  createDir(nimcache)
-  result = nimcache / c.nodes[0].files[0].modname & ".build.nif"
-
-  var b = nifbuilder.open(result)
-  defer: b.close()
-
-  b.addHeader("nim ic", "nifmake")
-  b.addTree "stmts"
-
+proc computeForwardedArgs(c: DepContext): seq[string] =
+  ## Config/define forwarding shared by the frontend (`nim m`) and backend
+  ## (`nim nifc`) child commands. Depends only on the driver's config, not on
+  ## the dependency graph, so it is computed once per `nim ic` run (and also
+  ## writes the precompiled-config artifact the children replay).
+  ##
   # Forward the project's configuration to the per-module child processes.
   # Non-incremental compilation semchecks every module in one process with one
   # define set (the project's config files apply to the stdlib too); the IC
@@ -646,42 +640,61 @@ proc generateBuildFile(c: DepContext): string =
   # bodies — and thus their import sets and NIF contents — would silently
   # diverge from the dependency graph computed here. Forward every define that
   # is not part of the compiler's built-in baseline, plus the threads switch.
-  var forwardedArgs: seq[string] = @[]
-  block:
-    let baseline = newStringTable(modeStyleInsensitive)
-    initDefines(baseline)
-    for k, v in pairs(c.config.symbols):
-      if not baseline.hasKey(k) or baseline[k] != v:
-        forwardedArgs.add "--define:" & k & (if v == "true": "" else: "=" & v)
-    sort forwardedArgs
-    forwardedArgs.add "--threads:" & (if optThreads in c.config.globalOptions: "on" else: "off")
-    # Forward the memory-management mode too: the children would otherwise
-    # compile with the default GC while the dependency graph here was computed
-    # with the selected one (e.g. under --mm:refc the scanner keeps
-    # system/gc's transitive imports but default-orc children never compile
-    # them — phantom outputs that re-fire the build on every rerun).
-    if c.config.selectedGC != gcUnselected:
-      forwardedArgs.add "--mm:" & $c.config.selectedGC
-    # method dispatch semantics must match across the child processes:
-    # a child compiled without --multimethods:on builds different dispatch
-    # buckets (and rejects calls as ambiguous that multi-dispatch accepts)
-    if optMultiMethods in c.config.globalOptions:
-      forwardedArgs.add "--multimethods:on"
-    # the children compile each MODULE as their own project file, which makes
-    # that module's package the "main package" and unfilters foreign-package
-    # diagnostics — a vendored package's hintAsError/warningAsError promotions
-    # then abort builds the whole-program compilation accepts. Forward the
-    # real project so children filter diagnostics identically.
-    forwardedArgs.add "--icproject:" & c.config.projectFull.string
-    # Precompiled config: serialise the driver's config once and have every
-    # child replay it instead of re-parsing the `nim.cfg` chain and re-running
-    # `config.nims` in the VM. See compiler/icconfig.nim. `-d:icNoPreparsedConfig`
-    # restores the old per-child config parsing (for bisecting a suspected
-    # config-replay divergence without clearing caches).
-    if not isDefined(c.config, "icNoPreparsedConfig"):
-      let cfgArtifact = nimcache / "ic_config.cfg.nif"
-      writeIcConfig(c.config, cfgArtifact)
-      forwardedArgs.add "--icPreparsedConfig:" & cfgArtifact
+  let nimcache = getNimcacheDir(c.config).string
+  result = @[]
+  let baseline = newStringTable(modeStyleInsensitive)
+  initDefines(baseline)
+  for k, v in pairs(c.config.symbols):
+    if not baseline.hasKey(k) or baseline[k] != v:
+      result.add "--define:" & k & (if v == "true": "" else: "=" & v)
+  sort result
+  result.add "--threads:" & (if optThreads in c.config.globalOptions: "on" else: "off")
+  # Forward the memory-management mode too: the children would otherwise
+  # compile with the default GC while the dependency graph here was computed
+  # with the selected one (e.g. under --mm:refc the scanner keeps
+  # system/gc's transitive imports but default-orc children never compile
+  # them — phantom outputs that re-fire the build on every rerun).
+  if c.config.selectedGC != gcUnselected:
+    result.add "--mm:" & $c.config.selectedGC
+  # method dispatch semantics must match across the child processes:
+  # a child compiled without --multimethods:on builds different dispatch
+  # buckets (and rejects calls as ambiguous that multi-dispatch accepts)
+  if optMultiMethods in c.config.globalOptions:
+    result.add "--multimethods:on"
+  # the children compile each MODULE as their own project file, which makes
+  # that module's package the "main package" and unfilters foreign-package
+  # diagnostics — a vendored package's hintAsError/warningAsError promotions
+  # then abort builds the whole-program compilation accepts. Forward the
+  # real project so children filter diagnostics identically.
+  result.add "--icproject:" & c.config.projectFull.string
+  # Precompiled config: serialise the driver's config once and have every
+  # child replay it instead of re-parsing the `nim.cfg` chain and re-running
+  # `config.nims` in the VM. See compiler/icconfig.nim. `-d:icNoPreparsedConfig`
+  # restores the old per-child config parsing (for bisecting a suspected
+  # config-replay divergence without clearing caches).
+  if not isDefined(c.config, "icNoPreparsedConfig"):
+    let cfgArtifact = nimcache / "ic_config.cfg.nif"
+    writeIcConfig(c.config, cfgArtifact)
+    result.add "--icPreparsedConfig:" & cfgArtifact
+
+proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
+  ## Frontend build file: the nifler (parse) and `nim m` (sem) rules only. The
+  ## driver runs this to a discovery fixpoint; it produces every module's semmed
+  ## NIF plus the cookie/edge sidecars that the backend build file then consumes.
+  ## The backend step lives in its own nifmake run (generateBackendBuildFile) so
+  ## that "which TUs rebuild" stays a pure nifmake mtime decision rather than
+  ## something the driver interleaves with the `.s.deps` discovery loop. This
+  ## split is also the scaffold for the per-module backend: once the backend is
+  ## per-module, its rules slot into the backend file unchanged.
+  let nimcache = getNimcacheDir(c.config).string
+  createDir(nimcache)
+  result = nimcache / c.nodes[0].files[0].modname & ".frontend.build.nif"
+
+  var b = nifbuilder.open(result)
+  defer: b.close()
+
+  b.addHeader("nim ic", "nifmake")
+  b.addTree "stmts"
 
   # Define nifler command
   b.addTree "cmd"
@@ -710,22 +723,6 @@ proc generateBuildFile(c: DepContext): string =
   b.endTree()
   b.withTree "input":
     b.addIntLit 0  # main parsed file
-  b.endTree()
-
-  # Define nim nifc command
-  b.addTree "cmd"
-  b.addSymbolDef "nim_nifc"
-  b.addStrLit getAppFilename()
-  b.addStrLit "nifc"
-  b.addStrLit "--nimcache:" & nimcache
-  # Add search paths
-  for p in c.config.searchPaths:
-    b.addStrLit "--path:" & p.string
-  for a in forwardedArgs:
-    b.addStrLit a
-  b.addTree "input"
-  b.addIntLit 0
-  b.endTree()
   b.endTree()
 
   # Build rules for parsing (nifler)
@@ -867,6 +864,42 @@ proc generateBuildFile(c: DepContext): string =
         b.endTree()
     b.endTree()
 
+  b.endTree()  # stmts
+
+proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
+  ## Backend build file: today a single whole-program `nim nifc` rule that reads
+  ## every module's semmed NIF and emits/compiles/links the executable. The
+  ## driver runs it once, after the frontend fixpoint (the semmed NIFs already
+  ## exist on disk, so they enter this graph as leaf inputs with no producing
+  ## rule, exactly like the nifler rules' source `.nim` inputs). The per-module
+  ## backend rewrite replaces this one rule with per-module codegen + a DCE rule
+  ## + a link rule; nothing else here changes.
+  let nimcache = getNimcacheDir(c.config).string
+  createDir(nimcache)
+  result = nimcache / c.nodes[0].files[0].modname & ".backend.build.nif"
+
+  var b = nifbuilder.open(result)
+  defer: b.close()
+
+  b.addHeader("nim ic", "nifmake")
+  b.addTree "stmts"
+
+  # Define nim nifc command
+  b.addTree "cmd"
+  b.addSymbolDef "nim_nifc"
+  b.addStrLit getAppFilename()
+  b.addStrLit "nifc"
+  b.addStrLit "--nimcache:" & nimcache
+  # Add search paths
+  for p in c.config.searchPaths:
+    b.addStrLit "--path:" & p.string
+  for a in forwardedArgs:
+    b.addStrLit a
+  b.addTree "input"
+  b.addIntLit 0
+  b.endTree()
+  b.endTree()
+
   # Final compilation step: generate executable from main module
   let mainNif = c.nodes[0].files[0].nimFile
   let exeFile = changeFileExt(c.nodes[0].files[0].nimFile, ExeExt)
@@ -966,25 +999,35 @@ proc commandIc*(conf: ConfigRef) =
     # from those sidecars — adding any module the scanner missed, plus the edge
     # from its importer — and rerun; nifmake's mtime pruning keeps completed
     # work. A round that discovers nothing new but still fails is a real error.
-    var rounds = 0
-    while true:
-      let buildFile = generateBuildFile(c)
-      rawMessage(conf, hintSuccess, "generated: " & buildFile)
+    let forwardedArgs = computeForwardedArgs(c)
+    let nifmake = findNifmake()
+    # Build the per-module rules concurrently: nifmake fans out all commands at
+    # each DAG depth via execProcesses (defaults to all cores). Cold builds are
+    # otherwise serial (one child at a time) and leave the machine idle. Opt out
+    # with `-d:icNoParallel` (e.g. for readable, non-interleaved child output
+    # when debugging a build).
+    let parallel = if isDefined(conf, "icNoParallel"): "" else: " --parallel"
 
-      let nifmake = findNifmake()
-      # Build the per-module `nim m` rules concurrently: nifmake fans out all
-      # commands at each DAG depth via execProcesses (defaults to all cores).
-      # Cold builds are otherwise serial (one `nim m` at a time) and leave the
-      # machine idle. Opt out with `-d:icNoParallel` (e.g. for readable, non-
-      # interleaved child output when debugging a build).
-      let parallel = if isDefined(conf, "icNoParallel"): "" else: " --parallel"
+    # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.
+    var rounds = 0
+    var frontendOk = false
+    while true:
+      let buildFile = generateFrontendBuildFile(c, forwardedArgs)
+      rawMessage(conf, hintSuccess, "generated: " & buildFile)
       if nifmake.len == 0:
         rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & buildFile)
-        break
+        # without nifmake we can only print the manual commands; emit the
+        # backend's too (best effort — discovery cannot run) and stop.
+        let backendFile = generateBackendBuildFile(c, forwardedArgs)
+        rawMessage(conf, hintSuccess, "generated: " & backendFile)
+        rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
+        return
       let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
-      if exitCode == 0: break
+      if exitCode == 0:
+        frontendOk = true
+        break
 
       # Re-derive from the post-sem deps of every node compiled so far. Imports
       # the static scanner missed become new nodes; the importer->import edge
@@ -1014,5 +1057,17 @@ proc commandIc*(conf: ConfigRef) =
       if not discovered:
         rawMessage(conf, errGenerated, "nifmake failed with exit code: " & $exitCode)
         break
+
+    # Phase 2 — backend (whole-program `nim nifc`), run once over the now-final
+    # graph. Kept a separate nifmake run so backend rebuilds are decided purely
+    # by nifmake's input mtimes, independent of frontend discovery.
+    if frontendOk:
+      let backendFile = generateBackendBuildFile(c, forwardedArgs)
+      rawMessage(conf, hintSuccess, "generated: " & backendFile)
+      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)
+      rawMessage(conf, hintExecuting, cmd)
+      let exitCode = execShellCmd(cmd)
+      if exitCode != 0:
+        rawMessage(conf, errGenerated, "nifmake (backend) failed with exit code: " & $exitCode)
   else:
     rawMessage(conf, errGenerated, "nim ic not available in bootstrap build")
