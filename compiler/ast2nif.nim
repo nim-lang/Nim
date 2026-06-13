@@ -160,6 +160,7 @@ type
     #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
+    inBlock: int  # inc when entering a block expression/statement
 
 const
   # Symbol kinds that are always local to a proc and should never have module suffix
@@ -434,7 +435,7 @@ template withNode(w: var Writer; dest: var TokenBuf; n: PNode; body: untyped) =
 
 proc addLocalSym(w: var Writer; n: PNode) =
   ## Add symbol from a node to locals set if it's a symbol node
-  if n != nil and n.kind == nkSym and n.sym != nil and w.inProc > 0:
+  if n != nil and n.kind == nkSym and n.sym != nil and (w.inProc > 0 or w.inBlock > 0):
     w.locals.incl(n.sym.itemId)
 
 proc addLocalSyms(w: var Writer; n: PNode) =
@@ -579,14 +580,18 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
     of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef, nkTemplateDef:
       # For top-level named routines (not forAst), just write the symbol.
       # The full AST will be stored in the symbol's sdef.
-      if not forAst and n[namePos].kind == nkSym:
+      if not forAst and n[namePos].kind == nkSym and w.inBlock == 0:
         writeSym(w, dest, n[namePos].sym)
       else:
-        # Writing AST inside sdef or anonymous proc: write full structure
+        # Writing AST inside sdef, anonymous proc or block statement: write full structure
         inc w.inProc
         var ast = n
         var skipParams = false
         if n[namePos].kind == nkSym:
+          if not forAst and w.inBlock > 0:
+            # routines under block expressions/statements not inside routines are local
+            # and top level routines cannot call them.
+            w.locals.incl(n[namePos].sym.itemId)
           ast = n[namePos].sym.astImpl
           if ast == nil: ast = n
           else: skipParams = true
@@ -619,6 +624,12 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
       # Note: nkExportExceptStmt is transformed to nkExportStmt by semExportExcept,
       # but we handle both just in case
       trExport w, n
+    of nkBlockExpr, nkBlockStmt:
+      inc w.inBlock
+      w.withNode dest, n:
+        for i in 0 ..< n.len:
+          writeNode(w, dest, n[i], forAst)
+      dec w.inBlock
     else:
       w.withNode dest, n:
         for i in 0 ..< n.len:
@@ -1372,6 +1383,14 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
     of nkNilLit:
       c.withNode n, result, kind:
         discard
+    of nkBlockExpr, nkBlockStmt:
+      var scanCursor = n
+      # Fully load local symbols defined under block expressions/statements outside of routines
+      # as they are not lazy loaded like global symbols.
+      c.extractLocalSymsFromTree(scanCursor, thisModule, localSyms)
+      c.withNode n, result, kind:
+        while n.kind != ParRi:
+          result.sons.add c.loadNode(n, thisModule, localSyms)
     else:
       c.withNode n, result, kind:
         while n.kind != ParRi:
