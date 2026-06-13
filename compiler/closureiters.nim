@@ -252,7 +252,8 @@ proc newCurExcAccess(ctx: var Ctx): PNode =
   ctx.newEnvVarAccess(ctx.curExcSym)
 
 proc newStateLabel(ctx: Ctx): PNode =
-  ctx.g.newIntLit(TLineInfo(), 0)
+  result = nkIntLit.newIntNode(0)
+  result.typ = getSysType(ctx.g, TLineInfo(), tyInt16)
 
 proc newState(ctx: var Ctx, n: PNode, inlinable: bool, label: PNode): PNode =
   # Creates a new state, adds it to the context
@@ -592,10 +593,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let branch = n[i]
           case branch.kind
           of nkExceptBranch:
-            if branch[0].kind == nkType:
-              branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
-            else:
-              branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
+            branch[^1] = ctx.convertExprBodyToAsgn(branch[^1], tmp)
           of nkFinally:
             discard
           else:

@@ -803,6 +803,23 @@ proc hasCustomDestructor(c: Con, t: PType): bool =
     obj = skipTypes(obj.baseClass, abstractPtrs)
     result = result or isCustomDestructor(c, obj)
 
+const
+  exprBranchKinds = {nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt,
+                     nkTryStmt, nkPragmaBlock}
+
+proc distributeAsgn(asgnKind: TNodeKind; dest, ri: PNode; c: var Con; s: var Scope): PNode =
+  ## Distributes an assignment ``dest = ri`` into the leaf expressions of
+  ## ``ri`` when ``ri`` is an expression-based control flow construct. This
+  ## avoids creating pointless intermediate temporaries (bug #25850). The
+  ## descent is recursive so that nestings like ``block: ...; if c: a else: b``
+  ## assign directly to ``dest`` instead of going through a temp per branch.
+  if ri.kind in exprBranchKinds:
+    template process(child, s): untyped =
+      distributeAsgn(asgnKind, dest, child, c, s)
+    handleNestedTempl(ri, process, willProduceStmt = true)
+  else:
+    result = newTree(asgnKind, dest, p(ri, c, s, consumed))
+
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}; inReturn = false): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
@@ -1004,13 +1021,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
-      elif n[1].kind in {nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt, nkPragmaBlock}:
+      elif n[1].kind in exprBranchKinds:
         # Distribute the assignment into each branch to avoid
         # creating pointless temporaries for expression-based control flow.
         let dest = p(n[0], c, s, mode)
-        template process(child, s): untyped =
-          newTree(n.kind, dest, p(child, c, s, consumed))
-        handleNestedTempl(n[1], process, willProduceStmt = true)
+        result = distributeAsgn(n.kind, dest, n[1], c, s)
       else:
         result = copyNode(n)
         result.add p(n[0], c, s, mode)

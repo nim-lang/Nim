@@ -1904,7 +1904,9 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
-  let needsZeroMem = p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcYrc} or nfAllFieldsSet notin e.flags
+  let needsZeroMem =
+    nfAllFieldsSet notin e.flags or
+    (optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(t))
   if useTemp:
     tmp = getTemp(p, t)
     r = rdLoc(tmp)

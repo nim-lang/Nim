@@ -58,3 +58,7 @@ block:
       raise
 
   f()
+
+block:
+  static: doAssert IOError is Exception
+  proc r(e: ref Exception) {.raises: [IOError].} = raise (ref IOError)(e)

@@ -1168,6 +1168,10 @@ proc enterConceptMatch(c: var TCandidate; f,a: PType, flags: TTypeRelFlags): TTy
   if concpt.kind != tyConcept:
     container = concpt
     concpt = container.reduceToBase
+  # considerPreviousT-like behavior
+  let prev = lookup(c.bindings, concpt)
+  if prev != nil:
+    return typeRel(c, prev, a, flags)
   if trDontBind in flags:
     conceptFlags.incl mfDontBind
   if trCheckGeneric in flags:
@@ -1759,6 +1763,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let ff = last(f)
       if ff != nil:
         result = typeRel(c, ff, a, flags)
+      if result == isNone and a.kind == tyGenericInst and trBindGenericParam in flags:
+        var depth = -1
+        # Generic-parameter constraints like `F: Future` can miss in `last(f)`
+        # when the actual type inherits from a concrete generic instantiation.
+        # Keep this fallback scoped to generic-parameter matching so typedesc
+        # overloads such as `type Future[T]` still prefer more specific
+        # descendants like `InternalRaisesFuture[T, E]`.
+        if isGenericSubtype(c, a, f, depth, f) and depth > 0:
+          var askip = skippedNone
+          let aobj = a.skipToObject(askip)
+          if aobj != nil and tfFinal notin aobj.flags:
+            # Keep overload ranking consistent with other inheritance-based
+            # matches: deeper descendants are slightly worse candidates.
+            inc c.inheritancePenalty, depth + int(c.inheritancePenalty < 0)
+          result = isGeneric
   of tyGenericInvocation:
     var x = a.skipGenericAlias
     if x.kind == tyGenericParam and x.len > 0:
@@ -2855,6 +2874,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     if m.calleeSym != nil and m.calleeSym.kind notin {skTemplate, skMacro}:
       c.mergeShadowScope
     else:
+      c.rememberShadowDefs
       c.closeShadowScope
     m.state = csNoMatch
     m.firstMismatch.arg = a
@@ -2911,7 +2931,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           setSon(m.call, formal.position + 1, container)
         else:
           incrIndexType(container.typ)
-        container.add n[a]
+        # bug #25693: like the scalar `tyUntyped` case in `paramTypesMatchAux`,
+        # a previous overload candidate may have sem-checked the operand in
+        # place; templates/macros expect the pristine AST, so use `nOrig`.
+        container.add nOrig[a]
     elif n[a].kind == nkExprEqExpr:
       # named param
       m.firstMismatch.kind = kUnknownNamedParam
@@ -3010,7 +3033,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             setSon(m.call, formal.position + 1, container)
           else:
             incrIndexType(container.typ)
-          container.add n[a]
+          # bug #25693: see the leading isVarargsUntyped branch above.
+          container.add nOrig[a]
         else:
           m.baseTypeMatch = false
           m.typedescMatched = false
@@ -3062,6 +3086,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
       c.mergeShadowScope
     else:
+      c.rememberShadowDefs
       c.closeShadowScope
 
     inc a

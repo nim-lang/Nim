@@ -54,7 +54,12 @@ type
     typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
     typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
+  TypeOfModifiers* = enum  ## Modes to handle type modifiers `var`, `sink` and `lent`.
+    CompatibleTypeModifiers,  ## Remove or keep type modifiers in the same way as old typeof. That means keep `sink` but remove `var` and `lent`.
+    RemoveTypeModifiers,      ## Remove type modifiers.
+    KeepTypeModifiers,        ## Keep type modifiers.
+
+proc typeof*(x: untyped; mode = typeOfIter; modifierMode = CompatibleTypeModifiers): typedesc {.
   magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin `typeof` operation for accessing the type of an expression.
   ## Since version 0.20.0.
@@ -75,6 +80,11 @@ proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
       # this would give: Error: attempting to call routine: 'myFoo2'
       # since `typeOfProc` expects a typed expression and `myFoo2()` can
       # only be used in a `for` context.
+
+    proc varParam(x: var int;
+                  y: typeof(x, modifierMode = RemoveTypeModifiers);
+                  z: typeof(x, modifierMode = KeepTypeModifiers)) = discard
+    doAssert varParam is proc (x: var int; y: int; z: var int) {.nimcall.}
 
 proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `or` meta class.
@@ -3121,10 +3131,7 @@ when notJSnotNims:
                     not defined(nuttx) and
                     hostOS != "any"
 
-  proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    raise newException(IOError, msg)
-
-  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
+  proc echoBinSafe(args: openArray[string]) {.compilerproc, raises: [].} =
     when defined(androidNDK):
       # When running nim in android app, stdout goes nowhere, so echo gets ignored
       # To redirect echo to the android logcat, use -d:androidNDK
@@ -3146,7 +3153,7 @@ when notJSnotNims:
       for s in args:
         when defined(windows):
           # equivalent to syncio.writeWindows
-          proc writeWindows(f: CFilePtr; s: string; doRaise = false) =
+          proc writeWindows(f: CFilePtr; s: string) =
             # Don't ask why but the 'printf' family of function is the only thing
             # that writes utf-8 strings reliably on Windows. At least on my Win 10
             # machine. We also enable `setConsoleOutputCP(65001)` now by default.
@@ -3157,13 +3164,11 @@ when notJSnotNims:
               if s[i] == '\0':
                 let w = c_fputc('\0', f)
                 if w != 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i
               else:
                 let w = c_fprintf(f, "%s", unsafeAddr s[i])
                 if w <= 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i, w
           writeWindows(cstdout, s)
