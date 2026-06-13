@@ -523,7 +523,7 @@ proc addRaiseEffectsFromExpr(a: PEffects, e, comesFrom: PNode) =
       if branch.len > 0:
         addRaiseEffectsFromExpr(a, branch.lastSon, comesFrom)
   else:
-    addRaiseEffect(a, x, comesFrom)
+    addRaiseEffect(a, e, comesFrom)
 
 proc addTag(a: PEffects, e, comesFrom: PNode) =
   var aa = a.tags
