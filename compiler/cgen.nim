@@ -2270,7 +2270,7 @@ proc registerReusedInit*(g: BModuleList; moduleBase: string;
       g.mainModProcs.finishProcHeaderAsProto()
     g.otherModsInit.addCallStmt(init)
 
-proc registerReusedModuleToMain(g: BModuleList; m: BModule;
+proc registerReusedModuleToMain*(g: BModuleList; m: BModule;
                                 initRequired, datInitRequired: bool) =
   ## `registerModuleToMain` for a module whose cached translation unit is
   ## reused: the init/datInit presence comes from the artifact's meta head

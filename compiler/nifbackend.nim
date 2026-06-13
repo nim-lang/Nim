@@ -569,10 +569,19 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
 
   generateCodeForModule(g, target)
+  let bl = BModuleList(g.backend)
   # The main module also owns the whole-program method dispatchers + NimMain.
   if sfMainModule in target.module.flags:
     emitMethodDispatchers(g)
-  let bl = BModuleList(g.backend)
+    # NimMain (generated when the main module is finished) must call every other
+    # module's init/datInit. Those translation units are produced by their own
+    # `cg` processes, so the calls are registered here from each `.c.nif` meta
+    # head — which is why the main module's `cg` runs last, after every other
+    # `.c.nif` exists. Modules without init code (no `.c.nif`) register nothing.
+    for m in bl.mods:
+      if m != nil and sfMainModule notin m.module.flags:
+        let heads = readCnifHeads(getCFile(m).string & ".nif")
+        registerReusedModuleToMain(bl, m, heads.initRequired, heads.datInitRequired)
   let tb = bl.mods[target.module.position]
   if tb != nil:
     finishModule(g, tb)
