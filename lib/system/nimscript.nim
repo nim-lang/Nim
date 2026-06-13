@@ -365,7 +365,7 @@ proc writeTask(name, desc: string) =
     for i in 0 ..< 20 - name.len: spaces.add ' '
     echo name, spaces, desc
 
-proc cppDefine*(define: string) =
+proc cppDefine*(define: string) {.deprecated: "No longer need to call".} =
   ## tell Nim that `define` is a C preprocessor `#define` and so always
   ## needs to be mangled.
   builtin

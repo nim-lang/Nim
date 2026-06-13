@@ -12,7 +12,7 @@
 
 import
   ast, modules, idents, condsyms,
-  options, llstream, vm, vmdef, commands,
+  options, msgs, llstream, vm, vmdef, commands,
   wordrecg, modulegraphs,
   pathutils, pipelines
 
@@ -181,7 +181,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf selfExe:
     setResult(a, os.getAppFilename())
   cbconf cppDefine:
-    options.cppDefine(conf, a.getString(0))
+    echo graph.config.toFileLineCol(a.currentLineInfo), " cppDefine is deprecated and no longer need to call"
   cbexc stdinReadLine, EOFError:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       setResult(a, "")
