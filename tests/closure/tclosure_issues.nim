@@ -80,3 +80,20 @@ block tissue7104:
           sp do ():
               inc i
               echo "ok ", i
+
+block: # bug #25903
+  iterator g: int {.closure.} =
+    discard try:
+        yield 0
+        0
+      except IOError, OSError:
+        0
+  let _ = g
+
+block: # bug #25904
+  iterator w: int {.closure.} =
+    discard try: 0
+      except IOError, OSError:
+        yield 0
+        0
+  let _ = w
