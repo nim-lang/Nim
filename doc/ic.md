@@ -57,17 +57,25 @@ NIF symbols and ownership
 =========================
 
 (See ``../nifspec/doc/nif-spec.md``.) A global symbol is
-``<ident>.<disamb>.<moduleSuffix>`` or, for a generic instantiation,
-``<ident>.<disamb>.<key>.<moduleSuffix>`` where ``key`` is the instantiation
-encoded by the *NIF-trees-as-identifiers* scheme. Two consequences drive the
+``<ident>.<disamb>.<moduleSuffix>``. For a **generic instantiation** the
+`<disamb>` is not a counter but a *content hash* — `setInstanceDisamb`
+(``modulegraphs.nim``) MD5s the generic's identity plus the `typeKey` of every
+concrete type argument, masks it to 30 bits and tags it with `InstanceDisambBit`.
+So the only part of the name that varies between two modules making the **same**
+instantiation (`seq[Foo]`) is the `<moduleSuffix>`. Two consequences drive the
 backend:
 
-- **Instance names are content-addressed**: the same instantiation (`seq[Foo]`)
-  produced in different modules yields the *same* `key`, so a deterministic
-  dedup is possible *by name*.
-- **The suffix names an owner module.** Today an instance's owner is the module
-  whose process minted it (`itemId.module`), which is process-local mint order —
-  the root of the *single-writer* hazard below.
+- **Instance names are content-addressed**: the same instantiation produced in
+  different modules yields the *same* `<ident>.<disamb>`, so a deterministic dedup
+  is possible by the *module-suffix-stripped* name. The cross-TU merge
+  (`ccgtypes.sharedInstanceCName`, keyed via `graph.icSharedSigs`) and the DCE
+  analysis (`dce.computeLiveSymbols`, its `uniq` set) both already key on this
+  stripped form.
+- **The suffix names a mint-site owner.** Today the `<moduleSuffix>` is the
+  module *that minted the instance* (the instantiation site), so the same
+  instance has a different full name in each module that makes it; *which* TU
+  emits the single definition is then decided at codegen by the
+  reuse/redirect machinery — the root of the *single-writer* hazard below.
 
 The driver: graph construction (`commandIc`)
 ============================================
