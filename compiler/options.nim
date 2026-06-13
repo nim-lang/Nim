@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "4"
+  icFormatVersion* = "5"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -45,6 +45,10 @@ const
     ## v4: backend C-name scheme change — the module suffix is now the trailing
     ## token (`name_u<disamb>__<suffix>`, was `name__<suffix>_u<disamb>`), so
     ## cached `.c.nif` artifacts hold incompatible names and must be wiped.
+    ## v5: data definitions (consts, RTTI) are now wrapped in droppable `'d'`
+    ## cdef directives with an always-present extern declaration, so the
+    ## per-module merge stage can assign them a single owner; old `.c.nif`
+    ## artifacts lack the wrappers.
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)

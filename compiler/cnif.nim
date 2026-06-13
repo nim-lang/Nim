@@ -425,7 +425,9 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
                 # the flags field right after the SymbolDef
                 flagsSeen = true
                 for ch in name:
-                  if ch in {'x', 'c', 'm'}:
+                  # 'd' marks a data definition (const/RTTI): never DCE'd, so it
+                  # is a root whose body keeps its referenced procs live
+                  if ch in {'x', 'c', 'm', 'd'}:
                     roots.incl owner
                     break
               else:
@@ -526,7 +528,7 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
         elif c.cursorTagId == cdefTag:
           var ownerName = ""
           var flagsSeen = false
-          var isUnique = false
+          var needsOwner = false
           c.loopInto:
             case c.kind
             of SymbolDef:
@@ -540,7 +542,13 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
                 flagsSeen = true
                 for ch in name:
                   if ch in {'x', 'c', 'm'}: roots.incl ownerName
-                  elif ch == 'u': isUnique = true
+                  # 'u' = unique proc (DCE'd), 'd' = data (never DCE'd, hence a
+                  # root); both need a single owner across the emit-everywhere
+                  # processes
+                  elif ch == 'u': needsOwner = true
+                  elif ch == 'd':
+                    needsOwner = true
+                    roots.incl ownerName
               else:
                 uses.mgetOrPut(ownerName, initHashSet[string]()).incl name
               inc c
@@ -549,7 +557,7 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
               inc c
             else:
               skip c
-          if isUnique and ownerName.len > 0:
+          if needsOwner and ownerName.len > 0:
             # smallest claimant wins; ties impossible (one entry per name)
             let prev = result.owners.getOrDefault(ownerName, "")
             if prev.len == 0 or owner < prev:
@@ -682,6 +690,7 @@ proc renderCFromArtifact*(artifact: string; d: MergeDecision; ownerId: string;
         # rest is the definition's body text. `state` counts past the head.
         var name = ""
         var isUnique = false
+        var isData = false
         var keep = true
         var state = 0
         c.loopInto:
@@ -693,11 +702,15 @@ proc renderCFromArtifact*(artifact: string; d: MergeDecision; ownerId: string;
             if c.kind in {Ident, Symbol}:
               for ch in symOrIdentName(c):
                 if ch == 'u': isUnique = true
+                elif ch == 'd': isData = true
             state = 2
             inc c
           elif state == 2: # the NIF name (one StrLit) — decide keep here
-            keep = (name in d.live) and
-                   not (isUnique and d.owners.getOrDefault(name, ownerId) != ownerId)
+            let owned = d.owners.getOrDefault(name, ownerId) == ownerId
+            keep =
+              if isData: owned                      # data: kept by its owner only
+              elif isUnique: (name in d.live) and owned
+              else: name in d.live                  # inline/dispatcher: per-TU
             if not keep: inc dropped
             state = 3
             inc c

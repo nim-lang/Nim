@@ -1911,7 +1911,12 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
-  m.s[cfsStrData].addDeclWithVisibility(Private):
+  # Under `nim nifc` every `cg` process that demands this type's RTTI emits its
+  # definition (emit-everywhere). The forward declaration must therefore be a
+  # real `extern` (not a tentative definition) so a TU whose copy the merge
+  # stage drops still only *declares* it; the definition itself is wrapped as a
+  # droppable `'d'` unit below and assigned to a single owner.
+  m.s[cfsStrData].addDeclWithVisibility(if m.config.cmd == cmdNifC: Extern else: Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
   if m.config.cmd == cmdNifC:
     m.icDataDefs.add (name, icNifName(m, origType))
@@ -1975,7 +1980,12 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
         else:
           typeEntry.addField(typeInit, name = "flags"):
             typeEntry.addIntValue(flags)
-  m.s[cfsVars].add extract(typeEntry)
+  if m.config.cmd == cmdNifC:
+    m.s[cfsVars].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+    m.s[cfsVars].add extract(typeEntry)
+    m.s[cfsVars].add(cnifEndDefs())
+  else:
+    m.s[cfsVars].add extract(typeEntry)
 
   if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)

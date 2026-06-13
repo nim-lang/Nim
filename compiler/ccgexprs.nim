@@ -3491,9 +3491,23 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   data.addDeclWithVisibility(Private):
     data.addVarWithInitializer(Local, actualConstName, typ = td):
       genBracedInit(q.initProc, sym.astdef, isConst = true, sym.typ, data)
-  q.s[cfsData].add(extract(data))
   if q.config.cmd == cmdNifC:
-    q.icDataDefs.add (stripCnifMarks(actualConstName), icNifName(q, sym))
+    # Each `cg` process that demands this const emits its definition
+    # (emit-everywhere). Always declare it first (the data analogue of a proc
+    # prototype) so a TU whose copy the merge stage drops still has a valid
+    # declaration; wrap the definition as a droppable `'d'` unit the merge
+    # stage assigns to a single owner.
+    let cname = stripCnifMarks(actualConstName)
+    var decl = newBuilder("")
+    decl.addDeclWithVisibility(Extern):
+      decl.addVar(kind = Local, name = actualConstName, typ = td)
+    q.s[cfsData].add(extract(decl))
+    q.s[cfsData].add(cnifDefDirective(cname, "d", icNifName(q, sym)))
+    q.s[cfsData].add(extract(data))
+    q.s[cfsData].add(cnifEndDefs())
+    q.icDataDefs.add (cname, icNifName(q, sym))
+  else:
+    q.s[cfsData].add(extract(data))
   if q.hcrOn:
     # generate the global pointer with the real name
     q.s[cfsVars].addVar(kind = Global, name = sym.loc.snippet,
