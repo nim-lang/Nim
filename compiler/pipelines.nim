@@ -271,6 +271,12 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       for id in graph.icImplDeps: implDeps.add id
       writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
                      replayActions, implDeps, reexportedModuleSyms(graph, module))
+      # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
+      # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
+      var semDepPaths: seq[string] = @[]
+      for f in graph.importDeps.getOrDefault(module.position.FileIndex, @[]):
+        semDepPaths.add toFullPath(graph.config, f).string
+      writeSemDeps(graph.config, module.position.int32, semDepPaths)
 
   result = true
 
@@ -304,18 +310,19 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
           let nifPath = toNifFilename(graph.config, fileIdx)
-          # Record the miss for `nim ic`'s discovery loop: imports GENERATED
-          # by macros (e.g. chronicles' parseStmt("import chronicles/textlines"),
-          # driven by the chronicles_sinks define) are invisible to the static
-          # dependency scanner. The parent reads this file, adds the module —
-          # plus an edge from this importer — to the build graph and reruns.
-          try:
-            let f = open(getNimcacheDir(graph.config).string & "/icmissing.txt", fmAppend)
-            f.writeLine(toFullPath(graph.config, fileIdx) & "\t" &
-                        graph.config.projectFull.string)
-            f.close()
-          except IOError, OSError:
-            discard
+          # Macro-generated imports (e.g. chronicles' parseStmt("import
+          # chronicles/textlines") driven by the chronicles_sinks define) are
+          # invisible to the static scanner, so this module's NIF was never
+          # built. The importer already recorded this import via
+          # addImportFileDep, so flush every module's `.s.deps`: `nim ic` reads
+          # it, re-derives the graph with the missing node + edge, and reruns
+          # the frontend. We still error — this process cannot finish sem
+          # without the import — but the discovery is structured data now, not
+          # a side-channel file.
+          for importer, deps in graph.importDeps.pairs:
+            var paths: seq[string] = @[]
+            for f in deps: paths.add toFullPath(graph.config, f).string
+            writeSemDeps(graph.config, importer.int32, paths)
           globalError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
             " (expected: " & nifPath & ")")

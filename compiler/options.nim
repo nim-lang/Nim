@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "2"
+  icFormatVersion* = "3"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -40,6 +40,8 @@ const
     ## body folding); body access now records a NeedsImpl edge instead. A v1
     ## cache mixes body-sensitive and body-insensitive cookies, so it must be
     ## wiped rather than warm-rebuilt.
+    ## v3: added the `.s.deps` sidecar (real post-sem imports) and switched the
+    ## macro-generated-import discovery from `icmissing.txt` to it.
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)

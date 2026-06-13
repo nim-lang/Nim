@@ -353,7 +353,16 @@ proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   discard
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
-  discard
+  # Under `nim m` (the IC frontend) record the REAL direct imports of the
+  # current module as sem resolves them — including imports a macro generated
+  # (e.g. chronicles' `parseStmt("import chronicles/textlines")`), which the
+  # static dependency scanner never sees. `nim ic` writes this set as the
+  # module's `.s.deps` sidecar and re-derives the build graph from it, so the
+  # discovery is structured data instead of a build-failure side channel.
+  if c.config.cmd == cmdM:
+    let importer = c.module.position.FileIndex
+    var deps = addr c.graph.importDeps.mgetOrPut(importer, @[])
+    if f notin deps[]: deps[].add f
 
 proc addPragmaComputation*(c: PContext; n: PNode) =
   # Also store for NIF-based IC (cmdM mode or optCompress)

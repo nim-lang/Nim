@@ -1214,6 +1214,24 @@ proc writeEdgesFile(config: ConfigRef; thisModule: int32; implDeps: seq[int]) =
   # edit was reverted). Nimony's analog is its always-written `.s.nif`.
   writeFile(dest, path)
 
+proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]) =
+  ## The module's REAL direct imports as `nim m` sem resolved them — static
+  ## plus any a macro generated — recorded as full source paths. `nim ic` reads
+  ## this `.s.deps.nif` to re-derive the build graph: imports the static scanner
+  ## missed become new nodes (replacing the old build-failure discovery loop),
+  ## and `when false` imports the scanner over-included are pruned. Always
+  ## written so it is current after every successful sem (like `.edges`).
+  let selfSuffix = modname(thisModule, config)
+  var paths = importPaths
+  sort paths
+  var dest = createTokenBuf(4 + 2*paths.len)
+  dest.addParLe pool.tags.getOrIncl("semdeps"), NoLineInfo
+  for p in paths:
+    dest.addStrLit p
+  dest.addParRi
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.deps.nif").string
+  writeFile(dest, path)
+
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      opsLog: seq[LogEntry];
                      replayActions: seq[PNode] = @[];
