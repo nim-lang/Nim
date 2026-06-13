@@ -2024,13 +2024,19 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   m.typeInfoMarkerV2[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
-  if m.config.cmd == cmdNifC and result in m.g.graph.icCachedDataDefs:
+  # In the per-module backend (`cg`) RTTI is emit-everywhere like procs and
+  # consts: every demanding module emits the `'d'` definition (deduped to one
+  # owner by the merge stage). The owner-routing below would instead push the
+  # definition into the owner module's *unwritten* backend module (discarded in
+  # this process) and emit only an extern here, leaving the symbol undefined.
+  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
+  if not perModuleCg and m.config.cmd == cmdNifC and result in m.g.graph.icCachedDataDefs:
     # already defined inside a reused TU from the previous run
     cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", result, owner)
     m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
     return prefixTI(result)
-  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
+  if not perModuleCg and owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.mods[owner], origType, info)
     # reference the type info as extern here
