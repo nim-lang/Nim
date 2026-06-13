@@ -3629,6 +3629,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         # echo renderTree(p.prc.ast, {renderIds})
         internalError(p.config, n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
+    of skTemplate, skMacro:
+      # it is possible to get these kind of symbols if cgen was called from nifbackend.nim
+      # as symbols are lazily loaded including symbol kinds, cannot exclude them when loading Nif files
+      discard
     else: internalError(p.config, n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:
     if not isEmptyType(n.typ):
