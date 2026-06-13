@@ -972,10 +972,16 @@ proc commandIc*(conf: ConfigRef) =
       rawMessage(conf, hintSuccess, "generated: " & buildFile)
 
       let nifmake = findNifmake()
+      # Build the per-module `nim m` rules concurrently: nifmake fans out all
+      # commands at each DAG depth via execProcesses (defaults to all cores).
+      # Cold builds are otherwise serial (one `nim m` at a time) and leave the
+      # machine idle. Opt out with `-d:icNoParallel` (e.g. for readable, non-
+      # interleaved child output when debugging a build).
+      let parallel = if isDefined(conf, "icNoParallel"): "" else: " --parallel"
       if nifmake.len == 0:
-        rawMessage(conf, hintSuccess, "run: nifmake run " & buildFile)
+        rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & buildFile)
         break
-      let cmd = quoteShell(nifmake) & " run " & quoteShell(buildFile)
+      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       if exitCode == 0: break
