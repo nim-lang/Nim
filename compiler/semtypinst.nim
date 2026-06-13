@@ -272,10 +272,17 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
   if n == nil: return
   result = copyNode(n)
   if n.typ != nil:
-    if n.typ.kind == tyFromExpr:
+    var nodeTyp = n.typ
+    if nodeTyp.kind == tyFromExpr:
       # type of node should not be evaluated as a static value
-      n.typ.incl tfNonConstExpr
-    result.typ = replaceTypeVarsT(cl, n.typ)
+      if nodeTyp.state == Sealed:
+        # IC: do not brand the loaded shared original — a tyFromExpr is a
+        # placeholder that `replaceTypeVarsT` resolves away, so the copy
+        # carries no identity later comparisons could miss (mirrors
+        # `instantiateProcType`)
+        nodeTyp = copyType(nodeTyp, cl.c.idgen, nodeTyp.owner)
+      nodeTyp.incl tfNonConstExpr
+    result.typ = replaceTypeVarsT(cl, nodeTyp)
     checkMetaInvariants(cl, result.typ)
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
@@ -387,6 +394,13 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
     # don't bind `auto` return type to a previous binding of `auto`
     return nil
   result = cl.typeMap.lookup(t)
+  when defined(icDbgRefc):
+    if t.kind in {tyGenericParam, tyTypeDesc}:
+      echo "[icBind] lookup ", t.kind, " ", typeToString(t), " uid=", t.uniqueId.module, ".",
+        t.uniqueId.item, " itemId=", t.itemId.module, ".", t.itemId.item,
+        " state=", t.state, " flags=", t.flags, " -> ",
+        (if result != nil: typeToString(result) else: "MISS"),
+        " allowMeta=", cl.allowMetaTypes
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
     localError(cl.c.config, t.sym.info, "cannot instantiate: '" & typeToString(t) & "'")
@@ -401,7 +415,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
 proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
   if cl.allowMetaTypes:
-    result = t.exactReplica
+    result = t.exactReplica(cl.c.idgen)
   else:
     result = copyType(t, cl.c.idgen, t.owner)
     copyTypeProps(cl.c.graph, cl.c.idgen.module, result, t)

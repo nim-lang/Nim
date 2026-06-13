@@ -29,6 +29,18 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
+  icFormatVersion* = "2"
+    ## Version of the IC cache format (the sem-NIF module layout written by
+    ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
+    ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
+    ## stamp differs, instead of letting a newer reader mis-parse records
+    ## written by an older compiler (nifmake's rebuild check is mtime-only
+    ## and knows nothing about format changes).
+    ## v2: iface cookie hashes routine SIGNATURES only (no inline-semantics
+    ## body folding); body access now records a NeedsImpl edge instead. A v1
+    ## cache mixes body-sensitive and body-insensitive cookies, so it must be
+    ## wiped rather than warm-rebuilt.
+
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
@@ -386,6 +398,24 @@ type
                               # recursion resolves in-memory) and each gets its NIF
                               # written, instead of being loaded from a precompiled
                               # NIF. See `compiler/deps.nim` (SCC grouping).
+    icProject*: string        # under `nim m`/`nim nifc`: absolute path of the
+                              # ORIGINAL project file. The child's own project file
+                              # is the module being compiled, which would make that
+                              # module's package the "main package" and unfilter
+                              # foreign-package diagnostics; the real project
+                              # restores whole-program filtering semantics.
+    icPreparsedConfig*: string # under `nim m`/`nim nifc`: path of the precompiled
+                              # config artifact written once by the `nim ic` driver.
+                              # When set, `loadConfigs` replays the recorded
+                              # config-file switches from it instead of re-reading
+                              # the `nim.cfg` chain and re-running `config.nims`
+                              # (which the VM makes expensive) per subprocess.
+    icConfigSwitches*: seq[tuple[switch, arg: string]]
+                              # the config-file (`passPP`) switches applied while
+                              # loading config, in order. Recorded by every nim
+                              # process; only the `ic` driver serialises them.
+                              # Path-search switches are excluded — the driver
+                              # forwards the resolved `searchPaths` as `--path`.
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)

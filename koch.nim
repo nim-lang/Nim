@@ -419,7 +419,11 @@ proc bootic(args: string, skipIntegrityCheck: bool) =
   ## The 3-step fixed-point check is kept: a successful run proves the compiler
   ## can compile itself under IC and reproduces a stable binary.
   var output = "compiler" / "nim".exe
-  var finalDest = "bin" / "nim".exe
+  # Deliberately NOT `bin/nim`: `bootic` must not clobber the development
+  # compiler (that would replace a fast release `bin/nim` with bootic's build
+  # and slow every later `koch`/`nim` invocation). The IC-bootstrapped binary
+  # lands at `bin/nim_ic` instead; `bin/nim` is only ever read (via findStartNim).
+  var finalDest = "bin" / "nim_ic".exe
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/ric_" else: "nimcache/dic_") &
                       hostOS & "_" & hostCPU
 
@@ -444,7 +448,7 @@ proc bootic(args: string, skipIntegrityCheck: bool) =
       [nimi, smartNimcache, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
-      echo "executables are equal: SUCCESS!"
+      echo "executables are equal: SUCCESS! (IC-bootstrapped compiler: ", finalDest, ")"
       return
     copyExe(output, (i+1).thVersion)
   copyExe(output, finalDest)

@@ -153,7 +153,12 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     for a in t.sonsImpl:
       c.typeKey a, flags, conf
   of tyDistinct:
-    if CoDistinct in flags:
+    if t.sonsImpl.len == 0:
+      # a bare `distinct` typeclass (e.g. `foo(distinct, ...)` matched
+      # against a `T: type` param) has no base type to key — it IS its kind
+      withTree c.m, toNifTag(t.kind):
+        c.m.addEmpty()
+    elif CoDistinct in flags:
       if t.symImpl != nil: symKey(c, t.symImpl, conf)
       if t.symImpl == nil or tfFromGeneric in t.flagsImpl:
         c.typeKey t.sonsImpl[^1], flags, conf
@@ -238,9 +243,14 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     if t.typeInstImpl != nil:
       # prevent against infinite recursions here, see bug #8883:
       let inst = t.typeInstImpl
+      if inst.state == Partial:
+        # a lazily-loaded typeInst stub has no sons until forced in
+        assert c.tl != nil
+        c.tl(inst)
       t.typeInstImpl = nil # IC: spurious writes are ok since we set it back immediately
       assert inst.kind == tyGenericInst
-      c.typeKey inst.sonsImpl[0], flags, conf
+      if inst.sonsImpl.len > 0:
+        c.typeKey inst.sonsImpl[0], flags, conf
       for i in 1..<inst.sonsImpl.len-1:
         # Match sighashes: generic-instantiation arguments are keyed with
         # `CoDistinct` so distinct args are not collapsed to their base.
@@ -297,7 +307,11 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         for i in 0..<t.sonsImpl.len:
           c.typeKey t.sonsImpl[i], flags+{CoIgnoreRange}, conf
   of tyRange:
-    if CoIgnoreRange notin flags:
+    if t.sonsImpl.len == 0:
+      # bare `range` typeclass: no base type, key the kind alone
+      withTree c.m, toNifTag(t.kind):
+        c.m.addEmpty()
+    elif CoIgnoreRange notin flags:
       withTree c.m, toNifTag(t.kind):
         c.treeKey(t.nImpl, {}, conf)
         c.typeKey(t.sonsImpl[^1], flags, conf)
@@ -342,8 +356,12 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       if tfVarargs in t.flagsImpl: c.m.addIdent "´varargs"
   of tyArray:
     withTree c.m, toNifTag(t.kind):
-      c.typeKey(t.sonsImpl[^1], flags-{CoIgnoreRange}, conf)
-      c.typeKey(t.sonsImpl[0], flags-{CoIgnoreRange}, conf)
+      if t.sonsImpl.len == 0:
+        # bare `array` typeclass: no element/index types
+        c.m.addEmpty()
+      else:
+        c.typeKey(t.sonsImpl[^1], flags-{CoIgnoreRange}, conf)
+        c.typeKey(t.sonsImpl[0], flags-{CoIgnoreRange}, conf)
   else:
     withTree c.m, toNifTag(t.kind):
       for i in 0..<t.sonsImpl.len:

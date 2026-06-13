@@ -416,6 +416,12 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
       m.typeCache[sig] = result
 
 proc pushType(m: BModule; typ: PType) =
+  when defined(icDbgRefc):
+    if typ.kind == tySequence and
+        typ.elementType.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyGenericParam:
+      echo "[icRefc] pushType seq-of-genericparam t=", typeToString(typ),
+        " itemId=", typ.itemId.module, ".", typ.itemId.item, " mod=", m.module.name.s
+      echo getStackTrace()
   for i in 0..high(m.typeStack):
     # pointer equality is good enough here:
     if m.typeStack[i] == typ: return
@@ -1164,6 +1170,11 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, skipModifier(t), check, kind)
   else:
+    when defined(icDbgRefc):
+      echo "[icRefc] getTypeDescAux ", t.kind, " t=", typeToString(t),
+        " origTyp=", typeToString(origTyp), " t.itemId=", t.itemId.module, ".", t.itemId.item,
+        " sym=", (if t.sym != nil: t.sym.name.s else: "nil"),
+        " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = ""
   # fixes bug #145:
@@ -1202,6 +1213,10 @@ proc finishTypeDescriptions(m: BModule) =
   var check = initIntSet()
   while i < m.typeStack.len:
     let t = m.typeStack[i]
+    when defined(icDbgRefc):
+      echo "[icRefc] finishTypeDescriptions[", i, "] mod=", m.module.name.s,
+        " t=", typeToString(t), " kind=", t.kind,
+        " itemId=", t.itemId.module, ".", t.itemId.item
     if optSeqDestructors in m.config.globalOptions and t.skipTypes(abstractInst).kind == tySequence:
       seqV2ContentType(m, t, check)
     else:
@@ -1399,7 +1414,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     m.s[cfsStrData].addDeclWithVisibility(Private):
       m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
     if m.config.cmd == cmdNifC:
-      m.icDataDefs.add (name, "")
+      m.icDataDefs.add (name, icNifName(m, origType))
 
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1687,8 +1702,13 @@ proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
           m.s[cfsTypeInit1].addArgument(hcrGlobal):
             m.s[cfsTypeInit1].add("\"" & str & "\"")
   else:
+    # cnif-mark the name: this extern declaration is the reference the
+    # def-retention check consults when the defining TU regenerates and
+    # the typeinfo cannot be re-demanded (type vanished) — the referencing
+    # TU must lose its reuse then instead of producing a link error
+    let declName = if m.config.cmd == cmdNifC: markCName(str) else: str
     m.s[cfsStrData].addDeclWithVisibility(Extern):
-      m.s[cfsStrData].addVar(kind = Local, name = str, typ = nr)
+      m.s[cfsStrData].addVar(kind = Local, name = declName, typ = nr)
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var it = t
@@ -1828,7 +1848,7 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
   m.s[cfsStrData].addDeclWithVisibility(Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
   if m.config.cmd == cmdNifC:
-    m.icDataDefs.add (name, "")
+    m.icDataDefs.add (name, icNifName(m, origType))
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1894,7 +1914,7 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
   m.s[cfsStrData].addDeclWithVisibility(Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
   if m.config.cmd == cmdNifC:
-    m.icDataDefs.add (name, "")
+    m.icDataDefs.add (name, icNifName(m, origType))
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -2067,6 +2087,10 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   let marker = m.g.typeInfoMarker.getOrDefault(sig)
   if marker.str != "":
+    when defined(icDbgRefc):
+      if "catchableerror" in marker.str:
+        echo "[icNti] ", marker.str, " in mod=", m.module.name.s,
+          " -> extern:globalMarker owner=", marker.owner
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", marker.str, marker.owner)
@@ -2077,7 +2101,15 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
 
+  when defined(icDbgRefc):
+    template dbgNti(branch: string) =
+      if "catchableerror" in result:
+        echo "[icNti] ", result, " in mod=", m.module.name.s, " -> ", branch
+  else:
+    template dbgNti(branch: string) = discard
+
   if m.config.cmd == cmdNifC and result in m.g.graph.icCachedDataDefs:
+    dbgNti "extern:cachedDataDefs"
     # already defined inside a reused TU from the previous run
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
@@ -2088,6 +2120,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
   if old != FileIndex(0):
+    dbgNti "extern:emittedTypeInfo"
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, old.int)
@@ -2095,6 +2128,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   var owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
+    dbgNti "extern:ownerRouted"
     # make sure the type info is created in the owner module
     discard genTypeInfoV1(m.g.mods[owner], origType, info)
     # reference the type info as extern here
@@ -2105,6 +2139,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   else:
     owner = m.module.position.int32
 
+  dbgNti "DEFINED-HERE"
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
   #rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 

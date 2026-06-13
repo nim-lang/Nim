@@ -77,6 +77,16 @@ proc backendEnsureMutable*(t: PType) {.inline.} =
   # ^ IC review this later
   if t.state == Partial: loadType(t)
 
+proc unsealForTransform*(t: PType) {.inline.} =
+  ## The transformer/lambda lifting also run inside `nim m` when the VM
+  ## compiles a LOADED routine (macro evaluation, `getImpl`). Their mutations
+  ## are process-local — transformed bodies are never written back to a NIF —
+  ## so downgrade the loaded type to mutable, mirroring the `cmdNifC` loader
+  ## which loads everything `Complete` for exactly this reason (see
+  ## `ast2nif.loadedState`).
+  if t.state == Partial: loadType(t)
+  if t.state == Sealed: t.state = Complete
+
 proc owner*(s: PSym): PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.ownerFieldImpl
@@ -1133,10 +1143,19 @@ proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 
-proc exactReplica*(t: PType): PType =
+proc exactReplica*(t: PType; idgen: IdGenerator): PType =
+  ## Replica that KEEPS `itemId` — the generic-param binding tables
+  ## (`LayeredIdTable`) key on it, so the copy must keep matching its
+  ## original — but mints a FRESH `uniqueId`: uniqueId is the SERIALIZATION
+  ## identity (NIF type names key on it) and must be unique per instance.
+  ## Replicas sharing the original's uniqueId serialized as duplicate defs
+  ## under one NIF name; the loader collapsed them into a single type,
+  ## losing their flag differences (use-site `tfUnresolved` typedescs) or
+  ## their structure (meta instance bodies shadowing a generic's canonical
+  ## body).
   result = PType(kind: t.kind, ownerFieldImpl: t.owner, sizeImpl: defaultSize,
                  alignImpl: defaultAlignment, itemId: t.itemId,
-                 uniqueId: t.uniqueId)
+                 uniqueId: nextTypeId(idgen))
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 

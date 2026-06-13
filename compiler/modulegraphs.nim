@@ -105,18 +105,39 @@ type
                                   # they were in its previous artifact and a
                                   # reused TU still references them (the
                                   # backend def-migration check)
+    icPreserveTypeInfos*: Table[int, seq[PType]] # the same for RTTI data
+                                  # definitions, which are type-driven: the
+                                  # type whose `genTypeInfo` the TU must
+                                  # re-demand
     icImplDeps*: IntSet           # NeedsImpl edge tracking under `nim m`:
                                   # module ids (FileIndex) whose routine BODIES
-                                  # this compilation consumed at compile time
-                                  # (VM-compiled or getImpl'ed). Written to the
-                                  # `.edges` sidecar; deps.nim then gates the
-                                  # dependent on those modules' IMPL cookie
-                                  # instead of the iface cookie, so e.g.
-                                  # `const x = dep.foo()` re-sems when foo's
-                                  # body changes. Bodies with inline semantics
-                                  # (templates/macros/generics/iterators) need
-                                  # no tracking: they are part of the iface
-                                  # cookie itself.
+                                  # this compilation consumed at compile time.
+                                  # Written to the `.edges` sidecar; deps.nim
+                                  # then gates the dependent on those modules'
+                                  # IMPL cookie instead of the iface cookie, so
+                                  # e.g. `const x = dep.foo()` re-sems when foo's
+                                  # body changes. Uniform across body-access
+                                  # kinds — the iface cookie hashes signatures
+                                  # ONLY (see ast2nif.cookieSd), so every body
+                                  # consumer records an edge here: VM-compiled /
+                                  # getImpl'ed bodies (recordIcImplDep from vm/
+                                  # vmgen), expanded templates (semTemplateExpr)
+                                  # and instantiated generics (generateInstance).
+                                  # Inline iterators / `inline` procs are NOT
+                                  # tracked: they are inlined at codegen, where
+                                  # the nifc backend's NIF-mtime invalidation
+                                  # already re-codegens their users.
+    icQualIfaces*: IntSet         # module positions whose interface tables were
+                                  # populated ONLY for qualified access through a
+                                  # module re-export (`import x; export x`); the
+                                  # Iface.module stays nil so a later direct
+                                  # import still takes the full load path
+    inVMTransform*: int           # >0 while the VM compiles a routine body
+                                  # (vmgen.genProc's transformBody): hooks lifted
+                                  # there (e.g. for closure-env types of LOADED
+                                  # routines) are process-local VM artifacts —
+                                  # serializing them would embed references to
+                                  # derived env-field syms that no module defines
 
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -285,6 +306,18 @@ iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
     if s != nil:
       yield s
 
+proc reexportedModuleSyms*(g: ModuleGraph; m: PSym): seq[(string, string)] =
+  ## (name, NIF module suffix) of MODULE syms in `m`'s interface — these are
+  ## re-exports (`import x; export x`, added by `reexportSym`) acting as
+  ## qualifiers (`m.x.sym`). Consumed by the NIF writer; semExport does not
+  ## put them into the nkExportStmt children, so the AST walk cannot see them.
+  result = @[]
+  var seen = initIntSet()
+  for s in g.ifaces[m.position].interf.data:
+    if s != nil and s.kind == skModule and s.position != m.position and
+        not seen.containsOrIncl(s.position):
+      result.add (s.name.s, cachedModuleSuffix(g.config, FileIndex s.position))
+
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
   result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
@@ -346,6 +379,15 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
   # Key-based deduplication for opsLog: different type objects (e.g. canon vs
   # orig) can have different itemIds but the same structural key.
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  if g.inVMTransform > 0 and g.config.cmd == cmdM:
+    # hook lifted while the VM compiles a routine body (closure-env types of
+    # loaded routines): register it for in-process lookup but keep it out of
+    # the serialized log — it is a process-local artifact whose type graph
+    # references derived env-field syms that no module's NIF defines
+    if g.loadedOps[op].getOrDefault(key) == nil:
+      g.loadedOps[op][key] = value
+    g.attachedOps[op][t.itemId] = value
+    return
   let existing = g.loadedOps[op].getOrDefault(key)
   if existing == nil:
     # Stamp the entry with the module whose compilation produced the hook
@@ -941,6 +983,39 @@ when not defined(nimKochBootstrap):
         registerLoadedHooks(g, precomp.logOps)
         for d in precomp.deps: stack.add d
 
+  proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym =
+    ## A re-exported MODULE (`import x; export x`) acts as a qualifier in the
+    ## re-exporting module's interface (`asmm.x86.nd`). Reconstruct a module
+    ## symbol for it and make its interface tables available for qualified
+    ## lookup (`someSym` reads `g.ifaces[position]`) — WITHOUT registering
+    ## the module: `Iface.module` stays nil so a later direct import still
+    ## takes the full load path (replayStateChanges etc.).
+    var isKnown = false
+    let fIdx = g.config.registerNifSuffix(msuffix, isKnown)
+    if fIdx.int >= g.ifaces.len: setLen(g.ifaces, fIdx.int + 1)
+    if g.ifaces[fIdx.int].module != nil and
+        g.ifaces[fIdx.int].module.name.s == mname:
+      # properly registered already (directly imported earlier): reuse it
+      return g.ifaces[fIdx.int].module
+    result = PSym(kindImpl: skModule, itemId: itemId(int32(fIdx), 0'i32),
+                  name: getIdent(g.cache, mname),
+                  infoImpl: newLineInfo(fIdx, 1, 1),
+                  positionImpl: int(fIdx))
+    setOwner(result, getPackage(g.config, g.cache, fIdx))
+    if g.ifaces[fIdx.int].module == nil and
+        not g.icQualIfaces.containsOrIncl(fIdx.int):
+      var interf = initStrTable()
+      var interfHidden = initStrTable()
+      let precomp = loadNifModule(ast.program, ModuleSuffix(msuffix),
+                                  interf, interfHidden, {})
+      # chains: the re-exported module may itself re-export modules
+      for (n2, s2) in precomp.reexportedModules:
+        let inner = materializeReexportedModule(g, n2, s2)
+        if inner != nil:
+          strTableAdd(interf, inner)
+      g.ifaces[fIdx.int].interf = interf
+      g.ifaces[fIdx.int].interfHidden = interfHidden
+
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
                           flags: set[LoadFlag] = {}): PrecompiledModule =
     ## Returns 'nil' if the module needs to be recompiled.
@@ -966,6 +1041,10 @@ when not defined(nimKochBootstrap):
                            g.ifaces[fileIdx.int].interf,
                            g.ifaces[fileIdx.int].interfHidden, flags)
     result.module = m
+    for (mname, msuffix) in result.reexportedModules:
+      let ms = materializeReexportedModule(g, mname, msuffix)
+      if ms != nil:
+        strTableAdd(g.ifaces[fileIdx.int].interf, ms)
 
     # Mark module as cached
     g.cachedMods.incl fileIdx.int

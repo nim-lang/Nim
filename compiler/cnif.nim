@@ -73,12 +73,14 @@ proc stripCnifMarks*(s: string): string =
       inc i
 
 const
-  CnifVersion* = "3"
+  CnifVersion* = "4"
     ## Artifact format version, stored in the meta head. Artifacts written
     ## by an older compiler lack the NIF names and the cref group the
-    ## def-retention check needs (v2) or the cdeps group the fine-grained
-    ## reuse gate needs (v3); `readCnifHeads` reports them as invalid so
-    ## their TUs simply regenerate once.
+    ## def-retention check needs (v2), the cdeps group the fine-grained
+    ## reuse gate needs (v3), or the type NIF names and cnif-marked extern
+    ## RTTI references the typeinfo flavor of the def-retention check
+    ## needs (v4); `readCnifHeads` reports them as invalid so their TUs
+    ## simply regenerate once.
 
 proc cnifDefDirective*(name, flags, nifName: string): string =
   CnifDefStart & name & CnifDefSep & flags & CnifDefSep & nifName & CnifDefEnd

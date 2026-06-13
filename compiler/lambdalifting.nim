@@ -307,6 +307,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
+  unsealForTransform(owner.typ)
   incl(owner.typ, tfCapturesEnv)
   if not isEnv:
     owner.typ.callConv = ccClosure

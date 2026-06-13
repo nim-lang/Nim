@@ -653,6 +653,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var key = ""
   var val = ""
+  # Record config-file switches so the `nim ic` driver can serialise them into a
+  # precompiled-config artifact and have its per-module child processes replay
+  # them instead of re-parsing the `nim.cfg` chain (and re-running `config.nims`
+  # in the VM) on every invocation. Only `passPP` (config-file) switches are
+  # captured; command-line switches are forwarded by the build graph as usual.
+  # Path-search switches are skipped: their net effect already lives in the
+  # resolved `searchPaths` the driver forwards as `--path`, and replaying their
+  # raw (often relative-to-config-dir) arguments here would misresolve.
+  if pass == passPP and switch.normalize notin
+      ["path", "p", "nimblepath", "lazypath", "excludepath",
+       "nonimblepath", "clearnimblepath", "nimcache"]:
+    conf.icConfigSwitches.add (switch, arg)
   case switch.normalize
   of "eval":
     expectArg(conf, switch, arg, pass, info)
@@ -937,6 +949,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
       conf.icGroup.incl(canonicalizePath(conf, AbsoluteFile arg).string)
+  of "icproject":
+    # `nim m`/`nim nifc` only: the ORIGINAL project file (see options.icProject)
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
+  of "icpreparsedconfig":
+    # `nim m`/`nim nifc` only: path of the precompiled-config artifact (see
+    # options.icPreparsedConfig). Read in `passCmd1`, before `loadConfigs`, so
+    # config loading can replay it instead of re-parsing the `nim.cfg` chain.
+    expectArg(conf, switch, arg, pass, info)
+    conf.icPreparsedConfig = arg
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:

@@ -27,6 +27,11 @@ const
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
   rememberExpansion(c, n.info, s)
+  # IC: this expands `s`'s body into the current module's sem, so the module
+  # depends on that body — record a NeedsImpl (strong) edge to `s`'s module.
+  # The iface cookie hashes only signatures now, so a template body edit moves
+  # only the impl cookie, and just the modules that expanded it re-sem.
+  recordIcImplDep(c.graph, s)
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
   onUse(info, s)
@@ -57,6 +62,16 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
   else:
+    when defined(icDbgRefc):
+      echo "[icNoType] semOperand: ", renderTree(result, {renderNoComments}),
+        " kind=", result.kind,
+        (if result.kind in {nkCall, nkCommand} and result[0].kind == nkSym:
+          " calleeTyp=" & (if result[0].sym.typ == nil: "NIL" else:
+            $result[0].sym.typ.kind & " ret=" &
+            (if result[0].sym.typ.returnType == nil: "NIL"
+             else: $result[0].sym.typ.returnType.kind))
+         else: "")
+      echo getStackTrace()
     localError(c.config, n.info, errExprXHasNoType %
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -83,6 +98,17 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif result.typ == nil or result.typ == c.enforceVoidContext:
+    when defined(icDbgRefc):
+      echo "[icNoType] semExprWithType: ", renderTree(result, {renderNoComments}),
+        " kind=", result.kind,
+        (if result.kind in {nkCall, nkCommand} and result[0].kind == nkSym:
+          " callee=" & result[0].sym.name.s &
+          " calleeTyp=" & (if result[0].sym.typ == nil: "NIL" else:
+            $result[0].sym.typ.kind & " ret=" &
+            (if result[0].sym.typ.returnType == nil: "NIL"
+             else: $result[0].sym.typ.returnType.kind))
+         else: "")
+      echo getStackTrace()
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -2144,6 +2170,12 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
+    when defined(icDbgRefc):
+      echo "[icMetaRet] meta result type for ", c.p.owner.name.s, ": ",
+        typeToString(c.p.resultSym.typ), " kind=", c.p.resultSym.typ.kind,
+        " flags=", c.p.resultSym.typ.flags,
+        " uid=", c.p.resultSym.typ.uniqueId.module, ".", c.p.resultSym.typ.uniqueId.item,
+        " state=", c.p.resultSym.typ.state
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:
       c.p.resultSym.typ = errorType(c)

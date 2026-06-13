@@ -373,6 +373,13 @@ proc addConverter*(c: PContext, conv: PSym) =
 
 proc addConverterDef*(c: PContext, conv: PSym) =
   addConverter(c, conv)
+  # record the definition for IC: the loader rebuilds Iface.converters from
+  # the NIF's (repconverter ...) entries (moduleFromNifFile); without the log
+  # entry a loaded module's converters were invisible to importers and
+  # implicit conversions silently stopped matching (e.g. faststreams'
+  # InputStreamHandle -> InputStream at toml_serialization call sites)
+  c.graph.opsLog.add LogEntry(kind: ConverterEntry, module: c.module.position,
+                              key: "", sym: conv)
 
 proc addPureEnum*(c: PContext, e: PSym) =
   assert e != nil

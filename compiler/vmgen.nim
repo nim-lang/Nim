@@ -2477,7 +2477,9 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
+    inc c.graph.inVMTransform
     let body = transformBody(c.graph, c.idgen, s, if isCompileTimeProc(s): {} else: {useCache})
+    dec c.graph.inVMTransform
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

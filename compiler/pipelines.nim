@@ -270,7 +270,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       var implDeps: seq[int] = @[]
       for id in graph.icImplDeps: implDeps.add id
       writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
-                     replayActions, implDeps)
+                     replayActions, implDeps, reexportedModuleSyms(graph, module))
 
   result = true
 
@@ -304,6 +304,18 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
           let nifPath = toNifFilename(graph.config, fileIdx)
+          # Record the miss for `nim ic`'s discovery loop: imports GENERATED
+          # by macros (e.g. chronicles' parseStmt("import chronicles/textlines"),
+          # driven by the chronicles_sinks define) are invisible to the static
+          # dependency scanner. The parent reads this file, adds the module —
+          # plus an edge from this importer — to the build graph and reruns.
+          try:
+            let f = open(getNimcacheDir(graph.config).string & "/icmissing.txt", fmAppend)
+            f.writeLine(toFullPath(graph.config, fileIdx) & "\t" &
+                        graph.config.projectFull.string)
+            f.close()
+          except IOError, OSError:
+            discard
           globalError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
             " (expected: " & nifPath & ")")
@@ -382,7 +394,14 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   let projectFile = if projectFileIdx == InvalidFileIdx: conf.projectMainIdx else: projectFileIdx
   conf.projectMainIdx2 = projectFile
 
-  let packSym = getPackage(graph, projectFile)
+  var packSym = getPackage(graph, projectFile)
+  if graph.config.cmd in {cmdM, cmdNifC} and graph.config.icProject.len > 0:
+    # per-module IC children: the process' project file is the MODULE being
+    # compiled, which would make its package the "main package" and unfilter
+    # foreign-package diagnostics (a vendored package's hintAsError promotion
+    # then aborts builds the whole-program compilation accepts). Use the
+    # original project, forwarded by deps.nim via --icproject.
+    packSym = getPackage(graph, fileInfoIdx(graph.config, AbsoluteFile graph.config.icProject))
   graph.config.mainPackageId = packSym.getPackageId
   graph.importStack.add projectFile
 

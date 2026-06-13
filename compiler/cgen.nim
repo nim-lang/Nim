@@ -19,7 +19,7 @@ import
   mangleutils, cbuilderbase, modulegraphs
 
 from expanddefaults import caseObjDefaultBranch
-from ast2nif import globalName, toNifFilename
+from ast2nif import globalName, toNifFilename, icNifTypeName
 from typekeys import modname
 from std/algorithm import sort
 import cnif
@@ -101,6 +101,15 @@ proc icNifName(m: BModule; s: PSym): string =
   ## have no NIF name.
   if m.config.cmd == cmdNifC and s != nil and not isBackendMinted(s.itemId):
     result = globalName(s, m.config)
+  else:
+    result = ""
+
+proc icNifName(m: BModule; t: PType): string =
+  ## The type flavor: recorded next to RTTI data definitions so the
+  ## def-retention check can re-demand the typeinfo of a regenerating TU's
+  ## previous artifact (`genTypeInfo` is type-driven, not symbol-driven).
+  if m.config.cmd == cmdNifC:
+    result = icNifTypeName(t, m.config)
   else:
     result = ""
 

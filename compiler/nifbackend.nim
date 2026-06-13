@@ -149,11 +149,30 @@ proc enforceDefRetention(g: ModuleGraph; mainPos: int;
     # targets the un-reuse fallback. Demand-side dedup (`declaredThings`,
     # the cached/claim shortcuts) makes redundant re-demands cheap.
     clear g.icPreserveDefs
+    clear g.icPreserveTypeInfos
     var unreuse = initHashSet[int]()
     for src in sources.items:
       template check(defseq) =
         for d in defseq:
           if d.cname notin cachedDefs:
+            if d.nifname.startsWith("`t"):
+              # an RTTI definition: re-demand is type-driven (`genTypeInfo`),
+              # there is no symbol to resolve
+              let typ = resolveGlobalType(ast.program, d.nifname)
+              if typ != nil:
+                g.icPreserveTypeInfos.mgetOrPut(src.target, @[]).add typ
+                if icDebug:
+                  stderr.writeLine "[icRetain] preserve typeinfo " & d.cname
+                continue
+              elif d.cname in refdBy:
+                # type vanished: un-reuse the TUs that still reference it
+                for tu in refdBy[d.cname]: unreuse.incl tu
+                if icDebug:
+                  stderr.writeLine "[icRetain] cannot re-demand typeinfo " &
+                    d.cname & "; un-reusing referencing TUs"
+                continue
+              else:
+                continue
             var sym: PSym = nil
             if d.nifname.len > 0:
               sym = resolveGlobalSym(ast.program, d.nifname)
@@ -406,6 +425,16 @@ proc eagerHookCandidate(sym: PSym): bool =
     let pt = typ.n[i].typ
     if pt == nil: return false
     if iterOverType(pt, isMetaIter, nil): return false
+  # a `=dup` of an imported type returns it by value; for "lying" importc
+  # typedefs like `jmp_buf` (declared as `object`, really a C array) that
+  # signature does not compile. Demand-driven codegen never demands such
+  # sem-bookkeeping hooks (under refc nothing dups a `C_JmpBuf`), and no
+  # working artifact can call one — its prototype would be the same
+  # invalid C — so they are safe to skip.
+  let ret = typ.returnType
+  if ret != nil:
+    let r = ret.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+    if r.sym != nil and sfImportc in r.sym.flags: return false
   true
 
 proc finishModule(g: ModuleGraph; bmod: BModule) =
@@ -472,6 +501,9 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   if g.icPreserveDefs.hasKey(moduleId):
     for sym in g.icPreserveDefs[moduleId]:
       requestAnyDef(bmod, sym)
+  if g.icPreserveTypeInfos.hasKey(moduleId):
+    for t in g.icPreserveTypeInfos[moduleId]:
+      discard genTypeInfo(g.config, bmod, t, unknownLineInfo)
 
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
