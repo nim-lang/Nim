@@ -876,9 +876,9 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
 type
   CookieCtx = object
     selfSuffix: string
-    tdRanges: Table[string, int]   # td name -> start of its first (td ...) tree
-    memo: Table[string, string]    # td name -> structural digest
-    expanding: HashSet[string]     # cycle guard for recursive td expansion
+    tdRanges: Table[SymId, int]    # td sym -> start of its first (td ...) tree
+    memo: Table[SymId, string]     # td sym -> structural digest
+    expanding: HashSet[SymId]      # cycle guard for recursive td expansion
     depSuffixes: seq[string]       # module suffixes of the direct imports
 
 proc nextTree(buf: TokenBuf; i: int): int =
@@ -936,13 +936,13 @@ proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
                 start, theEnd: int; skipFrom = -1; skipTo = -1;
                 keepFirstDefLiteral = false)
 
-proc expandTd(c: var CookieCtx; buf: TokenBuf; name: string): string =
+proc expandTd(c: var CookieCtx; buf: TokenBuf; name: SymId): string =
   ## Structural digest of a module-local type def: hashes the `(td ...)` tree
   ## instead of the volatile `tK.item counter name. Memoized; cycles fall back
   ## to the literal name (sound — at worst a spurious cookie change).
   if c.memo.hasKey(name): return c.memo[name]
   if not c.tdRanges.hasKey(name) or c.expanding.contains(name):
-    return name
+    return pool.syms[name]
   c.expanding.incl name
   let start = c.tdRanges[name]
   var sub = newSha1State()
@@ -958,7 +958,7 @@ proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
   # (params, locals, embedded type defs). The region's own top-level name
   # (first SymbolDef) stays literal when requested — it is what importers
   # reference.
-  var ords = initTable[string, int]()
+  var ords = initTable[SymId, int]()
   var first = keepFirstDefLiteral
   var i = start
   while i < theEnd:
@@ -966,11 +966,11 @@ proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
       i = skipTo
       continue
     if buf[i].kind == SymbolDef:
-      let name = pool.syms[buf[i].symId]
+      let sym = buf[i].symId
       if first:
         first = false
-      elif isModuleLocalName(c, name) and not ords.hasKey(name):
-        ords[name] = ords.len
+      elif isModuleLocalName(c, pool.syms[sym]) and not ords.hasKey(sym):
+        ords[sym] = ords.len
     inc i
   # pass 2: hash
   first = keepFirstDefLiteral
@@ -981,16 +981,17 @@ proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
       continue
     let t = buf[i]
     if t.kind in {Symbol, SymbolDef}:
-      let name = pool.syms[t.symId]
+      let sym = t.symId
+      let name = pool.syms[sym]
       s.update(if t.kind == SymbolDef: " :" else: " ")
       if t.kind == SymbolDef and first:
         first = false
         s.update name
-      elif ords.hasKey(name):
+      elif ords.hasKey(sym):
         s.update "%"
-        s.update $ords[name]
+        s.update $ords[sym]
       elif name.startsWith("`t") and isModuleLocalName(c, name):
-        s.update expandTd(c, buf, name)
+        s.update expandTd(c, buf, sym)
       else:
         s.update name
     else:
@@ -1105,7 +1106,7 @@ proc writeIfaceCookie(config: ConfigRef; thisModule: int32; buf: TokenBuf): stri
   while i < buf.len:
     if buf[i].kind == ParLe and buf[i].tagId == tdefTag and i+1 < buf.len and
        buf[i+1].kind == SymbolDef:
-      let nm = pool.syms[buf[i+1].symId]
+      let nm = buf[i+1].symId
       if not c.tdRanges.hasKey(nm): c.tdRanges[nm] = i
     inc i
   var s = newSha1State()
