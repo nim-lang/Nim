@@ -23,7 +23,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
-  pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys, dce,
+  pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys,
   cnif
 from cgmeth import generateIfMethodDispatchers
 import ic / replayer
@@ -91,29 +91,6 @@ proc isMetaIter(t: PType, closure: RootRef): bool =
   # them, and generating one pollutes the TU's type cache with a struct
   # descriptor for what must remain a (ptr, len) parameter expansion
   t.kind in tyMetaTypes + {tyTyped, tyUntyped, tyNone, tyVarargs, tyOpenArray}
-
-proc eagerHookCandidate(sym: PSym): bool =
-  ## Announced hooks that can actually be code-generated: generic hook
-  ## announcements and meta-typed ones (`varargs[typed]` etc.) are replay
-  ## information for sem, not code.
-  let typ = sym.typ
-  if typ == nil or containsGenericType(typ): return false
-  if typ.n == nil: return false
-  for i in 1..<typ.n.len:
-    let pt = typ.n[i].typ
-    if pt == nil: return false
-    if iterOverType(pt, isMetaIter, nil): return false
-  # a `=dup` of an imported type returns it by value; for "lying" importc
-  # typedefs like `jmp_buf` (declared as `object`, really a C array) that
-  # signature does not compile. Demand-driven codegen never demands such
-  # sem-bookkeeping hooks (under refc nothing dups a `C_JmpBuf`), and no
-  # working artifact can call one — its prototype would be the same
-  # invalid C — so they are safe to skip.
-  let ret = typ.returnType
-  if ret != nil:
-    let r = ret.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
-    if r.sym != nil and sfImportc in r.sym.flags: return false
-  true
 
 proc finishModule(g: ModuleGraph; bmod: BModule) =
   # Finalize the module (this adds it to modulesClosed)
@@ -222,20 +199,6 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
          s.ast[bodyPos].kind != nkEmpty:
         # a concrete, non-generic, runtime routine with a real body, owned here
         requestProcDef(bmod, s)
-
-  # The hooks and `$enum` procs this module announces are liveness roots:
-  # a cached TU from a previous run may call them without any demand
-  # arising in this run (the demanding instance body sits inside a reused
-  # TU). Demand them unconditionally so a regenerated TU never *loses*
-  # definitions that cached TUs link against.
-  if g.icDceEnabled and not isDefined(g.config, "icNoReuse"):
-    for op in precomp.logOps:
-      if op.kind in {HookEntry, EnumToStrEntry} and op.sym != nil and
-          eagerHookCandidate(op.sym):
-        when defined(icDbg):
-          stderr.writeLine "[icHook] " & $op.kind & " " & op.sym.name.s &
-            " typ: " & typeToString(op.sym.typ) & " in " & precomp.module.name.s
-        requestProcDef(bmod, op.sym)
 
 proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
     tuple[modules: seq[PrecompiledModule], precompSys: PrecompiledModule,
@@ -386,17 +349,14 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       rawMessage(g.config, errGenerated,
         "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
       return
-    # No whole-program DCE here, exactly as for a non-main target: `icDceEnabled`
-    # stays false so each module emits the routines it owns and the MERGE stage
-    # recomputes the one program-wide live set across all `.c.nif`s. Running
-    # `computeLiveSymbols` over all ~260 NIFs in the main `cg` cost ~900 MB for a
-    # result the merge stage throws away — pure redundancy now that the funnel is
-    # gone (the main module no longer emits its transitive closure's bodies).
+    # No whole-program DCE here: each module emits the routines it owns and the
+    # MERGE stage recomputes the one program-wide live set across all `.c.nif`s.
+    # Running a whole-program liveness pass over all ~260 NIFs in the main `cg`
+    # would cost ~900 MB for a result the merge stage throws away.
     target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
   else:
-    # No whole-program load, hence no whole-program DCE: `icDceEnabled` stays
-    # false, so `icDceLive` keeps every top-level routine and the target emits
-    # its full demanded closure. The merge stage drops what is globally dead.
+    # No whole-program load, hence no whole-program DCE: the target emits its
+    # full demanded closure and the merge stage drops what is globally dead.
     (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
   if target.module == nil:
     rawMessage(g.config, errGenerated,
@@ -552,120 +512,6 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   elif g.config.icBackendStage == "link":
     generateLinkStage(g, mainFileIdx)
     return
-  elif g.config.icBackendStage.len > 0:
+  else:
     rawMessage(g.config, errGenerated,
-      "per-module backend stage not implemented yet: " & g.config.icBackendStage)
-    return
-
-  # Phase timing, enabled with `-d:icTimings` on the nifc command line.
-  let icTimings = isDefined(g.config, "icTimings")
-  var phaseStart = epochTime()
-  template phaseDone(name: string) =
-    if icTimings:
-      let now = epochTime()
-      stderr.writeLine "[icTime] " & name & ": " &
-        formatFloat(now - phaseStart, ffDecimal, 2) & "s"
-      phaseStart = now
-
-  # Reset backend state
-  resetForBackend(g)
-
-  var isKnownFile = false
-  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
-  g.config.m.systemFileIdx = systemFileIdx
-  #msgs.fileInfoIdx(g.config,
-  #    g.config.libpath / RelativeFile"system.nim")
-
-  # Load system module first - it's always needed and contains essential hooks
-  var precompSys = PrecompiledModule(module: nil)
-  precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
-  g.systemModule = precompSys.module
-
-  # Load all modules in dependency order using stack traversal
-  # This must happen BEFORE any code generation so that hooks are loaded into loadedOps
-  var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
-  let modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
-  # build the method dispatch buckets now that every module is loaded
-  flushMethodReplays(g)
-  phaseDone "load (" & $ (modules.len + 1) & " modules)"
-  if modules.len == 0:
-    rawMessage(g.config, errGenerated,
-      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-    return
-
-  # Compute the global live set so that the top-level routine listing can be
-  # filtered (see `ccgstmts.genStmts`). On analysis failure everything stays
-  # alive — demand-driven `genProc` makes this a size optimization only.
-  var dceStats = DceStats()
-  var nifDeps = initTable[string, seq[string]]()
-  if not isDefined(g.config, "icNoDce"):
-    g.icDceEnabled = computeLiveSymbols(g.config, nifFiles, g.icLiveNames,
-                                        dceStats, nifDeps)
-  phaseDone "dce"
-
-  # Set up backend modules for all modules that need code generation
-  for m in modules:
-    discard setupNifBackendModule(g, m.module)
-  if precompSys.module != nil:
-    discard setupNifBackendModule(g, precompSys.module)
-
-  # System module is generated first if it exists
-  if precompSys.module != nil:
-    generateCodeForModule(g, precompSys)
-
-  # Track which modules have been processed to avoid duplicates
-  var processed = initIntSet()
-  if precompSys.module != nil:
-    processed.incl precompSys.module.position
-
-  # Generate code for all modules (skip system since it's already processed)
-  for m in modules:
-    if not processed.containsOrIncl(m.module.position):
-      generateCodeForModule(g, m)
-
-  emitMethodDispatchers(g)
-  phaseDone "cgen"
-
-  # during code generation of `main.nim` we can trigger the code generation
-  # of symbols in different modules so we need to finish these modules
-  # here later, after the above loop!
-  # Important: The main module must be finished LAST so that all other modules
-  # have registered their init procs before genMainProc uses them.
-  var mainModule: BModule = nil
-  for m in BModuleList(g.backend).mods:
-    if m != nil:
-      assert m.module != nil
-      if sfMainModule in m.module.flags:
-        mainModule = m
-      else:
-        finishModule g, m
-  if mainModule != nil:
-    finishModule g, mainModule
-  phaseDone "finish"
-
-  if g.icDceEnabled and isDefined(g.config, "icDceCheck"):
-    var misses: seq[string] = @[]
-    for n in g.icDceMisses: misses.add n
-    sort misses
-    for n in misses:
-      stderr.writeLine "[icDce] MISS (generated on demand, not marked live): " & n
-    stderr.writeLine "[icDce] live: " & $g.icLiveNames.len & " misses: " & $misses.len &
-      " modules: " & $nifFiles.len
-    stderr.writeLine "[icDce] instances: " & $dceStats.instances &
-      " unique: " & $dceStats.uniqueInstances &
-      " mergeable: " & $(dceStats.instances - dceStats.uniqueInstances)
-
-  # Write C files
-  cgenWriteModules(g.backend, g.config)
-  phaseDone "write"
-
-  if isDefined(g.config, "icDceCheck") and g.icCnifFiles.len > 0:
-    stderr.writeLine "[icDceC] cdefs: " & $g.icCDefs & " live: " & $g.icCLiveDefs &
-      " dropped: " & $g.icCDropped
-
-  # Run C compiler
-  if g.config.cmd != cmdTcc:
-    extccomp.callCCompiler(g.config)
-    phaseDone "cc+link"
-    if not g.config.hcrOn:
-      extccomp.writeJsonBuildInstructions(g.config, g.cachedFiles)
+      "the per-module NIF backend requires --icBackendStage:cg|merge|emit|link")

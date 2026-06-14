@@ -68,16 +68,10 @@ type
     enumToStringProcs*: Table[ItemId, PSym]
     loadedEnumToStringProcs: Table[string, PSym]
     emittedTypeInfo*: Table[string, FileIndex]
-    icLiveNames*: HashSet[string] # NIF names of reachable symbols (dce.nim);
-                                  # filters the top-level listing under `nim nifc`
-    icDceEnabled*: bool
-    icDceMisses*: HashSet[string] # demand-generated but not marked live:
-                                  # analysis bugs that per-module codegen would hit
     instDisambs: Table[(int, int32), ItemId] # (name id, content disamb) ->
                                   # instance, for collision probing in
                                   # `setInstanceDisamb`
     icCnifFiles*: seq[string]     # `.c.nif` artifacts written by this run
-    icCDefs*, icCLiveDefs*, icCDropped*: int # render-time DCE stats
     pendingMethodReplays*: seq[PSym] # method registrations loaded under
                                   # `nim nifc`, bucketed only after every
                                   # module is loaded (`flushMethodReplays`)

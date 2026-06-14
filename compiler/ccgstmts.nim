@@ -1980,14 +1980,6 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     loadInto(p, le, ri, a)
 
 proc genStmts(p: BProc, t: PNode) =
-  if p.config.cmd == cmdNifC and t.kind == nkSym and
-      t.sym.kind in {skProc, skFunc, skConverter, skIterator} and
-      not icDceLive(p.module, t.sym):
-    # Under IC a module's top-level routine definitions reappear as bare
-    # symbol statements in the loaded statement list and were generated
-    # eagerly. Skip the ones dce.nim proved unreachable; anything a live
-    # body references is still generated on demand via `genProc`.
-    return
   var a: TLoc = default(TLoc)
 
   let isPush = p.config.hasHint(hintExtendedContext)

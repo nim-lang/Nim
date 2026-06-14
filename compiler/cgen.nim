@@ -904,16 +904,6 @@ proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
     result.flags.incl lfSingleUse
   expr(p, e, result)
 
-proc icDceLive(m: BModule; sym: PSym): bool =
-  ## Under `nim nifc` the eagerly emitted top-level routine listing is
-  ## filtered through dce.nim's liveness result. Symbols generated on
-  ## demand (`genProc` from a use site) never consult this.
-  let g = m.g.graph
-  if not g.icDceEnabled or sym.itemId.isBackendMinted:
-    result = true
-  else:
-    result = globalName(sym, m.config) in g.icLiveNames
-
 include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
@@ -1719,13 +1709,6 @@ proc isActivated(prc: PSym): bool = prc.typ != nil
 
 proc genProc(m: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc): return
-  if m.config.cmd == cmdNifC and m.g.graph.icDceEnabled and
-      sfImportc notin prc.flags and not icDceLive(m, prc):
-    # Stage-2 readiness check: in the current single-process backend, demand
-    # always wins over the liveness analysis (we generate the proc anyway).
-    # But per-module codegen will have to trust the analysis, so a proc that
-    # is demanded yet not marked live is an analysis bug — report it.
-    m.g.graph.icDceMisses.incl globalName(prc, m.config)
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
     fillProcLoc(m, prc.ast[namePos])
@@ -2897,9 +2880,6 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
         if cl.broken: stripCnifMarks(codes[i])
         else: renderMarkedC(codes[i], cl.live, dropped)
       registerModuleCode(mods[i], cfs[i], rendered)
-    g.graph.icCDefs = cl.defs
-    g.graph.icCLiveDefs = cl.liveDefs
-    g.graph.icCDropped = dropped
   else:
     for m in cgenModules(g):
       m.writeModule()
