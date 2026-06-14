@@ -34,6 +34,9 @@ type
     processedModules: Table[string, int]  # modname -> node index
     includeStack: seq[string]
     systemNodeId: int  # ID of the system.nim node
+    implicitNodeIds: seq[int] # node IDs of `--import`ed modules (conf.implicitImports);
+                              # every ordinary module implicitly imports these, so each
+                              # gets a dependency edge on them, exactly like system.nim
     scanningMain: bool # currently scanning the project main module's deps;
                        # makes `when isMainModule` conditions evaluate true
                        # only there (every other module is imported)
@@ -223,6 +226,12 @@ proc processImport(c: var DepContext; importPath: string; current: Node) =
     # Every module depends on system.nim
     if c.systemNodeId >= 0:
       newNode.deps.add c.systemNodeId
+    # ... and on every `--import`ed module (conf.implicitImports). A `--import`ed
+    # module is itself imported by its own closure (which also gets these edges),
+    # so the cycle folds into one strongly-connected component (see computeSCCs),
+    # just like system.nim's closure.
+    for impId in c.implicitNodeIds:
+      if impId != newNode.id: newNode.deps.add impId
     c.processedModules[pair.modname] = newNode.id
     c.nodes.add newNode
     traverseDeps(c, pair, newNode)
@@ -1074,6 +1083,28 @@ proc commandIc*(conf: ConfigRef) =
       # depended on nifmake's scheduling.
       traverseDeps(c, sysPair, sysNode)
 
+    # Model `--import:X` switches (conf.implicitImports). Every ordinary module
+    # is compiled with these implicitly imported, so each `nim m` child demands
+    # the corresponding NIF. They are invisible to the static import scanner
+    # (they come from config, not from `import` statements) and cannot be
+    # discovered via `.s.deps` either: every module fails identically at import
+    # resolution before recording anything, so there is no bootstrap. Seed them
+    # up front like system.nim — create a node, traverse its closure, and record
+    # its id so `processImport` adds the edge to every other module. (e.g. Nimbus
+    # uses `--import:libbacktrace` together with `-d:nimStackTraceOverride`.)
+    for imp in conf.implicitImports:
+      let resolved = resolveImport(c, rootPair.nimFile, imp)
+      if resolved.len == 0 or not fileExists(resolved): continue
+      let impPair = toPair(c, resolved)
+      if impPair.modname.len > 0 and impPair.modname notin c.processedModules:
+        let impNode = Node(files: @[impPair], id: c.nodes.len)
+        if c.systemNodeId >= 0: impNode.deps.add c.systemNodeId
+        c.nodes.add impNode
+        c.processedModules[impPair.modname] = impNode.id
+        rootNode.deps.add impNode.id
+        c.implicitNodeIds.add impNode.id
+        traverseDeps(c, impPair, impNode)
+
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
 
@@ -1133,6 +1164,8 @@ proc commandIc*(conf: ConfigRef) =
               let newNode = Node(files: @[pair], id: c.nodes.len)
               if c.systemNodeId >= 0:
                 newNode.deps.add c.systemNodeId
+              for impId in c.implicitNodeIds:
+                if impId != newNode.id: newNode.deps.add impId
               c.processedModules[pair.modname] = newNode.id
               c.nodes.add newNode
               idx = newNode.id
