@@ -275,7 +275,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]
       for f in graph.importDeps.getOrDefault(module.position.FileIndex, @[]):
-        semDepPaths.add toFullPath(graph.config, f).string
+        semDepPaths.add toFullPath(graph.config, f)
       writeSemDeps(graph.config, module.position.int32, semDepPaths)
 
   result = true
@@ -321,7 +321,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           # a side-channel file.
           for importer, deps in graph.importDeps.pairs:
             var paths: seq[string] = @[]
-            for f in deps: paths.add toFullPath(graph.config, f).string
+            for f in deps: paths.add toFullPath(graph.config, f)
             writeSemDeps(graph.config, importer.int32, paths)
           globalError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
