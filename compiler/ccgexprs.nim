@@ -3491,7 +3491,23 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
   data.addDeclWithVisibility(Private):
     data.addVarWithInitializer(Local, actualConstName, typ = td):
       genBracedInit(q.initProc, sym.astdef, isConst = true, sym.typ, data)
-  q.s[cfsData].add(extract(data))
+  if q.config.cmd == cmdNifC:
+    # Each `cg` process that demands this const emits its definition
+    # (emit-everywhere). Always declare it first (the data analogue of a proc
+    # prototype) so a TU whose copy the merge stage drops still has a valid
+    # declaration; wrap the definition as a droppable `'d'` unit the merge
+    # stage assigns to a single owner.
+    let cname = stripCnifMarks(actualConstName)
+    var decl = newBuilder("")
+    decl.addDeclWithVisibility(Extern):
+      decl.addVar(kind = Local, name = actualConstName, typ = td)
+    q.s[cfsData].add(extract(decl))
+    q.s[cfsData].add(cnifDefDirective(cname, "d", icNifName(q, sym)))
+    q.s[cfsData].add(extract(data))
+    q.s[cfsData].add(cnifEndDefs())
+    q.icDataDefs.add (cname, icNifName(q, sym))
+  else:
+    q.s[cfsData].add(extract(data))
   if q.hcrOn:
     # generate the global pointer with the real name
     q.s[cfsVars].addVar(kind = Global, name = sym.loc.snippet,
@@ -3555,6 +3571,17 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skProc, skConverter, skIterator, skFunc:
       #if sym.kind == skIterator:
       #  echo renderTree(sym.getBody, {renderIds})
+      if p.config.cmd == cmdNifC and
+          (isGenericRoutineStrict(sym) or sfCompileTime in sym.flags or
+           (sym.kind == skIterator and sym.typ.callConv == ccInline)):
+        # Under IC a module's top-level routine definitions are serialized as bare
+        # symbol references that reappear in the loaded statement list. Uninstantiated
+        # generic routines (incl. those with type-class params like `tuple`) and
+        # `.compileTime` routines have no run-time code, so skip them here.
+        # Inline iterators likewise have no standalone code — they are always inlined
+        # at their for-loop call sites by the transformer (only closure iterators get
+        # a standalone C function), so a bare serialized def reference is a no-op.
+        return
       if sfCompileTime in sym.flags:
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
@@ -3629,6 +3656,11 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         # echo renderTree(p.prc.ast, {renderIds})
         internalError(p.config, n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
+    of skTemplate, skMacro:
+      # Under IC a module's top-level template/macro definitions are serialized as
+      # bare symbol references (only their interface matters), so they reappear in
+      # the loaded statement list. They are compile-time only and produce no code.
+      discard
     else: internalError(p.config, n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:
     if not isEmptyType(n.typ):

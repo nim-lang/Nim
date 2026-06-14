@@ -28,10 +28,12 @@ import
   commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
+from ast2nif import registerNifAstTags
+
 from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
-when hasTinyCBackend:
+when defined(tinyc): # == hasTinyCBackend; spelled out for the IC dep scanner
   import tccgen
 
 when defined(profiler) or defined(memProfiler):
@@ -96,6 +98,11 @@ proc getNimRunExe(conf: ConfigRef): string =
     result = ""
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
+  # NIF tag registration must not depend on module init order — the IC-built
+  # compiler orders module init calls differently and the top-level
+  # `registerTag` initializers then ran against a not-yet-initialized pool,
+  # corrupting every written NIF (see registerNifAstTags).
+  registerNifAstTags()
   let self = NimProg(
     supportsStdinFile: true,
     processCmdLine: processCmdLine

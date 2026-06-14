@@ -36,7 +36,9 @@ from std/osproc import nil
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
-else:
+when not defined(nimPreviewSlimSystem):
+  # explicit negated `when` rather than `else:` so nifler's dep scanner guards
+  # this import with its condition (it emits `else:` imports unconditionally).
   from std/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 

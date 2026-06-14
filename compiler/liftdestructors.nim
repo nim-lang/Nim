@@ -711,6 +711,11 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       doAssert t.asink != nil
       body.add newHookCall(c, t.asink, x, y)
   of attachedDestructor:
+    when defined(icDbg):
+      if t.destructor == nil:
+        echo "MISSING destructor: ", typeToString(t), " kind=", t.kind,
+          " itemId=", t.itemId, " uniqueId=", t.uniqueId, " state=", t.state,
+          " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
@@ -1080,8 +1085,17 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
+  of tyUncheckedArray:
+    # An UncheckedArray has no known length, so it cannot be copied, moved or
+    # destroyed as a value: it only ever lives behind a pointer and its bytes
+    # are managed manually (element ops for seqs/strings go through the
+    # seq/string hooks, which know the length). Emitting `x = y` for it (as the
+    # pointer-like group below does) produces an assignment of an unsized array,
+    # which the C backend cannot lower (genAssignment: tyUncheckedArray). So all
+    # value hooks for it are no-ops.
+    discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCstring,
-      tyPtr, tyUncheckedArray, tyVar, tyLent:
+      tyPtr, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
     if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
@@ -1221,6 +1235,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flagsImpl, {sfFromGeneric, sfGeneratedOp}
+  setHookDisamb(g, result, AttachedOpToStr[kind], typ)
 
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; isDiscriminant = false): PSym =
@@ -1267,6 +1282,10 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   if kind == attachedWasMoved:
     incl result.flagsImpl, sfNoSideEffect
     incl result.typ, tfNoSideEffect
+  if not isDiscriminant:
+    # discriminant destructors derive their body from the enclosing object
+    # AND the selected field; their key is set at the call site
+    setHookDisamb(g, result, AttachedOpToStr[kind], typ)
 
 proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessTypeField, "accessTypeField", x)
@@ -1359,6 +1378,7 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
   # discrimantor assignments needs pointers to destroy fields; alas, we cannot use non-var destructor here
   result = symPrototype(g, field.typ, typ.owner, attachedDestructor, info, idgen, isDiscriminant = true)
+  setHookDisamb(g, result, "=destroy¦" & field.name.s & "¦" & $field.position, typ)
   var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen,
                    fn: result)
   a.asgnForType = typ

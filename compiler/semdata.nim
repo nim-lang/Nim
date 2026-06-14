@@ -370,7 +370,16 @@ proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   discard
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
-  discard
+  # Under `nim m` (the IC frontend) record the REAL direct imports of the
+  # current module as sem resolves them — including imports a macro generated
+  # (e.g. chronicles' `parseStmt("import chronicles/textlines")`), which the
+  # static dependency scanner never sees. `nim ic` writes this set as the
+  # module's `.s.deps` sidecar and re-derives the build graph from it, so the
+  # discovery is structured data instead of a build-failure side channel.
+  if c.config.cmd == cmdM:
+    let importer = c.module.position.FileIndex
+    var deps = addr c.graph.importDeps.mgetOrPut(importer, @[])
+    if f notin deps[]: deps[].add f
 
 proc addPragmaComputation*(c: PContext; n: PNode) =
   # Also store for NIF-based IC (cmdM mode or optCompress)
@@ -390,6 +399,13 @@ proc addConverter*(c: PContext, conv: PSym) =
 
 proc addConverterDef*(c: PContext, conv: PSym) =
   addConverter(c, conv)
+  # record the definition for IC: the loader rebuilds Iface.converters from
+  # the NIF's (repconverter ...) entries (moduleFromNifFile); without the log
+  # entry a loaded module's converters were invisible to importers and
+  # implicit conversions silently stopped matching (e.g. faststreams'
+  # InputStreamHandle -> InputStream at toml_serialization call sites)
+  c.graph.opsLog.add LogEntry(kind: ConverterEntry, module: c.module.position,
+                              key: "", sym: conv)
 
 proc addPureEnum*(c: PContext, e: PSym) =
   assert e != nil

@@ -11,7 +11,7 @@
 
 import
   llstream, commands, msgs, lexer, ast,
-  options, idents, wordrecg, lineinfos, pathutils, scriptconfig
+  options, idents, wordrecg, lineinfos, pathutils, scriptconfig, icconfig
 
 import std/[os, strutils, strtabs]
 
@@ -246,6 +246,12 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
 
 proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
+  # `nim ic` children replay the precompiled config the driver recorded once,
+  # instead of re-reading the `nim.cfg` chain and re-running `config.nims` in the
+  # VM. A missing/format-incompatible artifact returns false: fall through to
+  # normal config loading so an older child or a deleted cache still works.
+  if conf.icPreparsedConfig.len > 0 and applyIcConfig(conf, conf.icPreparsedConfig):
+    return
   template readConfigFile(path) =
     let configPath = path
     conf.currentConfigDir = configPath.splitFile.dir.string

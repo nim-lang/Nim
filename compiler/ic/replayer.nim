@@ -86,3 +86,37 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
           g.cacheSeqs[destKey].add val
       else:
         internalAssert g.config, false
+
+proc replayBackendActions*(g: ModuleGraph; module: PSym; list: PNode) =
+  ## Applies the backend-relevant replay actions (C compile/link directives)
+  ## found in a NIF-loaded module's top-level statement list. The `nifc`
+  ## backend loads modules without going through sem's `replayStateChanges`,
+  ## so e.g. math's `{.passL: "-lm".}` was lost and the final link failed
+  ## with undefined references. VM cache actions are deliberately NOT
+  ## replayed here — codegen does not run macros.
+  if list == nil: return
+  for n in list:
+    if n.kind == nkReplayAction and n.len >= 2 and
+        n[0].kind == nkStrLit and n[1].kind == nkStrLit:
+      case n[0].strVal
+      of "compile":
+        if n.len == 4 and n[2].kind == nkStrLit:
+          let cname = AbsoluteFile n[1].strVal
+          var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                         obj: AbsoluteFile n[2].strVal,
+                         flags: {CfileFlag.External},
+                         customArgs: n[3].strVal)
+          extccomp.addExternalFileToCompile(g.config, cf)
+      of "link":
+        extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)
+      of "passl":
+        extccomp.addLinkOption(g.config, n[1].strVal)
+      of "passc":
+        extccomp.addCompileOption(g.config, n[1].strVal)
+      of "localpassc":
+        extccomp.addLocalCompileOption(g.config, n[1].strVal,
+          toFullPathConsiderDirty(g.config, module.info.fileIndex))
+      of "cppdefine":
+        options.cppDefine(g.config, n[1].strVal)
+      else:
+        discard

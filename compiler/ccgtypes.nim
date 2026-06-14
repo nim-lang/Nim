@@ -72,6 +72,37 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   else:
     m.g.mangledPrcs.incl(result)
 
+proc sharedInstanceCName(m: BModule; s: PSym): string =
+  ## The module-free canonical C name for a content-keyed generic instance,
+  ## or "" when the symbol must keep its module-suffixed name. With a shared
+  ## name, every TU that instantiated the same generic with the same type
+  ## arguments calls one extern definition (first claimant's TU embeds it,
+  ## see `genProcLvl3`) instead of compiling its own static copy.
+  ##
+  ## The name is program-unique only if the 30-bit content hash does not
+  ## collide for same-named instances of *different* instantiations across
+  ## modules — the per-module probe in `setInstanceDisamb` cannot see that.
+  ## Claimants therefore must present the same signature; on mismatch the
+  ## later one keeps its module-suffixed name (no merge, still correct).
+  ## Residual risk: same name and signature, different generic args, AND a
+  ## 30-bit collision — vanishingly unlikely; a full-typeKey verification
+  ## channel can close it later.
+  result = ""
+  if m.config.cmd == cmdNifC and s.kind in routineKinds and
+      (s.disamb and InstanceDisambBit) != 0'i32 and
+      s.typ != nil and s.typ.callConv != ccInline and not m.hcrOn and
+      {sfImportc, sfExportc, sfCodegenDecl} * s.flags == {}:
+    # The content-derived `disamb` is unique per process (collision-probed in
+    # `setInstanceDisamb`), so the mint-site-independent `_i<disamb>` name is
+    # safe to use directly; identical instances across modules collide on it
+    # exactly and the merge stage keeps one.
+    result = s.name.s.mangle & "_i" & $s.disamb
+
+proc isSharedInstanceCName(m: BModule; s: PSym): bool =
+  m.config.cmd == cmdNifC and s.kind in routineKinds and
+    (s.disamb and InstanceDisambBit) != 0'i32 and
+    stripCnifMarks(s.loc.snippet) == s.name.s.mangle & "_i" & $s.disamb
+
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
     var result: Rope
@@ -79,13 +110,22 @@ proc fillBackendName(m: BModule; s: PSym) =
       m.g.config.symbolFiles == disabledSf:
       result = mangleProc(m, s, false).rope
     else:
-      result = s.name.s.mangle.rope
-      result.add mangleProcNameExt(m.g.graph, s)
+      let shared = sharedInstanceCName(m, s)
+      if shared.len > 0:
+        result = shared.rope
+      else:
+        result = s.name.s.mangle.rope
+        result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
     backendEnsureMutable s
-    s.locImpl.snippet = result
+    if m.config.cmd == cmdNifC:
+      # mark the name so the cnif artifact writer can turn every occurrence
+      # into a Symbol token; stripped from the actual C output in genModule
+      s.locImpl.snippet = markCName(result)
+    else:
+      s.locImpl.snippet = result
 
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
@@ -373,6 +413,12 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
       m.typeCache[sig] = result
 
 proc pushType(m: BModule; typ: PType) =
+  when defined(icDbgRefc):
+    if typ.kind == tySequence and
+        typ.elementType.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyGenericParam:
+      echo "[icRefc] pushType seq-of-genericparam t=", typeToString(typ),
+        " itemId=", typ.itemId.module, ".", typ.itemId.item, " mod=", m.module.name.s
+      echo getStackTrace()
   for i in 0..high(m.typeStack):
     # pointer equality is good enough here:
     if m.typeStack[i] == typ: return
@@ -618,6 +664,18 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
     for i in 1..<t.n.len:
       if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
       var param = t.n[i].sym
+      # The hidden closure environment param (`:envP`) is not a real C parameter:
+      # the environment is passed via the trailing `ClE_0` (added below) and
+      # `closureSetup` materialises `:envP` as a local cast of it. In a from-source
+      # build `:envP` only lives in the routine's AST params, never in the proc
+      # *type's* `n`, so it never reaches here. Under IC `closureParams` re-shares
+      # the AST param node with `typ.n`, so the lifted `:envP` leaks into `t.n`;
+      # emitting it would produce a bogus extra parameter that collides with the
+      # `closureSetup` local (the "redeclared as different kind of symbol" / env
+      # pointer-type mismatch). We still must fill its name/loc (later passes such
+      # as `assignParam` and `closureSetup` reference it), but it is omitted from
+      # the C signature to match the from-source ABI.
+      let isClosureEnv = t.callConv == ccClosure and param.name.s == ":envP"
       var descKind = dkParam
       if m.config.backend == backendCpp and optByRef in param.options:
         if param.typ.kind == tyGenericInst:
@@ -629,6 +687,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       fillParamName(m, param)
       fillLoc(param.locImpl, locParam, t.n[i],
               param.paramStorageLoc)
+      if isClosureEnv: continue  # name/loc filled, but not part of the C signature
       var typ: Rope
       if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
         typ = ptrType(getTypeDescWeak(m, param.typ, check, descKind))
@@ -1108,6 +1167,11 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, skipModifier(t), check, kind)
   else:
+    when defined(icDbgRefc):
+      echo "[icRefc] getTypeDescAux ", t.kind, " t=", typeToString(t),
+        " origTyp=", typeToString(origTyp), " t.itemId=", t.itemId.module, ".", t.itemId.item,
+        " sym=", (if t.sym != nil: t.sym.name.s else: "nil"),
+        " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = ""
   # fixes bug #145:
@@ -1146,6 +1210,10 @@ proc finishTypeDescriptions(m: BModule) =
   var check = initIntSet()
   while i < m.typeStack.len:
     let t = m.typeStack[i]
+    when defined(icDbgRefc):
+      echo "[icRefc] finishTypeDescriptions[", i, "] mod=", m.module.name.s,
+        " t=", typeToString(t), " kind=", t.kind,
+        " itemId=", t.itemId.module, ".", t.itemId.item
     if optSeqDestructors in m.config.globalOptions and t.skipTypes(abstractInst).kind == tySequence:
       seqV2ContentType(m, t, check)
     else:
@@ -1260,7 +1328,9 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
     elif prc.typ.callConv == ccInline or isNonReloadable(m, prc):
       visibility = StaticProc
     elif sfImportc notin prc.flags:
-      visibility = Private
+      if not isSharedInstanceCName(m, prc):
+        visibility = Private
+      # else: plain extern — the definition is shared across TUs
     if asPtr:
       result.addProcVar(m, prc, name, params, rettype, isStatic = isStaticVar, ignoreAttributes = true)
     else:
@@ -1340,6 +1410,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   else:
     m.s[cfsStrData].addDeclWithVisibility(Private):
       m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
+    if m.config.cmd == cmdNifC:
+      m.icDataDefs.add (name, icNifName(m, origType))
 
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1627,8 +1699,13 @@ proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
           m.s[cfsTypeInit1].addArgument(hcrGlobal):
             m.s[cfsTypeInit1].add("\"" & str & "\"")
   else:
+    # cnif-mark the name: this extern declaration is the reference the
+    # def-retention check consults when the defining TU regenerates and
+    # the typeinfo cannot be re-demanded (type vanished) — the referencing
+    # TU must lose its reuse then instead of producing a link error
+    let declName = if m.config.cmd == cmdNifC: markCName(str) else: str
     m.s[cfsStrData].addDeclWithVisibility(Extern):
-      m.s[cfsStrData].addVar(kind = Local, name = str, typ = nr)
+      m.s[cfsStrData].addVar(kind = Local, name = declName, typ = nr)
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var it = t
@@ -1767,6 +1844,8 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
   cgsym(m, "TNimTypeV2")
   m.s[cfsStrData].addDeclWithVisibility(Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+  if m.config.cmd == cmdNifC:
+    m.icDataDefs.add (name, icNifName(m, origType))
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1829,8 +1908,15 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
-  m.s[cfsStrData].addDeclWithVisibility(Private):
+  # Under `nim nifc` every `cg` process that demands this type's RTTI emits its
+  # definition (emit-everywhere). The forward declaration must therefore be a
+  # real `extern` (not a tentative definition) so a TU whose copy the merge
+  # stage drops still only *declares* it; the definition itself is wrapped as a
+  # droppable `'d'` unit below and assigned to a single owner.
+  m.s[cfsStrData].addDeclWithVisibility(if m.config.cmd == cmdNifC: Extern else: Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+  if m.config.cmd == cmdNifC:
+    m.icDataDefs.add (name, icNifName(m, origType))
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1891,7 +1977,12 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
         else:
           typeEntry.addField(typeInit, name = "flags"):
             typeEntry.addIntValue(flags)
-  m.s[cfsVars].add extract(typeEntry)
+  if m.config.cmd == cmdNifC:
+    m.s[cfsVars].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+    m.s[cfsVars].add extract(typeEntry)
+    m.s[cfsVars].add(cnifEndDefs())
+  else:
+    m.s[cfsVars].add extract(typeEntry)
 
   if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
@@ -1930,7 +2021,13 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   m.typeInfoMarkerV2[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
+  # In the per-module backend (`cg`) RTTI is emit-everywhere like procs and
+  # consts: every demanding module emits the `'d'` definition (deduped to one
+  # owner by the merge stage). The owner-routing below would instead push the
+  # definition into the owner module's *unwritten* backend module (discarded in
+  # this process) and emit only an extern here, leaving the symbol undefined.
+  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
+  if not perModuleCg and owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.mods[owner], origType, info)
     # reference the type info as extern here
@@ -1997,6 +2094,10 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   let marker = m.g.typeInfoMarker.getOrDefault(sig)
   if marker.str != "":
+    when defined(icDbgRefc):
+      if "catchableerror" in marker.str:
+        echo "[icNti] ", marker.str, " in mod=", m.module.name.s,
+          " -> extern:globalMarker owner=", marker.owner
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", marker.str, marker.owner)
@@ -2007,8 +2108,16 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
 
+  when defined(icDbgRefc):
+    template dbgNti(branch: string) =
+      if "catchableerror" in result:
+        echo "[icNti] ", result, " in mod=", m.module.name.s, " -> ", branch
+  else:
+    template dbgNti(branch: string) = discard
+
   let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
   if old != FileIndex(0):
+    dbgNti "extern:emittedTypeInfo"
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, old.int)
@@ -2016,6 +2125,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   var owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
+    dbgNti "extern:ownerRouted"
     # make sure the type info is created in the owner module
     discard genTypeInfoV1(m.g.mods[owner], origType, info)
     # reference the type info as extern here
@@ -2026,6 +2136,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   else:
     owner = m.module.position.int32
 
+  dbgNti "DEFINED-HERE"
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
   #rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 

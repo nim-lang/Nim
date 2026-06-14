@@ -119,11 +119,44 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var SymMappi
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
+proc aliasLoadedTypedescParams(c: PContext, instantiated, orig: PSym): bool =
+  ## When the generic being instantiated had its body LOADED from a NIF (only
+  ## `nim m`/`nim nifc`, only for a generic owned by another module), that body
+  ## re-sems from plain identifiers — ast2nif serialises locals/params as idents,
+  ## not `nkSym`. A `T: typedesc[...]` param referenced as a type must then
+  ## resolve `T` to the bound type, but the instantiated skParam carries the
+  ## concrete type `instantiateProcType` typedesc-skipped it to, which an ident
+  ## lookup cannot use as a type name. Shadow each such param with an `skType`
+  ## alias of the same name in a fresh scope layer (the alias is exactly how Nim
+  ## models "this name denotes a type"). In-process bodies reach the param as
+  ## `nkSym` and never take this path, hence the command gate.
+  ##
+  ## Returns true iff a scope layer was opened; the caller must `closeScope`.
+  if c.config.cmd notin {cmdM, cmdNifC} or orig == nil or
+      orig.itemId.module == c.module.position or
+      orig.typ == nil or orig.typ.n == nil:
+    return false
+  result = false
+  let procParams = instantiated.typ.n
+  for i in 1..<min(procParams.len, orig.typ.n.len):
+    if orig.typ.n[i].kind != nkSym: continue
+    let origParamTyp = orig.typ.n[i].sym.typ
+    if origParamTyp != nil and origParamTyp.kind == tyTypeDesc and
+        tfUnresolved in origParamTyp.flags:
+      if not result:
+        openScope(c)
+        result = true
+      let p = procParams[i].sym
+      let alias = newSym(skType, p.name, c.idgen, instantiated, p.info)
+      alias.typ = p.typ
+      addDecl(c, alias)
+
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n[bodyPos].kind != nkEmpty:
     let procParams = result.typ.n
     for i in 1..<procParams.len:
       addDecl(c, procParams[i].sym)
+    let aliasLayer = aliasLoadedTypedescParams(c, result, orig)
     maybeAddResult(c, result, result.ast)
 
     inc c.inGenericInst
@@ -152,6 +185,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     excl(result, sfForward)
     trackProc(c, result, result.ast[bodyPos])
     dec c.inGenericInst
+    if aliasLayer: closeScope(c)
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in 0..<c.generics.len:
@@ -245,7 +279,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   let originalParams = result.n
   result.n = originalParams.shallowCopy
   for i in 1 ..< originalParams.len:
-    let resulti = originalParams[i].sym.typ
+    var resulti = originalParams[i].sym.typ
     # twrong_field_caching requires these 'resetIdTable' calls:
     if i > FirstParamAt:
       resetIdTable(cl.symMap)
@@ -258,6 +292,11 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     let needsStaticSkipping = resulti.kind == tyFromExpr
     let needsTypeDescSkipping = resulti.kind == tyTypeDesc and tfUnresolved in resulti.flags
     if resulti.kind == tyFromExpr:
+      if resulti.state == Sealed:
+        # The generic was loaded from a NIF; do not brand the shared original.
+        # A tyFromExpr is a placeholder that `replaceTypeVarsT` resolves away,
+        # so a copy carries no identity that later comparisons could miss.
+        resulti = copyType(resulti, c.idgen, resulti.owner)
       resulti.incl tfNonConstExpr
     var paramType = replaceTypeVarsT(cl, resulti)
     if needsStaticSkipping:
@@ -276,6 +315,12 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     let param = copySym(oldParam, c.idgen)
     setOwner(param, prc)
     param.typ = paramType
+    when defined(icDbgRefc):
+      echo "[icInst] ", prc.name.s, " param ", oldParam.name.s,
+        ": ", typeToString(resulti), " (kind=", resulti.kind,
+        " uid=", resulti.uniqueId.module, ".", resulti.uniqueId.item,
+        " flags=", resulti.flags, ") -> ", typeToString(paramType),
+        " (kind=", paramType.kind, ")"
 
     # The default value is instantiated and fitted against the final
     # concrete param type. We avoid calling `replaceTypeVarsN` on the
@@ -283,6 +328,9 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
       if def.typ.kind == tyFromExpr:
+        if def.typ.state == Sealed:
+          # `copyTree` shares types; see the `resulti` comment above.
+          def.typ = copyType(def.typ, c.idgen, def.typ.owner)
         def.typ.incl tfNonConstExpr
       if not isIntLit(def.typ):
         def = prepareNode(cl, def)
@@ -374,6 +422,11 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   ## parameters to their concrete types within the generic instance.
   # no need to instantiate generic templates/macros:
   internalAssert c.config, fn.kind notin {skMacro, skTemplate}
+  # IC: instantiating `fn` consumes its generic body in the current module's
+  # sem — record a NeedsImpl (strong) edge to `fn`'s module. The iface cookie
+  # hashes only signatures now, so a generic body edit moves only the impl
+  # cookie, and just the modules that instantiated it re-sem.
+  recordIcImplDep(c.graph, fn)
   # generates an instantiated proc
   if c.instCounter > 50:
     globalError(c.config, info, "generic instantiation too nested")
@@ -455,6 +508,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     # This is needed for cyclic module dependencies where generic instances
     # may be created in one module but referenced from another.
     logGenericInstance(c.graph, result)
+    # Under IC the instance's NIF name must be canonical across modules:
+    # derive its `disamb` from the instantiation identity (generic +
+    # concrete types) instead of the per-module counter.
+    setInstanceDisamb(c.graph, result, fn, entry.concreteTypes)
     # bug #12985 bug #22913
     # TODO: use the context of the declaration of generic functions instead
     # TODO: consider fixing options as well

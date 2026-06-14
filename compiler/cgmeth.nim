@@ -180,6 +180,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
            g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
         localError(g.config, s.info, "method is not a base")
+      logMethodDef(g, s)
       return
     of No: discard
     of Invalid:
@@ -191,6 +192,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   else:
     g.bucketTable.inc(s.typ.firstParamType.skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
+  logMethodDef(g, s)
   #echo "adding ", s.info
   if witness != nil:
     localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &

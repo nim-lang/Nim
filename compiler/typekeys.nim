@@ -10,7 +10,7 @@
 ## Based on sighashes.nim but works on astdef directly as we need it in ast2nif.nim.
 ## Also produces more readable names thanks to treemangler.
 
-import std/assertions
+import std/[assertions, sets]
 
 import "../dist/nimony/src/lib" / [treemangler]
 import "../dist/nimony/src/gear2" / modnames
@@ -54,6 +54,9 @@ type
     m: Mangler
     tl: TypeLoader
     sl: SymLoader
+    visited: HashSet[ItemId]  # anonymous object types whose fields are currently
+                              # being hashed — a non-mutating guard against endless
+                              # recursion when a field references the type itself.
 
 proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef)
 proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
@@ -67,14 +70,26 @@ proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
     name.add '.'
     name.addInt s.disamb
 
+    # The owner may still be an unloaded stub (kind `skStub`): force it in
+    # before inspecting its kind, otherwise the module suffix is silently
+    # dropped from the key and def-vs-use keys diverge — e.g. `Lexer`'s base
+    # class keyed as `TBaseLexer.0.` at nifc vs `TBaseLexer.0.nimqydn3y` at
+    # sem time, making `getAttachedOp` miss ("'=destroy' operator not found").
+    template forceLoaded(x: PSym): PSym =
+      let tmp = x
+      if tmp != nil and tmp.state == Partial and c.sl != nil: c.sl(tmp)
+      tmp
+
+    let owner = forceLoaded(s.ownerFieldImpl)
     let it =
       if s.kindImpl == skModule:
         s
-      elif s.kindImpl in skProcKinds and sfFromGeneric in s.flagsImpl and s.ownerFieldImpl.kindImpl != skModule:
-        s.ownerFieldImpl.ownerFieldImpl
+      elif s.kindImpl in skProcKinds and sfFromGeneric in s.flagsImpl and
+           owner != nil and owner.kindImpl != skModule:
+        forceLoaded(owner.ownerFieldImpl)
       else:
-        s.ownerFieldImpl
-    if it.kindImpl == skModule:
+        owner
+    if it != nil and it.kindImpl == skModule:
       name.add '.'
       name.add modname(it, conf)
     c.m.addSymbol(name)
@@ -138,7 +153,12 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     for a in t.sonsImpl:
       c.typeKey a, flags, conf
   of tyDistinct:
-    if CoDistinct in flags:
+    if t.sonsImpl.len == 0:
+      # a bare `distinct` typeclass (e.g. `foo(distinct, ...)` matched
+      # against a `T: type` param) has no base type to key — it IS its kind
+      withTree c.m, toNifTag(t.kind):
+        c.m.addEmpty()
+    elif CoDistinct in flags:
       if t.symImpl != nil: symKey(c, t.symImpl, conf)
       if t.symImpl == nil or tfFromGeneric in t.flagsImpl:
         c.typeKey t.sonsImpl[^1], flags, conf
@@ -147,7 +167,14 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     else:
       symKey(c, t.symImpl, conf)
   of tyGenericInst:
-    if sfInfixCall in t.sonsImpl[0].symImpl.flagsImpl:
+    # The generic head (son[0]) may be a lazily-loaded stub under IC; ensure it
+    # is materialised before peeking at its symbol. A nil sym means this is not
+    # an imported C++ generic, so fall through to the normal `skipModifierB`.
+    var base = t.sonsImpl[0]
+    if base.state == Partial:
+      assert c.tl != nil
+      c.tl(base)
+    if base.symImpl != nil and sfInfixCall in base.symImpl.flagsImpl:
       # This is an imported C++ generic type.
       # We cannot trust the `lastSon` to hold a properly populated and unique
       # value for each instantiation, so we hash the generic parameters here:
@@ -216,14 +243,48 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     if t.typeInstImpl != nil:
       # prevent against infinite recursions here, see bug #8883:
       let inst = t.typeInstImpl
+      if inst.state == Partial:
+        # a lazily-loaded typeInst stub has no sons until forced in
+        assert c.tl != nil
+        c.tl(inst)
       t.typeInstImpl = nil # IC: spurious writes are ok since we set it back immediately
       assert inst.kind == tyGenericInst
-      c.typeKey inst.sonsImpl[0], flags, conf
+      if inst.sonsImpl.len > 0:
+        c.typeKey inst.sonsImpl[0], flags, conf
       for i in 1..<inst.sonsImpl.len-1:
-        c.typeKey inst.sonsImpl[i], flags, conf
+        # Match sighashes: generic-instantiation arguments are keyed with
+        # `CoDistinct` so distinct args are not collapsed to their base.
+        c.typeKey inst.sonsImpl[i], flags+{CoDistinct}, conf
       t.typeInstImpl = inst
     elif t.symImpl != nil:
       c.symKey(t.symImpl, conf)
+      # Anonymous / gensym'd object types (e.g. closure environments and
+      # `ref object` ObjectTypes) share the placeholder name `´anon`, so `symKey`
+      # alone collapses every one of them onto the same key — which made distinct
+      # closure-env `=destroy`/`=sink` hooks collide. Mirror sighashes: when the
+      # type symbol is anonymous/gensym'd, disambiguate further by keying the
+      # field types and names (or `.empty` when there are none).
+      template hasFlag(sym: PSym): bool =
+        {sfAnon, sfGenSym} * sym.flagsImpl != {}
+      if hasFlag(t.symImpl) or
+         (t.kind == tyObject and t.ownerFieldImpl != nil and t.ownerFieldImpl.kindImpl == skType and
+          t.ownerFieldImpl.typImpl != nil and t.ownerFieldImpl.typImpl.kind == tyRef and hasFlag(t.ownerFieldImpl)):
+        if t.nImpl != nil and t.nImpl.len > 0:
+          # Guard against endless recursion when a field references this type
+          # itself. Unlike sighashes (which temporarily clears `sfAnon`/`sfGenSym`
+          # on the symbol), do NOT mutate: `typeKey` runs during sem — it is
+          # called unconditionally from `modulegraphs.setAttachedOp` — so a
+          # mutation that an assertion deeper in `treeKey` left unrestored would
+          # corrupt the type. `symKey` above already emitted the type's identity,
+          # so on a back-reference we simply stop.
+          if not containsOrIncl(c.visited, t.itemId):
+            c.treeKey(t.nImpl, flags + {CoHashTypeInsideNode}, conf)
+            c.visited.excl t.itemId
+        else:
+          c.m.addIdent "´empty"
+      # Object inheritance is part of identity: key the base class too.
+      if t.kind == tyObject and t.sonsImpl.len > 0 and t.sonsImpl[0] != nil:
+        c.typeKey t.sonsImpl[0], flags, conf
     else:
       c.m.addIdent "`bug"
   of tyFromExpr:
@@ -238,10 +299,19 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
             c.symKey(t.nImpl[i].sym, conf)
             c.typeKey(t.nImpl[i].sym.typImpl, flags+{CoIgnoreRange}, conf)
       else:
-        for i in 1..<t.sonsImpl.len:
+        # ALL sons are tuple fields (son 0 included — unlike tyProc, where
+        # son 0 is the return type). Starting at 1 dropped the first field,
+        # collapsing e.g. `(PSym, NifIndexEntry)` and `(PType, NifIndexEntry)`
+        # onto one key, so hook lookup called the wrong `=destroy`/`=sink`
+        # (incompatible-argument C errors). Mirrors sighashes' `for a in t.kids`.
+        for i in 0..<t.sonsImpl.len:
           c.typeKey t.sonsImpl[i], flags+{CoIgnoreRange}, conf
   of tyRange:
-    if CoIgnoreRange notin flags:
+    if t.sonsImpl.len == 0:
+      # bare `range` typeclass: no base type, key the kind alone
+      withTree c.m, toNifTag(t.kind):
+        c.m.addEmpty()
+    elif CoIgnoreRange notin flags:
       withTree c.m, toNifTag(t.kind):
         c.treeKey(t.nImpl, {}, conf)
         c.typeKey(t.sonsImpl[^1], flags, conf)
@@ -254,12 +324,28 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.typeKey(t.skipModifierB, flags, conf)
   of tyProc:
     withTree c.m, (if tfIterator in t.flagsImpl: "itertype" else: "proctype"):
-      if CoProc in flags and t.nImpl != nil:
+      # Proc parameter *types* are part of the type's identity. Under IC the
+      # parameters live in `nImpl` (`sonsImpl` holds only the return type), so a
+      # loaded proc type has an empty `sonsImpl[1..]`; reading params from there
+      # would silently drop them and collide every same-return/same-callconv
+      # closure onto one key (e.g. `proc(cb: proc())` onto bare `proc()`),
+      # which made hook lookup resolve to the wrong `=copy`. Prefer `nImpl`
+      # (consistent in-memory and after load); hash param types only, not their
+      # symbols — parameter names do not affect type identity.
+      if t.nImpl != nil and t.nImpl.kind == nkFormalParams:
         let params = t.nImpl
         for i in 1..<params.len:
-          let param = params[i].sym
-          c.symKey(param, conf)
-          c.typeKey(param.typImpl, flags, conf)
+          if params[i].kind == nkSym:
+            # The param sym may be a lazily-loaded stub: force it in (as `symKey`
+            # does) so its type is available, then hash the param *type* only —
+            # parameter names are not part of the type's identity. Without the
+            # load the type reads back nil at codegen and the key silently loses
+            # its parameters (collapsing distinct closure types onto one key).
+            let ps = params[i].sym
+            if ps.state == Partial and c.sl != nil: c.sl(ps)
+            c.typeKey(ps.typImpl, flags, conf)
+          else:
+            c.typeKey(params[i].typField, flags, conf)
       else:
         for i in 1..<t.sonsImpl.len:
           c.typeKey(t.sonsImpl[i], flags, conf)
@@ -270,8 +356,12 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       if tfVarargs in t.flagsImpl: c.m.addIdent "´varargs"
   of tyArray:
     withTree c.m, toNifTag(t.kind):
-      c.typeKey(t.sonsImpl[^1], flags-{CoIgnoreRange}, conf)
-      c.typeKey(t.sonsImpl[0], flags-{CoIgnoreRange}, conf)
+      if t.sonsImpl.len == 0:
+        # bare `array` typeclass: no element/index types
+        c.m.addEmpty()
+      else:
+        c.typeKey(t.sonsImpl[^1], flags-{CoIgnoreRange}, conf)
+        c.typeKey(t.sonsImpl[0], flags-{CoIgnoreRange}, conf)
   else:
     withTree c.m, toNifTag(t.kind):
       for i in 0..<t.sonsImpl.len:
@@ -280,6 +370,16 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.m.addIdent "´notnil"
 
 proc typeKey*(t: PType; conf: ConfigRef; tl: TypeLoader; sl: SymLoader): string =
-  var c: Context = Context(m: createMangler(30, -1), tl: tl, sl: sl)
-  typeKey(c, t, {}, conf)
+  var c: Context = Context(m: createMangler(30, -1), tl: tl, sl: sl,
+                           visited: initHashSet[ItemId]())
+  # Mirror the flags liftdestructors uses for its `canonTypes` hash
+  # (`hashType(skipped, {CoType, CoConsiderOwned, CoDistinct})`): hook keys must
+  # distinguish what hook *lifting* distinguishes. With empty flags a generic
+  # `distinct` instance (e.g. nilcheck's `SeqOfDistinct[T, U]`) took the bare
+  # `symKey` branch — the sym is the generic's and thus SHARED by all
+  # instances, so `SeqOfDistinct[I, PNode]` and `SeqOfDistinct[I, Nilability]`
+  # collided onto one key and hook lookup returned the wrong `=sink`
+  # ("incompatible type for argument" in the generated C). Under `CoDistinct` a
+  # `tfFromGeneric` distinct keys as sym + base type, keeping instances apart.
+  typeKey(c, t, {CoType, CoConsiderOwned, CoDistinct}, conf)
   result = c.m.extract()

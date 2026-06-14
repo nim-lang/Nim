@@ -207,7 +207,7 @@ proc lookupInRecord(n: PNode, id: ItemId): PSym =
         if result != nil: return
       else: discard
   of nkSym:
-    if n.sym.itemId.module == id.module and n.sym.itemId.item == -abs(id.item): result = n.sym
+    if matchesDerivedFieldId(n.sym.itemId, id): result = n.sym
   else: discard
 
 proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym =
@@ -215,7 +215,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
                      idgen, s.owner, s.info, s.options)
-  field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+  field.itemId = derivedFieldId(s.itemId)
   let t = skipIntLit(s.typ, idgen)
   field.typ = t
   if s.kind in {skLet, skVar, skField, skForVar}:
@@ -235,7 +235,7 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator)
   if result == nil:
     var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), idgen,
                        s.owner, s.info, s.options)
-    field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+    field.itemId = derivedFieldId(s.itemId)
     let t = skipIntLit(s.typ, idgen)
     field.typ = t
     assert t.kind != tyTyped

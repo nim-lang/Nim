@@ -15,7 +15,7 @@ import ../dist/checksums/src/checksums/sha1
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs, sets, intsets]
 import renderer
 import ic/replayer
 
@@ -243,9 +243,14 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
 
   when not defined(nimKochBootstrap):
     # For cmdM: only write NIF for the main module, not for imported modules
-    # (imported modules should be loaded from existing NIF files)
+    # (imported modules should be loaded from existing NIF files). Members of the
+    # current strongly-connected import group (`--icGroup`) are the exception:
+    # they are compiled from source here, so each must write its own NIF.
     let shouldWriteNif = (optCompress in graph.config.globalOptions) or
-                         (graph.config.cmd == cmdM and sfMainModule in module.flags)
+                         (graph.config.cmd == cmdM and
+                          (sfMainModule in module.flags or
+                           (graph.config.icGroup.len > 0 and
+                            toFullPath(graph.config, module.position.FileIndex) in graph.config.icGroup)))
     if shouldWriteNif and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       # Collect replay actions from both pragma computations and VM state diff
@@ -259,7 +264,19 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           if m == module:
             replayActions.add n
 
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog, replayActions)
+      # NeedsImpl edge recording: which modules' bodies this process consumed
+      # at compile time (VM/getImpl). For an --icGroup cycle every member gets
+      # the union; intra-group entries are filtered by the writer.
+      var implDeps: seq[int] = @[]
+      for id in graph.icImplDeps: implDeps.add id
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
+                     replayActions, implDeps, reexportedModuleSyms(graph, module))
+      # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
+      # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
+      var semDepPaths: seq[string] = @[]
+      for f in graph.importDeps.getOrDefault(module.position.FileIndex, @[]):
+        semDepPaths.add toFullPath(graph.config, f)
+      writeSemDeps(graph.config, module.position.int32, semDepPaths)
 
   result = true
 
@@ -278,14 +295,34 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   if result == nil:
     when not defined(nimKochBootstrap):
       # For cmdM: load imports from NIF files (but compile the main module from source)
-      # Skip when withinSystem is true (compiling system.nim itself)
+      # Skip when withinSystem is true (compiling system.nim itself).
+      # Also skip for members of the current strongly-connected import group
+      # (`--icGroup`): those are mutually recursive with the main module and have
+      # no precompiled NIF yet, so they must be compiled from source in this same
+      # process (falling through below) — that resolves the cycle in-memory, the
+      # same way the non-incremental compiler handles recursive module imports.
       if graph.config.cmd == cmdM and
          sfMainModule notin flags and
          not graph.withinSystem and
-         not graph.config.isDefined("nimscript"):
+         not graph.config.isDefined("nimscript") and
+         (graph.config.icGroup.len == 0 or
+          toFullPath(graph.config, fileIdx) notin graph.config.icGroup):
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
           let nifPath = toNifFilename(graph.config, fileIdx)
+          # Macro-generated imports (e.g. chronicles' parseStmt("import
+          # chronicles/textlines") driven by the chronicles_sinks define) are
+          # invisible to the static scanner, so this module's NIF was never
+          # built. The importer already recorded this import via
+          # addImportFileDep, so flush every module's `.s.deps`: `nim ic` reads
+          # it, re-derives the graph with the missing node + edge, and reruns
+          # the frontend. We still error — this process cannot finish sem
+          # without the import — but the discovery is structured data now, not
+          # a side-channel file.
+          for importer, deps in graph.importDeps.pairs:
+            var paths: seq[string] = @[]
+            for f in deps: paths.add toFullPath(graph.config, f)
+            writeSemDeps(graph.config, importer.int32, paths)
           globalError(graph.config, unknownLineInfo,
             "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
             " (expected: " & nifPath & ")")
@@ -364,7 +401,14 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   let projectFile = if projectFileIdx == InvalidFileIdx: conf.projectMainIdx else: projectFileIdx
   conf.projectMainIdx2 = projectFile
 
-  let packSym = getPackage(graph, projectFile)
+  var packSym = getPackage(graph, projectFile)
+  if graph.config.cmd in {cmdM, cmdNifC} and graph.config.icProject.len > 0:
+    # per-module IC children: the process' project file is the MODULE being
+    # compiled, which would make its package the "main package" and unfilter
+    # foreign-package diagnostics (a vendored package's hintAsError promotion
+    # then aborts builds the whole-program compilation accepts). Use the
+    # original project, forwarded by deps.nim via --icproject.
+    packSym = getPackage(graph, fileInfoIdx(graph.config, AbsoluteFile graph.config.icProject))
   graph.config.mainPackageId = packSym.getPackageId
   graph.importStack.add projectFile
 
@@ -375,6 +419,9 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   elif graph.config.cmd == cmdM:
     # For cmdM: load system.nim from NIF first, then compile the main module
     connectPipelineCallbacks(graph)
+    # Record the main module so the IC loader won't materialise duplicate stubs
+    # for its own symbols when a dependency (e.g. system) re-exports them.
+    setIcMainModule(projectFile)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     when not defined(nimKochBootstrap):

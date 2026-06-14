@@ -10,8 +10,11 @@
 ## AST to NIF bridge.
 
 import std / [assertions, tables, sets]
-from std / strutils import startsWith
+from std / strutils import startsWith, endsWith, contains
 from std / os import fileExists
+from std / syncio import readFile
+from std / algorithm import sort
+import "../dist/checksums/src/checksums" / sha1
 import astdef, idents, msgs, options
 import lineinfos as astli
 import pathutils #, modulegraphs
@@ -23,12 +26,25 @@ import typekeys
 import ic / [enum2nif]
 
 proc typeToNifSym(typ: PType; config: ConfigRef): string =
+  # NOTE: uniqueId is the serialization identity and is unique per instance —
+  # `exactReplica` keeps only itemId shared with its original (see ast.nim)
+  assert not typ.uniqueId.isBackendMinted
   result = "`t"
   result.addInt ord(typ.kind)
   result.add '.'
   result.addInt typ.uniqueId.item
   result.add '.'
   result.add modname(typ.uniqueId.module, config)
+
+proc icNifTypeName*(typ: PType; config: ConfigRef): string =
+  ## The serialized NIF name of a type, recorded next to RTTI data
+  ## definitions in the cnif artifact so a later run can re-demand the
+  ## typeinfo when a reused TU still references it (the def-retention
+  ## check). Backend-minted types have no NIF name.
+  if typ != nil and not typ.uniqueId.isBackendMinted:
+    result = typeToNifSym(typ, config)
+  else:
+    result = ""
 
 proc toHookIndexEntry*(config: ConfigRef; typeId: ItemId; hookSym: PSym): HookIndexEntry =
   ## Converts a type ItemId and hook symbol to a HookIndexEntry for the NIF index.
@@ -144,7 +160,7 @@ const
   symDefTagName = "sd"
   typeDefTagName = "td"
 
-let
+var
   sdefTag = registerTag(symDefTagName)
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
@@ -161,19 +177,37 @@ type
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
 
-const
-  # Symbol kinds that are always local to a proc and should never have module suffix
-  skLocalSymKinds = {skParam, skForVar, skResult, skTemp}
-
 proc isLocalSym(sym: PSym): bool {.inline.} =
-  sym.kindImpl in skLocalSymKinds or
-    (sym.kindImpl in {skVar, skLet} and {sfGlobal, sfThread} * sym.flagsImpl == {} and
-     (sym.ownerFieldImpl == nil or sym.ownerFieldImpl.kindImpl != skModule))
+  ## Every symbol is emitted as a *global* (module-suffixed) name so that its
+  ## `sdef` gets an index entry and is resolvable by index lookup even when
+  ## referenced from a different index entry than the one that physically
+  ## contains the definition. This matters for symbols shared across entries:
+  ## generic params of a forward declaration vs its implementation, and proc-type
+  ## params shared between an enclosing proc and a nested object's proc-type
+  ## field. The per-module `disamb` counter keeps `name.disamb.module` unique, so
+  ## globalising cannot cause clashes. This trades index size for correctness;
+  ## size/speed can be optimised later.
+  false
+
+const
+  PkgMarker = "`pkg"
+    ## Appended to the ident of `skPackage` symbols in NIF names. A package sym
+    ## has no module of its own: it is written once into every module NIF that
+    ## references it, named with that module's suffix and its own (independent)
+    ## disamb counter. Without the marker it can collide with a module-level
+    ## symbol of the same name and disamb — e.g. extccomp's `compiler` template
+    ## vs the `compiler` package — and the module sym's owner then resolves to
+    ## the wrong symbol on load, producing a cyclic owner chain that hangs every
+    ## owner-walk (sighashes.hashSym etc.). Backtick cannot appear in a Nim
+    ## identifier, mirroring the "`t" namespace used by `typeToNifSym`.
 
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
   ## global names are `ident.disamb.moduleSuffix`
+  assert not sym.itemId.isBackendMinted
   result = sym.name.s
+  if sym.kindImpl == skPackage:
+    result.add PkgMarker
   result.add '.'
   result.addInt sym.disamb
   if not isLocalSym(sym) and sym.itemId notin w.locals:
@@ -183,8 +217,11 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     result.add modname(module, w.infos.config)
 
 
-proc globalName(sym: PSym; config: ConfigRef): string =
+proc globalName*(sym: PSym; config: ConfigRef): string =
   result = sym.name.s
+  if sym.kindImpl == skPackage:
+    # stubs store the clean name; the NIF index is keyed by the marked one
+    result.add PkgMarker
   result.add '.'
   result.addInt sym.disamb
   result.add '.'
@@ -220,6 +257,18 @@ proc parseSymName*(s: string): ParsedSymName =
         return ParsedSymName(name: substr(s, 0, b-1), module: substr(s, i+1, mend), count: count)
     dec i
   return ParsedSymName(name: s, module: "")
+
+proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
+  ## The user-visible name of a symbol stub must NOT keep NIF-only name
+  ## decorations: the `PkgMarker` of package symbols would otherwise leak into
+  ## every reader of `name.s` that runs before the stub is fully loaded
+  ## (e.g. vmgen's callback keys built from owner chains). The marker also
+  ## tells us the symbol kind up front, which `globalName` uses to rebuild
+  ## the marked NIF name for the index lookup.
+  if rawName.endsWith(PkgMarker):
+    (skPackage, cache.getIdent(rawName[0 ..< rawName.len - PkgMarker.len]))
+  else:
+    (skStub, cache.getIdent(rawName))
 
 template buildTree(dest: var TokenBuf; tag: TagId; body: untyped) =
   dest.addParLe tag
@@ -262,6 +311,15 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
     dest.addIntLit typ.alignImpl
     dest.addIntLit typ.paddingAtEndImpl
     dest.addIntLit typ.itemId.item  # nonUniqueId
+    # `exactReplica` keeps the canonical type's itemId (binding-table key)
+    # while minting a fresh uniqueId (the NIF name): when the two halves
+    # name different modules, the loader cannot reconstruct itemId.module
+    # from the type's name — serialize it explicitly
+    if typ.itemId.module != typ.uniqueId.module and
+        not typ.itemId.isBackendMinted:
+      dest.addStrLit modname(typ.itemId.module, w.infos.config)
+    else:
+      dest.addDotToken
 
     writeType(w, dest, typ.typeInstImpl)
     #if typ.kind in {tyProc, tyIterator} and typ.nImpl != nil and typ.nImpl.kind != nkFormalParams:
@@ -281,7 +339,14 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
 proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   if typ == nil:
     dest.addDotToken()
-  elif typ.itemId.module == w.currentModule and typ.state == Complete:
+  elif typ.uniqueId.module == w.currentModule and typ.state == Complete:
+    # Ownership for serialization is decided by `uniqueId`, not `itemId`: the NIF
+    # name (`typeToNifSym`) and the loader (`createTypeStub`) both key off
+    # `uniqueId`, so the module that *created* the type (uniqueId.module) must be
+    # the one that emits its definition. `itemId.module` can be reassigned and
+    # diverge from `uniqueId.module`; gating on it filed the def in the wrong
+    # module (or nowhere), leaving dangling references (e.g. `symbol has no
+    # offset` for a `pointer` type whose itemId.module drifted away).
     typ.state = Sealed
     writeTypeDef(w, dest, typ)
   else:
@@ -301,28 +366,19 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
       dest.addStrLit lib.name
       writeNode w, dest, lib.path
 
-proc collectGenericParams(w: var Writer; n: PNode) =
-  ## Pre-collect generic param symbols into w.locals before writing the type.
-  ## This ensures generic params get consistent short names, and their sdefs
-  ## are written in the type (where lazy loading can find them).
-  if n == nil: return
-  case n.kind
-  of nkSym:
-    if n.sym != nil and w.inProc > 0:
-      w.locals.incl(n.sym.itemId)
-  of nkIdentDefs, nkVarTuple:
-    for i in 0 ..< max(0, n.len - 2):
-      collectGenericParams(w, n[i])
-  of nkGenericParams:
-    for child in n:
-      collectGenericParams(w, child)
-  else:
-    discard
-
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   dest.addParLe sdefTag, trLineInfo(w, sym.infoImpl)
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
-  if {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
+  # The `x` marker means "importable as a bare identifier into an importer's
+  # scope". Object fields carry `sfExported` (so they are visible via `obj.field`
+  # across modules) but must NOT become bare-importable: otherwise an exported
+  # field name (e.g. `HSlice.a`, whose type is a generic param `T`) leaks into
+  # module scope and a template's open/mixin symbol of the same name resolves to
+  # the field instead of a local, producing "type mismatch: got 'T'". Fields are
+  # still indexed (for `obj.field` resolution via the loaded object type); they
+  # are merely not advertised as importable. `skEnumField` stays importable —
+  # enum values are legitimately usable as bare identifiers.
+  if sym.kindImpl != skField and {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
     dest.addIdent "x"
   else:
     dest.addDotToken
@@ -353,14 +409,12 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
 
   writeLib(w, dest, sym.annexImpl)
 
-  # For routine symbols, pre-collect generic params into w.locals before writing
-  # the type. This ensures they get consistent short names, and their sdefs are
-  # written in the type where lazy loading can find them via extractLocalSymsFromTree.
-  if sym.kindImpl in routineKinds and sym.astImpl != nil and sym.astImpl.len > genericParamsPos:
-    inc w.inProc
-    collectGenericParams(w, sym.astImpl[genericParamsPos])
-    dec w.inProc
-
+  # Generic params are written as *global* symbols (with a module suffix) so that
+  # they get their own index entries and can be looked up lazily. This matters for
+  # generic routines that have a separate forward declaration and implementation:
+  # the two share the same generic param symbols, but each is serialized as its own
+  # index entry. If the params were local, a reference from the implementation's
+  # entry could not resolve the sdef emitted in the forward declaration's entry.
   writeType(w, dest, sym.typImpl)
   writeSym(w, dest, sym.ownerFieldImpl)
   # Store the AST for routine symbols and constants
@@ -403,11 +457,24 @@ proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
 proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
-  elif shouldWriteSymDef(w, sym):
+    return
+  # Compare lazy-aware, not the raw field: a sym node loaded from a NIF carries
+  # `typField == nil` plus `nfLazyType`, meaning "my type is the symbol's
+  # type". Comparing `typField` directly would re-serialize such a node as
+  # `(ht . sym)` — an explicitly nil node type — and the next loader gets a
+  # nil-typed node *without* the lazy fallback (semfold & friends crash on
+  # `n.typ == nil`). Only a genuinely nil node type keeps the explicit form.
+  # (ast.nim's `typ` accessor is not importable here; replicate its fallback.
+  # For a still-Partial sym `typImpl` is nil, which also compares equal below
+  # and yields the plain SymUse form — exactly the lazy round-trip we want.)
+  var nodeTyp = n.typField
+  if nodeTyp == nil and nfLazyType in n.flags:
+    nodeTyp = sym.typImpl
+  if shouldWriteSymDef(w, sym):
     sym.state = Sealed
-    if n.typField != n.sym.typImpl:
+    if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
-        writeType(w, dest, n.typField)
+        writeType(w, dest, nodeTyp)
         writeSymDef(w, dest, sym)
     else:
       writeSymDef(w, dest, sym)
@@ -415,9 +482,9 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     # NIF has direct support for symbol references so we don't need to use a tag here,
     # unlike what we do for types!
     let info = trLineInfo(w, n.info)
-    if n.typField != n.sym.typImpl:
+    if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, info:
-        writeType(w, dest, n.typField)
+        writeType(w, dest, nodeTyp)
         dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
     else:
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
@@ -433,9 +500,10 @@ template withNode(w: var Writer; dest: var TokenBuf; n: PNode; body: untyped) =
   dest.addParRi
 
 proc addLocalSym(w: var Writer; n: PNode) =
-  ## Add symbol from a node to locals set if it's a symbol node
-  if n != nil and n.kind == nkSym and n.sym != nil and w.inProc > 0:
-    w.locals.incl(n.sym.itemId)
+  ## Previously forced proc-local symbols to be written without a module suffix.
+  ## All symbols are now emitted as global (see `isLocalSym`), so `w.locals` is
+  ## intentionally left empty.
+  discard
 
 proc addLocalSyms(w: var Writer; n: PNode) =
   case n.kind
@@ -467,12 +535,14 @@ proc moduleSuffix(conf: ConfigRef; f: FileIndex): string =
 
 proc trImport(w: var Writer; n: PNode) =
   for child in n:
-    if child.kind == nkSym:
+    if child.kind == nkSym and child.sym.kindImpl == skModule:
+      # a non-module sym appears for an `import v` inside an unexpanded
+      # template body (e.g. stew/importops' `when compiles((; import v))`):
+      # not a dependency edge, the import resolves at the expansion site
       w.deps.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
       w.deps.addDotToken # flags
       w.deps.addDotToken # type
       let s = child.sym
-      assert s.kindImpl == skModule
       let fp = moduleSuffix(w.infos.config, s.positionImpl.FileIndex)
       w.deps.addStrLit fp  # raw string literal, no wrapper needed
       w.deps.addParRi
@@ -495,21 +565,51 @@ proc trExport(w: var Writer; n: PNode) =
         w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(s)), NoLineInfo
   w.deps.addParRi
 
-let replayTag = registerTag("replay")
-let repConverterTag = registerTag("repconverter")
-let repDestroyTag = registerTag("repdestroy")
-let repWasMovedTag = registerTag("repwasmoved")
-let repCopyTag = registerTag("repcopy")
-let repSinkTag = registerTag("repsink")
-let repDupTag = registerTag("repdup")
-let repTraceTag = registerTag("reptrace")
-let repDeepCopyTag = registerTag("repdeepcopy")
-let repEnumToStrTag = registerTag("repenumtostr")
-let repMethodTag = registerTag("repmethod")
-#let repClassTag = registerTag("repclass")
-let includeTag = registerTag("include")
-let importTag = registerTag("import")
-let implTag = registerTag("implementation")
+var replayTag = registerTag("replay")
+var repConverterTag = registerTag("repconverter")
+var repDestroyTag = registerTag("repdestroy")
+var repWasMovedTag = registerTag("repwasmoved")
+var repCopyTag = registerTag("repcopy")
+var repSinkTag = registerTag("repsink")
+var repDupTag = registerTag("repdup")
+var repTraceTag = registerTag("reptrace")
+var repDeepCopyTag = registerTag("repdeepcopy")
+var repEnumToStrTag = registerTag("repenumtostr")
+var repMethodTag = registerTag("repmethod")
+#var repClassTag = registerTag("repclass")
+var includeTag = registerTag("include")
+var importTag = registerTag("import")
+var implTag = registerTag("implementation")
+var reexpModTag = registerTag("reexpmod")
+
+proc registerNifAstTags*() =
+  ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
+  ## initializers above depend on `nifstreams.pool` having been initialized
+  ## FIRST (`pool = createLiterals(TagData)` in nifstreams' module init) — an
+  ## inter-module init-order requirement. The IC-built compiler currently emits
+  ## module init calls in a different order, so the initializers registered
+  ## into a pool that was subsequently replaced: the tag ids then denoted
+  ## builtin tags (`replay` came out as `deref`, `repdestroy` as `pat`, ...)
+  ## and every written NIF was silently corrupted. Called from `nim.nim`
+  ## before any command runs; idempotent (`getOrIncl` by name).
+  sdefTag = registerTag(symDefTagName)
+  tdefTag = registerTag(typeDefTagName)
+  hiddenTypeTag = registerTag(hiddenTypeTagName)
+  replayTag = registerTag("replay")
+  repConverterTag = registerTag("repconverter")
+  repDestroyTag = registerTag("repdestroy")
+  repWasMovedTag = registerTag("repwasmoved")
+  repCopyTag = registerTag("repcopy")
+  repSinkTag = registerTag("repsink")
+  repDupTag = registerTag("repdup")
+  repTraceTag = registerTag("reptrace")
+  repDeepCopyTag = registerTag("repdeepcopy")
+  repEnumToStrTag = registerTag("repenumtostr")
+  repMethodTag = registerTag("repmethod")
+  includeTag = registerTag("include")
+  importTag = registerTag("import")
+  implTag = registerTag("implementation")
+  reexpModTag = registerTag("reexpmod")
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
   if n == nil:
@@ -589,13 +689,28 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
         if n[namePos].kind == nkSym:
           ast = n[namePos].sym.astImpl
           if ast == nil: ast = n
-          else: skipParams = true
+          else:
+            # params can only be recovered from `sym.typ.n` if the routine
+            # was actually semchecked. A routine nested in a TEMPLATE body
+            # (e.g. faststreams' `proc consumer(bytesVar: openArray[byte])
+            # {.gensym.}` inside `consumeOutputs`) has a sym but a nil type —
+            # its params exist only in the AST; dropping them broke the
+            # template-param substitution at expansion ("undeclared
+            # identifier" for the injected name).
+            skipParams = n[namePos].sym.typImpl != nil
         w.withNode dest, ast:
           for i in 0 ..< ast.len:
             if i == paramsPos and skipParams:
-              # Parameter are redundant with s.typ.n and even dangerous as for generic instances
-              # we do not adapt the symbols properly
-              addDotToken(dest)
+              # Parameters are redundant with s.typ.n (and re-emitting their syms
+              # is dangerous for generic instances — we do not adapt the symbols
+              # properly). Emit an `nkEmpty` placeholder rather than a dot token:
+              # a dot loads back as a `nil` son, but ast children must be real
+              # nodes — the loaded routine ast is walked by passes (lambdalifting,
+              # liftdestructors, transf) that dereference `ast[paramsPos]`, and
+              # `nkEmpty` is the canonical empty slot. The actual params are
+              # recovered from `sym.typ.n` where needed.
+              dest.addParLe pool.tags.getOrIncl(toNifTag(nkEmpty)), NoLineInfo
+              dest.addParRi
             else:
               writeNode(w, dest, ast[i], forAst)
         dec w.inProc
@@ -697,7 +812,10 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
     content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
     content.addParRi()
   of MethodEntry:
-    discard "to implement"
+    content.addParLe repMethodTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
   of EnumToStrEntry:
     content.addParLe repEnumToStrTag, NoLineInfo
     content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
@@ -706,9 +824,385 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
   of GenericInstEntry:
     discard "will only be written later to ensure it is materialized"
 
+# --------------------------- Interface cookie ---------------------------
+#
+# Port of Nimony's `processForChecksum` (dist/nimony/src/lib/nifindexes.nim):
+# ONE checksum per module over the importer-visible surface, stored in a tiny
+# `<suffix>.iface.nif` sidecar written OnlyIfChanged. deps.nim points the
+# dependents' `nim_m` build edges at the sidecar instead of the bulky semmed
+# NIF, so nifmake's mtime pruning stops the m-step cascade at the first
+# module whose interface did not change.
+#
+# Hashed (importer-visible surface):
+# - import/include/export entries, `(replay ...)` macro-cache actions and the
+#   rep* hook/converter/enumtostr registrations (all eagerly consumed by every
+#   importer's sem via processTopLevel/loadTransitiveHooks).
+# - every EXPORTED `(sd ...)`: full content for consts/types/vars/lets; for
+#   EVERY routine kind (plain procs, templates, macros, iterators, generics,
+#   `inline` procs alike) only the SIGNATURE — the body is skipped. A routine
+#   body is invisible to a dependent's SEM unless the dependent expands /
+#   instantiates / VM-runs it, and each of those records a NeedsImpl (strong)
+#   edge gating the dependent on this module's IMPL cookie instead (see
+#   `cookieSd`). This keeps the iface cookie body-insensitive, so a body edit
+#   re-sems only the modules that actually consumed that body — not every
+#   importer (the old model folded inline-semantics bodies into the iface
+#   cookie, re-semming all importers on any such body edit).
+# - nothing else: private defs and top-level init code are invisible to
+#   importers' sem (their effects on dependents' CODEGEN — and the codegen
+#   effect of inline iterator/proc body edits — are covered by the nifc
+#   backend's transitive NIF-mtime invalidation, which is unchanged).
+#
+# Token-content hashing only — line infos never enter the hash. Names DEFINED
+# inside a hashed (sd) (params, locals, the embedded `(td `tK.item.mod)` defs)
+# are replaced by per-sd ordinals and module-local `tK.item references are
+# replaced by their structural td hash: both carry process-local mint counters
+# that shift file-wide when an unrelated body creates a new type (measured:
+# a single new instantiation renumbered every later signature), while
+# dependents never reference them by name (verified over a full compiler
+# cache: cross-module refs hit only top-level routine names).
+#
+# The cookie finally mixes in the DIRECT dependencies' sidecar contents
+# ("hash chaining"): an interface change then propagates transitively
+# level-by-level even when an intermediate module's own surface is unchanged
+# (its sem still consumed the dep's surface, e.g. via the transitive hook
+# replay). Chaining also guarantees a fired rule refreshes its sidecar mtime,
+# which nifmake's max-output `needsRebuild` needs to not re-fire forever.
+#
+# The IMPL cookie (`<suffix>.impl.nif`) complements it: a line-info-free hash
+# of the module's ENTIRE content with the iface cookie mixed in. Dependents
+# that consumed this module's bodies at compile time (recorded in the
+# `.edges.nif` sidecar; see `ModuleGraph.icImplDeps`) are gated on it instead.
+
+type
+  CookieCtx = object
+    selfSuffix: string
+    tdRanges: Table[SymId, int]    # td sym -> start of its first (td ...) tree
+    memo: Table[SymId, string]     # td sym -> structural digest
+    expanding: HashSet[SymId]      # cycle guard for recursive td expansion
+    depSuffixes: seq[string]       # module suffixes of the direct imports
+
+proc nextTree(buf: TokenBuf; i: int): int =
+  ## Index just past the atom or balanced subtree starting at `i`.
+  result = i+1
+  if buf[i].kind != ParLe: return
+  var nested = 0
+  var j = i
+  while j < buf.len:
+    case buf[j].kind
+    of ParLe: inc nested
+    of ParRi:
+      dec nested
+      if nested == 0: return j+1
+    else: discard
+    inc j
+  result = buf.len
+
+proc updateAtom(s: var Sha1State; t: PackedToken) =
+  # mirrors nimony's nifchecksums.update: token content only, no line infos
+  case t.kind
+  of ParLe:
+    s.update "("
+    s.update pool.tags[t.tagId]
+  of ParRi: s.update ")"
+  of Ident:
+    s.update " "
+    s.update pool.strings[t.litId]
+  of StringLit:
+    s.update " \""
+    s.update pool.strings[t.litId]
+  of IntLit:
+    s.update " "
+    s.update $pool.integers[t.intId]
+  of UIntLit:
+    s.update " "
+    s.update $pool.uintegers[t.uintId]
+  of FloatLit:
+    # hash the bit pattern, not a formatted float (no formatting variance)
+    s.update " f"
+    s.update $cast[uint64](pool.floats[t.floatId])
+  of CharLit:
+    s.update " c"
+    s.update $t.uoperand
+  of DotToken: s.update "."
+  of UnknownToken: s.update "?"
+  of EofToken: s.update "!"
+  of Symbol, SymbolDef: discard "handled by hashRegion"
+
+proc isModuleLocalName(c: CookieCtx; name: string): bool =
+  let sn = parseSymName(name)
+  result = sn.module.len == 0 or sn.module == c.selfSuffix
+
+proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
+                start, theEnd: int; skipFrom = -1; skipTo = -1;
+                keepFirstDefLiteral = false)
+
+proc expandTd(c: var CookieCtx; buf: TokenBuf; name: SymId): string =
+  ## Structural digest of a module-local type def: hashes the `(td ...)` tree
+  ## instead of the volatile `tK.item counter name. Memoized; cycles fall back
+  ## to the literal name (sound — at worst a spurious cookie change).
+  if c.memo.hasKey(name): return c.memo[name]
+  if not c.tdRanges.hasKey(name) or c.expanding.contains(name):
+    return pool.syms[name]
+  c.expanding.incl name
+  let start = c.tdRanges[name]
+  var sub = newSha1State()
+  hashRegion(sub, c, buf, start, nextTree(buf, start))
+  result = "&" & $SecureHash(sub.finalize())
+  c.expanding.excl name
+  c.memo[name] = result
+
+proc hashRegion(s: var Sha1State; c: var CookieCtx; buf: TokenBuf;
+                start, theEnd: int; skipFrom = -1; skipTo = -1;
+                keepFirstDefLiteral = false) =
+  # pass 1: assign ordinals to every symbol DEFINED in the hashed region
+  # (params, locals, embedded type defs). The region's own top-level name
+  # (first SymbolDef) stays literal when requested — it is what importers
+  # reference.
+  var ords = initTable[SymId, int]()
+  var first = keepFirstDefLiteral
+  var i = start
+  while i < theEnd:
+    if i == skipFrom:
+      i = skipTo
+      continue
+    if buf[i].kind == SymbolDef:
+      let sym = buf[i].symId
+      if first:
+        first = false
+      elif isModuleLocalName(c, pool.syms[sym]) and not ords.hasKey(sym):
+        ords[sym] = ords.len
+    inc i
+  # pass 2: hash
+  first = keepFirstDefLiteral
+  i = start
+  while i < theEnd:
+    if i == skipFrom:
+      i = skipTo
+      continue
+    let t = buf[i]
+    if t.kind in {Symbol, SymbolDef}:
+      let sym = t.symId
+      let name = pool.syms[sym]
+      s.update(if t.kind == SymbolDef: " :" else: " ")
+      if t.kind == SymbolDef and first:
+        first = false
+        s.update name
+      elif ords.hasKey(sym):
+        s.update "%"
+        s.update $ords[sym]
+      elif name.startsWith("`t") and isModuleLocalName(c, name):
+        s.update expandTd(c, buf, sym)
+      else:
+        s.update name
+    else:
+      updateAtom s, t
+    inc i
+
+proc cookieSd(s: var Sha1State; c: var CookieCtx; buf: TokenBuf; start: int): int =
+  ## Contributes one `(sd ...)` subtree to the cookie; returns the index past it.
+  result = nextTree(buf, start)
+  if buf[start+1].kind != SymbolDef: return
+  let marker = buf[start+2]
+  if not (marker.kind == Ident and pool.strings[marker.litId] == "x"):
+    return # not importable -> invisible to dependents' sem (nimony parity)
+  # field layout, see writeSymDef: kind magic flags options offset position
+  # annex type owner ast loc constraint instantiatedFrom
+  var fields: array[13, int] = default(array[13, int])
+  var i = start + 3
+  for f in 0 ..< 13:
+    fields[f] = i
+    i = nextTree(buf, i)
+  var kind = skUnknown
+  {.cast(uncheckedAssign).}:
+    kind = parse(TSymKind, pool.tags[buf[fields[0]].tagId])
+  var skipFrom = -1
+  var skipTo = -1
+  if kind in routineKinds:
+    # Routines contribute their SIGNATURE only to the iface cookie. A routine
+    # body is invisible to a dependent's SEM unless the dependent expands,
+    # instantiates, or VM-runs it — and each of those records a NeedsImpl
+    # (strong) edge that gates the dependent on this module's IMPL cookie
+    # instead (templates -> semTemplateExpr, generics -> generateInstance,
+    # macros/compile-time procs -> the VM's genProc, getImpl -> opcGetImpl).
+    # Inline iterators and `inline`-callconv procs are inlined at codegen; the
+    # nifc backend's transitive NIF-mtime invalidation re-codegens their users.
+    # So no routine body needs to live in the iface cookie.
+    let ast = fields[9]
+    if buf[ast].kind == ParLe:
+      # skip son `bodyPos` (6) of the routine ast tree; NOT the last element —
+      # sem appends the result sym at `resultPos` (7) after the body.
+      let astEnd = nextTree(buf, ast)
+      var p = ast + 1 # the flags atom
+      var ok = true
+      for _ in 0 ..< 2 + bodyPos: # flags, type, sons 0..5
+        p = nextTree(buf, p)
+        if p >= astEnd - 1:
+          ok = false
+          break
+      if ok:
+        skipFrom = p
+        skipTo = nextTree(buf, p)
+  # non-routine kinds (consts carry their value, types their structure incl.
+  # default field values): hash everything.
+  hashRegion(s, c, buf, start, result, skipFrom, skipTo, keepFirstDefLiteral = true)
+
+proc scanStmtsForCookie(s: var Sha1State; c: var CookieCtx; buf: TokenBuf) =
+  ## Walks the whole written module, hashing only the importer-visible pieces;
+  ## unknown structure is descended into (var/let/type section wrappers,
+  ## top-level code) but contributes nothing itself — nimony-style.
+  let exportTag = pool.tags.getOrIncl(toNifTag(nkExportStmt))
+  let exportExceptTag = pool.tags.getOrIncl(toNifTag(nkExportExceptStmt))
+  var i = 0
+  while i < buf.len:
+    let t = buf[i]
+    if t.kind == ParLe:
+      let tid = t.tagId
+      if tid == sdefTag:
+        i = cookieSd(s, c, buf, i)
+      elif tid == implTag:
+        i = nextTree(buf, i)
+      elif tid == replayTag or tid == repConverterTag or tid == repDestroyTag or
+           tid == repWasMovedTag or tid == repCopyTag or tid == repSinkTag or
+           tid == repDupTag or tid == repTraceTag or tid == repDeepCopyTag or
+           tid == repEnumToStrTag or tid == repMethodTag or
+           tid == exportTag or tid == exportExceptTag or tid == includeTag:
+        let e = nextTree(buf, i)
+        hashRegion(s, c, buf, i, e)
+        i = e
+      elif tid == importTag:
+        let e = nextTree(buf, i)
+        hashRegion(s, c, buf, i, e)
+        for j in i ..< e:
+          if buf[j].kind == StringLit:
+            let suffix = pool.strings[buf[j].litId]
+            if suffix notin c.depSuffixes: c.depSuffixes.add suffix
+        i = e
+      else:
+        inc i # descend without hashing
+    else:
+      inc i
+
+proc icGroupSuffixes(config: ConfigRef): HashSet[string] =
+  ## Module suffixes of the --icGroup cycle members compiled by this very
+  ## process (their sidecars are being produced concurrently, so neither
+  ## chaining nor edge recording may depend on them).
+  result = initHashSet[string]()
+  for p in config.icGroup:
+    result.incl cachedModuleSuffix(config, fileInfoIdx(config, AbsoluteFile p))
+
+proc writeCookieFile(config: ConfigRef; selfSuffix, tag, hex, ext: string) =
+  var dest = createTokenBuf(4)
+  dest.addParLe pool.tags.getOrIncl(tag), NoLineInfo
+  dest.addStrLit hex
+  dest.addParRi
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ext).string
+  writeFile(dest, path, OnlyIfChanged)
+
+proc writeIfaceCookie(config: ConfigRef; thisModule: int32; buf: TokenBuf): string =
+  let selfSuffix = modname(thisModule, config)
+  var c = CookieCtx(selfSuffix: selfSuffix)
+  # pre-pass: first (td ...) occurrence per type name, wherever it is embedded
+  var i = 0
+  while i < buf.len:
+    if buf[i].kind == ParLe and buf[i].tagId == tdefTag and i+1 < buf.len and
+       buf[i+1].kind == SymbolDef:
+      let nm = buf[i+1].symId
+      if not c.tdRanges.hasKey(nm): c.tdRanges[nm] = i
+    inc i
+  var s = newSha1State()
+  scanStmtsForCookie(s, c, buf)
+  # chain the direct deps' cookies; co-members of an --icGroup cycle are
+  # excluded (their sidecars are being produced by this very rule — chaining
+  # them would make the hash depend on within-group write order).
+  let groupSuffixes = icGroupSuffixes(config)
+  for dep in c.depSuffixes:
+    if dep == selfSuffix or dep in groupSuffixes: continue
+    let depIface = toGeneratedFile(config, AbsoluteFile(dep), ".iface.nif").string
+    s.update "|"
+    s.update dep
+    s.update ":"
+    s.update(try: readFile(depIface) except IOError, OSError: "")
+  result = $SecureHash(s.finalize())
+  writeCookieFile(config, selfSuffix, "iface", result, ".iface.nif")
+
+proc writeImplCookie(config: ConfigRef; thisModule: int32; buf: TokenBuf;
+                     ifaceHex: string) =
+  ## The implementation cookie: a line-info-free hash of the module's ENTIRE
+  ## serialized content (private defs and routine bodies included), with the
+  ## module's own iface cookie mixed in so impl sensitivity is a strict
+  ## superset of iface sensitivity (incl. the chained dep ifaces — a NeedsImpl
+  ## edge REPLACES the iface edge, it must not lose its triggers). Dependents
+  ## that consumed this module's bodies at compile time are gated on this file
+  ## instead of the iface cookie. Comment-only edits move neither cookie.
+  ## No id normalization here: a counter shift implies some real content
+  ## change elsewhere in the module, which flips the hash anyway — and any
+  ## body change is exactly what NeedsImpl dependents must see.
+  let selfSuffix = modname(thisModule, config)
+  var s = newSha1State()
+  for i in 0 ..< buf.len:
+    let t = buf[i]
+    if t.kind in {Symbol, SymbolDef}:
+      s.update(if t.kind == SymbolDef: " :" else: " ")
+      s.update pool.syms[t.symId]
+    else:
+      updateAtom s, t
+  s.update "|iface:"
+  s.update ifaceHex
+  writeCookieFile(config, selfSuffix, "impl", $SecureHash(s.finalize()), ".impl.nif")
+
+proc writeEdgesFile(config: ConfigRef; thisModule: int32; implDeps: seq[int]) =
+  ## Records which modules' bodies this compilation consumed at compile time
+  ## (`ModuleGraph.icImplDeps`): the NeedsImpl edge set. deps.nim reads this
+  ## sidecar when regenerating the build file and gates this module on those
+  ## dependencies' IMPL cookies instead of their iface cookies.
+  let selfSuffix = modname(thisModule, config)
+  let groupSuffixes = icGroupSuffixes(config)
+  var suffixes: seq[string] = @[]
+  for id in implDeps:
+    if id == thisModule.int: continue
+    let suffix = cachedModuleSuffix(config, FileIndex id)
+    if suffix.len == 0 or suffix == selfSuffix or suffix in groupSuffixes:
+      continue
+    if suffix notin suffixes: suffixes.add suffix
+  sort suffixes
+  var dest = createTokenBuf(4 + 2*suffixes.len)
+  dest.addParLe pool.tags.getOrIncl("edges"), NoLineInfo
+  for suffix in suffixes:
+    dest.addStrLit suffix
+  dest.addParRi
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".edges.nif").string
+  # Deliberately ALWAYS written (unlike every other output of the nim_m rule):
+  # nothing gates on this file's mtime — deps.nim only reads its content — so
+  # it doubles as the rule's freshness stamp. nifmake's `needsRebuild` takes
+  # the freshest output as proof of "ran since the inputs changed"; without an
+  # always-written output a rule whose re-run produces only content-identical
+  # (mtime-preserved) files would re-fire on every warm build (e.g. after an
+  # edit was reverted). Nimony's analog is its always-written `.s.nif`.
+  writeFile(dest, path)
+
+proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]) =
+  ## The module's REAL direct imports as `nim m` sem resolved them — static
+  ## plus any a macro generated — recorded as full source paths. `nim ic` reads
+  ## this `.s.deps.nif` to re-derive the build graph: imports the static scanner
+  ## missed become new nodes (replacing the old build-failure discovery loop),
+  ## and `when false` imports the scanner over-included are pruned. Always
+  ## written so it is current after every successful sem (like `.edges`).
+  let selfSuffix = modname(thisModule, config)
+  var paths = importPaths
+  sort paths
+  var dest = createTokenBuf(4 + 2*paths.len)
+  dest.addParLe pool.tags.getOrIncl("semdeps"), NoLineInfo
+  for p in paths:
+    dest.addStrLit p
+  dest.addParRi
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.deps.nif").string
+  writeFile(dest, path)
+
 proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      opsLog: seq[LogEntry];
-                     replayActions: seq[PNode] = @[]) =
+                     replayActions: seq[PNode] = @[];
+                     implDeps: seq[int] = @[];
+                     reexportedModules: seq[(string, string)] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
 
@@ -728,6 +1222,17 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   var bottom = createTokenBuf(300)
   w.writeToplevelNode content, bottom, n
+
+  # Re-exported MODULES (`import x; export x`): semExport puts only x's
+  # member syms into the nkExportStmt; the module sym itself reaches the
+  # exporter's interface via `reexportSym` and acts as a QUALIFIER there
+  # (`asmm.x86.nd`). Serialize (name, suffix) pairs so the loader can
+  # rebuild that part of the interface.
+  for (mname, msuffix) in reexportedModules:
+    w.deps.addParLe reexpModTag, NoLineInfo
+    w.deps.addStrLit mname
+    w.deps.addStrLit msuffix
+    w.deps.addParRi
 
   # the implTag is used to tell the loader that the
   # bottom of the file is the implementation of the module:
@@ -758,7 +1263,15 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   dest.addParRi()
 
-  writeFile(dest, d)
+  # OnlyIfChanged keeps the mtime of content-identical rewrites: nifmake's
+  # mtime-based `needsRebuild` then prunes the rebuild cascade level by
+  # level, and the nifc backend can trust "semmed NIF older than the cnif
+  # artifact" as an honest per-module unchanged stamp.
+  writeFile(dest, d, OnlyIfChanged)
+  if not isDefined(config, "icNoIfaceGate"):
+    let ifaceHex = writeIfaceCookie(config, thisModule, dest)
+    writeImplCookie(config, thisModule, dest, ifaceHex)
+    writeEdgesFile(config, thisModule, implDeps)
 
 # --------------------------- Loader (lazy!) -----------------------------------------------
 
@@ -819,6 +1332,8 @@ type
     symCounter: int32
     index: Table[string, NifIndexEntry]  # Simple embedded index for offsets
     suffix: string
+    contentStart: int  # stream offset of the module body, so a full-AST load can
+                       # rewind after lazy symbol loads moved the cursor
 
   DecodeContext* = object
     infos: LineInfoWriter
@@ -827,10 +1342,31 @@ type
     syms: Table[string, (PSym, NifIndexEntry)]
     mods: Table[FileIndex, NifModule]
     cache: IdentCache
+    mainModuleSuffix: string
+      ## Mangled module name of the module being compiled fresh (cmdM). Symbols
+      ## belonging to it that are re-exported by a dependency must NOT be loaded
+      ## as stubs, otherwise they collide with the freshly compiled originals.
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
   result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+
+proc setMainModule*(c: var DecodeContext; fileIdx: FileIndex) =
+  ## Records the module that is being compiled fresh so that re-exports of its
+  ## own symbols by dependencies are not turned into duplicate stubs.
+  c.mainModuleSuffix = modname(fileIdx.int, c.infos.config)
+
+proc getMainModuleSuffix*(c: DecodeContext): string {.inline.} =
+  c.mainModuleSuffix
+
+proc loadedState(c: DecodeContext): ItemState {.inline.} =
+  ## State to give a freshly loaded symbol or type. During the C code generation
+  ## phase (`nim nifc`) the backend (lambda lifting, the transformer, etc.)
+  ## legitimately mutates the loaded entities and never writes them back to a NIF,
+  ## so they must be mutable (`Complete`). During semantic checking (`nim m`) a
+  ## loaded entity belongs to an already-compiled dependency and must stay
+  ## `Sealed` so accidental mutations are caught.
+  if c.infos.config.cmd == cmdNifC: Complete else: Sealed
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
@@ -895,7 +1431,10 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
         "whose NIF file hasn't been written yet."
     var stream = nifstreams.open(modFile)
     let index = readEmbeddedIndex(stream)
-    c.mods[result] = NifModule(stream: stream, index: index, suffix: suffix)
+    # `readEmbeddedIndex` leaves the cursor at the start of the module body.
+    let contentStart = offset(stream.r)
+    c.mods[result] = NifModule(stream: stream, index: index, suffix: suffix,
+                               contentStart: contentStart)
 
 proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifIndexEntry =
   let ii = addr c.mods[module].index
@@ -920,14 +1459,17 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
       k = k * 10 + name[i].ord - ord('0')
       inc i
     if i < name.len and name[i] == '.': inc i
-    var itemId = 0'i32
+    var itemVal = 0'i32
     while i < name.len and name[i] in {'0'..'9'}:
-      itemId = itemId * 10'i32 + int32(name[i].ord - ord('0'))
+      itemVal = itemVal * 10'i32 + int32(name[i].ord - ord('0'))
       inc i
     if i < name.len and name[i] == '.': inc i
     let suffix = name.substr(i)
-    let id = ItemId(module: moduleId(c, suffix).int32, item: itemId)
-    let offs = c.getOffset(id.module.FileIndex, name)
+    let id = itemId(moduleId(c, suffix).int32, itemVal)
+    let ii = addr c.mods[id.module.FileIndex].index
+    let offs = ii[].getOrDefault(name)
+    if offs.offset == 0:
+      raiseAssert "symbol has no offset: " & name
     result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
     c.types[name] = (result, offs)
 
@@ -955,7 +1497,7 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
           let module = moduleId(c, thisModule)
           let val = addr c.mods[module].symCounter
           inc val[]
-          let id = ItemId(module: module.int32, item: val[])
+          let id = itemId(module.int32, val[])
           let sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                         disamb: sn.count.int32, state: Complete)
           localSyms[symName] = sym
@@ -963,7 +1505,7 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
           # We're currently at the `(sd` position, need to skip to SymbolDef
           inc n  # skip past `sd` tag to get to SymbolDef
           loadSymFromCursor(c, sym, n, thisModule, localSyms)
-          sym.state = Sealed  # mark as fully loaded
+          sym.state = c.loadedState  # mark as fully loaded
           # Continue processing - loadSymFromCursor already advanced n past the closing `)`
           continue
       inc depth
@@ -988,7 +1530,7 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor; localSyms: var Table[stri
     let s = n.firstSon.symId
     result = createTypeStub(c, s)
     if result.state == Partial:
-      result.state = Sealed  # Mark as loaded to prevent loadType from re-loading with empty localSyms
+      result.state = c.loadedState  # Mark as loaded to prevent loadType from re-loading with empty localSyms
       loadTypeFromCursor(c, n, result, localSyms)
     else:
       skip n  # Type already loaded, skip over the td block
@@ -1014,10 +1556,11 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
     let module = moduleId(c, sn.module)
     let val = addr c.mods[module].symCounter
     inc val[]
-    let id = ItemId(module: module.int32, item: val[])
+    let id = itemId(module.int32, val[])
 
     let offs = c.getOffset(module, symAsStr)
-    result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
+    let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
+    result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, offs)
 
 proc loadSymStub(c: var DecodeContext; n: var Cursor; thisModule: string;
@@ -1034,7 +1577,8 @@ proc loadSymStub(c: var DecodeContext; n: var Cursor; thisModule: string;
     skip n
     result = loadSymStub(c, s, thisModule, localSyms)
   else:
-    raiseAssert "sym expected but got " & $n.kind
+    raiseAssert "sym expected but got " & $n.kind & (
+      if n.kind == Ident: " '" & pool.strings[n.litId] & "'" else: "")
 
 proc isStub*(t: PType): bool {.inline.} = t.state == Partial
 proc isStub*(s: PSym): bool {.inline.} = s.state == Partial
@@ -1097,7 +1641,14 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
   loadField t.sizeImpl
   loadField t.alignImpl
   loadField t.paddingAtEndImpl
-  loadField t.itemId.item  # nonUniqueId
+  t.itemId = itemId(t.itemId.module, loadAtom(int32, n))  # nonUniqueId
+  if n.kind == StringLit:
+    # itemId.module differs from uniqueId.module (an `exactReplica` of a
+    # foreign type): restore the canonical module half
+    t.itemId = itemId(int32(moduleId(c, pool.strings[n.litId])), t.itemId.item)
+    inc n
+  elif n.kind == DotToken:
+    inc n
 
   t.typeInstImpl = loadTypeStub(c, n, localSyms)
   t.nImpl = loadNode(c, n, typesModule, localSyms)
@@ -1112,7 +1663,7 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
 
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.state != Partial: return
-  t.state = Sealed
+  t.state = c.loadedState
   var buf = createTokenBuf(30)
   let typeName = typeToNifSym(t, c.infos.config)
   var n = cursorFromIndexEntry(c, t.itemId.module.FileIndex, c.types[typeName][1], buf)
@@ -1159,6 +1710,11 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
     s.kindImpl = parse(TSymKind, pool.tags[n.tagId])
   inc n
 
+  if s.kindImpl == skPackage and s.name.s.endsWith(PkgMarker):
+    # Fallback: stubs are normally created with the clean name already
+    # (see stubKindAndName); strip the NIF-only marker if one slipped through.
+    s.name = c.cache.getIdent(s.name.s[0 ..< s.name.s.len - PkgMarker.len])
+
   case s.kindImpl
   of skLet, skVar, skField, skForVar:
     s.guardImpl = loadSymStub(c, n, thisModule, localSyms)
@@ -1199,7 +1755,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
 
 proc loadSym*(c: var DecodeContext; s: PSym) =
   if s.state != Partial: return
-  s.state = Sealed
+  s.state = c.loadedState
   var buf = createTokenBuf(30)
   let symsModule = s.itemId.module.FileIndex
   let nifname = globalName(s, c.infos.config)
@@ -1285,14 +1841,14 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             let module = moduleId(c, thisModule)
             let val = addr c.mods[module].symCounter
             inc val[]
-            let id = ItemId(module: module.int32, item: val[])
+            let id = itemId(module.int32, val[])
             sym = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name),
                        disamb: sn.count.int32, state: Complete)
             localSyms[symName] = sym  # register for later references
           # Now fully load the symbol from the sdef
           inc n # skip `sd` tag
           loadSymFromCursor(c, sym, n, thisModule, localSyms)
-          sym.state = Sealed  # mark as fully loaded
+          sym.state = c.loadedState  # mark as fully loaded
           result = newSymNode(sym, info)
         else:
           sym = c.loadSymStub(name.symId, thisModule, localSyms)
@@ -1391,8 +1947,9 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
     let val = addr c.mods[symModule].symCounter
     inc val[]
 
-    let id = ItemId(module: symModule.int32, item: val[])
-    result = PSym(itemId: id, kindImpl: skStub, name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
+    let id = itemId(symModule.int32, val[])
+    let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
+    result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, entry)
 
 proc extractBasename(nifName: string): string =
@@ -1428,6 +1985,29 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
   # Move index table back
   c.mods[module].index = move indexTab
 
+proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
+  ## Stubs for every non-type symbol serialized in `module`'s NIF index. The
+  ## per-module backend uses this to emit the routines a module OWNS: procs are
+  ## serialized as `(sd ...)` symbol-defs and loaded lazily, never as
+  ## `nkProcDef` statements in the top-level stmt list, so `genTopLevelStmt`
+  ## alone never reaches them — without this, a routine called only from other
+  ## modules would be emitted by nobody once the demanding module merely
+  ## prototypes it.
+  ##
+  ## Returns lazy stubs: the index table is moved out while iterating (loading a
+  ## symbol can register new modules and invalidate the iterator), so the caller
+  ## forces full load (`.kind`, `.ast`) and filters AFTER this returns, with the
+  ## index back in place.
+  result = @[]
+  if not c.mods.hasKey(module): return
+  var indexTab = move c.mods[module].index
+  let thisModule = c.mods[module].suffix
+  for nifName, entry in indexTab:
+    if nifName.startsWith("`t"): continue  # types are not routines
+    let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
+    if sym != nil: result.add sym
+  c.mods[module].index = move indexTab
+
 proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".nif").string
@@ -1456,7 +2036,7 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
   # Create a stub symbol
   let val = addr c.mods[module].symCounter
   inc val[]
-  let id = ItemId(module: int32(module), item: val[])
+  let id = itemId(int32(module), val[])
   result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(sn.name),
                 disamb: sn.count.int32, state: Partial)
   c.syms[symAsStr] = (result, offs)
@@ -1469,10 +2049,29 @@ proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
 
 proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: FileIndex): PSym =
   ## Tries to resolve a compiler proc from a module by checking the NIF index.
-  ## Returns nil if the symbol doesn't exist.
+  ## Returns nil if the symbol doesn't exist. The NIF disamb is mint order, so
+  ## `name.0.` can be any of the overloads sharing the name — for `newSeq` it
+  ## is the generic magic, not the RTL proc (a refc build then demands codegen
+  ## of the generic and dies on `seq[T]`): enumerate the index entries with
+  ## this basename and pick the one that carries `sfCompilerProc`.
+  result = nil
   let suffix = moduleSuffix(c.infos.config, moduleFileIdx)
-  let symName = name & ".0." & suffix
-  result = resolveSym(c, symName, true)
+  let module = moduleId(c, suffix)
+  let prefix = name & "."
+  var candidates: seq[int] = @[]
+  for key in c.mods[module].index.keys:
+    if key.len > prefix.len and key.startsWith(prefix):
+      let sn = parseSymName(key)
+      if sn.name == name:
+        candidates.add sn.count
+  # the loads below can grow `c.mods` (symbols reference other modules), so
+  # resolve only after the index iteration is done
+  for count in candidates:
+    let sym = resolveSym(c, name & "." & $count & "." & suffix, true)
+    if sym != nil:
+      loadSym(c, sym)
+      if sfCompilerProc in sym.flagsImpl:
+        return sym
 
 proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; s: var Stream; kind: LogEntryKind; op: TTypeAttachedOp; module: int): PackedToken =
   result = next(s)
@@ -1527,6 +2126,8 @@ type
     deps*: seq[ModuleSuffix] # other modules we need to process the top level statements of
     logOps*: seq[LogEntry]
     module*: PSym # set by modulegraphs.nim!
+    reexportedModules*: seq[(string, string)] # (name, suffix) of re-exported MODULE syms;
+                                              # materialized by modulegraphs.nim
 
 proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]; tok: var PackedToken) =
   tok = next(s) # skip `(import`
@@ -1543,6 +2144,25 @@ proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]
     tok = next(s) # skip )
   else:
     raiseAssert "expected ParRi but got " & $tok.kind
+
+proc addReexportedEnumFields(c: var DecodeContext; sym: PSym; interf: var TStrTable) =
+  ## When a non-pure enum type is (re-)exported, its fields must also become
+  ## visible (unqualified) to importers. In a from-source build this happens via
+  ## `rawImportSymbol`'s enum handling when the type is imported; the lazy IC
+  ## importer never runs that, so we materialise the fields into the interface
+  ## here, when the export list is processed.
+  loadSym(c, sym)
+  if sym.kindImpl != skType or sfPure in sym.flagsImpl: return
+  let et = sym.typImpl
+  if et == nil: return
+  loadType(c, et)
+  if et.kind notin {tyEnum, tyBool}: return
+  let fields = et.nImpl
+  if fields == nil: return
+  for i in 0 ..< fields.len:
+    let f = fields[i]
+    if f != nil and f.kind == nkSym and f.sym != nil:
+      strTableAdd(interf, f.sym)
 
 proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
                      interf: var TStrTable; suffix: string; module: int): PrecompiledModule =
@@ -1593,6 +2213,7 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         #elif t.tagId == repClassTag:
         #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace, module)
       elif t.tagId == exportTag:
+        var lastGood = ""
         t = next(s)  # skip (export
         if t.kind == DotToken:
           t = next(s) # skip dot
@@ -1601,19 +2222,53 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         while true:
           if t.kind == Symbol:
             let symAsStr = pool.syms[t.symId]
-            let sym = resolveSym(c, symAsStr, false)
-            if sym != nil:
-              strTableAdd(interf, sym)
+            lastGood = symAsStr
+            # Skip symbols that are re-exported by this dependency but actually
+            # belong to the module we are compiling fresh: loading them as stubs
+            # would shadow/collide with the freshly compiled originals.
+            if c.mainModuleSuffix.len == 0 or
+               parseSymName(symAsStr).module != c.mainModuleSuffix:
+              # Resolving an exported symbol of this very module (`export` of a
+              # symbol that lives in a `when` branch of the same file) lazily
+              # loads it from the stream we are currently iterating, moving the
+              # cursor into the symbol's `(sd ...)` definition. Save/restore the
+              # position so the export-list parse continues where it left off.
+              let saved = offset(s.r)
+              let sym = resolveSym(c, symAsStr, false)
+              if sym != nil:
+                strTableAdd(interf, sym)
+                addReexportedEnumFields(c, sym, interf)
+              s.r.jumpTo(saved)
             t = next(s)
           elif t.kind == ParRi:
             break
           else:
-            raiseAssert "expected Symbol or ParRi but got " & $t.kind
+            raiseAssert "expected Symbol or ParRi but got " & $t.kind &
+              " (" & (if t.kind == ParLe: pool.tags[t.tagId] else: "") &
+              ") in export list of module " & suffix & ", last symbol: " & lastGood
         t = next(s)
       elif t.tagId == includeTag:
         t = skipTree(s)
       elif t.tagId == importTag:
         loadImport(c, s, result.deps, t)
+      elif t.tagId == reexpModTag:
+        # a re-exported MODULE: (reexpmod "name" "suffix"); the module sym
+        # is a qualifier in this module's interface — materialized by the
+        # caller (modulegraphs), which can register interface tables
+        t = next(s)
+        var mname = ""
+        var msuffix = ""
+        if t.kind == StringLit:
+          mname = pool.strings[t.litId]
+          t = next(s)
+        if t.kind == StringLit:
+          msuffix = pool.strings[t.litId]
+          t = next(s)
+        if t.kind != ParRi:
+          raiseAssert "expected ParRi in reexpmod entry of module " & suffix
+        t = next(s)
+        if mname.len > 0 and msuffix.len > 0:
+          result.reexportedModules.add (mname, msuffix)
       elif t.tagId == implTag:
         cont = false
       elif LoadFullAst in flags:
@@ -1636,8 +2291,11 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
   let module = moduleId(c, string(suffix), flags)
 
   # Load the module AST (or just replay actions if loadFullAst is false)
-  # processTopLevel also collects export instructions
+  # processTopLevel also collects export instructions.
+  # Lazy symbol loading may have moved the stream cursor since the module was
+  # opened, so rewind to the start of the module body before reading it.
   let s = addr c.mods[module].stream
+  s[].r.jumpTo(c.mods[module].contentStart)
   var t = next(s[])
   if t.kind == ParLe and pool.tags[t.tagId] == toNifTag(nkStmtList):
     t = next(s[])  # skip (stmts
@@ -1662,3 +2320,4 @@ when isMainModule:
   echo obj.name, " ", obj.module, " ", obj.count
   let objb = parseSymName("abcdef.0121")
   echo objb.name, " ", objb.module, " ", objb.count
+

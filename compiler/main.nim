@@ -419,9 +419,14 @@ proc mainCommand*(graph: ModuleGraph) =
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
     setUseIc(true)
+    # vtable dispatch needs a whole-program vtable layout, which the
+    # per-module compilation model cannot provide (yet); methods dispatch
+    # through the classic if-chain dispatchers instead
+    excl conf.features, Feature.vtables
     commandCheck(graph)
   of cmdNifC:
     setUseIc(true)
+    excl conf.features, Feature.vtables
     # Generate C code from NIF files
     wantMainModule(conf)
     setOutFile(conf)
@@ -450,7 +455,14 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdUnknown, cmdNone, cmdIdeTools:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
+  if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop, cmdM} and
+      not (conf.cmd == cmdNifC and conf.icBackendStage.len > 0):
+    # The IC build runs hundreds of internal per-module child processes — the
+    # frontend `nim m` (cmdM) and the per-module backend stages (cg/emit/merge/
+    # link). Each would print a `[SuccessX]` summary that is pure noise (and
+    # misleading: `out: unknownOutput`, or `out: <the whole compiler>` for a
+    # step that only wrote one `.c.nif`/`.c`). The driving `nim ic` (and koch)
+    # reports the real result.
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
     genSuccessX(conf)

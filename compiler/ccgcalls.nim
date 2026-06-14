@@ -394,7 +394,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     # variable. Thus, we create a temporary pointer variable instead.
     let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
     if needsIndirect:
-      n.typ = n.typ.exactReplica
+      n.typ = n.typ.exactReplica(p.module.idgen)
       n.typ.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
@@ -909,6 +909,16 @@ proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, ri):
     return
+  when defined(icDbgHash):
+    if ri[0].typ == nil:
+      echo "NILCALLEE kind=", ri[0].kind,
+        " sym=", (if ri[0].kind == nkSym: ri[0].sym.name.s else: "-"),
+        " symKind=", (if ri[0].kind == nkSym: $ri[0].sym.kind else: "-"),
+        " flags=", (if ri[0].kind == nkSym: $ri[0].sym.flags else: "-"),
+        " lazy=", nfLazyType in ri[0].flags,
+        " inProc=", (if p.prc != nil: p.prc.name.s else: "NIL"),
+        " module=", p.module.module.name.s
+      raiseAssert "nil callee type, see NILCALLEE above"
   if ri[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri[0].kind == nkSym and sfInfixCall in ri[0].sym.flags:

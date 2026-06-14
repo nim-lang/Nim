@@ -112,10 +112,13 @@ proc encodeName*(name: string): string =
 
 proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   result = if name == "": s.name.s else: name
+  # keep backend-minted ids out of the `_u` namespace; their item counter
+  # restarts at 0 and would collide with loaded symbols' ids
+  result.add(if s.itemId.isBackendMinted: "_c" else: "_u")
+  result.add $s.itemId.item
+  # module suffix LAST (a strippable trailing token; see `mangleProcNameExt`)
   result.add "__"
   result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-  result.add "_u"
-  result.add $s.itemId.item
 
 proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false; extra: string = ""): string =
   #Module::Type
