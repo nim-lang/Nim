@@ -2047,40 +2047,6 @@ proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym =
   let symAsStr = pool.syms[symId]
   result = resolveSym(c, symAsStr, true)
 
-proc resolveGlobalSym*(c: var DecodeContext; symAsStr: string): PSym =
-  ## By-name resolution for the backend's def-retention check: a NIF name
-  ## recorded in a `.c.nif` artifact is looked up in the current sem state.
-  ## Returns nil when the symbol no longer exists — including when its whole
-  ## module vanished from the program (the module's NIF must be checked
-  ## before `resolveSym`, which asserts on a missing file).
-  let sn = parseSymName(symAsStr)
-  if sn.module.len == 0: return nil
-  let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(sn.module & ".nif")).string
-  if not fileExists(modFile): return nil
-  result = resolveSym(c, symAsStr, true)
-
-proc resolveGlobalType*(c: var DecodeContext; typeName: string): PType =
-  ## By-name resolution for the backend's def-retention check: a type NIF
-  ## name (see `typeToNifSym`) recorded next to an RTTI definition in a
-  ## `.c.nif` artifact is looked up in the current sem state. Returns nil
-  ## when the type no longer exists — including when its whole module
-  ## vanished from the program (`createTypeStub` asserts on both).
-  if not typeName.startsWith("`t"): return nil
-  # `t<kind>.<item>.<suffix>
-  var i = len("`t")
-  while i < typeName.len and typeName[i] in {'0'..'9'}: inc i
-  if i >= typeName.len or typeName[i] != '.': return nil
-  inc i
-  while i < typeName.len and typeName[i] in {'0'..'9'}: inc i
-  if i >= typeName.len or typeName[i] != '.': return nil
-  let suffix = typeName.substr(i+1)
-  if suffix.len == 0: return nil
-  let modFile = (getNimcacheDir(c.infos.config) / RelativeFile(suffix & ".nif")).string
-  if not fileExists(modFile): return nil
-  let module = moduleId(c, suffix)
-  if c.mods[module].index.getOrDefault(typeName).offset == 0: return nil
-  result = createTypeStub(c, pool.syms.getOrIncl(typeName))
-
 proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: FileIndex): PSym =
   ## Tries to resolve a compiler proc from a module by checking the NIF index.
   ## Returns nil if the symbol doesn't exist. The NIF disamb is mint order, so
