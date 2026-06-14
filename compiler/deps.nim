@@ -34,6 +34,9 @@ type
     processedModules: Table[string, int]  # modname -> node index
     includeStack: seq[string]
     systemNodeId: int  # ID of the system.nim node
+    scanningMain: bool # currently scanning the project main module's deps;
+                       # makes `when isMainModule` conditions evaluate true
+                       # only there (every other module is imported)
 
 proc toPair(c: DepContext; f: string): FilePair =
   FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
@@ -256,6 +259,14 @@ proc evalCondIdent(c: DepContext; v: string): bool =
     # defined(gcHooks)`; guards mmdisp.nim's `include "system/gc"` whose
     # transitive imports (sharedlist, locks) an orc compile never produces.
     isDefined(c.config, "gcDestructors") or isDefined(c.config, "gcHooks")
+  of "isMainModule":
+    # Only the project main module is compiled with `isMainModule` true; an
+    # imported module's `when isMainModule` blocks are dead. The conservative
+    # `true` would schedule main-only imports (e.g. parser.nim's
+    # `tools/grammar_nanny`, a node that gets a cg rule but is never linked,
+    # so the merge stage can pick it as a shared def's owner -> undefined
+    # symbols at link).
+    c.scanningMain
   else: true
 
 proc evalCondExpr(c: DepContext; s: var Stream): bool =
@@ -493,6 +504,12 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
   let depsPath = c.depsFile(pair)
   if not fileExists(depsPath):
     return
+
+  # `current.id == 0` is the project main (rootNode); restored on exit so the
+  # flag is correct for each parent frame between its child recursions.
+  let prevScanningMain = c.scanningMain
+  c.scanningMain = current.id == 0
+  defer: c.scanningMain = prevScanningMain
 
   var s = nifstreams.open(depsPath)
   defer: nifstreams.close(s)

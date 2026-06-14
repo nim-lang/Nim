@@ -158,6 +158,12 @@ type
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
+    emittedContentDefs*: HashSet[string]
+      # cmdNifC per-module backend: content-addressed C names (generic
+      # instances and synthesized hooks) whose body this TU already emitted.
+      # Distinct symbols (minted in different source modules) can share one
+      # `_i<disamb>` name; `declaredThings` keys on symbol id and lets the
+      # second one through, so we dedup the body by name here instead.
     queue*: seq[PSym]         # queue of procs to generate
     alive*: IntSet            # symbol IDs of alive data as computed by `dce.nim`
     headerFiles*: seq[string] # needed headers to include

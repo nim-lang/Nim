@@ -154,6 +154,14 @@ proc signatureHasMetaType(t: PType; depth: int = 0): bool =
   ## element case, hence the explicit scan.
   result = false
   if t == nil or depth > 8: return false
+  if t.kind == tyGenericBody:
+    # The uninstantiated template carried as a `tyGenericInst`'s first child
+    # always mentions its `tyGenericParam` placeholders, but the instance
+    # itself is fully concrete (e.g. `var CountTable[SigHash]`). Descending
+    # here would wrongly flag every routine with a generic-instance parameter
+    # as meta and drop it from the owned-routine seeding -> undefined symbols
+    # at link (its only definer never emits it).
+    return false
   if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyStatic, tyGenericParam,
                 tyAnything, tyFromExpr, tyError}:
     return true
