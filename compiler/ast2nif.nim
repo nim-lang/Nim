@@ -2027,6 +2027,29 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
   # Move index table back
   c.mods[module].index = move indexTab
 
+proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
+  ## Stubs for every non-type symbol serialized in `module`'s NIF index. The
+  ## per-module backend uses this to emit the routines a module OWNS: procs are
+  ## serialized as `(sd ...)` symbol-defs and loaded lazily, never as
+  ## `nkProcDef` statements in the top-level stmt list, so `genTopLevelStmt`
+  ## alone never reaches them — without this, a routine called only from other
+  ## modules would be emitted by nobody once the demanding module merely
+  ## prototypes it.
+  ##
+  ## Returns lazy stubs: the index table is moved out while iterating (loading a
+  ## symbol can register new modules and invalidate the iterator), so the caller
+  ## forces full load (`.kind`, `.ast`) and filters AFTER this returns, with the
+  ## index back in place.
+  result = @[]
+  if not c.mods.hasKey(module): return
+  var indexTab = move c.mods[module].index
+  let thisModule = c.mods[module].suffix
+  for nifName, entry in indexTab:
+    if nifName.startsWith("`t"): continue  # types are not routines
+    let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
+    if sym != nil: result.add sym
+  c.mods[module].index = move indexTab
+
 proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".nif").string

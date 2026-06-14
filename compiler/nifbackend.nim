@@ -29,9 +29,19 @@ from cgmeth import generateIfMethodDispatchers
 import ic / replayer
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
-                            nifFiles: var seq[string]): seq[PrecompiledModule] =
+                            nifFiles: var seq[string];
+                            depFlags: set[LoadFlag] = {LoadFullAst}): seq[PrecompiledModule] =
   ## Traverse the module dependency graph using a stack.
   ## Returns all modules that need code generation, in dependency order.
+  ##
+  ## The main module is always loaded with its full AST (it is the codegen
+  ## target). `depFlags` governs the rest: the whole-program backend needs every
+  ## module's full AST (it generates code for all of them), but a per-module
+  ## stage codegens only one target, so it loads the others interface-only
+  ## (`depFlags = {}`) — the interface, hooks, methods and the `(replay ...)`
+  ## directives are loaded regardless of `LoadFullAst`, and demanded bodies are
+  ## fetched lazily from the kept-open stream, so the per-module proc-body ASTs
+  ## (the bulk of the memory) are never materialized for non-targets.
   # The main module is loaded by its SOURCE FileIndex, but its serialized
   # symbols carry the module's NIF suffix. Pre-alias the suffix to the source
   # index so that `registerNifSuffix` does not allocate a second FileIndex for
@@ -57,7 +67,7 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
     if not visited.containsOrIncl(suffix.string):
       var isKnownFile = false
       let fileIdx = g.config.registerNifSuffix(suffix.string, isKnownFile)
-      let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
+      let precomp = moduleFromNifFile(g, fileIdx, depFlags)
       if precomp.module != nil:
         result.add precomp
         nifFiles.add toNifFilename(g.config, fileIdx)
@@ -467,6 +477,21 @@ proc emitMethodDispatchers(g: ModuleGraph) =
     if not containsOrIncl(mainMod.declaredThings, disp.id):
       genProcLvl3(mainMod, disp)
 
+proc signatureHasMetaType(t: PType; depth: int = 0): bool =
+  ## Whether a routine signature mentions a compile-time/meta element type
+  ## (`typed`/`untyped` — e.g. `echo`'s `varargs[typed]` — typedesc, static,
+  ## generic param). Such routines are expanded at their call sites and never
+  ## emitted standalone, so the per-module owned-routine seeding must skip them
+  ## (`getTypeDescAux(tyTyped)` otherwise). `tfHasMeta` alone misses the varargs
+  ## element case, hence the explicit scan.
+  result = false
+  if t == nil or depth > 8: return false
+  if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyStatic, tyGenericParam,
+                tyAnything, tyFromExpr, tyError}:
+    return true
+  for k in t.kids:
+    if signatureHasMetaType(k, depth + 1): return true
+
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
   let moduleId = precomp.module.position
@@ -481,6 +506,46 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   # Generate code for the module's top-level statements
   if precomp.topLevel != nil:
     cgen.genTopLevelStmt(bmod, precomp.topLevel)
+
+  # Per-module backend: emit the bodies of the routines this module OWNS, not
+  # only the ones its top-level happens to demand. Procs are serialized as lazy
+  # `(sd ...)` defs (never as `nkProcDef` statements), so `genTopLevelStmt` never
+  # reaches them; a routine called only from *other* modules would otherwise be
+  # emitted by nobody, because every module now merely prototypes its foreign
+  # callees instead of funnelling their bodies (see `cgen.emitsBodyInThisModule`).
+  # The merge stage's DCE drops whatever turns out globally dead.
+  if g.config.cmd == cmdNifC and g.config.icBackendStage == "cg":
+    let modPos = precomp.module.position
+    for s in moduleSymbolStubs(ast.program, FileIndex modPos):
+      if s.itemId.module == modPos and
+         s.kind in {skProc, skFunc, skConverter, skMethod} and
+         # Only MODULE-level routines: a nested/closure proc (its owner is a
+         # proc) captures its enclosing scope and cannot be emitted standalone —
+         # the captured params have no loc → `expr: param not init`. Nested procs
+         # are emitted via their enclosing routine's lambda-lifting, so seeding
+         # the enclosing (module-level) routine already covers them.
+         s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
+         s.magic == mNone and
+         # Skip generic instances: they have no single owning-module top-level
+         # and are emitted by demand (emit-everywhere, deduped by the merge
+         # stage). An instance has an empty `genericParamsPos` just like a plain
+         # concrete proc, so only `sfFromGeneric` tells them apart; seeding one
+         # would force standalone codegen of an instance body whose `when T is X`
+         # branches were never folded for this path → `genMagicExpr: mIs`.
+         sfFromGeneric notin s.flags and
+         # Every other routine the module owns must be emitted here, exported or
+         # not: a non-exported helper is still reached from another module when a
+         # `template`/inline routine expands at a call site there (e.g. msgs'
+         # `internalErrorImpl` behind the `internalError` template), and that
+         # caller now only prototypes it. `{.error.}`/`compileTime` sentinels and
+         # bodyless forward decls are not real codegen targets.
+         {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+         s.typ != nil and not signatureHasMetaType(s.typ) and
+         s.ast != nil and s.ast.safeLen > bodyPos and
+         s.ast[genericParamsPos].kind == nkEmpty and
+         s.ast[bodyPos].kind != nkEmpty:
+        # a concrete, non-generic, runtime routine with a real body, owned here
+        requestProcDef(bmod, s)
 
   # The hooks and `$enum` procs this module announces are liveness roots:
   # a cached TU from a previous run may call them without any demand
@@ -513,14 +578,20 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   ## type/symbol resolves and `getCFile` yields the same path both stages use.
   ## The main module is loaded by its source index (its NIF suffix is aliased to
   ## it in `loadModuleDependencies`), so it gets exactly one `BModule`.
+  ##
+  ## Only the main module — the codegen target of the stages that use this — is
+  ## loaded with its full AST; every other module is loaded interface-only so
+  ## the whole program's proc bodies are not materialized into this process (that
+  ## was ~1.8 GB for the compiler's main `cg`). The `link` stage codegens nothing
+  ## and only needs each module's `(replay ...)` directives, which load anyway.
   resetForBackend(g)
   var isKnownFile = false
   let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
   g.config.m.systemFileIdx = systemFileIdx
-  var precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
+  var precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
   g.systemModule = precompSys.module
   var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
-  var modules = loadModuleDependencies(g, mainFileIdx, nifFiles)
+  var modules = loadModuleDependencies(g, mainFileIdx, nifFiles, depFlags = {})
   # loadModuleDependencies traverses the project's import closure and stops at
   # system. The whole-program backend then demand-loads system's own closure
   # (locks, allocators, threads, …) during codegen; the per-module backend
@@ -539,7 +610,7 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
       if not visited.containsOrIncl(suffix.string):
         var isKnown = false
         let fileIdx = registerNifSuffix(g.config, suffix.string, isKnown)
-        let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
+        let precomp = moduleFromNifFile(g, fileIdx, {})
         if precomp.module != nil:
           modules.add precomp
           nifFiles.add toNifFilename(g.config, fileIdx)
@@ -573,13 +644,16 @@ proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
   var isKnownFile = false
   let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
   g.config.m.systemFileIdx = systemFileIdx
-  let precompSys = moduleFromNifFile(g, systemFileIdx, {LoadFullAst, AlwaysLoadInterface})
+  let precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
   g.systemModule = precompSys.module
 
   var modules: seq[PrecompiledModule] = @[]
   var visited = initHashSet[string]()
   visited.incl "sysma2dyk"
 
+  # Only the target is codegen'd, so only it needs its full AST; the closure is
+  # loaded interface-only (demanded bodies come lazily from the kept-open
+  # streams), which is what keeps a per-module process light under parallel fan-out.
   var isKnown = false
   let targetIdx = registerNifSuffix(g.config, targetSuffix, isKnown)
   let target = moduleFromNifFile(g, targetIdx, {LoadFullAst})
@@ -596,7 +670,7 @@ proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
     if not visited.containsOrIncl(suffix.string):
       var isKnown2 = false
       let fileIdx = registerNifSuffix(g.config, suffix.string, isKnown2)
-      let precomp = moduleFromNifFile(g, fileIdx, {LoadFullAst})
+      let precomp = moduleFromNifFile(g, fileIdx, {})
       if precomp.module != nil:
         modules.add precomp
         for dep in precomp.deps: stack.add dep
@@ -645,14 +719,12 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       rawMessage(g.config, errGenerated,
         "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
       return
-    # Whole-program liveness filters the eager top-level routine listing
-    # (`icDceLive`); the merge stage still recomputes the program-wide live set
-    # across all `.c.nif`s, so this is only a size optimization for the main TU.
-    var dceStats = DceStats()
-    var nifDeps = initTable[string, seq[string]]()
-    if not isDefined(g.config, "icNoDce"):
-      g.icDceEnabled = computeLiveSymbols(g.config, nifFiles, g.icLiveNames,
-                                          dceStats, nifDeps)
+    # No whole-program DCE here, exactly as for a non-main target: `icDceEnabled`
+    # stays false so each module emits the routines it owns and the MERGE stage
+    # recomputes the one program-wide live set across all `.c.nif`s. Running
+    # `computeLiveSymbols` over all ~260 NIFs in the main `cg` cost ~900 MB for a
+    # result the merge stage throws away — pure redundancy now that the funnel is
+    # gone (the main module no longer emits its transitive closure's bodies).
     target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
   else:
     # No whole-program load, hence no whole-program DCE: `icDceEnabled` stays

@@ -139,6 +139,23 @@ proc redirectToLiveModule(m: BModule, q: BModule): BModule =
           break
       if result == nil: result = m
 
+proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
+  ## Per-module backend codegen is concerned with ONE module: it emits the
+  ## bodies of the routines that module OWNS (its own top-level defs) and only
+  ## *prototypes* a routine owned by another module — that routine's body is
+  ## emitted by its own module's `cg` process, and the merge stage's DCE prunes
+  ## whatever ends up globally dead. The funnel where the main module re-emitted
+  ## its entire transitive closure (≈1.8 GB, a 56 MB `.c.nif`) is exactly this
+  ## rule being absent.
+  ##
+  ## Generic instances and synthesized hooks (`=destroy`, `$`, …) have no single
+  ## owning-module top-level — they are minted on demand — so each demander emits
+  ## them and the merge stage deduplicates by their content-addressed C name.
+  if not (m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"):
+    return true
+  result = prc.itemId.module == m.module.position or
+           (prc.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32
+
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
                 snippet: "", flags: flags)
@@ -1722,7 +1739,8 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       # which will actually become a function pointer
       if isReloadable(m, prc):
         genProcPrototype(q, prc)
-      genProcLvl3(q, prc)
+      if emitsBodyInThisModule(m, prc):
+        genProcLvl3(q, prc)
   else:
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
