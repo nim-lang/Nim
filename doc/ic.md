@@ -8,8 +8,10 @@ files, and uses the external ``nifmake`` build tool to re-run only the steps
 whose inputs changed.
 
 This document describes **how `nim ic` works today**, including the edge cases
-that shaped the current design, and ends with a **Plan** for the next backend
-rewrite.
+that shaped the current design. The per-module backend rewrite that earlier
+editions of this document listed as a *Plan* has **landed**: the whole-program,
+reuse/redirect/def-retention backend is gone and codegen is now a set of
+`nifmake`-driven per-module rules (see *The backend*).
 
 Overview
 ========
@@ -67,15 +69,16 @@ backend:
 
 - **Instance names are content-addressed**: the same instantiation produced in
   different modules yields the *same* `<ident>.<disamb>`, so a deterministic dedup
-  is possible by the *module-suffix-stripped* name. The cross-TU merge
-  (`ccgtypes.sharedInstanceCName`, keyed via `graph.icSharedSigs`) and the DCE
-  analysis (`dce.computeLiveSymbols`, its `uniq` set) both already key on this
-  stripped form.
-- **The suffix names a mint-site owner.** Today the `<moduleSuffix>` is the
-  module *that minted the instance* (the instantiation site), so the same
-  instance has a different full name in each module that makes it; *which* TU
-  emits the single definition is then decided at codegen by the
-  reuse/redirect machinery — the root of the *single-writer* hazard below.
+  is possible by the *module-suffix-stripped* name. The cross-TU C name
+  (`ccgtypes.sharedInstanceCName`) and the **merge** stage's live-set/owner
+  decision (`nifbackend.computeMergeDecision`) both key on this stripped form.
+- **The suffix names a mint-site owner.** The `<moduleSuffix>` is the module
+  *that minted the instance* (the instantiation site), so the same instance has a
+  different full name in each module that makes it. Because every `cg` process
+  emits the instances it demands (*emit-everywhere*), the same definition can be
+  produced by several translation units; the **merge** stage then deterministically
+  picks the single artifact allowed to embed each body (smallest claimant), which
+  is the cross-process replacement for the old in-process single-writer machinery.
 
 The driver: graph construction (`commandIc`)
 ============================================
@@ -137,32 +140,48 @@ before erroring. The driver re-derives the graph from those sidecars — adding 
 missing node + the importer→import edge — and reruns to a fixpoint. (This replaced
 an earlier `icmissing.txt` side channel.)
 
-The backend today: `commandNifC`
-================================
+The backend: per-module `nifc` stages
+=====================================
 
-The current backend is **whole-program and demand-driven**, run as one process
-(``compiler/nifbackend.nim``):
+Codegen is no longer one whole-program process. ``nim nifc`` (`cmdNifC`,
+``compiler/nifbackend.nim``) is invoked once per **stage** via
+``--icBackendStage:<stage>``; `commandIc` emits these as ordinary `nifmake` rules
+so "which TUs rebuild" is just "which rules `nifmake` re-fires from input mtimes"
+— exactly as the frontend already works. There are four stages:
 
-1. Load `system` then **all** modules' semmed NIFs in dependency order
-   (`loadModuleDependencies`), so all hooks/types are in memory.
-2. **DCE**: `computeLiveSymbols` over all NIFs computes a global live set used to
-   filter the top-level routine listing.
-3. **`computeModuleReuse`**: decide which modules' cached translation units
-   (``.c.nif``) can be reused — skip codegen for them and use their ``.c``/``.o``
-   as is. The gate mirrors the m-step's cookie gating; a coarse fallback uses the
-   transitive NIF-mtime closure (`-d:icCoarseReuse`).
-4. **Codegen**: for each non-reused module, `generateCodeForModule` runs `cgen`.
-   Codegen is **demand-driven**: emitting one module can *demand* entities
-   (generic instances, type-bound hooks, RTTI) that belong to other modules; a
-   demand whose home TU is reused is **redirected** into the demanding TU
-   (`redirectToLiveModule`), and reused TUs' definitions become prototypes.
-5. **`enforceDefRetention`**: an un-reuse cascade. If a regenerated module would
-   stop emitting a definition that a still-reused TU references (the demand chain
-   that placed it no longer arises), the referencing TUs lose their reuse and
-   regenerate so the symbol does not vanish under them.
-6. `emitMethodDispatchers`, then `finishModule` for every module (main module
-   **last**, so init-proc registration is complete before `genMainProc`).
-7. Emit ``.c``, then `extccomp.callCCompiler` + link.
+1. **`cg`** (``--icBackendStage:cg --icBackendModule:<suffix>``) — generate C for
+   the *single* named module and write only its ``<s>.c.nif`` artifact. A non-main
+   target loads only its own import closure (`loadDepClosure`), so the whole
+   program is **not** pulled into every parallel `cg` process. Codegen is still
+   demand-driven and **emit-everywhere**: a `cg` process emits every entity it
+   demands (generic instances, hooks, RTTI), referencing nothing `extern`-only.
+   There is no whole-program DCE here — a liveness pass over all ~260 NIFs would
+   cost ~900 MB for a result the merge stage recomputes anyway. The **main**
+   module's `cg` is special: it loads everything (`loadBackendModules`), emits the
+   whole-program method dispatchers and `NimMain`, and registers every other
+   module's init/datInit from the `.c.nif` meta heads — so it runs *last*, after
+   every other ``.c.nif`` exists. Every `cg` rule always leaves a ``.c.nif`` (empty
+   if the module owns no code) so its nifmake output exists and the rule settles.
+2. **`merge`** (``--icBackendStage:merge``) — a pure artifact pass, *no module
+   graph loaded*. Reads every ``.c.nif``, computes the one program-wide live set
+   and, for each unique definition that several `cg` processes emitted, the single
+   artifact allowed to embed its body; writes that to a merge-decision file
+   (`computeMergeDecision` / `writeMergeDecision`). This is the cross-process
+   replacement for the old in-process first-claimant + DCE coordination.
+3. **`emit`** (``--icBackendStage:emit --icBackendModule:<suffix>``) — render the
+   target module's final ``.c`` from its ``.c.nif`` and the merge decision
+   (`renderCFromArtifact`, dropping globally-dead and non-owned bodies). No codegen
+   runs; the target is loaded only so `getCFile` yields the path `cg` wrote.
+4. **`link`** (``--icBackendStage:link``) — register every module's emitted ``.c``
+   and run `extccomp.callCCompiler` once (it parallelizes per-file cc and skips
+   up-to-date objects). Per-module C compile/link directives (`{.passL.}` etc.) are
+   re-collected here via `replayBackendActions`, since the `cg` processes that
+   originally saw them are separate processes (without this, e.g. `math`'s `-lm`
+   would be lost → undefined `floor`/`pow` at link).
+
+Because each stage is a `nifmake` rule keyed on file mtimes, a body-only edit to
+one module re-fires that module's `cg`+`emit` (and the `merge`/`link`), not the
+whole program — and an unchanged module's `cg` does not run at all.
 
 Edge cases (and why the machinery exists)
 =========================================
@@ -183,9 +202,9 @@ Edge cases (and why the machinery exists)
 - **Sealed loaded types.** Loaded types are `Sealed`; sem/transform mutate via
   `unsealForTransform`/`exactReplica(idgen)` (the latter mints a fresh `uniqueId`
   so serialized replicas don't collapse).
-- **Methods/RTTI ownership.** `genTypeInfoV1` already routes a type's RTTI to
-  `t…itemId.module` when that module is open for codegen — an existing ownership
-  notion the rewrite can generalize.
+- **Methods/RTTI ownership.** RTTI and type-bound hooks are emit-everywhere at
+  `cg` and deduplicated by the `merge` stage, like generic instances; the main
+  module's `cg` owns the whole-program method dispatchers.
 - **Config cost.** Each child re-parsing `nim.cfg` + re-running `config.nims` in
   the VM was ~80 ms; replaced by a precompiled `ic_config.cfg.nif` replayed in
   `loadConfigs` (`compiler/icconfig.nim`).
@@ -193,102 +212,81 @@ Edge cases (and why the machinery exists)
   fixed-point check). It writes its binary to ``bin/nim_ic`` and never clobbers
   ``bin/nim``.
 
-Known residual hacks (targets for the rewrite)
-----------------------------------------------
+Resolved by the rewrite
+-----------------------
 
-- `deps.runNifler` uses `setLastModificationTime` to mark its scan up-to-date and
-  deletes a stale parsed file to coordinate with the nifmake nifler rule — the
-  driver duplicating nifmake's freshness logic.
-- `computeModuleReuse` + `enforceDefRetention` + the redirect/cached-defs
-  machinery is a hand-rolled mini-`nifmake` *inside* the backend process, needed
-  only because one process reuses some TUs while regenerating others.
+The whole-program backend's hand-rolled mini-`nifmake` — `computeModuleReuse`,
+`enforceDefRetention`, `redirectToLiveModule`, the cached-defs/claim bookkeeping
+and the standalone `dce.nim` — **is gone**. Reuse is now just per-rule `nifmake`
+mtime checks, and the single-writer decision is the `merge` stage. The old
+**cross-mm / `--force` `var not init`** hazard dissolved with it: every codegen
+rule's config (including `--mm`) is a declared `nifmake` input, so a stale-config
+TU is simply rebuilt rather than mixed in. `koch bootic` is green under both `orc`
+and `--mm:refc`.
 
-These are legacy artifacts of a code generator that predates IC, not intrinsic
-requirements.
+Known residual hack
+-------------------
 
-- **Cross-mm reuse / `--force` (`var not init i_<hash>`).** Reusing TUs built
-  under one memory-management mode (e.g. an `orc` cache) while rebuilding under
-  another (`refc`), or forcing a full backend re-run, can abort with
-  ``var not init``. The name is a backend-minted closure-capture local whose
-  `loc` is unset; the root cause is that `nifmake` is *mtime-only* and
-  `computeModuleReuse` is not config-aware, so a reuse decision can mix TUs
-  generated under different config signatures. It is **crash-safe** (it aborts,
-  never emits a wrong-mm binary) and does **not** affect normal same-mode warm
-  rebuilds. Deferred to the rewrite, which makes reuse config-aware by
-  construction (each codegen rule's config is a declared input).
+- `deps.runNifler` still uses `setLastModificationTime` to mark its scan
+  up-to-date and deletes a stale parsed file to coordinate with the nifmake nifler
+  rule — the driver duplicating nifmake's freshness logic. It is explicitly
+  flagged in the source and folds away with a full frontend/nifler split.
 
 Status and performance
 ======================
 
-`nim ic` self-builds the compiler (`koch bootic`'s fixed-point check) under both
-`orc` and `--mm:refc`, and passes the external-package CI set. The
-macro sweep is 93/95 (two known-baseline failures: `tmacro7`, `tmacrogetimpl`).
+`nim ic` self-builds the compiler (`koch bootic`'s byte-identical fixed-point
+check) under both `orc` and `--mm:refc`, and passes the external-package CI set.
 
-Rough numbers on a 32-core box (`-d:release`, building the compiler):
+Cold full bootstrap on a 32-core box (`-d:release`, **no edits** — IC's worst
+case, since incremental reuse is not exercised):
 
 | | wall | notes |
 | - | ---- | ----- |
-| classic `nim c` full | ~27.5s | ~7 cores busy |
-| `nim ic` cold, serial | ~81s | one `nim m` at a time |
-| `nim ic` cold, `--parallel` | ~53s | now the default |
-| `nim ic` warm no-op | ~0.14s | ~200× vs classic |
+| `koch boot` (classic) | ~1m00s | reference |
+| `koch bootic` (`nim ic`) | ~1m39s | **~1.66×** |
 
-The cold gap is a *parallelism* deficiency, not extra fundamental work
-(aggregate work is ≈1.33× classic). The backend's own phases are cheap
-(load 0.3s, DCE 1.0s, cgen 5.7s, write 0.8s); the C compile+link floor (~21s) is
-already parallel and shared with the classic backend. The remaining cold cost is
-the `nim m` sem phase, throttled by `nifmake`'s per-DAG-depth barrier across a
-narrow, deep tail of heavy modules. A ready-queue scheduler (dependency-ready
-dispatch instead of a depth barrier) would recover several seconds but cannot
-beat the import-chain critical path; it folds into the rewrite. **Warm rebuilds
-— the actual point of IC — already dominate the classic backend by ~200×.**
+This is down from ~7.5× in the whole-program-backend era. IC does modestly more
+aggregate work (more processes, NIF re-parsing of imports per process), but on a
+many-core box that overhead is absorbed by the parallel `nim m`/`nifc` fan-out,
+and the C compile+link floor is shared with the classic backend. On few-core
+machines the cold gap is correspondingly wider — IC trades single-build latency
+for incremental latency.
+
+The cold number is the *least* favourable comparison: it pays IC's full per-process
+overhead while using none of its incremental machinery. **Warm rebuilds — the
+actual point of IC — recompile only the modules whose inputs changed** (a body-only
+edit re-fires one module's `cg`+`emit`, not the program), so an edit-driven rebuild
+is a small fraction of either full build.
 
 The strategic direction (decided 2026-06-13) is to make this NIF backend
-(`cmdNifC`) the **default** code generator. The clean translation-unit model it
-needs — global DCE, content-keyed instance merging, deterministic RTTI — already
-exists and is always-on inside `cmdNifC`; the remaining work is the per-module
-backend rewrite below (which also dissolves the cross-mm reuse hazard), then
-*promotion + deletion*, not new machinery.
+(`cmdNifC`) the **default** code generator. The per-module pipeline above is the
+realization of that direction; remaining work is *promotion + deletion* of the
+classic path, not new machinery.
 
-Plan: a nifmake-driven, per-module backend
-==========================================
+Design notes and open decisions
+===============================
 
-Goal: the backend stops re-implementing `nifmake`. Each module's codegen becomes
-its own build rule, so "which TUs rebuild" is just "which rules `nifmake`
-re-fires from input mtimes" — exactly as the frontend already works. The reuse /
-def-retention / redirect machinery then dissolves.
+The per-module backend (above) mirrors Nimony's ``src/nimony/deps.nim``: the
+backend stopped re-implementing `nifmake`; each stage is a build rule, so reuse is
+just mtime checks and the merge stage is the only cross-module coordination.
 
-Target build graph (mirrors Nimony's ``src/nimony/deps.nim``):
+Settled vs. open:
 
-1. **Frontend split.** Generate a *frontend* build file (nifler + `nim m` rules),
-   run `nifmake`, run the `.s.deps` discovery fixpoint. Then re-derive the graph
-   from `.s.deps` (now complete; dead `when` imports can also be **pruned** here).
-2. **Per-module codegen rule.** One ``nifc <mod>`` rule per module: inputs are the
-   module's own ``.nif`` plus the ``.iface``/``.impl`` cookies of its
-   dependencies; output is its ``<s>.c.nif``. The process loads `<mod>` + its
-   import closure's NIFs (like `nim m`) and emits **only the entities it owns**,
-   referencing everything else `extern`.
-3. **Static ownership** replaces runtime redirect. Every emittable entity —
-   generic instances, type-bound hooks, RTTI, lifted procs — gets a deterministic
-   owner module *by symbol suffix*. Because instance names are content-addressed
-   (``ident.disamb.key.owner``), the same instance demanded by several modules has
-   one name and one owner, so there is exactly one writer and no link-time
-   duplicate. (The precise owner rule — minting module vs. root-type's module — is
-   the open design decision; start from `itemId.module` and adjust where it forces
-   a downstream package to own stdlib code.)
-4. **DCE as a rule.** A single rule reads all ``.c.nif``, computes the global live
-   set, and (Nimony: ``.live.nif`` / per-module ``.dce.nif``) drives per-module
-   ``.c`` emission filtered to live entities.
-5. **Link rule.** Depends on every ``.o`` (each compiled by its own rule) and the
-   DCE output; produces the executable.
-6. **Deletions.** `computeModuleReuse`, `enforceDefRetention`,
-   `redirectToLiveModule` and the cached-defs/claim bookkeeping go away. The
-   ``setLastModificationTime`` coordination in `runNifler` goes away with the
-   frontend split (the nifler rule owns parsed+deps; the driver's pre-scan only
-   reads `.deps` to build the graph).
+- **Ownership.** Emittable entities (generic instances, type-bound hooks, RTTI,
+  lifted procs) are emit-everywhere at `cg` time and deduplicated at `merge` time
+  (smallest claimant owns each unique body). The earlier idea of a *static*
+  per-suffix owner computed before codegen was not needed — content-addressed names
+  make the merge decision deterministic. The precise owner *rule* (minting module
+  vs. root-type's module) can still be tuned where it would force a downstream
+  package to own stdlib code.
+- **Remaining cleanup.** The `runNifler` `setLastModificationTime` coordination
+  (above) folds away with a full frontend/nifler split; dead `when` imports could
+  also be pruned during the `.s.deps` re-derivation.
 
-Validation bar: `koch bootic` must still reach its byte-identical fixed point, and
-binary size must not regress (DCE parity), across the external-package CI set.
+Validation bar (held on every change): `koch bootic` must reach its byte-identical
+fixed point, and binary size must not regress (DCE parity), across the
+external-package CI set.
 
 Code, logic & debugging
 ========================
@@ -298,18 +296,25 @@ Core modules:
   build-file generation; `commandIc`.
 - **`compiler/ast2nif.nim`** — AST↔NIF, the cookie hashes (`cookieSd`,
   `writeIfaceCookie`, `writeImplCookie`, `writeEdgesFile`, `writeSemDeps`).
-- **`compiler/nifbackend.nim`** — the backend (`commandNifC`) and its reuse
-  machinery.
+- **`compiler/nifbackend.nim`** — the per-module backend stages (`generateCgStage`,
+  `generateMergeStage`, `generateEmitStage`, `generateLinkStage`).
+- **`compiler/cnif.nim`** — `.c.nif` artifact read/write, `computeMergeDecision`,
+  `renderCFromArtifact`.
 - **`compiler/icconfig.nim`** — precompiled config.
 - **`compiler/pipelines.nim`** / **`modulegraphs.nim`** — pipeline integration and
-  the graph state (`importDeps`, `icImplDeps`, `icReusedModules`, …).
+  the graph state (`importDeps`, `icImplDeps`, `icCnifFiles`, `instDisambs`, …).
 
 Manual workflow:
 - Frontend a module: ``nim m --nimcache:nifcache path/to/mod.nim`` (writes
   ``.nif`` + cookies + ``.s.deps``).
-- Backend: ``nim nifc --nimcache:nifcache main.nim``.
-- NIF files are text — open/grep them directly; ``diff`` two successive ``.nif``
-  to see why a module rebuilt.
+- Backend is stage-based (a bare ``nim nifc main.nim`` errors — there is no
+  whole-program fallback). The exact per-stage commands `nifmake` runs are in the
+  ``*.backend.build.nif`` build file; rerun one directly against an existing cache,
+  e.g. ``nim nifc --nimcache:nifcache --icBackendStage:cg --icBackendModule:<suffix> main.nim``
+  to regenerate one module's ``.c.nif``, then ``--icBackendStage:merge`` /
+  ``:emit`` / ``:link``.
+- NIF and ``.c.nif`` files are text — open/grep them directly; ``diff`` two
+  successive ``.nif`` to see why a module rebuilt.
 - Force a re-sem: delete the module's ``.nif`` and rerun `nim m`.
 - A stale-cache crash after editing the serialization layout means bumping
   ``icFormatVersion`` (`compiler/options.nim`).
