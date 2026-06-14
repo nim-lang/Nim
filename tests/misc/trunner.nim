@@ -184,10 +184,10 @@ sub/mmain.idx""", context
       p.inputStream.close
       var output = p.outputStream.readAll
       let error = p.errorStream.readAll
-      doAssert p.waitForExit == 0
       doAssert error.len == 0, $error
       output.stripLineEnd
       check output == expected
+      doAssert p.waitForExit == 0
       p.errorStream.close
       p.outputStream.close
 

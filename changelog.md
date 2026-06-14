@@ -137,6 +137,7 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- Added `--cachecfg` command line option that caches the result of evaluation of cfg/NimScript configuration files to reduces the compile time.
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
   The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize

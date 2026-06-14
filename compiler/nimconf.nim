@@ -11,9 +11,9 @@
 
 import
   llstream, commands, msgs, lexer, ast,
-  options, idents, wordrecg, lineinfos, pathutils, scriptconfig
+  options, idents, wordrecg, lineinfos, pathutils, scriptconfig, nimconfcache
 
-import std/[os, strutils, strtabs]
+import std/[os, strutils, strtabs, sets, times]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -244,25 +244,39 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
+proc loadConfigsImpl(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator; cachedCfgFiles: var HashSet[string]) =
+  # `cachedCfgFiles` is used to detect newly created config files.
+  # if cachedCfgFiles.len == 0, evaluate config files,
+  # if not, doesn't evaluate but find newly created config files.
+  # clears `cachedCfgFiles` if found.
   setDefaultLibpath(conf)
   template readConfigFile(path) =
     let configPath = path
-    conf.currentConfigDir = configPath.splitFile.dir.string
-    setConfigVar(conf, "selfDir", conf.currentConfigDir)
-    if readConfigFile(configPath, cache, conf):
-      conf.configFiles.add(configPath)
+    if cachedCfgFiles.len == 0:
+      conf.currentConfigDir = configPath.splitFile.dir.string
+      setConfigVar(conf, "selfDir", conf.currentConfigDir)
+      if readConfigFile(configPath, cache, conf):
+        conf.configFiles.add(configPath)
+    elif configPath.string notin cachedCfgFiles and configPath.fileExists:
+      #echo "config file was created ", configPath
+      cachedCfgFiles = HashSet[string]()
+      return
 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
-    var s: PLLStream = nil
-    if isMain and optWasNimscript in conf.globalOptions:
-      if conf.projectIsStdin: s = stdin.llStreamOpen
-      elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
-    if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
-    if s != nil:
-      conf.configFiles.add(p)
-      runNimScript(cache, p, idgen, freshDefines = false, conf, s)
+    if cachedCfgFiles.len == 0:
+      var s: PLLStream = nil
+      if isMain and optWasNimscript in conf.globalOptions:
+        if conf.projectIsStdin: s = stdin.llStreamOpen
+        elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
+      if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
+      if s != nil:
+        conf.configFiles.add(p)
+        runNimScript(cache, p, idgen, freshDefines = false, conf, s)
+    elif p.string notin cachedCfgFiles and p.fileExists:
+      #echo "config file was created ", p
+      cachedCfgFiles = HashSet[string]()
+      return
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
@@ -319,3 +333,36 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       # `nim check foo.nims' means to check the syntax of the NimScript file
       discard
   showHintConf()
+
+proc canUseCache(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator; cachedCfgFiles: var HashSet[string]): bool =
+  if optForceFullMake in conf.globalOptions or optCacheConfig notin conf.globalOptions:
+    result = false
+  elif conf.cmd == cmdNimscript:
+    # loadConfigsImpl runs Nim script
+    result = false
+  else:
+    # Don't use cached config when:
+    # - cache doesn't exists
+    # - command line parameter is changed (config file can depend it)
+    # - config file is changed, removed or created
+    cachedCfgFiles = sourceChanged(conf)
+    if cachedCfgFiles.len == 0:
+      result = false
+    else:
+      #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " checking added config"
+      loadConfigsImpl(cfg, cache, conf, idgen, cachedCfgFiles)
+      #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done checking added config"
+      result = cachedCfgFiles.len != 0
+
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
+  #conf.lastCmdTime = epochTime()
+  var cachedCfgFiles = HashSet[string]()
+  if canUseCache(cfg, cache, conf, idgen, cachedCfgFiles):
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " loading cached config"
+    loadConfigsFromCache(conf)
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done loading cached config"
+  else:
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " evaluating config files"
+    loadConfigsImpl(cfg, cache, conf, idgen, cachedCfgFiles)
+    #echo formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3), " done evaluating config files"
+    storeConfigs(conf)

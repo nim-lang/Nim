@@ -74,6 +74,7 @@ type                          # please make sure we have under 32 options
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
     optSkipUserConfigFile,    # skip the users's cfg/nims config file
     optSkipParentConfigFiles, # skip parent dir's cfg/nims config files
+    optCacheConfig,           # cache the results of configuration file evaluation
     optNoMain,                # do not generate a "main" proc
     optUseColors,             # use colors for hints, warnings, and errors
     optThreads,               # support for multi-threading
@@ -359,6 +360,9 @@ type
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
+                          ##
+                          ## when adds a field that can be changed on
+                          ## config files, store/load it on nimconfcache.nim
     backend*: TBackend # set via `nim x` or `nim --backend:x`
     target*: Target       # (+)
     linesCompiled*: int   # all lines that have been compiled
@@ -529,7 +533,7 @@ const
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optStyleCheck, optCursorInference}
   DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace,
-    optJsBigInt64, optItaniumMangle}
+    optJsBigInt64, optItaniumMangle, optCacheConfig}
 
 proc getSrcTimestamp(): DateTime =
   try:

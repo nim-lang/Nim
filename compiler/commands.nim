@@ -1041,6 +1041,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optSkipUserConfigFile}, arg, pass, info)
   of "skipparentcfg":
     processOnOffSwitchG(conf, {optSkipParentConfigFiles}, arg, pass, info)
+  of "cachecfg":
+    processOnOffSwitchG(conf, {optCacheConfig}, arg, pass, info)
   of "genscript", "gendeps":
     if switch.normalize == "gendeps": deprecatedAlias(switch, "genscript")
     processOnOffSwitchG(conf, {optGenScript}, arg, pass, info)
