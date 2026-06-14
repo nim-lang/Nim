@@ -93,15 +93,6 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
     var ms = getModule(s)
     result = m.g.mods[ms.position]
 
-proc isReusedTU(m: BModule): bool =
-  ## Whether this module's cached translation unit is reused — either as a
-  ## loaded backend module or purely at the file level (a module the
-  ## backend never loaded whose BModule demand-driven codegen created).
-  m.config.cmd == cmdNifC and
-    (m.module.position in m.g.graph.icReusedModules or
-     (m.g.graph.icFileReusedCnames.len > 0 and
-      getCFile(m).string in m.g.graph.icFileReusedCnames))
-
 proc icNifName(m: BModule; s: PSym): string =
   ## The serialized NIF name of `s`, recorded next to its C name in the cnif
   ## artifact so a later run can re-demand the definition when a reused TU
@@ -121,23 +112,6 @@ proc icNifName(m: BModule; t: PType): string =
   else:
     result = ""
 
-proc redirectToLiveModule(m: BModule, q: BModule): BModule =
-  ## A module whose cached translation unit is reused never generates code,
-  ## so a definition that `findPendingModule` routes into it must be emitted
-  ## elsewhere: into the demanding module, or — when the demander is itself
-  ## reused (demands raised while wiring up a reused module's init call) —
-  ## into the main module, which is always regenerated.
-  result = q
-  if q != nil and m.config.cmd == cmdNifC and isReusedTU(q):
-    if not isReusedTU(m):
-      result = m
-    else:
-      result = nil
-      for cand in m.g.mods:
-        if cand != nil and sfMainModule in cand.module.flags:
-          result = cand
-          break
-      if result == nil: result = m
 
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## Per-module backend codegen is concerned with ONE module: it emits the
@@ -1414,29 +1388,6 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # Any demand before that point yields a prototype.
       genProcPrototype(m, prc)
       return
-    # inline procs are emitted into every using TU; they are never shared
-    # across translation units, so cached/cross-TU dedup must not touch
-    # them. Dispatchers always (re)define in main, never from the cache.
-    let key = stripCnifMarks(prc.loc.snippet)
-    if (prc.typ == nil or prc.typ.callConv != ccInline) and
-        sfDispatcher notin prc.flags:
-      if key in m.g.graph.icCachedCDefs:
-        # already defined inside a reused TU from the previous run
-        genProcPrototype(m, prc)
-        return
-      # one definition program-wide: the first claimant's TU embeds it,
-      # everyone else declares it. The claim records the TU as well: with
-      # redirects the same symbol can be demanded into several TUs. Home
-      # emissions must claim too — a hook's demand routing goes through the
-      # type-owner module (`findPendingModule` walks `s.owner`) while its
-      # eager emission uses the announcing module's TU; when the owner TU
-      # is reused, the very same symbol reaches this point through both
-      # paths and only the registry serializes them.
-      let claim = (sym: prc.itemId, tu: m.module.position)
-      if m.g.graph.icSharedDefOwner.hasKeyOrPut(key, claim) and
-          m.g.graph.icSharedDefOwner[key] != claim:
-        genProcPrototype(m, prc)
-        return
     if prc.itemId.module != m.module.position and
         not isBackendMinted(prc.itemId) and
         (prc.typ == nil or prc.typ.callConv != ccInline) and
@@ -1581,12 +1532,11 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         sfDispatcher notin prc.flags:
       # A unique program-wide definition: external linkage, so exactly one
       # translation unit may embed its body and everyone else declares it.
-      # In the whole-program backend `icSharedDefOwner` (first claimant wins)
-      # enforces this in process; in the per-module backend each module's `cg`
-      # process emits the body (emit-everywhere), so this flag tells the merge
-      # stage which definitions to assign a single owner and prototype in the
-      # rest. The complement — inline procs and method dispatchers — is emitted
-      # into every using TU (`static`/main-only) and must never be deduplicated.
+      # Each module's `cg` process emits the body (emit-everywhere); this flag
+      # tells the merge stage which definitions to assign a single owner and
+      # prototype in the rest. The complement — inline procs and method
+      # dispatchers — is emitted into every using TU (`static`/main-only) and
+      # must never be deduplicated.
       defFlags.add 'u'
     if not hasCnifMarks(prc.loc.snippet):
       # The C name was not minted through `fillBackendName` (e.g. set by an
@@ -1710,7 +1660,7 @@ proc genProcLvl2(m: BModule, prc: PSym) =
         genProcLvl3(m, prcCopy)
       else:
         let m2 = if m.config.symbolFiles != disabledSf: m
-                else: redirectToLiveModule(m, findPendingModule(m, prc))
+                else: findPendingModule(m, prc)
         fillProcLoc(m2, prc.ast[namePos])
         #elif {sfExportc, sfImportc} * prc.flags == {}:
         #  # reset name to restore consistency in case of hashing collisions:
@@ -1720,7 +1670,7 @@ proc genProcLvl2(m: BModule, prc: PSym) =
         genProcPrototype(m, prc)
         genProcLvl3(m, prc)
   elif sfImportc notin prc.flags:
-    var q = redirectToLiveModule(m, findPendingModule(m, prc))
+    var q = findPendingModule(m, prc)
     fillProcLoc(q, prc.ast[namePos])
     # generate a getProc call to initialize the pointer for this
     # externally-to-the-current-module defined proc, also important
@@ -1750,23 +1700,8 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   if genConstSetup(p, sym):
     let m = p.module
     # declare implementation:
-    var q = findPendingModule(m, sym)
-    var defineIt = true
-    if m.config.cmd == cmdNifC:
-      if stripCnifMarks(sym.loc.snippet) in m.g.graph.icCachedDataDefs:
-        # already defined inside a reused TU from the previous run
-        defineIt = false
-      else:
-        let q2 = redirectToLiveModule(m, q)
-        if q2 != q:
-          # redirected definition: one TU program-wide embeds it
-          q = q2
-          let key = stripCnifMarks(sym.loc.snippet)
-          let claim = (sym: sym.itemId, tu: q2.module.position)
-          if m.g.graph.icSharedDefOwner.hasKeyOrPut(key, claim) and
-              m.g.graph.icSharedDefOwner[key] != claim:
-            defineIt = false
-    if defineIt and q != nil and not containsOrIncl(q.declaredThings, sym.id):
+    let q = findPendingModule(m, sym)
+    if q != nil and not containsOrIncl(q.declaredThings, sym.id):
       assert q.initProc.module == q
       genConstDefinition(q, p, sym)
     # declare header:
@@ -1801,17 +1736,6 @@ proc requestProcDef*(m: BModule, prc: PSym) =
   ## module that owns it and generated once, exactly as if some generated
   ## code had referenced it.
   genProc(m, prc)
-
-proc requestAnyDef*(m: BModule, sym: PSym) =
-  ## Demand entry for the def-retention check: a definition that lived in
-  ## this TU in the previous run and that a reused TU still references must
-  ## keep being emitted. Routines and constants can be re-demanded; symbols
-  ## of any other kind never get here (the check un-reuses the referencing
-  ## TU instead).
-  case sym.kind
-  of routineKinds: genProc(m, sym)
-  of skConst: requestConstImpl(m.initProc, sym)
-  else: discard
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -2268,25 +2192,6 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       g.mainDatInit.addCallStmt(init) # systemInit must called right after systemDatInit if any
     else:
       g.otherModsInit.addCallStmt(init)
-
-proc registerReusedInit*(g: BModuleList; moduleBase: string;
-                         initRequired, datInitRequired: bool) =
-  ## init/datInit registration for a translation unit that is reused purely
-  ## from its cached files (the module is not even loaded); the names are
-  ## reconstructed from the module's mangled base name recorded in the
-  ## artifact's meta head.
-  if datInitRequired:
-    let datInit = moduleBase & "DatInit000"
-    g.mainModProcs.addDeclWithVisibility(Private):
-      g.mainModProcs.addProcHeader(ccNimCall, datInit, CVoid, cProcParams())
-      g.mainModProcs.finishProcHeaderAsProto()
-    g.mainDatInit.addCallStmt(datInit)
-  if initRequired:
-    let init = moduleBase & "Init000"
-    g.mainModProcs.addDeclWithVisibility(Private):
-      g.mainModProcs.addProcHeader(ccNimCall, init, CVoid, cProcParams())
-      g.mainModProcs.finishProcHeaderAsProto()
-    g.otherModsInit.addCallStmt(init)
 
 proc registerReusedModuleToMain*(g: BModuleList; m: BModule;
                                 initRequired, datInitRequired: bool) =
@@ -2945,31 +2850,11 @@ proc genForwardedProcs(g: BModuleList) =
   # Note: ``genProcLvl2`` may add to ``forwardedProcs``
   while g.forwardedProcs.len > 0:
     let prc = g.forwardedProcs.pop()
-    var m = g.mods[prc.itemId.module]
-    if isReusedTU(m):
-      # the home TU is reused; emit through the main module instead
-      for cand in g.mods:
-        if cand != nil and sfMainModule in cand.module.flags:
-          m = cand
-          break
+    let m = g.mods[prc.itemId.module]
     if sfForward in prc.flags:
       internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 
     genProcLvl2(m, prc)
-
-proc reuseCachedModule(g: BModuleList; m: BModule) =
-  ## The module's cached `.c`/`.o`/artifact are reused: register the cached
-  ## object file for the link, keep the cached artifact in the liveness
-  ## inputs and replay the module's init registration from the artifact's
-  ## meta head.
-  let cfile = getCFile(m)
-  var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                 obj: completeCfilePath(m.config, toObjFile(m.config, cfile)),
-                 flags: {CfileFlag.Cached})
-  addFileToCompile(m.config, cf)
-  g.graph.icCnifFiles.add cfile.string & ".nif"
-  let meta = g.graph.icReusedMeta.getOrDefault(m.module.position)
-  registerReusedModuleToMain(g, m, meta.initRequired, meta.datInitRequired)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
@@ -2979,18 +2864,6 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   # deps are allowed (and the system module is processed in the wrong
   # order anyway)
   genForwardedProcs(g)
-
-  # translation units reused purely from cached files (modules the backend
-  # never loaded): link their objects, keep their artifacts in the liveness
-  # inputs, replay their init registration. NB: these TUs rarely have init
-  # code (they were demand-only in the producing run as well).
-  for fr in g.graph.icFileReused:
-    var cf = Cfile(nimname: splitFile(fr.cname).name, cname: AbsoluteFile fr.cname,
-                   obj: completeCfilePath(config, toObjFile(config, AbsoluteFile fr.cname)),
-                   flags: {CfileFlag.Cached})
-    addFileToCompile(config, cf)
-    g.graph.icCnifFiles.add fr.cname & ".nif"
-    registerReusedInit(g, fr.moduleBase, fr.initRequired, fr.datInitRequired)
 
   if config.cmd == cmdNifC and not isDefined(config, "icNoCDce"):
     # Two-phase write: produce every module's marked text and artifact
@@ -3002,11 +2875,6 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
     var cfs: seq[Cfile] = @[]
     var codes: seq[string] = @[]
     for m in cgenModules(g):
-      if m.module.position in g.graph.icReusedModules:
-        reuseCachedModule(g, m)
-        continue
-      if isReusedTU(m):
-        continue # file-level reused: registered before this loop already
       let cfile = getCFile(m)
       var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                      obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
@@ -3026,11 +2894,6 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
     g.graph.icCDropped = dropped
   else:
     for m in cgenModules(g):
-      if config.cmd == cmdNifC and m.module.position in g.graph.icReusedModules:
-        reuseCachedModule(g, m)
-      elif isReusedTU(m):
-        discard # file-level reused: registered before this loop already
-      else:
-        m.writeModule()
+      m.writeModule()
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)

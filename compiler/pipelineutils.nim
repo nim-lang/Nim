@@ -23,6 +23,4 @@ proc prepareConfigNotes*(graph: ModuleGraph; module: PSym) =
     graph.config.notes = graph.config.foreignPackageNotes
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
-  # under `nim nifc` a module whose cached translation unit is reused
-  # does not generate code; the set is empty for every other command
-  result = module.position notin graph.icReusedModules
+  result = true

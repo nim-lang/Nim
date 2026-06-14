@@ -92,14 +92,11 @@ proc sharedInstanceCName(m: BModule; s: PSym): string =
       (s.disamb and InstanceDisambBit) != 0'i32 and
       s.typ != nil and s.typ.callConv != ccInline and not m.hcrOn and
       {sfImportc, sfExportc, sfCodegenDecl} * s.flags == {}:
-    let candidate = s.name.s.mangle & "_i" & $s.disamb
-    let compat = typeToString(s.typ)
-    let existing = m.g.graph.icSharedSigs.getOrDefault(candidate)
-    if existing.len == 0:
-      m.g.graph.icSharedSigs[candidate] = compat
-      result = candidate
-    elif existing == compat:
-      result = candidate
+    # The content-derived `disamb` is unique per process (collision-probed in
+    # `setInstanceDisamb`), so the mint-site-independent `_i<disamb>` name is
+    # safe to use directly; identical instances across modules collide on it
+    # exactly and the merge stage keeps one.
+    result = s.name.s.mangle & "_i" & $s.disamb
 
 proc isSharedInstanceCName(m: BModule; s: PSym): bool =
   m.config.cmd == cmdNifC and s.kind in routineKinds and
@@ -2030,12 +2027,6 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   # definition into the owner module's *unwritten* backend module (discarded in
   # this process) and emit only an extern here, leaving the symbol undefined.
   let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
-  if not perModuleCg and m.config.cmd == cmdNifC and result in m.g.graph.icCachedDataDefs:
-    # already defined inside a reused TU from the previous run
-    cgsym(m, "TNimTypeV2")
-    declareNimType(m, "TNimTypeV2", result, owner)
-    m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
-    return prefixTI(result)
   if not perModuleCg and owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.mods[owner], origType, info)
@@ -2123,16 +2114,6 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
         echo "[icNti] ", result, " in mod=", m.module.name.s, " -> ", branch
   else:
     template dbgNti(branch: string) = discard
-
-  if m.config.cmd == cmdNifC and result in m.g.graph.icCachedDataDefs:
-    dbgNti "extern:cachedDataDefs"
-    # already defined inside a reused TU from the previous run
-    cgsym(m, "TNimType")
-    cgsym(m, "TNimNode")
-    declareNimType(m, "TNimType", result, t.skipTypes(typedescPtrs).itemId.module)
-    m.g.typeInfoMarker[sig] = (str: result,
-                               owner: t.skipTypes(typedescPtrs).itemId.module)
-    return prefixTI(result)
 
   let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
   if old != FileIndex(0):

@@ -486,8 +486,7 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
   ## Each `cg` process emits the body of every definition it demands
   ## (emit-everywhere), so the same externally-linked definition appears in
   ## several artifacts. A `'u'` flag on the `(cdef ...)` marks those that need
-  ## exactly one owner (the whole-program backend's `icSharedDefOwner`
-  ## invariant, here recomputed across processes); the owner is the
+  ## exactly one owner, assigned here across processes: the owner is the
   ## lexicographically smallest artifact that emits it — a pure function of the
   ## claimant set, hence stable across rebuilds. Definitions without `'u'`
   ## (inline procs, dispatchers) are `static`/main-only and emitted into every
