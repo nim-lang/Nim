@@ -176,9 +176,6 @@ type
     #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
-    writtenTypeNames: HashSet[string] # NIF names of type defs already emitted;
-                                      # `exactReplica` copies share the canonical
-                                      # type's uniqueId and thus its NIF name
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
   ## Every symbol is emitted as a *global* (module-suffixed) name so that its
@@ -351,17 +348,7 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
     # module (or nowhere), leaving dangling references (e.g. `symbol has no
     # offset` for a `pointer` type whose itemId.module drifted away).
     typ.state = Sealed
-    let name = typeToNifSym(typ, w.infos.config)
-    if w.writtenTypeNames.containsOrIncl(name):
-      # BACKSTOP: uniqueId is unique per instance since `exactReplica` mints
-      # fresh ones, so two defs should never share a NIF name anymore.
-      # Should an id collision slip through regardless, duplicate defs are
-      # load-order POISON (the loader keys types by name; results.nim's
-      # Result body was once shadowed by a meta replica, silently nil-ing
-      # return types downstream) — degrade to a reference to the first def.
-      dest.addSymUse pool.syms.getOrIncl(name), NoLineInfo
-    else:
-      writeTypeDef(w, dest, typ)
+    writeTypeDef(w, dest, typ)
   else:
     dest.addSymUse pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
 
@@ -456,29 +443,7 @@ proc shouldWriteSymDef(w: var Writer; sym: PSym): bool {.inline.} =
       return true  # Normal case for global symbols
   return false
 
-proc canonicalRoutine(sym: PSym): PSym {.inline.} =
-  ## A forward declaration and its implementation are merged in sem into a single
-  ## surviving symbol (the prototype). The discarded impl symbol is orphaned but
-  ## can still be reachable from the surviving routine's AST — e.g. as the `owner`
-  ## of a `[T: tuple]`-style generic-param constraint type created while the impl
-  ## header was being processed. If we serialized that dead symbol it would get
-  ## its own module-global sdef, be indexed, and the importer would then see two
-  ## identical overloads -> "ambiguous call". The dead symbol is recognisable
-  ## because its `ast` is the shared routine node whose name no longer points back
-  ## at it (it points at the survivor). Collapse to the survivor. Writer-only /
-  ## IC-specific: from-source compilation never serialises, so this cannot affect
-  ## the non-IC path.
-  result = sym
-  if sym != nil and sym.kindImpl in routineKinds:
-    let a = sym.astImpl
-    if a != nil and a.len > namePos and a[namePos].kind == nkSym:
-      let canon = a[namePos].sym
-      if canon != nil and canon != sym and canon.name.id == sym.name.id and
-         canon.itemId.module == sym.itemId.module:
-        result = canon
-
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
-  let sym = canonicalRoutine(sym)
   if sym == nil:
     dest.addDotToken()
   elif shouldWriteSymDef(w, sym):
@@ -1502,17 +1467,9 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
     let id = itemId(moduleId(c, suffix).int32, itemVal)
     let ii = addr c.mods[id.module.FileIndex].index
     let offs = ii[].getOrDefault(name)
-    if offs.offset == 0 and k == ord(tyNone):
-      # A `tyNone` placeholder (e.g. the type of a symbol-choice node) that is
-      # not present in its owning module's index. Such types are copied during
-      # template/generic instantiation in another module but keep their original
-      # owner, so the owner never serialised them. They carry no information, so
-      # synthesise a fresh, fully-loaded empty type instead of failing.
-      result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Complete)
-    else:
-      if offs.offset == 0:
-        raiseAssert "symbol has no offset: " & name
-      result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
+    if offs.offset == 0:
+      raiseAssert "symbol has no offset: " & name
+    result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
     c.types[name] = (result, offs)
 
 proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: string;
