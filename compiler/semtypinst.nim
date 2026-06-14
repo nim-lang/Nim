@@ -440,11 +440,15 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   for i in FirstGenericParamAt..<t.kidsLen:
     var x = t[i]
     if x.kind in {tyGenericParam}:
-      x = lookupTypeVar(cl, x)
-      if x != nil:
+      # Non-erroring lookup: a param that isn't bound in the outer context yet
+      # (e.g. a default like `U = T` that refers to an earlier param of this same
+      # body) is bound below in the main loop, left-to-right. Leaving it here lets
+      # that pass resolve it instead of failing early.
+      let bound = cl.typeMap.lookup(x)
+      if bound != nil:
         if header == t: header = instCopyType(cl, t)
-        header[i] = x
-        propagateToOwner(header, x)
+        header[i] = bound
+        propagateToOwner(header, bound)
     else:
       propagateToOwner(header, x)
 

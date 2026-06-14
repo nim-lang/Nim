@@ -1844,33 +1844,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     let mIndex = if rType != nil: rType.len - 1 else: -1
     var hasForwardTypeParam = false
 
-    # Issues #4086, #9355: when a generic param's default value references
-    # earlier type params (e.g. `type Foo[T; U = seq[T]]` or `func foo[T](U = T)`)
-    # substitute those references with already-resolved bindings before
-    # adding to the invocation. Bindings are accumulated as the loop walks
-    # left-to-right, so cascade defaults like `[T; U = seq[T]; V = seq[U]]`
-    # work too (each iteration resolves against the previous ones).
-    # Skip the bookkeeping entirely when no param has a default — this
-    # generic body cannot need substitution and the work would just be
-    # pure overhead (matters for large generic graphs / forward cycles).
-    var hasAnyDefault = false
-    for i in 0..<t.len-1:
-      let p = t[i]
-      if p.kind == tyGenericParam and p.sym != nil and p.sym.ast != nil:
-        hasAnyDefault = true
-        break
-    var defaultBindings = initLayeredTypeMap()
-    var hasDefaultBinding = false
-
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
-
-      if hasDefaultBinding and nfDefaultParam in m.call[i].flags and
-         containsGenericType(typ):
-        var cl = initTypeVars(c, defaultBindings, n.info, getCurrOwner(c))
-        let substituted = replaceTypeVarsT(cl, typ)
-        if substituted != nil:
-          typ = substituted
 
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
       # unstripped.
@@ -1880,15 +1855,16 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         addToResult(typ, true)
       else:
         typ = typ.skipTypes({tyTypeDesc})
-        if containsGenericType(typ): isConcrete = false
+        # #4086: a param filled from its default (nfDefaultParam) may still
+        # mention earlier type params (e.g. `U = seq[T]`). Those are resolved
+        # during instantiation against the already-bound earlier params, so
+        # they must not make the invocation non-concrete here.
+        if containsGenericType(typ) and nfDefaultParam notin m.call[i].flags:
+          isConcrete = false
         var skip = true
         if mIndex >= i - 1 and tfImplicitStatic in rType[i - 1].flags and isIntLit(typ):
           skip = false
         addToResult(typ, skip)
-
-      if hasAnyDefault and i - 1 < t.kidsLen and t[i - 1].kind == tyGenericParam:
-        defaultBindings.put(t[i - 1], typ.skipTypes({tyTypeDesc}))
-        hasDefaultBinding = true
 
       if typ.kind == tyForward:
         hasForwardTypeParam = true

@@ -22,11 +22,9 @@ import std/deques
 # `Foo` keeps meaning a type class in parameter position, so it is intentionally
 # not auto-instantiated. `Foo[]` works uniformly in every type position.
 #
-# Proc-side: the typedesc-parameter form `func foo[T](U: type = T)` is also
-# supported (issue #9355) -- the default `= T` is substituted during overload
-# matching (sigmatch). The untyped form `func foo[T](U = T)` is rejected by
-# design (a type is not a value), and brackets-internal proc generic defaults
-# (`proc foo[T, U = T]()`) are out of scope for this PR.
+# Proc-side generic-param defaults (including the typedesc form
+# `func foo[T](U: type = T)`, issue #9355) are out of scope for this PR; doing
+# them properly needs separate work in the proc-instantiation path.
 
 block: # #4086 type-side: object generic param default `seq[T]`
   type Foo[T; U = seq[T]] = object
@@ -152,9 +150,3 @@ block: # `Foo[]` works uniformly in every type position (the point of the syntax
   h.inner.x = 5
   doAssert takesFoo(h.inner) == 5
   doAssert makeFoo().x == 9
-
-block: # #9355: typedesc parameter default referencing an earlier generic param
-  func foo[T](U: type = T): U = default(U)
-  doAssert foo[int]() is int          # U defaults to T
-  doAssert foo[string]() is string
-  doAssert foo[int](float) is float   # explicit override still works
