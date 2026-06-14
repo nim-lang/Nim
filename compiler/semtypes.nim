@@ -1880,6 +1880,38 @@ proc fixupTypeOf(c: PContext, prev: PType, typ: PType) =
     if prev.kind != tyGenericBody:
       assignType(prev, result)
 
+proc decayTypeOfView(c: PContext, typ: PType): PType =
+  if typ == nil: return nil
+  let t = typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  case t.kind
+  of tyVar, tyLent:
+    result = decayTypeOfView(c, t.elementType)
+  of tyTuple:
+    var changed = false
+    var kids = newSeq[PType](t.len)
+    for i in 0..<t.len:
+      kids[i] = decayTypeOfView(c, t[i])
+      if kids[i] != t[i]: changed = true
+    if changed:
+      result = copyType(t, c.idgen, t.owner)
+      for i in 0..<kids.len:
+        result[i] = kids[i]
+      if t.n != nil:
+        result.n = copyNode(t.n)
+        for it in t.n:
+          if it.kind == nkSym and it.sym.kind == skField:
+            let field = copySym(it.sym, c.idgen)
+            field.ast = it.sym.ast
+            if field.position >= 0 and field.position < kids.len:
+              field.typ = kids[field.position]
+            result.n.add newSymNode(field, it.info)
+          else:
+            result.n.add copyTree(it)
+    else:
+      result = typ
+  else:
+    result = typ
+
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
   if n.typ.kind == tyTypeDesc:
@@ -2130,6 +2162,7 @@ proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
       result.incl tfNonConstExpr
     else:
       result = base
+  result = decayTypeOfView(c, result)
   fixupTypeOf(c, prev, result)
 
 proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
@@ -2146,6 +2179,7 @@ proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
       result.incl tfNonConstExpr
     else:
       result = base
+  result = decayTypeOfView(c, result)
   fixupTypeOf(c, prev, result)
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
