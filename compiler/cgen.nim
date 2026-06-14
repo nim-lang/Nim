@@ -1336,7 +1336,14 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
 
   if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
-      internalError(m.config, prc.info, "proc has no result symbol")
+      # Issue #24616: Provide better error for magic procs used as first-class functions
+      if prc.magic != mNone:
+        localError(m.config, prc.info,
+          "cannot use compiler magic '" & prc.name.s &
+          "' as a first-class function; consider wrapping it in a lambda")
+      else:
+        internalError(m.config, prc.info, "proc has no result symbol")
+      return
     let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
     if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:

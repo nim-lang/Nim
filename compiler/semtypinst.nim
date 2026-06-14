@@ -782,7 +782,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       case result.kind
       of tyArray:
         let idx = result.indexType
-        internalAssert cl.c.config, idx.kind != tyStatic
+        # Normalize static types in array indices (issue #24826)
+        if idx.kind == tyStatic:
+          result.setIndexType idx.skipTypes({tyStatic})
 
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
