@@ -853,16 +853,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       hasUserSpecifiedType = true
-      # Issue #4086: `var f: Foo` for `type Foo[T = int]` auto-expands to
-      # `Foo[int]` when every generic param has a default. Restricted to
-      # var/let/const declarations so it does not affect type-level
-      # computations like `arity(SomeGeneric)` in template/typetraits
-      # contexts where bare generic-body references are intentional.
-      if typ != nil and typ.kind == tyGenericBody and typ.sym != nil:
-        let auto = tryGenericBodyDefaultInvocation(c,
-            newSymNode(typ.sym, a[^2].info), typ.sym, nil)
-        if auto != nil:
-          typ = auto
 
     var typFlags: TTypeAllowedFlags = {}
 
@@ -1019,16 +1009,6 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       hasUserSpecifiedType = true
-      # Issue #4086: `var f: Foo` for `type Foo[T = int]` auto-expands to
-      # `Foo[int]` when every generic param has a default. Restricted to
-      # var/let/const declarations so it does not affect type-level
-      # computations like `arity(SomeGeneric)` in template/typetraits
-      # contexts where bare generic-body references are intentional.
-      if typ != nil and typ.kind == tyGenericBody and typ.sym != nil:
-        let auto = tryGenericBodyDefaultInvocation(c,
-            newSymNode(typ.sym, a[^2].info), typ.sym, nil)
-        if auto != nil:
-          typ = auto
 
     var typFlags: TTypeAllowedFlags = {}
 

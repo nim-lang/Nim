@@ -16,6 +16,12 @@ import std/deques
 # (e.g. `type Foo[T; U = seq[T]]`). This is needed for binding C++ templates
 # like `std::vector<T, allocator<T>>` and `std::unique_ptr<T, default_delete<T>>`.
 #
+# When every generic param has a default, `Foo[]` (empty brackets) instantiates
+# `Foo` using all defaults, e.g. `type Foo[T = int]; var f: Foo[]` is `Foo[int]`.
+# `Foo[]` is the explicit-instantiation spelling (mirrors C++ `Foo<>`); a bare
+# `Foo` keeps meaning a type class in parameter position, so it is intentionally
+# not auto-instantiated. `Foo[]` works uniformly in every type position.
+#
 # Note: proc-side brackets-internal defaults (`proc foo[T, U = T]()`) are
 # out of scope; the PR's logic targets type-side default substitution.
 # A separate change would be needed for proc-side signature defaults.
@@ -60,12 +66,13 @@ block: # type-side compound: U = array[3, T]
   doAssert f.arr[0] == 10
   doAssert f.arr[2] == 30
 
-block: # #4086 original: all params defaulted, invocation with no args
+block: # #4086 original: all params defaulted, `Foo[]` uses all defaults
   type Foo[T = int] = object
     x: T
-  var f: Foo
+  var f: Foo[]
   f.x = 42
   doAssert f.x == 42
+  doAssert f.x is int
 
 block: # alias of a defaulted instantiation
   type Foo[T; U = T] = object
@@ -96,7 +103,7 @@ block: # union constraint + default referencing T (review request)
 block: # typeclass constraint + concrete-type default (review request)
   type Foo[T: SomeInteger = int] = object
     x: T
-  var f: Foo
+  var f: Foo[]
   f.x = 7
   doAssert f.x is int
   var g: Foo[int64]
@@ -108,9 +115,38 @@ block: # concept constraint + default (review request)
     x.len is int
   type Foo[T: HasLen = string] = object
     val: T
-  var f: Foo
+  var f: Foo[]
   f.val = "hi"
   doAssert f.val.len == 2
   var g: Foo[seq[int]]
   g.val = @[1, 2, 3]
   doAssert g.val.len == 3
+
+block: # `Foo[]` with all params defaulted AND a dependent default (cascade)
+  type Foo[T = int; U = seq[T]; V = seq[U]] = object
+    a: T
+    b: U
+    c: V
+  var f: Foo[]
+  f.a = 1
+  f.b.add 2
+  f.c.add @[3, 4]
+  doAssert f.a is int
+  doAssert f.b == @[2]
+  doAssert f.c == @[@[3, 4]]
+
+block: # `Foo[]` works uniformly in every type position (the point of the syntax)
+  type Foo[T = int] = object
+    x: T
+  # proc param position -> concrete Foo[int], NOT a generic proc
+  proc takesFoo(g: Foo[]): int = g.x
+  # return type position
+  proc makeFoo(): Foo[] =
+    result.x = 9
+  # field position
+  type Holder = object
+    inner: Foo[]
+  var h: Holder
+  h.inner.x = 5
+  doAssert takesFoo(h.inner) == 5
+  doAssert makeFoo().x == 9

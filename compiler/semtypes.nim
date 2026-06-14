@@ -1738,14 +1738,15 @@ proc containsGenericInvocationWithForward(n: PNode): bool =
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType
 
-proc tryGenericBodyDefaultInvocation*(c: PContext, n: PNode, s: PSym,
-                                      prev: PType): PType =
-  ## Issue #4086 sub-case: `type Foo[T = int]; var f: Foo` is sugar for
-  ## `var f: Foo[int]` when every generic param has a default. Synthesize
-  ## a `Foo[default1, default2, ...]` bracket node and dispatch to the
-  ## existing `semGeneric` so the default-substitution machinery (added
-  ## for issues #4086 / #9355) handles cascading and parameter-referencing
-  ## defaults uniformly.
+proc tryGenericBodyDefaultInvocation(c: PContext, n: PNode, s: PSym,
+                                     prev: PType): PType =
+  ## Issue #4086 sub-case: `Foo[]` (empty brackets) instantiates `Foo` using
+  ## the default of every generic param, e.g. `type Foo[T = int]; var f: Foo[]`
+  ## means `var f: Foo[int]`. Synthesize a `Foo[default1, default2, ...]`
+  ## bracket node and dispatch to the existing `semGeneric` so the
+  ## default-substitution machinery (added for issues #4086 / #9355) handles
+  ## cascading and parameter-referencing defaults uniformly. Returns nil when
+  ## not every generic param has a default (the caller then reports an error).
   result = nil
   if s.typ == nil: return
   let body = s.typ.skipTypes({tyAlias})
@@ -1759,9 +1760,33 @@ proc tryGenericBodyDefaultInvocation*(c: PContext, n: PNode, s: PSym,
     bracket.add n
   else:
     bracket.add newSymNode(s, n.info)
-  for i in 0..<body.len-1:
-    bracket.add copyTree(body[i].sym.ast)
+  # Provide only the first param's default explicitly (it cannot reference an
+  # earlier param, so it needs no substitution). The matcher's default-completion
+  # path then fills the remaining params from their defaults and flags them
+  # `nfDefaultParam`, so `semGeneric` substitutes references to earlier params
+  # (e.g. `U = seq[T]` -> `seq[int]`, cascading left-to-right). Synthesizing every
+  # default as an explicit arg would instead treat them as user-supplied args and
+  # bypass that substitution.
+  bracket.add copyTree(body[0].sym.ast)
   result = semGeneric(c, bracket, s, prev)
+
+proc semGenericOrEmptyBracket(c: PContext, n: PNode, s: PSym, prev: PType): PType =
+  ## `Foo[]` (empty brackets, i.e. an `nkBracketExpr` whose only child is the
+  ## type head) is an explicit-defaults instantiation: it means `Foo[d1, d2, ...]`
+  ## where every generic param falls back to its default (issues #4086 / #9355).
+  ## Handling it here in the shared type-resolution path means it works in every
+  ## type position — var/let/const, proc params, return types, fields — unlike a
+  ## bare `Foo`, which stays a type class (implicit generic) in parameter position
+  ## and must keep that meaning. Non-empty brackets take the normal path.
+  if n.len == 1:
+    result = tryGenericBodyDefaultInvocation(c, n[0], s, prev)
+    if result == nil:
+      localError(c.config, n.info,
+        "cannot instantiate '$1' with '[]': every generic parameter must have a default" %
+          s.name.s)
+      result = newOrPrevType(tyError, prev, c)
+  else:
+    result = semGeneric(c, n, s, prev)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
@@ -2423,8 +2448,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       of "lent": result = semAnyRef(c, n, tyLent, prev)
       of "sink": result = semAnyRef(c, n, tySink, prev)
       of "owned": result = semAnyRef(c, n, tyOwned, prev)
-      else: result = semGeneric(c, n, s, prev)
-    else: result = semGeneric(c, n, s, prev)
+      else: result = semGenericOrEmptyBracket(c, n, s, prev)
+    else: result = semGenericOrEmptyBracket(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)
     if typeExpr.typ.isNil:
