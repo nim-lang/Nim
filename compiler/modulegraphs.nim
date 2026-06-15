@@ -146,6 +146,11 @@ type
     cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API; IC: implemented
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
+    transitiveReplayActions*: seq[PNode] # macro-cache replay actions collected from
+      # the transitive import closure of a NIF-loaded module (loadTransitiveHooks);
+      # the caller (pipelines) replays them so a dependency's macrocache state — e.g.
+      # nim-serialization's flavor registration — reaches a module that imports it
+      # only indirectly. Drained per moduleFromNifFile call.
     passes*: seq[TPass]
     pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
@@ -944,6 +949,14 @@ when not defined(nimKochBootstrap):
       if not g.hookClosure.containsOrIncl(fileIdx.int):
         let precomp = loadNifModule(ast.program, suffix, interf, interfHidden, {})
         registerLoadedHooks(g, precomp.logOps)
+        # Collect the dependency's macro-cache replay actions (put/inc/add/incl)
+        # so the importer being compiled also sees macrocache state registered
+        # by a transitively-imported module. Pragma replay actions are a backend
+        # concern and are intentionally not collected here.
+        for n in precomp.topLevel:
+          if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
+             n[0].strVal in ["put", "inc", "add", "incl"]:
+            g.transitiveReplayActions.add n
         for d in precomp.deps: stack.add d
 
   proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym =

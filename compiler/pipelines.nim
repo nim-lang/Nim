@@ -378,9 +378,30 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           if sfSystemModule in flags:
             graph.systemModule = result
           partialInitModule(result, graph, fileIdx, AbsoluteFile(toFullPath(graph.config, fileIdx)))
-          # Replay state changes from the loaded NIF module
-          if result.ast != nil:
-            replayStateChanges(result, graph)
+          # Replay the module's recorded state changes: macro-cache operations
+          # (std/macrocache puts/incs/adds/incls) plus a few pragmas. The loader
+          # parsed them into `precomp.topLevel` (mixed with other top-level nodes),
+          # so filter to the replay actions. A loaded module's `ast` is never
+          # rebuilt, so this used to be skipped (`result.ast == nil`) and a
+          # NIF-loaded module's macro cache was lost — e.g. nim-serialization's
+          # flavor registration became invisible to dependents (`DefaultFlavor:
+          # automatic serialization is not enabled`).
+          var replayList = newNodeI(nkStmtList, result.info)
+          for n in precomp.topLevel:
+            # Only macro-cache ops (put/inc/add/incl). The pragma replay actions
+            # (compile/link/passc/hint/...) are a backend/link concern handled by
+            # the nifc closure, and re-emitting a loaded module's hints/warnings on
+            # every import would be wrong — so they are deliberately skipped here.
+            if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
+               n[0].strVal in ["put", "inc", "add", "incl"]:
+              replayList.add n
+          # Plus the macro-cache actions of the module's transitive import closure
+          # (collected by the moduleFromNifFile call above via loadTransitiveHooks),
+          # so a flavor/type registered in an indirectly-imported module is visible.
+          for n in graph.transitiveReplayActions: replayList.add n
+          graph.transitiveReplayActions.setLen 0
+          if replayList.len > 0:
+            replayStateChanges(result, graph, replayList)
           # Fill the VM slots of the module's `{.compileTime.}` globals now (sem
           # would have, but a NIF-loaded module is never semchecked).
           initLoadedCompileTimeGlobals(graph, result, precomp.topLevel)

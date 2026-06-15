@@ -19,8 +19,11 @@ import std/tables
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-proc replayStateChanges*(module: PSym; g: ModuleGraph) =
-  let list = module.ast
+proc replayStateChanges*(module: PSym; g: ModuleGraph; list: PNode) =
+  ## `list` is an `nkStmtList` of `nkReplayAction` nodes (macro-cache puts/incs/
+  ## adds/incls and a few pragmas) recorded for `module`. Under the NIF backend a
+  ## loaded module's `ast` is never reconstructed, so the caller passes the replay
+  ## actions it parsed out of the module's NIF directly.
   assert list != nil
   assert list.kind == nkStmtList
   for n in list:
@@ -64,8 +67,9 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
           g.cacheTables[destKey] = initBTree[string, PNode]()
         if not contains(g.cacheTables[destKey], key):
           g.cacheTables[destKey].add(key, val)
-        else:
-          internalError(g.config, n.info, "key already exists: " & key)
+        # else: the same key was already replayed. Under IC the import closure is
+        # replayed (direct module + transitive deps), so the same registration can
+        # legitimately be reached twice; re-applying it is a no-op, not an error.
       of "incl":
         let destKey = n[1].strVal
         let val = n[2]
