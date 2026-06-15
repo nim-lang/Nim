@@ -269,8 +269,29 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       # the union; intra-group entries are filtered by the writer.
       var implDeps: seq[int] = @[]
       for id in graph.icImplDeps: implDeps.add id
+      # Generic-instance OFFERS: every instance THIS module created, so a
+      # consumer reuses it rather than re-instantiating in its own scope (which
+      # cannot see symbols visible only at the generic's definition site — e.g.
+      # a distinct type's `==`). See ast2nif.writeNifModule / moduleFromNifFile.
+      var genericOffers: seq[tuple[generic, inst: PSym;
+                                   concreteTypes: seq[PType]; genericParamsCount: int]] = @[]
+      for genItemId, instList in graph.procInstCache:
+        for inst in instList:
+          if inst.sym != nil and inst.sym.itemId.module == module.position and
+              inst.sym.instantiatedFrom != nil and inst.compilesId == 0:
+            # `concreteTypes` is pre-sized to `paramsLen+gp.len`; a tail slot can
+            # stay nil (e.g. fewer materialized params than `paramsLen`). Such an
+            # offer can't be serialized — skip it (the consumer re-instantiates,
+            # the prior behaviour) rather than emit a nil type reference.
+            var hasNil = false
+            for ct in inst.concreteTypes:
+              if ct == nil: hasNil = true; break
+            if not hasNil:
+              genericOffers.add (inst.sym.instantiatedFrom, inst.sym,
+                                 inst.concreteTypes, inst.genericParamsCount)
       writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
-                     replayActions, implDeps, reexportedModuleSyms(graph, module))
+                     replayActions, implDeps, reexportedModuleSyms(graph, module),
+                     genericOffers)
       # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]

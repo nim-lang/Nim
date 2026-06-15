@@ -617,7 +617,7 @@ proc runIcTestFile(inp: string) =
 # on a sibling helper (`timp` -> `myimp`, `tcompiletimeglobal` -> `mctglobal`),
 # which exercises the NIF import/load path the single-file tests do not.
 const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
-                 "tcompiletimeglobal", "tsighashstable"]
+                 "tcompiletimeglobal", "tsighashstable", "tpureenum", "tgenericoffer"]
 
 proc icTest(args: string) =
   temp("")

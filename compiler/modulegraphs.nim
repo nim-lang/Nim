@@ -1022,6 +1022,15 @@ when not defined(nimKochBootstrap):
       if ms != nil:
         strTableAdd(g.ifaces[fileIdx.int].interf, ms)
 
+    # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
+    # consumer's `genericCacheGet` finds the instance and SKIPS re-running
+    # `instantiateBody` in its own module scope (which lacks symbols visible only
+    # at the generic's definition site — see ast2nif's `(offer …)`).
+    for off in result.genericOffers:
+      g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
+        sym: off.inst, concreteTypes: off.concreteTypes,
+        genericParamsCount: off.genericParamsCount, compilesId: 0)
+
     # Mark module as cached
     g.cachedMods.incl fileIdx.int
     g.hookClosure.incl fileIdx.int
@@ -1032,6 +1041,11 @@ when not defined(nimKochBootstrap):
       case x.kind
       of ConverterEntry:
         g.ifaces[fileIdx.int].converters.add x.sym
+      of PureEnumEntry:
+        # rebuild the pure-enum list (source path: `addPureEnum`) so importers can
+        # offer this loaded `{.pure.}` enum's fields as the restricted pure-enum
+        # fallback (`importPureEnumFields`).
+        g.ifaces[fileIdx.int].pureEnums.add x.sym
       of MethodEntry:
         discard "dispatch buckets already rebuilt by registerLoadedHooks"
       of GenericInstEntry:
