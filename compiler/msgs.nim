@@ -125,12 +125,25 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool = false
   result = fileInfoIdx(conf, filename, dummy)
 
+proc expandOrPseudo(filename: string): AbsoluteFile =
+  # `expandFilename` raises OSError when the path does not exist on disk. That is
+  # fine for a real source path, but a macro can legitimately set a node's
+  # line-info file to a name that has no file behind it — e.g. the `???` sentinel
+  # produced by `toFilename` for a NIF-loaded node whose `fileIndex` is unknown
+  # (FileIndex(-1)). Falling back to the raw name lets the `AbsoluteFile` overload
+  # register it as a pseudo-path (like `command line`/`stdin`) instead of crashing
+  # the whole `nim m` child with an unhandled OSError.
+  try:
+    result = AbsoluteFile expandFilename(filename)
+  except OSError:
+    result = AbsoluteFile filename
+
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
-  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), isKnownFile)
+  fileInfoIdx(conf, expandOrPseudo(filename.string), isKnownFile)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   var dummy: bool = false
-  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
+  fileInfoIdx(conf, expandOrPseudo(filename.string), dummy)
 
 proc registerNifSuffix*(conf: ConfigRef; suffix: string; isKnownFile: var bool): FileIndex =
   result = conf.m.filenameToIndexTbl.getOrDefault(suffix, InvalidFileIdx)

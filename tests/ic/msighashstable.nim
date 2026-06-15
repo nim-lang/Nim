@@ -36,9 +36,23 @@ func getAuto*(F: type DefaultFlavor, T: distinct type): bool {.compileTime.} =
   let table = F.getTable()
   table.hasKey(sig)
 
+func tcOrMember*(F: type DefaultFlavor, TC: distinct type, TM: distinct type): bool {.compileTime.} =
+  ## Is `TM` registered, or its parent type class `TC`? Models
+  ## `typeClassOrMemberAutoSerialize` — used to auto-serialize any `object`/`tuple`.
+  if F.getAuto(TM): return true
+  if F.getAuto(TC): return true
+  false
+
 template autoCheck*(F: distinct type, T: distinct type, body) =
   when not F.getAuto(T):
     {.error: "auto serialization not enabled for `" & typetraits.name(T) & "`".}
+  else:
+    body
+
+template autoCheckTC*(F: distinct type, TC: distinct type, M: distinct type, body) =
+  when not F.tcOrMember(TC, M):
+    {.error: "auto serialization not enabled for `" & typetraits.name(M) &
+      "` of typeclass `" & typetraits.name(TC) & "`".}
   else:
     body
 
@@ -46,3 +60,9 @@ static:
   setAuto(DefaultFlavor, string)
   setAuto(DefaultFlavor, SomeInteger)
   setAuto(DefaultFlavor, seq)
+  # Builtin *type classes*: `object`/`tuple` are `tyBuiltInTypeClass`, whose
+  # `signatureHash` must not mix in the placeholder son's process-local type id
+  # or the lookup misses across the NIF boundary (the real nim-serialization bug
+  # surfaced by Nimbus: `MultiAddress`/`RequestId` "of typeclass `object`").
+  setAuto(DefaultFlavor, object)
+  setAuto(DefaultFlavor, tuple)

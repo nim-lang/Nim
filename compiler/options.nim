@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "5"
+  icFormatVersion* = "6"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -49,6 +49,11 @@ const
     ## cdef directives with an always-present extern declaration, so the
     ## per-module merge stage can assign them a single owner; old `.c.nif`
     ## artifacts lack the wrappers.
+    ## v6: `signatureHash`/`hashType` of a builtin type class (`object`, `tuple`,
+    ## `proc`, ...) no longer mixes in the placeholder son's process-local type
+    ## id, so its hash is stable across the NIF boundary (was breaking
+    ## nim-serialization's auto-serialization lookup under IC). The sem-NIF
+    ## macrocache entries and baked generic-instance bodies hold the old hashes.
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
