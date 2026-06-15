@@ -983,7 +983,12 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
         diagnostics: m.diagnostics))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  newInst.typ.excl tfUnresolved
+  # `generateInstance` may return an instance REUSED from another module's NIF
+  # `(offer …)` — its type is Sealed (immutable). Such an instance is already
+  # fully resolved (`tfUnresolved` cleared at its original instantiation), so the
+  # `excl` is a no-op; skip it rather than assert on a Sealed-type mutation.
+  if newInst.typ.state != Sealed:
+    newInst.typ.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s, isGenericInstance = false)
   onUse(info, s, isGenericInstance = false)

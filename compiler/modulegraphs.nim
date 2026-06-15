@@ -146,6 +146,11 @@ type
     cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API; IC: implemented
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
+    transitiveReplayActions*: seq[PNode] # macro-cache replay actions collected from
+      # the transitive import closure of a NIF-loaded module (loadTransitiveHooks);
+      # the caller (pipelines) replays them so a dependency's macrocache state — e.g.
+      # nim-serialization's flavor registration — reaches a module that imports it
+      # only indirectly. Drained per moduleFromNifFile call.
     passes*: seq[TPass]
     pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
@@ -944,6 +949,14 @@ when not defined(nimKochBootstrap):
       if not g.hookClosure.containsOrIncl(fileIdx.int):
         let precomp = loadNifModule(ast.program, suffix, interf, interfHidden, {})
         registerLoadedHooks(g, precomp.logOps)
+        # Collect the dependency's macro-cache replay actions (put/inc/add/incl)
+        # so the importer being compiled also sees macrocache state registered
+        # by a transitively-imported module. Pragma replay actions are a backend
+        # concern and are intentionally not collected here.
+        for n in precomp.topLevel:
+          if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
+             n[0].strVal in ["put", "inc", "add", "incl"]:
+            g.transitiveReplayActions.add n
         for d in precomp.deps: stack.add d
 
   proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym =
@@ -1009,6 +1022,15 @@ when not defined(nimKochBootstrap):
       if ms != nil:
         strTableAdd(g.ifaces[fileIdx.int].interf, ms)
 
+    # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
+    # consumer's `genericCacheGet` finds the instance and SKIPS re-running
+    # `instantiateBody` in its own module scope (which lacks symbols visible only
+    # at the generic's definition site — see ast2nif's `(offer …)`).
+    for off in result.genericOffers:
+      g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
+        sym: off.inst, concreteTypes: off.concreteTypes,
+        genericParamsCount: off.genericParamsCount, compilesId: 0)
+
     # Mark module as cached
     g.cachedMods.incl fileIdx.int
     g.hookClosure.incl fileIdx.int
@@ -1019,6 +1041,11 @@ when not defined(nimKochBootstrap):
       case x.kind
       of ConverterEntry:
         g.ifaces[fileIdx.int].converters.add x.sym
+      of PureEnumEntry:
+        # rebuild the pure-enum list (source path: `addPureEnum`) so importers can
+        # offer this loaded `{.pure.}` enum's fields as the restricted pure-enum
+        # fallback (`importPureEnumFields`).
+        g.ifaces[fileIdx.int].pureEnums.add x.sym
       of MethodEntry:
         discard "dispatch buckets already rebuilt by registerLoadedHooks"
       of GenericInstEntry:
@@ -1063,7 +1090,16 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
 
 proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
-  sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
+  # Compare the package *name* (an interned ident), not the package symbol's
+  # `.id`. Under per-module IC (`nim m`) the system module is loaded from a NIF
+  # in a process that does not compile it from source, so its package symbol is
+  # reconstructed with a fresh `.id` that no longer matches the freshly-interned
+  # package of a stdlib module compiled standalone here — making the old id
+  # comparison wrongly report `false` and inject `--import`ed modules into the
+  # stdlib. Both are canonically named `stdlib` (lib/stdlib.nimble); in a normal
+  # `nim c` build (system compiled from source) the ids match too, so this is a
+  # no-op there.
+  sym.getPackageSymbol.name.id == graph.systemModule.getPackageSymbol.name.id
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))

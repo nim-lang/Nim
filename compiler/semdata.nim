@@ -410,6 +410,13 @@ proc addConverterDef*(c: PContext, conv: PSym) =
 proc addPureEnum*(c: PContext, e: PSym) =
   assert e != nil
   add(c.graph.ifaces[c.module.position].pureEnums, e)
+  # record for IC: a NIF-loaded module rebuilds `Iface.pureEnums` from these log
+  # entries (moduleFromNifFile); without it a loaded module's pure enums were
+  # invisible to importers, so `importPureEnumFields` never offered their fields
+  # and unqualified pure-enum values stopped resolving. (Same pattern as
+  # `addConverterDef`.)
+  c.graph.opsLog.add LogEntry(kind: PureEnumEntry, module: c.module.position,
+                              key: "", sym: e)
 
 proc addPattern*(c: PContext, p: PSym) =
   assert p != nil

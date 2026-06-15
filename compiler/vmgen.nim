@@ -1782,8 +1782,15 @@ proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
   # This is rather hard to support, due to the laziness of the VM code
   # generator. See tests/compile/tmacro2 for why this is necessary:
   #   var decls{.compileTime.}: seq[NimNode] = @[]
+  # Load the slot's ADDRESS (not its value): the lazy initializer must REPLACE
+  # the null slot, which `opcWrDeref` only does for an `rkNodeAddr` target
+  # (`nAddr[] = n` for refs). With `opcLdGlobal` the slot value is loaded and for
+  # a ref-typed global that value is an `nkNilLit` ("nil ref"); writing through it
+  # hits the VM's nil-deref guard ("attempt to access a nil address"). This path
+  # is reached for compile-time globals whose defining module is restored from a
+  # NIF under `nim ic` (so `setupCompileTimeVar` never ran to eagerly init them).
   let dest = c.getTemp(s.typ)
-  c.gABx(n, opcLdGlobal, dest, s.position)
+  c.gABx(n, opcLdGlobalAddr, dest, s.position)
   if s.astdef != nil:
     let tmp = c.genx(s.astdef)
     c.genAdditionalCopy(n, opcWrDeref, dest, 0, tmp)

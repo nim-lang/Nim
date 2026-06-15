@@ -176,6 +176,7 @@ type
     #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
+    depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
   ## Every symbol is emitted as a *global* (module-suffixed) name so that its
@@ -376,9 +377,21 @@ proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
   # module scope and a template's open/mixin symbol of the same name resolves to
   # the field instead of a local, producing "type mismatch: got 'T'". Fields are
   # still indexed (for `obj.field` resolution via the loaded object type); they
-  # are merely not advertised as importable. `skEnumField` stays importable —
-  # enum values are legitimately usable as bare identifiers.
-  if sym.kindImpl != skField and {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
+  # are merely not advertised as importable. Plain `skEnumField` stays importable
+  # — enum values are legitimately usable as bare identifiers — but a field of a
+  # `{.pure.}` enum is NOT: the source path keeps pure fields out of the importer
+  # scope (`declarePureEnumField`), reachable only qualified or via the restricted
+  # pure-enum mechanism (`importPureEnumFields`, fed by `ifaces[].pureEnums` which
+  # a loaded module rebuilds from its `PureEnumEntry` log ops). Marking them
+  # bare-importable made a loaded pure enum's fields leak into module scope
+  # (`populateInterfaceTablesFromIndex` adds every `x`/Exported sym to `interf`),
+  # e.g. nim-json-serialization's pure `JsonValueKind.Number` shadowing web3's
+  # `Number = distinct uint64` so `uint64(x).Number` failed under `nim ic`
+  # ("undeclared field 'Number'").
+  let isPureEnumField = sym.kindImpl == skEnumField and sym.typImpl != nil and
+    sym.typImpl.symImpl != nil and sfPure in sym.typImpl.symImpl.flagsImpl
+  if sym.kindImpl != skField and not isPureEnumField and
+      {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
     dest.addIdent "x"
   else:
     dest.addDotToken
@@ -546,6 +559,7 @@ proc trImport(w: var Writer; n: PNode) =
       let fp = moduleSuffix(w.infos.config, s.positionImpl.FileIndex)
       w.deps.addStrLit fp  # raw string literal, no wrapper needed
       w.deps.addParRi
+      w.depSuffixes.incl fp
 
 proc trExport(w: var Writer; n: PNode) =
   # Collect export information for the index
@@ -576,11 +590,13 @@ var repTraceTag = registerTag("reptrace")
 var repDeepCopyTag = registerTag("repdeepcopy")
 var repEnumToStrTag = registerTag("repenumtostr")
 var repMethodTag = registerTag("repmethod")
+var repPureEnumTag = registerTag("reppureenum")
 #var repClassTag = registerTag("repclass")
 var includeTag = registerTag("include")
 var importTag = registerTag("import")
 var implTag = registerTag("implementation")
 var reexpModTag = registerTag("reexpmod")
+var offerTag = registerTag("offer")
 
 proc registerNifAstTags*() =
   ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
@@ -606,10 +622,12 @@ proc registerNifAstTags*() =
   repDeepCopyTag = registerTag("repdeepcopy")
   repEnumToStrTag = registerTag("repenumtostr")
   repMethodTag = registerTag("repmethod")
+  repPureEnumTag = registerTag("reppureenum")
   includeTag = registerTag("include")
   importTag = registerTag("import")
   implTag = registerTag("implementation")
   reexpModTag = registerTag("reexpmod")
+  offerTag = registerTag("offer")
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
   if n == nil:
@@ -726,8 +744,23 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
           writeNode(w, dest, ast[i], forAst)
       dec w.inProc
     of nkImportStmt:
-      # this has been transformed for us, see `importer.nim` to contain a list of module syms:
-      trImport w, n
+      if w.inProc > 0:
+        # An `import` inside a template/macro/proc body — e.g. stew/importops'
+        # `tryImport`: `when compiles((; import v)): import v`. It is part of the
+        # body AST and must be serialized as a real node so the template
+        # re-expands it at each use site; it is NOT a module-level dependency
+        # edge (the import resolves where the template expands, against that
+        # module's deps). Diverting it to `w.deps` (the top-level path below)
+        # dropped it entirely: its child is the unexpanded template parameter
+        # `v`, not a module sym, so `trImport` wrote nothing and the body
+        # round-tripped EMPTY — a NIF-loaded `tryImport` then imported nothing.
+        w.withNode dest, n:
+          for i in 0 ..< n.len:
+            writeNode(w, dest, n[i], forAst)
+      else:
+        # top-level import: recorded as a dependency edge — `importer.nim` has
+        # already transformed `n` to contain a list of module syms.
+        trImport w, n
     of nkIncludeStmt:
       trInclude w, n
     of nkExportStmt, nkExportExceptStmt:
@@ -818,6 +851,11 @@ proc writeOp(w: var Writer; content: var TokenBuf; op: LogEntry) =
     content.addParRi()
   of EnumToStrEntry:
     content.addParLe repEnumToStrTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
+  of PureEnumEntry:
+    content.addParLe repPureEnumTag, NoLineInfo
     content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
     content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
     content.addParRi()
@@ -1202,7 +1240,11 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      opsLog: seq[LogEntry];
                      replayActions: seq[PNode] = @[];
                      implDeps: seq[int] = @[];
-                     reexportedModules: seq[(string, string)] = @[]) =
+                     reexportedModules: seq[(string, string)] = @[];
+                     genericOffers: seq[tuple[generic, inst: PSym;
+                                              concreteTypes: seq[PType];
+                                              genericParamsCount: int]] = @[];
+                     resolvedImportDeps: seq[FileIndex] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
 
@@ -1223,6 +1265,25 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   var bottom = createTokenBuf(300)
   w.writeToplevelNode content, bottom, n
 
+  # Resolved import edges that left no syntactic `import` node in the top-level
+  # AST: an import generated INSIDE a `when` condition (e.g. stew/importops'
+  # `when tryImport x:` -> `when compiles((; import x)): import x`) really
+  # imports `x` — `addImportFileDep` recorded the edge in `graph.importDeps` —
+  # but the import node is folded away with the condition, so `trImport` never
+  # saw it and the NIF `deps` section omitted it. The backend closure walk
+  # (nifbackend.loadBackendModules) follows NIF `deps`, so without this edge a
+  # template-imported module's `{.compile.}`/`{.passL.}` directives never replay
+  # and its C/asm objects go unlinked (undefined `hashtree_hash`/`my_c_add` at
+  # link). Emit any resolved edge not already written as a syntactic import.
+  for f in resolvedImportDeps:
+    let fp = moduleSuffix(config, f)
+    if not w.depSuffixes.containsOrIncl(fp):
+      w.deps.addParLe importTag, NoLineInfo
+      w.deps.addDotToken # flags
+      w.deps.addDotToken # type
+      w.deps.addStrLit fp
+      w.deps.addParRi
+
   # Re-exported MODULES (`import x; export x`): semExport puts only x's
   # member syms into the nkExportStmt; the module sym itself reaches the
   # exporter's interface via `reexportSym` and acts as a QUALIFIER there
@@ -1232,6 +1293,24 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     w.deps.addParLe reexpModTag, NoLineInfo
     w.deps.addStrLit mname
     w.deps.addStrLit msuffix
+    w.deps.addParRi
+
+  # Generic-instance OFFERS: every generic instance this module created
+  # (`getOrDefault[MultiCodec]`, …). A consumer that re-instantiates the same
+  # generic must REUSE this instance instead of re-running `instantiateBody` in
+  # its own module scope — which lacks symbols visible only at the generic's
+  # definition site (e.g. a distinct type's `==` from the type's module), so
+  # operator/mixin resolution would fail ("type mismatch" at `hashcommon.rawGet`).
+  # The loader (modulegraphs.moduleFromNifFile) rebuilds `procInstCache` from
+  # these so `genericCacheGet` hits and the wrong-scope re-instantiation is
+  # skipped. Layout: (offer <genericSym> <instSym> <genericParamsCount> <type>...).
+  for off in genericOffers:
+    w.deps.addParLe offerTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.generic)), NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.inst)), NoLineInfo
+    w.deps.addIntLit off.genericParamsCount
+    for ct in off.concreteTypes:
+      w.deps.addSymUse pool.syms.getOrIncl(typeToNifSym(ct, w.infos.config)), NoLineInfo
     w.deps.addParRi
 
   # the implTag is used to tell the loader that the
@@ -1447,6 +1526,33 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
 
 proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule: string;
                        localSyms: var Table[string, PSym])
+
+proc tryCreateTypeStub(c: var DecodeContext; t: SymId): PType =
+  ## Like `createTypeStub` but returns nil instead of raising when the type has
+  ## no offset in its module index (used by the best-effort `(offer …)` loader).
+  let name = pool.syms[t]
+  if not name.startsWith("`t"): return nil
+  result = c.types.getOrDefault(name)[0]
+  if result == nil:
+    var i = len("`t")
+    var k = 0
+    while i < name.len and name[i] in {'0'..'9'}:
+      k = k * 10 + name[i].ord - ord('0')
+      inc i
+    if i < name.len and name[i] == '.': inc i
+    var itemVal = 0'i32
+    while i < name.len and name[i] in {'0'..'9'}:
+      itemVal = itemVal * 10'i32 + int32(name[i].ord - ord('0'))
+      inc i
+    if i < name.len and name[i] == '.': inc i
+    let suffix = name.substr(i)
+    let id = itemId(moduleId(c, suffix).int32, itemVal)
+    let ii = addr c.mods[id.module.FileIndex].index
+    let offs = ii[].getOrDefault(name)
+    if offs.offset == 0:
+      return nil
+    result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
+    c.types[name] = (result, offs)
 
 proc createTypeStub(c: var DecodeContext; t: SymId): PType =
   let name = pool.syms[t]
@@ -2128,6 +2234,11 @@ type
     module*: PSym # set by modulegraphs.nim!
     reexportedModules*: seq[(string, string)] # (name, suffix) of re-exported MODULE syms;
                                               # materialized by modulegraphs.nim
+    genericOffers*: seq[tuple[generic, inst: PSym; concreteTypes: seq[PType];
+                              genericParamsCount: int]]
+      ## generic instances this module created; modulegraphs.nim rebuilds
+      ## `procInstCache` from them so a consumer reuses the instance instead of
+      ## re-instantiating it in its own (operator-blind) module scope.
 
 proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]; tok: var PackedToken) =
   tok = next(s) # skip `(import`
@@ -2172,6 +2283,12 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
   var t = next(s) # skip dot
   var cont = true
   let exportTag = pool.tags.getOrIncl"export"
+  # Top-level `let`/`var` sections are loaded even without LoadFullAst: they may
+  # declare `{.compileTime.}` globals whose VM slots the importer initializes
+  # eagerly (pipelines.initLoadedCompileTimeGlobals), which needs them visible in
+  # `topLevel`. They sit in the module header before `(implementation)`.
+  let letTag = pool.tags.getOrIncl(toNifTag(nkLetSection))
+  let varTag = pool.tags.getOrIncl(toNifTag(nkVarSection))
   while cont and t.kind != EofToken:
     if t.kind == ParLe:
       if t.tagId == replayTag:
@@ -2210,6 +2327,8 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         t = loadLogOp(c, result.logOps, s, EnumToStrEntry, attachedTrace, module)
       elif t.tagId == repMethodTag:
         t = loadLogOp(c, result.logOps, s, MethodEntry, attachedTrace, module)
+      elif t.tagId == repPureEnumTag:
+        t = loadLogOp(c, result.logOps, s, PureEnumEntry, attachedTrace, module)
         #elif t.tagId == repClassTag:
         #  t = loadLogOp(c, logOps, s, ClassEntry, attachedTrace, module)
       elif t.tagId == exportTag:
@@ -2269,10 +2388,39 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         t = next(s)
         if mname.len > 0 and msuffix.len > 0:
           result.reexportedModules.add (mname, msuffix)
+      elif t.tagId == offerTag:
+        # (offer <genericSym> <instSym> <genericParamsCount> <type>...) — see the
+        # writer. Resolve to PSyms/PTypes here; modulegraphs registers them into
+        # `procInstCache`. Best-effort: a type that fails to resolve drops the
+        # whole offer (the consumer then re-instantiates, the prior behaviour).
+        t = next(s)  # skip (offer
+        var genSym, instSym: PSym = nil
+        var paramsCount = 0
+        var cts: seq[PType] = @[]
+        var idx = 0
+        var ok = true
+        while t.kind != ParRi and t.kind != EofToken:
+          if t.kind == Symbol:
+            if idx == 0: genSym = resolveHookSym(c, t.symId)
+            elif idx == 1: instSym = resolveHookSym(c, t.symId)
+            else:
+              let ct = tryCreateTypeStub(c, t.symId)
+              if ct == nil: ok = false
+              else: cts.add ct
+            inc idx
+          elif t.kind == IntLit:
+            paramsCount = int(pool.integers[t.intId])
+          t = next(s)
+        if t.kind != ParRi:
+          raiseAssert "expected ParRi in offer entry of module " & suffix
+        t = next(s)
+        if ok and genSym != nil and instSym != nil:
+          result.genericOffers.add (genSym, instSym, cts, paramsCount)
       elif t.tagId == implTag:
         cont = false
-      elif LoadFullAst in flags:
-        # Parse the full statement
+      elif LoadFullAst in flags or t.tagId == letTag or t.tagId == varTag:
+        # Parse the full statement. let/var sections are loaded unconditionally
+        # (see above) so `{.compileTime.}` globals reach the eager initializer.
         var buf = createTokenBuf(50)
         nextSubtree(s, buf, t)
         t = next(s) # skip ParRi

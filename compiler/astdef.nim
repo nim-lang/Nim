@@ -986,7 +986,8 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 
 type
   LogEntryKind* = enum
-    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry
+    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,
+    PureEnumEntry
   LogEntry* = object
     kind*: LogEntryKind
     op*: TTypeAttachedOp

@@ -1905,6 +1905,22 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
     n.typ = n.typ.elementType
   result.add(n)
 
+proc markResultVarIsPtr(c: PContext, x: PNode) {.inline.} =
+  ## Set `tfVarIsPtr` on the (result) sym node's type. Under IC that type can be a
+  ## NIF-loaded (Sealed) and interned instance which must not be mutated in place
+  ## (it could corrupt other users of the shared type, and the assert forbids it):
+  ## give this result its own copy carrying the flag, exactly like a from-source
+  ## compile has a fresh result type here.
+  if tfVarIsPtr in x.typ.flags: return
+  if x.typ.state == Sealed:
+    let fresh = copyType(x.typ, c.idgen, x.typ.owner)
+    fresh.incl tfVarIsPtr
+    x.typ = fresh
+    if x.kind == nkSym and x.sym.state != Sealed:
+      x.sym.typ = fresh
+  else:
+    x.typ.incl tfVarIsPtr
+
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
@@ -1912,10 +1928,10 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       if x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
         n[0] = x # 'result[]' --> 'result'
         n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
-        x.typ.incl tfVarIsPtr
+        markResultVarIsPtr(c, x)
         #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
       elif sfGlobal in x.sym.flags:
-        x.typ.incl tfVarIsPtr
+        markResultVarIsPtr(c, x)
 
 proc borrowCheck(c: PContext, n, le, ri: PNode) =
   const
