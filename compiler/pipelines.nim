@@ -286,6 +286,15 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   result = graph.getModule(fileIdx)
 
   template processModuleAux(moduleStatus) =
+    when defined(icDbg):
+      block:
+        let dbgf = open("/tmp/defdbg.txt", fmAppend)
+        dbgf.writeLine toFullPath(graph.config, fileIdx) &
+          " nimStackTraceOverride=" & $isDefined(graph.config, "nimStackTraceOverride") &
+          " nimscript=" & $isDefined(graph.config, "nimscript") &
+          " optCompress=" & $(optCompress in graph.config.globalOptions) &
+          " cmd=" & $graph.config.cmd
+        dbgf.close()
     onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
     var s: PLLStream = nil
     if sfMainModule in flags:

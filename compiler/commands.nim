@@ -508,6 +508,7 @@ proc parseCommand*(command: string): Command =
   of "jsonscript": cmdJsonscript
   of "nifc": cmdNifC  # generate C from NIF files
   of "ic": cmdIc  # generate .build.nif for nifmake
+  of "icconfig": cmdIcConfig  # produce the precompiled config artifact
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
@@ -960,6 +961,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # config loading can replay it instead of re-parsing the `nim.cfg` chain.
     expectArg(conf, switch, arg, pass, info)
     conf.icPreparsedConfig = arg
+  of "icconfigout":
+    # `nim icconfig` only: where to write the precompiled config artifact (see
+    # options.icConfigOut). The `nim ic` driver spawns the producer with this.
+    expectArg(conf, switch, arg, pass, info)
+    conf.icConfigOut = arg
   of "icbackendstage":
     # `nim nifc` only: per-module backend stage, one of cg|merge|emit (see
     # options.icBackendStage). Empty (switch unused) keeps the whole-program

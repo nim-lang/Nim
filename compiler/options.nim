@@ -200,6 +200,7 @@ type
     cmdCompileToNif
     cmdNifC  # generate C code from NIF files
     cmdIc  # generate .build.nif for nifmake
+    cmdIcConfig # `nim ic`'s precompiled-config producer (writes ic_config.cfg.nif)
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -418,12 +419,16 @@ type
                               # module's package the "main package" and unfilter
                               # foreign-package diagnostics; the real project
                               # restores whole-program filtering semantics.
-    icPreparsedConfig*: string # under `nim m`/`nim nifc`: path of the precompiled
-                              # config artifact written once by the `nim ic` driver.
+    icPreparsedConfig*: string # under the `nim ic` driver and its `nim m`/`nim nifc`
+                              # children: path of the precompiled config artifact.
                               # When set, `loadConfigs` replays the recorded
                               # config-file switches from it instead of re-reading
                               # the `nim.cfg` chain and re-running `config.nims`
-                              # (which the VM makes expensive) per subprocess.
+                              # (which the VM makes expensive) per process. The
+                              # artifact itself is produced by a separate
+                              # `nim icconfig` process (see `cmdIcConfig`).
+    icConfigOut*: string      # under `nim icconfig`: the path to write the
+                              # precompiled config artifact to (set via `--o`).
     icConfigSwitches*: seq[tuple[switch, arg: string]]
                               # the config-file (`passPP`) switches applied while
                               # loading config, in order. Recorded by every nim

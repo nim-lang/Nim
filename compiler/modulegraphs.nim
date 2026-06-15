@@ -1063,7 +1063,16 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
 
 proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
-  sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
+  # Compare the package *name* (an interned ident), not the package symbol's
+  # `.id`. Under per-module IC (`nim m`) the system module is loaded from a NIF
+  # in a process that does not compile it from source, so its package symbol is
+  # reconstructed with a fresh `.id` that no longer matches the freshly-interned
+  # package of a stdlib module compiled standalone here — making the old id
+  # comparison wrongly report `false` and inject `--import`ed modules into the
+  # stdlib. Both are canonically named `stdlib` (lib/stdlib.nimble); in a normal
+  # `nim c` build (system compiled from source) the ids match too, so this is a
+  # no-op there.
+  sym.getPackageSymbol.name.id == graph.systemModule.getPackageSymbol.name.id
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))

@@ -29,6 +29,7 @@ import
   pathutils, modulegraphs
 
 from ast2nif import registerNifAstTags
+from icconfig import ensureIcConfig
 
 from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
@@ -113,6 +114,14 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     return
 
   self.processCmdLineAndProjectPath(conf)
+
+  # `nim ic` driver: ensure the precompiled config exists (produced by a separate
+  # `nim icconfig` process, skipped when nothing changed) BEFORE config loading,
+  # so `loadConfigs` replays it instead of re-parsing the `nim.cfg` chain — the
+  # driver runs on the exact same config its children will. See icconfig.nim.
+  when not defined(nimKochBootstrap):
+    if conf.cmd == cmdIc:
+      ensureIcConfig(conf)
 
   var graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):

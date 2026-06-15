@@ -11,7 +11,7 @@
 ## This enables incremental and parallel compilation using the `m` switch.
 
 import std / [os, tables, sets, times, osproc, algorithm, strtabs, strutils, syncio]
-import options, msgs, lineinfos, pathutils, condsyms, icconfig,
+import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
@@ -211,6 +211,15 @@ proc processInclude(c: var DepContext; includePath: string; current: Node) =
   traverseDeps(c, c.toPair(resolved), current)
   discard c.includeStack.pop()
 
+proc getsImplicitImports(c: DepContext; nimFile: string): bool =
+  ## Mirror the compiler's `belongsToStdlib` guard (pipelines.nim): `--import:X`
+  ## (conf.implicitImports) is applied only to NON-stdlib modules. The scanner
+  ## must agree, otherwise it edges a stdlib module → X that the compiler never
+  ## actually creates, fabricating a cycle that folds X — and the modules X
+  ## claims to produce — into the system SCC (whose `nim m` is driven from
+  ## system.nim and never reaches them). Stdlib == under conf.libpath.
+  not isRelativeTo(nimFile, c.config.libpath.string)
+
 proc processImport(c: var DepContext; importPath: string; current: Node) =
   let resolved = resolveImport(c, current.files[0].nimFile, importPath)
   if resolved.len == 0 or not fileExists(resolved):
@@ -226,12 +235,15 @@ proc processImport(c: var DepContext; importPath: string; current: Node) =
     # Every module depends on system.nim
     if c.systemNodeId >= 0:
       newNode.deps.add c.systemNodeId
-    # ... and on every `--import`ed module (conf.implicitImports). A `--import`ed
-    # module is itself imported by its own closure (which also gets these edges),
-    # so the cycle folds into one strongly-connected component (see computeSCCs),
-    # just like system.nim's closure.
-    for impId in c.implicitNodeIds:
-      if impId != newNode.id: newNode.deps.add impId
+    # ... and on every `--import`ed module (conf.implicitImports), but only for
+    # the non-stdlib modules the compiler actually applies implicit imports to
+    # (see getsImplicitImports). A `--import`ed module is imported by its own
+    # non-stdlib closure (which also gets these edges), so that cycle folds into
+    # one small strongly-connected component (see computeSCCs) instead of being
+    # smeared across system + stdlib.
+    if getsImplicitImports(c, pair.nimFile):
+      for impId in c.implicitNodeIds:
+        if impId != newNode.id: newNode.deps.add impId
     c.processedModules[pair.modname] = newNode.id
     c.nodes.add newNode
     traverseDeps(c, pair, newNode)
@@ -694,15 +706,14 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
   # then abort builds the whole-program compilation accepts. Forward the
   # real project so children filter diagnostics identically.
   result.add "--icproject:" & c.config.projectFull.string
-  # Precompiled config: serialise the driver's config once and have every
-  # child replay it instead of re-parsing the `nim.cfg` chain and re-running
-  # `config.nims` in the VM. See compiler/icconfig.nim. `-d:icNoPreparsedConfig`
-  # restores the old per-child config parsing (for bisecting a suspected
-  # config-replay divergence without clearing caches).
-  if not isDefined(c.config, "icNoPreparsedConfig"):
-    let cfgArtifact = nimcache / "ic_config.cfg.nif"
-    writeIcConfig(c.config, cfgArtifact)
-    result.add "--icPreparsedConfig:" & cfgArtifact
+  # Precompiled config: every child replays the one artifact produced (in a
+  # separate `nim icconfig` process) and already replayed by the driver itself —
+  # see `icconfig.ensureIcConfig`, run before the driver's own `loadConfigs`. So
+  # `nim ic` is always governed by this single artifact, for speed and so the
+  # driver and its children agree by construction. Forward the path the driver
+  # replayed (`conf.icPreparsedConfig`); `commandIc` has already guaranteed it
+  # exists, else it bailed.
+  result.add "--icPreparsedConfig:" & c.config.icPreparsedConfig
 
 proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
   ## Frontend build file: the nifler (parse) and `nim m` (sem) rules only. The
@@ -1029,6 +1040,12 @@ proc commandIc*(conf: ConfigRef) =
       rawMessage(conf, errGenerated, "nifler tool not found. Install nimony or add nifler to PATH.")
       return
 
+    # Resolve the `.nim` source first, exactly like `wantMainModule`. Without
+    # this, an extensionless project arg (`nim ic path/to/foo`) resolves to a
+    # same-named sibling that already exists — e.g. the ELF a prior `nim c`
+    # left behind — and nifler chokes on the binary (`invalid token \127`,
+    # ELF magic). `addFileExt` only appends when there is no extension.
+    conf.projectFull = addFileExt(conf.projectFull, NimExt)
     let projectFile = conf.projectFull.string
     if not fileExists(projectFile):
       rawMessage(conf, errGenerated, "project file not found: " & projectFile)
@@ -1118,6 +1135,15 @@ proc commandIc*(conf: ConfigRef) =
     # from its importer — and rerun; nifmake's mtime pruning keeps completed
     # work. A round that discovers nothing new but still fails is a real error.
     let forwardedArgs = computeForwardedArgs(c)
+    # The precompiled config drives every `nim m`/`nim nifc` child and the driver
+    # itself (`ensureIcConfig` produced it and `loadConfigs` replayed it). If it
+    # is not on disk something went wrong producing it — children would each
+    # silently fall back to re-parsing the whole config chain — so refuse to
+    # continue without it.
+    if conf.icPreparsedConfig.len == 0 or not fileExists(conf.icPreparsedConfig):
+      rawMessage(conf, errGenerated,
+        "precompiled config missing: " & conf.icPreparsedConfig)
+      return
     let nifmake = findNifmake()
     # Build the per-module rules concurrently: nifmake fans out all commands at
     # each DAG depth via execProcesses (defaults to all cores). Cold builds are
@@ -1164,8 +1190,9 @@ proc commandIc*(conf: ConfigRef) =
               let newNode = Node(files: @[pair], id: c.nodes.len)
               if c.systemNodeId >= 0:
                 newNode.deps.add c.systemNodeId
-              for impId in c.implicitNodeIds:
-                if impId != newNode.id: newNode.deps.add impId
+              if getsImplicitImports(c, pair.nimFile):
+                for impId in c.implicitNodeIds:
+                  if impId != newNode.id: newNode.deps.add impId
               c.processedModules[pair.modname] = newNode.id
               c.nodes.add newNode
               idx = newNode.id

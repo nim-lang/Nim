@@ -29,6 +29,7 @@ when defined(nimPreviewSlimSystem):
 import ../dist/checksums/src/checksums/sha1
 
 import pipelines
+from icconfig import produceIcConfig
 
 when not defined(nimKochBootstrap):
   import nifbackend
@@ -439,6 +440,11 @@ proc mainCommand*(graph: ModuleGraph) =
       commandIc(conf)
     else:
       rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
+  of cmdIcConfig:
+    # Produce the precompiled config artifact for `nim ic` (config already
+    # parsed by the normal pipeline); a separate process spawned by the driver.
+    wantMainModule(conf)
+    produceIcConfig(conf)
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
