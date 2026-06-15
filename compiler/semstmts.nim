@@ -531,7 +531,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "using")
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -838,7 +838,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -994,7 +994,7 @@ proc semConst(c: PContext, n: PNode): PNode =
   var b: PNode
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkConstDef, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -1535,7 +1535,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   while i < n.len: # n may grow due to type pragma macros
     var a = n[i]
     when defined(nimsuggest):
-      if c.config.cmd == cmdIdeTools:
+      if c.config.ideActive:
         inc c.inTypeContext
         suggestStmt(c, a)
         dec c.inTypeContext
@@ -1812,7 +1812,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   var remainingOwners = initIntSet()
   for (owner, _, _) in c.forwardTypeUpdates:
     remainingOwners.incl owner.id
-  
+
   while c.forwardTypeUpdates.len > 0:
     let pending = move c.forwardTypeUpdates
     var madeProgress = false
@@ -1829,7 +1829,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         c.forwardTypeUpdates.add (owner, typ, typeNode)
       elif not remainingOwners.missingOrExcl(owner.id):
         madeProgress = true
-    
+
     if not madeProgress:
       # can't error here unfortunately
       break
@@ -2868,7 +2868,7 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult, resolvedIncStmt
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   var resolvedIncStmt: PNode = nil
-  if optCompress in c.config.globalOptions:
+  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
     # New resolve the include filenames to string literals that contain absolute paths,
     # nicer for IC:
     resolvedIncStmt = newNodeI(nkIncludeStmt, n.info)

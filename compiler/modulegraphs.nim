@@ -607,10 +607,14 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
     when not defined(nimKochBootstrap):
       # Try to resolve from NIF for both cmdNifC and cmdM (which uses NIF files)
       if g.config.cmd in {cmdNifC, cmdM}:
-        # First try system module (most compilerprocs are there)
+        # First try system module (most compilerprocs are there).
+        # Only consult the NIF if it actually exists: under nimsuggest's cold
+        # cache (ideActive) system is compiled from source and has no NIF yet,
+        # in which case the proc is already registered in-memory and the caller
+        # found/falls back to it — so degrade to nil instead of asserting.
         let systemFileIdx = g.config.m.systemFileIdx
-        if systemFileIdx != InvalidFileIdx and not g.withinSystem:
-          # Only try to load from NIF if the file exists (it may not during initial ic build)
+        if systemFileIdx != InvalidFileIdx and not g.withinSystem and
+           fileExists(toNifFilename(g.config, systemFileIdx)):
           result = tryResolveCompilerProc(ast.program, name, systemFileIdx)
           if result != nil:
             strTableAdd(g.compilerprocs, result)
@@ -622,6 +626,7 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
           let module = g.ifaces[moduleIdx].module
           if module != nil and module.name.s == "threadpool":
             let threadpoolFileIdx = module.position.FileIndex
+            if not fileExists(toNifFilename(g.config, threadpoolFileIdx)): break
             result = tryResolveCompilerProc(ast.program, name, threadpoolFileIdx)
             if result != nil:
               strTableAdd(g.compilerprocs, result)
@@ -1000,6 +1005,17 @@ when not defined(nimKochBootstrap):
     if not fileExists(toNifFilename(g.config, fileIdx)):
       return PrecompiledModule(module: nil)
 
+    # NOTE: direction-(c) experiment (refuse to NIF-serve include-bearing modules
+    # under ideActive, forcing a source compile) is disabled — it reproduces the
+    # known sibling-resolution corruption (system.string -> excpt.nim:746). The
+    # cold-include *discovery* scan (scanIncludeGraph) stays; the round-trip
+    # fidelity of included symbols is the separate, still-open loader problem.
+    when false:
+      if g.config.ideActive and not g.withinSystem and
+         fileIdx != g.config.m.systemFileIdx and
+         nifModuleHasIncludes(g.config, fileIdx):
+        return PrecompiledModule(module: nil)
+
     # Create module symbol
     let filename = AbsoluteFile toFullPath(g.config, fileIdx)
 
@@ -1021,6 +1037,12 @@ when not defined(nimKochBootstrap):
       let ms = materializeReexportedModule(g, mname, msuffix)
       if ms != nil:
         strTableAdd(g.ifaces[fileIdx.int].interf, ms)
+    # Re-establish include->module mapping so nimsuggest's `parentModule` can map
+    # a query in an included file back to this (NIF-loaded) module and recompile
+    # it, exactly as it does for a from-source module. Without this the include
+    # relationship is invisible for NIF-served modules.
+    for incPath in result.includes:
+      g.addIncludeDep(fileIdx, fileInfoIdx(g.config, AbsoluteFile incPath))
 
     # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
     # consumer's `genericCacheGet` finds the instance and SKIPS re-running
@@ -1062,6 +1084,35 @@ when not defined(nimKochBootstrap):
     # walks the closure in nifbackend.loadModuleDependencies.)
     if g.config.cmd == cmdM:
       loadTransitiveHooks(g, result.deps)
+
+  proc isModuleFile(g: ModuleGraph; fileIdx: FileIndex): bool =
+    let i = fileIdx.int32
+    i >= 0 and i < g.ifaces.len and g.ifaces[i].module != nil
+
+  proc registerIncluderFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
+    ## Targeted cold-include discovery for nimsuggest: scan the nimcache NIFs
+    ## (`scanIncludeGraph`) for a module whose include-set contains *this* file
+    ## and register only that single include->module edge in `inclToMod`, so a
+    ## query inside the include file resolves its includer via `parentModule`.
+    ##
+    ## Deliberately targeted: registering *every* include relationship (i.e. also
+    ## `system`'s own `include`s) eagerly assigns FileIndexes and pollutes
+    ## `inclToMod`, which perturbs the NIF line-info decode of unrelated modules
+    ## (`system.string` then resolves into `excpt.nim`). Touch nothing but the
+    ## one edge we need.
+    let target = toFullPath(g.config, fileIdx)
+    for (includer, includes) in scanIncludeGraph(g.config):
+      for incFile in includes:
+        if cmpPaths(incFile, target) == 0:
+          g.addIncludeDep(fileInfoIdx(g.config, AbsoluteFile includer), fileIdx)
+          return true
+    result = false
+
+  proc needsIncludeScan*(g: ModuleGraph; fileIdx: FileIndex): bool =
+    ## True when `fileIdx` is neither a known module of its own nor an
+    ## already-known include file — i.e. a cold-opened file whose includer we
+    ## must still discover via `registerIncluderFromNif`.
+    not g.isModuleFile(fileIdx) and not g.inclToMod.hasKey(fileIdx)
 
 proc configComplete*(g: ModuleGraph) =
   #rememberStartupConfig(g.startupPackedConfig, g.config)

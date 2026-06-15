@@ -718,6 +718,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.outDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "usenimcache":
     processOnOffSwitchG(conf, {optUseNimcache}, arg, pass, info)
+  of "ideimports":
+    # nimsuggest: where the import closure comes from.
+    #   nif|on  (default) load unchanged imports from precompiled NIF (cmdM)
+    #   source|off         recompile the whole closure from source (cmdCheck)
+    case arg.normalize
+    of "nif", "on", "": conf.ideImportsFromNif = true
+    of "source", "off": conf.ideImportsFromNif = false
+    else: localError(conf, info, "'--ideImports' expects 'nif' or 'source', got: '$1'" % arg)
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg

@@ -475,6 +475,8 @@ proc comment*(n: PNode): string =
   else:
     result = ""
 
+nodeCommentReader = proc(n: PNode): string {.nimcall.} = comment(n)
+
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
   if a.len > 0:
@@ -489,6 +491,8 @@ proc `comment=`*(n: PNode, a: string) =
   elif nfHasComment in n.flags:
     n.flags.excl nfHasComment
     gconfig.comments.del(id)
+
+nodeCommentWriter = proc(n: PNode; s: string) {.nimcall.} = n.comment = s
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of

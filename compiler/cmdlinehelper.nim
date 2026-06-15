@@ -53,7 +53,8 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
 proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
-    conf.setCmd cmdIdeTools
+    conf.setCmd cmdCheck
+    conf.ideActive = true
   if conf.cmd == cmdNimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
