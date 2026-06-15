@@ -149,6 +149,17 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
   # as properties are accessed and trigger lazy loading.
   backendEnsureMutable(t)
 
+  # Bare type-class keywords used as a typedesc without arguments (e.g. `array`,
+  # `range`, `distinct` passed to `signatureHash`) have no children, so the
+  # structural branches below would index a non-existent `elementType`. Hash them
+  # by kind (+ sym for an extra, stable distinction) — enough for a stable,
+  # distinct identity. (`seq`/`openArray`/`tuple` already fall through the empty
+  # `else` loop unharmed; this covers the branches that index `elementType`.)
+  if t.kind in {tyArray, tyRange, tyDistinct} and not t.hasElementType:
+    c &= char(t.kind)
+    if t.sym != nil: c.hashSym(t.sym)
+    return
+
   case t.kind
   of tyGenericInvocation:
     for a in t.kids:
