@@ -25,6 +25,15 @@ import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
 import ic / [enum2nif]
 
+const SysModuleSuffix* = "@sys"
+  ## Reserved module-suffix sentinel for module-less magic singleton types — the
+  ## `nil` type is created via `newSysType` with the graph idgen, whose `module`
+  ## can be `-1` (e.g. during VM const-eval before a real module is current), so
+  ## its `uniqueId.module` is unresolvable. Such a type has no fields and an
+  ## identity that is fully captured by its kind, so we serialize it with this
+  ## sentinel and reconstruct it on load (see `createTypeStub`) without ever
+  ## touching a `.nif` file. A real `moduleSuffix` never starts with '@'.
+
 proc typeToNifSym(typ: PType; config: ConfigRef): string =
   # NOTE: uniqueId is the serialization identity and is unique per instance —
   # `exactReplica` keeps only itemId shared with its original (see ast.nim)
@@ -34,7 +43,10 @@ proc typeToNifSym(typ: PType; config: ConfigRef): string =
   result.add '.'
   result.addInt typ.uniqueId.item
   result.add '.'
-  result.add modname(typ.uniqueId.module, config)
+  if typ.uniqueId.module < 0:
+    result.add SysModuleSuffix
+  else:
+    result.add modname(typ.uniqueId.module, config)
 
 proc icNifTypeName*(typ: PType; config: ConfigRef): string =
   ## The serialized NIF name of a type, recorded next to RTTI data
@@ -1527,6 +1539,19 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
 proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule: string;
                        localSyms: var Table[string, PSym])
 
+proc reconstructSysType(c: var DecodeContext; name: string; k: int; itemVal: int32): PType =
+  ## Rebuild a module-less magic singleton (see `SysModuleSuffix`) from its kind
+  ## alone — it has no fields and no `.nif` to load. Cached in `c.types` so all
+  ## references in this decode context share one instance.
+  result = c.types.getOrDefault(name)[0]
+  if result == nil:
+    let id = itemId(-1'i32, itemVal)
+    result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Complete)
+    if TTypeKind(k) == tyNil:
+      result.sizeImpl = c.infos.config.target.ptrSize
+      result.alignImpl = int16 c.infos.config.target.ptrSize
+    c.types[name] = (result, NifIndexEntry())
+
 proc tryCreateTypeStub(c: var DecodeContext; t: SymId): PType =
   ## Like `createTypeStub` but returns nil instead of raising when the type has
   ## no offset in its module index (used by the best-effort `(offer …)` loader).
@@ -1546,6 +1571,8 @@ proc tryCreateTypeStub(c: var DecodeContext; t: SymId): PType =
       inc i
     if i < name.len and name[i] == '.': inc i
     let suffix = name.substr(i)
+    if suffix == SysModuleSuffix:
+      return reconstructSysType(c, name, k, itemVal)
     let id = itemId(moduleId(c, suffix).int32, itemVal)
     let ii = addr c.mods[id.module.FileIndex].index
     let offs = ii[].getOrDefault(name)
@@ -1571,6 +1598,8 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
       inc i
     if i < name.len and name[i] == '.': inc i
     let suffix = name.substr(i)
+    if suffix == SysModuleSuffix:
+      return reconstructSysType(c, name, k, itemVal)
     let id = itemId(moduleId(c, suffix).int32, itemVal)
     let ii = addr c.mods[id.module.FileIndex].index
     let offs = ii[].getOrDefault(name)

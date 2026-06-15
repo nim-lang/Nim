@@ -396,16 +396,21 @@ proc addConverter*(c: PContext, conv: PSym) =
   assert conv != nil
   if inclSym(c.converters, conv):
     add(c.graph.ifaces[c.module.position].converters, conv)
+    # Record for IC: the loader rebuilds Iface.converters from the NIF's
+    # (repconverter ...) entries (moduleFromNifFile). This must capture not only
+    # converters DEFINED in this module (addConverterDef) but also ones IMPORTED
+    # from another module here (importer.addUnnamedIt re-adds a re-exported
+    # module's converters via this proc). Otherwise a loaded module's
+    # re-exported converters were invisible to importers and implicit
+    # conversions silently stopped matching at a consumer that reaches the
+    # converter only through this module's re-export chain (e.g. faststreams'
+    # `InputStreamHandle -> InputStream` via ssz_serialization, breaking
+    # `SSZ.decode`/`encode`). `inclSym` guards against duplicate log entries.
+    c.graph.opsLog.add LogEntry(kind: ConverterEntry, module: c.module.position,
+                                key: "", sym: conv)
 
 proc addConverterDef*(c: PContext, conv: PSym) =
   addConverter(c, conv)
-  # record the definition for IC: the loader rebuilds Iface.converters from
-  # the NIF's (repconverter ...) entries (moduleFromNifFile); without the log
-  # entry a loaded module's converters were invisible to importers and
-  # implicit conversions silently stopped matching (e.g. faststreams'
-  # InputStreamHandle -> InputStream at toml_serialization call sites)
-  c.graph.opsLog.add LogEntry(kind: ConverterEntry, module: c.module.position,
-                              key: "", sym: conv)
 
 proc addPureEnum*(c: PContext, e: PSym) =
   assert e != nil

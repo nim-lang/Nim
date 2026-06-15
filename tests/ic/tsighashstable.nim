@@ -1,7 +1,9 @@
 discard """
 output: '''ok string
 ok int
-ok seq'''
+ok seq
+ok object
+ok tuple'''
 """
 
 # Regression test: `signatureHash(T)` must be stable across the NIF boundary so
@@ -28,6 +30,24 @@ proc writeSeq[T](F: type DefaultFlavor, v: seq[T]) =
   autoCheck(F, seq):
     echo "ok seq"
 
+type
+  Msg = object
+    a: int
+    b: string
+
+# `object`/`tuple` are `tyBuiltInTypeClass`: a concrete type is auto-serialized
+# by looking up its type class. The hash of the bare class keyword must match
+# between msighashstable's registration and this lookup.
+proc writeObj[T: object](F: type DefaultFlavor, v: T) =
+  autoCheckTC(F, object, typeof(v)):
+    echo "ok object"
+
+proc writeTup[T: tuple](F: type DefaultFlavor, v: T) =
+  autoCheckTC(F, tuple, typeof(v)):
+    echo "ok tuple"
+
 writeStr(DefaultFlavor, "hi")
 writeInt(DefaultFlavor, 42)
 writeSeq(DefaultFlavor, @[1, 2, 3])
+writeObj(DefaultFlavor, Msg(a: 1, b: "x"))
+writeTup(DefaultFlavor, (1, "x"))
