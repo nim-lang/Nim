@@ -274,10 +274,44 @@ proc skipSubtree(s: var Stream; first: PackedToken) =
     elif t.kind == ParRi: dec depth
     elif t.kind == EofToken: return
 
-proc evalCondIdent(c: DepContext; v: string): bool =
-  ## Truth value of a bare identifier appearing in a `when` condition.
+type
+  CondVal = enum
+    ## Tri-state truth of a `when` condition as the static scanner sees it.
+    ## `cvUnknown` is the crucial state: the scanner can't determine the value
+    ## (an arbitrary call like `compiles`/`tryImport`, an unknown const ident,
+    ## an unresolvable comparison). A dependency scanner must NEVER drop a real
+    ## import, so callers treat `cvUnknown` as "keep the dependency". The bug
+    ## this replaces: everything-unknown collapsed to `true`, and `not true`
+    ## is `false`, so an `else:` branch (emitted as `when (not COND)`) silently
+    ## dropped its imports (e.g. `when tryImport x: ... else: import x`, or
+    ## system's `else: include excpt` hiding `import stacktraces`).
+    cvFalse, cvTrue, cvUnknown
+
+proc toCondVal(b: bool): CondVal = (if b: cvTrue else: cvFalse)
+
+proc condNot(a: CondVal): CondVal =
+  case a
+  of cvFalse: cvTrue
+  of cvTrue: cvFalse
+  of cvUnknown: cvUnknown
+
+proc condAnd(a, b: CondVal): CondVal =
+  if a == cvFalse or b == cvFalse: cvFalse
+  elif a == cvTrue and b == cvTrue: cvTrue
+  else: cvUnknown
+
+proc condOr(a, b: CondVal): CondVal =
+  if a == cvTrue or b == cvTrue: cvTrue
+  elif a == cvFalse and b == cvFalse: cvFalse
+  else: cvUnknown
+
+proc evalCondIdent(c: DepContext; v: string): CondVal =
+  ## Truth value of a bare identifier appearing in a `when` condition. Unknown
+  ## idents are `cvUnknown` (kept), not `true` — so `when not SOMEIDENT:` no
+  ## longer drops its import.
   case v
-  of "false": false
+  of "true": cvTrue
+  of "false": cvFalse
   of "hasThreadSupport":
     # system.nim's `hasThreadSupport` is `compileOption("threads") and
     # not defined(nimscript)`; the conservative `true` would schedule the
@@ -285,12 +319,12 @@ proc evalCondIdent(c: DepContext; v: string): bool =
     # whose NIFs a --threads:off compile never produces — nifmake then
     # sees missing outputs and re-runs the system rule (and everything
     # downstream) on every rerun.
-    optThreads in c.config.globalOptions
+    toCondVal(optThreads in c.config.globalOptions)
   of "usesDestructors":
     # system.nim's `usesDestructors = defined(gcDestructors) or
     # defined(gcHooks)`; guards mmdisp.nim's `include "system/gc"` whose
     # transitive imports (sharedlist, locks) an orc compile never produces.
-    isDefined(c.config, "gcDestructors") or isDefined(c.config, "gcHooks")
+    toCondVal(isDefined(c.config, "gcDestructors") or isDefined(c.config, "gcHooks"))
   of "isMainModule":
     # Only the project main module is compiled with `isMainModule` true; an
     # imported module's `when isMainModule` blocks are dead. The conservative
@@ -298,8 +332,8 @@ proc evalCondIdent(c: DepContext; v: string): bool =
     # `tools/grammar_nanny`, a node that gets a cg rule but is never linked,
     # so the merge stage can pick it as a shared def's owner -> undefined
     # symbols at link).
-    c.scanningMain
-  else: true
+    toCondVal(c.scanningMain)
+  else: cvUnknown
 
 proc constIdentValue(c: DepContext; ident: string): string =
   ## String value of a compile-time platform constant that appears in `when`
@@ -332,182 +366,89 @@ proc readOperandValue(c: DepContext; s: var Stream): string =
     skipSubtree(s, t)
   else: result = ""
 
-proc evalCondCmp(c: DepContext; s: var Stream; isEq: bool): bool =
+proc evalCondCmp(c: DepContext; s: var Stream; isEq: bool): CondVal =
   ## Evaluate `a == b` / `a != b`. Both operands known → real result; otherwise
-  ## fall back to `true` (the conservative direction for a bare comparison).
+  ## `cvUnknown` (so a negated comparison keeps, not drops, the dependency).
   let v1 = readOperandValue(c, s)
   let v2 = readOperandValue(c, s)
   if v1.len > 0 and v2.len > 0:
-    result = (v1 == v2) == isEq
+    result = toCondVal((v1 == v2) == isEq)
   else:
-    result = true
+    result = cvUnknown
 
-proc evalCondExpr(c: DepContext; s: var Stream): bool =
-  ## Read exactly one condition expression from `s` and return its truth
-  ## value. Consumes tokens whether the expression is recognised or not so
-  ## the caller stays in sync. Recognises `defined(IDENT)`, the boolean
-  ## operators `not`/`and`/`or`, and the literals `true`/`false`. Anything
-  ## else (e.g. a call to an arbitrary proc) is treated as `true` — the
-  ## conservative direction, since a false negative here drops a real
-  ## dependency from the build graph.
+proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal
+
+proc readCond(c: DepContext; s: var Stream): CondVal =
+  ## Read one full condition subtree (its own opener included) and evaluate it.
   let t = next(s)
+  evalCondExpr(c, s, t)
+
+proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
+  ## Evaluate the condition whose opening token `t` has ALREADY been read,
+  ## consuming the rest of the expression so the caller stays in sync.
+  ## Recognises `defined(IDENT)`, `not`/`and`/`or`, `==`/`!=` and the literals
+  ## `true`/`false`; everything else (an arbitrary call such as `compiles` /
+  ## `tryImport`, an unknown const) is `cvUnknown`. Both negation-sensitive
+  ## (`not cvUnknown == cvUnknown`) and short-circuit-free: `and`/`or` always
+  ## read both operands so the stream stays in sync regardless of the result.
   case t.kind
   of Ident:
     result = evalCondIdent(c, pool.strings[t.litId])
   of ParLe:
     let tag = pool.tags[t.tagId]
+    # For prefix/infix/call nodes the operator name is the first child; for a
+    # bare `(not ...)`/`(and ...)`/`(or ...)`/`(par ...)` node the tag itself is
+    # the operator and the operands follow directly.
+    var name = tag
     case tag
     of "call", "cmd", "callstrlit", "infix", "prefix":
-      # First child is the head (function/operator name).
       let head = next(s)
-      var name = ""
       if head.kind == Ident: name = pool.strings[head.litId]
-      case name
-      of "defined":
-        let arg = next(s)
-        var sym = ""
-        if arg.kind == Ident: sym = pool.strings[arg.litId]
-        result = sym.len > 0 and isDefined(c.config, sym)
-      of "not":
-        result = not evalCondExpr(c, s)
-      of "and":
-        result = evalCondExpr(c, s)
-        if result: result = evalCondExpr(c, s)
-        else: skipSubtree(s, next(s))
-      of "or":
-        result = evalCondExpr(c, s)
-        if not result: result = evalCondExpr(c, s)
-        else: skipSubtree(s, next(s))
-      of "==", "!=":
-        result = evalCondCmp(c, s, name == "==")
-      else:
-        result = true
-      # Drain whatever remains until the matching ParRi.
-      var depth = 1
-      while depth > 0:
-        let n = next(s)
-        if n.kind == ParLe: inc depth
-        elif n.kind == ParRi: dec depth
-        elif n.kind == EofToken: return
+      else: name = ""
+    else: discard
+    case name
+    of "defined":
+      let arg = next(s)
+      var sym = ""
+      if arg.kind == Ident: sym = pool.strings[arg.litId]
+      result = toCondVal(sym.len > 0 and isDefined(c.config, sym))
     of "not":
-      result = not evalCondExpr(c, s)
-      var depth = 1
-      while depth > 0:
-        let n = next(s)
-        if n.kind == ParLe: inc depth
-        elif n.kind == ParRi: dec depth
-        elif n.kind == EofToken: return
+      result = condNot(readCond(c, s))
     of "and":
-      result = evalCondExpr(c, s)
-      if result: result = evalCondExpr(c, s)
-      else: skipSubtree(s, next(s))
-      # consume closing ParRi
-      var depth = 1
-      while depth > 0:
-        let n = next(s)
-        if n.kind == ParLe: inc depth
-        elif n.kind == ParRi: dec depth
-        elif n.kind == EofToken: return
+      let a = readCond(c, s)
+      let b = readCond(c, s)
+      result = condAnd(a, b)
     of "or":
-      result = evalCondExpr(c, s)
-      if not result: result = evalCondExpr(c, s)
-      else: skipSubtree(s, next(s))
-      var depth = 1
-      while depth > 0:
-        let n = next(s)
-        if n.kind == ParLe: inc depth
-        elif n.kind == ParRi: dec depth
-        elif n.kind == EofToken: return
+      let a = readCond(c, s)
+      let b = readCond(c, s)
+      result = condOr(a, b)
+    of "==", "!=":
+      result = evalCondCmp(c, s, name == "==")
     of "par":
-      # a parenthesised grouping such as `(defined(a) or defined(b))`: evaluate
-      # the inner expression. Without this, `par` fell through to the `else`
-      # branch below and evaluated to `true`, which silently inverted conditions
-      # like `not (defined(macosx) or defined(bsd))` and dropped real imports
-      # (e.g. `cpuinfo`'s conditional `import std/posix`).
-      result = evalCondExpr(c, s)
-      var depth = 1
-      while depth > 0:
-        let n = next(s)
-        if n.kind == ParLe: inc depth
-        elif n.kind == ParRi: dec depth
-        elif n.kind == EofToken: return
+      # a parenthesised grouping such as `(defined(a) or defined(b))`.
+      result = readCond(c, s)
     else:
-      skipSubtree(s, t)
-      result = true
+      result = cvUnknown
+    # Drain whatever remains until the matching ParRi.
+    var depth = 1
+    while depth > 0:
+      let n = next(s)
+      if n.kind == ParLe: inc depth
+      elif n.kind == ParRi: dec depth
+      elif n.kind == EofToken: return
   else:
-    result = true
+    result = cvUnknown
 
-proc whenMarkerHolds(c: DepContext; s: var Stream): bool =
+proc whenMarkerHolds(c: DepContext; s: var Stream): CondVal =
   ## Caller has just consumed the `(when` ParLe. Read children until the
-  ## matching `)`, AND-ing each evaluated condition.
-  result = true
+  ## matching `)`, AND-ing each evaluated condition. Returns the tri-state
+  ## result; callers keep the dependency unless it is provably `cvFalse`.
+  result = cvTrue
   while true:
-    # peek by reading; if it's ParRi, we're done
     let t = next(s)
     if t.kind == ParRi: return
     if t.kind == EofToken: return
-    if t.kind == ParLe:
-      # Re-feed by manually evaluating the subtree starting at `t`.
-      # evalCondExpr expects to read its own opener, so handle it directly.
-      let tag = pool.tags[t.tagId]
-      case tag
-      of "call", "cmd", "callstrlit", "infix", "prefix":
-        let head = next(s)
-        var name = ""
-        if head.kind == Ident: name = pool.strings[head.litId]
-        var ok = true
-        case name
-        of "defined":
-          let arg = next(s)
-          var sym = ""
-          if arg.kind == Ident: sym = pool.strings[arg.litId]
-          ok = sym.len > 0 and isDefined(c.config, sym)
-        of "not":
-          ok = not evalCondExpr(c, s)
-        of "and":
-          ok = evalCondExpr(c, s)
-          if ok: ok = evalCondExpr(c, s)
-        of "or":
-          ok = evalCondExpr(c, s)
-          if not ok: ok = evalCondExpr(c, s)
-        of "==", "!=":
-          ok = evalCondCmp(c, s, name == "==")
-        else:
-          ok = true
-        # finish the subtree
-        var depth = 1
-        while depth > 0:
-          let n = next(s)
-          if n.kind == ParLe: inc depth
-          elif n.kind == ParRi: dec depth
-          elif n.kind == EofToken: return
-        if not ok: result = false
-      of "not", "and", "or":
-        # Re-emit a synthetic dispatch: rewrap by descending.
-        var ok = true
-        case tag
-        of "not":
-          ok = not evalCondExpr(c, s)
-        of "and":
-          ok = evalCondExpr(c, s)
-          if ok: ok = evalCondExpr(c, s)
-        of "or":
-          ok = evalCondExpr(c, s)
-          if not ok: ok = evalCondExpr(c, s)
-        else: discard
-        var depth = 1
-        while depth > 0:
-          let n = next(s)
-          if n.kind == ParLe: inc depth
-          elif n.kind == ParRi: dec depth
-          elif n.kind == EofToken: return
-        if not ok: result = false
-      else:
-        # Unknown — treat as true and skip.
-        skipSubtree(s, t)
-    elif t.kind == Ident:
-      if not evalCondIdent(c, pool.strings[t.litId]): result = false
-      # a true / unknown ident keeps the current result
+    result = condAnd(result, evalCondExpr(c, s, t))
 
 proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
   ## Parse an import path expression and return the list of module paths it
@@ -611,8 +552,12 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
         var live = true
         if t.kind == ParLe and pool.tags[t.tagId] == "when":
           # whenMarkerHolds consumes everything up to and including the
-          # closing `)` of the `(when ...)` subtree.
-          live = whenMarkerHolds(c, s)
+          # closing `)` of the `(when ...)` subtree. Drop the import only when
+          # the condition is PROVABLY false; a `cvUnknown` condition (e.g. an
+          # `else:` branch guarded by `not <unevaluatable call>`, as in
+          # `when tryImport x: ... else: import x`) keeps the dependency so the
+          # static graph never misses a real import.
+          live = whenMarkerHolds(c, s) != cvFalse
           t = next(s)
         if not live:
           # Drain the rest of this import/include node.

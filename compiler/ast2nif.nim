@@ -176,6 +176,7 @@ type
     #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
+    depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
   ## Every symbol is emitted as a *global* (module-suffixed) name so that its
@@ -558,6 +559,7 @@ proc trImport(w: var Writer; n: PNode) =
       let fp = moduleSuffix(w.infos.config, s.positionImpl.FileIndex)
       w.deps.addStrLit fp  # raw string literal, no wrapper needed
       w.deps.addParRi
+      w.depSuffixes.incl fp
 
 proc trExport(w: var Writer; n: PNode) =
   # Collect export information for the index
@@ -742,8 +744,23 @@ proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
           writeNode(w, dest, ast[i], forAst)
       dec w.inProc
     of nkImportStmt:
-      # this has been transformed for us, see `importer.nim` to contain a list of module syms:
-      trImport w, n
+      if w.inProc > 0:
+        # An `import` inside a template/macro/proc body — e.g. stew/importops'
+        # `tryImport`: `when compiles((; import v)): import v`. It is part of the
+        # body AST and must be serialized as a real node so the template
+        # re-expands it at each use site; it is NOT a module-level dependency
+        # edge (the import resolves where the template expands, against that
+        # module's deps). Diverting it to `w.deps` (the top-level path below)
+        # dropped it entirely: its child is the unexpanded template parameter
+        # `v`, not a module sym, so `trImport` wrote nothing and the body
+        # round-tripped EMPTY — a NIF-loaded `tryImport` then imported nothing.
+        w.withNode dest, n:
+          for i in 0 ..< n.len:
+            writeNode(w, dest, n[i], forAst)
+      else:
+        # top-level import: recorded as a dependency edge — `importer.nim` has
+        # already transformed `n` to contain a list of module syms.
+        trImport w, n
     of nkIncludeStmt:
       trInclude w, n
     of nkExportStmt, nkExportExceptStmt:
@@ -1226,7 +1243,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      reexportedModules: seq[(string, string)] = @[];
                      genericOffers: seq[tuple[generic, inst: PSym;
                                               concreteTypes: seq[PType];
-                                              genericParamsCount: int]] = @[]) =
+                                              genericParamsCount: int]] = @[];
+                     resolvedImportDeps: seq[FileIndex] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
 
@@ -1246,6 +1264,25 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   var bottom = createTokenBuf(300)
   w.writeToplevelNode content, bottom, n
+
+  # Resolved import edges that left no syntactic `import` node in the top-level
+  # AST: an import generated INSIDE a `when` condition (e.g. stew/importops'
+  # `when tryImport x:` -> `when compiles((; import x)): import x`) really
+  # imports `x` — `addImportFileDep` recorded the edge in `graph.importDeps` —
+  # but the import node is folded away with the condition, so `trImport` never
+  # saw it and the NIF `deps` section omitted it. The backend closure walk
+  # (nifbackend.loadBackendModules) follows NIF `deps`, so without this edge a
+  # template-imported module's `{.compile.}`/`{.passL.}` directives never replay
+  # and its C/asm objects go unlinked (undefined `hashtree_hash`/`my_c_add` at
+  # link). Emit any resolved edge not already written as a syntactic import.
+  for f in resolvedImportDeps:
+    let fp = moduleSuffix(config, f)
+    if not w.depSuffixes.containsOrIncl(fp):
+      w.deps.addParLe importTag, NoLineInfo
+      w.deps.addDotToken # flags
+      w.deps.addDotToken # type
+      w.deps.addStrLit fp
+      w.deps.addParRi
 
   # Re-exported MODULES (`import x; export x`): semExport puts only x's
   # member syms into the nkExportStmt; the module sym itself reaches the
