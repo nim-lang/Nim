@@ -12,7 +12,7 @@
 
 import std / [os, tables, sets, times, osproc, algorithm, strtabs, strutils, syncio]
 import options, msgs, lineinfos, pathutils, condsyms,
-  modulepaths, extccomp, cnif
+  modulepaths, extccomp, cnif, platform
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames
@@ -196,8 +196,11 @@ proc resolveInclude(c: DepContext; origin, toResolve: string): string =
 
 proc traverseDeps(c: var DepContext; pair: FilePair; current: Node)
 
-proc processInclude(c: var DepContext; includePath: string; current: Node) =
-  let resolved = resolveInclude(c, current.files[current.files.len - 1].nimFile, includePath)
+proc processInclude(c: var DepContext; includePath: string; current: Node; origin: string) =
+  # `origin` = the file the `include` literally appears in (an included file's
+  # own nested includes/imports must resolve relative to IT, not the importing
+  # module's main file).
+  let resolved = resolveInclude(c, origin, includePath)
   if resolved.len == 0 or not fileExists(resolved):
     return
 
@@ -220,8 +223,16 @@ proc getsImplicitImports(c: DepContext; nimFile: string): bool =
   ## system.nim and never reaches them). Stdlib == under conf.libpath.
   not isRelativeTo(nimFile, c.config.libpath.string)
 
-proc processImport(c: var DepContext; importPath: string; current: Node) =
-  let resolved = resolveImport(c, current.files[0].nimFile, importPath)
+proc processImport(c: var DepContext; importPath: string; current: Node; origin: string) =
+  # `origin` = the file the `import` literally appears in. Crucial for imports
+  # inside `include`d files: e.g. `system.nim` includes `system/excpt.nim`, which
+  # does `import stacktraces` — that must resolve relative to `excpt.nim`
+  # (lib/system/) → `lib/system/stacktraces.nim`, NOT relative to `system.nim`
+  # (lib/) which has no `stacktraces.nim`. Resolving against the main file silently
+  # dropped the `system → stacktraces` edge, so stacktraces was a separate SCC in
+  # the static round and got re-grouped (and recompiled with divergent type ids)
+  # only after the post-sem `.s.deps` revealed the edge.
+  let resolved = resolveImport(c, origin, importPath)
   if resolved.len == 0 or not fileExists(resolved):
     return
 
@@ -290,6 +301,47 @@ proc evalCondIdent(c: DepContext; v: string): bool =
     c.scanningMain
   else: true
 
+proc constIdentValue(c: DepContext; ident: string): string =
+  ## String value of a compile-time platform constant that appears in `when`
+  ## guards, or "" when unknown. Mirrors the compiler's magics so the scanner
+  ## evaluates e.g. `when hostOS == "standalone"` the SAME way the real compile
+  ## does. Without this the comparison is "unknown" → the conservative `true`,
+  ## which is WRONG once negated (`else:` branches emit `not (==)`), so a real
+  ## conditional `include`/`import` is dropped (e.g. system's `else: include
+  ## excpt`, hiding `import stacktraces`).
+  # Must match the compiler's magics EXACTLY, incl. case: `hostOS`/`hostCPU` etc.
+  # fold to the lower-cased platform name (see semfold.nim mHostOS/mHostCPU), and
+  # user code compares against lower-case literals (`when hostOS == "linux"`).
+  case ident
+  of "hostOS": result = toLowerAscii(platform.OS[c.config.target.targetOS].name)
+  of "hostCPU": result = toLowerAscii(platform.CPU[c.config.target.targetCPU].name)
+  of "buildOS": result = toLowerAscii(platform.OS[c.config.target.hostOS].name)
+  of "buildCPU": result = toLowerAscii(platform.CPU[c.config.target.hostCPU].name)
+  else: result = ""
+
+proc readOperandValue(c: DepContext; s: var Stream): string =
+  ## Read one operand of an `==`/`!=` infix and return its string value (a string
+  ## literal verbatim, a platform-constant ident resolved, anything else ""), fully
+  ## consuming the operand (subtrees are skipped) so the caller stays in sync.
+  let t = next(s)
+  case t.kind
+  of StringLit: result = pool.strings[t.litId]
+  of Ident: result = constIdentValue(c, pool.strings[t.litId])
+  of ParLe:
+    result = ""
+    skipSubtree(s, t)
+  else: result = ""
+
+proc evalCondCmp(c: DepContext; s: var Stream; isEq: bool): bool =
+  ## Evaluate `a == b` / `a != b`. Both operands known → real result; otherwise
+  ## fall back to `true` (the conservative direction for a bare comparison).
+  let v1 = readOperandValue(c, s)
+  let v2 = readOperandValue(c, s)
+  if v1.len > 0 and v2.len > 0:
+    result = (v1 == v2) == isEq
+  else:
+    result = true
+
 proc evalCondExpr(c: DepContext; s: var Stream): bool =
   ## Read exactly one condition expression from `s` and return its truth
   ## value. Consumes tokens whether the expression is recognised or not so
@@ -326,6 +378,8 @@ proc evalCondExpr(c: DepContext; s: var Stream): bool =
         result = evalCondExpr(c, s)
         if not result: result = evalCondExpr(c, s)
         else: skipSubtree(s, next(s))
+      of "==", "!=":
+        result = evalCondCmp(c, s, name == "==")
       else:
         result = true
       # Drain whatever remains until the matching ParRi.
@@ -416,6 +470,8 @@ proc whenMarkerHolds(c: DepContext; s: var Stream): bool =
         of "or":
           ok = evalCondExpr(c, s)
           if not ok: ok = evalCondExpr(c, s)
+        of "==", "!=":
+          ok = evalCondCmp(c, s, name == "==")
         else:
           ok = true
         # finish the subtree
@@ -580,15 +636,15 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
           # be treated as modules. Both still create a real dependency on `m`.
           for importPath in parseImportPath(s, t):
             if importPath.len > 0:
-              processImport(c, importPath, current)
+              processImport(c, importPath, current, pair.nimFile)
         else:
           while t.kind != ParRi and t.kind != EofToken:
             for importPath in parseImportPath(s, t):
               if importPath.len > 0:
                 if tag == "include":
-                  processInclude(c, importPath, current)
+                  processInclude(c, importPath, current, pair.nimFile)
                 else:
-                  processImport(c, importPath, current)
+                  processImport(c, importPath, current, pair.nimFile)
         # Drain any remaining tokens of this node (e.g. the symbol list of a
         # `fromimport`), up to and including the node's closing ')'.
         var depth = 1

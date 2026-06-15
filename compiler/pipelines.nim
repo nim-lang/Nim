@@ -280,6 +280,42 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
 
   result = true
 
+proc loadedDefSym(defs: PNode): PSym =
+  ## The defined symbol of a let/var entry as it loads back from a NIF: the
+  ## section child is a bare `nkSym` (the `(sd …)` reference), but be defensive
+  ## about the from-source shapes too (`nkIdentDefs`, a pragma-wrapped name).
+  case defs.kind
+  of nkSym: result = defs.sym
+  of nkPragmaExpr:
+    result = if defs.len > 0: loadedDefSym(defs[0]) else: nil
+  of nkIdentDefs, nkConstDef:
+    result = if defs.len > 0: loadedDefSym(defs[0]) else: nil
+  else: result = nil
+
+proc initLoadedCompileTimeGlobals(graph: ModuleGraph; module: PSym; topLevel: PNode) =
+  ## Eagerly initialize the compile-time globals (`let/var {.compileTime.}`) of a
+  ## module restored from a NIF. In a normal sem these VM slots are filled by
+  ## `setupCompileTimeVar` (semstmts) as the section is semchecked; a NIF-loaded
+  ## module is never semchecked, so without this a macro or compile-time proc that
+  ## reads such a global finds a nil slot. The lazy `vmgen.genGlobalInit` fallback
+  ## is order-fragile across proc boundaries (it emits the init at the first
+  ## VM-gen'd reference, which need not be the first one executed), so the init has
+  ## to happen here, once, before any of the module's code can run. The symbol's
+  ## own `ast` is the `nkIdentDefs` (initializer included); re-wrap it in a section
+  ## exactly as semstmts does and hand it to the same evaluator.
+  if topLevel == nil: return
+  let idgen = idGeneratorFromModule(module)
+  for stmt in topLevel:
+    if stmt.kind notin {nkLetSection, nkVarSection}: continue
+    for defs in stmt:
+      let s = loadedDefSym(defs)
+      if s != nil and s.kind in {skLet, skVar} and
+         {sfCompileTime, sfGlobal} <= s.flags and
+         s.ast != nil and s.ast.kind == nkIdentDefs:
+        var sect = newNodeI(stmt.kind, s.info)
+        sect.add s.ast
+        setupCompileTimeVar(module, idgen, graph, sect)
+
 proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
@@ -345,6 +381,9 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           # Replay state changes from the loaded NIF module
           if result.ast != nil:
             replayStateChanges(result, graph)
+          # Fill the VM slots of the module's `{.compileTime.}` globals now (sem
+          # would have, but a NIF-loaded module is never semchecked).
+          initLoadedCompileTimeGlobals(graph, result, precomp.topLevel)
           return result  # Return early, don't process from source
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path

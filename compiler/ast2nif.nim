@@ -2172,6 +2172,12 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
   var t = next(s) # skip dot
   var cont = true
   let exportTag = pool.tags.getOrIncl"export"
+  # Top-level `let`/`var` sections are loaded even without LoadFullAst: they may
+  # declare `{.compileTime.}` globals whose VM slots the importer initializes
+  # eagerly (pipelines.initLoadedCompileTimeGlobals), which needs them visible in
+  # `topLevel`. They sit in the module header before `(implementation)`.
+  let letTag = pool.tags.getOrIncl(toNifTag(nkLetSection))
+  let varTag = pool.tags.getOrIncl(toNifTag(nkVarSection))
   while cont and t.kind != EofToken:
     if t.kind == ParLe:
       if t.tagId == replayTag:
@@ -2271,8 +2277,9 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
           result.reexportedModules.add (mname, msuffix)
       elif t.tagId == implTag:
         cont = false
-      elif LoadFullAst in flags:
-        # Parse the full statement
+      elif LoadFullAst in flags or t.tagId == letTag or t.tagId == varTag:
+        # Parse the full statement. let/var sections are loaded unconditionally
+        # (see above) so `{.compileTime.}` globals reach the eager initializer.
         var buf = createTokenBuf(50)
         nextSubtree(s, buf, t)
         t = next(s) # skip ParRi

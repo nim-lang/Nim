@@ -600,19 +600,38 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
-proc icTest(args: string) =
-  temp("")
-  let inp = os.parseCmdLine(args)[0]
+proc runIcTestFile(inp: string) =
+  ## Compile a single `tests/ic` file with `nim ic`, once per `#!EDIT!#` fragment
+  ## (each fragment is the file's source after that incremental edit). Only checks
+  ## that `nim ic` exits 0 — the produced binary's output is not verified here.
   let content = readFile(inp)
   let nimExe = getAppDir() / "bin" / "nim_temp".exe
-  var i = 0
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
     var cmd = nimExe & " ic --hint:Conf:off --warnings:off "
     cmd.add quoteShell(file)
     exec(cmd)
-    inc i
+
+# The `tests/ic` files that `nim ic` must keep compiling. Multi-module tests rely
+# on a sibling helper (`timp` -> `myimp`, `tcompiletimeglobal` -> `mctglobal`),
+# which exercises the NIF import/load path the single-file tests do not.
+const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
+                 "tcompiletimeglobal"]
+
+proc icTest(args: string) =
+  temp("")
+  let parsed = os.parseCmdLine(args)
+  if parsed.len > 0 and parsed[0].len > 0:
+    # `koch ic <file>`: run just that file.
+    runIcTestFile(parsed[0])
+  else:
+    # `koch ic`: the full regression set we want to keep working — the test
+    # suite plus both self-host bootstraps (`bootic` and `bootic -d:release`).
+    for t in icSuite:
+      runIcTestFile("tests" / "ic" / (t & ".nim"))
+    bootic("", skipIntegrityCheck = false)
+    bootic("-d:release", skipIntegrityCheck = false)
 
 proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
