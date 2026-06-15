@@ -1779,12 +1779,18 @@ proc semGenericOrEmptyBracket(c: PContext, n: PNode, s: PSym, prev: PType): PTyp
   ## bare `Foo`, which stays a type class (implicit generic) in parameter position
   ## and must keep that meaning. Non-empty brackets take the normal path.
   if n.len == 1:
-    result = tryGenericBodyDefaultInvocation(c, n[0], s, prev)
-    if result == nil:
-      localError(c.config, n.info,
-        "cannot instantiate '$1' with '[]': every generic parameter must have a default" %
-          s.name.s)
-      result = newOrPrevType(tyError, prev, c)
+    let body = if s.typ != nil: s.typ.skipTypes({tyAlias}) else: nil
+    if body != nil and body.kind == tyGenericBody:
+      # `Foo[]` on a generic type instantiates it using every param's default.
+      result = tryGenericBodyDefaultInvocation(c, n[0], s, prev)
+      if result == nil:
+        localError(c.config, n.info,
+          "cannot instantiate '$1' with '[]': every generic parameter must have a default" %
+            s.name.s)
+        result = newOrPrevType(tyError, prev, c)
+    else:
+      # not a generic type: let semGeneric report the proper error.
+      result = semGeneric(c, n, s, prev)
   else:
     result = semGeneric(c, n, s, prev)
 
