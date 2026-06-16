@@ -199,8 +199,9 @@ type
     decodedFileIndices: HashSet[FileIndex]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
-    #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
-    #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
+    writtenTypes: seq[PType]  # types sealed during this emit; under ideActive
+    writtenSyms: seq[PSym]    # they are reset to Complete afterwards so nimsuggest
+                              # can keep mutating its still-live query targets
     writtenPackages: HashSet[string]
     depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
 
@@ -375,6 +376,7 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
     # module (or nowhere), leaving dangling references (e.g. `symbol has no
     # offset` for a `pointer` type whose itemId.module drifted away).
     typ.state = Sealed
+    if w.infos.config.ideActive: w.writtenTypes.add typ
     writeTypeDef(w, dest, typ)
   else:
     dest.addSymUse pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
@@ -504,6 +506,7 @@ proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
     dest.addDotToken()
   elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
+    if w.infos.config.ideActive: w.writtenSyms.add sym
     writeSymDef(w, dest, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
@@ -528,6 +531,7 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     nodeTyp = sym.typImpl
   if shouldWriteSymDef(w, sym):
     sym.state = Sealed
+    if w.infos.config.ideActive: w.writtenSyms.add sym
     if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, nodeTyp)
@@ -1391,9 +1395,21 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
       let s = op.sym
       if s.state != Sealed:
         s.state = Sealed
+        if config.ideActive: w.writtenSyms.add s
         writeSymDef w, dest, s
 
   dest.addParRi()
+
+  # nimsuggest reuses these symbols/types as live, mutable query targets (sem
+  # re-runs, usage tracking, flag updates). Sealing is only needed for intra-emit
+  # dedup; once the NIF is built, un-seal so suggest can keep mutating them
+  # (matches `loadedState` loading Complete under ideActive). The `Sealed` guard
+  # stays in force for a real `nim m`/`nim nifc` build.
+  if config.ideActive:
+    for s in w.writtenSyms:
+      if s.state == Sealed: s.state = Complete
+    for t in w.writtenTypes:
+      if t.state == Sealed: t.state = Complete
 
   # OnlyIfChanged keeps the mtime of content-identical rewrites: nifmake's
   # mtime-based `needsRebuild` then prunes the rebuild cascade level by
@@ -1495,10 +1511,14 @@ proc loadedState(c: DecodeContext): ItemState {.inline.} =
   ## State to give a freshly loaded symbol or type. During the C code generation
   ## phase (`nim nifc`) the backend (lambda lifting, the transformer, etc.)
   ## legitimately mutates the loaded entities and never writes them back to a NIF,
-  ## so they must be mutable (`Complete`). During semantic checking (`nim m`) a
-  ## loaded entity belongs to an already-compiled dependency and must stay
-  ## `Sealed` so accidental mutations are caught.
-  if c.infos.config.cmd == cmdNifC: Complete else: Sealed
+  ## so they must be mutable (`Complete`). nimsuggest (`ideActive`) is the same
+  ## case: it reuses loaded symbols as live query targets and mutates them during
+  ## sem and suggestion bookkeeping (usage tracking, flags) without authoritatively
+  ## writing those mutations back (its NIF emits are gated to non-dirty, error-free
+  ## modules and re-serialize from the proper state). During a plain `nim m`
+  ## semantic check a loaded entity belongs to an already-compiled dependency and
+  ## must stay `Sealed` so accidental mutations are caught.
+  if c.infos.config.cmd == cmdNifC or c.infos.config.ideActive: Complete else: Sealed
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
