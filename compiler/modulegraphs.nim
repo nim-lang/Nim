@@ -957,6 +957,22 @@ when not defined(nimKochBootstrap):
           if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
              n[0].strVal in ["put", "inc", "add", "incl"]:
             g.transitiveReplayActions.add n
+        # Rebuild generic TYPE- and PROC-instance offers across the WHOLE closure,
+        # not just direct imports (`moduleFromNifFile`). An instance is frozen at
+        # the FIRST module to create it (in a scope where its body's symbols
+        # resolve unambiguously); a consumer many imports away must REUSE it rather
+        # than re-instantiate in its own scope, which may resolve a body symbol
+        # differently — a divergent `compiles()`-dependent array bound (SSZ
+        # `HashArray[8192, Gwei]`, type offer), or an ambiguous unqualified ident
+        # leaked from an unrelated import (`fromRaw` -> `SkRawPublicKeySize` from
+        # both `secp` and `secp256k1`, proc offer). Direct-only rebuild left the
+        # deep offer invisible when the clean instance lives a transitive hop away.
+        for off in precomp.typeOffers:
+          g.typeInstCache.mgetOrPut(off.generic.itemId, @[]).add off.inst
+        for off in precomp.genericOffers:
+          g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
+            sym: off.inst, concreteTypes: off.concreteTypes,
+            genericParamsCount: off.genericParamsCount, compilesId: 0)
         for d in precomp.deps: stack.add d
 
   proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym =
@@ -1030,6 +1046,14 @@ when not defined(nimKochBootstrap):
       g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
         sym: off.inst, concreteTypes: off.concreteTypes,
         genericParamsCount: off.genericParamsCount, compilesId: 0)
+
+    # Rebuild `typeInstCache` from this module's generic TYPE-instance OFFERS so a
+    # consumer's `searchInstTypes` reuses the baked instance (e.g. an SSZ
+    # `HashArray` whose array bound depends on import-scope-sensitive `compiles()`)
+    # rather than re-instantiating it with a divergent bound — see ast2nif's
+    # `(toffer …)`. Keyed by the generic body sym's itemId, as `searchInstTypes`.
+    for off in result.typeOffers:
+      g.typeInstCache.mgetOrPut(off.generic.itemId, @[]).add off.inst
 
     # Mark module as cached
     g.cachedMods.incl fileIdx.int

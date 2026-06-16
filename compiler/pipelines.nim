@@ -289,6 +289,16 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
             if not hasNil:
               genericOffers.add (inst.sym.instantiatedFrom, inst.sym,
                                  inst.concreteTypes, inst.genericParamsCount)
+      # Generic TYPE-instance OFFERS: every `tyGenericInst` THIS module created,
+      # so a consumer reuses its baked structure (array bounds etc.) rather than
+      # re-instantiating with a scope-divergent bound. See ast2nif.writeNifModule.
+      var typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[]
+      for genItemId, instList in graph.typeInstCache:
+        for inst in instList:
+          if inst != nil and inst.uniqueId.module == module.position and
+              inst.kidsLen > 0 and inst[0] != nil and
+              inst[0].kind == tyGenericBody and inst[0].sym != nil:
+            typeOffers.add (inst[0].sym, inst)
       # The module's REAL resolved direct imports (incl. macro/template-generated
       # ones with no surviving syntactic node). Passed to writeNifModule so the
       # NIF `deps` section is complete (the backend closure walk needs it), and
@@ -296,7 +306,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       let resolvedImportDeps = graph.importDeps.getOrDefault(module.position.FileIndex, @[])
       writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
                      replayActions, implDeps, reexportedModuleSyms(graph, module),
-                     genericOffers, resolvedImportDeps)
+                     genericOffers, typeOffers, resolvedImportDeps)
       # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]

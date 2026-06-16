@@ -609,6 +609,7 @@ var importTag = registerTag("import")
 var implTag = registerTag("implementation")
 var reexpModTag = registerTag("reexpmod")
 var offerTag = registerTag("offer")
+var typeOfferTag = registerTag("toffer")
 
 proc registerNifAstTags*() =
   ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
@@ -640,6 +641,7 @@ proc registerNifAstTags*() =
   implTag = registerTag("implementation")
   reexpModTag = registerTag("reexpmod")
   offerTag = registerTag("offer")
+  typeOfferTag = registerTag("toffer")
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
   if n == nil:
@@ -1256,6 +1258,7 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      genericOffers: seq[tuple[generic, inst: PSym;
                                               concreteTypes: seq[PType];
                                               genericParamsCount: int]] = @[];
+                     typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[];
                      resolvedImportDeps: seq[FileIndex] = @[]) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   var content = createTokenBuf(300)
@@ -1324,6 +1327,47 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     for ct in off.concreteTypes:
       w.deps.addSymUse pool.syms.getOrIncl(typeToNifSym(ct, w.infos.config)), NoLineInfo
     w.deps.addParRi
+
+  # Generic TYPE-instance OFFERS: the `tyGenericInst` types this module created
+  # (e.g. `HashArray[8192, Gwei]`). Non-IC keeps ONE such instance in the global
+  # `typeInstCache`, so a structural bound computed at the first instantiation
+  # site (e.g. an `array[…]` bound that depends on a `mixin`/`compiles()` whose
+  # resolution differs by import scope) is frozen and reused everywhere. A
+  # separate `nim m` process never repopulates `typeInstCache` from NIFs, so it
+  # re-instantiates in its own scope and can compute a DIFFERENT bound (the SSZ
+  # `dataPerChunk` divergence). The loader rebuilds `g.typeInstCache` from these
+  # so `semtypinst.searchInstTypes` hits and reuses the baked instance.
+  # Layout: (toffer <genericBodySym> <instType>).
+  for off in typeOffers:
+    # Carry the generic body sym and the instance type as STRING LITERALS, not
+    # SymUse tokens: `addSymUse` rewrites a same-module reference into the NIF
+    # "local form" (suffix stripped, resolved by the content loader against the
+    # module being read), but this offer lives in the `deps` header and is read
+    # by a CONSUMER with no such module context. The full names round-trip
+    # verbatim as strings and `createTypeStub`/`resolveHookSym` resolve them
+    # directly (cf. `loadImport`, which carries module suffixes the same way).
+    w.deps.addParLe typeOfferTag, NoLineInfo
+    w.deps.addStrLit w.toNifSymName(off.generic)
+    w.deps.addStrLit typeToNifSym(off.inst, w.infos.config)
+    w.deps.addParRi
+
+  # OWNER MUST EMIT: a type reachable only through an offered instance — the
+  # `concreteTypes` of an offered proc instance (e.g. chronicles `writeValue[T]`,
+  # where `T` is this module's own object type) or an offered generic type
+  # instance — may never be reached by the normal top-level serialization above.
+  # If this module OWNS such a type, force-emit its typedef so that a consumer
+  # which reuses the offer can resolve the cross-module SymUse to it. Without this
+  # the consumer writes `t<k>.<i>.<thisSuffix>` and the loader asserts
+  # `symbol has no offset`. `writeType` emits the def (and recurses into owned
+  # sons) only for an own, still-Complete type; an already-Sealed one is skipped.
+  for off in genericOffers:
+    for ct in off.concreteTypes:
+      if ct != nil and ct.uniqueId.module == w.currentModule and ct.state == Complete:
+        writeType(w, bottom, ct)
+  for off in typeOffers:
+    if off.inst != nil and off.inst.uniqueId.module == w.currentModule and
+        off.inst.state == Complete:
+      writeType(w, bottom, off.inst)
 
   # the implTag is used to tell the loader that the
   # bottom of the file is the implementation of the module:
@@ -2268,6 +2312,11 @@ type
       ## generic instances this module created; modulegraphs.nim rebuilds
       ## `procInstCache` from them so a consumer reuses the instance instead of
       ## re-instantiating it in its own (operator-blind) module scope.
+    typeOffers*: seq[tuple[generic: PSym; inst: PType]]
+      ## generic TYPE instances this module created; modulegraphs.nim rebuilds
+      ## `typeInstCache` from them so a consumer reuses the baked instance
+      ## (e.g. a `mixin`/`compiles()`-dependent array bound) instead of
+      ## re-instantiating it with a different bound in its own scope.
 
 proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]; tok: var PackedToken) =
   tok = next(s) # skip `(import`
@@ -2445,6 +2494,35 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         t = next(s)
         if ok and genSym != nil and instSym != nil:
           result.genericOffers.add (genSym, instSym, cts, paramsCount)
+      elif t.tagId == typeOfferTag:
+        # (toffer "<genericBodySym>" "<instType>") — see the writer. The two
+        # full names arrive as string literals; intern them and resolve to a
+        # PSym/PType, then FULLY load the instance (its array bounds/fields) so
+        # `searchInstTypes` can match its params (a Partial stub has empty kids).
+        # Best-effort: a type that fails to resolve drops the offer.
+        t = next(s)  # skip (toffer
+        var genName, instName = ""
+        var idx = 0
+        while t.kind != ParRi and t.kind != EofToken:
+          if t.kind == StringLit:
+            if idx == 0: genName = pool.strings[t.litId]
+            elif idx == 1: instName = pool.strings[t.litId]
+            inc idx
+          t = next(s)
+        if t.kind != ParRi:
+          raiseAssert "expected ParRi in toffer entry of module " & suffix
+        t = next(s)
+        if genName.len > 0 and instName.len > 0:
+          # Resolving/loading these entities lazily reads from the SAME stream we
+          # are iterating, moving its cursor — save/restore around it (cf. the
+          # export-list handling above).
+          let saved = offset(s.r)
+          let genSym = resolveHookSym(c, pool.syms.getOrIncl(genName))
+          let inst = tryCreateTypeStub(c, pool.syms.getOrIncl(instName))
+          if genSym != nil and inst != nil:
+            loadType(c, inst)
+            result.typeOffers.add (genSym, inst)
+          s.r.jumpTo(saved)
       elif t.tagId == implTag:
         cont = false
       elif LoadFullAst in flags or t.tagId == letTag or t.tagId == varTag:
