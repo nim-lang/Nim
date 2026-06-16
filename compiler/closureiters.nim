@@ -167,8 +167,7 @@ type
     curExcSym: PSym # Current exception
     externExcSym: PSym # Extern exception: what would getCurrentException() return outside of closure iter
 
-    enclosingPragma: PNode # pragma block that wraps the currently-transforming
-                            # stmt list; new states split from it inherit the wrapper
+    enclosingPragmas: seq[PNode] # stack of pragma blocks wrapping stmtlist
 
     states: seq[State] # The resulting states. Label is int literal.
     finallyPathStack: seq[FinallyTarget] # Stack of split blocks, whiles and finallies
@@ -989,9 +988,9 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
           s.add(n[j])
 
         var body = s
-        if ctx.enclosingPragma != nil:
+        for pragma in ctx.enclosingPragmas:
           body = newTreeI(nkPragmaBlock, n[i + 1].info,
-                          ctx.enclosingPragma[0].copyTree, s)
+                          pragma[0].copyTree, body)
 
         n.sons.setLen(i + 1)
         discard ctx.newState(body, true, label)
@@ -1134,12 +1133,11 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         dec ctx.curFinallyLevel
 
   of nkPragmaBlock:
-    # Propagate the pragma block so that blocks like {.cast(uncheckedAssign).}
+    # Propagate the pragma blocks so that blocks like {.cast(uncheckedAssign).}
     # remain effective
-    let oldEnclosing = ctx.enclosingPragma
-    ctx.enclosingPragma = n
+    ctx.enclosingPragmas.add(n)
     n[1] = ctx.transformClosureIteratorBody(n[1], gotoOut)
-    ctx.enclosingPragma = oldEnclosing
+    discard ctx.enclosingPragmas.pop()
     result = n
 
   of nkGotoState, nkForStmt:
