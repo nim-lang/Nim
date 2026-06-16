@@ -287,6 +287,13 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
     let modIdx = graph.parentModule(dirtyIdx)
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
+    # For an include-file query the includer must be re-sem'd so the include body
+    # (where trackPos sits) is re-checked. An already-loaded includer is only
+    # recompiled when dirty (pipelines.compilePipelineModule), and the include
+    # edge isn't always in `g.deps` for markClientsDirty to catch (notably on the
+    # EPC path), so mark the includer dirty explicitly.
+    if isInclude:
+      graph.markDirty modIdx
     if conf.ideCmd != ideMod:
       # `isInclude`: a freshly discovered include file is not "known" yet, but we
       # still must (source-)compile its includer to serve the query.
@@ -1092,9 +1099,22 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   myLog fmt "cmd: {cmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyfile}, tag: {tag}"
 
   var fileIndex: FileIndex = default(FileIndex)
+  # The module to (re)compile for this query. For a normal file it is the file
+  # itself; for an `include` file it is the module that includes it — the include
+  # body is only sem'd as part of its includer, and the includer compiles as the
+  # main module (source, never NIF-loaded), so the include statements at the
+  # cursor get re-checked. The query position stays in the include file.
+  var moduleToCompile: FileIndex = default(FileIndex)
+  var isIncludeQuery = false
 
   if not (cmd in {ideRecompile, ideGlobalSymbols}):
     fileIndex = fileInfoIdx(conf, file)
+    # Discover an include file's includer from the NIF include graph (cold query)
+    # so `parentModule` can map it; see registerIncluderFromNif.
+    if conf.ideImportsFromNif and graph.needsIncludeScan(fileIndex):
+      discard graph.registerIncluderFromNif(fileIndex)
+    isIncludeQuery = graph.inclToMod.hasKey(fileIndex)
+    moduleToCompile = if isIncludeQuery: graph.parentModule(fileIndex) else: fileIndex
     msgs.setDirtyFile(
       conf,
       fileIndex,
@@ -1114,14 +1134,20 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   # these commands require partially compiled project
   elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon}):
+       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon} or isIncludeQuery):
     # for ideSug use v2 implementation
     if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
       conf.m.trackPosAttached = false
     else:
       conf.m.trackPos = default(TLineInfo)
-      graph.recompilePartially(fileIndex)
+      # An include file's includer must be (re)compiled from source so the
+      # include body is re-sem'd; force it dirty since the include file itself
+      # is not a module the dirty machinery tracks.
+      if isIncludeQuery:
+        graph.markDirty moduleToCompile
+        graph.markClientsDirty moduleToCompile
+      graph.recompilePartially(moduleToCompile)
 
   case cmd
   of ideDef:
@@ -1163,11 +1189,15 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.markDirtyIfNeeded(file.string, fileIndex)
   of ideSug, ideCon:
     # ideSug/ideCon performs partial build of the file, thus mark it dirty for the
-    # future calls.
+    # future calls. For an include file, drive everything off its includer module
+    # (the include file has no module of its own — getModule would be nil).
     graph.markDirtyIfNeeded(file.string, fileIndex)
-    graph.recompilePartially(fileIndex)
-    let m = graph.getModule fileIndex
-    incl m, sfDirty
+    if isIncludeQuery:
+      graph.markClientsDirty fileIndex
+    graph.recompilePartially(moduleToCompile)
+    let m = graph.getModule moduleToCompile
+    if m != nil:
+      incl m, sfDirty
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))

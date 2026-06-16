@@ -1764,7 +1764,18 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
     inc val[]
     let id = itemId(module.int32, val[])
 
-    let offs = c.getOffset(module, symAsStr)
+    let offs = c.mods[module].index.getOrDefault(symAsStr)
+    if offs.offset == 0:
+      # Only module/package self-syms are never written as `(sd)` entries, so a
+      # missing index offset means this is such a sym — typically the OWNER of an
+      # `include`d symbol (`<module>.0.<suffix>`). Synthesize a resolvable
+      # skModule stub (itemId item-0 = the module self-sym) instead of asserting
+      # "symbol has no offset". `Complete` so accessors never try to lazy-load it.
+      result = PSym(itemId: itemId(module.int32, 0'i32), kindImpl: skModule,
+                    name: c.cache.getIdent(sn.name), disamb: sn.count.int32,
+                    infoImpl: newLineInfo(module, 1, 1), state: Complete)
+      c.syms[symAsStr] = (result, NifIndexEntry())
+      return result
     let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
     result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, offs)
