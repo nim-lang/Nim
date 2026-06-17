@@ -31,6 +31,7 @@ discard """
 (3, 1)
 (3, 2)
 (3, 3)
+32
 '''
 """
 
@@ -174,3 +175,21 @@ iterator pairs(): (int, int) {.closure.} =
 
 for pair in pairs():
   echo pair
+
+# bug #25921
+
+import asyncdispatch
+
+proc getNumber(): Future[int] {.async, raises: [RangeDefect, Exception].} =
+  32
+
+proc getX(): Future[int] {.async.} =
+  let x =
+    try:
+      await getNumber()
+    except RangeDefect, Exception:
+      return
+
+  x
+
+echo waitFor getX()
