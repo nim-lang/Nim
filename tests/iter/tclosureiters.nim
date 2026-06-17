@@ -193,3 +193,5 @@ when not defined(js):
     x
 
   echo waitFor getX()
+else:
+  echo 32
