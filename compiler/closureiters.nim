@@ -335,6 +335,11 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
       if c.len > 1:
         var cond: PNode = nil
         for i in 0..<c.len - 1:
+          # That means we hit a comma in a `FirstException, SecondException` expression.
+          # We skip it and go to the next exception.
+          if c[i].kind == nkStmtList:
+            continue
+
           assert(c[i].kind == nkType)
           let nextCond = newTreeIT(nkCall, c.info, ctx.g.getSysType(c.info, tyBool),
             newSymNode(g.getSysMagic(c.info, "of", mOf)),
