@@ -177,19 +177,19 @@ for pair in pairs():
   echo pair
 
 # bug #25921
+when not defined(js):
+  import asyncdispatch
 
-import asyncdispatch
+  proc getNumber(): Future[int] {.async, raises: [RangeDefect, Exception].} =
+    32
 
-proc getNumber(): Future[int] {.async, raises: [RangeDefect, Exception].} =
-  32
+  proc getX(): Future[int] {.async.} =
+    let x =
+      try:
+        await getNumber()
+      except RangeDefect, Exception:
+        return
 
-proc getX(): Future[int] {.async.} =
-  let x =
-    try:
-      await getNumber()
-    except RangeDefect, Exception:
-      return
+    x
 
-  x
-
-echo waitFor getX()
+  echo waitFor getX()
