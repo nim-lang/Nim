@@ -108,8 +108,9 @@ type
     isReturnType*: bool
     owner*: PSym              # where this instantiation comes from
     recursionLimit: int
-    suppressErrors*: bool      # when true: skip localError for unbound
-                              # type-vars; errorType bubbles to caller
+    probing*: bool            # probing instantiation (e.g. overload resolution):
+                              # don't emit diagnostics on failure; signal
+                              # failure via errorType/nil return instead
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym, t: PType): PSym
@@ -461,7 +462,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
         " allowMeta=", cl.allowMetaTypes
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
-    if not cl.suppressErrors:
+    if not cl.probing:
       localError(cl.c.config, t.sym.info, "cannot instantiate: '" & typeToString(t) & "'")
     result = errorType(cl.c)
     # In order to prevent endless recursions, we must remember
@@ -499,9 +500,9 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var body = t.genericHead
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
-  if t.kidsLen > body.kidsLen:
-    # more arguments than generic parameters; only reached after an error,
-    # e.g. a malformed generic type under `nim check` (#10217)
+  if t.kidsLen > body.kidsLen or (cl.probing and t.kidsLen != body.kidsLen):
+    # Reject malformed arity during error recovery and incomplete invocations
+    # during overload probing before walking the body.
     return errorType(cl.c)
   var header = t
   # search for some instantiation here:
@@ -520,7 +521,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     if x.kind in {tyGenericParam}:
       x = lookupTypeVar(cl, x)
       if x != nil:
-        if cl.suppressErrors and x.kind == tyError:
+        if cl.probing and x.kind == tyError:
           return x
         if header == t: header = instCopyType(cl, t)
         header[i] = x
@@ -580,7 +581,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         t[i]
       else:
         header[i])
-    if cl.suppressErrors and x.kind == tyError:
+    if cl.probing and x.kind == tyError:
       return x
     assert x.kind != tyGenericInvocation
     header[i] = x
@@ -597,7 +598,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody, isInstValue = true)
-  if cl.suppressErrors and newbody.kind == tyError:
+  if cl.probing and newbody.kind == tyError:
     return errorType(cl.c)
   cl.skipTypedesc = oldSkipTypedesc
   let newbodyFlags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
@@ -760,7 +761,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       (et.kind == tyAnything and tfRetType notin et.flags):
     let lookup = cl.typeMap.lookup(et)
     if lookup != nil: return lookup
-    if cl.suppressErrors:
+    if cl.probing:
       return errorType(cl.c)
 
   case t.kind
@@ -771,7 +772,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
 
   of tyGenericBody:
     if cl.allowMetaTypes: return
-    if not cl.suppressErrors:
+    if not cl.probing:
       localError(
         cl.c.config,
         cl.info,
@@ -826,7 +827,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
         result = result.base
     elif t.elementType.kind != tyNone:
       let inner = replaceTypeVarsT(cl, t.elementType)
-      if cl.suppressErrors and inner.kind == tyError:
+      if cl.probing and inner.kind == tyError:
         return inner
       result = makeTypeDesc(cl.c, inner)
 
@@ -848,7 +849,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       var r = result[i]
       if r != nil:
         r = replaceTypeVarsT(cl, r)
-        if cl.suppressErrors and r.kind == tyError:
+        if cl.probing and r.kind == tyError:
           return r
         result[i] = r
         propagateToOwner(result, r)
@@ -864,7 +865,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
     cl.localCache[t.bindingId] = result
     for i in FirstGenericParamAt..<result.kidsLen:
       let tmp = replaceTypeVarsT(cl, result[i])
-      if cl.suppressErrors and tmp.kind == tyError:
+      if cl.probing and tmp.kind == tyError:
         return tmp
       result[i] = tmp
     propagateToOwner(result, result.last)
@@ -896,7 +897,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
               "' inside of type definition: '" &
               t.owner.name.s & "'; Maybe generic arguments are missing?")
           var r = replaceTypeVarsT(cl, resulti, isInstValue = propagateInstValue)
-          if cl.suppressErrors and r.kind == tyError:
+          if cl.probing and r.kind == tyError:
             return r
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
@@ -1017,14 +1018,14 @@ proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
   else: discard "cannot happen"
 
 proc generateTypeInstance*(p: PContext, pt: LayeredIdTable, info: TLineInfo,
-                           t: PType, suppressErrors = false): PType =
+                           t: PType, probing = false): PType =
   # Given `t` like Foo[T]
   # pt: Table with type mappings: T -> int
   # Desired result: Foo[int]
   # proc (x: T = 0); T -> int ---->  proc (x: int = 0)
   var typeMap = shallowCopy(pt) # use previous bindings without writing to them
   var cl = initTypeVars(p, typeMap, info, nil)
-  cl.suppressErrors = suppressErrors
+  cl.probing = probing
   pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
   popInfoContext(p.config)
@@ -1045,5 +1046,5 @@ proc prepareMetatypeForSigmatch*(p: PContext, pt: LayeredIdTable, info: TLineInf
   popInfoContext(p.config)
 
 template generateTypeInstance*(p: PContext, pt: LayeredIdTable, arg: PNode,
-                               t: PType, suppressErrors = false): untyped =
-  generateTypeInstance(p, pt, arg.info, t, suppressErrors)
+                               t: PType, probing = false): untyped =
+  generateTypeInstance(p, pt, arg.info, t, probing)
