@@ -2212,7 +2212,7 @@ proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
                          f: PType): PType =
   result = lookup(m.bindings, f)
   if result == nil:
-    result = generateTypeInstance(c, m.bindings, arg, f, suppressErrors = true)
+    result = generateTypeInstance(c, m.bindings, arg, f, probing = true)
   if result == nil:
     result = errorType(c)
 
