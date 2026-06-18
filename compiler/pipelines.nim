@@ -352,6 +352,31 @@ proc initLoadedCompileTimeGlobals(graph: ModuleGraph; module: PSym; topLevel: PN
         sect.add s.ast
         setupCompileTimeVar(module, idgen, graph, sect)
 
+proc finalizeLoadedModules(graph: ModuleGraph) =
+  ## Apply the VM-level load effects of every module just loaded from a NIF —
+  ## direct import OR dep-of-a-dep, both collected in `graph.pendingNifInit` by the
+  ## loader (modulegraphs.moduleFromNifFile / loadTransitiveHooks). This is the ONE
+  ## place that knows what loading a module does to global VM state, so a
+  ## transitively-reached module (which never passes through this proc's caller)
+  ## gets identical treatment. Modules are in dependency order (deps before
+  ## dependents), which is the correct macro-cache replay order.
+  ##   1. macro-cache replay: std/macrocache put/inc/add/incl recorded in the
+  ##      module's top level (pragma replay actions are a backend concern, skipped).
+  ##   2. eager `{.compileTime.}` global init (see initLoadedCompileTimeGlobals).
+  ## To add a new per-load effect, extend this proc — do not add a parallel buffer.
+  if graph.pendingNifInit.len == 0: return
+  for (m, topLevel) in graph.pendingNifInit:
+    if topLevel == nil: continue
+    var replayList = newNodeI(nkStmtList, m.info)
+    for n in topLevel:
+      if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
+         n[0].strVal in ["put", "inc", "add", "incl"]:
+        replayList.add n
+    if replayList.len > 0:
+      replayStateChanges(m, graph, replayList)
+    initLoadedCompileTimeGlobals(graph, m, topLevel)
+  graph.pendingNifInit.setLen 0
+
 proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
@@ -414,33 +439,12 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           if sfSystemModule in flags:
             graph.systemModule = result
           partialInitModule(result, graph, fileIdx, AbsoluteFile(toFullPath(graph.config, fileIdx)))
-          # Replay the module's recorded state changes: macro-cache operations
-          # (std/macrocache puts/incs/adds/incls) plus a few pragmas. The loader
-          # parsed them into `precomp.topLevel` (mixed with other top-level nodes),
-          # so filter to the replay actions. A loaded module's `ast` is never
-          # rebuilt, so this used to be skipped (`result.ast == nil`) and a
-          # NIF-loaded module's macro cache was lost — e.g. nim-serialization's
-          # flavor registration became invisible to dependents (`DefaultFlavor:
-          # automatic serialization is not enabled`).
-          var replayList = newNodeI(nkStmtList, result.info)
-          for n in precomp.topLevel:
-            # Only macro-cache ops (put/inc/add/incl). The pragma replay actions
-            # (compile/link/passc/hint/...) are a backend/link concern handled by
-            # the nifc closure, and re-emitting a loaded module's hints/warnings on
-            # every import would be wrong — so they are deliberately skipped here.
-            if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
-               n[0].strVal in ["put", "inc", "add", "incl"]:
-              replayList.add n
-          # Plus the macro-cache actions of the module's transitive import closure
-          # (collected by the moduleFromNifFile call above via loadTransitiveHooks),
-          # so a flavor/type registered in an indirectly-imported module is visible.
-          for n in graph.transitiveReplayActions: replayList.add n
-          graph.transitiveReplayActions.setLen 0
-          if replayList.len > 0:
-            replayStateChanges(result, graph, replayList)
-          # Fill the VM slots of the module's `{.compileTime.}` globals now (sem
-          # would have, but a NIF-loaded module is never semchecked).
-          initLoadedCompileTimeGlobals(graph, result, precomp.topLevel)
+          # Apply the VM-level load effects of this module AND every dep it pulled in
+          # (moduleFromNifFile recorded them all in graph.pendingNifInit): macro-cache
+          # replay (else a NIF-loaded module's macro cache is lost — e.g.
+          # nim-serialization flavor registration) and eager `{.compileTime.}` global
+          # init. Uniform for direct and transitive deps — see finalizeLoadedModules.
+          finalizeLoadedModules(graph)
           return result  # Return early, don't process from source
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
@@ -537,6 +541,11 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
         localError(graph.config, unknownLineInfo,
           "nim m requires precompiled NIF for system module (expected: " & nifPath & ")")
         return
+      # Apply system's (and its deps') load effects now: the main module is
+      # compiled from source and never re-enters the moduleFromNifFile drain for
+      # system, so without this its macro-cache / CT globals would wait until the
+      # first NIF import is processed. See finalizeLoadedModules.
+      finalizeLoadedModules(graph)
     discard graph.compilePipelineModule(projectFile, {sfMainModule})
   else:
     graph.compilePipelineSystemModule()

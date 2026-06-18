@@ -146,11 +146,19 @@ type
     cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API; IC: implemented
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
-    transitiveReplayActions*: seq[PNode] # macro-cache replay actions collected from
-      # the transitive import closure of a NIF-loaded module (loadTransitiveHooks);
-      # the caller (pipelines) replays them so a dependency's macrocache state — e.g.
-      # nim-serialization's flavor registration — reaches a module that imports it
-      # only indirectly. Drained per moduleFromNifFile call.
+    pendingNifInit*: seq[tuple[module: PSym; topLevel: PNode]]
+      # EVERY module loaded from a NIF — whether a direct import (moduleFromNifFile)
+      # or only a dep-of-a-dep (loadTransitiveHooks) — is recorded here with its
+      # serialized top-level AST. The sem driver drains it once
+      # (pipelines.finalizeLoadedModules) and applies the module's VM-level load
+      # effects UNIFORMLY: macro-cache replay (std/macrocache put/inc/add/incl) and
+      # eager `{.compileTime.}` global init. This is the single place "what a loaded
+      # module does to global state" lives, so a transitively-reached module — which
+      # never passes through compilePipelineModule — gets the SAME treatment as a
+      # direct import instead of silently skipping it (its macrocache state would be
+      # lost; its CT globals would stay nil and a macro splicing one, e.g.
+      # chronicles' `chroniclesBlockName`, emits `break nil` / `nil == 0`). To add a
+      # new per-load VM effect, extend the drain — never a parallel buffer.
     passes*: seq[TPass]
     pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
@@ -160,6 +168,9 @@ type
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
+    vmTransfIdgen*: IdGenerator   # process-local backend idgen for closure envs
+                                  # minted while the VM compiles a routine body
+                                  # (inVMTransform); see lambdalifting / ast2nif @bk
     operators*: Operators
 
     cachedFiles*: StringTableRef
@@ -949,14 +960,17 @@ when not defined(nimKochBootstrap):
       if not g.hookClosure.containsOrIncl(fileIdx.int):
         let precomp = loadNifModule(ast.program, suffix, interf, interfHidden, {})
         registerLoadedHooks(g, precomp.logOps)
-        # Collect the dependency's macro-cache replay actions (put/inc/add/incl)
-        # so the importer being compiled also sees macrocache state registered
-        # by a transitively-imported module. Pragma replay actions are a backend
-        # concern and are intentionally not collected here.
-        for n in precomp.topLevel:
-          if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
-             n[0].strVal in ["put", "inc", "add", "incl"]:
-            g.transitiveReplayActions.add n
+        # Record this transitively-loaded module so the sem driver applies its
+        # VM-level load effects (macro-cache replay + `{.compileTime.}` global init)
+        # exactly as for a direct import — see `pendingNifInit`. A throwaway module
+        # symbol (same shape as moduleFromNifFile's) gives the drain an idgen/info
+        # context; it is not registered, so a later direct import still loads fully.
+        if g.config.cmd == cmdM:
+          let m = PSym(kindImpl: skModule, itemId: itemId(int32(fileIdx), 0'i32),
+                       name: getIdent(g.cache, splitFile(toFullPath(g.config, fileIdx)).name),
+                       infoImpl: newLineInfo(fileIdx, 1, 1), positionImpl: int(fileIdx))
+          setOwner(m, getPackage(g.config, g.cache, fileIdx))
+          g.pendingNifInit.add (m, precomp.topLevel)
         # Rebuild generic TYPE- and PROC-instance offers across the WHOLE closure,
         # not just direct imports (`moduleFromNifFile`). An instance is frozen at
         # the FIRST module to create it (in a scope where its body's symbols
@@ -1086,6 +1100,10 @@ when not defined(nimKochBootstrap):
     # walks the closure in nifbackend.loadModuleDependencies.)
     if g.config.cmd == cmdM:
       loadTransitiveHooks(g, result.deps)
+      # Record the directly-loaded module for the same VM-level load effects as its
+      # transitive deps (`pendingNifInit`). AFTER loadTransitiveHooks so the drain
+      # applies deps before the dependent (macro-cache order).
+      g.pendingNifInit.add (m, result.topLevel)
 
 proc configComplete*(g: ModuleGraph) =
   #rememberStartupConfig(g.startupPackedConfig, g.config)

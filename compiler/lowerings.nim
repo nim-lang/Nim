@@ -210,7 +210,62 @@ proc lookupInRecord(n: PNode, id: ItemId): PSym =
     if matchesDerivedFieldId(n.sym.itemId, id): result = n.sym
   else: discard
 
+proc lookupCapturedField(n: PNode, s: PSym): PSym =
+  ## Find an env field that `addField` would have produced for the captured
+  ## local `s`. Used as a fallback when the derived-itemId match fails because
+  ## `s` is a macro-generated gensym whose process-local id diverges from the
+  ## loaded env field's (see `addField`). `addField` always names a field
+  ## `s.name & $field.position`, so that pair uniquely identifies the field for a
+  ## local of this name without relying on the (unstable) item id.
+  result = nil
+  case n.kind
+  of nkRecList:
+    for i in 0..<n.len:
+      result = lookupCapturedField(n[i], s)
+      if result != nil: return
+  of nkRecCase:
+    if n[0].kind != nkSym: return
+    result = lookupCapturedField(n[0], s)
+    if result != nil: return
+    for i in 1..<n.len:
+      case n[i].kind
+      of nkOfBranch, nkElse:
+        result = lookupCapturedField(lastSon(n[i]), s)
+        if result != nil: return
+      else: discard
+  of nkSym:
+    if n.sym.kind == skField and n.sym.name.s == s.name.s & $n.sym.position:
+      result = n.sym
+  else: discard
+
 proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym =
+  # Idempotent w.r.t. the captured symbol (mirrors `addUniqueField`): re-lifting
+  # a LOADED routine re-derives its transformed body (never serialized under IC)
+  # and re-captures the same locals, but the env object loaded from the NIF
+  # already carries their fields. Re-adding would duplicate the field and, worse,
+  # mutate a Sealed loaded type via `propagateToOwner` (the `t.state != Sealed`
+  # crash). Return the existing field instead.
+  let existing = lookupInRecord(obj.n, s.itemId)
+  if existing != nil:
+    return existing
+  # Re-lifting a LOADED routine during a VM transform (its transformed body is
+  # re-derived per process, never serialized) re-captures the same locals, but
+  # for a macro-generated gensym (e.g. libp2p `p2pProtocolBackendImpl`'s
+  # `msgVar`) its process-local id diverges from the one baked into the loaded
+  # env field, so the id match above misses. Reuse the existing same-named field
+  # rather than appending a divergent duplicate, which keeps the re-derived
+  # closure consistent (else a stale `:env` access reaches `cannotEval`).
+  # Confined to a loaded (Sealed) env: in a freshly built env ids are consistent,
+  # and two distinct same-named captures legitimately get distinct fields there.
+  if obj.state == Sealed:
+    let byName = lookupCapturedField(obj.n, s)
+    if byName != nil:
+      return byName
+  # Genuinely new field. Under IC the env may be a loaded Sealed type whose
+  # transform-time mutation is process-local (the body is discarded after the
+  # macro runs), so downgrade it to mutable instead of crashing on
+  # `t.state != Sealed` (mirrors `markAsClosure`).
+  unsealForTransform(obj)
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),

@@ -26,6 +26,13 @@ import typekeys
 import ic / [enum2nif]
 
 const SysModuleSuffix* = "@sys"
+const BackendLocalMarker* = "@bk"
+  ## Suffix marker for a PROCESS-LOCAL backend-minted entity (a closure `:env`
+  ## type/obj/field/hidden-param minted while the VM compiles a routine body to
+  ## run a macro). Such entities have no stable cross-process identity, so each
+  ## module that references one emits its OWN module-local def named
+  ## `…<thisModuleSuffix>@bk` and the loader homes it to the reading module with
+  ## a `backendItemId` (disjoint from real ids). See transf.transformBody.
   ## Reserved module-suffix sentinel for module-less magic singleton types — the
   ## `nil` type is created via `newSysType` with the graph idgen, whose `module`
   ## can be `-1` (e.g. during VM const-eval before a real module is current), so
@@ -189,6 +196,9 @@ type
     #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
     writtenPackages: HashSet[string]
     depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
+    emittedBackendTypes: HashSet[int32]  # backend-local type items already def'd this module
+    emittedBackendSyms: HashSet[int32]   # backend-local sym items already def'd this module
+
 
 proc isLocalSym(sym: PSym): bool {.inline.} =
   ## Every symbol is emitted as a *global* (module-suffixed) name so that its
@@ -217,7 +227,17 @@ const
 proc toNifSymName(w: var Writer; sym: PSym): string =
   ## Generate NIF name for a symbol: local names are `ident.disamb`,
   ## global names are `ident.disamb.moduleSuffix`
-  assert not sym.itemId.isBackendMinted
+  if sym.itemId.isBackendMinted:
+    # Process-local backend sym (closure env field / hidden `:env` param minted
+    # during a VM transform): re-home to the current module with the `@bk`
+    # marker so each referencing module self-contains it. See transformBody.
+    result = sym.name.s
+    result.add '.'
+    result.addInt sym.disamb
+    result.add '.'
+    result.add modname(w.currentModule, w.infos.config)
+    result.add BackendLocalMarker
+    return
   result = sym.name.s
   if sym.kindImpl == skPackage:
     result.add PkgMarker
@@ -239,6 +259,11 @@ proc globalName*(sym: PSym; config: ConfigRef): string =
   result.addInt sym.disamb
   result.add '.'
   result.add modname(sym.itemId.module, config)
+  # A loaded process-local backend sym keeps its `@bk` marker in the NIF name
+  # (the index/`c.syms` tables are keyed by it); mirror toNifSymName so name-based
+  # lookups via globalName don't miss (KeyError `:env.N.<mod>` without the marker).
+  if sym.itemId.isBackendMinted:
+    result.add BackendLocalMarker
 
 type
   ParsedSymName* = object
@@ -312,9 +337,24 @@ proc writeLoc(w: var Writer; dest: var TokenBuf; loc: TLoc) =
   writeFlags(dest, loc.flags)  # TLocFlags
   dest.addStrLit loc.snippet
 
+proc nifTypeName(w: Writer; typ: PType): string =
+  ## NIF name of a type as written by THIS module. A process-local backend env
+  ## type is re-homed to the current module with the `@bk` marker (see
+  ## BackendLocalMarker); everything else uses the canonical `typeToNifSym`.
+  if typ.uniqueId.isBackendMinted:
+    result = "`t"
+    result.addInt ord(typ.kind)
+    result.add '.'
+    result.addInt typ.uniqueId.item
+    result.add '.'
+    result.add modname(w.currentModule, w.infos.config)
+    result.add BackendLocalMarker
+  else:
+    result = typeToNifSym(typ, w.infos.config)
+
 proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
   dest.buildTree tdefTag:
-    dest.addSymDef pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
+    dest.addSymDef pool.syms.getOrIncl(nifTypeName(w, typ)), NoLineInfo
     dest.addDotToken # always private for the index generator
 
     #dest.addIdent toNifTag(typ.kind)
@@ -352,6 +392,15 @@ proc writeTypeDef(w: var Writer; dest: var TokenBuf; typ: PType) =
 proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
   if typ == nil:
     dest.addDotToken()
+  elif typ.uniqueId.isBackendMinted:
+    # Process-local closure env (see transf.transformBody): emit a MODULE-LOCAL
+    # `@bk` def the first time it is reached in this module, reference it after.
+    # Per-Writer dedup (NOT the shared `state`), since every referencing module
+    # must emit its own copy.
+    if not w.emittedBackendTypes.containsOrIncl(typ.uniqueId.item):
+      writeTypeDef(w, dest, typ)
+    else:
+      dest.addSymUse pool.syms.getOrIncl(nifTypeName(w, typ)), NoLineInfo
   elif typ.uniqueId.module == w.currentModule and typ.state == Complete:
     # Ownership for serialization is decided by `uniqueId`, not `itemId`: the NIF
     # name (`typeToNifSym`) and the loader (`createTypeStub`) both key off
@@ -363,7 +412,7 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
     typ.state = Sealed
     writeTypeDef(w, dest, typ)
   else:
-    dest.addSymUse pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
+    dest.addSymUse pool.syms.getOrIncl(nifTypeName(w, typ)), NoLineInfo
 
 proc writeBool(dest: var TokenBuf; b: bool) =
   dest.buildTree (if b: "true" else: "false"):
@@ -471,6 +520,13 @@ proc shouldWriteSymDef(w: var Writer; sym: PSym): bool {.inline.} =
 proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
   if sym == nil:
     dest.addDotToken()
+  elif sym.itemId.isBackendMinted:
+    # Process-local backend sym (closure env field / hidden `:env` param): emit a
+    # MODULE-LOCAL `@bk` def the first time, reference it after. Per-Writer dedup.
+    if not w.emittedBackendSyms.containsOrIncl(sym.itemId.item):
+      writeSymDef(w, dest, sym)
+    else:
+      dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
     writeSymDef(w, dest, sym)
@@ -495,8 +551,16 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
   var nodeTyp = n.typField
   if nodeTyp == nil and nfLazyType in n.flags:
     nodeTyp = sym.typImpl
-  if shouldWriteSymDef(w, sym):
-    sym.state = Sealed
+  # Backend-minted syms (process-local closure `:env` param/fields) are emitted
+  # as MODULE-LOCAL `@bk` defs the first time reached this module (per-Writer
+  # dedup shared with `writeSym`), regardless of module: their itemId.module is
+  # the systemModule of `vmTransfIdgen`, so `shouldWriteSymDef` (which gates on
+  # currentModule) would otherwise only ever emit a SymUse → dangling def.
+  let wantDef =
+    if sym.itemId.isBackendMinted: not w.emittedBackendSyms.containsOrIncl(sym.itemId.item)
+    else: shouldWriteSymDef(w, sym)
+  if wantDef:
+    if not sym.itemId.isBackendMinted: sym.state = Sealed
     if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, nodeTyp)
@@ -1617,7 +1681,10 @@ proc tryCreateTypeStub(c: var DecodeContext; t: SymId): PType =
     let suffix = name.substr(i)
     if suffix == SysModuleSuffix:
       return reconstructSysType(c, name, k, itemVal)
-    let id = itemId(moduleId(c, suffix).int32, itemVal)
+    let isBk = suffix.endsWith(BackendLocalMarker)
+    let realSuffix = if isBk: suffix[0 ..< suffix.len - BackendLocalMarker.len] else: suffix
+    let modIdx = moduleId(c, realSuffix).int32
+    let id = if isBk: backendItemId(modIdx, itemVal) else: itemId(modIdx, itemVal)
     let ii = addr c.mods[id.module.FileIndex].index
     let offs = ii[].getOrDefault(name)
     if offs.offset == 0:
@@ -1644,7 +1711,10 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
     let suffix = name.substr(i)
     if suffix == SysModuleSuffix:
       return reconstructSysType(c, name, k, itemVal)
-    let id = itemId(moduleId(c, suffix).int32, itemVal)
+    let isBk = suffix.endsWith(BackendLocalMarker)
+    let realSuffix = if isBk: suffix[0 ..< suffix.len - BackendLocalMarker.len] else: suffix
+    let modIdx = moduleId(c, realSuffix).int32
+    let id = if isBk: backendItemId(modIdx, itemVal) else: itemId(modIdx, itemVal)
     let ii = addr c.mods[id.module.FileIndex].index
     let offs = ii[].getOrDefault(name)
     if offs.offset == 0:
@@ -1732,10 +1802,16 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
   # Global symbol - look up in index for lazy loading
   result = c.syms.getOrDefault(symAsStr)[0]
   if result == nil:
-    let module = moduleId(c, sn.module)
+    # A process-local backend sym (closure env field / `:env` param) is named
+    # `…<thisModuleSuffix>@bk`: home it to that module with a backendItemId so it
+    # stays disjoint from the loader's real per-module id space (see toNifSymName).
+    let isBk = sn.module.endsWith(BackendLocalMarker)
+    let realMod = if isBk: sn.module[0 ..< sn.module.len - BackendLocalMarker.len]
+                  else: sn.module
+    let module = moduleId(c, realMod)
     let val = addr c.mods[module].symCounter
     inc val[]
-    let id = itemId(module.int32, val[])
+    let id = if isBk: backendItemId(module.int32, val[]) else: itemId(module.int32, val[])
 
     let offs = c.getOffset(module, symAsStr)
     let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
@@ -2122,11 +2198,14 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
   if result == nil:
     let symAsStr = nifName
     let sn = parseSymName(symAsStr)
-    let symModule = moduleId(c, if sn.module.len > 0: sn.module else: thisModule)
+    let rawMod = if sn.module.len > 0: sn.module else: thisModule
+    let isBk = rawMod.endsWith(BackendLocalMarker)
+    let realMod = if isBk: rawMod[0 ..< rawMod.len - BackendLocalMarker.len] else: rawMod
+    let symModule = moduleId(c, realMod)
     let val = addr c.mods[symModule].symCounter
     inc val[]
 
-    let id = itemId(symModule.int32, val[])
+    let id = if isBk: backendItemId(symModule.int32, val[]) else: itemId(symModule.int32, val[])
     let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
     result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, entry)
@@ -2199,7 +2278,10 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
   let sn = parseSymName(symAsStr)
   if sn.module.len == 0:
     return nil  # Local symbols shouldn't be hooks
-  let module = moduleId(c, sn.module)
+  let isBk = sn.module.endsWith(BackendLocalMarker)
+  let realMod = if isBk: sn.module[0 ..< sn.module.len - BackendLocalMarker.len]
+                else: sn.module
+  let module = moduleId(c, realMod)
   # Look up the symbol in the module's index
   # Try both formats: with module suffix (e.g., "foo.0.modulename") and without (e.g., "foo.0.")
   # NIF spec allows local symbols to be stored without module suffix
@@ -2215,7 +2297,7 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
   # Create a stub symbol
   let val = addr c.mods[module].symCounter
   inc val[]
-  let id = itemId(int32(module), val[])
+  let id = if isBk: backendItemId(int32(module), val[]) else: itemId(int32(module), val[])
   result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(sn.name),
                 disamb: sn.count.int32, state: Partial)
   c.syms[symAsStr] = (result, offs)

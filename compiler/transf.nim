@@ -1386,7 +1386,21 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
     result = getBody(g, prc)
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
-    var c = openTransf(g, prc.getModule, "", idgen, flags)
+    # Lambda-lifting a routine body while the VM compiles it (to run a macro
+    # under `nim ic`) mints a closure `:env` (type + obj + fields + hidden param)
+    # that the lift welds into the routine's serialized signature. Such an env is
+    # a PROCESS-LOCAL artifact (its item number is per-process-sequential), so a
+    # reference to it must never carry a stable cross-module identity — otherwise
+    # a consumer resolves it against a canonical NIF built by a different process
+    # that has no matching def ('symbol has no offset', e.g. Nimbus t17.275).
+    # Lift in the backend (process-local) id space; ast2nif then emits these as
+    # module-local `@bk` defs (mirrors setAttachedOp's inVMTransform handling).
+    var liftIdgen = idgen
+    if g.inVMTransform > 0 and g.config.cmd == cmdM:
+      if g.vmTransfIdgen == nil:
+        g.vmTransfIdgen = idGeneratorForBackend(g.systemModule)
+      liftIdgen = g.vmTransfIdgen
+    var c = openTransf(g, prc.getModule, "", liftIdgen, flags)
     result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, flags)
     result = processTransf(c, result, prc)
     liftDefer(c, result)

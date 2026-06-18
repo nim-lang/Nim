@@ -480,7 +480,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, cl.c.idgen, t.genericHead.owner, son = header.genericHead)
+  # The instantiating module owns the instance (and announces it as an offer):
+  # the generic body's module (`t.genericHead.owner`) has no business owning a
+  # type that references instantiation-site types — that is the IC parent->child
+  # heap leak the write-barrier surfaces.
+  result = newType(tyGenericInst, cl.c.idgen, cl.c.module, son = header.genericHead)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
