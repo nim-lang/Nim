@@ -1117,6 +1117,17 @@ proc trackCall(tracked: PEffects; n: PNode) =
   #if canRaise(a):
   #  echo "this can raise ", tracked.config $ n.info
   let op = a.typ
+  # A routine whose body reaches a compile-time-only magic (`macros.error`,
+  # `slurp`, `gorge`, `getAst`, …) can never be code-generated — the C/JS
+  # backends reject those magics (ccgexprs `errXMustBeCompileTime`). Such a
+  # routine is compile-time-only by construction; mark it `sfCompileTime` so it
+  # is treated uniformly as such. Non-IC pruned it by demand-driven codegen, but
+  # the per-module IC backend emits every owned routine (no DCE) and would
+  # otherwise feed the magic to codegen. Mirrors the `tfTriggersCompileTime ->
+  # sfCompileTime` path in `semProcAux`.
+  if a.kind == nkSym and a.sym.magic in {mNLen..mNError, mSlurp..mQuoteAst} and
+      tracked.owner != nil and tracked.owner.kind in routineKinds:
+    incl(tracked.owner, sfCompileTime)
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
