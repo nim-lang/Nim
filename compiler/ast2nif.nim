@@ -1571,6 +1571,14 @@ proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifInd
                           buf: var TokenBuf): Cursor =
   let s = addr c.mods[module].stream
   s.r.jumpTo entry.offset
+  # A seek-load is self-contained: its tokens must decode their relative line
+  # info against `entry.info` ALONE. The stream's `parents` stack can be left at
+  # depth >1 by a prior non-seek read (e.g. loadNifModule reads `(stmts`/
+  # `(implementation` without consuming their `)`), and `parse` only overwrites
+  # parents[0] while `rawNext` reads parents[^1] — so a stale top entry (the last
+  # symbol decoded) would become the base, corrupting the decoded line info.
+  # Collapse the stack so parse's parentInfo is the sole base.
+  s[].parents.setLen 1
   nifcursors.parse(s[], buf, entry.info)
   result = cursorAt(buf, 0)
 
@@ -1813,7 +1821,20 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
     inc val[]
     let id = if isBk: backendItemId(module.int32, val[]) else: itemId(module.int32, val[])
 
-    let offs = c.getOffset(module, symAsStr)
+    let offs = c.mods[module].index.getOrDefault(symAsStr)
+    if offs.offset == 0:
+      # Only module/package self-syms are never written as `(sd)` entries, so a
+      # missing index offset means this is such a sym — typically the OWNER of an
+      # `include`d symbol, or a re-exported module qualifier left dangling in a
+      # dead `when`-branch (`inlineasm.arm64.x`). Synthesize a resolvable skModule
+      # stub (itemId item-0 = the module self-sym) instead of asserting "symbol
+      # has no offset". `Complete` so accessors never try to lazy-load it; a real
+      # `newLineInfo` so an owner/decl reference renders a path, not `???`.
+      result = PSym(itemId: itemId(module.int32, 0'i32), kindImpl: skModule,
+                    name: c.cache.getIdent(sn.name), disamb: sn.count.int32,
+                    infoImpl: newLineInfo(module, 1, 1), state: Complete)
+      c.syms[symAsStr] = (result, NifIndexEntry())
+      return result
     let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
     result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, offs)

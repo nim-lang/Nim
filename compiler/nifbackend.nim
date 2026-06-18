@@ -336,6 +336,8 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## module still loads everything (`loadBackendModules`) because NimMain's init
   ## list and the method dispatchers are whole-program; its `cg` runs essentially
   ## alone (every other `.c.nif` precedes it), so it does not contend for memory.
+  # gate `newSymNode`'s lazy-type marking to this stage only (see astdef)
+  nifcBackendActive = true
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
   let targetIsMain = g.config.icBackendModule.len == 0 or
                      g.config.icBackendModule == mainSuffix

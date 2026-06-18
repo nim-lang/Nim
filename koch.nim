@@ -618,7 +618,8 @@ proc runIcTestFile(inp: string) =
 # which exercises the NIF import/load path the single-file tests do not.
 const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
                  "tcompiletimeglobal", "tsighashstable", "tpureenum", "tgenericoffer",
-                 "tconverterreexport", "ttypeoffer", "ttransitiveoffer"]
+                 "tconverterreexport", "ttypeoffer", "ttransitiveoffer",
+                 "tmodsymref"]
 
 proc icTest(args: string) =
   temp("")

@@ -17,6 +17,15 @@ when defined(nimPreviewSlimSystem):
 
 export int128
 
+var nifcBackendActive* = false
+  ## Set only while the per-module NIF backend codegen stage runs
+  ## (`nifbackend.generateCgStage`, `cmd == cmdNifC`). It gates `newSymNode`'s
+  ## lazy-type marking so it applies ONLY in the backend — where syms are loaded
+  ## from NIF and a cg-stage transform can build a sym node from a not-yet-typed
+  ## stub — and never during frontend sem, where the same marking would perturb
+  ## effect/exception inference (it diverges from a non-IC build, e.g.
+  ## `times.toDateTimeByWeek` gaining a spurious unlisted `Exception`).
+
 import nodekinds
 export nodekinds
 
@@ -970,6 +979,14 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result = newNode(nkSym)
   result.sym = sym
   result.typField = sym.typImpl
+  if result.typField == nil and nifcBackendActive:
+    # In the per-module NIF backend cg stage a transform (chronos async
+    # closure-iterator lowering) builds `result = …` sym nodes from a not-yet-typed
+    # NIF stub; snapshotting the nil here would leave the node permanently typeless
+    # and the backend later reads `t.flags` off it and SIGSEGVs (injectdestructors
+    # hasDestructor). Mark it lazy so `typ` re-reads `sym.typ` once resolved. Gated
+    # on `nifcBackendActive` so frontend sem is untouched (see the flag's doc).
+    result.flags.incl nfLazyType
   result.info = info
 
 proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
