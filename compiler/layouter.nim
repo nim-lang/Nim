@@ -594,6 +594,20 @@ proc starWasExportMarker*(em: var Emitter) =
     em.tokens.add("*")
     em.kinds.add ltExportMarker
     dec em.col, 2
+  elif em.endsWith(" ", "*", " ", ":", " ") or
+      em.endsWith(" ", "*", " ", "=", " "):
+    let delimiter = em.tokens[^2]
+    setLen(em.tokens, em.tokens.len-5)
+    setLen(em.kinds, em.kinds.len-5)
+    em.tokens.add("*")
+    em.kinds.add ltExportMarker
+    em.tokens.add(" ")
+    em.kinds.add ltSpaces
+    em.tokens.add(delimiter)
+    em.kinds.add ltOther
+    em.tokens.add(" ")
+    em.kinds.add ltSpaces
+    dec em.col, 1
 
 proc commaWasSemicolon*(em: var Emitter) =
   if em.semicolons == detectSemicolonKind:

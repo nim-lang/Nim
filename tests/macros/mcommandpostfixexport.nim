@@ -30,6 +30,15 @@ macro takesInfix*(arg, body: untyped): untyped =
 takesInfix 2 * 3:
   discard
 
+macro takesIdentInfix*(arg: untyped): untyped =
+  doAssert arg.kind == nnkInfix
+  doAssert arg[0].eqIdent("*")
+  doAssert arg[1].eqIdent("left")
+  doAssert arg[2].eqIdent("right")
+  result = newStmtList()
+
+takesIdentInfix left*right
+
 macro takesMulAssign*(arg: untyped): untyped =
   doAssert arg.kind == nnkInfix
   doAssert arg[0].eqIdent("*=")

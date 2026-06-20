@@ -287,13 +287,24 @@ proc newStrNodeP(kind: TNodeKind, strVal: sink string, p: Parser): PNode =
 proc newIdentNodeP(ident: PIdent, p: Parser): PNode =
   result = newAtom(ident, parLineInfo(p))
 
+proc newPostfixNode(opNode, a: PNode): PNode =
+  result = newNode(nkPostfix, opNode.info)
+  result.add(opNode)
+  result.add(a)
+
 proc parsePostfix(p: var Parser, a: PNode): PNode =
   when defined(nimpretty):
     starWasExportMarker(p.em)
-  result = newNodeP(nkPostfix, p)
-  result.add(newIdentNodeP(p.tok.ident, p))
-  result.add(a)
+  result = newPostfixNode(newIdentNodeP(p.tok.ident, p), a)
   getTok(p)
+
+proc parseCommandExportPostfix(p: var Parser, opNode: PNode,
+                               a: var PNode): bool =
+  if p.tok.tokType in {tkColon, tkEquals} and p.tok.indent < 0:
+    when defined(nimpretty):
+      starWasExportMarker(p.em)
+    a = newPostfixNode(opNode, a)
+    result = true
 
 proc parseExpr(p: var Parser, mode = pmNormal): PNode
 proc parseStmt(p: var Parser): PNode
@@ -314,12 +325,12 @@ proc isUnary(tok: Token): bool =
   tok.tokType in {tkOpr, tkDotDot} and
   tok.spacing == {tsLeading}
 
-proc checkBinary(p: Parser) {.inline.} =
-  ## Check if the current parser token is a binary operator.
+proc checkBinary(p: Parser, tok: Token) {.inline.} =
+  ## Check if the given token is a binary operator.
   # we don't check '..' here as that's too annoying
-  if p.tok.tokType == tkOpr:
-    if p.tok.spacing == {tsTrailing}:
-      parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
+  if tok.tokType == tkOpr:
+    if tok.spacing == {tsTrailing}:
+      lexMessageTok(p.lex, warnInconsistentSpacing, tok, prettyTok(tok))
 
 #| module = complexOrSimpleStmt ^* (';' / IND{=})
 #|
@@ -873,13 +884,10 @@ proc commandParam(p: var Parser, isFirstParam: var bool; mode: PrimaryMode): PNo
       result = postExprBlocks(p, result)
   isFirstParam = false
 
-proc isCommandParamExportMarker(p: Parser): bool {.inline.} =
-  result = false
-  if p.tok.tokType == tkOpr and p.tok.ident.s == "*" and p.tok.indent < 0 and
-      tsLeading notin p.tok.spacing:
-    var pos = p.lex.bufpos
-    while p.lex.buf[pos] == ' ': inc pos
-    result = p.lex.buf[pos] in {':', '='} and p.lex.buf[pos+1] notin OpChars
+proc isCommandExportMarkerStart(p: Parser, mode: PrimaryMode, a: PNode): bool {.inline.} =
+  result = mode == pmCommandParam and a.kind in {nkIdent, nkAccQuoted} and
+    p.tok.tokType == tkOpr and p.tok.ident.s == "*" and p.tok.indent < 0 and
+    tsLeading notin p.tok.spacing
 
 proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
   if mode == pmTrySimple:
@@ -970,15 +978,15 @@ proc parseOperators(p: var Parser, headNode: PNode,
   # the operator itself must not start on a new line:
   # progress guaranteed
   while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
-    if mode == pmCommandParam and result.kind in {nkIdent, nkAccQuoted} and
-        isCommandParamExportMarker(p):
-      result = parsePostfix(p, result)
-      break
-    checkBinary(p)
+    let opTok = p.tok
+    let commandExportMarkerStart = isCommandExportMarkerStart(p, mode, result)
     let leftAssoc = ord(not isRightAssociative(p.tok))
-    var a = newNodeP(nkInfix, p)
-    var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
+    let opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
+    if commandExportMarkerStart and parseCommandExportPostfix(p, opNode, result):
+      break
+    checkBinary(p, opTok)
+    var a = newNode(nkInfix, opNode.info)
     flexComment(p, a)
     optPar(p)
     # read sub-expression with higher priority:
