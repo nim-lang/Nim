@@ -761,28 +761,6 @@ proc cyclicType*(g: ModuleGraph, t: PType): bool =
   of tyProc: result = t.callConv == ccClosure
   else: result = false
 
-proc recHasNilFieldType(n: PNode): bool =
-  case n.kind
-  of nkSym: result = n.sym == nil or n.sym.typ == nil
-  of nkRecList, nkRecCase:
-    for ch in n:
-      if recHasNilFieldType(ch): return true
-    result = false
-  else: result = false
-
-proc isTypeErasedEnvRef(config: ConfigRef; elemType: PType): bool =
-  ## IC: a foreign closure-env object can load (cross-module) with nil-typed
-  ## derived fields when its hook key diverges across the NIF boundary. Per the
-  ## closure type-erasure principle, destroying such a `ref` must go through RTTI
-  ## (`nimDestroyAndDispose` / `nimDecRefIsLastCyclicDyn`), NEVER a statically
-  ## lifted concrete env destructor — the producer module emits that destructor
-  ## and registers it in the env object's type info. Detect the incomplete load
-  ## so `atomicRefOp` takes the dynamic-dispatch path and never walks the nil
-  ## field (which would SIGSEGV).
-  if not config.icLoweredBodies: return false
-  let obj = elemType.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned})
-  result = obj.kind == tyObject and obj.n != nil and recHasNilFieldType(obj.n)
-
 proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   #[ bug #15753 is really subtle. Usually the classical write barrier for reference
   counting looks like this::
@@ -815,17 +793,13 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   ]#
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.elementType
-  # (b) type-erasure: a foreign closure env that loaded incomplete cross-module
-  # must be destroyed via RTTI, not by lifting its concrete (nil-fielded) object.
-  let erased = isTypeErasedEnvRef(c.g.config, elemType)
 
-  if not erased:
-    createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
+  createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
 
   # YRC uses dedicated runtime procs for the entire write barrier:
   if c.g.config.selectedGC == gcYrc:
     let desc =
-      if isFinal(elemType) and not erased:
+      if isFinal(elemType):
         let ti = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
         ti.typ = getSysType(c.g, c.info, tyPointer)
         ti
@@ -840,18 +814,14 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       return
     else: discard # fall through for destructor, trace, wasMoved
 
-  # `erased` must short-circuit BEFORE canFormAcycle/isPureObject/isFinal, which
-  # walk the (nil-fielded) type graph. Assume cyclic + dynamic — the dyn runtime
-  # calls work for any ref via its type info.
-  let isCyclic = erased or
-    (c.g.config.selectedGC in {gcOrc, gcYrc} and types.canFormAcycle(c.g, elemType))
+  let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc} and types.canFormAcycle(c.g, elemType)
 
-  let isInheritableAcyclicRef = (not erased) and c.g.config.selectedGC in {gcOrc, gcYrc} and
+  let isInheritableAcyclicRef = c.g.config.selectedGC in {gcOrc, gcYrc} and
                       (not isPureObject(elemType)) and
                       tfAcyclic in skipTypes(elemType, abstractInst+{tyOwned}-{tyTypeDesc}).flags
   # dynamic Acyclic refs need to use dyn decRef
 
-  let useStatic = (not erased) and isFinal(elemType)
+  let useStatic = isFinal(elemType)
 
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
@@ -865,10 +835,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     alignOf.typ = getSysType(c.g, c.info, tyInt)
     actions.add callCodegenProc(c.g, "nimRawDispose", c.info, tmp, alignOf)
   else:
-    # `nimDestroyAndDispose` resolves the real destructor via the object's RTTI,
-    # so the env destructor the producer emitted runs — no static lift needed.
-    if not erased:
-      addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(tmp, nkDerefExpr))
+    addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(tmp, nkDerefExpr))
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, tmp)
 
   var cond: PNode
