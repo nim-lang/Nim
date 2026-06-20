@@ -873,12 +873,13 @@ proc commandParam(p: var Parser, isFirstParam: var bool; mode: PrimaryMode): PNo
       result = postExprBlocks(p, result)
   isFirstParam = false
 
-proc isExportMarkerBeforeColon(p: Parser): bool {.inline.} =
+proc isCommandParamExportMarker(p: Parser): bool {.inline.} =
   result = false
-  if p.tok.tokType == tkOpr and p.tok.ident.s == "*" and p.tok.indent < 0:
+  if p.tok.tokType == tkOpr and p.tok.ident.s == "*" and p.tok.indent < 0 and
+      tsLeading notin p.tok.spacing:
     var pos = p.lex.bufpos
     while p.lex.buf[pos] == ' ': inc pos
-    result = p.lex.buf[pos] == ':' and p.lex.buf[pos+1] notin OpChars
+    result = p.lex.buf[pos] in {':', '='} and p.lex.buf[pos+1] notin OpChars
 
 proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
   if mode == pmTrySimple:
@@ -970,7 +971,7 @@ proc parseOperators(p: var Parser, headNode: PNode,
   # progress guaranteed
   while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
     if mode == pmCommandParam and result.kind in {nkIdent, nkAccQuoted} and
-        isExportMarkerBeforeColon(p):
+        isCommandParamExportMarker(p):
       result = parsePostfix(p, result)
       break
     checkBinary(p)
@@ -1374,7 +1375,7 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   #| simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
   #| commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
   #|                  'static'|'enum'|'tuple'|'object'|'proc')
-  #| commandParam = (symbol '*' &':') / expr
+  #| commandParam = (symbol '*' &(':' | '=')) / expr
   #| primary = simplePrimary (commandStart commandParam (doBlock extraPostExprBlock*)?)?
   #|         / operatorB primary
   #|         / routineExpr
