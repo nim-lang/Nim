@@ -12,6 +12,9 @@ signature Thing*:
 signature Spaced* :
   discard
 
+signature SpacedBeforeStar * :
+  discard
+
 macro signatureWithFlag*(flag, name, body: untyped): untyped =
   doAssert flag.eqIdent("public")
   doAssert name.kind == nnkPostfix
@@ -38,6 +41,14 @@ macro takesIdentInfix*(arg: untyped): untyped =
   result = newStmtList()
 
 takesIdentInfix left*right
+takesIdentInfix left * right
+
+macro takesGStrLit*(arg: untyped): untyped =
+  doAssert arg.kind == nnkCallStrLit
+  doAssert arg[0].eqIdent("tag")
+  result = newStmtList()
+
+takesGStrLit tag"1"
 
 macro takesMulAssign*(arg: untyped): untyped =
   doAssert arg.kind == nnkInfix
@@ -58,7 +69,8 @@ macro module*(args: varargs[untyped]): untyped =
   doAssert alias.kind == nnkExprEqExpr
   doAssert alias[0].kind == nnkPostfix
   doAssert alias[0][0].eqIdent("*")
-  doAssert alias[0][1].eqIdent("UserIdSet")
+  doAssert alias[0][1].eqIdent("UserIdSet") or
+    alias[0][1].eqIdent("SpacedAlias")
   doAssert alias[1].kind == nnkCurlyExpr
   let name = alias[0]
   result = quote do:
@@ -66,3 +78,4 @@ macro module*(args: varargs[untyped]): untyped =
       value*: int
 
 module UserIdSet* = SortedSet{UserById}
+module SpacedAlias * = SortedSet{UserById}
