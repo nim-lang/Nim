@@ -2236,6 +2236,20 @@ proc sealLoadedBackendEntities*(c: var DecodeContext) =
   for _, v in c.types:
     if v[0] != nil and v[0].state == Complete: v[0].state = Sealed
 
+proc sealLoadedRoutines*(c: var DecodeContext) =
+  ## Whole-module-lowering variant of `sealLoadedBackendEntities`: seal ONLY the
+  ## module's ROUTINE syms. A `.t.nif` written by `writeLoweredModule` is the
+  ## SOLE source the `cg` stage loads (there is no `.s.nif` fallback for its
+  ## bodies), so unlike the per-`(lowered)`-entry path, every type, global, param
+  ## and local must still emit a REAL def in it — only cross-routine references
+  ## may be `SymUse`s (each routine's def is emitted once, at module scope, by
+  ## the explicit stub loop). Types/globals stay `Complete` so `writeType`/
+  ## `writeGlobals` emit them; routines become `Sealed` so a body referencing
+  ## another routine writes a `SymUse` resolved through the module index.
+  for _, v in c.syms:
+    if v[0] != nil and v[0].state == Complete and v[0].kindImpl in routineKinds:
+      v[0].state = Sealed
+
 proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym
 
 proc repTagToOp(tagId: TagId): (bool, TTypeAttachedOp) =
@@ -2583,6 +2597,14 @@ proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
 
 proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
+  # The `cg`/`emit` backend stages load the lowered whole-module NIF (transformed
+  # bodies + lifted sigs baked in) when `-d:icWholeLowered` is on; the `lower`
+  # stage and the frontend (`cmdM`) still read the semchecked `.s.nif`.
+  if isDefined(conf, "icWholeLowered") and conf.cmd == cmdNifC and
+     (conf.icBackendStage == "cg" or conf.icBackendStage == "emit"):
+    let t = toGeneratedFile(conf, AbsoluteFile(suffix), ".t.nif").string
+    if fileExists(t):
+      return t
   result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.nif").string
 
 proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: bool): PSym =
@@ -2970,6 +2992,112 @@ proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: va
                     flags: set[LoadFlag] = {}): PrecompiledModule =
   let suffix = ModuleSuffix(moduleSuffix(c.infos.config, f))
   result = loadNifModule(c, suffix, interf, interfHidden, flags)
+
+proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
+                         precomp: PrecompiledModule;
+                         hooks: openArray[LogEntry]; outfile: string) =
+  ## Re-serialize a backend-loaded module as a FULL module NIF (`.t.nif`) whose
+  ## routine `(sd)` entries carry their TRANSFORMED bodies (the `lower` stage set
+  ## them, recursively lifting nested closures — including the async state-machine
+  ## procs whose inner closure the per-`(lowered)`-entry path failed to cross) and
+  ## whose lambda-lift-minted entities (closure-env types/syms, lifted nested
+  ## procs) are real, indexed defs. The `cg` stage then loads it through the
+  ## normal module loader (`moduleFromNifFile`), so a transformed body arrives via
+  ## `loadSymFromCursor`'s Step-A 2-way-body slot WITH the lifted signature — no
+  ## `(lowered)` side-car, no `:envP` re-weld. This realizes `ic_ideas.md`'s eager
+  ## two-way body whole-module.
+  let thisModule = precomp.module.positionImpl.int32
+  # Routines → Sealed (cross-routine refs become SymUse, defs emitted once below);
+  # types/globals/params/locals stay Complete and emit real defs (the `.t.nif` is
+  # the sole source the cg stage reads — no `.s.nif` fallback for them).
+  sealLoadedRoutines(c)
+  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
+  w.inProc = 1
+  w.lowering = true
+  var content = createTokenBuf(300)
+  let rootInfo = trLineInfo(w, precomp.topLevel.info)
+  createStmtList(content, rootInfo)
+
+  # This module's ops (hooks/converters/methods/pure-enums) loaded from `.s.nif`,
+  # plus the type-bound ops the lower transform just lifted (closure-env
+  # `=destroy` etc., which have no `.s.nif` entry).
+  for op in precomp.logOps:
+    if op.module == thisModule.int:
+      writeOp(w, content, op)
+  for op in hooks:
+    writeOp(w, content, op)
+
+  var bottom = createTokenBuf(300)
+  # Imperative init code + global let/var/const sections + replay actions — all
+  # that a backend-loaded `topLevel` carries (routines are lazy index sdefs, not
+  # here). Emits + seals the module's globals.
+  w.writeToplevelNode content, bottom, precomp.topLevel
+
+  # Routine DEFS with transformed bodies, sourced from the index.
+  for s in moduleSymbolStubs(c, FileIndex thisModule):
+    if s.kindImpl in routineKinds and s.itemId.module == thisModule:
+      writeSymDef(w, bottom, s)
+
+  # Lifted hook ROUTINES (`@bk`, NEW in the lower stage — no `.s.nif` sdef, so
+  # absent from `moduleSymbolStubs`): emit each as a full def (sig + transformed
+  # body) so `injectDestructorCalls` in cg resolves the loaded env's `=destroy`.
+  var emittedHooks = initHashSet[int32]()
+  for op in hooks:
+    if op.sym != nil and op.sym.kindImpl in routineKinds and
+        not emittedHooks.containsOrIncl(op.sym.itemId.item):
+      writeSymDef(w, bottom, op.sym)
+
+  # deps / reexports / offers — mirror writeNifModule so the cg backend closure
+  # walk, interface re-export and generic-instance reuse all work off `.t.nif`.
+  for dep in precomp.deps:
+    if not w.depSuffixes.containsOrIncl(dep.string):
+      w.deps.addParLe importTag, NoLineInfo
+      w.deps.addDotToken
+      w.deps.addDotToken
+      w.deps.addStrLit dep.string
+      w.deps.addParRi
+  for (mname, msuffix) in precomp.reexportedModules:
+    w.deps.addParLe reexpModTag, NoLineInfo
+    w.deps.addStrLit mname
+    w.deps.addStrLit msuffix
+    w.deps.addParRi
+  for off in precomp.genericOffers:
+    w.deps.addParLe offerTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.generic)), NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.inst)), NoLineInfo
+    w.deps.addIntLit off.genericParamsCount
+    for ct in off.concreteTypes:
+      w.deps.addSymUse pool.syms.getOrIncl(typeToNifSym(ct, w.infos.config)), NoLineInfo
+    w.deps.addParRi
+  for off in precomp.typeOffers:
+    w.deps.addParLe typeOfferTag, NoLineInfo
+    w.deps.addStrLit w.toNifSymName(off.generic)
+    w.deps.addStrLit typeToNifSym(off.inst, w.infos.config)
+    w.deps.addParRi
+  # OWNER MUST EMIT offered types this module owns (see writeNifModule).
+  for off in precomp.genericOffers:
+    for ct in off.concreteTypes:
+      if ct != nil and ct.uniqueId.module == w.currentModule and ct.state == Complete:
+        writeType(w, bottom, ct)
+  for off in precomp.typeOffers:
+    if off.inst != nil and off.inst.uniqueId.module == w.currentModule and
+        off.inst.state == Complete:
+      writeType(w, bottom, off.inst)
+
+  # Assemble exactly as writeNifModule: (stmts . . <deps> <ops+toplevel>
+  # (implementation) <bottom> ).
+  content.addParLe implTag, NoLineInfo
+  content.addParRi()
+  content.add bottom
+  content.addParRi()
+
+  var dest = createTokenBuf(600)
+  createStmtList(dest, rootInfo)
+  dest.add w.deps
+  for i in 3 ..< content.len-1:
+    dest.add content[i]
+  dest.addParRi()
+  writeFile(dest, outfile)
 
 when isMainModule:
   import std / syncio

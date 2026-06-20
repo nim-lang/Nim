@@ -405,6 +405,10 @@ proc applyLoweredBodies(g: ModuleGraph; modules: seq[PrecompiledModule];
   ## Register every loaded module's `.t.nif` (env entities + lifted hooks),
   ## applying transformed bodies only for the cg target.
   if not icLoweredBodies(g.config): return  # Stage 0 (lazy): nothing to apply
+  # Whole-module mode: the cg stage already loaded each module FROM its `.t.nif`
+  # (toNifFilename), so transformed bodies arrive via loadSymFromCursor and lifted
+  # hooks via moduleFromNifFile's registerLoadedHooks — no side-car to apply.
+  if isDefined(g.config, "icWholeLowered"): return
   if precompSys.module != nil:
     registerLoweredModule(g, precompSys.module, applyBodies = false)
   for m in modules:
@@ -440,12 +444,18 @@ proc collectNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
       collectNestedClosureBodies(g, idgen, n[i], owner, seen, entries)
 
 proc reownFromTwin(n: PNode; twin, s: PSym) =
-  ## Re-own to `s` every entity the frontend wrongly attributed to `s`'s
-  ## forward-decl `twin` (see the lower-stage loop). `twin` is one specific sym,
-  ## so only the mis-owned entities of THIS routine match — nested routines and
-  ## their own locals (owned by the nested routine, not `twin`) are untouched.
+  ## Re-own to `s` every entity the frontend attributed to `s`'s forward-decl
+  ## `twin` (found via the result's owner). lambda-lifting compares owners by
+  ## reference, so a twin-owned `result` is rejected as `illegalCapture`
+  ## ("'result' ... cannot be captured") and, once that is fixed, twin-owned
+  ## locals go missing from `s`'s env ("environment misses: ..."). Both are
+  ## pervasive on chronos `{.async.}` methods. Re-owning to `s` matches the
+  ## single-sym non-IC case. `twin` is ONE specific sym, so only THIS routine's
+  ## result-twin-owned entities match — re-owning entities of OTHER same-name
+  ## twins proved too blunt (it disrupts env construction and reintroduces the
+  ## very capture errors it should fix). `n.sym != s` guards self-ownership.
   if n == nil: return
-  if n.kind == nkSym and n.sym != nil and n.sym.owner == twin:
+  if n.kind == nkSym and n.sym != nil and n.sym != s and n.sym.owner == twin:
     setOwner(n.sym, s)
   for i in 0 ..< n.safeLen:
     reownFromTwin(n[i], twin, s)
@@ -498,6 +508,14 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     # cg call (cgen.nim:1409); we keep only its return value (it clears
     # `transformedBody` for non-cached procs). `injectDestructorCalls` is NOT run
     # — it stays in `cg` on the loaded body.
+    # Whole-module mode (`-d:icWholeLowered`): re-serialize the ENTIRE module as a
+    # proper indexed NIF (`writeLoweredModule`) with transformed bodies baked into
+    # the routine sdefs, instead of the per-routine `(lowered)` side-car. cg loads
+    # it through the normal module loader, so nested procs (incl. async state
+    # machines) arrive as real defs with their lifted bodies — no re-weld, no
+    # `(lowered)` entries. `entries` stays unused; we only need `transformedBody`
+    # set on each routine sym so `writeSymDef` serializes it.
+    let wholeMode = isDefined(g.config, "icWholeLowered")
     var entries: seq[tuple[name: string; body: PNode]] = @[]
     # `transformBody`/lambda-lifting LIFTS the closure env's type-bound ops
     # (`=destroy` etc.) into `g.opsLog`; snapshot its length so we can serialize
@@ -513,20 +531,24 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         # "separate forward declaration and implementation" design) loads as TWO
         # syms; the impl `s` we transform here can carry body entities (`result`,
         # locals, nested routines) owned by its fwd-decl TWIN, not by `s`.
-        # lambda-lifting compares owners by reference: `detectCapturedVars`
-        # rejects a twin-owned `result` as `illegalCapture` ("'result' ... cannot
-        # be captured") and, once that is fixed, the lifting pass can't find a
-        # twin-owned captured local in `s`'s env ("environment misses: ..."). Both
-        # are pervasive on chronos `{.async.}` methods. Re-own every twin-attributed
-        # entity to `s`, matching the single-sym non-IC case. The twin is a
-        # specific sym (found via the result's owner), so only THIS routine's
-        # mis-owned entities match. Backend-only (the lowered body is a `.t.nif`
-        # artifact), so frontend effect/exception inference is untouched.
+        # lambda-lifting compares owners by reference → `illegalCapture` rejects a
+        # twin-owned `result` and the lifting pass can't find twin-owned locals in
+        # `s`'s env. Pervasive on chronos `{.async.}` methods. Re-own them to `s`,
+        # matching the single-sym non-IC case. Backend-only (the lowered body is a
+        # `.t.nif` artifact), so frontend effect/exception inference is untouched.
         if s.ast != nil and s.ast.len > resultPos and
             s.ast[resultPos].kind == nkSym and s.ast[resultPos].sym.owner != s:
           reownFromTwin(s.ast, s.ast[resultPos].sym.owner, s)
         let tbody = transformBody(g, tb.idgen, s, {})
-        entries.add (globalName(s, g.config), tbody)
+        if wholeMode:
+          # Retain the transformed body on the sym so `writeSymDef` serializes it
+          # in the routine's `(sd)` 2-way-body slot.
+          s.transformedBody = tbody
+        else:
+          entries.add (globalName(s, g.config), tbody)
+        # Set `transformedBody` on nested ccClosure routines too (so a
+        # module-indexed nested closure gets its lifted body); in side-car mode
+        # this also appends their `(lowered)` entries.
         var seenNested = initIntSet()
         collectNestedClosureBodies(g, tb.idgen, tbody, s, seenNested, entries)
     # Collect the hooks this stage lifted, and transform each hook ROUTINE's body
@@ -546,13 +568,24 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         # (`transformBody {}` returns the body but does not cache it).
         e.sym.transformedBody = transformBody(g, tb.idgen, e.sym, {})
       inc i
-    # Seal the index-loaded entities so their references in the bodies serialize
-    # as SymUses (resolved via the module index in cg), not duplicate defs.
-    sealLoadedBackendEntities(ast.program)
-    serializeLoweredBodies(g.config, modPos.int32, entries, hooks, artifact)
-    if isDefined(g.config, "icDceCheck"):
-      stderr.writeLine "[icLower] " & extractFilename(artifact) & " " &
-        $entries.len & " routines transformed, " & $hooks.len & " hooks"
+    if wholeMode:
+      # Re-serialize the whole module to its suffix-based `.t.nif` (the path
+      # `toNifFilename` resolves for the cg/emit stages). `writeLoweredModule`
+      # seals routines itself.
+      let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
+      let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.nif").string
+      writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
+      if isDefined(g.config, "icDceCheck"):
+        stderr.writeLine "[icLowerWhole] " & extractFilename(wholeArtifact) & " " &
+          $hooks.len & " hooks"
+    else:
+      # Seal the index-loaded entities so their references in the bodies serialize
+      # as SymUses (resolved via the module index in cg), not duplicate defs.
+      sealLoadedBackendEntities(ast.program)
+      serializeLoweredBodies(g.config, modPos.int32, entries, hooks, artifact)
+      if isDefined(g.config, "icDceCheck"):
+        stderr.writeLine "[icLower] " & extractFilename(artifact) & " " &
+          $entries.len & " routines transformed, " & $hooks.len & " hooks"
   else:
     # DEFAULT (Stage 0, byte-neutral): record one empty-marker per owned routine.
     # `cg` derives the transformed body itself, so output is unchanged; this only
@@ -726,6 +759,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   if precompSys.module != nil:
     replayBackendActions(g, precompSys.module, precompSys.topLevel)
   let bl = BModuleList(g.backend)
+  var addedCFiles = initHashSet[string]()
   for m in bl.mods:
     if m != nil:
       let cfile = getCFile(m)
@@ -733,10 +767,37 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       # (extra members of system's closure that no build rule targets) had their
       # code emit-everywhere'd into the targets, so they have no file to compile.
       if not fileExists(cfile.string): continue
+      addedCFiles.incl extractFilename(cfile.string)
       var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                      obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                      flags: {})
       addFileToCompile(g.config, cf)
+  # deps.nim's static scanner can keep a CONDITIONALLY-imported module as a build
+  # node (e.g. `net`'s `when defineSsl: import openssl`, or a `when defined(os)`
+  # import) that the NIF-`deps` walk above never reaches because the condition is
+  # off. Such a node still emitted a `.c`, and it can OWN a live generic instance
+  # that a REACHABLE module reuses (openssl owns `toHex[uint8]`, reused by
+  # `strutils.escape`) — so its body must be at link or that reference is
+  # undefined. Link every emitted `.c` the merge decision says OWNS a LIVE symbol;
+  # a node that owns nothing live (a Windows-only winsock node on Linux) is
+  # correctly skipped. Whole-module only: the side-car default is unchanged.
+  if isDefined(g.config, "icWholeLowered"):
+    let nimcache = getNimcacheDir(g.config).string
+    let decision = readMergeDecision(nimcache / MergeDecisionFile)
+    if not decision.broken:
+      var liveOwners = initHashSet[string]()
+      for cname, owner in decision.owners:
+        if owner.endsWith(".c.nif") and cname in decision.live:
+          liveOwners.incl owner
+      for owner in liveOwners:
+        let cbase = owner[0 ..< owner.len - ".nif".len]  # "@m….nim.c.nif" -> ".c"
+        if addedCFiles.containsOrIncl(cbase): continue
+        let cfile = AbsoluteFile(nimcache / cbase)
+        if not fileExists(cfile.string): continue
+        var cf = Cfile(nimname: cbase, cname: cfile,
+                       obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
+                       flags: {})
+        addFileToCompile(g.config, cf)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)
 
