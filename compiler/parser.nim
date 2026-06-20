@@ -507,12 +507,12 @@ proc exprColonEqExpr(p: var Parser): PNode =
   else:
     result = colonOrEquals(p, a)
 
-proc commandParamExpr(p: var Parser): PNode
+proc commandParam(p: var Parser): PNode
 
 proc exprEqExpr(p: var Parser): PNode =
   #| exprEqExpr = commandParam ('=' expr
   #|                           / doBlock extraPostExprBlock*)?
-  var a = commandParamExpr(p)
+  var a = commandParam(p)
   if p.tok.tokType == tkDo:
     result = postExprBlocks(p, a)
   else:
@@ -917,14 +917,13 @@ proc namedParams(p: var Parser, callee: PNode,
   # progress guaranteed
   exprColonEqExprListAux(p, endTok, result)
 
-proc commandParam(p: var Parser, isFirstParam: var bool; mode: PrimaryMode): PNode =
-  #| commandParam = (symbol '*' &(':' | '=')) / expr
+proc commandParamAux(p: var Parser, isFirstParam: var bool; mode: PrimaryMode): PNode =
   if mode == pmTypeDesc:
     result = simpleExpr(p, mode)
   elif not isFirstParam:
     result = exprEqExpr(p)
   else:
-    result = commandParamExpr(p)
+    result = commandParam(p)
     if p.tok.tokType == tkDo:
       result = postExprBlocks(p, result)
   isFirstParam = false
@@ -938,7 +937,8 @@ proc isCommandExportStart(p: Parser, a: PNode): bool {.inline.} =
   result = a.kind in {nkIdent, nkAccQuoted} and
     p.tok.tokType == tkOpr and p.tok.ident.s == "*" and p.tok.indent < 0
 
-proc commandParamExpr(p: var Parser): PNode =
+proc commandParam(p: var Parser): PNode =
+  #| commandParam = (symbol '*' &(':' | '=')) / expr
   if isCommandParamSymbol(p.tok):
     result = primary(p, pmNormal)
     if isCommandExportStart(p, result):
@@ -965,7 +965,7 @@ proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
     var isFirstParam = true
     # progress NOT guaranteed
     p.hasProgress = false
-    result.add commandParam(p, isFirstParam, mode)
+    result.add commandParamAux(p, isFirstParam, mode)
 
 proc isDotLike(tok: Token): bool =
   result = tok.tokType == tkOpr and tok.ident.s.len > 1 and
@@ -1553,7 +1553,7 @@ proc parseTypeDefValue(p: var Parser): PNode =
         while p.tok.tokType == tkComma:
           getTok(p)
           optInd(p, result)
-          result.add(commandParam(p, isFirstParam, pmTypeDef))
+          result.add(commandParamAux(p, isFirstParam, pmTypeDef))
       result = postExprBlocks(p, result)
   result = binaryNot(p, result)
   setEndInfo()
@@ -1669,7 +1669,7 @@ proc parseExprStmt(p: var Parser): PNode =
       result = newTree(nkCommand, a.info, a)
       let baseIndent = p.currInd
       while true:
-        result.add(commandParam(p, isFirstParam, pmNormal))
+        result.add(commandParamAux(p, isFirstParam, pmNormal))
         if p.tok.tokType != tkComma or
           (p.tok.indent >= 0 and p.tok.indent < baseIndent):
           break
