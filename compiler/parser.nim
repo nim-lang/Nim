@@ -300,6 +300,7 @@ proc parsePostfix(p: var Parser, a: PNode): PNode =
 
 proc parseCommandExportPostfix(p: var Parser, opNode: PNode,
                                a: var PNode): bool =
+  result = false
   if p.tok.tokType in {tkColon, tkEquals} and p.tok.indent < 0:
     when defined(nimpretty):
       starWasExportMarker(p.em)
