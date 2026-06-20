@@ -326,7 +326,7 @@ proc isUnary(tok: Token): bool =
   tok.spacing == {tsLeading}
 
 proc checkBinary(p: Parser, tok: Token) {.inline.} =
-  ## Check if the given token is a binary operator.
+  ## Check and warn if the operator spacing is inconsistent.
   # we don't check '..' here as that's too annoying
   if tok.tokType == tkOpr:
     if tok.spacing == {tsTrailing}:
