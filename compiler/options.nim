@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "14"
+  icFormatVersion* = "16"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -785,6 +785,13 @@ template quitOrRaise*(conf: ConfigRef, msg = "") =
     raiseAssert msg
   else:
     quit(msg) # quits with QuitFailure
+
+proc icLoweredBodies*(conf: ConfigRef): bool {.inline.} =
+  ## Whether the `nim ic` backend uses the EAGER per-module `lower` stage
+  ## (transformBody serialized to `.t.nif`, cg reuses it) instead of the lazy
+  ## Stage-0 path (cg re-derives every transformed body). This is now the
+  ## DEFAULT; `-d:icNoLowerBodies` opts back into the lazy path for A/B testing.
+  not isDefined(conf, "icNoLowerBodies")
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc

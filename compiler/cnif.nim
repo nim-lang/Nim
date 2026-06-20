@@ -358,6 +358,52 @@ proc readCnifHeads*(f: string): CnifHeads =
   endRead(c)
   result.valid = sawMeta and version == CnifVersion
 
+proc writeLoweredArtifact*(outfile: string; entries: openArray[string]) =
+  ## The `.t.nif` "lowered" artifact: one `(lowered "<nifname>" <body>)` per
+  ## routine the module OWNS, written by the per-module `lower` backend stage
+  ## for the `cg` stage to read instead of re-deriving the transformed body
+  ## (re-derivation in each parallel `cg` process is what makes a closure
+  ## `:env`'s identity diverge across modules — see transf.transformBody).
+  ##
+  ## SKELETON: every body is the empty-marker `.` ("transformed body == sem
+  ## body"), so `cg` falls back to its own `transformBody` and output stays
+  ## byte-identical. The real transformed body fills this slot in a later step;
+  ## the `.` then means "unchanged by lowering" (the dedup Araq sketched).
+  var b = nifbuilder.open(outfile)
+  b.withTree "stmts":
+    for name in entries:
+      b.withTree "lowered":
+        b.addStrLit name
+        b.addEmpty()
+  b.close()
+
+proc readLoweredArtifact*(f: string): seq[string] =
+  ## The routine NIF names recorded in a `.t.nif`. (Bodies are not returned
+  ## yet: the skeleton records only empty-markers; reading proves the artifact
+  ## round-trips and that the `cg` rule depends on it.)
+  result = @[]
+  if not fileExists(f): return
+  var pool = newPool()
+  var tags = newTagPool()
+  let stmtsTag = tags.registerTag("stmts")
+  let loweredTag = tags.registerTag("lowered")
+  var buf = parseFromFile(f, 1000, pool, tags)
+  var c = beginRead(buf)
+  if c.kind != TagLit or c.cursorTagId != stmtsTag:
+    endRead(c)
+    return
+  c.loopInto:
+    if c.kind == TagLit and c.cursorTagId == loweredTag:
+      c.loopInto:
+        if c.kind == StrLit:
+          result.add strVal(c)
+          inc c
+        else:
+          skip c
+    else:
+      skip c
+  endRead(c)
+
 type
   CnifLiveness* = object
     defs*: int      ## proc definitions emitted across all modules

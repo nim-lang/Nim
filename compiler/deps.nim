@@ -51,7 +51,7 @@ proc parsedFile(c: DepContext; f: FilePair): string =
   getNimcacheDir(c.config).string / f.modname & ".p.nif"
 
 proc semmedFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".nif"
+  getNimcacheDir(c.config).string / f.modname & ".s.nif"
 
 proc ifaceFile(c: DepContext; f: FilePair): string =
   ## Interface-cookie sidecar written by `nim m` (ast2nif.writeIfaceCookie,
@@ -941,9 +941,11 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # Per-node output paths.
   var cnifFiles = newSeq[string](c.nodes.len)
   var cFiles = newSeq[string](c.nodes.len)
+  var tFiles = newSeq[string](c.nodes.len)
   for i, node in c.nodes:
     cFiles[i] = backendCFile(c, node)
     cnifFiles[i] = cFiles[i] & ".nif"
+    tFiles[i] = cFiles[i] & ".t.nif"
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -979,9 +981,28 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     b.addStrLit s
     b.endTree()
 
-  # cg: one rule per module. Inputs are the project (slot 0) and every semmed
-  # NIF (so the whole program loads and the rule is ordered after the frontend);
-  # the main module additionally depends on every other `.c.nif` (init metas).
+  # lower: one rule per module. Transforms (eventually) the routines the module
+  # OWNS once, in the owner's id space, into `<module>.t.nif`, so the `cg` stage
+  # reads them instead of re-deriving (which makes a closure `:env`'s identity
+  # diverge across the parallel `cg` processes). Runs per module in parallel on
+  # the shallow backend dep-graph. Inputs mirror `cg` (project + every semmed
+  # NIF) so the rule is ordered after the frontend.
+  for i, node in c.nodes:
+    b.addTree "do"
+    b.addIdent "nim_nifc"
+    b.withTree "args":
+      b.addStrLit "--icBackendStage:lower"
+      b.addStrLit "--icBackendModule:" & node.files[0].modname
+    inputStr mainNif
+    for n2 in c.nodes:
+      inputStr c.semmedFile(n2.files[0])
+    outputStr tFiles[i]
+    b.endTree()
+
+  # cg: one rule per module. Inputs are the project (slot 0), every semmed
+  # NIF (so the whole program loads and the rule is ordered after the frontend)
+  # and this module's `.t.nif` (its lowered bodies); the main module additionally
+  # depends on every other `.c.nif` (init metas).
   for i, node in c.nodes:
     b.addTree "do"
     b.addIdent "nim_nifc"
@@ -991,6 +1012,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     inputStr mainNif
     for n2 in c.nodes:
       inputStr c.semmedFile(n2.files[0])
+    inputStr tFiles[i]
     if node.id == 0:
       for j in 0 ..< c.nodes.len:
         if c.nodes[j].id != 0:

@@ -26,6 +26,8 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys,
   cnif
 from cgmeth import generateIfMethodDispatchers
+from transf import transformBody
+from lambdalifting import getEnvParam, addHiddenParam, paramName
 import ic / replayer
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
@@ -145,6 +147,32 @@ proc signatureHasMetaType(t: PType; depth: int = 0): bool =
   for k in t.kids:
     if signatureHasMetaType(k, depth + 1): return true
 
+proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
+  ## A concrete, non-generic, runtime routine with a real body, OWNED by the
+  ## module at `modPos`. Shared by the `cg` stage's owned-routine seeding (so a
+  ## routine called only from other modules is still emitted by somebody) and
+  ## the `lower` stage's owned-routine enumeration, so both stages see exactly
+  ## the same set. The exclusions:
+  ## - nested/closure procs (owner is a proc, not a module): emitted via their
+  ##   enclosing routine's lambda-lifting, never standalone;
+  ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
+  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
+  ##   not real codegen targets.
+  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
+  ## iterator, which is expanded at each call site) and must be emitted by its
+  ## owner — else a cross-module `for` over it links to nothing.
+  s.itemId.module == modPos and
+  (s.kind in {skProc, skFunc, skConverter, skMethod} or
+   (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
+  s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
+  s.magic == mNone and
+  sfFromGeneric notin s.flags and
+  {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+  s.typ != nil and not signatureHasMetaType(s.typ) and
+  s.ast != nil and s.ast.safeLen > bodyPos and
+  s.ast[genericParamsPos].kind == nkEmpty and
+  s.ast[bodyPos].kind != nkEmpty
+
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
   let moduleId = precomp.module.position
@@ -170,34 +198,7 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   if g.config.cmd == cmdNifC and g.config.icBackendStage == "cg":
     let modPos = precomp.module.position
     for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-      if s.itemId.module == modPos and
-         s.kind in {skProc, skFunc, skConverter, skMethod} and
-         # Only MODULE-level routines: a nested/closure proc (its owner is a
-         # proc) captures its enclosing scope and cannot be emitted standalone —
-         # the captured params have no loc → `expr: param not init`. Nested procs
-         # are emitted via their enclosing routine's lambda-lifting, so seeding
-         # the enclosing (module-level) routine already covers them.
-         s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
-         s.magic == mNone and
-         # Skip generic instances: they have no single owning-module top-level
-         # and are emitted by demand (emit-everywhere, deduped by the merge
-         # stage). An instance has an empty `genericParamsPos` just like a plain
-         # concrete proc, so only `sfFromGeneric` tells them apart; seeding one
-         # would force standalone codegen of an instance body whose `when T is X`
-         # branches were never folded for this path → `genMagicExpr: mIs`.
-         sfFromGeneric notin s.flags and
-         # Every other routine the module owns must be emitted here, exported or
-         # not: a non-exported helper is still reached from another module when a
-         # `template`/inline routine expands at a call site there (e.g. msgs'
-         # `internalErrorImpl` behind the `internalError` template), and that
-         # caller now only prototypes it. `{.error.}`/`compileTime` sentinels and
-         # bodyless forward decls are not real codegen targets.
-         {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
-         s.typ != nil and not signatureHasMetaType(s.typ) and
-         s.ast != nil and s.ast.safeLen > bodyPos and
-         s.ast[genericParamsPos].kind == nkEmpty and
-         s.ast[bodyPos].kind != nkEmpty:
-        # a concrete, non-generic, runtime routine with a real body, owned here
+      if ownsRuntimeRoutine(s, modPos):
         requestProcDef(bmod, s)
 
 proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
@@ -323,6 +324,218 @@ proc findTargetModule(g: ModuleGraph; modules: seq[PrecompiledModule];
       cachedModuleSuffix(g.config, FileIndex precompSys.module.position) == suffix:
     return precompSys
 
+proc findHiddenEnvParam(n: PNode; owner: PSym): PSym =
+  ## Locate the hidden env param (`:envP`) that belongs to `owner` in its loaded
+  ## transformed body, so it can be re-welded into `owner`'s signature. Matching
+  ## by `owner` is essential: a body can ALSO reference a callee's `:envP` (a
+  ## closure call passes the callee env), so the first `:envP` in DFS order is
+  ## not necessarily this proc's own.
+  if n == nil: return nil
+  if n.kind == nkSym:
+    if n.sym != nil and n.sym.kind == skParam and n.sym.name.s == paramName and
+        n.sym.owner == owner:
+      return n.sym
+  else:
+    for i in 0 ..< n.safeLen:
+      let r = findHiddenEnvParam(n[i], owner)
+      if r != nil: return r
+  return nil
+
+proc registerLoweredModule(g: ModuleGraph; m: PSym; applyBodies: bool) =
+  ## Load module `m`'s `<m>.t.nif` and register its `lower`-stage output: its
+  ## embedded index (so its closure-env `@bk` entities resolve) and its lifted
+  ## type-bound ops (so any cg that DESTROYS one of `m`'s closures finds the env
+  ## `=destroy` via getAttachedOp). For the cg TARGET (`applyBodies`), also set
+  ## each owned routine's `transformedBody` so cg's `transformBody` short-circuits
+  ## (transf.nim:1383) instead of re-deriving. `injectDestructorCalls` stays in cg.
+  let modPos = m.position
+  let bmod = BModuleList(g.backend).mods[modPos]
+  if bmod == nil: return
+  let artifact = getCFile(bmod).string & ".t.nif"
+  if not fileExists(artifact): return
+  let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
+  let (bodies, hooks) = loadLoweredBodies(ast.program, FileIndex modPos, suffix,
+                                          artifact, loadBodies = applyBodies)
+  registerLoadedHooks(g, hooks)
+  if not applyBodies: return
+  var byName = initTable[string, PSym]()
+  for s in moduleSymbolStubs(ast.program, FileIndex modPos):
+    # Owned routines AND nested closure routines (the `:anonymous` procs the
+    # lower stage emits as their own entries) — both are index-resolvable syms
+    # of this module whose transformed body the lower stage authored.
+    if s.kind in routineKinds and s.itemId.module == modPos:
+      byName[globalName(s, g.config)] = s
+  for (name, body) in bodies:
+    let s = byName.getOrDefault(name)
+    # `.s.nif` wins: only fill from `.t.nif` if sem did not already transform it.
+    if s != nil and body != nil and s.transformedBody == nil:
+      s.transformedBody = body
+      # Lambda-lift in the lower stage gave this proc a hidden `:envP` env param
+      # (a captured-var closure env), but cg loaded the PRE-lift signature from
+      # `.s.nif`. The transformed body references that `@bk` `:envP`; re-weld it
+      # into the proc's params so genProc assigns it a loc (else "param not
+      # init"). `transformBody` short-circuits on the cached body, skipping the
+      # lift that normally adds it. This applies to BOTH a true `ccClosure` proc
+      # (env arrives via the closure ABI `ClE_0`, needs `tfCapturesEnv`) and a
+      # plain nested `nimcall` proc that merely captures (env is a regular last
+      # param). Match the env param by owner — a body can also reference a
+      # callee's `:envP`.
+      if s.typ != nil and getEnvParam(s) == nil:
+        let ep = findHiddenEnvParam(body, s)
+        if ep != nil:
+          # From-source, `ast[paramsPos]` and `typ.n` are the SAME node, but a
+          # NIF-loaded routine has two distinct param nodes. genProc reads
+          # `typ.n`, so unify them first — else addHiddenParam appends to
+          # `ast[paramsPos]` and the env param never reaches genProc's loc setup.
+          if s.typ.n != nil:
+            s.ast[paramsPos] = s.typ.n
+          addHiddenParam(s, ep)
+          # The lower stage's lambda-lift converts EVERY captured nested proc to a
+          # closure (collectNestedClosureBodies only emits `ccClosure` entries),
+          # and the serialized call sites use the closure ABI. cg loaded the
+          # pre-lift signature, which for a proc only ever CALLED (never used as a
+          # value) is still `nimcall`. Re-apply the lift's `ccClosure` +
+          # `tfCapturesEnv` so closureSetup maps the env param to `ClE_0` and the
+          # calls match.
+          s.typ.callConv = ccClosure
+          incl(s.typ, {tfCapturesEnv})
+
+proc applyLoweredBodies(g: ModuleGraph; modules: seq[PrecompiledModule];
+                        precompSys: PrecompiledModule; target: PrecompiledModule) =
+  ## Register every loaded module's `.t.nif` (env entities + lifted hooks),
+  ## applying transformed bodies only for the cg target.
+  if not icLoweredBodies(g.config): return  # Stage 0 (lazy): nothing to apply
+  if precompSys.module != nil:
+    registerLoweredModule(g, precompSys.module, applyBodies = false)
+  for m in modules:
+    if m.module != nil:
+      registerLoweredModule(g, m.module,
+        applyBodies = (m.module.position == target.module.position))
+
+proc collectNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
+                                owner: PSym; seen: var IntSet;
+                                entries: var seq[tuple[name: string; body: PNode]]) =
+  ## A closure routine nested in `owner` (the `:anonymous` proc lambda-lifting
+  ## minted, plus any deeper nesting) gets its captured-var→env rewrite produced
+  ## as part of the OWNER's `transformBody`, but only the owner's body is emitted
+  ## as a `(lowered)` entry. The nested proc itself IS index-resolvable (it has a
+  ## `.s.nif` sdef from sem, with its PRE-lift body), so cg loads that and
+  ## re-derives — and the capture mapping is gone (it accesses `x` directly
+  ## instead of `ClE_0->x0`). Walk the transformed body and emit each nested
+  ## closure routine's transformed body as its OWN `(lowered)` entry so
+  ## applyLoweredBodies installs it and cg reuses it verbatim.
+  if n == nil: return
+  if n.kind == nkSym:
+    let s = n.sym
+    if s != nil and s.kind in routineKinds and s != owner and
+        not seen.containsOrIncl(s.id):
+      if s.ast != nil and getBody(g, s).kind != nkEmpty and
+          s.typ != nil and s.typ.callConv == ccClosure:
+        if s.transformedBody == nil:
+          s.transformedBody = transformBody(g, idgen, s, {})
+        entries.add (globalName(s, g.config), s.transformedBody)
+        collectNestedClosureBodies(g, idgen, s.transformedBody, s, seen, entries)
+  else:
+    for i in 0 ..< n.safeLen:
+      collectNestedClosureBodies(g, idgen, n[i], owner, seen, entries)
+
+proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
+  ## Per-module backend lowering (`--icBackendStage:lower --icBackendModule:<suffix>`):
+  ## enumerate the routines this module OWNS and write them to `<module>.t.nif`.
+  ## Eventually this transforms each owned routine once, in the owner's id space,
+  ## so `cg` reads the result instead of re-deriving it (re-derivation per
+  ## parallel `cg` process is the root of the closure-`:env` identity drift).
+  ## Runs per module in parallel on the shallow backend dep-graph — NOT folded
+  ## into the dense, mostly-serial sem stage.
+  ##
+  ## gate `newSymNode`'s lazy-type marking to the backend (see astdef) — the
+  ## transform builds sym nodes off not-yet-typed stubs, exactly as the `cg`
+  ## stage does.
+  nifcBackendActive = true
+  let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
+  let targetIsMain = g.config.icBackendModule.len == 0 or
+                     g.config.icBackendModule == mainSuffix
+  var modules: seq[PrecompiledModule]
+  var precompSys: PrecompiledModule
+  var target: PrecompiledModule
+  if targetIsMain:
+    var nifFiles: seq[string]
+    (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
+    if modules.len == 0:
+      rawMessage(g.config, errGenerated,
+        "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
+      return
+    target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+  else:
+    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
+  if target.module == nil:
+    rawMessage(g.config, errGenerated,
+      "per-module lowering: module not found for suffix: " & g.config.icBackendModule)
+    return
+  let modPos = target.module.position
+  let tb = BModuleList(g.backend).mods[modPos]
+  if tb == nil:
+    rawMessage(g.config, errGenerated,
+      "per-module lowering: no backend module for suffix: " & g.config.icBackendModule)
+    return
+  let artifact = getCFile(tb).string & ".t.nif"
+  if icLoweredBodies(g.config):
+    # STAGE 1 (DEFAULT; `-d:icNoLowerBodies` opts out): transform every owned routine
+    # ONCE in this single process's id space and serialize the results, so `cg`
+    # reads them instead of re-deriving (the single-writer-per-owner that keeps
+    # closure-`:env` identity stable). `transformBody` with flags {} mirrors the
+    # cg call (cgen.nim:1409); we keep only its return value (it clears
+    # `transformedBody` for non-cached procs). `injectDestructorCalls` is NOT run
+    # — it stays in `cg` on the loaded body.
+    var entries: seq[tuple[name: string; body: PNode]] = @[]
+    # `transformBody`/lambda-lifting LIFTS the closure env's type-bound ops
+    # (`=destroy` etc.) into `g.opsLog`; snapshot its length so we can serialize
+    # exactly the ops THIS stage created (not those loaded from `.s.nif`).
+    let opsLogStart = g.opsLog.len
+    for s in moduleSymbolStubs(ast.program, FileIndex modPos):
+      if ownsRuntimeRoutine(s, modPos):
+        # `.s.nif` wins: a routine already transformed during sem (CT eval /
+        # macro / VM transform) carries its lowered body in the `.s.nif` slot —
+        # don't re-transform it here, just leave its `.t.nif` entry empty.
+        if s.transformedBody != nil: continue
+        let tbody = transformBody(g, tb.idgen, s, {})
+        entries.add (globalName(s, g.config), tbody)
+        var seenNested = initIntSet()
+        collectNestedClosureBodies(g, tb.idgen, tbody, s, seenNested, entries)
+    # Collect the hooks this stage lifted, and transform each hook ROUTINE's body
+    # too (it is itself lowered into NIFC). The hooks' `(sd)` + transformed body go
+    # into the `.t.nif`; `cg` re-attaches them so `injectDestructorCalls` resolves
+    # the loaded env's `=destroy`. Iterate to a fixpoint: a hook body can lift
+    # further hooks (a field's `=destroy`).
+    var hooks: seq[LogEntry] = @[]
+    var i = opsLogStart
+    while i < g.opsLog.len:
+      let e = g.opsLog[i]
+      if e.kind == HookEntry and e.sym != nil and e.sym.kind in routineKinds and
+          e.sym.transformedBody == nil:
+        hooks.add e
+        # Transform the hook routine's body and cache it on the sym so
+        # `writeSymDef` serializes it in the hook's `(sd)` transformed-body slot
+        # (`transformBody {}` returns the body but does not cache it).
+        e.sym.transformedBody = transformBody(g, tb.idgen, e.sym, {})
+      inc i
+    # Seal the index-loaded entities so their references in the bodies serialize
+    # as SymUses (resolved via the module index in cg), not duplicate defs.
+    sealLoadedBackendEntities(ast.program)
+    serializeLoweredBodies(g.config, modPos.int32, entries, hooks, artifact)
+    if isDefined(g.config, "icDceCheck"):
+      stderr.writeLine "[icLower] " & extractFilename(artifact) & " " &
+        $entries.len & " routines transformed, " & $hooks.len & " hooks"
+  else:
+    # DEFAULT (Stage 0, byte-neutral): record one empty-marker per owned routine.
+    # `cg` derives the transformed body itself, so output is unchanged; this only
+    # exercises the artifact + scheduling the transform-move builds on.
+    var names: seq[string] = @[]
+    for s in moduleSymbolStubs(ast.program, FileIndex modPos):
+      if ownsRuntimeRoutine(s, modPos):
+        names.add globalName(s, g.config)
+    writeLoweredArtifact(artifact, names)
+
 proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend codegen (`--icBackendStage:cg --icBackendModule:<suffix>`):
   ## generate C for the single module named by `icBackendModule` and write only
@@ -365,6 +578,7 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       "per-module codegen: module not found for suffix: " & g.config.icBackendModule)
     return
 
+  applyLoweredBodies(g, modules, precompSys, target)
   generateCodeForModule(g, target)
   let bl = BModuleList(g.backend)
   # The main module also owns the whole-program method dispatchers + NimMain.
@@ -502,7 +716,10 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
-  if g.config.icBackendStage == "cg":
+  if g.config.icBackendStage == "lower":
+    generateLowerStage(g, mainFileIdx)
+    return
+  elif g.config.icBackendStage == "cg":
     generateCgStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage == "merge":
@@ -516,4 +733,4 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
   else:
     rawMessage(g.config, errGenerated,
-      "the per-module NIF backend requires --icBackendStage:cg|merge|emit|link")
+      "the per-module NIF backend requires --icBackendStage:lower|cg|merge|emit|link")

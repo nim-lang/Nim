@@ -904,7 +904,7 @@ proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   assert result != nil
 
 when not defined(nimKochBootstrap):
-  proc registerLoadedHooks(g: ModuleGraph; logOps: seq[LogEntry]) =
+  proc registerLoadedHooks*(g: ModuleGraph; logOps: seq[LogEntry]) =
     let mainSuffix = getMainModuleSuffix(ast.program)
     for x in logOps:
       # A dependency's NIF may carry hooks whose syms belong to the module we

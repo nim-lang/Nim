@@ -176,7 +176,7 @@ proc closureParams(routine: PSym): PNode =
     result = routine.typ.n
     routine.ast[paramsPos] = result
 
-proc addHiddenParam(routine: PSym, param: PSym) =
+proc addHiddenParam*(routine: PSym, param: PSym) =
   assert param.kind == skParam
   var params = closureParams(routine)
   # -1 is correct here as param.position is 0 based but we have at position 0
