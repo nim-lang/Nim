@@ -2236,60 +2236,6 @@ proc sealLoadedBackendEntities*(c: var DecodeContext) =
   for _, v in c.types:
     if v[0] != nil and v[0].state == Complete: v[0].state = Sealed
 
-proc preloadLoweredDefs(c: var DecodeContext; n: var Cursor; thisModule: string;
-                        localSyms: var Table[string, PSym]) =
-  ## One pre-scan over a `.t.nif` body that fully loads EVERY inline def it
-  ## carries before the body is decoded: suffix-less locals into `localSyms`,
-  ## backend-minted `@bk` syms into `c.syms`, `@bk` types into `c.types`. These
-  ## transform-created entities have NO module index entry, so a later reference
-  ## — in the body, or inside a loaded type that `typeKey`/codegen later walks
-  ## (where the index-based force-load would assert) — must find them already
-  ## loaded. The writer emits defs before uses, so a forward walk that loads each
-  ## in place suffices.
-  if n.kind != ParLe:
-    inc n
-    return
-  var depth = 0
-  while true:
-    if n.kind == ParLe:
-      if n.tagId == sdefTag:
-        let nm = n.firstSon
-        if nm.kind == SymbolDef:
-          let symName = pool.syms[nm.symId]
-          let sn = parseSymName(symName)
-          if sn.module.len == 0:
-            if symName notin localSyms:
-              let module = moduleId(c, thisModule)
-              let val = addr c.mods[module].symCounter
-              inc val[]
-              let sym = PSym(itemId: itemId(module.int32, val[]), kindImpl: skStub,
-                             name: c.cache.getIdent(sn.name), disamb: sn.count.int32,
-                             state: Complete)
-              localSyms[symName] = sym
-              inc n
-              loadSymFromCursor(c, sym, n, thisModule, localSyms)
-              sym.state = c.loadedState
-              continue
-          elif sn.module.endsWith(BackendLocalMarker):
-            let sym = c.loadSymStub(nm.symId, thisModule, localSyms)
-            if sym.state == Partial:
-              sym.state = c.loadedState
-              inc n
-              loadSymFromCursor(c, sym, n, thisModule, localSyms)
-              continue
-      elif n.tagId == tdefTag:
-        let nm = n.firstSon
-        if nm.kind == SymbolDef and pool.syms[nm.symId].endsWith(BackendLocalMarker):
-          discard loadTypeStub(c, n, localSyms)
-          continue
-      inc depth
-    elif n.kind == ParRi:
-      dec depth
-      if depth == 0:
-        inc n
-        break
-    inc n
-
 proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym
 
 proc repTagToOp(tagId: TagId): (bool, TTypeAttachedOp) =
