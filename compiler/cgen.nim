@@ -838,8 +838,12 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
       else:
         initializer = value
       genGlobalVarDecl(p.module.s[cfsVars], p, n, td, initializer = initializer)
-  if p.withinLoop > 0 and value == "":
+  if p.withinLoop > 0 and value == "" and
+      s.loc.t.skipTypes(abstractInst).kind notin {tyVar, tyLent}:
     # fixes tests/run/tzeroarray:
+    # Don't reset borrowed references (var/lent): the pointer itself is still
+    # uninitialized here, so resetLoc would dereference garbage. Such variables
+    # (e.g. the loop var of `mitems`) are always assigned before use anyway.
     backendEnsureMutable s
     resetLoc(p, s.locImpl)
 
