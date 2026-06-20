@@ -439,6 +439,17 @@ proc collectNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
     for i in 0 ..< n.safeLen:
       collectNestedClosureBodies(g, idgen, n[i], owner, seen, entries)
 
+proc reownFromTwin(n: PNode; twin, s: PSym) =
+  ## Re-own to `s` every entity the frontend wrongly attributed to `s`'s
+  ## forward-decl `twin` (see the lower-stage loop). `twin` is one specific sym,
+  ## so only the mis-owned entities of THIS routine match — nested routines and
+  ## their own locals (owned by the nested routine, not `twin`) are untouched.
+  if n == nil: return
+  if n.kind == nkSym and n.sym != nil and n.sym.owner == twin:
+    setOwner(n.sym, s)
+  for i in 0 ..< n.safeLen:
+    reownFromTwin(n[i], twin, s)
+
 proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend lowering (`--icBackendStage:lower --icBackendModule:<suffix>`):
   ## enumerate the routines this module OWNS and write them to `<module>.t.nif`.
@@ -498,6 +509,22 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         # macro / VM transform) carries its lowered body in the `.s.nif` slot —
         # don't re-transform it here, just leave its `.t.nif` entry empty.
         if s.transformedBody != nil: continue
+        # A routine serialized as a forward-decl + impl pair (the writeSymDef
+        # "separate forward declaration and implementation" design) loads as TWO
+        # syms; the impl `s` we transform here can carry body entities (`result`,
+        # locals, nested routines) owned by its fwd-decl TWIN, not by `s`.
+        # lambda-lifting compares owners by reference: `detectCapturedVars`
+        # rejects a twin-owned `result` as `illegalCapture` ("'result' ... cannot
+        # be captured") and, once that is fixed, the lifting pass can't find a
+        # twin-owned captured local in `s`'s env ("environment misses: ..."). Both
+        # are pervasive on chronos `{.async.}` methods. Re-own every twin-attributed
+        # entity to `s`, matching the single-sym non-IC case. The twin is a
+        # specific sym (found via the result's owner), so only THIS routine's
+        # mis-owned entities match. Backend-only (the lowered body is a `.t.nif`
+        # artifact), so frontend effect/exception inference is untouched.
+        if s.ast != nil and s.ast.len > resultPos and
+            s.ast[resultPos].kind == nkSym and s.ast[resultPos].sym.owner != s:
+          reownFromTwin(s.ast, s.ast[resultPos].sym.owner, s)
         let tbody = transformBody(g, tb.idgen, s, {})
         entries.add (globalName(s, g.config), tbody)
         var seenNested = initIntSet()
