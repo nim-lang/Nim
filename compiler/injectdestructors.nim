@@ -245,7 +245,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
-  if (op == nil or op.ast.isGenericRoutine) and icLoweredBodies(c.graph.config):
+  if op == nil or op.ast.isGenericRoutine:
     # IC: injectDestructorCalls is demand-driven and runs HERE (cg), not in the
     # `lower` stage, so a structural, env-agnostic op the lower stage never had
     # reason to serialize — most often a closure PROC type's `=destroy`/`=sink`

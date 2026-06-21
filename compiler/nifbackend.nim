@@ -27,7 +27,6 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   cnif
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
-from lambdalifting import getEnvParam, addHiddenParam, paramName
 import ic / replayer
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
@@ -324,110 +323,17 @@ proc findTargetModule(g: ModuleGraph; modules: seq[PrecompiledModule];
       cachedModuleSuffix(g.config, FileIndex precompSys.module.position) == suffix:
     return precompSys
 
-proc findHiddenEnvParam(n: PNode; owner: PSym): PSym =
-  ## Locate the hidden env param (`:envP`) that belongs to `owner` in its loaded
-  ## transformed body, so it can be re-welded into `owner`'s signature. Matching
-  ## by `owner` is essential: a body can ALSO reference a callee's `:envP` (a
-  ## closure call passes the callee env), so the first `:envP` in DFS order is
-  ## not necessarily this proc's own.
-  if n == nil: return nil
-  if n.kind == nkSym:
-    if n.sym != nil and n.sym.kind == skParam and n.sym.name.s == paramName and
-        n.sym.owner == owner:
-      return n.sym
-  else:
-    for i in 0 ..< n.safeLen:
-      let r = findHiddenEnvParam(n[i], owner)
-      if r != nil: return r
-  return nil
-
-proc registerLoweredModule(g: ModuleGraph; m: PSym; applyBodies: bool) =
-  ## Load module `m`'s `<m>.t.nif` and register its `lower`-stage output: its
-  ## embedded index (so its closure-env `@bk` entities resolve) and its lifted
-  ## type-bound ops (so any cg that DESTROYS one of `m`'s closures finds the env
-  ## `=destroy` via getAttachedOp). For the cg TARGET (`applyBodies`), also set
-  ## each owned routine's `transformedBody` so cg's `transformBody` short-circuits
-  ## (transf.nim:1383) instead of re-deriving. `injectDestructorCalls` stays in cg.
-  let modPos = m.position
-  let bmod = BModuleList(g.backend).mods[modPos]
-  if bmod == nil: return
-  let artifact = getCFile(bmod).string & ".t.nif"
-  if not fileExists(artifact): return
-  let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
-  let (bodies, hooks) = loadLoweredBodies(ast.program, FileIndex modPos, suffix,
-                                          artifact, loadBodies = applyBodies)
-  registerLoadedHooks(g, hooks)
-  if not applyBodies: return
-  var byName = initTable[string, PSym]()
-  for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-    # Owned routines AND nested closure routines (the `:anonymous` procs the
-    # lower stage emits as their own entries) — both are index-resolvable syms
-    # of this module whose transformed body the lower stage authored.
-    if s.kind in routineKinds and s.itemId.module == modPos:
-      byName[globalName(s, g.config)] = s
-  for (name, body) in bodies:
-    let s = byName.getOrDefault(name)
-    # `.s.nif` wins: only fill from `.t.nif` if sem did not already transform it.
-    if s != nil and body != nil and s.transformedBody == nil:
-      s.transformedBody = body
-      # Lambda-lift in the lower stage gave this proc a hidden `:envP` env param
-      # (a captured-var closure env), but cg loaded the PRE-lift signature from
-      # `.s.nif`. The transformed body references that `@bk` `:envP`; re-weld it
-      # into the proc's params so genProc assigns it a loc (else "param not
-      # init"). `transformBody` short-circuits on the cached body, skipping the
-      # lift that normally adds it. This applies to BOTH a true `ccClosure` proc
-      # (env arrives via the closure ABI `ClE_0`, needs `tfCapturesEnv`) and a
-      # plain nested `nimcall` proc that merely captures (env is a regular last
-      # param). Match the env param by owner — a body can also reference a
-      # callee's `:envP`.
-      if s.typ != nil and getEnvParam(s) == nil:
-        let ep = findHiddenEnvParam(body, s)
-        if ep != nil:
-          # From-source, `ast[paramsPos]` and `typ.n` are the SAME node, but a
-          # NIF-loaded routine has two distinct param nodes. genProc reads
-          # `typ.n`, so unify them first — else addHiddenParam appends to
-          # `ast[paramsPos]` and the env param never reaches genProc's loc setup.
-          if s.typ.n != nil:
-            s.ast[paramsPos] = s.typ.n
-          addHiddenParam(s, ep)
-          # The lower stage's lambda-lift converts EVERY captured nested proc to a
-          # closure (collectNestedClosureBodies only emits `ccClosure` entries),
-          # and the serialized call sites use the closure ABI. cg loaded the
-          # pre-lift signature, which for a proc only ever CALLED (never used as a
-          # value) is still `nimcall`. Re-apply the lift's `ccClosure` +
-          # `tfCapturesEnv` so closureSetup maps the env param to `ClE_0` and the
-          # calls match.
-          s.typ.callConv = ccClosure
-          incl(s.typ, {tfCapturesEnv})
-
-proc applyLoweredBodies(g: ModuleGraph; modules: seq[PrecompiledModule];
-                        precompSys: PrecompiledModule; target: PrecompiledModule) =
-  ## Register every loaded module's `.t.nif` (env entities + lifted hooks),
-  ## applying transformed bodies only for the cg target.
-  if not icLoweredBodies(g.config): return  # Stage 0 (lazy): nothing to apply
-  # Whole-module mode: the cg stage already loaded each module FROM its `.t.nif`
-  # (toNifFilename), so transformed bodies arrive via loadSymFromCursor and lifted
-  # hooks via moduleFromNifFile's registerLoadedHooks — no side-car to apply.
-  if isDefined(g.config, "icWholeLowered"): return
-  if precompSys.module != nil:
-    registerLoweredModule(g, precompSys.module, applyBodies = false)
-  for m in modules:
-    if m.module != nil:
-      registerLoweredModule(g, m.module,
-        applyBodies = (m.module.position == target.module.position))
-
-proc collectNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
-                                owner: PSym; seen: var IntSet;
-                                entries: var seq[tuple[name: string; body: PNode]]) =
+proc setNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
+                            owner: PSym; seen: var IntSet) =
   ## A closure routine nested in `owner` (the `:anonymous` proc lambda-lifting
   ## minted, plus any deeper nesting) gets its captured-var→env rewrite produced
-  ## as part of the OWNER's `transformBody`, but only the owner's body is emitted
-  ## as a `(lowered)` entry. The nested proc itself IS index-resolvable (it has a
-  ## `.s.nif` sdef from sem, with its PRE-lift body), so cg loads that and
-  ## re-derives — and the capture mapping is gone (it accesses `x` directly
-  ## instead of `ClE_0->x0`). Walk the transformed body and emit each nested
-  ## closure routine's transformed body as its OWN `(lowered)` entry so
-  ## applyLoweredBodies installs it and cg reuses it verbatim.
+  ## as part of the OWNER's `transformBody`. The nested proc is a module-indexed
+  ## sym whose `.s.nif` sdef carries its PRE-lift body, so without help the whole
+  ## module re-serializer would write that pre-lift body and cg would lose the
+  ## capture mapping (it accesses `x` directly instead of `ClE_0->x0`). Walk the
+  ## owner's transformed body and cache each nested closure's transformed body on
+  ## its sym so `writeSymDef` serializes the lifted body into the routine's
+  ## 2-way-body slot.
   if n == nil: return
   if n.kind == nkSym:
     let s = n.sym
@@ -437,11 +343,10 @@ proc collectNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
           s.typ != nil and s.typ.callConv == ccClosure:
         if s.transformedBody == nil:
           s.transformedBody = transformBody(g, idgen, s, {})
-        entries.add (globalName(s, g.config), s.transformedBody)
-        collectNestedClosureBodies(g, idgen, s.transformedBody, s, seen, entries)
+        setNestedClosureBodies(g, idgen, s.transformedBody, s, seen)
   else:
     for i in 0 ..< n.safeLen:
-      collectNestedClosureBodies(g, idgen, n[i], owner, seen, entries)
+      setNestedClosureBodies(g, idgen, n[i], owner, seen)
 
 proc reownFromTwin(n: PNode; twin, s: PSym) =
   ## Re-own to `s` every entity the frontend attributed to `s`'s forward-decl
@@ -499,102 +404,72 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     rawMessage(g.config, errGenerated,
       "per-module lowering: no backend module for suffix: " & g.config.icBackendModule)
     return
-  let artifact = getCFile(tb).string & ".t.nif"
-  if icLoweredBodies(g.config):
-    # STAGE 1 (DEFAULT; `-d:icNoLowerBodies` opts out): transform every owned routine
-    # ONCE in this single process's id space and serialize the results, so `cg`
-    # reads them instead of re-deriving (the single-writer-per-owner that keeps
-    # closure-`:env` identity stable). `transformBody` with flags {} mirrors the
-    # cg call (cgen.nim:1409); we keep only its return value (it clears
-    # `transformedBody` for non-cached procs). `injectDestructorCalls` is NOT run
-    # — it stays in `cg` on the loaded body.
-    # Whole-module mode (`-d:icWholeLowered`): re-serialize the ENTIRE module as a
-    # proper indexed NIF (`writeLoweredModule`) with transformed bodies baked into
-    # the routine sdefs, instead of the per-routine `(lowered)` side-car. cg loads
-    # it through the normal module loader, so nested procs (incl. async state
-    # machines) arrive as real defs with their lifted bodies — no re-weld, no
-    # `(lowered)` entries. `entries` stays unused; we only need `transformedBody`
-    # set on each routine sym so `writeSymDef` serializes it.
-    let wholeMode = isDefined(g.config, "icWholeLowered")
-    var entries: seq[tuple[name: string; body: PNode]] = @[]
-    # `transformBody`/lambda-lifting LIFTS the closure env's type-bound ops
-    # (`=destroy` etc.) into `g.opsLog`; snapshot its length so we can serialize
-    # exactly the ops THIS stage created (not those loaded from `.s.nif`).
-    let opsLogStart = g.opsLog.len
-    for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-      if ownsRuntimeRoutine(s, modPos):
-        # `.s.nif` wins: a routine already transformed during sem (CT eval /
-        # macro / VM transform) carries its lowered body in the `.s.nif` slot —
-        # don't re-transform it here, just leave its `.t.nif` entry empty.
-        if s.transformedBody != nil: continue
-        # A routine serialized as a forward-decl + impl pair (the writeSymDef
-        # "separate forward declaration and implementation" design) loads as TWO
-        # syms; the impl `s` we transform here can carry body entities (`result`,
-        # locals, nested routines) owned by its fwd-decl TWIN, not by `s`.
-        # lambda-lifting compares owners by reference → `illegalCapture` rejects a
-        # twin-owned `result` and the lifting pass can't find twin-owned locals in
-        # `s`'s env. Pervasive on chronos `{.async.}` methods. Re-own them to `s`,
-        # matching the single-sym non-IC case. Backend-only (the lowered body is a
-        # `.t.nif` artifact), so frontend effect/exception inference is untouched.
-        if s.ast != nil and s.ast.len > resultPos and
-            s.ast[resultPos].kind == nkSym and s.ast[resultPos].sym.owner != s:
-          reownFromTwin(s.ast, s.ast[resultPos].sym.owner, s)
-        let tbody = transformBody(g, tb.idgen, s, {})
-        if wholeMode:
-          # Retain the transformed body on the sym so `writeSymDef` serializes it
-          # in the routine's `(sd)` 2-way-body slot.
-          s.transformedBody = tbody
-        else:
-          entries.add (globalName(s, g.config), tbody)
-        # Set `transformedBody` on nested ccClosure routines too (so a
-        # module-indexed nested closure gets its lifted body); in side-car mode
-        # this also appends their `(lowered)` entries.
-        var seenNested = initIntSet()
-        collectNestedClosureBodies(g, tb.idgen, tbody, s, seenNested, entries)
-    # Collect the hooks this stage lifted, and transform each hook ROUTINE's body
-    # too (it is itself lowered into NIFC). The hooks' `(sd)` + transformed body go
-    # into the `.t.nif`; `cg` re-attaches them so `injectDestructorCalls` resolves
-    # the loaded env's `=destroy`. Iterate to a fixpoint: a hook body can lift
-    # further hooks (a field's `=destroy`).
-    var hooks: seq[LogEntry] = @[]
-    var i = opsLogStart
-    while i < g.opsLog.len:
-      let e = g.opsLog[i]
-      if e.kind == HookEntry and e.sym != nil and e.sym.kind in routineKinds and
-          e.sym.transformedBody == nil:
-        hooks.add e
-        # Transform the hook routine's body and cache it on the sym so
-        # `writeSymDef` serializes it in the hook's `(sd)` transformed-body slot
-        # (`transformBody {}` returns the body but does not cache it).
-        e.sym.transformedBody = transformBody(g, tb.idgen, e.sym, {})
-      inc i
-    if wholeMode:
-      # Re-serialize the whole module to its suffix-based `.t.nif` (the path
-      # `toNifFilename` resolves for the cg/emit stages). `writeLoweredModule`
-      # seals routines itself.
-      let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
-      let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.nif").string
-      writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
-      if isDefined(g.config, "icDceCheck"):
-        stderr.writeLine "[icLowerWhole] " & extractFilename(wholeArtifact) & " " &
-          $hooks.len & " hooks"
-    else:
-      # Seal the index-loaded entities so their references in the bodies serialize
-      # as SymUses (resolved via the module index in cg), not duplicate defs.
-      sealLoadedBackendEntities(ast.program)
-      serializeLoweredBodies(g.config, modPos.int32, entries, hooks, artifact)
-      if isDefined(g.config, "icDceCheck"):
-        stderr.writeLine "[icLower] " & extractFilename(artifact) & " " &
-          $entries.len & " routines transformed, " & $hooks.len & " hooks"
-  else:
-    # DEFAULT (Stage 0, byte-neutral): record one empty-marker per owned routine.
-    # `cg` derives the transformed body itself, so output is unchanged; this only
-    # exercises the artifact + scheduling the transform-move builds on.
-    var names: seq[string] = @[]
-    for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-      if ownsRuntimeRoutine(s, modPos):
-        names.add globalName(s, g.config)
-    writeLoweredArtifact(artifact, names)
+  # Transform every owned routine ONCE in this single process's id space and
+  # re-serialize the ENTIRE module as a proper indexed NIF (`writeLoweredModule`)
+  # with the transformed bodies baked into the routine `(sd)` entries. `cg` loads
+  # it through the normal module loader, so nested procs (incl. async state
+  # machines) arrive as real defs with their lifted bodies — no re-derivation.
+  # This single-writer-per-owner is what keeps closure-`:env` identity stable
+  # across the parallel `cg` processes (re-derivation per process was the root of
+  # the `:env` identity drift). `transformBody` with flags {} mirrors the cg call
+  # (cgen.nim); `injectDestructorCalls` is NOT run here — it stays in `cg` on the
+  # loaded body.
+  #
+  # `transformBody`/lambda-lifting LIFTS the closure env's type-bound ops
+  # (`=destroy` etc.) into `g.opsLog`; snapshot its length so we serialize exactly
+  # the ops THIS stage created (not those loaded from `.s.nif`).
+  let opsLogStart = g.opsLog.len
+  for s in moduleSymbolStubs(ast.program, FileIndex modPos):
+    if ownsRuntimeRoutine(s, modPos):
+      # `.s.nif` wins: a routine already transformed during sem (CT eval / macro /
+      # VM transform) carries its lowered body in the `.s.nif` slot — don't
+      # re-transform it here.
+      if s.transformedBody != nil: continue
+      # A routine serialized as a forward-decl + impl pair (writeSymDef's
+      # "separate forward declaration and implementation") loads as TWO syms; the
+      # impl `s` we transform here can carry body entities (`result`, locals,
+      # nested routines) owned by its fwd-decl TWIN, not by `s`. lambda-lifting
+      # compares owners by reference → `illegalCapture` rejects a twin-owned
+      # `result` and the lifting pass can't find twin-owned locals in `s`'s env.
+      # Pervasive on chronos `{.async.}` methods. Re-own them to `s`, matching the
+      # single-sym non-IC case. Backend-only, so frontend effect/exception
+      # inference is untouched.
+      if s.ast != nil and s.ast.len > resultPos and
+          s.ast[resultPos].kind == nkSym and s.ast[resultPos].sym.owner != s:
+        reownFromTwin(s.ast, s.ast[resultPos].sym.owner, s)
+      # Retain the transformed body on the sym so `writeSymDef` serializes it in
+      # the routine's `(sd)` 2-way-body slot.
+      s.transformedBody = transformBody(g, tb.idgen, s, {})
+      # Cache the lifted body on nested ccClosure routines too, so a module-indexed
+      # nested closure serializes its lifted (capture-rewritten) body.
+      var seenNested = initIntSet()
+      setNestedClosureBodies(g, tb.idgen, s.transformedBody, s, seenNested)
+  # Collect the hooks this stage lifted, and transform each hook ROUTINE's body
+  # too (it is itself lowered into NIFC). The hooks' `(sd)` + transformed body go
+  # into the `.t.nif`; `cg` re-attaches them so `injectDestructorCalls` resolves
+  # the loaded env's `=destroy`. Iterate to a fixpoint: a hook body can lift
+  # further hooks (a field's `=destroy`).
+  var hooks: seq[LogEntry] = @[]
+  var i = opsLogStart
+  while i < g.opsLog.len:
+    let e = g.opsLog[i]
+    if e.kind == HookEntry and e.sym != nil and e.sym.kind in routineKinds and
+        e.sym.transformedBody == nil:
+      hooks.add e
+      # Transform the hook routine's body and cache it on the sym so `writeSymDef`
+      # serializes it in the hook's `(sd)` transformed-body slot (`transformBody
+      # {}` returns the body but does not cache it).
+      e.sym.transformedBody = transformBody(g, tb.idgen, e.sym, {})
+    inc i
+  # Re-serialize the whole module to its suffix-based `.t.nif` (the path
+  # `toNifFilename` resolves for the cg/emit stages). `writeLoweredModule` seals
+  # routines itself.
+  let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
+  let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.nif").string
+  writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
+  if isDefined(g.config, "icDceCheck"):
+    stderr.writeLine "[icLower] " & extractFilename(wholeArtifact) & " " &
+      $hooks.len & " hooks"
 
 proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend codegen (`--icBackendStage:cg --icBackendModule:<suffix>`):
@@ -638,7 +513,10 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       "per-module codegen: module not found for suffix: " & g.config.icBackendModule)
     return
 
-  applyLoweredBodies(g, modules, precompSys, target)
+  # The `lower` stage already wrote each module's transformed bodies + lifted
+  # hooks into its `.t.nif`, which the loaders above read directly (toNifFilename
+  # resolves the `.t.nif`); transformed bodies arrive via loadSymFromCursor and
+  # lifted hooks via moduleFromNifFile's registerLoadedHooks. Nothing to apply.
   generateCodeForModule(g, target)
   let bl = BModuleList(g.backend)
   # The main module also owns the whole-program method dispatchers + NimMain.
@@ -780,8 +658,8 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # `strutils.escape`) — so its body must be at link or that reference is
   # undefined. Link every emitted `.c` the merge decision says OWNS a LIVE symbol;
   # a node that owns nothing live (a Windows-only winsock node on Linux) is
-  # correctly skipped. Whole-module only: the side-car default is unchanged.
-  if isDefined(g.config, "icWholeLowered"):
+  # correctly skipped.
+  block:
     let nimcache = getNimcacheDir(g.config).string
     let decision = readMergeDecision(nimcache / MergeDecisionFile)
     if not decision.broken:

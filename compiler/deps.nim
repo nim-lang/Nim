@@ -942,17 +942,13 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   var cnifFiles = newSeq[string](c.nodes.len)
   var cFiles = newSeq[string](c.nodes.len)
   var tFiles = newSeq[string](c.nodes.len)
-  # Whole-module lowering writes a PROPER module NIF the cg/emit stages load via
+  # The `lower` stage writes a PROPER module NIF the cg/emit stages load via
   # `toNifFilename` (a `.s.nif` sibling), so its `.t.nif` lives at the suffix base
-  # (mirroring `semmedFile`), not next to the throwaway `.c`. The side-car path
-  # keeps the `.c`-relative name (loaded directly by `registerLoweredModule`).
-  let wholeMode = isDefined(c.config, "icWholeLowered")
+  # (mirroring `semmedFile`), not next to the throwaway `.c`.
   for i, node in c.nodes:
     cFiles[i] = backendCFile(c, node)
     cnifFiles[i] = cFiles[i] & ".nif"
-    tFiles[i] =
-      if wholeMode: nimcache / node.files[0].modname & ".t.nif"
-      else: cFiles[i] & ".t.nif"
+    tFiles[i] = nimcache / node.files[0].modname & ".t.nif"
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -1019,13 +1015,9 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     inputStr mainNif
     for n2 in c.nodes:
       inputStr c.semmedFile(n2.files[0])
-    # Whole-module mode loads dependencies FROM their `.t.nif` (toNifFilename), so
-    # every module's lowered NIF must precede this cg rule; the side-car only needs
-    # this module's own `.t.nif`.
-    if wholeMode:
-      for j in 0 ..< c.nodes.len: inputStr tFiles[j]
-    else:
-      inputStr tFiles[i]
+    # cg loads dependencies FROM their `.t.nif` (toNifFilename), so every module's
+    # lowered NIF must precede this cg rule.
+    for j in 0 ..< c.nodes.len: inputStr tFiles[j]
     if node.id == 0:
       for j in 0 ..< c.nodes.len:
         if c.nodes[j].id != 0:
@@ -1053,10 +1045,9 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     inputStr mainNif
     inputStr cnifFiles[i]
     inputStr mergeFile
-    # emit loads modules like cg (for getCFile/type resolution); under whole mode
-    # those come from the `.t.nif`s, so they must precede this rule.
-    if wholeMode:
-      for j in 0 ..< c.nodes.len: inputStr tFiles[j]
+    # emit loads modules like cg (for getCFile/type resolution); those come from
+    # the `.t.nif`s, so they must precede this rule.
+    for j in 0 ..< c.nodes.len: inputStr tFiles[j]
     outputStr cFiles[i]
     b.endTree()
 

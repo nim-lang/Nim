@@ -198,8 +198,8 @@ type
     depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
     emittedBackendTypes: HashSet[int32]  # backend-local type items already def'd this module
     emittedBackendSyms: HashSet[int32]   # backend-local sym items already def'd this module
-    lowering: bool  # serializing the `lower` stage's `.t.nif` (per-entry self-contained)
-    emittedFieldSyms: HashSet[ItemId]    # lowering: derived env-field syms already def'd this entry
+    lowering: bool  # serializing the `lower` stage's whole-module `.t.nif`
+    emittedFieldSyms: HashSet[ItemId]    # lowering: derived env-field syms already def'd
     inTypeReclist: int   # >0 while writing a type's OWN reclist: fields must be SELF-CONTAINED
                          # defs (the type can be seek-loaded in isolation), not entry-deduped uses
 
@@ -718,7 +718,6 @@ var implTag = registerTag("implementation")
 var reexpModTag = registerTag("reexpmod")
 var offerTag = registerTag("offer")
 var typeOfferTag = registerTag("toffer")
-var loweredTag = registerTag("lowered")
 
 proc registerNifAstTags*() =
   ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
@@ -751,7 +750,6 @@ proc registerNifAstTags*() =
   reexpModTag = registerTag("reexpmod")
   offerTag = registerTag("offer")
   typeOfferTag = registerTag("toffer")
-  loweredTag = registerTag("lowered")
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
   if n == nil:
@@ -1518,71 +1516,6 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     writeImplCookie(config, thisModule, dest, ifaceHex)
     writeEdgesFile(config, thisModule, implDeps)
 
-proc collectLoweredLocals(w: var Writer; n: PNode) =
-  ## Record every transform-created local (a `Complete`, non-`@bk` sym owned by
-  ## the module being serialized) in `w.locals` so it is written SUFFIX-LESS as
-  ## an inline def. Pre-existing entities (params, result, callees) were sealed
-  ## before serialization, so they are skipped here and emit as index SymUses.
-  if n == nil: return
-  if n.kind == nkSym and n.sym != nil:
-    let s = n.sym
-    if not s.itemId.isBackendMinted and s.itemId.module == w.currentModule and
-        s.state == Complete:
-      w.locals.incl s.itemId
-  for i in 0 ..< n.safeLen:
-    collectLoweredLocals(w, n[i])
-
-proc serializeLoweredBodies*(config: ConfigRef; ownerModule: int32;
-                             entries: openArray[tuple[name: string; body: PNode]];
-                             hooks: openArray[LogEntry];
-                             outfile: string) =
-  ## Write the `lower` backend stage's `.t.nif`. Three sections, all covered by
-  ## the file's embedded index (which the `cg` loader registers as the module's
-  ## SECOND index/stream — see loadLoweredBodies):
-  ## - `(repdestroy/repcopy/... key sym)`: the type-bound ops the lower stage
-  ##   lifted while transforming (closure-env `=destroy` etc.). `cg`'s
-  ##   `registerLoadedHooks` re-attaches them so `injectDestructorCalls` (kept in
-  ##   cg) resolves them via `getAttachedOp`'s key fallback.
-  ## - the hook ROUTINES as full `(sd)`: NEW in the lower stage (no `.s.nif`
-  ##   signature), so serialize sig + transformed body whole; cg loads them via
-  ##   the `.t.nif` index when the HookEntry's SymUse resolves, then demand-emits.
-  ## - owned routines' transformed bodies as `(lowered "<nifname>" <body>)`: only
-  ##   the body (signature comes from the `.s.nif`); applyLoweredBodies sets it on
-  ##   the existing sym.
-  ## A `@bk` closure-env type/sym referenced anywhere is emitted inline AND
-  ## indexed, so it resolves through the embedded index regardless of section.
-  var w = Writer(infos: LineInfoWriter(config: config), currentModule: ownerModule)
-  w.inProc = 1   # we are serializing routine *bodies*
-  w.lowering = true
-  var dest = createTokenBuf(256)
-  createStmtList(dest, NoLineInfo)
-  for op in hooks:
-    writeOp(w, dest, op)
-  var emittedHooks = initHashSet[int32]()
-  for op in hooks:
-    if op.sym != nil and op.sym.kindImpl in routineKinds and
-        not emittedHooks.containsOrIncl(op.sym.itemId.item):
-      w.emittedBackendTypes.clear()
-      w.emittedBackendSyms.clear()
-      w.emittedFieldSyms.clear()
-      w.locals.clear()
-      writeSymDef(w, dest, op.sym)
-  for e in entries:
-    # Each `(lowered ...)` entry is loaded independently, so it must be
-    # SELF-CONTAINED: reset the per-Writer backend-local (@bk) dedup so every
-    # entry re-emits the def of any closure-env type/sym it references.
-    w.emittedBackendTypes.clear()
-    w.emittedBackendSyms.clear()
-    w.emittedFieldSyms.clear()
-    w.locals.clear()
-    collectLoweredLocals(w, e.body)
-    dest.addParLe loweredTag, NoLineInfo
-    dest.addStrLit e.name
-    writeNode(w, dest, e.body)
-    dest.addParRi
-  dest.addParRi()
-  writeFile(dest, outfile)
-
 # --------------------------- Loader (lazy!) -----------------------------------------------
 
 proc nodeKind(n: Cursor): TNodeKind {.inline.} =
@@ -1644,15 +1577,6 @@ type
     suffix: string
     contentStart: int  # stream offset of the module body, so a full-AST load can
                        # rewind after lazy symbol loads moved the cursor
-    # The module's `.t.nif` (the `lower` stage's transformed bodies): a SECOND
-    # embedded-index + stream consulted when the main `.s.nif` index misses. The
-    # transformed bodies' backend-minted (`@bk`) entities (closure-env types/syms,
-    # temporaries) live ONLY here; they are named with this module's suffix, so
-    # `createTypeStub`/`loadSymStub` look them up here on a `.s.nif` miss and load
-    # them from `tStream` (see applyLoweredBodies). "Just use NIF's embedded index."
-    hasTIndex: bool
-    tStream: nifstreams.Stream
-    tIndex: Table[string, NifIndexEntry]
 
   DecodeContext* = object
     infos: LineInfoWriter
@@ -1688,8 +1612,8 @@ proc loadedState(c: DecodeContext): ItemState {.inline.} =
   if c.infos.config.cmd == cmdNifC: Complete else: Sealed
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
-                          buf: var TokenBuf; fromT = false): Cursor =
-  let s = if fromT: addr c.mods[module].tStream else: addr c.mods[module].stream
+                          buf: var TokenBuf): Cursor =
+  let s = addr c.mods[module].stream
   s.r.jumpTo entry.offset
   # A seek-load is self-contained: its tokens must decode their relative line
   # info against `entry.info` ALONE. The stream's `parents` stack can be left at
@@ -1847,13 +1771,7 @@ proc createTypeStub(c: var DecodeContext; t: SymId): PType =
     let ii = addr c.mods[modFi].index
     var offs = ii[].getOrDefault(name)
     if offs.offset == 0:
-      # A backend-minted (`@bk`) type produced by the `lower` stage lives in this
-      # module's `.t.nif`, not its `.s.nif` index. Resolve it through the `.t.nif`
-      # embedded index (loadType picks `tStream` for a tIndex-only name).
-      if c.mods[modFi].hasTIndex:
-        offs = c.mods[modFi].tIndex.getOrDefault(name)
-      if offs.offset == 0:
-        raiseAssert "symbol has no offset: " & name
+      raiseAssert "symbol has no offset: " & name
     result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
     c.types[name] = (result, offs)
 
@@ -1949,15 +1867,6 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
     let id = if isBk: backendItemId(module.int32, val[]) else: itemId(module.int32, val[])
 
     var offs = c.mods[module].index.getOrDefault(symAsStr)
-    if offs.offset == 0 and c.mods[module].hasTIndex:
-      # A sym produced by the `lower` stage lives in this module's `.t.nif`, not
-      # its `.s.nif` index. This covers BOTH backend-minted (`@bk`) entities
-      # (closure `:env` param, `:tmp`/`res` temporaries) AND module-homed derived
-      # closure-env FIELDS (e.g. a captured `i`): the latter have a normal
-      # module suffix but are added to the env object only in the backend, so
-      # they are indexed solely in `.t.nif`. Resolve through that embedded index
-      # (loadSym picks `tStream` for a tIndex-only name).
-      offs = c.mods[module].tIndex.getOrDefault(symAsStr)
     if offs.offset == 0:
       # Only module/package self-syms are never written as `(sd)` entries, so a
       # missing index offset means this is such a sym — typically the OWNER of an
@@ -2093,11 +2002,7 @@ proc loadType*(c: var DecodeContext; t: PType) =
     else:
       typeToNifSym(t, c.infos.config)
   let modFi = t.itemId.module.FileIndex
-  # A name resolved through the `.t.nif` (tIndex) — a `lower`-stage closure-env
-  # type — must seek in `tStream`, not the `.s.nif` stream.
-  let fromT = c.mods[modFi].hasTIndex and not c.mods[modFi].index.hasKey(typeName) and
-              c.mods[modFi].tIndex.hasKey(typeName)
-  var n = cursorFromIndexEntry(c, modFi, c.types[typeName][1], buf, fromT = fromT)
+  var n = cursorFromIndexEntry(c, modFi, c.types[typeName][1], buf)
   var localSyms = initTable[string, PSym]()
   loadTypeFromCursor(c, n, t, localSyms)
 
@@ -2199,10 +2104,7 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   var buf = createTokenBuf(30)
   let symsModule = s.itemId.module.FileIndex
   let nifname = globalName(s, c.infos.config)
-  # A `@bk` sym resolved through the `.t.nif` (tIndex) seeks in `tStream`.
-  let fromT = c.mods[symsModule].hasTIndex and not c.mods[symsModule].index.hasKey(nifname) and
-              c.mods[symsModule].tIndex.hasKey(nifname)
-  var n = cursorFromIndexEntry(c, symsModule, c.syms[nifname][1], buf, fromT = fromT)
+  var n = cursorFromIndexEntry(c, symsModule, c.syms[nifname][1], buf)
 
   expect n, ParLe
   if n.tagId != sdefTag:
@@ -2220,109 +2122,21 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   inc n
   loadSymFromCursor(c, s, n, c.mods[symsModule].suffix, localSyms)
 
-proc sealLoadedBackendEntities*(c: var DecodeContext) =
-  ## Before the `lower` stage serializes its transformed bodies, mark every
-  ## index-loaded sym/type `Sealed`. The backend loads them `Complete` (mutable
-  ## for the transform); without this, `writeNode`'s `shouldWriteSymDef` would
-  ## emit a duplicate `(sd)`/`(td)` def for a param/result/existing-local/owner
-  ## type — and the `cg` body-loader would then bind the body's `result` to a
-  ## FRESH sym instead of the one in `prc.ast[resultPos]` (the #6/#7 "result
-  ## cannot be captured" class). Sealed ⟹ SymUse ⟹ resolved via `cg`'s module
-  ## index. The transform-CREATED entities are absent from `c.syms`/`c.types`
-  ## (or are backend-minted), so they stay `Complete`/`@bk` and still get the
-  ## inline defs the loader's local-sym pre-scan needs.
-  for _, v in c.syms:
-    if v[0] != nil and v[0].state == Complete: v[0].state = Sealed
-  for _, v in c.types:
-    if v[0] != nil and v[0].state == Complete: v[0].state = Sealed
-
 proc sealLoadedRoutines*(c: var DecodeContext) =
-  ## Whole-module-lowering variant of `sealLoadedBackendEntities`: seal ONLY the
+  ## Before `writeLoweredModule` re-serializes the lowered module, seal ONLY the
   ## module's ROUTINE syms. A `.t.nif` written by `writeLoweredModule` is the
   ## SOLE source the `cg` stage loads (there is no `.s.nif` fallback for its
-  ## bodies), so unlike the per-`(lowered)`-entry path, every type, global, param
-  ## and local must still emit a REAL def in it — only cross-routine references
-  ## may be `SymUse`s (each routine's def is emitted once, at module scope, by
-  ## the explicit stub loop). Types/globals stay `Complete` so `writeType`/
-  ## `writeGlobals` emit them; routines become `Sealed` so a body referencing
-  ## another routine writes a `SymUse` resolved through the module index.
+  ## bodies), so every type, global, param and local must still emit a REAL def
+  ## in it — only cross-routine references may be `SymUse`s (each routine's def is
+  ## emitted once, at module scope, by the explicit stub loop). Types/globals stay
+  ## `Complete` so `writeType`/`writeGlobals` emit them; routines become `Sealed`
+  ## so a body referencing another routine writes a `SymUse` resolved through the
+  ## module index.
   for _, v in c.syms:
     if v[0] != nil and v[0].state == Complete and v[0].kindImpl in routineKinds:
       v[0].state = Sealed
 
 proc resolveHookSym*(c: var DecodeContext; symId: nifstreams.SymId): PSym
-
-proc repTagToOp(tagId: TagId): (bool, TTypeAttachedOp) =
-  ## Map a `(rep…)` hook tag to its attached-op kind (and whether it IS one).
-  if tagId == repDestroyTag: (true, attachedDestructor)
-  elif tagId == repCopyTag: (true, attachedAsgn)
-  elif tagId == repWasMovedTag: (true, attachedWasMoved)
-  elif tagId == repDupTag: (true, attachedDup)
-  elif tagId == repSinkTag: (true, attachedSink)
-  elif tagId == repTraceTag: (true, attachedTrace)
-  elif tagId == repDeepCopyTag: (true, attachedDeepCopy)
-  else: (false, attachedDestructor)
-
-proc loadLoweredBodies*(c: var DecodeContext; module: FileIndex; suffix: string;
-                        infile: string; loadBodies = true):
-    tuple[bodies: seq[tuple[name: string; body: PNode]]; hooks: seq[LogEntry]] =
-  ## Reconstruct the `lower` stage's `.t.nif`. Registers its embedded index as the
-  ## module's SECOND index/stream (`tIndex`/`tStream`) so every backend-minted
-  ## (`@bk`) closure-env entity resolves through NIF's own index — `createTypeStub`/
-  ## `loadSymStub` fall through to it on a `.s.nif` miss, `loadType`/`loadSym` seek
-  ## `tStream`. Returns the owned routines' transformed bodies (the `(lowered …)`
-  ## entries) and the lifted type-bound ops (`(rep… key sym)`); the hook ROUTINES'
-  ## `(sd)` defs are loaded lazily through the index when their op's sym resolves.
-  result = (@[], @[])
-  if not fileExists(infile): return
-  var tstream = nifstreams.open(infile)
-  let tindex = readEmbeddedIndex(tstream)  # leaves the cursor at the content start
-  let contentStart = offset(tstream.r)
-  c.mods[module].tStream = tstream
-  c.mods[module].tIndex = tindex
-  c.mods[module].hasTIndex = true
-  # Parse the WHOLE content up front: the per-body loads below lazily seek
-  # `tStream` for `@bk` entities, which would otherwise clobber a live walk cursor.
-  var buf = createTokenBuf(256)
-  tstream.r.jumpTo contentStart
-  nifcursors.parse(tstream, buf, NoLineInfo)
-  var n = beginRead(buf)
-  if n.kind != ParLe: return
-  inc n          # into (stmts -> flags dot
-  inc n          # -> type dot
-  inc n          # -> first entry or ParRi
-  while n.kind == ParLe:
-    if n.tagId == loweredTag:
-      if not loadBodies:
-        # A dependency: register its `.t.nif` (tIndex + hooks) so the consumer
-        # can destroy the dep's closures, but don't reconstruct its bodies (only
-        # the dep's OWN cg emits them).
-        skip n
-        continue
-      inc n        # -> StringLit name
-      let name = pool.strings[n.litId]
-      inc n        # -> body tree
-      var localSyms = initTable[string, PSym]()
-      var scanCursor = n
-      extractLocalSymsFromTree(c, scanCursor, suffix, localSyms)
-      let body = loadNode(c, n, suffix, localSyms)
-      result.bodies.add (name, body)
-      skipParRi n  # close (lowered ...)
-    else:
-      let (isHook, op) = repTagToOp(n.tagId)
-      if isHook:
-        inc n      # -> StringLit key
-        let key = pool.strings[n.litId]
-        inc n      # -> Symbol sym
-        let sym = resolveHookSym(c, n.symId)
-        inc n
-        if sym != nil:
-          result.hooks.add LogEntry(kind: HookEntry, op: op, module: module.int,
-                                    key: key, sym: sym)
-        skipParRi n
-      else:
-        skip n     # a hook routine's `(sd)` def — loaded lazily via the index
-
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
   let info = c.infos.oldLineInfo(n.info)
@@ -2420,8 +2234,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           # dereferences a nil field type. Detect the unindexed case and FILL
           # the sym from the inline def instead.
           let m = moduleId(c, sn.module)
-          let indexed = c.mods[m].index.hasKey(symName) or
-                        (c.mods[m].hasTIndex and c.mods[m].tIndex.hasKey(symName))
+          let indexed = c.mods[m].index.hasKey(symName)
           if indexed:
             sym = c.loadSymStub(name.symId, thisModule, localSyms)
             skip n  # skip the entire sdef for indexed symbols
@@ -2598,9 +2411,9 @@ proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
 proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
   # The `cg`/`emit` backend stages load the lowered whole-module NIF (transformed
-  # bodies + lifted sigs baked in) when `-d:icWholeLowered` is on; the `lower`
-  # stage and the frontend (`cmdM`) still read the semchecked `.s.nif`.
-  if isDefined(conf, "icWholeLowered") and conf.cmd == cmdNifC and
+  # bodies + lifted sigs baked in); the `lower` stage and the frontend (`cmdM`)
+  # read the semchecked `.s.nif`.
+  if conf.cmd == cmdNifC and
      (conf.icBackendStage == "cg" or conf.icBackendStage == "emit"):
     let t = toGeneratedFile(conf, AbsoluteFile(suffix), ".t.nif").string
     if fileExists(t):
@@ -2627,11 +2440,6 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
     # Try the format without module suffix
     let localKey = sn.name & "." & $sn.count & "."
     offs = c.mods[module].index.getOrDefault(localKey)
-  if offs.offset == 0 and c.mods[module].hasTIndex:
-    # A `lower`-stage entity (an `@bk` hook routine, OR a module-homed derived
-    # closure-env field added only in the backend) lives in the module's
-    # `.t.nif`, not its `.s.nif`: resolve it through the second (tIndex) index.
-    offs = c.mods[module].tIndex.getOrDefault(symAsStr)
   if offs.offset == 0:
     return nil
   if not alsoConsiderPrivate and offs.vis == Hidden:
