@@ -619,7 +619,7 @@ proc runIcTestFile(inp: string) =
 const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
                  "tcompiletimeglobal", "tsighashstable", "tpureenum", "tgenericoffer",
                  "tconverterreexport", "ttypeoffer", "ttransitiveoffer",
-                 "tmodsymref"]
+                 "tmodsymref", "tmethupref"]
 
 proc icTest(args: string) =
   temp("")

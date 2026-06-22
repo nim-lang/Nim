@@ -157,6 +157,14 @@ proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
   ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
   ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
   ##   not real codegen targets.
+  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
+  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
+  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
+  ##   method's body sub-tree (incl. its closure iterator); transforming it here
+  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
+  ##   identity, baking a conflicting `up` field → "up references do not agree"
+  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
+  ##   at lift time). So a dispatcher is never an owned runtime routine.
   ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
   ## iterator, which is expanded at each call site) and must be emitted by its
   ## owner — else a cross-module `for` over it links to nothing.
@@ -166,6 +174,7 @@ proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
   s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
   s.magic == mNone and
   sfFromGeneric notin s.flags and
+  sfDispatcher notin s.flags and
   {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
   s.typ != nil and not signatureHasMetaType(s.typ) and
   s.ast != nil and s.ast.safeLen > bodyPos and
