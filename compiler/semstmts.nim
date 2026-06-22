@@ -2649,7 +2649,19 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if importantComments(c.config) and proto.ast.comment.len > 0:
       n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
-    if discardedImpl != proto: discardedImpl.ast = nil
+    if discardedImpl != proto:
+      discardedImpl.ast = nil
+      # The impl symbol is discarded in favour of `proto`, but it stays `Complete`
+      # in this module, so `ast2nif.shouldWriteSymDef` still serializes it. With
+      # `sfExported` it would be written importable (`x` marker) and an importer
+      # would load BOTH it and `proto` into the overload set: "ambiguous call;
+      # both foo and foo" (identical signatures). Normally a discarded impl is a
+      # gensym/transient that isn't reached this way, but a `{.async: (raises).}`
+      # forward-decl + impl reconciles HERE with both syms exported. Strip the
+      # export so the design's "forward declarations are never importable" holds —
+      # the def still serializes (other refs may resolve to it) but is invisible
+      # to importer overload resolution; `proto` carries the export.
+      excl(discardedImpl, sfExported)
     popOwner(c)
     pushOwner(c, s)
 
