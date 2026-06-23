@@ -166,8 +166,8 @@ func hasChunkedEncoding(request: Request): bool =
   if request.headers.hasKey(transferEncoding):
     for encoding in seq[string](request.headers[transferEncoding]):
       if "chunked" == encoding.strip:
-        # Returns true if it is both an HttpPost and has chunked encoding
-        return request.reqMethod == HttpPost
+        # Returns true if the method allows a body and has chunked encoding
+        return request.reqMethod in {HttpPost, HttpQuery}
   return false
 
 proc processRequest(
@@ -228,6 +228,7 @@ proc processRequest(
       of "OPTIONS": request.reqMethod = HttpOptions
       of "CONNECT": request.reqMethod = HttpConnect
       of "TRACE": request.reqMethod = HttpTrace
+      of "QUERY": request.reqMethod = HttpQuery
       else:
         asyncCheck request.respondError(Http400)
         return true # Retry processing of request
@@ -269,7 +270,7 @@ proc processRequest(
       request.client.close()
       return false
 
-  if request.reqMethod == HttpPost:
+  if request.reqMethod in {HttpPost, HttpQuery}:
     # Check for Expect header
     if request.headers.hasKey("Expect"):
       if "100-continue" in request.headers["Expect"]:
@@ -329,7 +330,7 @@ proc processRequest(
           return true
 
       inc sizeOrData
-  elif request.reqMethod == HttpPost:
+  elif request.reqMethod in {HttpPost, HttpQuery}:
     await request.respond(Http411, "Content-Length required.")
     return true
 
