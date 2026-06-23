@@ -85,24 +85,41 @@ proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolic
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #, headers: #}".}
   ## .. warning:: Unsafe `newfetchOptions`.
 
-func newfetchOptions*(metod = HttpGet; body: cstring = nil;
-    mode = fmCors; credentials = fcSameOrigin; cache = fchDefault; referrerPolicy = frpNoReferrerWhenDowngrade;
-    keepalive = false; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring,
-    headers: Headers = newHeaders()): FetchOptions =
+func newfetchOptions*(
+    metod = HttpGet,
+    body: cstring = nil,
+    mode = fmCors,
+    credentials = fcSameOrigin,
+    cache = fchDefault,
+    referrerPolicy = frpNoReferrerWhenDowngrade,
+    keepalive = false,
+    redirect = frFollow,
+    referrer = "client".cstring,
+    integrity = "".cstring,
+    headers: Headers = newHeaders(),
+): FetchOptions =
   ## Constructor for `FetchOptions`.
   result = FetchOptions(
-    body: if metod notin {HttpHead, HttpGet}: body else: nil, 
-    mode: cstring($mode), credentials: cstring($credentials), cache: cstring($cache), referrerPolicy: cstring($referrerPolicy),
-    keepalive: keepalive, redirect: cstring($redirect), referrer: referrer, integrity: integrity, headers: headers,
-    metod: (case metod
-      of HttpHead:   "HEAD".cstring
-      of HttpGet:    "GET".cstring
-      of HttpPost:   "POST".cstring
-      of HttpPut:    "PUT".cstring
-      of HttpDelete: "DELETE".cstring
-      of HttpPatch:  "PATCH".cstring
-      else:          "GET".cstring
-    )
+    body: if metod notin {HttpHead, HttpGet}: body else: nil,
+    mode: cstring($mode),
+    credentials: cstring($credentials),
+    cache: cstring($cache),
+    referrerPolicy: cstring($referrerPolicy),
+    keepalive: keepalive,
+    redirect: cstring($redirect),
+    referrer: referrer,
+    integrity: integrity,
+    headers: headers,
+    # metod: (case metod
+    #   of HttpHead:   "HEAD".cstring
+    #   of HttpGet:    "GET".cstring
+    #   of HttpPost:   "POST".cstring
+    #   of HttpPut:    "PUT".cstring
+    #   of HttpDelete: "DELETE".cstring
+    #   of HttpPatch:  "PATCH".cstring
+    #   else:          "GET".cstring
+    # )
+    metod: $metod,
   )
 
 proc fetch*(url: cstring | Request): Future[Response] {.importjs: "$1(#)".}
