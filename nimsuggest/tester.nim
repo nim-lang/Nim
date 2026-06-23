@@ -22,6 +22,13 @@ const
 
 import std/compilesettings
 
+# All tests except the order-sensitive ones below share a single NIF cache. With a
+# per-test cache (the default) every test recompiles `system` from source — ~5s of
+# cold start each, which dominated the suite's wall-clock and blew CI's job timeout.
+# Sharing one cache means `system` (and the rest of the standard library) is compiled
+# cold exactly once; every later test reuses those NIFs warm.
+let sharedNimcache = getTempDir() / "nimsuggest_shared_cache"
+
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = "bin" / addFileExt("nimsuggest_testing", ExeExt)
@@ -74,22 +81,26 @@ proc parseTest(filename: string; epcMode=false): Test =
         # else: ignore empty lines for better readability of the specs
     inc i
   tmp.close()
-  # A few `sug` tests rank results by per-symbol usage counts. Under IC those counts
-  # are not serialized into the NIF files, so a cold start (which re-walks `system`
-  # and saturates the counts of common types) and a warm start (which loads `system`
-  # from NIF without re-walking it) order the results differently — e.g. `string`
-  # outranks `int`, or `seq` drops below `Slice`. The tester runs each test's stdio
-  # variant cold and its EPC variant warm against the shared on-disk NIFs, so for
-  # these order-sensitive tests the two disagree. Give only those a private, freshly
-  # wiped cache so both variants start cold and deterministic. Every other test keeps
-  # reusing the warm cache, which roughly halves the suite's wall-clock time (and
-  # keeps it under CI's job timeout).
-  const coldCacheTests = ["tsug_typedecl.nim", "ttype_decl.nim"]
+  # A few tests need a cold, fully-walked `system` and break against warm NIFs:
+  #  * tsug_typedecl, ttype_decl, tdot4 rank results by per-symbol usage counts,
+  #    which are NOT serialized into the NIF files. A cold start re-walks `system`
+  #    and saturates the counts of common types; a warm start loads `system` from
+  #    NIF without re-walking it, so the order changes — e.g. `string` outranks
+  #    `int`, `seq` drops below `Slice`, or `system.add` displaces `mstrutils.replace`.
+  #  * top_highlight currently SIGSEGVs when highlighting a warm-loaded module
+  #    (a latent bug in the IC warm path — real editor sessions restart nimsuggest
+  #    and hit warm NIFs, so this is worth fixing properly).
+  # Give these a private, freshly wiped cache per variant. Every other test shares
+  # `sharedNimcache` and runs warm (and fast).
+  const coldCacheTests = ["tsug_typedecl.nim", "ttype_decl.nim",
+                          "tdot4.nim", "top_highlight.nim"]
   if extractFilename(filename) in coldCacheTests:
     let nimcache = getTempDir() / ("nimsuggest_cache_" &
       extractFilename(result.dest).changeFileExt("") & (if epcMode: "_epc" else: "_stdin"))
     removeDir(nimcache)
     result.cmd.add " --nimcache:" & nimcache
+  else:
+    result.cmd.add " --nimcache:" & sharedNimcache
   # now that we know the markers, substitute them:
   for a in mitems(result.script):
     a[0] = a[0] % markers
@@ -386,6 +397,9 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
+  # Start every suite run from a clean shared cache so results don't depend on NIFs
+  # left over from a previous run (or an older compiler build).
+  removeDir(sharedNimcache)
   if os.paramCount() > 0:
     let x = os.paramStr(1)
     let xx = expandFilename x
