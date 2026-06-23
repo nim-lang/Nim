@@ -1401,6 +1401,18 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
         g.vmTransfIdgen = idGeneratorForBackend(g.systemModule)
       liftIdgen = g.vmTransfIdgen
     var c = openTransf(g, prc.getModule, "", liftIdgen, flags)
+    # `liftCapturedVars` rewrites captured locals to `:env.field` IN PLACE on the
+    # body it is handed; the env-creation prologue lands only in the returned
+    # wrapper. When the VM drives this transform (running a macro/CT proc), that
+    # in-place mutation corrupts the routine's PRE-transform `ast[bodyPos]` —
+    # under IC exactly the node `getBody` serializes to the module's `.s.nif`. So
+    # snapshot the pristine body before the VM lift and restore `ast[bodyPos]`
+    # afterwards: the VM still consumes the fully-lifted `result`, but `getBody`
+    # keeps faithfully returning the pre-transform body for serialization. The
+    # cg/backend path (`inVMTransform == 0`) is untouched.
+    let vmPristineBody =
+      if g.inVMTransform > 0: copyTree(getBody(g, prc))
+      else: nil
     result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, flags)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
@@ -1410,6 +1422,8 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
       result = g.transformClosureIterator(c.idgen, prc, result)
 
     incl(result.flags, nfTransf)
+    if vmPristineBody != nil:
+      prc.ast[bodyPos] = vmPristineBody
 
     if useCache in flags or prc.typ.callConv == ccInline:
       # genProc for inline procs will be called multiple times from different modules,

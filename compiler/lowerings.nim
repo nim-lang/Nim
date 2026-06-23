@@ -361,6 +361,16 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
     assert t.kind == tyObject
     result = lookupInRecord(t.n, v.itemId)
     if result != nil: break
+    # A LOADED (Sealed) env object carries fields baked by the producer process;
+    # re-lifting a NIF-loaded routine in a consumer (e.g. a macro VM-evaluating an
+    # imported `p2pProtocolBackendImpl`) re-captures the same local under a
+    # divergent process-local id, so the derived-itemId match misses. Fall back to
+    # the name+position identity `addField` uses — SYMMETRIC with `addField`'s
+    # Sealed by-name reuse — so the access resolves the field `addField` produced
+    # instead of failing with `not part of closure object type`.
+    if t.state == Sealed:
+      result = lookupCapturedField(t.n, v)
+      if result != nil: break
     t = t.baseClass
     if t == nil: break
     t = t.skipTypes(skipPtrs)
