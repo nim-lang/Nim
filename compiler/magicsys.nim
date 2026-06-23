@@ -10,7 +10,7 @@
 # Built-in types and compilerprocs are registered here.
 
 import
-  ast, astalgo, msgs, platform, idents,
+  ast, msgs, platform, idents,
   modulegraphs, lineinfos, types
 
 export createMagic
@@ -166,4 +166,4 @@ proc makeAddr*(n: PNode; idgen: IdGenerator): PNode =
     result = n
   else:
     result = newTree(nkHiddenAddr, n)
-    result.typ() = makePtrType(n.typ.skipTypes({tySink}), idgen)
+    result.typ = makePtrType(n.typ.skipTypes({tySink}), idgen)

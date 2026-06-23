@@ -1292,7 +1292,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
       redirectBody = body
     else:
       # Unreachable
-      doAssert(false)
+      raiseAssert "unreachable"
 
     # Check if the redirection is to the same domain or a sub-domain (foo.com
     # -> sub.foo.com)

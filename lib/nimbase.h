@@ -470,6 +470,7 @@ typedef char* NCSTRING;
 
 #define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
+/* unused in codegen after 2.2 but keep for compatibility: */
 #define STRING_LITERAL(name, str, length) \
    static const struct {                   \
      TGenericSeq Sup;                      \

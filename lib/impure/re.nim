@@ -10,6 +10,10 @@
 when defined(js):
   {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
 
+## .. warning:: This module is deprecated.
+##   Use [Regex](https://github.com/nitely/nim-regex).
+##   PCRE library is now at end of life.
+##
 ## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the
@@ -466,7 +470,7 @@ template `=~` *(s: string, pattern: Regex): untyped =
     doAssert parse("   # comment ... ") == """("# comment ... ",)"""
   bind MaxSubpatterns
   when not declaredInScope(matches):
-    var matches {.inject.}: array[MaxSubpatterns, string]
+    var matches {.inject.}: array[MaxSubpatterns, string] = default(array[MaxSubpatterns, string])
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------

@@ -46,7 +46,7 @@ proc isLocation(n: PNode): bool = not n.isValue
 
 proc isLet(n: PNode): bool =
   if n.kind == nkSym:
-    if n.sym.kind in {skLet, skTemp, skForVar}:
+    if n.sym.kind in {skLet, skConst, skTemp, skForVar}: # guard immutable variables
       result = true
     elif n.sym.kind == skParam and skipTypes(n.sym.typ,
                                              abstractInst).kind notin {tyVar}:
@@ -1104,7 +1104,7 @@ proc settype(n: PNode): PType =
 
 proc buildOf(it, loc: PNode; o: Operators): PNode =
   var s = newNodeI(nkCurly, it.info, it.len-1)
-  s.typ() = settype(loc)
+  s.typ = settype(loc)
   for i in 0..<it.len-1: s[i] = it[i]
   result = newNodeI(nkCall, it.info, 3)
   result[0] = newSymNode(o.opContains)
@@ -1170,7 +1170,7 @@ proc buildProperFieldCheck(access, check: PNode; o: Operators): PNode =
       # set field name to discriminator field name
       a[1] = check[2]
       # set discriminator field type: important for `neg`
-      a.typ() = check[2].typ
+      a.typ = check[2].typ
       result[2] = a
       # 'access.kind != nkDotExpr' can happen for object constructors
       # which we don't check yet

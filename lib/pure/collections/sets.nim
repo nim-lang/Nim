@@ -130,7 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
     var a = initHashSet[int]()
     a.incl(3)
     assert len(a) == 1
-
+  
   result = default(HashSet[A])
   result.init(initialSize)
 
@@ -246,7 +246,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
   result = initHashSet[A](keys.len)
   for key in items(keys): result.incl(key)
 
-iterator items*[A](s: HashSet[A]): A =
+iterator items*[A](s: HashSet[A]): lent A =
   ## Iterates over elements of the set `s`.
   ##
   ## If you need a sequence with the elements you can use `sequtils.toSeq
@@ -671,7 +671,8 @@ proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
     var a = initOrderedSet[int]()
     a.incl(3)
     assert len(a) == 1
-
+  
+  result = OrderedSet[A]()
   result.init(initialSize)
 
 proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
@@ -890,7 +891,7 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ##   ```
   dollarImpl()
 
-iterator items*[A](s: OrderedSet[A]): A =
+iterator items*[A](s: OrderedSet[A]): lent A =
   ## Iterates over keys in the ordered set `s` in insertion order.
   ##
   ## If you need a sequence with the elements you can use `sequtils.toSeq

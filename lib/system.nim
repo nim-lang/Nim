@@ -54,7 +54,12 @@ type
     typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
     typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
+  TypeOfModifiers* = enum  ## Modes to handle type modifiers `var`, `sink` and `lent`.
+    CompatibleTypeModifiers,  ## Remove or keep type modifiers in the same way as old typeof. That means keep `sink` but remove `var` and `lent`.
+    RemoveTypeModifiers,      ## Remove type modifiers.
+    KeepTypeModifiers,        ## Keep type modifiers.
+
+proc typeof*(x: untyped; mode = typeOfIter; modifierMode = CompatibleTypeModifiers): typedesc {.
   magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin `typeof` operation for accessing the type of an expression.
   ## Since version 0.20.0.
@@ -75,6 +80,11 @@ proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
       # this would give: Error: attempting to call routine: 'myFoo2'
       # since `typeOfProc` expects a typed expression and `myFoo2()` can
       # only be used in a `for` context.
+
+    proc varParam(x: var int;
+                  y: typeof(x, modifierMode = RemoveTypeModifiers);
+                  z: typeof(x, modifierMode = KeepTypeModifiers)) = discard
+    doAssert varParam is proc (x: var int; y: int; z: var int) {.nimcall.}
 
 proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `or` meta class.
@@ -125,7 +135,7 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 const ThisIsSystem = true
 
-const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc)
+const arcLikeMem = defined(gcArc) or defined(gcAtomicArc) or defined(gcOrc) or defined(gcYrc)
 
 when defined(nimAllowNonVarDestructor) and arcLikeMem:
   proc new*[T](a: var ref T, finalizer: proc (x: T) {.nimcall.}) {.
@@ -166,7 +176,7 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.}
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect, nodestroy.} =
   result = x
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(x)
@@ -356,7 +366,7 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ## See also:
   ## * `high(string) <#high,string>`_
 
-when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcYrc) and not defined(gcAtomicArc):
   proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
     ## Use this instead of `=` for a `shallow copy`:idx:.
     ##
@@ -407,7 +417,7 @@ when defined(nimHasDup):
 
 proc `=sink`*[T](x: var T; y: T) {.inline, nodestroy, magic: "Asgn".} =
   ## Generic `sink`:idx: implementation that can be overridden.
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
     x = y
   else:
     shallowCopy(x, y)
@@ -555,9 +565,6 @@ type
 
 when defined(nimIcIntegrityChecks):
   include "system/exceptions"
-else:
-  import system/exceptions
-  export exceptions
 
 when defined(js) or defined(nimdoc):
   type
@@ -630,7 +637,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ##   #inputStrings[3] = "out of bounds"
   ##   ```
 
-proc newSeq*[T](len = 0.Natural): seq[T] =
+proc newSeq*[T](len = 0.Natural): seq[T] {.noSideEffect.} =
   ## Creates a new sequence of type `seq[T]` with length `len`.
   ##
   ## Note that the sequence will be filled with zeroed entries.
@@ -1462,6 +1469,7 @@ proc isNil*[T: proc | iterator {.closure.}](x: T): bool {.noSideEffect, magic: "
   ## `== nil`.
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
+proc canFormCycles(t: typedesc): bool {.magic: "TypeTrait".}
 
 when defined(nimHasTopDownInference):
   # magic used for seq type inference
@@ -1623,6 +1631,44 @@ when notJSnotNims:
   import system/ansi_c
   include system/sysmem
 
+when notJSnotNims and defined(nimSeqsV2):
+  when defined(nimsso):
+    const nimStrVersion {.core.} = 3
+  else:
+    const nimStrVersion {.core.} = 2
+
+    type
+      NimStrPayloadBase = object
+        cap: int
+
+      NimStrPayload {.core.} = object
+        cap: int
+        data: UncheckedArray[char]
+
+      NimStringV2 {.core.} = object
+        len: int
+        p: ptr NimStrPayload ## can be nil if len == 0.
+
+when defined(windows):
+  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
+  const ERROR_BAD_EXE_FORMAT = 193
+
+when notJSnotNims:
+  when defined(nimSeqsV2) and not defined(nimsso):
+    proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.}
+
+  when hostOS != "standalone" and hostOS != "any":
+    type
+      LibHandle = pointer       # private type
+      ProcAddr = pointer        # library loading and loading of procs:
+
+    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
+    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
+    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
+
+    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
+
+    include "system/dyncalls"
 
 {.push stackTrace: off.}
 
@@ -1651,9 +1697,44 @@ when not defined(js) and defined(nimV2):
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
 
+when not defined(nimIcIntegrityChecks):
+  import system/exceptions
+  export exceptions
+
 when notJSnotNims and defined(nimSeqsV2):
-  include "system/strs_v2"
+  when defined(nimsso):
+    include "system/strs_v3"
+  else:
+    include "system/strs_v2"
   include "system/seqs_v2"
+
+when not (notJSnotNims and defined(nimSeqsV2)):
+  # Fallback implementations for backends where strs_v2/v3 is not included.
+  # Needed so modules imported by system (e.g. syncio) can reference these without guards.
+  when notJSnotNims:
+    # mm:refc: string = ptr NimStringDesc with data: UncheckedArray[char]
+    proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+      {.cast(noSideEffect).}: s.setLen(newLen)
+      let ns = cast[NimString](s)
+      if ns == nil: nil
+      else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+    proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
+    template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
+      let ns = cast[NimString](s)
+      if ns == nil: nil
+      else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+    template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] =
+      ## Same as `readRawData` here: the data lives in a heap `NimStringDesc` at a
+      ## stable address, so the pointer already survives moves of `s`. Takes `s` by
+      ## `var` to match the `--strings:sso` version, so code can prepare for that
+      ## upgrade without `when declared` guards.
+      readRawData(s, start)
+  else:
+    # JS/nimscript: callers are guarded by whenNotVmJsNims/when not defined(js)
+    proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} = nil
+    proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
+    template readRawData*(s: string; start = 0): ptr UncheckedArray[char] = nil
+    template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] = nil
 
 when not defined(js):
   template newSeqImpl(T, len) =
@@ -1704,6 +1785,9 @@ when not defined(js):
     else:
       {.error: "The type T cannot contain managed memory or have destructors".}
 
+  when defined(nimsso) and not declared(newStringUninitWasDeclared):
+    proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.}
+
   proc newStringUninit*(len: Natural): string {.noSideEffect.} =
     ## Returns a new string of length `len` but with uninitialized
     ## content. One needs to fill the string character after character
@@ -1714,17 +1798,20 @@ when not defined(js):
     when nimvm:
       result = newString(len)
     else:
-      result = newStringOfCap(len)
-      {.cast(noSideEffect).}:
-        when defined(nimSeqsV2):
-          let s = cast[ptr NimStringV2](addr result)
-          if len > 0:
+      when defined(nimsso):
+        result = newStringUninitImpl(len)
+      else:
+        result = newStringOfCap(len)
+        {.cast(noSideEffect).}:
+          when defined(nimSeqsV2):
+            let s = cast[ptr NimStringV2](addr result)
+            if len > 0:
+              s.len = len
+              s.p.data[len] = '\0'
+          else:
+            let s = cast[NimString](result)
             s.len = len
-            s.p.data[len] = '\0'
-        else:
-          let s = cast[NimString](result)
-          s.len = len
-          s.data[len] = '\0'
+            s.data[len] = '\0'
 else:
   proc newStringUninit*(len: Natural): string {.
     magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -2207,10 +2294,13 @@ when not defined(js) or defined(nimscript):
       else: result = 0
     else:
       when not defined(nimscript): # avoid semantic checking
-        let minlen = min(x.len, y.len)
-        result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
-        if result == 0:
-          result = x.len - y.len
+        when defined(nimsso):
+          result = cmpStrings(x, y)
+        else:
+          let minlen = min(x.len, y.len)
+          result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
+          if result == 0:
+            result = x.len - y.len
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
@@ -2248,6 +2338,37 @@ when not defined(js) and declared(alloc0) and declared(dealloc):
       inc(i)
     dealloc(a)
 
+when notJSnotNims and hostOS != "standalone":
+  proc getCurrentException*(): ref Exception {.compilerRtl, inl, gcsafe.} =
+    ## Retrieves the current exception; if there is none, `nil` is returned.
+    result = currException
+
+  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, gcsafe, nodestroy.} =
+    # .nodestroy here so that we do not produce a write barrier as the
+    # C codegen only uses it in a borrowed way:
+    result = currException
+
+  proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
+    ## Retrieves the error message that was attached to the current
+    ## exception; if there is none, `""` is returned.
+    return if currException == nil: "" else: currException.msg
+
+  proc setCurrentException*(exc: ref Exception) {.inline, gcsafe.} =
+    ## Sets the current exception.
+    ##
+    ## .. warning:: Only use this if you know what you are doing.
+    currException = exc
+
+  proc raiseDefect() {.compilerRtl.} =
+    let e = getCurrentException()
+    if e of Defect:
+      reportUnhandledError(e)
+      rawQuit(1)
+
+elif defined(nimscript):
+  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
+  proc raiseDefect*() {.compilerRtl.} = discard
+
 when not defined(js):
   when hasThreadSupport:
     when hostOS != "standalone":
@@ -2269,19 +2390,6 @@ when not defined(js):
 
 
 when notJSnotNims:
-  when hostOS != "standalone" and hostOS != "any":
-    type
-      LibHandle = pointer       # private type
-      ProcAddr = pointer        # library loading and loading of procs:
-
-    proc nimLoadLibrary(path: string): LibHandle {.compilerproc, hcrInline, nonReloadable.}
-    proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, hcrInline, nonReloadable.}
-    proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, hcrInline, nonReloadable.}
-
-    proc nimLoadLibraryError(path: string) {.compilerproc, hcrInline, nonReloadable.}
-
-    include "system/dyncalls"
-
   import system/countbits_impl
   include "system/sets"
 
@@ -2360,37 +2468,6 @@ when notJSnotNims and hasThreadSupport and hostOS != "standalone":
     include "system/channels_builtin"
 
 
-when notJSnotNims and hostOS != "standalone":
-  proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
-    ## Retrieves the current exception; if there is none, `nil` is returned.
-    result = currException
-
-  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
-    # .nodestroy here so that we do not produce a write barrier as the
-    # C codegen only uses it in a borrowed way:
-    result = currException
-
-  proc getCurrentExceptionMsg*(): string {.inline, benign.} =
-    ## Retrieves the error message that was attached to the current
-    ## exception; if there is none, `""` is returned.
-    return if currException == nil: "" else: currException.msg
-
-  proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
-    ## Sets the current exception.
-    ##
-    ## .. warning:: Only use this if you know what you are doing.
-    currException = exc
-
-  proc raiseDefect() {.compilerRtl.} =
-    let e = getCurrentException()
-    if e of Defect:
-      reportUnhandledError(e)
-      rawQuit(1)
-
-elif defined(nimscript):
-  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
-  proc raiseDefect*() {.compilerRtl.} = discard
-
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
   when (defined(profiler) or defined(memProfiler)):
@@ -2434,7 +2511,7 @@ when notJSnotNims:
       else:
         let c3 = cast[proc(y: int; env: pointer): int {.nimcall.}](p)
         echo c3(3, e)
-
+    result = nil
     {.emit: """
     `result` = (void*)`x`.ClP_0;
     """.}
@@ -2442,12 +2519,14 @@ when notJSnotNims:
   proc rawEnv*[T: proc {.closure.} | iterator {.closure.}](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
     ## This is not available for the JS target.
+    result = nil
     {.emit: """
     `result` = `x`.ClE_0;
     """.}
 
 proc finished*[T: iterator {.closure.}](x: T): bool {.noSideEffect, inline, magic: "Finished".} =
   ## It can be used to determine if a first class iterator has finished.
+  result = false
   when defined(js):
     # TODO: mangle `:state`
     {.emit: """
@@ -2563,7 +2642,7 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(gcYrc) and not defined(gcAtomicArc):
   proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
     ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
     ## perform deep copies of `s`.
@@ -2632,7 +2711,9 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+      when defined(nimsso):
+        x[j+item.len] = x[j]
+      elif defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
         x[j+item.len] = move x[j]
       else:
         shallowCopy(x[j+item.len], x[j])
@@ -2914,7 +2995,9 @@ proc substr*(a: openArray[char]): string =
   result = newStringUninit(a.len)
   whenNotVmJsNims():
     if a.len > 0:
-      copyMem(result[0].addr, a[0].unsafeAddr, a.len)
+      {.cast(noSideEffect).}:
+        copyMem(beginStore(result, a.len), a[0].unsafeAddr, a.len)
+        endStore(result)
   do:
     for i, ch in a:
       result[i] = ch
@@ -2949,7 +3032,8 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
   result = newStringUninit(L)
   whenNotVmJsNims():
     if L > 0:
-      copyMem(result[0].addr, s[first].unsafeAddr, L)
+      copyMem(beginStore(result, L), readRawData(s, first), L)
+      endStore(result)
   do:
     for i in 0..<L:
       result[i] = s[i + first]
@@ -3054,10 +3138,7 @@ when notJSnotNims:
                     not defined(nuttx) and
                     hostOS != "any"
 
-  proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    raise newException(IOError, msg)
-
-  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
+  proc echoBinSafe(args: openArray[string]) {.compilerproc, raises: [].} =
     when defined(androidNDK):
       # When running nim in android app, stdout goes nowhere, so echo gets ignored
       # To redirect echo to the android logcat, use -d:androidNDK
@@ -3079,7 +3160,7 @@ when notJSnotNims:
       for s in args:
         when defined(windows):
           # equivalent to syncio.writeWindows
-          proc writeWindows(f: CFilePtr; s: string; doRaise = false) =
+          proc writeWindows(f: CFilePtr; s: string) =
             # Don't ask why but the 'printf' family of function is the only thing
             # that writes utf-8 strings reliably on Windows. At least on my Win 10
             # machine. We also enable `setConsoleOutputCP(65001)` now by default.
@@ -3090,13 +3171,11 @@ when notJSnotNims:
               if s[i] == '\0':
                 let w = c_fputc('\0', f)
                 if w != 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i
               else:
                 let w = c_fprintf(f, "%s", unsafeAddr s[i])
                 if w <= 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i, w
           writeWindows(cstdout, s)
@@ -3167,3 +3246,6 @@ when hostOS == "standalone":
   # ssymbols being duplicated.
   proc nimPanic(s: string) {.exportc, noreturn.} = panic(s)
   proc nimRawoutput(s: string) {.exportc.} = rawoutput(s)
+
+when not declared(newStringUninitWasDeclared):
+  proc newStringUninitImpl(len: Natural): string {.noSideEffect, inline.} = discard

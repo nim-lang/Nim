@@ -52,7 +52,7 @@ func addChars[T](result: var string, x: T, start: int, n: int) {.inline, enforce
     for i in 0..<n: result[old + i] = x[start + i]
   when nimvm: impl
   else:
-    when defined(js) or defined(nimscript): impl
+    when defined(js) or defined(nimscript) or defined(nimsso): impl
     else:
       {.noSideEffect.}:
         copyMem result[old].addr, x[start].unsafeAddr, n
@@ -117,3 +117,5 @@ proc addInt*(result: var string; x: int64) {.enforceNoRaises.} =
 
 proc addInt*(result: var string; x: int) {.inline, enforceNoRaises.} =
   addInt(result, int64(x))
+
+{.pop.}

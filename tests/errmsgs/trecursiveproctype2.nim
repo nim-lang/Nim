@@ -1,5 +1,5 @@
 discard """
-  errormsg: "illegal recursion in type 'B'"
+  errormsg: "illegal recursion in type 'A'"
   line: 9
 """
 

@@ -1,3 +1,5 @@
+{.push stack_trace: off.}
+
 proc succ*[T: Ordinal, V: SomeInteger](x: T, y: V = 1): T {.magic: "Succ", noSideEffect.} =
   ## Returns the `y`-th successor (default: 1) of the value `x`.
   ##
@@ -412,3 +414,5 @@ proc `%%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) mod cast[u
 proc `%%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) mod cast[uint16](y))
 proc `%%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) mod cast[uint32](y))
 proc `%%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) mod cast[uint64](y))
+
+{.pop.}

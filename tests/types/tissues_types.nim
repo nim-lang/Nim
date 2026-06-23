@@ -118,7 +118,7 @@ block:
   s(something, otherthing)
 
 block:
-  type
+  type 
     Test = set
     Test2 = seq
     Test3 = array

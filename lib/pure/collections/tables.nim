@@ -281,7 +281,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   result = default(Table[A, B])
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: var Table[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -494,7 +494,7 @@ proc len*[A, B](t: Table[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: var Table[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -628,7 +628,7 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
     assert t[1].uid == 1314
 
   mixin rawGet
-  var hc: Hash
+  var hc: Hash = default(Hash)
   var index = rawGet(t, key, hc)
   let hasKey = index >= 0
   if hasKey:
@@ -950,7 +950,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
 
   result = t[][key]
 
-proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: TableRef[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -1107,7 +1107,7 @@ proc len*[A, B](t: TableRef[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: TableRef[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -1359,7 +1359,7 @@ proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: sink B, hc: Hash, h: Hash) =
+                     key: sink A, val: sink B, hc: Hash, h: Hash) =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
@@ -1411,7 +1411,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
   result = default(OrderedTable[A, B])
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -1609,7 +1609,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: var OrderedTable[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -1969,7 +1969,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
       echo a['z']
   result = t[][key]
 
-proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
+proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: sink A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -2110,7 +2110,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
+proc add*[A, B](t: OrderedTableRef[A, B], key: sink A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
@@ -2471,8 +2471,7 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   for h in 0 .. high(t.data):
     if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
       minIdx = h
-  result.key = t.data[minIdx].key
-  result.val = t.data[minIdx].val
+  result = (t.data[minIdx].key, t.data[minIdx].val)
 
 proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the largest `val`. Efficiency: O(n)
@@ -2483,8 +2482,7 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   var maxIdx = 0
   for h in 1 .. high(t.data):
     if t.data[maxIdx].val < t.data[h].val: maxIdx = h
-  result.key = t.data[maxIdx].key
-  result.val = t.data[maxIdx].val
+  result = (t.data[maxIdx].key, t.data[maxIdx].val)
 
 proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## Returns true if `key` is in the table `t`.
@@ -3009,16 +3007,19 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
 proc hash*[K,V](s: Table[K,V]): Hash =
+  result = Hash(0)
   for p in pairs(s):
     result = result xor hash(p)
   result = !$result
 
 proc hash*[K,V](s: OrderedTable[K,V]): Hash =
+  result = Hash(0)
   for p in pairs(s):
     result = result !& hash(p)
   result = !$result
 
 proc hash*[V](s: CountTable[V]): Hash =
+  result = Hash(0)
   for p in pairs(s):
     result = result xor hash(p)
   result = !$result

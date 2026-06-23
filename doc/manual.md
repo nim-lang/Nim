@@ -34,10 +34,10 @@ To learn how to compile Nim programs and generate documentation see
 the [Compiler User Guide](nimc.html) and the [DocGen Tools Guide](docgen.html).
 
 The language constructs are explained using an extended BNF, in which `(a)*`
-means 0 or more `a`'s, `a+` means 1 or more `a`'s, and `(a)?` means an
+means 0 or more *a*'s, `a+` means 1 or more *a*'s, and `(a)?` means an
 optional *a*. Parentheses may be used to group elements.
 
-`&` is the lookahead operator; `&a` means that an `a` is expected but
+`&` is the lookahead operator; `&a` means that an *a* is expected but
 not consumed. It will be consumed in the following rule.
 
 The `|`, `/` symbols are used to mark alternatives and have the lowest
@@ -1023,6 +1023,9 @@ These are the major type classes:
 * reference (pointer) type
 * procedural type
 * generic type
+
+The compiler's internal type zoo is richer than this summary suggests:
+some types that are structurally equal still differ in backend representation.
 
 
 Ordinal types
@@ -2173,6 +2176,10 @@ Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. `nil` is
 an allowed value for a variable of a procedural type.
+
+Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
 Examples:
 
@@ -6116,40 +6123,48 @@ instantiations cross multiple different modules:
 
   ```nim
   # module A
+  type O* = object
+
   proc genericA*[T](x: T) =
     mixin init
     init(x)
   ```
 
+  ```nim
+  # module C
+  import A
+
+  proc init*(x: O) = discard
+  ```
 
   ```nim
-  import C
-
   # module B
+  import A, C
+
   proc genericB*[T](x: T) =
-    # Without the `bind init` statement C's init proc is
-    # not available when `genericB` is instantiated:
+    # Without the `bind init` statement, C's `init` proc is not
+    # available when `genericA` is instantiated through `genericB`
+    # from `module main`, which does not import C:
     bind init
     genericA(x)
   ```
 
   ```nim
-  # module C
-  type O = object
-  proc init*(x: var O) = discard
-  ```
-
-  ```nim
   # module main
-  import B, C
+  import A, B
 
-  genericB O()
+  genericB(O())
   ```
 
-In module B has an `init` proc from module C in its scope that is not
-taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx: these
-symbols by a `bind` statement inside `genericB`.
+Because `genericA` uses `mixin init`, `init` is an open symbol that is
+resolved when `genericA` is instantiated. Here `genericA` is instantiated
+through `genericB`, whose final instantiation happens in `module main`.
+Since `module main` does not import `module C`, `init` is not in scope at
+that point, and the instantiation fails with ``undeclared identifier: 'init'``.
+The `bind init` statement inside `genericB` forwards the `init` symbol that
+is visible in `module B` into the instantiation of `genericA`, which makes
+the example compile. This `bind`, which re-exposes a symbol to a nested
+generic instantiation, is a `delegating bind`:idx:.
 
 
 Templates
@@ -7989,6 +8004,9 @@ underlying C `struct`:c: in a `sizeof` expression:
            pure, incompleteStruct.} = object
   ```
 
+Attempting to use `sizeof` on an `incompleteStruct` type at compile-time
+will error with "'sizeof' cannot be used with '.incompleteStruct' types".
+
 
 CompleteStruct pragma
 ---------------------
@@ -8867,7 +8885,7 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
+if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
 parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
 When an `importcpp` type has a `byref` pragma, these params translate to
 C++ references `&`.
@@ -9216,3 +9234,118 @@ This means the following compiles (for now) even though it really should not:
     inc i
     access a[i].v
   ```
+
+Strict definitions and `out` parameters
+=======================================
+
+*every* local variable must be initialized explicitly before it can be used:
+
+  ```nim
+  proc test =
+    var s: seq[string]
+    s.add "abc" # invalid!
+  ```
+
+Needs to be written as:
+
+  ```nim
+  proc test =
+    var s: seq[string] = @[]
+    s.add "abc" # valid!
+  ```
+
+A control flow analysis is performed in order to prove that a variable has been written to
+before it is used. Thus the following is valid:
+
+  ```nim
+  proc test(cond: bool) =
+    var s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+    s.add "abc" # valid!
+  ```
+
+In this example every path does set `s` to a value before it is used.
+
+  ```nim
+  proc test(cond: bool) =
+    let s: seq[string]
+    if cond:
+      s = @["y"]
+    else:
+      s = @[]
+  ```
+
+`let` statements are allowed to not have an initial value, but every path should set `s` to a value before it is used.
+
+
+`out` parameters
+----------------
+
+An `out` parameter is like a `var` parameter but it must be written to before it can be used:
+
+  ```nim
+  proc myopen(f: out File; name: string): bool =
+    f = default(File)
+    result = open(f, name)
+  ```
+
+While it is usually the better style to use the return type in order to return results API and ABI
+considerations might make this infeasible. Like for `var T` Nim maps `out T` to a hidden pointer.
+For example POSIX's `stat` routine can be wrapped as:
+
+  ```nim
+  proc stat*(a1: cstring, a2: out Stat): cint {.importc, header: "<sys/stat.h>".}
+  ```
+
+When the implementation of a routine with output parameters is analysed, the compiler
+checks that every path before the (implicit or explicit) return does set every output
+parameter:
+
+  ```nim
+  proc p(x: out int; y: out string; cond: bool) =
+    x = 4
+    if cond:
+      y = "abc"
+    # error: not every path initializes 'y'
+  ```
+
+
+Out parameters and exception handling
+-------------------------------------
+
+The analysis should take exceptions into account (but currently does not):
+
+  ```nim
+  proc p(x: out int; y: out string; cond: bool) =
+    x = canRaise(45)
+    y = "abc" # <-- error: not every path initializes 'y'
+  ```
+
+Once the implementation takes exceptions into account it is easy enough to
+use `outParam = default(typeof(outParam))` in the beginning of the proc body.
+
+Out parameters and inheritance
+------------------------------
+
+It is not valid to pass an lvalue of a supertype to an `out T` parameter:
+
+  ```nim
+  type
+    Superclass = object of RootObj
+      a: int
+    Subclass = object of Superclass
+      s: string
+
+  proc init(x: out Superclass) =
+    x = Superclass(a: 8)
+
+  var v: Subclass
+  init v
+  use v.s # the 's' field was never initialized!
+  ```
+
+However, in the future this could be allowed and provide a better way to write object
+constructors that take inheritance into account.

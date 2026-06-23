@@ -159,7 +159,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasEnsureMove")
   defineSymbol("nimHasNoReturnError")
 
-  defineSymbol("nimUseStrictDefs")
+  defineSymbol("nimUseStrictDefs") # deadcode
   defineSymbol("nimHasNolineTooLong")
 
   defineSymbol("nimHasCastExtendedVm")
@@ -172,7 +172,8 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDefaultFloatRoundtrip")
   defineSymbol("nimHasXorSet")
 
-  defineSymbol("nimHasPreviewDuplicateModuleError")
   defineSymbol("nimHasSetLengthSeqUninitMagic")
+  defineSymbol("nimHasPreviewDuplicateModuleError")
 
   defineSymbol("nimHasImplicitRangeConversion")
+

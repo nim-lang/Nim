@@ -36,7 +36,7 @@ import
   magicsys, options, lowerings, lineinfos, transf, astmsgs,
   treetab
 
-from modulegraphs import getBody
+from modulegraphs import getBody, recordIcImplDep
 
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
@@ -46,7 +46,7 @@ const
 
 when debugEchoCode:
   import std/private/asciitables
-when hasFFI:
+when defined(nimHasLibFFI): # == hasFFI; spelled out for the IC dep scanner
   import evalffi
 
 type
@@ -786,8 +786,12 @@ proc genBinaryABCD(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp2)
   c.freeTemp(tmp3)
 
-template sizeOfLikeMsg(name): string =
-  "'$1' requires '.importc' types to be '.completeStruct'" % [name]
+template sizeOfLikeMsg(name, incompleteStruct): string =
+  block:
+    if incompleteStruct:
+      "'$1' cannot be used with '.incompleteStruct' types" % [name]
+    else:
+      "'$1' requires '.importc' types to be '.completeStruct'" % [name]
 
 proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
@@ -1476,11 +1480,14 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     else:
       globalError(c.config, n.info, "expandToAst requires a call expression")
   of mSizeOf:
-    globalError(c.config, n.info, sizeOfLikeMsg("sizeof"))
+    let arg = n[1].typ.skipTypes({tyTypeDesc})
+    globalError(c.config, n.info, sizeOfLikeMsg("sizeof", tfIncompleteStruct in arg.flags))
   of mAlignOf:
-    globalError(c.config, n.info, sizeOfLikeMsg("alignof"))
+    let arg = n[1].typ.skipTypes({tyTypeDesc})
+    globalError(c.config, n.info, sizeOfLikeMsg("alignof", tfIncompleteStruct in arg.flags))
   of mOffsetOf:
-    globalError(c.config, n.info, sizeOfLikeMsg("offsetof"))
+    let arg = n[1].typ.skipTypes({tyTypeDesc})
+    globalError(c.config, n.info, sizeOfLikeMsg("offsetof", tfIncompleteStruct in arg.flags))
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
@@ -1522,9 +1529,9 @@ proc canElimAddr(n: PNode; idgen: IdGenerator): PNode =
       result = copyNode(n[0])
       result.add m[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        result.typ() = n.typ
+        result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ() = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
     if m.kind in {nkDerefExpr, nkHiddenDeref}:
@@ -1533,9 +1540,9 @@ proc canElimAddr(n: PNode; idgen: IdGenerator): PNode =
       result.add n[0][0]
       result.add m[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        result.typ() = n.typ
+        result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ() = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, idgen)
   else:
     if n[0].kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( deref ( x )) --> x
@@ -1588,7 +1595,7 @@ proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
 proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
   if v.position == 0:
-    v.position = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
+    v.positionImpl = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
 template cannotEval(c: PCtx; n: PNode) =
   if c.config.cmd == cmdCheck and c.config.m.errorOutputs != {}:
@@ -1736,7 +1743,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
 
 proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   var n = newNode(nkType)
-  n.typ() = t
+  n.typ = t
   genLit(c, n, dest)
 
 proc isEmptyBody(n: PNode): bool =
@@ -1775,8 +1782,15 @@ proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
   # This is rather hard to support, due to the laziness of the VM code
   # generator. See tests/compile/tmacro2 for why this is necessary:
   #   var decls{.compileTime.}: seq[NimNode] = @[]
+  # Load the slot's ADDRESS (not its value): the lazy initializer must REPLACE
+  # the null slot, which `opcWrDeref` only does for an `rkNodeAddr` target
+  # (`nAddr[] = n` for refs). With `opcLdGlobal` the slot value is loaded and for
+  # a ref-typed global that value is an `nkNilLit` ("nil ref"); writing through it
+  # hits the VM's nil-deref guard ("attempt to access a nil address"). This path
+  # is reached for compile-time globals whose defining module is restored from a
+  # NIF under `nim ic` (so `setupCompileTimeVar` never ran to eagerly init them).
   let dest = c.getTemp(s.typ)
-  c.gABx(n, opcLdGlobal, dest, s.position)
+  c.gABx(n, opcLdGlobalAddr, dest, s.position)
   if s.astdef != nil:
     let tmp = c.genx(s.astdef)
     c.genAdditionalCopy(n, opcWrDeref, dest, 0, tmp)
@@ -1831,7 +1845,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       # see tests/t99bott for an example that triggers it:
       cannotEval(c, n)
 
-template needsRegLoad(): untyped =
+template needsRegLoad(): untyped {.dirty.} =
   {gfNode, gfNodeAddr} * flags == {} and
     fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
 
@@ -1842,6 +1856,8 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   if dest < 0: dest = c.getTemp(n.typ)
   if opc in {opcLdArrAddr, opcLdStrIdxAddr} and gfNodeAddr in flags:
     c.gABC(n, opc, dest, a, b)
+    if c.prc.regInfo[a].kind >= slotTempUnknown:
+      c.prc.regInfo[a].kind = slotTempPerm
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
@@ -1858,6 +1874,8 @@ proc genObjAccessAux(c: PCtx; n: PNode; a, b: int, dest: var TDest; flags: TGenF
   if dest < 0: dest = c.getTemp(n.typ)
   if {gfNodeAddr} * flags != {}:
     c.gABC(n, opcLdObjAddr, dest, a, b)
+    if a < c.prc.regInfo.len and c.prc.regInfo[a].kind >= slotTempUnknown:
+      c.prc.regInfo[a].kind = slotTempPerm
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opcLdObj, cc, a, b)
@@ -1905,7 +1923,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let fieldName = $accessExpr[1]
   let msg = genFieldDefect(c.config, fieldName, disc.sym)
   let strLit = newStrNode(msg, accessExpr[1].info)
-  strLit.typ() = strType
+  strLit.typ = strType
   c.genLit(strLit, msgReg)
   c.gABC(n, opcInvalidField, msgReg, discVal)
   c.freeTemp(discVal)
@@ -2456,6 +2474,10 @@ proc optimizeJumps(c: PCtx; start: int) =
 proc genProc(c: PCtx; s: PSym): VmProcInfo =
   result = c.procToCodePos.getOrDefault(s.id, NoVmProcInfo)
   if result.usedRegisters < 0:
+    # compile-time execution consumes this routine's BODY: under IC that is a
+    # NeedsImpl dependency on the routine's home module (iface-cookie gating
+    # alone would miss body-only edits, e.g. `const x = dep.foo()`).
+    recordIcImplDep(c.graph, s)
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
@@ -2469,7 +2491,9 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
+    inc c.graph.inVMTransform
     let body = transformBody(c.graph, c.idgen, s, if isCompileTimeProc(s): {} else: {useCache})
+    dec c.graph.inVMTransform
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

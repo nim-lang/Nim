@@ -24,7 +24,7 @@ proc main() =
     template formatValue(result: var string; value: Obj; specifier: string) =
       result.formatValue($value, specifier)
 
-    var o: Obj
+    var o: Obj = default(Obj)
     doAssert fmt"{o}" == "foobar"
     doAssert fmt"{o:10}" == "foobar    "
 
@@ -292,7 +292,7 @@ proc main() =
     let x = 3.14
     doAssert fmt"{(if x!=0: 1.0/x else: 0):.5}" == "0.31847"
     doAssert fmt"""{(block:
-      var res: string
+      var res: string = ""
       for i in 1..15:
         res.add (if i mod 15 == 0: "FizzBuzz"
           elif i mod 5 == 0: "Buzz"
@@ -544,6 +544,12 @@ proc main() =
     var x = 5
     doAssert fmt"{(x=7;123.456)=:13e}" == "(x=7;123.456)= 1.234560e+02"
     doAssert x==7
+
+  block: # binary operators in interpolated expressions
+    let n = 1
+    doAssert &"{n-1}" == "0"
+    doAssert fmt"{n-1}" == "0"
+
   block: #curly bracket expressions and tuples
     proc formatValue(result: var string; value:Table|bool|JsonNode; specifier:string) = result.add $value
 
@@ -564,7 +570,7 @@ proc main() =
     doAssert fmt"""{(if true: "'" & ')' else: "")}""" == "')"
 
   block: # issue #20381
-    var ss: seq[string]
+    var ss: seq[string] = @[]
     template myTemplate(s: string) =
       ss.add s
       ss.add s

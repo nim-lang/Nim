@@ -239,7 +239,7 @@ template main {.dirty.} =
     # todo
     discard "fixme"
   else:
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcYrc):
       block: #seq
         var x = newSeq[Object](10)
         let y = x[0]
@@ -673,11 +673,11 @@ template main {.dirty.} =
         result = v
 
       proc failed(): Result[int, string] =
-        discard
+        result = default(Result[int, string])
 
       proc calling(): Result[int, string] =
         let _ = ? failed()
-        doAssert false
+        raiseAssert "false"
 
       let r = calling()
       doAssert assigned
@@ -812,6 +812,15 @@ template main {.dirty.} =
 static: main()
 main()
 
+block:
+  type
+    MyTyp = ref object
+      thing = initTable[string,string]()
+
+  var t = MyTyp()
+  t.thing[""] = ""
+
+
 type
   Thing = object
     a: int = 100 # this is fine
@@ -825,3 +834,36 @@ proc overloaded[T: object](x: T) =
     overloaded(v)
 
 overloaded(Thing())
+
+block:
+  type
+    Foo = object
+      x = Bar()
+
+    Bar = object
+      x: int
+
+  var f = Foo()
+  doassert f.x.x == 0
+
+block:
+  type
+    Foo = object
+      x = Bar(x: 55)
+
+    Bar = object
+      x: int
+
+  var f = Foo()
+  doassert f.x.x == 55
+
+block:
+  type
+    Bar = object
+      x: int
+
+    Foo = object
+      x = Bar()
+
+  var f = Foo()
+  doassert f.x.x == 0

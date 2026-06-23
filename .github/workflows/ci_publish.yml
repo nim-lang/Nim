@@ -17,14 +17,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
       - name: 'Install node.js'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: ''
+          node-version: 24
 
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
@@ -76,3 +76,4 @@ jobs:
             } catch (err) {
               console.error(err);
             }
+

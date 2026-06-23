@@ -92,6 +92,7 @@ proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ##
   ## **See also:**
   ## * `toDeque proc <#toDeque,openArray[T]>`_
+  result = Deque[T]()
   result.initImpl(initialSize)
 
 func len*[T](deq: Deque[T]): int {.inline.} =
@@ -303,7 +304,7 @@ proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
     let a = toDeque([7, 8, 9])
     assert len(a) == 3
     assert $a == "[7, 8, 9]"
-
+  result = Deque[T]()
   result.initImpl(x.len)
   for item in items(x):
     result.addLast(item)
@@ -453,8 +454,10 @@ proc `$`*[T](deq: Deque[T]): string =
     assert $a == "[10, 20, 30]"
 
   result = "["
+  var first = true
   for x in deq:
-    if result.len > 1: result.add(", ")
+    if first: first = false
+    else: result.add(", ")
     result.addQuoted(x)
   result.add("]")
 

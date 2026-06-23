@@ -28,7 +28,7 @@ from magicsys import getSysType
 const
   traceCode = defined(nimVMDebug)
 
-when hasFFI:
+when defined(nimHasLibFFI): # == hasFFI; spelled out for the IC dep scanner
   import evalffi
 
 
@@ -120,7 +120,7 @@ template decodeBx(k: untyped) {.dirty.} =
   ensureKind(k)
 
 template move(a, b: untyped) {.dirty.} =
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     a = move b
   else:
     system.shallowCopy(a, b)
@@ -202,7 +202,7 @@ proc copyValue(src: PNode): PNode =
     return src
   result = newNode(src.kind)
   result.info = src.info
-  result.typ() = src.typ
+  result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
   result.comment = src.comment
   when defined(useNodeIds):
@@ -557,7 +557,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame = nil
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
   else:
@@ -1310,6 +1310,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var a = regs[rb].node
       if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
+        # a macro observed this symbol's implementation: NeedsImpl edge to
+        # its home module under IC.
+        recordIcImplDep(c.graph, a.sym)
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
@@ -1319,6 +1322,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let a = regs[rb].node
       if a.kind == nkSym:
+        recordIcImplDep(c.graph, a.sym)
         regs[ra].node =
           if a.sym.ast.isNil:
             newNode(nkNilLit)
@@ -1560,10 +1564,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # Set the `name` field of the exception
       var exceptionNameNode = newStrNode(nkStrLit, c.currentExceptionA.typ.sym.name.s)
       if c.currentExceptionA[2].kind == nkExprColonExpr:
-        exceptionNameNode.typ() = c.currentExceptionA[2][1].typ
+        exceptionNameNode.typ = c.currentExceptionA[2][1].typ
         c.currentExceptionA[2][1] = exceptionNameNode
       else:
-        exceptionNameNode.typ() = c.currentExceptionA[2].typ
+        exceptionNameNode.typ = c.currentExceptionA[2].typ
         c.currentExceptionA[2] = exceptionNameNode
       c.exceptionInstr = pc
 
@@ -1605,7 +1609,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let instr2 = c.code[pc]
       let count = regs[instr2.regA].intVal.int
       regs[ra].node = newNodeI(nkBracket, c.debug[pc])
-      regs[ra].node.typ() = typ
+      regs[ra].node.typ = typ
       newSeq(regs[ra].node.sons, count)
       for i in 0..<count:
         regs[ra].node[i] = getNullValue(c, typ.elementType, c.debug[pc], c.config)
@@ -1951,7 +1955,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
+        let shSym = regs[rb].node.sym
+        # When `signatureHash` is applied to a type (e.g. a `T: typedesc`/generic
+        # param), hash the *type* it denotes, not the parameter symbol. Hashing the
+        # symbol routes through `hashNonProc`, which mixes in `s.disamb` — a
+        # per-module instantiation counter. Under incremental compilation the
+        # registering module and a consuming module instantiate the surrounding
+        # generic separately, get different `disamb`s, and produce different
+        # hashes for the same type (nim-serialization's auto-serialization lookup
+        # missed because of this). Hashing the underlying type via `hashType` is
+        # type-identity based and stable across the NIF boundary.
+        let shTyp = shSym.typ
+        if shTyp != nil and shTyp.kind == tyTypeDesc and shTyp.hasElementType:
+          regs[ra].node.strVal = $hashType(shTyp.elementType, c.config)
+        else:
+          regs[ra].node.strVal = $sigHash(shSym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
@@ -2035,7 +2053,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         internalAssert c.config, false
       regs[ra].node.info = n.info
-      regs[ra].node.typ() = n.typ
+      regs[ra].node.typ = n.typ
     of opcNCopyLineInfo:
       decodeB(rkNode)
       regs[ra].node.info = regs[rb].node.info
@@ -2115,7 +2133,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         ensureKind(rkNode)
         regs[ra].node = temp
         regs[ra].node.info = c.debug[pc]
-      regs[ra].node.typ() = typ
+      regs[ra].node.typ = typ
     of opcConv:
       let rb = instr.regB
       inc pc
@@ -2223,7 +2241,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.config, c.debug[pc], "request to create symbol of invalid kind")
       var sym = newSym(k.TSymKind, getIdent(c.cache, name), c.idgen, c.module.owner, c.debug[pc])
-      incl(sym.flags, sfGenSym)
+      incl(sym.flagsImpl, sfGenSym)
       regs[ra].node = newSymNode(sym)
       regs[ra].node.flags.incl nfIsRef
     of opcNccValue:
@@ -2377,8 +2395,8 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
 
 proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
-  result.typ() = newType(tyError, idgen, owner)
-  result.typ.flags.incl tfCheckedForDestructor
+  result.typ = newType(tyError, idgen, owner)
+  result.typ.incl tfCheckedForDestructor
 
 proc evalStmt*(c: PCtx, n: PNode) =
   let n = transformExpr(c.graph, c.idgen, c.module, n)
@@ -2515,7 +2533,7 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
     n.flags.incl nfIsRef
-    n.typ() = x.typ
+    n.typ = x.typ
     result = TFullReg(kind: rkNode, node: n)
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =

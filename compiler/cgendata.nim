@@ -11,7 +11,7 @@
 
 import
   ast, ropes, options,
-  lineinfos, pathutils, modulegraphs
+  lineinfos, pathutils, modulegraphs, cbuilderbase
 
 import std/[intsets, tables, sets]
 
@@ -43,12 +43,12 @@ type
     ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64,
     ctArray, ctPtrToArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc,
     ctCString
-  TCFileSections* = array[TCFileSection, Rope] # represents a generated C file
+  TCFileSections* = array[TCFileSection, Builder] # represents a generated C file
   TCProcSection* = enum       # the sections a generated C proc consists of
     cpsLocals,                # section of local variables for C proc
     cpsInit,                  # section for init of variables for C proc
     cpsStmts                  # section of local statements for C proc
-  TCProcSections* = array[TCProcSection, Rope] # represents a generated C proc
+  TCProcSections* = array[TCProcSection, Builder] # represents a generated C proc
   BModule* = ref TCGen
   BProc* = ref TCProc
   TBlock* = object
@@ -75,10 +75,13 @@ type
     flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, label: Natural]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, isHidden: bool, label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
-                              # bool is true when are in the except part of a try block
+                              # `inExcept` is true when we are in the except part of a try block.
+                              # `isHidden` is true for compiler-injected `nkHiddenTryStmt` wrappers
+                              # (e.g. ARC's destructor try/finally around `except T as e:` bodies);
+                              # finallyActions walks past such wrappers to reach the user's try.
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
@@ -115,11 +118,11 @@ type
                         # computing alive data on our own.
 
   BModuleList* = ref object of RootObj
-    mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
+    mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Builder
     mapping*: Rope             # the generated mapping file (if requested)
-    modules*: seq[BModule]     # list of all compiled modules
+    mods*: seq[BModule]     # list of all compiled modules
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
-    forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
+    forwardedProcs*: seq[PSym] # procs that did not yet have a body
     generatedHeader*: BModule
     typeInfoMarker*: TypeCacheWithOwner
     typeInfoMarkerV2*: TypeCacheWithOwner
@@ -127,7 +130,7 @@ type
     graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
 
-    nimtv*: Rope            # Nim thread vars; the struct body
+    nimtv*: Builder         # Nim thread vars; the struct body
     nimtvDeps*: seq[PType]  # type deps: every module needs whole struct
     nimtvDeclared*: IntSet  # so that every var/field exists only once
                             # in the struct
@@ -155,44 +158,66 @@ type
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
+    emittedContentDefs*: HashSet[string]
+      # cmdNifC per-module backend: content-addressed C names (generic
+      # instances and synthesized hooks) whose body this TU already emitted.
+      # Distinct symbols (minted in different source modules) can share one
+      # `_i<disamb>` name; `declaredThings` keys on symbol id and lets the
+      # second one through, so we dedup the body by name here instead.
+    queue*: seq[PSym]         # queue of procs to generate
     alive*: IntSet            # symbol IDs of alive data as computed by `dce.nim`
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
     typeInfoMarkerV2*: TypeCache
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
-    hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
+    hcrCreateTypeInfosProc*: Builder # type info globals are in here when HCR=on
     inHcrInitGuard*: bool     # We are currently within a HCR reloading guard.
+    hcrInitGuard*: IfBuilder
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: Rope # used for type info generation
     labels*: Natural          # for generating unique module-scope names
-    extensionLoaders*: array['0'..'9', Rope] # special procs for the
+    extensionLoaders*: array['0'..'9', Builder] # special procs for the
                                              # OpenGL wrapper
     sigConflicts*: CountTable[SigHash]
+    icImplMods*: IntSet       # module ids whose routine BODIES this TU
+                              # embeds (redirected defs, shared instances,
+                              # hooks); recorded as the artifact's cdeps so
+                              # the reuse gate can check their impl cookies
+    icDataDefs*: seq[tuple[cname, nifname: string]]
+                              # C names of data definitions (consts, globals,
+                              # RTTI) this TU embeds plus their NIF symbol
+                              # names (empty for RTTI, which has no symbol);
+                              # recorded in the cnif artifact so a later run
+                              # can reuse the TU and re-demand definitions
+                              # that cached TUs still reference
     g*: BModuleList
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 template vccAndC*(p: BProc): bool = p.module.config.cCompiler == ccVcc and p.module.config.backend == backendC
 
+proc delayedCodegen*(m: BModule): bool {.inline.} =
+  useAliveDataFromDce in m.flags or m.config.globalOptions.contains(optCompress)
+
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:
     this.headerFiles.add header
 
-proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
+proc s*(p: BProc, s: TCProcSection): var Builder {.inline.} =
   # section in the current block
   result = p.blocks[^1].sections[s]
 
-proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
+proc procSec*(p: BProc, s: TCProcSection): var Builder {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
 
 proc initBlock*(): TBlock =
   result = TBlock()
   for i in low(result.sections)..high(result.sections):
-    result.sections[i] = newRopeAppender()
+    result.sections[i] = newBuilder("")
 
 proc newProc*(prc: PSym, module: BModule): BProc =
   result = BProc(

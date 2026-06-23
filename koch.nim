@@ -16,6 +16,12 @@ const
   ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
   SatStableCommit = "e63eaea8baf00bed8bcd5a29ffd8823abb265b39"
 
+  NimonyStableCommit = "5fa72628a6867f8ca09f8955a493749cf65f006a" # unversioned \
+    # Note that Nimony uses Nim as a git submodule but we don't want to install
+    # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
+    # is **required** here.
+    # Commit from 2026-06-14
+
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
@@ -70,6 +76,7 @@ Options:
   --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
+  bootic [options]         bootstraps via the incremental compiler (`nim ic`)
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
   toolsNoExternal          builds Nim related tools (except external tools,
@@ -177,8 +184,16 @@ proc bundleAtlasExe(latest: bool, args: string) =
              options = "-d:release --noNimblePath -d:nimAtlasBootstrap " & args)
 
 proc bundleChecksums(latest: bool) =
-  let commit = if latest: "HEAD" else: ChecksumsStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", commit, allowBundled = true)
+  let checksumsCommit = if latest: "HEAD" else: ChecksumsStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", checksumsCommit, allowBundled = true)
+
+  let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
+
+  if not fileExists("bin/nifler".exe):
+    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+  if not fileExists("bin/nifmake".exe):
+    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
@@ -392,6 +407,55 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     if not skipIntegrityCheck:
       echo "[Warning] executables are still not equal"
 
+proc bootic(args: string, skipIntegrityCheck: bool) =
+  ## Like `boot`, but bootstraps the compiler through the NIF-based incremental
+  ## compiler (`nim ic`) instead of `nim c`. Differences from `boot`:
+  ## * It starts from an already-bootstrapped Nim (found via `findStartNim`): the
+  ##   csources compiler is far too old to provide the `ic` command, and the
+  ##   `-d:nimKochBootstrap` define used by `boot`'s first stage *disables*
+  ##   `commandIc`, so neither can be used here.
+  ## * `nim ic` drives the per-module build and the final link itself (via
+  ##   `nifmake`), so there is no `--compileOnly` + `jsonscript` split.
+  ## The 3-step fixed-point check is kept: a successful run proves the compiler
+  ## can compile itself under IC and reproduces a stable binary.
+  var output = "compiler" / "nim".exe
+  # Deliberately NOT `bin/nim`: `bootic` must not clobber the development
+  # compiler (that would replace a fast release `bin/nim` with bootic's build
+  # and slow every later `koch`/`nim` invocation). The IC-bootstrapped binary
+  # lands at `bin/nim_ic` instead; `bin/nim` is only ever read (via findStartNim).
+  var finalDest = "bin" / "nim_ic".exe
+  let smartNimcache = (if "release" in args or "danger" in args: "nimcache/ric_" else: "nimcache/dic_") &
+                      hostOS & "_" & hostCPU
+
+  bundleChecksums(false)
+
+  let nimStart = findStartNim().quoteShell()
+  let times = 2 - ord(skipIntegrityCheck)
+  # `boot` shares the `compiler/nim` output path; remove it so a fully warm
+  # cache still relinks and iteration 1 cannot adopt a stale foreign binary.
+  removeFile output
+  for i in 0..times:
+    echo "iteration: ", i+1
+    # Iteration 1 may build incrementally (that's the point of IC), but every
+    # later iteration must start from a clean cache: with a warm cache a
+    # no-change rerun correctly rebuilds nothing, so iteration i+1 would just
+    # keep iteration i's binary and the fixed-point check would be vacuous.
+    # The check is only meaningful if the freshly built compiler re-translates
+    # everything.
+    if i > 0: removeDir smartNimcache
+    let nimi = if i == 0: nimStart else: i.thVersion
+    exec "$# ic --nimcache:$# $# compiler" / "nim.nim" %
+      [nimi, smartNimcache, args]
+    if sameFileContent(output, i.thVersion):
+      copyExe(output, finalDest)
+      echo "executables are equal: SUCCESS! (IC-bootstrapped compiler: ", finalDest, ")"
+      return
+    copyExe(output, (i+1).thVersion)
+  copyExe(output, finalDest)
+  when not defined(windows):
+    if not skipIntegrityCheck:
+      echo "[Warning] executables are still not equal"
+
 # -------------- clean --------------------------------------------------------
 
 const
@@ -536,21 +600,39 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
-proc icTest(args: string) =
-  temp("")
-  let inp = os.parseCmdLine(args)[0]
+proc runIcTestFile(inp: string) =
+  ## Compile a single `tests/ic` file with `nim ic`, once per `#!EDIT!#` fragment
+  ## (each fragment is the file's source after that incremental edit). Only checks
+  ## that `nim ic` exits 0 — the produced binary's output is not verified here.
   let content = readFile(inp)
   let nimExe = getAppDir() / "bin" / "nim_temp".exe
-  var i = 0
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
-    var cmd = nimExe & " cpp --ic:on -d:nimIcIntegrityChecks --listcmd "
-    if i == 0:
-      cmd.add "-f "
+    var cmd = nimExe & " ic --hint:Conf:off --warnings:off "
     cmd.add quoteShell(file)
     exec(cmd)
-    inc i
+
+# The `tests/ic` files that `nim ic` must keep compiling. Multi-module tests rely
+# on a sibling helper (`timp` -> `myimp`, `tcompiletimeglobal` -> `mctglobal`),
+# which exercises the NIF import/load path the single-file tests do not.
+const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
+                 "tcompiletimeglobal", "tsighashstable", "tpureenum", "tgenericoffer",
+                 "tconverterreexport"]
+
+proc icTest(args: string) =
+  temp("")
+  let parsed = os.parseCmdLine(args)
+  if parsed.len > 0 and parsed[0].len > 0:
+    # `koch ic <file>`: run just that file.
+    runIcTestFile(parsed[0])
+  else:
+    # `koch ic`: the full regression set we want to keep working — the test
+    # suite plus both self-host bootstraps (`bootic` and `bootic -d:release`).
+    for t in icSuite:
+      runIcTestFile("tests" / "ic" / (t & ".nim"))
+    bootic("", skipIntegrityCheck = false)
+    bootic("-d:release", skipIntegrityCheck = false)
 
 proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
@@ -732,6 +814,7 @@ when isMainModule:
     of cmdArgument:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest, skipIntegrityCheck)
+      of "bootic": bootic(op.cmdLineRest, skipIntegrityCheck)
       of "clean": clean(op.cmdLineRest)
       of "doc", "docs": buildDocs(op.cmdLineRest & " --d:nimPreviewSlimSystem " & paCode, localDocsOnly, localDocsOut)
       of "doc0", "docs0":

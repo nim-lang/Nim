@@ -9,13 +9,13 @@
 
 ##[
 Thread support for Nim. Threads allow multiple functions to execute concurrently.
- 
+
 In Nim, threads are a low-level construct and using a library like `malebolgia`, `taskpools` or `weave` is recommended.
- 
+
 When creating a thread, you can pass arguments to it. As Nim's garbage collector does not use atomic references, sharing
 `ref` and other variables managed by the garbage collector between threads is not supported.
 Use global variables to do so, or pointers.
- 
+
 Memory allocated using [`sharedAlloc`](./system.html#allocShared.t%2CNatural) can be used and shared between threads.
 
 To communicate between threads, consider using [channels](./system.html#Channel)
@@ -44,7 +44,7 @@ joinThreads(thr)
 
 deinitLock(L)
 ```
- 
+
 When using a memory management strategy that supports shared heaps like `arc` or `boehm`,
 you can pass pointer to threads and share memory between them, but the memory must outlive the thread.
 The default memory management strategy, `orc`, supports this.
@@ -52,23 +52,23 @@ The example below is **not valid** for memory management strategies that use loc
 
 ```Nim
 import locks
- 
+
 var l: Lock
- 
+
 proc threadFunc(obj: ptr seq[int]) {.thread.} =
   withLock l:
     for i in 0..<100:
       obj[].add(obj[].len * obj[].len)
- 
+
 proc threadHandler() =
   var thr: array[0..4, Thread[ptr seq[int]]]
   var s = newSeq[int]()
-    
+
   for i in 0..high(thr):
     createThread(thr[i], threadFunc, s.addr)
   joinThreads(thr)
   echo s
- 
+
 initLock(l)
 threadHandler()
 deinitLock(l)
@@ -137,6 +137,7 @@ when defined(zephyr):
 {.push stack_trace:off.}
 when defined(windows):
   proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
+    result = 0'i32
     nimThreadProcWrapperBody(closure)
     # implicitly return 0
 elif defined(genode):
@@ -144,6 +145,7 @@ elif defined(genode):
     nimThreadProcWrapperBody(closure)
 else:
   proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
+    result = nil
     nimThreadProcWrapperBody(closure)
 {.pop.}
 
@@ -164,7 +166,7 @@ when hostOS == "windows":
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
     ## Waits for every thread in `t` to finish.
-    var a: array[MAXIMUM_WAIT_OBJECTS, SysThread]
+    var a: array[MAXIMUM_WAIT_OBJECTS, SysThread] = default(array[MAXIMUM_WAIT_OBJECTS, SysThread])
     var k = 0
     while k < len(t):
       var count = min(len(t) - k, MAXIMUM_WAIT_OBJECTS)
@@ -220,7 +222,7 @@ when hostOS == "windows":
     when TArg isnot void: t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
-    var dummyThreadId: int32
+    var dummyThreadId: int32 = 0'i32
     t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
@@ -301,5 +303,5 @@ else:
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
 
-when not defined(gcOrc):
+when not defined(gcOrc) and not defined(gcYrc):
   include system/threadids

@@ -583,7 +583,7 @@ template matchOrParse(mopProc: untyped) =
         n = Peg(kind: pkTerminalIgnoreStyle, term: s.substr(a, b))
       of pkBackRefIgnoreCase:
         n = Peg(kind: pkTerminalIgnoreCase, term: s.substr(a, b))
-      else: assert(false, "impossible case")
+      else: raiseAssert "impossible case"
       mopProc(s, n, start, c)
 
     case p.kind
@@ -699,7 +699,7 @@ template matchOrParse(mopProc: untyped) =
       enter(pkTerminalIgnoreStyle, s, p, start)
       var
         i = 0
-        a, b: Rune
+        a, b: Rune = default(Rune)
       result = start
       while i < len(p.term):
         while i < len(p.term):
@@ -1071,7 +1071,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   proc parser(s: string): int {.gensym.} =
     # the proc to be returned
     var
-      ms: array[MaxSubpatterns, (int, int)]
+      ms: array[MaxSubpatterns, (int, int)] = default(array[MaxSubpatterns, (int, int)])
       cs = Captures(matches: ms, ml: 0, origStart: 0)
     rawParse(s, pegAst, 0, cs)
   parser
@@ -1668,7 +1668,10 @@ func getSymbol(c: var PegLexer, tok: var Token) =
   while pos < c.buf.len:
     add(tok.literal, c.buf[pos])
     inc(pos)
-    if pos < c.buf.len and c.buf[pos] notin strutils.IdentChars: break
+    if pos < c.buf.len:
+      let ch = c.buf[pos]
+      # Keep non-ASCII bytes so UTF-8 terminals reach the rune-aware matchers.
+      if ch notin strutils.IdentChars and ord(ch) < 0x80: break
   c.bufpos = pos
   tok.kind = tkIdentifier
 

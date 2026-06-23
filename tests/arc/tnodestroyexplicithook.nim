@@ -1,3 +1,7 @@
+discard """
+  ccodecheck: "'Result[(i_1 - 0)] = eqdup'"
+"""
+
 # issue #24626
 
 proc arrayWith2[T](y: T, size: static int): array[size, T] {.noinit, nodestroy, raises: [].} =

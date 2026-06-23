@@ -866,7 +866,7 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool, depth = 0): Json
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
       result = JsonNode(kind: JString, str: move p.a)
     else:
       result = JsonNode(kind: JString)
@@ -1256,7 +1256,7 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath, originalJsonPathL
       when nimvm:
         when isRefSkipDistinct(`tmpSym`.`fieldSym`):
           # workaround #12489
-          var tmp: `fieldType`
+          var tmp: `fieldType` = default(typeof(`fieldType`))
           initFromJson(tmp, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath`)
           `tmpSym`.`fieldSym` = tmp
         else:
@@ -1272,7 +1272,7 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath, originalJsonPathL
     let kindType = typeNode[0][1]
     let kindOffsetLit = newLit(uint(getOffset(kindSym)))
     dst.add quote do:
-      var kindTmp: `kindType`
+      var kindTmp: `kindType` = default(typeof(`kindType`))
       jsonPath.add `kindPathLit`
       initFromJson(kindTmp, `jsonNode`[`kindNameLit`], `jsonPath`)
       jsonPath.setLen `originalJsonPathLen`

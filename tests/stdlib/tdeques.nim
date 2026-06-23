@@ -190,7 +190,7 @@ proc main() =
     doAssert $a == "[10, 20, 30]"
 
   block:
-    var a, b: Deque[int]
+    var a, b: Deque[int] = initDeque[int]()
     for i in 1 .. 256:
       a.addLast(i)
     for i in 1 .. 255:
@@ -241,3 +241,12 @@ proc main() =
 
 static: main()
 main()
+
+# https://github.com/nim-lang/Nim/issues/18583
+# $ separator must be emitted even when the item's string repr is empty
+type EmptyStr18583 = object
+proc `$`(x: EmptyStr18583): string = ""
+
+block:
+  var d = [EmptyStr18583(), EmptyStr18583()].toDeque
+  doAssert $d == "[, ]", "got: " & $d

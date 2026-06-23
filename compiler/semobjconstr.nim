@@ -192,7 +192,7 @@ proc collectOrAddMissingCaseFields(c: PContext, branchNode: PNode,
           newNodeIT(nkType, constrCtx.initExpr.info, asgnType)
         )
     asgnExpr.flags.incl nfSkipFieldChecking
-    asgnExpr.typ() = recTyp
+    asgnExpr.typ = recTyp
     defaults.add newTree(nkExprColonExpr, newSymNode(sym), asgnExpr)
 
 proc collectBranchFields(c: PContext, n: PNode, discriminatorVal: PNode,
@@ -482,10 +482,15 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
   if t.kind == tyRef:
     t = skipTypes(t.elementType, {tyGenericInst, tyAlias, tySink, tyOwned})
     if optOwnedRefs in c.config.globalOptions:
-      result.typ() = makeVarType(c, result.typ, tyOwned)
+      result.typ = makeVarType(c, result.typ, tyOwned)
       # we have to watch out, there are also 'owned proc' types that can be used
       # multiple times as long as they don't have closures.
-      result.typ.flags.incl tfHasOwned
+      result.typ.incl tfHasOwned
+  if t.kind == tyForward and efDetermineType in flags:
+    # a forward object type does not error during determine-type analysis;
+    # it now stays unresolved long enough for the existing delayed field-default pass to resolve it after the type section finishes.
+    result.typ = t
+    return result
   if t.kind != tyObject:
     return localErrorNode(c, result, if t.kind != tyGenericBody:
       "object constructor needs an object type".dup(addTypeNodeDeclaredLoc(c.config, t))

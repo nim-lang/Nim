@@ -90,9 +90,6 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
     if s.typ.sym != nil and sfForward in s.typ.sym.flags:
       # forwarded objects are *always* passed by pointers for consistency!
       result = true
-    elif s.typ.kind == tySink and conf.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcHooks}:
-      # bug #23354:
-      result = false
     elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
       result = true           # requested anyway
     elif (tfFinal in pt.flags) and (pt[0] == nil):
@@ -115,10 +112,13 @@ proc encodeName*(name: string): string =
 
 proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   result = if name == "": s.name.s else: name
+  # keep backend-minted ids out of the `_u` namespace; their item counter
+  # restarts at 0 and would collide with loaded symbols' ids
+  result.add(if s.itemId.isBackendMinted: "_c" else: "_u")
+  result.add $s.itemId.item
+  # module suffix LAST (a strippable trailing token; see `mangleProcNameExt`)
   result.add "__"
   result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-  result.add "_u"
-  result.add $s.itemId.item
 
 proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false; extra: string = ""): string =
   #Module::Type

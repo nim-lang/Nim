@@ -264,7 +264,7 @@ proc setLengthStrUninit(s: var string, newlen: Natural) {.nodestroy.} =
       str.data[n] = '\0'
       str.len = n
       s = cast[string](str)
-    elif n < s.len:
+    elif n != s.len:
       str.data[n] = '\0'
       str.len = n
     else: return

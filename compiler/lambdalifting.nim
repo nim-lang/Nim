@@ -150,7 +150,7 @@ template isIterator*(owner: PSym): bool =
 
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
   result = createObj(g, idgen, owner, info, final=false)
-  result.flags.incl tfFinal
+  result.incl tfFinal
   if owner.isIterator:
     rawAddField(result, createStateField(g, owner, idgen))
 
@@ -161,12 +161,24 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
     # XXX a bit hacky:
     result = newSym(skResult, getIdent(g.cache, ":result"), idgen, iter, iter.info, {})
     result.typ = iter.typ.returnType
-    incl(result.flags, sfUsed)
+    incl(result.flagsImpl, sfUsed)
     iter.ast.add newSymNode(result)
+
+proc closureParams(routine: PSym): PNode =
+  ## The formal parameters node lambda lifting reads and extends. In a
+  ## from-source compilation `routine.ast[paramsPos]` and `routine.typ.n` are the
+  ## very same node (see the `typ.n.len` based position math below). Under IC the
+  ## loaded proc AST omits the parameters (they are kept only in `typ.n`), so
+  ## restore the shared node here.
+  result = routine.ast[paramsPos]
+  if (result == nil or result.kind == nkEmpty) and routine.typ != nil and
+      routine.typ.n != nil and routine.ast.len > paramsPos:
+    result = routine.typ.n
+    routine.ast[paramsPos] = result
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   assert param.kind == skParam
-  var params = routine.ast[paramsPos]
+  var params = closureParams(routine)
   # -1 is correct here as param.position is 0 based but we have at position 0
   # some nkEffect node:
   param.position = routine.typ.n.len-1
@@ -177,7 +189,8 @@ proc addHiddenParam(routine: PSym, param: PSym) =
 
 proc getEnvParam*(routine: PSym): PSym =
   if routine.ast.isNil: return nil
-  let params = routine.ast[paramsPos]
+  let params = closureParams(routine)
+  if params == nil or params.len == 0: return nil
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
     result = hidden.sym
@@ -216,6 +229,10 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result[0] = le
   result[1] = ri
 
+proc markInjectDestructors(s: PSym) {.inline.} =
+  backendEnsureMutable s
+  s.flagsImpl.incl sfInjectDestructors
+
 proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
   result.add(newSymNode(prc))
@@ -228,7 +245,7 @@ proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; inf
   #if isClosureIterator(result.typ):
   createTypeBoundOps(g, nil, result.typ, info, idgen)
   if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-    prc.flags.incl sfInjectDestructors
+    markInjectDestructors(prc)
 
 template liftingHarmful(conf: ConfigRef; owner: PSym): bool =
   ## lambda lifting can be harmful for JS-like code generators.
@@ -240,7 +257,7 @@ proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen
     createTypeBoundOps(g, nil, refType.elementType, info, idgen)
     createTypeBoundOps(g, nil, refType, info, idgen)
     if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
-      owner.flags.incl sfInjectDestructors
+      markInjectDestructors(owner)
 
 proc genCreateEnv(env: PNode): PNode =
   var c = newNodeIT(nkObjConstr, env.info, env.typ)
@@ -290,7 +307,8 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
-  incl(owner.typ.flags, tfCapturesEnv)
+  unsealForTransform(owner.typ)
+  incl(owner.typ, tfCapturesEnv)
   if not isEnv:
     owner.typ.callConv = ccClosure
 
@@ -336,7 +354,7 @@ proc asOwnedRef(c: var DetectionPass; t: PType): PType =
   if optOwnedRefs in c.graph.config.globalOptions:
     assert t.kind == tyRef
     result = newType(tyOwned, c.idgen, t.owner)
-    result.flags.incl tfHasOwned
+    result.incl tfHasOwned
     result.rawAddSon t
   else:
     result = t
@@ -420,7 +438,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   let t = c.getEnvTypeForOwner(owner, info)
   if cp == nil:
     cp = newSym(skParam, getIdent(c.graph.cache, paramName), c.idgen, fn, fn.info)
-    incl(cp.flags, sfFromGeneric)
+    incl(cp.flagsImpl, sfFromGeneric)
     cp.typ = t
     addHiddenParam(fn, cp)
   elif cp.typ != t and fn.kind != skIterator:
@@ -622,7 +640,7 @@ proc rawClosureCreation(owner: PSym;
       let unowned = c.unownedEnvVars[owner.id]
       assert unowned != nil
       let env2 = copyTree(env)
-      env2.typ() = unowned.typ
+      env2.typ = unowned.typ
       result.add newAsgnStmt(unowned, env2, env.info)
       createTypeBoundOpsLL(d.graph, unowned.typ, env.info, d.idgen, owner)
 
@@ -636,7 +654,7 @@ proc rawClosureCreation(owner: PSym;
         if owner.kind != skMacro:
           createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info, d.idgen)
         if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
-          owner.flags.incl sfInjectDestructors
+          markInjectDestructors(owner)
 
   let upField = lookupInRecord(env.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -678,7 +696,7 @@ proc closureCreationForIter(owner: PSym, iter: PNode;
   result = newNodeIT(nkStmtListExpr, iter.info, iter.sym.typ)
   let iterOwner = iter.sym.skipGenericOwner
   var v = newSym(skVar, getIdent(d.graph.cache, envName), d.idgen, iterOwner, iter.info)
-  incl(v.flags, sfShadowed)
+  incl(v.flagsImpl, sfShadowed)
   v.typ = asOwnedRef(d, getHiddenParam(d.graph, iter.sym).typ)
   var vnode: PNode
   if iterOwner.isIterator:
@@ -799,7 +817,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
       let oldInContainer = c.inContainer
       c.inContainer = 0
       let m = newSymNode(n[namePos].sym)
-      m.typ() = n.typ
+      m.typ = n.typ
       result = liftCapturedVars(m, owner, d, c)
       c.inContainer = oldInContainer
   of nkHiddenStdConv:

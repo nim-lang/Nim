@@ -185,6 +185,9 @@ proc root(v: var Partitions; start: int): int =
 proc potentialMutation(v: var Partitions; s: PSym; level: int; info: TLineInfo) =
   let id = variableId(v, s)
   if id >= 0:
+    # mutated here => alive here: keep aliveEnd in sync so dangerousMutation catches
+    # mutations recorded after the var's last use (e.g. via a call arg). See #25595.
+    v.s[id].aliveEnd = max(v.s[id].aliveEnd, v.abstractTime)
     let r = root(v, id)
     let flags = if s.kind == skParam:
                   if isConstParam(s):
@@ -1014,6 +1017,6 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
       if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
         discard "cannot cursor into a graph that is mutated"
       else:
-        v.sym.flags.incl sfCursor
+        v.sym.flagsImpl.incl sfCursor
         when false:
           echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info

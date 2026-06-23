@@ -1,5 +1,5 @@
 discard """
-  matrix: "--backend:c --mm:refc; --backend:c --mm:orc; --backend:cpp --mm:refc; --backend:cpp --mm:orc; --backend:js --mm:refc; --backend:js --mm:orc"
+  matrix: "--backend:c --mm:refc; --backend:c --mm:orc; --backend:c --mm:orc --strings:sso; --backend:cpp --mm:refc; --backend:cpp --mm:orc; --backend:js --mm:refc; --backend:js --mm:orc"
 """
 
 from std/sequtils import toSeq, map
@@ -176,6 +176,13 @@ proc main() =
         result.add char(ord('a') + i mod 26)
 
     proc checkSetLenUninit(oldLen, newLen: int; cmpAfter = -1) =
+      ## Verifies `setLenUninit`:
+      ## - preserves the existing prefix
+      ## - updates the string length
+      ## - keeps internal null termination valid for both shrink and growth
+      ##
+      ## `cmpAfter` is used for layouts where trailing zeroed padding affects
+      ## string comparison semantics after the resize.
       var s = makeStr(oldLen)
       let prefixLen = min(oldLen, newLen)
       let prefix = makeStr(prefixLen)
@@ -203,9 +210,18 @@ proc main() =
 
     block setLenUninit:
       # Shared baseline for both SSO and V2: noop, shrink, grow.
-      checkSetLenUninit(numbers.len, numbers.len)
-      checkSetLenUninit(numbers.len, 5)
-      checkSetLenUninit(numbers.len, 11)
+      checkSetLenUninit(10, 10)
+      checkSetLenUninit(10, 5)
+      checkSetLenUninit(10, 11)
+
+      block growingWithinBiggerCapacity:
+        # Strings can reserve spare capacity even for short strings.
+        # Growing within that capacity must still update len and the trailing zero.
+        var s = newStringOfCap(10)
+        s.add("abc")
+        s.setLenUninit(6)
+        s.checkStrInternals(6)
+        doAssert s[0..2] == "abc"
 
       when hasNativeSso:
         const

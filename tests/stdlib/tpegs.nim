@@ -192,7 +192,7 @@ block:
     expr.rule = sequence(capture(ident), *sequence(
                   nonterminal(ws), term('+'), nonterminal(ws), nonterminal(expr)))
 
-    var c: Captures
+    var c: Captures = default(Captures)
     var s = "a+b +  c +d+e+f"
     doAssert rawMatch(s, expr.rule, 0, c) == len(s)
     var a = ""
@@ -208,7 +208,7 @@ block:
     doAssert match("_______ana", peg"A <- 'ana' / . A")
     doAssert match("abcs%%%", peg"A <- ..A / .A / '%'")
 
-    var matches: array[0..MaxSubpatterns-1, string]
+    var matches: array[0..MaxSubpatterns-1, string] = default(array[0..MaxSubpatterns-1, string])
     if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
       doAssert matches[0] == "abc"
     else:
@@ -258,6 +258,11 @@ block:
     doAssert match("eine übersicht und auerdem", peg"(\lower \white*)+")
     doAssert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
     doAssert(not match("456678", peg"(\letter)+"))
+
+    block:
+      doAssert match("CAFÉ", peg"\i café")
+      doAssert match("Café", peg"\i café")
+      doAssert "two cafés: Café and CAFÉ".findAll(peg"\i café").len == 3
 
     doAssert("var1 = key; var2 = key2".replacef(
       peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
@@ -325,7 +330,7 @@ block:
   call()
 call()
 """
-      var c: Captures
+      var c: Captures = default(Captures)
       doAssert program.len == program.rawMatch(grammar, 0, c)
       doAssert c.ml == 1
 

@@ -18,8 +18,13 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   # no nimvm support needed, so it doesn't need to be fast here either
   let oldLen = result.len
   let newLen = oldLen + buflen
-  result.setLen newLen
-  c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
+  {.cast(noSideEffect).}:
+    when declared(beginStore):
+      c_memcpy(beginStore(result, newLen, oldLen), buf, buflen.csize_t)
+      endStore(result)
+    else:
+      result.setLen newLen
+      discard c_memcpy(result[oldLen].addr, buf, buflen.csize_t)
 
 import std/private/[dragonbox, schubfach]
 
@@ -144,4 +149,5 @@ proc addFloat*(result: var string; x: float | float32) {.inline.} =
 when defined(nimPreviewSlimSystem):
   func `$`*(x: float | float32): string =
     ## Outplace version of `addFloat`.
+    result = ""
     result.addFloat(x)

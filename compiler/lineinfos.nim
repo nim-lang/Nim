@@ -100,6 +100,7 @@ type
     warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
     warnImplicitRangeConversion = "ImplicitRangeConversion",
     warnSystemRangeConversion = "SystemRangeConversion",
+    warnInvalidCmpOp = "InvalidCmpOp",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -210,6 +211,7 @@ const
     warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
     warnImplicitRangeConversion: "implicit range conversion $1",
     warnSystemRangeConversion: "implicit range conversion $1",
+    warnInvalidCmpOp: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
@@ -279,6 +281,10 @@ const
   errFloatToString* = "cannot convert '$1' to '$2'"
 
 type
+  FileInfoKind* = enum
+    fikSource,      ## A real source file path
+    fikNifModule    ## A NIF module suffix (not a real path)
+
   TFileInfo* = object
     fullPath*: AbsoluteFile    # This is a canonical full filesystem path
     projPath*: RelativeFile    # This is relative to the project's root
@@ -297,6 +303,7 @@ type
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
     dirty*: bool               # for 'nimpretty' like tooling
+    kind*: FileInfoKind        # distinguishes real files from NIF suffixes
     when defined(nimpretty):
       fullContent*: string
   FileIndex* = distinct int32
