@@ -620,7 +620,17 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   let artifact = cfile & ".nif"
   var dropped = 0
   let code = renderCFromArtifact(artifact, decision, extractFilename(artifact), dropped)
-  writeFile(cfile, code)
+  # Write the `.c` content-stably. `merge` re-runs on any edit and bumps the
+  # decision file's mtime, so nifmake re-fires every `emit` (the filter is cheap);
+  # but the FILTERED output is usually byte-identical for modules unaffected by
+  # the edit. Rewriting it unconditionally would bump every `.c`'s mtime and make
+  # `callCCompiler` recompile every `.o`. Writing only on a real change preserves
+  # the mtime, so the C compiler recompiles exactly the modules whose `.c` changed
+  # — the same DCE model as Nimony's. Safe here (unlike a content-stable merge
+  # decision): a `.c` is a per-module LEAF consumed only by the C compiler's own
+  # up-to-date check, not a shared prerequisite in nifmake's mtime ordering.
+  if not fileExists(cfile) or readFile(cfile) != code:
+    writeFile(cfile, code)
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icEmit] " & extractFilename(cfile) & " dropped " &
       $dropped & " bodies (" & $code.len & " bytes)"
@@ -658,7 +668,13 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                      obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                      flags: {})
-      addFileToCompile(g.config, cf)
+      # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
+      # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
+      # `callCCompiler` skips its compile but still links the existing object. This
+      # is what makes a localized edit recompile only the handful of `.c`s the
+      # `emit` stage actually rewrote, instead of every object every time — the
+      # final piece of per-module backend incrementality after the merge barrier.
+      addExternalFileToCompile(g.config, cf)
   # deps.nim's static scanner can keep a CONDITIONALLY-imported module as a build
   # node (e.g. `net`'s `when defineSsl: import openssl`, or a `when defined(os)`
   # import) that the NIF-`deps` walk above never reaches because the condition is
@@ -684,7 +700,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         var cf = Cfile(nimname: cbase, cname: cfile,
                        obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                        flags: {})
-        addFileToCompile(g.config, cf)
+        addExternalFileToCompile(g.config, cf)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)
 

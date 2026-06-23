@@ -970,9 +970,12 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     b.addStrLit a
   b.addTree "args"
   b.endTree()
-  b.addTree "input"
-  b.addIntLit 0
-  b.endTree()
+  # The project file is a fixed command ARGUMENT, not a tracked input: backend
+  # stages read NIFs (resolved by suffix), never the `.nim` source, so its
+  # content cannot change any artifact. Passing it as `(input 0)` made its mtime
+  # an input to every rule, so editing the main module's source re-fired the
+  # whole backend.
+  b.addStrLit mainNif
   b.endTree()
 
   template inputStr(s: string) =
@@ -987,37 +990,42 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # lower: one rule per module. Transforms (eventually) the routines the module
   # OWNS once, in the owner's id space, into `<module>.t.nif`, so the `cg` stage
   # reads them instead of re-deriving (which makes a closure `:env`'s identity
-  # diverge across the parallel `cg` processes). Runs per module in parallel on
-  # the shallow backend dep-graph. Inputs mirror `cg` (project + every semmed
-  # NIF) so the rule is ordered after the frontend.
+  # diverge across the parallel `cg` processes). Runs per module in parallel.
+  #
+  # Input is this module's OWN semmed NIF and nothing else. A module does NOT
+  # depend on its importers, so listing every semmed NIF (or even the import
+  # closure) was wrong: it made e.g. `strutils`'s rule depend on the `finish`
+  # that imports it. nifmake handles the indirect dependency for free — the
+  # frontend writes `.s.nif`s content-stably, so an interface change to a
+  # dependency re-sems (and re-emits the `.s.nif` of) every transitive importer;
+  # a module whose own `.s.nif` is unchanged genuinely needs no re-lowering.
   for i, node in c.nodes:
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
       b.addStrLit "--icBackendStage:lower"
       b.addStrLit "--icBackendModule:" & node.files[0].modname
-    inputStr mainNif
-    for n2 in c.nodes:
-      inputStr c.semmedFile(n2.files[0])
+    inputStr c.semmedFile(node.files[0])
     outputStr tFiles[i]
     b.endTree()
 
-  # cg: one rule per module. Inputs are the project (slot 0), every semmed
-  # NIF (so the whole program loads and the rule is ordered after the frontend)
-  # and this module's `.t.nif` (its lowered bodies); the main module additionally
-  # depends on every other `.c.nif` (init metas).
+  # cg: one rule per module. Input is this module's OWN `.t.nif`. cg DOES read
+  # its dependencies' `.t.nif`s at runtime (loadDepClosure), but ordering is
+  # guaranteed by nifmake's depth-barriered scheduler: every `lower` is depth 1
+  # (its `.s.nif` is a leaf) and every `cg` is depth 2, so all lowering finishes
+  # before any cg starts — no need to list the closure for ordering. For
+  # invalidation, a dependency's change reaches this module through its own
+  # `.t.nif` (own `.s.nif` re-sem -> own `lower`); a foreign body this module
+  # emit-everywhere'd but does not own is dropped by `emit` regardless, so a
+  # stale copy here is harmless. The main module additionally depends on every
+  # other `.c.nif` (it reads their init/datInit metas to wire up NimMain).
   for i, node in c.nodes:
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
       b.addStrLit "--icBackendStage:cg"
       b.addStrLit "--icBackendModule:" & node.files[0].modname
-    inputStr mainNif
-    for n2 in c.nodes:
-      inputStr c.semmedFile(n2.files[0])
-    # cg loads dependencies FROM their `.t.nif` (toNifFilename), so every module's
-    # lowered NIF must precede this cg rule.
-    for j in 0 ..< c.nodes.len: inputStr tFiles[j]
+    inputStr tFiles[i]
     if node.id == 0:
       for j in 0 ..< c.nodes.len:
         if c.nodes[j].id != 0:
@@ -1030,7 +1038,6 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addIdent "nim_nifc"
   b.withTree "args":
     b.addStrLit "--icBackendStage:merge"
-  inputStr mainNif
   for cn in cnifFiles: inputStr cn
   outputStr mergeFile
   b.endTree()
@@ -1042,12 +1049,13 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     b.withTree "args":
       b.addStrLit "--icBackendStage:emit"
       b.addStrLit "--icBackendModule:" & node.files[0].modname
-    inputStr mainNif
+    # Inputs: this module's OWN `.c.nif` and the global merge decision. emit also
+    # loads `.t.nif`s at runtime (getCFile/type resolution), but those are depth 1
+    # and emit is past the merge barrier, so they always exist — no need to list
+    # them. (emit still re-fires for every module whenever `merge` rewrites the
+    # decision file; making that incremental is a separate concern.)
     inputStr cnifFiles[i]
     inputStr mergeFile
-    # emit loads modules like cg (for getCFile/type resolution); those come from
-    # the `.t.nif`s, so they must precede this rule.
-    for j in 0 ..< c.nodes.len: inputStr tFiles[j]
     outputStr cFiles[i]
     b.endTree()
 
@@ -1056,7 +1064,6 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addIdent "nim_nifc"
   b.withTree "args":
     b.addStrLit "--icBackendStage:link"
-  inputStr mainNif
   for cf in cFiles: inputStr cf
   outputStr exeFile
   b.endTree()
