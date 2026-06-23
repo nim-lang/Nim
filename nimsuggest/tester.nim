@@ -74,18 +74,22 @@ proc parseTest(filename: string; epcMode=false): Test =
         # else: ignore empty lines for better readability of the specs
     inc i
   tmp.close()
-  # Give every run a private, freshly-wiped NIF cache. Under IC nimsuggest reuses
-  # the on-disk NIFs of a previous session, but per-symbol usage counts are not
-  # serialized, so a warm start ranks `sug`/`con` results differently than a cold
-  # one (e.g. `string` outranks `int` because `system` was loaded, not re-walked).
-  # The tester runs the stdio and EPC variants of a test as two processes sharing
-  # the same temp project name — without isolation the second inherits the first's
-  # NIFs and the result order flips. A dedicated, cleared cache keeps both cold and
-  # deterministic.
-  let nimcache = getTempDir() / ("nimsuggest_cache_" &
-    extractFilename(result.dest).changeFileExt("") & (if epcMode: "_epc" else: "_stdin"))
-  removeDir(nimcache)
-  result.cmd.add " --nimcache:" & nimcache
+  # A few `sug` tests rank results by per-symbol usage counts. Under IC those counts
+  # are not serialized into the NIF files, so a cold start (which re-walks `system`
+  # and saturates the counts of common types) and a warm start (which loads `system`
+  # from NIF without re-walking it) order the results differently — e.g. `string`
+  # outranks `int`, or `seq` drops below `Slice`. The tester runs each test's stdio
+  # variant cold and its EPC variant warm against the shared on-disk NIFs, so for
+  # these order-sensitive tests the two disagree. Give only those a private, freshly
+  # wiped cache so both variants start cold and deterministic. Every other test keeps
+  # reusing the warm cache, which roughly halves the suite's wall-clock time (and
+  # keeps it under CI's job timeout).
+  const coldCacheTests = ["tsug_typedecl.nim", "ttype_decl.nim"]
+  if extractFilename(filename) in coldCacheTests:
+    let nimcache = getTempDir() / ("nimsuggest_cache_" &
+      extractFilename(result.dest).changeFileExt("") & (if epcMode: "_epc" else: "_stdin"))
+    removeDir(nimcache)
+    result.cmd.add " --nimcache:" & nimcache
   # now that we know the markers, substitute them:
   for a in mitems(result.script):
     a[0] = a[0] % markers
