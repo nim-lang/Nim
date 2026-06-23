@@ -10,6 +10,7 @@ discard """
 @[1, 2]
 '''
 """
+import std/strbasics
 
 # Object variant / case object
 type

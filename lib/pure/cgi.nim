@@ -128,7 +128,7 @@ proc getContentLength*(): string =
 
 proc getContentType*(): string =
   ## Returns contents of the `CONTENT_TYPE` environment variable.
-  return getEnv("CONTENT_Type")
+  return getEnv("CONTENT_TYPE")
 
 proc getDocumentRoot*(): string =
   ## Returns contents of the `DOCUMENT_ROOT` environment variable.

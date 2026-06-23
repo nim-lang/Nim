@@ -1559,6 +1559,8 @@ macro expandMacros*(body: typed): untyped =
   echo body.toStrLit
   result = body
 
+proc getTypeInstSkipAlias(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+
 proc extractTypeImpl(n: NimNode): NimNode =
   ## attempts to extract the type definition of the given symbol
   case n.kind
@@ -1573,10 +1575,16 @@ proc extractTypeImpl(n: NimNode): NimNode =
       result = n[0].getImpl()
   of nnkTypeDef:
     result = n[2]
+    if result.kind notin {nnkSym, nnkObjectTy, nnkRefTy, nnkPtrTy, nnkBracketExpr}:
+      # Handle typeof() and similar unresolvable type expressions
+      let typSym = if n[0].kind == nnkPragmaExpr: n[0][0] else: n[0]
+      if typSym.kind == nnkSym:
+        let resolved = typSym.getTypeInstSkipAlias()
+        if resolved.kind == nnkSym:
+          return resolved.getImpl.extractTypeImpl()
+      error("Invalid node to retrieve type implementation of: " & $result.kind)
   else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
-
-proc getTypeInstSkipAlias(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
 
 proc customPragmaNode(n: NimNode): NimNode =
   result = nil
@@ -1618,6 +1626,15 @@ proc customPragmaNode(n: NimNode): NimNode =
     var typDef = getImpl(typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
+      # Resolve typeof() and similar unresolvable type expressions
+      if typDef[2].kind notin {nnkSym, nnkObjectTy, nnkRefTy, nnkPtrTy, nnkBracketExpr}:
+        let typSym = if typDef[0].kind == nnkPragmaExpr: typDef[0][0] else: typDef[0]
+        if typSym.kind == nnkSym:
+          let resolved = typSym.getTypeInstSkipAlias()
+          if resolved.kind == nnkSym:
+            typDef = getImpl(resolved)
+            continue
+        break
       let typ = typDef[2].extractTypeImpl()
       if typ.kind notin {nnkRefTy, nnkPtrTy, nnkObjectTy}: break
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}

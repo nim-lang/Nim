@@ -19,8 +19,11 @@ import std/tables
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-proc replayStateChanges*(module: PSym; g: ModuleGraph) =
-  let list = module.ast
+proc replayStateChanges*(module: PSym; g: ModuleGraph; list: PNode) =
+  ## `list` is an `nkStmtList` of `nkReplayAction` nodes (macro-cache puts/incs/
+  ## adds/incls and a few pragmas) recorded for `module`. Under the NIF backend a
+  ## loaded module's `ast` is never reconstructed, so the caller passes the replay
+  ## actions it parsed out of the module's NIF directly.
   assert list != nil
   assert list.kind == nkStmtList
   for n in list:
@@ -64,8 +67,9 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
           g.cacheTables[destKey] = initBTree[string, PNode]()
         if not contains(g.cacheTables[destKey], key):
           g.cacheTables[destKey].add(key, val)
-        else:
-          internalError(g.config, n.info, "key already exists: " & key)
+        # else: the same key was already replayed. Under IC the import closure is
+        # replayed (direct module + transitive deps), so the same registration can
+        # legitimately be reached twice; re-applying it is a no-op, not an error.
       of "incl":
         let destKey = n[1].strVal
         let val = n[2]
@@ -86,3 +90,37 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
           g.cacheSeqs[destKey].add val
       else:
         internalAssert g.config, false
+
+proc replayBackendActions*(g: ModuleGraph; module: PSym; list: PNode) =
+  ## Applies the backend-relevant replay actions (C compile/link directives)
+  ## found in a NIF-loaded module's top-level statement list. The `nifc`
+  ## backend loads modules without going through sem's `replayStateChanges`,
+  ## so e.g. math's `{.passL: "-lm".}` was lost and the final link failed
+  ## with undefined references. VM cache actions are deliberately NOT
+  ## replayed here — codegen does not run macros.
+  if list == nil: return
+  for n in list:
+    if n.kind == nkReplayAction and n.len >= 2 and
+        n[0].kind == nkStrLit and n[1].kind == nkStrLit:
+      case n[0].strVal
+      of "compile":
+        if n.len == 4 and n[2].kind == nkStrLit:
+          let cname = AbsoluteFile n[1].strVal
+          var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                         obj: AbsoluteFile n[2].strVal,
+                         flags: {CfileFlag.External},
+                         customArgs: n[3].strVal)
+          extccomp.addExternalFileToCompile(g.config, cf)
+      of "link":
+        extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)
+      of "passl":
+        extccomp.addLinkOption(g.config, n[1].strVal)
+      of "passc":
+        extccomp.addCompileOption(g.config, n[1].strVal)
+      of "localpassc":
+        extccomp.addLocalCompileOption(g.config, n[1].strVal,
+          toFullPathConsiderDirty(g.config, module.info.fileIndex))
+      of "cppdefine":
+        options.cppDefine(g.config, n[1].strVal)
+      else:
+        discard

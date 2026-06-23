@@ -259,7 +259,7 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
-    result = s.readData(beginStore(buffer, slice.b + 1 - slice.a, slice.a), slice.b + 1 - slice.a)
+    result = s.readData(beginStore(buffer, buffer.len, slice.a), slice.b + 1 - slice.a)
     endStore(buffer)
 
 template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
@@ -1226,7 +1226,7 @@ else: # after 1.3 or JS not defined
       jsOrVmBlock:
         buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       do:
-        copyMem(beginStore(buffer, result, slice.a), readRawData(s.data, s.pos), result)
+        copyMem(beginStore(buffer, buffer.len, slice.a), readRawData(s.data, s.pos), result)
         endStore(buffer)
       inc(s.pos, result)
     else:
@@ -1267,16 +1267,16 @@ else: # after 1.3 or JS not defined
     var s = StringStream(s)
     if bufLen <= 0:
       return
-    if s.pos + bufLen > s.data.len:
-      setLen(s.data, s.pos + bufLen)
     when defined(js):
+      if s.pos + bufLen > s.data.len:
+        setLen(s.data, s.pos + bufLen)
       try:
         s.data[s.pos..<s.pos+bufLen] = cast[ptr string](buffer)[][0..<bufLen]
       except:
         raise newException(Defect, "could not write to string stream, " &
           "did you use a non-string buffer pointer?", getCurrentException())
     elif not defined(nimscript):
-      copyMem(beginStore(s.data, bufLen, s.pos), buffer, bufLen)
+      copyMem(beginStore(s.data, s.pos + bufLen, s.pos), buffer, bufLen)
       endStore(s.data)
     inc(s.pos, bufLen)
 
@@ -1346,7 +1346,7 @@ proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
 
 proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
   let len = slice.b + 1 - slice.a
-  result = readBuffer(FileStream(s).f, beginStore(buffer, len, slice.a), len)
+  result = readBuffer(FileStream(s).f, beginStore(buffer, buffer.len, slice.a), len)
   endStore(buffer)
 
 proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =

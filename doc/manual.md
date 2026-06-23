@@ -34,10 +34,10 @@ To learn how to compile Nim programs and generate documentation see
 the [Compiler User Guide](nimc.html) and the [DocGen Tools Guide](docgen.html).
 
 The language constructs are explained using an extended BNF, in which `(a)*`
-means 0 or more `a`'s, `a+` means 1 or more `a`'s, and `(a)?` means an
+means 0 or more *a*'s, `a+` means 1 or more *a*'s, and `(a)?` means an
 optional *a*. Parentheses may be used to group elements.
 
-`&` is the lookahead operator; `&a` means that an `a` is expected but
+`&` is the lookahead operator; `&a` means that an *a* is expected but
 not consumed. It will be consumed in the following rule.
 
 The `|`, `/` symbols are used to mark alternatives and have the lowest
@@ -1023,6 +1023,9 @@ These are the major type classes:
 * reference (pointer) type
 * procedural type
 * generic type
+
+The compiler's internal type zoo is richer than this summary suggests:
+some types that are structurally equal still differ in backend representation.
 
 
 Ordinal types
@@ -2173,6 +2176,10 @@ Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. `nil` is
 an allowed value for a variable of a procedural type.
+
+Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
 Examples:
 
@@ -6116,40 +6123,48 @@ instantiations cross multiple different modules:
 
   ```nim
   # module A
+  type O* = object
+
   proc genericA*[T](x: T) =
     mixin init
     init(x)
   ```
 
+  ```nim
+  # module C
+  import A
+
+  proc init*(x: O) = discard
+  ```
 
   ```nim
-  import C
-
   # module B
+  import A, C
+
   proc genericB*[T](x: T) =
-    # Without the `bind init` statement C's init proc is
-    # not available when `genericB` is instantiated:
+    # Without the `bind init` statement, C's `init` proc is not
+    # available when `genericA` is instantiated through `genericB`
+    # from `module main`, which does not import C:
     bind init
     genericA(x)
   ```
 
   ```nim
-  # module C
-  type O = object
-  proc init*(x: var O) = discard
-  ```
-
-  ```nim
   # module main
-  import B, C
+  import A, B
 
-  genericB O()
+  genericB(O())
   ```
 
-In module B has an `init` proc from module C in its scope that is not
-taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx: these
-symbols by a `bind` statement inside `genericB`.
+Because `genericA` uses `mixin init`, `init` is an open symbol that is
+resolved when `genericA` is instantiated. Here `genericA` is instantiated
+through `genericB`, whose final instantiation happens in `module main`.
+Since `module main` does not import `module C`, `init` is not in scope at
+that point, and the instantiation fails with ``undeclared identifier: 'init'``.
+The `bind init` statement inside `genericB` forwards the `init` symbol that
+is visible in `module B` into the instantiation of `genericA`, which makes
+the example compile. This `bind`, which re-exposes a symbol to a nested
+generic instantiation, is a `delegating bind`:idx:.
 
 
 Templates
@@ -7989,6 +8004,9 @@ underlying C `struct`:c: in a `sizeof` expression:
            pure, incompleteStruct.} = object
   ```
 
+Attempting to use `sizeof` on an `incompleteStruct` type at compile-time
+will error with "'sizeof' cannot be used with '.incompleteStruct' types".
+
 
 CompleteStruct pragma
 ---------------------
@@ -8867,7 +8885,7 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
+if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
 parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
 When an `importcpp` type has a `byref` pragma, these params translate to
 C++ references `&`.

@@ -28,7 +28,7 @@ from magicsys import getSysType
 const
   traceCode = defined(nimVMDebug)
 
-when hasFFI:
+when defined(nimHasLibFFI): # == hasFFI; spelled out for the IC dep scanner
   import evalffi
 
 
@@ -1310,6 +1310,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var a = regs[rb].node
       if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
+        # a macro observed this symbol's implementation: NeedsImpl edge to
+        # its home module under IC.
+        recordIcImplDep(c.graph, a.sym)
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
@@ -1319,6 +1322,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let a = regs[rb].node
       if a.kind == nkSym:
+        recordIcImplDep(c.graph, a.sym)
         regs[ra].node =
           if a.sym.ast.isNil:
             newNode(nkNilLit)
@@ -1951,7 +1955,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
+        let shSym = regs[rb].node.sym
+        # When `signatureHash` is applied to a type (e.g. a `T: typedesc`/generic
+        # param), hash the *type* it denotes, not the parameter symbol. Hashing the
+        # symbol routes through `hashNonProc`, which mixes in `s.disamb` — a
+        # per-module instantiation counter. Under incremental compilation the
+        # registering module and a consuming module instantiate the surrounding
+        # generic separately, get different `disamb`s, and produce different
+        # hashes for the same type (nim-serialization's auto-serialization lookup
+        # missed because of this). Hashing the underlying type via `hashType` is
+        # type-identity based and stable across the NIF boundary.
+        let shTyp = shSym.typ
+        if shTyp != nil and shTyp.kind == tyTypeDesc and shTyp.hasElementType:
+          regs[ra].node.strVal = $hashType(shTyp.elementType, c.config)
+        else:
+          regs[ra].node.strVal = $sigHash(shSym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]

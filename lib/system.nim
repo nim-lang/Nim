@@ -54,7 +54,12 @@ type
     typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
     typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
+  TypeOfModifiers* = enum  ## Modes to handle type modifiers `var`, `sink` and `lent`.
+    CompatibleTypeModifiers,  ## Remove or keep type modifiers in the same way as old typeof. That means keep `sink` but remove `var` and `lent`.
+    RemoveTypeModifiers,      ## Remove type modifiers.
+    KeepTypeModifiers,        ## Keep type modifiers.
+
+proc typeof*(x: untyped; mode = typeOfIter; modifierMode = CompatibleTypeModifiers): typedesc {.
   magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin `typeof` operation for accessing the type of an expression.
   ## Since version 0.20.0.
@@ -75,6 +80,11 @@ proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
       # this would give: Error: attempting to call routine: 'myFoo2'
       # since `typeOfProc` expects a typed expression and `myFoo2()` can
       # only be used in a `for` context.
+
+    proc varParam(x: var int;
+                  y: typeof(x, modifierMode = RemoveTypeModifiers);
+                  z: typeof(x, modifierMode = KeepTypeModifiers)) = discard
+    doAssert varParam is proc (x: var int; y: int; z: var int) {.nimcall.}
 
 proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `or` meta class.
@@ -166,7 +176,7 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.}
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect, nodestroy.} =
   result = x
   {.cast(raises: []), cast(tags: []).}:
     `=wasMoved`(x)
@@ -1703,7 +1713,8 @@ when not (notJSnotNims and defined(nimSeqsV2)):
   # Needed so modules imported by system (e.g. syncio) can reference these without guards.
   when notJSnotNims:
     # mm:refc: string = ptr NimStringDesc with data: UncheckedArray[char]
-    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+    proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+      {.cast(noSideEffect).}: s.setLen(newLen)
       let ns = cast[NimString](s)
       if ns == nil: nil
       else: cast[ptr UncheckedArray[char]](addr ns.data[start])
@@ -1712,11 +1723,18 @@ when not (notJSnotNims and defined(nimSeqsV2)):
       let ns = cast[NimString](s)
       if ns == nil: nil
       else: cast[ptr UncheckedArray[char]](addr ns.data[start])
+    template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] =
+      ## Same as `readRawData` here: the data lives in a heap `NimStringDesc` at a
+      ## stable address, so the pointer already survives moves of `s`. Takes `s` by
+      ## `var` to match the `--strings:sso` version, so code can prepare for that
+      ## upgrade without `when declared` guards.
+      readRawData(s, start)
   else:
     # JS/nimscript: callers are guarded by whenNotVmJsNims/when not defined(js)
-    proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} = nil
+    proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} = nil
     proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} = discard
     template readRawData*(s: string; start = 0): ptr UncheckedArray[char] = nil
+    template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] = nil
 
 when not defined(js):
   template newSeqImpl(T, len) =
@@ -2693,7 +2711,9 @@ when hasAlloc or defined(nimscript):
     setLen(x, xl+item.len)
     var j = xl-1
     while j >= i:
-      when defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
+      when defined(nimsso):
+        x[j+item.len] = x[j]
+      elif defined(gcArc) or defined(gcOrc) or defined(gcYrc) or defined(gcAtomicArc):
         x[j+item.len] = move x[j]
       else:
         shallowCopy(x[j+item.len], x[j])
@@ -3118,10 +3138,7 @@ when notJSnotNims:
                     not defined(nuttx) and
                     hostOS != "any"
 
-  proc raiseEIO(msg: string) {.noinline, noreturn.} =
-    raise newException(IOError, msg)
-
-  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
+  proc echoBinSafe(args: openArray[string]) {.compilerproc, raises: [].} =
     when defined(androidNDK):
       # When running nim in android app, stdout goes nowhere, so echo gets ignored
       # To redirect echo to the android logcat, use -d:androidNDK
@@ -3143,7 +3160,7 @@ when notJSnotNims:
       for s in args:
         when defined(windows):
           # equivalent to syncio.writeWindows
-          proc writeWindows(f: CFilePtr; s: string; doRaise = false) =
+          proc writeWindows(f: CFilePtr; s: string) =
             # Don't ask why but the 'printf' family of function is the only thing
             # that writes utf-8 strings reliably on Windows. At least on my Win 10
             # machine. We also enable `setConsoleOutputCP(65001)` now by default.
@@ -3154,13 +3171,11 @@ when notJSnotNims:
               if s[i] == '\0':
                 let w = c_fputc('\0', f)
                 if w != 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i
               else:
                 let w = c_fprintf(f, "%s", unsafeAddr s[i])
                 if w <= 0:
-                  if doRaise: raiseEIO("cannot write string to file")
                   break
                 inc i, w
           writeWindows(cstdout, s)

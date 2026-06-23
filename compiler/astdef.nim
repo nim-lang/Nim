@@ -20,6 +20,9 @@ export int128
 import nodekinds
 export nodekinds
 
+import itemids
+export itemids
+
 type
   TCallingConvention* = enum
     ccNimCall = "nimcall"           # nimcall, also the default
@@ -572,23 +575,6 @@ const
     ## magics that are generated as normal procs in the backend
 
 type
-  ItemId* = object
-    module*: int32
-    item*: int32
-
-proc `$`*(x: ItemId): string =
-  "(module: " & $x.module & ", item: " & $x.item & ")"
-
-proc `==`*(a, b: ItemId): bool {.inline.} =
-  a.item == b.item and a.module == b.module
-
-proc hash*(x: ItemId): Hash =
-  var h: Hash = hash(x.module)
-  h = h !& hash(x.item)
-  result = !$h
-
-
-type
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -1000,7 +986,8 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 
 type
   LogEntryKind* = enum
-    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry
+    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,
+    PureEnumEntry
   LogEntry* = object
     kind*: LogEntryKind
     op*: TTypeAttachedOp

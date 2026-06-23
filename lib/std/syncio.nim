@@ -485,7 +485,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(cast[cstring](beginStore(line, sp, pos)), sp.cint, f) != nil
+      fgetsSuccess = c_fgets(cast[cstring](beginStore(line, pos + sp, pos)), sp.cint, f) != nil
       endStore(line)
       if fgetsSuccess: break
       when not defined(nimscript):

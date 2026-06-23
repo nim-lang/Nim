@@ -497,6 +497,33 @@ proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
     if not isDefectException(e.typ):
       throws(a.exc, e, comesFrom)
 
+proc skipHiddenConv(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkHiddenStdConv, nkHiddenSubConv:
+      result = result[1]
+    else: break
+
+proc addRaiseEffectsFromExpr(a: PEffects, e, comesFrom: PNode) =
+  if e.isNil:
+    return
+  case e.kind
+  of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr:
+    if e.len > 0:
+      addRaiseEffectsFromExpr(a, e.lastSon.skipHiddenConv, comesFrom)
+  of nkIfExpr, nkIfStmt:
+    for branch in items(e):
+      if branch.len > 0:
+        addRaiseEffectsFromExpr(a, branch.lastSon.skipHiddenConv, comesFrom)
+  of nkCaseStmt:
+    for i in 1..<e.len:
+      let branch = e[i]
+      if branch.len > 0:
+        addRaiseEffectsFromExpr(a, branch.lastSon.skipHiddenConv, comesFrom)
+  else:
+    addRaiseEffect(a, e, comesFrom)
+
 proc addTag(a: PEffects, e, comesFrom: PNode) =
   var aa = a.tags
   for i in 0..<aa.len:
@@ -809,6 +836,10 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
         markSideEffect(tracked, a, n.info)
   let paramType = if formals != nil and argIndex < formals.signatureLen: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
+    let arg = n.skipAddr()
+    if isSsoStringIndex(tracked.config, arg):
+      localError(tracked.config, arg.info,
+        "expression '$1' is immutable, not 'var'" % renderNotLValue(arg))
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalSym(tracked, n.sym):
       makeVolatile(tracked, n.sym)
@@ -1204,6 +1235,7 @@ type
     enforcedGcSafety, enforceNoSideEffects: bool
     oldExc, oldTags, oldForbids: int
     exc, tags, forbids: PNode
+    excSource, tagsSource, forbidsSource: PNode
 
 proc createBlockContext(tracked: PEffects): PragmaBlockContext =
   var oldForbidsLen = 0
@@ -1226,17 +1258,18 @@ proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
     # anything about 'raises' in the 'cast' at all. Same applies for 'tags'.
     setLen(tracked.exc.sons, bc.oldExc)
     for e in bc.exc:
-      addRaiseEffect(tracked, e, e)
+      addRaiseEffect(tracked, e, if bc.excSource != nil: bc.excSource else: e)
   if bc.tags != nil:
     setLen(tracked.tags.sons, bc.oldTags)
     for t in bc.tags:
-      addTag(tracked, t, t)
+      addTag(tracked, t, if bc.tagsSource != nil: bc.tagsSource else: t)
   if bc.forbids != nil:
     setLen(tracked.forbids.sons, bc.oldForbids)
     for t in bc.forbids:
-      addNotTag(tracked, t, t)
+      addNotTag(tracked, t, if bc.forbidsSource != nil: bc.forbidsSource else: t)
 
-proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
+proc castBlock(tracked: PEffects, castPragma: PNode, bc: var PragmaBlockContext) =
+  let pragma = castPragma[1]
   case whichPragma(pragma)
   of wGcSafe:
     bc.enforcedGcSafety = true
@@ -1249,6 +1282,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.tags = newNodeI(nkArgList, pragma.info)
       bc.tags.add n
+    bc.tagsSource = castPragma
   of wForbids:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1256,6 +1290,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.forbids = newNodeI(nkArgList, pragma.info)
       bc.forbids.add n
+    bc.forbidsSource = castPragma
   of wRaises:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1263,6 +1298,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.exc = newNodeI(nkArgList, pragma.info)
       bc.exc.add n
+    bc.excSource = castPragma
   of wUncheckedAssign:
     discard "handled in sempass1"
   else:
@@ -1299,6 +1335,8 @@ proc allowCStringConv(n: PNode): bool =
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
+  of nkTypeOfExpr:
+    discard "typeof() never evaluates its operand; not a definite-assignment use"
   of nkSym:
     useVar(tracked, n)
     if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
@@ -1315,7 +1353,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
-      addRaiseEffect(tracked, n[0], n)
+      addRaiseEffectsFromExpr(tracked, n[0], n)
       for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
@@ -1516,7 +1554,7 @@ proc track(tracked: PEffects, n: PNode) =
       of wNoSideEffect:
         bc.enforceNoSideEffects = true
       of wCast:
-        castBlock(tracked, pragmaList[i][1], bc)
+        castBlock(tracked, pragmaList[i], bc)
       else:
         discard
     applyBlockContext(tracked, bc)
