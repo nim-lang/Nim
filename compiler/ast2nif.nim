@@ -11,7 +11,7 @@
 
 import std / [assertions, tables, sets]
 from std / strutils import startsWith, endsWith, contains
-from std / os import fileExists
+from std / os import fileExists, dirExists, walkFiles
 from std / syncio import readFile
 from std / algorithm import sort
 import "../dist/checksums/src/checksums" / sha1
@@ -131,6 +131,20 @@ proc nifLineInfo(w: var LineInfoWriter; info: TLineInfo): PackedLineInfo =
     # Must use pool.man since toString uses pool.man to unpack
     result = pack(pool.man, fid, info.line.int32, info.col)
 
+proc nifLineInfoWithComment(w: var LineInfoWriter; info: TLineInfo; doc: string): PackedLineInfo =
+  ## Like `nifLineInfo` but also attaches `doc` as a NIF `#…#` comment on the
+  ## token. Used to carry `##` doc comments, which the AST serialization itself
+  ## drops, across a NIF round-trip (the loader reads it back off the info).
+  if doc.len == 0:
+    result = nifLineInfo(w, info)
+  else:
+    let cid = pool.strings.getOrIncl(doc).uint32
+    if info == unknownLineInfo:
+      result = packWithComment(pool.man, NoFile, 0'i32, 0'i32, cid)
+    else:
+      let fid = get(w, info.fileIndex)
+      result = packWithComment(pool.man, fid, info.line.int32, info.col, cid)
+
 proc oldLineInfo(w: var LineInfoWriter; info: PackedLineInfo): TLineInfo =
   if info == NoLineInfo:
     result = unknownLineInfo
@@ -185,8 +199,9 @@ type
     decodedFileIndices: HashSet[FileIndex]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
-    #writtenTypes: seq[PType]  # types written in this module, to be unloaded later
-    #writtenSyms: seq[PSym]    # symbols written in this module, to be unloaded later
+    writtenTypes: seq[PType]  # types sealed during this emit; under ideActive
+    writtenSyms: seq[PSym]    # they are reset to Complete afterwards so nimsuggest
+                              # can keep mutating its still-live query targets
     writtenPackages: HashSet[string]
     depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
 
@@ -361,6 +376,7 @@ proc writeType(w: var Writer; dest: var TokenBuf; typ: PType) =
     # module (or nowhere), leaving dangling references (e.g. `symbol has no
     # offset` for a `pointer` type whose itemId.module drifted away).
     typ.state = Sealed
+    if w.infos.config.ideActive: w.writtenTypes.add typ
     writeTypeDef(w, dest, typ)
   else:
     dest.addSymUse pool.syms.getOrIncl(typeToNifSym(typ, w.infos.config)), NoLineInfo
@@ -379,8 +395,25 @@ proc writeLib(w: var Writer; dest: var TokenBuf; lib: PLib) =
       dest.addStrLit lib.name
       writeNode w, dest, lib.path
 
+proc docOfSym(sym: PSym): string =
+  ## The `##` doc comment documenting `sym`, if any (mirrors nifler's
+  ## docCommentOf). The comment may sit on the decl node itself or as the first
+  ## `nkCommentStmt` of a routine body. Carried separately on the sym def's NIF
+  ## token because the AST serialization drops comments — nimsuggest needs it
+  ## for "find definition" doc hovers.
+  let n = sym.astImpl
+  if n == nil or nodeCommentReader == nil: return ""
+  let own = nodeCommentReader(n)
+  if own.len > 0: return own
+  if sym.kindImpl in routineKinds and n.safeLen > bodyPos:
+    let body = n[bodyPos]
+    if body != nil and body.kind == nkStmtList and body.len > 0 and
+       body[0].kind == nkCommentStmt:
+      return nodeCommentReader(body[0])
+  return ""
+
 proc writeSymDef(w: var Writer; dest: var TokenBuf; sym: PSym) =
-  dest.addParLe sdefTag, trLineInfo(w, sym.infoImpl)
+  dest.addParLe sdefTag, nifLineInfoWithComment(w.infos, sym.infoImpl, docOfSym(sym))
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   # The `x` marker means "importable as a bare identifier into an importer's
   # scope". Object fields carry `sfExported` (so they are visible via `obj.field`
@@ -473,6 +506,7 @@ proc writeSym(w: var Writer; dest: var TokenBuf; sym: PSym) =
     dest.addDotToken()
   elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
+    if w.infos.config.ideActive: w.writtenSyms.add sym
     writeSymDef(w, dest, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
@@ -497,6 +531,7 @@ proc writeSymNode(w: var Writer; dest: var TokenBuf; n: PNode; sym: PSym) =
     nodeTyp = sym.typImpl
   if shouldWriteSymDef(w, sym):
     sym.state = Sealed
+    if w.infos.config.ideActive: w.writtenSyms.add sym
     if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, nodeTyp)
@@ -609,6 +644,7 @@ var importTag = registerTag("import")
 var implTag = registerTag("implementation")
 var reexpModTag = registerTag("reexpmod")
 var offerTag = registerTag("offer")
+var modulesrcTag = registerTag("modulesrc")
 
 proc registerNifAstTags*() =
   ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
@@ -640,6 +676,7 @@ proc registerNifAstTags*() =
   implTag = registerTag("implementation")
   reexpModTag = registerTag("reexpmod")
   offerTag = registerTag("offer")
+  modulesrcTag = registerTag("modulesrc")
 
 proc writeNode(w: var Writer; dest: var TokenBuf; n: PNode; forAst = false) =
   if n == nil:
@@ -1324,6 +1361,14 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     for ct in off.concreteTypes:
       w.deps.addSymUse pool.syms.getOrIncl(typeToNifSym(ct, w.infos.config)), NoLineInfo
     w.deps.addParRi
+  # Record this module's own absolute source path. The NIF suffix is a hash of
+  # the (relative) path (gear2/modnames.moduleSuffix) and is NOT reversible, so
+  # the standalone include-graph scanner (`scanIncludeGraph`, used by nimsuggest
+  # cold queries) needs the path written explicitly to map an included file back
+  # to the *source* of its includer without loading the module.
+  w.deps.addParLe modulesrcTag, NoLineInfo
+  w.deps.addStrLit toFullPath(config, FileIndex(thisModule))
+  w.deps.addParRi
 
   # the implTag is used to tell the loader that the
   # bottom of the file is the implementation of the module:
@@ -1350,9 +1395,21 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
       let s = op.sym
       if s.state != Sealed:
         s.state = Sealed
+        if config.ideActive: w.writtenSyms.add s
         writeSymDef w, dest, s
 
   dest.addParRi()
+
+  # nimsuggest reuses these symbols/types as live, mutable query targets (sem
+  # re-runs, usage tracking, flag updates). Sealing is only needed for intra-emit
+  # dedup; once the NIF is built, un-seal so suggest can keep mutating them
+  # (matches `loadedState` loading Complete under ideActive). The `Sealed` guard
+  # stays in force for a real `nim m`/`nim nifc` build.
+  if config.ideActive:
+    for s in w.writtenSyms:
+      if s.state == Sealed: s.state = Complete
+    for t in w.writtenTypes:
+      if t.state == Sealed: t.state = Complete
 
   # OnlyIfChanged keeps the mtime of content-identical rewrites: nifmake's
   # mtime-based `needsRebuild` then prunes the rebuild cascade level by
@@ -1454,15 +1511,29 @@ proc loadedState(c: DecodeContext): ItemState {.inline.} =
   ## State to give a freshly loaded symbol or type. During the C code generation
   ## phase (`nim nifc`) the backend (lambda lifting, the transformer, etc.)
   ## legitimately mutates the loaded entities and never writes them back to a NIF,
-  ## so they must be mutable (`Complete`). During semantic checking (`nim m`) a
-  ## loaded entity belongs to an already-compiled dependency and must stay
-  ## `Sealed` so accidental mutations are caught.
-  if c.infos.config.cmd == cmdNifC: Complete else: Sealed
+  ## so they must be mutable (`Complete`). nimsuggest (`ideActive`) is the same
+  ## case: it reuses loaded symbols as live query targets and mutates them during
+  ## sem and suggestion bookkeeping (usage tracking, flags) without authoritatively
+  ## writing those mutations back (its NIF emits are gated to non-dirty, error-free
+  ## modules and re-serialize from the proper state). During a plain `nim m`
+  ## semantic check a loaded entity belongs to an already-compiled dependency and
+  ## must stay `Sealed` so accidental mutations are caught.
+  if c.infos.config.cmd == cmdNifC or c.infos.config.ideActive: Complete else: Sealed
 
 proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifIndexEntry;
                           buf: var TokenBuf): Cursor =
   let s = addr c.mods[module].stream
   s.r.jumpTo entry.offset
+  # A seek-load is self-contained: its tokens must decode their relative line
+  # info against `entry.info` ALONE. The stream's `parents` stack can be left at
+  # depth >1 by a prior non-seek read (e.g. loadNifModule reads `(stmts`/
+  # `(implementation` without consuming their `)`), and `parse` only overwrites
+  # parents[0] while `rawNext` reads parents[^1] — so a stale top entry (the last
+  # symbol decoded, e.g. excpt.nim:746) would become the base. This is benign on
+  # a freshly-opened stream (cold/stdin) but corrupts EPC recompiles, which reuse
+  # the per-module stream (the global DecodeContext survives resetAllModules).
+  # Collapse the stack so parse's parentInfo is the sole base.
+  s[].parents.setLen 1
   nifcursors.parse(s[], buf, entry.info)
   result = cursorAt(buf, 0)
 
@@ -1693,7 +1764,18 @@ proc loadSymStub(c: var DecodeContext; t: SymId; thisModule: string;
     inc val[]
     let id = itemId(module.int32, val[])
 
-    let offs = c.getOffset(module, symAsStr)
+    let offs = c.mods[module].index.getOrDefault(symAsStr)
+    if offs.offset == 0:
+      # Only module/package self-syms are never written as `(sd)` entries, so a
+      # missing index offset means this is such a sym — typically the OWNER of an
+      # `include`d symbol (`<module>.0.<suffix>`). Synthesize a resolvable
+      # skModule stub (itemId item-0 = the module self-sym) instead of asserting
+      # "symbol has no offset". `Complete` so accessors never try to lazy-load it.
+      result = PSym(itemId: itemId(module.int32, 0'i32), kindImpl: skModule,
+                    name: c.cache.getIdent(sn.name), disamb: sn.count.int32,
+                    infoImpl: newLineInfo(module, 1, 1), state: Complete)
+      c.syms[symAsStr] = (result, NifIndexEntry())
+      return result
     let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
     result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
     c.syms[symAsStr] = (result, offs)
@@ -1909,8 +1991,14 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
 
   # Now parse the symbol definition with all local symbols pre-registered
   s.infoImpl = c.infos.oldLineInfo(n.info)
+  # The `##` doc comment (if any) rides as a NIF comment on the sym def token;
+  # capture it before advancing, then restore it onto the loaded AST so that
+  # suggest's `extractDocComment` (findDocComment on `s.ast`) finds it.
+  let docId = unpack(pool.man, n.info).comment
   inc n
   loadSymFromCursor(c, s, n, c.mods[symsModule].suffix, localSyms)
+  if docId != 0'u32 and s.astImpl != nil and nodeCommentWriter != nil:
+    nodeCommentWriter(s.astImpl, pool.strings[StrId(docId)])
 
 
 template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNodeKind; body: untyped) =
@@ -2268,6 +2356,10 @@ type
       ## generic instances this module created; modulegraphs.nim rebuilds
       ## `procInstCache` from them so a consumer reuses the instance instead of
       ## re-instantiating it in its own (operator-blind) module scope.
+    includes*: seq[string] # resolved full paths of files this module `include`s;
+                           # replayed into `inclToMod` by modulegraphs.nim so that
+                           # nimsuggest can map a query in an include file back to
+                           # this module (`parentModule`) and recompile it.
 
 proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]; tok: var PackedToken) =
   tok = next(s) # skip `(import`
@@ -2284,6 +2376,94 @@ proc loadImport(c: var DecodeContext; s: var Stream; deps: var seq[ModuleSuffix]
     tok = next(s) # skip )
   else:
     raiseAssert "expected ParRi but got " & $tok.kind
+
+proc loadInclude(c: var DecodeContext; s: var Stream; includes: var seq[string]; tok: var PackedToken) =
+  ## Reads an `(include . . "path"...)` entry written by `trInclude`. The paths
+  ## are resolved full paths (see semstmts.evalInclude under cmdM/optCompress).
+  tok = next(s) # skip `(include`
+  if tok.kind == DotToken: tok = next(s) # flags
+  if tok.kind == DotToken: tok = next(s) # type
+  while tok.kind == StringLit:
+    includes.add pool.strings[tok.litId]
+    tok = next(s)
+  if tok.kind == ParRi:
+    tok = next(s)
+  else:
+    raiseAssert "expected ParRi in (include ...) but got " & $tok.kind
+
+proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes: seq[string]]] =
+  ## Standalone "full table" scan of every `<suffix>.nif` in the nimcache: reads
+  ## only each module's header records — `(modulesrc "path")` (the includer's own
+  ## source) and `(include . . "path"...)` (resolved included files) — and returns
+  ## (includerSource, includedSources) pairs for the modules that `include`
+  ## anything. No `DecodeContext`, no symbol/index loading: it parses the few dep
+  ## tokens at the top of the file and stops at the first non-dep node.
+  ##
+  ## Used by nimsuggest to answer, for a cold-opened *include* file, "which module
+  ## includes me?" without NIF-loading that module — so the includer can be
+  ## *source*-compiled (modules that `include` files are never served from NIF).
+  result = @[]
+  let dir = getNimcacheDir(config)
+  if not dirExists(dir.string): return
+  for f in walkFiles((dir / RelativeFile"*.nif").string):
+    # only the primary module NIFs; skip the sidecars
+    # (.iface.nif/.impl.nif/.edges.nif/.s.deps.nif).
+    if f.endsWith(".iface.nif") or f.endsWith(".impl.nif") or
+       f.endsWith(".edges.nif") or f.endsWith(".deps.nif"):
+      continue
+    var s = nifstreams.open(f)
+    var includer = ""
+    var includes: seq[string] = @[]
+    var t = next(s) # (stmts
+    if t.kind == ParLe:
+      t = next(s) # flags dot
+      t = next(s) # type dot
+      t = next(s) # first child (matches loadNifModule's priming)
+      # the dep records (import/include/reexpmod/modulesrc) are written first and
+      # contiguously; stop at the first body node or the (implementation) marker.
+      while t.kind == ParLe:
+        if t.tagId == includeTag or t.tagId == modulesrcTag:
+          let isInc = t.tagId == includeTag
+          t = next(s) # into the node (past its ParLe)
+          while t.kind != ParRi and t.kind != EofToken:
+            if t.kind == StringLit:
+              if isInc: includes.add pool.strings[t.litId]
+              else: includer = pool.strings[t.litId]
+            t = next(s)
+          if t.kind == ParRi: t = next(s) # past the ParRi
+        elif t.tagId == importTag or t.tagId == reexpModTag:
+          t = skip(s, t)
+        else:
+          break
+    close s
+    if includer.len > 0 and includes.len > 0:
+      result.add (includer, includes)
+
+proc nifModuleHasIncludes*(config: ConfigRef; fileIdx: FileIndex): bool =
+  ## Cheap header-only check: does the module's `<suffix>.nif` contain an
+  ## `(include ...)` record? Used by nimsuggest (`moduleFromNifFile`) to refuse to
+  ## NIF-serve modules that `include` files, so the includer is source-compiled
+  ## and the included symbols never round-trip through NIF (which mishandles their
+  ## owner/line-info on reload).
+  let f = toNifFilename(config, fileIdx)
+  if not fileExists(f): return false
+  var s = nifstreams.open(f)
+  result = false
+  var t = next(s) # (stmts
+  if t.kind == ParLe:
+    t = next(s) # flags dot
+    t = next(s) # type dot
+    t = next(s) # first child
+    while t.kind == ParLe:
+      if t.tagId == includeTag:
+        result = true
+        break
+      elif t.tagId == modulesrcTag or t.tagId == importTag or
+           t.tagId == reexpModTag:
+        t = skip(s, t)
+      else:
+        break
+  close s
 
 proc addReexportedEnumFields(c: var DecodeContext; sym: PSym; interf: var TStrTable) =
   ## When a non-pure enum type is (re-)exported, its fields must also become
@@ -2396,7 +2576,7 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
               ") in export list of module " & suffix & ", last symbol: " & lastGood
         t = next(s)
       elif t.tagId == includeTag:
-        t = skipTree(s)
+        loadInclude(c, s, result.includes, t)
       elif t.tagId == importTag:
         loadImport(c, s, result.deps, t)
       elif t.tagId == reexpModTag:
@@ -2445,6 +2625,10 @@ proc processTopLevel(c: var DecodeContext; s: var Stream; flags: set[LoadFlag];
         t = next(s)
         if ok and genSym != nil and instSym != nil:
           result.genericOffers.add (genSym, instSym, cts, paramsCount)
+      elif t.tagId == modulesrcTag:
+        # self-identification record for the standalone include-graph scanner;
+        # not needed by the lazy loader, just skip past it.
+        t = skip(s, t)
       elif t.tagId == implTag:
         cont = false
       elif LoadFullAst in flags or t.tagId == letTag or t.tagId == varTag:

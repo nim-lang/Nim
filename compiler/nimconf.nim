@@ -316,7 +316,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   if conf.cmd == cmdNimscript:
     showHintConf()
     conf.configFiles.setLen 0
-  if conf.cmd notin {cmdIdeTools, cmdCheck, cmdDump}:
+  if not conf.ideActive and conf.cmd notin {cmdCheck, cmdDump}:
     if conf.cmd == cmdNimscript:
       runNimScriptIfExists(conf.projectFull, isMain = true)
     else:

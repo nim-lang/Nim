@@ -332,7 +332,10 @@ when defined(nimsuggest):
     result = s.allUsagesImpl
 
   proc `allUsages=`*(s: PSym, val: sink seq[TLineInfo]) {.inline.} =
-    assert s.state != Sealed
+    # No `assert s.state != Sealed`: `allUsagesImpl` is nimsuggest-only usage
+    # tracking, NOT part of the NIF-serialized symbol. nimsuggest loads symbols
+    # as `Sealed` (ast2nif.loadedState under cmdM) yet `suggestSym` legitimately
+    # records usages on them; the getter likewise doesn't assert.
     if s.state == Partial: loadSym(s)
     s.allUsagesImpl = val
 
@@ -475,6 +478,8 @@ proc comment*(n: PNode): string =
   else:
     result = ""
 
+nodeCommentReader = proc(n: PNode): string {.nimcall.} = comment(n)
+
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
   if a.len > 0:
@@ -489,6 +494,8 @@ proc `comment=`*(n: PNode, a: string) =
   elif nfHasComment in n.flags:
     n.flags.excl nfHasComment
     gconfig.comments.del(id)
+
+nodeCommentWriter = proc(n: PNode; s: string) {.nimcall.} = n.comment = s
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of

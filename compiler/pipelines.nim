@@ -246,11 +246,20 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     # (imported modules should be loaded from existing NIF files). Members of the
     # current strongly-connected import group (`--icGroup`) are the exception:
     # they are compiled from source here, so each must write its own NIF.
-    let shouldWriteNif = (optCompress in graph.config.globalOptions) or
-                         (graph.config.cmd == cmdM and
-                          (sfMainModule in module.flags or
-                           (graph.config.icGroup.len > 0 and
-                            toFullPath(graph.config, module.position.FileIndex) in graph.config.icGroup)))
+    let shouldWriteNif =
+      if graph.config.ideActive:
+        # nimsuggest (cmdM): persist NIF for cleanly-compiled, SAVED modules so
+        # later queries load them instead of recompiling. Never persist the
+        # actively edited buffer (it may hold unsaved/incomplete code) nor a
+        # module that failed to compile — that would poison the cache.
+        graph.config.cmd == cmdM and graph.config.errorCounter == 0 and
+          graph.config.m.fileInfos[module.position].dirtyFile.isEmpty
+      else:
+        (optCompress in graph.config.globalOptions) or
+        (graph.config.cmd == cmdM and
+         (sfMainModule in module.flags or
+          (graph.config.icGroup.len > 0 and
+           toFullPath(graph.config, module.position.FileIndex) in graph.config.icGroup)))
     if shouldWriteNif and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       # Collect replay actions from both pragma computations and VM state diff
@@ -380,24 +389,31 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           toFullPath(graph.config, fileIdx) notin graph.config.icGroup):
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
-          let nifPath = toNifFilename(graph.config, fileIdx)
-          # Macro-generated imports (e.g. chronicles' parseStmt("import
-          # chronicles/textlines") driven by the chronicles_sinks define) are
-          # invisible to the static scanner, so this module's NIF was never
-          # built. The importer already recorded this import via
-          # addImportFileDep, so flush every module's `.s.deps`: `nim ic` reads
-          # it, re-derives the graph with the missing node + edge, and reruns
-          # the frontend. We still error — this process cannot finish sem
-          # without the import — but the discovery is structured data now, not
-          # a side-channel file.
-          for importer, deps in graph.importDeps.pairs:
-            var paths: seq[string] = @[]
-            for f in deps: paths.add toFullPath(graph.config, f)
-            writeSemDeps(graph.config, importer.int32, paths)
-          globalError(graph.config, unknownLineInfo,
-            "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
-            " (expected: " & nifPath & ")")
-          return nil  # Don't fall through to compile from source
+          if graph.config.ideActive:
+            # nimsuggest bootstrap: this import has no precompiled NIF yet (cold
+            # cache, or it was invalidated). Don't error — fall through to the
+            # source-compile path below; the pass-close emits a fresh NIF so the
+            # next query loads it instead of recompiling.
+            discard
+          else:
+            let nifPath = toNifFilename(graph.config, fileIdx)
+            # Macro-generated imports (e.g. chronicles' parseStmt("import
+            # chronicles/textlines") driven by the chronicles_sinks define) are
+            # invisible to the static scanner, so this module's NIF was never
+            # built. The importer already recorded this import via
+            # addImportFileDep, so flush every module's `.s.deps`: `nim ic` reads
+            # it, re-derives the graph with the missing node + edge, and reruns
+            # the frontend. We still error — this process cannot finish sem
+            # without the import — but the discovery is structured data now, not
+            # a side-channel file.
+            for importer, deps in graph.importDeps.pairs:
+              var paths: seq[string] = @[]
+              for f in deps: paths.add toFullPath(graph.config, f)
+              writeSemDeps(graph.config, importer.int32, paths)
+            globalError(graph.config, unknownLineInfo,
+              "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
+              " (expected: " & nifPath & ")")
+            return nil  # Don't fall through to compile from source
         else:
           # Module successfully loaded from NIF file - use it and skip processing
           result = precomp.module
@@ -520,13 +536,21 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     when not defined(nimKochBootstrap):
-      let precomp = moduleFromNifFile(graph, graph.config.m.systemFileIdx)
-      graph.systemModule = precomp.module
+      # Don't clobber an already-compiled system: nimsuggest's NimScript config
+      # evaluation compiles `system` into this same graph before we get here.
       if graph.systemModule == nil:
-        let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
-        localError(graph.config, unknownLineInfo,
-          "nim m requires precompiled NIF for system module (expected: " & nifPath & ")")
-        return
+        let precomp = moduleFromNifFile(graph, graph.config.m.systemFileIdx)
+        graph.systemModule = precomp.module
+      if graph.systemModule == nil:
+        if graph.config.ideActive:
+          # nimsuggest bootstrap: no system NIF yet — compile it from source
+          # (the pass-close emits it), then continue with the main module.
+          graph.compilePipelineSystemModule()
+        else:
+          let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
+          localError(graph.config, unknownLineInfo,
+            "nim m requires precompiled NIF for system module (expected: " & nifPath & ")")
+          return
     discard graph.compilePipelineModule(projectFile, {sfMainModule})
   else:
     graph.compilePipelineSystemModule()
