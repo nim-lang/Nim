@@ -77,7 +77,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
   # templates perform some quick check whether the cursor is actually in
   # the generic or template.
   when defined(nimsuggest):
-    if c.config.cmd == cmdIdeTools and requiresCheck:
+    if c.config.ideActive and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
@@ -105,9 +105,12 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result.typ = formal
   elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
     # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    # The choice candidates may be wrapped in `var`/`lent` when they come from
+    # a loop-local view, but for enum disambiguation only the underlying enum
+    # type matters.
     result = nil
     for ch in arg:
-      if sameType(ch.typ, formal):
+      if sameType(ch.typ.skipTypes({tyVar, tyLent}), formal):
         return ch
     typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
@@ -871,7 +874,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   result = hloStmt(c, result)
   if c.config.cmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
-  if c.config.cmd == cmdIdeTools:
+  if c.config.ideActive:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
   if optMultiMethods notin c.config.globalOptions and
@@ -908,7 +911,7 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
         result = nil
       else:
         result = newNodeI(nkEmpty, n.info)
-      #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
+      #if c.config.ideActive: findSuggest(c, n)
 
 proc reportUnusedModules(c: PContext) =
   if c.config.cmd == cmdM: return
@@ -917,7 +920,7 @@ proc reportUnusedModules(c: PContext) =
       message(c.config, info, warnUnusedImportX, s.name.s)
 
 proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
-  if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
+  if c.config.ideActive and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!

@@ -1167,3 +1167,11 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym =
     if result == nil: break
     if result.name.id == name.id: break
     h = nextTry(h, high(t.data))
+
+# --- doc-comment bridge for the NIF serializer -------------------------------
+# `ast2nif` (the NIF reader/writer) cannot import `ast` (where the comment
+# accessor and its `gconfig.comments` side table live) because `ast` imports
+# `ast2nif`. These hooks are assigned by `ast` and let the serializer carry a
+# decl's `##` doc comment across a NIF round-trip.
+var nodeCommentReader*: proc(n: PNode): string {.nimcall.}
+var nodeCommentWriter*: proc(n: PNode; s: string) {.nimcall.}

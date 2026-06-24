@@ -351,7 +351,7 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
 
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
-  #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
+  #if conf.ideActive and optCDebug notin gGlobalOptions: return
   let sep = if msgNoUnitSep notin flags: conf.unitSep else: ""
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s & sep)
@@ -457,8 +457,8 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, ignoreMsg: bool) =
   if msg in fatalMsgs:
-    if conf.cmd == cmdIdeTools: log(s)
-    if conf.cmd != cmdIdeTools or msg != errFatal:
+    if conf.ideActive: log(s)
+    if not conf.ideActive or msg != errFatal:
       quit(conf, msg)
   if msg >= errMin and msg <= errMax or
       (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
@@ -472,7 +472,7 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, 
           raiseRecoverableError(s)
         else:
           quit(conf, msg)
-    elif eh == doAbort and conf.cmd != cmdIdeTools:
+    elif eh == doAbort and not conf.ideActive:
       quit(conf, msg)
     elif eh == doRaise:
       raiseRecoverableError(s)
@@ -503,7 +503,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
     info = context.info
 
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
-  msg >= errGenerated and conf.cmd == cmdIdeTools and optIdeDebug notin conf.globalOptions
+  msg >= errGenerated and conf.ideActive and optIdeDebug notin conf.globalOptions
 
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
@@ -661,7 +661,7 @@ proc warningDeprecated*(conf: ConfigRef, info: TLineInfo = gCmdLineInfo, msg = "
   message(conf, info, warnDeprecated, msg)
 
 proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: InstantiationInfo) =
-  if conf.cmd in {cmdIdeTools, cmdCheck} and conf.structuredErrorHook.isNil: return
+  if (conf.ideActive or conf.cmd == cmdCheck) and conf.structuredErrorHook.isNil: return
   writeContext(conf, info)
   liMessage(conf, info, errInternal, errMsg, doAbort, info2)
 

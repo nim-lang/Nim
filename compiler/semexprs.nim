@@ -1571,7 +1571,7 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
   # here at all!
   #if isSymChoice(n[1]): return
   when defined(nimsuggest):
-    if c.config.cmd == cmdIdeTools:
+    if c.config.ideActive:
       suggestExpr(c, n)
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
@@ -3405,7 +3405,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         c.config.expandNodeResult = $n
         suggestQuit()
 
-  if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
+  if c.config.ideActive: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
