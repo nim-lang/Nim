@@ -404,8 +404,8 @@ type
                      # server can run under any compilation mode (cmdCheck, cmdM).
     ideImportsFromNif*: bool # nimsuggest: load the unchanged import closure from
                      # precompiled NIF (run under cmdM) instead of recompiling it
-                     # from source (cmdCheck). Default on; `--ideImports:source`
-                     # opts out.
+                     # from source (cmdCheck). IC is opt-in: default off (cmdCheck);
+                     # `--ideImports:nif` opts in.
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`
@@ -691,7 +691,7 @@ proc newConfigRef*(): ConfigRef =
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
     commandLine: "",
-    ideImportsFromNif: true, # opt-out; see `--ideImports`
+    ideImportsFromNif: false, # IC opt-in; see `--ideImports`
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: "",

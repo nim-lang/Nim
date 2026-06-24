@@ -719,9 +719,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "usenimcache":
     processOnOffSwitchG(conf, {optUseNimcache}, arg, pass, info)
   of "ideimports":
-    # nimsuggest: where the import closure comes from.
-    #   nif|on  (default) load unchanged imports from precompiled NIF (cmdM)
-    #   source|off         recompile the whole closure from source (cmdCheck)
+    # nimsuggest: where the import closure comes from. IC is opt-in.
+    #   nif|on               load unchanged imports from precompiled NIF (cmdM)
+    #   source|off (default) recompile the whole closure from source (cmdCheck)
     case arg.normalize
     of "nif", "on", "": conf.ideImportsFromNif = true
     of "source", "off": conf.ideImportsFromNif = false
