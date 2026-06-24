@@ -140,7 +140,17 @@ proc signatureHasMetaType(t: PType; depth: int = 0): bool =
     # as meta and drop it from the owned-routine seeding -> undefined symbols
     # at link (its only definer never emits it).
     return false
-  if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyStatic, tyGenericParam,
+  if t.kind == tyStatic:
+    # A RESOLVED static value (the `256` in `MDigest[256]`, the `N` in
+    # `HashList[T, N]`, …) is carried as a `tyStatic` node inside the otherwise
+    # fully-concrete `tyGenericInst`, but it is NOT meta: the routine is a normal
+    # runtime routine the owner must emit. Only an UNRESOLVED `static T` parameter
+    # (no bound value, `t.n == nil`) is meta. Without this, every routine whose
+    # signature touches a `static`-parameterized generic instance (the bulk of
+    # the SSZ/`MDigest` API) is dropped from the owned-routine seeding and ends up
+    # an undefined reference at link (mirrors the tyGenericBody case above).
+    return t.n == nil
+  if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyGenericParam,
                 tyAnything, tyFromExpr, tyError}:
     return true
   for k in t.kids:

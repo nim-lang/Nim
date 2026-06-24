@@ -838,15 +838,21 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       # trough replaceObjBranches in order to resolve any pending nkRecWhen nodes
       result = t
 
-      # Slow path, we have some work to do
-      if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and t.elementType.n != nil:
+      # Slow path, we have some work to do. CRUCIAL: only ever mutate a type that
+      # is LOCAL to the module we are instantiating in (`uniqueId.module ==
+      # idgen.module`). A type loaded from another module's NIF (foreign) already
+      # had its object branches resolved when it was originally compiled; mutating
+      # it in place here is an old→new heap write that re-homes the loaded type to
+      # the instantiation site (its sym then looks owned by the consumer module and
+      # loses its `info`, colliding C type names — the libp2p `Message` bug). The
+      # prior `state != Sealed` guard was insufficient: a freshly-LOADED type is
+      # `Complete`, not `Sealed` (`Sealed` only means "already re-written to a NIF").
+      if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and
+          t.elementType.n != nil and t.elementType.uniqueId.module == cl.c.idgen.module.int:
         discard replaceObjBranches(cl, t.elementType.n)
 
-      elif result.n != nil and t.kind == tyObject and result.state != Sealed:
-        # A type loaded from the IC cache already had its object branches
-        # resolved when it was originally compiled, and must not be mutated in
-        # place (nor copied, which would break object-inheritance identity), so
-        # only non-Sealed types are processed here.
+      elif result.n != nil and t.kind == tyObject and result.state != Sealed and
+          result.uniqueId.module == cl.c.idgen.module.int:
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)
