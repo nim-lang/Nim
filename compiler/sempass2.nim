@@ -1126,7 +1126,15 @@ proc trackCall(tracked: PEffects; n: PNode) =
   # otherwise feed the magic to codegen. Mirrors the `tfTriggersCompileTime ->
   # sfCompileTime` path in `semProcAux`.
   if a.kind == nkSym and a.sym.magic in {mNLen..mNError, mSlurp..mQuoteAst} and
-      tracked.owner != nil and tracked.owner.kind in routineKinds:
+      tracked.owner != nil and tracked.owner.kind in routineKinds and
+      tracked.config.cmd != cmdNimscript:
+    # ...but NOT under `nim e`: nimscript has no codegen backend to protect, and
+    # marking a routine `sfCompileTime` makes `semExpr` eagerly fold calls to it
+    # at sem time (emConst), where module-level globals it reads have no VM slot
+    # yet — distros' `detectOsWithAllCmd` reaches `gorge` and reads the plain
+    # global `unameRes` → "cannot evaluate at compile time: unameRes". In the
+    # normal nimscript run (emRepl) the module's var section runs first and the
+    # slot exists, so the marking is both unnecessary and harmful here.
     incl(tracked.owner, sfCompileTime)
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:

@@ -701,6 +701,14 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
   # buckets (and rejects calls as ambiguous that multi-dispatch accepts)
   if optMultiMethods in c.config.globalOptions:
     result.add "--multimethods:on"
+  # Forward the debug-info switch: the cg children — not the driver — fill the
+  # backend C names, and `--debugger:native` selects the Itanium mangling
+  # scheme (ccgtypes.fillBackendName). A child without it would name routines
+  # with the plain `_u<disamb>` scheme while a sibling that read the project's
+  # config.nims (`--debugger:native`) used Itanium, so the same symbol's
+  # definition and cross-module references would disagree at link.
+  if optCDebug in c.config.globalOptions:
+    result.add "--debugger:native"
   # the children compile each MODULE as their own project file, which makes
   # that module's package the "main package" and unfilters foreign-package
   # diagnostics — a vendored package's hintAsError/warningAsError promotions

@@ -108,7 +108,14 @@ proc fillBackendName(m: BModule; s: PSym) =
     var result: Rope
     if s.kind in routineKinds and {optCDebug, optItaniumMangle} * m.g.config.globalOptions == {optCDebug, optItaniumMangle} and
       m.g.config.symbolFiles == disabledSf:
-      result = mangleProc(m, s, false).rope
+      # Under the per-module IC backend the bare-name uniqueness probe
+      # (`m.g.mangledPrcs`) only sees the routines of the CURRENT module, so the
+      # clean-vs-`makeUnique` decision is made independently per process: a
+      # method base mangles clean at its owner but loses the in-module race to
+      # its same-signature dispatcher elsewhere (clean `speak` defined twice ->
+      # "multiple definition"; demanders call `speak_u<n>` that nobody defines).
+      # Force the stable, disamb-based unique name so every process agrees.
+      result = mangleProc(m, s, makeUnique = m.config.cmd == cmdNifC).rope
     else:
       let shared = sharedInstanceCName(m, s)
       if shared.len > 0:
