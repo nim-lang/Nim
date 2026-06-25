@@ -137,9 +137,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if CoConsiderOwned in flags:
       c &= char(t.kind)
     c.hashType t.skipModifier, flags, conf
-  of tyBool, tyChar, tyInt..tyUInt64:
-    # no canonicalization for integral types, so that e.g. ``pid_t`` is
-    # produced instead of ``NI``:
+  of tyBool, tyChar, tyPointer, tyCstring, tyInt..tyUInt64:
+    # no canonicalization for builtin scalar-ish / pointer-like types, so
+    # that e.g. ``pid_t`` or an imported ``pointer`` alias keep their
+    # backend spelling instead of collapsing into the generic Nim builtin:
     c &= char(t.kind)
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
