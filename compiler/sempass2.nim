@@ -1135,7 +1135,27 @@ proc trackCall(tracked: PEffects; n: PNode) =
     # global `unameRes` → "cannot evaluate at compile time: unameRes". In the
     # normal nimscript run (emRepl) the module's var section runs first and the
     # slot exists, so the marking is both unnecessary and harmful here.
-    incl(tracked.owner, sfCompileTime)
+    #
+    # ...and NOT if the routine is — or is nested inside — a macro/template:
+    # those are VM-only (never code-generated), so the per-module IC backend has
+    # nothing to protect there, while `sfCompileTime` on a macro-internal nested
+    # closure breaks its captured-variable access in the VM ("cannot evaluate at
+    # compile time: n" — `tests/macros/tmacros1`'s `innerProc` reading the
+    # macro-local `n`). Walk the owner chain and bail on the first
+    # skMacro/skTemplate. NB mark `tracked.owner` (the routine that directly
+    # reaches the magic), NOT its outermost enclosing: a runtime proc may legally
+    # nest a compile-time helper — `tests/generics/tunique_type`'s `[]` proc
+    # contains a nested `buildResult` macro — and marking the proc would wrongly
+    # make IT compile-time ("request to generate code for .compileTime proc: []").
+    var encl = tracked.owner
+    var insideMeta = false
+    while encl != nil and encl.kind != skModule:
+      if encl.kind in {skMacro, skTemplate}:
+        insideMeta = true
+        break
+      encl = encl.skipGenericOwner
+    if not insideMeta:
+      incl(tracked.owner, sfCompileTime)
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)

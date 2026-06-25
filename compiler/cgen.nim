@@ -139,11 +139,31 @@ proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## prototype and its body lands in no TU → undefined at link.
   if not (m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"):
     return true
+  # The symbol may ITSELF be content-addressed (a synthesized hook or a generic
+  # instance carries `Hook/InstanceDisambBit` on its OWN `disamb`): then it has no
+  # single owning module and every demander emits it (merge dedups by C name),
+  # regardless of what it is nested under. This must be checked on `prc` directly,
+  # not on `top`: a `=destroy`/`=sink` lifted while compiling some enclosing proc
+  # (e.g. system's `isZeroMemory` destroying a `ptr array`) has that PROC as its
+  # `skipGenericOwner`, so `top` walks up to a plain routine whose own disamb has
+  # no bit — gating the hook to that routine's owner module, which mints it
+  # on demand and emits it nowhere → undefined at link.
+  if (prc.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32:
+    return true
   var top = prc
   while top.skipGenericOwner != nil and top.skipGenericOwner.kind != skModule:
     top = top.skipGenericOwner
   result = top.itemId.module == m.module.position or
-           (top.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32
+           (top.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32 or
+           # An INLINE iterator has no standalone body — it is expanded at each
+           # call site — so it is materialized in every module that iterates over
+           # it, never in its owner. A proc nested in one (e.g. std/uri's
+           # `parseData` inside `iterator decodeQuery`) is lambda-lifted into each
+           # of those consumer TUs and must be emitted there (its stable
+           # owner-suffixed name + `'u'` flag let the merge stage keep one); gating
+           # it to the iterator's owner module leaves it in no TU → undefined.
+           (top.kind == skIterator and top.typ != nil and
+            top.typ.callConv != ccClosure)
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
