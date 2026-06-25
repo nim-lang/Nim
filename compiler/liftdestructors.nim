@@ -821,13 +821,15 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
                       tfAcyclic in skipTypes(elemType, abstractInst+{tyOwned}-{tyTypeDesc}).flags
   # dynamic Acyclic refs need to use dyn decRef
 
+  let useStatic = isFinal(elemType)
+
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
       declareTempOf(c, body, x)
     else:
       x
 
-  if isFinal(elemType):
+  if useStatic:
     addDestructorCall(c, elemType, actions, genDeref(tmp, nkDerefExpr))
     var alignOf = genBuiltin(c, mAlignOf, "alignof", newNodeIT(nkType, c.info, elemType))
     alignOf.typ = getSysType(c.g, c.info, tyInt)
@@ -838,7 +840,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   var cond: PNode
   if isCyclic:
-    if isFinal(elemType):
+    if useStatic:
       let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
       typInfo.typ = getSysType(c.g, c.info, tyPointer)
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicStatic", c.info, tmp, typInfo)
@@ -873,7 +875,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     if isCyclic:
-      if isFinal(elemType):
+      if useStatic:
         let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
         typInfo.typ = getSysType(c.g, c.info, tyPointer)
         body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x, c.idgen), typInfo, y)

@@ -1117,6 +1117,45 @@ proc trackCall(tracked: PEffects; n: PNode) =
   #if canRaise(a):
   #  echo "this can raise ", tracked.config $ n.info
   let op = a.typ
+  # A routine whose body reaches a compile-time-only magic (`macros.error`,
+  # `slurp`, `gorge`, `getAst`, …) can never be code-generated — the C/JS
+  # backends reject those magics (ccgexprs `errXMustBeCompileTime`). Such a
+  # routine is compile-time-only by construction; mark it `sfCompileTime` so it
+  # is treated uniformly as such. Non-IC pruned it by demand-driven codegen, but
+  # the per-module IC backend emits every owned routine (no DCE) and would
+  # otherwise feed the magic to codegen. Mirrors the `tfTriggersCompileTime ->
+  # sfCompileTime` path in `semProcAux`.
+  if a.kind == nkSym and a.sym.magic in {mNLen..mNError, mSlurp..mQuoteAst} and
+      tracked.owner != nil and tracked.owner.kind in routineKinds and
+      tracked.config.cmd != cmdNimscript:
+    # ...but NOT under `nim e`: nimscript has no codegen backend to protect, and
+    # marking a routine `sfCompileTime` makes `semExpr` eagerly fold calls to it
+    # at sem time (emConst), where module-level globals it reads have no VM slot
+    # yet — distros' `detectOsWithAllCmd` reaches `gorge` and reads the plain
+    # global `unameRes` → "cannot evaluate at compile time: unameRes". In the
+    # normal nimscript run (emRepl) the module's var section runs first and the
+    # slot exists, so the marking is both unnecessary and harmful here.
+    #
+    # ...and NOT if the routine is — or is nested inside — a macro/template:
+    # those are VM-only (never code-generated), so the per-module IC backend has
+    # nothing to protect there, while `sfCompileTime` on a macro-internal nested
+    # closure breaks its captured-variable access in the VM ("cannot evaluate at
+    # compile time: n" — `tests/macros/tmacros1`'s `innerProc` reading the
+    # macro-local `n`). Walk the owner chain and bail on the first
+    # skMacro/skTemplate. NB mark `tracked.owner` (the routine that directly
+    # reaches the magic), NOT its outermost enclosing: a runtime proc may legally
+    # nest a compile-time helper — `tests/generics/tunique_type`'s `[]` proc
+    # contains a nested `buildResult` macro — and marking the proc would wrongly
+    # make IT compile-time ("request to generate code for .compileTime proc: []").
+    var encl = tracked.owner
+    var insideMeta = false
+    while encl != nil and encl.kind != skModule:
+      if encl.kind in {skMacro, skTemplate}:
+        insideMeta = true
+        break
+      encl = encl.skipGenericOwner
+    if not insideMeta:
+      incl(tracked.owner, sfCompileTime)
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)

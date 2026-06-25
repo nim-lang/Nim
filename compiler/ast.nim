@@ -831,6 +831,10 @@ proc newSymNode*(sym: PSym): PNode =
   result = newNode(nkSym)
   result.sym = sym
   result.typField = sym.typ
+  if result.typField == nil and nifcBackendActive:
+    # See the two-arg overload in astdef: in the NIF backend cg stage a sym node
+    # built from a not-yet-typed stub must track the symbol's type lazily.
+    result.flags.incl nfLazyType
   result.info = sym.info
 
 proc newOpenSym*(n: PNode): PNode {.inline.} =
