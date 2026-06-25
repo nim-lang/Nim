@@ -918,6 +918,36 @@ proc backendCFile(c: DepContext; node: Node): string =
   result = changeFileExt(completeCfilePath(c.config,
     mangleModuleName(c.config, cfilename).AbsoluteFile), ".nim.c").string
 
+proc computeLiveBackendNodes(c: DepContext): seq[bool] =
+  ## Which nodes the backend must code-generate: the closure reachable from the
+  ## program roots (main + `system` + `--import`ed modules) via the REAL,
+  ## post-sem import edges (`.s.deps`).
+  ##
+  ## The static `.deps` scan over-approximates: it cannot evaluate guards like
+  ## `when defined(windows)` or const-aliased ones (`when useWinVersion`, with
+  ## `const useWinVersion = defined(windows) or defined(nimdoc)`), so it keeps
+  ## the dead branch's import. e.g. on Linux `nativesockets`'s static deps list
+  ## `winlean`; the discovery fixpoint only ever *adds* edges, never prunes, so
+  ## `winlean` stays a node and got a full `lower`/`cg`/`emit`/link pipeline.
+  ## That is harmless for sem (an extra `nim m`) but fatal for codegen:
+  ## `winlean`'s `importc, header: "winsock2.h"` decls emit
+  ## `#include "winsock2.h"` into a C file that cannot compile off-Windows.
+  ## Sem's resolved import set (`.s.deps`) is the real program graph — the
+  ## non-IC compiler would never touch `winlean` here — so restrict the backend
+  ## to it. (`.s.deps` is the same data the discovery loop trusts; it is written
+  ## for every sem'd module, including grouped SCC members.)
+  result = newSeq[bool](c.nodes.len)
+  var stack: seq[int] = @[0]            # main module
+  if c.systemNodeId >= 0: stack.add c.systemNodeId
+  for impId in c.implicitNodeIds: stack.add impId  # every module imports these
+  while stack.len > 0:
+    let ni = stack.pop()
+    if ni < 0 or ni >= c.nodes.len or result[ni]: continue
+    result[ni] = true
+    for p in readSemDeps(c, c.nodes[ni].files[0]):
+      let idx = c.processedModules.getOrDefault(c.toPair(p).modname, -1)
+      if idx >= 0: stack.add idx
+
 proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
   ## Per-module backend build file. One `nim_nifc` command template (the actual
   ## stage/module switches ride in each rule's `(args …)`), then the stages of
@@ -949,6 +979,34 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     cFiles[i] = backendCFile(c, node)
     cnifFiles[i] = cFiles[i] & ".nif"
     tFiles[i] = nimcache / node.files[0].modname & ".t.nif"
+
+  # Only code-generate modules the real program actually reaches; statically
+  # over-approximated nodes (e.g. `winlean` on Linux) are sem'd but not emitted.
+  let live = computeLiveBackendNodes(c)
+  # Drop a pruned node's stale backend artifacts: the `merge` stage globs
+  # `*.c.nif` off disk (not the build-file inputs) and the `link` stage scans
+  # the loaded closure's `.c`s, so a leftover `.c.nif`/`.c` from a run before
+  # this module became unreachable (a prior over-approximated build, or an edit
+  # that removed its last real importer) would still be merged/compiled —
+  # reintroducing exactly the off-platform `#include` this prune avoids.
+  var prunedStale = false
+  for i in 0 ..< c.nodes.len:
+    if not live[i]:
+      # `fileExists` before remove so we only force a merge recompute (below)
+      # when an artifact was actually present — i.e. a build where this module
+      # WAS emitted, not the steady state where it never is.
+      if fileExists(cnifFiles[i]) or fileExists(cFiles[i]): prunedStale = true
+      removeFile(cnifFiles[i])
+      removeFile(cFiles[i])
+  # The merge decision is a pure function of the set of `.c.nif`s present; if we
+  # just removed an over-approximated module's artifacts, a decision computed
+  # while they were present is stale — it can name a now-absent module as a
+  # symbol's owner (`asyncdispatch` owning `NTIdomain` here), leaving that symbol
+  # undefined at link. nifmake will not re-fire `merge` on its own: dropping an
+  # input makes no remaining input newer than the output. Delete the decision so
+  # the (now missing) output forces a recompute against the live `.c.nif` set.
+  if prunedStale:
+    removeFile(mergeFile)
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -1000,6 +1058,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # dependency re-sems (and re-emits the `.s.nif` of) every transitive importer;
   # a module whose own `.s.nif` is unchanged genuinely needs no re-lowering.
   for i, node in c.nodes:
+    if not live[i]: continue
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
@@ -1020,6 +1079,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # stale copy here is harmless. The main module additionally depends on every
   # other `.c.nif` (it reads their init/datInit metas to wire up NimMain).
   for i, node in c.nodes:
+    if not live[i]: continue
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
@@ -1028,7 +1088,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     inputStr tFiles[i]
     if node.id == 0:
       for j in 0 ..< c.nodes.len:
-        if c.nodes[j].id != 0:
+        if c.nodes[j].id != 0 and live[j]:
           inputStr cnifFiles[j]
     outputStr cnifFiles[i]
     b.endTree()
@@ -1038,12 +1098,14 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addIdent "nim_nifc"
   b.withTree "args":
     b.addStrLit "--icBackendStage:merge"
-  for cn in cnifFiles: inputStr cn
+  for i in 0 ..< c.nodes.len:
+    if live[i]: inputStr cnifFiles[i]
   outputStr mergeFile
   b.endTree()
 
   # emit: render each module's `.c` from its `.c.nif` + the merge decision.
   for i, node in c.nodes:
+    if not live[i]: continue
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
@@ -1064,7 +1126,8 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addIdent "nim_nifc"
   b.withTree "args":
     b.addStrLit "--icBackendStage:link"
-  for cf in cFiles: inputStr cf
+  for i in 0 ..< c.nodes.len:
+    if live[i]: inputStr cFiles[i]
   outputStr exeFile
   b.endTree()
 
@@ -1187,8 +1250,14 @@ proc commandIc*(conf: ConfigRef) =
     # each DAG depth via execProcesses (defaults to all cores). Cold builds are
     # otherwise serial (one child at a time) and leave the machine idle. Opt out
     # with `-d:icNoParallel` (e.g. for readable, non-interleaved child output
-    # when debugging a build).
-    let parallel = if isDefined(conf, "icNoParallel"): "" else: " --parallel"
+    # when debugging a build), or cap the concurrency with `-d:icJobs:N` — an
+    # uncapped fan-out across many cores can exhaust RAM on a large project
+    # (each `nim m`/`cg` child holds its own module graph), which nifmake's own
+    # `-j:N` exists to bound.
+    let parallel =
+      if isDefined(conf, "icNoParallel"): ""
+      elif isDefined(conf, "icJobs"): " --parallel:" & conf.symbols["icJobs"]
+      else: " --parallel"
 
     # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.
     var rounds = 0

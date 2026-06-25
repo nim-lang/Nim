@@ -1518,8 +1518,25 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
     m.s[cfsTypeInit3].addFieldAssignment(expr, "name", makeCString(field.name.s))
     m.s[cfsTypeInit3].addFieldAssignment(expr, "sons", cAddr(subscript(tmp, cIntValue(0))))
     m.s[cfsTypeInit3].addFieldAssignment(expr, "len", L)
-    m.s[cfsData].addArrayVar(kind = Local, name = tmp,
-      elementType = ptrType("TNimNode"), len = toInt(L)+1)
+    if m.config.cmd == cmdNifC:
+      # The discriminator table has a content-addressed name
+      # (`NimDT_<hashType>_<field>`) and is emitted by every module that demands
+      # this variant type's RTTI (emit-everywhere; RTTI has no single owner —
+      # emission is lazy and often skipped). Declare it `extern` + wrap the
+      # tentative definition as a droppable `'d'` unit so the merge stage keeps
+      # exactly one external-linkage definition (mirrors the `TNimType` var and
+      # consts); otherwise the identical name collides across modules at link.
+      m.s[cfsData].addDeclWithVisibility(Extern):
+        m.s[cfsData].addArrayVar(kind = Local, name = tmp,
+          elementType = ptrType("TNimNode"), len = toInt(L)+1)
+      m.s[cfsData].add(cnifDefDirective(tmp, "d", ""))
+      m.s[cfsData].addArrayVar(kind = Local, name = tmp,
+        elementType = ptrType("TNimNode"), len = toInt(L)+1)
+      m.s[cfsData].add(cnifEndDefs())
+      m.icDataDefs.add (tmp, "")
+    else:
+      m.s[cfsData].addArrayVar(kind = Local, name = tmp,
+        elementType = ptrType("TNimNode"), len = toInt(L)+1)
     for i in 1..<n.len:
       var b = n[i]           # branch
       var tmp2 = getNimNode(m)
