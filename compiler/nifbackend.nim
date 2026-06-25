@@ -239,6 +239,16 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   g.config.m.systemFileIdx = systemFileIdx
   var precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
   g.systemModule = precompSys.module
+  if precompSys.module != nil:
+    # The precompiled-load path does not restore `sfSystemModule` (mirror of the
+    # `sfMainModule` re-add above). `registerReusedModuleToMain` keys on it to put
+    # the system module's init right after its datInit AND to emit
+    # `initStackBottomWith` into `mainDatInit` — so that the main thread's stack
+    # bottom is set before any module's init runs. Without the flag the system
+    # init is mis-routed into the regular `otherModsInit` bucket and
+    # `initStackBottomWith` is never registered, so a GC cycle during a module's
+    # init (under refc) scans the stack with a nil bottom and crashes.
+    incl precompSys.module.flagsImpl, sfSystemModule
   var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
   var modules = loadModuleDependencies(g, mainFileIdx, nifFiles, depFlags = {})
   # loadModuleDependencies traverses the project's import closure and stops at
@@ -490,6 +500,22 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     stderr.writeLine "[icLower] " & extractFilename(wholeArtifact) & " " &
       $hooks.len & " hooks"
 
+proc visitDep(suffix: string;
+              suffixToMod: Table[string, PrecompiledModule];
+              visited: var HashSet[string]; bl: BModuleList;
+              ordered: var seq[BModule]) =
+  ## Post-order DFS over a module's import closure used to reconstruct the
+  ## dependency (init) order: a dependency's init must be registered before its
+  ## importer's. Appends each reachable non-main module's `BModule` to `ordered`.
+  if visited.containsOrIncl(suffix): return
+  let pm = suffixToMod.getOrDefault(suffix)
+  if pm.module == nil: return
+  for dep in pm.deps: # dependencies first (post-order)
+    visitDep(dep.string, suffixToMod, visited, bl, ordered)
+  if sfMainModule notin pm.module.flags:
+    let bm = bl.mods[pm.module.position]
+    if bm != nil: ordered.add bm
+
 proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend codegen (`--icBackendStage:cg --icBackendModule:<suffix>`):
   ## generate C for the single module named by `icBackendModule` and write only
@@ -546,10 +572,58 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     # `cg` processes, so the calls are registered here from each `.c.nif` meta
     # head — which is why the main module's `cg` runs last, after every other
     # `.c.nif` exists. Modules without init code (no `.c.nif`) register nothing.
+    #
+    # The registration order IS the runtime init order, and it must be the
+    # DEPENDENCY (post-order) order: an imported module's init has to run before
+    # its importer's. The whole-program backend gets this for free — it iterates
+    # `modulesClosed`, built in module-FINISH order (a post-order DFS over
+    # imports). Iterating `bl.mods` by position is WRONG: an importer gets a
+    # LOWER position than the modules it imports (its file is registered before
+    # its `import` statements are processed), so position order runs importers
+    # before their dependencies. That left chronicles' `topics_registry` — whose
+    # init sets `mainThreadId` — running AFTER a module that calls `registerTopic`
+    # from its own init, tripping the `getThreadId() == mainThreadId` assert at
+    # startup. So reconstruct the post-order DFS over the import closure here.
+    #
+    # NOTE: this is deliberately a SEPARATE traversal rather than reusing the
+    # module LOAD order — the per-module backend's C emit is sensitive to load
+    # order (it determines the main TU's header composition), so the loader must
+    # keep its existing order and the init order is derived independently here.
+    var suffixToMod = initTable[string, PrecompiledModule]()
+    for pm in modules:
+      if pm.module != nil:
+        suffixToMod[cachedModuleSuffix(g.config, FileIndex pm.module.position)] = pm
+    if precompSys.module != nil:
+      suffixToMod[cachedModuleSuffix(g.config, FileIndex precompSys.module.position)] = precompSys
+    var visited = initHashSet[string]()
+    var ordered: seq[BModule] = @[]
+    # System (and its include/import closure) must initialize FIRST: its init
+    # runs `initGC()` (top-level code in `threadimpl`, included into system),
+    # and every other module's init may allocate — an allocation before the GC
+    # heap is set up triggers a collection over an uninitialized region and
+    # crashes (e.g. nim-metrics' `newRegistry` in its init). System is the
+    # IMPLICIT universal import and appears in no module's explicit `deps`, so a
+    # DFS rooted at main never reaches it; seed the traversal from system first.
+    if precompSys.module != nil:
+      visitDep(cachedModuleSuffix(g.config, FileIndex precompSys.module.position),
+               suffixToMod, visited, bl, ordered)
+    # Then order the whole import closure rooted at the main module; main itself
+    # is excluded above (its init body becomes NimMain).
+    for pm in modules:
+      if pm.module != nil and sfMainModule in pm.module.flags:
+        visitDep(cachedModuleSuffix(g.config, FileIndex pm.module.position),
+                 suffixToMod, visited, bl, ordered)
+    # Defensive: any loaded module not reachable from main's import closure
+    # (demand-loaded system internals) keeps its init registered, appended last
+    # — nothing imports it, so its relative order does not matter.
     for m in bl.mods:
       if m != nil and sfMainModule notin m.module.flags:
-        let heads = readCnifHeads(getCFile(m).string & ".nif")
-        registerReusedModuleToMain(bl, m, heads.initRequired, heads.datInitRequired)
+        let suffix = cachedModuleSuffix(g.config, FileIndex m.module.position)
+        if not visited.containsOrIncl(suffix):
+          ordered.add m
+    for m in ordered:
+      let heads = readCnifHeads(getCFile(m).string & ".nif")
+      registerReusedModuleToMain(bl, m, heads.initRequired, heads.datInitRequired)
   let tb = bl.mods[target.module.position]
   if tb != nil:
     finishModule(g, tb)
