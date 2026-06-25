@@ -1,12 +1,11 @@
 ##[
 ## note 1
-`useHead` should ideally be used as the default but lots of packages (e.g. `chronos`)
-don't have release tags (or have really old ones compared to HEAD), making it
-impossible to test them reliably here.
+`useHead = true` (current default): test the current HEAD of the default branch.
+`useHead = false`: test the latest release tag instead.
 
-packages listed here should ideally have regularly updated release tags, so that:
-* we're testing recent versions of the package
-* the version that's tested is stable enough even if HEAD may occasionally break
+Ideally we'd use tags (`useHead = false`) — they're more stable and still provide
+recent-enough coverage when releases are regular.  In practice many packages lack
+tags (or they're stale), so we default to `useHead = true`.
 
 ## note 2: D20210308T165435:here
 nimble packages should be testable as follows:
@@ -52,7 +51,7 @@ pkg "cello", url = "https://github.com/nim-lang/cello", useHead = true
 pkg "checksums"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim"
-pkg "chronos", "git checkout ci_disable_bad_test;nim c -r -d:release tests/testall", "https://github.com/Graveflo/nim-chronos.git"
+pkg "chronos", "nim c -r -d:release tests/testall", url = "https://github.com/status-im/nim-chronos", useHead = true
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --mm:orc"
 pkg "compactdict"
