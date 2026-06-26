@@ -1197,7 +1197,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
         else:
           if laxEffects notin tracked.c.config.legacyFeatures and a.kind == nkSym and
               a.sym.kind in routineKinds:
-            propagateEffects(tracked, n, a.sym)
+            let (isHook, opKind) = findHookKind(a.sym.name.s)
+            if (not isHook) or opKind notin {attachedAsgn, attachedSink, attachedDup}:
+              propagateEffects(tracked, n, a.sym)
       else:
         mergeRaises(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
