@@ -14,3 +14,11 @@ proc send(x: string) =
   discard isolate(wrapper)
 
 send("la")
+
+block:
+  func enqueue[T](buf: var array[10, T], elem: sink T) =
+    `=sink`(buf[0], elem)
+
+  var buf: array[10, int]
+  enqueue(buf, 42)
+  assert buf[0] == 42
