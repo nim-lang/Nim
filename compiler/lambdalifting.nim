@@ -164,9 +164,21 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
     incl(result.flagsImpl, sfUsed)
     iter.ast.add newSymNode(result)
 
-proc addHiddenParam(routine: PSym, param: PSym) =
+proc closureParams(routine: PSym): PNode =
+  ## The formal parameters node lambda lifting reads and extends. In a
+  ## from-source compilation `routine.ast[paramsPos]` and `routine.typ.n` are the
+  ## very same node (see the `typ.n.len` based position math below). Under IC the
+  ## loaded proc AST omits the parameters (they are kept only in `typ.n`), so
+  ## restore the shared node here.
+  result = routine.ast[paramsPos]
+  if (result == nil or result.kind == nkEmpty) and routine.typ != nil and
+      routine.typ.n != nil and routine.ast.len > paramsPos:
+    result = routine.typ.n
+    routine.ast[paramsPos] = result
+
+proc addHiddenParam*(routine: PSym, param: PSym) =
   assert param.kind == skParam
-  var params = routine.ast[paramsPos]
+  var params = closureParams(routine)
   # -1 is correct here as param.position is 0 based but we have at position 0
   # some nkEffect node:
   param.position = routine.typ.n.len-1
@@ -177,7 +189,8 @@ proc addHiddenParam(routine: PSym, param: PSym) =
 
 proc getEnvParam*(routine: PSym): PSym =
   if routine.ast.isNil: return nil
-  let params = routine.ast[paramsPos]
+  let params = closureParams(routine)
+  if params == nil or params.len == 0: return nil
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
     result = hidden.sym
@@ -294,6 +307,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
+  unsealForTransform(owner.typ)
   incl(owner.typ, tfCapturesEnv)
   if not isEnv:
     owner.typ.callConv = ccClosure

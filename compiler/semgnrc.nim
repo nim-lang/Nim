@@ -129,7 +129,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result.typ = nil
     onUse(n.info, s)
   of skParam:
-    result = n
+    if s.owner == c.p.owner:
+      # Parameters of the routine currently being semchecked stay as local
+      # identifiers
+      result = n
+    else:
+      # Preserve captured outer parameters so nested generic procs can still
+      # see them after the generic pre-pass.
+      result = newSymNode(s, n.info)
     onUse(n.info, s)
   of skType:
     if (s.typ != nil) and
@@ -266,7 +273,7 @@ proc semGenericStmt(c: PContext, n: PNode,
   when defined(nimsuggest):
     if withinTypeDesc in flags: inc c.inTypeContext
 
-  #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
+  #if conf.ideActive: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   case n.kind

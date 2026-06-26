@@ -43,17 +43,8 @@ proc semAddr(c: PContext; n: PNode): PNode =
   result.typ = makePtrType(c, x.typ.skipTypes({tySink}))
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
-  var m = BiggestInt 1 # typeOfIter
-  if n.len == 3:
-    let mode = semConstExpr(c, n[2])
-    if mode.kind != nkIntLit:
-      localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
-    else:
-      m = mode.intVal
+  let typExpr = semTypeOfImpl(c, n)
   result = newNodeI(nkTypeOfExpr, n.info)
-  inc c.inTypeofContext
-  defer: dec c.inTypeofContext # compiles can raise an exception
-  let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
   if typExpr.typ.kind == tyFromExpr:
     typExpr.typ.incl tfNonConstExpr
@@ -248,10 +239,13 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     assert operand.kind == tyTuple, $operand.kind
     result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
-    var arg = operand.skipTypes({tyGenericInst})
+    var arg = operand.skipTypes(skippedTypes)
     let rec = semConstExpr(c, traitCall[2]).intVal != 0
-    while arg.kind == tyDistinct:
-      arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
+    while true:
+      let distinctArg = arg.skipTypes(skippedTypes + {tyGenericInst})
+      if distinctArg.kind != tyDistinct:
+        break
+      arg = distinctArg.base.skipTypes(skippedTypes)
       if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   of "rangeBase":

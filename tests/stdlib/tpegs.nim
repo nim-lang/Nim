@@ -259,6 +259,11 @@ block:
     doAssert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
     doAssert(not match("456678", peg"(\letter)+"))
 
+    block:
+      doAssert match("CAFÉ", peg"\i café")
+      doAssert match("Café", peg"\i café")
+      doAssert "two cafés: Café and CAFÉ".findAll(peg"\i café").len == 3
+
     doAssert("var1 = key; var2 = key2".replacef(
       peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
            "var1<-keykey;var2<-key2key2")

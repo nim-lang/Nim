@@ -84,7 +84,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
       when not declared(moveMem):
         impl()
       else:
-        let p = beginStore(s, last - first + 1)
+        let p = beginStore(s, s.len)
         moveMem(p, addr p[first], last - first + 1)
         endStore(s)
   s.setLen(last - first + 1)

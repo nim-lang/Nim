@@ -28,7 +28,7 @@ from magicsys import getSysType
 const
   traceCode = defined(nimVMDebug)
 
-when hasFFI:
+when defined(nimHasLibFFI): # == hasFFI; spelled out for the IC dep scanner
   import evalffi
 
 
@@ -1310,8 +1310,44 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var a = regs[rb].node
       if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
-        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
-                        else: copyTree(a.sym.ast)
+        # a macro observed this symbol's implementation: NeedsImpl edge to
+        # its home module under IC.
+        recordIcImplDep(c.graph, a.sym)
+        if a.sym.ast.isNil:
+          regs[ra].node = newNode(nkNilLit)
+        else:
+          let tree = copyTree(a.sym.ast)
+          # A NIF-loaded routine's `ast[paramsPos]` is an `nkEmpty` placeholder:
+          # ast2nif strips the formal params (recoverable from `typ.n`, see
+          # writeNode's `skipParams`). A macro that reads `fn.getImpl[paramsPos]`
+          # — e.g. taskpools `spawn` reads the return type via `getImpl[3][0]` —
+          # needs them, so reconstruct a read-only formalParams from the proc
+          # type. The synthesized type-expression nodes carry the resolved
+          # `PType`, which is all a macro can query for a loaded routine.
+          if tree.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                           nkConverterDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo} and
+              tree.safeLen > paramsPos and tree[paramsPos].kind == nkEmpty and
+              a.sym.typ != nil and a.sym.typ.n != nil and
+              a.sym.typ.n.kind == nkFormalParams:
+            let t = a.sym.typ
+            let fp = newNodeI(nkFormalParams, a.sym.info)
+            let rt = t.returnType
+            # `opMapTypeInstToAst` (inst=true) reproduces a source-like type
+            # declaration — crucially it renders an array's range bound as
+            # `range 0..N` (the `inst=false` form emits `range[0, N]`, which
+            # re-sems to "'range' expects one type parameter").
+            fp.add(if rt != nil: opMapTypeInstToAst(c.cache, rt, a.sym.info, c.idgen)
+                   else: newNodeI(nkEmpty, a.sym.info))
+            for i in 1 ..< t.n.len:
+              if t.n[i].kind == nkSym:
+                let p = t.n[i].sym
+                let def = newNodeI(nkIdentDefs, p.info)
+                def.add newIdentNode(p.name, p.info)
+                def.add opMapTypeInstToAst(c.cache, p.typ, p.info, c.idgen)
+                def.add newNodeI(nkEmpty, p.info)
+                fp.add def
+            tree[paramsPos] = fp
+          regs[ra].node = tree
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
@@ -1319,6 +1355,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let a = regs[rb].node
       if a.kind == nkSym:
+        recordIcImplDep(c.graph, a.sym)
         regs[ra].node =
           if a.sym.ast.isNil:
             newNode(nkNilLit)
@@ -1951,7 +1988,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
+        let shSym = regs[rb].node.sym
+        # When `signatureHash` is applied to a type (e.g. a `T: typedesc`/generic
+        # param), hash the *type* it denotes, not the parameter symbol. Hashing the
+        # symbol routes through `hashNonProc`, which mixes in `s.disamb` — a
+        # per-module instantiation counter. Under incremental compilation the
+        # registering module and a consuming module instantiate the surrounding
+        # generic separately, get different `disamb`s, and produce different
+        # hashes for the same type (nim-serialization's auto-serialization lookup
+        # missed because of this). Hashing the underlying type via `hashType` is
+        # type-identity based and stable across the NIF boundary.
+        let shTyp = shSym.typ
+        if shTyp != nil and shTyp.kind == tyTypeDesc and shTyp.hasElementType:
+          regs[ra].node.strVal = $hashType(shTyp.elementType, c.config)
+        else:
+          regs[ra].node.strVal = $sigHash(shSym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]

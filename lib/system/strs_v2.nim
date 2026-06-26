@@ -158,6 +158,26 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
     s.p.data[newLen] = '\0'
   s.len = newLen
 
+proc setLengthStrV2Uninit(s: var NimStringV2, newLen: int) =
+  if newLen == 0:
+    discard "do not free the buffer here, pattern 's.setLen 0' is common for avoiding allocations"
+  else:
+    if isLiteral(s):
+      let oldP = s.p
+      s.p = allocPayload(newLen)
+      s.p.cap = newLen
+      if s.len > 0:
+        copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
+      s.p.data[newLen] = '\0'
+    elif newLen > s.len:
+      let oldCap = s.p.cap and not strlitFlag
+      if newLen > oldCap:
+        let newCap = max(newLen, resize(oldCap))
+        s.p = reallocPayload0(s.p, oldCap, newCap)
+        s.p.cap = newCap
+    s.p.data[newLen] = '\0'
+  s.len = newLen
+
 proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
   if a.p == b.p and a.len == b.len: return
   if isLiteral(b):
@@ -216,13 +236,17 @@ func capacity*(self: string): int {.inline.} =
   let str = cast[ptr NimStringV2](unsafeAddr self)
   result = if str.p != nil: str.p.cap and not strlitFlag else: 0
 
-proc beginStore*(s: var string; ensuredLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
-  ## Returns a writable pointer for bulk write of `ensuredLen` bytes starting at `start`.
+proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [], tags: [].} =
+  ## Sets s.len to `newLen` (new bytes are uninitialized), ensures unique
+  ## ownership, and returns a pointer to s[start] for bulk writing.
   ## Call `endStore(s)` afterwards for portability.
-  {.cast(noSideEffect).}: prepareMutation(s)
-  let str = cast[ptr NimStringV2](unsafeAddr s)
-  if str.p == nil: nil
-  else: cast[ptr UncheckedArray[char]](addr str.p.data[start])
+  ## To keep the current length, pass `s.len`.
+  {.cast(noSideEffect).}:
+    let p = cast[ptr NimStringV2](addr s)
+    setLengthStrV2Uninit(p[], newLen)
+    prepareMutation(s)
+    if p.p == nil: nil
+    else: cast[ptr UncheckedArray[char]](addr p.p.data[start])
 
 proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} =
   ## No-op for non-SSO strings; call after bulk writes via `beginStore`.
@@ -236,5 +260,15 @@ template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
   ## Returns a pointer to `s[start]` for read-only raw access.
   ## Template ensures no copy of `s`; ptr is valid while `s` is alive.
   rawDataImpl(cast[ptr NimStringV2](unsafeAddr s), start)
+
+template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] =
+  ## Like `readRawData`, but the returned pointer additionally survives moves and
+  ## copies of `s` (while `s` stays alive and is not reassigned). For this string
+  ## implementation the char data already lives in a heap payload at an address
+  ## independent of the `string` value itself, so no promotion is needed and this
+  ## is identical to `readRawData`. Takes `s` by `var` to match the `--strings:sso`
+  ## version (which promotes a small inline string to the heap), so code written
+  ## against `readRawDataStable` compiles unchanged under either implementation.
+  rawDataImpl(cast[ptr NimStringV2](addr s), start)
 
 {.pop.}

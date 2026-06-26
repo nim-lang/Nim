@@ -127,10 +127,11 @@ proc collectObjectTree(graph: ModuleGraph, n: PNode) =
             else:
               graph.objectTree[root].add (depthLevel, typ)
 
-proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
-  if typ == nil or sfGeneratedOp in tracked.owner.flags:
+proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit = false) =
+  if typ == nil or (sfGeneratedOp in tracked.owner.flags and not explicit):
     # don't create type bound ops for anything in a function with a `nodestroy` pragma
     # bug #21987
+    # unless this is an explicit call, bug #24626
     return
   when false:
     let realType = typ.skipTypes(abstractInst)
@@ -496,6 +497,33 @@ proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
     if not isDefectException(e.typ):
       throws(a.exc, e, comesFrom)
 
+proc skipHiddenConv(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkHiddenStdConv, nkHiddenSubConv:
+      result = result[1]
+    else: break
+
+proc addRaiseEffectsFromExpr(a: PEffects, e, comesFrom: PNode) =
+  if e.isNil:
+    return
+  case e.kind
+  of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr:
+    if e.len > 0:
+      addRaiseEffectsFromExpr(a, e.lastSon.skipHiddenConv, comesFrom)
+  of nkIfExpr, nkIfStmt:
+    for branch in items(e):
+      if branch.len > 0:
+        addRaiseEffectsFromExpr(a, branch.lastSon.skipHiddenConv, comesFrom)
+  of nkCaseStmt:
+    for i in 1..<e.len:
+      let branch = e[i]
+      if branch.len > 0:
+        addRaiseEffectsFromExpr(a, branch.lastSon.skipHiddenConv, comesFrom)
+  else:
+    addRaiseEffect(a, e, comesFrom)
+
 proc addTag(a: PEffects, e, comesFrom: PNode) =
   var aa = a.tags
   for i in 0..<aa.len:
@@ -808,6 +836,10 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
         markSideEffect(tracked, a, n.info)
   let paramType = if formals != nil and argIndex < formals.signatureLen: formals[argIndex] else: nil
   if paramType != nil and paramType.kind in {tyVar}:
+    let arg = n.skipAddr()
+    if isSsoStringIndex(tracked.config, arg):
+      localError(tracked.config, arg.info,
+        "expression '$1' is immutable, not 'var'" % renderNotLValue(arg))
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalSym(tracked, n.sym):
       makeVolatile(tracked, n.sym)
@@ -1085,6 +1117,45 @@ proc trackCall(tracked: PEffects; n: PNode) =
   #if canRaise(a):
   #  echo "this can raise ", tracked.config $ n.info
   let op = a.typ
+  # A routine whose body reaches a compile-time-only magic (`macros.error`,
+  # `slurp`, `gorge`, `getAst`, …) can never be code-generated — the C/JS
+  # backends reject those magics (ccgexprs `errXMustBeCompileTime`). Such a
+  # routine is compile-time-only by construction; mark it `sfCompileTime` so it
+  # is treated uniformly as such. Non-IC pruned it by demand-driven codegen, but
+  # the per-module IC backend emits every owned routine (no DCE) and would
+  # otherwise feed the magic to codegen. Mirrors the `tfTriggersCompileTime ->
+  # sfCompileTime` path in `semProcAux`.
+  if a.kind == nkSym and a.sym.magic in {mNLen..mNError, mSlurp..mQuoteAst} and
+      tracked.owner != nil and tracked.owner.kind in routineKinds and
+      tracked.config.cmd != cmdNimscript:
+    # ...but NOT under `nim e`: nimscript has no codegen backend to protect, and
+    # marking a routine `sfCompileTime` makes `semExpr` eagerly fold calls to it
+    # at sem time (emConst), where module-level globals it reads have no VM slot
+    # yet — distros' `detectOsWithAllCmd` reaches `gorge` and reads the plain
+    # global `unameRes` → "cannot evaluate at compile time: unameRes". In the
+    # normal nimscript run (emRepl) the module's var section runs first and the
+    # slot exists, so the marking is both unnecessary and harmful here.
+    #
+    # ...and NOT if the routine is — or is nested inside — a macro/template:
+    # those are VM-only (never code-generated), so the per-module IC backend has
+    # nothing to protect there, while `sfCompileTime` on a macro-internal nested
+    # closure breaks its captured-variable access in the VM ("cannot evaluate at
+    # compile time: n" — `tests/macros/tmacros1`'s `innerProc` reading the
+    # macro-local `n`). Walk the owner chain and bail on the first
+    # skMacro/skTemplate. NB mark `tracked.owner` (the routine that directly
+    # reaches the magic), NOT its outermost enclosing: a runtime proc may legally
+    # nest a compile-time helper — `tests/generics/tunique_type`'s `[]` proc
+    # contains a nested `buildResult` macro — and marking the proc would wrongly
+    # make IT compile-time ("request to generate code for .compileTime proc: []").
+    var encl = tracked.owner
+    var insideMeta = false
+    while encl != nil and encl.kind != skModule:
+      if encl.kind in {skMacro, skTemplate}:
+        insideMeta = true
+        break
+      encl = encl.skipGenericOwner
+    if not insideMeta:
+      incl(tracked.owner, sfCompileTime)
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
@@ -1165,8 +1236,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
       if a.sym != getAttachedOp(tracked.graph, t, opKind):
-        # generate called hook regardless of `nodestroy` for explicit call, bug #24626
-        createSingleTypeBoundOp(tracked.graph, tracked.c, t, opKind, n.info, tracked.c.idgen)
+        createTypeBoundOps(tracked, t, n.info, explicit = true)
         # replace builtin hooks with lifted ones
         n = replaceHookMagic(tracked.c, n, opKind)
 
@@ -1204,6 +1274,7 @@ type
     enforcedGcSafety, enforceNoSideEffects: bool
     oldExc, oldTags, oldForbids: int
     exc, tags, forbids: PNode
+    excSource, tagsSource, forbidsSource: PNode
 
 proc createBlockContext(tracked: PEffects): PragmaBlockContext =
   var oldForbidsLen = 0
@@ -1226,17 +1297,18 @@ proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
     # anything about 'raises' in the 'cast' at all. Same applies for 'tags'.
     setLen(tracked.exc.sons, bc.oldExc)
     for e in bc.exc:
-      addRaiseEffect(tracked, e, e)
+      addRaiseEffect(tracked, e, if bc.excSource != nil: bc.excSource else: e)
   if bc.tags != nil:
     setLen(tracked.tags.sons, bc.oldTags)
     for t in bc.tags:
-      addTag(tracked, t, t)
+      addTag(tracked, t, if bc.tagsSource != nil: bc.tagsSource else: t)
   if bc.forbids != nil:
     setLen(tracked.forbids.sons, bc.oldForbids)
     for t in bc.forbids:
-      addNotTag(tracked, t, t)
+      addNotTag(tracked, t, if bc.forbidsSource != nil: bc.forbidsSource else: t)
 
-proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
+proc castBlock(tracked: PEffects, castPragma: PNode, bc: var PragmaBlockContext) =
+  let pragma = castPragma[1]
   case whichPragma(pragma)
   of wGcSafe:
     bc.enforcedGcSafety = true
@@ -1249,6 +1321,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.tags = newNodeI(nkArgList, pragma.info)
       bc.tags.add n
+    bc.tagsSource = castPragma
   of wForbids:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1256,6 +1329,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.forbids = newNodeI(nkArgList, pragma.info)
       bc.forbids.add n
+    bc.forbidsSource = castPragma
   of wRaises:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1263,6 +1337,7 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.exc = newNodeI(nkArgList, pragma.info)
       bc.exc.add n
+    bc.excSource = castPragma
   of wUncheckedAssign:
     discard "handled in sempass1"
   else:
@@ -1299,6 +1374,8 @@ proc allowCStringConv(n: PNode): bool =
 
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
+  of nkTypeOfExpr:
+    discard "typeof() never evaluates its operand; not a definite-assignment use"
   of nkSym:
     useVar(tracked, n)
     if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
@@ -1315,7 +1392,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
-      addRaiseEffect(tracked, n[0], n)
+      addRaiseEffectsFromExpr(tracked, n[0], n)
       for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
@@ -1516,7 +1593,7 @@ proc track(tracked: PEffects, n: PNode) =
       of wNoSideEffect:
         bc.enforceNoSideEffects = true
       of wCast:
-        castBlock(tracked, pragmaList[i][1], bc)
+        castBlock(tracked, pragmaList[i], bc)
       else:
         discard
     applyBlockContext(tracked, bc)

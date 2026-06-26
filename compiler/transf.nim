@@ -22,7 +22,7 @@ import std / tables
 
 import
   options, ast, astalgo, trees, msgs,
-  idents, renderer, types, semfold, magicsys, cgmeth,
+  idents, renderer, types, semfold, magicsys, cgmeth, parampatterns,
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
@@ -90,11 +90,21 @@ proc getCurrOwner(c: PTransf): PSym =
   if c.transCon != nil: result = c.transCon.owner
   else: result = c.module
 
+proc freshOwnedSym(c: PTransf; s, owner: PSym): PNode =
+  # We need to copy the symbol here because we might need to change its owner and
+  # we don't want to mess with the original symbol which might be used in other places.
+  # This can happen for example for iterators which are transformed multiple times when
+  # they are used in different contexts.
+  var fresh = copySym(s, c.idgen)
+  if fresh.kind notin routineKinds:
+    incl(fresh.flagsImpl, sfFromGeneric)
+  setOwner(fresh, owner)
+  result = newSymNode(fresh)
+
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), c.idgen, getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flagsImpl, sfFromGeneric)
-  let owner = getCurrOwner(c)
   result = newSymNode(r)
 
 proc transform(c: PTransf, n: PNode, noConstFold = false): PNode
@@ -185,11 +195,39 @@ proc transformSym(c: PTransf, n: PNode): PNode =
   result = transformSymAux(c, n)
 
 proc freshVar(c: PTransf; v: PSym): PNode =
-  let owner = getCurrOwner(c)
-  var newVar = copySym(v, c.idgen)
-  incl(newVar.flagsImpl, sfFromGeneric)
-  setOwner(newVar, owner)
-  result = newSymNode(newVar)
+  result = freshOwnedSym(c, v, getCurrOwner(c))
+
+proc introduceNewRoutineHeaderSyms(c: PTransf; n: PNode; oldOwner, newOwner: PSym) =
+  # We need to introduce new symbols for the parameters and result of a routine when
+  # we copy it for inlining or closure generation.
+  # Otherwise, we would have multiple nodes referring to the same parameter symbols which
+  # can lead to problems when we need to change the owner of these symbols.
+  case n.kind
+  of nkSym:
+    if n.sym.owner == oldOwner:
+      c.transCon.mapping[n.sym.itemId] = freshOwnedSym(c, n.sym, newOwner)
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+    discard
+  else:
+    for i in 0..<n.len:
+      introduceNewRoutineHeaderSyms(c, n[i], oldOwner, newOwner)
+
+proc copyRoutineTypeHeader(c: PTransf; oldProc, newProc: PSym) =
+  # We need to copy the routine type header to ensure that
+  # modifications to the newProc do not affect the oldProc.
+  if oldProc.typ != nil and oldProc.typ.kind == tyProc and oldProc.typ.n != nil:
+    newProc.typ = copyType(oldProc.typ, c.idgen, newProc)
+    newProc.typ.n = newNodeI(oldProc.typ.n.kind, oldProc.typ.n.info)
+    if oldProc.typ.n.len > 0:
+      newProc.typ.n.add copyTree(oldProc.typ.n[0])
+      for i in 1..<oldProc.typ.n.len:
+        let oldParam = oldProc.typ.n[i].sym
+        var newParam = getOrDefault(c.transCon.mapping, oldParam.itemId)
+        if newParam == nil:
+          newParam = freshOwnedSym(c, oldParam, newProc)
+          c.transCon.mapping[oldParam.itemId] = newParam
+        doAssert newParam.kind == nkSym
+        newProc.typ.addParam newParam.sym
 
 proc transformVarSection(c: PTransf, v: PNode): PNode =
   result = newTransNode(v)
@@ -338,11 +376,18 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     return n
   of nkLambdaKinds, nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
-    let x = newSymNode(copySym(n[namePos].sym, c.idgen))
-    c.transCon.mapping[n[namePos].sym.itemId] = x
+    let oldProc = n[namePos].sym
+    let x = freshOwnedSym(c, oldProc, oldProc.owner)
+    c.transCon.mapping[oldProc.itemId] = x
+    introduceNewRoutineHeaderSyms(c, n[paramsPos], oldProc, x.sym)
+    if resultPos < n.len and n[resultPos] != nil:
+      introduceNewRoutineHeaderSyms(c, n[resultPos], oldProc, x.sym)
+    copyRoutineTypeHeader(c, oldProc, x.sym)
     result[namePos] = x # we have to copy proc definitions for iters
     for i in 1..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])
+    if x.sym.typ != nil and x.sym.typ.kind == tyProc:
+      result[paramsPos] = x.sym.typ.n
     result[namePos].sym.ast = result
   else:
     result = newTransNode(n)
@@ -675,7 +720,7 @@ type
     paDirectMapping, paFastAsgn, paFastAsgnTakeTypeFromArg
     paVarAsgn, paComplexOpenarray, paViaIndirection
 
-proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
+proc putArgInto(arg: PNode, formal: PType; borrowedFirstArg = false): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
   # inline context.
   if formal.kind == tyTypeDesc: return paDirectMapping
@@ -702,6 +747,11 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   of nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
     if result == paViaIndirection: result = paFastAsgn
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if compareTypes(arg.typ, arg[1].typ, dcEqIgnoreDistinct, {IgnoreRangeShallow}):
+      result = putArgInto(arg[1], formal)
+    else:
+      result = paFastAsgn
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping:
@@ -720,6 +770,13 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
+
+  if borrowedFirstArg and result == paDirectMapping and parampatterns.exprRoot(arg) == nil and
+           parampatterns.isAssignable(nil, arg) == arNone:
+    # Inline iterators like `items(array)` borrow from the first argument.
+    # If that argument is just a transient expression, materialize it so the
+    # lifted closure keeps the backing storage alive across yields.
+    result = paFastAsgnTakeTypeFromArg
 
 proc findWrongOwners(c: PTransf, n: PNode) =
   if n.kind == nkVarSection:
@@ -819,13 +876,16 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   if iter.kind != skIterator: return result
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
+  let borrowedIterResult =
+    iter.typ != nil and iter.typ.returnType != nil and
+    skipTypes(iter.typ.returnType, abstractInst).kind in {tyLent, tyVar}
   for i in 1..<call.len:
     var arg = transform(c, call[i])
     let ff = skipTypes(iter.typ, abstractInst)
     # can happen for 'nim check':
     if i >= ff.n.len: return result
     var formal = ff.n[i].sym
-    let pa = putArgInto(arg, formal.typ)
+    let pa = putArgInto(arg, formal.typ, borrowedIterResult and i == 1)
     case pa
     of paDirectMapping:
       newC.mapping[formal.itemId] = arg
@@ -1326,7 +1386,33 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
     result = getBody(g, prc)
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
-    var c = openTransf(g, prc.getModule, "", idgen, flags)
+    # Lambda-lifting a routine body while the VM compiles it (to run a macro
+    # under `nim ic`) mints a closure `:env` (type + obj + fields + hidden param)
+    # that the lift welds into the routine's serialized signature. Such an env is
+    # a PROCESS-LOCAL artifact (its item number is per-process-sequential), so a
+    # reference to it must never carry a stable cross-module identity — otherwise
+    # a consumer resolves it against a canonical NIF built by a different process
+    # that has no matching def ('symbol has no offset', e.g. Nimbus t17.275).
+    # Lift in the backend (process-local) id space; ast2nif then emits these as
+    # module-local `@bk` defs (mirrors setAttachedOp's inVMTransform handling).
+    var liftIdgen = idgen
+    if g.inVMTransform > 0 and g.config.cmd == cmdM:
+      if g.vmTransfIdgen == nil:
+        g.vmTransfIdgen = idGeneratorForBackend(g.systemModule)
+      liftIdgen = g.vmTransfIdgen
+    var c = openTransf(g, prc.getModule, "", liftIdgen, flags)
+    # `liftCapturedVars` rewrites captured locals to `:env.field` IN PLACE on the
+    # body it is handed; the env-creation prologue lands only in the returned
+    # wrapper. When the VM drives this transform (running a macro/CT proc), that
+    # in-place mutation corrupts the routine's PRE-transform `ast[bodyPos]` —
+    # under IC exactly the node `getBody` serializes to the module's `.s.nif`. So
+    # snapshot the pristine body before the VM lift and restore `ast[bodyPos]`
+    # afterwards: the VM still consumes the fully-lifted `result`, but `getBody`
+    # keeps faithfully returning the pre-transform body for serialization. The
+    # cg/backend path (`inVMTransform == 0`) is untouched.
+    let vmPristineBody =
+      if g.inVMTransform > 0: copyTree(getBody(g, prc))
+      else: nil
     result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, flags)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
@@ -1336,6 +1422,8 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
       result = g.transformClosureIterator(c.idgen, prc, result)
 
     incl(result.flags, nfTransf)
+    if vmPristineBody != nil:
+      prc.ast[bodyPos] = vmPristineBody
 
     if useCache in flags or prc.typ.callConv == ccInline:
       # genProc for inline procs will be called multiple times from different modules,

@@ -378,6 +378,9 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo, note = errGenerated) =
   ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
+    when defined(icDbgRefc):
+      echo "[icRedef] ", s
+      echo getStackTrace()
     localError(c.config, info, note,
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
@@ -458,6 +461,15 @@ proc openShadowScope*(c: PContext) =
   c.currentScope = PScope(parent: c.currentScope,
                           symbols: initStrTable(),
                           depthLevel: c.scopeDepth)
+
+proc rememberShadowDefs*(c: PContext) =
+  ## bug #25693: a template/macro operand's local definitions are sem-checked in
+  ## a shadow scope that is then discarded. Record those definitions so that a
+  ## later re-emission (e.g. a captured `typed` fragment expanded more than once)
+  ## can be detected as a redefinition rather than silently miscompiled.
+  for s in c.currentScope.symbols:
+    if s.kind in {skVar, skLet, skForVar} and {sfGenSym, sfWasGenSym} * s.flags == {}:
+      c.shadowDiscardedDefs.incl s.id
 
 proc closeShadowScope*(c: PContext) =
   ## closes the shadow scope, but doesn't merge any of the symbols

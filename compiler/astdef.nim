@@ -17,8 +17,20 @@ when defined(nimPreviewSlimSystem):
 
 export int128
 
+var nifcBackendActive* = false
+  ## Set only while the per-module NIF backend codegen stage runs
+  ## (`nifbackend.generateCgStage`, `cmd == cmdNifC`). It gates `newSymNode`'s
+  ## lazy-type marking so it applies ONLY in the backend — where syms are loaded
+  ## from NIF and a cg-stage transform can build a sym node from a not-yet-typed
+  ## stub — and never during frontend sem, where the same marking would perturb
+  ## effect/exception inference (it diverges from a non-IC build, e.g.
+  ## `times.toDateTimeByWeek` gaining a spurious unlisted `Exception`).
+
 import nodekinds
 export nodekinds
+
+import itemids
+export itemids
 
 type
   TCallingConvention* = enum
@@ -572,23 +584,6 @@ const
     ## magics that are generated as normal procs in the backend
 
 type
-  ItemId* = object
-    module*: int32
-    item*: int32
-
-proc `$`*(x: ItemId): string =
-  "(module: " & $x.module & ", item: " & $x.item & ")"
-
-proc `==`*(a, b: ItemId): bool {.inline.} =
-  a.item == b.item and a.module == b.module
-
-proc hash*(x: ItemId): Hash =
-  var h: Hash = hash(x.module)
-  h = h !& hash(x.item)
-  result = !$h
-
-
-type
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -984,6 +979,14 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result = newNode(nkSym)
   result.sym = sym
   result.typField = sym.typImpl
+  if result.typField == nil and nifcBackendActive:
+    # In the per-module NIF backend cg stage a transform (chronos async
+    # closure-iterator lowering) builds `result = …` sym nodes from a not-yet-typed
+    # NIF stub; snapshotting the nil here would leave the node permanently typeless
+    # and the backend later reads `t.flags` off it and SIGSEGVs (injectdestructors
+    # hasDestructor). Mark it lazy so `typ` re-reads `sym.typ` once resolved. Gated
+    # on `nifcBackendActive` so frontend sem is untouched (see the flag's doc).
+    result.flags.incl nfLazyType
   result.info = info
 
 proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
@@ -1000,7 +1003,8 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 
 type
   LogEntryKind* = enum
-    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry
+    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,
+    PureEnumEntry
   LogEntry* = object
     kind*: LogEntryKind
     op*: TTypeAttachedOp
@@ -1163,3 +1167,11 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym =
     if result == nil: break
     if result.name.id == name.id: break
     h = nextTry(h, high(t.data))
+
+# --- doc-comment bridge for the NIF serializer -------------------------------
+# `ast2nif` (the NIF reader/writer) cannot import `ast` (where the comment
+# accessor and its `gconfig.comments` side table live) because `ast` imports
+# `ast2nif`. These hooks are assigned by `ast` and let the serializer carry a
+# decl's `##` doc comment across a NIF round-trip.
+var nodeCommentReader*: proc(n: PNode): string {.nimcall.}
+var nodeCommentWriter*: proc(n: PNode; s: string) {.nimcall.}

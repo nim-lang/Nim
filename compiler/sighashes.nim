@@ -10,6 +10,7 @@
 ## Computes hash values for routine (proc, method etc) signatures.
 
 import ast, ropes, modulegraphs, options, msgs, pathutils
+from lineinfos import FileIndex
 from std/hashes import Hash
 import std/tables
 import types
@@ -52,7 +53,17 @@ proc hashSym(c: var MD5Context, s: PSym) =
     c &= ":anon"
   else:
     var it = s
+    when defined(icDbgHash):
+      var ownerSteps = 0
     while it != nil:
+      when defined(icDbgHash):
+        inc ownerSteps
+        if ownerSteps >= 1000 and ownerSteps <= 1030:
+          echo "OWNERLOOP(hashSym) n=", ownerSteps, " sym=", it.name.s, " kind=", it.kind,
+            " id=", it.itemId, " flags=", it.flags, " state=", it.state,
+            " start=", s.name.s, " startId=", s.itemId
+        elif ownerSteps == 1031:
+          raiseAssert "owner-chain cycle detected, see OWNERLOOP dump above"
       c &= it.name.s
       c &= "."
       it = it.owner
@@ -64,8 +75,30 @@ proc hashTypeSym(c: var MD5Context, s: PSym; conf: ConfigRef) =
     c &= ":anon"
   else:
     var it = s
-    c &= customPath(conf.toFullPath(s.info))
+    # The source file path disambiguates same-named object types from different
+    # modules whose owner-chain names also coincide (e.g. libp2p kademlia/protobuf
+    # `Message` vs rendezvous/protobuf `Message`, both modules named `protobuf`).
+    # A type sym that reaches the backend as a `Complete` stub never individually
+    # loaded carries `unknownLineInfo` (fileIndex -1), which `toFullPath` collapses
+    # to the `???` placeholder — so the two would hash to ONE mangled C name and the
+    # wrong struct gets emitted. Fall back to the sym's HOME module file (its
+    # per-module NIF-suffix path, stable+unique) for the path. Only fires on a -1
+    # fileIndex; non-IC type syms always have a real `info`, so the fast path is
+    # taken and the hash is unchanged (koch boot byte-equal).
+    let infoFi = s.info.fileIndex
+    let pathFi = if infoFi.int32 >= 0'i32: infoFi else: s.itemId.module.int32.FileIndex
+    c &= customPath(conf.toFullPath(pathFi))
+    when defined(icDbgHash):
+      var ownerSteps = 0
     while it != nil:
+      when defined(icDbgHash):
+        inc ownerSteps
+        if ownerSteps >= 1000 and ownerSteps <= 1030:
+          echo "OWNERLOOP n=", ownerSteps, " sym=", it.name.s, " kind=", it.kind,
+            " id=", it.itemId, " flags=", it.flags, " state=", it.state,
+            " start=", s.name.s, " startId=", s.itemId
+        elif ownerSteps == 1031:
+          raiseAssert "owner-chain cycle detected, see OWNERLOOP dump above"
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
         hashType c, it.typ, {CoProc}, conf
@@ -102,14 +135,43 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]; conf: Confi
   else:
     for i in 0..<n.len: hashTree(c, n[i], flags, conf)
 
+when defined(icDbgHash):
+  var hashDepth = 0
+  var hashCalls = 0
+  var hashMaxDepth = 0
+
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
     c &= "\254"
     return
+  when defined(icDbgHash):
+    inc hashDepth
+    inc hashCalls
+    if hashDepth > hashMaxDepth: hashMaxDepth = hashDepth
+    if hashCalls >= 500_000_000 and hashCalls <= 500_000_300:
+      echo "HASHLOOP n=", hashCalls, " d=", hashDepth, " kind=", t.kind, " id=", t.itemId,
+        " uniq=", t.uniqueId, " sym=", (if t.sym != nil: t.sym.name.s else: "NIL"),
+        " state=", t.state, " owner=", (if t.owner != nil: t.owner.name.s else: "NIL")
+    elif hashCalls == 500_000_301:
+      echo "HASHLOOP maxDepth=", hashMaxDepth
+      raiseAssert "hashType runaway detected, see HASHLOOP dump above"
+    defer:
+      dec hashDepth
 
   # Ensure type is fully loaded before hashing to avoid hash changing
   # as properties are accessed and trigger lazy loading.
   backendEnsureMutable(t)
+
+  # Bare type-class keywords used as a typedesc without arguments (e.g. `array`,
+  # `range`, `distinct` passed to `signatureHash`) have no children, so the
+  # structural branches below would index a non-existent `elementType`. Hash them
+  # by kind (+ sym for an extra, stable distinction) — enough for a stable,
+  # distinct identity. (`seq`/`openArray`/`tuple` already fall through the empty
+  # `else` loop unharmed; this covers the branches that index `elementType`.)
+  if t.kind in {tyArray, tyRange, tyDistinct} and not t.hasElementType:
+    c &= char(t.kind)
+    if t.sym != nil: c.hashSym(t.sym)
+    return
 
   case t.kind
   of tyGenericInvocation:
@@ -141,9 +203,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if CoConsiderOwned in flags:
       c &= char(t.kind)
     c.hashType t.skipModifier, flags, conf
-  of tyBool, tyChar, tyInt..tyUInt64:
-    # no canonicalization for integral types, so that e.g. ``pid_t`` is
-    # produced instead of ``NI``:
+  of tyBool, tyChar, tyPointer, tyCstring, tyInt..tyUInt64:
+    # no canonicalization for builtin scalar-ish / pointer-like types, so
+    # that e.g. ``pid_t`` or an imported ``pointer`` alias keep their
+    # backend spelling instead of collapsing into the generic Nim builtin:
     c &= char(t.kind)
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
@@ -248,6 +311,29 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
         c.hashType(param.typ, flags, conf)
         c &= ','
       c.hashType(t.returnType, flags, conf)
+    elif t.n != nil and t.n.kind == nkFormalParams:
+      # Under IC a loaded proc type stores its parameters only in `n`; `sons`
+      # holds just the return type. Hashing `t.signature` would silently drop
+      # every parameter, collapsing distinct proc types onto one hash, so the
+      # same logical type got different C struct names in different TUs
+      # ("incompatible type for argument" on closure args). Hash the return
+      # type first and then the parameter types from `n` — for from-source
+      # types `n`'s param types equal `sons[1..]`, so non-IC hashes are
+      # unchanged. (Same fix as typekeys' tyProc branch.)
+      c.hashType(t.returnType, flags, conf)
+      for i in 1..<t.n.len:
+        let p = t.n[i]
+        if p.kind == nkSym:
+          backendEnsureMutable(p.sym)
+          # The hidden closure env param: under IC, lambda lifting shares the
+          # routine's AST params with `typ.n`, so the lifted `:envP` leaks into
+          # the TYPE's params (from-source types never carry it). It is not part
+          # of the type's identity — `genProcParams` skips it the same way.
+          if t.callConv == ccClosure and p.sym.name.s == ":envP":
+            continue
+          c.hashType(p.sym.typ, flags, conf)
+        else:
+          c.hashType(p.typ, flags, conf)
     else:
       for a in t.signature: c.hashType(a, flags, conf)
     c &= char(t.callConv)
@@ -263,6 +349,21 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     c &= char(t.kind)
     c.hashType(t.indexType, flags-{CoIgnoreRange}+{CoIgnoreRangeInArray}, conf)
     c.hashType(t.elementType, flags-{CoIgnoreRange}, conf)
+  of tyBuiltInTypeClass:
+    # A builtin type class (`object`, `tuple`, `proc`, `ref`, `seq`, ...) is
+    # identified solely by the *kind* of its single placeholder son plus a few
+    # flags/callConv (see `sameType`). That son is a fresh, field-less, sym-less
+    # type, so the generic `else` below would recurse into it and hash its
+    # process-local `t.id` — unstable across the NIF boundary. nim-serialization
+    # keys auto-serialization on `signatureHash(object)`/`tuple`/... and missed
+    # under IC because the registering and consuming modules minted different
+    # placeholder ids. Hash the class identity that `sameType` actually compares.
+    c &= char(t.kind)
+    let elem = t.elementType
+    c &= char(elem.kind)
+    for f in eqTypeFlags * elem.flags: c &= char(ord(f))
+    if elem.kind == tyProc and tfExplicitCallConv in elem.flags:
+      c &= char(elem.callConv)
   else:
     c &= char(t.kind)
     for a in t.kids: c.hashType(a, flags, conf)
@@ -446,4 +547,3 @@ proc idOrSig*(s: PSym, currentModule: string,
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)
-

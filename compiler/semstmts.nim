@@ -531,7 +531,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "using")
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -838,7 +838,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -994,7 +994,7 @@ proc semConst(c: PContext, n: PNode): PNode =
   var b: PNode
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkConstDef, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -1535,7 +1535,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   while i < n.len: # n may grow due to type pragma macros
     var a = n[i]
     when defined(nimsuggest):
-      if c.config.cmd == cmdIdeTools:
+      if c.config.ideActive:
         inc c.inTypeContext
         suggestStmt(c, a)
         dec c.inTypeContext
@@ -1808,15 +1808,32 @@ proc checkForMetaFields(c: PContext; n: PNode; hasError: var bool) =
     internalAssert c.config, false
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
-  for (typ, typeNode) in c.forwardTypeUpdates:
-    # types that need to be updated due to containing forward types
-    # and their corresponding type nodes
-    # for example generic invocations of forward types end up here
-    var reified = semTypeNode(c, typeNode, nil)
-    assert reified != nil
-    assignType(typ, reified)
-    typ.itemId = reified.itemId     # same id
-  c.forwardTypeUpdates = @[]
+  # each top level type needs to be processed, each epoch should reify at least one
+  var remainingOwners = initIntSet()
+  for (owner, _, _) in c.forwardTypeUpdates:
+    remainingOwners.incl owner.id
+
+  while c.forwardTypeUpdates.len > 0:
+    let pending = move c.forwardTypeUpdates
+    var madeProgress = false
+
+    for (owner, typ, typeNode) in pending:
+      # types that need to be updated due to containing forward types
+      # and their corresponding type nodes
+      # for example generic invocations of forward types end up here
+      var reified = semTypeNode(c, typeNode, nil)
+      assert reified != nil
+      assignType(typ, reified)
+      typ.itemId = reified.itemId  # same id
+      if containsForwardType(typ):
+        c.forwardTypeUpdates.add (owner, typ, typeNode)
+      elif not remainingOwners.missingOrExcl(owner.id):
+        madeProgress = true
+
+    if not madeProgress:
+      # can't error here unfortunately
+      break
+
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]
@@ -2604,15 +2621,47 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
     proto.options = s.options
+    # `s` (the impl symbol) is discarded in favour of `proto`. It still carries
+    # `s.ast == n` (set above) and stays reachable as the owner of body-local
+    # symbols, so under IC it would be serialized as a SECOND, body-bearing
+    # `proc` entry — a phantom duplicate of `proto`. The per-module backend then
+    # codegens that phantom, whose `result` is owned by `proto` (addResult below
+    # re-parents it), not by the phantom: lambdalifting's capture check
+    # (`result.skipGenericOwner != owner`) then wrongly classifies `result` as a
+    # captured outer variable → "'result' … cannot be captured". Drop the
+    # discarded impl's body so it can never be emitted as a routine (same leak
+    # class the `miscPos` adoption below guards against for generic params).
+    let discardedImpl = s
     s = proto
     n[genericParamsPos] = proto.ast[genericParamsPos]
     n[paramsPos] = proto.ast[paramsPos]
     n[pragmasPos] = proto.ast[pragmasPos]
+    # miscPos holds this definition's *original* generic-param node (kept for
+    # error messages, see setGenericParamsMisc / issue #1713). For an impl that
+    # resolves to a forward decl, that node was analysed under the now-discarded
+    # impl symbol and its generic-param constraint types are owned by it. Adopt
+    # the prototype's miscPos so the discarded impl sym is fully unreachable —
+    # otherwise it leaks (via `proto.ast = n` below) as a type owner and gets
+    # serialized as a phantom duplicate overload under IC.
+    n[miscPos] = proto.ast[miscPos]
     if n[namePos].kind != nkSym: internalError(c.config, n.info, "semProcAux")
     n[namePos].sym = proto
     if importantComments(c.config) and proto.ast.comment.len > 0:
       n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
+    if discardedImpl != proto:
+      discardedImpl.ast = nil
+      # The impl symbol is discarded in favour of `proto`, but it stays `Complete`
+      # in this module, so `ast2nif.shouldWriteSymDef` still serializes it. With
+      # `sfExported` it would be written importable (`x` marker) and an importer
+      # would load BOTH it and `proto` into the overload set: "ambiguous call;
+      # both foo and foo" (identical signatures). Normally a discarded impl is a
+      # gensym/transient that isn't reached this way, but a `{.async: (raises).}`
+      # forward-decl + impl reconciles HERE with both syms exported. Strip the
+      # export so the design's "forward declarations are never importable" holds —
+      # the def still serializes (other refs may resolve to it) but is invisible
+      # to importer overload resolution; `proto` carries the export.
+      excl(discardedImpl, sfExported)
     popOwner(c)
     pushOwner(c, s)
 
@@ -2625,6 +2674,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       elif s.name.s == "()" and callOperator notin c.features:
         localError(c.config, n.info, "the overloaded " & s.name.s &
           " operator has to be enabled with {.experimental: \"callOperator\".}")
+    elif sfImportc notin s.flags and (s.name.s == ">" or s.name.s == ">=" or s.name.s == "!="):
+      # ignore imported procs as these operators in backend language might have different semantics
+      let op1 = if s.name.s == "!=": "==" elif s.name.s == ">": "<" else: "<="
+      message(c.config, n.info, warnInvalidCmpOp, "define `" & op1 & "` instead of `" & s.name.s & "` to implement user defined comparison operator. " &
+              "it allows you to use `" & s.name.s & "` automatically.")
 
   if sfBorrow in s.flags and c.config.cmd notin cmdDocLike:
     result[bodyPos] = c.graph.emptyNode
@@ -2838,7 +2892,7 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult, resolvedIncStmt
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   var resolvedIncStmt: PNode = nil
-  if optCompress in c.config.globalOptions:
+  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
     # New resolve the include filenames to string literals that contain absolute paths,
     # nicer for IC:
     resolvedIncStmt = newNodeI(nkIncludeStmt, n.info)
@@ -2919,13 +2973,15 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
   #writeStackTrace()
+  let oldErrorCount = c.config.errorCounter
   inc c.inStaticContext
   openScope(c)
   let a = semStmt(c, n[0], {})
   closeScope(c)
   dec c.inStaticContext
   n[0] = a
-  evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner)
+  if c.config.errorCounter == oldErrorCount:
+    evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner)
   when false:
     # for incremental replays, keep the AST as required for replays:
     result = n
