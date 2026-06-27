@@ -94,7 +94,16 @@ func newfetchOptions*(metod = HttpGet; body: cstring = nil;
     body: if metod notin {HttpHead, HttpGet}: body else: nil, 
     mode: cstring($mode), credentials: cstring($credentials), cache: cstring($cache), referrerPolicy: cstring($referrerPolicy),
     keepalive: keepalive, redirect: cstring($redirect), referrer: referrer, integrity: integrity, headers: headers,
-    metod: $metod
+    metod: case metod
+      of HttpHead:   "HEAD".cstring
+      of HttpGet:    "GET".cstring
+      of HttpPost:   "POST".cstring
+      of HttpPut:    "PUT".cstring
+      of HttpDelete: "DELETE".cstring
+      of HttpPatch:  "PATCH".cstring
+      of HttpTrace:  "TRACE".cstring
+      of HttpOptions: "OPTIONS".cstring
+      of HttpConnect: "CONNECT".cstring
   )
 
 proc fetch*(url: cstring | Request): Future[Response] {.importjs: "$1(#)".}
