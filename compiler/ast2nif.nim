@@ -1716,6 +1716,27 @@ proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
   result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
 
+proc nextBackendSymItem*(c: var DecodeContext; module: int32): int32 =
+  ## Allocate the next backend-minted SYM item for `module` from the SAME
+  ## per-module counter the loader uses when it re-homes `@bk` syms loaded from
+  ## the module's `.t.bif` (loadSymStub/extractLocalSymsFromTree). The `lower`
+  ## stage serializes its lifted hooks/temps as `@bk` syms, and cg mints MORE
+  ## backend syms (RTTI destroy wrappers, ...) into the same module. Both are
+  ## keyed by `.id` (= `toId(itemId)`) in `declaredThings`/`declaredProtos`, so
+  ## if the two id producers (the loader's `symCounter` and cg's idgen) ran
+  ## independently they could mint the same item: e.g. a `rttiDestroy` wrapper
+  ## and the very `=destroy` hook it wraps both land on backend item 21 -> one
+  ## masks the other in `declaredThings` -> the hook's body is never emitted ->
+  ## "undefined reference" at link. Drawing every backend sym from this one
+  ## counter keeps them disjoint. Returns -1 if the module is not loaded yet
+  ## (then the caller falls back to the idgen's own counter — only reachable
+  ## for sem-time `@bk` minting, whose module is never loaded in that process).
+  let fi = module.FileIndex
+  if not c.mods.hasKey(fi): return -1'i32
+  let p = addr c.mods[fi].symCounter
+  inc p[]
+  result = p[]
+
 proc setMainModule*(c: var DecodeContext; fileIdx: FileIndex) =
   ## Records the module that is being compiled fresh so that re-exports of its
   ## own symbols by dependencies are not turned into duplicate stubs.

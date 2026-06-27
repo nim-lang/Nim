@@ -546,6 +546,14 @@ proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
 
 proc nextSymId(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
+  when not defined(nimKochBootstrap):
+    if x.backendMinted:
+      # Share the loader's per-module backend counter so a freshly-minted
+      # backend sym never collides with an `@bk` sym loaded from the module's
+      # `.t.bif` (see ast2nif.nextBackendSymItem).
+      let it = nextBackendSymItem(program, x.module)
+      if it >= 0'i32:
+        return backendItemId(x.module, it)
   inc x.symId
   result = if x.backendMinted: backendItemId(x.module, x.symId)
            else: itemId(x.module, x.symId)

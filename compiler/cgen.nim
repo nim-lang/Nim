@@ -1480,7 +1480,12 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # process (owned by nobody → undefined at link). So inject ONLY when the body
   # was re-derived in this process (`wasLoaded == false`). Capture before
   # `transformBody`, which returns the cached body (non-nil) when it was loaded.
-  let wasLoaded = prc.transformedBody != nil
+  # ONLY under IC: in a normal `nim c` build `transformedBody` is the ordinary
+  # transform cache (set whenever `transformBody` already ran for `prc`, e.g. a
+  # CT-evaluated or earlier-referenced routine), NOT a `.t.bif` load — gating on
+  # it there would WRONGLY skip destructor injection and miscompile (orc
+  # decref-on-freed). The `.t.bif`-loaded-body concept exists only under cmdNifC.
+  let wasLoaded = m.config.cmd == cmdNifC and prc.transformedBody != nil
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
