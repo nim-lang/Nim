@@ -309,6 +309,19 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
       [s.name.s, owner.name.s, $owner.typ.callConv])
   unsealForTransform(owner.typ)
   incl(owner.typ, tfCapturesEnv)
+  # A closure proc type that captures an env owns a REF to it: copying the closure
+  # value must incref the env and destroying it must decref. That is exactly what
+  # `tfHasAsgn` signals to `injectDestructorCalls` (so a closure assignment becomes
+  # `=copy`, not a raw field store). Set it HERE, at closure-type creation, so the
+  # flag is DETERMINISTIC and serializes with the type (writeTypeDef) — rather than
+  # depending on it being set as a side effect of the first `createTypeBoundOps`
+  # lift (liftdestructors ~1498, "XXX Breaks IC!"). Under IC the per-module `lower`
+  # stage is a separate process that lowers routines in index order; if a consumer
+  # (e.g. `workNimAsyncContinue`) was lowered before the closure type's ops were
+  # lifted, the env store emitted a RAW assign with no incref → the env was freed
+  # before the async callback ran → "yielded `nil`". Setting it at creation fixes
+  # that for both the in-process and the loaded (`.t.bif`) consumer.
+  incl(owner.typ, tfHasAsgn)
   if not isEnv:
     owner.typ.callConv = ccClosure
 

@@ -1218,8 +1218,17 @@ proc closeNamespaceNim(result: var Builder) =
 
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
-  # prc.ast[paramsPos].last contains the type we're after:
-  var ls = lastSon(prc.ast[paramsPos])
+  # prc.ast[paramsPos].last contains the type we're after — BUT a closure loaded
+  # from a `.t.bif` (a lambda-lifted nested proc / generic instance the `lower`
+  # stage transformed) can arrive with an EMPTY AST param node: the lifted hidden
+  # `:env` param lives in `typ.n`, the authoritative signature (`genProc` already
+  # reads `typ.n`, not the AST). The two param nodes diverge across the NIF
+  # boundary; fall back to `typ.n` so the env param resolves instead of indexing
+  # an empty container.
+  var params = prc.ast[paramsPos]
+  if params.safeLen == 0 and prc.typ.n != nil and prc.typ.n.kind == nkFormalParams:
+    params = prc.typ.n
+  var ls = lastSon(params)
   if ls.kind != nkSym:
     internalError(p.config, prc.info, "closure generation failed")
   var env = ls.sym
@@ -1464,8 +1473,16 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   var returnStmt: Snippet = ""
   assert(prc.ast != nil)
 
+  # A body LOADED from `.t.bif` was already FULLY lowered by the `lower` stage —
+  # transformed AND destructor-injected (see nifbackend.generateLowerStage). The
+  # `.t.bif` is the authoritative backend artifact; re-injecting here would lower
+  # it twice (double `=destroy` calls) and, worse, re-lift the env hooks per cg
+  # process (owned by nobody → undefined at link). So inject ONLY when the body
+  # was re-derived in this process (`wasLoaded == false`). Capture before
+  # `transformBody`, which returns the cached body (non-nil) when it was loaded.
+  let wasLoaded = prc.transformedBody != nil
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
-  if sfInjectDestructors in prc.flags:
+  if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
   let tmpInfo = prc.info

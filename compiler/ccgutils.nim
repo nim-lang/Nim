@@ -11,7 +11,7 @@
 
 import
   ast, types, msgs, wordrecg,
-  platform, trees, options, cgendata, mangleutils, renderer
+  platform, trees, options, cgendata, mangleutils, renderer, modulegraphs
 
 import std/[hashes, strutils, formatfloat]
 
@@ -116,7 +116,17 @@ proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   # restarts at 0 and would collide with loaded symbols' ids
   if s.itemId.isBackendMinted:
     result.add "_c"
-    result.add $s.itemId.item
+    if (s.disamb and HookDisambBit) != 0'i32:
+      # A backend-minted sym whose `disamb` is content-derived (setHookDisamb gave
+      # it HookDisambBit) — e.g. the `rttiDestroy` wrapper. Its `itemId.item` is a
+      # PER-PROCESS backend counter, so using it makes the C name diverge across
+      # the emit-everywhere processes: the type's RTTI table (emit-everywhere,
+      # merge-deduped) ends up referencing one process's `_c<item>` while the
+      # wrapper is defined with another's -> undefined at link (`rttiDestroy_c23`).
+      # The content-derived disamb is stable across processes, so use it.
+      result.add $s.disamb
+    else:
+      result.add $s.itemId.item
   else:
     result.add "_u"
     # Mirror `mangleProcNameExt`: use the per-(module,name) `disamb`, NOT

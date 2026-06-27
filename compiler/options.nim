@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "21"
+  icFormatVersion* = "23"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -792,6 +792,17 @@ template quitOrRaise*(conf: ConfigRef, msg = "") =
     raiseAssert msg
   else:
     quit(msg) # quits with QuitFailure
+
+proc icReuseSemLowering*(conf: ConfigRef): bool {.inline.} =
+  ## When ON, the per-module `lower` backend stage REUSES the VM/CT lowering that
+  ## sem cached in the `.s.nif` 2-way-body slot (the non-IC single-lowering
+  ## semantics) instead of re-deriving the transform. Default OFF: the backend
+  ## re-derives every body from the pristine semchecked body (simpler; allowed by
+  ## the 2026-06-27 spec that VM-requested frontend transforms need not influence
+  ## the backend). The switch exists so caching can be restored if a target (e.g.
+  ## Nimbus) depends on the cached lowering being reused, not re-derived. See
+  ## doc/ic_backend_simplify.md §6b.
+  isDefined(conf, "icReuseSemLowering")
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.ideActive or conf.cmd in cmdDocLike
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
