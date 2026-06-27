@@ -39,7 +39,7 @@ pkg "arraymancer", "nimble install -y; nimble uninstall -i -y nimcuda; nimble in
 pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
 pkg "asyncftpclient", "nimble compileExample"
 when not defined(arm64):
-  pkg "asyncthreadpool", "nimble test"
+  pkg "asyncthreadpool", "nimble test --mm:refc"
 pkg "awk"
 pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
