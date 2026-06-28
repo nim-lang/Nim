@@ -157,7 +157,7 @@ proc signatureHasMetaType(t: PType; depth: int = 0): bool =
   for k in t.kids:
     if signatureHasMetaType(k, depth + 1): return true
 
-proc ownsRuntimeRoutine(s: PSym; modPos: int; forLowering = false): bool =
+proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
   ## A concrete, non-generic, runtime routine with a real body, OWNED by the
   ## module at `modPos`. Shared by the `cg` stage's owned-routine seeding (so a
   ## routine called only from other modules is still emitted by somebody) and
@@ -180,20 +180,20 @@ proc ownsRuntimeRoutine(s: PSym; modPos: int; forLowering = false): bool =
   ## iterator, which is expanded at each call site) and must be emitted by its
   ## owner — else a cross-module `for` over it links to nothing.
   ##
-  ## `forLowering`: the `lower` stage must ALSO transform the generic INSTANCES
-  ## this module serializes into its `.t.bif` (each demander keeps its own copy,
-  ## `itemId.module == modPos`). The `.t.bif` is the authoritative backend
-  ## artifact — every routine `cg` emits must arrive with its lowered body baked
-  ## in, NEVER re-derived in `cg` (re-derivation on the partially-loaded backend
-  ## state is exactly what crashed `newSelector`). The `cg`/emit-everywhere path
-  ## keeps the `sfFromGeneric` exclusion (instances are still deduped by content
-  ## name at merge); only the body-producing `lower` pass relaxes it.
+  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine — not
+  ## in `cg` and not in the `lower` stage. They are demanded by the backend's
+  ## emit-everywhere path and deduped by `merge` (content C name); the frontend
+  ## materialises them through the `(offer)` mechanism. The `lower` stage must
+  ## not transform an instance: a not-fully-concrete instance (a closure factory
+  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
+  ## its further-specialised use sites) still carries unresolved overload choices
+  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
   s.itemId.module == modPos and
   (s.kind in {skProc, skFunc, skConverter, skMethod} or
    (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
   s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
   s.magic == mNone and
-  (forLowering or sfFromGeneric notin s.flags) and
+  sfFromGeneric notin s.flags and
   sfDispatcher notin s.flags and
   {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
   s.typ != nil and not signatureHasMetaType(s.typ) and
@@ -485,7 +485,7 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # would emit two `=destroy`/`=copy` runs).
   var seenNested = initIntSet()
   for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-    if ownsRuntimeRoutine(s, modPos, forLowering = true):
+    if ownsRuntimeRoutine(s, modPos):
       # REUSE path (`icReuseSemLowering` ON): a routine already transformed during
       # sem (CT eval / macro / VM transform) carries its lowered body in the
       # `.s.nif` slot (loaded into `transformedBody`) — don't re-transform it.

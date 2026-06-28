@@ -830,6 +830,13 @@ var reexpModTag = registerTag("reexpmod")
 var offerTag = registerTag("offer")
 var typeOfferTag = registerTag("toffer")
 var modulesrcTag = registerTag("modulesrc")
+# `(unusedid <int>)` — the module's first FREE itemId after the frontend
+# (`.s.bif`) or the lower stage (`.t.bif`). The backend seeds its per-module
+# sym/type counters here so freshly-minted backend ids (closure envs, RTTI
+# hooks, temps) start ABOVE every loaded id — no `toId` collision is possible
+# by construction (replaces relying on the `@bk` module-marker bit, which the
+# loader dropped on type USES). Mirrors NIF's `.unusedname` directive.
+var unusedIdTag = registerTag("unusedid")
 
 proc registerNifAstTags*() =
   ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
@@ -1475,7 +1482,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                                               concreteTypes: seq[PType];
                                               genericParamsCount: int]] = @[];
                      typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[];
-                     resolvedImportDeps: seq[FileIndex] = @[]) =
+                     resolvedImportDeps: seq[FileIndex] = @[];
+                     firstUnusedId: int32 = 0) =
   var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   var content = newIcBuilder(300)
@@ -1606,6 +1614,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
 
   var dest = newIcBuilder(600)
   createStmtList(dest, rootInfo)
+  # First child: the backend id seed (see `(unusedid)` / readUnusedId).
+  dest.addParLe unusedIdTag, NoLineInfo
+  dest.addIntLit firstUnusedId.int64
+  dest.addParRi()
   addAll(dest, w.deps)
   # do not write the (stmts .. ) wrapper:
   addStmtsBody(dest, content)
@@ -1695,7 +1707,9 @@ type
     buf: TokenBuf      # the WHOLE module, parsed eagerly (Step 2: replaces the
                        # lazy byte-offset stream entirely — symbol/type loading
                        # AND the body reader now cursor over this resident buffer)
-    symCounter: int32
+    symCounter: int32  # seeded from the file's `(unusedid)` so backend syms
+                       # start above every frontend/lowered id (no collision)
+    typeCounter: int32 # ditto for backend TYPES (closure envs etc.)
     index: Table[string, NifIndexEntry]  # name -> entry; `offset` is a TOKEN
                                          # position in `buf` (was a byte offset)
     suffix: string
@@ -1734,6 +1748,19 @@ proc nextBackendSymItem*(c: var DecodeContext; module: int32): int32 =
   let fi = module.FileIndex
   if not c.mods.hasKey(fi): return -1'i32
   let p = addr c.mods[fi].symCounter
+  inc p[]
+  result = p[]
+
+proc nextBackendTypeItem*(c: var DecodeContext; module: int32): int32 =
+  ## TYPE analogue of `nextBackendSymItem`: the `lower`/`cg` stages mint fresh
+  ## backend TYPES (closure-env objects, ptr wrappers) whose itemId must not
+  ## collide with the module's loaded types. Drawn from the per-module
+  ## `typeCounter`, which `moduleId` seeds from the file's `(unusedid)` so the
+  ## first minted type sits ABOVE every frontend/lowered type item. Returns -1
+  ## if the module is not loaded (caller falls back to the idgen's own counter).
+  let fi = module.FileIndex
+  if not c.mods.hasKey(fi): return -1'i32
+  let p = addr c.mods[fi].typeCounter
   inc p[]
   result = p[]
 
@@ -1810,6 +1837,29 @@ proc buildPosIndex(buf: var TokenBuf; suffix: string): Table[string, NifIndexEnt
     else:
       inc c
 
+proc readUnusedId(buf: var TokenBuf): int32 =
+  ## Find the module's `(unusedid <int>)` directive — emitted as the FIRST child
+  ## of the top-level `(stmts ...)` by writeNifModule/writeLoweredModule — and
+  ## return its value (the first free itemId). 0 if absent (older artifact: the
+  ## backend then falls back to its own un-seeded counter, i.e. pre-`unusedid`
+  ## behaviour).
+  result = 0'i32
+  if buf.len == 0: return
+  var c = buf.beginRead()
+  if c.kind != TagLit: return            # outermost (stmts ...)
+  inc c                                  # descend into stmts body
+  while c.hasMore:
+    if c.kind == TagLit:
+      if tagName(c.tags, c.cursorTagId) == "unusedid":
+        inc c                            # into the unusedid body
+        if c.hasMore and c.kind == IntLit:
+          result = int32 intVal(c)
+        return
+      else:
+        skip c                           # not it; skip this whole subtree
+    else:
+      inc c
+
 proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): FileIndex =
   var isKnownFile = false
   result = c.infos.config.registerNifSuffix(suffix, isKnownFile)
@@ -1838,7 +1888,12 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
         "whose NIF file hasn't been written yet."
     var m = bif.load(modFile)
     let index = buildPosIndex(m.buf, suffix)
-    c.mods[result] = NifModule(buf: ensureMove m.buf, index: index, suffix: suffix)
+    # Seed the backend id counters ABOVE every id the file already uses, so a
+    # freshly-minted backend sym/type (closure env, RTTI hook, temp) can never
+    # share a `toId` with a loaded one. See `readUnusedId` / `(unusedid)`.
+    let seed = readUnusedId(m.buf)
+    c.mods[result] = NifModule(buf: ensureMove m.buf, index: index, suffix: suffix,
+                               symCounter: seed, typeCounter: seed)
 
 proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifIndexEntry =
   let ii = addr c.mods[module].index
@@ -2820,6 +2875,10 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
             let replayNode = loadNode(c, cur, suffix, localSyms)
             if replayNode != nil:
               result.topLevel.sons.add replayNode
+      elif tagIs(cur, "unusedid"):
+        # backend id seed — consumed eagerly by `moduleId`/`readUnusedId`; just
+        # skip past it here so the rest of the header still loads.
+        skip cur
       elif tagIs(cur, "repconverter"): loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
       elif tagIs(cur, "repdestroy"):   loadLogOp(c, result.logOps, cur, HookEntry, attachedDestructor, module)
       elif tagIs(cur, "repwasmoved"):  loadLogOp(c, result.logOps, cur, HookEntry, attachedWasMoved, module)
@@ -3070,6 +3129,17 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
 
   var dest = newIcBuilder(600)
   createStmtList(dest, rootInfo)
+  # Carry the seed FORWARD: the lower stage minted backend syms/types from the
+  # per-module counters (seeded out of the `.s.bif`'s `(unusedid)`), so they now
+  # hold the post-lower high-water mark. Record it so the `cg` stage — which
+  # loads THIS `.t.bif` and mints still more (RTTI hooks) — seeds above it too.
+  let lfi = FileIndex thisModule
+  let loweredSeed = if c.mods.hasKey(lfi):
+                      max(c.mods[lfi].symCounter, c.mods[lfi].typeCounter)
+                    else: 0'i32
+  dest.addParLe unusedIdTag, NoLineInfo
+  dest.addIntLit loweredSeed.int64
+  dest.addParRi()
   addAll(dest, w.deps)
   addStmtsBody(dest, content)
   dest.addParRi()

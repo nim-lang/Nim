@@ -1547,6 +1547,17 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
+    if prc.typ.callConv == ccClosure and param.name.s == ":envP":
+      # The hidden closure-env param is materialised by `closureSetup`, never a
+      # normal C parameter (`genProcParams` omits it from the signature). In a
+      # from-source build it lives only in the routine's AST params and never in
+      # `typ.n`, so this loop never reaches it. Under IC `closureParams` leaks it
+      # into `typ.n`; for a LOADED closure it is already present at header time
+      # (`genProcParams` fills its loc), but for a RE-DERIVED closure
+      # (`wasLoaded == false`) `transformBody` appends it only AFTER
+      # `genProcHeader` ran, so its `loc.snippet` is still empty here. Skip it to
+      # match the from-source invariant — `closureSetup` assigns its local below.
+      continue
     assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
   genProcBody(p, procBody)

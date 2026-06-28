@@ -560,6 +560,16 @@ proc nextSymId(x: IdGenerator): ItemId {.inline.} =
 
 proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
+  when not defined(nimKochBootstrap):
+    if x.backendMinted:
+      # Share the loader's per-module backend TYPE counter (seeded from the
+      # module's `(unusedid)`) so a freshly-minted backend type sits ABOVE every
+      # loaded type — never colliding with a frontend type's `toId` (the bug that
+      # crashed cgen's `getTypeDescAux` cycle check on `AsyncBufferRef`). Mirrors
+      # `nextSymId` (see ast2nif.nextBackendTypeItem).
+      let it = nextBackendTypeItem(program, x.module)
+      if it >= 0'i32:
+        return backendItemId(x.module, it)
   inc x.typeId
   result = if x.backendMinted: backendItemId(x.module, x.typeId)
            else: itemId(x.module, x.typeId)
