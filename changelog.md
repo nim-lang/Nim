@@ -79,6 +79,8 @@ parameter and result types, not just their source-level shape. Use
   Modes include `Nim` (default, fully compatible) and two new experimental modes:
   `Lax` and `Gnu` for different option parsing behaviors.
 
+- `std/symlinks.expandSymlink` now supports Windows symlinks and junctions with
+  POSIX-like single-hop `readlink` semantics.
 - `std/nre2` is added to replace deprecated NRE.
 
 - `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
