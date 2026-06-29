@@ -185,9 +185,13 @@ proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) {.inline.} =
     a.storage = s
 
 proc t(a: TLoc): PType {.inline.} =
-  if a.lode.kind == nkSym:
+  if a.lode.kind == nkSym and a.lode.sym.typ != nil:
     result = a.lode.sym.typ
   else:
+    # Under `nim ic` an object-field reference is a typeless leaf stub (its def
+    # lives in another seek; see ast2nif `FieldMarker`) that carries its type on
+    # the NODE instead. Fall back to the node type. Byte-neutral for non-IC, where
+    # a real sym always has a type.
     result = a.lode.typ
 
 proc lodeTyp(t: PType): PNode =
