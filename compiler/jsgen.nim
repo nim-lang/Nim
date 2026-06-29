@@ -34,7 +34,7 @@ import
   ropes, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
   transf, injectdestructors, sourcemap, astmsgs, pushpoppragmas,
-  mangleutils
+  mangleutils, varpartitions
 
 import pipelineutils
 
@@ -1273,6 +1273,65 @@ proc needsNoCopy(p: PProc; y: PNode): bool =
           (skipTypes(y.typ, abstractInst).kind in
             {tyRef, tyPtr, tyLent, tyVar, tyCstring, tyProc, tyOwned, tyOpenArray} + IntegralTypes))
 
+proc cowEnabled(p: PProc): bool {.inline.} =
+  isDefined(p.config, "nimJsCow")
+
+proc lvalueRoot(n: PNode): PNode =
+  ## The outermost variable a store path writes through (`a.b[i].c` -> `a`),
+  ## also seeing through the addr wrappers inserted for `var`/`addr` arguments.
+  result = n
+  while true:
+    case result.kind
+    of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
+       nkHiddenSubConv, nkHiddenStdConv, nkConv, nkHiddenAddr, nkAddr:
+      result = result[0]
+    else:
+      return result
+
+proc genCowUnshare(p: PProc, target: PNode) =
+  ## Make the root variable of an in-place mutation uniquely owned (clones
+  ## lazily, only if currently shared). `nimUnshare` is a deep copy, so making
+  ## the root unique makes the whole subtree unique in one shot. Covers
+  ## field/index stores and the in-place mutating magics (add/setLen/inc/...).
+  if not cowEnabled(p): return
+  let r = lvalueRoot(target)
+  # Globals are shared like locals, so they must unshare like locals too.
+  # A `var`/`lent` param is excluded: the caller already handed over a uniquely
+  # owned object (see `genArg`), and rebinding it here would break write-back.
+  if r.kind == nkSym and r.sym.kind in {skVar, skLet, skForVar, skResult, skParam} and
+      not (r.sym.kind == skParam and
+           r.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind in {tyVar, tyLent}) and
+      mapType(p, r.typ) in {etyObject, etySeq}:
+    useMagic(p, "nimUnshare")
+    var rr: TCompRes = default(TCompRes)
+    gen(p, r, rr)
+    lineF(p, "$1 = nimUnshare($1, $2);$n", [rr.rdLoc, genTypeInfo(p, r.typ)])
+
+proc genCowUnshareRoot(p: PProc, x: PNode) =
+  ## For `genAsgn`: a whole-variable assignment is a reassignment (no unshare);
+  ## a path store (`a.f = v`) is an in-place mutation and must unshare the root.
+  if x.kind == nkSym: return
+  genCowUnshare(p, x)
+
+proc cowSourceShareable(y: PNode): bool =
+  ## A source that can be mutated in place without an unshare guard (a `var`/
+  ## `lent` param, or a location behind a deref) must be copied, not shared:
+  ## otherwise a later in-place write through it would corrupt the alias.
+  let r = lvalueRoot(y)
+  if r.kind != nkSym: return false   # deref / call result -> not a plain owned var
+  result = not (r.sym.kind == skParam and
+    r.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind in {tyVar, tyLent})
+
+proc isCowShareTarget(x: PNode): bool =
+  ## True when `x = y` is a plain (re)binding we can satisfy by sharing. False
+  ## when the store must write back through a reference (a `var`/`lent` param or
+  ## a deref): there the in-place `nimCopy(dest, ...)` form is required so the
+  ## referenced object is updated, not merely rebound to a fresh local.
+  let r = lvalueRoot(x)            # stops at deref, so deref-rooted paths fail below
+  result = r.kind == nkSym and
+    not (r.sym.kind == skParam and
+         r.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind in {tyVar, tyLent})
+
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes = default(TCompRes)
   var xtyp = mapType(p, x.typ)
@@ -1285,21 +1344,34 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   genLineDir(p, y)
   gen(p, y, b)
 
+  # COW: before an in-place store into a value object, make its root unique.
+  genCowUnshareRoot(p, x)
+
   # we don't care if it's an etyBaseIndex (global) of a string, it's
   # still a string that needs to be copied properly:
   if x.typ.skipTypes(abstractInst).kind in {tySequence, tyString}:
     xtyp = etySeq
   case xtyp
   of etySeq:
-    if x.typ.kind in {tyVar, tyLent} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyLent} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded or
+        (x.kind == nkSym and sfCursor in x.sym.flags):
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
+    elif cowEnabled(p) and isCowShareTarget(x) and cowSourceShareable(y):
+      useMagic(p, "nimShare")
+      lineF(p, "$1 = nimShare($2, $3);$n",
+               [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
     else:
       useMagic(p, "nimCopy")
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if x.typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded or
+        (x.kind == nkSym and sfCursor in x.sym.flags):
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
+    elif cowEnabled(p) and isCowShareTarget(x) and cowSourceShareable(y):
+      useMagic(p, "nimShare")
+      lineF(p, "$1 = nimShare($2, $3);$n",
+            [a.res, b.res, genTypeInfo(p, x.typ)])
     else:
       useMagic(p, "nimCopy")
       # supports proc getF(): var T
@@ -1731,6 +1803,11 @@ proc genArgNoParam(p: PProc, n: PNode, r: var TCompRes) =
     r.res.add(a.res)
 
 proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int = nil) =
+  # COW: passing a value object to a `var` parameter lets the callee mutate it
+  # in place, so the caller must hand over a uniquely-owned object.
+  if cowEnabled(p) and param.typ.skipTypes({tyGenericInst, tyAlias}).kind == tyVar and
+      mapType(p, param.typ.skipTypes(abstractVar)) in {etyObject, etySeq}:
+    genCowUnshare(p, n)
   var a: TCompRes = default(TCompRes)
   gen(p, n, a)
   if skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs} and
@@ -2066,8 +2143,12 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     gen(p, n, a)
     case mapType(p, v.typ)
     of etyObject, etySeq:
-      if v.typ.kind in {tyOpenArray, tyVarargs} or needsNoCopy(p, n):
+      if v.typ.kind in {tyOpenArray, tyVarargs} or needsNoCopy(p, n) or
+          sfCursor in v.flags:
         s = a.res
+      elif cowEnabled(p) and cowSourceShareable(n):
+        useMagic(p, "nimShare")
+        s = "nimShare($1, $2)" % [a.res, genTypeInfo(p, n.typ)]
       else:
         useMagic(p, "nimCopy")
         s = "nimCopy(null, $1, $2)" % [a.res, genTypeInfo(p, n.typ)]
@@ -2315,11 +2396,15 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mAnd: genAnd(p, n[1], n[2], r)
   of mAddI..mStrToStr: arith(p, n, r, op)
   of mRepr: genRepr(p, n, r)
-  of mSwap: genSwap(p, n)
+  of mSwap:
+    genCowUnshare(p, n[1]); genCowUnshare(p, n[2])
+    genSwap(p, n)
   of mAppendStrCh:
+    genCowUnshare(p, n[1])
     binaryExpr(p, n, r, "addChar",
         "addChar($1, $2);")
   of mAppendStrStr:
+    genCowUnshare(p, n[1])
     var lhs, rhs: TCompRes = default(TCompRes)
     gen(p, n[1], lhs)
     gen(p, n[2], rhs)
@@ -2333,6 +2418,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
     r.kind = resExpr
   of mAppendSeqElem:
+    genCowUnshare(p, n[1])
     var x, y: TCompRes = default(TCompRes)
     gen(p, n[1], x)
     gen(p, n[2], y)
@@ -2399,6 +2485,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "($1).length - 1" % [x.rdLoc]
     r.kind = resExpr
   of mInc:
+    genCowUnshare(p, n[1])
     let typ = n[1].typ.skipTypes(abstractVarRange)
     case typ.kind
     of tyUInt..tyUInt32:
@@ -2415,6 +2502,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)", true)
   of ast.mDec:
+    genCowUnshare(p, n[1])
     let typ = n[1].typ.skipTypes(abstractVarRange)
     case typ.kind
     of tyUInt..tyUInt32:
@@ -2431,10 +2519,12 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)", true)
   of mSetLengthStr:
+    genCowUnshare(p, n[1])
     binaryExpr(p, n, r, "mnewString",
       """if ($1.length < $2) { for (var i = $3.length; i < $4; ++i) $3.push(0); }
          else {$3.length = $4; }""")
   of mSetLengthSeq:
+    genCowUnshare(p, n[1])
     var x, y: TCompRes = default(TCompRes)
     gen(p, n[1], x)
     gen(p, n[2], y)
@@ -2452,8 +2542,12 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mPlusSet: binaryExpr(p, n, r, "SetPlus", "SetPlus($1, $2)")
   of mMinusSet: binaryExpr(p, n, r, "SetMinus", "SetMinus($1, $2)")
   of mXorSet: binaryExpr(p, n, r, "SetXor", "SetXor($1, $2)")
-  of mIncl: binaryExpr(p, n, r, "", "$1[$2] = true")
-  of mExcl: binaryExpr(p, n, r, "", "delete $1[$2]")
+  of mIncl:
+    genCowUnshare(p, n[1])
+    binaryExpr(p, n, r, "", "$1[$2] = true")
+  of mExcl:
+    genCowUnshare(p, n[1])
+    binaryExpr(p, n, r, "", "delete $1[$2]")
   of mInSet:
     binaryExpr(p, n, r, "", "($1[$2] != undefined)")
   of mNewSeq: genNewSeq(p, n)
@@ -2770,6 +2864,11 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, {})
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
+  else:
+    # JS has a GC, so the destructor pass is off; but the cursor (alias) analysis
+    # is independent of ownership and always memory-safe on a traced target.
+    # Running it lets last-use `var b = a` aliases skip the deep `nimCopy`.
+    computeCursors(prc, transformedBody, p.module.graph)
 
   p.nested: genStmt(p, transformedBody)
 

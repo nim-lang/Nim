@@ -644,6 +644,45 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
   else:
     result = src
 
+# --- Copy-on-write support (experimental, --define:nimJsCow) ------------------
+# Value-semantics on JS is normally emulated by deep-copying (`nimCopy`) on every
+# assignment. Under COW, assignment instead *shares* the object (O(1)) and the
+# real copy is deferred to the first mutation that would actually be observable
+# by another owner. `nimShare` tags an aggregate as having >= 2 owners;
+# `nimUnshare` returns a uniquely-owned object (cloning lazily, only if shared).
+proc nimShare(src: JSRef, ti: PNimType): JSRef {.compilerproc.} =
+  # Record that `src` has >= 2 owners. Sharedness is kept in an off-object
+  # `WeakSet`, never as a property, so it is invisible to `for-in`,
+  # `Object.getOwnPropertyNames`, `JSON.stringify`, `repr`, set iteration, etc.
+  # A `nimCopy` clone is a fresh object absent from the set, hence unique.
+  case ti.kind
+  of tyObject, tyTuple, tyArray, tyArrayConstr, tySequence, tyString, tySet:
+    {.emit: """
+      if (`src` !== null && `src` !== undefined) {
+        if (globalThis.__nimCowShared === undefined) globalThis.__nimCowShared = new WeakSet();
+        globalThis.__nimCowShared.add(`src`);
+      }
+      `result` = `src`;
+    """.}
+  else:
+    result = src
+
+proc nimUnshare(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
+  # If `x` is shared, materialise a uniquely-owned deep copy. `nimCopy` is
+  # called as a real proc (not via emit) so codegen tracks the dependency.
+  # (A shallow clone-and-reshare would avoid copying untouched subtrees, but
+  # needs per-level path unsharing with temp-lifting of side-effecting indices;
+  # left as a follow-up. This deep form is simple and correct.)
+  var shared = false
+  {.emit: """
+    `shared` = (globalThis.__nimCowShared !== undefined && `x` !== null &&
+                `x` !== undefined && globalThis.__nimCowShared.has(`x`));
+  """.}
+  if shared:
+    result = nimCopy(nil, x, ti)
+  else:
+    result = x
+
 proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
                 asmNoStackFrame, compilerproc.} =
   # types are fake
