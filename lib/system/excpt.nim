@@ -16,15 +16,11 @@ import stacktraces
 const noStacktraceAvailable = "No stack traceback available\n"
 
 var
-  errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
-                                            nimcall.})
+  errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], gcsafe,
+                                            nimcall, raises: [].})
     ## Function that will be called
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
-
-when defined(windows):
-  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
-  const ERROR_BAD_EXE_FORMAT = 193
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
@@ -42,28 +38,33 @@ proc writeToStdErr(msg: string) {.inline.} =
   # fix bug #13115: handles correctly '\0' unlike default implicit conversion to cstring
   writeToStdErr(msg.cstring, msg.len)
 
+proc cstrToStrBuiltin(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
+when defined(genode):
+  template `$`(s: string): string = s
+
 proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
     try:
-      errorMessageWriter($data)
+      errorMessageWriter(cstrToStrBuiltin data)
       toWrite = false
     except:
       discard
   if toWrite:
     when defined(genode):
       # stderr not available by default, use the LOG session
-      echo data
+      echo cstrToStrBuiltin(data)
     else:
       writeToStdErr(data, length)
 
 proc showErrorMessage2(data: string) {.inline.} =
+  # TODO showErrorMessage will turn it back to a string when a hook is set (!)
   showErrorMessage(data.cstring, data.len)
 
-proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
-proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
-proc chckRangeF(x, a, b: float): float {.inline, compilerproc, benign.}
-proc chckNil(p: pointer) {.noinline, compilerproc, benign.}
+proc chckIndx(i, a, b: int): int {.inline, compilerproc, gcsafe.}
+proc chckRange(i, a, b: int): int {.inline, compilerproc, gcsafe.}
+proc chckRangeF(x, a, b: float): float {.inline, compilerproc, gcsafe.}
+proc chckNil(p: pointer) {.noinline, compilerproc, gcsafe.}
 
 type
   GcFrame = ptr GcFrameHeader
@@ -158,11 +159,11 @@ proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
   #showErrorMessage2 "B"
 
+proc closureIterSetExc(e: ref Exception) {.compilerRtl, inl.} =
+  currException = e
+
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
-
-proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  currException = e
 
 # some platforms have native support for stack traces:
 const
@@ -260,7 +261,10 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
   s.toLocation(f.filename, f.line, 0)
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
-  add(s, f.procname)
+  var i = 0
+  while f.procname[i] != '\0':
+    add(s, f.procname[i])
+    inc i
   when NimStackTraceMsgs:
     when typeof(f) is StackTraceEntry:
       add(s, f.frameMsg)
@@ -281,9 +285,35 @@ proc `$`(stackTraceEntries: seq[StackTraceEntry]): string =
     elif s[i].line == reraisedFromEnd: result.add "]]\n"
     else: addFrameEntry(result, s[i])
 
-when hasSomeStackTrace:
+const
+  Ten = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-  proc auxWriteStackTrace(f: PFrame, s: var string) =
+proc i2s(x: int64): string =
+  # quick reimplementation; optimized for code size, no dependencies
+  if x < 0:
+    if x == -9223372036854775808:
+      result = "-9223372036854775808"
+    else:
+      result = "-" & i2s(0-x)
+  elif x < 10:
+    result = Ten[int x] # saves allocations
+  else:
+    var y = x
+    while true:
+      result.add char((y mod 10) + int('0'))
+      y = y div 10
+      if y == 0: break
+    let last = result.len-1
+    var i = 0
+    let b = result.len div 2
+    while i < b:
+      let ch = result[i]
+      result[i] = result[last-i]
+      result[last-i] = ch
+      inc i
+
+when hasSomeStackTrace:
+  proc auxWriteStackTrace(f: PFrame, s: var string) {.raises: [].} =
     when hasThreadSupport:
       var
         tempFrames: array[maxStackTraceLines, PFrame] # but better than a threadvar
@@ -321,14 +351,14 @@ when hasSomeStackTrace:
     for j in countdown(i-1, 0):
       if tempFrames[j] == nil:
         add(s, "(")
-        add(s, $skipped)
+        s.add(i2s(skipped))
         add(s, " calls omitted) ...\n")
       else:
         addFrameEntry(s, tempFrames[j])
 
   proc stackTraceAvailable*(): bool
 
-  proc rawWriteStackTrace(s: var string) =
+  proc rawWriteStackTrace(s: var string) {.raises: [].} =
     when defined(nimStackTraceOverride):
       add(s, "Traceback (most recent call last, using override)\n")
       auxWriteStackTraceWithOverride(s)
@@ -387,7 +417,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
     add(buf, " [")
-    add(buf, $e.name)
+    add(buf, cstrToStrBuiltin(e.name))
     add(buf, "]\n")
 
     if onUnhandledException != nil:
@@ -417,7 +447,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy, gcsafe.} =
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
     if onUnhandledException != nil:
-      onUnhandledException($cast[cstring](buf.addr))
+      onUnhandledException(cstrToStrBuiltin(cast[cstring](buf.addr)))
     else:
       showErrorMessage(cast[cstring](buf.addr), L)
 
@@ -464,11 +494,9 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
-    if e == currException:
-      {.emit: "throw;".}
-    else:
+    if e != currException:
       pushCurrentException(e)
-      {.emit: "throw `e`;".}
+    {.emit: "throw `e`;".}
   elif quirkyExceptions or gotoBasedExceptions:
     pushCurrentException(e)
     when gotoBasedExceptions:
@@ -516,8 +544,7 @@ proc reraiseException() {.compilerRtl.} =
     else:
       raiseExceptionAux(currException)
 
-proc threadTrouble() =
-  # also forward declared, it is 'raises: []' hence the try-except.
+proc threadTrouble() {.raises: [], gcsafe.} =
   try:
     if currException != nil: reportUnhandledError(currException)
   except:
@@ -560,12 +587,15 @@ const nimCallDepthLimit {.intdefine.} = 2000
 
 proc callDepthLimitReached() {.noinline.} =
   writeStackTrace()
-  let msg = "Error: call depth limit reached in a debug build (" &
-      $nimCallDepthLimit & " function calls). You can change it with " &
-      "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
-      "recursions instead.\n"
+  var msg = "Error: call depth limit reached in a debug build ("
+  msg.add(i2s(nimCallDepthLimit))
+  msg.add(" function calls). You can change it with " &
+    "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+    "recursions instead.\n")
   showErrorMessage2(msg)
   rawQuit(1)
+
+{.push overflowChecks: off.}
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   if framePtr == nil:
@@ -577,6 +607,8 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   s.prev = framePtr
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
+
+{.pop.}
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
@@ -602,9 +634,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
       {.emit: "#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
-        currException.msg & " [" & $currException.name & "]"
+        currException.msg & " [" & cstrToStrBuiltin(currException.name) & "]"
     except StdException as e:
-      msg = "Error: unhandled cpp exception: " & $e.what()
+      msg = "Error: unhandled cpp exception: " & cstrToStrBuiltin(e.what())
     except:
       msg = "Error: unhandled unknown cpp exception"
 
@@ -621,10 +653,10 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     rawQuit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
-  type Sighandler = proc (a: cint) {.noconv, benign.}
+  type Sighandler = proc (a: cint) {.noconv, gcsafe.}
     # xxx factor with ansi_c.CSighandlerT, posix.Sighandler
 
-  proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
+  proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv, raises: [].} =
     template processSignal(s, action: untyped) {.dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
       elif s == SIGSEGV:
@@ -646,6 +678,22 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     # print stack trace and quit
     when defined(memtracker):
       logPendingOps()
+    # On windows, it is common that the signal handler is called from a non-Nim
+    # thread and any allocation will (likely) cause a crash. Since we're about
+    # to quit, we can try setting up the GC - the correct course of action is to
+    # not use the GC at all in signal handlers but that requires redesigning
+    # the stack trace mechanism
+    when defined(windows):
+      when declared(initStackBottom):
+        initStackBottom()
+      when declared(initGC):
+        initGC()
+
+    # On other platforms, if memory needs to be allocated and the signal happens
+    # during memory allocation, we'll also (likely) see a crash and corrupt the
+    # memory allocator - less frequently than on windows but still.
+    # However, since we're about to go down anyway, YOLO.
+
     when hasSomeStackTrace:
       when not usesDestructors: GC_disable()
       var buf = newStringOfCap(2000)
@@ -658,14 +706,17 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       template asgn(y) =
         msg = y
       processSignal(sign, asgn)
-      # xxx use string for msg instead of cstring, and here use showErrorMessage2(msg)
-      # unless there's a good reason to use cstring in signal handler to avoid
-      # using gc?
+      # showErrorMessage may allocate, which may cause a crash, and calls C
+      # library functions which is undefined behavior, ie it may also crash.
+      # Nevertheless, we sometimes manage to emit the message regardless which
+      # pragmatically makes this attempt "useful enough".
+      # See also https://en.cppreference.com/w/c/program/signal
       showErrorMessage(msg, msg.len)
 
     when defined(posix):
       # reset the signal handler to OS default
-      c_signal(sign, SIG_DFL)
+      {.cast(raises: []).}: # Work around -d:laxEffects bugs
+        discard c_signal(sign, SIG_DFL)
 
       # re-raise the signal, which will arrive once this handler exit.
       # this lets the OS perform actions like core dumping and will
@@ -702,4 +753,5 @@ proc setControlCHook(hook: proc () {.noconv.}) =
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc unsetControlCHook() =
     # proc to unset a hook set by setControlCHook
-    c_signal(SIGINT, signalHandler)
+    {.gcsafe.}: # Work around -d:laxEffects bugs
+      discard c_signal(SIGINT, signalHandler)

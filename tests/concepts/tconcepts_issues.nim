@@ -176,6 +176,42 @@ block t6462:
   var s = SeqGen[int](fil: FilterMixin[int](test: nil, trans: nil))
   doAssert s.test() == nil
 
+block concept_with_cint:
+  # Generic proc matching through concepts with cint should still work
+  type
+    FilterMixin[T] = ref object
+      test: (T) -> bool
+      trans: (T) -> T
+
+    SeqGen[T] = ref object
+      fil: FilterMixin[T]
+
+    WithFilter[T] = concept a
+      a.fil is FilterMixin[T]
+
+  proc test[T](a: WithFilter[T]): (T) -> bool =
+    a.fil.test
+
+  var s = SeqGen[cint](fil: FilterMixin[cint](test: nil, trans: nil))
+  doAssert s.test() == nil
+
+block concept_with_int:
+  type
+    FilterMixin[T] = ref object
+      test: (T) -> bool
+      trans: (T) -> T
+
+    SeqGen[T] = ref object
+      fil: FilterMixin[T]
+
+    WithFilter[T] = concept a
+      a.fil is FilterMixin[T]
+
+  proc test[T](a: WithFilter[T]): (T) -> bool =
+    a.fil.test
+
+  var s = SeqGen[int](fil: FilterMixin[int](test: nil, trans: nil))
+  doAssert s.test() == nil
 
 
 block t6770:

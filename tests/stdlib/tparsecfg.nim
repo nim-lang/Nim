@@ -130,3 +130,9 @@ block:
   doAssert dict.getSectionValue(section4, "can_values_be_as_well") == "True"
   doAssert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
   doAssert dict.getSectionValue(section4, "purpose") == "formatting for readability"
+
+block: # bug #25674
+  var dict = newConfig()
+  dict.setSectionKey("", "key", "value\c")
+  var s = newStringStream()
+  dict.writeConfig(s)

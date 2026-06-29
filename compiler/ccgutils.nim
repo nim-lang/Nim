@@ -11,7 +11,7 @@
 
 import
   ast, types, msgs, wordrecg,
-  platform, trees, options, cgendata, mangleutils, renderer
+  platform, trees, options, cgendata, mangleutils, renderer, modulegraphs
 
 import std/[hashes, strutils, formatfloat]
 
@@ -112,10 +112,34 @@ proc encodeName*(name: string): string =
 
 proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   result = if name == "": s.name.s else: name
+  # keep backend-minted ids out of the `_u` namespace; their item counter
+  # restarts at 0 and would collide with loaded symbols' ids
+  if s.itemId.isBackendMinted:
+    result.add "_c"
+    if (s.disamb and HookDisambBit) != 0'i32:
+      # A backend-minted sym whose `disamb` is content-derived (setHookDisamb gave
+      # it HookDisambBit) — e.g. the `rttiDestroy` wrapper. Its `itemId.item` is a
+      # PER-PROCESS backend counter, so using it makes the C name diverge across
+      # the emit-everywhere processes: the type's RTTI table (emit-everywhere,
+      # merge-deduped) ends up referencing one process's `_c<item>` while the
+      # wrapper is defined with another's -> undefined at link (`rttiDestroy_c23`).
+      # The content-derived disamb is stable across processes, so use it.
+      result.add $s.disamb
+    else:
+      result.add $s.itemId.item
+  else:
+    result.add "_u"
+    # Mirror `mangleProcNameExt`: use the per-(module,name) `disamb`, NOT
+    # `itemId.item`. Under the per-module IC backend the same symbol is loaded
+    # from a NIF in many processes and `itemId.item` is a fresh, load-order
+    # dependent counter — so a method base would mangle to `_u1` in one module,
+    # `_u3` in another and clean at its owner, none of which link. `disamb` is
+    # assigned deterministically per (module, name) and is serialized, so every
+    # process that touches the symbol derives the identical C name.
+    result.add $s.disamb
+  # module suffix LAST (a strippable trailing token; see `mangleProcNameExt`)
   result.add "__"
   result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-  result.add "_u"
-  result.add $s.itemId.item
 
 proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false; extra: string = ""): string =
   #Module::Type

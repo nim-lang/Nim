@@ -912,3 +912,28 @@ block: # bug #24754
       NoCopy(id: s)
 
   doAssert foo().id == 12
+
+
+type
+  Sinn* {.union.} = object
+    c*: C
+    b*: bool
+
+  Regen* = object
+    case x*: bool
+    of false:
+      a*: Sinn
+    of true:
+      cvar*: RootRef
+
+  C* = enum
+    wrong1, wrong2, right
+
+proc mainRegen() =
+  var xs: seq[Regen]
+  let a = Regen(x: false, a: Sinn(c: right))
+  var b = a
+  xs.add(a)
+  doAssert b.a.c == right
+
+mainRegen()

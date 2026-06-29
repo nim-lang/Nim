@@ -36,7 +36,9 @@ from std/osproc import nil
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
-else:
+when not defined(nimPreviewSlimSystem):
+  # explicit negated `when` rather than `else:` so nifler's dep scanner guards
+  # this import with its condition (it emits `else:` imports unconditionally).
   from std/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
@@ -334,6 +336,12 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
+
+  registerCallback c, "stdlib.system.ltCStringVm", proc (a: VmArgs) =
+    setResult(a, getString(a, 0) < getString(a, 1))
+
+  registerCallback c, "stdlib.system.leCStringVm", proc (a: VmArgs) =
+    setResult(a, getString(a, 0) <= getString(a, 1))
 
   if optBenchmarkVM in c.config.globalOptions or vmopsDanger in c.config.features:
     wrap0(cpuTime, timesop)

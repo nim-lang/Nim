@@ -538,3 +538,31 @@ block: # https://forum.nim-lang.org/t/12522, backticks
   type Test = object
     field {.`mypragma`.}: int
   doAssert Test().field.hasCustomPragma(mypragma)
+
+
+block:
+  template p {.pragma.}
+
+  func foo[T0](v: T0): bool =
+    type T = T0
+    T.hasCustomPragma(p)
+
+  type X {.p.} = object
+  doAssert foo(X())
+
+block: # typeof() type alias preserves field pragmas
+  template myFieldPragma {.pragma.}
+  type Orig = object
+    x {.myFieldPragma.}: int
+
+  var orig: Orig
+
+  # Direct typeof alias
+  type TAlias = typeof(orig)
+  var a: TAlias
+  doAssert a.x.hasCustomPragma(myFieldPragma)
+
+  # Indirect alias of typeof alias
+  type TAlias2 = TAlias
+  var b: TAlias2
+  doAssert b.x.hasCustomPragma(myFieldPragma)

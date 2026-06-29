@@ -51,7 +51,7 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
 proc isNimException(): bool {.asmNoStackFrame.} =
   {.emit: "return `lastJSError` && `lastJSError`.m_type;".}
 
-proc getCurrentException*(): ref Exception {.compilerRtl, benign.} =
+proc getCurrentException*(): ref Exception {.compilerRtl, gcsafe.} =
   if isNimException(): result = cast[ref Exception](lastJSError)
 
 proc getCurrentExceptionMsg*(): string =
@@ -72,8 +72,13 @@ proc getCurrentExceptionMsg*(): string =
 proc setCurrentException*(exc: ref Exception) =
   lastJSError = cast[PJSError](exc)
 
-proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  ## Used to set up exception handling for closure iterators
+proc closureIterSetExc(e: ref Exception) {.compilerRtl, gcsafe.} =
+  setCurrentException(e)
+
+proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inline.} =
+  ## Used to set up exception handling for closure iterators.
+
+  # XXX Shouldn't there be exception stack like in excpt.nim?
   setCurrentException(e)
 
 proc auxWriteStackTrace(f: PCallFrame): string =
@@ -682,6 +687,14 @@ proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
 proc addChar(x: string, c: char) {.compilerproc, asmNoStackFrame.} =
   {.emit: "`x`.push(`c`);".}
 
+proc nimAddStrStr(x, y: string) {.compilerproc, asmNoStackFrame.} =
+  {.emit: """
+  var L = `y`.length;
+  for (var i = 0; i < L; ++i) {
+    `x`.push(`y`[i]);
+  }
+  """.}
+
 {.pop.}
 
 proc tenToThePowerOf(b: int): BiggestFloat =
@@ -722,7 +735,7 @@ proc nimParseBiggestFloat(s: openarray[char], number: var BiggestFloat): int {.c
     if s[i+1] == 'A' or s[i+1] == 'a':
       if s[i+2] == 'N' or s[i+2] == 'n':
         if s[i+3] notin IdentChars:
-          number = NaN
+          number = if sign: -NaN else: NaN
           return i+3
     return 0
   if s[i] == 'I' or s[i] == 'i':

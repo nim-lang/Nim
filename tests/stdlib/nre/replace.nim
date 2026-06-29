@@ -14,9 +14,15 @@ block: # replace
     check("123".replace(re"(\d)(\d)", "$#$#") == "123")
     check("123".replace(re"(?<foo>\d)(\d)", "$foo$#$#") == "1123")
     check("123".replace(re"(?<foo>\d)(\d)", "${foo}$#$#") == "1123")
+    check("abcdefghijklm".replace(re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)", "$12") == "l")
 
   block: # replacing missing captures should throw instead of segfaulting
     expect IndexDefect: discard "ab".replace(re"(a)|(b)", "$1$2")
     expect IndexDefect: discard "b".replace(re"(a)?(b)", "$1$2")
     expect KeyError: discard "b".replace(re"(a)?", "${foo}")
     expect KeyError: discard "b".replace(re"(?<foo>a)?", "${foo}")
+
+  block: # malformed replacement syntax should throw instead of OOB crash
+    expect ValueError: discard "a".replace(re"a", "$")
+    expect ValueError: discard "a".replace(re"a", "x$")
+    expect ValueError: discard "a".replace(re"a", "${foo")

@@ -5,11 +5,11 @@ proc exit(code: cint) {.importc, header:"stdlib.h".}
 
 {.push stack_trace: off, profiler:off.}
 
-proc rawoutput(s: cstring) =
-  printf("RAW: %s\n", s)
-  
-proc panic(s: cstring) {.noreturn.} =
-  printf("PANIC: %s\n", s)
+proc rawoutput(s: string) =
+  printf("RAW: %s\n", s.cstring)
+
+proc panic(s: string) {.noreturn.} =
+  printf("PANIC: %s\n", s.cstring)
   exit(0)
 
 {.pop.}

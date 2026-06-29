@@ -37,3 +37,28 @@ block:
 
   let newAdder = makeAdder(0)
   newAdder(5)
+
+block:
+  proc g() = discard
+  proc f() {.raises: [IOError].} =
+    try:
+      g()
+    except IOError:
+      raise
+
+  f()
+
+
+block:
+  proc g() = discard
+  proc f() {.raises: [IOError].} =
+    try:
+      g()
+    except IOError as e:
+      raise
+
+  f()
+
+block:
+  static: doAssert IOError is Exception
+  proc r(e: ref Exception) {.raises: [IOError].} = raise (ref IOError)(e)

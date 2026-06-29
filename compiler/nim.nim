@@ -28,10 +28,13 @@ import
   commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
+from ast2nif import registerNifAstTags
+from icconfig import ensureIcConfig
+
 from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
-when hasTinyCBackend:
+when defined(tinyc): # == hasTinyCBackend; spelled out for the IC dep scanner
   import tccgen
 
 when defined(profiler) or defined(memProfiler):
@@ -96,6 +99,11 @@ proc getNimRunExe(conf: ConfigRef): string =
     result = ""
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
+  # NIF tag registration must not depend on module init order — the IC-built
+  # compiler orders module init calls differently and the top-level
+  # `registerTag` initializers then ran against a not-yet-initialized pool,
+  # corrupting every written NIF (see registerNifAstTags).
+  registerNifAstTags()
   let self = NimProg(
     supportsStdinFile: true,
     processCmdLine: processCmdLine
@@ -106,6 +114,14 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     return
 
   self.processCmdLineAndProjectPath(conf)
+
+  # `nim ic` driver: ensure the precompiled config exists (produced by a separate
+  # `nim icconfig` process, skipped when nothing changed) BEFORE config loading,
+  # so `loadConfigs` replays it instead of re-parsing the `nim.cfg` chain — the
+  # driver runs on the exact same config its children will. See icconfig.nim.
+  when not defined(nimKochBootstrap):
+    if conf.cmd == cmdIc:
+      ensureIcConfig(conf)
 
   var graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
@@ -118,8 +134,13 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if conf.selectedGC == gcUnselected:
     if conf.backend in {backendC, backendCpp, backendObjc} or
         (conf.cmd in cmdDocLike and conf.backend != backendJs) or
-        conf.cmd == cmdGendepend:
+        conf.cmd in {cmdGendepend, cmdNifC, cmdIc, cmdM}:
       initOrcDefines(conf)
+
+  if conf.selectedStrings == stringSso and
+      conf.selectedGC notin {gcArc, gcOrc, gcYrc, gcAtomicArc}:
+    rawMessage(conf, errGenerated,
+      "--strings:sso requires --mm:arc, --mm:orc, --mm:yrc, or --mm:atomicArc")
 
   mainCommand(graph)
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())

@@ -65,7 +65,9 @@ proc fillBuffer(L: var BaseLexer) =
           L.buf[i] = L.buf[L.sentinel + 1 + i]
       else:
         # "moveMem" handles overlapping regions
-        moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
+        let p = beginStore(L.buf, L.buf.len)
+        moveMem(p, addr p[L.sentinel + 1], toCopy)
+        endStore(L.buf)
   charsRead = L.input.readDataStr(L.buf, toCopy ..< toCopy + L.sentinel + 1)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:

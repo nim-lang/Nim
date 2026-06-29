@@ -642,6 +642,30 @@ template main() =
       let myA = CAMPAIGN_TABLE
       doAssert $parseEnum[Tables](myA) == "wikientries_campaign"
 
+    block:
+      const tripleQuotedStr = """foobar"""
+
+      type MyEnum = enum
+        a = tripleQuotedStr
+        b = """bazquz"""
+
+      let myA = tripleQuotedStr
+      doAssert $parseEnum[MyEnum](myA) == myA
+      let myB = "bazquz"
+      doAssert $parseEnum[MyEnum](myB) == myB
+
+    block:
+      const rawStr = r"foobar"
+
+      type MyEnum = enum
+        a = rawStr
+        b = r"bazquz"
+
+      let myA = rawStr
+      doAssert $parseEnum[MyEnum](myA) == myA
+      let myB = r"bazquz"
+      doAssert $parseEnum[MyEnum](myB) == myB
+
     block: # check enum defined in block
       type
         Bar = enum
@@ -789,12 +813,71 @@ bar
   block: # formatSize
     disableVm:
       when hasWorkingInt64:
+        doAssert formatSize(1024'i64 * 1024 * 1024 * 2 - 1) == "1.999GiB"
+        doAssert formatSize(1024'i64 * 1024 * 1024 * 2) == "2GiB"
         doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
-      doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+        doAssert formatSize(int64.high) == "7.999EiB"
+        doAssert formatSize(int64.high div 2 + 1) == "4EiB"
+        doAssert formatSize(int64.high div 2) == "3.999EiB"
+        doAssert formatSize(int64.high div 4 + 1) == "2EiB"
+        doAssert formatSize(int64.high div 4) == "1.999EiB"
+        doAssert formatSize(int64.high div 8 + 1) == "1EiB"
+        doAssert formatSize(int64.high div 8) == "1023.999PiB"
+        doAssert formatSize(int64.high div 16 + 1) == "512PiB"
+        doAssert formatSize(int64.high div 16) == "511.999PiB"
+      doAssert formatSize(0) == "0B"
+      doAssert formatSize(0, includeSpace = true) == "0 B"
+      doAssert formatSize(1) == "1B"
+      doAssert formatSize(2) == "2B"
+      doAssert formatSize(1022) == "1022B"
+      doAssert formatSize(1023) == "1023B"
+      doAssert formatSize(1024) == "1KiB"
+      doAssert formatSize(1025) == "1.001KiB"
+      doAssert formatSize(1026) == "1.002KiB"
+      doAssert formatSize(1024 * 2 - 2) == "1.998KiB"
+      doAssert formatSize(1024 * 2 - 1) == "1.999KiB"
+      doAssert formatSize(1024 * 2) == "2KiB"
+      doAssert formatSize(1024 * 2 + 1) == "2.001KiB"
+      doAssert formatSize(1024 * 2 + 2) == "2.002KiB"
+      doAssert formatSize(4096 - 1) == "3.999KiB"
       doAssert formatSize(4096) == "4KiB"
+      doAssert formatSize(4096 + 1) == "4.001KiB"
+      doAssert formatSize(1024 * 512 - 1) == "511.999KiB"
+      doAssert formatSize(1024 * 512) == "512KiB"
+      doAssert formatSize(1024 * 512 + 1) == "512.001KiB"
+      doAssert formatSize(1024 * 1024 - 2) == "1023.998KiB"
+      doAssert formatSize(1024 * 1024 - 1) == "1023.999KiB"
+      doAssert formatSize(1024 * 1024) == "1MiB"
+      doAssert formatSize(1024 * 1024 + 1) == "1MiB"
+      doAssert formatSize(1024 * 1024 + 1023) == "1MiB"
+      doAssert formatSize(1024 * 1024 + 1024) == "1.001MiB"
+      doAssert formatSize(1024 * 1024 + 1024 * 2) == "1.002MiB"
+      doAssert formatSize(1024 * 1024 * 2 - 1) == "1.999MiB"
+      doAssert formatSize(1024 * 1024 * 2) == "2MiB"
+      doAssert formatSize(1024 * 1024 * 2 + 1) == "2MiB"
+      doAssert formatSize(1024 * 1024 * 2 + 1024) == "2.001MiB"
+      doAssert formatSize(1024 * 1024 * 2 + 1024 * 2) == "2.002MiB"
+      doAssert formatSize(1024 * 1024 * 4 - 1) == "3.999MiB"
+      doAssert formatSize(1024 * 1024 * 4) == "4MiB"
+      doAssert formatSize(1024 * (1024 * 4 + 1)) == "4.001MiB"
+      doAssert formatSize(1024 * 1024 * 512 - 1025) == "511.998MiB"
+      doAssert formatSize(1024 * 1024 * 512 - 1) == "511.999MiB"
+      doAssert formatSize(1024 * 1024 * 512) == "512MiB"
+      doAssert formatSize(1024 * 1024 * 512 + 1) == "512MiB"
+      doAssert formatSize(1024 * 1024 * 512 + 1024) == "512.001MiB"
+      doAssert formatSize(1024 * 1024 * 512 + 1024 * 2) == "512.002MiB"
+      doAssert formatSize(1024 * 1024 * 1024 - 1) == "1023.999MiB"
+      doAssert formatSize(1024 * 1024 * 1024) == "1GiB"
+      doAssert formatSize(1024 * 1024 * 1024 + 1) == "1GiB"
+      doAssert formatSize(1024 * 1024 * 1025) == "1.001GiB"
+      doAssert formatSize(1024 * 1024 * 1026) == "1.002GiB"
+      # != 2.234MiB as (2.234 * 1024 * 1024).int.float / (1024 * 1024) = 2.23399...
+      # and formatSize round down the value
+      doAssert formatSize((2.234*1024*1024).int) == "2.233MiB"
       doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
       doAssert formatSize(4096, includeSpace = true) == "4 KiB"
-      doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
+      # (5378934).float / (1024 * 1024) = 5.12975...
+      doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,129MB"
 
   block: # formatEng
     disableVm:

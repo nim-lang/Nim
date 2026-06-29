@@ -412,3 +412,77 @@ block: # bug #24033
     collections.add (id, str, $num)
 
   doAssert collections[1] == (1, "foo", "3.14")
+
+
+block: # bug #25121
+  iterator k(): int =
+    when nimvm:
+      yield 0
+    else:
+      yield 0
+
+  for _ in k():
+    (proc() = (; let _ = block: 0))()
+
+let aaa = new array[1000, byte]
+block:
+  for _ in cast[typeof(aaa)](aaa)[]:
+    discard
+block:
+  let x = cast[typeof(aaa)](aaa)   # not even var
+  for _ in x[]:
+    discard
+
+import std/[tables, unicode, sequtils]
+
+const
+    myTable = {
+        "en": "abcdefghijklmnopqrstuvwxyz",
+    }.toTable
+
+proc buggyVersion(locale: string): seq[Rune] =
+    result = toSeq(runes(myTable[locale]))
+
+proc workingVersion(locale: string): seq[Rune] =
+    # string lifetime is extended
+    let str = myTable[locale]
+    result = toSeq(runes(str))
+
+# echo "Testing working version..."
+let runes2 = workingVersion("en")
+# echo "Got ", runes2.len, " runes"
+
+# echo "Testing buggy version..."
+let runes1 = buggyVersion("en")  # <-- CRASHES HERE
+
+doAssert runes1.len == runes2.len
+# echo "Got ", runes1.len, " runes"
+
+
+block: # bug #25724
+  iterator c(): int =
+    when nimvm: yield 0
+    else: yield 1
+  for w in c():
+    let n = w
+    (proc() = discard n)()
+
+block:
+  iterator c(): int =
+    yield 1
+    yield 1
+
+  for w in c():
+    proc p(s: int) =
+      let sap = s
+    p(0)
+
+block: # bug #25725
+  iterator c(): int =
+    when nimvm: yield 0
+    else: yield 1
+  for w in c():
+    let n = w
+    proc p(s: int) =
+      let s = s; discard n
+    p(0)

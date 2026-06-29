@@ -35,7 +35,7 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 import compiler / [options, commands, modules,
-  passes, passaux, msgs,
+  passes, passaux, msgs, pipelines,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils, condsyms, syntaxes, suggestsymdb]
@@ -237,7 +237,7 @@ proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
   for tbl in mitems(graph.attachedOps):
     var attachedOpsToDelete = newSeq[ItemId]()
     for id in tbl.keys:
-      if id.module == projectFileIdx.int and sfOverridden in resolveAttachedOp(graph, tbl[id]).flags:
+      if id.module == projectFileIdx.int and sfOverridden in tbl[id].flags:
         attachedOpsToDelete.add id
     for id in attachedOpsToDelete:
       tbl.del id
@@ -261,6 +261,14 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
   var isKnownFile = true
   let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
 
+  # Cold-opened include file: nothing has been compiled/loaded yet, so its
+  # includer is unknown. Scan the nimcache NIFs for the module that `include`s
+  # this exact file and register that one edge; `parentModule(dirtyIdx)` then
+  # resolves to the includer, which we (re)compile below.
+  if conf.ideImportsFromNif and graph.needsIncludeScan(dirtyIdx):
+    discard graph.registerIncluderFromNif(dirtyIdx)
+  let isInclude = graph.inclToMod.hasKey(dirtyIdx)
+
   if not dirtyfile.isEmpty: msgs.setDirtyFile(conf, dirtyIdx, dirtyfile)
   else: msgs.setDirtyFile(conf, dirtyIdx, AbsoluteFile"")
 
@@ -269,9 +277,9 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
   conf.errorCounter = 0
   if conf.suggestVersion == 1:
     graph.usageSym = nil
-  if not isKnownFile:
+  if not isKnownFile and not isInclude:
     graph.clearInstCache(dirtyIdx)
-    graph.compileProject(dirtyIdx)
+    graph.compilePipelineProject(dirtyIdx)
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
     discard "no need to recompile anything"
@@ -279,10 +287,19 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
     let modIdx = graph.parentModule(dirtyIdx)
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
+    # For an include-file query the includer must be re-sem'd so the include body
+    # (where trackPos sits) is re-checked. An already-loaded includer is only
+    # recompiled when dirty (pipelines.compilePipelineModule), and the include
+    # edge isn't always in `g.deps` for markClientsDirty to catch (notably on the
+    # EPC path), so mark the includer dirty explicitly.
+    if isInclude:
+      graph.markDirty modIdx
     if conf.ideCmd != ideMod:
-      if isKnownFile:
+      # `isInclude`: a freshly discovered include file is not "known" yet, but we
+      # still must (source-)compile its includer to serve the query.
+      if isKnownFile or isInclude:
         graph.clearInstCache(modIdx)
-        graph.compileProject(modIdx)
+        graph.compilePipelineProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:
@@ -577,7 +594,7 @@ proc recompileFullProject(graph: ModuleGraph) =
     graph.vm = nil
     graph.resetAllModules()
     GC_fullCollect()
-    graph.compileProject()
+    graph.compilePipelineProject()
 
 proc mainThread(graph: ModuleGraph) =
   let conf = graph.config
@@ -621,10 +638,14 @@ var
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
-  clearPasses(graph)
-  registerPass graph, verbosePass
-  registerPass graph, semPass
-  conf.setCmd cmdIdeTools
+  # Use the pipeline driver (same as `nim check`): it is where IC/NIF loading
+  # and emission live. The legacy `passes.compileProject` path has no NIF support.
+  setPipeLinePass(graph, SemPass)
+  # cmdM loads the unchanged import closure from precompiled NIF; cmdCheck
+  # recompiles everything from source. `ideActive` keeps suggestion collection
+  # and error-resilience regardless of which mode we run under.
+  conf.setCmd(if conf.ideImportsFromNif: cmdM else: cmdCheck)
+  conf.ideActive = true
   defineSymbol(conf.symbols, $conf.backend)
   wantMainModule(conf)
 
@@ -646,7 +667,7 @@ proc mainCommand(graph: ModuleGraph) =
   # compile the project before showing any input so that we already
   # can answer questions right away:
   benchmark "Initial compilation":
-    compileProject(graph)
+    compilePipelineProject(graph)
 
   open(requests)
   open(results)
@@ -798,7 +819,7 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
 
   try:
     benchmark "Recompilation":
-      graph.compileProject(projectFileIdx)
+      graph.compilePipelineProject(projectFileIdx)
   except Exception as e:
     myLog fmt "Failed to recompile partially with the following error:\n {e.msg} \n\n {e.getStackTrace()}"
     try:
@@ -822,7 +843,7 @@ func deduplicateSymInfoPair[SymInfoPair](xs: seq[SymInfoPair]): seq[SymInfoPair]
       result.add(itm)
   result.reverse()
 
-func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDatabase =
+func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase, isGenericInstance: bool): SuggestFileSymbolDatabase =
   # xs contains duplicate items and we want to filter them by range because the
   # sym may not match. This can happen when xs contains the same definition but
   # with different signature because suggestSym might be called multiple times
@@ -833,6 +854,7 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
     isDecl: newPackedBoolArray(),
     caughtExceptions: newSeqOfCap[seq[PType]](xs.caughtExceptions.len),
     caughtExceptionsSet: newPackedBoolArray(),
+    isGenericInstance: newPackedBoolArray(),
     fileIndex: xs.fileIndex,
     trackCaughtExceptions: xs.trackCaughtExceptions,
     isSorted: false
@@ -846,14 +868,16 @@ func deduplicateSymInfoPair(xs: SuggestFileSymbolDatabase): SuggestFileSymbolDat
         found = true
         break
     if not found:
-      result.add(xs.getSymInfoPair(i))
+      let q = xs.getSymInfoPair(i)
+      if q.isGenericInstance == isGenericInstance:
+        result.add(q)
     dec i
   result.reverse()
 
-proc findSymData(graph: ModuleGraph, trackPos: TLineInfo):
+proc findSymData(graph: ModuleGraph, trackPos: TLineInfo, isGenericInstance: bool = false):
     ref SymInfoPair =
   result = nil
-  let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair
+  let db = graph.fileSymbols(trackPos.fileIndex).deduplicateSymInfoPair(isGenericInstance)
   doAssert(db.fileIndex == trackPos.fileIndex)
   for i in db.lineInfo.low..db.lineInfo.high:
     if isTracked(db.lineInfo[i], TinyLineInfo(line: trackPos.line, col: trackPos.col), db.sym[i].name.s.len):
@@ -867,28 +891,28 @@ func isInRange*(current, startPos, endPos: TinyLineInfo, tokenLen: int): bool =
     (current.line > startPos.line or (current.line == startPos.line and current.col>=startPos.col)) and
     (current.line < endPos.line or (current.line == endPos.line and current.col <= endPos.col))
 
-proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo):
+proc findSymDataInRange(graph: ModuleGraph, startPos, endPos: TLineInfo, isGenericInstance: bool = false):
     seq[SymInfoPair] =
   result = newSeq[SymInfoPair]()
-  let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair
+  let db = graph.fileSymbols(startPos.fileIndex).deduplicateSymInfoPair(isGenericInstance)
   for i in db.lineInfo.low..db.lineInfo.high:
     if isInRange(db.lineInfo[i], TinyLineInfo(line: startPos.line, col: startPos.col), TinyLineInfo(line: endPos.line, col: endPos.col), db.sym[i].name.s.len):
       result.add(db.getSymInfoPair(i))
 
-proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int):
+proc findSymData(graph: ModuleGraph, file: AbsoluteFile; line, col: int, isGenericInstance: bool = false):
     ref SymInfoPair =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     trackPos = newLineInfo(fileIdx, line, col)
-  result = findSymData(graph, trackPos)
+  result = findSymData(graph, trackPos, isGenericInstance)
 
-proc findSymDataInRange(graph: ModuleGraph, file: AbsoluteFile; startLine, startCol, endLine, endCol: int):
+proc findSymDataInRange(graph: ModuleGraph, file: AbsoluteFile; startLine, startCol, endLine, endCol: int, isGenericInstance: bool = false):
     seq[SymInfoPair] =
   let
     fileIdx = fileInfoIdx(graph.config, file)
     startPos = newLineInfo(fileIdx, startLine, startCol)
     endPos = newLineInfo(fileIdx, endLine, endCol)
-  result = findSymDataInRange(graph, startPos, endPos)
+  result = findSymDataInRange(graph, startPos, endPos, isGenericInstance)
 
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
@@ -937,7 +961,7 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
   if sym.kind == skParam and sfEffectsDelayed in sym.flags:
     return
 
-  var raisesList: seq[PType] = @[getEbase(graph, info)]
+  var raisesList: seq[PType] = @[]
 
   let t = sym.typ
   if not isNil(t) and not isNil(t.n) and t.n.len > 0 and t.n[0].len > exceptionEffects:
@@ -945,7 +969,6 @@ proc suggestInlayHintResultException(graph: ModuleGraph, sym: PSym, info: TLineI
     if effects.kind == nkEffectList and effects.len == effectListLen:
       let effs = effects[exceptionEffects]
       if not isNil(effs):
-        raisesList = @[]
         for eff in items(effs):
           if not isNil(eff):
             raisesList.add(eff.typ)
@@ -1016,7 +1039,7 @@ proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: Su
   if n.kind == nkSym and n.sym.checkSymbol(n.info):
     graph.suggestResult(n.sym, n.sym.info, ideOutline, endInfo.line, endInfo.col)
     return true
-  elif n.kind == nkIdent:
+  elif n.kind in {nkIdent, nkAccQuoted}:
     let symData = findByTLineInfo(n.info, infoPairs)
     if symData != nil and symData.sym.checkSymbol(symData.info):
        let sym = symData.sym
@@ -1026,7 +1049,7 @@ proc outlineNode(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: Su
 proc handleIdentOrSym(graph: ModuleGraph, n: PNode, endInfo: TLineInfo, infoPairs: SuggestFileSymbolDatabase): bool =
   result = false
   for child in n:
-    if child.kind in {nkIdent, nkSym}:
+    if child.kind in {nkIdent, nkAccQuoted, nkSym}:
       if graph.outlineNode(child, endInfo, infoPairs):
         return true
     elif child.kind == nkPostfix:
@@ -1040,7 +1063,7 @@ proc iterateOutlineNodes(graph: ModuleGraph, n: PNode, infoPairs: SuggestFileSym
     if symData != nil and symData.sym.kind == skEnumField and symData.info.exactEquals(symData.sym.info):
        let sym = symData.sym
        graph.suggestResult(sym, sym.info, ideOutline, n.endInfo.line, n.endInfo.col)
-  elif (n.kind in {nkFuncDef, nkProcDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
+  elif (n.kind in {nkFuncDef, nkProcDef, nkMethodDef, nkIteratorDef, nkTypeDef, nkMacroDef, nkTemplateDef, nkConverterDef, nkEnumFieldDef, nkConstDef}):
     matched = handleIdentOrSym(graph, n, n.endInfo, infoPairs)
   else:
     matched = false
@@ -1076,9 +1099,22 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   myLog fmt "cmd: {cmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyfile}, tag: {tag}"
 
   var fileIndex: FileIndex = default(FileIndex)
+  # The module to (re)compile for this query. For a normal file it is the file
+  # itself; for an `include` file it is the module that includes it — the include
+  # body is only sem'd as part of its includer, and the includer compiles as the
+  # main module (source, never NIF-loaded), so the include statements at the
+  # cursor get re-checked. The query position stays in the include file.
+  var moduleToCompile: FileIndex = default(FileIndex)
+  var isIncludeQuery = false
 
   if not (cmd in {ideRecompile, ideGlobalSymbols}):
     fileIndex = fileInfoIdx(conf, file)
+    # Discover an include file's includer from the NIF include graph (cold query)
+    # so `parentModule` can map it; see registerIncluderFromNif.
+    if conf.ideImportsFromNif and graph.needsIncludeScan(fileIndex):
+      discard graph.registerIncluderFromNif(fileIndex)
+    isIncludeQuery = graph.inclToMod.hasKey(fileIndex)
+    moduleToCompile = if isIncludeQuery: graph.parentModule(fileIndex) else: fileIndex
     msgs.setDirtyFile(
       conf,
       fileIndex,
@@ -1098,14 +1134,20 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   # these commands require partially compiled project
   elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon}):
+       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon} or isIncludeQuery):
     # for ideSug use v2 implementation
     if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
       conf.m.trackPosAttached = false
     else:
       conf.m.trackPos = default(TLineInfo)
-      graph.recompilePartially(fileIndex)
+      # An include file's includer must be (re)compiled from source so the
+      # include body is re-sem'd; force it dirty since the include file itself
+      # is not a module the dirty machinery tracks.
+      if isIncludeQuery:
+        graph.markDirty moduleToCompile
+        graph.markClientsDirty moduleToCompile
+      graph.recompilePartially(moduleToCompile)
 
   case cmd
   of ideDef:
@@ -1147,14 +1189,18 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.markDirtyIfNeeded(file.string, fileIndex)
   of ideSug, ideCon:
     # ideSug/ideCon performs partial build of the file, thus mark it dirty for the
-    # future calls.
+    # future calls. For an include file, drive everything off its includer module
+    # (the include file has no module of its own — getModule would be nil).
     graph.markDirtyIfNeeded(file.string, fileIndex)
-    graph.recompilePartially(fileIndex) 
-    let m = graph.getModule fileIndex
-    incl m.flags, sfDirty 
+    if isIncludeQuery:
+      graph.markClientsDirty fileIndex
+    graph.recompilePartially(moduleToCompile)
+    let m = graph.getModule moduleToCompile
+    if m != nil:
+      incl m, sfDirty
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
-    graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair)
+    graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))
   of ideChk:
     myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:
@@ -1206,7 +1252,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       # find first mention of the symbol in the file containing the definition.
       # It is either the definition or the declaration.
       var first: SymInfoPair = default(SymInfoPair)
-      let db = graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair
+      let db = graph.fileSymbols(s.sym.info.fileIndex).deduplicateSymInfoPair(false)
       for i in db.lineInfo.low..db.lineInfo.high:
         if s.sym.symbolEqual(db.sym[i]):
           first = db.getSymInfoPair(i)
@@ -1279,12 +1325,16 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       else:
         myLog fmt "Discarding unknown inlay hint parameter {token}"
 
-    let s = graph.findSymDataInRange(file, line, col, endLine, endCol)
-    for q in s:
-      if typeHints and q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
-        graph.suggestInlayHintResultType(q.sym, q.info, ideInlayHints)
-      if exceptionHints and q.sym.kind in {skProc, skFunc, skMethod, skVar, skLet, skParam} and not q.isDecl:
-        graph.suggestInlayHintResultException(q.sym, q.info, ideInlayHints, caughtExceptions = q.caughtExceptions, caughtExceptionsSet = q.caughtExceptionsSet)
+    if typeHints:
+      let s = graph.findSymDataInRange(file, line, col, endLine, endCol, false)
+      for q in s:
+        if typeHints and q.sym.kind in {skLet, skVar, skForVar, skConst} and q.isDecl and not q.sym.hasUserSpecifiedType:
+          graph.suggestInlayHintResultType(q.sym, q.info, ideInlayHints)
+    if exceptionHints:
+      let sGen = graph.findSymDataInRange(file, line, col, endLine, endCol, true)
+      for q in sGen:
+        if q.sym.kind in {skProc, skFunc, skMethod, skVar, skLet, skParam} and not q.isDecl:
+          graph.suggestInlayHintResultException(q.sym, q.info, ideInlayHints, caughtExceptions = q.caughtExceptions, caughtExceptionsSet = q.caughtExceptionsSet)
   else:
     myLog fmt "Discarding {cmd}"
 
@@ -1305,11 +1355,10 @@ else:
     proc mockCommand(graph: ModuleGraph) =
       retval = graph
       let conf = graph.config
-      conf.setCmd cmdIdeTools
+      conf.setCmd(if conf.ideImportsFromNif: cmdM else: cmdCheck)
+      conf.ideActive = true
       defineSymbol(conf.symbols, $conf.backend)
-      clearPasses(graph)
-      registerPass graph, verbosePass
-      registerPass graph, semPass
+      setPipeLinePass(graph, SemPass)
 
       wantMainModule(conf)
 
@@ -1325,7 +1374,7 @@ else:
 
       # compile the project before showing any input so that we already
       # can answer questions right away:
-      compileProject(graph)
+      compilePipelineProject(graph)
 
 
     proc mockCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =

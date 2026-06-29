@@ -605,3 +605,17 @@ block t18643:
   except IndexDefect:
     caught = true
   doAssert caught, "IndexDefect not caught!"
+
+
+# bug #25475
+block:
+  type N = object
+    b: seq[array[1'u, int]]
+  doAssert N(b: @[[0]]) == N(b: @[[0]])
+
+block:
+  var x: array[5..6, int] = [0, 1]
+  var y: array[1..2, int] = [0, 1]
+
+  doAssert x == y # compiles
+  doAssert @[x] == @[y]

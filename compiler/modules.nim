@@ -32,9 +32,9 @@ proc newModule*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  result = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+  result = PSym(kindImpl: skModule, itemId: itemId(int32(fileIdx), 0'i32),
                 name: getModuleIdent(graph, filename),
-                info: newLineInfo(fileIdx, 1, 1))
+                infoImpl: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: '" & result.name.s &
               "'; a module name must be a valid Nim identifier.")

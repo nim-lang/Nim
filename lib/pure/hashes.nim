@@ -304,6 +304,35 @@ else:
 proc rotl32(x: uint32, r: int): uint32 {.inline.} =
   (x shl r) or (x shr (32 - r))
 
+proc load4e(s: openArray[byte], o=0): uint32 {.inline.} =
+  uint32(s[o + 3]) shl 24 or uint32(s[o + 2]) shl 16 or
+  uint32(s[o + 1]) shl  8 or uint32(s[o + 0])
+
+proc load8e(s: openArray[byte], o=0): uint64 {.inline.} =
+  uint64(s[o + 7]) shl 56 or uint64(s[o + 6]) shl 48 or
+  uint64(s[o + 5]) shl 40 or uint64(s[o + 4]) shl 32 or
+  uint64(s[o + 3]) shl 24 or uint64(s[o + 2]) shl 16 or
+  uint64(s[o + 1]) shl  8 or uint64(s[o + 0])
+
+when declared(copyMem):
+  from std/endians import littleEndian64, littleEndian32
+
+proc load4(s: openArray[byte], o=0): uint32 {.inline.} =
+  when nimvm: result = load4e(s, o)
+  else:
+    when declared copyMem:
+      result = uint32(0)
+      littleEndian32(addr result, addr s[o])
+    else: result = load4e(s, o)
+
+proc load8(s: openArray[byte], o=0): uint64 {.inline.} =
+  when nimvm: result = load8e(s, o)
+  else:
+    when declared copyMem:
+      result = uint64(0)
+      littleEndian64(addr result, addr s[o])
+    else: result = load8e(s, o)
+
 proc murmurHash(x: openArray[byte]): Hash =
   # https://github.com/PeterScott/murmur3/blob/master/murmur3.c
   const
@@ -320,24 +349,10 @@ proc murmurHash(x: openArray[byte]): Hash =
     h1: uint32 = uint32(0)
     i = 0
 
-
-  template impl =
-    var j = stepSize
-    while j > 0:
-      dec j
-      k1 = (k1 shl 8) or (ord(x[i+j])).uint32
-
   # body
   while i < n * stepSize:
-    var k1: uint32 = uint32(0)
+    var k1 = load4(x, i)
 
-    when nimvm:
-      impl()
-    else:
-      when declared(copyMem):
-        copyMem(addr k1, addr x[i], 4)
-      else:
-        impl()
     inc i, stepSize
 
     k1 = imul(k1, c1)
@@ -383,32 +398,6 @@ proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
 const k0 = 0xc3a5c85c97cb3127u64 # Primes on (2^63, 2^64) for various uses
 const k1 = 0xb492b66fbe98f273u64
 const k2 = 0x9ae16a3b2f90404fu64
-
-proc load4e(s: openArray[byte], o=0): uint32 {.inline.} =
-  uint32(s[o + 3]) shl 24 or uint32(s[o + 2]) shl 16 or
-  uint32(s[o + 1]) shl  8 or uint32(s[o + 0])
-
-proc load8e(s: openArray[byte], o=0): uint64 {.inline.} =
-  uint64(s[o + 7]) shl 56 or uint64(s[o + 6]) shl 48 or
-  uint64(s[o + 5]) shl 40 or uint64(s[o + 4]) shl 32 or
-  uint64(s[o + 3]) shl 24 or uint64(s[o + 2]) shl 16 or
-  uint64(s[o + 1]) shl  8 or uint64(s[o + 0])
-
-proc load4(s: openArray[byte], o=0): uint32 {.inline.} =
-  when nimvm: result = load4e(s, o)
-  else:
-    when declared copyMem:
-      result = uint32(0)
-      copyMem result.addr, s[o].addr, result.sizeof
-    else: result = load4e(s, o)
-
-proc load8(s: openArray[byte], o=0): uint64 {.inline.} =
-  when nimvm: result = load8e(s, o)
-  else:
-    when declared copyMem:
-      result = uint64(0)
-      copyMem result.addr, s[o].addr, result.sizeof
-    else: result = load8e(s, o)
 
 proc lenU(s: openArray[byte]): uint64 {.inline.} = s.len.uint64
 

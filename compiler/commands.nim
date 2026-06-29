@@ -24,7 +24,7 @@ bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
-import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs, enumutils]
+import std/[setutils, sets, os, strutils, parseutils, parseopt, sequtils, strtabs, enumutils]
 import
   msgs, options, nversion, condsyms, extccomp, platform,
   wordrecg, nimblecmd, lineinfos, pathutils
@@ -118,7 +118,7 @@ const
   errInvalidCmdLineOption = "invalid command line option: '$1'"
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
   errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
-  errOffHintsError = "'off', 'hint', 'error' or 'usages' expected, but '$1' found"
+  errOffHintsError = "'off', 'hint', 'warning', 'error' or 'usages' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
   if switch == " ": localError(conf, info, errInvalidCmdLineOption % "-")
@@ -245,11 +245,12 @@ proc processCompile(conf: ConfigRef; filename: string) =
   extccomp.addExternalFileToCompile(conf, found)
 
 const
-  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
+  errNoneBoehmRefcExpectedButXFound = "'arc', 'orc', 'yrc', 'atomicArc', 'markAndSweep', 'boehm', 'go', 'none', 'regions', or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console', 'lib' or 'staticlib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjmp', 'cpp' or 'quirky' expected, but '$1' found"
   errInvalidFeatureButXFound = Feature.toSeq.map(proc(val:Feature): string = "'$1'" % $val).join(", ") & " expected, but '$1' found"
+  errDefaultOrSsoExpectedButXFound = "'default' or 'sso' expected, but '$1' found"
 
 template warningOptionNoop(switch: string) =
   warningDeprecated(conf, info, "'$#' is deprecated, now a noop" % switch)
@@ -266,6 +267,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "destructors", "arc": result = conf.selectedGC == gcArc
     of "orc": result = conf.selectedGC == gcOrc
+    of "yrc": result = conf.selectedGC == gcYrc
     of "hooks": result = conf.selectedGC == gcHooks
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
@@ -305,6 +307,13 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     else:
       result = false
       localError(conf, info, errInvalidExceptionSystem % arg)
+  of "strings":
+    case arg.normalize
+    of "default": result = conf.selectedStrings == stringDefault
+    of "sso": result = conf.selectedStrings == stringSso
+    else:
+      result = false
+      localError(conf, info, errDefaultOrSsoExpectedButXFound % arg)
   of "experimental":
     try:
       result = conf.features.contains parseEnum[Feature](arg)
@@ -364,6 +373,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
   of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
+  of "mangle": result = contains(conf.globalOptions, optItaniumMangle)
   else:
     result = false
     invalidCmdLineOption(conf, passCmd1, switch, info)
@@ -473,6 +483,7 @@ proc parseCommand*(command: string): Command =
   of "cpp", "compiletocpp": cmdCompileToCpp
   of "objc", "compiletooc": cmdCompileToOC
   of "js", "compiletojs": cmdCompileToJS
+  of "nif": cmdCompileToNif
   of "r": cmdCrun
   of "m": cmdM
   of "run": cmdTcc
@@ -492,10 +503,12 @@ proc parseCommand*(command: string): Command =
   of "gendepend": cmdGendepend
   of "dump": cmdDump
   of "parse": cmdParse
-  of "rod": cmdRod
   of "secret": cmdInteractive
   of "nop", "help": cmdNop
   of "jsonscript": cmdJsonscript
+  of "nifc": cmdNifC  # generate C from NIF files
+  of "ic": cmdIc  # generate .build.nif for nifmake
+  of "icconfig": cmdIcConfig  # produce the precompiled config artifact
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
@@ -507,6 +520,12 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
+  of cmdCompileToNif: conf.backend = backendNif
+  of cmdNifC:
+    conf.backend = backendC  # NIF to C compilation
+  of cmdM:
+    # cmdM requires optCompress for proper IC handling (include files, etc.)
+    conf.globalOptions.incl optCompress
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -561,6 +580,7 @@ proc unregisterArcOrc*(conf: ConfigRef) =
   undefSymbol(conf.symbols, "gcdestructors")
   undefSymbol(conf.symbols, "gcarc")
   undefSymbol(conf.symbols, "gcorc")
+  undefSymbol(conf.symbols, "gcyrc")
   undefSymbol(conf.symbols, "gcatomicarc")
   undefSymbol(conf.symbols, "nimSeqsV2")
   undefSymbol(conf.symbols, "nimV2")
@@ -593,6 +613,10 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
     of "orc":
       conf.selectedGC = gcOrc
       defineSymbol(conf.symbols, "gcorc")
+      registerArcOrc(pass, conf)
+    of "yrc":
+      conf.selectedGC = gcYrc
+      defineSymbol(conf.symbols, "gcyrc")
       registerArcOrc(pass, conf)
     of "atomicarc":
       conf.selectedGC = gcAtomicArc
@@ -630,6 +654,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var key = ""
   var val = ""
+  # Record config-file switches so the `nim ic` driver can serialise them into a
+  # precompiled-config artifact and have its per-module child processes replay
+  # them instead of re-parsing the `nim.cfg` chain (and re-running `config.nims`
+  # in the VM) on every invocation. Only `passPP` (config-file) switches are
+  # captured; command-line switches are forwarded by the build graph as usual.
+  # Path-search switches are skipped: their net effect already lives in the
+  # resolved `searchPaths` the driver forwards as `--path`, and replaying their
+  # raw (often relative-to-config-dir) arguments here would misresolve.
+  if pass == passPP and switch.normalize notin
+      ["path", "p", "nimblepath", "lazypath", "excludepath",
+       "nonimblepath", "clearnimblepath", "nimcache"]:
+    conf.icConfigSwitches.add (switch, arg)
   case switch.normalize
   of "eval":
     expectArg(conf, switch, arg, pass, info)
@@ -682,6 +718,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.outDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "usenimcache":
     processOnOffSwitchG(conf, {optUseNimcache}, arg, pass, info)
+  of "ideimports":
+    # nimsuggest: where the import closure comes from. IC is opt-in.
+    #   nif|on               load unchanged imports from precompiled NIF (cmdM)
+    #   source|off (default) recompile the whole closure from source (cmdCheck)
+    case arg.normalize
+    of "nif", "on", "": conf.ideImportsFromNif = true
+    of "source", "off": conf.ideImportsFromNif = false
+    else: localError(conf, info, "'--ideImports' expects 'nif' or 'source', got: '$1'" % arg)
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
@@ -735,6 +779,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processMemoryManagementOption(switch, arg, pass, info, conf)
   of "mm":
     processMemoryManagementOption(switch, arg, pass, info, conf)
+  of "strings":
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      case arg.normalize
+      of "default":
+        conf.selectedStrings = stringDefault
+      of "sso":
+        conf.selectedStrings = stringSso
+        defineSymbol(conf.symbols, "nimsso")
+      else:
+        localError(conf, info, errDefaultOrSsoExpectedButXFound % arg)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
@@ -760,6 +815,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.globalOptions.excl optCDebug
     else:
       localError(conf, info, "expected native|gdb|on|off but found " & arg)
+  of "mangle":
+    case arg.normalize
+    of "nim":
+      conf.globalOptions.excl optItaniumMangle
+    of "cpp":
+      conf.globalOptions.incl optItaniumMangle
+    else:
+      localError(conf, info, "expected nim|cpp but found " & arg)
+  of "compress":
+    conf.globalOptions.incl optCompress
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir
@@ -879,14 +944,65 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
   of "noimportdoc":
     processOnOffSwitchG(conf, {optNoImportdoc}, arg, pass, info)
+  of "ismainmodule":
+    # `nim m` (IC) only: marks the single module being checked as the program's
+    # real entry point so that `isMainModule` and `when isMainModule:` resolve
+    # correctly even though every module is compiled with `sfMainModule` set.
+    conf.isMainModule = switchOn(arg)
+  of "icgroup":
+    # `nim m` only: register a module that belongs to the current strongly-
+    # connected import group, so it is compiled from source (not loaded from a
+    # precompiled NIF) and gets its own NIF written. `deps.nim` emits one
+    # `--icGroup:<path>` per member of a dependency cycle. The argument is an
+    # absolute .nim path produced by the dependency scanner.
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icGroup.incl(canonicalizePath(conf, AbsoluteFile arg).string)
+  of "icproject":
+    # `nim m`/`nim nifc` only: the ORIGINAL project file (see options.icProject)
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
+  of "icpreparsedconfig":
+    # `nim m`/`nim nifc` only: path of the precompiled-config artifact (see
+    # options.icPreparsedConfig). Read in `passCmd1`, before `loadConfigs`, so
+    # config loading can replay it instead of re-parsing the `nim.cfg` chain.
+    expectArg(conf, switch, arg, pass, info)
+    conf.icPreparsedConfig = arg
+  of "icconfigout":
+    # `nim icconfig` only: where to write the precompiled config artifact (see
+    # options.icConfigOut). The `nim ic` driver spawns the producer with this.
+    expectArg(conf, switch, arg, pass, info)
+    conf.icConfigOut = arg
+  of "icbackendstage":
+    # `nim nifc` only: per-module backend stage, one of cg|merge|emit (see
+    # options.icBackendStage). Empty (switch unused) keeps the whole-program
+    # backend. Emitted by `deps.nim`'s backend build file.
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icBackendStage = arg
+  of "icbackendmodule":
+    # `nim nifc` only: the NIF module suffix the cg/emit stage operates on (see
+    # options.icBackendModule).
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      conf.icBackendModule = arg
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitImports.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitImports.add(if arg.startsWith(stdPrefix): arg else: m)
   of "include":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
+      let m = findModule(conf, arg, toFullPath(conf, info)).string
+      if m.len == 0:
+        localError(conf, info, "Cannot resolve filename: " & arg)
+      else:
+        conf.implicitIncludes.add m
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
   of "asm":
@@ -918,7 +1034,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     var value: int = 10_000_000
     discard parseSaturatedNatural(arg, value)
-    if not value > 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
+    if value <= 0: localError(conf, info, "maxLoopIterationsVM must be a positive integer greater than zero")
     conf.maxLoopIterationsVM = value
   of "maxcalldepthvm":
     expectArg(conf, switch, arg, pass, info)
@@ -972,7 +1088,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       # xxx maybe also ic, since not in help?
     if pass in {passCmd2, passPP}:
       case arg.normalize
-      of "on": conf.symbolFiles = v2Sf
+      of "on": conf.ic = true
+      of "legacy": conf.symbolFiles = v2Sf
       of "off": conf.symbolFiles = disabledSf
       of "writeonly": conf.symbolFiles = writeOnlySf
       of "readonly": conf.symbolFiles = readOnlySf
@@ -1080,6 +1197,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "shownonexports":
     expectNoArg(conf, switch, arg, pass, info)
     showNonExportedFields(conf)
+  of "raw":
+    expectNoArg(conf, switch, arg, pass, info)
+    docRawOutput(conf)
   of "exceptions":
     case arg.normalize
     of "cpp": conf.exc = excCpp
@@ -1111,9 +1231,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "nimSeqsV2")
   of "stylecheck":
     case arg.normalize
-    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
-    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
-    of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
+    of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError, optStyleWarning}
+    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError, optStyleWarning}
+    of "warning": conf.globalOptions = conf.globalOptions + {optStyleWarning} - {optStyleHint, optStyleError}
+    of "error": conf.globalOptions = conf.globalOptions + {optStyleError} - {optStyleHint, optStyleWarning}
     of "usages": conf.globalOptions.incl optStyleUsages
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":

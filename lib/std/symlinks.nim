@@ -24,9 +24,20 @@ proc createSymlink*(src, dest: Path) {.inline.} =
   createSymlink(src.string, dest.string)
 
 proc expandSymlink*(symlinkPath: Path): Path {.inline.} =
-  ## Returns a string representing the path to which the symbolic link points.
+  ## Returns the stored target of the symbolic link `symlinkPath`.
   ##
-  ## On Windows this is a noop, `symlinkPath` is simply returned.
+  ## This expands exactly one level of indirection, like POSIX `readlink`.
+  ## If the target is itself a symbolic link, it is returned as-is rather than
+  ## being expanded further.
+  ##
+  ## On POSIX, raises `OSError` if `symlinkPath` is not a symbolic link or if
+  ## the target cannot be read.
+  ##
+  ## On Windows, this supports symbolic links and junctions by reading the
+  ## reparse point payload directly. Unsupported reparse tags raise `OSError`.
+  ##
+  ## On Nintendo Switch this is currently a noop: `symlinkPath` is simply
+  ## returned, without checking whether it is actually a symbolic link.
   ##
   ## See also:
   ## * `createSymlink proc`_

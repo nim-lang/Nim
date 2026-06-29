@@ -100,7 +100,7 @@ const
   stylePrefix = "\e["
 
 when defined(windows):
-  import std/[winlean, os]
+  import std/os
 
   const
     DUPLICATE_SAME_ACCESS = 2
@@ -909,6 +909,7 @@ when defined(windows):
     ## `true` otherwise.
     password.setLen(0)
     stdout.write(prompt)
+    stdout.flushFile()
     let hi = createFileA("CONIN$",
       GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0)
     var mode = DWORD 0
@@ -926,8 +927,6 @@ when defined(windows):
     stdout.write "\n"
 
 else:
-  import std/termios
-
   proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     password.setLen(0)
@@ -938,6 +937,7 @@ else:
     cur.c_lflag = cur.c_lflag and not Cflag(ECHO)
     discard fd.tcSetAttr(TCSADRAIN, cur.addr)
     stdout.write prompt
+    stdout.flushFile()
     result = stdin.readLine(password)
     stdout.write "\n"
     discard fd.tcSetAttr(TCSADRAIN, old.addr)
@@ -980,9 +980,6 @@ proc resetAttributes*() {.noconv.} =
 proc isTrueColorSupported*(): bool =
   ## Returns true if a terminal supports true color.
   return getTerminal().trueColorIsSupported
-
-when defined(windows):
-  import std/os
 
 proc enableTrueColors*() =
   ## Enables true color.

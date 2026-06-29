@@ -24,6 +24,7 @@ when not gotoBasedExceptions:
   proc popSafePoint {.compilerRtl, inl.} = discard
 proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} = discard
 proc popCurrentException {.compilerRtl, inl.} = discard
+proc closureIterSetExc(e: ref Exception) {.compilerRtl, inl.} = discard
 
 # some platforms have native support for stack traces:
 const
@@ -49,9 +50,6 @@ proc writeStackTrace() = discard
 
 proc unsetControlCHook() = discard
 proc setControlCHook(hook: proc () {.noconv.}) = discard
-
-proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  sysFatal(ReraiseDefect, "exception handling is not available")
 
 when gotoBasedExceptions:
   var nimInErrorMode {.threadvar.}: bool

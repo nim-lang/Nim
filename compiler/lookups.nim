@@ -311,7 +311,7 @@ proc errorSym*(c: PContext, ident: PIdent, info: TLineInfo): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   result = newSym(skError, ident, c.idgen, getCurrOwner(c), info, {})
   result.typ = errorType(c)
-  incl(result.flags, sfDiscardable)
+  incl(result.flagsImpl, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
     c.moduleScope.addSym(result)
@@ -378,6 +378,9 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo, note = errGenerated) =
   ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
+    when defined(icDbgRefc):
+      echo "[icRedef] ", s
+      echo getStackTrace()
     localError(c.config, info, note,
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
@@ -388,7 +391,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if sym.name.id == ord(wUnderscore): return
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
-    if sym.kind == skModule and conflict.kind == skModule:
+    if sym.kind == skModule and conflict.kind == skModule and not c.config.isDefined("nimPreviewDuplicateModuleError"):
       # e.g.: import foo; import foo
       # xxx we could refine this by issuing a different hint for the case
       # where a duplicate import happens inside an include.
@@ -412,8 +415,6 @@ proc addDecl*(c: PContext, sym: PSym) {.inline.} =
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
-from ic / ic import addHidden
-
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   ## adds symbol to the module for either private or public access.
   if sfExported in sym.flags:
@@ -422,8 +423,6 @@ proc addInterfaceDeclAux(c: PContext, sym: PSym) =
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
   elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevelInsideDeclaration(c, sym):
     strTableAdd(semtabAll(c.graph, c.module), sym)
-    if c.config.symbolFiles != disabledSf:
-      addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds a symbol on the scope and the interface if appropriate
@@ -462,6 +461,15 @@ proc openShadowScope*(c: PContext) =
   c.currentScope = PScope(parent: c.currentScope,
                           symbols: initStrTable(),
                           depthLevel: c.scopeDepth)
+
+proc rememberShadowDefs*(c: PContext) =
+  ## bug #25693: a template/macro operand's local definitions are sem-checked in
+  ## a shadow scope that is then discarded. Record those definitions so that a
+  ## later re-emission (e.g. a captured `typed` fragment expanded more than once)
+  ## can be detected as a redefinition rather than silently miscompiled.
+  for s in c.currentScope.symbols:
+    if s.kind in {skVar, skLet, skForVar} and {sfGenSym, sfWasGenSym} * s.flags == {}:
+      c.shadowDiscardedDefs.incl s.id
 
 proc closeShadowScope*(c: PContext) =
   ## closes the shadow scope, but doesn't merge any of the symbols

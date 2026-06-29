@@ -1,21 +1,21 @@
 when notJSnotNims:
-  proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
-    tags: [], raises: [].}
+  proc zeroMem*(p: pointer, size: Natural) {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Overwrites the contents of the memory at `p` with the value 0.
     ##
     ## Exactly `size` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is **unsafe**.
 
-  proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], raises: [].}
+  proc copyMem*(dest, source: pointer, size: Natural) {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Copies the contents from the memory at `source` to the memory
     ## at `dest`.
     ## Exactly `size` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is **unsafe**.
 
-  proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], raises: [].}
+  proc moveMem*(dest, source: pointer, size: Natural) {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Copies the contents from the memory at `source` to the memory
     ## at `dest`.
     ##
@@ -24,8 +24,8 @@ when notJSnotNims:
     ## and is thus somewhat more safe than `copyMem`. Like any procedure
     ## dealing with raw memory this is still **unsafe**, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
-    tags: [], raises: [].}
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
     ##
@@ -33,8 +33,8 @@ when notJSnotNims:
     ## otherwise. Like any procedure dealing with raw memory this is
     ## **unsafe**.
 
-  proc cmpMem*(a, b: pointer, size: Natural): int {.inline, noSideEffect,
-    tags: [], raises: [].}
+  proc cmpMem*(a, b: pointer, size: Natural): int {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
     ##
@@ -48,17 +48,17 @@ when notJSnotNims:
 
 when hasAlloc and not defined(js):
 
-  proc allocImpl*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
-  proc alloc0Impl*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
-  proc deallocImpl*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
-  proc reallocImpl*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
-  proc realloc0Impl*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+  proc allocImpl*(size: Natural): pointer {.noconv, rtl, tags: [], gcsafe, raises: [].}
+  proc alloc0Impl*(size: Natural): pointer {.noconv, rtl, tags: [], gcsafe, raises: [].}
+  proc deallocImpl*(p: pointer) {.noconv, rtl, tags: [], gcsafe, raises: [].}
+  proc reallocImpl*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [], gcsafe, raises: [].}
+  proc realloc0Impl*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [], gcsafe, raises: [].}
 
-  proc allocSharedImpl*(size: Natural): pointer {.noconv, compilerproc, rtl, benign, raises: [], tags: [].}
-  proc allocShared0Impl*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
-  proc deallocSharedImpl*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
-  proc reallocSharedImpl*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
-  proc reallocShared0Impl*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+  proc allocSharedImpl*(size: Natural): pointer {.noconv, compilerproc, rtl, gcsafe, raises: [], tags: [].}
+  proc allocShared0Impl*(size: Natural): pointer {.noconv, rtl, gcsafe, raises: [], tags: [].}
+  proc deallocSharedImpl*(p: pointer) {.noconv, rtl, gcsafe, raises: [], tags: [].}
+  proc reallocSharedImpl*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [], gcsafe, raises: [].}
+  proc reallocShared0Impl*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [], gcsafe, raises: [].}
 
   # Allocator statistics for memory leak tests
 
@@ -103,7 +103,7 @@ when hasAlloc and not defined(js):
     incStat(allocCount)
     allocImpl(size)
 
-  proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
+  proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, gcsafe, raises: [].} =
     ## Allocates a new memory block with at least `T.sizeof * size` bytes.
     ##
     ## The block has to be freed with `resize(block, 0) <#resize,ptr.T,Natural>`_
@@ -131,7 +131,7 @@ when hasAlloc and not defined(js):
     incStat(allocCount)
     alloc0Impl(size)
 
-  proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
+  proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, gcsafe, raises: [].} =
     ## Allocates a new memory block with at least `T.sizeof * size` bytes.
     ##
     ## The block has to be freed with `resize(block, 0) <#resize,ptr.T,Natural>`_
@@ -174,7 +174,7 @@ when hasAlloc and not defined(js):
     ## from a shared heap.
     realloc0Impl(p, oldSize, newSize)
 
-  proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign, raises: [].} =
+  proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, gcsafe, raises: [].} =
     ## Grows or shrinks a given memory block.
     ##
     ## If `p` is **nil** then a new memory block is returned.
@@ -187,7 +187,7 @@ when hasAlloc and not defined(js):
     ## from a shared heap.
     cast[ptr T](realloc(p, T.sizeof * newSize))
 
-  proc dealloc*(p: pointer) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} =
+  proc dealloc*(p: pointer) {.noconv, compilerproc, rtl, gcsafe, raises: [], tags: [].} =
     ## Frees the memory allocated with `alloc`, `alloc0`,
     ## `realloc`, `create` or `createU`.
     ##
@@ -218,7 +218,7 @@ when hasAlloc and not defined(js):
     allocSharedImpl(size)
 
   proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, tags: [],
-                                                               benign, raises: [].} =
+                                                               gcsafe, raises: [].} =
     ## Allocates a new memory block on the shared heap with at
     ## least `T.sizeof * size` bytes.
     ##
@@ -296,7 +296,7 @@ when hasAlloc and not defined(js):
     ## `freeShared <#freeShared,ptr.T>`_.
     cast[ptr T](reallocShared(p, T.sizeof * newSize))
 
-  proc deallocShared*(p: pointer) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} =
+  proc deallocShared*(p: pointer) {.noconv, compilerproc, rtl, gcsafe, raises: [], tags: [].} =
     ## Frees the memory allocated with `allocShared`, `allocShared0` or
     ## `reallocShared`.
     ##
@@ -307,7 +307,7 @@ when hasAlloc and not defined(js):
     incStat(deallocCount)
     deallocSharedImpl(p)
 
-  proc freeShared*[T](p: ptr T) {.inline, benign, raises: [].} =
+  proc freeShared*[T](p: ptr T) {.inline, gcsafe, raises: [].} =
     ## Frees the memory allocated with `createShared`, `createSharedU` or
     ## `resizeShared`.
     ##
@@ -319,12 +319,6 @@ when hasAlloc and not defined(js):
 
   include bitmasks
 
-  template `+!`(p: pointer, s: SomeInteger): pointer =
-    cast[pointer](cast[int](p) +% int(s))
-
-  template `-!`(p: pointer, s: SomeInteger): pointer =
-    cast[pointer](cast[int](p) -% int(s))
-
   proc alignedAlloc(size, align: Natural): pointer =
     if align <= MemAlign:
       when compileOption("threads"):
@@ -334,32 +328,21 @@ when hasAlloc and not defined(js):
     else:
       # allocate (size + align - 1) necessary for alignment,
       # plus 2 bytes to store offset
-      when compileOption("threads"):
-        let base = allocShared(size + align - 1 + sizeof(uint16))
-      else:
-        let base = alloc(size + align - 1 + sizeof(uint16))
+      let base =
+        when compileOption("threads"):
+          allocShared(cast[Natural](size +% align -% 1 +% sizeof(uint16)))
+        else:
+          alloc(cast[Natural](size +% align -% 1 +% sizeof(uint16)))
       # memory layout: padding + offset (2 bytes) + user_data
       # in order to deallocate: read offset at user_data - 2 bytes,
       # then deallocate user_data - offset
-      let offset = align - (cast[int](base) and (align - 1))
-      cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
+      let offset = align -% cast[int](cast[uint](base) and uint(align -% 1))
       result = base +! offset
+      cast[ptr uint16](result -! sizeof(uint16))[] = uint16(offset)
 
   proc alignedAlloc0(size, align: Natural): pointer =
-    if align <= MemAlign:
-      when compileOption("threads"):
-        result = allocShared0(size)
-      else:
-        result = alloc0(size)
-    else:
-      # see comments for alignedAlloc
-      when compileOption("threads"):
-        let base = allocShared0(size + align - 1 + sizeof(uint16))
-      else:
-        let base = alloc0(size + align - 1 + sizeof(uint16))
-      let offset = align - (cast[int](base) and (align - 1))
-      cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
-      result = base +! offset
+    result = alignedAlloc(size, align)
+    zeroMem(result, size)
 
   proc alignedDealloc(p: pointer, align: int) {.compilerproc.} =
     if align <= MemAlign:
@@ -395,7 +378,7 @@ when hasAlloc and not defined(js):
     else:
       result = alignedAlloc(newSize, align)
       copyMem(result, p, oldSize)
-      zeroMem(result +! oldSize, newSize - oldSize)
+      zeroMem(result +! oldSize, newSize -% oldSize)
       alignedDealloc(p, align)
 
   {.pop.}

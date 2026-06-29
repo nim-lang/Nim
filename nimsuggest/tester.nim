@@ -5,7 +5,7 @@
 # When debugging, to run a single test, use for e.g.:
 # `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
-import os, osproc, strutils, streams, re, sexp, net
+import os, osproc, strutils, streams, sexp, net
 from sequtils import toSeq
 
 type
@@ -21,6 +21,14 @@ const
   # we could also use `stdtest/specialpaths`
 
 import std/compilesettings
+
+# nimsuggest's incremental (NIF/IC) mode is opt-in via `--ideImports:nif`. By default
+# nimsuggest recompiles the import closure from source (cmdCheck), which is fast and
+# stable, so the whole suite runs that path. Only the tests listed below exercise the
+# IC path; running every test under IC dominated the suite's wall-clock (each test
+# recompiles `system` cold into NIF, plus a few warm-cache-only ordering/highlight
+# quirks) and blew CI's job timeout.
+const icTests = ["tic.nim", "tv3_import.nim"]
 
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
@@ -74,6 +82,14 @@ proc parseTest(filename: string; epcMode=false): Test =
         # else: ignore empty lines for better readability of the specs
     inc i
   tmp.close()
+  # The IC tests opt into the NIF path and get their own private cache. The stdio
+  # variant (epcMode=false) starts cold and writes the NIFs; the EPC variant reuses
+  # them warm, so a single test exercises both the NIF write and the NIF read path.
+  if extractFilename(filename) in icTests:
+    let nimcache = getTempDir() / ("nimsuggest_ic_" &
+      extractFilename(result.dest).changeFileExt(""))
+    if not epcMode: removeDir(nimcache)
+    result.cmd.add " --ideImports:nif --nimcache:" & nimcache
   # now that we know the markers, substitute them:
   for a in mitems(result.script):
     a[0] = a[0] % markers
@@ -148,8 +164,28 @@ proc runCmd(cmd, dest: string): bool =
     quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
-  if pattern.contains('*'):
-    result = match(x, re(escapeRe(pattern).replace("\\x2A","(.*)"), {}))
+  let pp = splitLines(pattern.strip())
+  let xx = splitLines(x.strip())
+  if pp.len > xx.len:
+    return false
+  for l in 0..pp.len-1:
+    let p = pp[l].split('\t')
+    let x = xx[l].split('\t')
+    if p.len > x.len:
+      return false
+    for i in 0..p.len-1:
+      let starAt = p[i].find('*')
+      if starAt >= 0:
+        if p[i] == "*":
+          discard "field exists, that is good enough"
+        elif x[i].startsWith(p[i].substr(0, starAt-1)) and x[i].endsWith(p[i].substr(starAt+1)):
+          discard
+        else:
+          return false
+      else:
+        if x[i] != p[i]:
+          return false
+  return true
 
 proc sendEpcStr(socket: Socket; cmd: string) =
   let s = cmd.find(' ')

@@ -135,6 +135,19 @@ block: # issue #22605 for templates, original complex example
 
   doAssert g2(int) == "error"
 
+block: # issue #20811
+  template injectError(body: untyped): untyped =
+    template error: untyped {.used, inject.} = "injected"
+    body
+
+  proc outerOpen(error: string): string =
+    injectError:
+      proc genericInner[T](): string =
+        error
+      genericInner[int]()
+
+  doAssert outerOpen("captured") == "injected"
+
 block: # issue #23865 for templates
   type Xxx = enum
     error

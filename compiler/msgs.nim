@@ -30,7 +30,6 @@ proc toLowerAscii(a: var string) {.inline.} =
 
 proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
-  # xxx one edge case not yet handled is when `printf` is called at CT with `compiletimeFFI`.
   let stdOrr = if optStdout in conf.globalOptions: stdout else: stderr
   let stdOrrKind = toStdOrrKind(stdOrr)
   if stdOrrKind in conf.lastMsgWasDot:
@@ -52,7 +51,7 @@ proc makeCString*(s: string): Rope =
   result = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   result.add("\"")
   for i in 0..<s.len:
-    # line wrapping of string litterals in cgen'd code was a bad idea, e.g. causes: bug #16265
+    # line wrapping of string literals in cgen'd code was a bad idea, e.g. causes: bug #16265
     # It also makes reading c sources or grepping harder, for zero benefit.
     # const MaxLineLength = 64
     # if (i + 1) mod MaxLineLength == 0:
@@ -60,12 +59,12 @@ proc makeCString*(s: string): Rope =
     toCChar(s[i], result)
   result.add('\"')
 
-proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
+proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile; kind = fikSource): TFileInfo =
   result = TFileInfo(fullPath: fullPath, projPath: projPath,
                     shortName: fullPath.extractFilename,
                     quotedFullName: fullPath.string.makeCString,
-                    lines: @[]
-  )
+                    lines: @[],
+                    kind: kind)
   result.quotedName = result.shortName.makeCString
   when defined(nimpretty):
     if not result.fullPath.isEmpty:
@@ -126,12 +125,42 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool = false
   result = fileInfoIdx(conf, filename, dummy)
 
+proc expandOrPseudo(filename: string): AbsoluteFile =
+  # `expandFilename` raises OSError when the path does not exist on disk. That is
+  # fine for a real source path, but a macro can legitimately set a node's
+  # line-info file to a name that has no file behind it — e.g. the `???` sentinel
+  # produced by `toFilename` for a NIF-loaded node whose `fileIndex` is unknown
+  # (FileIndex(-1)). Falling back to the raw name lets the `AbsoluteFile` overload
+  # register it as a pseudo-path (like `command line`/`stdin`) instead of crashing
+  # the whole `nim m` child with an unhandled OSError.
+  try:
+    result = AbsoluteFile expandFilename(filename)
+  except OSError:
+    result = AbsoluteFile filename
+
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
-  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), isKnownFile)
+  fileInfoIdx(conf, expandOrPseudo(filename.string), isKnownFile)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   var dummy: bool = false
-  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
+  fileInfoIdx(conf, expandOrPseudo(filename.string), dummy)
+
+proc registerNifSuffix*(conf: ConfigRef; suffix: string; isKnownFile: var bool): FileIndex =
+  result = conf.m.filenameToIndexTbl.getOrDefault(suffix, InvalidFileIdx)
+  if result == InvalidFileIdx:
+    isKnownFile = false
+    result = conf.m.fileInfos.len.FileIndex
+    conf.m.fileInfos.add(newFileInfo(AbsoluteFile suffix, RelativeFile suffix, fikNifModule))
+    conf.m.filenameToIndexTbl[suffix] = result
+  else:
+    isKnownFile = true
+
+proc fileInfoKind*(conf: ConfigRef; fileIdx: FileIndex): FileInfoKind =
+  ## Returns the kind of a FileIndex (source file or NIF module suffix).
+  if fileIdx.int >= 0 and fileIdx.int < conf.m.fileInfos.len:
+    result = conf.m.fileInfos[fileIdx.int].kind
+  else:
+    result = fikSource  # Default to source for unknown indices
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result = TLineInfo(fileIndex: fileInfoIdx)
@@ -224,7 +253,7 @@ proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) 
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     conf.m.fileInfos[fileIdx.int32].hash = hash
   else:
     shallowCopy(conf.m.fileInfos[fileIdx.int32].hash, hash)
@@ -232,7 +261,7 @@ proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
 
 proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     result = conf.m.fileInfos[fileIdx.int32].hash
   else:
     shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
@@ -322,7 +351,7 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
 
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
-  #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
+  #if conf.ideActive and optCDebug notin gGlobalOptions: return
   let sep = if msgNoUnitSep notin flags: conf.unitSep else: ""
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s & sep)
@@ -428,8 +457,8 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, ignoreMsg: bool) =
   if msg in fatalMsgs:
-    if conf.cmd == cmdIdeTools: log(s)
-    if conf.cmd != cmdIdeTools or msg != errFatal:
+    if conf.ideActive: log(s)
+    if not conf.ideActive or msg != errFatal:
       quit(conf, msg)
   if msg >= errMin and msg <= errMax or
       (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
@@ -443,7 +472,7 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, 
           raiseRecoverableError(s)
         else:
           quit(conf, msg)
-    elif eh == doAbort and conf.cmd != cmdIdeTools:
+    elif eh == doAbort and not conf.ideActive:
       quit(conf, msg)
     elif eh == doRaise:
       raiseRecoverableError(s)
@@ -474,7 +503,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
     info = context.info
 
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
-  msg >= errGenerated and conf.cmd == cmdIdeTools and optIdeDebug notin conf.globalOptions
+  msg >= errGenerated and conf.ideActive and optIdeDebug notin conf.globalOptions
 
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
@@ -495,6 +524,9 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
   ## 1-based index (matches editor line numbers); 1st line is for i.line = 1
   ## last valid line is `numLines` inclusive
   if i.fileIndex.int32 < 0: return ""
+  # line 0 means "unknown": nodes synthesized from an IC-loaded template or
+  # macro body carry no source position.
+  if i.line.int < 1: return ""
   let num = numLines(conf, i.fileIndex)
   # can happen if the error points to EOF:
   if i.line.int > num: return ""
@@ -629,7 +661,7 @@ proc warningDeprecated*(conf: ConfigRef, info: TLineInfo = gCmdLineInfo, msg = "
   message(conf, info, warnDeprecated, msg)
 
 proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: InstantiationInfo) =
-  if conf.cmd in {cmdIdeTools, cmdCheck} and conf.structuredErrorHook.isNil: return
+  if (conf.ideActive or conf.cmd == cmdCheck) and conf.structuredErrorHook.isNil: return
   writeContext(conf, info)
   liMessage(conf, info, errInternal, errMsg, doAbort, info2)
 
@@ -648,7 +680,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
 
 template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraMsg = "") =
   let m = "'$1' should be: '$2'$3" % [got, beau, extraMsg]
-  let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
+  let msg = if optStyleError in conf.globalOptions: errGenerated
+            elif optStyleWarning in conf.globalOptions: warnUser
+            else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
 proc quotedFilename*(conf: ConfigRef; fi: FileIndex): Rope =

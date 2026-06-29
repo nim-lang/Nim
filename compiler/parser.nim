@@ -54,7 +54,10 @@ import
 
 when not defined(nimCustomAst):
   import ast
-else:
+when defined(nimCustomAst):
+  # NOTE: explicit negated `when` rather than `else:` — nifler's dep scanner
+  # guards `when`/`elif` imports with their condition but emits `else:` imports
+  # unconditionally, which would wrongly schedule this module under `nim ic`.
   import plugins / customast
 
 import std/strutils
@@ -1156,7 +1159,10 @@ proc parseParamList(p: var Parser, retColon = true): PNode =
         parMessage(p, errGenerated, "the syntax is 'parameter: var T', not 'var parameter: T'")
         break
       else:
-        parMessage(p, "expected closing ')'")
+        if p.tok.tokType in tokKeywordLow..tokKeywordHigh:
+          parMessage(p, errGenerated, "'" & $p.tok.ident.s & "' is a keyword and cannot be used as a parameter name")
+        else:
+          parMessage(p, "expected closing ')'")
         break
       result.add(a)
       if p.tok.tokType notin {tkComma, tkSemiColon}: break
@@ -2238,14 +2244,17 @@ proc parseTypeClassParam(p: var Parser): PNode =
 
 proc parseTypeClass(p: var Parser): PNode =
   #| conceptParam = ('var' | 'out' | 'ptr' | 'ref' | 'static' | 'type')? symbol
-  #| conceptDecl = 'concept' conceptParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
+  #| conceptDecl = 'concept' (conceptParam ^* ',' (pragma)?)? ('of' typeDesc ^* ',')?
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
   if p.tok.tokType == tkComment:
     skipComment(p, result)
 
-  if p.tok.indent < 0:
+  if p.tok.tokType == tkOf and p.tok.indent < 0:
+    # new-styled `concept of A, B` on the same line as `concept`
+    result.add(p.emptyNode)
+  elif p.tok.indent < 0:
     var args = newNodeP(nkArgList, p)
     result.add(args)
     args.add(p.parseTypeClassParam)
@@ -2271,9 +2280,10 @@ proc parseTypeClass(p: var Parser): PNode =
     result.add(p.emptyNode)
   if p.tok.tokType == tkComment:
     skipComment(p, result)
-  # an initial IND{>} HAS to follow:
+  # an initial IND{>} HAS to follow, unless this concept inherits requirements:
   if not realInd(p):
-    if result.isNewStyleConcept:
+    let hasParents = result[2].kind != nkEmpty
+    if result.isNewStyleConcept and not hasParents:
       parMessage(p, "routine expected, but found '$1' (empty new-styled concepts are not allowed)", p.tok)
     result.add(p.emptyNode)
   else:
