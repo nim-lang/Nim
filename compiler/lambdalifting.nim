@@ -312,16 +312,22 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   # A closure proc type that captures an env owns a REF to it: copying the closure
   # value must incref the env and destroying it must decref. That is exactly what
   # `tfHasAsgn` signals to `injectDestructorCalls` (so a closure assignment becomes
-  # `=copy`, not a raw field store). Set it HERE, at closure-type creation, so the
-  # flag is DETERMINISTIC and serializes with the type (writeTypeDef) — rather than
-  # depending on it being set as a side effect of the first `createTypeBoundOps`
-  # lift (liftdestructors ~1498, "XXX Breaks IC!"). Under IC the per-module `lower`
-  # stage is a separate process that lowers routines in index order; if a consumer
-  # (e.g. `workNimAsyncContinue`) was lowered before the closure type's ops were
-  # lifted, the env store emitted a RAW assign with no incref → the env was freed
-  # before the async callback ran → "yielded `nil`". Setting it at creation fixes
-  # that for both the in-process and the loaded (`.t.bif`) consumer.
-  incl(owner.typ, tfHasAsgn)
+  # `=copy`, not a raw field store).
+  #
+  # Set it HERE (closure-type creation) so the flag is DETERMINISTIC and serializes
+  # with the type — but ONLY under `nim ic`. The per-module `lower` stage is a
+  # separate process that lowers routines in index order; if a consumer (e.g.
+  # `workNimAsyncContinue`) was lowered before the closure type's ops were lifted,
+  # its env store emitted a RAW assign with no incref → freed env → async
+  # "yielded `nil`". A normal single-process `nim c` build does NOT need this —
+  # `createTypeBoundOps` sets the flag lazily, in lift order, before it matters
+  # (the old `liftdestructors ~1498` "XXX Breaks IC!" side effect) — and setting it
+  # eagerly there REGRESSES codegen: a `=destroy` hook gets generated against the
+  # bare `void(*)(void)` proc representation but is then called with closure structs
+  # (`eqdestroy__u2__stdZtypedthreads` type mismatch — broke megatest). So gate on
+  # `cmdNifC`; normal builds keep the lazy (devel) behavior.
+  if g.config.cmd == cmdNifC:
+    incl(owner.typ, tfHasAsgn)
   if not isEnv:
     owner.typ.callConv = ccClosure
 
