@@ -294,13 +294,22 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         replaceTypeVarsS(cl, n.sym, result.typ)
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
-    if result.sym.kind == skField and result.sym.ast != nil and
+    if result.sym.kind == skField and
         (cl.owner == nil or result.sym.owner == cl.owner):
-      # instantiate default value of object/tuple field
-      var n = result.sym.ast
-      cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
-      result.sym.ast = n
-      result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
+      if result.sym.ast != nil:
+        # instantiate default value of object/tuple field
+        var n = result.sym.ast
+        cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
+        result.sym.ast = n
+        result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
+      elif result.typ != nil:
+        # The field SYM can be SHARED across the branches of an `nkRecWhen` (the
+        # generic body reuses one `value` PSym, so it carries the LAST branch's
+        # type), while the resolved field NODE carries the correct branch type.
+        # Sync the sym to the node so the instantiated field's sym-type and
+        # node-type agree (else a generic-object instance serializes a field
+        # whose sym-type diverges from its node-type -> loader/computeSize crash).
+        result.sym.typ = result.typ
     # sym type can be nil if was gensym created by macro, see #24048
     if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
