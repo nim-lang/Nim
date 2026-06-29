@@ -1675,11 +1675,20 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # mtime-based `needsRebuild` then prunes the rebuild cascade level by
   # level, and the nifc backend can trust "semmed NIF older than the cnif
   # artifact" as an honest per-module unchanged stamp.
+  # CONTENT-STABLE (`storeBifStable`, the bif analogue of the old text `.s.nif`'s
+  # `OnlyIfChanged`): when `nim m` re-runs (e.g. it was scheduled because a sibling
+  # input churned) but produces byte-identical sem output, the `.s.bif` mtime MUST
+  # be preserved, else every dependent backend stage sees its input as "newer" and
+  # rebuilds — with whatever compiler this run uses. In a self-rebuild (`bootic`)
+  # that re-translates only SOME modules with the new compiler while others reuse
+  # the prior compiler's artifacts → a MIXED binary that needs a 3rd fixed-point
+  # iteration to wash out. The `nim m` rule still has its always-written run-marker:
+  # the `.edges.bif` (writeEdgesFile), so a no-op re-run does not re-fire.
   # Step 3: emit the compact binary NIF as the SOLE on-disk module artifact (no
   # text `.s.nif` twin — writing two files per module only slows the build; debug
-  # a `.bif` via `tools/bif2nif`). Re-homed into a private fresh pool by `storeBif`
+  # a `.bif` via `tools/bif2nif`). Re-homed into a private fresh pool
   # so the file holds only THIS module's literals.
-  storeBif(dest, bifPath, "." & extractModuleSuffix(bifPath))
+  storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath))
   if not isDefined(config, "icNoIfaceGate"):
     var flat = flattenForCookie(dest)
     let ifaceHex = writeIfaceCookie(config, thisModule, flat)
