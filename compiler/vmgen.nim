@@ -1921,7 +1921,11 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let strType = getSysType(c.graph, n.info, tyString)
   var msgReg: TDest = c.getTemp(strType)
   let fieldName = $accessExpr[1]
-  let msg = genFieldDefect(c.config, fieldName, disc.sym)
+  # Re-navigate the discriminant in the object type: under `nim ic` `disc.sym` is a
+  # field-use stub with a nil `owner`, which `genFieldDefect` dereferences. Look up the
+  # canonical discriminant field by name. Byte-neutral for non-IC (returns the same sym).
+  let dfield = lookupFieldAgain(accessExpr[0].typ, disc.sym)
+  let msg = genFieldDefect(c.config, fieldName, dfield)
   let strLit = newStrNode(msg, accessExpr[1].info)
   strLit.typ = strType
   c.genLit(strLit, msgReg)

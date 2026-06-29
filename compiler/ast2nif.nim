@@ -496,8 +496,19 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
     # name in isolation (cg seeks the `.t.nif`/`.s.nif` index entry), so its
     # fields must be DEFS here, not entry-deduped SymUses whose def lives
     # elsewhere in the `(lowered)` entry and is never read by the seek.
+    #
+    # `emittedFieldSyms` only guards against a field being def'd twice WITHIN one
+    # reclist, so scope it per-reclist: a generic object and its instances SHARE one
+    # field PSym (same itemId) yet each instance carries a DISTINCT field type (e.g.
+    # `MDigest[256].data: array[32,byte]` vs `MDigest[384].data: array[48,byte]`), so
+    # each reclist needs its OWN typed def. A Writer-global set deduped every instance
+    # after the first to a typeless `SymUse` stub (nil typ/owner on load → crash in
+    # destructor lifting). Field NIF names are local (no module suffix, not in the
+    # global `c.syms`), so def'ing the same field in two reclists never collides.
     inc w.inTypeReclist
+    let savedFieldSyms = move w.emittedFieldSyms
     writeNode(w, dest, typ.nImpl)
+    w.emittedFieldSyms = savedFieldSyms
     dec w.inTypeReclist
     writeSym(w, dest, typ.ownerFieldImpl)
     writeSym(w, dest, typ.symImpl)
