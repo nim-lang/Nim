@@ -1748,6 +1748,13 @@ type
     index: Table[string, NifIndexEntry]  # name -> entry; `offset` is a TOKEN
                                          # position in `buf` (was a byte offset)
     suffix: string
+    loweredPrimary: bool   # `buf` is the lowered `.t.bif` (cg/emit stage). The lower
+                           # stage never changes type DEFINITIONS, so they are NOT
+                           # carried in `.t.bif`; a type def not in `index` is read
+                           # from the `.s.bif` companion below (loaded on demand).
+    semBuf: TokenBuf       # the `.s.bif` (semchecked) buffer — TYPE-def fallback
+    semIndex: Table[string, NifIndexEntry]
+    semTried: bool         # `semBuf`/`semIndex` load attempted (idempotent)
 
   DecodeContext* = object
     infos: LineInfoWriter
@@ -1915,7 +1922,8 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     let useLowered = conf.cmd == cmdNifC and
                      (conf.icBackendStage == "cg" or conf.icBackendStage == "emit")
     var modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".t.bif")).string
-    if not (useLowered and fileExists(modFile)):
+    let lowered = useLowered and fileExists(modFile)
+    if not lowered:
       modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string
     if not fileExists(modFile):
       raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
@@ -1928,13 +1936,52 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     # share a `toId` with a loaded one. See `readUnusedId` / `(unusedid)`.
     let seed = readUnusedId(m.buf)
     c.mods[result] = NifModule(buf: ensureMove m.buf, index: index, suffix: suffix,
-                               symCounter: seed, typeCounter: seed)
+                               symCounter: seed, typeCounter: seed,
+                               loweredPrimary: lowered)
 
 proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifIndexEntry =
   let ii = addr c.mods[module].index
   result = ii[].getOrDefault(nifName)
   if result.offset == 0:
     raiseAssert "symbol has no offset: " & nifName
+
+proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
+  ## Lazily load the module's `.s.bif` companion (`semBuf`/`semIndex`) for the TYPE
+  ## fallback. Only meaningful when the primary `buf` is the lowered `.t.bif`, which
+  ## omits frontend type defs (the lower stage never changes them). Idempotent.
+  let m = c.mods[module]
+  if m.semTried: return
+  m.semTried = true
+  let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
+  if not fileExists(semFile): return
+  var sm = bif.load(semFile)
+  m.semIndex = buildPosIndex(sm.buf, m.suffix)
+  m.semBuf = ensureMove sm.buf
+
+proc hasTypeOffset(c: var DecodeContext; module: FileIndex; nifName: string): bool =
+  ## Does a TYPE def for `nifName` exist for `module` — in the primary buffer, or
+  ## (lowered primary) the `.s.bif` companion?
+  result = false
+  let m = c.mods[module]
+  if m.index.getOrDefault(nifName).offset != 0: return true
+  if m.loweredPrimary:
+    ensureSemBuf(c, module)
+    result = m.semIndex.getOrDefault(nifName).offset != 0
+
+proc typeCursor(c: var DecodeContext; module: FileIndex; nifName: string): Cursor =
+  ## A cursor at a TYPE's `(td …)` def: the primary buffer if present (an `@bk`
+  ## closure-env type minted by the lower stage, or any `.s.bif`-primary module),
+  ## else the `.s.bif` companion (frontend type defs are NOT carried in `.t.bif`).
+  let m = c.mods[module]
+  let e = m.index.getOrDefault(nifName)
+  if e.offset != 0:
+    return cursorAt(m.buf, e.offset)
+  if m.loweredPrimary:
+    ensureSemBuf(c, module)
+    let se = m.semIndex.getOrDefault(nifName)
+    if se.offset != 0:
+      return cursorAt(m.semBuf, se.offset)
+  raiseAssert "symbol has no offset: " & nifName
 
 proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
               localSyms: var Table[string, PSym]): PNode
@@ -1981,12 +2028,13 @@ proc tryCreateTypeStub(c: var DecodeContext; name: string): PType =
     let realSuffix = if isBk: suffix[0 ..< suffix.len - BackendLocalMarker.len] else: suffix
     let modIdx = moduleId(c, realSuffix).int32
     let id = if isBk: backendItemId(modIdx, itemVal) else: itemId(modIdx, itemVal)
-    let ii = addr c.mods[id.module.FileIndex].index
-    let offs = ii[].getOrDefault(name)
-    if offs.offset == 0:
+    let modFi = id.module.FileIndex
+    if not hasTypeOffset(c, modFi, name):
       return nil
     result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
-    c.types[name] = (result, offs)
+    # `loadType` re-resolves the buffer via `typeCursor`, so the cached entry is a
+    # don't-care for types — store the primary one if any (else a 0-offset stub).
+    c.types[name] = (result, c.mods[modFi].index.getOrDefault(name))
 
 proc createTypeStub(c: var DecodeContext; name: string): PType =
   assert name.startsWith("`t")
@@ -2011,12 +2059,12 @@ proc createTypeStub(c: var DecodeContext; name: string): PType =
     let modIdx = moduleId(c, realSuffix).int32
     let id = if isBk: backendItemId(modIdx, itemVal) else: itemId(modIdx, itemVal)
     let modFi = id.module.FileIndex
-    let ii = addr c.mods[modFi].index
-    var offs = ii[].getOrDefault(name)
-    if offs.offset == 0:
+    if not hasTypeOffset(c, modFi, name):
       raiseAssert "symbol has no offset: " & name
     result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
-    c.types[name] = (result, offs)
+    # `loadType` re-resolves the buffer via `typeCursor`, so the cached entry is a
+    # don't-care for types — store the primary one if any (else a 0-offset stub).
+    c.types[name] = (result, c.mods[modFi].index.getOrDefault(name))
 
 proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: string;
                               localSyms: var Table[string, PSym]) =
@@ -2269,7 +2317,9 @@ proc loadType*(c: var DecodeContext; t: PType) =
     else:
       typeToNifSym(t, c.infos.config)
   let modFi = t.itemId.module.FileIndex
-  var n = cursorFromIndexEntry(c, modFi, c.types[typeName][1])
+  # `typeCursor` resolves to the primary `.t.bif` (`@bk` env types) or falls back to
+  # the `.s.bif` companion (frontend type defs, which `.t.bif` no longer carries).
+  var n = typeCursor(c, modFi, typeName)
   var localSyms = initTable[string, PSym]()
   loadTypeFromCursor(c, n, t, localSyms)
 
@@ -2699,18 +2749,17 @@ proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
     if sym != nil: result.add sym
   c.mods[module].index = move indexTab
 
-proc moduleTypeStubs*(c: var DecodeContext; module: FileIndex): seq[PType] =
-  ## Complete-loaded `PType`s for every TYPE this module serialized in its NIF
-  ## index. `writeLoweredModule` needs these because the lowered `.t.nif` is the
-  ## SOLE source the `cg`/`emit` stages read: a routine body/signature in ANY
-  ## module may reference one of this module's types as a `SymUse`, so the def
-  ## must live in this module's `.t.nif` — exactly as it did in `.s.nif`, where
-  ## the full top-level AST walk emitted it. The backend-loaded `topLevel` has no
-  ## type sections, so without force-emitting them the def is absent and the
-  ## consumer asserts `symbol has no offset`. Mirrors `moduleSymbolStubs`: collect
-  ## the names first (force-loading a type registers modules / mutates `c.types`,
-  ## which must not invalidate an active index iterator), then force each to
-  ## `Complete` so `writeType` emits a real def.
+proc loadedModuleTypes*(c: var DecodeContext; module: FileIndex): seq[PType] =
+  ## Stubs for every TYPE this module owns — but, unlike before, WITHOUT force-
+  ## loading them. `writeLoweredModule` emits a real def into the `.t.bif` only for
+  ## the ones already `Complete` (= the lower stage actually loaded, hence possibly
+  ## MUTATED — lambda-lifting flips a proc type to `ccClosure` and grows env types
+  ## with captured fields). Every untouched type stays `Partial`, so a reference to
+  ## it serializes as a `SymUse` that a cg/emit consumer resolves from the `.s.bif`
+  ## (loader fallback `typeCursor`/`ensureSemBuf`) — the lower stage leaves those
+  ## defs unchanged, so re-emitting them into `.t.bif` was pure cost. Collect names
+  ## first: `createTypeStub` may register modules / mutate `c.types`, which must not
+  ## invalidate the index iterator.
   result = @[]
   if not c.mods.hasKey(module): return
   var names: seq[string] = @[]
@@ -2718,9 +2767,7 @@ proc moduleTypeStubs*(c: var DecodeContext; module: FileIndex): seq[PType] =
     if nifName.startsWith("`t"): names.add nifName
   for nm in names:
     let t = createTypeStub(c, nm)
-    if t != nil:
-      loadType(c, t)
-      result.add t
+    if t != nil: result.add t
 
 proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
   let suffix = moduleSuffix(conf, f)
@@ -3145,17 +3192,15 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
   # here). Emits + seals the module's globals.
   w.writeToplevelNode content, bottom, precomp.topLevel
 
-  # TYPE DEFS this module owns. Unlike `writeNifModule` (whose `n` is the full
-  # module AST, so `writeToplevelNode` walks every type section), the lowered
-  # `topLevel` carries only init code + globals — routines and types are lazy
-  # index sdefs. So force every owned type from the `.s.nif` index to `Complete`
-  # and emit its def here; a cg/emit consumer that `SymUse`s one of them resolves
-  # through this `.t.nif` index, which would otherwise lack the entry (`symbol has
-  # no offset`). Emit BEFORE the routines so a routine signature referencing a
-  # type writes a `SymUse` to the def already present. Guard on `Complete`: a type
-  # reached as an owned son of an earlier def is already `Sealed` (emitted inline)
-  # — skip it to avoid a stray top-level `SymUse` (mirrors the offer loops).
-  for t in moduleTypeStubs(c, FileIndex thisModule):
+  # TYPE DEFS: emit into the `.t.bif` ONLY the owned types the lower stage actually
+  # loaded (`Complete`) — those are the ones it can have MUTATED (proc type →
+  # `ccClosure`, env type grown with captured fields), so the `.t.bif` must carry
+  # the mutated version. Every untouched owned type stays `Partial` → a reference to
+  # it below writes a `SymUse` that a cg/emit consumer resolves from the `.s.bif`
+  # (loader fallback `typeCursor`/`ensureSemBuf`), so we no longer force-load +
+  # re-serialize the whole type table here. Guard on `Complete`: a type reached as
+  # an owned son of an earlier def is already `Sealed` (emitted inline) — skip it.
+  for t in loadedModuleTypes(c, FileIndex thisModule):
     if t.state == Complete:
       writeType(w, bottom, t)
 
