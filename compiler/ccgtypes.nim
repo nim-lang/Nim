@@ -1807,6 +1807,16 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
 
   incl result.flagsImpl, sfFromGeneric
   incl result.flagsImpl, sfGeneratedOp
+  # Under IC the `rttiDestroy` wrapper is generated independently in every cg
+  # process that emits `typ`'s RTTI (the type-info is emit-everywhere). A plain
+  # counter `disamb` renumbers per process, so the RTTI table baked in module A
+  # references `rttiDestroy_c<n>` while module B (the =destroy owner) defines a
+  # different number → undefined at link. Give it a content-derived `disamb`
+  # (stable across processes) + `HookDisambBit`, exactly like `symPrototype` does
+  # for the hook itself: same `typ` ⇒ same C name everywhere, and the bit makes
+  # `emitsBodyInThisModule` emit the body in every demander (merge dedups). The
+  # `"rttiDestroy"` op-name keeps its key disjoint from the real `=destroy` hook's.
+  setHookDisamb(g, result, "rttiDestroy", typ)
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Builder) =
   let theProc = getAttachedOp(m.g.graph, t, op)

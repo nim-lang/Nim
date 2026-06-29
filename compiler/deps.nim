@@ -16,6 +16,7 @@ import options, msgs, lineinfos, pathutils, condsyms,
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
 import "../dist/nimony/src/gear2" / modnames
+import icnifcore
 
 type
   FilePair = object
@@ -51,24 +52,24 @@ proc parsedFile(c: DepContext; f: FilePair): string =
   getNimcacheDir(c.config).string / f.modname & ".p.nif"
 
 proc semmedFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".s.nif"
+  getNimcacheDir(c.config).string / f.modname & ".s.bif"
 
 proc ifaceFile(c: DepContext; f: FilePair): string =
   ## Interface-cookie sidecar written by `nim m` (ast2nif.writeIfaceCookie,
   ## OnlyIfChanged). Dependents' nim_m rules use it as their input instead of
   ## the semmed NIF: a body-only change in a dependency then keeps the sidecar
   ## mtime and nifmake prunes the whole re-sem cascade behind it.
-  getNimcacheDir(c.config).string / f.modname & ".iface.nif"
+  getNimcacheDir(c.config).string / f.modname & ".iface.bif"
 
 proc implFile(c: DepContext; suffix: string): string =
   ## Implementation-cookie sidecar (ast2nif.writeImplCookie): flips on ANY
   ## content change of the module (private bodies included; supersedes the
   ## iface cookie). Used as the edge for dependents that consumed the
   ## module's bodies at compile time (NeedsImpl edges).
-  getNimcacheDir(c.config).string / suffix & ".impl.nif"
+  getNimcacheDir(c.config).string / suffix & ".impl.bif"
 
 proc edgesFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".edges.nif"
+  getNimcacheDir(c.config).string / f.modname & ".edges.bif"
 
 proc readNeedsImpl(c: DepContext; f: FilePair): seq[string] =
   ## Reads the module's recorded NeedsImpl edge set (module suffixes whose
@@ -79,19 +80,10 @@ proc readNeedsImpl(c: DepContext; f: FilePair): seq[string] =
   ## gated input of its rule, so the rule re-fires and re-records.
   result = @[]
   if fileExists(c.edgesFile(f)):
-    var s = nifstreams.open(c.edgesFile(f))
-    try:
-      discard processDirectives(s.r)
-      while true:
-        let t = next(s)
-        if t.kind == EofToken: break
-        if t.kind == StringLit:
-          result.add pool.strings[t.litId]
-    finally:
-      close s
+    result = collectBifStrLits(c.edgesFile(f))
 
 proc semDepsFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".s.deps.nif"
+  getNimcacheDir(c.config).string / f.modname & ".s.deps.bif"
 
 proc readSemDeps(c: DepContext; f: FilePair): seq[string] =
   ## The module's REAL direct imports (full source paths) as sem resolved them,
@@ -99,16 +91,7 @@ proc readSemDeps(c: DepContext; f: FilePair): seq[string] =
   ## (ast2nif.writeSemDeps). Missing file (not yet semmed) -> empty.
   result = @[]
   if fileExists(c.semDepsFile(f)):
-    var s = nifstreams.open(c.semDepsFile(f))
-    try:
-      discard processDirectives(s.r)
-      while true:
-        let t = next(s)
-        if t.kind == EofToken: break
-        if t.kind == StringLit:
-          result.add pool.strings[t.litId]
-    finally:
-      close s
+    result = collectBifStrLits(c.semDepsFile(f))
 
 proc findNifler(): string =
   # Look for nifler in common locations
@@ -981,12 +964,12 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   var cFiles = newSeq[string](c.nodes.len)
   var tFiles = newSeq[string](c.nodes.len)
   # The `lower` stage writes a PROPER module NIF the cg/emit stages load via
-  # `toNifFilename` (a `.s.nif` sibling), so its `.t.nif` lives at the suffix base
+  # `toNifFilename` (a `.s.bif` sibling), so its `.t.bif` lives at the suffix base
   # (mirroring `semmedFile`), not next to the throwaway `.c`.
   for i, node in c.nodes:
     cFiles[i] = backendCFile(c, node)
     cnifFiles[i] = cFiles[i] & ".nif"
-    tFiles[i] = nimcache / node.files[0].modname & ".t.nif"
+    tFiles[i] = nimcache / node.files[0].modname & ".t.bif"
 
   # Only code-generate modules the real program actually reaches; statically
   # over-approximated nodes (e.g. `winlean` on Linux) are sem'd but not emitted.
