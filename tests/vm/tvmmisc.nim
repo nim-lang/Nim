@@ -855,3 +855,17 @@ block:
     var r = Obj(x: 10)
     r.value = 42
     doAssert r.x == 42
+
+block: # bug #25949
+  template loadFile(filename: string): auto =
+    when nimvm:    
+      staticRead(filename)
+    else:
+      "something"
+    
+  proc roundTrip(): bool =
+    let content = loadFile("tests/tomls/case.toml")
+    content == "something"
+
+  doAssert roundTrip()
+
