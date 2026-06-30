@@ -185,9 +185,13 @@ proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) {.inline.} =
     a.storage = s
 
 proc t(a: TLoc): PType {.inline.} =
-  if a.lode.kind == nkSym:
+  if a.lode.kind == nkSym and a.lode.sym.typ != nil:
     result = a.lode.sym.typ
   else:
+    # Under `nim ic` an object-field reference is a typeless leaf stub (its def
+    # lives in another seek; see ast2nif `FieldMarker`) that carries its type on
+    # the NODE instead. Fall back to the node type. Byte-neutral for non-IC, where
+    # a real sym always has a type.
     result = a.lode.typ
 
 proc lodeTyp(t: PType): PNode =
@@ -1218,8 +1222,17 @@ proc closeNamespaceNim(result: var Builder) =
 
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
-  # prc.ast[paramsPos].last contains the type we're after:
-  var ls = lastSon(prc.ast[paramsPos])
+  # prc.ast[paramsPos].last contains the type we're after — BUT a closure loaded
+  # from a `.t.bif` (a lambda-lifted nested proc / generic instance the `lower`
+  # stage transformed) can arrive with an EMPTY AST param node: the lifted hidden
+  # `:env` param lives in `typ.n`, the authoritative signature (`genProc` already
+  # reads `typ.n`, not the AST). The two param nodes diverge across the NIF
+  # boundary; fall back to `typ.n` so the env param resolves instead of indexing
+  # an empty container.
+  var params = prc.ast[paramsPos]
+  if params.safeLen == 0 and prc.typ.n != nil and prc.typ.n.kind == nkFormalParams:
+    params = prc.typ.n
+  var ls = lastSon(params)
   if ls.kind != nkSym:
     internalError(p.config, prc.info, "closure generation failed")
   var env = ls.sym
@@ -1464,8 +1477,21 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   var returnStmt: Snippet = ""
   assert(prc.ast != nil)
 
+  # A body LOADED from `.t.bif` was already FULLY lowered by the `lower` stage —
+  # transformed AND destructor-injected (see nifbackend.generateLowerStage). The
+  # `.t.bif` is the authoritative backend artifact; re-injecting here would lower
+  # it twice (double `=destroy` calls) and, worse, re-lift the env hooks per cg
+  # process (owned by nobody → undefined at link). So inject ONLY when the body
+  # was re-derived in this process (`wasLoaded == false`). Capture before
+  # `transformBody`, which returns the cached body (non-nil) when it was loaded.
+  # ONLY under IC: in a normal `nim c` build `transformedBody` is the ordinary
+  # transform cache (set whenever `transformBody` already ran for `prc`, e.g. a
+  # CT-evaluated or earlier-referenced routine), NOT a `.t.bif` load — gating on
+  # it there would WRONGLY skip destructor injection and miscompile (orc
+  # decref-on-freed). The `.t.bif`-loaded-body concept exists only under cmdNifC.
+  let wasLoaded = m.config.cmd == cmdNifC and prc.transformedBody != nil
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
-  if sfInjectDestructors in prc.flags:
+  if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
   let tmpInfo = prc.info
@@ -1525,6 +1551,17 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
+    if prc.typ.callConv == ccClosure and param.name.s == ":envP":
+      # The hidden closure-env param is materialised by `closureSetup`, never a
+      # normal C parameter (`genProcParams` omits it from the signature). In a
+      # from-source build it lives only in the routine's AST params and never in
+      # `typ.n`, so this loop never reaches it. Under IC `closureParams` leaks it
+      # into `typ.n`; for a LOADED closure it is already present at header time
+      # (`genProcParams` fills its loc), but for a RE-DERIVED closure
+      # (`wasLoaded == false`) `transformBody` appends it only AFTER
+      # `genProcHeader` ran, so its `loc.snippet` is still empty here. Skip it to
+      # match the from-source invariant — `closureSetup` assigns its local below.
+      continue
     assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
   genProcBody(p, procBody)

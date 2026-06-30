@@ -1071,7 +1071,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
-proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
+proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym, ty: PType) =
   var test, u, v: TLoc
   for i in 1..<e.len:
     var it = e[i]
@@ -1081,10 +1081,17 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     if op.magic == mNot: it = it[1]
     let disc = it[2].skipConv
     assert(disc.kind == nkSym)
+    # Re-navigate the discriminant in the object type: under `nim ic` `disc.sym` is
+    # a field-use stub whose `loc.snippet` is empty (the backend fills it on the
+    # canonical reclist field, not on per-use leaves). Look up the canonical field
+    # for the C member name; `disc`'s own node still supplies its type (TLoc.t).
+    # Byte-neutral for non-IC, where re-navigation returns the same field.
+    var rr = obj
+    let dfield = lookupFieldAgain(p, ty, disc.sym, rr)
     test = initLoc(locNone, it, OnStack)
     u = initLocExpr(p, it[1])
     v = initLoc(locExpr, disc, OnUnknown)
-    v.snippet = dotField(obj, disc.sym.loc.snippet)
+    v.snippet = dotField(obj, dfield.loc.snippet)
     genInExprAux(p, it, u, v, test)
     var msg = ""
     if optDeclaredLocs in p.config.globalOptions:
@@ -1094,7 +1101,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # by encoding the file names separately from `file(line:col)`, essentially
       # passing around `TLineInfo` + the set of files in the project.
       msg.add toFileLineCol(p.config, e.info) & " "
-    msg.add genFieldDefect(p.config, field.name.s, disc.sym)
+    msg.add genFieldDefect(p.config, field.name.s, dfield)
     var strLitBuilder = newBuilder("")
     genStringLiteral(p.module, newStrNode(nkStrLit, msg), strLitBuilder)
     let strLit = extract(strLitBuilder)
@@ -1158,7 +1165,7 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     if field.loc.snippet == "": fillObjectFields(p.module, ty)
     if field.loc.snippet == "":
       internalError(p.config, e.info, "genCheckedRecordField") # generate the checks:
-    genFieldCheck(p, e, r, field)
+    genFieldCheck(p, e, r, field, ty)
     r = dotField(r, field.loc.snippet)
     putIntoDest(p, d, e[0], r, a.storage)
     r.freeze
@@ -1858,7 +1865,7 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, c
   if field.loc.snippet == "": fillObjectFields(p.module, ty)
   if field.loc.snippet == "": internalError(p.config, info, "genFieldObjConstr")
   if check != nil and optFieldCheck in p.options:
-    genFieldCheck(p, check, r, field)
+    genFieldCheck(p, check, r, field, ty)
   tmp2.snippet = dotField(tmp2.snippet, field.loc.snippet)
   if useTemp:
     tmp2.k = locTemp

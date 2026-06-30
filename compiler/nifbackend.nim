@@ -27,6 +27,7 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   cnif
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
+from injectdestructors import injectDestructorCalls
 import ic / replayer
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
@@ -178,6 +179,15 @@ proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
   ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
   ## iterator, which is expanded at each call site) and must be emitted by its
   ## owner — else a cross-module `for` over it links to nothing.
+  ##
+  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine — not
+  ## in `cg` and not in the `lower` stage. They are demanded by the backend's
+  ## emit-everywhere path and deduped by `merge` (content C name); the frontend
+  ## materialises them through the `(offer)` mechanism. The `lower` stage must
+  ## not transform an instance: a not-fully-concrete instance (a closure factory
+  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
+  ## its further-specialised use sites) still carries unresolved overload choices
+  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
   s.itemId.module == modPos and
   (s.kind in {skProc, skFunc, skConverter, skMethod} or
    (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
@@ -367,12 +377,34 @@ proc setNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
   if n.kind == nkSym:
     let s = n.sym
     if s != nil and s.kind in routineKinds and s != owner and
+        s.skipGenericOwner != nil and s.skipGenericOwner.kind != skModule and
         not seen.containsOrIncl(s.id):
-      if s.ast != nil and getBody(g, s).kind != nkEmpty and
-          s.typ != nil and s.typ.callConv == ccClosure:
-        if s.transformedBody == nil:
+      # Covers ALL nested routines, not only ccClosure ones. A NIMCALL nested proc
+      # the async transform mints (e.g. workNimAsyncContinue) already has its
+      # lifted body set by the OWNER's transformBody, but it is NOT in the owned
+      # loop (owner is a proc, not the module). Without injecting it HERE it is
+      # serialized transform-only; cg loads it (wasLoaded) and skips injection, so
+      # a closure-env store stays a raw field assign with no incref -> the env is
+      # freed before the async callback runs -> "yielded nil". `seen` (shared
+      # across the owned loop) injects each routine exactly once.
+      if s.ast != nil and getBody(g, s).kind != nkEmpty:
+        # Only ccClosure routines are safe to `transformBody` standalone here; a
+        # nimcall nested proc already has its lifted body from the owner's lift,
+        # and transforming an arbitrary nested routine with no cached body crashes
+        # (not in a standalone-transformable state).
+        let weTransformed = s.transformedBody == nil and
+                            s.typ != nil and s.typ.callConv == ccClosure
+        if weTransformed:
           s.transformedBody = transformBody(g, idgen, s, {})
-        setNestedClosureBodies(g, idgen, s.transformedBody, s, seen)
+        if s.transformedBody != nil:
+          # Inject destructors so cg loads a fully-lowered body and never rebuilds
+          # (mirrors non-IC, which injects every nested proc separately). The
+          # importer `n2` skField collision this used to trigger is fixed at the
+          # NIF-naming layer (toNifSymName gives derived env fields a unique
+          # disamb), so injecting ccClosure nested procs here is safe.
+          if sfInjectDestructors in s.flags:
+            s.transformedBody = injectDestructorCalls(g, idgen, s, s.transformedBody)
+          setNestedClosureBodies(g, idgen, s.transformedBody, s, seen)
   else:
     for i in 0 ..< n.safeLen:
       setNestedClosureBodies(g, idgen, n[i], owner, seen)
@@ -448,12 +480,19 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # (`=destroy` etc.) into `g.opsLog`; snapshot its length so we serialize exactly
   # the ops THIS stage created (not those loaded from `.s.nif`).
   let opsLogStart = g.opsLog.len
+  # Shared across the owned loop so a nested routine reachable from more than one
+  # owner is transformed + destructor-injected EXACTLY once (double injection
+  # would emit two `=destroy`/`=copy` runs).
+  var seenNested = initIntSet()
   for s in moduleSymbolStubs(ast.program, FileIndex modPos):
     if ownsRuntimeRoutine(s, modPos):
-      # `.s.nif` wins: a routine already transformed during sem (CT eval / macro /
-      # VM transform) carries its lowered body in the `.s.nif` slot — don't
-      # re-transform it here.
-      if s.transformedBody != nil: continue
+      # REUSE path (`icReuseSemLowering` ON): a routine already transformed during
+      # sem (CT eval / macro / VM transform) carries its lowered body in the
+      # `.s.nif` slot (loaded into `transformedBody`) — don't re-transform it.
+      # Default OFF: the slot is never loaded (see loadSymFromCursor), so
+      # `transformedBody` is nil here and we always re-derive below. See
+      # doc/ic_backend_simplify.md §6a/§6b.
+      if icReuseSemLowering(g.config) and s.transformedBody != nil: continue
       # A routine serialized as a forward-decl + impl pair (writeSymDef's
       # "separate forward declaration and implementation") loads as TWO syms; the
       # impl `s` we transform here can carry body entities (`result`, locals,
@@ -469,9 +508,19 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       # Retain the transformed body on the sym so `writeSymDef` serializes it in
       # the routine's `(sd)` 2-way-body slot.
       s.transformedBody = transformBody(g, tb.idgen, s, {})
-      # Cache the lifted body on nested ccClosure routines too, so a module-indexed
-      # nested closure serializes its lifted (capture-rewritten) body.
-      var seenNested = initIntSet()
+      # Run the destructor injection HERE so the `.t.bif` body is FULLY lowered:
+      # `injectDestructorCalls` is demand-driven (it decides where destructors go
+      # by move analysis) and LIFTS the type-bound ops it needs (e.g. a nested
+      # closure env's `=destroy`) into `g.opsLog` — which the `hooks` collection
+      # below then serializes. Done in `cg` instead, those ops were lifted per-cg
+      # process, owned by nobody, and emitted as a prototype-only → undefined at
+      # link (the `eqdestroy__c<n>` gap). cg must NOT re-inject a loaded body
+      # (see genProcLvl3's `wasLoaded` gate) so this stays the single injection.
+      if sfInjectDestructors in s.flags:
+        s.transformedBody = injectDestructorCalls(g, tb.idgen, s, s.transformedBody)
+      # Cache the lifted+injected body on nested ccClosure routines too, so a
+      # module-indexed nested closure serializes its lifted (capture-rewritten,
+      # destructor-injected) body.
       setNestedClosureBodies(g, tb.idgen, s.transformedBody, s, seenNested)
   # Collect the hooks this stage lifted, and transform each hook ROUTINE's body
   # too (it is itself lowered into NIFC). The hooks' `(sd)` + transformed body go
@@ -487,14 +536,18 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       hooks.add e
       # Transform the hook routine's body and cache it on the sym so `writeSymDef`
       # serializes it in the hook's `(sd)` transformed-body slot (`transformBody
-      # {}` returns the body but does not cache it).
+      # {}` returns the body but does not cache it). Inject the hook's own
+      # destructors here too (it can destroy fields/temporaries) so cg loads a
+      # fully-lowered hook and never re-injects.
       e.sym.transformedBody = transformBody(g, tb.idgen, e.sym, {})
+      if sfInjectDestructors in e.sym.flags:
+        e.sym.transformedBody = injectDestructorCalls(g, tb.idgen, e.sym, e.sym.transformedBody)
     inc i
   # Re-serialize the whole module to its suffix-based `.t.nif` (the path
   # `toNifFilename` resolves for the cg/emit stages). `writeLoweredModule` seals
   # routines itself.
   let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
-  let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.nif").string
+  let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.bif").string
   writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icLower] " & extractFilename(wholeArtifact) & " " &
