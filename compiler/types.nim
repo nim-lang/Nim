@@ -633,6 +633,31 @@ proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
     let first = firstOrd(conf, t)
     result = last - first + One
 
+const broadcastArrayThreshold* = 32
+  ## `getNullValue` represents the default of an `array[N, T]` with `N` above this
+  ## as a single *broadcast* element — a one-son `nkBracket` standing for `N`
+  ## identical zero copies — instead of materialising `N` zero nodes. This keeps
+  ## huge zeroed arrays (e.g. SSZ byte buffers in nimbus) compact in the IC caches
+  ## (`.s.bif`/`.t.bif`), in the VM, and in the generated C (`{0}` zero-fills).
+
+proc isDefaultBroadcastArray*(n: PNode; conf: ConfigRef): bool =
+  ## True iff `n` is a broadcast default array: one son that stands for
+  ## `lengthOrd` identical copies. A normal post-sem array literal always has
+  ## exactly `lengthOrd` sons, so `len == 1 < lengthOrd` is an unambiguous marker.
+  result = n != nil and n.kind == nkBracket and n.len == 1 and n.typ != nil and
+           n.typ.skipTypes(abstractInst).kind == tyArray and
+           lengthOrd(conf, n.typ.skipTypes(abstractInst)) > One
+
+proc expandBroadcastArray*(n: PNode; conf: ConfigRef) =
+  ## Materialise a broadcast default array (see `isDefaultBroadcastArray`) into a
+  ## full `lengthOrd`-son `nkBracket`, each son a copy of the single default
+  ## element. Used by VM ops that index-address, mutate, or measure such a node;
+  ## the common read-only paths leave it compact.
+  if isDefaultBroadcastArray(n, conf):
+    let total = toInt(lengthOrd(conf, n.typ.skipTypes(abstractInst)))
+    let elem = n[0]
+    for i in 1 ..< total: n.add copyTree(elem)
+
 # -------------- type equality -----------------------------------------------
 
 type
