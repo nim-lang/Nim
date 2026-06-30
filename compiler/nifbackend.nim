@@ -198,8 +198,16 @@ proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
   {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
   s.typ != nil and not signatureHasMetaType(s.typ) and
   s.ast != nil and s.ast.safeLen > bodyPos and
-  s.ast[genericParamsPos].kind == nkEmpty and
-  s.ast[bodyPos].kind != nkEmpty
+  s.ast[genericParamsPos].kind == nkEmpty
+  # NOTE: an `nkEmpty` body is NOT a disqualifier. A concrete, owned, non-
+  # forward/-importc/-magic routine whose body folds to nothing is still a real
+  # definition the owner must emit (`void f(void){}`), exactly as whole-program
+  # cgen does — else a cross-module caller links to nothing. This bites e.g.
+  # Nimbus' `extras.incInternalErrors`, a plain `proc` whose sole statement is a
+  # metrics-counter `.inc()` that the `metrics` library expands to a no-op when
+  # the importing tool (ncli) builds with `-u:metrics`; the body is then a bare
+  # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
+  # (the other empty-body case) carry `sfForward` and are excluded above.
 
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
