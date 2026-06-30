@@ -8,12 +8,16 @@ from std/httpcore import HttpMethod
 from std/jsffi import JsObject
 
 type
+  AbortSignal* {.importjs: "AbortSignal".} = object
+  AbortController* {.importjs: "AbortController".} = object
+
   FetchOptions* = ref object of JsRoot ## Options for Fetch API.
     keepalive*: bool
     metod* {.importjs: "method".}: cstring
     body*, integrity*, referrer*, mode*, credentials*, cache*, redirect*,
       referrerPolicy*: cstring
     headers*: Headers
+    signal*: AbortSignal
 
   FetchModes* = enum ## Mode options.
     fmCors = "cors"
@@ -93,9 +97,10 @@ proc unsafeNewFetchOptions*(
   referrer = "client".cstring,
   integrity = "".cstring,
   headers: Headers = newHeaders(),
+  signal: AbortSignal = nil,
 ): FetchOptions {.
   importjs:
-    "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #, headers: #}"
+    "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #, headers: #, signal: #}"
 .} ## .. warning:: Unsafe `newfetchOptions`.
 
 func newfetchOptions*(
@@ -110,6 +115,7 @@ func newfetchOptions*(
     referrer = "client".cstring,
     integrity = "".cstring,
     headers: Headers = newHeaders(),
+    signal: AbortSignal = nil,
 ): FetchOptions =
   ## Constructor for `FetchOptions`.
   result = FetchOptions(
@@ -123,16 +129,19 @@ func newfetchOptions*(
     referrer: referrer,
     integrity: integrity,
     headers: headers,
-    # metod: (case metod
-    #   of HttpHead:   "HEAD".cstring
-    #   of HttpGet:    "GET".cstring
-    #   of HttpPost:   "POST".cstring
-    #   of HttpPut:    "PUT".cstring
-    #   of HttpDelete: "DELETE".cstring
-    #   of HttpPatch:  "PATCH".cstring
-    #   else:          "GET".cstring
-    # )
-    metod: $metod
+    metod: (
+      case metod
+      of HttpHead: "HEAD".cstring
+      of HttpGet: "GET".cstring
+      of HttpPost: "POST".cstring
+      of HttpPut: "PUT".cstring
+      of HttpDelete: "DELETE".cstring
+      of HttpPatch: "PATCH".cstring
+      of HttpTrace: "TRACE".cstring
+      of HttpOptions: "OPTIONS".cstring
+      of HttpConnect: "CONNECT".cstring
+    ),
+    signal: signal,
   )
 
 proc fetch*(url: cstring | Request): Future[Response] {.importjs: "$1(#)".}
