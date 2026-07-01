@@ -819,7 +819,11 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
         let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
-        if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
+        # Under `nim ic`, object fields are local NIF syms restored without an
+        # `owner`; `rectype` is the owning record type, so fall back to it rather
+        # than deref a nil `field.owner`.
+        let ownerTyp = if field.owner != nil: field.owner.typ else: rectype
+        if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, ownerTyp)):
           var didGenTemp = false
           initializer = genCppInitializer(m, nil, fieldType, didGenTemp)
       result.addField(field, sname, typ, isFlexArray, initializer)

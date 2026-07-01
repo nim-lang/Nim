@@ -2029,8 +2029,16 @@ proc getNullValue(c: PCtx; typ: PType, info: TLineInfo; conf: ConfigRef): PNode 
     getNullValueAux(c, t, t.n, result, conf, currPosition)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in 0..<toInt(lengthOrd(conf, t)):
+    let n = toInt(lengthOrd(conf, t))
+    if n > 0:
       result.add getNullValue(c, elemType(t), info, conf)
+      # For a large array, keep a single broadcast element (the default of every
+      # slot is identical) instead of `n` copies; `isDefaultBroadcastArray`
+      # consumers expand on demand. Small arrays stay fully materialised so the
+      # well-trodden paths are untouched. See `broadcastArrayThreshold`.
+      if n <= broadcastArrayThreshold:
+        for i in 1..<n:
+          result.add getNullValue(c, elemType(t), info, conf)
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
     for a in t.kids:

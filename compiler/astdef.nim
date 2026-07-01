@@ -339,6 +339,9 @@ type
                       # because openSym experimental switch is disabled
                       # gives warning instead
     nfLazyType  # node has a lazy type
+    nfLazyBody  # IC: this node is a placeholder for a routine body (bodyPos son)
+                # not yet materialized. Reading its children (via `len`/`safeLen`)
+                # triggers `forceLazyBodyHook`. Process-local, stripped on serialize.
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -903,7 +906,15 @@ const
   defaultOffset* = -1
 
 
+var forceLazyBodyHook*: proc (n: PNode) {.nimcall.}
+  ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
+  ## to its children through `len` materializes the deferred routine body in place.
+  ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
+  ## never a leaf kind, so the `{nkNone..nkNilLit}` short-circuit never hides it.
+
 proc len*(n: PNode): int {.inline.} =
+  if nfLazyBody in n.flags and forceLazyBodyHook != nil:
+    forceLazyBodyHook(n)
   result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =

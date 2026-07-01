@@ -11,8 +11,10 @@
 
 import std / [assertions, tables, sets]
 from std / strutils import startsWith, endsWith, contains
-from std / os import fileExists, dirExists, walkFiles
-from std / syncio import readFile
+from std / os import fileExists, dirExists, walkFiles, existsEnv,
+  commandLineParams, getCurrentProcessId
+from std / exitprocs import addExitProc
+from std / syncio import readFile, stderr, writeLine
 from std / algorithm import sort
 import "../dist/checksums/src/checksums" / sha1
 import astdef, idents, msgs, options
@@ -912,6 +914,10 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
   if n == nil:
     dest.addDotToken
   else:
+    if nfLazyBody in n.flags and forceLazyBodyHook != nil:
+      # Materialize a deferred body before serializing so its real flags/typ and
+      # children are written (never the empty `nfLazyBody` placeholder).
+      forceLazyBodyHook(n)
     case n.kind
     of nkNone:
       assert n.typField == nil, "nkNone should not have a type"
@@ -1767,8 +1773,18 @@ type
     semIndex: Table[string, NifIndexEntry]
     semTried: bool         # `semBuf`/`semIndex` load attempted (idempotent)
 
+  PendingBody = object
+    ## A deferred routine body (bodyPos son). `cursor` points AT the body node in
+    ## the module buffer (kept alive by the cursor's refcounted owner); `localSyms`
+    ## is the snapshot of the enclosing sym def's local symbols so body-local
+    ## references resolve to the SAME PSyms the signature already created.
+    cursor: Cursor
+    thisModule: string
+    localSyms: Table[string, PSym]
+
   DecodeContext* = object
     infos: LineInfoWriter
+    pendingBodies: Table[int, PendingBody]  # nodeId(placeholder) -> deferred body
     #moduleIds: Table[string, int32]
     types: Table[string, (PType, NifIndexEntry)]
     syms: Table[string, (PSym, NifIndexEntry)]
@@ -1778,10 +1794,59 @@ type
       ## Mangled module name of the module being compiled fresh (cmdM). Symbols
       ## belonging to it that are re-exported by a dependency must NOT be loaded
       ## as stubs, otherwise they collide with the freshly compiled originals.
+    symLoads, typeLoads: CountTable[FileIndex]
+      ## Diagnostics (opt-in via env `NIM_IC_LOADSTATS`): per OWNING-module count
+      ## of stub materializations in THIS process. Quantifies the "every backend
+      ## worker deserializes system.bif + a bunch of others" cost — breadth (how
+      ## many syms) attributed to duplication axis (which shared module).
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
   result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+
+var loadStatsInit {.threadvar.}: int          # 0=unknown 1=on 2=off
+var statsCtxPtr {.threadvar.}: ptr DecodeContext
+var loaderCtx {.threadvar.}: ptr DecodeContext  # the live `program`; for lazy-body
+                                                # materialization off the len hook
+var nodesDecoded {.threadvar.}: int           # all PNodes materialized this proc
+var astFieldNodes {.threadvar.}: int          # subset: routine-body (s.ast) subtrees
+
+proc dumpLoadStatsExit() {.noconv.} =
+  if statsCtxPtr == nil: return
+  let c = statsCtxPtr
+  var merged = initTable[FileIndex, array[2, int]]()
+  for m, cnt in c.symLoads.pairs: merged.mgetOrPut(m, [0, 0])[0] = cnt
+  for m, cnt in c.typeLoads.pairs: merged.mgetOrPut(m, [0, 0])[1] = cnt
+  var order: seq[FileIndex] = @[]
+  var totS, totT: int = 0
+  for m, a in merged:
+    order.add m
+    totS += a[0]; totT += a[1]
+  sort(order, proc (a, b: FileIndex): int =
+    (merged[b][0] + merged[b][1]) - (merged[a][0] + merged[a][1]))
+  let params = commandLineParams()
+  let target = if params.len > 0: params[^1] else: "?"
+  stderr.writeLine "=== IC loadstats pid=" & $getCurrentProcessId() &
+    " main=" & c.mainModuleSuffix & " target=" & target & " ==="
+  stderr.writeLine "  TOTAL symLoads=" & $totS & " typeLoads=" & $totT &
+    " modulesTouched=" & $order.len
+  let pct = if nodesDecoded > 0: 100 * astFieldNodes div nodesDecoded else: 0
+  stderr.writeLine "  PNODES decoded=" & $nodesDecoded & " routineBody=" &
+    $astFieldNodes & " (" & $pct & "% deferrable via lazy PSym.ast)"
+  for m in order:
+    let a = merged[m]
+    let name = if c.mods.hasKey(m): c.mods[m].suffix else: "?"
+    stderr.writeLine "  " & $(a[0] + a[1]) & "\tsym=" & $a[0] & " typ=" & $a[1] &
+      "\t" & name
+
+proc recordLoad(c: var DecodeContext; m: FileIndex; isType: bool) =
+  if loadStatsInit == 0:
+    loadStatsInit = if existsEnv("NIM_IC_LOADSTATS"): 1 else: 2
+    if loadStatsInit == 1:
+      statsCtxPtr = addr c
+      addExitProc(dumpLoadStatsExit)
+  if loadStatsInit == 2: return
+  if isType: c.typeLoads.inc(m) else: c.symLoads.inc(m)
 
 proc nextBackendSymItem*(c: var DecodeContext; module: int32): int32 =
   ## Allocate the next backend-minted SYM item for `module` from the SAME
@@ -2317,6 +2382,7 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.state != Partial: return
   t.state = c.loadedState
+  recordLoad(c, t.itemId.module.FileIndex, isType = true)
   # A backend-minted (`@bk`) closure-env type produced by the `lower` stage lives
   # ONLY in the `.t.nif` and is keyed by its `@bk` name (see nifTypeName), not the
   # canonical `typeToNifSym` (which asserts non-`@bk`). Reconstruct that name so a
@@ -2410,7 +2476,10 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
     s.ownerFieldImpl = loadSymStub(c, n, thisModule, localSyms)
     # Load the AST for routine symbols and constants
     # Constants need their AST for astdef() to return the constant's value
+    let astNodesBefore = nodesDecoded
     s.astImpl = loadNode(c, n, thisModule, localSyms)
+    if loadStatsInit == 1 and s.kindImpl in routineKinds:
+      astFieldNodes += nodesDecoded - astNodesBefore
     loadLoc c, n, s.locImpl
     s.constraintImpl = loadNode(c, n, thisModule, localSyms)
     s.instantiatedFromImpl = loadSymStub(c, n, thisModule, localSyms)
@@ -2437,6 +2506,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
 proc loadSym*(c: var DecodeContext; s: PSym) =
   if s.state != Partial: return
   s.state = c.loadedState
+  if loaderCtx == nil: loaderCtx = addr c
+  recordLoad(c, s.itemId.module.FileIndex, isType = false)
   let symsModule = s.itemId.module.FileIndex
   let nifname = globalName(s, c.infos.config)
   var n = cursorFromIndexEntry(c, symsModule, c.syms[nifname][1])
@@ -2489,6 +2560,7 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
 
 proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
               localSyms: var Table[string, PSym]): PNode =
+  if loadStatsInit == 1: inc nodesDecoded
   result = nil
   case n.kind
   of Symbol:
@@ -2677,12 +2749,53 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
     of nkNilLit:
       c.withNode n, result, kind:
         discard
+    of routineDefs:
+      # Defer the heavy `bodyPos` son: build the routine-def header eagerly, but
+      # install a `nfLazyBody` placeholder (carrying the real body kind, so cheap
+      # `ast[bodyPos].kind != nkEmpty` checks need no load) whose children are
+      # materialized on demand (see `materializeLazyBody`, driven by the `len`
+      # hook). An empty body is a single node — not worth deferring.
+      c.withNode n, result, kind:
+        var idx = 0
+        while n.hasMore:
+          if idx == bodyPos and n.kind == TagLit and
+             n.nodeKind notin {nkEmpty, nkNone}:
+            let info = c.infos.oldLineInfo(n.info, cursorPool(n))
+            let ph = newNodeI(n.nodeKind, info)
+            ph.flags.incl nfLazyBody
+            c.pendingBodies[cast[int](ph)] =
+              PendingBody(cursor: n, thisModule: thisModule, localSyms: localSyms)
+            result.sons.add ph
+            skip n
+          else:
+            result.sons.add c.loadNode(n, thisModule, localSyms)
+          inc idx
     else:
       c.withNode n, result, kind:
         while n.hasMore:
           result.sons.add c.loadNode(n, thisModule, localSyms)
   else:
     raiseAssert "expected string literal but got " & $n.kind
+
+proc materializeLazyBody*(c: var DecodeContext; node: PNode) =
+  ## Fill a `nfLazyBody` placeholder's children in place (identity-preserving:
+  ## callers already hold `node`). Decodes the deferred body from the stashed
+  ## cursor with the enclosing def's `localSyms` so param/local refs resolve to
+  ## the SAME PSyms the signature created.
+  node.flags.excl nfLazyBody   # clear first: the loadNode below calls `len`
+  let key = cast[int](node)
+  var pb = PendingBody()
+  if not c.pendingBodies.pop(key, pb): return
+  var cur = pb.cursor
+  let real = c.loadNode(cur, pb.thisModule, pb.localSyms)
+  # `real` has the same kind as the placeholder (peeked at defer time); graft its
+  # decoded content onto the node the callers hold.
+  node.sons = real.sons
+  node.typField = real.typField
+  node.flags = real.flags
+
+forceLazyBodyHook = proc (n: PNode) {.nimcall.} =
+  if loaderCtx != nil: materializeLazyBody(loaderCtx[], n)
 
 proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
                            nifName: string; entry: NifIndexEntry; thisModule: string): PSym =

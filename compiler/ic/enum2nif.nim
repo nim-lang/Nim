@@ -1473,6 +1473,7 @@ proc genFlags*(s: set[TNodeFlag]; dest: var string) =
     of nfSkipFieldChecking: dest.add "s0"
     of nfDisabledOpenSym: dest.add "d3"
     of nfLazyType: dest.add "l1"
+    of nfLazyBody: discard  # process-local placeholder; never serialized
 
 
 proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =

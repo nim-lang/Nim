@@ -3957,6 +3957,13 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder)
     let elemTyp = skipTypes(t.elementType, abstractRange+{tyOwned}-{tyTypeDesc})
     if isOpaqueImportcType(elemTyp):
       result.add "{0}"
+    elif toInt(lengthOrd(p.config, t.indexType)) > broadcastArrayThreshold and
+        elemTyp.kind in {tyInt..tyUInt64, tyBool, tyChar, tyFloat..tyFloat128,
+                         tyPtr, tyPointer, tyCstring}:
+      # Large array of a scalar whose default is the zero representation: a single
+      # C `{0}` zero-fills all `lengthOrd` slots instead of emitting that many
+      # initializers (keeps huge SSZ-style zero buffers compact in the C output).
+      result.add "{0}"
     else:
       var arrInit: StructInitializer
       result.addStructInitializer(arrInit, kind = siArray):
@@ -4243,7 +4250,13 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
         var d: TLoc = initLocExpr(p, n)
         result.add rdLoc(d)
     of tyArray, tyVarargs:
-      genConstSimpleList(p, n, isConst, result)
+      if isDefaultBroadcastArray(n, p.config):
+        # Compact zero/null-default array (see `isDefaultBroadcastArray`): the
+        # whole thing is the null value of every slot, so a single C `{0}`
+        # zero-fills all `lengthOrd` elements — no need to materialise them.
+        result.add "{0}"
+      else:
+        genConstSimpleList(p, n, isConst, result)
     of tyTuple:
       genConstTuple(p, n, isConst, typ, result)
     of tyOpenArray:
