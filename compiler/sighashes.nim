@@ -10,6 +10,7 @@
 ## Computes hash values for routine (proc, method etc) signatures.
 
 import ast, ropes, modulegraphs, options, msgs, pathutils
+from lineinfos import FileIndex
 from std/hashes import Hash
 import std/tables
 import types
@@ -74,7 +75,19 @@ proc hashTypeSym(c: var MD5Context, s: PSym; conf: ConfigRef) =
     c &= ":anon"
   else:
     var it = s
-    c &= customPath(conf.toFullPath(s.info))
+    # The source file path disambiguates same-named object types from different
+    # modules whose owner-chain names also coincide (e.g. libp2p kademlia/protobuf
+    # `Message` vs rendezvous/protobuf `Message`, both modules named `protobuf`).
+    # A type sym that reaches the backend as a `Complete` stub never individually
+    # loaded carries `unknownLineInfo` (fileIndex -1), which `toFullPath` collapses
+    # to the `???` placeholder — so the two would hash to ONE mangled C name and the
+    # wrong struct gets emitted. Fall back to the sym's HOME module file (its
+    # per-module NIF-suffix path, stable+unique) for the path. Only fires on a -1
+    # fileIndex; non-IC type syms always have a real `info`, so the fast path is
+    # taken and the hash is unchanged (koch boot byte-equal).
+    let infoFi = s.info.fileIndex
+    let pathFi = if infoFi.int32 >= 0'i32: infoFi else: s.itemId.module.int32.FileIndex
+    c &= customPath(conf.toFullPath(pathFi))
     when defined(icDbgHash):
       var ownerSteps = 0
     while it != nil:
@@ -190,9 +203,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if CoConsiderOwned in flags:
       c &= char(t.kind)
     c.hashType t.skipModifier, flags, conf
-  of tyBool, tyChar, tyInt..tyUInt64:
-    # no canonicalization for integral types, so that e.g. ``pid_t`` is
-    # produced instead of ``NI``:
+  of tyBool, tyChar, tyPointer, tyCstring, tyInt..tyUInt64:
+    # no canonicalization for builtin scalar-ish / pointer-like types, so
+    # that e.g. ``pid_t`` or an imported ``pointer`` alias keep their
+    # backend spelling instead of collapsing into the generic Nim builtin:
     c &= char(t.kind)
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
@@ -533,4 +547,3 @@ proc idOrSig*(s: PSym, currentModule: string,
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)
-

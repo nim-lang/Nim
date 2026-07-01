@@ -22,6 +22,14 @@ const
 
 import std/compilesettings
 
+# nimsuggest's incremental (NIF/IC) mode is opt-in via `--ideImports:nif`. By default
+# nimsuggest recompiles the import closure from source (cmdCheck), which is fast and
+# stable, so the whole suite runs that path. Only the tests listed below exercise the
+# IC path; running every test under IC dominated the suite's wall-clock (each test
+# recompiles `system` cold into NIF, plus a few warm-cache-only ordering/highlight
+# quirks) and blew CI's job timeout.
+const icTests = ["tic.nim", "tv3_import.nim"]
+
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = "bin" / addFileExt("nimsuggest_testing", ExeExt)
@@ -74,6 +82,14 @@ proc parseTest(filename: string; epcMode=false): Test =
         # else: ignore empty lines for better readability of the specs
     inc i
   tmp.close()
+  # The IC tests opt into the NIF path and get their own private cache. The stdio
+  # variant (epcMode=false) starts cold and writes the NIFs; the EPC variant reuses
+  # them warm, so a single test exercises both the NIF write and the NIF read path.
+  if extractFilename(filename) in icTests:
+    let nimcache = getTempDir() / ("nimsuggest_ic_" &
+      extractFilename(result.dest).changeFileExt(""))
+    if not epcMode: removeDir(nimcache)
+    result.cmd.add " --ideImports:nif --nimcache:" & nimcache
   # now that we know the markers, substitute them:
   for a in mitems(result.script):
     a[0] = a[0] % markers

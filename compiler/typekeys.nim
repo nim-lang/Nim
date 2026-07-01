@@ -139,6 +139,25 @@ proc maybeImported(c: var Context; s: PSym; conf: ConfigRef) {.inline.} =
   if s != nil and {sfImportc, sfExportc} * s.flagsImpl != {}:
     c.symKey(s, conf)
 
+proc backendTypeName(t: PType; conf: ConfigRef): string =
+  ## Stable cross-module identity of a backend-minted (lower-stage) type: its
+  ## serialized `@bk` NIF name (mirrors ast2nif.nifTypeName). A closure-env
+  ## object/ref minted by the `lower` stage has NO stable STRUCTURAL key — its
+  ## captured-field types re-resolve to different modules in the producing vs the
+  ## consuming process (e.g. field `x0` → `int` in the producer, → the consumer's
+  ## alias in the consumer) — but this name (kind + item + home-module suffix) is
+  ## identical in both, because the consumer loads the producer's name verbatim.
+  ## Keying hooks by it makes producer `setAttachedOp` and consumer `getAttachedOp`
+  ## agree. The trailing `@bk` (= ast2nif.BackendLocalMarker) keeps it disjoint
+  ## from any normal type's structural key.
+  result = "`t"
+  result.addInt ord(t.kind)
+  result.add '.'
+  result.addInt t.uniqueId.item
+  result.add '.'
+  result.add modname(t.uniqueId.module, conf)
+  result.add "@bk"
+
 proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
     c.m.addEmpty()
@@ -147,6 +166,14 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
   if t.state == Partial:
     assert c.tl != nil
     c.tl(t)
+
+  if t.uniqueId.isBackendMinted:
+    # Backend-minted (lower-stage) closure-env types key by their stable NIF name,
+    # never by structure (which diverges across the NIF boundary). An env `ref`
+    # that is itself NOT backend-minted still keys stably: it recurses here and
+    # reaches its `@bk` object, which short-circuits to a stable name.
+    c.m.addSymbol backendTypeName(t, conf)
+    return
 
   case t.kind
   of tyGenericInvocation:

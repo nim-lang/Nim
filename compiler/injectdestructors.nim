@@ -245,6 +245,18 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
+  if op == nil or op.ast.isGenericRoutine:
+    # IC: injectDestructorCalls is demand-driven and runs HERE (cg), not in the
+    # `lower` stage, so a structural, env-agnostic op the lower stage never had
+    # reason to serialize — most often a closure PROC type's `=destroy`/`=sink`
+    # (which act on the `(ClP_0, ClE_0)` tuple, NOT the concrete env) — must be
+    # lifted on demand, exactly as the lazy path's cg does. This is safe now:
+    # closure-env identity resolves via `attachedOps[itemId]`/env-erased typeKey,
+    # env objects load complete, and atomicRefOp's type-erased path covers any
+    # still-incomplete env (so the lift never walks a nil field).
+    excl t.flagsImpl, tfCheckedForDestructor
+    createTypeBoundOps(c.graph, nil, t, dest.info, c.idgen)
+    op = getAttachedOp(c.graph, t, kind)
   if op == nil:
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &

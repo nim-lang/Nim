@@ -531,7 +531,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "using")
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -838,7 +838,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -994,7 +994,7 @@ proc semConst(c: PContext, n: PNode): PNode =
   var b: PNode
   for i in 0..<n.len:
     var a = n[i]
-    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.ideActive: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkConstDef, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -1535,7 +1535,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   while i < n.len: # n may grow due to type pragma macros
     var a = n[i]
     when defined(nimsuggest):
-      if c.config.cmd == cmdIdeTools:
+      if c.config.ideActive:
         inc c.inTypeContext
         suggestStmt(c, a)
         dec c.inTypeContext
@@ -1812,7 +1812,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   var remainingOwners = initIntSet()
   for (owner, _, _) in c.forwardTypeUpdates:
     remainingOwners.incl owner.id
-  
+
   while c.forwardTypeUpdates.len > 0:
     let pending = move c.forwardTypeUpdates
     var madeProgress = false
@@ -1829,7 +1829,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         c.forwardTypeUpdates.add (owner, typ, typeNode)
       elif not remainingOwners.missingOrExcl(owner.id):
         madeProgress = true
-    
+
     if not madeProgress:
       # can't error here unfortunately
       break
@@ -2621,6 +2621,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
     proto.options = s.options
+    # `s` (the impl symbol) is discarded in favour of `proto`. It still carries
+    # `s.ast == n` (set above) and stays reachable as the owner of body-local
+    # symbols, so under IC it would be serialized as a SECOND, body-bearing
+    # `proc` entry — a phantom duplicate of `proto`. The per-module backend then
+    # codegens that phantom, whose `result` is owned by `proto` (addResult below
+    # re-parents it), not by the phantom: lambdalifting's capture check
+    # (`result.skipGenericOwner != owner`) then wrongly classifies `result` as a
+    # captured outer variable → "'result' … cannot be captured". Drop the
+    # discarded impl's body so it can never be emitted as a routine (same leak
+    # class the `miscPos` adoption below guards against for generic params).
+    let discardedImpl = s
     s = proto
     n[genericParamsPos] = proto.ast[genericParamsPos]
     n[paramsPos] = proto.ast[paramsPos]
@@ -2638,6 +2649,19 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if importantComments(c.config) and proto.ast.comment.len > 0:
       n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
+    if discardedImpl != proto:
+      discardedImpl.ast = nil
+      # The impl symbol is discarded in favour of `proto`, but it stays `Complete`
+      # in this module, so `ast2nif.shouldWriteSymDef` still serializes it. With
+      # `sfExported` it would be written importable (`x` marker) and an importer
+      # would load BOTH it and `proto` into the overload set: "ambiguous call;
+      # both foo and foo" (identical signatures). Normally a discarded impl is a
+      # gensym/transient that isn't reached this way, but a `{.async: (raises).}`
+      # forward-decl + impl reconciles HERE with both syms exported. Strip the
+      # export so the design's "forward declarations are never importable" holds —
+      # the def still serializes (other refs may resolve to it) but is invisible
+      # to importer overload resolution; `proto` carries the export.
+      excl(discardedImpl, sfExported)
     popOwner(c)
     pushOwner(c, s)
 
@@ -2868,7 +2892,7 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult, resolvedIncStmt
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   var resolvedIncStmt: PNode = nil
-  if optCompress in c.config.globalOptions:
+  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
     # New resolve the include filenames to string literals that contain absolute paths,
     # nicer for IC:
     resolvedIncStmt = newNodeI(nkIncludeStmt, n.info)

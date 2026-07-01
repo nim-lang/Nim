@@ -35,7 +35,7 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 import compiler / [options, commands, modules,
-  passes, passaux, msgs,
+  passes, passaux, msgs, pipelines,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils, condsyms, syntaxes, suggestsymdb]
@@ -261,6 +261,14 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
   var isKnownFile = true
   let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
 
+  # Cold-opened include file: nothing has been compiled/loaded yet, so its
+  # includer is unknown. Scan the nimcache NIFs for the module that `include`s
+  # this exact file and register that one edge; `parentModule(dirtyIdx)` then
+  # resolves to the includer, which we (re)compile below.
+  if conf.ideImportsFromNif and graph.needsIncludeScan(dirtyIdx):
+    discard graph.registerIncluderFromNif(dirtyIdx)
+  let isInclude = graph.inclToMod.hasKey(dirtyIdx)
+
   if not dirtyfile.isEmpty: msgs.setDirtyFile(conf, dirtyIdx, dirtyfile)
   else: msgs.setDirtyFile(conf, dirtyIdx, AbsoluteFile"")
 
@@ -269,9 +277,9 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
   conf.errorCounter = 0
   if conf.suggestVersion == 1:
     graph.usageSym = nil
-  if not isKnownFile:
+  if not isKnownFile and not isInclude:
     graph.clearInstCache(dirtyIdx)
-    graph.compileProject(dirtyIdx)
+    graph.compilePipelineProject(dirtyIdx)
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
     discard "no need to recompile anything"
@@ -279,10 +287,19 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
     let modIdx = graph.parentModule(dirtyIdx)
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
+    # For an include-file query the includer must be re-sem'd so the include body
+    # (where trackPos sits) is re-checked. An already-loaded includer is only
+    # recompiled when dirty (pipelines.compilePipelineModule), and the include
+    # edge isn't always in `g.deps` for markClientsDirty to catch (notably on the
+    # EPC path), so mark the includer dirty explicitly.
+    if isInclude:
+      graph.markDirty modIdx
     if conf.ideCmd != ideMod:
-      if isKnownFile:
+      # `isInclude`: a freshly discovered include file is not "known" yet, but we
+      # still must (source-)compile its includer to serve the query.
+      if isKnownFile or isInclude:
         graph.clearInstCache(modIdx)
-        graph.compileProject(modIdx)
+        graph.compilePipelineProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:
@@ -577,7 +594,7 @@ proc recompileFullProject(graph: ModuleGraph) =
     graph.vm = nil
     graph.resetAllModules()
     GC_fullCollect()
-    graph.compileProject()
+    graph.compilePipelineProject()
 
 proc mainThread(graph: ModuleGraph) =
   let conf = graph.config
@@ -621,10 +638,14 @@ var
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
-  clearPasses(graph)
-  registerPass graph, verbosePass
-  registerPass graph, semPass
-  conf.setCmd cmdIdeTools
+  # Use the pipeline driver (same as `nim check`): it is where IC/NIF loading
+  # and emission live. The legacy `passes.compileProject` path has no NIF support.
+  setPipeLinePass(graph, SemPass)
+  # cmdM loads the unchanged import closure from precompiled NIF; cmdCheck
+  # recompiles everything from source. `ideActive` keeps suggestion collection
+  # and error-resilience regardless of which mode we run under.
+  conf.setCmd(if conf.ideImportsFromNif: cmdM else: cmdCheck)
+  conf.ideActive = true
   defineSymbol(conf.symbols, $conf.backend)
   wantMainModule(conf)
 
@@ -646,7 +667,7 @@ proc mainCommand(graph: ModuleGraph) =
   # compile the project before showing any input so that we already
   # can answer questions right away:
   benchmark "Initial compilation":
-    compileProject(graph)
+    compilePipelineProject(graph)
 
   open(requests)
   open(results)
@@ -798,7 +819,7 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
 
   try:
     benchmark "Recompilation":
-      graph.compileProject(projectFileIdx)
+      graph.compilePipelineProject(projectFileIdx)
   except Exception as e:
     myLog fmt "Failed to recompile partially with the following error:\n {e.msg} \n\n {e.getStackTrace()}"
     try:
@@ -1078,9 +1099,22 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   myLog fmt "cmd: {cmd}, file: {file}[{line}:{col}], dirtyFile: {dirtyfile}, tag: {tag}"
 
   var fileIndex: FileIndex = default(FileIndex)
+  # The module to (re)compile for this query. For a normal file it is the file
+  # itself; for an `include` file it is the module that includes it — the include
+  # body is only sem'd as part of its includer, and the includer compiles as the
+  # main module (source, never NIF-loaded), so the include statements at the
+  # cursor get re-checked. The query position stays in the include file.
+  var moduleToCompile: FileIndex = default(FileIndex)
+  var isIncludeQuery = false
 
   if not (cmd in {ideRecompile, ideGlobalSymbols}):
     fileIndex = fileInfoIdx(conf, file)
+    # Discover an include file's includer from the NIF include graph (cold query)
+    # so `parentModule` can map it; see registerIncluderFromNif.
+    if conf.ideImportsFromNif and graph.needsIncludeScan(fileIndex):
+      discard graph.registerIncluderFromNif(fileIndex)
+    isIncludeQuery = graph.inclToMod.hasKey(fileIndex)
+    moduleToCompile = if isIncludeQuery: graph.parentModule(fileIndex) else: fileIndex
     msgs.setDirtyFile(
       conf,
       fileIndex,
@@ -1100,14 +1134,20 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   # these commands require partially compiled project
   elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon}):
+       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon} or isIncludeQuery):
     # for ideSug use v2 implementation
     if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
       conf.m.trackPosAttached = false
     else:
       conf.m.trackPos = default(TLineInfo)
-      graph.recompilePartially(fileIndex)
+      # An include file's includer must be (re)compiled from source so the
+      # include body is re-sem'd; force it dirty since the include file itself
+      # is not a module the dirty machinery tracks.
+      if isIncludeQuery:
+        graph.markDirty moduleToCompile
+        graph.markClientsDirty moduleToCompile
+      graph.recompilePartially(moduleToCompile)
 
   case cmd
   of ideDef:
@@ -1149,11 +1189,15 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     graph.markDirtyIfNeeded(file.string, fileIndex)
   of ideSug, ideCon:
     # ideSug/ideCon performs partial build of the file, thus mark it dirty for the
-    # future calls.
+    # future calls. For an include file, drive everything off its includer module
+    # (the include file has no module of its own — getModule would be nil).
     graph.markDirtyIfNeeded(file.string, fileIndex)
-    graph.recompilePartially(fileIndex)
-    let m = graph.getModule fileIndex
-    incl m, sfDirty
+    if isIncludeQuery:
+      graph.markClientsDirty fileIndex
+    graph.recompilePartially(moduleToCompile)
+    let m = graph.getModule moduleToCompile
+    if m != nil:
+      incl m, sfDirty
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))
@@ -1311,11 +1355,10 @@ else:
     proc mockCommand(graph: ModuleGraph) =
       retval = graph
       let conf = graph.config
-      conf.setCmd cmdIdeTools
+      conf.setCmd(if conf.ideImportsFromNif: cmdM else: cmdCheck)
+      conf.ideActive = true
       defineSymbol(conf.symbols, $conf.backend)
-      clearPasses(graph)
-      registerPass graph, verbosePass
-      registerPass graph, semPass
+      setPipeLinePass(graph, SemPass)
 
       wantMainModule(conf)
 
@@ -1331,7 +1374,7 @@ else:
 
       # compile the project before showing any input so that we already
       # can answer questions right away:
-      compileProject(graph)
+      compilePipelineProject(graph)
 
 
     proc mockCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
