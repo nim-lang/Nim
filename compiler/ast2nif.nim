@@ -2092,6 +2092,42 @@ proc reconstructSysType(c: var DecodeContext; name: string; k: int; itemVal: int
       result.alignImpl = int16 c.infos.config.target.ptrSize
     c.types[name] = (result, NifIndexEntry())
 
+proc stripBkSuffix(rawMod: string): (bool, string) {.inline.} =
+  ## Split a possibly-`@bk` (BackendLocalMarker) module suffix into
+  ## `(isBackendMinted, realSuffix)`. See `toNifSymName`/`nifTypeName`.
+  if rawMod.endsWith(BackendLocalMarker):
+    (true, rawMod[0 ..< rawMod.len - BackendLocalMarker.len])
+  else:
+    (false, rawMod)
+
+proc nextSymId(c: var DecodeContext; module: FileIndex; isBk: bool): ItemId =
+  ## Mint the next per-module SYM id from `symCounter`: a `backendItemId` for a
+  ## process-local `@bk` sym, else a plain loader `itemId`. Both draw from the one
+  ## counter so loaded and cg-minted backend syms stay disjoint (see
+  ## `nextBackendSymItem`). Types do NOT use this — they preserve the item parsed
+  ## from their own name (see `tryCreateTypeStub`).
+  let val = addr c.mods[module].symCounter
+  inc val[]
+  result = if isBk: backendItemId(module.int32, val[]) else: itemId(module.int32, val[])
+
+proc mintSymId(c: var DecodeContext; rawMod: string): (FileIndex, ItemId) =
+  ## Resolve a possibly-`@bk` module suffix to its FileIndex and mint a fresh sym
+  ## id for it — the common case where the module is not needed before minting
+  ## (see `stripBkSuffix`/`nextSymId`).
+  let (isBk, realMod) = stripBkSuffix(rawMod)
+  let module = moduleId(c, realMod)
+  result = (module, c.nextSymId(module, isBk))
+
+proc makePartialSymStub(c: var DecodeContext; symAsStr: string; sn: ParsedSymName;
+                        id: ItemId; entry: NifIndexEntry): PSym =
+  ## Create + cache (keyed by the NIF name) a `Partial` global-sym stub, lazily
+  ## filled later by `loadSym` from `entry`. `stubKindAndName` strips NIF-only
+  ## markers (e.g. a package's `PkgMarker`) so the backend mangles the clean name.
+  let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
+  result = PSym(itemId: id, kindImpl: stubKind, name: stubName,
+                disamb: sn.count.int32, state: Partial)
+  c.syms[symAsStr] = (result, entry)
+
 proc tryCreateTypeStub(c: var DecodeContext; name: string): PType =
   ## Like `createTypeStub` but returns nil instead of raising when the type has
   ## no offset in its module index (used by the best-effort `(offer …)` loader).
@@ -2114,8 +2150,7 @@ proc tryCreateTypeStub(c: var DecodeContext; name: string): PType =
     let suffix = name.substr(i)
     if suffix == SysModuleSuffix:
       return reconstructSysType(c, name, k, itemVal)
-    let isBk = suffix.endsWith(BackendLocalMarker)
-    let realSuffix = if isBk: suffix[0 ..< suffix.len - BackendLocalMarker.len] else: suffix
+    let (isBk, realSuffix) = stripBkSuffix(suffix)
     let modIdx = moduleId(c, realSuffix).int32
     let id = if isBk: backendItemId(modIdx, itemVal) else: itemId(modIdx, itemVal)
     let modFi = id.module.FileIndex
@@ -2127,34 +2162,12 @@ proc tryCreateTypeStub(c: var DecodeContext; name: string): PType =
     c.types[name] = (result, c.mods[modFi].index.getOrDefault(name))
 
 proc createTypeStub(c: var DecodeContext; name: string): PType =
+  ## As `tryCreateTypeStub`, but a missing index offset is a hard error (the
+  ## caller demanded a definition that must exist).
   assert name.startsWith("`t")
-  result = c.types.getOrDefault(name)[0]
+  result = tryCreateTypeStub(c, name)
   if result == nil:
-    var i = len("`t")
-    var k = 0
-    while i < name.len and name[i] in {'0'..'9'}:
-      k = k * 10 + name[i].ord - ord('0')
-      inc i
-    if i < name.len and name[i] == '.': inc i
-    var itemVal = 0'i32
-    while i < name.len and name[i] in {'0'..'9'}:
-      itemVal = itemVal * 10'i32 + int32(name[i].ord - ord('0'))
-      inc i
-    if i < name.len and name[i] == '.': inc i
-    let suffix = name.substr(i)
-    if suffix == SysModuleSuffix:
-      return reconstructSysType(c, name, k, itemVal)
-    let isBk = suffix.endsWith(BackendLocalMarker)
-    let realSuffix = if isBk: suffix[0 ..< suffix.len - BackendLocalMarker.len] else: suffix
-    let modIdx = moduleId(c, realSuffix).int32
-    let id = if isBk: backendItemId(modIdx, itemVal) else: itemId(modIdx, itemVal)
-    let modFi = id.module.FileIndex
-    if not hasTypeOffset(c, modFi, name):
-      raiseAssert "symbol has no offset: " & name
-    result = PType(itemId: id, uniqueId: id, kind: TTypeKind(k), state: Partial)
-    # `loadType` re-resolves the buffer via `typeCursor`, so the cached entry is a
-    # don't-care for types — store the primary one if any (else a 0-offset stub).
-    c.types[name] = (result, c.mods[modFi].index.getOrDefault(name))
+    raiseAssert "symbol has no offset: " & name
 
 proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: string;
                               localSyms: var Table[string, PSym]) =
@@ -2183,9 +2196,7 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
       # Local symbol - create stub and immediately load it fully
       # since local symbols have no index offsets for lazy loading
       let module = moduleId(c, thisModule)
-      let val = addr c.mods[module].symCounter
-      inc val[]
-      let id = itemId(module.int32, val[])
+      let id = c.nextSymId(module, isBk = false)
       # `stubKindAndName` strips NIF-only markers (e.g. a field's `` `f ``) so the
       # backend mangles the clean name; `loadSymFromCursor` then fills the real kind.
       let (_, stubName) = stubKindAndName(c.cache, sn.name)
@@ -2238,11 +2249,9 @@ proc loadFieldStub(c: var DecodeContext; symAsStr: string; thisModule: string;
   let sn = parseSymName(symAsStr)
   let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
   let module = moduleId(c, thisModule)
-  let val = addr c.mods[module].symCounter
-  inc val[]
   # `sn.count` is the field POSITION (see toNifSymName): tuple element access reads
   # it directly off this stub, so preserve it. Named-object uses re-navigate by name.
-  result = PSym(itemId: itemId(module.int32, val[]), kindImpl: stubKind,
+  result = PSym(itemId: c.nextSymId(module, isBk = false), kindImpl: stubKind,
                 name: stubName, disamb: sn.count.int32, state: Complete)
   result.positionImpl = sn.count.int32
   if typ != nil: result.typImpl = typ
@@ -2267,16 +2276,9 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
   result = c.syms.getOrDefault(symAsStr)[0]
   if result == nil:
     # A process-local backend sym (closure env field / `:env` param) is named
-    # `…<thisModuleSuffix>@bk`: home it to that module with a backendItemId so it
-    # stays disjoint from the loader's real per-module id space (see toNifSymName).
-    let isBk = sn.module.endsWith(BackendLocalMarker)
-    let realMod = if isBk: sn.module[0 ..< sn.module.len - BackendLocalMarker.len]
-                  else: sn.module
-    let module = moduleId(c, realMod)
-    let val = addr c.mods[module].symCounter
-    inc val[]
-    let id = if isBk: backendItemId(module.int32, val[]) else: itemId(module.int32, val[])
-
+    # `…<thisModuleSuffix>@bk`: `mintSymId` homes it to that module with a
+    # backendItemId so it stays disjoint from the loader's real id space.
+    let (module, id) = c.mintSymId(sn.module)
     let offs = c.mods[module].index.getOrDefault(symAsStr)
     if offs.offset == 0:
       # Only module/package self-syms are never written as `(sd)` entries, so a
@@ -2289,9 +2291,7 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
                     infoImpl: newLineInfo(module, 1, 1), state: Complete)
       c.syms[symAsStr] = (result, NifIndexEntry())
       return result
-    let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
-    result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
-    c.syms[symAsStr] = (result, offs)
+    result = c.makePartialSymStub(symAsStr, sn, id, offs)
 
 proc loadSymStub(c: var DecodeContext; n: var Cursor; thisModule: string;
                  localSyms: var Table[string, PSym]): PSym =
@@ -2641,9 +2641,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           if sym == nil:
             # First time seeing this local symbol - create it
             let module = moduleId(c, thisModule)
-            let val = addr c.mods[module].symCounter
-            inc val[]
-            let id = itemId(module.int32, val[])
+            let id = c.nextSymId(module, isBk = false)
             # strip NIF-only markers (a field's `` `f ``) so the backend sees the
             # clean name; `loadSymFromCursor` below fills the real kind.
             let (_, stubName) = stubKindAndName(c.cache, sn.name)
@@ -2684,9 +2682,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           else:
             sym = c.syms.getOrDefault(symName)[0]
             if sym == nil:
-              let val = addr c.mods[m].symCounter
-              inc val[]
-              sym = PSym(itemId: itemId(m.int32, val[]), kindImpl: skStub,
+              sym = PSym(itemId: c.nextSymId(m, isBk = false), kindImpl: skStub,
                          name: c.cache.getIdent(sn.name), disamb: sn.count.int32,
                          state: Partial)
             c.syms[symName] = (sym, NifIndexEntry())
@@ -2827,19 +2823,10 @@ proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
   ## Creates a symbol stub without looking up in the index (since the index may be moved out).
   result = c.syms.getOrDefault(nifName)[0]
   if result == nil:
-    let symAsStr = nifName
-    let sn = parseSymName(symAsStr)
+    let sn = parseSymName(nifName)
     let rawMod = if sn.module.len > 0: sn.module else: thisModule
-    let isBk = rawMod.endsWith(BackendLocalMarker)
-    let realMod = if isBk: rawMod[0 ..< rawMod.len - BackendLocalMarker.len] else: rawMod
-    let symModule = moduleId(c, realMod)
-    let val = addr c.mods[symModule].symCounter
-    inc val[]
-
-    let id = if isBk: backendItemId(symModule.int32, val[]) else: itemId(symModule.int32, val[])
-    let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
-    result = PSym(itemId: id, kindImpl: stubKind, name: stubName, disamb: sn.count.int32, state: Partial)
-    c.syms[symAsStr] = (result, entry)
+    let (_, id) = c.mintSymId(rawMod)
+    result = c.makePartialSymStub(nifName, sn, id, entry)
 
 proc extractBasename(nifName: string): string =
   ## Extract the base name from a NIF name (ident.disamb.module -> ident)
@@ -2938,9 +2925,7 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
   let sn = parseSymName(symAsStr)
   if sn.module.len == 0:
     return nil  # Local symbols shouldn't be hooks
-  let isBk = sn.module.endsWith(BackendLocalMarker)
-  let realMod = if isBk: sn.module[0 ..< sn.module.len - BackendLocalMarker.len]
-                else: sn.module
+  let (isBk, realMod) = stripBkSuffix(sn.module)
   let module = moduleId(c, realMod)
   # Look up the symbol in the module's index
   # Try both formats: with module suffix (e.g., "foo.0.modulename") and without (e.g., "foo.0.")
@@ -2954,12 +2939,9 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
     return nil
   if not alsoConsiderPrivate and offs.vis == Hidden:
     return nil
-  # Create a stub symbol
-  let val = addr c.mods[module].symCounter
-  inc val[]
-  let id = if isBk: backendItemId(int32(module), val[]) else: itemId(int32(module), val[])
-  result = PSym(itemId: id, kindImpl: skProc, name: c.cache.getIdent(sn.name),
-                disamb: sn.count.int32, state: Partial)
+  # Create a stub symbol (skProc: `resolveSym` only resolves hook/routine syms).
+  result = PSym(itemId: c.nextSymId(module, isBk), kindImpl: skProc,
+                name: c.cache.getIdent(sn.name), disamb: sn.count.int32, state: Partial)
   c.syms[symAsStr] = (result, offs)
 
 proc resolveHookSym*(c: var DecodeContext; name: string): PSym =
