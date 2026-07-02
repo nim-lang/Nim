@@ -13,7 +13,7 @@
 import std/[assertions, sets]
 
 import "../dist/nimony/src/lib" / [treemangler]
-import "../dist/nimony/src/gear2" / modnames
+import icmodnames
 
 import astdef, idents, options, lineinfos, msgs
 import ic / [enum2nif]

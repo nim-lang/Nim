@@ -24,11 +24,21 @@ when defined(nimPreviewSlimSystem):
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys,
-  cnif
+  cnif, icmodnames
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
 from injectdestructors import injectDestructorCalls
 import ic / replayer
+
+proc systemNifSuffix(conf: ConfigRef): string =
+  ## The system module's NIF suffix, derived from `system.nim`'s path EXACTLY as
+  ## the frontend derives it (deps.nim's `toPair` on `libpath/system.nim`), so the
+  ## backend loads the very `.s.bif` the frontend wrote. It must NOT be a constant:
+  ## `moduleSuffix` (icmodnames) now hashes the absolute path, so the system suffix
+  ## is install-dependent (was hardcoded `sysma2dyk`, valid only for the old
+  ## relative-path scheme where `system.nim` always relativized to `system.nim`).
+  moduleSuffix((conf.libpath / RelativeFile"system.nim").string,
+               cast[seq[string]](conf.searchPaths))
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
                             nifFiles: var seq[string];
@@ -253,7 +263,7 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   ## and only needs each module's `(replay ...)` directives, which load anyway.
   resetForBackend(g)
   var isKnownFile = false
-  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  let systemFileIdx = registerNifSuffix(g.config, systemNifSuffix(g.config), isKnownFile)
   g.config.m.systemFileIdx = systemFileIdx
   var precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
   g.systemModule = precompSys.module
@@ -276,7 +286,7 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   # closure here too — otherwise `findTargetModule` cannot resolve their suffix.
   block:
     var visited = initHashSet[string]()
-    visited.incl "sysma2dyk"
+    visited.incl systemNifSuffix(g.config)
     for m in modules:
       visited.incl cachedModuleSuffix(g.config, FileIndex m.module.position)
     var stack: seq[ModuleSuffix] = @[]
@@ -319,14 +329,14 @@ proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
   ## dispatchers, runs essentially alone since every other `.c.nif` precedes it).
   resetForBackend(g)
   var isKnownFile = false
-  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  let systemFileIdx = registerNifSuffix(g.config, systemNifSuffix(g.config), isKnownFile)
   g.config.m.systemFileIdx = systemFileIdx
   let precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
   g.systemModule = precompSys.module
 
   var modules: seq[PrecompiledModule] = @[]
   var visited = initHashSet[string]()
-  visited.incl "sysma2dyk"
+  visited.incl systemNifSuffix(g.config)
 
   # Only the target is codegen'd, so only it needs its full AST; the closure is
   # loaded interface-only (demanded bodies come lazily from the kept-open

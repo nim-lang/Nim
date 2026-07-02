@@ -29,7 +29,7 @@ import "../dist/nimony/src/lib" / [bitabs, nifstreams, lineinfos,
 # uses; the reader reaches pools via `symName(c)`/`strVal(c)` etc.
 import "../dist/nimony/src/lib/nifcore" except pool
 from "../dist/nimony/src/lib" / bif import load, BifModule
-import "../dist/nimony/src/gear2" / modnames
+import icmodnames
 import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
 import icnifcore

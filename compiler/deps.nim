@@ -15,7 +15,7 @@ import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
-import "../dist/nimony/src/gear2" / modnames
+import icmodnames
 import icnifcore
 
 type
