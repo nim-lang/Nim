@@ -121,47 +121,7 @@ proc isLastReadImpl(n: PNode; c: var Con; scope: var Scope): bool =
     inc j
   c.otherUsage = unknownLineInfo
   if j < c.g.len:
-    var pcs = @[j+1]
-    var marked = initIntSet()
-    result = true
-    while pcs.len > 0:
-      var pc = pcs.pop()
-      if not marked.contains(pc):
-        let oldPc = pc
-        while pc < c.g.len:
-          dbg:
-            echo "EXEC ", c.g[pc].kind, " ", pc, " ", n
-          when false:
-            inc perfCounters[c.g[pc].kind]
-          case c.g[pc].kind
-          of loop:
-            let back = pc + c.g[pc].dest
-            if not marked.containsOrIncl(back):
-              pc = back
-            else:
-              break
-          of goto:
-            pc = pc + c.g[pc].dest
-          of fork:
-            if not marked.contains(pc+1):
-              pcs.add pc + 1
-            pc = pc + c.g[pc].dest
-          of use:
-            if c.g[pc].n.aliases(n) != no or n.aliases(c.g[pc].n) != no:
-              c.otherUsage = c.g[pc].n.info
-              return false
-            inc pc
-          of def:
-            if c.g[pc].n.aliases(n) == yes:
-              # the path leads to a redefinition of 's' --> sink 's'.
-              break
-            elif n.aliases(c.g[pc].n) != no:
-              # only partially writes to 's' --> can't sink 's', so this def reads 's'
-              # or maybe writes to 's' --> can't sink 's'
-              c.otherUsage = c.g[pc].n.info
-              return false
-            inc pc
-        marked.incl oldPc
+    result = isLastReadOfRoot(c.g, n, j+1, c.otherUsage)
   else:
     result = false
 
@@ -170,8 +130,16 @@ template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
   hasDestructor(c, typ) or (c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc} and
         typ.kind == tyObject and not isTrivial(getAttachedOp(c.graph, typ, attachedAsgn)))
 
+proc isLastUseMarked(n: PNode): bool =
+  ## A captured variable read that the move analyser proved was a last read
+  ## *before* lambda lifting (see `markLastUses` in lambdalifting). After
+  ## lifting it became an `env[].field` access that we can no longer analyse
+  ## here, so we trust the recorded verdict.
+  nfLastUse in skipConvDfa(n).flags
+
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructorOrAsgn(c, n.typ): return true
+  if isLastUseMarked(n): return true
 
   let m = skipConvDfa(n)
   result = isLastReadImpl(n, c, s)
@@ -846,7 +814,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
     elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
-    elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
+    elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner) or
+          isLastUseMarked(n)) and
         isLastRead(n, c, s) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
@@ -1089,7 +1058,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 1 ..< n.len:
         result[i] = n[i]
       if mode == sinkArg and hasDestructor(c, n.typ):
-        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c, s):
+        if (isAnalysableFieldAccess(n, c.owner) or isLastUseMarked(n)) and isLastRead(n, c, s):
           s.wasMoved.add c.genWasMoved(n)
         else:
           result = passCopyToSink(result, c, s)
@@ -1290,8 +1259,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
 
       if isOwnsData != nil:
         result = moveOrCopy(dest, isOwnsData, c, s, flags)
-      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c, s) and
-          canBeMoved(c, dest.typ):
+      elif (isAnalysableFieldAccess(ri, c.owner) or isLastUseMarked(ri)) and
+          isLastRead(ri, c, s) and canBeMoved(c, dest.typ):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))

@@ -489,3 +489,51 @@ proc constructCfg*(s: PSym; body: PNode; root: PSym): ControlFlowGraph =
     shallowCopy(result, c.code)
   when false:
     optimizeJumps result
+
+proc isLastReadOfRoot*(g: ControlFlowGraph; n: PNode; start: int;
+                       otherUsage: var TLineInfo): bool =
+  ## Walks the control flow graph `g` starting at instruction index `start`
+  ## (which must be the index *after* the `use` of `n`) and returns whether
+  ## `n` is the last read of its location. On a conflicting later use/def the
+  ## location of the offending instruction is stored in `otherUsage`.
+  ##
+  ## This is the shared core of the move analyser; it is used both by
+  ## `injectdestructors` (post lambda lifting) and by the pre-lifting marking
+  ## pass in `lambdalifting` that stamps `nfLastUse` on captured variables.
+  var pcs = @[start]
+  var marked = initIntSet()
+  result = true
+  while pcs.len > 0:
+    var pc = pcs.pop()
+    if not marked.contains(pc):
+      let oldPc = pc
+      while pc < g.len:
+        case g[pc].kind
+        of loop:
+          let back = pc + g[pc].dest
+          if not marked.containsOrIncl(back):
+            pc = back
+          else:
+            break
+        of goto:
+          pc = pc + g[pc].dest
+        of fork:
+          if not marked.contains(pc+1):
+            pcs.add pc + 1
+          pc = pc + g[pc].dest
+        of use:
+          if g[pc].n.aliases(n) != no or n.aliases(g[pc].n) != no:
+            otherUsage = g[pc].n.info
+            return false
+          inc pc
+        of def:
+          if g[pc].n.aliases(n) == yes:
+            # the path leads to a redefinition of 's' --> sink 's'.
+            break
+          elif n.aliases(g[pc].n) != no:
+            # only partially writes to 's' --> can't sink 's', so this def reads 's'
+            # or maybe writes to 's' --> can't sink 's'
+            otherUsage = g[pc].n.info
+            return false
+          inc pc
+      marked.incl oldPc

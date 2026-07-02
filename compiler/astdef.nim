@@ -331,8 +331,12 @@ type
     nfDefaultRefsParam # a default param value references another parameter
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
-    nfLastRead  # this node is a last read
     nfFirstWrite # this node is a first write
+    nfLastUse   # this node is a last use (a "last read" that was computed
+                # before lambda lifting; the move analyser trusts it for
+                # captured variables turned into `env[].field` accesses).
+                # Deliberately not serialized through IC: it is a derived
+                # property recomputed each run.
     nfHasComment # node has a comment
     nfSkipFieldChecking # node skips field visable checking
     nfDisabledOpenSym # temporary: node should be nkOpenSym but cannot
@@ -864,7 +868,7 @@ const
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload, nfLastRead,
+                                      nfExecuteOnReload,
                                       nfFirstWrite, nfSkipFieldChecking,
                                       nfDisabledOpenSym, nfLazyType}
   namePos* = 0

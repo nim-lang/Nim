@@ -1418,6 +1418,10 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
 
+    # mark last reads of captured variables before the closure-iterator state
+    # machine and the enclosing lifting pass rewrite them (bug #25333):
+    markLastUses(g, prc, result)
+
     if prc.isIterator:
       result = g.transformClosureIterator(c.idgen, prc, result)
 
