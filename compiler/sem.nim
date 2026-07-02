@@ -89,6 +89,18 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
+  # Walk through nested statement-list/block expressions to find the innermost
+  # value node. Empty containers (e.g. `@[]`) inside `nkStmtListExpr` wrappers
+  # need their type resolved to match the formal type, otherwise the C codegen
+  # cannot map `tyEmpty` to a concrete type (fixes #25945).
+  var tail = result
+  while tail.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkPragmaBlock} and tail.len > 0:
+    tail = tail.lastSon
+
+  if tail.typ != nil and tail.typ.isEmptyContainer and
+        formal.kind notin {tyUntyped, tyBuiltInTypeClass, tyAnything}:
+    changeType(c, tail, formal, check=true)
+
   # mark inserted converter as used:
   var a = result
   if a.kind == nkHiddenDeref: a = a[0]
