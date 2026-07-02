@@ -1474,6 +1474,7 @@ proc genFlags*(s: set[TNodeFlag]; dest: var string) =
     of nfDisabledOpenSym: dest.add "d3"
     of nfLazyType: dest.add "l1"
     of nfLazyBody: discard  # process-local placeholder; never serialized
+    of nfBroadcast: dest.add "v"
 
 
 proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
@@ -1534,6 +1535,7 @@ proc parse*(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag] =
         inc i
       else: result.incl nfSem
     of 't': result.incl nfTransf
+    of 'v': result.incl nfBroadcast
     of 'w': result.incl nfFirstWrite
     else: discard
     inc i

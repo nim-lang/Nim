@@ -2039,6 +2039,10 @@ proc getNullValue(c: PCtx; typ: PType, info: TLineInfo; conf: ConfigRef): PNode 
       if n <= broadcastArrayThreshold:
         for i in 1..<n:
           result.add getNullValue(c, elemType(t), info, conf)
+      else:
+        # Broadcast form: mark the single-son node so `isDefaultBroadcastArray`
+        # recognises it unambiguously (see `nfBroadcast`).
+        result.flags.incl nfBroadcast
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
     for a in t.kids:

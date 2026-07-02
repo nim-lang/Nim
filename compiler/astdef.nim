@@ -342,6 +342,11 @@ type
     nfLazyBody  # IC: this node is a placeholder for a routine body (bodyPos son)
                 # not yet materialized. Reading its children (via `len`/`safeLen`)
                 # triggers `forceLazyBodyHook`. Process-local, stripped on serialize.
+    nfBroadcast # this `nkBracket` is a *broadcast* default array: a single son
+                # standing for `lengthOrd` identical zero copies (see
+                # `broadcastArrayThreshold`). The flag disambiguates it from an
+                # ordinary 1-element collection (e.g. a seq value that happens to
+                # carry an array type), so it must survive copies + serialization.
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -869,7 +874,8 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfDisabledOpenSym, nfLazyType}
+                                      nfDisabledOpenSym, nfLazyType,
+                                      nfBroadcast}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

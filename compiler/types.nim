@@ -641,22 +641,25 @@ const broadcastArrayThreshold* = 32
   ## (`.s.bif`/`.t.bif`), in the VM, and in the generated C (`{0}` zero-fills).
 
 proc isDefaultBroadcastArray*(n: PNode; conf: ConfigRef): bool =
-  ## True iff `n` is a broadcast default array: one son that stands for
-  ## `lengthOrd` identical copies. A normal post-sem array literal always has
-  ## exactly `lengthOrd` sons, so `len == 1 < lengthOrd` is an unambiguous marker.
-  result = n != nil and n.kind == nkBracket and n.len == 1 and n.typ != nil and
-           n.typ.skipTypes(abstractInst).kind == tyArray and
-           lengthOrd(conf, n.typ.skipTypes(abstractInst)) > One
+  ## True iff `n` is a broadcast default array: a single son standing for
+  ## `lengthOrd` identical zero copies. Identified by the explicit `nfBroadcast`
+  ## marker (set by `getNullValue`), NOT by `len == 1 < lengthOrd` — the latter
+  ## also matches an ordinary 1-element collection that happens to be an
+  ## `nkBracket` carrying an array type, e.g. a `@[a, b, c]` seq value shrunk to
+  ## length 1 by `setLen`/`delete` (its VM node keeps the array-literal type).
+  result = n != nil and n.kind == nkBracket and nfBroadcast in n.flags
 
 proc expandBroadcastArray*(n: PNode; conf: ConfigRef) =
   ## Materialise a broadcast default array (see `isDefaultBroadcastArray`) into a
   ## full `lengthOrd`-son `nkBracket`, each son a copy of the single default
   ## element. Used by VM ops that index-address, mutate, or measure such a node;
-  ## the common read-only paths leave it compact.
+  ## the common read-only paths leave it compact. Clears `nfBroadcast` since the
+  ## node is now a fully materialised literal.
   if isDefaultBroadcastArray(n, conf):
     let total = toInt(lengthOrd(conf, n.typ.skipTypes(abstractInst)))
     let elem = n[0]
     for i in 1 ..< total: n.add copyTree(elem)
+    n.flags.excl nfBroadcast
 
 # -------------- type equality -----------------------------------------------
 
