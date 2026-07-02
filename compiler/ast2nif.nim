@@ -290,9 +290,23 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # Process-local backend sym (closure env field / hidden `:env` param minted
     # during a VM transform): re-home to the current module with the `@bk`
     # marker so each referencing module self-contains it. See transformBody.
+    #
+    # Use `itemId.item` (the writer's dedup identity, see `emittedBackendSyms`)
+    # as the numeric name component, NOT `disamb`: closure `:env` syms in one
+    # module are minted from TWO id spaces — the backend lower stage's
+    # `tb.idgen` and sem's `vmTransfIdgen` (transf.transformBody) — whose
+    # `disambTable`s each start `:env` at the same low count, so a macro-lowered
+    # `:env` (e.g. `implementSendProcBody`) and a backend-lowered one
+    # (`peerTrimmerHeartbeat`) collide on `:env.2.<mod>@bk`. Two distinct syms
+    # then share a NIF name; the loader's name-keyed index/`c.syms` return the
+    # first for both, so one proc's `:env` gets the OTHER proc's env type
+    # (mismatched-pointer C, "has no member colonup_" at link). `itemId.item` is
+    # unique per `@bk` sym (both are emitted as defs, see writeSym), mirroring
+    # how `@bk` TYPES already key off `uniqueId.item` (nifTypeName). The loader
+    # copies this back into `disamb` (sn.count), so `globalName` round-trips.
     result = sym.name.s
     result.add '.'
-    result.addInt sym.disamb
+    result.addInt sym.itemId.item
     result.add '.'
     result.add modname(w.currentModule, w.infos.config)
     result.add BackendLocalMarker
