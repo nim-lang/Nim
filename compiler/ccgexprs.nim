@@ -2477,6 +2477,13 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
 
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
+  of mAsgn:
+    let kind = if e[0].sym.name.s == "=sink": nkSinkAsgn else: nkAsgn
+    let lhs = e[1].skipHiddenAddr
+    let n = newTreeI(kind, e.info, lhs, e[2])
+    n.typ = e.typ
+    cow(p, e[2])
+    genAsgn(p, n, fastAsgn = kind != nkAsgn)
   of mOr, mAnd: genAndOr(p, e, d, op)
   of mNot..mUnaryMinusF64: unaryArith(p, e, d, op)
   of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
