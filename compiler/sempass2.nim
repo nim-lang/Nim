@@ -93,6 +93,7 @@ type
     graph: ModuleGraph
     c: PContext
     escapingParams: IntSet
+    inNimvmBranch: int
   PEffects = var TEffects
 
 const
@@ -1127,7 +1128,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
   # sfCompileTime` path in `semProcAux`.
   if a.kind == nkSym and a.sym.magic in {mNLen..mNError, mSlurp..mQuoteAst} and
       tracked.owner != nil and tracked.owner.kind in routineKinds and
-      tracked.config.cmd != cmdNimscript:
+      tracked.config.cmd != cmdNimscript and tracked.inNimvmBranch == 0:
     # ...but NOT under `nim e`: nimscript has no codegen backend to protect, and
     # marking a routine `sfCompileTime` makes `semExpr` eagerly fold calls to it
     # at sem time (emConst), where module-level globals it reads have no VM slot
@@ -1483,7 +1484,9 @@ proc track(tracked: PEffects, n: PNode) =
   of nkCaseStmt: trackCase(tracked, n)
   of nkWhen: # This should be a "when nimvm" node.
     let oldState = tracked.init.len
+    inc tracked.inNimvmBranch
     track(tracked, n[0][1])
+    dec tracked.inNimvmBranch
     tracked.init.setLen(oldState)
     track(tracked, n[1][0])
   of nkIfStmt, nkIfExpr: trackIf(tracked, n)
