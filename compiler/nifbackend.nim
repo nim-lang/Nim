@@ -748,31 +748,33 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
   let targetIsMain = g.config.icBackendModule.len == 0 or
                      g.config.icBackendModule == mainSuffix
-  var modules: seq[PrecompiledModule]
-  var precompSys: PrecompiledModule
-  var target: PrecompiledModule
-  if targetIsMain:
-    var nifFiles: seq[string]
-    (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
-    if modules.len == 0:
-      rawMessage(g.config, errGenerated,
-        "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-      return
-    target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
-  else:
-    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
-  if target.module == nil:
+  # emit renders a module's final `.c` PURELY from its own `.c.nif` and the merge
+  # decision (see `renderCFromArtifact` — text filtering, no AST is touched). It
+  # used to load the target's whole transitive import closure as BModules solely
+  # to reach `getCFile(bmod)` for the output path. Under the fire-all-every-edit
+  # merge barrier (every `emit` re-fires whenever `merge` bumps the decision's
+  # mtime — deliberate insurance so a decision change re-renders all `.c`
+  # consistently) that per-process `loadDepClosure` was the bulk of a warm
+  # rebuild's cost: 240 processes each re-parsing a module closure only to filter
+  # a handful of `.c.nif`s whose bytes are usually unchanged. Derive the `.c`
+  # path directly instead — the SAME pure computation `deps.nim.backendCFile`
+  # uses to DECLARE this stage's output (`getCFile` == that formula) — so an emit
+  # process loads nothing and the fire-all costs process-startup, not a graph load.
+  let cfilename =
+    if targetIsMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
+    else: AbsoluteFile g.config.icBackendModule
+  let cfile = changeFileExt(completeCfilePath(g.config,
+    mangleModuleName(g.config, cfilename).AbsoluteFile), ".nim.c").string
+  let artifact = cfile & ".nif"
+  if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
-      "per-module emit: module not found for suffix: " & g.config.icBackendModule)
+      "per-module emit: missing .c.nif artifact for suffix: " & g.config.icBackendModule)
     return
   let decision = readMergeDecision(getNimcacheDir(g.config).string / MergeDecisionFile)
   if decision.broken:
     rawMessage(g.config, errGenerated,
       "per-module emit: missing or unparsable merge decision " & MergeDecisionFile)
     return
-  let bmod = BModuleList(g.backend).mods[target.module.position]
-  let cfile = getCFile(bmod).string
-  let artifact = cfile & ".nif"
   var dropped = 0
   let code = renderCFromArtifact(artifact, decision, extractFilename(artifact), dropped)
   # Write the `.c` content-stably. `merge` re-runs on any edit and bumps the
