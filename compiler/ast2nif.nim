@@ -2808,8 +2808,18 @@ proc materializeLazyBody*(c: var DecodeContext; node: PNode) =
   node.typField = real.typField
   node.flags = real.flags
 
-forceLazyBodyHook = proc (n: PNode) {.nimcall.} =
-  if loaderCtx != nil: materializeLazyBody(loaderCtx[], n)
+forceLazyBodyHook = proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.} =
+  # `len` (the sole caller path) MUST stay effect-free, so this hook is typed
+  # `raises: []`. The underlying `loadNode` chain infers `raises: [KeyError]`
+  # (index/sym Table lookups), but materialization only ever runs for a body
+  # DEFERRED during THIS load — the buffer/index is present by construction, so a
+  # KeyError here means a corrupt cache: a fatal bug, not a recoverable error.
+  # Treat it as effect-free (a `Defect`-like invariant) via a scoped cast.
+  if loaderCtx != nil:
+    {.cast(raises: []).}:
+      {.cast(tags: []).}:
+        {.cast(gcsafe).}:
+          materializeLazyBody(loaderCtx[], n)
 
 proc loadSymFromIndexEntry(c: var DecodeContext; module: FileIndex;
                            nifName: string; entry: NifIndexEntry; thisModule: string): PSym =

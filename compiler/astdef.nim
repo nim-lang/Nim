@@ -906,11 +906,20 @@ const
   defaultOffset* = -1
 
 
-var forceLazyBodyHook*: proc (n: PNode) {.nimcall.}
+var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
   ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
   ## to its children through `len` materializes the deferred routine body in place.
   ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
   ## never a leaf kind, so the `{nkNone..nkNilLit}` short-circuit never hides it.
+  ##
+  ## The type MUST be effect-free (`raises: []`/`tags: []`): `len` is a fundamental
+  ## `PNode` accessor that the whole compiler — and every compiler-as-library
+  ## consumer (nimble, nimsuggest, ...) — assumes cannot raise. An unannotated
+  ## `proc` var defaults to `raises: [Exception]`, so the indirect call tainted
+  ## `len`/`safeLen`/`items` with `Exception`, breaking any iterator/`{.raises.}`
+  ## over a `PNode` (e.g. nimble's `extract {.raises: [CatchableError].}`).
+  ## Materialization is a pure in-memory buffer transform; a corrupt buffer is a
+  ## `Defect` (`raiseAssert`), which is outside exception tracking.
 
 proc len*(n: PNode): int {.inline.} =
   if nfLazyBody in n.flags and forceLazyBodyHook != nil:
