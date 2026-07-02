@@ -89,7 +89,7 @@ elif defined(emscripten) and not defined(StandaloneHeapSize):
 
     var mmapDescrPos = cast[int](result) -% sizeof(EmscriptenMMapBlock)
 
-    var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
+    var mmapDescr = cast[PEmscriptenMMapBlock](mmapDescrPos)
     mmapDescr.realSize = realSize
     mmapDescr.realPointer = realPointer
 
@@ -99,7 +99,7 @@ elif defined(emscripten) and not defined(StandaloneHeapSize):
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     var mmapDescrPos = cast[int](p) -% sizeof(EmscriptenMMapBlock)
-    var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
+    var mmapDescr = cast[PEmscriptenMMapBlock](mmapDescrPos)
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
 elif defined(genode) and not defined(StandaloneHeapSize):
