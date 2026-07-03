@@ -1101,10 +1101,18 @@ proc writeToplevelNode(w: var Writer; dest, bottom: var IcBuilder; n: PNode) =
   of nkEmpty:
     discard "ignore"
   of nkTypeSection, nkCommentStmt, nkMixinStmt, nkBindStmt, nkUsingStmt,
-     nkPragma,
      nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef, nkTemplateDef:
     # We write purely declarative nodes at the bottom of the file
     writeNode(w, bottom, n)
+  of nkPragma:
+    # Top-level pragmas — chiefly `{.emit.}`, plus the `{.push/pop.}` that guard
+    # its neighbours — must survive the backend reload so the `cg` stage re-runs
+    # genPragma/genEmit. The bottom (implementation) section is reloaded lazily
+    # BY SYMBOL INDEX, which a symbol-less pragma can never be on, so a pragma
+    # written there is silently dropped on reload (e.g. a module-level `#include`
+    # vanishes and the generated C fails to compile). The header init section is
+    # replayed verbatim by `processTopLevel`, so write it there instead.
+    writeNode(w, dest, n)
   of nkConstSection:
     writeGlobals(w, bottom, n)
   of nkLetSection, nkVarSection:
@@ -3245,9 +3253,14 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         skip cur
       elif tagIs(cur, "implementation"):
         cont = false
-      elif LoadFullAst in flags or tagIs(cur, toNifTag(nkLetSection)) or tagIs(cur, toNifTag(nkVarSection)):
+      elif LoadFullAst in flags or tagIs(cur, toNifTag(nkLetSection)) or
+           tagIs(cur, toNifTag(nkVarSection)) or tagIs(cur, toNifTag(nkPragma)):
         # Parse the full statement. let/var sections are loaded unconditionally
         # (see above) so `{.compileTime.}` globals reach the eager initializer.
+        # Top-level pragmas are loaded too: a module-level `{.emit.}` (and the
+        # `{.push/pop.}` around it) must reach the `cg` stage's genPragma/genEmit,
+        # else e.g. a `#include` is dropped and the generated C won't compile.
+        # writeToplevelNode routes these into this header section.
         let stmtNode = loadNode(c, cur, suffix, localSyms)
         if stmtNode != nil:
           result.topLevel.sons.add stmtNode
