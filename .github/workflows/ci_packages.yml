@@ -18,12 +18,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-latest]
         batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
         include:
           - os: ubuntu-latest
             cpu: amd64
-          - os: macos-14
+          - os: macos-latest
             cpu: arm64
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}

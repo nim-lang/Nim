@@ -71,7 +71,6 @@ pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/eas
 pkg "elvis", url = "https://github.com/nim-lang/elvis"
 pkg "eth", "nim c -o:common -r tests/common/all_tests"
 pkg "faststreams"
-pkg "fidget"
 pkg "fusion"
 pkg "gara"
 pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"

@@ -1209,8 +1209,16 @@ proc trackCall(tracked: PEffects; n: PNode) =
         else:
           if laxEffects notin tracked.c.config.legacyFeatures and a.kind == nkSym and
               a.sym.kind in routineKinds:
-            let (isHook, opKind) = findHookKind(a.sym.name.s)
-            if (not isHook) or opKind notin {attachedAsgn, attachedSink, attachedDup}:
+            # A hook reaching here has no effect list yet, i.e. it has not been
+            # effect-tracked. Propagating from its (still unset) type flags would
+            # spuriously mark the caller GC-unsafe/side-effecting: e.g. under
+            # `nim ic` a concrete `=destroy` reached through a generic
+            # instantiation is not analyzed before the instance body is tracked
+            # here. Skip all such hooks (generalizes #25940, which special-cased
+            # `=asgn`/`=sink`/`=dup`); once analyzed they carry an effect list and
+            # take the branch below.
+            let (isHook, _) = findHookKind(a.sym.name.s)
+            if not isHook:
               propagateEffects(tracked, n, a.sym)
       else:
         mergeRaises(tracked, effectList[exceptionEffects], n)
