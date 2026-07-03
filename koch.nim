@@ -11,10 +11,10 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "aa03f886e4a111d6af9090c6a1f1271d64b66f7b"    # 0.22.2
-  AtlasStableCommit = "ff1f4289482dce94ba9f95b3b0ae16d16e21eb3d"     # 0.10.1
-  ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
-  SatStableCommit = "e63eaea8baf00bed8bcd5a29ffd8823abb265b39"
+  NimbleStableCommit = "42ef70c2102a942c46f13eb76872326edd525cec"    # 0.22.3
+  AtlasStableCommit = "aa6fb162006f3015aa84c4305e15cb4d230f5ad6"     # 0.14.7
+  ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
+  SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
