@@ -34,7 +34,7 @@ import
   ropes, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
   transf, injectdestructors, sourcemap, astmsgs, pushpoppragmas,
-  mangleutils
+  mangleutils, varpartitions
 
 import pipelineutils
 
@@ -1294,14 +1294,16 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     xtyp = etySeq
   case xtyp
   of etySeq:
-    if x.typ.kind in {tyVar, tyLent} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyLent} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded or
+        (x.kind == nkSym and sfCursor in x.sym.flags):
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if x.typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded or
+        (x.kind == nkSym and sfCursor in x.sym.flags):
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
@@ -2078,7 +2080,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     gen(p, n, a)
     case mapType(p, v.typ)
     of etyObject, etySeq:
-      if v.typ.kind in {tyOpenArray, tyVarargs} or needsNoCopy(p, n):
+      if v.typ.kind in {tyOpenArray, tyVarargs} or needsNoCopy(p, n) or
+          sfCursor in v.flags:
         s = a.res
       else:
         useMagic(p, "nimCopy")
@@ -2782,6 +2785,11 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, {})
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
+  else:
+    # JS has a GC, so the destructor pass is off; but the cursor (alias) analysis
+    # is independent of ownership and always memory-safe on a traced target.
+    # Running it lets last-use `var b = a` aliases skip the deep `nimCopy`.
+    computeCursors(prc, transformedBody, p.module.graph)
 
   p.nested: genStmt(p, transformedBody)
 
