@@ -613,7 +613,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   if isImportedCppType(typ):
     var didGenTemp = false
     let rl = rdLoc(loc)
-    let init = genCppInitializer(p.module, p, typ, didGenTemp)
+    let init = genCppConstructorExpr(p.module, p, typ, didGenTemp)
     p.s(cpsStmts).addAssignment(rl, init)
     return
   if optSeqDestructors in p.config.globalOptions and typ.kind in {tyString, tySequence}:
