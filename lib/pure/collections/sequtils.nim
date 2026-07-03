@@ -121,6 +121,13 @@ template unCheckedInc(x) =
   inc(x)
   {.pop.}
 
+template newSeqForOverwrite(T: typedesc; len: int): untyped =
+  ## Allocates a fixed-length seq whose elements will be assigned by index.
+  when supportsCopyMem(T) and declared(newSeqUninit):
+    newSeqUninit[T](len)
+  else: # TODO: use `newSeqUnsafe` when that's available
+    newSeq[T](len)
+
 func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ## All sequences must be of the same type.
@@ -1105,7 +1112,7 @@ template mapIt*(s: typed, op: untyped): untyped =
         evalOnceAs(s2, s, compiles((let _ = s)))
 
         var i = 0
-        var result = newSeq[OutType](s2.len)
+        var result = newSeqForOverwrite(OutType, s2.len)
         for it {.inject.} in s2:
           result[i] = op
           i += 1
@@ -1171,10 +1178,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
     assert seqRand[0] != seqRand[1]
   type T = typeof(init)
   let newLen = len
-  when supportsCopyMem(T) and declared(newSeqUninit):
-    var result = newSeqUninit[T](newLen)
-  else: # TODO: use `newSeqUnsafe` when that's available
-    var result = newSeq[T](newLen)
+  var result = newSeqForOverwrite(T, newLen)
   for i in 0 ..< newLen:
     result[i] = init
   move(result) # refs bug #7295
