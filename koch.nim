@@ -16,11 +16,11 @@ const
   ChecksumsStableCommit = "0b8e46379c5bc1bf73d8b3011908389c60fb9b98" # 2.0.1
   SatStableCommit = "e63eaea8baf00bed8bcd5a29ffd8823abb265b39"
 
-  NimonyStableCommit = "557b865192e25e8e76ce4ccc81c6ea71676e92e7" # unversioned \
+  NimonyStableCommit = "6f9ac6655dc6724ae4e5ccb93b8123c18d54391a" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-07-01 -- contains a critical feature addition from nifmake for us
+    # Commit from 2026-07-03 -- .bif files are memory mapped too
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
