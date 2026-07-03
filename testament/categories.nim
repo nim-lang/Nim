@@ -562,6 +562,21 @@ proc isProvenance(path: string): bool =
   ## still leave even these untouched.
   path.endsWith(".frontend.build.nif")
 
+proc stableBinary(path: string): string =
+  ## Contents of a linked executable past its header region, for comparing whether
+  ## two builds produced the same *code*. Linkers embed build-time-volatile fields
+  ## in the header (e.g. the mingw PE `TimeDateStamp` and its derived `CheckSum`),
+  ## so two builds seconds apart differ there even with identical codegen. Skipping
+  ## a generous fixed window keeps the clean-vs-incremental check about codegen.
+  const headerSkip = 4096
+  var f: File
+  if not open(f, path, fmRead):
+    raise newException(IOError, "cannot open: " & path)
+  defer: close(f)
+  if getFileSize(f) > headerSkip:
+    setFilePos(f, headerSkip)
+  result = readAll(f)
+
 proc changedModuleCount(changed: seq[string]): int =
   ## distinct modules whose codegen (`*.s.bif`) was rebuilt.
   var mods: seq[string] = @[]
@@ -651,7 +666,7 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         else: mmRaise(reOutputsDiffer, want, where & " output:\n" & rout.strip)
 
       let snap = snapshotDir(nc)
-      let binBytes = readFile(bin)
+      let binBytes = stableBinary(bin)
       if stepIdx > 1:
         let changed = changedPaths(prevSnap, snap)
         if "noop" in attrs and (changed.len != 0 or binBytes != prevBin):
@@ -685,7 +700,7 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         if ccode2 != 0:
           mmRaise(reBuildFailed, "", where & ": clean rebuild failed:\n" & cout2)
         let cleanSnap = snapshotDir(nc)
-        let cleanBin = readFile(bin)
+        let cleanBin = stableBinary(bin)
         if cleanBin != binBytes:
           mmRaise(reOutputsDiffer, "clean binary == incremental binary",
             where & ": clean rebuild produced a different binary")
