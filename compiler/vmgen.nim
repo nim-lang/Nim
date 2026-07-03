@@ -1921,7 +1921,11 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let strType = getSysType(c.graph, n.info, tyString)
   var msgReg: TDest = c.getTemp(strType)
   let fieldName = $accessExpr[1]
-  let msg = genFieldDefect(c.config, fieldName, disc.sym)
+  # Re-navigate the discriminant in the object type: under `nim ic` `disc.sym` is a
+  # field-use stub with a nil `owner`, which `genFieldDefect` dereferences. Look up the
+  # canonical discriminant field by name. Byte-neutral for non-IC (returns the same sym).
+  let dfield = lookupFieldAgain(accessExpr[0].typ, disc.sym)
+  let msg = genFieldDefect(c.config, fieldName, dfield)
   let strLit = newStrNode(msg, accessExpr[1].info)
   strLit.typ = strType
   c.genLit(strLit, msgReg)
@@ -2025,8 +2029,20 @@ proc getNullValue(c: PCtx; typ: PType, info: TLineInfo; conf: ConfigRef): PNode 
     getNullValueAux(c, t, t.n, result, conf, currPosition)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in 0..<toInt(lengthOrd(conf, t)):
+    let n = toInt(lengthOrd(conf, t))
+    if n > 0:
       result.add getNullValue(c, elemType(t), info, conf)
+      # For a large array, keep a single broadcast element (the default of every
+      # slot is identical) instead of `n` copies; `isDefaultBroadcastArray`
+      # consumers expand on demand. Small arrays stay fully materialised so the
+      # well-trodden paths are untouched. See `broadcastArrayThreshold`.
+      if n <= broadcastArrayThreshold:
+        for i in 1..<n:
+          result.add getNullValue(c, elemType(t), info, conf)
+      else:
+        # Broadcast form: mark the single-son node so `isDefaultBroadcastArray`
+        # recognises it unambiguously (see `nfBroadcast`).
+        result.flags.incl nfBroadcast
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
     for a in t.kids:

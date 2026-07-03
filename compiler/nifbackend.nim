@@ -24,11 +24,21 @@ when defined(nimPreviewSlimSystem):
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys,
-  cnif
+  cnif, icmodnames
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
 from injectdestructors import injectDestructorCalls
 import ic / replayer
+
+proc systemNifSuffix(conf: ConfigRef): string =
+  ## The system module's NIF suffix, derived from `system.nim`'s path EXACTLY as
+  ## the frontend derives it (deps.nim's `toPair` on `libpath/system.nim`), so the
+  ## backend loads the very `.s.bif` the frontend wrote. It must NOT be a constant:
+  ## `moduleSuffix` (icmodnames) now hashes the absolute path, so the system suffix
+  ## is install-dependent (was hardcoded `sysma2dyk`, valid only for the old
+  ## relative-path scheme where `system.nim` always relativized to `system.nim`).
+  moduleSuffix((conf.libpath / RelativeFile"system.nim").string,
+               cast[seq[string]](conf.searchPaths))
 
 proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
                             nifFiles: var seq[string];
@@ -198,8 +208,16 @@ proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
   {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
   s.typ != nil and not signatureHasMetaType(s.typ) and
   s.ast != nil and s.ast.safeLen > bodyPos and
-  s.ast[genericParamsPos].kind == nkEmpty and
-  s.ast[bodyPos].kind != nkEmpty
+  s.ast[genericParamsPos].kind == nkEmpty
+  # NOTE: an `nkEmpty` body is NOT a disqualifier. A concrete, owned, non-
+  # forward/-importc/-magic routine whose body folds to nothing is still a real
+  # definition the owner must emit (`void f(void){}`), exactly as whole-program
+  # cgen does — else a cross-module caller links to nothing. This bites e.g.
+  # Nimbus' `extras.incInternalErrors`, a plain `proc` whose sole statement is a
+  # metrics-counter `.inc()` that the `metrics` library expands to a no-op when
+  # the importing tool (ncli) builds with `-u:metrics`; the body is then a bare
+  # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
+  # (the other empty-body case) carry `sfForward` and are excluded above.
 
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
@@ -245,7 +263,7 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   ## and only needs each module's `(replay ...)` directives, which load anyway.
   resetForBackend(g)
   var isKnownFile = false
-  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  let systemFileIdx = registerNifSuffix(g.config, systemNifSuffix(g.config), isKnownFile)
   g.config.m.systemFileIdx = systemFileIdx
   var precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
   g.systemModule = precompSys.module
@@ -268,7 +286,7 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   # closure here too — otherwise `findTargetModule` cannot resolve their suffix.
   block:
     var visited = initHashSet[string]()
-    visited.incl "sysma2dyk"
+    visited.incl systemNifSuffix(g.config)
     for m in modules:
       visited.incl cachedModuleSuffix(g.config, FileIndex m.module.position)
     var stack: seq[ModuleSuffix] = @[]
@@ -311,14 +329,14 @@ proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
   ## dispatchers, runs essentially alone since every other `.c.nif` precedes it).
   resetForBackend(g)
   var isKnownFile = false
-  let systemFileIdx = registerNifSuffix(g.config, "sysma2dyk", isKnownFile)
+  let systemFileIdx = registerNifSuffix(g.config, systemNifSuffix(g.config), isKnownFile)
   g.config.m.systemFileIdx = systemFileIdx
   let precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
   g.systemModule = precompSys.module
 
   var modules: seq[PrecompiledModule] = @[]
   var visited = initHashSet[string]()
-  visited.incl "sysma2dyk"
+  visited.incl systemNifSuffix(g.config)
 
   # Only the target is codegen'd, so only it needs its full AST; the closure is
   # loaded interface-only (demanded bodies come lazily from the kept-open
@@ -730,31 +748,33 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
   let targetIsMain = g.config.icBackendModule.len == 0 or
                      g.config.icBackendModule == mainSuffix
-  var modules: seq[PrecompiledModule]
-  var precompSys: PrecompiledModule
-  var target: PrecompiledModule
-  if targetIsMain:
-    var nifFiles: seq[string]
-    (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
-    if modules.len == 0:
-      rawMessage(g.config, errGenerated,
-        "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-      return
-    target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
-  else:
-    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
-  if target.module == nil:
+  # emit renders a module's final `.c` PURELY from its own `.c.nif` and the merge
+  # decision (see `renderCFromArtifact` — text filtering, no AST is touched). It
+  # used to load the target's whole transitive import closure as BModules solely
+  # to reach `getCFile(bmod)` for the output path. Under the fire-all-every-edit
+  # merge barrier (every `emit` re-fires whenever `merge` bumps the decision's
+  # mtime — deliberate insurance so a decision change re-renders all `.c`
+  # consistently) that per-process `loadDepClosure` was the bulk of a warm
+  # rebuild's cost: 240 processes each re-parsing a module closure only to filter
+  # a handful of `.c.nif`s whose bytes are usually unchanged. Derive the `.c`
+  # path directly instead — the SAME pure computation `deps.nim.backendCFile`
+  # uses to DECLARE this stage's output (`getCFile` == that formula) — so an emit
+  # process loads nothing and the fire-all costs process-startup, not a graph load.
+  let cfilename =
+    if targetIsMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
+    else: AbsoluteFile g.config.icBackendModule
+  let cfile = changeFileExt(completeCfilePath(g.config,
+    mangleModuleName(g.config, cfilename).AbsoluteFile), ".nim.c").string
+  let artifact = cfile & ".nif"
+  if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
-      "per-module emit: module not found for suffix: " & g.config.icBackendModule)
+      "per-module emit: missing .c.nif artifact for suffix: " & g.config.icBackendModule)
     return
   let decision = readMergeDecision(getNimcacheDir(g.config).string / MergeDecisionFile)
   if decision.broken:
     rawMessage(g.config, errGenerated,
       "per-module emit: missing or unparsable merge decision " & MergeDecisionFile)
     return
-  let bmod = BModuleList(g.backend).mods[target.module.position]
-  let cfile = getCFile(bmod).string
-  let artifact = cfile & ".nif"
   var dropped = 0
   let code = renderCFromArtifact(artifact, decision, extractFilename(artifact), dropped)
   # Write the `.c` content-stably. `merge` re-runs on any edit and bumps the

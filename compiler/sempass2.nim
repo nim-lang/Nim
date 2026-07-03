@@ -1126,9 +1126,20 @@ proc trackCall(tracked: PEffects; n: PNode) =
   # the per-module IC backend emits every owned routine (no DCE) and would
   # otherwise feed the magic to codegen. Mirrors the `tfTriggersCompileTime ->
   # sfCompileTime` path in `semProcAux`.
+  #
+  # GATE TO THE IC STAGES ONLY (`cmdM` sem + `cmdNifC` cg). The magic can reach a
+  # runtime proc's body via an INLINED TEMPLATE (not a macro/template *owner*, so
+  # the `insideMeta` walk below can't see it) — e.g. confutils' runtime
+  # `addConfigFile`/json-serialization's `inputFile` expand a serialization
+  # template that pastes a `getAst`/`quote` magic inline. Under plain `nim c` such
+  # a proc still code-generates fine (the magic folds / is demand-pruned), so
+  # marking it `sfCompileTime` there is a pure regression: "request to generate
+  # code for .compileTime proc". Only the emit-everything IC backend needs the
+  # mark, so restrict it to `{cmdM, cmdNifC}` (was `!= cmdNimscript`, which
+  # wrongly swept in `cmdCompileToC`/JS/`cmdCheck`).
   if a.kind == nkSym and a.sym.magic in {mNLen..mNError, mSlurp..mQuoteAst} and
       tracked.owner != nil and tracked.owner.kind in routineKinds and
-      tracked.config.cmd != cmdNimscript and tracked.inNimvmBranch == 0:
+      tracked.config.cmd in {cmdM, cmdNifC} and tracked.inNimvmBranch == 0:
     # ...but NOT under `nim e`: nimscript has no codegen backend to protect, and
     # marking a routine `sfCompileTime` makes `semExpr` eagerly fold calls to it
     # at sem time (emConst), where module-level globals it reads have no VM slot
@@ -1198,8 +1209,16 @@ proc trackCall(tracked: PEffects; n: PNode) =
         else:
           if laxEffects notin tracked.c.config.legacyFeatures and a.kind == nkSym and
               a.sym.kind in routineKinds:
-            let (isHook, opKind) = findHookKind(a.sym.name.s)
-            if (not isHook) or opKind notin {attachedAsgn, attachedSink, attachedDup}:
+            # A hook reaching here has no effect list yet, i.e. it has not been
+            # effect-tracked. Propagating from its (still unset) type flags would
+            # spuriously mark the caller GC-unsafe/side-effecting: e.g. under
+            # `nim ic` a concrete `=destroy` reached through a generic
+            # instantiation is not analyzed before the instance body is tracked
+            # here. Skip all such hooks (generalizes #25940, which special-cased
+            # `=asgn`/`=sink`/`=dup`); once analyzed they carry an effect list and
+            # take the branch below.
+            let (isHook, _) = findHookKind(a.sym.name.s)
+            if not isHook:
               propagateEffects(tracked, n, a.sym)
       else:
         mergeRaises(tracked, effectList[exceptionEffects], n)

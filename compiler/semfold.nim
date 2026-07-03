@@ -476,7 +476,12 @@ proc foldArrayAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNo
       #localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkBracket:
     idx -= toInt64(firstOrd(g.config, x.typ))
-    if idx >= 0 and idx < x.len: result = x[int(idx)]
+    if isDefaultBroadcastArray(x, g.config):
+      # compact default array: any in-bounds index folds to the default element
+      if idx >= 0 and idx < toInt64(lengthOrd(g.config, x.typ.skipTypes(abstractInst))):
+        result = copyTree(x[0])
+      else: result = nil
+    elif idx >= 0 and idx < x.len: result = x[int(idx)]
     else:
       result = nil
       #localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)

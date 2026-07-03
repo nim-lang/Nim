@@ -15,7 +15,7 @@ import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
 
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
-import "../dist/nimony/src/gear2" / modnames
+import icmodnames
 import icnifcore
 
 type
@@ -956,7 +956,12 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   result = nimcache / c.nodes[0].files[0].modname & ".backend.build.nif"
 
   let mainNif = c.nodes[0].files[0].nimFile
-  let exeFile = changeFileExt(c.nodes[0].files[0].nimFile, ExeExt)
+  # Honor `--out`/`--outdir`: `cmdIc`'s `setOutFile` populated `conf.outFile`
+  # (the user's `--out`, or the default `<project><exeExt>`), so `absOutFile` is
+  # the final link target — exactly what a whole-program `nim c` would produce.
+  # The `link` child computes its own output from its project name, so the path
+  # is also forwarded to it below.
+  let exeFile = string(c.config.absOutFile)
   let mergeFile = nimcache / MergeDecisionFile
 
   # Per-node output paths.
@@ -1117,6 +1122,11 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addIdent "nim_nifc"
   b.withTree "args":
     b.addStrLit "--icBackendStage:link"
+    # The link child is its own `cmdNifC` process whose project is the main
+    # module, so it would default the binary to `<maindir>/<main><exeExt>`.
+    # Forward the resolved target so it writes exactly `exeFile` (`--out`'s
+    # path splits back into outDir+outFile in the child).
+    b.addStrLit "--out:" & exeFile
   for i in 0 ..< c.nodes.len:
     if live[i]: inputStr cFiles[i]
   outputStr exeFile

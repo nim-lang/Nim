@@ -906,6 +906,10 @@ proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   result = s.ast[bodyPos]
+  if result != nil and nfLazyBody in result.flags and forceLazyBodyHook != nil:
+    # Sanctioned body-access gate (see astdef.bodyPos): materialize the deferred
+    # IC body so callers may safely touch `.sons` directly, not only via `len`.
+    forceLazyBodyHook(result)
   assert result != nil
 
 when not defined(nimKochBootstrap):

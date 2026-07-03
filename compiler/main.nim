@@ -436,6 +436,9 @@ proc mainCommand*(graph: ModuleGraph) =
     # Generate .build.nif for nifmake
     setUseIc(true)
     wantMainModule(conf)
+    # Resolve the output binary path (honoring `--out`) up front, like cmdNifC:
+    # the backend build file derives the link target from `conf.absOutFile`.
+    setOutFile(conf)
     when not defined(nimKochBootstrap):
       commandIc(conf)
     else:

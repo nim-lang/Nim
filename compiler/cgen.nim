@@ -1663,7 +1663,15 @@ proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
   if lfNoDecl in sym.loc.flags or sfCppMember * sym.flags != {}: return
   if lfDynamicLib in sym.loc.flags:
-    if sym.itemId.module != m.module.position and
+    if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
+      # Under IC per-module cg every demander emits the dynlib proc's DEFINITION
+      # locally (findPendingModule returns `m`, so symInDynamicLib follows this
+      # call and the merge stage keeps one def per C name). Emitting the
+      # cross-module `extern` proto here would register `sym.id` in
+      # `m.declaredThings` and thereby make that `symInDynamicLib` skip, leaving
+      # the `Dl_*` symbol declared-but-never-defined -> undefined at link.
+      discard "definition emitted by symInDynamicLib"
+    elif sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):
       let vis = if isReloadable(m, sym): StaticProc else: Extern
       let name = mangleDynLibProc(sym)
