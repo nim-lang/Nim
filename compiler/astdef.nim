@@ -339,6 +339,10 @@ type
                       # because openSym experimental switch is disabled
                       # gives warning instead
     nfLazyType  # node has a lazy type
+    nfFromCppExternalDefault # marker placed on the int literal 0 we substitute
+                             # for a `cppExternalDefault[T]()` sentinel; carried
+                             # through type instantiation so codegen can detect
+                             # that the C++ template arg should be omitted
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -866,7 +870,8 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfDisabledOpenSym, nfLazyType}
+                                      nfDisabledOpenSym, nfLazyType,
+                                      nfFromCppExternalDefault}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

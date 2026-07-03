@@ -949,11 +949,24 @@ proc importedCppObject(m: BModule; t, tt: PType; check: var IntSet; kind: TypeDe
       var chunkEnd = i-1
       var idx, stars: int = 0
       if scanCppGenericSlot(cppName, i, idx, stars):
-        result.add cppName.substr(chunkStart, chunkEnd)
-        chunkStart = i
-
         let typeInSlot = resolveStarsInCppType(tt, idx + 1, stars)
-        addResultType(typeInSlot)
+        var skipArg = false
+        if typeInSlot != nil and typeInSlot.kind == tyStatic and
+           typeInSlot.n != nil and nfFromCppExternalDefault in typeInSlot.n.flags:
+          skipArg = true
+        if skipArg:
+          # Skip this template arg and the preceding separator (", " etc.)
+          # so the C++ template default value applies.
+          var trimmedEnd = chunkEnd
+          while trimmedEnd >= chunkStart and cppName[trimmedEnd] in {' ', ',', '\t'}:
+            dec trimmedEnd
+          if trimmedEnd >= chunkStart:
+            result.add cppName.substr(chunkStart, trimmedEnd)
+          chunkStart = i
+        else:
+          result.add cppName.substr(chunkStart, chunkEnd)
+          chunkStart = i
+          addResultType(typeInSlot)
     else:
       inc i
 
@@ -961,9 +974,14 @@ proc importedCppObject(m: BModule; t, tt: PType; check: var IntSet; kind: TypeDe
     result.add cppName.substr(chunkStart)
   else:
     result = cppNameAsRope & "<"
-    for needsComma, a in tt.genericInstParams:
+    var needsComma = false
+    for _, a in tt.genericInstParams:
+      if a != nil and a.kind == tyStatic and a.n != nil and
+         nfFromCppExternalDefault in a.n.flags:
+        continue
       if needsComma: result.add(" COMMA ")
       addResultType(a)
+      needsComma = true
     result.add("> ")
   # always call for sideeffects:
   assert t.kind != tyTuple

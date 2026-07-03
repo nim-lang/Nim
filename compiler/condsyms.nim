@@ -177,3 +177,5 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimHasImplicitRangeConversion")
 
+  defineSymbol("nimHasCppExternalDefault")
+

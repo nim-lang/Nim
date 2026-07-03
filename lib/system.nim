@@ -935,6 +935,30 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
     assert x.a == 2
 
 
+when defined(nimHasCppExternalDefault):
+  template cppExternalDefault*[T](): T {.error: "cppExternalDefault is a sentinel only valid as a generic parameter default on importcpp types; the compiler omits the corresponding template argument in C++ instantiation so the C++-side default takes effect".} =
+    ## Sentinel for "use the C++-side template default" on `importcpp` generic
+    ## parameters. When used as a generic parameter default and the user omits
+    ## the parameter at instantiation, the compiler omits the corresponding
+    ## template argument in the emitted C++ instantiation, so the C++-side
+    ## default expression (e.g. ``1024/sizeof(T)+8`` or ``Class<T>::value``)
+    ## takes effect.
+    ##
+    ## Calling this template directly is a compile-time error: it has no
+    ## meaningful runtime value, only a compile-time role as a sentinel.
+    ##
+    ## Example:
+    ##   ```nim
+    ##   type
+    ##     Buf*[T; N: static int = cppExternalDefault[int]()]
+    ##       {.importcpp: "Buf<'0, '1>".} = object
+    ##
+    ##   var x: Buf[float]        # C++: ``Buf<float>``,  N = C++ default
+    ##   var y: Buf[float, 100]   # C++: ``Buf<float, 100>``, N = 100
+    ##   ```
+    default(T)
+
+
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
   when nimvm:

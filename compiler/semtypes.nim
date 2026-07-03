@@ -2680,16 +2680,63 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
             typ = semGenericConstraints(c, typ)
 
       if def.kind != nkEmpty:
-        def = semConstExpr(c, def)
-        if typ == nil:
-          if def.typ.kind != tyTypeDesc:
+        # Detect `cppExternalDefault[T]()` sentinel as the default expression.
+        # Recognized syntactically (nkCall whose callee is `cppExternalDefault`
+        # possibly with bracket type args). Done before semConstExpr because
+        # the template carries an `{.error.}` annotation that would trigger
+        # on normal evaluation. The literal substituted below carries
+        # `nfFromCppExternalDefault` (a persistent node flag) so codegen can
+        # omit the corresponding C++ template arg at instantiation.
+        var isCppExternalDefault = false
+        if def.kind == nkCall and def.len >= 1:
+          var callee = def[0]
+          if callee.kind == nkBracketExpr and callee.len >= 1:
+            callee = callee[0]
+          if callee.kind == nkIdent and callee.ident.s == "cppExternalDefault":
+            isCppExternalDefault = true
+
+        if isCppExternalDefault:
+          # Replace the sentinel call with the integer literal 0 so the rest
+          # of generic instantiation has a concrete value to bind. The literal
+          # carries `nfFromCppExternalDefault` (a persistent node flag) so
+          # codegen can detect, at C++ template arg emission time, that the
+          # default actually fired and the corresponding template arg should
+          # be omitted (= the C++-side default takes effect).
+          let info = def.info
+          def = newIntNode(nkIntLit, 0)
+          def.info = info
+          def.flags.incl nfFromCppExternalDefault
+          if typ != nil:
+            # Use the declared base type so `static bool`, `static char`,
+            # `static enum`, `static float` etc. all bind cleanly. Only
+            # fall back to int when the base is something we cannot fit a
+            # zero literal into (= an int placeholder is still chosen so
+            # the rest of generic instantiation has a concrete value; the
+            # value is never observed because codegen omits the C++ arg).
+            const fitable = {tyInt..tyInt64, tyUInt..tyUInt64,
+                             tyFloat..tyFloat64, tyBool, tyChar, tyEnum}
+            let baseType = typ.skipTypes({tyStatic, tyTypeDesc})
+            if baseType != nil and baseType.kind in fitable:
+              def.typ = baseType
+            else:
+              def.typ = getSysType(c.graph, info, tyInt)
+            def = fitNode(c, typ, def, info)
+            def.flags.incl nfFromCppExternalDefault
+          else:
+            def.typ = getSysType(c.graph, info, tyInt)
             typ = newTypeS(tyStatic, c, def.typ)
+            if father == nil: typ.incl tfWildcard
         else:
-          # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
-          # from manyloc/named_argument_bug/triengine:
-          def.typ = def.typ.skipTypes({tyTypeDesc})
-          if not containsGenericType(def.typ):
-            def = fitNode(c, typ, def, def.info)
+          def = semConstExpr(c, def)
+          if typ == nil:
+            if def.typ.kind != tyTypeDesc:
+              typ = newTypeS(tyStatic, c, def.typ)
+          else:
+            # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
+            # from manyloc/named_argument_bug/triengine:
+            def.typ = def.typ.skipTypes({tyTypeDesc})
+            if not containsGenericType(def.typ):
+              def = fitNode(c, typ, def, def.info)
 
       if typ == nil:
         typ = newTypeS(tyGenericParam, c)
