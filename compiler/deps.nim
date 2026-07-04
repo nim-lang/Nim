@@ -1249,15 +1249,21 @@ proc commandIc*(conf: ConfigRef) =
     let nifmake = findNifmake()
     # Build the per-module rules concurrently: nifmake fans out all commands at
     # each DAG depth via execProcesses (defaults to all cores). Cold builds are
-    # otherwise serial (one child at a time) and leave the machine idle. Opt out
-    # with `-d:icNoParallel` (e.g. for readable, non-interleaved child output
-    # when debugging a build), or cap the concurrency with `-d:icJobs:N` — an
-    # uncapped fan-out across many cores can exhaust RAM on a large project
-    # (each `nim m`/`cg` child holds its own module graph), which nifmake's own
-    # `-j:N` exists to bound.
+    # otherwise serial (one child at a time) and leave the machine idle. An
+    # uncapped fan-out across many cores can exhaust RAM on a large project (each
+    # `nim m`/`cg` child holds its own module graph), which nifmake's own `-j:N`
+    # exists to bound. Concurrency is chosen (highest precedence first):
+    #   * `-d:icNoParallel`      -> serial (readable, non-interleaved child output)
+    #   * `-d:icJobs:N`          -> cap at N (legacy IC-tuning define)
+    #   * `--parallelBuild:N`    -> cap at N (the standard Nim build-parallelism
+    #                               flag; a no-op for `nim c` under IC, so we give
+    #                               it meaning here — lets Nimbus devs pick their
+    #                               own value without a `-d:` define)
+    #   * otherwise              -> uncapped (all cores)
     let parallel =
       if isDefined(conf, "icNoParallel"): ""
       elif isDefined(conf, "icJobs"): " --parallel:" & conf.symbols["icJobs"]
+      elif conf.numberOfProcessors > 0: " --parallel:" & $conf.numberOfProcessors
       else: " --parallel"
 
     # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.

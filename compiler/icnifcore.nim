@@ -219,8 +219,18 @@ proc collectBifStrLits*(path: string): seq[string] =
   ## string literal it holds, in order — the binary analogue of the old nifstreams
   ## scan that collected `StrLit`s. Keeps nifcore types out of `deps.nim`, which
   ## only needs the recorded string list.
+  ##
+  ## Uses `loadFromFile` (a full read into owned memory) rather than the mmap-backed
+  ## `bif.load`, then CLOSES the handle. `bif.load` intentionally leaves the mapping
+  ## resident for the process lifetime; for the `nim ic` driver that reads these
+  ## sidecars while `nim m` children rewrite them, a lingering read mapping is a
+  ## Windows sharing violation: the child's `open(path, fmWrite)` fails with
+  ## `IOError: cannot open`. These sidecars are tiny, so the zero-copy mmap buys
+  ## nothing here anyway.
   result = @[]
-  var m = bif.load(path)
+  var f = open(path, fmRead)
+  var m = bif.loadFromFile(f)
+  close(f)
   var c = m.buf.beginRead()
   while c.hasMore:
     if c.kind == StrLit: result.add strVal(c)
