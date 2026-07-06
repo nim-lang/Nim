@@ -86,8 +86,7 @@ proc isNimRepoTests(): bool =
 type
   Category = distinct string
   TResults = object
-    total, passed, failedButAllowed, skipped: int
-      ## xxx rename passed to passedOrAllowedFailure
+    total, passed, skipped: int
     data: string
   TTest = object
     name: string
@@ -232,7 +231,6 @@ proc initResults: TResults =
   result = TResults(
     total: 0,
     passed: 0,
-    failedButAllowed: 0,
     skipped: 0,
     data: ""
   )
@@ -262,28 +260,25 @@ template maybeStyledEcho(args: varargs[untyped]): untyped =
 
 proc `$`(x: TResults): string =
   result = """
-Tests passed or allowed to fail: $2 / $1 <br />
-Tests failed and allowed to fail: $3 / $1 <br />
-Tests skipped: $4 / $1 <br />
-""" % [$x.total, $x.passed, $x.failedButAllowed, $x.skipped]
+Tests passed: $2 / $1 <br />
+Tests skipped: $3 / $1 <br />
+""" % [$x.total, $x.passed, $x.skipped]
 
-proc testName(test: TTest, target: TTarget, extraOptions: string, allowFailure: bool): string =
+proc testName(test: TTest, target: TTarget, extraOptions: string): string =
   var name = test.name.replace(DirSep, '/')
   name.add ' ' & $target
-  if allowFailure:
-    name.add " (allowed to fail) "
   if test.options.len > 0: name.add ' ' & test.options
   if extraOptions.len > 0: name.add ' ' & extraOptions
   name.strip()
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                extraOptions, expected, given: string, success: TResultEnum, duration: float,
-               allowFailure = false, givenSpec: ptr TSpec = nil) =
+               givenSpec: ptr TSpec = nil) =
   # instead of `ptr TSpec` we could also use `Option[TSpec]`; passing `givenSpec` makes it easier to get what we need
   # instead of having to pass individual fields, or abusing existing ones like expected vs given.
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
-  let name = testName(test, target, extraOptions, allowFailure)
+  let name = testName(test, target, extraOptions)
 
   let durationStr = duration.formatFloat(ffDecimal, precision = 2).align(5)
   if backendLogging:
@@ -346,22 +341,22 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
 
 proc finishTest(r: var TResults, test: TTest, target: TTarget,
                 extraOptions, expected, given: string, successOrig: TResultEnum,
-                allowFailure = false, givenSpec: ptr TSpec = nil) =
+                givenSpec: ptr TSpec = nil) =
   ## calculates duration of test, reports result
   ## `retries` option in the test is ignored
   let duration = epochTime() - test.startTime
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
                 else: successOrig
-  addResult(r, test, target, extraOptions, expected, given, success, duration, allowFailure, givenSpec)
+  addResult(r, test, target, extraOptions, expected, given, success, duration, givenSpec)
 
 proc finishTestRetryable(r: var TResults, test: TTest, target: TTarget,
                          extraOptions, expected, given: string, successOrig: TResultEnum,
-                         allowFailure = false, givenSpec: ptr TSpec = nil): bool =
+                         givenSpec: ptr TSpec = nil): bool =
   ## if test failed and has remaining retries, return `true`,
   ## otherwise calculate duration and report result
-  ## 
+  ##
   ## warning: if `true` is returned, then the result is not reported,
-  ## it has to be retried or `finishTest` should be called instead 
+  ## it has to be retried or `finishTest` should be called instead
   result = false
   let duration = epochTime() - test.startTime
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
@@ -369,7 +364,7 @@ proc finishTestRetryable(r: var TResults, test: TTest, target: TTarget,
   if test.spec.retries > 0 and success notin {reSuccess, reDisabled, reJoined, reInvalidSpec}:
     return true
   else:
-    addResult(r, test, target, extraOptions, expected, given, success, duration, allowFailure, givenSpec)
+    addResult(r, test, target, extraOptions, expected, given, success, duration, givenSpec)
 
 proc toString(inlineError: InlineError, filename: string): string =
   result = "$file($line, $col) $kind: $msg" % [
@@ -497,7 +492,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
       return
   if test.spec.err != reRetry:
     test.startTime = epochTime()
-  if testName(test, target, extraOptions, false) in skips:
+  if testName(test, target, extraOptions) in skips:
     test.spec.err = reDisabled
 
   if test.spec.err in {reDisabled, reJoined}:
