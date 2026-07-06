@@ -22,16 +22,11 @@ When this is the case, a workaround is to test this package here by adding `--pa
 type NimblePackage* = object
   name*, cmd*, url*: string
   useHead*: bool
-  allowFailure*: bool
-    ## When true, we still run the test but the test is allowed to fail.
-    ## This is useful for packages that currently fail but that we still want to
-    ## run in CI, e.g. so that we can monitor when they start working again and
-    ## are reminded about those failures without making CI fail for unrelated PRs.
 
 var packages*: seq[NimblePackage]
 
-proc pkg(name: string; cmd = "nimble test -l"; url = "", useHead = true, allowFailure = false) =
-  packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
+proc pkg(name: string; cmd = "nimble test -l"; url = "", useHead = true) =
+  packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead)
 
 pkg "alea"
 pkg "argparse"
