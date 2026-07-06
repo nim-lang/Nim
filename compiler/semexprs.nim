@@ -27,6 +27,11 @@ const
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
   rememberExpansion(c, n.info, s)
+  # IC: this expands `s`'s body into the current module's sem, so the module
+  # depends on that body — record a NeedsImpl (strong) edge to `s`'s module.
+  # The iface cookie hashes only signatures now, so a template body edit moves
+  # only the impl cookie, and just the modules that expanded it re-sem.
+  recordIcImplDep(c.graph, s)
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
   onUse(info, s)
@@ -57,6 +62,16 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
   else:
+    when defined(icDbgRefc):
+      echo "[icNoType] semOperand: ", renderTree(result, {renderNoComments}),
+        " kind=", result.kind,
+        (if result.kind in {nkCall, nkCommand} and result[0].kind == nkSym:
+          " calleeTyp=" & (if result[0].sym.typ == nil: "NIL" else:
+            $result[0].sym.typ.kind & " ret=" &
+            (if result[0].sym.typ.returnType == nil: "NIL"
+             else: $result[0].sym.typ.returnType.kind))
+         else: "")
+      echo getStackTrace()
     localError(c.config, n.info, errExprXHasNoType %
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -83,6 +98,17 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
   elif result.typ == nil or result.typ == c.enforceVoidContext:
+    when defined(icDbgRefc):
+      echo "[icNoType] semExprWithType: ", renderTree(result, {renderNoComments}),
+        " kind=", result.kind,
+        (if result.kind in {nkCall, nkCommand} and result[0].kind == nkSym:
+          " callee=" & result[0].sym.name.s &
+          " calleeTyp=" & (if result[0].sym.typ == nil: "NIL" else:
+            $result[0].sym.typ.kind & " ret=" &
+            (if result[0].sym.typ.returnType == nil: "NIL"
+             else: $result[0].sym.typ.returnType.kind))
+         else: "")
+      echo getStackTrace()
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -106,7 +132,9 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  if result.typ == nil:
+  if result.typ == nil and efInTypeof in flags:
+    result.typ = c.voidType
+  elif result.typ == nil:
     localError(c.config, n.info, errExprXHasNoType %
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -196,6 +224,29 @@ proc semOpenSym(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType,
     if not isSym:
       # set symchoice node type back to None
       n.typ = newTypeS(tyNone, c)
+
+proc resolveOpenSymDotRhs(c: PContext, n: PNode): PNode =
+  ## Resolves an `nkOpenSym` in the field position of a dot expression.
+  ## The dot handling (`builtinFieldAccess`, `dotTransformation`) matches on
+  ## the node kind of the RHS directly, so the wrapper cannot be left for
+  ## `semExpr` to unwrap; without this the captured symbol degrades to a
+  ## plain identifier that is then only looked up in the instantiation
+  ## context. Mirrors `semOpenSym`: a symbol injected during instantiation
+  ## under the current proc replaces the captured symbol, otherwise the
+  ## captured node is used.
+  let inner = n[0]
+  result = inner
+  if inner.kind != nkSym: return
+  let id = newIdentNode(inner.sym.name, n.info)
+  c.isAmbiguous = false
+  let s2 = qualifiedLookUp(c, id, {})
+  if s2 != nil and not c.isAmbiguous and s2 != inner.sym:
+    # only consider symbols defined under the current proc:
+    var o = s2.owner
+    while o != nil:
+      if o == c.p.owner:
+        return id
+      o = o.owner
 
 proc semSymChoice(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   if n.kind == nkOpenSymChoice:
@@ -1521,9 +1572,12 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
   # here at all!
   #if isSymChoice(n[1]): return
   when defined(nimsuggest):
-    if c.config.cmd == cmdIdeTools:
+    if c.config.ideActive:
       suggestExpr(c, n)
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
+
+  if n[1].kind == nkOpenSym:
+    n[1] = resolveOpenSymDotRhs(c, n[1])
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
@@ -1852,6 +1906,22 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
     n.typ = n.typ.elementType
   result.add(n)
 
+proc markResultVarIsPtr(c: PContext, x: PNode) {.inline.} =
+  ## Set `tfVarIsPtr` on the (result) sym node's type. Under IC that type can be a
+  ## NIF-loaded (Sealed) and interned instance which must not be mutated in place
+  ## (it could corrupt other users of the shared type, and the assert forbids it):
+  ## give this result its own copy carrying the flag, exactly like a from-source
+  ## compile has a fresh result type here.
+  if tfVarIsPtr in x.typ.flags: return
+  if x.typ.state == Sealed:
+    let fresh = copyType(x.typ, c.idgen, x.typ.owner)
+    fresh.incl tfVarIsPtr
+    x.typ = fresh
+    if x.kind == nkSym and x.sym.state != Sealed:
+      x.sym.typ = fresh
+  else:
+    x.typ.incl tfVarIsPtr
+
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
@@ -1859,10 +1929,10 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       if x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
         n[0] = x # 'result[]' --> 'result'
         n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
-        x.typ.incl tfVarIsPtr
+        markResultVarIsPtr(c, x)
         #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
       elif sfGlobal in x.sym.flags:
-        x.typ.incl tfVarIsPtr
+        markResultVarIsPtr(c, x)
 
 proc borrowCheck(c: PContext, n, le, ri: PNode) =
   const
@@ -2119,6 +2189,12 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
+    when defined(icDbgRefc):
+      echo "[icMetaRet] meta result type for ", c.p.owner.name.s, ": ",
+        typeToString(c.p.resultSym.typ), " kind=", c.p.resultSym.typ.kind,
+        " flags=", c.p.resultSym.typ.flags,
+        " uid=", c.p.resultSym.typ.uniqueId.module, ".", c.p.resultSym.typ.uniqueId.item,
+        " state=", c.p.resultSym.typ.state
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:
       c.p.resultSym.typ = errorType(c)
@@ -3330,7 +3406,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         c.config.expandNodeResult = $n
         suggestQuit()
 
-  if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
+  if c.config.ideActive: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:

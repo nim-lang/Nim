@@ -135,6 +135,11 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
         writeStackTrace()
     if c.c.module.name.s == "temp3":
       echo "binding ", key, " -> ", val
+  when defined(icDbgRefc):
+    if key.kind in {tyGenericParam, tyTypeDesc}:
+      echo "[icBind] put ", key.kind, " ", typeToString(key), " uid=", key.uniqueId.module, ".",
+        key.uniqueId.item, " itemId=", key.itemId.module, ".", key.itemId.item,
+        " state=", key.state, " -> ", typeToString(val)
   put(c.bindings, key, val.skipIntLit(c.c.idgen))
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
@@ -911,7 +916,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         case typ.kind
         of tyStatic:
           param = paramSym skConst
-          param.typ = typ.exactReplica
+          param.typ = typ.exactReplica(m.c.idgen)
           #copyType(typ, c.idgen, typ.owner)
           if typ.n == nil:
             param.typ.incl tfInferrableStatic
@@ -919,7 +924,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
             param.ast = typ.n
         of tyFromExpr:
           param = paramSym skVar
-          param.typ = typ.exactReplica
+          param.typ = typ.exactReplica(m.c.idgen)
           #copyType(typ, c.idgen, typ.owner)
         else:
           param = paramSym skType
@@ -972,7 +977,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if ff.kind == tyUserTypeClassInst:
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
-    result = ff.exactReplica
+    result = ff.exactReplica(m.c.idgen)
     #copyType(ff, c.idgen, ff.owner)
 
   result.n = checkedBody
@@ -1168,6 +1173,10 @@ proc enterConceptMatch(c: var TCandidate; f,a: PType, flags: TTypeRelFlags): TTy
   if concpt.kind != tyConcept:
     container = concpt
     concpt = container.reduceToBase
+  # considerPreviousT-like behavior
+  let prev = lookup(c.bindings, concpt)
+  if prev != nil:
+    return typeRel(c, prev, a, flags)
   if trDontBind in flags:
     conceptFlags.incl mfDontBind
   if trCheckGeneric in flags:
@@ -2666,7 +2675,7 @@ proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelat
     # The ast of the type does not point to the symbol.
     # Without this we will never resolve a `static proc` with overloads
     let copiedNode = copyNode(arg)
-    copiedNode.typ = exactReplica(copiedNode.typ)
+    copiedNode.typ = exactReplica(copiedNode.typ, m.c.idgen)
     copiedNode.typ.n = arg
     arg = copiedNode
   typeRel(m, f, arg.typ)

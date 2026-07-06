@@ -6123,40 +6123,48 @@ instantiations cross multiple different modules:
 
   ```nim
   # module A
+  type O* = object
+
   proc genericA*[T](x: T) =
     mixin init
     init(x)
   ```
 
+  ```nim
+  # module C
+  import A
+
+  proc init*(x: O) = discard
+  ```
 
   ```nim
-  import C
-
   # module B
+  import A, C
+
   proc genericB*[T](x: T) =
-    # Without the `bind init` statement C's init proc is
-    # not available when `genericB` is instantiated:
+    # Without the `bind init` statement, C's `init` proc is not
+    # available when `genericA` is instantiated through `genericB`
+    # from `module main`, which does not import C:
     bind init
     genericA(x)
   ```
 
   ```nim
-  # module C
-  type O = object
-  proc init*(x: var O) = discard
-  ```
-
-  ```nim
   # module main
-  import B, C
+  import A, B
 
-  genericB O()
+  genericB(O())
   ```
 
-In module B has an `init` proc from module C in its scope that is not
-taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx: these
-symbols by a `bind` statement inside `genericB`.
+Because `genericA` uses `mixin init`, `init` is an open symbol that is
+resolved when `genericA` is instantiated. Here `genericA` is instantiated
+through `genericB`, whose final instantiation happens in `module main`.
+Since `module main` does not import `module C`, `init` is not in scope at
+that point, and the instantiation fails with ``undeclared identifier: 'init'``.
+The `bind init` statement inside `genericB` forwards the `init` symbol that
+is visible in `module B` into the instantiation of `genericA`, which makes
+the example compile. This `bind`, which re-exposes a symbol to a nested
+generic instantiation, is a `delegating bind`:idx:.
 
 
 Templates
@@ -7995,6 +8003,9 @@ underlying C `struct`:c: in a `sizeof` expression:
     DIR* {.importc: "DIR", header: "<dirent.h>",
            pure, incompleteStruct.} = object
   ```
+
+Attempting to use `sizeof` on an `incompleteStruct` type at compile-time
+will error with "'sizeof' cannot be used with '.incompleteStruct' types".
 
 
 CompleteStruct pragma

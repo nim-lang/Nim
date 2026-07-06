@@ -160,7 +160,17 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym = nil
   if s.typ.firstParamType.owner.getModule != s.getModule and vtables in g.config.features and not
-      g.config.isDefined("nimInternalNonVtablesTesting"):
+      g.config.isDefined("nimInternalNonVtablesTesting") and sfFromGeneric notin s.flags:
+    # `sfFromGeneric` excepted: this is the same-module restriction for vtable
+    # slot placement, and it must be judged on the GENERIC method, not on an
+    # instance. The generic `method skip[T](x: Input[T])` never reaches here
+    # (`semMethodPrototype` registers generic methods via `addMethodToGeneric`,
+    # bypassing `methodDef`); only its instance `skip[string]` does, and that
+    # instance's first-param type `Input[string]` is owned by whichever module
+    # first instantiated it (`tparsecombnum`, which `import parsecomb`s and uses
+    # it), NOT by `Input[T]`'s defining module — so the comparison spuriously
+    # fails for a method that is perfectly legal at the generic level. (Concrete
+    # methods, `sfFromGeneric notin flags`, are still checked.)
     localError(g.config, s.info, errGenerated, "method `" & s.name.s &
           "` can be defined only in the same module with its type (" & s.typ.firstParamType.typeToString() & ")")
   if sfImportc in s.flags:
@@ -180,6 +190,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
            g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
         localError(g.config, s.info, "method is not a base")
+      logMethodDef(g, s)
       return
     of No: discard
     of Invalid:
@@ -191,6 +202,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   else:
     g.bucketTable.inc(s.typ.firstParamType.skipTypes(skipPtrs).itemId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
+  logMethodDef(g, s)
   #echo "adding ", s.info
   if witness != nil:
     localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &
