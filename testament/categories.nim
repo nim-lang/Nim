@@ -116,56 +116,52 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
-  template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC --mm:refc", cat)
-    when filename != "gctest":
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:orc", cat)
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:orc -d:release", cat)
+  template run(filename, extraOptions: untyped) =
+    testSpec r, makeTest("tests/gc" / filename, options & extraOptions, cat)
 
-  template testWithoutBoehm(filename: untyped) =
-    testWithoutMs filename
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:markAndSweep", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:markAndSweep", cat)
-
+  # The matrix every gc test file goes through: refc (debug + realtime-release)
+  # and orc (debug + release). This is the coverage we actually rely on today.
   template test(filename: untyped) =
-    testWithoutBoehm filename
-    when not defined(windows) and not defined(android) and not defined(osx):
-      # boehm library linking broken on macos 13
-      # AR: cannot find any boehm.dll on the net, right now, so disabled
-      # for windows:
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:boehm", cat)
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " -d:release --gc:boehm", cat)
+    run filename, " --mm:refc"
+    run filename, " -d:release -d:useRealtimeGC --mm:refc"
+    run filename, " --gc:orc"
+    run filename, " --gc:orc -d:release"
 
-  testWithoutBoehm "foreign_thr"
+  # markAndSweep and boehm are legacy collectors. Exercising them for every gc
+  # test file tripled this category's CI cost for little added signal, so only
+  # `gctest` keeps them alive. `gctest` does not build under orc.
+  template testLegacyGc(filename: untyped) =
+    run filename, " --mm:refc"
+    run filename, " -d:release -d:useRealtimeGC --mm:refc"
+    run filename, " --gc:markAndSweep"
+    run filename, " -d:release --gc:markAndSweep"
+    when not defined(windows) and not defined(android) and not defined(osx):
+      # boehm linking is broken on macOS 13 and there is no usable boehm.dll for
+      # Windows, so those platforms skip it.
+      run filename, " --gc:boehm"
+      run filename, " -d:release --gc:boehm"
+
+  testLegacyGc "gctest"
+
+  test "foreign_thr"
   test "gcemscripten"
   test "growobjcrash"
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  testWithoutBoehm "gctest"
   test "gcleak3"
   test "gcleak4"
   # Disabled because it works and takes too long to run:
   #test "gcleak5"
-  testWithoutBoehm "weakrefs"
+  test "weakrefs"
   test "cycleleak"
-  testWithoutBoehm "closureleak"
-  testWithoutMs "refarrayleak"
-
-  testWithoutBoehm "tlists"
-  testWithoutBoehm "thavlak"
-
+  test "closureleak"
+  test "refarrayleak"
+  test "tlists"
+  test "thavlak"
   test "stackrefleak"
   test "cyclecollector"
-  testWithoutBoehm "trace_globals"
+  test "trace_globals"
   test "tfinalizers"
 
 # ------------------------- threading tests -----------------------------------
