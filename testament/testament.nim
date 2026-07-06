@@ -782,7 +782,12 @@ proc main() =
       if kind == pcDir and cat notin ["testdata", "nimcache"]:
         cats.add cat
     if isNimRepoTests():
-      cats.add AdditionalCategories
+      # `ic` and `navigator` are real `tests/` dirs (already collected above) *and*
+      # listed in AdditionalCategories; without this guard they'd run twice, which
+      # doubled the (expensive) `ic` category on every `all` run. `debugger`,
+      # `examples` and `lib` have no matching `tests/` dir, so they are still added.
+      for cat in AdditionalCategories:
+        if cat notin cats: cats.add cat
     if useMegatest: cats.add MegaTestCat
 
     var cmds: seq[string] = @[]
