@@ -669,7 +669,16 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
+  #
+  # Bootstrap exactly once per platform. The refc-mm bootstrap is a
+  # platform-independent compiler-correctness check, so Linux uses it as its sole
+  # boot (and then runs the whole suite against the refc-built compiler), while
+  # the other platforms cover the default ORC bootstrap. `koch` is rebuilt
+  # per-runner, so `when defined(linux)` selects the Linux job at compile time.
+  when defined(linux):
+    kochExecFold("Boot Nim refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
+  else:
+    kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
@@ -722,8 +731,6 @@ proc runCI(cmd: string) =
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
-
-    kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
 
 
 proc testUnixInstall(cmdLineRest: string) =
