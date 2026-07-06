@@ -409,16 +409,13 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     # at least should be a regex; a substring match makes no sense.
     result = pkgs.filterIt(packageFilter in it.name)
   else:
-    if testamentData0.batchArg == "allowed_failures":
-      result = pkgs.filterIt(it.allowFailure)
-    elif testamentData0.testamentNumBatch == 0:
+    if testamentData0.testamentNumBatch == 0:
       result = pkgs
     else:
       result = @[]
-      let pkgs2 = pkgs.filterIt(not it.allowFailure)
-      for i in 0..<pkgs2.len:
+      for i in 0..<pkgs.len:
         if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
-          result.add pkgs2[i]
+          result.add pkgs[i]
 
 proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
   result = TTest(cat: cat, name: test, options: options, debugInfo: debugInfo,
@@ -447,10 +444,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
           status == QuitSuccess
         if not ok:
-          if pkg.allowFailure:
-            inc r.passed
-            inc r.failedButAllowed
-          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
+          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed)
           continue
         outp
 
@@ -466,7 +460,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand(cmds[i], maxRetries = 3)
       discard tryCommand(cmds[^1], reFailed = reBuildFailed)
       inc r.passed
-      r.finishTest(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
+      r.finishTest(test, targetC, "", "", "", reSuccess)
 
     errors = r.total - r.passed
     if errors == 0:
