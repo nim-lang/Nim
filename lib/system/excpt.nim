@@ -211,10 +211,10 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
       if enabled:
         if dlresult != 0:
           var oldLen = s.len
-          add(s, tempDlInfo.dli_fname)
+          add(s, cstrToStrBuiltin(tempDlInfo.dli_fname))
           if tempDlInfo.dli_sname != nil:
             for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
-            add(s, tempDlInfo.dli_sname)
+            add(s, cstrToStrBuiltin(tempDlInfo.dli_sname))
         else:
           add(s, '?')
         add(s, "\n")
