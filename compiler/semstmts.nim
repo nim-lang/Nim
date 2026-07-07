@@ -2892,9 +2892,10 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult, resolvedIncStmt
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   var resolvedIncStmt: PNode = nil
-  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
+  if optCompress in c.config.globalOptions or c.config.cmd == cmdM or
+     c.config.ideCmd in {ideDef, ideUse}:
     # New resolve the include filenames to string literals that contain absolute paths,
-    # nicer for IC:
+    # nicer for IC (also for a `--def`/`--usages` query, which emits `.s.bif`):
     resolvedIncStmt = newNodeI(nkIncludeStmt, n.info)
     result.add resolvedIncStmt
   else:

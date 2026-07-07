@@ -34,6 +34,7 @@ from icconfig import produceIcConfig
 when not defined(nimKochBootstrap):
   import nifbackend
   import deps
+  import idetools
 
 when not defined(leanCompiler):
   import docgen
@@ -415,7 +416,26 @@ proc mainCommand*(graph: ModuleGraph) =
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmdCheck:
-    commandCheck(graph)
+    when not defined(nimKochBootstrap):
+      if conf.ideCmd in {ideDef, ideUse}:
+        # `nim check --def:`/`--usages:`: run a whole-project check that also
+        # emits each cleanly-compiled module's `.s.bif` (see
+        # pipelines.shouldWriteNif), then scan those NIF files to answer the
+        # goto-definition / find-usages query. The NIF writer needs the IC setup
+        # `cmdM` uses (disabled rod files + `useIc`) to serialize full module
+        # content; we keep `cmd == cmdCheck` for its error-tolerant sem and the
+        # VM guards that run compile-time code faithfully for this mode (see
+        # vm.nim/vmgen.nim), so the emitted NIF reflects macro/gorge symbols.
+        graph.config.symbolFiles = disabledSf
+        setUseIc(true)
+        excl conf.features, Feature.vtables
+        createDir(getNimcacheDir(conf).string)
+        commandCheck(graph)
+        runIdeQuery(conf)
+      else:
+        commandCheck(graph)
+    else:
+      commandCheck(graph)
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf

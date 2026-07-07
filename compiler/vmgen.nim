@@ -359,7 +359,9 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
     #if c.prc.regInfo[i].kind in {slotFixedVar, slotFixedLet}:
     if i != dest:
       when not defined(release):
-        if c.config.cmd != cmdCheck:
+        # A `--def`/`--usages` query runs the VM faithfully (ideCmd != ideNone),
+        # so re-arm the leaking-temporary assert for it as in a real compile.
+        if c.config.cmd != cmdCheck or c.config.ideCmd != ideNone:
           if c.prc.regInfo[i].inUse and c.prc.regInfo[i].kind in {slotTempUnknown,
                                     slotTempInt,
                                     slotTempFloat,
@@ -1598,9 +1600,11 @@ proc setSlot(c: PCtx; v: PSym) =
     v.positionImpl = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
 template cannotEval(c: PCtx; n: PNode) =
-  if c.config.cmd == cmdCheck and c.config.m.errorOutputs != {}:
+  if c.config.cmd == cmdCheck and c.config.ideCmd == ideNone and c.config.m.errorOutputs != {}:
     # nim check command with no error outputs doesn't need to cascade here,
-    # includes `tryConstExpr` case which should not continue generating code
+    # includes `tryConstExpr` case which should not continue generating code.
+    # A `--def`/`--usages` query (ideCmd != ideNone) falls through to the hard
+    # `globalError` below so its compile-time evaluation is faithful.
     localError(c.config, n.info, "cannot evaluate at compile time: " & n.renderTree)
     c.cannotEval = true
     return

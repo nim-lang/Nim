@@ -40,9 +40,10 @@ proc processPipeline(graph: ModuleGraph; semNode: PNode; bModule: PPassContext):
   of GenDependPass:
     result = addDotDependency(bModule, semNode)
   of SemPass:
-    # Return the semantic node for cmdM (NIF generation needs it)
-    # For regular check, we don't need the result
-    if graph.config.cmd == cmdM:
+    # Return the semantic node for cmdM (NIF generation needs it), and likewise
+    # for a `--def`/`--usages` query under cmdCheck which emits `.s.bif` too.
+    # For regular check, we don't need the result.
+    if graph.config.cmd == cmdM or graph.config.ideCmd in {ideDef, ideUse}:
       result = semNode
     else:
       result = graph.emptyNode
@@ -167,7 +168,10 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     s = stream
     graph.interactive = stream.kind == llsStdIn
   var topLevelStmts =
-    if optCompress in graph.config.globalOptions or graph.config.cmd == cmdM:
+    if optCompress in graph.config.globalOptions or graph.config.cmd == cmdM or
+       graph.config.ideCmd in {ideDef, ideUse}:
+      # A `--def`/`--usages` query emits every module's `.s.bif` under cmdCheck
+      # (see shouldWriteNif below), which needs the collected top-level stmts.
       newNodeI(nkStmtList, module.info)
     else:
       nil
@@ -247,7 +251,18 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     # current strongly-connected import group (`--icGroup`) are the exception:
     # they are compiled from source here, so each must write its own NIF.
     let shouldWriteNif =
-      if graph.config.ideActive:
+      if graph.config.ideCmd in {ideDef, ideUse}:
+        # `nim check --def:`/`--usages:` query: this whole-project check runs
+        # under cmdCheck and emits each cleanly-compiled, non-dirty PROJECT
+        # module's `.s.bif` so `idetools.runIdeQuery` can scan them afterwards.
+        # Stdlib modules are skipped: they serialize robustly only via `nim ic`'s
+        # per-module `cmdM` build, and the common query targets a project symbol
+        # (whose def + uses all live in project modules). Skip the edited buffer
+        # and any module reached after an error (incomplete NIF).
+        graph.config.errorCounter == 0 and
+          not belongsToStdlib(graph, module) and
+          graph.config.m.fileInfos[module.position].dirtyFile.isEmpty
+      elif graph.config.ideActive:
         # nimsuggest (cmdM): persist NIF for cleanly-compiled, SAVED modules so
         # later queries load them instead of recompiling. Never persist the
         # actively edited buffer (it may hold unsaved/incomplete code) nor a

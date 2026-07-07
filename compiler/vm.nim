@@ -2033,7 +2033,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       inc pc
       let rd = c.code[pc].regA
       createStr regs[ra]
-      if defined(nimsuggest) or c.config.cmd == cmdCheck:
+      if defined(nimsuggest) or (c.config.cmd == cmdCheck and c.config.ideCmd == ideNone):
+        # Don't run staticExec for plain `nim check` / `nim suggest`. A
+        # `--def`/`--usages` query (ideCmd != ideNone) is the exception: it wants
+        # faithful compile-time execution so the emitted `.bif` — which the query
+        # then scans — reflects macro/gorge-produced symbols. See idetools.nim.
         discard "don't run staticExec for 'nim suggest'"
         regs[ra].node.strVal = ""
       else:
