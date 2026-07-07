@@ -2604,7 +2604,7 @@ else:
       rawQuit(errorcode.cint)
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
-  ## A shorthand for `echo(errormsg); quit(errorcode)`.
+  ## A shorthand for `writeLine(stderr, errormsg); quit(errorcode)`.
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
