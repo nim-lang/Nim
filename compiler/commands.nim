@@ -509,6 +509,7 @@ proc parseCommand*(command: string): Command =
   of "nifc": cmdNifC  # generate C from NIF files
   of "ic": cmdIc  # generate .build.nif for nifmake
   of "icconfig": cmdIcConfig  # produce the precompiled config artifact
+  of "track": cmdTrack  # IDE goto-def / find-usages over `nim ic`'s NIF output
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =

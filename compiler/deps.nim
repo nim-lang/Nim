@@ -1134,8 +1134,12 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
 
   b.endTree()  # stmts
 
-proc commandIc*(conf: ConfigRef) =
-  ## Main entry point for `nim ic`
+proc commandIc*(conf: ConfigRef; frontendOnly = false) =
+  ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
+  ## IDE queries) it runs only Phase 1 — the incremental nifler + `nim m`
+  ## frontend that writes every module's `.s.bif` — and skips the whole-program
+  ## backend (`nim nifc` -> C -> link), which a goto-def / find-usages scan does
+  ## not need.
   when not defined(nimKochBootstrap):
     let nifler = findNifler()
     if nifler.len == 0:
@@ -1275,10 +1279,12 @@ proc commandIc*(conf: ConfigRef) =
       if nifmake.len == 0:
         rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & buildFile)
         # without nifmake we can only print the manual commands; emit the
-        # backend's too (best effort — discovery cannot run) and stop.
-        let backendFile = generateBackendBuildFile(c, forwardedArgs)
-        rawMessage(conf, hintSuccess, "generated: " & backendFile)
-        rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
+        # backend's too (best effort — discovery cannot run) and stop. An IDE
+        # query (`frontendOnly`) needs no backend, so skip it there.
+        if not frontendOnly:
+          let backendFile = generateBackendBuildFile(c, forwardedArgs)
+          rawMessage(conf, hintSuccess, "generated: " & backendFile)
+          rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
         return
       let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
@@ -1322,7 +1328,9 @@ proc commandIc*(conf: ConfigRef) =
     # Phase 2 — backend (whole-program `nim nifc`), run once over the now-final
     # graph. Kept a separate nifmake run so backend rebuilds are decided purely
     # by nifmake's input mtimes, independent of frontend discovery.
-    if frontendOk:
+    # An IDE query (`frontendOnly`) stops after Phase 1: the `.s.bif` it scans
+    # are all produced by the frontend; codegen + link would be wasted work.
+    if frontendOk and not frontendOnly:
       let backendFile = generateBackendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & backendFile)
       let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)

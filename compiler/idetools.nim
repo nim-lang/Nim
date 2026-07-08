@@ -7,13 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-## NIF-based goto-definition / find-all-usages for `nim check`.
+## NIF-based goto-definition / find-all-usages for `nim track`.
 ##
 ## This is the mainline-Nim port of nimony's `idetools.nim`. It answers a
 ## `--def:FILE,LINE,COL` / `--usages:FILE,LINE,COL` query by *scanning the
 ## `.s.bif` files* (binary NIF, see `dist/nimony/src/lib/bif.nim`) that the
-## preceding `nim check` compile emitted into the nimcache directory — NOT by
-## re-running sem. NIF distinguishes a definition (`SymbolDef` token) from a use
+## preceding `nim ic` frontend (`nim track`) emitted into the nimcache directory
+## — NOT by re-running sem. NIF distinguishes a definition (`SymbolDef` token) from a use
 ## (`Symbol` token) syntactically, so goto-def / find-uses become plain token
 ## scans over type-checked NIF, which is more reliable than the classic PSym
 ## engine because generics and macros are type-checked in the NIF too.

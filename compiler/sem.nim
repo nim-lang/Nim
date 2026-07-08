@@ -926,7 +926,7 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
       #if c.config.ideActive: findSuggest(c, n)
 
 proc reportUnusedModules(c: PContext) =
-  if c.config.cmd == cmdM or c.config.ideCmd in {ideDef, ideUse}: return
+  if c.config.cmd == cmdM: return
   for (s, info) in c.unusedImports:
     if sfUsed notin s.flags:
       message(c.config, info, warnUnusedImportX, s.name.s)

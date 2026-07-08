@@ -205,6 +205,7 @@ type
     cmdNifC  # generate C code from NIF files
     cmdIc  # generate .build.nif for nifmake
     cmdIcConfig # `nim ic`'s precompiled-config producer (writes ic_config.cfg.nif)
+    cmdTrack # `nim track --def/--usages`: IC frontend build + NIF scan for IDE queries
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,

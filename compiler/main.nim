@@ -416,26 +416,21 @@ proc mainCommand*(graph: ModuleGraph) =
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmdCheck:
+    commandCheck(graph)
+  of cmdTrack:
+    # `nim track --def:/--usages:/--track:` — IDE goto-definition / find-usages.
+    # Runs `nim ic`'s incremental frontend (nifler + per-module `nim m`, so only
+    # changed modules recompile and each writes a faithful, VM-executed `.s.bif`
+    # — covering stdlib too), then scans those NIF files (idetools.runIdeQuery).
+    # Shares the `nim ic` nimcache dir, so a prior `nim ic` build is reused.
+    setUseIc(true)
+    wantMainModule(conf)
+    setOutFile(conf)
     when not defined(nimKochBootstrap):
-      if conf.ideCmd in {ideDef, ideUse}:
-        # `nim check --def:`/`--usages:`: run a whole-project check that also
-        # emits each cleanly-compiled module's `.s.bif` (see
-        # pipelines.shouldWriteNif), then scan those NIF files to answer the
-        # goto-definition / find-usages query. The NIF writer needs the IC setup
-        # `cmdM` uses (disabled rod files + `useIc`) to serialize full module
-        # content; we keep `cmd == cmdCheck` for its error-tolerant sem and the
-        # VM guards that run compile-time code faithfully for this mode (see
-        # vm.nim/vmgen.nim), so the emitted NIF reflects macro/gorge symbols.
-        graph.config.symbolFiles = disabledSf
-        setUseIc(true)
-        excl conf.features, Feature.vtables
-        createDir(getNimcacheDir(conf).string)
-        commandCheck(graph)
-        runIdeQuery(conf)
-      else:
-        commandCheck(graph)
+      commandIc(conf, frontendOnly = true)
+      runIdeQuery(conf)
     else:
-      commandCheck(graph)
+      rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
