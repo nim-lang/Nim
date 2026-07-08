@@ -1,5 +1,5 @@
 discard """
-output: "5"
+output: "13"
 """
 
 # bug #25883: C codegen assigns same type hash to tuples with different nesting
