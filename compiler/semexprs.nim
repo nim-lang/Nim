@@ -26,13 +26,15 @@ const
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
-  rememberExpansion(c, n.info, s)
+  let info = getCallLineInfo(n)
+  # `info` (the callee identifier's position, not the whole call node) is what
+  # tooling wants to see as the usage site — matches `markUsed` below.
+  rememberExpansion(c, info, s)
   # IC: this expands `s`'s body into the current module's sem, so the module
   # depends on that body — record a NeedsImpl (strong) edge to `s`'s module.
   # The iface cookie hashes only signatures now, so a template body edit moves
   # only the impl cookie, and just the modules that expanded it re-sem.
   recordIcImplDep(c.graph, s)
-  let info = getCallLineInfo(n)
   markUsed(c, info, s)
   onUse(info, s)
   # Note: This is n.info on purpose. It prevents template from creating an info

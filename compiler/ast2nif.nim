@@ -894,6 +894,7 @@ var reexpModTag = registerTag("reexpmod")
 var offerTag = registerTag("offer")
 var typeOfferTag = registerTag("toffer")
 var modulesrcTag = registerTag("modulesrc")
+var expansionTag = registerTag("expansion")
 # `(unusedid <int>)` — the module's first FREE itemId after the frontend
 # (`.s.bif`) or the lower stage (`.t.bif`). The backend seeds its per-module
 # sym/type counters here so freshly-minted backend ids (closure envs, RTTI
@@ -934,6 +935,7 @@ proc registerNifAstTags*() =
   offerTag = registerTag("offer")
   typeOfferTag = registerTag("toffer")
   modulesrcTag = registerTag("modulesrc")
+  expansionTag = registerTag("expansion")
 
 proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
   if n == nil:
@@ -1559,7 +1561,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                                               genericParamsCount: int]] = @[];
                      typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[];
                      resolvedImportDeps: seq[FileIndex] = @[];
-                     firstUnusedId: int32 = 0) =
+                     firstUnusedId: int32 = 0;
+                     expansions: seq[(PSym, TLineInfo)] = @[]) =
   var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   var content = newIcBuilder(300)
@@ -1636,6 +1639,17 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   w.deps.addParLe modulesrcTag, NoLineInfo
   w.deps.addStrLit toFullPath(config, FileIndex(thisModule))
   w.deps.addParRi
+
+  # Template/macro expansions leave no trace in the sem'checked AST, so record
+  # each as `(expansion <symUse @call-site>)`: a `Symbol` use of the expanded
+  # routine carrying the ORIGINAL call-site line info. The loader skips the tag
+  # (processTopLevel), but `idetools` scans every `Symbol` token in the buffer,
+  # so this restores "find usages / goto-def" for templates and macros.
+  for (sym, info) in expansions:
+    if sym == nil: continue
+    w.deps.addParLe expansionTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), trLineInfo(w, info)
+    w.deps.addParRi
 
   # Generic TYPE-instance OFFERS: the `tyGenericInst` types this module created
   # (e.g. `HashArray[8192, Gwei]`). Non-IC keeps ONE such instance in the global
@@ -3261,6 +3275,10 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
       elif tagIs(cur, "modulesrc"):
         # self-identification record for the standalone include-graph scanner;
         # not needed by the loader, just skip past it.
+        skip cur
+      elif tagIs(cur, "expansion"):
+        # template/macro expansion usage record for tooling (`idetools` scans it
+        # as a `Symbol` use); the loader itself needs nothing from it.
         skip cur
       elif tagIs(cur, "implementation"):
         cont = false
