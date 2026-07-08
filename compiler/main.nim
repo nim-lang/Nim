@@ -34,6 +34,7 @@ from icconfig import produceIcConfig
 when not defined(nimKochBootstrap):
   import nifbackend
   import deps
+  import idetools
 
 when not defined(leanCompiler):
   import docgen
@@ -416,6 +417,20 @@ proc mainCommand*(graph: ModuleGraph) =
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmdCheck:
     commandCheck(graph)
+  of cmdTrack:
+    # `nim track --def:/--usages:/--track:` — IDE goto-definition / find-usages.
+    # Runs `nim ic`'s incremental frontend (nifler + per-module `nim m`, so only
+    # changed modules recompile and each writes a faithful, VM-executed `.s.bif`
+    # — covering stdlib too), then scans those NIF files (idetools.runIdeQuery).
+    # Shares the `nim ic` nimcache dir, so a prior `nim ic` build is reused.
+    setUseIc(true)
+    wantMainModule(conf)
+    setOutFile(conf)
+    when not defined(nimKochBootstrap):
+      commandIc(conf, frontendOnly = true)
+      runIdeQuery(conf)
+    else:
+      rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf

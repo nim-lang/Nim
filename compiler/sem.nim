@@ -576,10 +576,12 @@ const
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}; expectedType: PType = nil): PNode =
-  rememberExpansion(c, nOrig.info, sym)
+  let info = getCallLineInfo(n)
+  # the callee identifier's position is the usage site tooling expects (matches
+  # `markUsed` below), not the whole-call `nOrig.info`.
+  rememberExpansion(c, info, sym)
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
-  let info = getCallLineInfo(n)
   markUsed(c, info, sym)
   onUse(info, sym)
   if sym == c.p.owner:
