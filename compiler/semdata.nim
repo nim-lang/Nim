@@ -370,7 +370,16 @@ proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   discard
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
-  discard
+  # Under `nim m` (the IC frontend) record the REAL direct imports of the
+  # current module as sem resolves them — including imports a macro generated
+  # (e.g. chronicles' `parseStmt("import chronicles/textlines")`), which the
+  # static dependency scanner never sees. `nim ic` writes this set as the
+  # module's `.s.deps` sidecar and re-derives the build graph from it, so the
+  # discovery is structured data instead of a build-failure side channel.
+  if c.config.cmd == cmdM:
+    let importer = c.module.position.FileIndex
+    var deps = addr c.graph.importDeps.mgetOrPut(importer, @[])
+    if f notin deps[]: deps[].add f
 
 proc addPragmaComputation*(c: PContext; n: PNode) =
   # Also store for NIF-based IC (cmdM mode or optCompress)
@@ -387,6 +396,18 @@ proc addConverter*(c: PContext, conv: PSym) =
   assert conv != nil
   if inclSym(c.converters, conv):
     add(c.graph.ifaces[c.module.position].converters, conv)
+    # Record for IC: the loader rebuilds Iface.converters from the NIF's
+    # (repconverter ...) entries (moduleFromNifFile). This must capture not only
+    # converters DEFINED in this module (addConverterDef) but also ones IMPORTED
+    # from another module here (importer.addUnnamedIt re-adds a re-exported
+    # module's converters via this proc). Otherwise a loaded module's
+    # re-exported converters were invisible to importers and implicit
+    # conversions silently stopped matching at a consumer that reaches the
+    # converter only through this module's re-export chain (e.g. faststreams'
+    # `InputStreamHandle -> InputStream` via ssz_serialization, breaking
+    # `SSZ.decode`/`encode`). `inclSym` guards against duplicate log entries.
+    c.graph.opsLog.add LogEntry(kind: ConverterEntry, module: c.module.position,
+                                key: "", sym: conv)
 
 proc addConverterDef*(c: PContext, conv: PSym) =
   addConverter(c, conv)
@@ -394,6 +415,13 @@ proc addConverterDef*(c: PContext, conv: PSym) =
 proc addPureEnum*(c: PContext, e: PSym) =
   assert e != nil
   add(c.graph.ifaces[c.module.position].pureEnums, e)
+  # record for IC: a NIF-loaded module rebuilds `Iface.pureEnums` from these log
+  # entries (moduleFromNifFile); without it a loaded module's pure enums were
+  # invisible to importers, so `importPureEnumFields` never offered their fields
+  # and unqualified pure-enum values stopped resolving. (Same pattern as
+  # `addConverterDef`.)
+  c.graph.opsLog.add LogEntry(kind: PureEnumEntry, module: c.module.position,
+                              key: "", sym: e)
 
 proc addPattern*(c: PContext, p: PSym) =
   assert p != nil
@@ -640,7 +668,13 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## ("find all usages of this template" would not work). We need special
   ## logic to remember macro/template expansions. This is done here and
   ## delegated to the "NIF" file mechanism.
-  discard "XXX To implement"
+  ##
+  ## We only bother when a NIF file is actually going to be written (IC / `nim m`,
+  ## `--compress`, or a running suggestion engine); a plain `nim c` throws the
+  ## record away, so recording it would be pure overhead.
+  if info.fileIndex == InvalidFileIdx: return
+  if c.config.cmd == cmdM or optCompress in c.config.globalOptions or c.config.ideActive:
+    c.graph.nifExpansions.mgetOrPut(c.module.position.int32, @[]).add (expandedSym, info)
 
 const
   errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"

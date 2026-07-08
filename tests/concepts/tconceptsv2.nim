@@ -14,6 +14,8 @@ b
 c
 1
 2
+5
+test
 '''
 """
 import conceptsv2_helper
@@ -600,3 +602,15 @@ block:
 
   let test = MemMapFileStream()
   spring(test)
+
+# explicit negative "bind once"
+
+type
+  Dollarable = concept
+    proc `$`(x: Self): string
+
+proc checkEqual2[T: Dollarable; S: Dollarable](x: T, y: S) =
+  echo $x
+  echo $y
+
+checkEqual2(5, "test")

@@ -1386,7 +1386,33 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
     result = getBody(g, prc)
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
-    var c = openTransf(g, prc.getModule, "", idgen, flags)
+    # Lambda-lifting a routine body while the VM compiles it (to run a macro
+    # under `nim ic`) mints a closure `:env` (type + obj + fields + hidden param)
+    # that the lift welds into the routine's serialized signature. Such an env is
+    # a PROCESS-LOCAL artifact (its item number is per-process-sequential), so a
+    # reference to it must never carry a stable cross-module identity — otherwise
+    # a consumer resolves it against a canonical NIF built by a different process
+    # that has no matching def ('symbol has no offset', e.g. Nimbus t17.275).
+    # Lift in the backend (process-local) id space; ast2nif then emits these as
+    # module-local `@bk` defs (mirrors setAttachedOp's inVMTransform handling).
+    var liftIdgen = idgen
+    if g.inVMTransform > 0 and g.config.cmd == cmdM:
+      if g.vmTransfIdgen == nil:
+        g.vmTransfIdgen = idGeneratorForBackend(g.systemModule)
+      liftIdgen = g.vmTransfIdgen
+    var c = openTransf(g, prc.getModule, "", liftIdgen, flags)
+    # `liftCapturedVars` rewrites captured locals to `:env.field` IN PLACE on the
+    # body it is handed; the env-creation prologue lands only in the returned
+    # wrapper. When the VM drives this transform (running a macro/CT proc), that
+    # in-place mutation corrupts the routine's PRE-transform `ast[bodyPos]` —
+    # under IC exactly the node `getBody` serializes to the module's `.s.nif`. So
+    # snapshot the pristine body before the VM lift and restore `ast[bodyPos]`
+    # afterwards: the VM still consumes the fully-lifted `result`, but `getBody`
+    # keeps faithfully returning the pre-transform body for serialization. The
+    # cg/backend path (`inVMTransform == 0`) is untouched.
+    let vmPristineBody =
+      if g.inVMTransform > 0: copyTree(getBody(g, prc))
+      else: nil
     result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen, flags)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
@@ -1396,6 +1422,8 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
       result = g.transformClosureIterator(c.idgen, prc, result)
 
     incl(result.flags, nfTransf)
+    if vmPristineBody != nil:
+      prc.ast[bodyPos] = vmPristineBody
 
     if useCache in flags or prc.typ.callConv == ccInline:
       # genProc for inline procs will be called multiple times from different modules,

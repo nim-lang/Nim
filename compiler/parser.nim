@@ -54,7 +54,10 @@ import
 
 when not defined(nimCustomAst):
   import ast
-else:
+when defined(nimCustomAst):
+  # NOTE: explicit negated `when` rather than `else:` — nifler's dep scanner
+  # guards `when`/`elif` imports with their condition but emits `else:` imports
+  # unconditionally, which would wrongly schedule this module under `nim ic`.
   import plugins / customast
 
 import std/strutils

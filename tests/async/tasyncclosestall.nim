@@ -13,7 +13,7 @@ else:
 # This reproduces a case where a socket remains stuck waiting for writes
 # even when the socket is closed.
 const
-  timeout = 8000
+  timeout = 2000
 var port = Port(0)
 
 var sent = 0

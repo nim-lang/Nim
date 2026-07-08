@@ -40,7 +40,8 @@ type
     wasm32,                    ## WASM, 32-bit
     e2k,                       ## MCST Elbrus 2000
     loongarch64,               ## LoongArch 64-bit processor
-    s390x                      ## IBM Z
+    s390x,                     ## IBM Z
+    wasm64                     ## WASM, 64-bit
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
@@ -101,5 +102,6 @@ const
                elif defined(e2k): CpuPlatform.e2k
                elif defined(loongarch64): CpuPlatform.loongarch64
                elif defined(s390x): CpuPlatform.s390x
+               elif defined(wasm64): CpuPlatform.wasm64
                else: CpuPlatform.none
     ## the CPU this program will run on.

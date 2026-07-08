@@ -13,7 +13,7 @@
 # included from testament.nim
 
 import important_packages
-import std/[strformat, strutils]
+import std/[strformat, strutils, tables]
 from std/sequtils import filterIt
 
 const
@@ -116,56 +116,52 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
-  template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC --mm:refc", cat)
-    when filename != "gctest":
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:orc", cat)
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:orc -d:release", cat)
+  template run(filename, extraOptions: untyped) =
+    testSpec r, makeTest("tests/gc" / filename, options & extraOptions, cat)
 
-  template testWithoutBoehm(filename: untyped) =
-    testWithoutMs filename
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:markAndSweep", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:markAndSweep", cat)
-
+  # The matrix every gc test file goes through: refc (debug + realtime-release)
+  # and orc (debug + release). This is the coverage we actually rely on today.
   template test(filename: untyped) =
-    testWithoutBoehm filename
-    when not defined(windows) and not defined(android) and not defined(osx):
-      # boehm library linking broken on macos 13
-      # AR: cannot find any boehm.dll on the net, right now, so disabled
-      # for windows:
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:boehm", cat)
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " -d:release --gc:boehm", cat)
+    run filename, " --mm:refc"
+    run filename, " -d:release -d:useRealtimeGC --mm:refc"
+    run filename, " --gc:orc"
+    run filename, " --gc:orc -d:release"
 
-  testWithoutBoehm "foreign_thr"
+  # markAndSweep and boehm are legacy collectors. Exercising them for every gc
+  # test file tripled this category's CI cost for little added signal, so only
+  # `gctest` keeps them alive. `gctest` does not build under orc.
+  template testLegacyGc(filename: untyped) =
+    run filename, " --mm:refc"
+    run filename, " -d:release -d:useRealtimeGC --mm:refc"
+    run filename, " --gc:markAndSweep"
+    run filename, " -d:release --gc:markAndSweep"
+    when not defined(windows) and not defined(android) and not defined(osx):
+      # boehm linking is broken on macOS 13 and there is no usable boehm.dll for
+      # Windows, so those platforms skip it.
+      run filename, " --gc:boehm"
+      run filename, " -d:release --gc:boehm"
+
+  testLegacyGc "gctest"
+
+  test "foreign_thr"
   test "gcemscripten"
   test "growobjcrash"
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  testWithoutBoehm "gctest"
   test "gcleak3"
   test "gcleak4"
   # Disabled because it works and takes too long to run:
   #test "gcleak5"
-  testWithoutBoehm "weakrefs"
+  test "weakrefs"
   test "cycleleak"
-  testWithoutBoehm "closureleak"
-  testWithoutMs "refarrayleak"
-
-  testWithoutBoehm "tlists"
-  testWithoutBoehm "thavlak"
-
+  test "closureleak"
+  test "refarrayleak"
+  test "tlists"
+  test "thavlak"
   test "stackrefleak"
   test "cyclecollector"
-  testWithoutBoehm "trace_globals"
+  test "trace_globals"
   test "tfinalizers"
 
 # ------------------------- threading tests -----------------------------------
@@ -410,16 +406,13 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     # at least should be a regex; a substring match makes no sense.
     result = pkgs.filterIt(packageFilter in it.name)
   else:
-    if testamentData0.batchArg == "allowed_failures":
-      result = pkgs.filterIt(it.allowFailure)
-    elif testamentData0.testamentNumBatch == 0:
+    if testamentData0.testamentNumBatch == 0:
       result = pkgs
     else:
       result = @[]
-      let pkgs2 = pkgs.filterIt(not it.allowFailure)
-      for i in 0..<pkgs2.len:
+      for i in 0..<pkgs.len:
         if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
-          result.add pkgs2[i]
+          result.add pkgs[i]
 
 proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
   result = TTest(cat: cat, name: test, options: options, debugInfo: debugInfo,
@@ -448,10 +441,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
           status == QuitSuccess
         if not ok:
-          if pkg.allowFailure:
-            inc r.passed
-            inc r.failedButAllowed
-          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
+          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed)
           continue
         outp
 
@@ -467,7 +457,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand(cmds[i], maxRetries = 3)
       discard tryCommand(cmds[^1], reFailed = reBuildFailed)
       inc r.passed
-      r.finishTest(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
+      r.finishTest(test, targetC, "", "", "", reSuccess)
 
     errors = r.total - r.passed
     if errors == 0:
@@ -488,6 +478,236 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 
 # ---------------- IC tests ---------------------------------------------
 
+# ---- Metamorphic IC tests --------------------------------------------------
+#
+# A metamorphic IC test drives a *sequence of edits across several modules*
+# through `nim ic` in a fixed build directory (same absolute paths throughout,
+# which is what keeps the cache content-stable) and asserts the invariants the
+# incremental backend is supposed to guarantee — see doc/ic_ideas.md:
+#
+#   * clean build == incremental build      (a fresh in-place rebuild of the
+#                                            final sources is byte-identical to
+#                                            the binary and full cache set the
+#                                            incremental edits converged to)
+#   * a no-op edit changes no artifact       (`noop`)
+#   * a body-only edit touches no interface  (`body-edit`: no `*.iface.bif`
+#                                            cookie changes -> no importer re-sem)
+#   * an interface edit propagates to        (`iface-edit`: an `*.iface.bif`
+#     importers                              cookie changes and >= 2 modules'
+#                                            `*.s.bif` codegen is rebuilt)
+#
+# File format (a `tests/ic/t*.nim` whose body, after the spec header, contains a
+# line `#? metamorphic`):
+#
+#   #? metamorphic
+#   #!FILE a.nim
+#   proc greet*(): string = "hi"
+#   #!FILE main.nim          # `main.nim` is always the build root
+#   import a
+#   echo greet()
+#   #!STEP expect: hi
+#   #!FILE a.nim             # re-emit a module to "edit" it
+#   proc greet*(): string = "hi"   # identical content
+#   #!STEP expect: hi; noop
+#
+# `#!FILE <name>` blocks (re)write a module in the virtual file system; the
+# accumulated file set is materialised before each `#!STEP`. A `#!STEP`'s
+# attributes are `;`-separated, each either `key: value` or a bare flag:
+#   expect: <stdout>   noop   body-edit   iface-edit   modules: <n>   clean
+# The last step always also runs the clean==incremental check.
+
+type MetamorphicError = object of CatchableError
+  resultKind: TResultEnum
+  expected, given: string
+
+proc mmRaise(kind: TResultEnum, expected, given: string) =
+  var e = newException(MetamorphicError, given)
+  e.resultKind = kind
+  e.expected = expected
+  e.given = given
+  raise e
+
+proc isMetamorphicIcTest(content: string): bool =
+  for line in content.splitLines:
+    if line.strip == "#? metamorphic": return true
+
+proc snapshotDir(dir: string): Table[string, string] =
+  ## relative path -> raw file contents, for every file under `dir`.
+  result = initTable[string, string]()
+  if dirExists(dir):
+    for it in walkDirRec(dir):
+      result[it.relativePath(dir)] = readFile(it)
+
+proc changedPaths(prev, cur: Table[string, string]): seq[string] =
+  result = @[]
+  for k, v in cur:
+    if prev.getOrDefault(k) != v: result.add k
+  for k in prev.keys:
+    if k notin cur: result.add k
+
+proc isProvenance(path: string): bool =
+  ## Build-provenance sidecars that legitimately differ between a fresh build and
+  ## an edit-accumulated one (they record build history, not codegen). Excluded
+  ## only from the cross-build clean==incremental comparison — a *no-op* edit must
+  ## still leave even these untouched.
+  path.endsWith(".frontend.build.nif")
+
+proc stableBinary(path: string): string =
+  ## Contents of a linked executable past its header region, for comparing whether
+  ## two builds produced the same *code*. Linkers embed build-time-volatile fields
+  ## in the header (e.g. the mingw PE `TimeDateStamp` and its derived `CheckSum`),
+  ## so two builds seconds apart differ there even with identical codegen. Skipping
+  ## a generous fixed window keeps the clean-vs-incremental check about codegen.
+  const headerSkip = 4096
+  var f: File
+  if not open(f, path, fmRead):
+    raise newException(IOError, "cannot open: " & path)
+  defer: close(f)
+  if getFileSize(f) > headerSkip:
+    setFilePos(f, headerSkip)
+  result = readAll(f)
+
+proc changedModuleCount(changed: seq[string]): int =
+  ## distinct modules whose codegen (`*.s.bif`) was rebuilt.
+  var mods: seq[string] = @[]
+  for p in changed:
+    if p.endsWith(".s.bif"):
+      let key = p.extractFilename.split('.')[0]
+      if key notin mods: mods.add key
+  result = mods.len
+
+proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options: string) =
+  var test = TTest(cat: cat, name: file, options: options,
+                   spec: initSpec(file), startTime: epochTime())
+  test.spec.targets = {targetC}
+  inc r.total
+
+  # Absolute paths: `nim ic` runs with `workingDir = buildDir`, so a relative
+  # `--nimcache` would resolve against the build dir, not where we read it back.
+  let buildDir = (file.changeFileExt("") & "_mm").absolutePath
+  let nc = buildDir / "nc"
+  let bin = buildDir / "prog".addFileExt(ExeExt)
+  removeDir(buildDir)
+  createDir(buildDir)
+
+  template compileIc(): untyped =
+    execCmdEx2(compilerPrefix, ["ic", "--hint:Conf:off", "--warnings:off",
+      "--nimcache:" & nc, "--out:" & bin, "main.nim"],
+      workingDir = buildDir)
+
+  # Parse the source into a flat op list: ("file", name, content) | ("step", attrs, "").
+  type OpKind = enum opFile, opStep
+  type Op = object
+    kind: OpKind
+    a, b: string
+  var ops: seq[Op] = @[]
+  block parse:
+    var curName = ""
+    var buf = ""
+    template flushFile() =
+      if curName.len > 0: ops.add Op(kind: opFile, a: curName, b: buf)
+      curName = ""; buf = ""
+    for raw in readFile(file).splitLines:
+      let s = raw.strip
+      if s.startsWith("#!FILE"):
+        flushFile()
+        curName = s["#!FILE".len .. ^1].strip
+      elif s.startsWith("#!STEP"):
+        flushFile()
+        ops.add Op(kind: opStep, a: s["#!STEP".len .. ^1].strip)
+      elif curName.len > 0:
+        buf.add raw; buf.add "\n"
+  let lastStep = block:
+    var n = 0
+    for o in ops:
+      if o.kind == opStep: inc n
+    n
+
+  var vfs = initTable[string, string]()
+  var prevSnap = initTable[string, string]()
+  var prevBin = ""
+  var stepIdx = 0
+  try:
+    for o in ops:
+      if o.kind == opFile:
+        vfs[o.a] = o.b
+        continue
+      inc stepIdx
+      let where = "step " & $stepIdx
+      # Parse step attributes.
+      var attrs = initTable[string, string]()
+      for part in o.a.split(';'):
+        let p = part.strip
+        if p.len == 0: continue
+        let c = p.find(':')
+        if c >= 0: attrs[p[0 ..< c].strip] = p[c+1 .. ^1].strip
+        else: attrs[p] = ""
+
+      for fn, content in vfs: writeFile(buildDir / fn, content)
+      let (_, cout, ccode) = compileIc()
+      if ccode != 0:
+        mmRaise(reBuildFailed, "", where & ": `nim ic` failed:\n" & cout)
+      let (_, rout, rcode) = execCmdEx2(bin.absolutePath, [], workingDir = buildDir)
+      if rcode != 0:
+        mmRaise(reBuildFailed, "", where & ": program exited with " & $rcode & ":\n" & rout)
+      if "expect" in attrs:
+        let want = attrs["expect"].replace("\\n", "\n")
+        if rout.strip == want.strip: discard
+        else: mmRaise(reOutputsDiffer, want, where & " output:\n" & rout.strip)
+
+      let snap = snapshotDir(nc)
+      let binBytes = stableBinary(bin)
+      if stepIdx > 1:
+        let changed = changedPaths(prevSnap, snap)
+        if "noop" in attrs and (changed.len != 0 or binBytes != prevBin):
+          mmRaise(reOutputsDiffer, "no artifact change",
+            where & ": no-op edit changed " & $changed.len & " cache file(s): " & changed.join(", "))
+        if "body-edit" in attrs:
+          for p in changed:
+            if p.endsWith(".iface.bif"):
+              mmRaise(reOutputsDiffer, "no interface change",
+                where & ": body-only edit changed an interface cookie: " & p)
+        if "iface-edit" in attrs:
+          var sawIface = false
+          for p in changed:
+            if p.endsWith(".iface.bif"): sawIface = true
+          if not sawIface:
+            mmRaise(reOutputsDiffer, "interface change", where & ": interface edit changed no `*.iface.bif` cookie")
+          if changedModuleCount(changed) < 2:
+            mmRaise(reOutputsDiffer, "propagation to importer",
+              where & ": interface edit did not propagate (only " & $changedModuleCount(changed) & " module rebuilt)")
+        if "modules" in attrs:
+          let want = parseInt(attrs["modules"])
+          let got = changedModuleCount(changed)
+          if got != want:
+            mmRaise(reOutputsDiffer, $want & " modules rebuilt", where & ": " & $got & " module(s) rebuilt")
+      prevSnap = snap
+      prevBin = binBytes
+
+      if "clean" in attrs or stepIdx == lastStep:
+        removeDir(nc)
+        let (_, cout2, ccode2) = compileIc()
+        if ccode2 != 0:
+          mmRaise(reBuildFailed, "", where & ": clean rebuild failed:\n" & cout2)
+        let cleanSnap = snapshotDir(nc)
+        let cleanBin = stableBinary(bin)
+        if cleanBin != binBytes:
+          mmRaise(reOutputsDiffer, "clean binary == incremental binary",
+            where & ": clean rebuild produced a different binary")
+        var diff: seq[string] = @[]
+        for p in changedPaths(snap, cleanSnap):
+          if not isProvenance(p): diff.add p
+        if diff.len != 0:
+          mmRaise(reOutputsDiffer, "clean cache == incremental cache",
+            where & ": clean rebuild differs in " & $diff.len & " cache file(s): " & diff.join(", "))
+        prevSnap = cleanSnap
+        prevBin = cleanBin
+    finishTest(r, test, targetC, "", "", "", reSuccess)
+    inc r.passed
+  except MetamorphicError:
+    let e = (ref MetamorphicError)(getCurrentException())
+    finishTest(r, test, targetC, "", e.expected, e.given, e.resultKind)
+
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
              isNavigatorTest: bool) =
   template editedTest() =
@@ -498,11 +718,18 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
 
   const tempExt = "_temp.nim"
   for it in walkDirRec(testsDir):
+    # `_mm` directories hold materialised modules + nimcache for metamorphic
+    # tests; never collect their files as tests in their own right.
+    if "_mm" in it: continue
     if isTestFile(it) and not it.endsWith(tempExt):
+      let content = readFile(it)
+      if isMetamorphicIcTest(content):
+        runMetamorphicIcTest(r, it, cat, options)
+        continue
+
       let nimcache = nimcacheDir(it, options, targetC)
       removeDir(nimcache)
 
-      let content = readFile(it)
       for fragment in content.split("#!EDIT!#"):
         let file = it.replace(".nim", tempExt)
         writeFile(file, fragment)
