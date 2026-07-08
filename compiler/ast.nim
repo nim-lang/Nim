@@ -626,7 +626,14 @@ proc `[]`*(n: PType, i: int): PType {.inline.} =
   else:
     n.sonsImpl[i]
 
-proc `[]=`*(n: PType, i: int; x: PType) {.inline.} =
+proc replaceSon*(n: PType, i: int; x: PType) {.inline.} =
+  ## The single low-level "replace son `i` in place" primitive. All in-place son
+  ## mutation funnels through here -- call sites go via `TypeBuilder.setSon`
+  ## (`typebuilders.nim`, the reopen/mutable-staging seam); this is its backing.
+  ## The `PType.[]=` operators used to do this inline; they were removed so that
+  ## son replacement is named and greppable, and the PType->NifCursor swap (where
+  ## this becomes a token rewrite over a thawed cursor) touches one proc, not
+  ## every caller.
   if n.state == Partial: loadType(n)
   if n.kind == tyProc and i > 0:
     assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
@@ -638,9 +645,9 @@ proc `[]`*(n: PType, i: BackwardsIndex): PType {.inline.} =
   if n.state == Partial: loadType(n)
   n[n.sonsImpl.len - i.int]
 
-proc `[]=`*(n: PType, i: BackwardsIndex; x: PType) {.inline.} =
+proc replaceSon*(n: PType, i: BackwardsIndex; x: PType) {.inline.} =
   if n.state == Partial: loadType(n)
-  n[n.sonsImpl.len - i.int] = x
+  replaceSon(n, n.sonsImpl.len - i.int, x)
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -1165,7 +1172,7 @@ proc assignType*(dest, src: PType) =
       dest.sonsImpl[0] = src.sonsImpl[0]
   else:
     newSons(dest, src.len)
-    for i in 0..<src.len: dest[i] = src[i]
+    for i in 0..<src.len: replaceSon(dest, i, src[i])
 
 proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result = newType(t.kind, idgen, owner)

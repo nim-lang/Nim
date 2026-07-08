@@ -24,7 +24,7 @@ when defined(nimPreviewSlimSystem):
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
   result = newType(tyError, g.idgen, g.owners[^1])
-  result.flagsImpl.incl tfCheckedForDestructor
+  result.incl tfCheckedForDestructor
 
 proc getIntLitTypeG(g: ModuleGraph; literal: PNode; idgen: IdGenerator): PType =
   # we cache some common integer literal types for performance:

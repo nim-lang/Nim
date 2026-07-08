@@ -436,7 +436,8 @@ proc semUnown(c: PContext; n: PNode): PNode =
         result = copyType(t, c.idgen, t.owner)
         copyTypeProps(c.graph, c.idgen.module, result, t)
 
-        result[^1] = b
+        var rb = reopen(result)
+        rb.setSon(^1, b)
         result.excl tfHasOwned
       else:
         result = t

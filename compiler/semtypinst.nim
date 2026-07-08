@@ -57,12 +57,17 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
 
       return inst
 
-proc cacheTypeInst(c: PContext; inst: PType) =
-  let gt = inst[0]
+proc cacheTypeInst(c: PContext; inst: TypePair) =
+  # Publishes an in-progress instance under its name, for recursive
+  # instantiations. Takes the (identity, tree) pair rather than a bare `PType`:
+  # the cache key is derived from the generic head's identity, and only the
+  # instance's identity is registered -- today via `inst.decl`, under NIF via
+  # `inst.id`.
+  let gt = inst.decl[0]
   let t = if gt.kind == tyGenericBody: gt.typeBodyImpl else: gt
   if t.kind in {tyStatic, tyError, tyGenericParam} + tyTypeClasses:
     return
-  addToGenericCache(c, gt.sym, inst)
+  addToGenericCache(c, gt.sym, inst.decl)
 
 type
   TReplTypeVars* = object
@@ -466,7 +471,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       x = lookupTypeVar(cl, x)
       if x != nil:
         if header == t: header = instCopyType(cl, t)
-        header[i] = x
+        var hb = reopen(header)
+        hb.setSon(i, x)
         propagateToOwner(header, x)
     else:
       # Under IC `t` may be a loaded dep type (Sealed/immutable); mutating it
@@ -493,16 +499,17 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # the generic body's module (`t.genericHead.owner`) has no business owning a
   # type that references instantiation-site types — that is the IC parent->child
   # heap leak the write-barrier surfaces.
-  result = newType(tyGenericInst, cl.c.idgen, cl.c.module, son = header.genericHead)
-  result.flags = header.flags
+  var rb = openPair(tyGenericInst, cl.c.idgen, cl.c.module, son = header.genericHead)
+  rb.setFlags header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
   # we need to add the candidate here, before it's fully instantiated for
-  # recursive instantions:
+  # recursive instantions: publish the instance's *identity* (`rb.pair`) while
+  # its body is still open, so recursive instantiations find it under its name.
   if not cl.allowMetaTypes:
-    cacheTypeInst(cl.c, result)
+    cacheTypeInst(cl.c, rb.pair)
   else:
-    cl.localCache[t.itemId] = result
+    cl.localCache[t.itemId] = rb.pair.decl
 
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
@@ -516,17 +523,18 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       else:
         header[i]
     assert x.kind != tyGenericInvocation
-    header[i] = x
+    var hb = reopen(header)
+    hb.setSon(i, x)
     propagateToOwner(header, x)
     cl.typeMap.put(body[i-1], x)
 
   for i in FirstGenericParamAt..<t.kidsLen:
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
-    rawAddSon(result, header[i], propagateHasAsgn = false)
+    rb.addRaw(header[i], propagateHasAsgn = false)
 
   if body.kind == tyError:
-    return
+    return finishPair(rb).decl
 
   let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody, isInstValue = true)
@@ -538,7 +546,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # builtin like `int` when the generic's body is computed by a macro) and is
   # immutable under IC. Skip the in-place flag accumulation on the shared
   # type; the instance `result` still receives the flags below.
-  result.flags = result.flags + newbodyFlags - tfInstClearedFlags
+  rb.setFlags(rb.flags + newbodyFlags - tfInstClearedFlags)
 
   setToPreviousLayer(cl.typeMap)
 
@@ -549,7 +557,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # handleGenericInvocation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
 
-  rawAddSon(result, newbody)
+  rb.addRaw newbody
+  result = finishPair(rb).decl
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
   if not cl.allowMetaTypes:
     let dc = cl.c.graph.getAttachedOp(newbody, attachedDeepCopy)
@@ -614,10 +623,11 @@ proc eraseTupleVoidFields*(t: PType) =
     if t.n[i].kind == nkRecList or t[i].kind == tyVoid:
       # found first void field, compact from here
       var pos = i
+      var b = reopen(t)
       for j in i+1..<t.kidsLen:
         if t[j].kind != tyVoid and j < t.n.len and t.n[j].kind != nkRecList:
           t.n[pos] = t.n[j]
-          t[pos] = t[j]
+          b.setSon(pos, t[j])
           if t.n[pos].kind == nkSym:
             t.n[pos].sym.position = pos
           inc pos
@@ -627,11 +637,12 @@ proc eraseTupleVoidFields*(t: PType) =
       break
 
 proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
+  var b = reopen(t)
   for i, p in t.ikids:
     if p == nil: continue
     let skipped = p.skipIntLit(idgen)
     if skipped != p:
-      t[i] = skipped
+      b.setSon(i, skipped)
       if i > 0: t.n[i].sym.typ = skipped
 
   # when the typeof operator is used on a static input
@@ -769,11 +780,12 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
     bailout()
     result = instCopyType(cl, t)
     cl.localCache[t.itemId] = result
+    var b = reopen(result)
     for i in FirstGenericParamAt..<result.kidsLen:
       var r = result[i]
       if r != nil:
         r = replaceTypeVarsT(cl, r)
-        result[i] = r
+        b.setSon(i, r)
         propagateToOwner(result, r)
     result.n = replaceTypeVarsN(cl, result.n)
     if not cl.allowMetaTypes and result.n != nil and
@@ -785,8 +797,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
     bailout()
     result = instCopyType(cl, t)
     cl.localCache[t.itemId] = result
+    var b = reopen(result)
     for i in FirstGenericParamAt..<result.kidsLen:
-      result[i] = replaceTypeVarsT(cl, result[i])
+      b.setSon(i, replaceTypeVarsT(cl, result[i]))
     propagateToOwner(result, result.last)
 
   else:
@@ -802,6 +815,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       cl.localCache[t.itemId] = result
       let propagateInstValue = isInstValue and isRefPtrObject(t)
 
+      var b = reopen(result)
       for i, resulti in result.ikids:
         if resulti != nil:
           if resulti.kind == tyGenericBody and not cl.allowMetaTypes:
@@ -817,7 +831,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
           if result.kind != tyProc or i == 0:
-            result[i] = r
+            b.setSon(i, r)
           if result.kind != tyArray or i != 0:
             propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists

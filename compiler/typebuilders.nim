@@ -102,6 +102,26 @@ proc reopen*(t: PType; idgen: IdGenerator): TypeBuilder {.inline.} =
   ## case: the name (`t`) stays, only its tree structure is (re)built.
   TypeBuilder(t: t, idgen: idgen)
 
+proc reopen*(t: PType): TypeBuilder {.inline.} =
+  ## Reopens an existing type purely to *transform* its sons in place (see
+  ## `setSon`), without adding fresh ones -- so no `idgen` is needed. This is the
+  ## "mutable staging buffer" seam for son-replacement: today it is in-place
+  ## mutation of `t`; under NIF `reopen` thaws `t`'s sealed cursor into a mutable
+  ## buffer, `setSon` rewrites a token, and the buffer is re-sealed. Distinct from
+  ## the id-minting `reopen(t, idgen)` used to (re)build a forward type's body.
+  TypeBuilder(t: t, idgen: nil)
+
+proc setSon*(b: var TypeBuilder; i: int; son: PType) {.inline.} =
+  ## Replaces son `i` of a reopened type -- the in-place transform seam. Mirrors
+  ## the old `PType.[]=` (via `ast.replaceSon`), including the `tyProc` return/
+  ## param slot handling. Distinct from `add` (append a new son) and from the
+  ## whole-list `ast.setSon(dest, son)`. Under NIF this is a token rewrite in the
+  ## buffer thawed by `reopen`.
+  replaceSon(b.t, i, son)
+
+proc setSon*(b: var TypeBuilder; i: BackwardsIndex; son: PType) {.inline.} =
+  replaceSon(b.t, i, son)
+
 proc setN*(b: var TypeBuilder; n: PNode) {.inline.} =
   b.t.n = n
 
@@ -131,3 +151,81 @@ template finish*(b: TypeBuilder): PType =
   ## read with no call/move/destroy overhead over the old direct construction.
   ## Later this becomes `beginRead`, yielding a read-only cursor.
   b.t
+
+type
+  TypePairBuilder* = object
+    ## The *deferred* construction seam: like `TypeBuilder`, but its identity is
+    ## published -- cached, stashed for a later pass, or handed to a recursive
+    ## sem call -- *before* its body is finished. Recursive generic
+    ## instantiation needs the in-progress instance to be findable under its
+    ## name while its sons are still being appended; `TypeBuilder` cannot model
+    ## that because `finish` is the seal point and nothing may be appended after
+    ## it. `TypePairBuilder` can, because the thing it hands out early is a
+    ## `TypePair` -- an (identity, tree) pair -- and early consumers take only
+    ## its `id`.
+    ##
+    ## Contract: whatever observes `pair` before `finishPair` must rely on
+    ## `pair.id` (the name) alone -- never the son count or son contents of the
+    ## still-open `decl`. Today `decl` is the growing `PType` and `decl.itemId
+    ## == id`, so this holds trivially; under NIF `id` is a `SymId` valid the
+    ## instant the shell exists and `decl` is the open `TokenBuf`, sealed into a
+    ## read-only cursor by `finishPair`.
+    t: PType
+    idgen {.cursor.}: IdGenerator
+
+proc openPair*(kind: TTypeKind; idgen: IdGenerator; owner: PSym;
+               son: sink PType = nil): TypePairBuilder {.inline.} =
+  ## Mints the shell (optionally with `son0` already set -- e.g. the generic
+  ## head for `tyGenericInst`). Mirrors `newType(kind, idgen, owner, son)`. The
+  ## `pair` is publishable the moment this returns.
+  TypePairBuilder(t: newType(kind, idgen, owner, son), idgen: idgen)
+
+proc reopenPair*(t: PType; idgen: IdGenerator): TypePairBuilder {.inline.} =
+  ## Continues building an *existing* (forward-declared / partial) type as a
+  ## deferred pair, preserving its identity. The deferred analogue of
+  ## `reopen(t, idgen)`; its `pair` is publishable immediately.
+  TypePairBuilder(t: t, idgen: idgen)
+
+proc pair*(b: TypePairBuilder): TypePair {.inline.} =
+  ## The publishable (identity, tree) handle -- cache it / stash it / thread it
+  ## through recursive sem *before* the body is complete. Only `pair.id` may be
+  ## relied upon by those early consumers.
+  typePair(b.t)
+
+proc add*(b: var TypePairBuilder; son: PType) {.inline.} =
+  addSonSkipIntLit(b.t, son, b.idgen)
+
+proc addRaw*(b: var TypePairBuilder; son: PType; propagateHasAsgn = true) {.inline.} =
+  ## Appends a son verbatim while the body is open. Mirrors `rawAddSon` -- the
+  ## incremental-append step of the deferred build.
+  rawAddSon(b.t, son, propagateHasAsgn)
+
+proc setSon*(b: var TypePairBuilder; i: int; son: PType) {.inline.} =
+  replaceSon(b.t, i, son)
+
+proc setN*(b: var TypePairBuilder; n: PNode) {.inline.} =
+  b.t.n = n
+
+proc addRecField*(b: var TypePairBuilder; fieldNode: PNode) {.inline.} =
+  ## Appends a field entry to the type's record list (`.n`), the way tuple /
+  ## object / proc bodies grow their `nkRecList` / `nkFormalParams`. Mirrors
+  ## `t.n.add fieldNode`, and pairs with `add`/`addRaw` for the parallel son.
+  b.t.n.add fieldNode
+
+proc flags*(b: TypePairBuilder): TTypeFlags {.inline.} =
+  ## Reads the shell's current flags (they may have accumulated via `addRaw`'s
+  ## propagation since the last `setFlags`).
+  b.t.flags
+
+proc setFlags*(b: var TypePairBuilder; flags: TTypeFlags) {.inline.} =
+  b.t.flags = flags
+
+proc incl*(b: var TypePairBuilder; flag: TTypeFlag) {.inline.} =
+  b.t.incl flag
+
+proc finishPair*(b: sink TypePairBuilder): TypePair {.inline.} =
+  ## Seals the deferred build. Today returns the pair unchanged; under NIF this
+  ## is `beginRead` -- the open `TokenBuf` becomes a read-only cursor, still
+  ## reachable through `pair.id`, so recursive references bound to the name now
+  ## resolve to the sealed tree.
+  typePair(b.t)

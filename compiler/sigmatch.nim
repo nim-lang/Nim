@@ -884,11 +884,13 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
 
   openScope(c)
   matchedConceptContext.candidateType = a
-  typeClass[0][0] = a
+  var tcb = reopen(typeClass[0])
+  tcb.setSon(0, a)
   c.matchedConcept = addr(matchedConceptContext)
   defer:
     c.matchedConcept = prevMatchedConcept
-    typeClass[0][0] = prevCandidateType
+    var tcb2 = reopen(typeClass[0])
+    tcb2.setSon(0, prevCandidateType)
     closeScope(c)
 
   var typeParams: seq[(PSym, PType)] = @[]

@@ -56,6 +56,17 @@ proc openType(c: PContext; kind: TTypeKind; prev: PType): TypeBuilder =
   else:
     result = openType(c, kind)
 
+proc openPair(c: PContext; kind: TTypeKind; prev: PType): TypePairBuilder =
+  ## Prev-aware deferred (`TypePair`) open -- the deferred analogue of the
+  ## prev-aware `openType` above, for types whose identity is published before
+  ## their body is finished. Keeps a forward/partial `prev`'s reserved name,
+  ## else mints a fresh identity at the same sequence point as `newTypeS`.
+  if reusePrev(prev):
+    if prev.kind == tyForward: prev.kind = kind
+    result = reopenPair(prev, c.idgen)
+  else:
+    result = openPair(kind, c.idgen, getCurrOwner(c))
+
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext, son: sink PType): PType =
   if reusePrev(prev):
     result = prev
@@ -420,11 +431,17 @@ proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
 proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   assert isRange(n)
   checkSonsLen(n, 3, c.config)
-  result = newOrPrevType(tyRange, prev, c)
-  result.n = newNodeI(nkRange, n.info)
+  # Deferred build: a *valid* tyRange must exist before the throwing
+  # `semExprWithType` below (bug #6895), so its base type is minted as an
+  # `errorType` placeholder son up front and back-patched via `setSon(0, …)`
+  # once the real bounds are known. The `.n` (nkRange bound exprs) and flags
+  # stay direct pokes on the live shell, as in `semProcTypeNode`.
+  var rb = openPair(c, tyRange, prev)
+  rb.setN newNodeI(nkRange, n.info)
   # always create a 'valid' range type, but overwrite it later
   # because 'semExprWithType' can raise an exception. See bug #6895.
-  addSonSkipIntLit(result, errorType(c), c.idgen)
+  rb.add errorType(c)
+  result = rb.pair.decl
 
   if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty):
     localError(c.config, n.info, "range is empty")
@@ -465,7 +482,9 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(c.config, n.info, "range is empty")
 
-  result[0] = rangeT[0]
+  # overwrite the placeholder son minted above with the real base type, then seal
+  rb.setSon(0, rangeT[0])
+  result = finishPair(rb).decl
 
 proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
@@ -627,8 +646,12 @@ proc firstRange(config: ConfigRef, t: PType): PNode =
 
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
-  result = newOrPrevType(tyTuple, prev, c)
-  result.n = newNodeI(nkRecList, n.info)
+  # Deferred build: the tuple's identity is handed to `semFieldDefault` (which
+  # propagates each default field's type into the owner) while its fields/sons
+  # are still being appended -- so it goes through `TypePairBuilder`, publishing
+  # `rb.pair` mid-build rather than `openType ... finish`.
+  var rb = openPair(c, tyTuple, prev)
+  rb.setN newNodeI(nkRecList, n.info)
   var check = initIntSet()
   var counter = 0
   for i in ord(n.kind == nkBracketExpr)..<n.len:
@@ -638,7 +661,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     var hasDefaultField = a[^1].kind != nkEmpty
     if hasDefaultField:
       typ = if a[^2].kind != nkEmpty: semTypeNode(c, a[^2], nil) else: nil
-      typ = semFieldDefault(c, result, typ, a)
+      typ = semFieldDefault(c, rb.pair.decl, typ, a)
     elif a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
       if c.graph.config.isDefined("nimPreviewRangeDefault") and typ.skipTypes(abstractInst).kind == tyRange:
@@ -659,11 +682,12 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
         if hasDefaultField:
           fSym.sym.ast = a[^1]
           fSym.sym.ast.flags.incl nfSkipFieldChecking
-        result.n.add fSym
-        addSonSkipIntLit(result, typ, c.idgen)
+        rb.addRecField fSym
+        rb.add typ
       styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
-  if result.n.len == 0: result.n = nil
+  if rb.pair.decl.n.len == 0: rb.setN nil
+  result = finishPair(rb).decl
   if isRecursiveStructuralType(result):
     localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(result))
 
@@ -1143,17 +1167,24 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
         base = nil
         realBase = nil
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
-  result = newOrPrevType(tyObject, prev, c)
+  # Deferred build: the object's identity is published to `forwardTypeUpdates`
+  # (a retry pass), to `semRecordNodeAux` (field sem may reference the object
+  # itself), and to the pragma dummy sym -- all before its body is complete. The
+  # son-tree (base son) + initial `.n` (nkRecList) allocation + seal go through
+  # the builder; field growth (via `semRecordNodeAux` into `result.n`) and flags
+  # stay direct pokes on the live shell, as in `semProcTypeNode`/`semRangeAux`.
+  var rb = openPair(c, tyObject, prev)
+  result = rb.pair.decl
   if needsForwardUpdate:
     # if the inherited object is a forward type,
     # the entire object needs to be checked again
     c.forwardTypeUpdates.add (getCurrOwner(c), result, n) # we retry in the final pass
-  rawAddSon(result, realBase)
+  rb.addRaw realBase
   if realBase == nil and tfInheritable in flags:
     result.incl tfInheritable
   if tfAcyclic in flags: result.incl tfAcyclic
   if result.n.isNil:
-    result.n = newNodeI(nkRecList, n.info)
+    rb.setN newNodeI(nkRecList, n.info)
   else:
     # partial object so add things to the check
     if not tryAddInheritedFields(c, check, pos, result, n, isPartial = true):
@@ -1169,6 +1200,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
     incl(result, tfFinal)
   if c.inGenericContext == 0 and computeRequiresInit(c, result):
     result.incl tfRequiresInit
+  result = finishPair(rb).decl  # seal the deferred object build
 
 proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
@@ -1359,7 +1391,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     for i in 0..<paramType.len:
       let t = recurse(paramType[i])
       if t != nil:
-        paramType[i] = t
+        var b = reopen(paramType)
+        b.setSon(i, t)
         result = paramType
 
   of tyAlias, tyOwned:
@@ -1387,32 +1420,38 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
           globalError(c.config, info, errIllegalRecursionInTypeX % typeToString(paramType))
         var lifted = recurse(paramType[i])
         if lifted != nil:
-          paramType[i] = lifted
+          var b = reopen(paramType)
+          b.setSon(i, lifted)
           result = paramType
 
   of tyGenericBody:
-    result = newTypeS(tyGenericInvocation, c)
-    result.rawAddSon(paramType)
+    # A user-type-class body instantiates to a tyUserTypeClassInst, everything
+    # else to a tyGenericInvocation. The kind is decided up front (from the
+    # already-complete `paramType`), so the builder opens with the final tag
+    # rather than the old mint-as-invocation-then-mutate-kind dance.
+    let isUserTypeClass = paramType.typeBodyImpl.kind == tyUserTypeClass
+    var b = openType(c, if isUserTypeClass: tyUserTypeClassInst else: tyGenericInvocation)
+    b.addRaw paramType
 
     for i in 0..<paramType.len - 1:
       if paramType[i].kind == tyStatic:
         var staticCopy = paramType[i].exactReplica(c.idgen)
         staticCopy.incl tfInferrableStatic
-        result.rawAddSon staticCopy
+        b.addRaw staticCopy
       else:
-        result.rawAddSon newTypeS(tyAnything, c)
+        b.addRaw newTypeS(tyAnything, c)
 
-    if paramType.typeBodyImpl.kind == tyUserTypeClass:
-      result.kind = tyUserTypeClassInst
-      result.rawAddSon paramType.typeBodyImpl
-      return addImplicitGeneric(c, result, paramTypId, info, genericParams, paramName)
+    if isUserTypeClass:
+      b.addRaw paramType.typeBodyImpl
+      return addImplicitGeneric(c, finish b, paramTypId, info, genericParams, paramName)
 
+    result = finish b
     let x = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
-    result = newTypeS(tyCompositeTypeClass, c)
-    result.rawAddSon paramType
-    result.rawAddSon x
-    result = addImplicitGeneric(c, result, paramTypId, info, genericParams, paramName)
+    var cb = openType(c, tyCompositeTypeClass)
+    cb.addRaw paramType
+    cb.addRaw x
+    result = addImplicitGeneric(c, finish cb, paramTypId, info, genericParams, paramName)
 
   of tyGenericInst:
     result = nil
@@ -1426,7 +1465,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     for i in 1..<paramType.len-1:
       var lifted = recurse(paramType[i])
       if lifted != nil:
-        paramType[i] = lifted
+        var b = reopen(paramType)
+        b.setSon(i, lifted)
         result = paramType
         result.last.shouldHaveMeta
     if paramType.isConcept:
@@ -1443,7 +1483,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     for i in 1..<paramType.len:
       #if paramType[i].kind != tyTypeDesc:
       let lifted = recurse(paramType[i])
-      if lifted != nil: paramType[i] = lifted
+      if lifted != nil:
+        var b = reopen(paramType)
+        b.setSon(i, lifted)
 
     let body = paramType.base
     if body.kind in {tyForward, tyError}:
@@ -1504,7 +1546,14 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   # for historical reasons (code grows) this is invoked for parameter
   # lists too and then 'isType' is false.
   checkMinSonsLen(n, 1, c.config)
+  # Deferred build: `newProcType` opens the shell with a nil return-type slot
+  # (son 0) and an effect-list `.n`; params are appended as interleaved son +
+  # `.n` entries below, and son 0 is back-patched once the return type is known.
+  # `openType ... finish` cannot model the placeholder-then-backpatch, so the
+  # son tree grows through a `TypePairBuilder` reopened on the shell. Flags and
+  # `.n.typ` remain direct pokes on the live shell (`result` == `rb.pair.decl`).
   result = newProcType(c, n.info, prev)
+  var rb = reopenPair(result, c.idgen)
   var check = initIntSet()
   var counter = 0
   template isCurrentlyGeneric: bool =
@@ -1642,8 +1691,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
-      result.n.add newSymNode(arg)
-      rawAddSon(result, finalType)
+      rb.addRecField newSymNode(arg)
+      rb.addRaw finalType
       addParamOrResult(c, arg, kind)
       styleCheckDef(c, a[j].info, arg)
       onDef(a[j].info, arg)
@@ -1703,7 +1752,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           # we don't need to change the return type to iter[T]
           result.incl tfIterator
           # XXX Would be nice if we could get rid of this
-      result[0] = r
+      rb.setSon(0, r)
       let oldFlags = result.flags
       propagateToOwner(result, r)
       if oldFlags != result.flags:
@@ -1720,6 +1769,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if tfWildcard in n.sym.typ.flags:
         n.sym.transitionGenericParamToType()
         n.sym.typ.excl tfWildcard
+
+  result = finishPair(rb).decl  # seal the deferred proc-type build
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1, c.config)
@@ -1789,24 +1840,32 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   var t = s.typ.skipTypes({tyAlias})
   if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
     t = t.base
-  result = newOrPrevType(tyGenericInvocation, prev, c)
-  addSonSkipIntLit(result, t, c.idgen)
+  # Deferred build: the tyGenericInvocation's identity is published to
+  # `forwardTypeUpdates` (a retry pass) and consumed by `instGenericContainer`,
+  # both only after its arg sons are appended. The son-tree goes through one
+  # deferred `rb`; `result` stays the live shell (later branches may replace it
+  # with an error/forward type or the instantiated container). Sealed once the
+  # args are in, before any consumer reads it.
+  var rb = openPair(c, tyGenericInvocation, prev)
+  result = rb.pair.decl
+  rb.add t
 
   template addToResult(typ, skip) =
 
     if typ.isNil:
       internalAssert c.config, false
-      rawAddSon(result, typ)
+      rb.addRaw typ
     else:
       if skip:
-        addSonSkipIntLit(result, typ, c.idgen)
+        rb.add typ
       else:
-        rawAddSon(result, makeRangeWithStaticExpr(c, typ.n))
+        rb.addRaw makeRangeWithStaticExpr(c, typ.n)
 
   if t.kind == tyForward:
     for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
       addToResult(elem, true)
+    result = finishPair(rb).decl  # seal the deferred invocation build
     c.forwardTypeUpdates.add (getCurrOwner(c), result, n)
     return
   elif t.kind != tyGenericBody:
@@ -1853,6 +1912,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
       if typ.kind == tyForward:
         hasForwardTypeParam = true
+
+    result = finishPair(rb).decl  # seal the deferred invocation build (args complete)
 
     if isConcrete:
       if s.ast == nil and s.typ.kind != tyCompositeTypeClass:
@@ -2440,8 +2501,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         let old = result
         result = copyType(result, c.idgen, getCurrOwner(c))
         copyTypeProps(c.graph, c.idgen.module, result, old)
+        var b = reopen(result, c.idgen)
         for i in 1..<n.len:
-          result.rawAddSon(semTypeNode(c, n[i], nil))
+          b.addRaw(semTypeNode(c, n[i], nil))
     of mDistinct:
       checkSonsLen(n, 2, c.config)
       var b = openType(c, tyDistinct, prev)
