@@ -144,18 +144,19 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNod
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
 proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo; final=true): PType =
-  result = newType(tyObject, idgen, owner)
+  var b = openType(tyObject, idgen, owner)
   if final:
-    rawAddSon(result, nil)
-    incl result, tfFinal
+    b.addRaw nil
+    b.incl tfFinal
   else:
-    rawAddSon(result, getCompilerProc(g, "RootObj").typ)
-  result.n = newNodeI(nkRecList, info)
+    b.addRaw getCompilerProc(g, "RootObj").typ
+  b.setN newNodeI(nkRecList, info)
   let s = newSym(skType, getIdent(g.cache, "Env_" & toFilename(g.config, info) & "_" & $owner.name.s),
                   idgen, owner, info, owner.options)
   incl s.flagsImpl, sfAnon
+  b.setSym s
+  result = finish b
   s.typ = result
-  result.sym = s
 
 template fieldCheck {.dirty.} =
   when false:
@@ -385,8 +386,9 @@ proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
 proc genAddrOf*(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ = newType(typeKind, idgen, n.typ.owner)
-  result.typ.rawAddSon(n.typ)
+  var b = openType(typeKind, idgen, n.typ.owner)
+  b.addRaw n.typ
+  result.typ = finish b
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
   result = newNodeIT(k, n.info,

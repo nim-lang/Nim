@@ -11,9 +11,10 @@
 
 import
   ast, msgs, platform, idents,
-  modulegraphs, lineinfos, types
+  modulegraphs, lineinfos, types, typebuilders
 
 export createMagic
+export typebuilders
 
 proc nilOrSysInt*(g: ModuleGraph): PType = g.sysTypes[tyInt]
 
@@ -91,24 +92,13 @@ proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
   result = newSysType(g, tyFloat, size=8)
   result.n = literal
 
-proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
-  if t.n != nil and t.kind in {tyInt, tyFloat}:
-    result = copyType(t, id, t.owner)
-    result.n = nil
-  else:
-    result = t
-
-proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
-  let s = son.skipIntLit(id)
-  father.add(s)
-  propagateToOwner(father, s)
-
 proc makeVarType*(owner: PSym; baseType: PType; idgen: IdGenerator; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newType(kind, idgen, owner)
-    addSonSkipIntLit(result, baseType, idgen)
+    var b = openType(kind, idgen, owner)
+    b.add baseType
+    result = finish b
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
   let ident = getIdent(g.cache, name)
@@ -158,8 +148,9 @@ proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
       "can't find magic equals operator for type kind " & $t.kind)
 
 proc makePtrType*(baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, idgen, baseType.owner)
-  addSonSkipIntLit(result, baseType, idgen)
+  var b = openType(tyPtr, idgen, baseType.owner)
+  b.add baseType
+  result = finish b
 
 proc makeAddr*(n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenAddr:
