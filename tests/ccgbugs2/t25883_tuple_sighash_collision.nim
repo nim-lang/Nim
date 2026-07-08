@@ -1,4 +1,5 @@
 discard """
+targets: "c cpp"
 output: "13"
 """
 
@@ -16,3 +17,29 @@ proc main() =
   echo c[0][2]
 
 main()
+
+block:
+  type
+    Int[V: static int] = object
+    Layout[Sh, St] = object
+      shape: Sh
+      stride: St
+  
+  func makeB(): auto =
+    Layout[((Int[2], Int[3]), Int[5], Int[7]), ((Int[1], Int[2]), Int[6], Int[30])](
+      shape: ((Int[2](), Int[3]()), Int[5](), Int[7]()),
+      stride: ((Int[1](), Int[2]()), Int[6](), Int[30]())
+    )
+  
+  func makeC(): auto =
+    Layout[((Int[2], Int[3], Int[5]), Int[7]), ((Int[1], Int[2], Int[6]), Int[30])](
+      shape: ((Int[2](), Int[3](), Int[5]()), Int[7]()),
+      stride: ((Int[1](), Int[2](), Int[6]()), Int[30]())
+    )
+  
+  
+  proc main() =
+    let b = makeB()
+    let c = makeC()
+  
+  main()
