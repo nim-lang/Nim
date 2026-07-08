@@ -118,12 +118,23 @@ proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
 
 type
   LineInfoWriter = object
-    fileK: FileIndex # remember the current pair, even faster than the hash table
+    # `fileK`/`fileV` cache the most recently resolved (FileIndex -> FileId) pair,
+    # faster than the hash table. `fileK` MUST be constructed at an invalid
+    # sentinel (see `newLineInfoWriter`), never zero: `FileIndex(0)` is a real file
+    # index, and `fileV` zero-inits to `FileId(0)` == `NoFile`, so a zero `fileK`
+    # would make the first lookup of the module-at-index-0 falsely hit this cache
+    # and return `NoFile` — silently dropping ALL of that module's line info.
+    fileK: FileIndex
     fileV: FileId
     tab: Table[FileIndex, FileId]
     revTab: Table[FileId, FileIndex] # reverse mapping for oldLineInfo
     man: LineInfoManager
     config: ConfigRef
+
+proc newLineInfoWriter(config: ConfigRef): LineInfoWriter =
+  # `fileK` starts invalid so the one-entry cache never collides with a real
+  # `FileIndex(0)` (see the type's doc comment).
+  LineInfoWriter(config: config, fileK: astli.InvalidFileIdx)
 
 proc get(w: var LineInfoWriter; key: FileIndex): FileId =
   if w.fileK == key:
@@ -1549,7 +1560,7 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[];
                      resolvedImportDeps: seq[FileIndex] = @[];
                      firstUnusedId: int32 = 0) =
-  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
+  var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   var content = newIcBuilder(300)
 
@@ -1824,7 +1835,7 @@ type
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
-  result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+  result = DecodeContext(infos: newLineInfoWriter(config), cache: cache)
 
 var loadStatsInit {.threadvar.}: int          # 0=unknown 1=on 2=off
 var statsCtxPtr {.threadvar.}: ptr DecodeContext
@@ -3312,7 +3323,7 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
   # types/globals/params/locals stay Complete and emit real defs (the `.t.nif` is
   # the sole source the cg stage reads — no `.s.nif` fallback for them).
   sealLoadedRoutines(c)
-  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
+  var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   w.inProc = 1
   w.lowering = true
