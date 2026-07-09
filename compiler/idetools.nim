@@ -31,7 +31,7 @@
 ## therefore by the mangled NAME string, never by `SymId` (nimony can compare ids
 ## because it parses every text NIF into one shared global pool; we cannot).
 
-import std / [os, strutils]
+import std / [os, strutils, sets]
 import options, msgs, pathutils
 import lineinfos as astli
 import ast2nif   # toNifFilename
@@ -94,13 +94,19 @@ proc formatSuggest(s: Suggest): string =
     result.add sep
     result.add $s.quality
 
-proc emit(conf: ConfigRef; c: Cursor; section: IdeCmd; name: string) =
+proc emit(conf: ConfigRef; c: Cursor; section: IdeCmd; name: string;
+          seen: var HashSet[string]) =
   ## Report one hit as a nimsuggest-compatible result (routed through the
   ## structured-output hook / `--stdout`). We only have the mangled name + line
   ## info from the raw NIF, so symkind/type are left empty — like nimony's
-  ## `foundSymbol`.
+  ## `foundSymbol`. `seen` deduplicates: the same source location can back
+  ## several NIF `Symbol` tokens (e.g. a call argument re-emitted in a lowered
+  ## form), which must surface as one hit.
   let li = rawLineInfo(c)
   if not li.isValid: return
+  let key = $section.int & ":" & lineInfoFile(c) & ":" & $li.line.int & ":" & $li.col.int
+  if seen.containsOrIncl(key):
+    return  # already reported this location for this section
   let s = Suggest(section: section,
                   qualifiedPath: @[name[0 ..< identLen(name)]],
                   filePath: lineInfoFile(c),
@@ -116,17 +122,19 @@ proc emit(conf: ConfigRef; c: Cursor; section: IdeCmd; name: string) =
   else:
     conf.suggestWriteln(formatSuggest(s))
 
-proc scanUses(conf: ConfigRef; m: var BifModule; targetName: string) =
+proc scanUses(conf: ConfigRef; m: var BifModule; targetName: string;
+              seen: var HashSet[string]) =
   ## `--usages`: report every `Symbol` (use) occurrence with valid line info.
   if m.buf.len == 0: return
   var c = m.buf.beginRead()
   while c.hasMore:
     if c.kind == Symbol and symName(c) == targetName and rawLineInfo(c).isValid:
-      emit(conf, c, ideUse, targetName)
+      emit(conf, c, ideUse, targetName, seen)
     inc c
   c.endRead()
 
-proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string) =
+proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string;
+             seen: var HashSet[string]) =
   ## `--def`: report the declaration of `targetName` if this module owns it (has
   ## its `SymbolDef`). The `SymbolDef` token itself carries no line info; the
   ## declaration location lives on the *enclosing tag* (e.g. `(sd @file:line:col`,
@@ -149,7 +157,7 @@ proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string) =
         sawDef = true
         var tc = cursorAt(m.buf, mostRecentTagPos)
         if rawLineInfo(tc).isValid:
-          emit(conf, tc, ideDef, targetName)
+          emit(conf, tc, ideDef, targetName, seen)
           emitted = true
         tc.endRead()
       inc c
@@ -162,22 +170,24 @@ proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string) =
   c.endRead()
   if sawDef and not emitted and fallbackPos >= 0:
     var fc = cursorAt(m.buf, fallbackPos)
-    emit(conf, fc, ideDef, targetName)
+    emit(conf, fc, ideDef, targetName, seen)
     fc.endRead()
 
-proc scanBuf(conf: ConfigRef; m: var BifModule; section: IdeCmd; targetName: string) =
-  ## Emit hits for `targetName` in `m` per the query kind.
-  if section == ideDef:
-    scanDef(conf, m, targetName)
-  else:
-    scanUses(conf, m, targetName)
+proc scanBuf(conf: ConfigRef; m: var BifModule; section: IdeCmd; targetName: string;
+             seen: var HashSet[string]) =
+  ## Emit hits for `targetName` in `m` per the query kind. `ideDus`
+  ## (`--defusages`) reports both the definition and every usage.
+  if section in {ideDef, ideDus}:
+    scanDef(conf, m, targetName, seen)
+  if section in {ideUse, ideDus}:
+    scanUses(conf, m, targetName, seen)
 
 proc runIdeQuery*(conf: ConfigRef) =
   ## Entry point: called from `main.nim` after `commandCheck` when a
   ## `--def`/`--usages` query is active. Assumes the check just emitted the
   ## project's `.s.bif` files into `getNimcacheDir(conf)`.
   let section = conf.ideCmd
-  if section notin {ideDef, ideUse}: return
+  if section notin {ideDef, ideUse, ideDus}: return
   let target = conf.m.trackPos
   if target.fileIndex.int32 < 0: return
 
@@ -200,12 +210,14 @@ proc runIdeQuery*(conf: ConfigRef) =
     c.endRead()
   if foundName.len == 0: return
 
-  # Pass 2: emit definition / usages.
+  # Pass 2: emit definition / usages. `seen` spans every module so a location is
+  # reported once even when scanned across the whole nimcache.
+  var seen = initHashSet[string]()
   if isGlobalName(foundName):
     for f in walkFiles((getNimcacheDir(conf).string) / "*.s.bif"):
       var m = load(f)
-      scanBuf(conf, m, section, foundName)
+      scanBuf(conf, m, section, foundName, seen)
   else:
     # Local symbol: its mangled name is not unique across modules, so restrict
     # the scan to the module it lives in (the queried module).
-    scanBuf(conf, qm, section, foundName)
+    scanBuf(conf, qm, section, foundName, seen)
