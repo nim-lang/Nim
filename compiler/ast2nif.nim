@@ -895,6 +895,15 @@ var offerTag = registerTag("offer")
 var typeOfferTag = registerTag("toffer")
 var modulesrcTag = registerTag("modulesrc")
 var expansionTag = registerTag("expansion")
+# `(sig <symUse @src>)*` — signature occurrences (parameter names and the symbols
+# in their type expressions). A semchecked routine's params are dropped from the
+# serialized AST (`skipParams`) and reconstructed from `s.typ`, which holds the
+# RESOLVED type — so the source parameter names and the written type names (e.g.
+# an alias `Stream`, not `StreamObj`) carry no position in the module body. Like
+# the `expansion` records, these are teed into the `deps` side-channel: the loader
+# skips the tag, but `idetools` scans every Symbol token, so goto-def / find-usages
+# work on signatures.
+var sigTag = registerTag("sig")
 # `(unusedid <int>)` — the module's first FREE itemId after the frontend
 # (`.s.bif`) or the lower stage (`.t.bif`). The backend seeds its per-module
 # sym/type counters here so freshly-minted backend ids (closure envs, RTTI
@@ -936,6 +945,22 @@ proc registerNifAstTags*() =
   typeOfferTag = registerTag("toffer")
   modulesrcTag = registerTag("modulesrc")
   expansionTag = registerTag("expansion")
+  sigTag = registerTag("sig")
+
+proc emitSigOccurrences(w: var Writer; n: PNode) =
+  ## Record every `nkSym` in a routine-signature subtree (parameter names and the
+  ## symbols inside their type expressions, incl. the return type) as a `(sig ...)`
+  ## occurrence in the `deps` side-channel, carrying the SOURCE position. Called on
+  ## the params AST that `skipParams` is about to drop, so tooling keeps a
+  ## positioned token for each signature symbol without changing the module body
+  ## the loader / backend actually consume.
+  if n == nil: return
+  if n.kind == nkSym:
+    w.deps.addParLe sigTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(n.sym)), trLineInfo(w, n.info)
+    w.deps.addParRi
+  else:
+    for i in 0 ..< n.safeLen: emitSigOccurrences(w, n[i])
 
 proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
   if n == nil:
@@ -1031,6 +1056,13 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
         w.withNode dest, ast:
           for i in 0 ..< ast.len:
             if i == paramsPos and skipParams:
+              # The dropped params still hold the source positions and the WRITTEN
+              # type names (before alias/type resolution); tee them into the `deps`
+              # side-channel for goto-def / find-usages (see `emitSigOccurrences`).
+              # Skip generic INSTANCES: their param syms are instance-specific, and
+              # the generic's own signature already records the source occurrences.
+              if sfFromGeneric notin n[namePos].sym.flagsImpl:
+                emitSigOccurrences(w, ast[i])
               # Parameters are redundant with s.typ.n (and re-emitting their syms
               # is dangerous for generic instances — we do not adapt the symbols
               # properly). Emit an `nkEmpty` placeholder rather than a dot token:
@@ -3279,6 +3311,10 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
       elif tagIs(cur, "expansion"):
         # template/macro expansion usage record for tooling (`idetools` scans it
         # as a `Symbol` use); the loader itself needs nothing from it.
+        skip cur
+      elif tagIs(cur, "sig"):
+        # signature-symbol occurrence record for tooling (`idetools` scans it as a
+        # `Symbol` use); the loader itself needs nothing from it.
         skip cur
       elif tagIs(cur, "implementation"):
         cont = false
