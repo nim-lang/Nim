@@ -590,6 +590,98 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
           elif t.kind == ParRi: dec depth
     t = next(s)
 
+proc collectIncludeNames(depsPath: string; names: var seq[string]) =
+  ## Lightweight scan of a `.deps.nif` prelude: collect the raw path text of
+  ## every entry inside an `(include ...)` node (idents like `semexprs`, string
+  ## literals like `"system/mmdisp"`, and the leaves of `a/b` path infixes).
+  ## Liberal by design — it also picks up entries under a statically-false
+  ## `(when ...)`; that is harmless for the only caller (`includerSbifs`), whose
+  ## over-collection just costs an extra, result-free bif scan downstream.
+  if not fileExists(depsPath): return
+  var s = nifstreams.open(depsPath)
+  defer: nifstreams.close(s)
+  discard processDirectives(s.r)
+  var depth = 0
+  var includeDepth = 0     # the `depth` at which the current `(include` opened; 0 = not inside one
+  var t = next(s)
+  while t.kind != EofToken:
+    case t.kind
+    of ParLe:
+      inc depth
+      if includeDepth == 0 and pool.tags[t.tagId] == "include":
+        includeDepth = depth
+    of ParRi:
+      if includeDepth != 0 and depth == includeDepth:
+        includeDepth = 0
+      dec depth
+    of Ident, StringLit:
+      if includeDepth != 0:
+        names.add pool.strings[t.litId]
+    else: discard
+    t = next(s)
+
+proc entryStemBase(roots: seq[string]; name: string): (string, string) =
+  ## Resolve include entry `name` to (deps-stem, base-name); ("","") if unfound.
+  for r in roots:
+    let p = r / name.addFileExt("nim")
+    if fileExists(p):
+      return (moduleSuffix(p, []), splitFile(p).name)
+  result = ("", "")
+
+proc includerSbifs*(conf: ConfigRef; targetFile: AbsoluteFile): seq[string] =
+  ## For an include file `targetFile`, return the `.s.bif` paths of every module
+  ## that includes it — directly OR transitively (following the include chain
+  ## `module -> incA -> incB -> targetFile`). `nim track` uses this to avoid
+  ## loading and scanning every module bif: an include file has no bif of its
+  ## own, so its type-checked tokens live in the *including* module's bif. Only
+  ## the small `.deps.nif` preludes are read here, never a `.s.bif`.
+  const depsExt = ".deps.nif"
+  let nc = getNimcacheDir(conf).string
+
+  # Candidate roots for resolving an `(include X)` entry to a real file, so its
+  # module suffix (== its own deps-file stem) can be computed. Include entries
+  # carry any sub-path (`system/mmdisp`), so the file's *directory* roots suffice:
+  # the target's own dir, the project dir, and the search paths cover the
+  # compiler, the stdlib and typical single-tree projects.
+  var roots: seq[string] = @[parentDir(targetFile.string)]
+  if conf.projectPath.string.len > 0: roots.add conf.projectPath.string
+  for sp in conf.searchPaths: roots.add sp.string
+
+  # One pass over every prelude builds the reverse include graph, keyed by base
+  # file name: `includedBy[b]` = deps stems whose owner directly `include`s a
+  # file named `b`. `stemBase` maps an include-only file's deps stem back to its
+  # own base name, so the walk can climb through nested includes.
+  var includedBy = initTable[string, seq[string]]()
+  var stemBase = initTable[string, string]()
+  for depsPath in walkFiles(nc / "*" & depsExt):
+    let base = extractFilename(depsPath)
+    if base.endsWith(".p" & depsExt): continue   # `.p.deps.nif` twin
+    let ownerStem = base[0 ..< base.len - depsExt.len]
+    var names: seq[string] = @[]
+    collectIncludeNames(depsPath, names)
+    for n in names:
+      let (childStem, childBase) = entryStemBase(roots, n)
+      if childBase.len == 0: continue
+      includedBy.mgetOrPut(childBase, @[]).add ownerStem
+      stemBase[childStem] = childBase          # this child's stem -> its base name
+
+  # Walk UP from the target: a deps stem that includes the current base name is
+  # either a module (has a `.s.bif` -> collect it) or itself an include file
+  # (recurse via its own base name).
+  result = @[]
+  var seenBase = initHashSet[string]()
+  var work = @[splitFile(targetFile.string).name]
+  while work.len > 0:
+    let b = work.pop()
+    if seenBase.containsOrIncl(b): continue
+    for stem in includedBy.getOrDefault(b):
+      let sbif = nc / stem & ".s.bif"
+      if fileExists(sbif):
+        if sbif notin result: result.add sbif   # module owner
+      else:
+        let ob = stemBase.getOrDefault(stem)     # include-only owner: climb higher
+        if ob.len > 0: work.add ob
+
 proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
   ## Process a module: run nifler and read deps
   if not runNifler(c, pair.nimFile):

@@ -1325,8 +1325,16 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
       # support UNIX style filenames everywhere for portable build scripts:
       if config.projectName.len == 0:
         config.projectName = unixToNativePath(p.key)
-      config.arguments = cmdLineRest(p)
-      result = true
+      if config.cmd == cmdTrack:
+        # `nim track PROJ --def:...`: unlike a normal command (where everything
+        # after the project file is passed to the compiled program), `track`
+        # accepts its IDE-query switches AFTER the project — the natural,
+        # nimsuggest-like invocation form. So don't swallow the rest of the line
+        # into `arguments`; keep parsing the remaining tokens as switches.
+        result = false
+      else:
+        config.arguments = cmdLineRest(p)
+        result = true
     else:
       result = false
   inc argsCount
