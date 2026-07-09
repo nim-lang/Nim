@@ -962,6 +962,34 @@ proc emitSigOccurrences(w: var Writer; n: PNode) =
   else:
     for i in 0 ..< n.safeLen: emitSigOccurrences(w, n[i])
 
+proc emitFwdDecl(w: var Writer; n: PNode; sym: PSym) =
+  ## A routine's forward declaration (`proc foo(...)` with no body, later followed
+  ## by `proc foo(...) = ...`) is a distinct top-level node, but the routine has a
+  ## SINGLE `sdef`, emitted at the IMPLEMENTATION site (`sym.infoImpl`) — so the
+  ## prototype's own position would otherwise vanish from the `.bif`. Tee it into
+  ## the `deps` side-channel as a POSITIONED `(sig @proto <symDef>)`: the loader
+  ## skips the `sig` tag (processTopLevel), but `idetools.scanDef` finds the
+  ## `SymbolDef` and reports the enclosing tag's line info — so a `--def` on a
+  ## forward-declared proc returns TWO results (prototype + implementation), which
+  ## is desired. Safe against symbol resolution: the loader rebuilds its name->pos
+  ## table from the CONTENT body (`buildPosIndex`, written after `deps`, last write
+  ## wins) so the real `sdef` still resolves; the extra on-disk index entry has no
+  ## resolution consumer. The prototype's signature symbols (param names and the
+  ## symbols in their type expressions) are teed too, positioned at the prototype,
+  ## exactly as `emitSigOccurrences` records them for the implementation.
+  # The `SymbolDef` carries the prototype line info too (not just the enclosing
+  # tag): `scanDef` reads the position from the tag, but pass-1 `findPos` matches
+  # a token by its OWN line info, so this is what makes a query issued AT the
+  # prototype position resolve the symbol.
+  let protoInfo = trLineInfo(w, n[namePos].info)
+  let sid = pool.syms.getOrIncl(w.toNifSymName(sym))
+  w.deps.addParLe sigTag, protoInfo
+  w.deps.addSymDef sid, protoInfo   # scanDef reports this as a def
+  w.deps.addSymUse sid, protoInfo   # findPos (pass 1) / scanUses match a Symbol use
+  w.deps.addParRi
+  if sfFromGeneric notin sym.flagsImpl and paramsPos < n.safeLen:
+    emitSigOccurrences(w, n[paramsPos])
+
 proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
   if n == nil:
     dest.addDotToken
@@ -1035,7 +1063,16 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
       # For top-level named routines (not forAst), just write the symbol.
       # The full AST will be stored in the symbol's sdef.
       if not forAst and n[namePos].kind == nkSym:
-        writeSym(w, dest, n[namePos].sym)
+        let s = n[namePos].sym
+        writeSym(w, dest, s)
+        # A forward declaration is a SECOND top-level node for `s` (body-less here;
+        # the real body — and the lone sdef — lands at the implementation). Tee the
+        # prototype's own position so goto-def / find-usages surface it as well.
+        let impl = s.astImpl
+        if n.safeLen > bodyPos and n[bodyPos].kind == nkEmpty and
+           impl != nil and impl != n and
+           impl.safeLen > bodyPos and impl[bodyPos].kind != nkEmpty:
+          emitFwdDecl(w, n, s)
       else:
         # Writing AST inside sdef or anonymous proc: write full structure
         inc w.inProc
