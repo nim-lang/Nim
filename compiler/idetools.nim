@@ -37,7 +37,7 @@ import lineinfos as astli
 import ast2nif   # toNifFilename
 from deps import includerSbifs   # deps-guided include-file lookup
 import "../dist/nimony/src/lib/nifcore"
-from "../dist/nimony/src/lib" / bif import load, BifModule
+from "../dist/nimony/src/lib" / bif import load, BifModule, containsSym
 
 proc identLen(name: string): int =
   ## Length of the displayed identifier: the run before the first `.` of a
@@ -123,21 +123,37 @@ proc emit(conf: ConfigRef; c: Cursor; section: IdeCmd; name: string;
   else:
     conf.suggestWriteln(formatSuggest(s))
 
-proc scanUses(conf: ConfigRef; m: var BifModule; targetName: string;
+proc tokenSymId(c: Cursor): SymId {.inline.} =
+  ## SymId (in the cursor's own per-file pool) of a `Symbol`/`SymbolDef` token,
+  ## or `SymId(0)` for an inline-encoded one — which is never our search target:
+  ## a mangled name (`ident.disamb.suffix`) is always longer than
+  ## `StrInlineMaxLen`, so every occurrence of the symbol we look for is stored by
+  ## pool id, decoded here with a shift and no string materialization.
+  if isInlineLit(c): SymId(0) else: SymId(combinedPayload(c) shr 1)
+
+template symMatches(c: Cursor): bool =
+  ## True when the token at `c` is the searched symbol. The fast path is a pure
+  ## integer compare against `targetSym` (the symbol's id in THIS module's pool,
+  ## resolved once per file by the caller). `targetSym == 0` means the name is not
+  ## representable as a pool id (a rare <=3-byte local): fall back to a string
+  ## compare, correct for both inline and pooled encodings.
+  (if targetSym != SymId(0): tokenSymId(c) == targetSym else: symName(c) == targetName)
+
+proc scanUses(conf: ConfigRef; m: var BifModule; targetSym: SymId; targetName: string;
               seen: var HashSet[string]) =
   ## `--usages`: report every `Symbol` (use) occurrence with valid line info.
   if m.buf.len == 0: return
   var c = m.buf.beginRead()
   while c.hasMore:
-    if c.kind == Symbol and symName(c) == targetName and rawLineInfo(c).isValid:
+    if c.kind == Symbol and symMatches(c) and rawLineInfo(c).isValid:
       emit(conf, c, ideUse, targetName, seen)
     inc c
   c.endRead()
 
-proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string;
+proc scanDef(conf: ConfigRef; m: var BifModule; targetSym: SymId; targetName: string;
              seen: var HashSet[string]) =
-  ## `--def`: report the declaration of `targetName` if this module owns it (has
-  ## its `SymbolDef`). The `SymbolDef` token itself carries no line info; the
+  ## `--def`: report the declaration of the target symbol if this module owns it
+  ## (has its `SymbolDef`). The `SymbolDef` token itself carries no line info; the
   ## declaration location lives on the *enclosing tag* (e.g. `(sd @file:line:col`,
   ## like `bif.buildIndex`'s `mostRecentTagPos`). When that tag has no line info
   ## either, fall back to the declaration-site `Symbol` occurrence — but only in
@@ -154,7 +170,7 @@ proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string;
       mostRecentTagPos = cursorToPosition(m.buf, c)
       inc c
     of SymbolDef:
-      if symName(c) == targetName:
+      if symMatches(c):
         sawDef = true
         var tc = cursorAt(m.buf, mostRecentTagPos)
         if rawLineInfo(tc).isValid:
@@ -163,7 +179,7 @@ proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string;
         tc.endRead()
       inc c
     of Symbol:
-      if fallbackPos < 0 and symName(c) == targetName and rawLineInfo(c).isValid:
+      if fallbackPos < 0 and symMatches(c) and rawLineInfo(c).isValid:
         fallbackPos = cursorToPosition(m.buf, c)
       inc c
     else:
@@ -174,14 +190,14 @@ proc scanDef(conf: ConfigRef; m: var BifModule; targetName: string;
     emit(conf, fc, ideDef, targetName, seen)
     fc.endRead()
 
-proc scanBuf(conf: ConfigRef; m: var BifModule; section: IdeCmd; targetName: string;
-             seen: var HashSet[string]) =
-  ## Emit hits for `targetName` in `m` per the query kind. `ideDus`
+proc scanBuf(conf: ConfigRef; m: var BifModule; section: IdeCmd;
+             targetSym: SymId; targetName: string; seen: var HashSet[string]) =
+  ## Emit hits for the target symbol in `m` per the query kind. `ideDus`
   ## (`--defusages`) reports both the definition and every usage.
   if section in {ideDef, ideDus}:
-    scanDef(conf, m, targetName, seen)
+    scanDef(conf, m, targetSym, targetName, seen)
   if section in {ideUse, ideDus}:
-    scanUses(conf, m, targetName, seen)
+    scanUses(conf, m, targetSym, targetName, seen)
 
 proc findPos(conf: ConfigRef; m: var BifModule; target: TLineInfo;
              foundName: var string): bool =
@@ -235,13 +251,29 @@ proc runIdeQuery*(conf: ConfigRef) =
 
   # Pass 2: emit definition / usages. `seen` spans every module so a location is
   # reported once even when scanned across the whole nimcache.
+  #
+  # Cross-file matching is by SymId, not by decoding every token's name. Two
+  # filters keep it cheap:
+  #   1. `bif.containsSym` — a sym-table-only probe that reads just the small
+  #      trailing pools, NOT the token block or any `BiTable`. A module that never
+  #      references the symbol is rejected here without a full `load` (no pools
+  #      built, no token block mapped) — so a query whose symbol lives in a few
+  #      modules no longer pays to load the whole nimcache.
+  #   2. For a module that does contain it, `bif.load` mints a fresh per-file pool,
+  #      so the name is resolved to THIS file's SymId once via `getKeyId`; the scan
+  #      then compares integer ids per token instead of materializing a string for
+  #      each (see `symMatches`).
   var seen = initHashSet[string]()
   if isGlobalName(foundName):
     for f in walkFiles((getNimcacheDir(conf).string) / "*.s.bif"):
+      if not containsSym(f, foundName): continue
       var m = load(f)
-      scanBuf(conf, m, section, foundName, seen)
+      let tid = m.buf.pool.syms.getKeyId(foundName)
+      if tid != SymId(0):
+        scanBuf(conf, m, section, tid, foundName, seen)
   else:
     # Local symbol: its mangled name is not unique across modules, so restrict
     # the scan to the module it lives in (the one that owns the queried position).
     var qm = load(ownerFile)
-    scanBuf(conf, qm, section, foundName, seen)
+    let tid = qm.buf.pool.syms.getKeyId(foundName)
+    scanBuf(conf, qm, section, tid, foundName, seen)
