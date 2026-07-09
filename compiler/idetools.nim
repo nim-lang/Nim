@@ -35,6 +35,7 @@ import std / [os, strutils, sets]
 import options, msgs, pathutils
 import lineinfos as astli
 import ast2nif   # toNifFilename
+from deps import includerSbifs   # deps-guided include-file lookup
 import "../dist/nimony/src/lib/nifcore"
 from "../dist/nimony/src/lib" / bif import load, BifModule
 
@@ -182,6 +183,24 @@ proc scanBuf(conf: ConfigRef; m: var BifModule; section: IdeCmd; targetName: str
   if section in {ideUse, ideDus}:
     scanUses(conf, m, targetName, seen)
 
+proc findPos(conf: ConfigRef; m: var BifModule; target: TLineInfo;
+             foundName: var string): bool =
+  ## Scan `m` for the `Symbol`/`SymbolDef` token covering the queried position
+  ## `target` and set `foundName` to its mangled name. Returns true on a hit.
+  if m.buf.len == 0: return false
+  var c = m.buf.beginRead()
+  result = false
+  while c.hasMore:
+    let k = c.kind
+    if k == Symbol or k == SymbolDef:
+      let nm = symName(c)
+      if posMatch(c, conf, target, identLen(nm)):
+        foundName = nm
+        result = true
+        break
+    inc c
+  c.endRead()
+
 proc runIdeQuery*(conf: ConfigRef) =
   ## Entry point: called from `main.nim` after `commandCheck` when a
   ## `--def`/`--usages` query is active. Assumes the check just emitted the
@@ -191,23 +210,27 @@ proc runIdeQuery*(conf: ConfigRef) =
   let target = conf.m.trackPos
   if target.fileIndex.int32 < 0: return
 
-  # Pass 1: position -> symbol, in the queried module's own .s.bif.
+  # Pass 1: position -> symbol. Try the queried file's own module bif first (the
+  # fast path when the position is inside a real module). An include file has no
+  # module bif of its own — its tokens live in the *including* module's bif with
+  # include-file line info — so when the direct lookup misses, consult the
+  # `.deps.nif` preludes (`includerSbifs`) to load only the module(s) that
+  # include the queried file (directly or transitively), never every bif in the
+  # nimcache. `ownerFile` is the bif that owns the hit.
   let modFile = toNifFilename(conf, target.fileIndex)
-  if not fileExists(modFile): return
-  var qm = load(modFile)
   var foundName = ""
-  block find:
-    if qm.buf.len == 0: break find
-    var c = qm.buf.beginRead()
-    while c.hasMore:
-      let k = c.kind
-      if k == Symbol or k == SymbolDef:
-        let nm = symName(c)
-        if posMatch(c, conf, target, identLen(nm)):
-          foundName = nm
-          break find
-      inc c
-    c.endRead()
+  var ownerFile = ""
+  if fileExists(modFile):
+    var qm = load(modFile)
+    if findPos(conf, qm, target, foundName):
+      ownerFile = modFile
+  if foundName.len == 0:
+    for cand in includerSbifs(conf, toFullPath(conf, target.fileIndex).AbsoluteFile):
+      if cand == modFile: continue
+      var m = load(cand)
+      if findPos(conf, m, target, foundName):
+        ownerFile = cand
+        break
   if foundName.len == 0: return
 
   # Pass 2: emit definition / usages. `seen` spans every module so a location is
@@ -219,5 +242,6 @@ proc runIdeQuery*(conf: ConfigRef) =
       scanBuf(conf, m, section, foundName, seen)
   else:
     # Local symbol: its mangled name is not unique across modules, so restrict
-    # the scan to the module it lives in (the queried module).
+    # the scan to the module it lives in (the one that owns the queried position).
+    var qm = load(ownerFile)
     scanBuf(conf, qm, section, foundName, seen)

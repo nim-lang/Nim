@@ -260,17 +260,26 @@ proc ensureIcConfig*(conf: ConfigRef) =
   if not fileExists(outPath) or sourcesChanged(outPath):
     createDir(cacheDir)
     # Re-invoke ourselves as the config producer: reuse this process's command
-    # line, dropping the command argument (`ic`) in favour of `icconfig` and the
-    # explicit output path, both BEFORE the project file (anything after the
-    # project is swallowed into `config.arguments` by `cmdLineRest`). The
-    # producer re-reads `nim.cfg` itself.
+    # line, dropping the command argument (`ic`/`track`) in favour of `icconfig`
+    # and the explicit output path. Every switch must land BEFORE the project
+    # file, because anything after the project is swallowed into
+    # `config.arguments` by `cmdLineRest` (and a non-empty `arguments` without
+    # `--run` is a hard error). Callers may legitimately put switches after the
+    # project — `nim track PROJ --def:...` — so we re-order rather than replay
+    # verbatim: all `-`-prefixed switches first (in encounter order), then the
+    # non-switch project token(s). The producer re-reads `nim.cfg` itself.
     var pargs = @["icconfig", "--icConfigOut:" & outPath]
+    var rest: seq[string] = @[]
     var droppedCmd = false
     for a in commandLineParams():
-      if not droppedCmd and a.len > 0 and a[0] != '-':
-        droppedCmd = true  # drop the original command token (`ic`)
-      else:
+      if a.len == 0: continue
+      if a[0] == '-':
         pargs.add a
+      elif not droppedCmd:
+        droppedCmd = true  # drop the original command token (`ic`/`track`)
+      else:
+        rest.add a  # project file (and any further non-switch tokens) go last
+    for a in rest: pargs.add a
     let p = startProcess(getAppFilename(), args = pargs,
                          options = {poStdErrToStdOut})
     let outp = p.outputStream.readAll()
