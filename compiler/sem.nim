@@ -288,6 +288,14 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
         result = copySym(result)
         result.ast = n.sym.ast
         put(c.p, n.sym, result)
+    if result.state == Sealed:
+      # the symbol was loaded from another module's NIF cache (e.g. a param
+      # symbol spliced out of an imported proc type by a `typed` macro) and is
+      # therefore immutable; the caller re-owns it and assigns its type/flags,
+      # so hand back a fresh, mutable copy owned by the current module instead.
+      let fresh = copySym(result, c.idgen)
+      fresh.ast = result.ast
+      result = fresh
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909
