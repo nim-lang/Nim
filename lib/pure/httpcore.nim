@@ -49,6 +49,15 @@ type
     HttpConnect = "CONNECT"  ## Converts the request connection to a transparent
                              ## TCP/IP tunnel, usually used for proxies.
     HttpPatch = "PATCH"      ## Applies partial modifications to a resource.
+    HttpPropfind = "PROPFIND"## Retrieves properties defined on the resource.
+    HttpProppatch = "PROPPATCH"## Changes and deletes multiple properties on
+                              ## a resource in a single atomic act.
+    HttpMkcol = "MKCOL"      ## Creates a new collection resource.
+    HttpCopy = "COPY"        ## Creates a duplicate of the source resource.
+    HttpMove = "MOVE"        ## Moves a resource to the location specified by
+                             ## the request URI.
+    HttpLock = "LOCK"        ## Sets a lock on a resource.
+    HttpUnlock = "UNLOCK"    ## Removes a lock from a resource.
 
 
 const

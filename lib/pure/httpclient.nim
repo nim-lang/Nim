@@ -1255,6 +1255,20 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
         HttpConnect
       of "PATCH":
         HttpPatch
+      of "PROPFIND":
+        HttpPropfind
+      of "PROPPATCH":
+        HttpProppatch
+      of "MKCOL":
+        HttpMkcol
+      of "COPY":
+        HttpCopy
+      of "MOVE":
+        HttpMove
+      of "LOCK":
+        HttpLock
+      of "UNLOCK":
+        HttpUnlock
       else:
         raise newException(ValueError, "Invalid HTTP method name: " & httpMethod)
 

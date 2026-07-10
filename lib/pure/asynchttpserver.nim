@@ -228,6 +228,13 @@ proc processRequest(
       of "OPTIONS": request.reqMethod = HttpOptions
       of "CONNECT": request.reqMethod = HttpConnect
       of "TRACE": request.reqMethod = HttpTrace
+      of "PROPFIND": request.reqMethod = HttpPropfind
+      of "PROPPATCH": request.reqMethod = HttpProppatch
+      of "MKCOL": request.reqMethod = HttpMkcol
+      of "COPY": request.reqMethod = HttpCopy
+      of "MOVE": request.reqMethod = HttpMove
+      of "LOCK": request.reqMethod = HttpLock
+      of "UNLOCK": request.reqMethod = HttpUnlock
       else:
         asyncCheck request.respondError(Http400)
         return true # Retry processing of request

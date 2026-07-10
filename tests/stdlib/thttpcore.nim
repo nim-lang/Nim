@@ -11,6 +11,21 @@ block:
     doAssert Http418.is4xx() == true
     doAssert Http418.is2xx() == false
 
+  block testHttpMethod:
+    doAssert $HttpGet == "GET"
+    doAssert $HttpPost == "POST"
+    doAssert $HttpPropfind == "PROPFIND"
+    doAssert $HttpProppatch == "PROPPATCH"
+    doAssert $HttpMkcol == "MKCOL"
+    doAssert $HttpCopy == "COPY"
+    doAssert $HttpMove == "MOVE"
+    doAssert $HttpLock == "LOCK"
+    doAssert $HttpUnlock == "UNLOCK"
+    doAssert parseEnum[HttpMethod]("PROPFIND") == HttpPropfind
+    doAssert parseEnum[HttpMethod]("COPY") == HttpCopy
+    doAssert {HttpGet, HttpPropfind}.contains("PROPFIND")
+    doAssert not {HttpGet, HttpPost}.contains("PROPFIND")
+
   block headers:
     var h = newHttpHeaders()
     doAssert h.len == 0
