@@ -1784,13 +1784,18 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
     elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
       effects[exceptionEffects] = newNodeI(nkArgList, effects.info)
 
+    let forbidsSpec = effectSpec(n, wForbids)
     let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
       effects[tagEffects] = tagsSpec
+    elif not isNil(forbidsSpec):
+      # `.forbids` without `.tags` still declares a known empty tag set.
+      # Leaving this as nil would mean "unknown tags", which later widens
+      # indirect calls to `RootEffect`.
+      effects[tagEffects] = newNodeI(nkArgList, effects.info)
     elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
       effects[tagEffects] = newNodeI(nkArgList, effects.info)
 
-    let forbidsSpec = effectSpec(n, wForbids)
     if not isNil(forbidsSpec):
       effects[forbiddenEffects] = forbidsSpec
     elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
