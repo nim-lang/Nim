@@ -192,12 +192,17 @@ proc validateUtf8*(s: openArray[char]): int =
       else: return i
     elif uint(s[i]) shr 4 == 0b1110:
       if i+2 < L and uint(s[i+1]) shr 6 == 0b10 and uint(s[i+2]) shr 6 == 0b10:
+        if uint(s[i]) == 0xe0 and uint(s[i+1]) < 0xa0: return i # Catch overlongs.
+        if uint(s[i]) == 0xed and uint(s[i+1]) >= 0xa0: return i # Catch surrogates.
         inc i, 3
       else: return i
     elif uint(s[i]) shr 3 == 0b11110:
+      if uint(s[i]) > 0xf4: return i # Beyond U+10FFFF.
       if i+3 < L and uint(s[i+1]) shr 6 == 0b10 and
                      uint(s[i+2]) shr 6 == 0b10 and
                      uint(s[i+3]) shr 6 == 0b10:
+        if uint(s[i]) == 0xf0 and uint(s[i+1]) < 0x90: return i # Catch overlongs.
+        if uint(s[i]) == 0xf4 and uint(s[i+1]) > 0x8f: return i # Beyond U+10FFFF.
         inc i, 4
       else: return i
     else:
