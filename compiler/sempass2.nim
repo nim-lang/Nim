@@ -464,12 +464,6 @@ proc throws(tracked, n, orig: PNode) =
     if orig != nil:
       let x = copyTree(orig)
       x.typ = n.typ
-      # Store the effect source location as a child node for call chain tracking
-      if n.info != orig.info:
-        let src = newNode(nkType)
-        src.info = n.info
-        src.typ = n.typ
-        x.add src
       tracked.add x
     else:
       tracked.add n
@@ -1743,12 +1737,10 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
       for (s, info) in unknownRaises.items:
         message(g.config, info, hintUnknownRaises, s.name.s)
       var effectMsg = renderTree(rr) & " " & msg & typeToString(r.typ)
-      # Show call chain if available (from throws proc)
-      if r.len > 0 and isForbids:
-        effectMsg.add "\ncall chain:"
-        for i in 0..<r.len:
-          effectMsg.add "\n  from " & toFilename(g.config, r[i].info) &
-                        "(" & $r[i].info.line & ", " & $r[i].info.col & ")"
+      # Show effect origin location for forbids violations
+      if isForbids and r.info != spec.info:
+        effectMsg.add "\n  effect origin: " & toFilename(g.config, r.info) &
+                      "(" & $r.info.line & ", " & $r.info.col & ")"
       message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated, effectMsg)
       popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
