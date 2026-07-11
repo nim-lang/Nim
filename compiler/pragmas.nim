@@ -171,11 +171,8 @@ proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   s.incl(sfImportc)
   s.excl(sfForward)
 
-proc markExternExport(s: PSym) =
-  s.incl(sfExportc)
-
 proc markAbiExport(s: PSym) =
-  markExternExport(s)
+  s.incl(sfExportc)
   incl(s, {sfExportAbi, sfUsed})
   incl(s, lfExportLib)
 
@@ -213,7 +210,7 @@ proc markCustomAbiHooks(c: PContext; root: PType) =
 
 proc makeExternExport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  markExternExport(s)
+  s.incl(sfExportc)
 
 proc processImportCompilerProc(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
