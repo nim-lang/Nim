@@ -44,7 +44,7 @@ type
     wCppNonPod = "cppNonPod",
     wImportObjC = "importobjc", wImportCompilerProc = "importCompilerProc",
     wImportc = "importc", wImportJs = "importjs", wExportc = "exportc", wExportCpp = "exportcpp",
-    wExportNims = "exportnims",
+    wExportNim = "exportnim", wExportNims = "exportnims",
     wIncompleteStruct = "incompleteStruct", # deprecated
     wCompleteStruct = "completeStruct", wRequiresInit = "requiresInit", wAlign = "align",
     wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideEffect", wHeader = "header",

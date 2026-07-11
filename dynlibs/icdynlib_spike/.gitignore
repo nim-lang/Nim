@@ -1,0 +1,8 @@
+generated/
+nimcache/
+generator
+consumer
+c_consumer
+libproducer.dylib
+libproducer.so
+

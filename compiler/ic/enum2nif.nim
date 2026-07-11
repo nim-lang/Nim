@@ -1211,6 +1211,7 @@ proc genFlags*(s: set[TSymFlag]; dest: var string) =
     of sfWasForwarded: dest.add "w"
     of sfImportc: dest.add "i"
     of sfExportc: dest.add "e0"
+    of sfExportNim: dest.add "e5"
     of sfMangleCpp: dest.add "m"
     of sfVolatile: dest.add "v"
     of sfRegister: dest.add "r"
@@ -1341,6 +1342,9 @@ proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
         inc i
       elif i+1 < s.len and s[i+1] == '4':
         result.incl sfEffectsDelayed
+        inc i
+      elif i+1 < s.len and s[i+1] == '5':
+        result.incl sfExportNim
         inc i
       else: result.incl sfExported
     of 'f':
@@ -1863,4 +1867,3 @@ proc parse*(t: typedesc[TOption]; s: string): set[TOption] =
     of 'w': result.incl optWarns
     else: discard
     inc i
-

@@ -35,7 +35,7 @@ const
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
-    wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
+    wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy, wExportNim,
     wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual, wQuirky, wMember}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
@@ -171,9 +171,12 @@ proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   s.incl(sfImportc)
   s.excl(sfForward)
 
+proc markExternExport(s: PSym) =
+  s.incl(sfExportc)
+
 proc makeExternExport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  s.incl(sfExportc)
+  markExternExport(s)
 
 proc processImportCompilerProc(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
@@ -899,17 +902,40 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       case k
       of wExportc, wExportCpp:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
+        if sfExportNim in sym.flags:
+          localError(c.config, it.info,
+            "{.exportnim.} and {.exportc.} pragmas are incompatible")
         if k == wExportCpp:
           if c.config.backend != backendCpp:
             localError(c.config, it.info, "exportcpp requires `cpp` backend, got: " & $c.config.backend)
           else:
             incl(sym, sfMangleCpp)
         incl(sym.flagsImpl, sfUsed) # avoid wrong hints
+      of wExportNim:
+        noVal(c, it)
+        if sym == nil or sym.kind notin routineKinds:
+          invalidPragma(c, it)
+        else:
+          if c.config.backend != backendC:
+            localError(c.config, it.info,
+              "exportnim requires `c` backend, got: " & $c.config.backend)
+          if sfExportc in sym.flags and sfExportNim notin sym.flags:
+            localError(c.config, it.info,
+              "{.exportnim.} and {.exportc.} pragmas are incompatible")
+          if sfImportc in sym.flags:
+            localError(c.config, it.info,
+              "{.exportnim.} and {.importc.} pragmas are incompatible")
+          markExternExport(sym)
+          incl(sym, {sfExportNim, sfUsed})
+          incl(sym, lfExportLib)
       of wImportc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
         recordPragma(c, it, "cppdefine", name)
         makeExternImport(c, sym, name, it.info)
+        if sfExportNim in sym.flags:
+          localError(c.config, it.info,
+            "{.exportnim.} and {.importc.} pragmas are incompatible")
       of wImportCompilerProc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)

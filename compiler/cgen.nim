@@ -1617,7 +1617,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     # cfsProcs emitters (NimMain block, trav markers, ...) never end up
     # inside a definition's span.
     var defFlags = ""
-    if sfExportc in prc.flags or sfConstructor in prc.flags: defFlags.add 'x'
+    if sfExportc in prc.flags or sfConstructor in prc.flags:
+      defFlags.add 'x'
     if sfCompilerProc in prc.flags: defFlags.add 'c'
     if prc.kind == skMethod or sfDispatcher in prc.flags: defFlags.add 'm'
     if (prc.typ == nil or prc.typ.callConv != ccInline) and
@@ -2950,6 +2951,65 @@ proc genForwardedProcs(g: BModuleList) =
 
     genProcLvl2(m, prc)
 
+proc jsonEscape(s: string): string =
+  result = newStringOfCap(s.len + 8)
+  for ch in s:
+    case ch
+    of '\\': result.add "\\\\"
+    of '"': result.add "\\\""
+    of '\n': result.add "\\n"
+    of '\r': result.add "\\r"
+    of '\t': result.add "\\t"
+    else: result.add ch
+
+proc nativeDynlibAllocator(config: ConfigRef): string =
+  if isDefined(config, "useMalloc"):
+    result = "malloc"
+  elif isDefined(config, "nimAllocPagesViaMalloc"):
+    result = "nimAllocPagesViaMalloc"
+  elif isDefined(config, "useNimRtl"):
+    result = "nimrtl"
+  else:
+    result = "nim-default"
+
+proc writeNimExportManifest(g: BModuleList; config: ConfigRef) =
+  if config.cmd == cmdNifC or g.exportedNimProcs.len == 0:
+    return
+
+  var procs = g.exportedNimProcs
+  procs.sort(proc(a, b: PSym): int =
+    cmp(globalName(a, config), globalName(b, config)))
+
+  var content = "{\n"
+  content.add "  \"format\": \"nim-native-dynlib-backend-v1\",\n"
+  content.add "  \"compilerVersion\": \"" & jsonEscape(VersionAsString) & "\",\n"
+  content.add "  \"targetOS\": \"" &
+    jsonEscape(platform.OS[config.target.targetOS].name) & "\",\n"
+  content.add "  \"targetCPU\": \"" &
+    jsonEscape(platform.CPU[config.target.targetCPU].name) & "\",\n"
+  content.add "  \"memoryManager\": \"" &
+    jsonEscape($config.selectedGC) & "\",\n"
+  content.add "  \"allocator\": \"" &
+    jsonEscape(nativeDynlibAllocator(config)) & "\",\n"
+  content.add "  \"procs\": [\n"
+  for i, prc in procs:
+    if i != 0:
+      content.add ",\n"
+    content.add "    {\"nifSymbol\": \"" &
+      jsonEscape(globalName(prc, config)) & "\", "
+    content.add "\"nimName\": \"" & jsonEscape(prc.name.s) & "\", "
+    content.add "\"cSymbol\": \"" &
+      jsonEscape(stripCnifMarks(prc.loc.snippet)) & "\", "
+    content.add "\"signatureFingerprint\": \"" &
+      jsonEscape($hashType(prc.typ, config)) & "\", "
+    content.add "\"genericInstance\": " &
+      (if sfFromGeneric in prc.flags: "true" else: "false") & "}"
+  content.add "\n  ]\n}\n"
+
+  let path = config.nimcacheDir /
+    RelativeFile(config.projectName & ".abi.json")
+  discard writeRope(rope(content), path)
+
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
   g.config = config
@@ -2988,3 +3048,4 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
       m.writeModule()
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
+  writeNimExportManifest(g, config)

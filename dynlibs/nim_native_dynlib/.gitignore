@@ -1,0 +1,7 @@
+/analysis
+/consumer
+/generated/
+/generator
+/libproducer.dylib
+/libproducer.so
+/nimcache/
