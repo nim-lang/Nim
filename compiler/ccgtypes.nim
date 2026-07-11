@@ -106,8 +106,10 @@ proc isSharedInstanceCName(m: BModule; s: PSym): bool =
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
     var result: Rope
-    if s.kind in routineKinds and {optCDebug, optItaniumMangle} * m.g.config.globalOptions == {optCDebug, optItaniumMangle} and
-      m.g.config.symbolFiles == disabledSf:
+    if s.kind in routineKinds and (sfExportAbi in s.flags or
+        ({optCDebug, optItaniumMangle} * m.g.config.globalOptions ==
+          {optCDebug, optItaniumMangle} and
+          m.g.config.symbolFiles == disabledSf)):
       # Under the per-module IC backend the bare-name uniqueness probe
       # (`m.g.mangledPrcs`) only sees the routines of the CURRENT module, so the
       # clean-vs-`makeUnique` decision is made independently per process: a
@@ -133,6 +135,9 @@ proc fillBackendName(m: BModule; s: PSym) =
       s.locImpl.snippet = markCName(result)
     else:
       s.locImpl.snippet = result
+  if s.kind in routineKinds and sfExportAbi in s.flags and
+      not containsOrIncl(m.g.exportedAbiSeen, s.id):
+    m.g.exportedAbiProcs.add s
 
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.snippet == "":

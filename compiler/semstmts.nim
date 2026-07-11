@@ -2156,6 +2156,17 @@ proc whereToBindTypeHook(c: PContext; t: PType): PType =
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
     result = canonType(c, result)
 
+proc markPotentialAbiHook(c: PContext; hook: PSym; typ: PType) =
+  ## An imported public type can first appear in an ABI-exported signature only
+  ## after its owning module has completed codegen. Make its custom hook
+  ## externally linkable while that owner is still being compiled; the ABI
+  ## manifest later advertises only hooks actually reachable from exports.
+  if Feature.abi in c.features and typ.sym != nil and
+      sfExported in typ.sym.flags and sfError notin hook.flags and
+      not hook.typ.containsGenericType:
+    incl(hook, {sfExportc, sfExportAbi, sfUsed})
+    incl(hook, lfExportLib)
+
 proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
@@ -2184,6 +2195,7 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
         setAttachedOp(c.graph, c.module.position, obj, op, s)
       else:
         prevDestructor(c, op, ao, obj, n.info)
+      markPotentialAbiHook(c, s, obj)
       noError = true
       if obj.owner.getModule != s.getModule:
         localError(c.config, n.info, errGenerated,
@@ -2232,6 +2244,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
         setAttachedOp(c.graph, c.module.position, obj, op, s)
       else:
         prevDestructor(c, op, ao, obj, n.info)
+      markPotentialAbiHook(c, s, obj)
       noError = true
       if obj.owner.getModule != s.getModule:
         localError(c.config, n.info, errGenerated,
@@ -2281,6 +2294,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         else:
           localError(c.config, n.info, errGenerated,
                      "cannot bind another 'deepCopy' to: " & typeToString(t))
+        markPotentialAbiHook(c, s, t)
       else:
         localError(c.config, n.info, errGenerated,
                    "cannot bind 'deepCopy' to: " & typeToString(t))
@@ -2326,6 +2340,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           setAttachedOp(c.graph, c.module.position, obj, k, s)
         else:
           prevDestructor(c, k, ao, obj, n.info)
+        markPotentialAbiHook(c, s, obj)
         if obj.owner.getModule != s.getModule:
           localError(c.config, n.info, errGenerated,
             "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")

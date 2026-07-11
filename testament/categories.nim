@@ -113,6 +113,8 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
     runBasicDLLTest c, r, cat, options & " --gc:boehm"
     runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
 
+  testSpec r, makeTest("tests/dll/tnim_native_dynlib.nim", options, cat)
+
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =

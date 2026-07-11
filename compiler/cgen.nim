@@ -23,6 +23,7 @@ from ast2nif import globalName, toNifFilename, icNifTypeName
 from typekeys import modname
 from std/algorithm import sort
 import cnif
+import "../dist/nimony/src/lib/nifbuilder" except Builder
 
 import pipelineutils
 
@@ -1617,7 +1618,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     # cfsProcs emitters (NimMain block, trav markers, ...) never end up
     # inside a definition's span.
     var defFlags = ""
-    if sfExportc in prc.flags or sfConstructor in prc.flags: defFlags.add 'x'
+    if sfExportc in prc.flags or sfConstructor in prc.flags:
+      defFlags.add 'x'
     if sfCompilerProc in prc.flags: defFlags.add 'c'
     if prc.kind == skMethod or sfDispatcher in prc.flags: defFlags.add 'm'
     if (prc.typ == nil or prc.typ.callConv != ccInline) and
@@ -2950,6 +2952,110 @@ proc genForwardedProcs(g: BModuleList) =
 
     genProcLvl2(m, prc)
 
+proc nativeDynlibAllocator(config: ConfigRef): string =
+  if isDefined(config, "useMalloc"):
+    result = "malloc"
+  elif isDefined(config, "nimAllocPagesViaMalloc"):
+    result = "nimAllocPagesViaMalloc"
+  elif isDefined(config, "useNimRtl"):
+    result = "nimrtl"
+  else:
+    result = "nim-default"
+
+proc writeAbiManifest(g: BModuleList; config: ConfigRef) =
+  if config.cmd == cmdNifC:
+    return
+
+  let path = config.nimcacheDir /
+    RelativeFile(config.projectName & ".abi.nif")
+  if g.exportedAbiProcs.len == 0:
+    discard tryRemoveFile(path.string)
+    return
+
+  var hookIds = initIntSet()
+  for item in g.graph.abiHooks:
+    hookIds.incl item.hook.id
+
+  var procs: seq[PSym] = @[]
+  for prc in g.exportedAbiProcs:
+    if prc.id notin hookIds and sfOverridden notin prc.flags:
+      procs.add prc
+  procs.sort(proc(a, b: PSym): int =
+    cmp(globalName(a, config), globalName(b, config)))
+
+  var hooks = g.graph.abiHooks
+  hooks.sort(proc(a, b: tuple[typ: PType, op: TTypeAttachedOp, hook: PSym]): int =
+    result = cmp(icNifTypeName(a.typ, config), icNifTypeName(b.typ, config))
+    if result == 0:
+      result = cmp(ord(a.op), ord(b.op)))
+  var uniqueHooks: seq[tuple[typ: PType, op: TTypeAttachedOp, hook: PSym]] = @[]
+  for item in hooks:
+    if uniqueHooks.len == 0 or
+        uniqueHooks[^1].op != item.op or
+        icNifTypeName(uniqueHooks[^1].typ, config) !=
+          icNifTypeName(item.typ, config):
+      uniqueHooks.add item
+
+  var modules: seq[(string, string)] = @[]
+  var seenModules = initHashSet[string]()
+  proc addModule(sym: PSym) =
+    let module = sym.getModule
+    let identity = modname(module, config)
+    if not seenModules.containsOrIncl(identity):
+      modules.add (identity, module.name.s)
+  for prc in procs:
+    addModule(prc)
+  for item in uniqueHooks:
+    addModule(item.hook)
+  modules.sort(proc(a, b: (string, string)): int = cmp(a[0], b[0]))
+
+  var manifest = nifbuilder.open(
+    path.string, writeMode = nifbuilder.OnlyIfChanged)
+  nifbuilder.addHeader(manifest, "nim", "nim-native-dynlib")
+  nifbuilder.withTree(manifest, "abi"):
+    nifbuilder.withTree(manifest, "format"):
+      nifbuilder.addIntLit(manifest, 3)
+    nifbuilder.withTree(manifest, "compiler"):
+      nifbuilder.addStrLit(manifest, VersionAsString)
+    nifbuilder.withTree(manifest, "target"):
+      nifbuilder.addStrLit(manifest, platform.OS[config.target.targetOS].name)
+      nifbuilder.addStrLit(manifest, platform.CPU[config.target.targetCPU].name)
+    nifbuilder.withTree(manifest, "memorymanager"):
+      nifbuilder.addStrLit(manifest, $config.selectedGC)
+    nifbuilder.withTree(manifest, "allocator"):
+      nifbuilder.addStrLit(manifest, nativeDynlibAllocator(config))
+    nifbuilder.withTree(manifest, "library"):
+      nifbuilder.addStrLit(manifest, config.outFile.string.extractFilename)
+    nifbuilder.withTree(manifest, "modules"):
+      for module in modules:
+        nifbuilder.withTree(manifest, "module"):
+          nifbuilder.addStrLit(manifest, module[0])
+          nifbuilder.addStrLit(manifest, module[1])
+    nifbuilder.withTree(manifest, "hooks"):
+      for item in uniqueHooks:
+        nifbuilder.withTree(manifest, "hook"):
+          nifbuilder.addStrLit(manifest, icNifTypeName(item.typ, config))
+          nifbuilder.addStrLit(manifest, AttachedOpToStr[item.op])
+          nifbuilder.addStrLit(manifest, globalName(item.hook, config))
+          if sfError in item.hook.flags:
+            nifbuilder.addIdent(manifest, "forbidden")
+            nifbuilder.addEmpty(manifest)
+          else:
+            nifbuilder.addIdent(manifest, "custom")
+            nifbuilder.addStrLit(manifest,
+              stripCnifMarks(item.hook.loc.snippet))
+    nifbuilder.withTree(manifest, "procs"):
+      for prc in procs:
+        nifbuilder.withTree(manifest, "proc"):
+          nifbuilder.addStrLit(manifest, globalName(prc, config))
+          nifbuilder.addStrLit(manifest, prc.name.s)
+          nifbuilder.addStrLit(manifest, stripCnifMarks(prc.loc.snippet))
+          nifbuilder.addStrLit(manifest, $hashType(prc.typ, config))
+          nifbuilder.addIdent(manifest,
+            if sfFromGeneric in prc.flags: "true"
+            else: "false")
+  nifbuilder.close(manifest)
+
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
   g.config = config
@@ -2988,3 +3094,4 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
       m.writeModule()
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
+  writeAbiManifest(g, config)

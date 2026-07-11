@@ -1,0 +1,9 @@
+/analysis
+/consumer
+/consumer_copy_should_fail
+/generated/
+/generator
+/libproducer.dylib
+/libproducer.so
+/libproducer.abi.nif
+/nimcache/

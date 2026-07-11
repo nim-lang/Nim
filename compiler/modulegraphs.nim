@@ -61,6 +61,7 @@ type
     procInstCache*: Table[ItemId, seq[PInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
     loadedOps: array[TTypeAttachedOp, Table[string, PSym]] # This can later by unified with `attachedOps` once it's stable
+    abiHooks*: seq[tuple[typ: PType, op: TTypeAttachedOp, hook: PSym]]
     opsLog*: seq[LogEntry]
     methodsPerGenericType*: Table[ItemId, seq[(int, PSym)]] # Type ID, attached methods
     memberProcsPerType*: Table[ItemId, seq[PSym]] # Type ID, attached member procs (only c++, virtual,member and ctor so far).

@@ -968,6 +968,24 @@ proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
   else:
     execLinkCmd(conf, linkCmd)
 
+proc publishAbiManifest(conf: ConfigRef) =
+  if optGenDynLib notin conf.globalOptions or
+      optNoLinking in conf.globalOptions or
+      optGenScript in conf.globalOptions or
+      not fileExists(conf.absOutFile.string):
+    return
+
+  let
+    source = conf.getNimcacheDir /
+      RelativeFile(conf.projectName & ".abi.nif")
+    destination = conf.getOutFile(conf.outFile, "abi.nif")
+  if fileExists(source.string):
+    if not fileExists(destination.string) or
+        not sameFileContent(source.string, destination.string):
+      copyFile(source.string, destination.string)
+  else:
+    discard tryRemoveFile(destination.string)
+
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string = ""
@@ -1057,6 +1075,7 @@ proc callCCompiler*(conf: ConfigRef) =
     script.add(linkCmd)
     script.add("\n")
     generateScript(conf, script)
+  publishAbiManifest(conf)
 
 template hashNimExe(): string = $secureHashFile(os.getAppFilename())
 

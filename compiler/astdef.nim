@@ -50,7 +50,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 63 flags!
+  TSymFlag* = enum    # 64 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -148,6 +148,7 @@ type
                       # in user messages.
     sfAllUntyped      # macro or template is immediately expanded in a generic context
     sfTemplateRedefinition # symbol is a redefinition of an earlier template
+    sfExportAbi      # proc is exported as part of the native Nim ABI
 
   TSymFlags* = set[TSymFlag]
 

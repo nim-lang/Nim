@@ -12,11 +12,11 @@
 import
   condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, extccomp, magicsys, trees,
-  types, lookups, lineinfos, pathutils, linter, modulepaths
+  types, lookups, lineinfos, pathutils, linter, modulepaths, modulegraphs
 
 from sigmatch import trySuggestPragmas
 
-import std/[os, math, strutils]
+import std/[intsets, os, math, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -35,7 +35,7 @@ const
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wEffectsOf, wTags, wForbids, wLocks, wDelegator, wGcSafe,
-    wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
+    wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy, wExportAbi,
     wRequires, wEnsures, wEnforceNoRaises, wSystemRaisesDefect, wVirtual, wQuirky, wMember}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
@@ -171,9 +171,49 @@ proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   s.incl(sfImportc)
   s.excl(sfForward)
 
+proc markExternExport(s: PSym) =
+  s.incl(sfExportc)
+
+proc markAbiExport(s: PSym) =
+  markExternExport(s)
+  incl(s, {sfExportAbi, sfUsed})
+  incl(s, lfExportLib)
+
+proc markCustomAbiHooks(c: PContext; root: PType) =
+  var seen = initIntSet()
+
+  proc visitType(typ: PType)
+
+  proc visitMembers(n: PNode) =
+    if n == nil:
+      return
+    if n.kind == nkSym and n.sym.kind in {skField, skParam, skResult}:
+      visitType(n.sym.typ)
+    else:
+      for child in n:
+        visitMembers(child)
+
+  proc visitType(typ: PType) =
+    if typ == nil or seen.containsOrIncl(typ.id):
+      return
+
+    for op in low(TTypeAttachedOp)..high(TTypeAttachedOp):
+      let hook = getAttachedOp(c.graph, typ, op)
+      if hook != nil and sfOverridden in hook.flags and
+          not hook.typ.containsGenericType:
+        c.graph.abiHooks.add (typ, op, hook)
+        if sfError notin hook.flags:
+          markAbiExport(hook)
+
+    visitMembers(typ.n)
+    for child in typ.sons:
+      visitType(child)
+
+  visitType(root)
+
 proc makeExternExport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
-  s.incl(sfExportc)
+  markExternExport(s)
 
 proc processImportCompilerProc(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
@@ -899,17 +939,42 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       case k
       of wExportc, wExportCpp:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
+        if sfExportAbi in sym.flags:
+          localError(c.config, it.info,
+            "{.exportabi.} and {.exportc.} pragmas are incompatible")
         if k == wExportCpp:
           if c.config.backend != backendCpp:
             localError(c.config, it.info, "exportcpp requires `cpp` backend, got: " & $c.config.backend)
           else:
             incl(sym, sfMangleCpp)
         incl(sym.flagsImpl, sfUsed) # avoid wrong hints
+      of wExportAbi:
+        noVal(c, it)
+        if sym == nil or sym.kind notin routineKinds:
+          invalidPragma(c, it)
+        else:
+          if Feature.abi notin c.features:
+            localError(c.config, it.info,
+              "enable the experimental 'abi' feature to use {.exportabi.}")
+          if c.config.backend != backendC:
+            localError(c.config, it.info,
+              "exportabi requires `c` backend, got: " & $c.config.backend)
+          if sfExportc in sym.flags and sfExportAbi notin sym.flags:
+            localError(c.config, it.info,
+              "{.exportabi.} and {.exportc.} pragmas are incompatible")
+          if sfImportc in sym.flags:
+            localError(c.config, it.info,
+              "{.exportabi.} and {.importc.} pragmas are incompatible")
+          markAbiExport(sym)
+          markCustomAbiHooks(c, sym.typ)
       of wImportc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
         recordPragma(c, it, "cppdefine", name)
         makeExternImport(c, sym, name, it.info)
+        if sfExportAbi in sym.flags:
+          localError(c.config, it.info,
+            "{.exportabi.} and {.importc.} pragmas are incompatible")
       of wImportCompilerProc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)

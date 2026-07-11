@@ -124,6 +124,8 @@ type
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # procs that did not yet have a body
     generatedHeader*: BModule
+    exportedAbiProcs*: seq[PSym]
+    exportedAbiSeen*: IntSet
     typeInfoMarker*: TypeCacheWithOwner
     typeInfoMarkerV2*: TypeCacheWithOwner
     config*: ConfigRef
@@ -234,7 +236,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),
-    config: g.config, graph: g, nimtvDeclared: initIntSet())
+    config: g.config, graph: g, nimtvDeclared: initIntSet(),
+    exportedAbiSeen: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:

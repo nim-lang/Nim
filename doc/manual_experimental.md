@@ -23,6 +23,29 @@ oneself.
   but refined and overhauled.
 
 
+Native Nim ABI exports
+======================
+
+The experimental ``abi`` feature provides the ``exportabi`` pragma for
+procedures compiled with the C backend:
+
+  ```nim
+  proc message(): string {.exportabi.} =
+    "hello"
+  ```
+
+Unlike ``exportc``, ``exportabi`` keeps a signature-aware Nim linker name and
+records the semantic and linker identities in a ``.abi.nif`` manifest. Dynamic
+library builds publish that manifest beside the linked library. Custom ownership
+hooks needed by exported signatures are included in the native ABI surface.
+
+The ABI format is experimental and requires producer and consumer tooling to
+validate compiler, target, memory-manager, and allocator compatibility. Use
+``--emitBif:on`` when external tooling also needs resolved per-module symbols
+and types from the build; this emits semantic BIF without enabling incremental
+compilation.
+
+
 Void type
 =========
 

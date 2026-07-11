@@ -992,6 +992,8 @@ proc takePragmasFromSym(sym: PSym; parent: PNode; c: var TranslationContext) =
   if sfImportc in sym.flags:
     c.b.withTree "importc":
       addExternName(sym, c)
+  elif sfExportAbi in sym.flags:
+    c.b.addKeyw "exportabi"
   elif sfExportc in sym.flags:
     c.b.withTree "exportc":
       addExternName(sym, c)

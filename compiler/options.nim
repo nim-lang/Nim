@@ -267,6 +267,7 @@ type
     genericsOpenSym
     vtables
     typeBoundOps
+    abi
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
