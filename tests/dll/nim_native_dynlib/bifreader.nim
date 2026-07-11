@@ -1,5 +1,5 @@
 import std/[os, strutils]
-import ../../../dist/nimony/src/lib/[bif, nifcoreparse]
+import ../../../dist/nimony/src/lib/[bif, nifcoreparse, nifqueries]
 import model
 
 type
@@ -33,9 +33,6 @@ type
 
 proc fail(message: string) {.noinline, noreturn.} =
   raise newException(NativeBifError, message)
-
-func tagName(c: Cursor): string {.inline.} =
-  c.tags.tags[c.cursorTagId]
 
 proc readStrings(node: Cursor; field: string; count: int): seq[string] =
   var children = node.childCursor()
@@ -192,51 +189,10 @@ func symbolBase(symbol: string): string =
   if dot < 0: symbol
   else: symbol[0 ..< dot]
 
-proc findDirectTag(node: Cursor; name: string): Cursor =
-  var children = node.childCursor()
-  while children.hasMore:
-    if children.kind == TagLit and children.tagName == name:
-      return children
-    children.skip
-
-proc findTag(node: Cursor; name: string): Cursor =
-  var children = node.childCursor()
-  while children.hasMore:
-    if children.kind == TagLit:
-      if children.tagName == name:
-        return children
-      let nested = findTag(children, name)
-      if not nested.cursorIsNil:
-        return nested
-    children.skip
-
-proc firstDirectSymbol(node: Cursor): string =
-  var children = node.childCursor()
-  while children.hasMore:
-    if children.kind == Symbol:
-      return children.symName
-    children.skip
-
-proc lastDirectSymbol(node: Cursor): string =
-  var children = node.childCursor()
-  while children.hasMore:
-    if children.kind == Symbol:
-      result = children.symName
-    children.skip
-
-proc firstSymbolDef(node: Cursor): string =
-  var children = node.childCursor()
-  while children.hasMore:
-    if children.kind == SymbolDef:
-      return children.symName
-    children.skip
-
 proc identifier(node: Cursor): string =
-  var children = node.childCursor()
-  while children.hasMore:
-    if children.kind == Ident:
-      result = children.strVal
-    children.skip
+  let ident = node.findLastChildKind(Ident)
+  if not ident.cursorIsNil:
+    result = ident.strVal
 
 proc fieldName(node: Cursor): tuple[name: string, exported: bool] =
   if node.kind != TagLit:
@@ -255,7 +211,7 @@ proc fieldName(node: Cursor): tuple[name: string, exported: bool] =
       children.skip
 
 proc parseFields(objectType: Cursor): seq[NativeField] =
-  let fields = findDirectTag(objectType, "reclist")
+  let fields = objectType.findChildTag("reclist")
   if fields.cursorIsNil:
     return
 
@@ -295,20 +251,22 @@ proc validateObjectBase(objectType: Cursor; typeName: string) =
     fail("native ABI does not support object inheritance: " & typeName)
 
 proc parseNativeType(declaration: Cursor; nifSymbol: string): NativeType =
-  let sourceType = findDirectTag(declaration, "type0")
+  let sourceType = declaration.findChildTag("type0")
   if sourceType.cursorIsNil:
     fail("missing source type declaration for " & nifSymbol)
 
-  let refType = findDirectTag(sourceType, "refty")
-  let objectType = findDirectTag(sourceType, "objectty")
+  let refType = sourceType.findChildTag("refty")
+  let objectType = sourceType.findChildTag("objectty")
   result.name = symbolBase(nifSymbol)
   result.nifSymbol = nifSymbol
-  let typeDesc = findTag(declaration, "td")
-  result.typeId = firstSymbolDef(typeDesc)
+  let typeDesc = declaration.findDescendantTag("td")
+  let typeId = typeDesc.findChildKind(SymbolDef)
+  if not typeId.cursorIsNil:
+    result.typeId = typeId.symName
   if result.typeId.len == 0:
     fail("missing resolved type id for " & nifSymbol)
   if not refType.cursorIsNil:
-    let payload = findDirectTag(refType, "objectty")
+    let payload = refType.findChildTag("objectty")
     if payload.cursorIsNil:
       fail("native ABI only supports ref object types: " & result.name)
     result.kind = ntRefObject
@@ -322,31 +280,35 @@ proc parseNativeType(declaration: Cursor; nifSymbol: string): NativeType =
     fail("native ABI only supports object and ref object types: " & result.name)
 
 proc parseParam(declaration: Cursor): NativeParam =
-  result.name = symbolBase(firstSymbolDef(declaration))
-  let metadata = findDirectTag(declaration, "param")
+  let name = declaration.findChildKind(SymbolDef)
+  if not name.cursorIsNil:
+    result.name = symbolBase(name.symName)
+  let metadata = declaration.findChildTag("param")
   if metadata.cursorIsNil:
     fail("missing parameter metadata for " & result.name)
-  let typeDesc = findDirectTag(declaration, "td")
+  let typeDesc = declaration.findChildTag("td")
   if not typeDesc.cursorIsNil:
-    let typeId = firstSymbolDef(typeDesc)
+    let typeIdNode = typeDesc.findChildKind(SymbolDef)
+    let typeId = if typeIdNode.cursorIsNil: "" else: typeIdNode.symName
     if typeId.startsWith("`t23."):
       result.byVar = true
-      result.typeSymbol = lastDirectSymbol(typeDesc)
+      let typeSymbol = typeDesc.findLastChildKind(Symbol)
+      if not typeSymbol.cursorIsNil:
+        result.typeSymbol = typeSymbol.symName
     else:
       fail("native ABI does not support parameter type: " & typeId)
   else:
-    result.typeSymbol = firstDirectSymbol(declaration)
+    let typeSymbol = declaration.findChildKind(Symbol)
+    if not typeSymbol.cursorIsNil:
+      result.typeSymbol = typeSymbol.symName
   if result.typeSymbol.len == 0:
     fail("native ABI only supports value parameters: " & result.name)
-
-proc findFormalParams(declaration: Cursor): Cursor =
-  result = findTag(declaration, "formalparams")
 
 proc parseNativeProc(declaration: Cursor; nifSymbol, cSymbol: string): NativeProc =
   result.name = symbolBase(nifSymbol)
   result.nifSymbol = nifSymbol
   result.cSymbol = cSymbol
-  let formals = findFormalParams(declaration)
+  let formals = declaration.findDescendantTag("formalparams")
   if formals.cursorIsNil:
     fail("missing resolved signature for " & nifSymbol)
 
@@ -359,15 +321,10 @@ proc parseNativeProc(declaration: Cursor; nifSymbol, cSymbol: string): NativePro
     children.skip
   while children.hasMore:
     if children.kind == TagLit and children.tagName == "sd":
-      let metadata = findDirectTag(children, "param")
+      let metadata = children.findChildTag("param")
       if not metadata.cursorIsNil:
         result.params.add parseParam(children)
     children.skip
-
-proc findDeclaration(module: var BifModule; nifSymbol: string): Cursor =
-  for entry in module.index:
-    if module.buf.pool.syms[entry.sym] == nifSymbol:
-      return module.buf.cursorAt(entry.pos)
 
 proc readNativeApi*(bifPath, manifestPath: string): NativeApi =
   let manifest = readAbiManifest(manifestPath)
@@ -380,12 +337,10 @@ proc readNativeApi*(bifPath, manifestPath: string): NativeApi =
   result.modules = manifest.modules
 
   var module = bif.load(bifPath)
-  for entry in module.index:
-    if entry.vis == ivExported:
-      let nifSymbol = module.buf.pool.syms[entry.sym]
-      let declaration = module.buf.cursorAt(entry.pos)
-      if not findDirectTag(declaration, "type").cursorIsNil and
-          not findDirectTag(declaration, "type0").cursorIsNil:
+  for nifSymbol, visibility, declaration in module.declarations:
+    if visibility == ivExported:
+      if not declaration.findChildTag("type").cursorIsNil and
+          not declaration.findChildTag("type0").cursorIsNil:
         let typ = parseNativeType(declaration, nifSymbol)
         result.types.add typ
 
@@ -411,26 +366,13 @@ proc readNativeApi*(bifPath, manifestPath: string): NativeApi =
       procInfo: parseNativeProc(
         declaration, item.nifSymbol, item.cSymbol))
 
-proc scanModuleSource(cursor: var Cursor; source: var string) =
-  while cursor.hasMore:
-    if cursor.kind == TagLit:
-      let isModuleSource = cursor.tagName == "modulesrc"
-      cursor.into:
-        while cursor.hasMore:
-          if isModuleSource and source.len == 0 and cursor.kind == StrLit:
-            source = cursor.strVal
-            cursor.skip
-          elif cursor.kind == TagLit:
-            scanModuleSource(cursor, source)
-          else:
-            cursor.skip
-    else:
-      cursor.skip
-
 proc readModuleSource*(path: string): string =
   var module = bif.load(path)
   var cursor = module.buf.beginRead()
-  scanModuleSource(cursor, result)
+  let sourceNode = cursor.findDescendantTag("modulesrc")
+  let source = sourceNode.findChildKind(StrLit)
+  if not source.cursorIsNil:
+    result = source.strVal
   cursor.endRead()
 
 proc findSemanticBif*(nimcacheDir, sourcePath: string): string =
