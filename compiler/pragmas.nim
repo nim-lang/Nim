@@ -194,13 +194,14 @@ proc markCustomAbiHooks(c: PContext; root: PType) =
     if typ == nil or seen.containsOrIncl(typ.id):
       return
 
-    for op in low(TTypeAttachedOp)..high(TTypeAttachedOp):
-      let hook = getAttachedOp(c.graph, typ, op)
-      if hook != nil and sfOverridden in hook.flags and
-          not hook.typ.containsGenericType:
-        c.graph.abiHooks.add (typ, op, hook)
-        if sfError notin hook.flags:
-          markAbiExport(hook)
+    if typ.sym != nil and sfSystemModule notin typ.sym.getModule.flags:
+      for op in low(TTypeAttachedOp)..high(TTypeAttachedOp):
+        let hook = getAttachedOp(c.graph, typ, op)
+        if hook != nil and sfOverridden in hook.flags and
+            not hook.typ.containsGenericType:
+          c.graph.abiHooks.add (typ, op, hook)
+          if sfError notin hook.flags:
+            markAbiExport(hook)
 
     visitMembers(typ.n)
     for child in typ.sons:
