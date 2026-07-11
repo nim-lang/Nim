@@ -39,6 +39,14 @@ records the semantic and linker identities in a ``.abi.nif`` manifest. Dynamic
 library builds publish that manifest beside the linked library. Custom ownership
 hooks needed by exported signatures are included in the native ABI surface.
 
+The manifest also records concrete layouts for types reachable from exported
+signatures: sizes, alignments, field offsets, inheritance, case discriminants
+and branch membership, plus finalized parameter and result lowering. Runtime
+metadata includes the compiler API and artifact versions, target endianness and
+width, exception and string modes, threads, and the initialization symbol.
+Semantic declarations remain in the per-module BIF files rather than being
+duplicated into the ABI manifest.
+
 The ABI format is experimental and requires producer and consumer tooling to
 validate compiler, target, memory-manager, and allocator compatibility. Use
 ``--emitBif:on`` when external tooling also needs resolved per-module symbols

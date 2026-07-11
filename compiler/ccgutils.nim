@@ -106,6 +106,28 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = not (pt.kind in {tyVar, tyArray, tyOpenArray, tyVarargs, tyRef, tyPtr, tyPointer} or
       pt.kind == tySet and mapSetType(conf, pt) == ctArray)
 
+proc ccgAbiResultIsIndirect*(conf: ConfigRef; procType: PType): bool =
+  ## Describes the C backend's hidden-result lowering for native ABI exports.
+  ## Export ABI is C-backend-only, so C++ imported-type exceptions do not apply.
+  let returnType = procType.returnType
+  if returnType == nil:
+    return false
+  if procType.callConv in {ccClosure, ccInline, ccNimCall} and
+      getSize(conf, returnType) > conf.target.floatSize * 3:
+    return true
+
+  let typ = returnType.skipTypes(typedescInst)
+  case typ.kind
+  of tyArray, tyOpenArray, tyVarargs, tyUncheckedArray:
+    result = true
+  of tySet:
+    result = mapSetType(conf, typ) == ctArray
+  of tyObject, tyTuple:
+    result = containsGarbageCollectedRef(typ) or
+      (typ.kind == tyObject and not isObjLackingTypeField(typ))
+  else:
+    result = false
+
 proc encodeName*(name: string): string =
   result = mangle(name)
   result = $result.len & result
@@ -193,4 +215,3 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
     result = encodeType(m, t.elementType, staticLists)
   else:
     assert false, "encodeType " & $t.kind
-
