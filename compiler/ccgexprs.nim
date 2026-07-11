@@ -1881,6 +1881,72 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, c
   else:
     expr(p, val, tmp2)
 
+proc sameLocationCg(a, b: PNode): bool =
+  # structural equality of two location expressions
+  template sameConstIndex(a, b: PNode): bool =
+    a.kind in nkLiterals and b.kind in nkLiterals and a.intVal == b.intVal
+  var a = a
+  var b = b
+  while a.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}: a = a[1]
+  while b.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}: b = b[1]
+  if a.kind != b.kind: return false
+  case a.kind
+  of nkSym: result = a.sym.id == b.sym.id
+  of nkDotExpr, nkCheckedFieldExpr:
+    result = sameLocationCg(a[0], b[0]) and a[1].sym.id == b[1].sym.id
+  of nkBracketExpr:
+    result = sameLocationCg(a[0], b[0]) and sameConstIndex(a[1], b[1])
+  of nkObjUpConv, nkObjDownConv, nkDerefExpr, nkHiddenDeref:
+    result = sameLocationCg(a[0], b[0])
+  else: result = false
+
+proc destIsPrefixOf(src, dest: PNode): bool =
+  # Returns true if `dest` is `src` itself or a proper prefix of `src`'s access
+  # path (e.g. dest = `t.h`, src = `t.h.a`). Walking up `src`'s accessor chain
+  # detects arbitrary nesting depth. Unlike `isPartOf`, this uses structural
+  # location equality so it does not report a false alias when `src` and `dest`
+  # merely share the same root ref through different fields.
+  result = false
+  var a = src
+  while true:
+    if sameLocationCg(a, dest): return true
+    case a.kind
+    of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv,
+       nkHiddenDeref, nkDerefExpr:
+      a = a[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      a = a[1]
+    else:
+      return false
+
+proc valueReadsInto(value, dest: PNode): bool =
+  # Returns true if evaluating `value` reads a location that `dest` is a prefix
+  # of. `destIsPrefixOf` handles the vertical accessor chain of a single location,
+  # while this walks the expression tree horizontally.
+  if destIsPrefixOf(value, dest): return true
+  for i in 0..<value.safeLen:
+    if valueReadsInto(value[i], dest): return true
+  result = false
+
+proc fieldValueAliasesDest(d: PNode, e: PNode): bool =
+  # The destination `d` gets zeroed before the field values are evaluated.
+  # A field value that reads a location nested inside `d` would then observe
+  # the already-zeroed memory.
+  #
+  # Two complementary checks are needed:
+  # * `destIsPrefixOf` detects a *direct* read of a sub-location of `d`
+  #   (`tp.h = H(ctx: tp.h.ctx)`); plain `isPartOf` misses this because at a
+  #   `nkDotExpr` it compares sibling fields and bails when they differ.
+  # * `isPartOf(value, d)` detects reads hidden behind calls/closures, where
+  #   `d` is reachable from a call argument (`tp.h = H(ctx: readsIt(tp))`);
+  #   `isPartOf` conservatively reports `arMaybe` there, which `destIsPrefixOf`
+  #   cannot see since the read happens inside the callee.
+  result = false
+  for i in 1..<e.len:
+    if nfPreventCg in e[i].flags: continue
+    if valueReadsInto(e[i][1], d) or isPartOf(e[i][1], d) != arNo:
+      return true
+
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
@@ -1907,7 +1973,8 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         isRef or
         d.k == locNone or
         (d.t != nil and not sameBackendType(t, d.t.skipTypes(abstractInstOwned))) or
-        (isPartOf(d.lode, e) != arNo)
+        (isPartOf(d.lode, e) != arNo) or
+        (fieldValueAliasesDest(d.lode, e))
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
