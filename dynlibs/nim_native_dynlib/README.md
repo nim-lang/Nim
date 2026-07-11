@@ -5,8 +5,7 @@ compiler owns only facts that require backend authority:
 
 - `{.exportabi.}` and its final Itanium-style symbol;
 - collection of concrete exported instances;
-- a compact `<project>.abi.json` mapping semantic NIF symbols to backend
-  symbols, with compiler, target, memory-manager, and allocator facts.
+- a compact `<project>.abi.json` mapping semantic NIF symbols to backend symbols, with compiler, target, memory-manager, and allocator facts.
 
 `exportabi` reuses Nim's ordinary external-export and shared-library visibility
 machinery. It differs from `exportc` only in who chooses the external name:
