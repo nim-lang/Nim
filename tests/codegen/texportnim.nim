@@ -1,6 +1,7 @@
 discard """
   output: "ok"
   targets: "c"
+  matrix: "--emitAbiBif:on"
   ccodecheck: "'N_LIB_EXPORT N_NIMCALL\\(NI, _ZN10texportnim6chooseE3int\\)'"
   ccodecheck: "'N_LIB_EXPORT N_NIMCALL\\(NI, _ZN10texportnim6chooseE6string\\)'"
   ccodecheck: "'N_LIB_EXPORT N_NIMCALL\\(NI, _ZN10texportnim3tagE3BoxI3intE\\)'"
@@ -30,6 +31,12 @@ discard tag(Box[string](value: "nim"))
 
 let manifestPath = querySetting(nimcacheDir) / "texportnim.abi.json"
 doAssert fileExists(manifestPath)
+
+var hasSemanticBif = false
+for path in walkFiles(querySetting(nimcacheDir) / "*.s.bif"):
+  hasSemanticBif = true
+doAssert hasSemanticBif
+
 let manifest = parseFile(manifestPath)
 doAssert manifest["format"].getStr == "nim-native-dynlib-backend-v1"
 doAssert manifest["allocator"].getStr.len > 0

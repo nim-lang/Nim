@@ -33,6 +33,7 @@ Build a compiler from this branch and run:
 NIM_NATIVE_DYNLIB_COMPILER=/path/to/nim ./build_e2e.sh
 ```
 
-The semantic analysis currently uses `nim ic` to obtain stable BIF, but the
-shared library itself is built by ordinary `nim c --app:lib`. C-header
-generation is not part of this first native proof.
+The shared library and its stable semantic BIF are produced together by an
+ordinary `nim c --emitAbiBif:on --app:lib` build. This reuses the IC artifact
+format without requiring the target library to build through `nim ic`.
+C-header generation is not part of this first native proof.

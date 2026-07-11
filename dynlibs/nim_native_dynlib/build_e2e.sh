@@ -12,13 +12,10 @@ case "$(uname -s)" in
   *) echo "unsupported platform" >&2; exit 1 ;;
 esac
 
-rm -rf analysis nimcache generated generator consumer "$library"
+rm -rf nimcache generated generator consumer "$library"
 
-# The IC frontend supplies stable semantic BIF. The actual shared library is
-# built independently by the ordinary C backend.
-"$nim" ic --mm:orc -d:useMalloc --nimcache:"$script_dir/nimcache" \
-  --out:"$script_dir/analysis" producer.nim
-"$nim" c --app:lib --mm:orc -d:useMalloc \
+# The ordinary C build also emits stable semantic BIF for binding generation.
+"$nim" c --emitAbiBif:on --app:lib --mm:orc -d:useMalloc \
   --nimcache:"$script_dir/nimcache" --out:"$library" producer.nim
 
 "$nim" c -d:release --out:"$script_dir/generator" generate.nim
