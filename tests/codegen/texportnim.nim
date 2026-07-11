@@ -13,13 +13,13 @@ type
   Box[T] = object
     value: T
 
-proc choose(x: int): int {.exportnim.} =
+proc choose(x: int): int {.exportabi.} =
   x
 
-proc choose(x: string): int {.exportnim.} =
+proc choose(x: string): int {.exportabi.} =
   x.len
 
-proc tag[T](box: Box[T]): int {.exportnim.} =
+proc tag[T](box: Box[T]): int {.exportabi.} =
   when T is int:
     box.value
   else:

@@ -3,12 +3,12 @@
 This experiment keeps native binding generation outside the compiler. The
 compiler owns only facts that require backend authority:
 
-- `{.exportnim.}` and its final Itanium-style symbol;
+- `{.exportabi.}` and its final Itanium-style symbol;
 - collection of concrete exported instances;
 - a compact `<project>.abi.json` mapping semantic NIF symbols to backend
   symbols, with compiler, target, memory-manager, and allocator facts.
 
-`exportnim` reuses Nim's ordinary external-export and shared-library visibility
+`exportabi` reuses Nim's ordinary external-export and shared-library visibility
 machinery. It differs from `exportc` only in who chooses the external name:
 the backend fills it with a signature-aware Nim name instead of accepting a
 fixed C name from the source pragma.

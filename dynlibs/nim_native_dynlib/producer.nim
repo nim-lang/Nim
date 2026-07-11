@@ -10,15 +10,15 @@ type
     size*: Vec2
     child*: Child
 
-proc newRenderer*(name: string): Renderer {.exportnim.} =
+proc newRenderer*(name: string): Renderer {.exportabi.} =
   Renderer(
     name: name,
     size: Vec2(x: 1, y: 2),
     child: Child(label: "child"))
 
-proc translate*(renderer: Renderer; delta: Vec2) {.exportnim.} =
+proc translate*(renderer: Renderer; delta: Vec2) {.exportabi.} =
   renderer.size.x += delta.x
   renderer.size.y += delta.y
 
-proc describe*(renderer: Renderer): string {.exportnim.} =
+proc describe*(renderer: Renderer): string {.exportabi.} =
   renderer.name & ":" & renderer.child.label

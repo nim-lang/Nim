@@ -904,7 +904,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
         if sfExportNim in sym.flags:
           localError(c.config, it.info,
-            "{.exportnim.} and {.exportc.} pragmas are incompatible")
+            "{.exportabi.} and {.exportc.} pragmas are incompatible")
         if k == wExportCpp:
           if c.config.backend != backendCpp:
             localError(c.config, it.info, "exportcpp requires `cpp` backend, got: " & $c.config.backend)
@@ -918,13 +918,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           if c.config.backend != backendC:
             localError(c.config, it.info,
-              "exportnim requires `c` backend, got: " & $c.config.backend)
+              "exportabi requires `c` backend, got: " & $c.config.backend)
           if sfExportc in sym.flags and sfExportNim notin sym.flags:
             localError(c.config, it.info,
-              "{.exportnim.} and {.exportc.} pragmas are incompatible")
+              "{.exportabi.} and {.exportc.} pragmas are incompatible")
           if sfImportc in sym.flags:
             localError(c.config, it.info,
-              "{.exportnim.} and {.importc.} pragmas are incompatible")
+              "{.exportabi.} and {.importc.} pragmas are incompatible")
           markExternExport(sym)
           incl(sym, {sfExportNim, sfUsed})
           incl(sym, lfExportLib)
@@ -935,7 +935,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         makeExternImport(c, sym, name, it.info)
         if sfExportNim in sym.flags:
           localError(c.config, it.info,
-            "{.exportnim.} and {.importc.} pragmas are incompatible")
+            "{.exportabi.} and {.importc.} pragmas are incompatible")
       of wImportCompilerProc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
