@@ -222,9 +222,8 @@ type
     decodedFileIndices: HashSet[FileIndex]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
-    writtenTypes: seq[PType]  # types sealed during this emit; under ideActive
-    writtenSyms: seq[PSym]    # they are reset to Complete afterwards so nimsuggest
-                              # can keep mutating its still-live query targets
+    writtenTypes: seq[PType]  # types sealed during a non-owning emit
+    writtenSyms: seq[PSym]    # reset afterwards so their owner can keep using them
     writtenPackages: HashSet[string]
     depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
     emittedBackendTypes: HashSet[(int32, int32)]  # backend-local types already def'd this
@@ -473,6 +472,9 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false)
 proc writeType(w: var Writer; dest: var IcBuilder; typ: PType)
 proc writeSym(w: var Writer; dest: var IcBuilder; sym: PSym)
 
+func restoresWrittenState(config: ConfigRef): bool {.inline.} =
+  config.ideActive or optEmitBif in config.globalOptions
+
 proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
   dest.addIdent toNifTag(loc.k)
   dest.addIdent toNifTag(loc.storage)
@@ -569,7 +571,7 @@ proc writeType(w: var Writer; dest: var IcBuilder; typ: PType) =
     # module (or nowhere), leaving dangling references (e.g. `symbol has no
     # offset` for a `pointer` type whose itemId.module drifted away).
     typ.state = Sealed
-    if w.infos.config.ideActive: w.writtenTypes.add typ
+    if restoresWrittenState(w.infos.config): w.writtenTypes.add typ
     writeTypeDef(w, dest, typ)
   else:
     dest.addSymUse pool.syms.getOrIncl(nifTypeName(w, typ)), NoLineInfo
@@ -734,7 +736,7 @@ proc writeSym(w: var Writer; dest: var IcBuilder; sym: PSym) =
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
-    if w.infos.config.ideActive: w.writtenSyms.add sym
+    if restoresWrittenState(w.infos.config): w.writtenSyms.add sym
     writeSymDef(w, dest, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
@@ -769,7 +771,7 @@ proc writeSymNode(w: var Writer; dest: var IcBuilder; n: PNode; sym: PSym) =
     else: shouldWriteSymDef(w, sym)
   if wantDef:
     if not sym.itemId.isBackendMinted and not isField: sym.state = Sealed
-    if w.infos.config.ideActive: w.writtenSyms.add sym
+    if restoresWrittenState(w.infos.config): w.writtenSyms.add sym
     if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, nodeTyp)
@@ -1788,17 +1790,15 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
       let s = op.sym
       if s.state != Sealed:
         s.state = Sealed
-        if config.ideActive: w.writtenSyms.add s
+        if restoresWrittenState(config): w.writtenSyms.add s
         writeSymDef w, dest, s
 
   dest.addParRi()
 
-  # nimsuggest reuses these symbols/types as live, mutable query targets (sem
-  # re-runs, usage tracking, flag updates). Sealing is only needed for intra-emit
-  # dedup; once the NIF is built, un-seal so suggest can keep mutating them
-  # (matches `loadedState` loading Complete under ideActive). The `Sealed` guard
-  # stays in force for a real `nim m`/`nim nifc` build.
-  if config.ideActive:
+  # Nimsuggest and normal code generation reuse these symbols/types as live,
+  # mutable targets. Sealing is only needed for intra-emit dedup; once the NIF
+  # is built, un-seal them. The guard stays in force for a real `nim m` build.
+  if restoresWrittenState(config):
     for s in w.writtenSyms:
       if s.state == Sealed: s.state = Complete
     for t in w.writtenTypes:
@@ -3540,4 +3540,3 @@ when isMainModule:
   echo obj.name, " ", obj.module, " ", obj.count
   let objb = parseSymName("abcdef.0121")
   echo objb.name, " ", objb.module, " ", objb.count
-

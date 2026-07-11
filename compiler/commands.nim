@@ -826,6 +826,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "expected nim|cpp but found " & arg)
   of "compress":
     conf.globalOptions.incl optCompress
+  of "emitbif":
+    processOnOffSwitchG(conf, {optEmitBif}, arg, pass, info)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir

@@ -39,6 +39,19 @@ debugging a build).
 Artifacts (the NIF zoo)
 =======================
 
+Semantic BIF from regular builds
+--------------------------------
+
+``--emitBif:on`` makes a regular compiler invocation write each semantically
+checked module as ``<suffix>.s.bif`` under the build's nimcache directory. This
+reuses the semantic artifact format used by IC without enabling incremental
+compilation or changing how the program is generated and linked. Tools such as
+language servers, debuggers, and binding generators can request these artifacts
+when they need resolved symbols and types from an ordinary build.
+
+The option is independent of experimental language features. In particular,
+it does not enable the experimental native ABI or create exports by itself.
+
 Per module ``<suffix>`` (a content hash of the path; see *NIF symbols* below),
 under the nimcache directory:
 

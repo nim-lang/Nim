@@ -140,6 +140,7 @@ type                          # please make sure we have under 32 options
     optDocRaw                 # for documentation: Don't render markdown for JSON output
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optEmitBif                # emit semantic BIF alongside ordinary code generation
     optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
