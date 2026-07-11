@@ -15,12 +15,12 @@ esac
 rm -rf nimcache generated generator consumer "$library"
 
 # The ordinary C build also emits stable semantic BIF for binding generation.
-"$nim" c --emitAbiBif:on --app:lib --mm:orc -d:useMalloc \
+"$nim" c --experimental:abi --emitBif:on --app:lib --mm:orc -d:useMalloc \
   --nimcache:"$script_dir/nimcache" --out:"$library" producer.nim
 
 "$nim" c -d:release --out:"$script_dir/generator" generate.nim
 "$script_dir/generator" "$script_dir/nimcache" "$script_dir/producer.nim" \
-  "$script_dir/nimcache/producer.abi.json" "$library" \
+  "$script_dir/nimcache/producer.abi.nif" "$library" \
   "$script_dir/generated/producer_abi.nim"
 
 "$nim" c -r --mm:orc -d:useMalloc --out:"$script_dir/consumer" consumer.nim

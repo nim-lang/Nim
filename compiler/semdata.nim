@@ -383,7 +383,7 @@ proc addImportFileDep*(c: PContext; f: FileIndex) =
 
 proc addPragmaComputation*(c: PContext; n: PNode) =
   # Also store whenever the semchecked module is serialized to NIF/BIF.
-  if {optCompress, optEmitAbiBif} * c.config.globalOptions != {} or
+  if {optCompress, optEmitBif} * c.config.globalOptions != {} or
       c.config.cmd == cmdM:
     addNifReplayAction(c.graph, c.module.position.int32, n)
 
@@ -671,11 +671,11 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## delegated to the "NIF" file mechanism.
   ##
   ## We only bother when a NIF file is actually going to be written (IC / `nim m`,
-  ## `--compress`, ABI BIF output, or a running suggestion engine); a plain
+  ## `--compress`, semantic BIF output, or a running suggestion engine); a plain
   ## `nim c` throws the record away, so recording it would be pure overhead.
   if info.fileIndex == InvalidFileIdx: return
   if c.config.cmd == cmdM or
-      {optCompress, optEmitAbiBif} * c.config.globalOptions != {} or
+      {optCompress, optEmitBif} * c.config.globalOptions != {} or
       c.config.ideActive:
     c.graph.nifExpansions.mgetOrPut(c.module.position.int32, @[]).add (expandedSym, info)
 

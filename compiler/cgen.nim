@@ -23,6 +23,7 @@ from ast2nif import globalName, toNifFilename, icNifTypeName
 from typekeys import modname
 from std/algorithm import sort
 import cnif
+import "../dist/nimony/src/lib/nifbuilder" except Builder
 
 import pipelineutils
 
@@ -2951,17 +2952,6 @@ proc genForwardedProcs(g: BModuleList) =
 
     genProcLvl2(m, prc)
 
-proc jsonEscape(s: string): string =
-  result = newStringOfCap(s.len + 8)
-  for ch in s:
-    case ch
-    of '\\': result.add "\\\\"
-    of '"': result.add "\\\""
-    of '\n': result.add "\\n"
-    of '\r': result.add "\\r"
-    of '\t': result.add "\\t"
-    else: result.add ch
-
 proc nativeDynlibAllocator(config: ConfigRef): string =
   if isDefined(config, "useMalloc"):
     result = "malloc"
@@ -2980,35 +2970,34 @@ proc writeNimExportManifest(g: BModuleList; config: ConfigRef) =
   procs.sort(proc(a, b: PSym): int =
     cmp(globalName(a, config), globalName(b, config)))
 
-  var content = "{\n"
-  content.add "  \"format\": \"nim-native-dynlib-backend-v1\",\n"
-  content.add "  \"compilerVersion\": \"" & jsonEscape(VersionAsString) & "\",\n"
-  content.add "  \"targetOS\": \"" &
-    jsonEscape(platform.OS[config.target.targetOS].name) & "\",\n"
-  content.add "  \"targetCPU\": \"" &
-    jsonEscape(platform.CPU[config.target.targetCPU].name) & "\",\n"
-  content.add "  \"memoryManager\": \"" &
-    jsonEscape($config.selectedGC) & "\",\n"
-  content.add "  \"allocator\": \"" &
-    jsonEscape(nativeDynlibAllocator(config)) & "\",\n"
-  content.add "  \"procs\": [\n"
-  for i, prc in procs:
-    if i != 0:
-      content.add ",\n"
-    content.add "    {\"nifSymbol\": \"" &
-      jsonEscape(globalName(prc, config)) & "\", "
-    content.add "\"nimName\": \"" & jsonEscape(prc.name.s) & "\", "
-    content.add "\"cSymbol\": \"" &
-      jsonEscape(stripCnifMarks(prc.loc.snippet)) & "\", "
-    content.add "\"signatureFingerprint\": \"" &
-      jsonEscape($hashType(prc.typ, config)) & "\", "
-    content.add "\"genericInstance\": " &
-      (if sfFromGeneric in prc.flags: "true" else: "false") & "}"
-  content.add "\n  ]\n}\n"
-
   let path = config.nimcacheDir /
-    RelativeFile(config.projectName & ".abi.json")
-  discard writeRope(rope(content), path)
+    RelativeFile(config.projectName & ".abi.nif")
+  var manifest = nifbuilder.open(
+    path.string, writeMode = nifbuilder.OnlyIfChanged)
+  nifbuilder.addHeader(manifest, "nim", "nim-native-dynlib")
+  nifbuilder.withTree(manifest, "abi"):
+    nifbuilder.withTree(manifest, "format"):
+      nifbuilder.addIntLit(manifest, 1)
+    nifbuilder.withTree(manifest, "compiler"):
+      nifbuilder.addStrLit(manifest, VersionAsString)
+    nifbuilder.withTree(manifest, "target"):
+      nifbuilder.addStrLit(manifest, platform.OS[config.target.targetOS].name)
+      nifbuilder.addStrLit(manifest, platform.CPU[config.target.targetCPU].name)
+    nifbuilder.withTree(manifest, "memorymanager"):
+      nifbuilder.addStrLit(manifest, $config.selectedGC)
+    nifbuilder.withTree(manifest, "allocator"):
+      nifbuilder.addStrLit(manifest, nativeDynlibAllocator(config))
+    nifbuilder.withTree(manifest, "procs"):
+      for prc in procs:
+        nifbuilder.withTree(manifest, "proc"):
+          nifbuilder.addStrLit(manifest, globalName(prc, config))
+          nifbuilder.addStrLit(manifest, prc.name.s)
+          nifbuilder.addStrLit(manifest, stripCnifMarks(prc.loc.snippet))
+          nifbuilder.addStrLit(manifest, $hashType(prc.typ, config))
+          nifbuilder.addIdent(manifest,
+            if sfFromGeneric in prc.flags: "true"
+            else: "false")
+  nifbuilder.close(manifest)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)

@@ -122,7 +122,7 @@ Advanced options:
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc:on|off         embeds the original source code as comments
                             in the generated output
-  --emitAbiBif:on|off       emit semantic BIF metadata during normal code generation
+  --emitBif:on|off          emit semantic BIF metadata during normal code generation
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --trmacros:on|off         turn term rewriting macros on|off

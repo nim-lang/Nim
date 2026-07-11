@@ -916,6 +916,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym == nil or sym.kind notin routineKinds:
           invalidPragma(c, it)
         else:
+          if Feature.abi notin c.features:
+            localError(c.config, it.info,
+              "enable the experimental 'abi' feature to use {.exportabi.}")
           if c.config.backend != backendC:
             localError(c.config, it.info,
               "exportabi requires `c` backend, got: " & $c.config.backend)

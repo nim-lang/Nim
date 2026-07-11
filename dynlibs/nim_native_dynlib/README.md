@@ -5,12 +5,15 @@ compiler owns only facts that require backend authority:
 
 - `{.exportabi.}` and its final Itanium-style symbol;
 - collection of concrete exported instances;
-- a compact `<project>.abi.json` mapping semantic NIF symbols to backend symbols, with compiler, target, memory-manager, and allocator facts.
+- a compact `<project>.abi.nif` mapping semantic NIF symbols to backend symbols,
+  with compiler, target, memory-manager, and allocator facts.
 
 `exportabi` reuses Nim's ordinary external-export and shared-library visibility
 machinery. It differs from `exportc` only in who chooses the external name:
 the backend fills it with a signature-aware Nim name instead of accepting a
-fixed C name from the source pragma.
+fixed C name from the source pragma. The pragma requires the experimental
+`abi` feature while this native ABI contract is still evolving; `--emitBif`
+itself remains available independently of that language feature.
 
 The third-party generator reads that manifest together with the root module's
 stable semantic BIF and emits `producer_abi.nim`. That generated module contains
@@ -33,6 +36,6 @@ NIM_NATIVE_DYNLIB_COMPILER=/path/to/nim ./build_e2e.sh
 ```
 
 The shared library and its stable semantic BIF are produced together by an
-ordinary `nim c --emitAbiBif:on --app:lib` build. This reuses the IC artifact
-format without requiring the target library to build through `nim ic`.
-C-header generation is not part of this first native proof.
+ordinary `nim c --experimental:abi --emitBif:on --app:lib` build. This reuses
+the IC artifact format without requiring the target library to build through
+`nim ic`. C-header generation is not part of this first native proof.

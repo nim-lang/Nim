@@ -167,7 +167,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     s = stream
     graph.interactive = stream.kind == llsStdIn
   var topLevelStmts =
-    if {optCompress, optEmitAbiBif} * graph.config.globalOptions != {} or
+    if {optCompress, optEmitBif} * graph.config.globalOptions != {} or
         graph.config.cmd == cmdM:
       newNodeI(nkStmtList, module.info)
     else:
@@ -256,7 +256,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         graph.config.cmd == cmdM and graph.config.errorCounter == 0 and
           graph.config.m.fileInfos[module.position].dirtyFile.isEmpty
       else:
-        ({optCompress, optEmitAbiBif} * graph.config.globalOptions != {}) or
+        ({optCompress, optEmitBif} * graph.config.globalOptions != {}) or
         (graph.config.cmd == cmdM and
          (sfMainModule in module.flags or
           (graph.config.icGroup.len > 0 and

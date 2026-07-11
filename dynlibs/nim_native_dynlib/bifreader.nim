@@ -1,15 +1,121 @@
-import std/[json, os, strutils]
-import ../../dist/nimony/src/lib/[bif, nifcore]
+import std/[os, strutils]
+import ../../dist/nimony/src/lib/[bif, nifcoreparse]
 import model
 
 type
   NativeBifError* = object of ValueError
+
+  AbiProcEntry = object
+    nifSymbol: string
+    nimName: string
+    cSymbol: string
+    signatureFingerprint: string
+    genericInstance: bool
+
+  AbiManifest = object
+    formatVersion: int64
+    compilerVersion: string
+    targetOS: string
+    targetCPU: string
+    memoryManager: string
+    allocator: string
+    procs: seq[AbiProcEntry]
 
 proc fail(message: string) {.noinline, noreturn.} =
   raise newException(NativeBifError, message)
 
 func tagName(c: Cursor): string {.inline.} =
   c.tags.tags[c.cursorTagId]
+
+proc readStrings(node: Cursor; field: string; count: int): seq[string] =
+  var children = node.childCursor()
+  while children.hasMore:
+    if children.kind == StrLit:
+      result.add children.strVal
+    else:
+      fail("native ABI manifest " & field & " has an invalid field")
+    children.skip
+  if result.len != count:
+    fail("native ABI manifest " & field & " expects " & $count &
+      " string value(s)")
+
+proc parseAbiProc(node: Cursor): AbiProcEntry =
+  var values: seq[string] = @[]
+  var hasGenericInstance = false
+  var children = node.childCursor()
+  while children.hasMore:
+    case children.kind
+    of StrLit:
+      values.add children.strVal
+    of Ident:
+      if hasGenericInstance:
+        fail("native ABI manifest proc has duplicate generic flag")
+      case children.strVal
+      of "true": result.genericInstance = true
+      of "false": result.genericInstance = false
+      else: fail("native ABI manifest proc has invalid generic flag")
+      hasGenericInstance = true
+    else:
+      fail("native ABI manifest proc has an invalid field")
+    children.skip
+
+  if values.len != 4 or not hasGenericInstance:
+    fail("native ABI manifest proc has an invalid shape")
+  result.nifSymbol = values[0]
+  result.nimName = values[1]
+  result.cSymbol = values[2]
+  result.signatureFingerprint = values[3]
+
+proc parseAbiProcs(node: Cursor): seq[AbiProcEntry] =
+  var children = node.childCursor()
+  while children.hasMore:
+    if children.kind == TagLit and children.tagName == "proc":
+      result.add parseAbiProc(children)
+    elif children.kind != DotToken:
+      fail("native ABI manifest procs contains an invalid entry")
+    children.skip
+
+proc readAbiManifest(path: string): AbiManifest =
+  var manifest = nifcoreparse.parseFromFile(path)
+  var cursor = manifest.beginRead()
+  if cursor.kind != TagLit or cursor.tagName != "abi":
+    fail("native ABI manifest has no abi root")
+
+  result.formatVersion = -1
+  cursor.loopInto:
+    if cursor.kind == TagLit:
+      case cursor.tagName
+      of "format":
+        var values = cursor.childCursor()
+        if not values.hasMore or values.kind != IntLit:
+          fail("native ABI manifest has no format version")
+        result.formatVersion = values.intVal
+        values.skip
+        if values.hasMore:
+          fail("native ABI manifest format has extra fields")
+      of "compiler":
+        result.compilerVersion = readStrings(cursor, "compiler", 1)[0]
+      of "target":
+        let values = readStrings(cursor, "target", 2)
+        result.targetOS = values[0]
+        result.targetCPU = values[1]
+      of "memorymanager":
+        result.memoryManager = readStrings(cursor, "memorymanager", 1)[0]
+      of "allocator":
+        result.allocator = readStrings(cursor, "allocator", 1)[0]
+      of "procs":
+        result.procs = parseAbiProcs(cursor)
+      else:
+        discard
+    cursor.skip
+  cursor.endRead()
+
+  if result.formatVersion != 1:
+    fail("unsupported native ABI manifest format")
+  if result.compilerVersion.len == 0 or result.targetOS.len == 0 or
+      result.targetCPU.len == 0 or result.memoryManager.len == 0 or
+      result.allocator.len == 0:
+    fail("native ABI manifest is missing target metadata")
 
 func symbolBase(symbol: string): string =
   let dot = symbol.find('.')
@@ -178,15 +284,12 @@ proc findDeclaration(module: var BifModule; nifSymbol: string): Cursor =
       return module.buf.cursorAt(entry.pos)
 
 proc readNativeApi*(bifPath, manifestPath: string): NativeApi =
-  let manifest = parseFile(manifestPath)
-  if manifest["format"].getStr != "nim-native-dynlib-backend-v1":
-    fail("unsupported native ABI backend manifest")
-
-  result.compilerVersion = manifest["compilerVersion"].getStr
-  result.targetOS = manifest["targetOS"].getStr
-  result.targetCPU = manifest["targetCPU"].getStr
-  result.memoryManager = manifest["memoryManager"].getStr
-  result.allocator = manifest["allocator"].getStr
+  let manifest = readAbiManifest(manifestPath)
+  result.compilerVersion = manifest.compilerVersion
+  result.targetOS = manifest.targetOS
+  result.targetCPU = manifest.targetCPU
+  result.memoryManager = manifest.memoryManager
+  result.allocator = manifest.allocator
 
   var module = bif.load(bifPath)
   for entry in module.index:
@@ -198,16 +301,16 @@ proc readNativeApi*(bifPath, manifestPath: string): NativeApi =
         let typ = parseNativeType(declaration, nifSymbol)
         result.types.add typ
 
-  for item in manifest["procs"]:
-    if item["genericInstance"].getBool:
+  for item in manifest.procs:
+    if item.genericInstance:
       fail("concrete generic exports need signature materialization support: " &
-        item["cSymbol"].getStr)
-    let nifSymbol = item["nifSymbol"].getStr
+        item.cSymbol)
+    let nifSymbol = item.nifSymbol
     let declaration = findDeclaration(module, nifSymbol)
     if declaration.cursorIsNil:
       fail("semantic declaration not found for " & nifSymbol)
     result.procs.add parseNativeProc(
-      declaration, nifSymbol, item["cSymbol"].getStr)
+      declaration, nifSymbol, item.cSymbol)
 
 proc scanModuleSource(cursor: var Cursor; source: var string) =
   while cursor.hasMore:

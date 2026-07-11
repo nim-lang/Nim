@@ -473,7 +473,7 @@ proc writeType(w: var Writer; dest: var IcBuilder; typ: PType)
 proc writeSym(w: var Writer; dest: var IcBuilder; sym: PSym)
 
 func restoresWrittenState(config: ConfigRef): bool {.inline.} =
-  config.ideActive or optEmitAbiBif in config.globalOptions
+  config.ideActive or optEmitBif in config.globalOptions
 
 proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
   dest.addIdent toNifTag(loc.k)
