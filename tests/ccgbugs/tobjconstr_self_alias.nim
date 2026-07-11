@@ -5,7 +5,7 @@ discard """
 42
 42
 42
-42''
+42'''
 """
 
 # bug #25993 : an object constructor assigned to a location zeroed the
