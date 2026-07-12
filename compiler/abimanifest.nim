@@ -332,8 +332,8 @@ proc uniqueHooks(graph: ModuleGraph; config: ConfigRef): seq[AbiHook] =
 
 proc abiFingerprint(config: ConfigRef; types: seq[PType]; procs: seq[PSym];
                     hooks: seq[AbiHook]): string =
-  var value = VersionAsString & ':' & $NimCompilerApiVersion & ':' &
-    RodFileVersion & ':' & platform.OS[config.target.targetOS].name & ':' &
+  var value = $NimCompilerApiVersion & ':' & RodFileVersion & ':' &
+    platform.OS[config.target.targetOS].name & ':' &
     platform.CPU[config.target.targetCPU].name & ':' & $config.selectedGC & ':' &
     nativeDynlibAllocator(config) & ':' & $config.exc & ':' &
     $config.selectedStrings & ':' &
