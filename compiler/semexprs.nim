@@ -1930,7 +1930,10 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       if x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
         n[0] = x # 'result[]' --> 'result'
         n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
-        markResultVarIsPtr(c, x)
+        # Don't set tfVarIsPtr here — it leaks into the proc type's return type
+        # (they share the same PType object in non-IC mode), causing a mismatch
+        # between the proc definition signature and proc type parameters in C++.
+        # The flag is now applied in cgen.nim on a copy. See #25870, #25846.
         #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
       elif sfGlobal in x.sym.flags:
         markResultVarIsPtr(c, x)
