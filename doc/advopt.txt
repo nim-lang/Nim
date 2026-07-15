@@ -21,6 +21,7 @@ Advanced commands:
                             see also: --dump.format:json (useful with: `| jq`)
   //check                   checks the project for syntax and semantics
                             (can be combined with --defusages)
+  //track                   goto-definition / find-usages via `nim ic`
 
 Runtime checks (see -x):
   --objChecks:on|off        turn obj conversion checks on|off
@@ -33,6 +34,8 @@ Runtime checks (see -x):
   --infChecks:on|off        turn Inf checks on|off
 
 Advanced options:
+  --def:FILE,LINE,COL       find the definition of the symbol at the position
+  --usages:FILE,LINE,COL    find all usages of the symbol at the position
   --defusages:FILE,LINE,COL
                             find the definition and all usages of a symbol
   -o:FILE, --out:FILE       set the output filename

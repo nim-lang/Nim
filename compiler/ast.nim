@@ -332,7 +332,10 @@ when defined(nimsuggest):
     result = s.allUsagesImpl
 
   proc `allUsages=`*(s: PSym, val: sink seq[TLineInfo]) {.inline.} =
-    assert s.state != Sealed
+    # No `assert s.state != Sealed`: `allUsagesImpl` is nimsuggest-only usage
+    # tracking, NOT part of the NIF-serialized symbol. nimsuggest loads symbols
+    # as `Sealed` (ast2nif.loadedState under cmdM) yet `suggestSym` legitimately
+    # records usages on them; the getter likewise doesn't assert.
     if s.state == Partial: loadSym(s)
     s.allUsagesImpl = val
 
@@ -475,6 +478,8 @@ proc comment*(n: PNode): string =
   else:
     result = ""
 
+nodeCommentReader = proc(n: PNode): string {.nimcall.} = comment(n)
+
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
   if a.len > 0:
@@ -489,6 +494,8 @@ proc `comment=`*(n: PNode, a: string) =
   elif nfHasComment in n.flags:
     n.flags.excl nfHasComment
     gconfig.comments.del(id)
+
+nodeCommentWriter = proc(n: PNode; s: string) {.nimcall.} = n.comment = s
 
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
@@ -539,12 +546,30 @@ proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
 
 proc nextSymId(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
+  when not defined(nimKochBootstrap):
+    if x.backendMinted:
+      # Share the loader's per-module backend counter so a freshly-minted
+      # backend sym never collides with an `@bk` sym loaded from the module's
+      # `.t.bif` (see ast2nif.nextBackendSymItem).
+      let it = nextBackendSymItem(program, x.module)
+      if it >= 0'i32:
+        return backendItemId(x.module, it)
   inc x.symId
   result = if x.backendMinted: backendItemId(x.module, x.symId)
            else: itemId(x.module, x.symId)
 
 proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
+  when not defined(nimKochBootstrap):
+    if x.backendMinted:
+      # Share the loader's per-module backend TYPE counter (seeded from the
+      # module's `(unusedid)`) so a freshly-minted backend type sits ABOVE every
+      # loaded type — never colliding with a frontend type's `toId` (the bug that
+      # crashed cgen's `getTypeDescAux` cycle check on `AsyncBufferRef`). Mirrors
+      # `nextSymId` (see ast2nif.nextBackendTypeItem).
+      let it = nextBackendTypeItem(program, x.module)
+      if it >= 0'i32:
+        return backendItemId(x.module, it)
   inc x.typeId
   result = if x.backendMinted: backendItemId(x.module, x.typeId)
            else: itemId(x.module, x.typeId)
@@ -824,6 +849,10 @@ proc newSymNode*(sym: PSym): PNode =
   result = newNode(nkSym)
   result.sym = sym
   result.typField = sym.typ
+  if result.typField == nil and nifcBackendActive:
+    # See the two-arg overload in astdef: in the NIF backend cg stage a sym node
+    # built from a not-yet-typed stub must track the symbol's type lazily.
+    result.flags.incl nfLazyType
   result.info = sym.info
 
 proc newOpenSym*(n: PNode): PNode {.inline.} =

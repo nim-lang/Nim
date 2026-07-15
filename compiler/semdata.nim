@@ -668,7 +668,13 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## ("find all usages of this template" would not work). We need special
   ## logic to remember macro/template expansions. This is done here and
   ## delegated to the "NIF" file mechanism.
-  discard "XXX To implement"
+  ##
+  ## We only bother when a NIF file is actually going to be written (IC / `nim m`,
+  ## `--compress`, or a running suggestion engine); a plain `nim c` throws the
+  ## record away, so recording it would be pure overhead.
+  if info.fileIndex == InvalidFileIdx: return
+  if c.config.cmd == cmdM or optCompress in c.config.globalOptions or c.config.ideActive:
+    c.graph.nifExpansions.mgetOrPut(c.module.position.int32, @[]).add (expandedSym, info)
 
 const
   errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"

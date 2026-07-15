@@ -176,7 +176,7 @@ proc closureParams(routine: PSym): PNode =
     result = routine.typ.n
     routine.ast[paramsPos] = result
 
-proc addHiddenParam(routine: PSym, param: PSym) =
+proc addHiddenParam*(routine: PSym, param: PSym) =
   assert param.kind == skParam
   var params = closureParams(routine)
   # -1 is correct here as param.position is 0 based but we have at position 0
@@ -309,6 +309,25 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
       [s.name.s, owner.name.s, $owner.typ.callConv])
   unsealForTransform(owner.typ)
   incl(owner.typ, tfCapturesEnv)
+  # A closure proc type that captures an env owns a REF to it: copying the closure
+  # value must incref the env and destroying it must decref. That is exactly what
+  # `tfHasAsgn` signals to `injectDestructorCalls` (so a closure assignment becomes
+  # `=copy`, not a raw field store).
+  #
+  # Set it HERE (closure-type creation) so the flag is DETERMINISTIC and serializes
+  # with the type — but ONLY under `nim ic`. The per-module `lower` stage is a
+  # separate process that lowers routines in index order; if a consumer (e.g.
+  # `workNimAsyncContinue`) was lowered before the closure type's ops were lifted,
+  # its env store emitted a RAW assign with no incref → freed env → async
+  # "yielded `nil`". A normal single-process `nim c` build does NOT need this —
+  # `createTypeBoundOps` sets the flag lazily, in lift order, before it matters
+  # (the old `liftdestructors ~1498` "XXX Breaks IC!" side effect) — and setting it
+  # eagerly there REGRESSES codegen: a `=destroy` hook gets generated against the
+  # bare `void(*)(void)` proc representation but is then called with closure structs
+  # (`eqdestroy__u2__stdZtypedthreads` type mismatch — broke megatest). So gate on
+  # `cmdNifC`; normal builds keep the lazy (devel) behavior.
+  if g.config.cmd == cmdNifC:
+    incl(owner.typ, tfHasAsgn)
   if not isEnv:
     owner.typ.callConv = ccClosure
 
