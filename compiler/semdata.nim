@@ -667,7 +667,7 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## referencing the generic definition for tools to use for definitions
   ## and usages, since they are instantiated by the compiler.
   ## This is pecial logic that helps remember macro/template/generic proc
-  ## expansions, saving the data for thethe "NIF" file mechanism to handle.
+  ## expansions, saving the data for the "NIF" file mechanism to handle.
   ##
   ## We only bother when a NIF file is actually going to be written (IC / `nim m`,
   ## `--compress`, or a running suggestion engine); a plain `nim c` throws the
