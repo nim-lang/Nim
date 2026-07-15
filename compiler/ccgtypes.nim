@@ -665,7 +665,13 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
   if t.returnType == nil or isInvalidReturnType(m.config, t):
     rettype = CVoid
   else:
-    rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
+    var rt = t.returnType
+    if m.config.backend == backendCpp and
+        tfVarIsPtr in rt.flags and
+        rt.skipTypes(abstractInst).kind == tyVar:
+      rt = rt.exactReplica(m.idgen)
+      rt.excl(tfVarIsPtr)
+    rettype = getTypeDescWeak(m, rt, check, dkResult)
   var paramBuilder: ProcParamBuilder
   params.addProcParams(paramBuilder):
     for i in 1..<t.n.len:

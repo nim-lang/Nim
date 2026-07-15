@@ -146,7 +146,11 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
           else:
             if d.k == locNone: d = getTemp(p, typ.returnType)
             var list = initLoc(locCall, d.lode, OnUnknown)
-            list.snippet = extract(result)
+            var rval = extract(result)
+            # the function returns T& but the temp is T*, so we need &
+            if tfVarIsPtr in typ.returnType.flags:
+              rval = cAddr(rval)
+            list.snippet = rval
             genAssignment(p, d, list, {needAssignCall}) # no need for deep copying
             if canRaise: raiseExit(p)
 
@@ -589,6 +593,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         list.snippet = callIter(rp, pars)
       else:
         list.snippet = callProc(rp, pars, rawProc)
+      if tfVarIsPtr in typ.returnType.flags:
+        list.snippet = cAddr(list.snippet)
       genAssignment(p, d, list, {}) # no need for deep copying
       if canRaise: raiseExit(p)
     else:
@@ -601,6 +607,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         list.snippet = callIter(rp, pars)
       else:
         list.snippet = callProc(rp, pars, rawProc)
+      if tfVarIsPtr in typ.returnType.flags:
+        list.snippet = cAddr(list.snippet)
       genAssignment(p, tmp, list, {})
       if canRaise: raiseExit(p)
       genAssignment(p, d, tmp, {})
@@ -872,11 +880,18 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       pl.add("]")
-      if d.k == locNone: d = getTemp(p, typ.returnType)
-      assert(d.t != nil)        # generate an assignment to d:
-      var list: TLoc = initLoc(locCall, ri, OnUnknown)
-      list.snippet = extract(pl)
-      genAssignment(p, d, list, {}) # no need for deep copying
+      if p.module.compileToCpp and typ.returnType != nil and
+          typ.returnType.skipTypes(abstractInst).kind == tyVar:
+        d = getTempCpp(p, typ.returnType, extract(pl))
+      else:
+        if d.k == locNone: d = getTemp(p, typ.returnType)
+        assert(d.t != nil)        # generate an assignment to d:
+        var list: TLoc = initLoc(locCall, ri, OnUnknown)
+        var rval = extract(pl)
+        if tfVarIsPtr in typ.returnType.flags:
+          rval = cAddr(rval)
+        list.snippet = rval
+        genAssignment(p, d, list, {}) # no need for deep copying
   else:
     pl.add("]")
     p.s(cpsStmts).addStmt():
