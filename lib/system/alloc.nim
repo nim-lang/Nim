@@ -804,6 +804,24 @@ when defined(gcDestructors):
     sysAssert c.next == nil, "c.next pointer must be nil"
     atomicPrepend a.sharedFreeListBigChunks, c
 
+  proc takeFromSharedFreeListBigChunks(a: var MemRegion): PBigChunk {.inline.} =
+    when hasThreadSupport:
+      while true:
+        result = atomicLoadN(addr a.sharedFreeListBigChunks, ATOMIC_ACQUIRE)
+        if result == nil:
+          break
+        let next = result.next.loada
+        var expected = result
+        if atomicCompareExchangeN(addr a.sharedFreeListBigChunks, addr expected, next,
+                                  weak = true, ATOMIC_ACQUIRE, ATOMIC_RELAXED):
+          result.next.storea nil
+          break
+    else:
+      result = a.sharedFreeListBigChunks
+      if result != nil:
+        a.sharedFreeListBigChunks = result.next
+        result.next = nil
+
   proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell; size: int) {.inline.} =
     atomicPrepend c.owner.sharedFreeLists[size], f
 
@@ -827,21 +845,14 @@ when defined(gcDestructors):
     inc(c.free, total)
     dec(a.occ, total)
 
-  proc freeDeferredObjects(a: var MemRegion; root: PBigChunk) =
-    var it = root
-    var maxIters = MaxSteps # make it time-bounded
-    while true:
-      let rest = it.next.loada
-      it.next.storea nil
-      deallocBigChunk(a, cast[PBigChunk](it))
-      if maxIters == 0:
-        if rest != nil:
-          addToSharedFreeListBigChunks(a, rest)
-          sysAssert a.sharedFreeListBigChunks != nil, "re-enqueing failed"
-        break
-      it = rest
-      dec maxIters
+  proc freeDeferredObjects(a: var MemRegion) =
+    # Pop only as many nodes as we can process. Detaching the entire list and
+    # re-enqueuing its unprocessed tail through atomicPrepend would overwrite
+    # that tail's next pointer and lose the rest of the list.
+    for _ in 0..MaxSteps:
+      let it = takeFromSharedFreeListBigChunks(a)
       if it == nil: break
+      deallocBigChunk(a, it)
 
 when defined(heaptrack):
   const heaptrackLib =
@@ -969,13 +980,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     trackSize(c.size)
   else:
     when defined(gcDestructors):
-      when hasThreadSupport:
-        let deferredFrees = atomicExchangeN(addr a.sharedFreeListBigChunks, nil, ATOMIC_RELAXED)
-      else:
-        let deferredFrees = a.sharedFreeListBigChunks
-        a.sharedFreeListBigChunks = nil
-      if deferredFrees != nil:
-        freeDeferredObjects(a, deferredFrees)
+      freeDeferredObjects(a)
 
     # For big chunks with custom alignment, allocate extra space.
     # Since chunks are page-aligned, the needed padding is a compile-time
