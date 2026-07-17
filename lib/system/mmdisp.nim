@@ -84,29 +84,15 @@ else:
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:
     when not defined(useNimRtl):
-      # Keep the region itself outside TLS: chunks retain its address as their
-      # stable owner identity after the allocating thread exits.
-      var allocator {.rtlThreadVar.}: ptr MemRegion
+      # Keep hot allocator state directly in TLS. Chunks point to the stable,
+      # heap-allocated RegionHandle stored inside the region, never to the TLS
+      # MemRegion itself.
+      var allocator {.rtlThreadVar.}: MemRegion
+      instantiateForRegion(allocator)
 
-      proc getAllocator(): ptr MemRegion {.inline.} =
-        if allocator == nil:
-          # Chunks can outlive the thread that allocated them and retain their
-          # owner pointer so that another thread can return them later. Keeping
-          # the MemRegion itself in TLS would let a later thread reuse the same
-          # address and be mistaken for that owner.
-          allocator = cast[ptr MemRegion](c_calloc(1, csize_t(sizeof(MemRegion))))
-          if allocator == nil:
-            raiseOutOfMem()
-        result = allocator
-
-      template threadAllocator: untyped = getAllocator()[]
-      instantiateForRegion(threadAllocator)
-
-      proc abandonThreadAllocator() {.rtl, raises: [].} =
-        let a = allocator
-        allocator = nil
-        if a != nil:
-          abandonRegion(a)
+      when defined(gcDestructors) and not defined(useMalloc):
+        proc abandonThreadAllocator() {.rtl, raises: [].} =
+          abandonRegion(allocator)
     when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):
