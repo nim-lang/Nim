@@ -856,6 +856,17 @@ when defined(gcDestructors):
       if it == nil: break
       deallocBigChunk(a, it)
 
+  proc freeAllDeferredObjects(a: var MemRegion) =
+    # Final region reclamation has exclusive access and must also process huge
+    # chunks, which are returned directly to the OS and are not in heapLinks.
+    var it = a.sharedFreeListBigChunks
+    a.sharedFreeListBigChunks = nil
+    while it != nil:
+      let next = it.next
+      it.next = nil
+      deallocBigChunk(a, it)
+      it = next
+
 when defined(heaptrack):
   const heaptrackLib =
     when defined(heaptrack_inject):
@@ -1276,6 +1287,7 @@ when defined(gcDestructors):
         a.references
     sysAssert references >= 0, "releaseRegion: negative reference count"
     if references == 0:
+      freeAllDeferredObjects(a[])
       deallocOsPages(a[])
       c_free(a)
 
