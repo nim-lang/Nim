@@ -1172,20 +1172,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     c.freeTemp(right)
     c.freeTemp(d)
 
-  of mIncl:
+  of mIncl, mExcl:
     unused(c, n, dest)
     var d = c.genMutatingValue(n[1])
     var tmp = c.genx(n[2])
     c.genSetType(n[1], d)
-    c.gABC(n, opcIncl, d, tmp)
-    c.freeTemp(d)
-    c.freeTemp(tmp)
-  of mExcl:
-    unused(c, n, dest)
-    var d = c.genx(n[1])
-    var tmp = c.genx(n[2])
-    c.genSetType(n[1], d)
-    c.gABC(n, opcExcl, d, tmp)
+    c.gABC(n, if m == mIncl: opcIncl else: opcExcl, d, tmp)
     c.freeTemp(d)
     c.freeTemp(tmp)
   of mCard: genCard(c, n, dest)
