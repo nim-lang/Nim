@@ -12,7 +12,9 @@ const hugeAllocationSize =
   when sizeof(int) == 8: 1 shl 30
   else: 16 * 1024
 
-var escaped: pointer
+var
+  escaped: pointer
+  ordinaryEscaped: pointer
 
 when defined(posix):
   proc getpagesize(): cint {.importc, header: "<unistd.h>".}
@@ -27,6 +29,8 @@ when defined(posix):
       (residency and 1) != 0
 
 proc allocateHugeChunk() {.thread.} =
+  ordinaryEscaped = allocShared(sizeof(int))
+  cast[ptr int](ordinaryEscaped)[] = 17
   escaped = allocShared(hugeAllocationSize)
   cast[ptr byte](escaped)[] = 42
 
@@ -35,13 +39,25 @@ createThread(thread, allocateHugeChunk)
 joinThread(thread)
 
 doAssert cast[ptr byte](escaped)[] == 42
+doAssert cast[ptr int](ordinaryEscaped)[] == 17
 when defined(posix):
   doAssert isResident(escaped)
-  let allocationPage = escaped
+  doAssert isResident(ordinaryEscaped)
+  let
+    allocationPage = escaped
+    ordinaryAllocationPage = ordinaryEscaped
+
+# The ordinary chunk is covered by the handle's orphaned heap links. Its page
+# stays mapped until the huge allocation performs the final remote release.
+deallocShared(ordinaryEscaped)
+when defined(posix):
+  doAssert isResident(allocationPage)
+  doAssert isResident(ordinaryAllocationPage)
 deallocShared(escaped)
 when defined(posix):
   # Huge chunks bypass heapLinks and must be drained from the abandoned
-  # region's deferred big-chunk list before the region itself is released.
+  # handle's deferred big-chunk list before the ordinary pages are released.
   doAssert not isResident(allocationPage)
+  doAssert not isResident(ordinaryAllocationPage)
 
 echo "ok"
