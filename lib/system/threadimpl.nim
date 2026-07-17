@@ -29,6 +29,7 @@ else:
 template afterThreadRuns() =
   for i in countdown(nimThreadDestructionHandlers.len-1, 0):
     nimThreadDestructionHandlers[i]()
+  reset(nimThreadDestructionHandlers)
 
 proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
