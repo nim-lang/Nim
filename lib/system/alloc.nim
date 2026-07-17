@@ -148,7 +148,14 @@ type
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
     else:
-      references: int # owning thread plus allocations whose deallocation has not finished
+      remoteDeallocationTarget: int
+        # Written only by the owning thread: incremented on allocation and
+        # decremented on local deallocation. At abandonment it is the total
+        # number of remote deallocations expected over the region's lifetime.
+      remoteDeallocationBalance: int
+        # Before abandonment this is the number of completed remote
+        # deallocations. Abandonment subtracts the expected total, turning it
+        # into the negative number of allocations that remain alive.
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
       # List of available chunks per size class. Only one is expected to be active per class.
     when defined(gcDestructors):
@@ -1020,12 +1027,9 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
   when defined(gcDestructors):
-    when hasThreadSupport:
-      # The pointer cannot be published before rawAlloc returns, so this only
-      # participates in lifetime accounting and needs no ordering.
-      discard atomicAddFetch(addr a.references, 1, ATOMIC_RELAXED)
-    else:
-      inc a.references
+    # Only the owning thread allocates from a region, so lifetime accounting
+    # on this hot path does not need an atomic operation.
+    inc a.remoteDeallocationTarget
   when logAlloc: cprintf("var pointer_%p = alloc(%ld) # %p\n", result, requestedSize, addr a)
   when defined(heaptrack):
     heaptrack_malloc(result, requestedSize)
@@ -1035,7 +1039,7 @@ proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   zeroMem(result, requestedSize)
 
 when defined(gcDestructors):
-  proc releaseRegion(a: ptr MemRegion) {.raises: [], gcsafe, tags: [].}
+  proc finishRemoteDeallocation(a: ptr MemRegion) {.raises: [], gcsafe, tags: [].}
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
   when defined(nimTypeNames):
@@ -1048,6 +1052,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   sysAssert(c != nil, "rawDealloc: begin")
   when defined(gcDestructors):
     let owner = c.owner
+    let isLocal = owner == addr(a)
   if isSmallChunk(c):
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
@@ -1135,9 +1140,13 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
 
   sysAssert(allocInv(a), "rawDealloc: end")
   when defined(gcDestructors):
-    # This must be the final access through the chunk's owner. Reaching zero
-    # can release every page belonging to the region and the region itself.
-    releaseRegion(owner)
+    if isLocal:
+      # Only the owning thread reaches this path.
+      dec owner.remoteDeallocationTarget
+    else:
+      # This must be the final access through the chunk's owner unless this is
+      # the deallocation that reclaims the abandoned region.
+      finishRemoteDeallocation(owner)
   #when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
 when not defined(gcDestructors):
@@ -1278,18 +1287,39 @@ proc deallocOsPages(a: var MemRegion) =
   llDeallocAll(a)
 
 when defined(gcDestructors):
-  proc releaseRegion(a: ptr MemRegion) {.raises: [], gcsafe, tags: [].} =
-    let references =
+  proc reclaimRegion(a: ptr MemRegion) {.inline, raises: [], gcsafe, tags: [].} =
+    freeAllDeferredObjects(a[])
+    deallocOsPages(a[])
+    c_free(a)
+
+  proc finishRemoteDeallocation(a: ptr MemRegion) {.raises: [], gcsafe, tags: [].} =
+    let balance =
       when hasThreadSupport:
-        atomicSubFetch(addr a.references, 1, ATOMIC_ACQ_REL)
+        atomicAddFetch(addr a.remoteDeallocationBalance, 1, ATOMIC_ACQ_REL)
       else:
-        dec a.references
-        a.references
-    sysAssert references >= 0, "releaseRegion: negative reference count"
-    if references == 0:
-      freeAllDeferredObjects(a[])
-      deallocOsPages(a[])
-      c_free(a)
+        inc a.remoteDeallocationBalance
+        a.remoteDeallocationBalance
+    # Before abandonment the balance is positive. Afterwards it approaches
+    # zero, and the remote deallocation that reaches zero is the only thread
+    # allowed to reclaim the region.
+    if balance == 0:
+      reclaimRegion(a)
+
+  proc abandonRegion(a: ptr MemRegion) {.raises: [], gcsafe, tags: [].} =
+    let expectedRemoteDeallocations = a.remoteDeallocationTarget
+    let balance =
+      when hasThreadSupport:
+        atomicSubFetch(addr a.remoteDeallocationBalance,
+                       expectedRemoteDeallocations, ATOMIC_ACQ_REL)
+      else:
+        dec a.remoteDeallocationBalance, expectedRemoteDeallocations
+        a.remoteDeallocationBalance
+    # Every completed remote deallocation is part of the expected total.
+    sysAssert balance <= 0, "abandonRegion: invalid remote deallocation balance"
+    # If all allocations were already released, the owner performs the
+    # reclamation. Otherwise the final remote deallocation does it.
+    if balance == 0:
+      reclaimRegion(a)
 
 proc getFreeMem(a: MemRegion): int {.inline.} = result = a.freeMem
 proc getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem

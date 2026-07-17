@@ -97,7 +97,6 @@ else:
           allocator = cast[ptr MemRegion](c_calloc(1, csize_t(sizeof(MemRegion))))
           if allocator == nil:
             raiseOutOfMem()
-          allocator.references = 1 # owning thread
         result = allocator
 
       template threadAllocator: untyped = getAllocator()[]
@@ -107,7 +106,7 @@ else:
         let a = allocator
         allocator = nil
         if a != nil:
-          releaseRegion(a)
+          abandonRegion(a)
     when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):
