@@ -84,8 +84,24 @@ else:
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:
     when not defined(useNimRtl):
-      var allocator {.rtlThreadVar.}: MemRegion
-      instantiateForRegion(allocator)
+      # The region is intentionally retained after thread exit. Its address is
+      # part of the ownership metadata stored in every chunk and must remain a
+      # stable identity until a later reclamation step can prove it is unused.
+      var allocator {.rtlThreadVar.}: ptr MemRegion
+
+      proc getAllocator(): ptr MemRegion {.inline.} =
+        if allocator == nil:
+          # Chunks can outlive the thread that allocated them and retain their
+          # owner pointer so that another thread can return them later. Keeping
+          # the MemRegion itself in TLS would let a later thread reuse the same
+          # address and be mistaken for that owner.
+          allocator = cast[ptr MemRegion](c_calloc(1, csize_t(sizeof(MemRegion))))
+          if allocator == nil:
+            raiseOutOfMem()
+        result = allocator
+
+      template threadAllocator: untyped = getAllocator()[]
+      instantiateForRegion(threadAllocator)
     when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):
