@@ -147,6 +147,8 @@ type
   MemRegion = object
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
+    else:
+      references: int # owning thread plus allocations whose deallocation has not finished
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
       # List of available chunks per size class. Only one is expected to be active per class.
     when defined(gcDestructors):
@@ -1006,6 +1008,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     trackSize(c.size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
+  when defined(gcDestructors):
+    when hasThreadSupport:
+      discard atomicAddFetch(addr a.references, 1, ATOMIC_RELAXED)
+    else:
+      inc a.references
   when logAlloc: cprintf("var pointer_%p = alloc(%ld) # %p\n", result, requestedSize, addr a)
   when defined(heaptrack):
     heaptrack_malloc(result, requestedSize)
@@ -1013,6 +1020,9 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
 proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
   zeroMem(result, requestedSize)
+
+when defined(gcDestructors):
+  proc releaseRegion(a: ptr MemRegion) {.raises: [], gcsafe, tags: [].}
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
   when defined(nimTypeNames):
@@ -1023,6 +1033,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)
   sysAssert(c != nil, "rawDealloc: begin")
+  when defined(gcDestructors):
+    let owner = c.owner
   if isSmallChunk(c):
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
@@ -1109,6 +1121,10 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       deallocBigChunk(a, cast[PBigChunk](c))
 
   sysAssert(allocInv(a), "rawDealloc: end")
+  when defined(gcDestructors):
+    # This must be the final access through the chunk's owner. Reaching zero
+    # can release every page belonging to the region and the region itself.
+    releaseRegion(owner)
   #when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
 when not defined(gcDestructors):
@@ -1247,6 +1263,19 @@ proc deallocOsPages(a: var MemRegion) =
     if it == nil: break
   # And then we free the pages that are in use for the page bits:
   llDeallocAll(a)
+
+when defined(gcDestructors):
+  proc releaseRegion(a: ptr MemRegion) {.raises: [], gcsafe, tags: [].} =
+    let references =
+      when hasThreadSupport:
+        atomicSubFetch(addr a.references, 1, ATOMIC_ACQ_REL)
+      else:
+        dec a.references
+        a.references
+    sysAssert references >= 0, "releaseRegion: negative reference count"
+    if references == 0:
+      deallocOsPages(a[])
+      c_free(a)
 
 proc getFreeMem(a: MemRegion): int {.inline.} = result = a.freeMem
 proc getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem
