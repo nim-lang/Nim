@@ -5,21 +5,37 @@ when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not de
 when defined(gcDestructors) and not defined(useMalloc):
   proc abandonThreadAllocator() {.rtl, raises: [].}
 
+when not emulatedThreadVars:
+  type ThreadType {.pure.} = enum
+    None = 0,
+    NimThread = 1,
+    ForeignThread = 2
+  var threadType {.rtlThreadVar.}: ThreadType
+
 # create for the main thread. Note: do not insert this data into the list
 # of all threads; it's not to be stopped etc.
 when not defined(useNimRtl):
   #when not defined(createNimRtl): initStackBottom()
   when declared(initGC):
     initGC()
-    when not emulatedThreadVars:
-      type ThreadType {.pure.} = enum
-        None = 0,
-        NimThread = 1,
-        ForeignThread = 2
-      var
-        threadType {.rtlThreadVar.}: ThreadType
+when declared(threadType):
+  threadType = ThreadType.NimThread
 
-      threadType = ThreadType.NimThread
+when defined(gcDestructors) and declared(threadType):
+  proc setupForeignThreadGc*() {.gcsafe, raises: [].} =
+    ## Marks a foreign thread so its native thread-local allocator can be
+    ## abandoned by `tearDownForeignThreadGc`. This is a no-op on Nim threads.
+    if threadType == ThreadType.None:
+      threadType = ThreadType.ForeignThread
+
+  proc tearDownForeignThreadGc*() {.gcsafe, raises: [].} =
+    ## Abandons a foreign thread's native thread-local allocator. Repeated
+    ## teardown calls and calls from Nim threads are no-ops.
+    if threadType != ThreadType.ForeignThread:
+      return
+    when not defined(useMalloc):
+      abandonThreadAllocator()
+    threadType = ThreadType.None
 
 when defined(gcDestructors):
   proc deallocThreadStorage(p: pointer) = c_free(p)
@@ -82,6 +98,8 @@ else:
         deallocThreadStorage(thrd.rawStack)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
+  when declared(threadType):
+    threadType = ThreadType.NimThread
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
   elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
@@ -90,8 +108,6 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     nimGC_setStackBottom(addr(p))
     when declared(initGC):
       initGC()
-    when declared(threadType):
-      threadType = ThreadType.NimThread
     threadProcWrapDispatch[TArg](thrd)
     when declared(deallocOsPages): deallocOsPages()
   else:

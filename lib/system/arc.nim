@@ -278,13 +278,18 @@ when not (defined(gcOrc) or defined(gcYrc)):
     ## Forces a full garbage collection pass. With `--mm:arc` a nop.
     discard
 
-template setupForeignThreadGc* =
-  ## With `--mm:arc` a nop.
-  discard
+const hasForeignThreadAllocatorTeardown =
+  when hasThreadSupport: not emulatedThreadVars
+  else: false
 
-template tearDownForeignThreadGc* =
-  ## With `--mm:arc` a nop.
-  discard
+when not hasForeignThreadAllocatorTeardown:
+  template setupForeignThreadGc* =
+    ## With `--mm:arc` a nop unless native thread-local allocator teardown is available.
+    discard
+
+  template tearDownForeignThreadGc* =
+    ## With `--mm:arc` a nop unless native thread-local allocator teardown is available.
+    discard
 
 proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inl.} =
   result = targetDepth <= source.depth and source.display[targetDepth] == token

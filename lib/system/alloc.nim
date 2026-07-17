@@ -931,7 +931,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
         if tc.freeList == nil:
           when hasThreadSupport:
             # Steal the entire list from `sharedFreeList`:
-            tc.freeList = atomicExchangeN(addr a.handle.sharedFreeLists[s], nil, ATOMIC_RELAXED)
+            tc.freeList = atomicExchangeN(addr a.handle.sharedFreeLists[s], nil, ATOMIC_ACQUIRE)
           else:
             tc.freeList = a.handle.sharedFreeLists[s]
             a.handle.sharedFreeLists[s] = nil
