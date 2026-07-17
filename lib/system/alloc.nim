@@ -1010,6 +1010,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
   sysAssert(allocInv(a), "rawAlloc: end")
   when defined(gcDestructors):
     when hasThreadSupport:
+      # The pointer cannot be published before rawAlloc returns, so this only
+      # participates in lifetime accounting and needs no ordering.
       discard atomicAddFetch(addr a.references, 1, ATOMIC_RELAXED)
     else:
       inc a.references
