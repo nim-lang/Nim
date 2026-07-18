@@ -278,18 +278,14 @@ when not (defined(gcOrc) or defined(gcYrc)):
     ## Forces a full garbage collection pass. With `--mm:arc` a nop.
     discard
 
-const hasForeignThreadAllocatorTeardown =
-  when hasThreadSupport: not emulatedThreadVars
-  else: false
+when hasThreadSupport:
+  when emulatedThreadVars:
+    template setupForeignThreadGc* =
+      {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
-when hasThreadSupport and emulatedThreadVars:
-  template setupForeignThreadGc* =
-    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
-
-  template tearDownForeignThreadGc* =
-    {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
-
-elif not hasForeignThreadAllocatorTeardown:
+    template tearDownForeignThreadGc* =
+      {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+else:
   template setupForeignThreadGc* =
     ## With `--mm:arc` a nop when thread support is disabled.
     discard
