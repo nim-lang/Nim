@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:arc; --mm:orc"
+  matrix: "--mm:arc --tlsEmulation:off; --mm:orc --tlsEmulation:off"
   disabled: "windows"
   output: "ok"
 """

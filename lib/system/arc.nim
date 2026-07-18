@@ -282,13 +282,20 @@ const hasForeignThreadAllocatorTeardown =
   when hasThreadSupport: not emulatedThreadVars
   else: false
 
-when not hasForeignThreadAllocatorTeardown:
+when hasThreadSupport and emulatedThreadVars:
   template setupForeignThreadGc* =
-    ## With `--mm:arc` a nop unless native thread-local allocator teardown is available.
+    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+
+  template tearDownForeignThreadGc* =
+    {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+
+elif not hasForeignThreadAllocatorTeardown:
+  template setupForeignThreadGc* =
+    ## With `--mm:arc` a nop when thread support is disabled.
     discard
 
   template tearDownForeignThreadGc* =
-    ## With `--mm:arc` a nop unless native thread-local allocator teardown is available.
+    ## With `--mm:arc` a nop when thread support is disabled.
     discard
 
 proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inl.} =
