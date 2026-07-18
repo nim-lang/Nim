@@ -5,6 +5,7 @@ discard """
 """
 
 import std/posix
+import ./mincoreutils
 
 var
   escaped: array[2, pointer]
@@ -26,17 +27,6 @@ proc worker(_: pointer): pointer {.noconv.} =
   deallocShared(p)
   tearDownForeignThreadGc()
   result = nil
-
-proc getpagesize(): cint {.importc, header: "<unistd.h>".}
-proc mincore(p: pointer, length: csize_t, residency: ptr uint8): cint {.
-  importc, header: "<sys/mman.h>".}
-
-proc isResident(p: pointer): bool =
-  let pageSize = uint(getpagesize())
-  let page = cast[pointer](cast[uint](p) - cast[uint](p) mod pageSize)
-  var residency: uint8
-  result = mincore(page, csize_t(pageSize), addr residency) == 0 and
-    (residency and 1) != 0
 
 var thread: Pthread
 doAssert pthread_create(addr thread, nil, worker, nil) == 0
