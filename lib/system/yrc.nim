@@ -6,24 +6,44 @@
 #
 # ## Locking Protocol
 #
-# ALL topology-changing operations — heap-field writes (`nimAsgnYrc`,
-# `nimSinkYrc`) and seq mutations that resize internal buffers — hold the
-# global mutator read lock (`gYrcGlobalLock` via `acquireMutatorLock`).
-# Multiple mutators may hold this read lock simultaneously.
+# Ref-field writes (`nimAsgnYrc`, `nimSinkYrc`) are LOCK-FREE: an atomic
+# incRef of the new value, an atomic exchange of the slot, and a deferred
+# decRef of the old value through the `toDec` stripe queues. Collection runs
+# concurrently with them (see "The Write Barrier" below).
 #
-# The cycle collector acquires the exclusive write lock for the entire
-# collection. This means the heap topology is *completely frozen* during
-# collection: no `nimAsgnYrc` or seq operation can mutate any pointer field
-# while the collector runs. This gives the algorithm below the stable
-# subgraph it requires without write barriers.
+# Seq mutations that change the container structure (add/grow/shrink/setLen)
+# still hold the mutator read lock, and the collector still acquires all
+# write locks for the duration of a collection. Since ref assignments no
+# longer contend on that lock, its only remaining jobs are: freezing seq
+# len/payload pairs against the collector's traversal (so no deferred buffer
+# frees and no torn len/pointer reads are possible), and collector-vs-
+# collector exclusion.
 #
-# Consequence for incRef in `nimAsgnYrc`:
-#   Because the collector is blocked, the incRef can be a direct atomic
-#   increment on the RefHeader (`increment head(src)`) rather than going
-#   through the `toInc` stripe queue. The collector will see the updated
-#   RC immediately when it next acquires the write lock. Only decrements
-#   (`yrcDec`) still use the `toDec` stripe queue so that objects whose RC
-#   might reach zero are handled by the collector's cycle-detection logic.
+# ## The Write Barrier
+#
+# A concurrent trial-deletion collector needs a snapshot-at-the-beginning
+# (Yuasa) barrier: every reference-set change since the collection started
+# must be observable at commit time. YRC gets this FOR FREE from its
+# deferred RC machinery:
+#
+# * Removing an edge enqueues the old value into `toDec` — and because the
+#   dec is deferred, the rc word keeps counting the removed reference until
+#   the *next* collection's merge: deletions can only make the captured
+#   graph look MORE alive, never less.
+# * Stack copies enqueue into `toInc` (buffered incs).
+# * Only `nimAsgnYrc`'s incRef mutates rc words directly (atomically).
+#
+# So the commit-time validation is:
+#   1. Any cell sitting in a `toInc`/`toDec` queue had its reference set
+#      changed during capture: its SCC is "dirty" and must not be freed
+#      this round (the entries stay queued; the next merge re-registers
+#      them as candidate roots).
+#   2. Any dead-classified member whose rc word changed since capture saw a
+#      direct incRef: a mutator published a new reference to it. Abort.
+# Everything else was garbage when the collection started, and garbage is
+# stable: nothing can reach it, so nothing can resurrect or mutate it.
+# Aborted SCCs cost nothing (capture never writes to the heap) and are
+# re-registered for the next round.
 #
 # ## The Collection Algorithm
 #
@@ -66,9 +86,11 @@
 # The collector only frees *closed cycles* — subgraphs where every
 # reference to every member comes from within the group, with zero external
 # references. To mutate the graph a mutator must hold a reference to some
-# object (an external ref), which the deadness computation observes in the
-# rc word. The two conditions are mutually exclusive; the frozen topology
-# makes this argument airtight without any barrier.
+# object; every way of obtaining or dropping such a reference leaves a
+# trace the commit validation observes: a direct atomic incRef (rc-delta
+# check), a buffered inc/dec in the stripe queues (dirty check), or a heap
+# edge that capture traversed (classified live). Snapshot-garbage is
+# unreachable, leaves no such traces, and is freed on the first attempt.
 
 {.push raises: [].}
 
@@ -78,7 +100,7 @@ import std/locks
 
 const
   NumStripes = 64
-  QueueSize = 128
+  QueueSize {.intdefine.} = 128   # override with -d:QueueSize=N
   RootsThreshold = 10
 
   colBlack = 0b000
@@ -93,7 +115,12 @@ type
   TraceProc = proc (p, env: pointer) {.nimcall, gcsafe, raises: [].}
   DisposeProc = proc (p: pointer) {.nimcall, gcsafe, raises: [].}
 
-when defined(nimYrcAtomicIncs):
+# With lock-free ref assignments, rc words are mutated concurrently with the
+# collector (direct atomic incRefs), so all collector-side rc accesses must
+# be atomic whenever threads exist.
+const useAtomicRc = defined(nimYrcAtomicIncs) or hasThreadSupport
+
+when useAtomicRc:
   template color(c): untyped = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE) and colorMask
   template loadRc(c): int = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE)
   template trialDec(c) =
@@ -180,6 +207,14 @@ proc setLenUninit[T](s: var RawSeq[T]; n: int) =
   s.len = n
 
 type
+  TraceEntry = object
+    ## (slot, value) snapshot taken at trace time. The value is read exactly
+    ## once: `nimTraceRefDyn` derives the type descriptor from it, so using
+    ## the snapshot everywhere guarantees descriptor and value always match
+    ## even when a mutator concurrently overwrites the slot.
+    slot: ptr pointer
+    val: pointer
+
   TarjanFrame = object
     u: int32     # dense index of the cell this frame belongs to
     base: int    # traceStack.len before this cell's trace ran
@@ -212,10 +247,11 @@ type
     crossCursor: RawSeq[int32]
 
   GcEnv = object
-    traceStack: CellSeq[ptr pointer]
+    traceStack: CellSeq[TraceEntry]
     toFree: CellSeq[Cell]
     nScc: int
     nDeadScc: int
+    nAborted: int
     freed, touched: int
     keepThreshold: bool
 
@@ -224,6 +260,7 @@ var gCap: CaptureBufs
 const
   flagDead = 1'u8
   flagForcedLive = 2'u8
+  flagDirty = 4'u8   # a member's reference set changed during capture
 
 proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
@@ -409,15 +446,19 @@ template orcAssert(cond, msg) =
 
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
-  if p[] != nil:
+  # read the slot exactly once: mutators may exchange it concurrently.
+  # Aligned pointer loads do not tear on supported targets.
+  let v = p[]
+  if v != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(p, desc)
+    j.traceStack.add(TraceEntry(slot: p, val: v), desc)
 
 proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
-  if p[] != nil:
+  let v = p[]
+  if v != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(p, cast[ptr PNimTypeV2](p[])[])
+    j.traceStack.add(TraceEntry(slot: p, val: v), cast[ptr PNimTypeV2](v)[])
 
 # ---------------- phase 1: capture ----------------
 
@@ -448,7 +489,10 @@ proc prepareCapture() =
 proc pushCell(c: Cell; desc: PNimTypeV2): int32 {.inline.} =
   result = int32(gCap.recs.len)
   stamp(c, gCap.recs.len)
-  gCap.recs.add CaptureRec(cell: c, desc: desc, rcWord: loadRc(c),
+  # rc captured without the flag bits: the collector itself toggles
+  # inRootsFlag between capture and commit, which must not look like a
+  # mutation to the commit-time rc validation
+  gCap.recs.add CaptureRec(cell: c, desc: desc, rcWord: loadRc(c) and not rcMask,
                            lowlink: result, sccOf: -1'i32)
   gCap.tstack.add result
 
@@ -466,8 +510,8 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
     let u = gCap.frames.d[gCap.frames.len -% 1].u
     let base = gCap.frames.d[gCap.frames.len -% 1].base
     if j.traceStack.len > base:
-      let (slot, tdesc) = j.traceStack.pop()
-      let t = head(slot[])
+      let (entry, tdesc) = j.traceStack.pop()
+      let t = head(entry.val)
       if isStamped(t):
         let v = denseIdx(t)
         gCap.edges.add (int64(u) shl 32) or int64(v)
@@ -560,13 +604,64 @@ proc computeDeadness(j: var GcEnv) =
         let t = gCap.crossTgt.d[k]
         gCap.sccFlags.d[t] = gCap.sccFlags.d[t] or flagForcedLive
 
-# ---------------- phase 3: commit ----------------
+# ---------------- phase 3: validate & commit ----------------
+
+proc markDirtyFromQueues(j: var GcEnv) =
+  ## The SATB half of the design: any cell with an inc or dec enqueued since
+  ## mergePendingRoots had its reference set changed during capture. Peek
+  ## (don't drain!) the stripe queues and taint the affected SCCs; the
+  ## entries stay queued and the next merge re-registers them as candidates.
+  template taint(cp: Cell) =
+    let c = cp
+    if isStamped(c):
+      let s = gCap.recs.d[denseIdx(c)].sccOf
+      gCap.sccFlags.d[s] = gCap.sccFlags.d[s] or flagDirty
+  for i in 0..<NumStripes:
+    when not defined(nimYrcAtomicIncs):
+      when defined(yrcAtomics):
+        let incLen = min(atomicLoadN(addr stripes[i].toIncLen, ATOMIC_ACQUIRE), QueueSize)
+        for k in 0..<incLen:
+          taint atomicLoadN(addr stripes[i].toInc[k], ATOMIC_ACQUIRE)
+      else:
+        withLock stripes[i].lockInc:
+          for k in 0..<stripes[i].toIncLen:
+            taint stripes[i].toInc[k]
+    withLock stripes[i].lockDec:
+      for k in 0..<stripes[i].toDecLen:
+        taint stripes[i].toDec[k][0]
+
+proc validateDead(j: var GcEnv) =
+  ## Demote every dead SCC that a mutator touched during capture: dirty via
+  ## the queues, or a direct incRef visible as a changed rc word. Demoted
+  ## SCCs become ordinary survivors (so committed neighbors decrement into
+  ## them correctly) and one member is re-registered as a candidate root so
+  ## the SCC is re-examined by the next collection.
+  markDirtyFromQueues(j)
+  for s in 0 ..< j.nScc:
+    if (gCap.sccFlags.d[s] and flagDead) != 0:
+      var ok = (gCap.sccFlags.d[s] and flagDirty) == 0
+      if ok:
+        for mi in gCap.sccMemStart.d[s] ..< gCap.sccMemStart.d[s+1]:
+          let m = gCap.sccMembers.d[mi]
+          if (loadRc(gCap.recs.d[m].cell) and not rcMask) != gCap.recs.d[m].rcWord:
+            ok = false
+            break
+      if not ok:
+        gCap.sccFlags.d[s] = gCap.sccFlags.d[s] and not flagDead
+        inc j.nAborted
+        let m = gCap.sccMembers.d[gCap.sccMemStart.d[s]]
+        let cell = gCap.recs.d[m].cell
+        if (loadRc(cell) and inRootsFlag) == 0:
+          rcSetFlag(cell, inRootsFlag)
+          if roots.d == nil: init(roots)
+          add(roots, cell, gCap.recs.d[m].desc)
 
 proc commitDead(j: var GcEnv) =
   init j.toFree
+  validateDead(j)
   template deadCell(t: Cell): bool =
     isStamped(t) and (gCap.sccFlags.d[gCap.recs.d[denseIdx(t)].sccOf] and flagDead) != 0
-  let allDead = j.nDeadScc == j.nScc
+  let allDead = j.nDeadScc == j.nScc and j.nAborted == 0
   for s in 0 ..< j.nScc:
     if (gCap.sccFlags.d[s] and flagDead) != 0:
       for mi in gCap.sccMemStart.d[s] ..< gCap.sccMemStart.d[s+1]:
@@ -582,13 +677,13 @@ proc commitDead(j: var GcEnv) =
         if allDead:
           # everything captured dies: no survivor can occur, just nil
           while j.traceStack.len > 0:
-            let (slot, _) = j.traceStack.pop()
-            slot[] = nil
+            let (entry, _) = j.traceStack.pop()
+            entry.slot[] = nil
         else:
           while j.traceStack.len > 0:
-            let (slot, _) = j.traceStack.pop()
-            let t = head(slot[])
-            slot[] = nil
+            let (entry, _) = j.traceStack.pop()
+            let t = head(entry.val)
+            entry.slot[] = nil
             if not deadCell(t):
               trialDec(t)
   when sizeof(int) != 8:
@@ -687,7 +782,7 @@ proc GC_runOrc* =
     if roots.len > 0 and mayRunCycleCollect():
       var j: GcEnv
       collectCyclesImpl(j, 0)
-  when logOrc: orcAssert roots.len == 0, "roots not empty!"
+  # note: aborted SCCs legitimately leave re-registered roots behind
 
 proc GC_enableOrc*() =
   when not defined(nimStressOrc):
@@ -775,25 +870,27 @@ proc yrcDec(tmp: pointer; desc: PNimTypeV2) {.inline.} =
     discard nimDecRefIsLastCyclicDyn(tmp)
 
 proc nimAsgnYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
-  ## YRC write barrier for ref copy assignment.
-  ## Holds the mutator read lock for the entire operation so the collector
-  ## cannot run between the incRef and decRef, closing the stale-decRef
-  ## bug. Direct atomic incRef replaces the toInc stripe queue: the
-  ## collector is blocked, so the RC update is immediately visible and correct.
-  acquireMutatorLock()
-  if src != nil: increment head(src)   # direct atomic: no toInc queue needed
-  let tmp = dest[]
-  dest[] = src
-  if tmp != nil: yrcDec(tmp, desc)     # still deferred via toDec for cycle detection
-  releaseMutatorLock()
+  ## YRC write barrier for ref copy assignment. LOCK-FREE: the deferred dec
+  ## of the old value doubles as the snapshot-at-the-beginning log (the
+  ## collector peeks the toDec queues at commit time), and the direct atomic
+  ## incRef of the new value is exactly the rc mutation the collector's
+  ## commit-time rc validation observes.
+  if src != nil: increment head(src)
+  when hasThreadSupport:
+    let tmp = atomicExchangeN(dest, src, ATOMIC_ACQ_REL)
+  else:
+    let tmp = dest[]
+    dest[] = src
+  if tmp != nil: yrcDec(tmp, desc)
 
 proc nimSinkYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref sink (move). No incRef on source.
-  acquireMutatorLock()
-  let tmp = dest[]
-  dest[] = src
+  when hasThreadSupport:
+    let tmp = atomicExchangeN(dest, src, ATOMIC_ACQ_REL)
+  else:
+    let tmp = dest[]
+    dest[] = src
   if tmp != nil: yrcDec(tmp, desc)
-  releaseMutatorLock()
 
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
   when optimizedOrc:
