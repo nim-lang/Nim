@@ -1332,7 +1332,7 @@ when defined(gcDestructors):
   proc finishRemoteDeallocation(h: ptr RegionHandle) {.raises: [], gcsafe, tags: [].} =
     let balance =
       when hasThreadSupport:
-        atomicAddFetch(addr h.remoteDeallocationBalance, 1, ATOMIC_ACQ_REL)
+        atomicInc(h.remoteDeallocationBalance)
       else:
         inc h.remoteDeallocationBalance
         h.remoteDeallocationBalance
@@ -1359,8 +1359,7 @@ when defined(gcDestructors):
 
     let balance =
       when hasThreadSupport:
-        atomicSubFetch(addr h.remoteDeallocationBalance,
-                       expectedRemoteDeallocations, ATOMIC_ACQ_REL)
+        atomicDec(h.remoteDeallocationBalance, expectedRemoteDeallocations)
       else:
         dec h.remoteDeallocationBalance, expectedRemoteDeallocations
         h.remoteDeallocationBalance
