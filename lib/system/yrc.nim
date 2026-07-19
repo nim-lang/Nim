@@ -331,7 +331,7 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
 # long-lived live structures are traced once per epoch instead of once per
 # collection. Roots always bypass the stamp: every death has a dec-witness
 # that gets registered, and registered cells are always scanned as roots.
-const MaxPar {.intdefine.} = 4    # max concurrent collections
+const MaxPar {.intdefine.} = 8    # max concurrent collections
 
 when sizeof(int) == 8:
   const ParSlots = MaxPar

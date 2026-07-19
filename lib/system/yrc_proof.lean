@@ -546,33 +546,41 @@ theorem fence_mutual_exclusion
 
   ### Locks
 
-  The global collector lock is gone. What remains:
-    • gMergeLock                (level 0)
-    • stripes[i].lockInc        (level 2*i + 1,  i in 0..N-1)
-    • stripes[i].lockDec        (level 2*i + 2,  i in 0..N-1)
+  The queue producers went lock-free (reserve a slot by fetch-add, then
+  publish it: incs with an RMW exchange — the validation peek must see
+  every completed inc barrier — decs with a release store of the desc,
+  self-protecting via the unexplained rc surplus). The validation peek
+  is lock-free too. What remains:
+    • gMergeLock                (level 0: tag-slot claim + orphan roots)
+    • stripes[i].consumerLock   (level i + 1,  i in 0..N-1: excludes
+                                 DRAINS of the same stripe against each
+                                 other — drains wait out the two-store
+                                 publication window and close each batch
+                                 with a CAS, so no producer coordination
+                                 is needed)
     • gWaitLock                 (leaf: pairs gWaitCond's wait/broadcast;
                                  only ever held around a predicate check,
                                  a wait(), or a broadcast() — never while
                                  acquiring any other lock, and no other
                                  lock is held when it is taken)
 
-  Total order:  gMergeLock < lockInc[0] < lockDec[0] < lockInc[1] < ...
+  Total order:  gMergeLock < consumerLock[0] < consumerLock[1] < ...
 
-  Every code path acquires in strictly ascending level order:
+  In fact the current paths never HOLD two of these at once — strictly
+  stronger than the ascending-order requirement the theorem needs:
 
-  **nimIncRefCyclic** fast path: lockInc[myStripe] alone. Overflow path:
-    lockInc[i] for i = 0..N-1, one at a time, no gMergeLock. ✓
-  **nimDecRefIsLastCyclic*** fast path: lockDec[myStripe] alone; the
-    overflow calls collectCycles AFTER releasing it (overflow-flag
-    pattern). ✓
-  **startCollection**: gMergeLock, then mergePendingRoots takes
-    lockInc[i], lockDec[i] ascending, releasing each. ✓
-  **markDirtyFromQueues**: stripe locks only, ascending, and gMergeLock
-    is NOT held (commitDead's gMergeLock sections are disjoint from it).
-  **validateDead / commitDead / GC_prepareOrc root registration**:
-    gMergeLock alone, no stripe lock held or taken inside. ✓
-  **nimAsgnYrc / nimSinkYrc**: lock-free (atomic inc + exchange); only
-    the deferred dec takes lockDec[myStripe] on its own. ✓
+  **nimIncRefCyclic / nimAsgnYrc / nimSinkYrc / enqueueDec /
+    registerLocal / markDirtyFromQueues**: lock-free, no locks at all;
+    enqueueDec's overflow calls collectCycles with nothing held. ✓
+  **drainStripe**: consumerLock[i] alone; the processing inside
+    (trialDec, registerLocal into the thread-local buffer) takes no
+    lock. drainAllStripes: consumerLock[i] ascending, released between
+    stripes. ✓
+  **startCollection / nimYrcThreadTeardown**: drain first (consumerLock,
+    released), THEN gMergeLock for the slot claim / orphan spill —
+    sequential, never nested. adoptOrphans: gMergeLock alone. ✓
+  **validateDead / commitDead**: no locks (candidate re-registration is
+    the lock-free registerLocal). ✓
 
   ### Blocking waits (parked on gWaitCond after a bounded spin)
 
@@ -609,13 +617,11 @@ theorem fence_mutual_exclusion
 /-- Lock levels in YRC. -/
 inductive LockId (n : Nat) where
   | mergeLock : LockId n
-  | lockInc (i : Nat) (h : i < n) : LockId n
-  | lockDec (i : Nat) (h : i < n) : LockId n
+  | consumerLock (i : Nat) (h : i < n) : LockId n
 
 def lockLevel {n : Nat} : LockId n → Nat
   | .mergeLock => 0
-  | .lockInc i _ => 2 * i + 1
-  | .lockDec i _ => 2 * i + 2
+  | .consumerLock i _ => i + 1
 
 /-- All lock levels are distinct (the order is total and well-defined). -/
 theorem lockLevel_injective {n : Nat} (a b : LockId n)
@@ -624,21 +630,12 @@ theorem lockLevel_injective {n : Nat} (a b : LockId n)
   | mergeLock =>
     cases b with
     | mergeLock => rfl
-    | lockInc j hj => simp [lockLevel] at h
-    | lockDec j hj => simp [lockLevel] at h
-  | lockInc i hi =>
+    | consumerLock j hj => simp [lockLevel] at h
+  | consumerLock i hi =>
     cases b with
     | mergeLock => simp [lockLevel] at h
-    | lockInc j hj =>
-      have : i = j := by simp [lockLevel] at h; omega
-      subst this; rfl
-    | lockDec j hj => simp [lockLevel] at h; omega
-  | lockDec i hi =>
-    cases b with
-    | mergeLock => simp [lockLevel] at h
-    | lockInc j hj => simp [lockLevel] at h; omega
-    | lockDec j hj =>
-      have : i = j := by simp [lockLevel] at h; omega
+    | consumerLock j hj =>
+      have : i = j := by simp [lockLevel] at h; exact h
       subst this; rfl
 
 /-- gMergeLock has the lowest level. -/
@@ -646,8 +643,7 @@ theorem mergeLock_level_min {n : Nat} (l : LockId n) (h : l ≠ .mergeLock) :
     lockLevel (.mergeLock : LockId n) < lockLevel l := by
   cases l with
   | mergeLock => exact absurd rfl h
-  | lockInc i hi => simp [lockLevel]
-  | lockDec i hi => simp [lockLevel]
+  | consumerLock i hi => simp [lockLevel]
 
 /-- **Deadlock Freedom** (2-thread wait cycle; N-thread follows by the
     same transitivity on the wait-for chain): impossible when every
