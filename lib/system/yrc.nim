@@ -143,6 +143,19 @@ when useAtomicRc:
         if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
                                    ATOMIC_ACQ_REL, ATOMIC_RELAXED):
           break
+  template rcTestSetFlag(c, flag): bool =
+    ## Atomically set `flag`; evaluates to true iff THIS call set it (it
+    ## was clear). Candidate registration must win this race so that a
+    ## cell sits in at most one candidate buffer.
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      var won = false
+      while (expected and flag) == 0:
+        if atomicCompareExchangeN(addr c.rc, addr expected, expected or flag,
+                                   true, ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          won = true
+          break
+      won
 else:
   template color(c): untyped = c.rc and colorMask
   template loadRc(c): int = c.rc
@@ -150,6 +163,11 @@ else:
   template trialInc(c) = c.rc = c.rc +% rcIncrement
   template rcClearFlag(c, flag) = c.rc = c.rc and not flag
   template rcSetFlag(c, flag) = c.rc = c.rc or flag
+  template rcTestSetFlag(c, flag): bool =
+    block:
+      let won = (c.rc and flag) == 0
+      if won: c.rc = c.rc or flag
+      won
 
 const
   optimizedOrc = false
@@ -245,6 +263,7 @@ type
     crossOff: RawSeq[int32]   # condensation cross edges, bucketed by source
     crossTgt: RawSeq[int32]
     crossCursor: RawSeq[int32]
+    crossPend: CellSeq[Cell]  # edge targets owned by other active collections
 
   GcEnv = object
     traceStack: CellSeq[TraceEntry]
@@ -255,7 +274,7 @@ type
     freed, touched: int
     keepThreshold: bool
 
-var gCap: CaptureBufs
+var gCap {.threadvar.}: CaptureBufs
 
 const
   flagDead = 1'u8
@@ -268,26 +287,78 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 # The spare rootIdx header word (unused by YRC's root registration, which
-# relies on inRootsFlag) doubles as the capture stamp: it packs an epoch tag
-# with the cell's dense discovery index, so node -> index lookup is one load
-# and stale stamps from earlier collections never need clearing.
-var gCaptureEpoch: int = 1
+# relies on inRootsFlag) doubles as the capture claim: it packs the owning
+# collection's tag with the cell's dense discovery index. Up to MaxPar
+# collections run CONCURRENTLY, each capturing a disjoint partition of the
+# heap: the first collection to CAS its tag into a cell owns it; everyone
+# else treats the cell as an opaque survivor. Stale tags (from retired
+# collections) never need clearing, they are simply reclaimable.
+const MaxPar {.intdefine.} = 4    # max concurrent collections
 
 when sizeof(int) == 8:
-  # 31-bit epoch, wraps after 2^31 collections (decades of uptime); on wrap
-  # a stale stamp collision is astronomically unlikely but not impossible.
-  template bumpEpoch() =
-    gCaptureEpoch = (gCaptureEpoch +% 1) and 0x7FFFFFFF
-    if gCaptureEpoch == 0: gCaptureEpoch = 1
-  template isStamped(c: Cell): bool = (c.rootIdx shr 32) == gCaptureEpoch
-  template stamp(c: Cell; idx: int) =
-    c.rootIdx = gCaptureEpoch shl 32 or idx
-  template denseIdx(c: Cell): int32 = int32(c.rootIdx and 0xFFFFFFFF)
+  const ParSlots = MaxPar
 else:
-  # no room for an epoch: stamps are cleared at the end of each collection
-  template bumpEpoch() = discard
+  const ParSlots = 1              # no room to pack tags: single collector
+
+var
+  gMergeLock: Lock                       # protects the tag slots + orphaned roots
+  gActiveTags: array[ParSlots, int]      # 0 = free slot
+  gSlotPhase: array[ParSlots, int]       # 0 idle, 1 capturing, 2 committing
+  gSoloCapture: int                      # a solo collection is in its capture phase
+  gTagCounter: int
+  gMyTag {.threadvar.}: int
+  gMySlot {.threadvar.}: int
+  gAmSolo {.threadvar.}: bool
+  gWaitLock: Lock                        # pairs gWaitCond's wait/broadcast; leaf
+  gWaitCond: Cond                        # signaled on capture-end and collection-finish
+
+const SpinBeforePark = 4000
+
+template parkUntil(cond: untyped) =
+  ## Bounded spin (collections transition in microseconds when the system is
+  ## healthy), then block on gWaitCond. `cond` must only read atomics, and
+  ## every write that can make it true is followed by collectorEvent().
+  var spins {.inject.} = 0
+  while not (cond):
+    inc spins
+    if spins >= SpinBeforePark:
+      acquire gWaitLock
+      while not (cond):
+        wait(gWaitCond, gWaitLock)
+      release gWaitLock
+      break
+
+proc collectorEvent() {.inline.} =
+  ## Wake every parked collector after a slot/phase/solo transition. The
+  ## broadcast happens under gWaitLock so that a waiter that saw the old
+  ## state is already inside wait() by the time we broadcast.
+  acquire gWaitLock
+  broadcast gWaitCond
+  release gWaitLock
+
+proc anySlotFree(): bool {.inline.} =
+  result = false
+  for sl in 0 ..< ParSlots:
+    if atomicLoadN(addr gActiveTags[sl], ATOMIC_ACQUIRE) == 0:
+      return true
+
+when sizeof(int) == 8:
+  template isStamped(c: Cell): bool =
+    # "stamped" means: claimed by THIS collection. A relaxed load suffices:
+    # only this thread ever stores gMyTag, and any stale read of a foreign
+    # value routes into claimCell which re-validates with acquire + CAS.
+    (atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) shr 32) == gMyTag
+  template denseIdx(c: Cell): int32 =
+    int32(atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) and 0xFFFFFFFF)
+
+  proc isActiveTag(t: int): bool {.inline.} =
+    result = false
+    if t != 0:
+      for s in 0 ..< ParSlots:
+        if atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) == t:
+          return true
+else:
   template isStamped(c: Cell): bool = c.rootIdx != 0
-  template stamp(c: Cell; idx: int) = c.rootIdx = idx +% 1
   template denseIdx(c: Cell): int32 = int32(c.rootIdx -% 1)
 
 type
@@ -307,9 +378,16 @@ type
     ## Invoked while holding the global lock; must not call back into YRC.
 
 var
-  roots: CellSeq[Cell]  # merged roots, used under global lock
+  roots: CellSeq[Cell]  # ORPHANED candidates only: spilled by exiting
+                        # threads, adopted by the next collection on any
+                        # thread. Guarded by gMergeLock.
+  gLocalRoots {.threadvar.}: CellSeq[Cell]
+    ## This thread's candidate roots. Only the owning thread touches it:
+    ## draining this thread's stripe queue registers candidates here, and
+    ## this thread's collections steal it as their slice — no lock, and
+    ## collections keep the cache locality of thread-local data.
   stripes: array[NumStripes, Stripe]
-  rootsThreshold: int = 128
+  rootsThreshold: int = 128   # shared adaptive heuristic; races are benign
   defaultThreshold = when defined(nimFixedOrc): 10_000 else: 128
   gPreventThreadFromCollectProc: PreventThreadFromCollectProc = nil
 
@@ -359,13 +437,12 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
     if slot < QueueSize:
       atomicStoreN(addr stripes[s].toInc[slot], h, ATOMIC_RELEASE)
     else:
-      yrcCollectorLock:
-        h.rc = h.rc +% rcIncrement
-        for i in 0..<NumStripes:
-          let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
-          for j in 0..<min(len, QueueSize):
-            let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-            x.rc = x.rc +% rcIncrement
+      trialInc(h)
+      for i in 0..<NumStripes:
+        let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
+        for j in 0..<min(len, QueueSize):
+          let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
+          trialInc(x)
   else:
     let idx = getStripeIdx()
     while true:
@@ -377,43 +454,67 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
         else:
           overflow = true
       if overflow:
-        yrcCollectorLock:
-          for i in 0..<NumStripes:
-            withLock stripes[i].lockInc:
-              for j in 0..<stripes[i].toIncLen:
-                let x = stripes[i].toInc[j]
-                x.rc = x.rc +% rcIncrement
-              stripes[i].toIncLen = 0
+        # flush the inc queues directly: incs are atomic, so this is safe
+        # concurrently with running collections (whose commit-time rc
+        # validation observes the change)
+        for i in 0..<NumStripes:
+          withLock stripes[i].lockInc:
+            for j in 0..<stripes[i].toIncLen:
+              trialInc(stripes[i].toInc[j])
+            stripes[i].toIncLen = 0
       else:
         break
 
-proc mergePendingRoots() =
-  # Merge buffered RC operations. Note: Unlike truly concurrent collectors,
-  # we don't need any color handling on incRef because collection runs
-  # under the global lock, so no concurrent mutations happen during collection.
+proc registerLocal(c: Cell; desc: PNimTypeV2) {.inline.} =
+  ## Register a candidate in THIS thread's buffer. The atomic test-and-set
+  ## keeps the invariant that a cell sits in at most one candidate buffer:
+  ## whoever wins the flag owns the registration. Buffered cells are forced
+  ## live by every collection (deadness checks the flag), so no buffer
+  ## entry can ever dangle.
+  if rcTestSetFlag(c, inRootsFlag):
+    if gLocalRoots.d == nil: init(gLocalRoots)
+    add(gLocalRoots, c, desc)
+
+proc drainStripe(i: int) =
+  ## Apply the pending RC operations of one stripe queue; freshly
+  ## dead-looking cells become THIS thread's candidates. rc mutations are
+  ## atomic, so no global lock is needed: a running collection observes
+  ## them through its commit-time validation (rc recheck / dirty peek).
+  when not defined(nimYrcAtomicIncs):
+    # Inc buffers only exist when increfs are buffered (not atomic)
+    when defined(yrcAtomics):
+      let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
+      for j in 0..<min(incLen, QueueSize):
+        let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
+        trialInc(x)
+    else:
+      withLock stripes[i].lockInc:
+        for j in 0..<stripes[i].toIncLen:
+          trialInc(stripes[i].toInc[j])
+        stripes[i].toIncLen = 0
+  withLock stripes[i].lockDec:
+    for j in 0..<stripes[i].toDecLen:
+      let (c, desc) = stripes[i].toDec[j]
+      trialDec(c)
+      registerLocal(c, desc)
+    stripes[i].toDecLen = 0
+
+proc drainAllStripes() =
+  ## Full-collect path: apply every pending RC operation; every resulting
+  ## candidate is adopted by the calling thread.
   for i in 0..<NumStripes:
-    when not defined(nimYrcAtomicIncs):
-      # Inc buffers only exist when increfs are buffered (not atomic)
-      when defined(yrcAtomics):
-        let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
-        for j in 0..<min(incLen, QueueSize):
-          let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-          x.rc = x.rc +% rcIncrement
-      else:
-        withLock stripes[i].lockInc:
-          for j in 0..<stripes[i].toIncLen:
-            let x = stripes[i].toInc[j]
-            x.rc = x.rc +% rcIncrement
-          stripes[i].toIncLen = 0
-    withLock stripes[i].lockDec:
-      for j in 0..<stripes[i].toDecLen:
-        let (c, desc) = stripes[i].toDec[j]
-        trialDec(c)
-        if (loadRc(c) and inRootsFlag) == 0:
-          rcSetFlag(c, inRootsFlag)
-          if roots.d == nil: init(roots)
-          add(roots, c, desc)
-      stripes[i].toDecLen = 0
+    drainStripe(i)
+
+proc adoptOrphans() =
+  ## Adopt candidates spilled by exited threads. The cells stay flagged;
+  ## they merely change buffers, so the one-buffer invariant holds.
+  if roots.len > 0:               # racy peek; exact under the lock
+    acquire gMergeLock
+    if gLocalRoots.d == nil: init(gLocalRoots)
+    for i in 0 ..< roots.len:
+      add(gLocalRoots, roots.d[i][0], roots.d[i][1])
+    roots.len = 0
+    release gMergeLock
 
 proc collectCycles()
 
@@ -477,6 +578,7 @@ proc prepareCapture() =
     init gCap.crossOff
     init gCap.crossTgt
     init gCap.crossCursor
+    init gCap.crossPend
   else:
     gCap.recs.len = 0
     gCap.tstack.len = 0
@@ -485,137 +587,184 @@ proc prepareCapture() =
     gCap.sccMemStart.len = 0
     gCap.sccMembers.len = 0
     gCap.sumRefs.len = 0
+    gCap.crossPend.len = 0
 
-proc pushCell(c: Cell; desc: PNimTypeV2): int32 {.inline.} =
-  result = int32(gCap.recs.len)
-  stamp(c, gCap.recs.len)
-  # rc captured without the flag bits: the collector itself toggles
-  # inRootsFlag between capture and commit, which must not look like a
-  # mutation to the commit-time rc validation
-  gCap.recs.add CaptureRec(cell: c, desc: desc, rcWord: loadRc(c) and not rcMask,
-                           lowlink: result, sccOf: -1'i32)
-  gCap.tstack.add result
+# rc is captured without the flag bits: the collector itself toggles
+# inRootsFlag between capture and commit, which must not look like a
+# mutation to the commit-time rc validation.
+when sizeof(int) == 8:
+  proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs): int32 =
+    ## Dense index if this collection owns `c` (claiming and registering it
+    ## if it was unclaimed), or -1 if another ACTIVE collection owns it.
+    if gAmSolo:
+      # no other collection is (or can start) capturing: plain stores.
+      # This recovers the sequential capture speed of the single-collector
+      # design whenever collections do not actually overlap.
+      let old = c.rootIdx
+      if (old shr 32) == gMyTag:
+        return int32(old and 0xFFFFFFFF)
+      let idx = cap.recs.len
+      c.rootIdx = (gMyTag shl 32) or idx
+      cap.recs.add CaptureRec(cell: c, desc: desc,
+                               rcWord: loadRc(c) and not rcMask,
+                               lowlink: int32(idx), sccOf: -1'i32)
+      cap.tstack.add int32(idx)
+      return int32(idx)
+    while true:
+      var old = atomicLoadN(addr c.rootIdx, ATOMIC_ACQUIRE)
+      if (old shr 32) == gMyTag:
+        return int32(old and 0xFFFFFFFF)
+      if isActiveTag(old shr 32):
+        return -1
+      let idx = cap.recs.len
+      if atomicCompareExchangeN(addr c.rootIdx, addr old,
+                                 (gMyTag shl 32) or idx, false,
+                                 ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+        cap.recs.add CaptureRec(cell: c, desc: desc,
+                                 rcWord: loadRc(c) and not rcMask,
+                                 lowlink: int32(idx), sccOf: -1'i32)
+        cap.tstack.add int32(idx)
+        return int32(idx)
+else:
+  proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs): int32 =
+    if c.rootIdx != 0:
+      result = int32(c.rootIdx -% 1)
+    else:
+      result = int32(cap.recs.len)
+      c.rootIdx = cap.recs.len +% 1
+      cap.recs.add CaptureRec(cell: c, desc: desc,
+                               rcWord: loadRc(c) and not rcMask,
+                               lowlink: result, sccOf: -1'i32)
+      cap.tstack.add result
 
-proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
+proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
   ## Iterative Tarjan SCC over everything reachable from `s`. A frame's
   ## pending out-edges are the traceStack entries above frame.base; a child
   ## pushes and drains its own segment above ours, so when the child's frame
   ## pops, the stack is back at our segment and we resume popping our edges.
   if isStamped(s): return
   orcAssert(j.traceStack.len == 0, "capture: trace stack not empty")
-  let root = pushCell(s, desc)
+  let root = claimCell(s, desc, cap)
+  if root < 0:
+    return   # another active collection owns this candidate; it handles it
   trace(s, desc, j)
-  gCap.frames.add TarjanFrame(u: root, base: 0)
-  while gCap.frames.len > 0:
-    let u = gCap.frames.d[gCap.frames.len -% 1].u
-    let base = gCap.frames.d[gCap.frames.len -% 1].base
+  cap.frames.add TarjanFrame(u: root, base: 0)
+  while cap.frames.len > 0:
+    let u = cap.frames.d[cap.frames.len -% 1].u
+    let base = cap.frames.d[cap.frames.len -% 1].base
     if j.traceStack.len > base:
       let (entry, tdesc) = j.traceStack.pop()
       let t = head(entry.val)
       if isStamped(t):
         let v = denseIdx(t)
-        gCap.edges.add (int64(u) shl 32) or int64(v)
-        if gCap.recs.d[v].sccOf < 0 and v < gCap.recs.d[u].lowlink:
-          gCap.recs.d[u].lowlink = v
+        cap.edges.add (int64(u) shl 32) or int64(v)
+        if cap.recs.d[v].sccOf < 0 and v < cap.recs.d[u].lowlink:
+          cap.recs.d[u].lowlink = v
       else:
         let childBase = j.traceStack.len
-        let v = pushCell(t, tdesc)
-        gCap.edges.add (int64(u) shl 32) or int64(v)
-        trace(t, tdesc, j)
-        gCap.frames.add TarjanFrame(u: v, base: childBase)
+        let v = claimCell(t, tdesc, cap)
+        if v < 0:
+          # cross-collection edge: the owner sees our reference in the rc
+          # word and classifies the target live; we re-register it as a
+          # candidate before our commit so it is re-examined later
+          cap.crossPend.add(t, tdesc)
+        else:
+          cap.edges.add (int64(u) shl 32) or int64(v)
+          trace(t, tdesc, j)
+          cap.frames.add TarjanFrame(u: v, base: childBase)
     else:
-      gCap.frames.len = gCap.frames.len -% 1
-      if gCap.frames.len > 0:
-        let pu = gCap.frames.d[gCap.frames.len -% 1].u
-        if gCap.recs.d[u].lowlink < gCap.recs.d[pu].lowlink:
-          gCap.recs.d[pu].lowlink = gCap.recs.d[u].lowlink
-      if gCap.recs.d[u].lowlink == u:
+      cap.frames.len = cap.frames.len -% 1
+      if cap.frames.len > 0:
+        let pu = cap.frames.d[cap.frames.len -% 1].u
+        if cap.recs.d[u].lowlink < cap.recs.d[pu].lowlink:
+          cap.recs.d[pu].lowlink = cap.recs.d[u].lowlink
+      if cap.recs.d[u].lowlink == u:
         # u is the root of an SCC: pop the members off the Tarjan stack
-        gCap.sccMemStart.add int32(gCap.sccMembers.len)
+        cap.sccMemStart.add int32(cap.sccMembers.len)
         var sum = 0
         while true:
-          let w = gCap.tstack.pop()
-          gCap.recs.d[w].sccOf = int32(j.nScc)
-          gCap.sccMembers.add w
-          sum = sum +% (gCap.recs.d[w].rcWord shr rcShift) +% 1
+          let w = cap.tstack.pop()
+          cap.recs.d[w].sccOf = int32(j.nScc)
+          cap.sccMembers.add w
+          sum = sum +% (cap.recs.d[w].rcWord shr rcShift) +% 1
           if w == u: break
-        gCap.sumRefs.add sum
+        cap.sumRefs.add sum
         inc j.nScc
 
 # ---------------- phase 2: deadness, side arrays only ----------------
 
-proc computeDeadness(j: var GcEnv) =
+proc computeDeadness(j: var GcEnv; cap: ptr CaptureBufs) =
   let nScc = j.nScc
-  setLenZeroed gCap.internal, nScc
-  setLenZeroed gCap.deadIn, nScc
-  setLenZeroed gCap.sccFlags, nScc
-  setLenZeroed gCap.crossOff, nScc + 1
-  setLenUninit gCap.crossCursor, nScc
+  setLenZeroed cap.internal, nScc
+  setLenZeroed cap.deadIn, nScc
+  setLenZeroed cap.sccFlags, nScc
+  setLenZeroed cap.crossOff, nScc + 1
+  setLenUninit cap.crossCursor, nScc
   # classify captured edges: internal to an SCC vs condensation cross edges
   var nCross = 0
-  for i in 0 ..< gCap.edges.len:
-    let e = gCap.edges.d[i]
-    let su = gCap.recs.d[int32(e shr 32)].sccOf
-    let sv = gCap.recs.d[int32(e and 0xFFFFFFFF'i64)].sccOf
+  for i in 0 ..< cap.edges.len:
+    let e = cap.edges.d[i]
+    let su = cap.recs.d[int32(e shr 32)].sccOf
+    let sv = cap.recs.d[int32(e and 0xFFFFFFFF'i64)].sccOf
     if su == sv:
-      inc gCap.internal.d[su]
+      inc cap.internal.d[su]
     else:
-      inc gCap.crossOff.d[su]
+      inc cap.crossOff.d[su]
       inc nCross
   var total = 0'i32
   for s in 0 ..< nScc:
-    let c = gCap.crossOff.d[s]
-    gCap.crossOff.d[s] = total
-    gCap.crossCursor.d[s] = total
+    let c = cap.crossOff.d[s]
+    cap.crossOff.d[s] = total
+    cap.crossCursor.d[s] = total
     total = total +% c
-  gCap.crossOff.d[nScc] = total
-  setLenUninit gCap.crossTgt, nCross
-  for i in 0 ..< gCap.edges.len:
-    let e = gCap.edges.d[i]
-    let su = gCap.recs.d[int32(e shr 32)].sccOf
-    let sv = gCap.recs.d[int32(e and 0xFFFFFFFF'i64)].sccOf
+  cap.crossOff.d[nScc] = total
+  setLenUninit cap.crossTgt, nCross
+  for i in 0 ..< cap.edges.len:
+    let e = cap.edges.d[i]
+    let su = cap.recs.d[int32(e shr 32)].sccOf
+    let sv = cap.recs.d[int32(e and 0xFFFFFFFF'i64)].sccOf
     if su != sv:
-      gCap.crossTgt.d[gCap.crossCursor.d[su]] = sv
-      inc gCap.crossCursor.d[su]
+      cap.crossTgt.d[cap.crossCursor.d[su]] = sv
+      inc cap.crossCursor.d[su]
   # cells that stay registered as roots (partial collection) count as
   # externally referenced: the roots buffer itself points at them
-  for mi in 0 ..< gCap.sccMembers.len:
-    let m = gCap.sccMembers.d[mi]
-    if (loadRc(gCap.recs.d[m].cell) and inRootsFlag) != 0:
-      let s = gCap.recs.d[m].sccOf
-      gCap.sccFlags.d[s] = gCap.sccFlags.d[s] or flagForcedLive
+  for mi in 0 ..< cap.sccMembers.len:
+    let m = cap.sccMembers.d[mi]
+    if (loadRc(cap.recs.d[m].cell) and inRootsFlag) != 0:
+      let s = cap.recs.d[m].sccOf
+      cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagForcedLive
   # deadness over the condensation. Tarjan emits sinks first, so higher SCC
   # ids are sources and every cross edge goes from a higher id to a lower
   # one: one reverse scan settles everything.
   for s in countdown(nScc - 1, 0):
-    let ext = gCap.sumRefs.d[s] -% gCap.internal.d[s] -% gCap.deadIn.d[s]
+    let ext = cap.sumRefs.d[s] -% cap.internal.d[s] -% cap.deadIn.d[s]
     when logOrc:
       cfprintf(cstderr, "[scc %ld] members %ld sumRefs %ld internal %ld deadIn %ld ext %ld forced %ld\n",
-        s, gCap.sccMemStart.d[s+1] - gCap.sccMemStart.d[s], gCap.sumRefs.d[s],
-        gCap.internal.d[s], gCap.deadIn.d[s], ext, int(gCap.sccFlags.d[s]))
-    if (gCap.sccFlags.d[s] and flagForcedLive) == 0 and ext == 0:
-      gCap.sccFlags.d[s] = gCap.sccFlags.d[s] or flagDead
+        s, cap.sccMemStart.d[s+1] - cap.sccMemStart.d[s], cap.sumRefs.d[s],
+        cap.internal.d[s], cap.deadIn.d[s], ext, int(cap.sccFlags.d[s]))
+    if (cap.sccFlags.d[s] and flagForcedLive) == 0 and ext == 0:
+      cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagDead
       inc j.nDeadScc
-      for k in gCap.crossOff.d[s] ..< gCap.crossOff.d[s+1]:
-        inc gCap.deadIn.d[gCap.crossTgt.d[k]]
+      for k in cap.crossOff.d[s] ..< cap.crossOff.d[s+1]:
+        inc cap.deadIn.d[cap.crossTgt.d[k]]
     else:
       # a live SCC keeps everything it points to alive
-      for k in gCap.crossOff.d[s] ..< gCap.crossOff.d[s+1]:
-        let t = gCap.crossTgt.d[k]
-        gCap.sccFlags.d[t] = gCap.sccFlags.d[t] or flagForcedLive
+      for k in cap.crossOff.d[s] ..< cap.crossOff.d[s+1]:
+        let t = cap.crossTgt.d[k]
+        cap.sccFlags.d[t] = cap.sccFlags.d[t] or flagForcedLive
 
 # ---------------- phase 3: validate & commit ----------------
 
-proc markDirtyFromQueues(j: var GcEnv) =
+proc markDirtyFromQueues(j: var GcEnv; cap: ptr CaptureBufs) =
   ## The SATB half of the design: any cell with an inc or dec enqueued since
-  ## mergePendingRoots had its reference set changed during capture. Peek
+  ## the last drain had its reference set changed during capture. Peek
   ## (don't drain!) the stripe queues and taint the affected SCCs; the
   ## entries stay queued and the next merge re-registers them as candidates.
   template taint(cp: Cell) =
     let c = cp
     if isStamped(c):
-      let s = gCap.recs.d[denseIdx(c)].sccOf
-      gCap.sccFlags.d[s] = gCap.sccFlags.d[s] or flagDirty
+      let s = cap.recs.d[denseIdx(c)].sccOf
+      cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagDirty
   for i in 0..<NumStripes:
     when not defined(nimYrcAtomicIncs):
       when defined(yrcAtomics):
@@ -630,109 +779,238 @@ proc markDirtyFromQueues(j: var GcEnv) =
       for k in 0..<stripes[i].toDecLen:
         taint stripes[i].toDec[k][0]
 
-proc validateDead(j: var GcEnv) =
+proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
   ## Demote every dead SCC that a mutator touched during capture: dirty via
   ## the queues, or a direct incRef visible as a changed rc word. Demoted
   ## SCCs become ordinary survivors (so committed neighbors decrement into
   ## them correctly) and one member is re-registered as a candidate root so
   ## the SCC is re-examined by the next collection.
-  markDirtyFromQueues(j)
-  for s in 0 ..< j.nScc:
-    if (gCap.sccFlags.d[s] and flagDead) != 0:
-      var ok = (gCap.sccFlags.d[s] and flagDirty) == 0
+  markDirtyFromQueues(j, cap)
+  # Descending ids = the deadness scan's order (sources before sinks):
+  # a demotion must propagate to the SCC's dead cross targets, whose
+  # deadIn had explained the edges away only under the assumption that
+  # this SCC dies with them. The demoted SCC survives with its slots
+  # intact, so any target left dead would be freed under a surviving
+  # reference. Targets have lower ids, so tainting them here demotes
+  # them (transitively) later in this very loop.
+  for s in countdown(j.nScc - 1, 0):
+    if (cap.sccFlags.d[s] and flagDead) != 0:
+      var ok = (cap.sccFlags.d[s] and flagDirty) == 0
       if ok:
-        for mi in gCap.sccMemStart.d[s] ..< gCap.sccMemStart.d[s+1]:
-          let m = gCap.sccMembers.d[mi]
-          if (loadRc(gCap.recs.d[m].cell) and not rcMask) != gCap.recs.d[m].rcWord:
+        for mi in cap.sccMemStart.d[s] ..< cap.sccMemStart.d[s+1]:
+          let m = cap.sccMembers.d[mi]
+          if (loadRc(cap.recs.d[m].cell) and not rcMask) != cap.recs.d[m].rcWord:
             ok = false
             break
       if not ok:
-        gCap.sccFlags.d[s] = gCap.sccFlags.d[s] and not flagDead
+        cap.sccFlags.d[s] = cap.sccFlags.d[s] and not flagDead
         inc j.nAborted
-        let m = gCap.sccMembers.d[gCap.sccMemStart.d[s]]
-        let cell = gCap.recs.d[m].cell
-        if (loadRc(cell) and inRootsFlag) == 0:
-          rcSetFlag(cell, inRootsFlag)
-          if roots.d == nil: init(roots)
-          add(roots, cell, gCap.recs.d[m].desc)
+        for k in cap.crossOff.d[s] ..< cap.crossOff.d[s+1]:
+          let t = cap.crossTgt.d[k]
+          if (cap.sccFlags.d[t] and flagDead) != 0:
+            cap.sccFlags.d[t] = cap.sccFlags.d[t] or flagDirty
+        let m = cap.sccMembers.d[cap.sccMemStart.d[s]]
+        registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
 
-proc commitDead(j: var GcEnv) =
-  init j.toFree
-  validateDead(j)
+proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
+  validateDead(j, cap)
+  # publish cross-collection edge targets as candidate roots BEFORE any of
+  # our commit decs could make them collectible: they are owner-live this
+  # round, and the registration keeps them examinable in a later round
+  for i in 0 ..< cap.crossPend.len:
+    registerLocal(cap.crossPend.d[i][0], cap.crossPend.d[i][1])
   template deadCell(t: Cell): bool =
-    isStamped(t) and (gCap.sccFlags.d[gCap.recs.d[denseIdx(t)].sccOf] and flagDead) != 0
-  let allDead = j.nDeadScc == j.nScc and j.nAborted == 0
-  for s in 0 ..< j.nScc:
-    if (gCap.sccFlags.d[s] and flagDead) != 0:
-      for mi in gCap.sccMemStart.d[s] ..< gCap.sccMemStart.d[s+1]:
-        let m = gCap.sccMembers.d[mi]
-        let cell = gCap.recs.d[m].cell
-        let desc = gCap.recs.d[m].desc
-        j.toFree.add(cell, desc)
-        # nil every slot so the destructor cannot dec these edges again;
-        # references to survivors are decremented for real, references into
-        # the dead group die with the group (already accounted by deadIn)
-        orcAssert(j.traceStack.len == 0, "commitDead: trace stack not empty")
-        trace(cell, desc, j)
-        if allDead:
-          # everything captured dies: no survivor can occur, just nil
-          while j.traceStack.len > 0:
-            let (entry, _) = j.traceStack.pop()
-            entry.slot[] = nil
-        else:
+    isStamped(t) and (cap.sccFlags.d[cap.recs.d[denseIdx(t)].sccOf] and flagDead) != 0
+  template graceWait() =
+    # Grace period: another collection still in its CAPTURE phase may hold
+    # stale (slot, value) snapshots referencing our dead cells; disposing
+    # them now could hand reused memory to its traversal. Captures are
+    # bounded and never wait on us. New captures cannot reach our dead
+    # cells: they are unreachable, and our tag stays active until after
+    # the frees.
+    when sizeof(int) == 8:
+      for s in 0 ..< ParSlots:
+        if s != gMySlot:
+          let tg = atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE)
+          if tg != 0:
+            parkUntil(atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) != tg or
+                      atomicLoadN(addr gSlotPhase[s], ATOMIC_ACQUIRE) != 1)
+  # A dead cell's reference to another active collection's cell must still
+  # be decremented (the target survives this round), so the all-dead fast
+  # path additionally requires that no cross-collection edge was seen.
+  let allDead = j.nDeadScc == j.nScc and j.nAborted == 0 and cap.crossPend.len == 0
+  if allDead:
+    # Everything captured dies and no slot can point outside the dead set:
+    # nil the slots and free in ONE pass over the cells — they went cold
+    # since capture, a second sweep would miss cache all over again.
+    # Freeing cell A before nil-ing a later cell B's slot that points at A
+    # is fine: nobody reads B's slots in between (mutators cannot reach the
+    # closed dead set, foreign captures never traverse our tagged cells,
+    # and the grace wait has retired stale snapshots before the first free).
+    graceWait()
+    for m in 0 ..< cap.recs.len:
+      let cell = cap.recs.d[m].cell
+      let desc = cap.recs.d[m].desc
+      orcAssert(j.traceStack.len == 0, "commitDead: trace stack not empty")
+      trace(cell, desc, j)
+      while j.traceStack.len > 0:
+        let (entry, _) = j.traceStack.pop()
+        entry.slot[] = nil
+      when sizeof(int) != 8:
+        cell.rootIdx = 0    # no epoch in the stamp: clear before the free
+      when orcLeakDetector:
+        writeCell("CYCLIC OBJECT FREED", cell, desc)
+      free(cell, desc)
+    j.freed = cap.recs.len
+  else:
+    init j.toFree
+    for s in 0 ..< j.nScc:
+      if (cap.sccFlags.d[s] and flagDead) != 0:
+        for mi in cap.sccMemStart.d[s] ..< cap.sccMemStart.d[s+1]:
+          let m = cap.sccMembers.d[mi]
+          let cell = cap.recs.d[m].cell
+          let desc = cap.recs.d[m].desc
+          j.toFree.add(cell, desc)
+          # nil every slot so the destructor cannot dec these edges again;
+          # references to survivors are decremented for real, references into
+          # the dead group die with the group (already accounted by deadIn).
+          # The dead cells must all outlive this pass: deadCell reads the
+          # TARGET's header, so no fusing with the free loop here.
+          orcAssert(j.traceStack.len == 0, "commitDead: trace stack not empty")
+          trace(cell, desc, j)
           while j.traceStack.len > 0:
             let (entry, _) = j.traceStack.pop()
             let t = head(entry.val)
             entry.slot[] = nil
             if not deadCell(t):
               trialDec(t)
-  when sizeof(int) != 8:
-    # no epoch in the stamp: clear them while all cells are still alive
-    for i in 0 ..< gCap.recs.len:
-      gCap.recs.d[i].cell.rootIdx = 0
-  for i in 0 ..< j.toFree.len:
-    when orcLeakDetector:
-      writeCell("CYCLIC OBJECT FREED", j.toFree.d[i][0], j.toFree.d[i][1])
-    free(j.toFree.d[i][0], j.toFree.d[i][1])
-  j.freed = j.toFree.len
-  deinit j.toFree
+    when sizeof(int) != 8:
+      # no epoch in the stamp: clear them while all cells are still alive
+      for i in 0 ..< cap.recs.len:
+        cap.recs.d[i].cell.rootIdx = 0
+    graceWait()
+    for i in 0 ..< j.toFree.len:
+      when orcLeakDetector:
+        writeCell("CYCLIC OBJECT FREED", j.toFree.d[i][0], j.toFree.d[i][1])
+      free(j.toFree.d[i][0], j.toFree.d[i][1])
+    j.freed = j.toFree.len
+    deinit j.toFree
 
-proc collectCyclesImpl(j: var GcEnv; lowMark: int) =
+proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
+                     wait: bool; drainAll = false): bool =
+  ## Drain pending RC operations (own stripe; all stripes for a full
+  ## collect) and try to become a collector over THIS THREAD's candidates:
+  ## claim a tag slot — the only step still under gMergeLock — and steal
+  ## the thread-local buffer as this collection's slice, lock-free. When
+  ## there is enough work but all ParSlots collections are running, `wait`
+  ## decides between parking until a slot frees (backpressure for
+  ## overflowing mutators) and giving up. Either way the drain happened,
+  ## so the caller's overflowing queue has room again.
+  result = false
+  if drainAll: drainAllStripes()
+  else: drainStripe(getStripeIdx())
+  adoptOrphans()
+  while gLocalRoots.len >= minRoots and gLocalRoots.len > keepBelow and
+      mayRunCycleCollect():
+    acquire gMergeLock
+    var slot = -1
+    for sl in 0 ..< ParSlots:
+      if atomicLoadN(addr gActiveTags[sl], ATOMIC_RELAXED) == 0:
+        slot = sl
+        break
+    if slot < 0:
+      release gMergeLock
+      if not wait: break
+      # backpressure: all ParSlots collections are running; park until one
+      # finishes (finishCollection broadcasts) instead of burning a core
+      parkUntil(anySlotFree())
+      drainStripe(getStripeIdx())   # the world moved while we waited
+      adoptOrphans()
+    else:
+      gTagCounter = (gTagCounter +% 1) and 0x7FFFFFFF
+      if gTagCounter == 0: gTagCounter = 1
+      gMyTag = gTagCounter
+      gMySlot = slot
+      var othersActive = false
+      for sl in 0 ..< ParSlots:
+        if sl != slot and atomicLoadN(addr gActiveTags[sl], ATOMIC_RELAXED) != 0:
+          othersActive = true
+      gAmSolo = not othersActive
+      if gAmSolo:
+        atomicStoreN(addr gSoloCapture, 1, ATOMIC_RELEASE)
+      atomicStoreN(addr gSlotPhase[slot], 1, ATOMIC_RELEASE)
+      atomicStoreN(addr gActiveTags[slot], gMyTag, ATOMIC_SEQ_CST)
+      release gMergeLock
+      # our buffer, our slice: no lock needed
+      if keepBelow == 0:
+        slice = gLocalRoots     # steal the whole buffer
+        init(gLocalRoots)
+      else:
+        init(slice, max(gLocalRoots.len - keepBelow, 8))
+        for i in keepBelow ..< gLocalRoots.len:
+          slice.add(gLocalRoots.d[i][0], gLocalRoots.d[i][1])
+        gLocalRoots.len = keepBelow
+      result = true
+      break
+
+proc finishCollection() =
+  atomicStoreN(addr gActiveTags[gMySlot], 0, ATOMIC_SEQ_CST)
+  atomicStoreN(addr gSlotPhase[gMySlot], 0, ATOMIC_RELEASE)
+  gMyTag = 0
+  gAmSolo = false
+  collectorEvent()   # wake backpressure and grace waiters
+
+proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
   # All destruction is deferred to collection time: plain rc==0 garbage in
   # the roots buffer forms singleton SCCs with external count 0 and is freed
   # by the same machinery as the cycles.
-  if lockState == Collecting:
-    return
-  lockState = Collecting
-  let last = roots.len -% 1
+  let last = slice.len -% 1
   when logOrc:
-    for i in countdown(last, lowMark):
-      writeCell("root", roots.d[i][0], roots.d[i][1])
+    for i in countdown(last, 0):
+      writeCell("root", slice.d[i][0], slice.d[i][1])
 
-  bumpEpoch()
   init j.traceStack
   prepareCapture()
+  let cap = addr gCap   # hoist the TLS lookup out of the hot loops
   j.nScc = 0
 
-  for i in countdown(last, lowMark):
-    capture(roots.d[i][0], roots.d[i][1], j)
-  gCap.sccMemStart.add int32(gCap.sccMembers.len)   # sentinel
-  j.touched = gCap.recs.len
+  for i in countdown(last, 0):
+    capture(slice.d[i][0], slice.d[i][1], j, cap)
+  cap.sccMemStart.add int32(cap.sccMembers.len)   # sentinel
+  j.touched = cap.recs.len
+  atomicStoreN(addr gSlotPhase[gMySlot], 2, ATOMIC_RELEASE)  # capture done
+  if gAmSolo:
+    atomicStoreN(addr gSoloCapture, 0, ATOMIC_RELEASE)
+  collectorEvent()   # wake solo-gate and grace waiters
 
-  # Unregister the processed roots before computing deadness: only cells that
-  # STAY registered (below lowMark, partial collection) count as externally
-  # referenced by the roots buffer. Doing this before freeing anything also
-  # ensures a nested collectCycles() (triggered from a destructor) cannot
-  # access freed cells.
-  for i in lowMark ..< roots.len:
-    rcClearFlag(roots.d[i][0], inRootsFlag)
-  roots.len = lowMark
+  # Unregister the processed candidates before computing deadness: only
+  # cells that STAY registered count as externally referenced by the roots
+  # buffer. Doing this before freeing anything also ensures a nested
+  # collectCycles() (triggered from a destructor) cannot access freed cells.
+  for i in 0 ..< slice.len:
+    rcClearFlag(slice.d[i][0], inRootsFlag)
 
-  computeDeadness(j)
-  commitDead(j)
+  computeDeadness(j, cap)
+  commitDead(j, cap)
   j.keepThreshold = j.freed == j.touched and j.touched > 0
 
   deinit j.traceStack
+
+proc runCollection(j: var GcEnv; slice: var CellSeq[Cell]) =
+  ## Runs one collection over the stolen slice, concurrently with mutators
+  ## AND with up to ParSlots-1 other collections over disjoint partitions.
+  yrcGcFenceEnter()      # freeze seq structure mutations, not ref writes
+  if not gAmSolo:
+    # a solo collection claims with plain stores; nobody else may claim
+    # cells until its capture phase is over
+    parkUntil(atomicLoadN(addr gSoloCapture, ATOMIC_ACQUIRE) == 0)
+  let prev = lockState
+  lockState = Collecting
+  collectCyclesImpl(j, slice)
+  lockState = prev
+  yrcGcFenceExit()
+  finishCollection()
+  deinit slice
 
 when defined(nimOrcStats):
   var freedCyclicObjects {.threadvar.}: int
@@ -740,14 +1018,22 @@ when defined(nimOrcStats):
 proc collectCycles() =
   when logOrc:
     cfprintf(cstderr, "[collectCycles] begin\n")
-  yrcCollectorLock:
-    mergePendingRoots()
-    if roots.len >= rootsThreshold and mayRunCycleCollect():
-      let nRoots = roots.len
-      var j: GcEnv
-      collectCyclesImpl(j, 0)
-      if roots.len == 0 and roots.d != nil:
-        deinit roots
+  if lockState == Collecting: return
+  if lockState == HasMutatorLock:
+    # We are inside a seq critical section (element destructors running
+    # under yrcMutatorLock, e.g. shrink or a seq's =destroy): becoming a
+    # collector here would fence-wait on our own gSeqActive counter —
+    # self-deadlock. Just make room in the overflowing queue; the next
+    # dec outside the critical section triggers the actual collection.
+    # (The pre-fence design instead released the mutator lock here.)
+    drainStripe(getStripeIdx())
+    return
+  var slice: CellSeq[Cell]
+  if startCollection(rootsThreshold, 0, slice, wait = true):
+    let nRoots = slice.len
+    var j: GcEnv
+    runCollection(j, slice)
+    block:
       when not defined(nimStressOrc):
         if j.keepThreshold:
           discard
@@ -777,12 +1063,14 @@ when defined(nimOrcStats):
     result = OrcStats(freedCyclicObjects: freedCyclicObjects)
 
 proc GC_runOrc* =
-  yrcCollectorLock:
-    mergePendingRoots()
-    if roots.len > 0 and mayRunCycleCollect():
-      var j: GcEnv
-      collectCyclesImpl(j, 0)
-  # note: aborted SCCs legitimately leave re-registered roots behind
+  if lockState == Collecting: return
+  var slice: CellSeq[Cell]
+  if startCollection(1, 0, slice, wait = true, drainAll = true):
+    var j: GcEnv
+    runCollection(j, slice)
+  # note: aborted SCCs and cross-collection targets legitimately leave
+  # re-registered roots behind; other RUNNING threads' local candidates
+  # are theirs to collect (exiting threads spill to the orphan buffer)
 
 proc GC_enableOrc*() =
   when not defined(nimStressOrc):
@@ -793,19 +1081,36 @@ proc GC_disableOrc*() =
     rootsThreshold = high(int)
 
 proc GC_prepareOrc*(): int {.inline.} =
-  yrcCollectorLock:
-    mergePendingRoots()
-    result = roots.len
+  drainAllStripes()
+  adoptOrphans()
+  result = gLocalRoots.len
 
 proc GC_partialCollect*(limit: int) =
-  yrcCollectorLock:
-    mergePendingRoots()
-    if roots.len > limit and mayRunCycleCollect():
-      var j: GcEnv
-      collectCyclesImpl(j, limit)
+  if lockState == Collecting: return
+  var slice: CellSeq[Cell]
+  if startCollection(limit + 1, limit, slice, wait = true):
+    var j: GcEnv
+    runCollection(j, slice)
 
 proc GC_fullCollect* =
   GC_runOrc()
+
+proc nimYrcThreadTeardown() =
+  ## Called when a thread exits (threadimpl): drain our stripe so nothing
+  ## of ours is stranded in a queue no other thread hashes to, then spill
+  ## our candidate buffer to the global orphan buffer, where the next
+  ## collection on any thread adopts it.
+  drainStripe(getStripeIdx())
+  if gLocalRoots.len > 0:
+    acquire gMergeLock
+    if roots.d == nil: init(roots)
+    for i in 0 ..< gLocalRoots.len:
+      add(roots, gLocalRoots.d[i][0], gLocalRoots.d[i][1])
+    release gMergeLock
+  if gLocalRoots.d != nil:
+    deinit(gLocalRoots)
+    gLocalRoots.d = nil
+    gLocalRoots.len = 0
 
 proc GC_enableMarkAndSweep*() = GC_enableOrc()
 proc GC_disableMarkAndSweep*() = GC_disableOrc()
@@ -899,9 +1204,9 @@ proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
       h.rc = h.rc or maybeCycle
 
 # Initialize locks at module load.
-# RwLock stripes live in seqs_v2 (gYrcLocks); NumLockStripes is exported from there.
-for i in 0..<NumLockStripes:
-  initRwLock(gYrcLocks[i].lock)
+initLock(gMergeLock)
+initLock(gWaitLock)
+initCond(gWaitCond)
 for i in 0..<NumStripes:
   when not defined(yrcAtomics) and not defined(nimYrcAtomicIncs):
     initLock(stripes[i].lockInc)
