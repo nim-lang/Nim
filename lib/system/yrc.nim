@@ -1,23 +1,42 @@
 #
 # YRC: Thread-safe ORC (concurrent cycle collector).
-# Same API as orc.nim but with the global mutator/collector RWLock for safety.
-# Destructors for refs run at collection time, not immediately on last decRef.
-# See yrc_proof.lean for a Lean 4 proof of safety and deadlock freedom.
+# Same API as orc.nim. Destructors for refs run at collection time, not
+# immediately on the last decRef.
+# See yrc_proof.lean for a machine-checked (Lean 4) proof of the core
+# invariants — garbage stability, validation soundness, capture partition
+# disjointness, grace periods, fence mutual exclusion, deadlock freedom —
+# and yrc_tarjan_proof.lean for soundness AND completeness of the SCC
+# deadness algorithm.
 #
-# ## Locking Protocol
+# ## Synchronization at a Glance
 #
 # Ref-field writes (`nimAsgnYrc`, `nimSinkYrc`) are LOCK-FREE: an atomic
-# incRef of the new value, an atomic exchange of the slot, and a deferred
-# decRef of the old value through the `toDec` stripe queues. Collection runs
-# concurrently with them (see "The Write Barrier" below).
+# incRef of the new value, an atomic exchange of the slot, a deferred
+# decRef of the old value enqueued into a stripe queue. The stripe queues
+# have LOCK-FREE PRODUCERS — reserve a slot by fetch-add, then publish it
+# (see the Stripe declaration for the inc/dec publication asymmetry); the
+# per-stripe consumerLock only serializes drains against each other.
 #
-# Seq mutations that change the container structure (add/grow/shrink/setLen)
-# still hold the mutator read lock, and the collector still acquires all
-# write locks for the duration of a collection. Since ref assignments no
-# longer contend on that lock, its only remaining jobs are: freezing seq
-# len/payload pairs against the collector's traversal (so no deferred buffer
-# frees and no torn len/pointer reads are possible), and collector-vs-
-# collector exclusion.
+# Candidate roots are THREAD-LOCAL (gLocalRoots): draining a thread's
+# stripe registers candidates locally, and the thread's own collections
+# steal that buffer as their root slice — the common path from
+# "suspicious dec" to "freed" never crosses a thread. Exiting threads
+# spill their buffer to a global orphan list, adopted by the next
+# collection anywhere. A cell sits in at most one buffer, guarded by an
+# atomic test-and-set of inRootsFlag; buffered cells are forced live.
+#
+# Up to MaxPar collections run CONCURRENTLY — with the mutators and with
+# each other — each capturing a disjoint partition of the heap by CAS-ing
+# a claim tag into the rootIdx header word. gMergeLock covers only the
+# tag-slot claim and orphan adoption. All waiting (for a free slot, for a
+# solo capture, for a grace period) is a bounded spin, then parking on
+# gWaitCond.
+#
+# Seq mutations that change container structure (add/grow/setLen/shrink)
+# announce themselves in the striped gSeqActive counters (seqs_v2.nim); a
+# starting collection waits for those to drain (yrcGcFenceEnter) so its
+# traversal never sees a torn len/payload pair or a freed payload. This
+# fence is the only point where mutators delay a collector.
 #
 # ## The Write Barrier
 #
@@ -31,7 +50,9 @@
 #   the *next* collection's merge: deletions can only make the captured
 #   graph look MORE alive, never less.
 # * Stack copies enqueue into `toInc` (buffered incs).
-# * Only `nimAsgnYrc`'s incRef mutates rc words directly (atomically).
+# * Direct rc mutations (`nimAsgnYrc`'s incRef, queue drains, overflow
+#   incs) are atomic RMWs — globally visible when they retire, which the
+#   commit-time rc validation relies on.
 #
 # So the commit-time validation is:
 #   1. Any cell sitting in a `toInc`/`toDec` queue had its reference set
@@ -54,9 +75,10 @@
 #
 # 1. Capture: one Tarjan SCC traversal over everything reachable from the
 #    candidate roots. Node -> dense index lookup is O(1) without hashing:
-#    the spare `rootIdx` header word (unused by YRC otherwise) is stamped
-#    with an epoch-tagged discovery index, so stale stamps never need
-#    clearing. Everything else lives in side arrays (SoA layout).
+#    the spare `rootIdx` header word is CAS-claimed with the collection's
+#    tag packed with the discovery index; stale tags of retired
+#    collections never need clearing. Everything else lives in side
+#    arrays (SoA layout).
 #
 # 2. Deadness: pure array work on the captured SCC condensation, no heap
 #    access. An SCC is garbage iff it has no references beyond its internal
@@ -66,20 +88,36 @@
 #    Tarjan emits SCCs sinks-first, so one linear scan in reverse emission
 #    order settles every SCC (sources before their targets).
 #
-# 3. Commit: only members of dead SCCs are touched. Every slot of a dead
-#    member is nil'ed; slots pointing at survivors decrement the survivor's
-#    rc for real (edges inside the dead group die with the group). Then the
-#    members are destroyed and freed. Because the slots are nil by the time
-#    destructors run, destructors cannot re-enter the decRef machinery for
-#    the already-processed edges.
+# 3. Validate & commit: after validation (dirty peek + rc recheck, with
+#    demotions propagated to captured cross targets) and a grace period
+#    (foreign captures may still hold stale slot snapshots), only members
+#    of dead SCCs are touched. Every slot of a dead member is nil'ed;
+#    slots pointing at survivors decrement the survivor's rc for real
+#    (edges inside the dead group die with the group). Then the members
+#    are destroyed and freed — the slots are nil by the time destructors
+#    run, so destructors cannot re-enter the decRef machinery for the
+#    already-processed edges. When everything captured died and no
+#    cross-collection or pruned edge was seen, nil+free fuse into a
+#    single pass.
 #
 # This structure visits each edge at most twice (capture + commit of the
 # dead subset) instead of up to three times, and — because the outcome is
-# decided on captured data and the heap is only written in commit — it is
-# the stepping stone towards optimistic, lock-free collection: replace the
-# frozen-heap invariant with a SATB write barrier plus commit-time
-# validation (rc word unchanged since capture, no barrier hit on a member)
-# and the same three phases run concurrently with mutators.
+# decided on captured data and the heap is only written in commit —
+# capture runs OPTIMISTICALLY, concurrent with mutators and with other
+# collections, with the validation above as the safety net.
+#
+# ## Generational Epoch Stamps
+#
+# Commit re-stamps the cells it PROVED live with the current epoch and
+# their survival age (same rootIdx word, in a namespace disjoint from the
+# claim tags). Within that epoch, captures treat a stamped DESCENDANT of
+# promoted age as an opaque live external and do not descend: long-lived
+# structures are traced once per epoch instead of once per collection,
+# while die-young data — never promoted — is never deferred. Roots always
+# bypass stamps (every death has a dec-witness that gets registered, and
+# registered cells are always scanned as roots), and explicit full
+# collects advance the epoch first, staying exhaustive. The price is
+# floating garbage bounded by ~2 epochs.
 #
 # ## Why No Lost Objects
 #
@@ -101,11 +139,9 @@ import std/locks
 const
   NumStripes = 64
   QueueSize {.intdefine.} = 128   # override with -d:QueueSize=N
-  RootsThreshold = 10
 
-  colBlack = 0b000
-  colGray = 0b001
-  colWhite = 0b010
+  # rc-word flag bits, layout shared with ORC. YRC does no tricolor
+  # marking; colorMask survives only for the debug printout.
   maybeCycle = 0b100
   inRootsFlag = 0b1000
   colorMask = 0b011
@@ -113,7 +149,6 @@ const
 
 type
   TraceProc = proc (p, env: pointer) {.nimcall, gcsafe, raises: [].}
-  DisposeProc = proc (p: pointer) {.nimcall, gcsafe, raises: [].}
 
 # With lock-free ref assignments, rc words are mutated concurrently with the
 # collector (direct atomic incRefs), so all collector-side rc accesses must
@@ -132,14 +167,6 @@ when useAtomicRc:
       var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
       while true:
         let desired = expected and not flag
-        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
-                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
-          break
-  template rcSetFlag(c, flag) =
-    block:
-      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
-      while true:
-        let desired = expected or flag
         if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
                                    ATOMIC_ACQ_REL, ATOMIC_RELAXED):
           break
@@ -162,7 +189,6 @@ else:
   template trialDec(c) = c.rc = c.rc -% rcIncrement
   template trialInc(c) = c.rc = c.rc +% rcIncrement
   template rcClearFlag(c, flag) = c.rc = c.rc and not flag
-  template rcSetFlag(c, flag) = c.rc = c.rc or flag
   template rcTestSetFlag(c, flag): bool =
     block:
       let won = (c.rc and flag) == 0
@@ -247,9 +273,9 @@ type
     sccOf: int32              # -1 while the cell is on the Tarjan stack
 
   CaptureBufs = object
-    ## side structure of a collection; persistent across collections (only
-    ## the collector, under the global write lock, ever touches it) so that
-    ## frequent small collections don't pay per-collection allocations
+    ## side structure of a collection; per collector thread (gCap is a
+    ## threadvar) and persistent across collections, so that frequent
+    ## small collections don't pay per-collection allocations
     recs: RawSeq[CaptureRec]
     tstack: RawSeq[int32]
     frames: RawSeq[TarjanFrame]
@@ -403,19 +429,32 @@ else:
 
 type
   Stripe = object
-    when not defined(yrcAtomics):
-      lockInc: Lock
-    toIncLen: int
+    consumerLock: Lock
+      ## consumers (drains) exclude each other; producers and the
+      ## validation peek are lock-free
+    toIncLen: int     # reservation counters; may exceed QueueSize under
+    toDecLen: int     # overflow — reservations past QueueSize never write
     toInc: array[QueueSize, Cell]
-    lockDec: Lock
-    toDecLen: int
+      ## produced lock-free: reserve via fetch-add, publish the cell with
+      ## an atomic EXCHANGE (non-nil = ready; globals start zeroed and the
+      ## consumer nils consumed slots). The publish must be an RMW, not a
+      ## release store: a queued inc means the rc word UNDER-counts a live
+      ## reference, so the validation peek must reliably observe every
+      ## entry of a completed barrier — an RMW is globally ordered when it
+      ## retires, a release store could still sit in a store buffer.
     toDec: array[QueueSize, (Cell, PNimTypeV2)]
+      ## produced lock-free: reserve via fetch-add, store the cell, then
+      ## publish by storing the desc with release order (desc != nil =
+      ## ready). A plain release suffices here: a pending dec leaves the
+      ## target's rc with an unexplained surplus that forces it live even
+      ## if a peek misses the entry.
 
 type
   PreventThreadFromCollectProc* = proc(): bool {.nimcall, gcsafe, raises: [].}
     ## Callback run before this thread runs the cycle collector.
     ## Return `true` to allow collection, `false` to skip (e.g. real-time thread).
-    ## Invoked while holding the global lock; must not call back into YRC.
+    ## Invoked lock-free before this thread would start a collection;
+    ## must not call back into YRC.
 
 var
   roots: CellSeq[Cell]  # ORPHANED candidates only: spilled by exiting
@@ -471,39 +510,18 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
     if cyclic: h.rc = h.rc or maybeCycle
   when defined(nimYrcAtomicIncs):
     discard atomicFetchAdd(addr h.rc, rcIncrement, ATOMIC_ACQ_REL)
-  elif defined(yrcAtomics):
-    let s = getStripeIdx()
-    let slot = atomicFetchAdd(addr stripes[s].toIncLen, 1, ATOMIC_ACQ_REL)
-    if slot < QueueSize:
-      atomicStoreN(addr stripes[s].toInc[slot], h, ATOMIC_RELEASE)
-    else:
-      trialInc(h)
-      for i in 0..<NumStripes:
-        let len = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
-        for j in 0..<min(len, QueueSize):
-          let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-          trialInc(x)
   else:
+    # LOCK-FREE producer: reserve, then publish with an atomic exchange
+    # (see the Stripe declaration for why an RMW and not a release store)
     let idx = getStripeIdx()
-    while true:
-      var overflow = false
-      withLock stripes[idx].lockInc:
-        if stripes[idx].toIncLen < QueueSize:
-          stripes[idx].toInc[stripes[idx].toIncLen] = h
-          stripes[idx].toIncLen += 1
-        else:
-          overflow = true
-      if overflow:
-        # flush the inc queues directly: incs are atomic, so this is safe
-        # concurrently with running collections (whose commit-time rc
-        # validation observes the change)
-        for i in 0..<NumStripes:
-          withLock stripes[i].lockInc:
-            for j in 0..<stripes[i].toIncLen:
-              trialInc(stripes[i].toInc[j])
-            stripes[i].toIncLen = 0
-      else:
-        break
+    let slot = atomicFetchAdd(addr stripes[idx].toIncLen, 1, ATOMIC_ACQ_REL)
+    if slot < QueueSize:
+      discard atomicExchangeN(addr stripes[idx].toInc[slot], h, ATOMIC_ACQ_REL)
+    else:
+      # queue full: apply the inc directly — it is atomic, so a running
+      # collection observes it through the commit-time rc validation.
+      # Buffering resumes once the next drain resets the queue.
+      trialInc(h)
 
 when defined(nimOrcStats):
   var
@@ -539,24 +557,59 @@ proc drainStripe(i: int) =
   ## dead-looking cells become THIS thread's candidates. rc mutations are
   ## atomic, so no global lock is needed: a running collection observes
   ## them through its commit-time validation (rc recheck / dirty peek).
-  when not defined(nimYrcAtomicIncs):
-    # Inc buffers only exist when increfs are buffered (not atomic)
-    when defined(yrcAtomics):
-      let incLen = atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQUIRE)
-      for j in 0..<min(incLen, QueueSize):
-        let x = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
-        trialInc(x)
-    else:
-      withLock stripes[i].lockInc:
-        for j in 0..<stripes[i].toIncLen:
-          trialInc(stripes[i].toInc[j])
-        stripes[i].toIncLen = 0
-  withLock stripes[i].lockDec:
-    for j in 0..<stripes[i].toDecLen:
-      let (c, desc) = stripes[i].toDec[j]
-      trialDec(c)
-      registerLocal(c, desc)
-    stripes[i].toDecLen = 0
+  ## The consumerLock excludes other drains; producers run free. Each
+  ## queue is consumed the same way: process published entries, wait out
+  ## the (two-instruction) publication window of in-flight reservers,
+  ## then close the batch with a CAS — a plain reset could orphan a slot
+  ## a producer is publishing into. Reservations past QueueSize never
+  ## wrote anything, so an overflowed counter is hard-reset.
+  withLock stripes[i].consumerLock:
+    when not defined(nimYrcAtomicIncs):
+      # apply pending incs FIRST: an inc entry means the rc word
+      # under-counts, so its cell must be raised before decs can free
+      var consumedInc = 0
+      while true:
+        let reserved = atomicLoadN(addr stripes[i].toIncLen, ATOMIC_ACQUIRE)
+        let n = min(reserved, QueueSize)
+        for j in consumedInc ..< n:
+          var c = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
+          while c == nil:
+            c = atomicLoadN(addr stripes[i].toInc[j], ATOMIC_ACQUIRE)
+          trialInc(c)
+          atomicStoreN(addr stripes[i].toInc[j], cast[Cell](nil),
+                       ATOMIC_RELAXED)
+        consumedInc = n
+        if reserved >= QueueSize:
+          discard atomicExchangeN(addr stripes[i].toIncLen, 0, ATOMIC_ACQ_REL)
+          break
+        else:
+          var cur = reserved
+          if atomicCompareExchangeN(addr stripes[i].toIncLen, addr cur, 0,
+                                     false, ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+            break
+    var consumed = 0
+    while true:
+      let reserved = atomicLoadN(addr stripes[i].toDecLen, ATOMIC_ACQUIRE)
+      let n = min(reserved, QueueSize)
+      for j in consumed ..< n:
+        var desc = atomicLoadN(addr stripes[i].toDec[j][1], ATOMIC_ACQUIRE)
+        while desc == nil:
+          desc = atomicLoadN(addr stripes[i].toDec[j][1], ATOMIC_ACQUIRE)
+        let c = stripes[i].toDec[j][0]
+        trialDec(c)
+        registerLocal(c, desc)
+        atomicStoreN(addr stripes[i].toDec[j][1], cast[PNimTypeV2](nil),
+                     ATOMIC_RELAXED)
+      consumed = n
+      if reserved >= QueueSize:
+        discard atomicExchangeN(addr stripes[i].toDecLen, 0, ATOMIC_ACQ_REL)
+        break
+      else:
+        var cur = reserved
+        if atomicCompareExchangeN(addr stripes[i].toDecLen, addr cur, 0, false,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+        # new reservations arrived during processing: consume them too
 
 proc drainAllStripes() =
   ## Full-collect path: apply every pending RC operation; every resulting
@@ -863,32 +916,36 @@ proc markDirtyFromQueues(j: var GcEnv; cap: ptr CaptureBufs) =
       cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagDirty
   for i in 0..<NumStripes:
     when not defined(nimYrcAtomicIncs):
-      when defined(yrcAtomics):
-        let incLen = min(atomicLoadN(addr stripes[i].toIncLen, ATOMIC_ACQUIRE), QueueSize)
-        for k in 0..<incLen:
-          taint atomicLoadN(addr stripes[i].toInc[k], ATOMIC_ACQUIRE)
-      else:
-        withLock stripes[i].lockInc:
-          for k in 0..<stripes[i].toIncLen:
-            taint stripes[i].toInc[k]
-    withLock stripes[i].lockDec:
-      for k in 0..<stripes[i].toDecLen:
+      # lock-free peek. This one is LOAD-BEARING (an inc entry means the
+      # rc word under-counts a live reference), which is why the producer
+      # publishes with an RMW: every completed barrier's entry is globally
+      # visible here. A nil slot is a barrier mid-publication — at most one
+      # per thread, and the chain of custody for how that thread OBTAINED
+      # the reference is older, completed and therefore observable.
+      let incLen = min(atomicLoadN(addr stripes[i].toIncLen, ATOMIC_ACQUIRE),
+                       QueueSize)
+      for k in 0..<incLen:
+        let c = atomicLoadN(addr stripes[i].toInc[k], ATOMIC_ACQUIRE)
+        if c != nil: taint c
+    # lock-free peek: skip slots whose publish has not landed yet. Sound:
+    # a pending deferred dec leaves the target's rc counting a ref whose
+    # edge the capture no longer traverses — an unexplained +1 that forces
+    # the target live no matter what (deletions only make the captured
+    # graph look MORE alive). The taint here is belt and braces.
+    let decLen = min(atomicLoadN(addr stripes[i].toDecLen, ATOMIC_ACQUIRE),
+                     QueueSize)
+    for k in 0..<decLen:
+      if atomicLoadN(addr stripes[i].toDec[k][1], ATOMIC_ACQUIRE) != nil:
         taint stripes[i].toDec[k][0]
 
-proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
-  ## Demote every dead SCC that a mutator touched during capture: dirty via
-  ## the queues, or a direct incRef visible as a changed rc word. Demoted
-  ## SCCs become ordinary survivors (so committed neighbors decrement into
-  ## them correctly) and one member is re-registered as a candidate root so
-  ## the SCC is re-examined by the next collection.
-  markDirtyFromQueues(j, cap)
-  # Descending ids = the deadness scan's order (sources before sinks):
-  # a demotion must propagate to the SCC's dead cross targets, whose
-  # deadIn had explained the edges away only under the assumption that
-  # this SCC dies with them. The demoted SCC survives with its slots
-  # intact, so any target left dead would be freed under a surviving
-  # reference. Targets have lower ids, so tainting them here demotes
-  # them (transitively) later in this very loop.
+proc demoteTouchedDead(j: var GcEnv; cap: ptr CaptureBufs) =
+  ## One descending demotion pass. Descending ids = the deadness scan's
+  ## order (sources before sinks): a demotion must propagate to the SCC's
+  ## dead cross targets, whose deadIn had explained the edges away only
+  ## under the assumption that this SCC dies with them. The demoted SCC
+  ## survives with its slots intact, so any target left dead would be
+  ## freed under a surviving reference. Targets have lower ids, so
+  ## tainting them here demotes them (transitively) later in this loop.
   for s in countdown(j.nScc - 1, 0):
     if (cap.sccFlags.d[s] and flagDead) != 0:
       var ok = (cap.sccFlags.d[s] and flagDirty) == 0
@@ -913,6 +970,25 @@ proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
       # once the epoch advances)
       let m = cap.sccMembers.d[cap.sccMemStart.d[s]]
       registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
+
+proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
+  ## Demote every dead SCC that a mutator touched during capture: dirty via
+  ## the queues, or a direct incRef visible as a changed rc word. Demoted
+  ## SCCs become ordinary survivors (so committed neighbors decrement into
+  ## them correctly) and one member is re-registered as a candidate root so
+  ## the SCC is re-examined by the next collection.
+  ##
+  ## ONE peek before the rc rechecks suffices; there is no peek→commit
+  ## TOCTOU. To enqueue an op on X a mutator must HOLD X, and its chain of
+  ## custody regresses to evidence this validation already checks: a ref
+  ## counted at capture (X was never classified dead), a direct incRef
+  ## since capture (rc-word recheck, which runs AFTER the peek), or a
+  ## buffered stack inc — still queued (this peek saw it) or drained
+  ## (rc word changed before the recheck). New entries after the peek
+  ## carry no new information about X's deadness. See "Why No Lost
+  ## Objects" above and yrc_proof.lean §3–§4.
+  markDirtyFromQueues(j, cap)
+  demoteTouchedDead(j, cap)
 
 proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   validateDead(j, cap)
@@ -1145,14 +1221,15 @@ when defined(nimOrcStats):
 proc collectCycles() =
   when logOrc:
     cfprintf(cstderr, "[collectCycles] begin\n")
-  if lockState == Collecting: return
-  if lockState == HasMutatorLock:
-    # We are inside a seq critical section (element destructors running
-    # under yrcMutatorLock, e.g. shrink or a seq's =destroy): becoming a
-    # collector here would fence-wait on our own gSeqActive counter —
-    # self-deadlock. Just make room in the overflowing queue; the next
-    # dec outside the critical section triggers the actual collection.
-    # (The pre-fence design instead released the mutator lock here.)
+  if lockState == Collecting or lockState == HasMutatorLock:
+    # Cannot start a nested collection:
+    #   Collecting — destructor-driven decs during free can fill the
+    #     stripe; re-entering would corrupt collector state. Returning
+    #     without draining used to livelock the enqueue spin.
+    #   HasMutatorLock — becoming a collector would fence-wait on our
+    #     own gSeqActive counter (self-deadlock).
+    # Just make room in the overflowing queue; a later dec outside this
+    # context triggers the actual collection.
     drainStripe(getStripeIdx())
     return
   var slice: CellSeq[Cell]
@@ -1265,24 +1342,27 @@ else:
   template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
     (desc.flags and acyclicFlag) == 0
 
+proc enqueueDec(cell: Cell; desc: PNimTypeV2) {.inline.} =
+  ## LOCK-FREE producer for the deferred-dec queue: reserve a slot with a
+  ## fetch-add, store the cell, then publish by storing the desc (release;
+  ## desc != nil is the ready marker consumers wait for/skip). A reservation
+  ## past QueueSize never writes anything — the reserver makes room by
+  ## draining (collectCycles always at least drains our own stripe, even
+  ## when nested in a collection or a seq critical section) and retries
+  ## with a fresh reservation.
+  let idx = getStripeIdx()
+  while true:
+    let slot = atomicFetchAdd(addr stripes[idx].toDecLen, 1, ATOMIC_ACQ_REL)
+    if slot < QueueSize:
+      stripes[idx].toDec[slot][0] = cell
+      atomicStoreN(addr stripes[idx].toDec[slot][1], desc, ATOMIC_RELEASE)
+      break
+    collectCycles()
+
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   result = false
   if p != nil:
-    let cell = head(p)
-    let desc = cast[ptr PNimTypeV2](p)[]
-    let idx = getStripeIdx()
-    while true:
-      var overflow = false
-      withLock stripes[idx].lockDec:
-        if stripes[idx].toDecLen < QueueSize:
-          stripes[idx].toDec[stripes[idx].toDecLen] = (cell, desc)
-          stripes[idx].toDecLen += 1
-        else:
-          overflow = true
-      if overflow:
-        collectCycles()
-      else:
-        break
+    enqueueDec(head(p), cast[ptr PNimTypeV2](p)[])
 
 proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
   nimDecRefIsLastCyclicDyn(p)
@@ -1290,20 +1370,7 @@ proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   result = false
   if p != nil:
-    let cell = head(p)
-    let idx = getStripeIdx()
-    while true:
-      var overflow = false
-      withLock stripes[idx].lockDec:
-        if stripes[idx].toDecLen < QueueSize:
-          stripes[idx].toDec[stripes[idx].toDecLen] = (cell, desc)
-          stripes[idx].toDecLen += 1
-        else:
-          overflow = true
-      if overflow:
-        collectCycles()
-      else:
-        break
+    enqueueDec(head(p), desc)
 
 proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   dest[] = src
@@ -1349,8 +1416,6 @@ initLock(gMergeLock)
 initLock(gWaitLock)
 initCond(gWaitCond)
 for i in 0..<NumStripes:
-  when not defined(yrcAtomics) and not defined(nimYrcAtomicIncs):
-    initLock(stripes[i].lockInc)
-  initLock(stripes[i].lockDec)
+  initLock(stripes[i].consumerLock)
 
 {.pop.}
