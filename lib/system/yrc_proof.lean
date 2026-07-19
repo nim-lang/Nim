@@ -713,6 +713,33 @@ theorem no_deadlock_from_total_order {n : Nat}
   • Tag wrap-around: 2³¹ collections completing during one collection's
     lifetime could forge a stale stamp (noted at `tags_distinct`).
 
+  ## Epoch stamps (generational pruning)
+
+  Commit re-stamps proven-live cells with (epochBase|epoch, survivalAge)
+  in the claim word; a capture treats a current-epoch stamp of age ≥
+  YrcPromoteAge on a DESCENDANT as an opaque live external and does not
+  descend. Soundness needs no new lemmas: a pruned cell is simply an
+  uncaptured cell, so the captured set shrinks and every §3–§6 statement
+  quantifies over a smaller S. Pruning can only ADD unexplained external
+  refs to captured SCCs (a pruned predecessor's refs are never explained
+  by internal/deadIn), so it can force a false "live", never a false
+  "dead" — the conservative direction. Completeness (bounded float,
+  ≤ ~2 epochs) rests on four hooks, each keeping a dec-witness
+  registered:
+    E1  roots never prune: a registered candidate is always fully
+        root-scanned, stamps notwithstanding;
+    E2  an SCC that pruned an out-edge and survives keeps one member
+        registered (flagPruned) — its "live" verdict may lean on a stamp
+        that went stale within the epoch;
+    E3  a commit-time dec into a stamped cell re-registers the target —
+        the dec may be the death blow to a cell no collection analyzed;
+    E4  explicit full collects advance the epoch first, so all stamps
+        are stale and nothing is pruned.
+  Not formalized. Also noted: the epoch clock counts collections, and
+  short epochs (≲ 4) resonate with the adaptive threshold — pruned
+  collections are cheap, so collections and hence epoch turns speed up,
+  re-tracing MORE than with no stamps; a work-based clock would fix it.
+
   Reference: D.F. Bacon and V.T. Rajan, "Concurrent Cycle Collection in
   Reference Counted Systems", ECOOP 2001 — the deadness arithmetic is
   the condensation form of their trial deletion; the capture/validate/
