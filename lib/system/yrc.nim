@@ -372,13 +372,22 @@ const
   SpinBeforePark = 4000
   YrcEpochLen {.intdefine.} = 64  # collections per epoch; bounds how long a
                                   # stale "proven live" stamp defers rescans.
-                                  # Short epochs resonate badly with the
-                                  # adaptive threshold: pruned collections
-                                  # are cheap, so collections speed up — and
-                                  # with them the epoch clock, forcing full
-                                  # re-traces MORE often than no stamps at
-                                  # all. (A work-based clock would fix this
-                                  # properly.)
+                                  # Short epochs (≲ 4) resonate with the
+                                  # adaptive threshold: pruned collections are
+                                  # cheap, so collections speed up — and with
+                                  # them the epoch clock, forcing full re-traces
+                                  # MORE often than no stamps at all. 64 sits
+                                  # clear of that. A WORK-based clock (advance
+                                  # per N cells traced, decoupled from the
+                                  # collection count) was tried to kill the
+                                  # resonance at its root; it lost on webbench
+                                  # at every threshold — both slower (~65-90 vs
+                                  # ~50 ms) and ~30% more float — because
+                                  # pruning shrinks trace work, so the clock
+                                  # stalls exactly when a long-lived web should
+                                  # be re-examined. The resonance only bites
+                                  # below ~4, which 64 already avoids, so there
+                                  # was no live problem to trade float for.
   YrcPromoteAge {.intdefine.} = 3 # captures a cell must survive before its
                                   # stamp prunes. Die-young data must never
                                   # be deferred: torcbench-style lists are
@@ -953,10 +962,19 @@ proc demoteTouchedDead(j: var GcEnv; cap: ptr CaptureBufs) =
             cap.sccs.d[t].flags = cap.sccs.d[t].flags or flagDirty
         let m = cap.sccMembers.d[cap.sccs.d[s].memStart]
         registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
-    elif (cap.sccs.d[s].flags and flagPruned) != 0:
-      # survives, but its liveness may rest on a stale epoch stamp: keep
-      # one member registered so the verdict is retried (fully re-examined
-      # once the epoch advances)
+    elif cap.prunedSrc.len > 0:
+      # A prune happened somewhere in THIS collection, so every "live" verdict
+      # it produced is suspect: a pruned cell is not traced, yet its out-edges
+      # still count toward its targets' rc. If that pruned cell is itself dead
+      # (promoted while live, died later this epoch), its phantom references
+      # inflate unrelated SCCs' external counts and misclassify genuinely dead
+      # SCCs as plain survivors. Such a survivor is not flagPruned, so without
+      # this it would be re-stamped, dropped from the retry set, and orphaned
+      # forever once its last flagPruned neighbor resolves. Keeping ONE member
+      # of every survivor registered guarantees it is re-examined until the
+      # epoch advances, captures the dead promoted cells, and decrements the
+      # phantom edges away. Cheap in practice: pruning keeps the captured set
+      # small, so "every survivor" is only the few cells actually traced.
       let m = cap.sccMembers.d[cap.sccs.d[s].memStart]
       registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
 
