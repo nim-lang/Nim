@@ -579,6 +579,19 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
       # first NIF import is processed. See finalizeLoadedModules.
       finalizeLoadedModules(graph)
     discard graph.compilePipelineModule(projectFile, {sfMainModule})
+    # A batch (`--icGroup`) may hold several independent "top" modules that are
+    # not all reachable by import from the representative project file: a dirty
+    # module together with its users forms a DAG, not a cycle, so descending
+    # from one rep need not touch every member. Compile each remaining member
+    # explicitly so it writes its NIF. compilePipelineModule is idempotent
+    # (returns the cached module for one already reached through the rep's
+    # imports), and an unreached member is in `icGroup` so it is source-compiled
+    # here rather than NIF-loaded; resolving it pulls in its in-batch deps on
+    # demand, so no explicit ordering is needed.
+    for path in graph.config.icGroup:
+      let memberIdx = fileInfoIdx(graph.config, AbsoluteFile path)
+      if memberIdx != projectFile:
+        discard graph.compilePipelineModule(memberIdx, {})
   else:
     graph.compilePipelineSystemModule()
     discard graph.compilePipelineModule(projectFile, {sfMainModule})

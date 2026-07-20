@@ -741,6 +741,130 @@ proc computeSCCs(c: DepContext): seq[seq[int]] =
         if work.len > 0:
           lowlink[work[^1].v] = min(lowlink[work[^1].v], lowlink[v])
 
+proc nodeIsStale(c: DepContext; node: Node): bool =
+  ## Driver-time estimate of "this module's `nim m` will (re)run this round",
+  ## matching what nifmake decides from file mtimes. The driver runs BEFORE the
+  ## nifmake pass, so the `.p.nif` parsed file still reflects the *previous* run
+  ## (runNifler even deletes a source-newer one); the stable signal available
+  ## here is the source `.nim` against the last semmed NIF (`.s.bif`).
+  ##
+  ## Only the estimate's *precision* matters, never correctness: nifmake still
+  ## mtime-checks every emitted rule, so an over-estimate produces a batch it
+  ## then skips, and an under-estimate leaves a singleton rule it rebuilds
+  ## anyway (see computeBatches).
+  for f in node.files:  # main file + its includes
+    let semmed = c.semmedFile(f)
+    if not fileExists(semmed): return true          # never semmed (cold)
+    if not fileExists(c.parsedFile(f)): return true # parsed dropped by runNifler
+    let semmedTime = getLastModificationTime(semmed)
+    if fileExists(f.nimFile) and getLastModificationTime(f.nimFile) > semmedTime:
+      return true                                    # edited since last sem
+  result = false
+
+proc computeBatches(c: DepContext): seq[seq[int]] =
+  ## Group SCCs into build batches for the frontend `nim m` rules. A batch is a
+  ## *dirty module together with the transitive closure of its users* (the
+  ## modules that import it, directly or transitively). Rationale: editing a
+  ## module flips its cookies and forces every dependent to re-sem, and that
+  ## re-sem set is a deep import chain that nifmake schedules one depth-level at
+  ## a time — so `--parallel` never speeds it up while every process pays full
+  ## startup + import-NIF-closure load. Compiling the whole closure in one
+  ## `nim m --icGroup` process (source-compiling every member, resolving the
+  ## imports in memory) amortizes that overhead across the affected set.
+  ##
+  ## Safety (why a wrong dirty estimate cannot corrupt output):
+  ## * every rule still declares its real inputs/outputs, so nifmake skips a
+  ##   batch whose files are all fresh and rebuilds a missed module through its
+  ##   own singleton rule;
+  ## * batches are a partition of the SCC condensation, so each NIF keeps a
+  ##   single writer (no two processes mint divergent instance ids into one NIF);
+  ## * the closure is convex in the condensation DAG (any node on an import path
+  ##   between two batch members also reaches the seed, so it is in the batch),
+  ##   so dropping intra-batch edges cannot create a batch<->external nifmake
+  ##   cycle.
+  ##
+  ## `-d:icNoBatch` restores pure per-SCC grouping (the pre-batching behaviour).
+  let sccs = computeSCCs(c)
+  if isDefined(c.config, "icNoBatch") or sccs.len == 0:
+    return sccs
+  let numSccs = sccs.len
+  var sccOf = newSeq[int](c.nodes.len)
+  for sid, comp in sccs:
+    for nodeIdx in comp: sccOf[nodeIdx] = sid
+
+  # SCCs that must never be merged into a batch: system.nim's folded closure and
+  # the `--import:` implicit modules. They stay their own groups exactly as
+  # today, so the cmdM bootstrap that NIF-loads `system` is untouched; on a cold
+  # build the rest of the program forms one big batch that NIF-loads system
+  # rather than recompiling it in every process.
+  var pinned = newSeq[bool](numSccs)
+  if c.systemNodeId >= 0: pinned[sccOf[c.systemNodeId]] = true
+  for id in c.implicitNodeIds: pinned[sccOf[id]] = true
+
+  # Condensation edges. `rev[b]` = SCCs that import b (its users); `fwd` is used
+  # only to union connected dirty SCCs into one component.
+  var fwd = newSeq[HashSet[int]](numSccs)
+  var rev = newSeq[HashSet[int]](numSccs)
+  for v in 0 ..< c.nodes.len:
+    for w in c.nodes[v].deps:
+      let a = sccOf[v]
+      let b = sccOf[w]
+      if a != b:
+        fwd[a].incl b
+        rev[b].incl a
+
+  # Seed = a non-pinned SCC with any stale member (edited/missing NIF).
+  # mustRecompile = seeds plus every SCC that transitively imports a seed,
+  # walked over reverse condensation edges (a seed's users).
+  var must = newSeq[bool](numSccs)
+  var queue: seq[int] = @[]
+  for sid, comp in sccs:
+    if pinned[sid]: continue
+    for nodeIdx in comp:
+      if nodeIsStale(c, c.nodes[nodeIdx]):
+        must[sid] = true
+        queue.add sid
+        break
+  while queue.len > 0:
+    let s = queue.pop()
+    for u in rev[s]:
+      if not must[u] and not pinned[u]:
+        must[u] = true
+        queue.add u
+
+  # Union-Find the mustRecompile SCCs connected by any condensation edge; each
+  # connected component becomes one batch, every other SCC stays its own batch.
+  var parent = newSeq[int](numSccs)
+  for i in 0 ..< numSccs: parent[i] = i
+  proc find(x: int): int =
+    var x = x
+    while parent[x] != x:
+      parent[x] = parent[parent[x]]  # path halving
+      x = parent[x]
+    x
+  for a in 0 ..< numSccs:
+    if not must[a]: continue
+    for b in fwd[a]:
+      if must[b]:
+        let ra = find(a)
+        let rb = find(b)
+        if ra != rb: parent[ra] = rb
+
+  # Assemble: one entry per batch, in first-seen (reverse-topological) SCC order.
+  # A merged batch is keyed by its union-find root (a `must` sid); a singleton is
+  # keyed by its own sid (a non-`must` sid) — the two key spaces are disjoint, so
+  # they never collide.
+  result = @[]
+  var batchIndex = initTable[int, int]()
+  for sid in 0 ..< numSccs:
+    let key = if must[sid]: find(sid) else: sid
+    let bi = batchIndex.getOrDefault(key, -1)
+    if bi == -1:
+      batchIndex[key] = result.len
+      result.add sccs[sid]
+    else:
+      for nodeIdx in sccs[sid]: result[bi].add nodeIdx
+
 proc computeForwardedArgs(c: DepContext): seq[string] =
   ## Config/define forwarding shared by the frontend (`nim m`) and backend
   ## (`nim nifc`) child commands. Depends only on the driver's config, not on
@@ -868,21 +992,28 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
 
   # Build rules for semantic checking (nim m).
   #
-  # Modules are grouped into strongly-connected components: a module that is not
-  # in an import cycle is its own singleton group and compiles in its own
-  # `nim m <mod>` invocation as before. A cycle (A imports B, B imports A) cannot
-  # be ordered for separate per-module compilation, so the whole component is
-  # handed to a single `nim m` invocation: the first member is the project file,
-  # every member is passed via `--icGroup:<path>` so the compiler compiles them
-  # all from source in one process (resolving the recursion in-memory) and writes
-  # a NIF for each. Only dependencies *outside* the component become build-graph
-  # inputs — intra-component edges are produced by this very rule and listing
-  # them would reintroduce the cycle nifmake just rejected.
-  let sccs = computeSCCs(c)
-  var sccOf = newSeq[int](c.nodes.len)
-  for sccId, comp in sccs:
-    for nodeIdx in comp: sccOf[nodeIdx] = sccId
-  for comp in sccs:
+  # Modules are grouped into BATCHES (computeBatches). A batch is one or more
+  # strongly-connected components merged together, handed to a single `nim m`
+  # invocation: the first member is the project file, every member is passed via
+  # `--icGroup:<path>` so the compiler compiles them all from source in one
+  # process (resolving imports/recursion in-memory) and writes a NIF for each.
+  # Only dependencies *outside* the batch become build-graph inputs — intra-batch
+  # edges are produced by this very rule and listing them would reintroduce a
+  # cycle nifmake would reject.
+  #
+  # Two things drive a multi-module batch:
+  #   * an import CYCLE (A imports B, B imports A) cannot be ordered for separate
+  #     per-module compilation, so its whole SCC is one group (as before); and
+  #   * a DIRTY module together with its transitive USERS — editing a module
+  #     forces every dependent to re-sem, a serial import chain that per-process
+  #     fan-out cannot speed up; batching compiles the whole affected closure in
+  #     one process. A module that is neither in a cycle nor in a dirty closure
+  #     stays its own singleton `nim m <mod>` rule.
+  let batches = computeBatches(c)
+  var batchOf = newSeq[int](c.nodes.len)
+  for batchId, comp in batches:
+    for nodeIdx in comp: batchOf[nodeIdx] = batchId
+  for comp in batches:
     # Representative (project file for this invocation) = smallest node id, so a
     # component containing the root (node 0) is driven by the root.
     var members = comp
@@ -932,7 +1063,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
       var stack: seq[int] = @[]
       for m in members:
         for depIdx in c.nodes[m].deps:
-          if sccOf[depIdx] != sccOf[members[0]]: stack.add depIdx
+          if batchOf[depIdx] != batchOf[members[0]]: stack.add depIdx
       var visited = initHashSet[int]()
       while stack.len > 0:
         let n = stack.pop()
@@ -946,7 +1077,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
     var directDeps = initHashSet[string]()
     for m in members:
       for depIdx in c.nodes[m].deps:
-        if sccOf[depIdx] == sccOf[m]: continue  # intra-component edge
+        if batchOf[depIdx] == batchOf[m]: continue  # intra-batch edge
         let depName = c.nodes[depIdx].files[0].modname
         directDeps.incl depName
         let depFile =
