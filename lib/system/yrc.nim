@@ -75,10 +75,12 @@
 #
 # 1. Capture: one Tarjan SCC traversal over everything reachable from the
 #    candidate roots. Node -> dense index lookup is O(1) without hashing:
-#    the spare `rootIdx` header word is CAS-claimed with the collection's
-#    tag packed with the discovery index; stale tags of retired
-#    collections never need clearing. Everything else lives in side
-#    arrays (SoA layout).
+#    the spare `rootIdx` header word (a full int64 on every target so the
+#    concurrent claim and epoch-stamp packing work identically on 32-bit
+#    archs) is CAS-claimed with the collection's tag packed with the
+#    discovery index; stale tags of retired collections never need
+#    clearing. Per-cell data lives in one record array indexed by that
+#    discovery index; per-SCC data in one record array indexed by SCC id.
 #
 # 2. Deadness: pure array work on the captured SCC condensation, no heap
 #    access. An SCC is garbage iff it has no references beyond its internal
@@ -150,10 +152,17 @@ const
 type
   TraceProc = proc (p, env: pointer) {.nimcall, gcsafe, raises: [].}
 
+# The write barrier's incRef normally goes through a lock-free per-stripe
+# queue (drained by the collector), matching the deferred decRef. Define
+# `nimYrcDirectIncs` to bypass that queue and apply incRefs directly with an
+# atomic RMW instead — simpler, but the collector then observes every incRef
+# through commit-time rc validation rather than the queue peek.
+const useIncQueue = not defined(nimYrcDirectIncs)
+
 # With lock-free ref assignments, rc words are mutated concurrently with the
 # collector (direct atomic incRefs), so all collector-side rc accesses must
 # be atomic whenever threads exist.
-const useAtomicRc = defined(nimYrcAtomicIncs) or hasThreadSupport
+const useAtomicRc = not useIncQueue or hasThreadSupport
 
 when useAtomicRc:
   template color(c): untyped = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE) and colorMask
@@ -265,12 +274,27 @@ type
 
   CaptureRec = object
     ## per captured cell, position == Tarjan discovery index; one record so
-    ## a node costs a single append during the DFS
+    ## a node costs a single append during the DFS. Kept at 32 bytes: this
+    ## is the hottest array in the capture DFS, so cold data that is read at
+    ## most once per survivor (e.g. the survival age) stays in a side array.
     cell: Cell
     desc: PNimTypeV2
     rcWord: int               # rc word as captured
     lowlink: int32
     sccOf: int32              # -1 while the cell is on the Tarjan stack
+
+  SccRec = object
+    ## per SCC of the condensation; the deadness pass reads all of these
+    ## fields together, so one record per SCC beats parallel arrays. The
+    ## array carries a sentinel record at [nScc]: memStart/crossOff are
+    ## prefix offsets, an SCC's slice is [s]..<[s+1].
+    sumRefs: int              # sum of member reference counts
+    internal: int             # number of intra-SCC edges
+    deadIn: int               # number of edges from dead SCCs
+    memStart: int32           # offset into sccMembers
+    crossOff: int32           # offset into crossTgt (cross edges by source)
+    crossCursor: int32
+    flags: uint8
 
   CaptureBufs = object
     ## side structure of a collection; per collector thread (gCap is a
@@ -280,15 +304,9 @@ type
     tstack: RawSeq[int32]
     frames: RawSeq[TarjanFrame]
     edges: RawSeq[int64]      # (u shl 32) or v, dense indices
-    sccMemStart: RawSeq[int32]
+    sccs: RawSeq[SccRec]
     sccMembers: RawSeq[int32]
-    sumRefs: RawSeq[int]      # per SCC: sum of member reference counts
-    internal: RawSeq[int]     # per SCC: number of intra-SCC edges
-    deadIn: RawSeq[int]       # per SCC: number of edges from dead SCCs
-    sccFlags: RawSeq[uint8]
-    crossOff: RawSeq[int32]   # condensation cross edges, bucketed by source
     crossTgt: RawSeq[int32]
-    crossCursor: RawSeq[int32]
     crossPend: CellSeq[Cell]  # edge targets owned by other active collections
     prunedSrc: RawSeq[int32]  # dense indices of cells with pruned out-edges
     ages: RawSeq[int32]       # per captured cell: captures survived so far
@@ -331,25 +349,22 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
 # long-lived live structures are traced once per epoch instead of once per
 # collection. Roots always bypass the stamp: every death has a dec-witness
 # that gets registered, and registered cells are always scanned as roots.
-const MaxPar {.intdefine.} = 8    # max concurrent collections
-
-when sizeof(int) == 8:
-  const ParSlots = MaxPar
-else:
-  const ParSlots = 1              # no room to pack tags: single collector
+const
+  MaxPar {.intdefine.} = 8        # max concurrent collections
+  ParSlots = MaxPar
 
 var
   gMergeLock: Lock                       # protects the tag slots + orphaned roots
-  gActiveTags: array[ParSlots, int]      # 0 = free slot
+  gActiveTags: array[ParSlots, int64]    # 0 = free slot
   gSlotPhase: array[ParSlots, int]       # 0 idle, 1 capturing, 2 committing
   gSoloCapture: int                      # a solo collection is in its capture phase
-  gTagCounter: int
-  gMyTag {.threadvar.}: int
+  gTagCounter: int64
+  gMyTag {.threadvar.}: int64
   gMySlot {.threadvar.}: int
   gAmSolo {.threadvar.}: bool
   gEpoch: int                            # advanced every YrcEpochLen collections
   gCollectionCounter: int
-  gMyEpochStamp {.threadvar.}: int       # this collection's epoch, as a stamp word
+  gMyEpochStamp {.threadvar.}: int64     # this collection's epoch, as a stamp word
   gWaitLock: Lock                        # pairs gWaitCond's wait/broadcast; leaf
   gWaitCond: Cond                        # signaled on capture-end and collection-finish
 
@@ -376,9 +391,9 @@ const
   epochMask = 0x3FFFFFFF
 
 # stamp layout: high word = epochBase|epoch, low word = survival age
-template epochStamp(e: int): int = (epochBase or (e and epochMask)) shl 32
-template stampAge(w: int): int = w and 0xFFFFFFFF
-template isEpochStamp(w: int): bool = (w shr 32) >= epochBase
+template epochStamp(e: int): int64 = int64(epochBase or (e and epochMask)) shl 32
+template stampAge(w: int64): int = int(w and 0xFFFFFFFF)
+template isEpochStamp(w: int64): bool = (w shr 32) >= epochBase
 
 template parkUntil(cond: untyped) =
   ## Bounded spin (collections transition in microseconds when the system is
@@ -408,24 +423,20 @@ proc anySlotFree(): bool {.inline.} =
     if atomicLoadN(addr gActiveTags[sl], ATOMIC_ACQUIRE) == 0:
       return true
 
-when sizeof(int) == 8:
-  template isStamped(c: Cell): bool =
-    # "stamped" means: claimed by THIS collection. A relaxed load suffices:
-    # only this thread ever stores gMyTag, and any stale read of a foreign
-    # value routes into claimCell which re-validates with acquire + CAS.
-    (atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) shr 32) == gMyTag
-  template denseIdx(c: Cell): int32 =
-    int32(atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) and 0xFFFFFFFF)
+template isStamped(c: Cell): bool =
+  # "stamped" means: claimed by THIS collection. A relaxed load suffices:
+  # only this thread ever stores gMyTag, and any stale read of a foreign
+  # value routes into claimCell which re-validates with acquire + CAS.
+  (atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) shr 32) == gMyTag
+template denseIdx(c: Cell): int32 =
+  int32(atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) and 0xFFFFFFFF)
 
-  proc isActiveTag(t: int): bool {.inline.} =
-    result = false
-    if t != 0:
-      for s in 0 ..< ParSlots:
-        if atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) == t:
-          return true
-else:
-  template isStamped(c: Cell): bool = c.rootIdx != 0
-  template denseIdx(c: Cell): int32 = int32(c.rootIdx -% 1)
+proc isActiveTag(t: int64): bool {.inline.} =
+  result = false
+  if t != 0:
+    for s in 0 ..< ParSlots:
+      if atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) == t:
+        return true
 
 type
   Stripe = object
@@ -508,9 +519,7 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   when optimizedOrc:
     if cyclic: h.rc = h.rc or maybeCycle
-  when defined(nimYrcAtomicIncs):
-    discard atomicFetchAdd(addr h.rc, rcIncrement, ATOMIC_ACQ_REL)
-  else:
+  when useIncQueue:
     # LOCK-FREE producer: reserve, then publish with an atomic exchange
     # (see the Stripe declaration for why an RMW and not a release store)
     let idx = getStripeIdx()
@@ -522,6 +531,8 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
       # collection observes it through the commit-time rc validation.
       # Buffering resumes once the next drain resets the queue.
       trialInc(h)
+  else:
+    discard atomicFetchAdd(addr h.rc, rcIncrement, ATOMIC_ACQ_REL)
 
 when defined(nimOrcStats):
   var
@@ -543,7 +554,7 @@ proc registerLocal(c: Cell; desc: PNimTypeV2) {.inline.} =
   ## live by every collection (deadness checks the flag), so no buffer
   ## entry can ever dangle.
   if rcTestSetFlag(c, inRootsFlag):
-    when defined(nimOrcStats) and sizeof(int) == 8:
+    when defined(nimOrcStats):
       let st = atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED)
       if st == 0: bumpStat gStatRegFresh
       elif gMyTag != 0 and (st shr 32) == gMyTag: bumpStat gStatRegSelf
@@ -564,7 +575,7 @@ proc drainStripe(i: int) =
   ## a producer is publishing into. Reservations past QueueSize never
   ## wrote anything, so an overflowed counter is hard-reset.
   withLock stripes[i].consumerLock:
-    when not defined(nimYrcAtomicIncs):
+    when useIncQueue:
       # apply pending incs FIRST: an inc entry means the rc word
       # under-counts, so its cell must be raised before decs can free
       var consumedInc = 0
@@ -681,15 +692,9 @@ proc prepareCapture() =
     init gCap.tstack
     init gCap.frames
     init gCap.edges
-    init gCap.sccMemStart
+    init gCap.sccs
     init gCap.sccMembers
-    init gCap.sumRefs
-    init gCap.internal
-    init gCap.deadIn
-    init gCap.sccFlags
-    init gCap.crossOff
     init gCap.crossTgt
-    init gCap.crossCursor
     init gCap.crossPend
     init gCap.prunedSrc
     init gCap.ages
@@ -698,9 +703,8 @@ proc prepareCapture() =
     gCap.tstack.len = 0
     gCap.frames.len = 0
     gCap.edges.len = 0
-    gCap.sccMemStart.len = 0
+    gCap.sccs.len = 0
     gCap.sccMembers.len = 0
-    gCap.sumRefs.len = 0
     gCap.crossPend.len = 0
     gCap.prunedSrc.len = 0
     gCap.ages.len = 0
@@ -708,25 +712,46 @@ proc prepareCapture() =
 # rc is captured without the flag bits: the collector itself toggles
 # inRootsFlag between capture and commit, which must not look like a
 # mutation to the commit-time rc validation.
-when sizeof(int) == 8:
-  proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
-                 pruneLive: bool): int32 =
-    ## Dense index if this collection owns `c` (claiming and registering it
-    ## if it was unclaimed), -1 if another ACTIVE collection owns it, or
-    ## -2 if `pruneLive` and the cell was proven live in the current epoch
-    ## (treat as an opaque live external, don't descend).
-    if gAmSolo:
-      # no other collection is (or can start) capturing: plain stores.
-      # This recovers the sequential capture speed of the single-collector
-      # design whenever collections do not actually overlap.
-      let old = c.rootIdx
-      if (old shr 32) == gMyTag:
-        return int32(old and 0xFFFFFFFF)
-      if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
-          stampAge(old) >= YrcPromoteAge:
-        return -2
-      let idx = cap.recs.len
-      c.rootIdx = (gMyTag shl 32) or idx
+proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
+               pruneLive: bool): int32 =
+  ## Dense index if this collection owns `c` (claiming and registering it
+  ## if it was unclaimed), -1 if another ACTIVE collection owns it, or
+  ## -2 if `pruneLive` and the cell was proven live in the current epoch
+  ## (treat as an opaque live external, don't descend).
+  if gAmSolo:
+    # no other collection is (or can start) capturing: plain stores.
+    # This recovers the sequential capture speed of the single-collector
+    # design whenever collections do not actually overlap.
+    let old = c.rootIdx
+    if (old shr 32) == gMyTag:
+      return int32(old and 0xFFFFFFFF)
+    if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
+        stampAge(old) >= YrcPromoteAge:
+      return -2
+    let idx = cap.recs.len
+    c.rootIdx = (gMyTag shl 32) or int64(idx)
+    when defined(nimOrcStats):
+      bumpStat gStatCapTotal
+      if old != 0: bumpStat gStatCapRepeat
+    cap.recs.add CaptureRec(cell: c, desc: desc,
+                             rcWord: loadRc(c) and not rcMask,
+                             lowlink: int32(idx), sccOf: -1'i32)
+    cap.ages.add int32(if isEpochStamp(old): min(stampAge(old), 1000) else: 0)
+    cap.tstack.add int32(idx)
+    return int32(idx)
+  while true:
+    var old = atomicLoadN(addr c.rootIdx, ATOMIC_ACQUIRE)
+    if (old shr 32) == gMyTag:
+      return int32(old and 0xFFFFFFFF)
+    if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
+        stampAge(old) >= YrcPromoteAge:
+      return -2
+    if isActiveTag(old shr 32):
+      return -1
+    let idx = cap.recs.len
+    if atomicCompareExchangeN(addr c.rootIdx, addr old,
+                               (gMyTag shl 32) or int64(idx), false,
+                               ATOMIC_ACQ_REL, ATOMIC_RELAXED):
       when defined(nimOrcStats):
         bumpStat gStatCapTotal
         if old != 0: bumpStat gStatCapRepeat
@@ -736,41 +761,6 @@ when sizeof(int) == 8:
       cap.ages.add int32(if isEpochStamp(old): min(stampAge(old), 1000) else: 0)
       cap.tstack.add int32(idx)
       return int32(idx)
-    while true:
-      var old = atomicLoadN(addr c.rootIdx, ATOMIC_ACQUIRE)
-      if (old shr 32) == gMyTag:
-        return int32(old and 0xFFFFFFFF)
-      if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
-          stampAge(old) >= YrcPromoteAge:
-        return -2
-      if isActiveTag(old shr 32):
-        return -1
-      let idx = cap.recs.len
-      if atomicCompareExchangeN(addr c.rootIdx, addr old,
-                                 (gMyTag shl 32) or idx, false,
-                                 ATOMIC_ACQ_REL, ATOMIC_RELAXED):
-        when defined(nimOrcStats):
-          bumpStat gStatCapTotal
-          if old != 0: bumpStat gStatCapRepeat
-        cap.recs.add CaptureRec(cell: c, desc: desc,
-                                 rcWord: loadRc(c) and not rcMask,
-                                 lowlink: int32(idx), sccOf: -1'i32)
-        cap.ages.add int32(if isEpochStamp(old): min(stampAge(old), 1000) else: 0)
-        cap.tstack.add int32(idx)
-        return int32(idx)
-else:
-  proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
-                 pruneLive: bool): int32 =
-    # no room to pack epoch stamps on 32 bit: pruneLive is ignored
-    if c.rootIdx != 0:
-      result = int32(c.rootIdx -% 1)
-    else:
-      result = int32(cap.recs.len)
-      c.rootIdx = cap.recs.len +% 1
-      cap.recs.add CaptureRec(cell: c, desc: desc,
-                               rcWord: loadRc(c) and not rcMask,
-                               lowlink: result, sccOf: -1'i32)
-      cap.tstack.add result
 
 proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
   ## Iterative Tarjan SCC over everything reachable from `s`. A frame's
@@ -822,7 +812,7 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
           cap.recs.d[pu].lowlink = cap.recs.d[u].lowlink
       if cap.recs.d[u].lowlink == u:
         # u is the root of an SCC: pop the members off the Tarjan stack
-        cap.sccMemStart.add int32(cap.sccMembers.len)
+        let memStart = int32(cap.sccMembers.len)
         var sum = 0
         while true:
           let w = cap.tstack.pop()
@@ -830,18 +820,17 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
           cap.sccMembers.add w
           sum = sum +% (cap.recs.d[w].rcWord shr rcShift) +% 1
           if w == u: break
-        cap.sumRefs.add sum
+        cap.sccs.add SccRec(sumRefs: sum, memStart: memStart)
         inc j.nScc
 
 # ---------------- phase 2: deadness, side arrays only ----------------
 
 proc computeDeadness(j: var GcEnv; cap: ptr CaptureBufs) =
   let nScc = j.nScc
-  setLenZeroed cap.internal, nScc
-  setLenZeroed cap.deadIn, nScc
-  setLenZeroed cap.sccFlags, nScc
-  setLenZeroed cap.crossOff, nScc + 1
-  setLenUninit cap.crossCursor, nScc
+  # append the sentinel record ([nScc]); capture left internal/deadIn/flags
+  # zero-initialized and memStart valid. crossOff is filled below as a prefix
+  # sum, so the sentinel closes the last SCC's member and cross-edge slices.
+  cap.sccs.add SccRec(memStart: int32(cap.sccMembers.len))
   # classify captured edges: internal to an SCC vs condensation cross edges
   var nCross = 0
   for i in 0 ..< cap.edges.len:
@@ -849,58 +838,58 @@ proc computeDeadness(j: var GcEnv; cap: ptr CaptureBufs) =
     let su = cap.recs.d[int32(e shr 32)].sccOf
     let sv = cap.recs.d[int32(e and 0xFFFFFFFF'i64)].sccOf
     if su == sv:
-      inc cap.internal.d[su]
+      inc cap.sccs.d[su].internal
     else:
-      inc cap.crossOff.d[su]
+      inc cap.sccs.d[su].crossOff
       inc nCross
   var total = 0'i32
   for s in 0 ..< nScc:
-    let c = cap.crossOff.d[s]
-    cap.crossOff.d[s] = total
-    cap.crossCursor.d[s] = total
+    let c = cap.sccs.d[s].crossOff
+    cap.sccs.d[s].crossOff = total
+    cap.sccs.d[s].crossCursor = total
     total = total +% c
-  cap.crossOff.d[nScc] = total
+  cap.sccs.d[nScc].crossOff = total
   setLenUninit cap.crossTgt, nCross
   for i in 0 ..< cap.edges.len:
     let e = cap.edges.d[i]
     let su = cap.recs.d[int32(e shr 32)].sccOf
     let sv = cap.recs.d[int32(e and 0xFFFFFFFF'i64)].sccOf
     if su != sv:
-      cap.crossTgt.d[cap.crossCursor.d[su]] = sv
-      inc cap.crossCursor.d[su]
+      cap.crossTgt.d[cap.sccs.d[su].crossCursor] = sv
+      inc cap.sccs.d[su].crossCursor
   # pruned out-edges taint the source SCC: pruning cannot cause a false
   # "dead" (an untraced target only ever ADDS unexplained external refs),
   # but a "live" verdict may lean on a stamp that went stale within the
   # epoch, so validate re-registers surviving pruned SCCs
   for i in 0 ..< cap.prunedSrc.len:
     let s = cap.recs.d[cap.prunedSrc.d[i]].sccOf
-    cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagPruned
+    cap.sccs.d[s].flags = cap.sccs.d[s].flags or flagPruned
   # cells that stay registered as roots (partial collection) count as
   # externally referenced: the roots buffer itself points at them
   for mi in 0 ..< cap.sccMembers.len:
     let m = cap.sccMembers.d[mi]
     if (loadRc(cap.recs.d[m].cell) and inRootsFlag) != 0:
       let s = cap.recs.d[m].sccOf
-      cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagForcedLive
+      cap.sccs.d[s].flags = cap.sccs.d[s].flags or flagForcedLive
   # deadness over the condensation. Tarjan emits sinks first, so higher SCC
   # ids are sources and every cross edge goes from a higher id to a lower
   # one: one reverse scan settles everything.
   for s in countdown(nScc - 1, 0):
-    let ext = cap.sumRefs.d[s] -% cap.internal.d[s] -% cap.deadIn.d[s]
+    let ext = cap.sccs.d[s].sumRefs -% cap.sccs.d[s].internal -% cap.sccs.d[s].deadIn
     when logOrc:
       cfprintf(cstderr, "[scc %ld] members %ld sumRefs %ld internal %ld deadIn %ld ext %ld forced %ld\n",
-        s, cap.sccMemStart.d[s+1] - cap.sccMemStart.d[s], cap.sumRefs.d[s],
-        cap.internal.d[s], cap.deadIn.d[s], ext, int(cap.sccFlags.d[s]))
-    if (cap.sccFlags.d[s] and flagForcedLive) == 0 and ext == 0:
-      cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagDead
+        s, cap.sccs.d[s+1].memStart - cap.sccs.d[s].memStart, cap.sccs.d[s].sumRefs,
+        cap.sccs.d[s].internal, cap.sccs.d[s].deadIn, ext, int(cap.sccs.d[s].flags))
+    if (cap.sccs.d[s].flags and flagForcedLive) == 0 and ext == 0:
+      cap.sccs.d[s].flags = cap.sccs.d[s].flags or flagDead
       inc j.nDeadScc
-      for k in cap.crossOff.d[s] ..< cap.crossOff.d[s+1]:
-        inc cap.deadIn.d[cap.crossTgt.d[k]]
+      for k in cap.sccs.d[s].crossOff ..< cap.sccs.d[s+1].crossOff:
+        inc cap.sccs.d[cap.crossTgt.d[k]].deadIn
     else:
       # a live SCC keeps everything it points to alive
-      for k in cap.crossOff.d[s] ..< cap.crossOff.d[s+1]:
+      for k in cap.sccs.d[s].crossOff ..< cap.sccs.d[s+1].crossOff:
         let t = cap.crossTgt.d[k]
-        cap.sccFlags.d[t] = cap.sccFlags.d[t] or flagForcedLive
+        cap.sccs.d[t].flags = cap.sccs.d[t].flags or flagForcedLive
 
 # ---------------- phase 3: validate & commit ----------------
 
@@ -913,9 +902,9 @@ proc markDirtyFromQueues(j: var GcEnv; cap: ptr CaptureBufs) =
     let c = cp
     if isStamped(c):
       let s = cap.recs.d[denseIdx(c)].sccOf
-      cap.sccFlags.d[s] = cap.sccFlags.d[s] or flagDirty
+      cap.sccs.d[s].flags = cap.sccs.d[s].flags or flagDirty
   for i in 0..<NumStripes:
-    when not defined(nimYrcAtomicIncs):
+    when useIncQueue:
       # lock-free peek. This one is LOAD-BEARING (an inc entry means the
       # rc word under-counts a live reference), which is why the producer
       # publishes with an RMW: every completed barrier's entry is globally
@@ -947,28 +936,28 @@ proc demoteTouchedDead(j: var GcEnv; cap: ptr CaptureBufs) =
   ## freed under a surviving reference. Targets have lower ids, so
   ## tainting them here demotes them (transitively) later in this loop.
   for s in countdown(j.nScc - 1, 0):
-    if (cap.sccFlags.d[s] and flagDead) != 0:
-      var ok = (cap.sccFlags.d[s] and flagDirty) == 0
+    if (cap.sccs.d[s].flags and flagDead) != 0:
+      var ok = (cap.sccs.d[s].flags and flagDirty) == 0
       if ok:
-        for mi in cap.sccMemStart.d[s] ..< cap.sccMemStart.d[s+1]:
+        for mi in cap.sccs.d[s].memStart ..< cap.sccs.d[s+1].memStart:
           let m = cap.sccMembers.d[mi]
           if (loadRc(cap.recs.d[m].cell) and not rcMask) != cap.recs.d[m].rcWord:
             ok = false
             break
       if not ok:
-        cap.sccFlags.d[s] = cap.sccFlags.d[s] and not flagDead
+        cap.sccs.d[s].flags = cap.sccs.d[s].flags and not flagDead
         inc j.nAborted
-        for k in cap.crossOff.d[s] ..< cap.crossOff.d[s+1]:
+        for k in cap.sccs.d[s].crossOff ..< cap.sccs.d[s+1].crossOff:
           let t = cap.crossTgt.d[k]
-          if (cap.sccFlags.d[t] and flagDead) != 0:
-            cap.sccFlags.d[t] = cap.sccFlags.d[t] or flagDirty
-        let m = cap.sccMembers.d[cap.sccMemStart.d[s]]
+          if (cap.sccs.d[t].flags and flagDead) != 0:
+            cap.sccs.d[t].flags = cap.sccs.d[t].flags or flagDirty
+        let m = cap.sccMembers.d[cap.sccs.d[s].memStart]
         registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
-    elif (cap.sccFlags.d[s] and flagPruned) != 0:
+    elif (cap.sccs.d[s].flags and flagPruned) != 0:
       # survives, but its liveness may rest on a stale epoch stamp: keep
       # one member registered so the verdict is retried (fully re-examined
       # once the epoch advances)
-      let m = cap.sccMembers.d[cap.sccMemStart.d[s]]
+      let m = cap.sccMembers.d[cap.sccs.d[s].memStart]
       registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
 
 proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
@@ -998,7 +987,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   for i in 0 ..< cap.crossPend.len:
     registerLocal(cap.crossPend.d[i][0], cap.crossPend.d[i][1])
   template deadCell(t: Cell): bool =
-    isStamped(t) and (cap.sccFlags.d[cap.recs.d[denseIdx(t)].sccOf] and flagDead) != 0
+    isStamped(t) and (cap.sccs.d[cap.recs.d[denseIdx(t)].sccOf].flags and flagDead) != 0
   template graceWait() =
     # Grace period: another collection still in its CAPTURE phase may hold
     # stale (slot, value) snapshots referencing our dead cells; disposing
@@ -1006,13 +995,12 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
     # bounded and never wait on us. New captures cannot reach our dead
     # cells: they are unreachable, and our tag stays active until after
     # the frees.
-    when sizeof(int) == 8:
-      for s in 0 ..< ParSlots:
-        if s != gMySlot:
-          let tg = atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE)
-          if tg != 0:
-            parkUntil(atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) != tg or
-                      atomicLoadN(addr gSlotPhase[s], ATOMIC_ACQUIRE) != 1)
+    for s in 0 ..< ParSlots:
+      if s != gMySlot:
+        let tg = atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE)
+        if tg != 0:
+          parkUntil(atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) != tg or
+                    atomicLoadN(addr gSlotPhase[s], ATOMIC_ACQUIRE) != 1)
   # A dead cell's reference to another active collection's cell must still
   # be decremented (the target survives this round), so the all-dead fast
   # path additionally requires that no cross-collection edge was seen.
@@ -1037,8 +1025,6 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
       while j.traceStack.len > 0:
         let (entry, _) = j.traceStack.pop()
         entry.slot[] = nil
-      when sizeof(int) != 8:
-        cell.rootIdx = 0    # no epoch in the stamp: clear before the free
       when orcLeakDetector:
         writeCell("CYCLIC OBJECT FREED", cell, desc)
       free(cell, desc)
@@ -1046,8 +1032,8 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   else:
     init j.toFree
     for s in 0 ..< j.nScc:
-      if (cap.sccFlags.d[s] and flagDead) != 0:
-        for mi in cap.sccMemStart.d[s] ..< cap.sccMemStart.d[s+1]:
+      if (cap.sccs.d[s].flags and flagDead) != 0:
+        for mi in cap.sccs.d[s].memStart ..< cap.sccs.d[s+1].memStart:
           let m = cap.sccMembers.d[mi]
           let cell = cap.recs.d[m].cell
           let desc = cap.recs.d[m].desc
@@ -1065,29 +1051,23 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
             entry.slot[] = nil
             if not deadCell(t):
               trialDec(t)
-              when sizeof(int) == 8:
-                # a stamped target was not analyzed by THIS collection, so
-                # this dec may be the death blow: keep the cell examinable
-                if isEpochStamp(atomicLoadN(addr t.rootIdx, ATOMIC_RELAXED)):
-                  registerLocal(t, tdesc)
-    when sizeof(int) == 8:
-      # epoch-stamp what this collection PROVED live, carrying the cell's
-      # survival age: only cells that keep surviving get promoted to ages
-      # where captures prune them, so die-young data is never deferred.
-      # Demoted (dirty) and pruned SCCs stay unproven — leave their stale
-      # tags claimable. Our tag is still active, so no foreign claim can
-      # race these stores.
-      for s in 0 ..< j.nScc:
-        if (cap.sccFlags.d[s] and (flagDead or flagDirty or flagPruned)) == 0:
-          for mi in cap.sccMemStart.d[s] ..< cap.sccMemStart.d[s+1]:
-            let m = cap.sccMembers.d[mi]
-            atomicStoreN(addr cap.recs.d[m].cell.rootIdx,
-                         gMyEpochStamp or (int(cap.ages.d[m]) +% 1),
-                         ATOMIC_RELAXED)
-    else:
-      # no epoch in the stamp: clear them while all cells are still alive
-      for i in 0 ..< cap.recs.len:
-        cap.recs.d[i].cell.rootIdx = 0
+              # a stamped target was not analyzed by THIS collection, so
+              # this dec may be the death blow: keep the cell examinable
+              if isEpochStamp(atomicLoadN(addr t.rootIdx, ATOMIC_RELAXED)):
+                registerLocal(t, tdesc)
+    # epoch-stamp what this collection PROVED live, carrying the cell's
+    # survival age: only cells that keep surviving get promoted to ages
+    # where captures prune them, so die-young data is never deferred.
+    # Demoted (dirty) and pruned SCCs stay unproven — leave their stale
+    # tags claimable. Our tag is still active, so no foreign claim can
+    # race these stores.
+    for s in 0 ..< j.nScc:
+      if (cap.sccs.d[s].flags and (flagDead or flagDirty or flagPruned)) == 0:
+        for mi in cap.sccs.d[s].memStart ..< cap.sccs.d[s+1].memStart:
+          let m = cap.sccMembers.d[mi]
+          atomicStoreN(addr cap.recs.d[m].cell.rootIdx,
+                       gMyEpochStamp or int64(cap.ages.d[m] +% 1),
+                       ATOMIC_RELAXED)
     graceWait()
     for i in 0 ..< j.toFree.len:
       when orcLeakDetector:
@@ -1127,7 +1107,7 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
       drainStripe(getStripeIdx())   # the world moved while we waited
       adoptOrphans()
     else:
-      gTagCounter = (gTagCounter +% 1) and (epochBase - 1)  # tags below the stamp namespace
+      gTagCounter = (gTagCounter +% 1) and int64(epochBase - 1)  # tags below the stamp namespace
       if gTagCounter == 0: gTagCounter = 1
       gMyTag = gTagCounter
       gMySlot = slot
@@ -1179,7 +1159,6 @@ proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
 
   for i in countdown(last, 0):
     capture(slice.d[i][0], slice.d[i][1], j, cap)
-  cap.sccMemStart.add int32(cap.sccMembers.len)   # sentinel
   j.touched = cap.recs.len
   atomicStoreN(addr gSlotPhase[gMySlot], 2, ATOMIC_RELEASE)  # capture done
   if gAmSolo:

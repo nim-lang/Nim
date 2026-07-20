@@ -36,7 +36,12 @@ type
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
-    when defined(gcOrc) or defined(gcYrc):
+    when defined(gcYrc):
+      rootIdx: int64 # the collector's claim word: collection tag or epoch
+                     # stamp packed with the dense capture index. Explicitly
+                     # 64 bit so that 32-bit targets run the same concurrent
+                     # claim and epoch-stamp algorithms
+    elif defined(gcOrc):
       rootIdx: int # thanks to this we can delete potential cycle roots
                    # in O(1) without doubly linked lists
     when defined(nimArcDebug) or defined(nimArcIds):
