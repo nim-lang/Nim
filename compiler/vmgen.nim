@@ -851,14 +851,26 @@ proc genBinaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.freeTemp(tmp)
   c.freeTemp(dest)
 
+proc genMutatingValue(c: PCtx; n: PNode): TRegister =
+  ## Loads the value of an in-place mutation target while keeping it attached to
+  ## its original storage. Compound lvalues must be resolved through their
+  ## address: a normal value load can return a detached copy (for example, when
+  ## indexing a broadcast default array).
+  if needsAsgnPatch(n):
+    let address = c.genx(n, {gfNodeAddr})
+    result = c.getTemp(n.typ)
+    c.gABC(n, opcLdDeref, result, address)
+    c.freeTemp(address)
+  else:
+    result = c.genx(n)
+
 proc genBinaryStmtVar(c: PCtx; n: PNode; opc: TOpcode) =
   var x = n[1]
   if x.kind in {nkAddr, nkHiddenAddr}: x = x[0]
   let
-    dest = c.genx(x)
+    dest = c.genMutatingValue(x)
     tmp = c.genx(n[2])
   c.gABC(n, opc, dest, tmp, 0)
-  #c.genAsgnPatch(n[1], dest)
   c.freeTemp(tmp)
   c.freeTemp(dest)
 
@@ -1162,7 +1174,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
 
   of mIncl, mExcl:
     unused(c, n, dest)
-    var d = c.genx(n[1])
+    var d = c.genMutatingValue(n[1])
     var tmp = c.genx(n[2])
     c.genSetType(n[1], d)
     c.gABC(n, if m == mIncl: opcIncl else: opcExcl, d, tmp)

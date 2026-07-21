@@ -25,31 +25,55 @@ when defined(gcYrc):
       HasCollectorLock
       Collecting
 
-    AlignedRwLock = object
-      ## One RwLock per cache line. {.align: 64.} causes the compiler to round
-      ## the struct size up to 64 bytes, so consecutive array elements never
-      ## share a cache line (sizeof(RwLock) = 56 on Linux x86_64 → 8 byte pad).
-      lock {.align: 64.}: RwLock
+    AlignedCounter = object
+      ## one counter per cache line to avoid false sharing between stripes
+      c {.align: 64.}: int
 
+  # Asymmetric two-class exclusion: seq structure mutations and collections
+  # exclude each other, but seq ops run concurrently with seq ops and
+  # collections run concurrently with collections. This replaces the old
+  # RwLock scheme (which allowed only ONE collector, serializing parallel
+  # collection) and also sidesteps POSIX's requirement that a rwlock be
+  # unlocked by its acquiring thread.
   var
-    gYrcLocks: array[NumLockStripes, AlignedRwLock]
+    gSeqActive: array[NumLockStripes, AlignedCounter]  # in-flight seq ops
+    gGcActive: int                                     # active collections
   var
     lockState {.threadvar.}: YrcLockState
 
   proc getYrcStripe(): int {.inline.} =
-    ## Map this thread to one of the NumLockStripes RwLock stripes.
+    ## Map this thread to one of the NumLockStripes counter stripes.
     ## getThreadId() is already cached thread-locally in threadids.nim.
     getThreadId() and (NumLockStripes - 1)
 
   proc acquireMutatorLock() {.compilerRtl, inl.} =
     if lockState == HasNoLock:
-      acquireRead gYrcLocks[getYrcStripe()].lock
+      let s = getYrcStripe()
+      while true:
+        # SEQ_CST inc-then-check pairs with the collector's SEQ_CST
+        # inc-then-drain (Dekker-style store/load ordering)
+        discard atomicFetchAdd(addr gSeqActive[s].c, 1, ATOMIC_SEQ_CST)
+        if atomicLoadN(addr gGcActive, ATOMIC_SEQ_CST) == 0: break
+        discard atomicFetchSub(addr gSeqActive[s].c, 1, ATOMIC_SEQ_CST)
+        while atomicLoadN(addr gGcActive, ATOMIC_ACQUIRE) != 0:
+          discard
       lockState = HasMutatorLock
 
   proc releaseMutatorLock() {.compilerRtl, inl.} =
     if lockState == HasMutatorLock:
       lockState = HasNoLock
-      releaseRead gYrcLocks[getYrcStripe()].lock
+      discard atomicFetchSub(addr gSeqActive[getYrcStripe()].c, 1, ATOMIC_SEQ_CST)
+
+  proc yrcGcFenceEnter() =
+    ## A collection announces itself and waits for in-flight seq structure
+    ## mutations to drain. Multiple collections may hold the fence at once.
+    discard atomicFetchAdd(addr gGcActive, 1, ATOMIC_SEQ_CST)
+    for s in 0 ..< NumLockStripes:
+      while atomicLoadN(addr gSeqActive[s].c, ATOMIC_SEQ_CST) > 0:
+        discard
+
+  proc yrcGcFenceExit() =
+    discard atomicFetchSub(addr gGcActive, 1, ATOMIC_SEQ_CST)
 
   template yrcMutatorLock*(t: typedesc; body: untyped) =
     {.noSideEffect.}:
@@ -71,23 +95,6 @@ when defined(gcYrc):
         {.noSideEffect.}:
           releaseMutatorLock()
 
-  template yrcCollectorLock(body: untyped) =
-    if lockState == HasMutatorLock: releaseMutatorLock()
-    let prevState = lockState
-    let hadToAcquire = prevState < HasCollectorLock
-    if hadToAcquire:
-      # Acquire all stripes in ascending order — the only thread ever holding
-      # multiple write locks is the collector, so there is no lock-order cycle.
-      for yrcI in 0..<NumLockStripes:
-        acquireWrite(gYrcLocks[yrcI].lock)
-      lockState = HasCollectorLock
-    try:
-      body
-    finally:
-      if hadToAcquire:
-        for yrcI in 0..<NumLockStripes:
-          releaseWrite(gYrcLocks[yrcI].lock)
-      lockState = prevState
 
 else:
   template yrcMutatorLock*(t: typedesc; body: untyped) =
