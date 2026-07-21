@@ -3143,6 +3143,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       localError(p.config, e.info,
         "for --mm:arc|atomicArc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
 
+    let typ = e[1].typ.skipTypes({tyVar, tyRef, tyGenericInst, tyTypeDesc,
+                                   tyAlias, tyInferred, tySink, tyLent, tyOwned})
+    if hasDisabledAsgn(p.module.g.graph, typ):
+      localError(p.config, e.info,
+        "'deepCopy' is not available for type <" & typeToString(typ) & ">")
+
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
     var a = initLocExpr(p, x)
     var b = initLocExpr(p, e[2])
