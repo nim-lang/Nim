@@ -22,8 +22,6 @@ Multi-paradigm Memory Management Strategies
 Nim offers multiple different memory management strategies.
 To choose the memory management strategy use the `--mm:` switch.
 
- .. hint:: **The recommended switch for newly written Nim code is `--mm:orc`.**
-
 
 ARC/ORC
 -------
@@ -52,6 +50,33 @@ where code size matters and you know that your code does not produce cycles, you
 use `--mm:arc`. Notice that the default `async`:idx: implementation produces cycles
 and leaks memory with `--mm:arc`, in other words, for `async` you need to use `--mm:orc`.
 
+
+Atomic ARC
+----------
+
+`--mm:atomicArc` is a variant of ARC where reference counting operations use atomic
+CPU instructions (`atomicInc`, `atomicDec`, `atomicLoadN`). This makes the
+reference count itself safe to modify from multiple threads concurrently.
+
+.. note:: Like `--mm:arc`, atomicArc does not include a cycle collector. Reference
+   cycles will leak memory. Use the `acyclic pragma <manual.html#pragmas-acyclic-pragma>`_
+   or avoid cyclic structures.
+
+**When to use atomicArc:**
+
+- When multiple threads need to hold references to the same `ref` object
+- When using libraries that expect atomic reference counting
+
+**Performance considerations:**
+
+Atomic operations have inherent overhead compared to regular operations.
+Use `--mm:arc` or `--mm:orc` when thread-sharing is not needed.
+
+**Important:** While atomicArc makes refcount operations thread-safe, it does *not*
+make concurrent *access* to `ref` objects safe. You still need synchronization
+(locks, channels, or carefully designed lock-free algorithms) to safely share data.
+See the `atomics module <atomics.html>`_ for details on lock-free operations with
+managed types.
 
 
 Other MM modes

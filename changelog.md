@@ -87,6 +87,22 @@ parameter and result types, not just their source-level shape. Use
 
 [//]: # "Changes:"
 
+- `std/atomics` now determines lock-free eligibility by size instead of type category.
+  Previously only `Trivial` types (`SomeNumber | bool | enum | ptr | pointer`) could use
+  lock-free atomics. Now any type with `sizeof(T)` of 1, 2, 4, 8, or 16 bytes (with
+  architecture support) can be lock-free, allowing small structs and tuples to use
+  hardware atomics instead of spinlock fallback.
+  - Added `isLockFree(T)` template to check lock-free eligibility at compile-time
+  - Added `hasLockFree8` constant for 8-byte atomic support detection
+  - Added `hasLockFree16` constant for 16-byte atomic support detection (amd64/arm64)
+  - Non-lock-free types now cause compile errors by default; use `-d:nimAllowAtomicFallback` to allow fallback
+  - Added `-d:nimNoLockFree16` to disable 16-byte lock-free for old x86-64 CPUs lacking CMPXCHG16B
+  - Corrected `-d:nimUseCppAtomics` documentation: by default, lock-free types use fixed-size C++
+    atomic integers (`std::atomic<int8>`, etc.) with Nim spinlock fallback; `-d:nimUseCppAtomics`
+    uses C++'s generic `std::atomic<T>` with C++ internal locking for non-lock-free types
+  - `fetchAdd`, `fetchSub`, `fetchAnd`, `fetchOr`, `fetchXor`, `atomicInc`, `atomicDec`, `+=`, `-=`
+    now accept `char` and `enum` in addition to integer types (via new `SomeAtomicInt` type class)
+
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.

@@ -10,9 +10,152 @@
 ## Types and operations for atomic operations and lockless algorithms.
 ##
 ## Unstable API.
-## 
-## By default, C++ uses C11 atomic primitives. To use C++ `std::atomic`,
-## `-d:nimUseCppAtomics` can be defined.
+##
+## Lock-free vs Spinlock
+## ---------------------
+## Lock-free eligibility depends on type size, architecture, and memory manager.
+## Types that don't qualify fall back to a spinlock.
+##
+## **Size requirements:**
+## - 1, 2, 4 bytes: lock-free (requires natural alignment)
+## - 8 bytes: requires `hasLockFree8` (see below)
+## - 16 bytes: requires `hasLockFree16` (see below)
+## - Other sizes: uses spinlock
+##
+## **Memory manager requirements:**
+## - With destructor-based MMs (`--mm:arc`, `--mm:orc`, `--mm:atomicArc`):
+##   `supportsCopyMem(T)` must be true (excludes `ref`, `string`, `seq`)
+## - With non-destructor MMs (`--mm:refc`, `--mm:markAndSweep`, `--mm:none`):
+##   managed types of a correct size can use lock-free atomics
+##
+## Architecture Support
+## --------------------
+## **8-byte atomics** (`hasLockFree8`):
+## - All 64-bit architectures
+## - x86-32 (CMPXCHG8B, Pentium and later)
+## - ARM32 (LDREXD/STREXD, ARMv6K+; not ARMv7-M)
+## - NOT supported: MIPS32, SPARC32, PowerPC32, RISC-V 32
+##
+## **16-byte atomics** (`hasLockFree16`):
+## - x86-64 (CMPXCHG16B, standard since ~2006)
+## - ARM64 (LDXP/STXP; full 128-bit atomicity requires ARMv8.4+)
+## - Use `-d:nimNoLockFree16` to disable for old x86-64 CPUs without CMPXCHG16B
+##
+## Use `T.isLockFree` to check at compile-time whether a type uses lock-free
+## operations. By default, non-lock-free types cause a compile error. To allow
+## fallback (spinlock or C++ internal locking), compile with `-d:nimAllowAtomicFallback`.
+##
+## C++ Backend
+## -----------
+## By default, lock-free types use fixed-size C++ atomic integers
+## (`std::atomic<int8>`, etc.); non-lock-free types use a Nim spinlock.
+## To use C++'s generic `std::atomic<T>` (with C++ internal locking for
+## non-lock-free types), compile with `-d:nimUseCppAtomics`.
+##
+## Safety with Managed Types
+## -------------------------
+## **Important:** Lock-free atomics on managed types (`ref`, `string`, `seq`)
+## means the *swap operation* is lock-free, NOT that concurrent access is safe.
+##
+## Naively using `Atomic[ref T]` leads to memory corruption:
+## - **Use-after-free:** Thread A loads pointer, Thread B frees object, Thread A dereferences
+## - **ABA problem:** Pointer reused for new object between load and CAS
+##
+## **Memory manager determines what's possible:**
+##
+## | Memory Manager     | Lock-free refs? | Notes |
+## |--------------------|-----------------|-------|
+## | `--mm:refc`        | No              | Thread-local heaps; refs can't cross threads |
+## | `--mm:markAndSweep`| No              | Thread-local heaps; refs can't cross threads |
+## | `--mm:arc/orc`     | No              | Non-atomic refcount; use locks or `--mm:atomicArc` |
+## | `--mm:atomicArc`   | Yes             | Use `GC_ref`/`GC_unref`; prevent ABA and use-after-free |
+## | `--mm:boehm`       | Yes             | `GC_ref`/`GC_unref` are no-ops; prevent ABA and use-after-free |
+## | `--mm:go`          | Yes             | `GC_ref`/`GC_unref` are no-ops; prevent ABA and use-after-free |
+## | `--mm:none`        | Yes             | You manually manage all memory |
+##
+
+import std/typetraits
+
+type
+  SomeAtomicInt* = SomeInteger | char | enum
+    ## Types that support atomic arithmetic and bitwise operations.
+    ## Includes all integer types, `char`, and `enum` (all integral types in C/C++).
+
+template isManaged(T: typedesc): bool =
+  ## Returns `true` if `T` contains managed memory that prevents lock-free atomics.
+  ## With non-destructor MMs (refc, markAndSweep, none), managed types like
+  ## `ref`, `string`, `seq` are pointer-sized and can be atomically swapped.
+  ## With destructor-based MMs (arc, orc, atomicArc), `supportsCopyMem` determines this.
+  when defined(gcdestructors):
+    not supportsCopyMem(T)
+  else:
+    false  # Non-destructor MMs: managed types are pointer-sized
+
+const
+  hasLockFree8* = sizeof(pointer) >= 8 or  # All 64-bit architectures
+                  defined(i386) or          # x86-32 has CMPXCHG8B
+                  defined(arm)              # ARM32 has LDREXD/STREXD (ARMv6k+)
+    ## Whether 8-byte atomics are lock-free on this architecture.
+    ##
+    ## **True for:**
+    ## - All 64-bit CPUs
+    ## - x86-32 (CMPXCHG8B)
+    ## - ARM32 (LDREXD)
+    ##
+    ## **False for:** MIPS32, SPARC32, PowerPC32, RISC-V 32
+
+  hasLockFree16* = not defined(nimNoLockFree16) and
+                   (defined(amd64) or  # x86-64 has CMPXCHG16B (standard since ~2006)
+                    defined(arm64))    # ARM64 has LDXP/STXP
+    ## Whether 16-byte atomics are lock-free on this architecture.
+    ##
+    ## **True for:**
+    ## - x86-64 (CMPXCHG16B)
+    ## - ARM64 (LDXP/STXP)
+    ##
+    ## Use `-d:nimNoLockFree16` to disable for old x86-64 CPUs without CMPXCHG16B.
+
+template isLockFree*(T: typedesc): bool =
+  ## Returns `true` if `Atomic[T]` uses lock-free hardware atomics,
+  ## `false` if it falls back to a spinlock.
+  ##
+  ## Lock-free requires:
+  ## - `sizeof(T)` must be 1, 2, 4, 8, or 16 bytes
+  ## - 8-byte requires `hasLockFree8`
+  ## - 16-byte requires `hasLockFree16`
+  ## - `supportsCopyMem(T)` (no managed memory) for destructor-based MMs (arc/orc/atomicArc)
+  ## - For non-destructor MMs (refc/none/etc), managed types are pointer-sized and qualify
+  (sizeof(T) == 1 or sizeof(T) == 2 or sizeof(T) == 4 or
+   (sizeof(T) == 8 and hasLockFree8) or
+   (sizeof(T) == 16 and hasLockFree16)) and not isManaged(T)
+
+template enforceLockFreeCheck(T: typedesc) =
+  ## Internal template to emit compile-time error when type cannot use lock-free
+  ## atomics, unless `-d:nimAllowAtomicFallback` is defined to allow fallback.
+  when not defined(nimAllowAtomicFallback):
+    when not (sizeof(T) == 1 or sizeof(T) == 2 or sizeof(T) == 4 or
+              (sizeof(T) == 8 and hasLockFree8) or
+              (sizeof(T) == 16 and hasLockFree16)):
+      {.error: "Atomic[" & $T & "] cannot use lock-free atomics: sizeof(" & $T & ") = " &
+               $sizeof(T) & " is not a valid atomic size. " &
+               "Use -d:nimAllowAtomicFallback to allow fallback.".}
+    elif isManaged(T):
+      {.error: "Atomic[" & $T & "] cannot use lock-free atomics: type contains managed memory " &
+               "and cannot be safely copied with this memory manager. " &
+               "Use -d:nimAllowAtomicFallback to allow fallback.".}
+
+runnableExamples:
+  # Check lock-free status at compile time
+  assert isLockFree(int)
+  assert isLockFree(bool)
+
+  type Point = object
+    x, y: int32
+  assert isLockFree(Point) == (sizeof(Point) <= sizeof(pointer))
+
+  # Large types use spinlock fallback
+  type BigArray = array[100, int]
+  assert not isLockFree(BigArray)
 
 runnableExamples:
   # Atomic
@@ -56,6 +199,11 @@ runnableExamples:
 when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
   # For the C++ backend, types and operations map directly to C++11 atomics.
 
+  # On Linux with GCC/Clang, 16-byte atomic operations may not be inlined
+  # and require libatomic even when using C++ std::atomic.
+  when defined(linux) and hasLockFree16:
+    {.passL: "-latomic".}
+
   {.push, header: "<atomic>".}
 
   type
@@ -98,56 +246,74 @@ when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
     AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
       ## An atomic boolean state.
 
-  # Access operations
+  # Access operations - internal importcpp procs
 
-  proc load*[T](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.load(@)".}
+  proc loadImpl[T](location: var Atomic[T]; order: MemoryOrder): T {.importcpp: "#.load(@)", inline.}
+  proc storeImpl[T](location: var Atomic[T]; desired: T; order: MemoryOrder) {.importcpp: "#.store(@)", inline.}
+
+  proc load*[T](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically obtains the value of the atomic object.
+    enforceLockFreeCheck(T)
+    loadImpl(location, order)
 
-  proc store*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.importcpp: "#.store(@)".}
+  proc store*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
     ## Atomically replaces the value of the atomic object with the `desired`
     ## value.
+    enforceLockFreeCheck(T)
+    storeImpl(location, desired, order)
 
-  proc exchange*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.exchange(@)".}
+  proc exchangeImpl[T](location: var Atomic[T]; desired: T; order: MemoryOrder): T {.importcpp: "#.exchange(@)", inline.}
+  proc compareExchangeImpl[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder): bool {.importcpp: "#.compare_exchange_strong(@)", inline.}
+  proc compareExchangeImpl[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_strong(@)", inline.}
+  proc compareExchangeWeakImpl[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder): bool {.importcpp: "#.compare_exchange_weak(@)", inline.}
+  proc compareExchangeWeakImpl[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_weak(@)", inline.}
+
+  proc exchange*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically replaces the value of the atomic object with the `desired`
     ## value and returns the old value.
+    enforceLockFreeCheck(T)
+    exchangeImpl(location, desired, order)
 
-  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.importcpp: "#.compare_exchange_strong(@)".}
+  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
     ## Atomically compares the value of the atomic object with the `expected`
     ## value and performs exchange with the `desired` one if equal or load if
     ## not. Returns true if the exchange was successful.
+    enforceLockFreeCheck(T)
+    compareExchangeImpl(location, expected, desired, order)
 
-  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_strong(@)".}
+  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
     ## Same as above, but allows for different memory orders for success and
     ## failure.
+    enforceLockFreeCheck(T)
+    compareExchangeImpl(location, expected, desired, success, failure)
 
-  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.importcpp: "#.compare_exchange_weak(@)".}
+  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
     ## Same as above, but is allowed to fail spuriously.
+    enforceLockFreeCheck(T)
+    compareExchangeWeakImpl(location, expected, desired, order)
 
-  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_weak(@)".}
+  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
     ## Same as above, but allows for different memory orders for success and
     ## failure.
+    enforceLockFreeCheck(T)
+    compareExchangeWeakImpl(location, expected, desired, success, failure)
 
   # Numerical operations
 
-  proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_add(@)".}
-    ## Atomically adds a `value` to the atomic integer and returns the
-    ## original value.
+  proc fetchAdd*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_add(@)".}
+    ## Atomically adds `value` to the atomic value and returns the original.
 
-  proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_sub(@)".}
-    ## Atomically subtracts a `value` to the atomic integer and returns the
-    ## original value.
+  proc fetchSub*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_sub(@)".}
+    ## Atomically subtracts `value` from the atomic value and returns the original.
 
-  proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_and(@)".}
-    ## Atomically replaces the atomic integer with it's bitwise AND
-    ## with the specified `value` and returns the original value.
+  proc fetchAnd*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_and(@)".}
+    ## Atomically performs bitwise AND with `value` and returns the original.
 
-  proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_or(@)".}
-    ## Atomically replaces the atomic integer with it's bitwise OR
-    ## with the specified `value` and returns the original value.
+  proc fetchOr*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_or(@)".}
+    ## Atomically performs bitwise OR with `value` and returns the original.
 
-  proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_xor(@)".}
-    ## Atomically replaces the atomic integer with it's bitwise XOR
-    ## with the specified `value` and returns the original value.
+  proc fetchXor*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_xor(@)".}
+    ## Atomically performs bitwise XOR with `value` and returns the original.
 
   # Flag operations
 
@@ -168,27 +334,29 @@ when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
 
 else:
   # For the C backend, atomics map to C11 built-ins on GCC and Clang for
-  # trivial Nim types. Other types are implemented using spin locks.
-  # This could be overcome by supporting advanced importc-patterns.
+  # lock-free types. Other types are implemented using spin locks.
 
   # Since MSVC does not implement C11, we fall back to MS intrinsics
   # where available.
 
   type
-    Trivial = SomeNumber | bool | enum | ptr | pointer
-      # A type that is known to be atomic and whose size is known at
-      # compile time to be 8 bytes or less
+    # 128-bit integer type for 16-byte atomics
+    Int128 {.importc: "__int128", nodecl.} = object
+      lo, hi: int64
 
-  template nonAtomicType*(T: typedesc[Trivial]): untyped =
-    # Maps types to integers of the same size
+  template nonAtomicType*(T: typedesc): untyped =
+    ## Maps types to integers of the same size for atomic storage.
     when sizeof(T) == 1: int8
     elif sizeof(T) == 2: int16
     elif sizeof(T) == 4: int32
     elif sizeof(T) == 8: int64
+    elif sizeof(T) == 16: Int128
+    else:
+      {.error: "nonAtomicType only supports types of size 1, 2, 4, 8, or 16 bytes".}
 
   when defined(vcc):
 
-    # TODO: Trivial types should be volatile and use VC's special volatile
+    # TODO: Lock-free types should be volatile and use VC's special volatile
     # semantics for store and loads.
 
     type
@@ -200,14 +368,14 @@ else:
         moAcquireRelease
         moSequentiallyConsistent
 
+      AtomicFlag* = distinct int8
+
       Atomic*[T] = object
-        when T is Trivial:
+        when T.isLockFree:
           value: T.nonAtomicType
         else:
           nonAtomicValue: T
           guard: AtomicFlag
-
-      AtomicFlag* = distinct int8
 
     {.push header: "<intrin.h>".}
 
@@ -221,6 +389,14 @@ else:
     proc interlockedCompareExchange(location: pointer; desired, expected: int16): int16 {.importc: "_InterlockedCompareExchange16".}
     proc interlockedCompareExchange(location: pointer; desired, expected: int32): int32 {.importc: "_InterlockedCompareExchange".}
     proc interlockedCompareExchange(location: pointer; desired, expected: int64): int64 {.importc: "_InterlockedCompareExchange64".}
+
+    # 128-bit compare-exchange for 16-byte atomics (amd64/arm64)
+    # Returns 1 if exchange succeeded, 0 otherwise
+    # Destination is the 128-bit value to modify
+    # ExchangeHigh:ExchangeLow is the new value
+    # ComparandResult points to the expected value (updated on failure)
+    proc interlockedCompareExchange128(destination: pointer; exchangeHigh, exchangeLow: int64;
+                                        comparandResult: pointer): uint8 {.importc: "_InterlockedCompareExchange128".}
 
     proc interlockedAnd(location: pointer; value: int8): int8 {.importc: "_InterlockedAnd8".}
     proc interlockedAnd(location: pointer; value: int16): int16 {.importc: "_InterlockedAnd16".}
@@ -247,35 +423,79 @@ else:
     proc clear*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent) =
       discard interlockedAnd(addr(location), 0'i8)
 
-    proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedOr(addr(location.value), (nonAtomicType(T))0))
-    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
-      discard interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired))
+    template withLockVcc[T](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
+      while interlockedOr(addr(location.guard), 1'i8) == 1'i8: discard
+      try:
+        body
+      finally:
+        discard interlockedAnd(addr(location.guard), 0'i8)
 
-    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedExchange(addr(location.value), cast[int64](desired)))
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-      cast[T](interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    proc load*[T](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        cast[T](interlockedOr(addr(location.value), (nonAtomicType(T))0))
+      else:
+        withLockVcc(location, order):
+          result = location.nonAtomicValue
+
+    proc store*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        discard interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired))
+      else:
+        withLockVcc(location, order):
+          location.nonAtomicValue = desired
+
+    proc exchange*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        cast[T](interlockedExchange(addr(location.value), cast[int64](desired)))
+      else:
+        withLockVcc(location, order):
+          result = location.nonAtomicValue
+          location.nonAtomicValue = desired
+
+    proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        cast[T](interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
+      else:
+        withLockVcc(location, success):
+          if location.nonAtomicValue != expected:
+            expected = location.nonAtomicValue
+            return false
+          expected = desired
+          swap(location.nonAtomicValue, expected)
+          return true
+
+    proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
       compareExchange(location, expected, desired, order, order)
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+
+    proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       compareExchange(location, expected, desired, success, failure)
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+
+    proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
       compareExchangeWeak(location, expected, desired, order, order)
 
-    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAdd*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       var currentValue = location.load()
       while not compareExchangeWeak(location, currentValue, currentValue + value): discard
-    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchSub*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       fetchAdd(location, -value, order)
-    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAnd*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedAnd(addr(location.value), cast[nonAtomicType(T)](value)))
-    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchOr*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedOr(addr(location.value), cast[nonAtomicType(T)](value)))
-    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchXor*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedXor(addr(location.value), cast[nonAtomicType(T)](value)))
 
   else:
+    # On Linux with GCC/Clang, 16-byte atomic operations (__atomic_load_16,
+    # __atomic_store_16, etc.) may not be inlined and require libatomic.
+    # See: https://github.com/STEllAR-GROUP/hpx/issues/3342
+    when defined(linux) and hasLockFree16:
+      {.passL: "-latomic".}
+
     when defined(cpp):
       {.push, header: "<atomic>".}
       template maybeWrapStd(x: string): string =
@@ -302,6 +522,7 @@ else:
         AtomicInt16 {.importc: "std::atomic<NI16>".} = int16
         AtomicInt32 {.importc: "std::atomic<NI32>".} = int32
         AtomicInt64 {.importc: "std::atomic<NI64>".} = int64
+        AtomicInt128 {.importc: "std::atomic<__int128>".} = Int128
     else:
       type
         # Atomic*[T] {.importcpp: "_Atomic('0)".} = object
@@ -310,17 +531,19 @@ else:
         AtomicInt16 {.importc: "_Atomic NI16".} = int16
         AtomicInt32 {.importc: "_Atomic NI32".} = int32
         AtomicInt64 {.importc: "_Atomic NI64".} = int64
+        AtomicInt128 {.importc: "_Atomic __int128".} = Int128
 
     type
       AtomicFlag* {.importc: "atomic_flag".maybeWrapStd, size: 1.} = object
 
       Atomic*[T] = object
-        when T is Trivial:
-          # Maps the size of a trivial type to it's internal atomic type
+        when T.isLockFree:
+          # Maps the size of a lock-free type to its internal atomic type
           when sizeof(T) == 1: value: AtomicInt8
           elif sizeof(T) == 2: value: AtomicInt16
           elif sizeof(T) == 4: value: AtomicInt32
           elif sizeof(T) == 8: value: AtomicInt64
+          elif sizeof(T) == 16: value: AtomicInt128
         else:
           nonAtomicValue: T
           guard: AtomicFlag
@@ -350,84 +573,89 @@ else:
 
     {.pop.}
 
-    proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](atomic_load_explicit[nonAtomicType(T), typeof(location.value)](addr(location.value), order))
-    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
-      atomic_store_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order)
-    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](atomic_exchange_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order))
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-      atomic_compare_exchange_strong_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    template withLock[T](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
+      ## Helper template to execute `body` with the spinlock acquired.
+      while testAndSet(location.guard, moAcquire): discard
+      try:
+        body
+      finally:
+        clear(location.guard, moRelease)
+
+    proc load*[T](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        cast[T](atomic_load_explicit[nonAtomicType(T), typeof(location.value)](addr(location.value), order))
+      else:
+        withLock(location, order):
+          result = location.nonAtomicValue
+
+    proc store*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        atomic_store_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order)
+      else:
+        withLock(location, order):
+          location.nonAtomicValue = desired
+
+    proc exchange*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        cast[T](atomic_exchange_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order))
+      else:
+        withLock(location, order):
+          result = location.nonAtomicValue
+          location.nonAtomicValue = desired
+
+    proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        atomic_compare_exchange_strong_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
+      else:
+        withLock(location, success):
+          if location.nonAtomicValue != expected:
+            expected = location.nonAtomicValue
+            return false
+          expected = desired
+          swap(location.nonAtomicValue, expected)
+          return true
+
+    proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
       compareExchange(location, expected, desired, order, order)
 
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-      atomic_compare_exchange_weak_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+      enforceLockFreeCheck(T)
+      when T.isLockFree:
+        atomic_compare_exchange_weak_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
+      else:
+        compareExchange(location, expected, desired, success, failure)
+
+    proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
       compareExchangeWeak(location, expected, desired, order, order)
 
     # Numerical operations
-    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAdd*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_add_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchSub*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_sub_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAnd*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_and_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchOr*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_or_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchXor*[T: SomeAtomicInt](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
 
-  template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
-    while testAndSet(location.guard, moAcquire): discard
-    try:
-      body
-    finally:
-      clear(location.guard, moRelease)
-
-  proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-    withLock(location, order):
-      result = location.nonAtomicValue
-
-  proc store*[T: not Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
-    withLock(location, order):
-      location.nonAtomicValue = desired
-
-  proc exchange*[T: not Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-    withLock(location, order):
-      result = location.nonAtomicValue
-      location.nonAtomicValue = desired
-
-  proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-    withLock(location, success):
-      if location.nonAtomicValue != expected:
-        expected = location.nonAtomicValue
-        return false
-      expected = desired
-      swap(location.nonAtomicValue, expected)
-      return true
-
-  proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-    compareExchange(location, expected, desired, success, failure)
-
-  proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchange(location, expected, desired, order, order)
-
-  proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchangeWeak(location, expected, desired, order, order)
-
-proc atomicInc*[T: SomeInteger](location: var Atomic[T]; value: T = 1) {.inline.} =
-  ## Atomically increments the atomic integer by some `value`.
+proc atomicInc*[T: SomeAtomicInt](location: var Atomic[T]; value: T = 1) {.inline.} =
+  ## Atomically increments the atomic value by `value`.
   discard location.fetchAdd(value)
 
-proc atomicDec*[T: SomeInteger](location: var Atomic[T]; value: T = 1) {.inline.} =
-  ## Atomically decrements the atomic integer by some `value`.
+proc atomicDec*[T: SomeAtomicInt](location: var Atomic[T]; value: T = 1) {.inline.} =
+  ## Atomically decrements the atomic value by `value`.
   discard location.fetchSub(value)
 
-proc `+=`*[T: SomeInteger](location: var Atomic[T]; value: T) {.inline.} =
-  ## Atomically increments the atomic integer by some `value`.
+proc `+=`*[T: SomeAtomicInt](location: var Atomic[T]; value: T) {.inline.} =
+  ## Atomically increments the atomic value by `value`.
   discard location.fetchAdd(value)
 
-proc `-=`*[T: SomeInteger](location: var Atomic[T]; value: T) {.inline.} =
-  ## Atomically decrements the atomic integer by some `value`.
+proc `-=`*[T: SomeAtomicInt](location: var Atomic[T]; value: T) {.inline.} =
+  ## Atomically decrements the atomic value by `value`.
   discard location.fetchSub(value)
