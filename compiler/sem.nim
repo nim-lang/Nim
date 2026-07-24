@@ -183,7 +183,8 @@ proc commonType*(c: PContext; x, y: PType): PType =
           nt = copyType(a, c.idgen, a.owner)
           copyTypeProps(c.graph, c.idgen.module, nt, a)
 
-        nt[i] = if aEmpty: bb else: aa
+        var ntb = reopen(nt)
+        ntb.setSon(i, if aEmpty: bb else: aa)
     if not nt.isNil: result = nt
     #elif b[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:

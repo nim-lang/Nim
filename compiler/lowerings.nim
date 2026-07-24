@@ -144,31 +144,25 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNod
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
 proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo; final=true): PType =
-  result = newType(tyObject, idgen, owner)
+  var b = openType(tyObject, idgen, owner)
   if final:
-    rawAddSon(result, nil)
-    incl result, tfFinal
+    b.addRaw nil
+    b.incl tfFinal
   else:
-    rawAddSon(result, getCompilerProc(g, "RootObj").typ)
-  result.n = newNodeI(nkRecList, info)
+    b.addRaw getCompilerProc(g, "RootObj").typ
+  b.setN newNodeI(nkRecList, info)
   let s = newSym(skType, getIdent(g.cache, "Env_" & toFilename(g.config, info) & "_" & $owner.name.s),
                   idgen, owner, info, owner.options)
   incl s.flagsImpl, sfAnon
+  b.setSym s
+  result = finish b
   s.typ = result
-  result.sym = s
 
 template fieldCheck {.dirty.} =
   when false:
     if tfCheckedForDestructor in obj.flags:
       echo "missed field ", field.name.s
       writeStackTrace()
-
-proc rawAddField*(obj: PType; field: PSym) =
-  assert field.kind == skField
-  field.position = obj.n.len
-  obj.n.add newSymNode(field)
-  propagateToOwner(obj, field.typ)
-  fieldCheck()
 
 proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   # returns a[].field as a node
@@ -238,40 +232,70 @@ proc lookupCapturedField(n: PNode, s: PSym): PSym =
       result = n.sym
   else: discard
 
-proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym =
-  # Idempotent w.r.t. the captured symbol (mirrors `addUniqueField`): re-lifting
-  # a LOADED routine re-derives its transformed body (never serialized under IC)
-  # and re-captures the same locals, but the env object loaded from the NIF
-  # already carries their fields. Re-adding would duplicate the field and, worse,
-  # mutate a Sealed loaded type via `propagateToOwner` (the `t.state != Sealed`
-  # crash). Return the existing field instead.
-  let existing = lookupInRecord(obj.n, s.itemId)
-  if existing != nil:
-    return existing
-  # Re-lifting a LOADED routine during a VM transform (its transformed body is
-  # re-derived per process, never serialized) re-captures the same locals, but
-  # for a macro-generated gensym (e.g. libp2p `p2pProtocolBackendImpl`'s
-  # `msgVar`) its process-local id diverges from the one baked into the loaded
-  # env field, so the id match above misses. Reuse the existing same-named field
-  # rather than appending a divergent duplicate, which keeps the re-derived
-  # closure consistent (else a stale `:env` access reaches `cannotEval`).
-  # Confined to a loaded (Sealed) env: in a freshly built env ids are consistent,
-  # and two distinct same-named captures legitimately get distinct fields there.
-  if obj.state == Sealed:
-    let byName = lookupCapturedField(obj.n, s)
-    if byName != nil:
-      return byName
-  # Genuinely new field. Under IC the env may be a loaded Sealed type whose
-  # transform-time mutation is process-local (the body is discarded after the
-  # macro runs), so downgrade it to mutable instead of crashing on
-  # `t.state != Sealed` (mirrors `markAsClosure`).
+type
+  ObjectBuilder* = object
+    ## Extends an existing object type with record fields -- the deferred
+    ## object-BODY counterpart to `typebuilders.TypeBuilder`. The object's
+    ## identity is fixed (a shell from `createObj` or a type loaded from NIF);
+    ## only its `nkRecList` body grows, possibly after thawing a loaded Sealed
+    ## type. Lives here rather than in `typebuilders.nim` because it needs the
+    ## record-walk reuse lookups above; hoist it once those move.
+    ## See `doc/ic_type_body_builder.md` for the NIF-cursor migration story.
+    obj {.cursor.}: PType
+    cache {.cursor.}: IdentCache
+    idgen {.cursor.}: IdGenerator
+
+proc reopenObject*(obj: PType; cache: IdentCache; idgen: IdGenerator): ObjectBuilder {.inline.} =
+  ## Positions a builder to append fields to `obj`, keeping its identity. Does
+  ## not thaw yet: the idempotency lookups must observe the pre-thaw `Sealed`
+  ## state first (see `findField`).
+  ObjectBuilder(obj: obj, cache: cache, idgen: idgen)
+
+proc findField*(b: ObjectBuilder; s: PSym; byName: bool): PSym =
+  ## The idempotency lookup, load-bearing for correctness (not a fast path):
+  ## re-lifting a LOADED routine re-derives its transformed body per process and
+  ## re-captures the same locals, but the loaded env already carries their
+  ## fields -- re-adding would duplicate and mutate Sealed memory.
+  ##
+  ## By derived item id first. Then, for a loaded (`Sealed`) body and when
+  ## `byName`, by the stable name+position key: a macro-generated gensym (e.g.
+  ## libp2p `p2pProtocolBackendImpl`'s `msgVar`) has a process-local id that
+  ## diverges from the one baked into the loaded env field, so the id match
+  ## misses; the same-named field is reused instead of appending a divergent
+  ## duplicate (else a stale `:env` access reaches `cannotEval`). A freshly
+  ## built env keeps consistent ids, so two same-named captures there
+  ## legitimately get distinct fields -- hence the `Sealed`-only gate.
+  result = lookupInRecord(b.obj.n, s.itemId)
+  if result != nil: return
+  if byName and b.obj.state == Sealed:
+    result = lookupCapturedField(b.obj.n, s)
+
+proc appendField*(b: var ObjectBuilder; field: PSym) =
+  ## Low-level append of a prebuilt `skField` (replaces `rawAddField`): set its
+  ## position, append it, fold its type into the object.
+  assert field.kind == skField
+  let obj = b.obj
+  field.position = obj.n.len
+  obj.n.add newSymNode(field)
+  propagateToOwner(obj, field.typ)
+  fieldCheck()
+
+proc captureField*(b: var ObjectBuilder; s: PSym): PSym {.discardable.} =
+  ## Idempotent capture of local `s` (= `addField`). On a `findField` miss,
+  ## thaws the env if needed then mints the field. Under IC the env may be a
+  ## loaded Sealed type whose transform-time mutation is process-local (the body
+  ## is discarded after the macro runs), so `unsealForTransform` downgrades it to
+  ## mutable instead of crashing on `t.state != Sealed` (mirrors `markAsClosure`).
+  result = b.findField(s, byName = true)
+  if result != nil: return
+  let obj = b.obj
   unsealForTransform(obj)
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
-                     idgen, s.owner, s.info, s.options)
+  var field = newSym(skField, getIdent(b.cache, s.name.s & $obj.n.len),
+                     b.idgen, s.owner, s.info, s.options)
   field.itemId = derivedFieldId(s.itemId)
-  let t = skipIntLit(s.typ, idgen)
+  let t = skipIntLit(s.typ, b.idgen)
   field.typ = t
   if s.kind in {skLet, skVar, skField, skForVar}:
     #field.bitsize = s.bitsize
@@ -285,19 +309,44 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   fieldCheck()
   result = field
 
+proc captureUniqueField*(b: var ObjectBuilder; s: PSym): PSym {.discardable.} =
+  ## `addUniqueField`: idempotent by item id ONLY (no name fallback, no thaw,
+  ## no alignment/flag copy).
+  result = b.findField(s, byName = false)
+  if result != nil: return
+  let obj = b.obj
+  var field = newSym(skField, getIdent(b.cache, s.name.s & $obj.n.len),
+                     b.idgen, s.owner, s.info, s.options)
+  field.itemId = derivedFieldId(s.itemId)
+  let t = skipIntLit(s.typ, b.idgen)
+  field.typ = t
+  assert t.kind != tyTyped
+  propagateToOwner(obj, t)
+  field.position = obj.n.len
+  obj.n.add newSymNode(field)
+  result = field
+
+proc finishObject*(b: sink ObjectBuilder) {.inline.} =
+  ## Publish the completed body. A no-op today (the thawed env stays `Complete`,
+  ## process-local, never re-serialized); the seam where the NIF backend will
+  ## `beginRead` the record buffer into a read-only cursor and republish it
+  ## under the object's SymId.
+  discard
+
+proc rawAddField*(obj: PType; field: PSym) =
+  var b = reopenObject(obj, nil, nil)  # prebuilt field: cache/idgen unused
+  b.appendField(field)
+  finishObject b
+
+proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym =
+  var b = reopenObject(obj, cache, idgen)
+  result = b.captureField(s)
+  finishObject b
+
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
-  result = lookupInRecord(obj.n, s.itemId)
-  if result == nil:
-    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), idgen,
-                       s.owner, s.info, s.options)
-    field.itemId = derivedFieldId(s.itemId)
-    let t = skipIntLit(s.typ, idgen)
-    field.typ = t
-    assert t.kind != tyTyped
-    propagateToOwner(obj, t)
-    field.position = obj.n.len
-    obj.n.add newSymNode(field)
-    result = field
+  var b = reopenObject(obj, cache, idgen)
+  result = b.captureUniqueField(s)
+  finishObject b
 
 proc newDotExpr*(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
@@ -385,8 +434,9 @@ proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
 proc genAddrOf*(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ = newType(typeKind, idgen, n.typ.owner)
-  result.typ.rawAddSon(n.typ)
+  var b = openType(typeKind, idgen, n.typ.owner)
+  b.addRaw n.typ
+  result.typ = finish b
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
   result = newNodeIT(k, n.info,

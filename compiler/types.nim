@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs, wordrecg
+  lineinfos, int128, modulegraphs, astmsgs, wordrecg, typebuilders
 
 import std/[intsets, strutils]
 
@@ -1267,7 +1267,8 @@ proc baseOfDistinct*(t: PType; g: ModuleGraph; idgen: IdGenerator): PType =
       parent = it
       it = it.elementType
     if it.kind == tyDistinct and parent != nil:
-      parent[0] = it[0]
+      var b = reopen(parent)
+      b.setSon(0, it[0])
 
 proc safeInheritanceDiff*(a, b: PType): int =
   # same as inheritanceDiff but checks for tyError:
@@ -1444,7 +1445,8 @@ proc takeType*(formal, arg: PType; g: ModuleGraph; idgen: IdGenerator): PType =
       arg.isEmptyContainer:
     let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), idgen, arg.owner)
     copyTypeProps(g, idgen.module, a, arg)
-    a[ord(arg.kind == tyArray)] = formal[0]
+    var b = reopen(a)
+    b.setSon(ord(arg.kind == tyArray), formal[0])
     result = a
   elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:
     result = formal

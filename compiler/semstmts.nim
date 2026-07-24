@@ -1152,10 +1152,12 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         case iter[i].kind
         of tyVar:
           mutable = true
-          iter[i] = iter[i].skipTypes({tyVar})
+          var b = reopen(iter)
+          b.setSon(i, iter[i].skipTypes({tyVar}))
         of tyLent:
           isLent = true
-          iter[i] = iter[i].skipTypes({tyLent})
+          var b = reopen(iter)
+          b.setSon(i, iter[i].skipTypes({tyLent}))
         else: discard
 
         if n[i].len-1 != iter[i].len:
@@ -1680,7 +1682,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
           # object might have been assumed to be final
           if tfInheritable in oldFlags and tfFinal in body.flags:
             excl(body, tfFinal)
-        s.typ[^1] = body
+        var b = reopen(s.typ)
+        b.setSon(^1, body)
         if tfCovariant in s.typ.flags:
           checkCovariantParamsUsages(c, s.typ)
           # XXX: This is a temporary limitation:

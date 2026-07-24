@@ -2252,7 +2252,8 @@ proc semYield(c: PContext, n: PNode): PNode =
 
       if resultTypeIsInferrable(restype):
         let inferred = n[0].typ
-        iterType[0] = inferred
+        var b = reopen(iterType)
+        b.setSon(0, inferred)
         if c.p.resultSym != nil:
           c.p.resultSym.typ = inferred
       else:

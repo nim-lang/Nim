@@ -17,7 +17,9 @@ when defined(nimPreviewSlimSystem):
 import
   options, ast, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, pathutils, layeredtable,
-  types, lowerings, trees, parampatterns, astalgo
+  types, lowerings, trees, parampatterns, astalgo, typebuilders
+
+export typebuilders
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -446,8 +448,14 @@ proc addToLib*(lib: PLib, sym: PSym) =
 proc newTypeS*(kind: TTypeKind; c: PContext; son: sink PType = nil): PType =
   result = newType(kind, c.idgen, getCurrOwner(c), son = son)
 
+proc openType*(c: PContext; kind: TTypeKind): TypeBuilder {.inline.} =
+  ## `PContext`-flavored `openType`: the type is owned by the current owner.
+  openType(kind, c.idgen, getCurrOwner(c))
+
 proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, idgen, owner, skipIntLit(baseType, idgen))
+  var b = openType(tyPtr, idgen, owner)
+  b.addKeep skipIntLit(baseType, idgen)  # son= fast path: skip int-lit, no propagate
+  result = finish b
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
   makePtrType(getCurrOwner(c), baseType, c.idgen)
@@ -460,27 +468,33 @@ proc makeTypeWithModifier*(c: PContext,
   if modifier in {tyVar, tyLent, tyTypeDesc} and baseType.kind == modifier:
     result = baseType
   else:
-    result = newTypeS(modifier, c, skipIntLit(baseType, c.idgen))
+    var b = openType(c, modifier)
+    b.addKeep skipIntLit(baseType, c.idgen)
+    result = finish b
 
 proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newTypeS(kind, c, skipIntLit(baseType, c.idgen))
+    var b = openType(c, kind)
+    b.addKeep skipIntLit(baseType, c.idgen)
+    result = finish b
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
-  let typedesc = newTypeS(tyTypeDesc, c)
-  incl typedesc.flagsImpl, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
-  typedesc.addSonSkipIntLit(typ, c.idgen)
+  var b = openType(c, tyTypeDesc)
+  b.incl tfCheckedForDestructor
+  b.add typ
+  let typedesc = finish b
   let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   result = newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
-  result = newTypeS(tyFromExpr, c)
   assert n != nil
-  result.n = n
+  var b = openType(c, tyFromExpr)
+  b.setN n
+  result = finish b
 
 when false:
   proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
@@ -494,42 +508,49 @@ when false:
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStaticExpr, n.info)
   result.sons = @[n]
-  result.typ = if n.typ != nil and n.typ.kind == tyStatic: n.typ
-               else: newTypeS(tyStatic, c, n.typ)
+  result.typ =
+    if n.typ != nil and n.typ.kind == tyStatic: n.typ
+    else:
+      var b = openType(c, tyStatic)
+      b.addKeep n.typ
+      finish b
 
 proc makeAndType*(c: PContext, t1, t2: PType): PType =
-  result = newTypeS(tyAnd, c)
-  result.rawAddSon t1
-  result.rawAddSon t2
-  propagateToOwner(result, t1)
-  propagateToOwner(result, t2)
-  result.flagsImpl.incl((t1.flags + t2.flags) * {tfHasStatic})
-  result.flagsImpl.incl tfHasMeta
+  var b = openType(c, tyAnd)
+  b.addRaw t1
+  b.addRaw t2
+  b.propagateFrom t1
+  b.propagateFrom t2
+  b.incl((t1.flags + t2.flags) * {tfHasStatic})
+  b.incl tfHasMeta
+  result = finish b
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
+  var b = openType(c, tyOr)
   if t1.kind != tyOr and t2.kind != tyOr:
-    result = newTypeS(tyOr, c)
-    result.rawAddSon t1
-    result.rawAddSon t2
+    b.addRaw t1
+    b.addRaw t2
   else:
-    result = newTypeS(tyOr, c)
     template addOr(t1) =
       if t1.kind == tyOr:
-        for x in t1.kids: result.rawAddSon x
+        for x in t1.kids: b.addRaw x
       else:
-        result.rawAddSon t1
+        b.addRaw t1
     addOr(t1)
     addOr(t2)
-  propagateToOwner(result, t1)
-  propagateToOwner(result, t2)
-  result.incl((t1.flags + t2.flags) * {tfHasStatic})
-  result.incl tfHasMeta
+  b.propagateFrom t1
+  b.propagateFrom t2
+  b.incl((t1.flags + t2.flags) * {tfHasStatic})
+  b.incl tfHasMeta
+  result = finish b
 
 proc makeNotType*(c: PContext, t1: PType): PType =
-  result = newTypeS(tyNot, c, son = t1)
-  propagateToOwner(result, t1)
-  result.flagsImpl.incl(t1.flags * {tfHasStatic})
-  result.flagsImpl.incl tfHasMeta
+  var b = openType(c, tyNot)
+  b.addKeep t1
+  b.propagateFrom t1
+  b.incl(t1.flags * {tfHasStatic})
+  b.incl tfHasMeta
+  result = finish b
 
 proc nMinusOne(c: PContext; n: PNode): PNode =
   result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n)
@@ -537,19 +558,22 @@ proc nMinusOne(c: PContext; n: PNode): PNode =
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   let intType = getSysType(c.graph, n.info, tyInt)
-  result = newTypeS(tyRange, c, son = intType)
+  var b = openType(c, tyRange)
+  b.addKeep intType
   if n.typ != nil and n.typ.n == nil:
-    result.incl tfUnresolved
-  result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
+    b.incl tfUnresolved
+  b.setN newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
     makeStaticExpr(c, nMinusOne(c, n)))
+  result = finish b
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
   tfUnresolved in t.flags
 
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
-  result = newTypeS(tyError, c)
-  result.flagsImpl.incl tfCheckedForDestructor
+  var b = openType(c, tyError)
+  b.incl tfCheckedForDestructor
+  result = finish b
 
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
@@ -586,9 +610,10 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
   var n = newNodeI(nkRange, info)
   n.add newIntTypeNode(first, intType)
   n.add newIntTypeNode(last, intType)
-  result = newTypeS(tyRange, c)
-  result.n = n
-  addSonSkipIntLit(result, intType, c.idgen) # basetype of range
+  var b = openType(c, tyRange)
+  b.setN n
+  b.add intType # basetype of range
+  result = finish b
 
 proc isSelf*(t: PType): bool {.inline.} =
   ## Is this the magical 'Self' type from concepts?
@@ -598,8 +623,10 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
   if typ.kind == tyTypeDesc and not isSelf(typ):
     result = typ
   else:
-    result = newTypeS(tyTypeDesc, c, skipIntLit(typ, c.idgen))
-    incl result, tfCheckedForDestructor
+    var b = openType(c, tyTypeDesc)
+    b.addKeep skipIntLit(typ, c.idgen)
+    b.incl tfCheckedForDestructor
+    result = finish b
 
 proc symFromType*(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
