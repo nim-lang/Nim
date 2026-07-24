@@ -190,8 +190,10 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------- async tests ---------------------------------------
 proc asyncTests(r: var TResults, cat: Category, options: string) =
+  # Run async with yrc instead of the default orc; the CI already runs long
+  # enough that we cannot afford to test both.
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat)
+    testSpec r, makeTest(filename, options & " --mm:yrc", cat)
   for t in os.walkFiles("tests/async/t*.nim"):
     test(t)
 
