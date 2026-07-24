@@ -724,17 +724,38 @@ theorem no_deadlock_from_total_order {n : Nat}
   registered:
     E1  roots never prune: a registered candidate is always fully
         root-scanned, stamps notwithstanding;
-    E2  an SCC that pruned an out-edge and survives keeps one member
-        registered (flagPruned) — its "live" verdict may lean on a stamp
-        that went stale within the epoch;
+    E2  when a collection prunes ANY out-edge, it keeps one member of
+        EVERY surviving SCC registered — not just the SCCs that pruned an
+        edge themselves. This is broader than it first looks and the
+        breadth is load-bearing: a pruned cell is not traced, yet its
+        out-edges still count toward its targets' rc, so a pruned cell
+        that is ITSELF dead (promoted while live, died later this epoch)
+        contributes phantom refs that inflate an UNRELATED SCC's external
+        count and misclassify that genuinely-dead SCC as a plain (non-
+        prune-source) survivor. Registering only prune-source SCCs
+        (the original hook) let such a survivor be re-stamped, dropped
+        from the retry set, and orphaned permanently once its last
+        prune-source neighbour resolved — a real leak the dumpster `fuzz`
+        port surfaced (tests/yrc/tyrc_fuzz_graph.nim: ~1% of allocations
+        lost, ORC-clean, un-recoverable even by repeated GC_fullCollect).
+        Registering every survivor of a pruning collection closes it; the
+        cost is bounded because pruning keeps the captured set small, so
+        "every survivor" is only the handful actually traced;
     E3  a commit-time dec into a stamped cell re-registers the target —
         the dec may be the death blow to a cell no collection analyzed;
     E4  explicit full collects advance the epoch first, so all stamps
         are stale and nothing is pruned.
-  Not formalized. Also noted: the epoch clock counts collections, and
+  Not formalized (and E2's original narrow form was empirically wrong —
+  see above; the broadened form is validated by the fuzz port across seeds
+  and sizes, not machine-checked). The epoch clock counts collections
+  (YrcEpochLen=64);
   short epochs (≲ 4) resonate with the adaptive threshold — pruned
   collections are cheap, so collections and hence epoch turns speed up,
-  re-tracing MORE than with no stamps; a work-based clock would fix it.
+  re-tracing MORE than with no stamps — but 64 sits clear of that. A
+  work-based clock (advance per N cells traced) was measured and lost on
+  long-lived structures: pruning shrinks trace work, so the clock stalls
+  exactly when a stale web should be re-examined, trading float for a
+  resonance the default length already avoids.
 
   Reference: D.F. Bacon and V.T. Rajan, "Concurrent Cycle Collection in
   Reference Counted Systems", ECOOP 2001 — the deadness arithmetic is
