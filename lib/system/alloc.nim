@@ -40,12 +40,12 @@ template track(op, address, size) =
 #
 # A deallocation of a small pointer then looks like this
 #[
-  dealloc -> rawDealloc -> chunk.owner == addr(a) --------------> This thread owns the chunk ------> The current chunk is active    -> Chunk is completely unused -----> Chunk references no foreign cells
+  dealloc -> rawDealloc -> chunk.owner == a.handle ------------> This thread owns the chunk ------> The current chunk is active    -> Chunk is completely unused -----> Chunk references no foreign cells
                                       |                                       |                   (Add cell into the current chunk)                 |                  Return the current chunk back to tlsf
                                       |                                       |                                   |                                 |
                                       v                                       v                                   v                                 v
                       A different thread owns this chunk.     The current chunk is not active.          chunk.free was < size      Chunk references foreign cells, noop
-                      Add the cell to a.sharedFreeLists      Add the cell into the active chunk          Activate the chunk                       (end)
+                      Add the cell to owner.sharedFreeLists  Add the cell into the active chunk          Activate the chunk                       (end)
                                     (end)                                    (end)                              (end)
 ]#
 # So "true" deallocation is delayed for as long as possible in favor of reusing cells.
@@ -116,7 +116,10 @@ type
     prevSize: int        # size of previous chunk; for coalescing
                          # 0th bit == 1 if 'used
     size: int            # if < PageSize it is a small chunk
-    owner: ptr MemRegion
+    when defined(gcDestructors):
+      owner: ptr RegionHandle
+    else:
+      owner: ptr MemRegion
 
   SmallChunk = object of BaseChunk
     next, prev: PSmallChunk  # chunks of the same size
@@ -147,21 +150,16 @@ type
   MemRegion = object
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
+    else:
+      handle: ptr RegionHandle
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
       # List of available chunks per size class. Only one is expected to be active per class.
-    when defined(gcDestructors):
-      sharedFreeLists: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
-        # When a thread frees a pointer it did not create, it must not adjust the counters.
-        # Instead, the cell is placed here and deferred until the next allocation.
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
     llmem: PLLChunk
     currMem, maxMem, freeMem, occ: int # memory sizes (allocated from OS)
     lastSize: int # needed for the case that OS gives us pages linearly
-    when defined(gcDestructors):
-      sharedFreeListBigChunks: PBigChunk # make no attempt at avoiding false sharing for now for this object field
-
     chunkStarts: IntSet
     when not defined(gcDestructors):
       root, deleted, last, freeAvlNodes: PAvlNode
@@ -173,8 +171,24 @@ type
     when defined(nimTypeNames):
       allocCounter, deallocCounter: int
 
+  RegionHandle = object
+    ## Stable chunk ownership and remotely accessed allocator state. The
+    ## MemRegion itself moves between this handle and the current thread's TLS.
+    when defined(gcDestructors):
+      region: MemRegion
+      next: ptr RegionHandle
+      sharedFreeLists: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
+        # Foreign frees are deferred here until the handle is checked out and
+        # its MemRegion allocates from the corresponding size class.
+      sharedFreeListBigChunks: PBigChunk
+        # Make no attempt at avoiding false sharing for this field for now.
+
 template smallChunkOverhead(): untyped = sizeof(SmallChunk)
 template bigChunkOverhead(): untyped = sizeof(BigChunk)
+
+template regionOwner(a: MemRegion): untyped =
+  when defined(gcDestructors): a.handle
+  else: unsafeAddr a
 
 when hasThreadSupport:
   template loada(x: untyped): untyped = atomicLoadN(unsafeAddr x, ATOMIC_RELAXED)
@@ -502,6 +516,58 @@ proc pageAddr(p: pointer): PChunk {.inline.} =
   result = cast[PChunk](cast[int](p) and not PageMask)
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
+when defined(gcDestructors):
+  # Process-wide state. Keep both declarations at module scope: putting either
+  # into TLS or instantiateForRegion would create pools that are not mutually
+  # protected by the same lock.
+  var regionPool: ptr RegionHandle
+  when hasThreadSupport:
+    var regionPoolLock: SysLock
+    initSysLock(regionPoolLock)
+
+  proc acquireMemRegion(a: var MemRegion) {.raises: [], gcsafe.} =
+    ## Move an idle allocator into this thread's TLS, or create one if every
+    ## pooled allocator is currently in use.
+    if a.handle != nil:
+      return
+    var h: ptr RegionHandle
+    when hasThreadSupport:
+      acquireSys(regionPoolLock)
+    h = regionPool
+    if h != nil:
+      regionPool = h.next
+      h.next = nil
+    when hasThreadSupport:
+      releaseSys(regionPoolLock)
+    if h == nil:
+      h = cast[ptr RegionHandle](c_calloc(1, csize_t(sizeof(RegionHandle))))
+      if h == nil:
+        raiseOutOfMem()
+      a.handle = h
+    else:
+      a = h.region
+      h.region = default(MemRegion)
+      a.handle = h
+
+  proc releaseMemRegion(a: var MemRegion) {.raises: [], gcsafe.} =
+    ## Move this thread's allocator back into the process-wide pool. Handles
+    ## are never relocated, so chunks and concurrent foreign frees stay valid.
+    let h = a.handle
+    if h == nil:
+      return
+    h.region = a
+    a = default(MemRegion)
+    when hasThreadSupport:
+      acquireSys(regionPoolLock)
+    h.next = regionPool
+    regionPool = h
+    when hasThreadSupport:
+      releaseSys(regionPoolLock)
+
+  proc ensureRegionHandle(a: var MemRegion) {.inline.} =
+    if a.handle == nil:
+      acquireMemRegion(a)
+
 when false:
   proc writeFreeList(a: MemRegion) =
     var it = a.freeChunksList
@@ -512,6 +578,8 @@ when false:
       it = it.next
 
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
+  when defined(gcDestructors):
+    ensureRegionHandle(a)
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
       let usedMem = a.occ #a.currMem # - a.freeMem
@@ -618,7 +686,7 @@ proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
     result.prev = nil
   # size and not used:
   result.prevSize = size
-  result.owner = addr a
+  result.owner = regionOwner(a)
   sysAssert((size and 1) == 0, "splitChunk 2")
   sysAssert((size and PageMask) == 0,
       "splitChunk: size is not a multiple of the PageSize")
@@ -686,7 +754,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
       # if we over allocated split the chunk:
       if result.size > size:
         splitChunk(a, result, size)
-    result.owner = addr a
+    result.owner = regionOwner(a)
   else:
     removeChunkFromMatrix2(a, result, fl, sl)
     if result.size >= size + PageSize:
@@ -694,12 +762,14 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   # set 'used' to true:
   result.prevSize = 1
   track("setUsedToFalse", addr result.size, sizeof(int))
-  sysAssert result.owner == addr a, "getBigChunk: No owner set!"
+  sysAssert result.owner == regionOwner(a), "getBigChunk: No owner set!"
 
   incl(a, a.chunkStarts, pageIndex(result))
   dec(a.freeMem, size)
 
 proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
+  when defined(gcDestructors):
+    ensureRegionHandle(a)
   result = cast[PBigChunk](allocPages(a, size))
   incCurrMem(a, size)
   # XXX add this to the heap links. But also remove it from it later.
@@ -710,7 +780,7 @@ proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   result.size = size
   # set 'used' to true:
   result.prevSize = 1
-  result.owner = addr a
+  result.owner = regionOwner(a)
   incl(a, a.chunkStarts, pageIndex(result))
 
 proc freeHugeChunk(a: var MemRegion; c: PBigChunk) =
@@ -800,26 +870,26 @@ when defined(gcDestructors):
       elem.next.storea head.loada
       head.storea elem
 
-  proc addToSharedFreeListBigChunks(a: var MemRegion; c: PBigChunk) {.inline.} =
+  proc addToSharedFreeListBigChunks(h: var RegionHandle; c: PBigChunk) {.inline.} =
     sysAssert c.next == nil, "c.next pointer must be nil"
-    atomicPrepend a.sharedFreeListBigChunks, c
+    atomicPrepend h.sharedFreeListBigChunks, c
 
-  proc takeFromSharedFreeListBigChunks(a: var MemRegion): PBigChunk {.inline.} =
+  proc takeFromSharedFreeListBigChunks(h: var RegionHandle): PBigChunk {.inline.} =
     when hasThreadSupport:
       while true:
-        result = atomicLoadN(addr a.sharedFreeListBigChunks, ATOMIC_ACQUIRE)
+        result = atomicLoadN(addr h.sharedFreeListBigChunks, ATOMIC_ACQUIRE)
         if result == nil:
           break
         let next = result.next.loada
         var expected = result
-        if atomicCompareExchangeN(addr a.sharedFreeListBigChunks, addr expected, next,
+        if atomicCompareExchangeN(addr h.sharedFreeListBigChunks, addr expected, next,
                                   weak = true, ATOMIC_ACQUIRE, ATOMIC_RELAXED):
           result.next.storea nil
           break
     else:
-      result = a.sharedFreeListBigChunks
+      result = h.sharedFreeListBigChunks
       if result != nil:
-        a.sharedFreeListBigChunks = result.next
+        h.sharedFreeListBigChunks = result.next
         result.next = nil
 
   proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell; size: int) {.inline.} =
@@ -850,7 +920,7 @@ when defined(gcDestructors):
     # re-enqueuing its unprocessed tail through atomicPrepend would overwrite
     # that tail's next pointer and lose the rest of the list.
     for _ in 0..MaxSteps:
-      let it = takeFromSharedFreeListBigChunks(a)
+      let it = takeFromSharedFreeListBigChunks(a.handle[])
       if it == nil: break
       deallocBigChunk(a, it)
 
@@ -892,15 +962,15 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
 
   if size + alignOff <= SmallChunkSize-smallChunkOverhead():
     template fetchSharedCells(tc: PSmallChunk) =
-      # Consumes cells from (potentially) foreign threads from `a.sharedFreeLists[s]`
+      # Consumes cells from (potentially) foreign threads from the stable handle.
       when defined(gcDestructors):
         if tc.freeList == nil:
           when hasThreadSupport:
             # Steal the entire list from `sharedFreeList`:
-            tc.freeList = atomicExchangeN(addr a.sharedFreeLists[s], nil, ATOMIC_RELAXED)
+            tc.freeList = atomicExchangeN(addr a.handle.sharedFreeLists[s], nil, ATOMIC_ACQUIRE)
           else:
-            tc.freeList = a.sharedFreeLists[s]
-            a.sharedFreeLists[s] = nil
+            tc.freeList = a.handle.sharedFreeLists[s]
+            a.handle.sharedFreeLists[s] = nil
           # if `tc.freeList` isn't nil, `tc` will gain capacity.
           # We must calculate how much it gained and how many foreign cells are included.
           compensateCounters(a, tc, size)
@@ -921,7 +991,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
       c.size = size
       c.acc = (alignOff + size).uint32
       c.free = SmallChunkSize - smallChunkOverhead() - alignOff.int32 - size.int32
-      sysAssert c.owner == addr(a), "rawAlloc: No owner set!"
+      sysAssert c.owner == regionOwner(a), "rawAlloc: No owner set!"
       c.next = nil
       c.prev = nil
       # Shared cells are fetched here in case `c.size * 2 >= SmallChunkSize - smallChunkOverhead()`.
@@ -980,7 +1050,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     trackSize(c.size)
   else:
     when defined(gcDestructors):
-      freeDeferredObjects(a)
+      if a.handle != nil:
+        freeDeferredObjects(a)
 
     # For big chunks with custom alignment, allocate extra space.
     # Since chunks are page-aligned, the needed padding is a compile-time
@@ -1030,7 +1101,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     #       ^ We might access thread foreign storage here.
     # The other thread cannot possibly free this block as it's still alive.
     var f = cast[ptr FreeCell](p)
-    if c.owner == addr(a):
+    if c.owner == regionOwner(a):
       # We own the block, there is no foreign thread involved.
       dec a.occ, s
       untrackSize(s)
@@ -1101,7 +1172,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
     when logAlloc: cprintf("dealloc(pointer_%p) # BIG %p\n", p, c.owner)
     when defined(gcDestructors):
-      if c.owner == addr(a):
+      if c.owner == regionOwner(a):
         deallocBigChunk(a, cast[PBigChunk](c))
       else:
         addToSharedFreeListBigChunks(c.owner[], cast[PBigChunk](c))
@@ -1272,6 +1343,13 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = isAllocatedPtr(allocator, p)
 
   proc deallocOsPages = deallocOsPages(allocator)
+
+  when defined(gcDestructors) and not defined(useMalloc):
+    proc acquireThreadAllocator() {.rtl, raises: [], gcsafe.} =
+      acquireMemRegion(allocator)
+
+    proc releaseThreadAllocator() {.rtl, raises: [], gcsafe.} =
+      releaseMemRegion(allocator)
 
   proc allocImpl(size: Natural): pointer =
     result = alloc(allocator, size)
