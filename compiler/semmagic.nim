@@ -691,5 +691,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[1].kind in {nkStmtListExpr, nkBlockExpr,
               nkIfExpr, nkCaseStmt, nkTryStmt}:
       localError(c.config, n.info, "Nested expressions cannot be moved: '" & $n[1] & "'")
+  of mMove:
+    result = n
+    if isCursor(n[1]):
+      localError(c.config, n.info, errFailedMove,
+        "cannot move cursor '" & $n[1] & "'; a cursor does not own its value")
   else:
     result = n

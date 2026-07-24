@@ -225,6 +225,17 @@ proc getRoot*(n: PNode): PSym =
     else: result = nil
   else: result = nil
 
+proc isCursor*(n: PNode): bool =
+  case n.kind
+  of nkSym:
+    sfCursor in n.sym.flags
+  of nkDotExpr:
+    isCursor(n[1])
+  of nkCheckedFieldExpr:
+    isCursor(n[0])
+  else:
+    false
+
 proc stupidStmtListExpr*(n: PNode): bool =
   for i in 0..<n.len-1:
     if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
