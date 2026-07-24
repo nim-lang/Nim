@@ -336,9 +336,14 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
         var cond: PNode = nil
         for i in 0..<c.len - 1:
           assert(c[i].kind == nkType)
+          # Use the :curExc env field (set by the wrapper before entering the
+          # except landing state) instead of calling getCurrentException():
+          # injectdestructors does not process the args of this raw generic
+          # `of` magic call, so an owning getCurrentException() temp would
+          # never be destroyed and the caught exception would leak (#23615).
           let nextCond = newTreeIT(nkCall, c.info, ctx.g.getSysType(c.info, tyBool),
             newSymNode(g.getSysMagic(c.info, "of", mOf)),
-            g.callCodegenProc("getCurrentException"),
+            ctx.newCurExcAccess(),
             c[i])
 
           cond = if cond.isNil: nextCond
