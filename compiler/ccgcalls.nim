@@ -880,18 +880,11 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       pl.add("]")
-      if p.module.compileToCpp and typ.returnType != nil and
-          typ.returnType.skipTypes(abstractInst).kind == tyVar:
-        d = getTempCpp(p, typ.returnType, extract(pl))
-      else:
-        if d.k == locNone: d = getTemp(p, typ.returnType)
-        assert(d.t != nil)        # generate an assignment to d:
-        var list: TLoc = initLoc(locCall, ri, OnUnknown)
-        var rval = extract(pl)
-        if tfVarIsPtr in typ.returnType.flags:
-          rval = cAddr(rval)
-        list.snippet = rval
-        genAssignment(p, d, list, {}) # no need for deep copying
+      if d.k == locNone: d = getTemp(p, typ.returnType)
+      assert(d.t != nil)        # generate an assignment to d:
+      var list: TLoc = initLoc(locCall, ri, OnUnknown)
+      list.snippet = extract(pl)
+      genAssignment(p, d, list, {}) # no need for deep copying
   else:
     pl.add("]")
     p.s(cpsStmts).addStmt():
