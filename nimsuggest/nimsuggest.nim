@@ -1156,13 +1156,14 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       graph.suggestResult(s.sym, s.sym.info)
   of ideType:
     let s = graph.findSymData(file, line, col)
-    if not s.isNil:
+    if not s.isNil and s.sym.typ != nil:
       let typeSym = s.sym.typ.sym
       if typeSym != nil:
         graph.suggestResult(typeSym, typeSym.info, ideType)
-      elif s.sym.typ.len != 0:
+      elif s.sym.typ.len != 0 and s.sym.typ[0] != nil:
         let genericType = s.sym.typ[0].sym
-        graph.suggestResult(genericType, genericType.info, ideType)
+        if genericType != nil:
+          graph.suggestResult(genericType, genericType.info, ideType)
   of ideUse, ideDus:
     let symbol = graph.findSymData(file, line, col)
     if not symbol.isNil:

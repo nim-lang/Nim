@@ -94,11 +94,21 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc genAddr(c: var TLiftCtx; x: PNode): PNode =
-  if x.kind == nkHiddenDeref:
+  # These synthesized addresses are always passed to codegen procs that expect a
+  # genuine pointer (nimAsgnYrc, nimSinkYrc, destructors, ...). `addr(deref x)`
+  # collapses to `x` only when `x` is a real pointer; on the C++ backend a `var`
+  # parameter is a C++ reference, so we must keep the `nkHiddenAddr` to actually
+  # take its address (`&dest`) instead of passing the reference's value. Likewise
+  # `tfVarIsPtr` keeps the C++ backend from lowering the synthesized address back
+  # to a reference and dropping the `&` (e.g. a closure's `tyPointer` env). See
+  # #26026 CI (yrc + cpp).
+  if x.kind == nkHiddenDeref and c.g.config.backend != backendCpp:
     checkSonsLen(x, 1, c.g.config)
     result = x[0]
   else:
-    result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ, c.idgen))
+    let addrTyp = makeVarType(x.typ.owner, x.typ, c.idgen)
+    addrTyp.incl tfVarIsPtr
+    result = newNodeIT(nkHiddenAddr, x.info, addrTyp)
     result.add x
 
 proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
