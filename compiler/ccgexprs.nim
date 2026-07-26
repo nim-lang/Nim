@@ -1907,7 +1907,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         isRef or
         d.k == locNone or
         (d.t != nil and not sameBackendType(t, d.t.skipTypes(abstractInstOwned))) or
-        (isPartOf(d.lode, e, checkPrefix=true) != arNo)
+        (isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo)
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
