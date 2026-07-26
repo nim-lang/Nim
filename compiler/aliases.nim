@@ -21,6 +21,39 @@ type
   TAnalysisResult* = enum
     arNo, arMaybe, arYes
 
+func sameLocation(a, b: PNode): bool =
+  template sameConstIndex(a, b: PNode): bool =
+    a.kind in nkLiterals and b.kind in nkLiterals and a.intVal == b.intVal
+  var a = a
+  var b = b
+  while a.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}: a = a[1]
+  while b.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}: b = b[1]
+  if a.kind != b.kind: return false
+  case a.kind
+  of nkSym: result = a.sym.id == b.sym.id
+  of nkDotExpr, nkCheckedFieldExpr:
+    result = sameLocation(a[0], b[0]) and a[1].sym.id == b[1].sym.id
+  of nkBracketExpr:
+    result = sameLocation(a[0], b[0]) and sameConstIndex(a[1], b[1])
+  of nkObjUpConv, nkObjDownConv, nkDerefExpr, nkHiddenDeref:
+    result = sameLocation(a[0], b[0])
+  else: result = false
+
+proc isAccessorPrefixOf(a, b: PNode): bool =
+  var cur = b
+  while cur.kind in {nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkObjUpConv,
+                     nkObjDownConv, nkHiddenDeref, nkDerefExpr,
+                     nkHiddenStdConv, nkHiddenSubConv, nkConv}:
+    if sameLocation(cur, a): return true
+    case cur.kind
+    of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv,
+       nkHiddenDeref, nkDerefExpr:
+      cur = cur[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      cur = cur[1]
+    else: discard
+  result = sameLocation(cur, a)
+
 proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult
 
 proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
@@ -70,7 +103,7 @@ proc isPartOf(a, b: PType): TAnalysisResult =
   # watch out: parameters reversed because I'm too lazy to change the code...
   result = isPartOfAux(b, a, marker)
 
-proc isPartOf*(a, b: PNode): TAnalysisResult =
+proc isPartOf*(a, b: PNode; checkPrefix = false): TAnalysisResult =
   ## checks if location `a` can be part of location `b`. We treat seqs and
   ## strings as pointers because the code gen often just passes them as such.
   ##
@@ -121,7 +154,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         else:
           result = arNo
     of nkBracketExpr:
-      result = isPartOf(a[0], b[0])
+      result = isPartOf(a[0], b[0], checkPrefix)
       if a.len >= 2 and b.len >= 2:
         # array accesses:
         if result == arYes and isDeepConstExpr(a[1]) and isDeepConstExpr(b[1]):
@@ -131,7 +164,11 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           var y = if b[1].kind == nkHiddenStdConv: b[1][1] else: b[1]
 
           if sameValue(x, y): result = arYes
+          elif checkPrefix and isAccessorPrefixOf(a, b):
+            result = arYes
           else: result = arNo
+        elif checkPrefix and isAccessorPrefixOf(a, b):
+          result = arYes
         # else: maybe and no are accurate
       else:
         # pointer derefs:
@@ -139,22 +176,25 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           if isPartOf(a.typ, b.typ) != arNo: result = arMaybe
 
     of nkDotExpr:
-      result = isPartOf(a[0], b[0])
+      result = isPartOf(a[0], b[0], checkPrefix)
       if result != arNo:
         # if the fields are different, it's not the same location
         if a[1].sym.id != b[1].sym.id:
-          result = arNo
+          if checkPrefix and isAccessorPrefixOf(a, b):
+            result = arYes
+          else:
+            result = arNo
 
     of nkHiddenDeref, nkDerefExpr:
-      result = isPartOf(a[0], b[0])
+      result = isPartOf(a[0], b[0], checkPrefix)
       # weaken because of indirection:
       if result != arYes:
         if isPartOf(a.typ, b.typ) != arNo: result = arMaybe
 
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-      result = isPartOf(a[1], b[1])
+      result = isPartOf(a[1], b[1], checkPrefix)
     of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-      result = isPartOf(a[0], b[0])
+      result = isPartOf(a[0], b[0], checkPrefix)
     else: result = arNo
     # Calls return a new location, so a default of ``arNo`` is fine.
   else:
@@ -167,31 +207,31 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
     case b.kind
     of Ix0Kinds:
       # a* !<| b.f  iff  a* !<| b
-      result = isPartOf(a, b[0])
+      result = isPartOf(a, b[0], checkPrefix)
 
     of DerefKinds:
       # a* !<| b[] iff
       result = arNo
       if isPartOf(a.typ, b.typ) != arNo:
-        result = isPartOf(a, b[0])
+        result = isPartOf(a, b[0], checkPrefix)
         if result == arNo: result = arMaybe
 
     of Ix1Kinds:
       # a* !<| T(b)  iff a* !<| b
-      result = isPartOf(a, b[1])
+      result = isPartOf(a, b[1], checkPrefix)
 
     of nkSym:
       # b is an atom, so we have to check a:
       case a.kind
       of Ix0Kinds:
         # a.f !<| b*  iff  a.f !<| b*
-        result = isPartOf(a[0], b)
+        result = isPartOf(a[0], b, checkPrefix)
       of Ix1Kinds:
-        result = isPartOf(a[1], b)
+        result = isPartOf(a[1], b, checkPrefix)
 
       of DerefKinds:
         if isPartOf(a.typ, b.typ) != arNo:
-          result = isPartOf(a[0], b)
+          result = isPartOf(a[0], b, checkPrefix)
           if result == arNo: result = arMaybe
         else:
           result = arNo
@@ -199,20 +239,29 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
     of nkObjConstr:
       result = arNo
       for i in 1..<b.len:
-        let res = isPartOf(a, b[i][1])
+        let res = isPartOf(a, b[i][1], checkPrefix)
         if res != arNo:
           result = res
           if res == arYes: break
+        if checkPrefix:
+          let res2 = isPartOf(b[i][1], a, checkPrefix)
+          if res2 != arNo:
+            result = res2
+            if res2 == arYes: break
     of nkCallKinds:
       result = arNo
       for i in 1..<b.len:
-        let res = isPartOf(a, b[i])
+        let res = isPartOf(a, b[i], checkPrefix)
         if res != arNo:
           result = res
           if res == arYes: break
     of nkBracket:
       if b.len > 0:
-        result = isPartOf(a, b[0])
+        result = isPartOf(a, b[0], checkPrefix)
       else:
         result = arNo
-    else: result = arNo
+    else:
+      if checkPrefix:
+        for i in 0..<b.safeLen:
+          if isPartOf(a, b[i], checkPrefix) != arNo: return arMaybe
+      result = arNo
