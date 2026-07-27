@@ -150,8 +150,6 @@ type
   MemRegion = object
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
-    else:
-      handle: ptr RegionHandle
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
       # List of available chunks per size class. Only one is expected to be active per class.
     flBitmap: uint32
@@ -170,6 +168,10 @@ type
     heapLinks: HeapLinks
     when defined(nimTypeNames):
       allocCounter, deallocCounter: int
+    when defined(gcDestructors):
+      # Keep the allocator's hot size-class table at offset zero. The handle is
+      # only needed for ownership and remote-free paths.
+      handle: ptr RegionHandle
 
   RegionHandle = object
     ## Stable chunk ownership and remotely accessed allocator state. The
@@ -916,11 +918,10 @@ when defined(gcDestructors):
     inc(c.free, total)
     dec(a.occ, total)
 
-  proc freeDeferredObjects(a: var MemRegion) =
+  proc freeDeferredObjects(a: var MemRegion; h: ptr RegionHandle) =
     # Pop only as many nodes as we can process. Detaching the entire list and
     # re-enqueuing its unprocessed tail through atomicPrepend would overwrite
     # that tail's next pointer and lose the rest of the list.
-    let h = a.handle
     for _ in 0..MaxSteps:
       let it = takeFromSharedFreeListBigChunks(h[])
       if it == nil: break
@@ -1057,8 +1058,9 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     trackSize(c.size)
   else:
     when defined(gcDestructors):
-      if a.handle != nil:
-        freeDeferredObjects(a)
+      let h = a.handle
+      if h != nil:
+        freeDeferredObjects(a, h)
 
     # For big chunks with custom alignment, allocate extra space.
     # Since chunks are page-aligned, the needed padding is a compile-time
