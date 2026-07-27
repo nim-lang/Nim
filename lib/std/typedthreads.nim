@@ -84,9 +84,6 @@ import system/ansi_c
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-# Virtual-thread worker pool primitives. Included as a file (not imported)
-# so it inherits the OS thread bindings (`pthread_create`, `createThread` on
-# Windows, etc.) already in scope from `threadtypes`.
 include private/threadpool_impl
 
 when defined(genode):
