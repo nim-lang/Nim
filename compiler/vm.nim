@@ -28,7 +28,7 @@ from magicsys import getSysType
 const
   traceCode = defined(nimVMDebug)
 
-when hasFFI:
+when defined(nimHasLibFFI): # == hasFFI; spelled out for the IC dep scanner
   import evalffi
 
 
@@ -702,6 +702,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # A bodge, but this takes in `toOpenArray(rb, rc, rc)` and emits
       # nkTupleConstr(x, y, z) into the `regs[ra]`. These can later be used for calculating the slice we have taken.
       decodeBC(rkNode)
+      # Slicing/openArray needs the real length and per-element nodes, so a
+      # compact default array must be materialised first.
+      if isDefaultBroadcastArray(regs[ra].node, c.config):
+        expandBroadcastArray(regs[ra].node, c.config)
       let
         collection = regs[ra].node
         leftInd = regs[rb].intVal
@@ -770,6 +774,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node.intVal = src.strVal[idx].ord
         else:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.strVal.len-1))
+      elif isDefaultBroadcastArray(src, c.config):
+        # `a[i]` on a compact default array yields `default(T)` directly, without
+        # ever materialising the (potentially huge) array — the point of the
+        # broadcast form. See `getNullValue`/`isDefaultBroadcastArray`.
+        let total = toInt(lengthOrd(c.config, src.typ.skipTypes(abstractInst)))
+        if idx <% total:
+          regs[ra].node = copyTree(src[0])
+        else:
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, total-1))
       elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
         regs[ra].node = src[idx]
       else:
@@ -781,6 +794,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
+      # Taking the address of an element needs distinct, stable per-slot nodes, so
+      # a compact default array must be materialised first.
+      if isDefaultBroadcastArray(src, c.config): expandBroadcastArray(src, c.config)
       case src.kind
       of nkTupleConstr:
         let
@@ -829,6 +845,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let idx = regs[rb].intVal.int
       assert regs[ra].kind == rkNode
       let arr = regs[ra].node
+      # Writing a slot materialises a compact default array into a full literal.
+      if isDefaultBroadcastArray(arr, c.config): expandBroadcastArray(arr, c.config)
       case arr.kind
       of nkTupleConstr: # refer to `opcSlice`
         let
@@ -1031,6 +1049,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         case node.kind
         of nkTupleConstr: # refer to `of opcSlice`
           regs[ra].intVal = node[2].intVal - node[1].intVal + 1 - high
+        elif isDefaultBroadcastArray(node, c.config):
+          regs[ra].intVal = toInt(lengthOrd(c.config, node.typ.skipTypes(abstractInst))) - high
         else:
           # safeArrLen also return string node len
           # used when string is passed as openArray in VM
@@ -1310,8 +1330,44 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var a = regs[rb].node
       if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
-        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
-                        else: copyTree(a.sym.ast)
+        # a macro observed this symbol's implementation: NeedsImpl edge to
+        # its home module under IC.
+        recordIcImplDep(c.graph, a.sym)
+        if a.sym.ast.isNil:
+          regs[ra].node = newNode(nkNilLit)
+        else:
+          let tree = copyTree(a.sym.ast)
+          # A NIF-loaded routine's `ast[paramsPos]` is an `nkEmpty` placeholder:
+          # ast2nif strips the formal params (recoverable from `typ.n`, see
+          # writeNode's `skipParams`). A macro that reads `fn.getImpl[paramsPos]`
+          # — e.g. taskpools `spawn` reads the return type via `getImpl[3][0]` —
+          # needs them, so reconstruct a read-only formalParams from the proc
+          # type. The synthesized type-expression nodes carry the resolved
+          # `PType`, which is all a macro can query for a loaded routine.
+          if tree.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                           nkConverterDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo} and
+              tree.safeLen > paramsPos and tree[paramsPos].kind == nkEmpty and
+              a.sym.typ != nil and a.sym.typ.n != nil and
+              a.sym.typ.n.kind == nkFormalParams:
+            let t = a.sym.typ
+            let fp = newNodeI(nkFormalParams, a.sym.info)
+            let rt = t.returnType
+            # `opMapTypeInstToAst` (inst=true) reproduces a source-like type
+            # declaration — crucially it renders an array's range bound as
+            # `range 0..N` (the `inst=false` form emits `range[0, N]`, which
+            # re-sems to "'range' expects one type parameter").
+            fp.add(if rt != nil: opMapTypeInstToAst(c.cache, rt, a.sym.info, c.idgen)
+                   else: newNodeI(nkEmpty, a.sym.info))
+            for i in 1 ..< t.n.len:
+              if t.n[i].kind == nkSym:
+                let p = t.n[i].sym
+                let def = newNodeI(nkIdentDefs, p.info)
+                def.add newIdentNode(p.name, p.info)
+                def.add opMapTypeInstToAst(c.cache, p.typ, p.info, c.idgen)
+                def.add newNodeI(nkEmpty, p.info)
+                fp.add def
+            tree[paramsPos] = fp
+          regs[ra].node = tree
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
@@ -1319,6 +1375,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let a = regs[rb].node
       if a.kind == nkSym:
+        recordIcImplDep(c.graph, a.sym)
         regs[ra].node =
           if a.sym.ast.isNil:
             newNode(nkNilLit)
@@ -1951,7 +2008,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].node.kind != nkSym:
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
-        regs[ra].node.strVal = $sigHash(regs[rb].node.sym, c.config)
+        let shSym = regs[rb].node.sym
+        # When `signatureHash` is applied to a type (e.g. a `T: typedesc`/generic
+        # param), hash the *type* it denotes, not the parameter symbol. Hashing the
+        # symbol routes through `hashNonProc`, which mixes in `s.disamb` — a
+        # per-module instantiation counter. Under incremental compilation the
+        # registering module and a consuming module instantiate the surrounding
+        # generic separately, get different `disamb`s, and produce different
+        # hashes for the same type (nim-serialization's auto-serialization lookup
+        # missed because of this). Hashing the underlying type via `hashType` is
+        # type-identity based and stable across the NIF boundary.
+        let shTyp = shSym.typ
+        if shTyp != nil and shTyp.kind == tyTypeDesc and shTyp.hasElementType:
+          regs[ra].node.strVal = $hashType(shTyp.elementType, c.config)
+        else:
+          regs[ra].node.strVal = $sigHash(shSym, c.config)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]

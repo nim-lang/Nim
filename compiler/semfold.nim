@@ -476,7 +476,12 @@ proc foldArrayAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNo
       #localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkBracket:
     idx -= toInt64(firstOrd(g.config, x.typ))
-    if idx >= 0 and idx < x.len: result = x[int(idx)]
+    if isDefaultBroadcastArray(x, g.config):
+      # compact default array: any in-bounds index folds to the default element
+      if idx >= 0 and idx < toInt64(lengthOrd(g.config, x.typ.skipTypes(abstractInst))):
+        result = copyTree(x[0])
+      else: result = nil
+    elif idx >= 0 and idx < x.len: result = x[int(idx)]
     else:
       result = nil
       #localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
@@ -610,10 +615,21 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     var s = n.sym
     case s.kind
     of skEnumField:
+      when defined(icDbg):
+        if n.typ == nil:
+          echo "ENUMFIELD niltyp sym=", s.name.s, " symtyp=",
+            (if s.typ == nil: "nil" else: $s.typ.kind), " lazy=", nfLazyType in n.flags,
+            " symstate=", s.state, " symid=", s.itemId
       result = newIntNodeT(toInt128(s.position), n, idgen, g)
     of skConst:
       case s.magic
-      of mIsMainModule: result = newIntNodeT(toInt128(ord(sfMainModule in m.flags)), n, idgen, g)
+      of mIsMainModule:
+        # Under `nim m` (IC) `sfMainModule` is set on every module that is being
+        # compiled (so it writes its own NIF), so it cannot answer `isMainModule`;
+        # the IC build file marks the real entry point with `--isMainModule:on`.
+        let isMain = if g.config.cmd == cmdM: g.config.isMainModule
+                     else: sfMainModule in m.flags
+        result = newIntNodeT(toInt128(ord(isMain)), n, idgen, g)
       of mCompileDate: result = newStrNodeT(getDateStr(), n, g)
       of mCompileTime: result = newStrNodeT(getClockStr(), n, g)
       of mCpuEndian: result = newIntNodeT(toInt128(ord(CPU[g.config.target.targetCPU].endian)), n, idgen, g)

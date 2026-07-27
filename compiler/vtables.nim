@@ -152,6 +152,8 @@ proc sortVTableDispatchers*(g: ModuleGraph) =
         rootItemIdCount.inc(baseType.itemId)
       for idx in 0..<g.methods[bucket].methods.len:
         let obj = g.methods[bucket].methods[idx].typ.firstParamType.skipTypes(skipPtrs)
+        if obj.itemId notin itemTable:
+          itemTable[obj.itemId] = newSeq[PSym](methodIndexLen)
         itemTable[obj.itemId][mIndex] = g.methods[bucket].methods[idx]
 
   for baseType in rootTypeSeq:

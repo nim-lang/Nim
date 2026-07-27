@@ -185,6 +185,9 @@ proc root(v: var Partitions; start: int): int =
 proc potentialMutation(v: var Partitions; s: PSym; level: int; info: TLineInfo) =
   let id = variableId(v, s)
   if id >= 0:
+    # mutated here => alive here: keep aliveEnd in sync so dangerousMutation catches
+    # mutations recorded after the var's last use (e.g. via a call arg). See #25595.
+    v.s[id].aliveEnd = max(v.s[id].aliveEnd, v.abstractTime)
     let r = root(v, id)
     let flags = if s.kind == skParam:
                   if isConstParam(s):
@@ -674,9 +677,13 @@ proc deps(c: var Partitions; dest, src: PNode) =
           else:
             let srcid = variableId(c, s)
             if srcid >= 0:
-              if s.kind notin {skResult, skParam} and (
-                  c.s[srcid].aliveEnd < c.s[vid].aliveEnd):
-                # you cannot borrow from a local that lives shorter than 'vid':
+              if s.kind notin {skResult, skParam} and
+                  c.s[srcid].aliveEnd < c.s[vid].aliveEnd and
+                  c.g.config.backend != backendJs:
+                # you cannot borrow from a local that lives shorter than 'vid'.
+                # On a traced (JS/GC) target the source object stays alive as long
+                # as the alias references it, so this lifetime rule does not apply;
+                # value-semantics safety is enforced by `dangerousMutation` instead.
                 when explainCursors: echo "B not a cursor ", d.sym, " ", c.s[srcid].aliveEnd, " ", c.s[vid].aliveEnd
                 c.s[vid].flags.incl preventCursor
               elif {isReassigned, preventCursor} * c.s[srcid].flags != {}:
@@ -1000,13 +1007,22 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
       #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
 
+proc jsDeepCopied(t: PType): bool =
+  ## On the JS backend `nimCopy` deep-copies these type classes on every
+  ## assignment, so eliding the copy for a safe alias is worthwhile even when
+  ## the type has no C-style destructor.
+  t.skipTypes({tyGenericInst, tyAlias, tyDistinct, tyVar, tyLent}).kind in
+    {tyObject, tyTuple, tyArray, tySequence, tyString}
+
 proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
+  let jsCursors = g.config.backend == backendJs
   var par = computeGraphPartitions(s, n, g, {cursorInference})
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
     if v.flags * {ownsData, preventCursor, isConditionallyReassigned} == {} and
         v.sym.kind notin {skParam, skResult} and
-        v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
+        v.sym.flags * {sfThread, sfGlobal} == {} and
+        (hasDestructor(v.sym.typ) or (jsCursors and jsDeepCopied(v.sym.typ))) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned and
         (getAttachedOp(g, v.sym.typ, attachedAsgn) == nil or
         sfError notin getAttachedOp(g, v.sym.typ, attachedAsgn).flags):

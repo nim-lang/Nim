@@ -94,11 +94,21 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc genAddr(c: var TLiftCtx; x: PNode): PNode =
-  if x.kind == nkHiddenDeref:
+  # These synthesized addresses are always passed to codegen procs that expect a
+  # genuine pointer (nimAsgnYrc, nimSinkYrc, destructors, ...). `addr(deref x)`
+  # collapses to `x` only when `x` is a real pointer; on the C++ backend a `var`
+  # parameter is a C++ reference, so we must keep the `nkHiddenAddr` to actually
+  # take its address (`&dest`) instead of passing the reference's value. Likewise
+  # `tfVarIsPtr` keeps the C++ backend from lowering the synthesized address back
+  # to a reference and dropping the `&` (e.g. a closure's `tyPointer` env). See
+  # #26026 CI (yrc + cpp).
+  if x.kind == nkHiddenDeref and c.g.config.backend != backendCpp:
     checkSonsLen(x, 1, c.g.config)
     result = x[0]
   else:
-    result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ, c.idgen))
+    let addrTyp = makeVarType(x.typ.owner, x.typ, c.idgen)
+    addrTyp.incl tfVarIsPtr
+    result = newNodeIT(nkHiddenAddr, x.info, addrTyp)
     result.add x
 
 proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
@@ -711,6 +721,11 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       doAssert t.asink != nil
       body.add newHookCall(c, t.asink, x, y)
   of attachedDestructor:
+    when defined(icDbg):
+      if t.destructor == nil:
+        echo "MISSING destructor: ", typeToString(t), " kind=", t.kind,
+          " itemId=", t.itemId, " uniqueId=", t.uniqueId, " state=", t.state,
+          " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
@@ -816,13 +831,15 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
                       tfAcyclic in skipTypes(elemType, abstractInst+{tyOwned}-{tyTypeDesc}).flags
   # dynamic Acyclic refs need to use dyn decRef
 
+  let useStatic = isFinal(elemType)
+
   let tmp =
     if isCyclic and c.kind in {attachedAsgn, attachedSink, attachedDup}:
       declareTempOf(c, body, x)
     else:
       x
 
-  if isFinal(elemType):
+  if useStatic:
     addDestructorCall(c, elemType, actions, genDeref(tmp, nkDerefExpr))
     var alignOf = genBuiltin(c, mAlignOf, "alignof", newNodeIT(nkType, c.info, elemType))
     alignOf.typ = getSysType(c.g, c.info, tyInt)
@@ -833,7 +850,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   var cond: PNode
   if isCyclic:
-    if isFinal(elemType):
+    if useStatic:
       let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
       typInfo.typ = getSysType(c.g, c.info, tyPointer)
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicStatic", c.info, tmp, typInfo)
@@ -868,7 +885,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     if isCyclic:
-      if isFinal(elemType):
+      if useStatic:
         let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
         typInfo.typ = getSysType(c.g, c.info, tyPointer)
         body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x, c.idgen), typInfo, y)
@@ -1080,8 +1097,17 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
+  of tyUncheckedArray:
+    # An UncheckedArray has no known length, so it cannot be copied, moved or
+    # destroyed as a value: it only ever lives behind a pointer and its bytes
+    # are managed manually (element ops for seqs/strings go through the
+    # seq/string hooks, which know the length). Emitting `x = y` for it (as the
+    # pointer-like group below does) produces an assignment of an unsized array,
+    # which the C backend cannot lower (genAssignment: tyUncheckedArray). So all
+    # value hooks for it are no-ops.
+    discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCstring,
-      tyPtr, tyUncheckedArray, tyVar, tyLent:
+      tyPtr, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
     if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
@@ -1221,6 +1247,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flagsImpl, {sfFromGeneric, sfGeneratedOp}
+  setHookDisamb(g, result, AttachedOpToStr[kind], typ)
 
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; isDiscriminant = false): PSym =
@@ -1267,6 +1294,10 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   if kind == attachedWasMoved:
     incl result.flagsImpl, sfNoSideEffect
     incl result.typ, tfNoSideEffect
+  if not isDiscriminant:
+    # discriminant destructors derive their body from the enclosing object
+    # AND the selected field; their key is set at the call site
+    setHookDisamb(g, result, AttachedOpToStr[kind], typ)
 
 proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c, mAccessTypeField, "accessTypeField", x)
@@ -1359,6 +1390,7 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
   # discrimantor assignments needs pointers to destroy fields; alas, we cannot use non-var destructor here
   result = symPrototype(g, field.typ, typ.owner, attachedDestructor, info, idgen, isDiscriminant = true)
+  setHookDisamb(g, result, "=destroy¦" & field.name.s & "¦" & $field.position, typ)
   var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen,
                    fn: result)
   a.asgnForType = typ

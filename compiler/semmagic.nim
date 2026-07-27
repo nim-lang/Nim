@@ -43,17 +43,8 @@ proc semAddr(c: PContext; n: PNode): PNode =
   result.typ = makePtrType(c, x.typ.skipTypes({tySink}))
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
-  var m = BiggestInt 1 # typeOfIter
-  if n.len == 3:
-    let mode = semConstExpr(c, n[2])
-    if mode.kind != nkIntLit:
-      localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
-    else:
-      m = mode.intVal
+  let typExpr = semTypeOfImpl(c, n)
   result = newNodeI(nkTypeOfExpr, n.info)
-  inc c.inTypeofContext
-  defer: dec c.inTypeofContext # compiles can raise an exception
-  let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
   if typExpr.typ.kind == tyFromExpr:
     typExpr.typ.incl tfNonConstExpr
@@ -702,5 +693,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[1].kind in {nkStmtListExpr, nkBlockExpr,
               nkIfExpr, nkCaseStmt, nkTryStmt}:
       localError(c.config, n.info, "Nested expressions cannot be moved: '" & $n[1] & "'")
+  of mMove:
+    result = n
+    if isCursor(n[1]):
+      localError(c.config, n.info, errFailedMove,
+        "cannot move cursor '" & $n[1] & "'; a cursor does not own its value")
   else:
     result = n

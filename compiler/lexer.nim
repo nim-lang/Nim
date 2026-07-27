@@ -1349,7 +1349,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
           lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
     of '-':
       if L.buf[L.bufpos+1] in {'0'..'9'} and
-          (L.bufpos-1 == 0 or L.buf[L.bufpos-1] in UnaryMinusWhitelist):
+          (L.bufpos == 0 or L.buf[L.bufpos-1] in UnaryMinusWhitelist):
         # x)-23 # binary minus
         # ,-23  # unary minus
         # \n-78 # unary minus? Yes.
