@@ -919,8 +919,9 @@ when defined(gcDestructors):
     # Pop only as many nodes as we can process. Detaching the entire list and
     # re-enqueuing its unprocessed tail through atomicPrepend would overwrite
     # that tail's next pointer and lose the rest of the list.
+    let h = a.handle
     for _ in 0..MaxSteps:
-      let it = takeFromSharedFreeListBigChunks(a.handle[])
+      let it = takeFromSharedFreeListBigChunks(h[])
       if it == nil: break
       deallocBigChunk(a, it)
 
