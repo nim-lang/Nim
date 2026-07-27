@@ -893,7 +893,8 @@ when defined(gcDestructors):
         result.next = nil
 
   proc addToSharedFreeList(c: PSmallChunk; f: ptr FreeCell; size: int) {.inline.} =
-    atomicPrepend c.owner.sharedFreeLists[size], f
+    let h = c.owner
+    atomicPrepend h.sharedFreeLists[size], f
 
   const MaxSteps = 20
 
