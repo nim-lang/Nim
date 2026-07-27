@@ -968,8 +968,13 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
       when defined(gcDestructors):
         if tc.freeList == nil:
           when hasThreadSupport:
-            # Steal the entire list from `sharedFreeList`:
-            tc.freeList = atomicExchangeN(addr a.handle.sharedFreeLists[s], nil, ATOMIC_ACQUIRE)
+            # Avoid an atomic RMW in the common case where no remote free was
+            # published since the last allocation. A concurrent publication
+            # after this probe can safely wait until the next allocation.
+            let shared = addr tc.owner.sharedFreeLists[s]
+            if atomicLoadN(shared, ATOMIC_RELAXED) != nil:
+              # Steal the entire list from `sharedFreeList`:
+              tc.freeList = atomicExchangeN(shared, nil, ATOMIC_ACQUIRE)
           else:
             tc.freeList = a.handle.sharedFreeLists[s]
             a.handle.sharedFreeLists[s] = nil
