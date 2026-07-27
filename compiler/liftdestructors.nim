@@ -857,7 +857,19 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     else:
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicDyn", c.info, tmp)
   elif isInheritableAcyclicRef:
-    cond = callCodegenProc(c.g, "nimDecRefIsLastDyn", c.info, x)
+    if c.g.config.selectedGC == gcYrc and useStatic:
+      # YRC defers every dec, so the runtime must record a type descriptor
+      # at dec time instead of destroying immediately. The `Dyn` hook
+      # derives that descriptor from the object's m_type field -- which a
+      # FINAL object does not have, so it would read the first data field
+      # as a type pointer. Pass the static descriptor instead, the same
+      # convention the nimAsgnYrc/nimSinkYrc path above uses. (ORC is
+      # unaffected: its `Dyn` hook never looks at the descriptor.)
+      let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
+      typInfo.typ = getSysType(c.g, c.info, tyPointer)
+      cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicStatic", c.info, x, typInfo)
+    else:
+      cond = callCodegenProc(c.g, "nimDecRefIsLastDyn", c.info, x)
   else:
     cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
   cond.typ = getSysType(c.g, x.info, tyBool)

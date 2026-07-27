@@ -5,8 +5,10 @@
 # See yrc_proof.lean for a machine-checked (Lean 4) proof of the core
 # invariants — garbage stability, validation soundness, capture partition
 # disjointness, grace periods, fence mutual exclusion, deadlock freedom —
-# and yrc_tarjan_proof.lean for soundness AND completeness of the SCC
-# deadness algorithm.
+# yrc_tarjan_proof.lean for soundness AND completeness of the SCC
+# deadness algorithm, and yrc_opt_proof.lean for the three optimizations
+# that changed those invariants: SCC-uniform epoch ages, the demand-grown
+# `gParSlots` pool, and deferred reclamation (gPendingCells).
 #
 # ## Synchronization at a Glance
 #
