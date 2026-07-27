@@ -1586,7 +1586,27 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
     enqueueDec(head(p), cast[ptr PNimTypeV2](p)[])
 
 proc nimDecRefIsLastDyn(p: pointer): bool {.compilerRtl, inl.} =
-  nimDecRefIsLastCyclicDyn(p)
+  ## ACYCLIC ref: prompt reclamation, exactly as under --mm:arc. This used to
+  ## forward to `nimDecRefIsLastCyclicDyn`, which enqueued the dec and so
+  ## dragged every `.acyclic` type through capture/deadness/commit -- the
+  ## precise opposite of what the annotation asks for.
+  ##
+  ## No grace period is needed here, and that is not an accident: the
+  ## collector has no way to be holding this cell. It cannot reach it by
+  ## traversal, because liftdestructors only emits `nimTraceRef` for fields
+  ## whose type is cyclic; and it cannot hold it as a capture root, because
+  ## roots come only from `registerLocal` on a drained dec, and an acyclic
+  ## dec is never queued now that `nimAsgnYrc` is gated on `canFormAcycle`.
+  ## Both halves must stay true together -- prompt reclamation here is only
+  ## sound while nothing else puts an acyclic cell into the collector.
+  result = false
+  if p != nil:
+    when hasThreadSupport:
+      result = atomicDec(head(p).rc, rcIncrement) == -rcIncrement
+    else:
+      let cell = head(p)
+      if (cell.rc and not rcMask) == 0: result = true
+      else: cell.rc = cell.rc -% rcIncrement
 
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   result = false
