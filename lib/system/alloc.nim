@@ -967,7 +967,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     template fetchSharedCells(tc: PSmallChunk) =
       # Consumes cells from (potentially) foreign threads from the stable handle.
       when defined(gcDestructors):
-        if tc.freeList == nil:
+        if tc.freeList == nil and tc.free < size:
           when hasThreadSupport:
             # Avoid an atomic RMW in the common case where no remote free was
             # published since the last allocation. A concurrent publication
@@ -1034,6 +1034,21 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
           dec(c.foreignCells)
         else:
           sysAssert(c == cast[PSmallChunk](pageAddr(result)), "rawAlloc: Bad cell")
+        if c.freeList != nil:
+          # With another reusable cell immediately available, the chunk cannot
+          # be exhausted and no deferred-list synchronization is needed.
+          sysAssert(c.free >= size, "rawAlloc: free-list capacity mismatch")
+          dec c.free, size
+          sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 9(fast)")
+          sysAssert(allocInv(a), "rawAlloc: end c != nil")
+          sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
+                    size == 0, "rawAlloc 21(fast)")
+          inc a.occ, size
+          trackSize(c.size)
+          sysAssert(isAccessible(a, result), "rawAlloc 14(fast)")
+          sysAssert(allocInv(a), "rawAlloc: end")
+          # early exit
+          return
       # Even if the cell we return is foreign, the local chunk's capacity decreases.
       # The capacity was previously reserved in the source chunk (when it first got allocated),
       #  then added into the current chunk during dealloc,
@@ -1110,7 +1125,14 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     #       ^ We might access thread foreign storage here.
     # The other thread cannot possibly free this block as it's still alive.
     var f = cast[ptr FreeCell](p)
-    if c.owner == regionOwner(a):
+    when defined(gcDestructors):
+      # A region's active chunk cannot belong to another allocator.
+      # Check the active chunk before going through the handle
+      let activeChunk = a.freeSmallChunks[s div MemAlign]
+      let locallyOwned = c == activeChunk or c.owner == a.handle
+    else:
+      let locallyOwned = c.owner == regionOwner(a)
+    if locallyOwned:
       # We own the block, there is no foreign thread involved.
       dec a.occ, s
       untrackSize(s)
@@ -1125,7 +1147,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         # set to 0xff to check for usage after free bugs:
         nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
                 s -% sizeof(FreeCell))
-      let activeChunk = a.freeSmallChunks[s div MemAlign]
+      when not defined(gcDestructors):
+        let activeChunk = a.freeSmallChunks[s div MemAlign]
       if activeChunk != nil and c != activeChunk and
           activeChunk.chunkAlignOff == c.chunkAlignOff:
         # This pointer is not part of the active chunk, lend it out
