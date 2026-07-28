@@ -75,6 +75,11 @@ proc newAsgnStmt(le, ri: PNode): PNode =
   result[0] = le
   result[1] = ri
 
+proc newSinkAsgnStmt(le, ri: PNode): PNode =
+  result = newNodeI(nkSinkAsgn, le.info, 2)
+  result[0] = le
+  result[1] = ri
+
 proc genBuiltin*(g: ModuleGraph; idgen: IdGenerator; magic: TMagic; name: string; i: PNode): PNode =
   result = newNodeI(nkCall, i.info)
   result.add createMagic(g, idgen, name, magic).newSymNode
@@ -84,7 +89,9 @@ proc genBuiltin(c: var TLiftCtx; magic: TMagic; name: string; i: PNode): PNode =
   result = genBuiltin(c.g, c.idgen, magic, name, i)
 
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink, attachedDup}:
+  if c.kind == attachedSink:
+    body.add newSinkAsgnStmt(x, y)
+  elif c.kind in {attachedAsgn, attachedDeepCopy, attachedDup}:
     body.add newAsgnStmt(x, y)
   elif c.kind == attachedDestructor and c.addMemReset:
     let call = genBuiltin(c, mDefault, "default", x)
