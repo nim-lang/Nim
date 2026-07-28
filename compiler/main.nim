@@ -34,6 +34,7 @@ from icconfig import produceIcConfig
 when not defined(nimKochBootstrap):
   import nifbackend
   import deps
+  import idetools
 
 when not defined(leanCompiler):
   import docgen
@@ -416,6 +417,20 @@ proc mainCommand*(graph: ModuleGraph) =
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmdCheck:
     commandCheck(graph)
+  of cmdTrack:
+    # `nim track --def:/--usages:/--track:` — IDE goto-definition / find-usages.
+    # Runs `nim ic`'s incremental frontend (nifler + per-module `nim m`, so only
+    # changed modules recompile and each writes a faithful, VM-executed `.s.bif`
+    # — covering stdlib too), then scans those NIF files (idetools.runIdeQuery).
+    # Shares the `nim ic` nimcache dir, so a prior `nim ic` build is reused.
+    setUseIc(true)
+    wantMainModule(conf)
+    setOutFile(conf)
+    when not defined(nimKochBootstrap):
+      commandIc(conf, frontendOnly = true)
+      runIdeQuery(conf)
+    else:
+      rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
@@ -436,6 +451,9 @@ proc mainCommand*(graph: ModuleGraph) =
     # Generate .build.nif for nifmake
     setUseIc(true)
     wantMainModule(conf)
+    # Resolve the output binary path (honoring `--out`) up front, like cmdNifC:
+    # the backend build file derives the link target from `conf.absOutFile`.
+    setOutFile(conf)
     when not defined(nimKochBootstrap):
       commandIc(conf)
     else:
@@ -458,7 +476,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdJsonscript:
     setOutFile(graph.config)
     commandJsonScript(graph)
-  of cmdUnknown, cmdNone, cmdIdeTools:
+  of cmdUnknown, cmdNone:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop, cmdM} and

@@ -17,6 +17,15 @@ when defined(nimPreviewSlimSystem):
 
 export int128
 
+var nifcBackendActive* = false
+  ## Set only while the per-module NIF backend codegen stage runs
+  ## (`nifbackend.generateCgStage`, `cmd == cmdNifC`). It gates `newSymNode`'s
+  ## lazy-type marking so it applies ONLY in the backend — where syms are loaded
+  ## from NIF and a cg-stage transform can build a sym node from a not-yet-typed
+  ## stub — and never during frontend sem, where the same marking would perturb
+  ## effect/exception inference (it diverges from a non-IC build, e.g.
+  ## `times.toDateTimeByWeek` gaining a spurious unlisted `Exception`).
+
 import nodekinds
 export nodekinds
 
@@ -330,6 +339,14 @@ type
                       # because openSym experimental switch is disabled
                       # gives warning instead
     nfLazyType  # node has a lazy type
+    nfLazyBody  # IC: this node is a placeholder for a routine body (bodyPos son)
+                # not yet materialized. Reading its children (via `len`/`safeLen`)
+                # triggers `forceLazyBodyHook`. Process-local, stripped on serialize.
+    nfBroadcast # this `nkBracket` is a *broadcast* default array: a single son
+                # standing for `lengthOrd` identical zero copies (see
+                # `broadcastArrayThreshold`). The flag disambiguates it from an
+                # ordinary 1-element collection (e.g. a seq value that happens to
+                # carry an array type), so it must survive copies + serialization.
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -857,7 +874,8 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfDisabledOpenSym, nfLazyType}
+                                      nfDisabledOpenSym, nfLazyType,
+                                      nfBroadcast}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -894,7 +912,24 @@ const
   defaultOffset* = -1
 
 
+var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
+  ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
+  ## to its children through `len` materializes the deferred routine body in place.
+  ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
+  ## never a leaf kind, so the `{nkNone..nkNilLit}` short-circuit never hides it.
+  ##
+  ## The type MUST be effect-free (`raises: []`/`tags: []`): `len` is a fundamental
+  ## `PNode` accessor that the whole compiler — and every compiler-as-library
+  ## consumer (nimble, nimsuggest, ...) — assumes cannot raise. An unannotated
+  ## `proc` var defaults to `raises: [Exception]`, so the indirect call tainted
+  ## `len`/`safeLen`/`items` with `Exception`, breaking any iterator/`{.raises.}`
+  ## over a `PNode` (e.g. nimble's `extract {.raises: [CatchableError].}`).
+  ## Materialization is a pure in-memory buffer transform; a corrupt buffer is a
+  ## `Defect` (`raiseAssert`), which is outside exception tracking.
+
 proc len*(n: PNode): int {.inline.} =
+  if nfLazyBody in n.flags and forceLazyBodyHook != nil:
+    forceLazyBodyHook(n)
   result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
@@ -970,6 +1005,14 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result = newNode(nkSym)
   result.sym = sym
   result.typField = sym.typImpl
+  if result.typField == nil and nifcBackendActive:
+    # In the per-module NIF backend cg stage a transform (chronos async
+    # closure-iterator lowering) builds `result = …` sym nodes from a not-yet-typed
+    # NIF stub; snapshotting the nil here would leave the node permanently typeless
+    # and the backend later reads `t.flags` off it and SIGSEGVs (injectdestructors
+    # hasDestructor). Mark it lazy so `typ` re-reads `sym.typ` once resolved. Gated
+    # on `nifcBackendActive` so frontend sem is untouched (see the flag's doc).
+    result.flags.incl nfLazyType
   result.info = info
 
 proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
@@ -1150,3 +1193,11 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym =
     if result == nil: break
     if result.name.id == name.id: break
     h = nextTry(h, high(t.data))
+
+# --- doc-comment bridge for the NIF serializer -------------------------------
+# `ast2nif` (the NIF reader/writer) cannot import `ast` (where the comment
+# accessor and its `gconfig.comments` side table live) because `ast` imports
+# `ast2nif`. These hooks are assigned by `ast` and let the serializer carry a
+# decl's `##` doc comment across a NIF round-trip.
+var nodeCommentReader*: proc(n: PNode): string {.nimcall.}
+var nodeCommentWriter*: proc(n: PNode; s: string) {.nimcall.}

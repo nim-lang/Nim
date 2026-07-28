@@ -851,14 +851,26 @@ proc genBinaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.freeTemp(tmp)
   c.freeTemp(dest)
 
+proc genMutatingValue(c: PCtx; n: PNode): TRegister =
+  ## Loads the value of an in-place mutation target while keeping it attached to
+  ## its original storage. Compound lvalues must be resolved through their
+  ## address: a normal value load can return a detached copy (for example, when
+  ## indexing a broadcast default array).
+  if needsAsgnPatch(n):
+    let address = c.genx(n, {gfNodeAddr})
+    result = c.getTemp(n.typ)
+    c.gABC(n, opcLdDeref, result, address)
+    c.freeTemp(address)
+  else:
+    result = c.genx(n)
+
 proc genBinaryStmtVar(c: PCtx; n: PNode; opc: TOpcode) =
   var x = n[1]
   if x.kind in {nkAddr, nkHiddenAddr}: x = x[0]
   let
-    dest = c.genx(x)
+    dest = c.genMutatingValue(x)
     tmp = c.genx(n[2])
   c.gABC(n, opc, dest, tmp, 0)
-  #c.genAsgnPatch(n[1], dest)
   c.freeTemp(tmp)
   c.freeTemp(dest)
 
@@ -1162,7 +1174,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
 
   of mIncl, mExcl:
     unused(c, n, dest)
-    var d = c.genx(n[1])
+    var d = c.genMutatingValue(n[1])
     var tmp = c.genx(n[2])
     c.genSetType(n[1], d)
     c.gABC(n, if m == mIncl: opcIncl else: opcExcl, d, tmp)
@@ -1921,7 +1933,11 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let strType = getSysType(c.graph, n.info, tyString)
   var msgReg: TDest = c.getTemp(strType)
   let fieldName = $accessExpr[1]
-  let msg = genFieldDefect(c.config, fieldName, disc.sym)
+  # Re-navigate the discriminant in the object type: under `nim ic` `disc.sym` is a
+  # field-use stub with a nil `owner`, which `genFieldDefect` dereferences. Look up the
+  # canonical discriminant field by name. Byte-neutral for non-IC (returns the same sym).
+  let dfield = lookupFieldAgain(accessExpr[0].typ, disc.sym)
+  let msg = genFieldDefect(c.config, fieldName, dfield)
   let strLit = newStrNode(msg, accessExpr[1].info)
   strLit.typ = strType
   c.genLit(strLit, msgReg)
@@ -2025,8 +2041,20 @@ proc getNullValue(c: PCtx; typ: PType, info: TLineInfo; conf: ConfigRef): PNode 
     getNullValueAux(c, t, t.n, result, conf, currPosition)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in 0..<toInt(lengthOrd(conf, t)):
+    let n = toInt(lengthOrd(conf, t))
+    if n > 0:
       result.add getNullValue(c, elemType(t), info, conf)
+      # For a large array, keep a single broadcast element (the default of every
+      # slot is identical) instead of `n` copies; `isDefaultBroadcastArray`
+      # consumers expand on demand. Small arrays stay fully materialised so the
+      # well-trodden paths are untouched. See `broadcastArrayThreshold`.
+      if n <= broadcastArrayThreshold:
+        for i in 1..<n:
+          result.add getNullValue(c, elemType(t), info, conf)
+      else:
+        # Broadcast form: mark the single-son node so `isDefaultBroadcastArray`
+        # recognises it unambiguously (see `nfBroadcast`).
+        result.flags.incl nfBroadcast
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
     for a in t.kids:

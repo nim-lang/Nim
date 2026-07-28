@@ -913,17 +913,14 @@ proc findAll*(n: XmlNode, tag: string, caseInsensitive = false): seq[XmlNode] =
 
 proc xmlConstructor(a: NimNode): NimNode =
   if a.kind == nnkCall:
-    result = newCall("newXmlTree", toStrLit(a[0]))
+    result = newCall("newXmlTree", newStrLitNode($a[0]))
     var attrs = newNimNode(nnkBracket, a)
     var newStringTabCall = newCall(bindSym"newStringTable", attrs,
                                     bindSym"modeCaseSensitive")
     var elements = newNimNode(nnkBracket, a)
     for i in 1..a.len-1:
       if a[i].kind == nnkExprEqExpr:
-        # In order to support attributes like `data-lang` we have to
-        # replace whitespace because `toStrLit` gives `data - lang`.
-        let attrName = toStrLit(a[i][0]).strVal.replace(" ", "")
-        attrs.add(newStrLitNode(attrName))
+        attrs.add(newStrLitNode($a[i][0]))
         attrs.add(a[i][1])
         #echo repr(attrs)
       else:

@@ -39,6 +39,16 @@ debugging a build).
 Artifacts (the NIF zoo)
 =======================
 
+Semantic BIF from regular builds
+--------------------------------
+
+``--genBif:on`` makes a regular compiler invocation write each semantically
+checked module as ``<suffix>.s.bif`` under the build's nimcache directory. This
+reuses the semantic artifact format used by IC without enabling incremental
+compilation or changing how the program is generated and linked. Tools such as
+language servers, debuggers, and binding generators can request these artifacts
+when they need resolved symbols and types from an ordinary build.
+
 Per module ``<suffix>`` (a content hash of the path; see *NIF symbols* below),
 under the nimcache directory:
 
@@ -287,6 +297,75 @@ Settled vs. open:
 Validation bar (held on every change): `koch bootic` must reach its byte-identical
 fixed point, and binary size must not regress (DCE parity), across the
 external-package CI set.
+
+Further possible improvements
+=============================
+
+A warm-edit profiling pass (2026-07-02, self-compiling the compiler into a
+dedicated `--nimcache`, editing one private proc body — `internalErrorImpl` — in
+the hub module `compiler/msgs.nim`) surfaced where a **hub-module** warm rebuild
+actually spends its time. The result refines the "a body-only edit re-fires one
+module" claim above: that holds for the *backend*, but the *frontend* can still
+cascade.
+
+Measured: no-op `0.05s`; hub body edit `~15s`, split **~13s frontend / ~1.6s
+backend**. Editing a body in a leaf (few importers) is fast; editing a body in a
+widely-imported module is not, and the cost is almost entirely frontend re-sem.
+
+- **Frontend over-invalidation (the dominant hub-edit cost).** Editing *any* body
+  in a module — even a private routine that is only ever *called* — flips that
+  module's whole-module **impl cookie** (`writeImplCookie` hashes the entire
+  serialized module). Every module carrying a **NeedsImpl** edge on it then
+  re-sems, even though the symbol it actually consumed is unchanged (e.g. a
+  dependent that expanded the `internalError` *template* needs the template body,
+  which is untouched; it does **not** need `internalErrorImpl`'s body). In the
+  msgs edit this re-fires **57** `nim m` processes. A `.s.bif` mtime diff *hides*
+  this — `.s.bif` is content-stable, so a re-semmed-but-identical module keeps its
+  timestamp; count actual `nim m` PIDs to see the fan-out.
+
+  The precise fix is **per-symbol NeedsImpl gating**: record which *symbols'*
+  bodies a dependent consumed (the recording site `modulegraphs.recordIcImplDep`
+  already receives the `PSym`; it currently coarsens to `module(s.itemId)`) and
+  gate the dependent
+  on only those. The obstacle is that `nifmake` gates on file mtimes, so
+  per-symbol granularity needs either many cookie files or a bucketing scheme, and
+  "which bodies are compile-time-consumable" is entangled with `getImpl` and the
+  CT call graph (a macro that runs a private helper at CT *does* consume its body).
+  A conservative narrowing — keep template/generic/macro/`sfCompileTime` bodies
+  (plus `getImpl` targets) in the impl cookie but drop ordinary runtime routine
+  bodies — captures the common "edit a private implementation proc" case, at the
+  cost of proving the exclusion is complete.
+
+- **Serial re-sem chains.** The 57 re-sems above run essentially **one at a time**
+  despite `--parallel`, because the core modules they belong to form a deep import
+  *chain* and `nifmake`'s depth-barriered scheduler runs one depth level at a time
+  (≈1 node per level). This is independent of the invalidation problem: even
+  perfect per-symbol precision leaves a serial tail whenever the re-sem set is a
+  chain. Mitigations live in the scheduler (content-stability already stops the
+  cascade at one level, but does not flatten the chain).
+
+- **Emit stage need not load the module graph (done).** `generateEmitStage` used
+  to `loadDepClosure`/`loadBackendModules` — materializing a module's whole
+  transitive import closure as `BModule`s — solely to reach `getCFile(bmod)` for
+  the output path. `renderCFromArtifact` is pure text filtering over the `.c.nif`
+  plus the merge decision; it needs none of that. Deriving the `.c` path directly
+  from the suffix (the same pure computation `deps.backendCFile` uses to *declare*
+  the stage's output) lets an `emit` process load nothing. Under the
+  fire-all-every-edit `emit` barrier (see below) this halved backend CPU
+  (user-time `51s → 24s` on the msgs edit); wall-clock barely moved because the
+  frontend dominates, but the reduced CPU/RAM contention matters when an editor is
+  running alongside. `koch ic` stays byte-identical.
+
+- **Do NOT make the merge decision content-stable.** A tempting frontend to the
+  above: `emit` re-fires for *every* live module whenever `merge` rewrites the
+  decision file's mtime (deliberate — a decision change must re-render every `.c`
+  consistently). Writing the decision `OnlyIfChanged` (with a stamp output so the
+  `merge` rule is not perpetually stale) makes a warm no-op instant, but a real
+  edit then fires `emit` only for the modules whose `.c.nif` changed — and that
+  produces **multiple-definition link errors** even when the decision is
+  byte-identical. Fire-all `emit` is a correctness invariant, not just insurance
+  (see the comment at `generateEmitStage`): partial `emit` leaves inconsistent
+  ownership across the `.c` set. This path was tried and reverted; do not retry.
 
 Code, logic & debugging
 ========================

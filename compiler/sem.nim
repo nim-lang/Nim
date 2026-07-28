@@ -77,7 +77,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
   # templates perform some quick check whether the cursor is actually in
   # the generic or template.
   when defined(nimsuggest):
-    if c.config.cmd == cmdIdeTools and requiresCheck:
+    if c.config.ideActive and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
@@ -89,6 +89,18 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
+  # Walk through nested statement-list/block expressions to find the innermost
+  # value node. Empty containers (e.g. `@[]`) inside `nkStmtListExpr` wrappers
+  # need their type resolved to match the formal type, otherwise the C codegen
+  # cannot map `tyEmpty` to a concrete type (fixes #25945).
+  var tail = result
+  while tail.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkPragmaBlock} and tail.len > 0:
+    tail = tail.lastSon
+
+  if tail.typ != nil and tail.typ.isEmptyContainer and
+        formal.kind notin {tyUntyped, tyBuiltInTypeClass, tyAnything}:
+    changeType(c, tail, formal, check=true)
+
   # mark inserted converter as used:
   var a = result
   if a.kind == nkHiddenDeref: a = a[0]
@@ -276,6 +288,14 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
         result = copySym(result)
         result.ast = n.sym.ast
         put(c.p, n.sym, result)
+    if result.state == Sealed:
+      # the symbol was loaded from another module's NIF cache (e.g. a param
+      # symbol spliced out of an imported proc type by a `typed` macro) and is
+      # therefore immutable; the caller re-owns it and assigns its type/flags,
+      # so hand back a fresh, mutable copy owned by the current module instead.
+      let fresh = copySym(result, c.idgen)
+      fresh.ast = result.ast
+      result = fresh
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909
@@ -564,10 +584,12 @@ const
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}; expectedType: PType = nil): PNode =
-  rememberExpansion(c, nOrig.info, sym)
+  let info = getCallLineInfo(n)
+  # the callee identifier's position is the usage site tooling expects (matches
+  # `markUsed` below), not the whole-call `nOrig.info`.
+  rememberExpansion(c, info, sym)
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
-  let info = getCallLineInfo(n)
   markUsed(c, info, sym)
   onUse(info, sym)
   if sym == c.p.owner:
@@ -874,7 +896,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   result = hloStmt(c, result)
   if c.config.cmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
-  if c.config.cmd == cmdIdeTools:
+  if c.config.ideActive:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
   if optMultiMethods notin c.config.globalOptions and
@@ -911,7 +933,7 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
         result = nil
       else:
         result = newNodeI(nkEmpty, n.info)
-      #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
+      #if c.config.ideActive: findSuggest(c, n)
 
 proc reportUnusedModules(c: PContext) =
   if c.config.cmd == cmdM: return
@@ -920,7 +942,7 @@ proc reportUnusedModules(c: PContext) =
       message(c.config, info, warnUnusedImportX, s.name.s)
 
 proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
-  if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
+  if c.config.ideActive and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!

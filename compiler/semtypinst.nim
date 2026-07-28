@@ -294,13 +294,22 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         replaceTypeVarsS(cl, n.sym, result.typ)
       else:
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
-    if result.sym.kind == skField and result.sym.ast != nil and
+    if result.sym.kind == skField and
         (cl.owner == nil or result.sym.owner == cl.owner):
-      # instantiate default value of object/tuple field
-      var n = result.sym.ast
-      cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
-      result.sym.ast = n
-      result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
+      if result.sym.ast != nil:
+        # instantiate default value of object/tuple field
+        var n = result.sym.ast
+        cl.c.fitDefaultNode(cl.c, n, result.sym.typ)
+        result.sym.ast = n
+        result.sym.typ = n.typ.skipIntLit(cl.c.idgen)
+      elif result.typ != nil:
+        # The field SYM can be SHARED across the branches of an `nkRecWhen` (the
+        # generic body reuses one `value` PSym, so it carries the LAST branch's
+        # type), while the resolved field NODE carries the correct branch type.
+        # Sync the sym to the node so the instantiated field's sym-type and
+        # node-type agree (else a generic-object instance serializes a field
+        # whose sym-type diverges from its node-type -> loader/computeSize crash).
+        result.sym.typ = result.typ
     # sym type can be nil if was gensym created by macro, see #24048
     if result.sym.typ != nil and result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
@@ -480,7 +489,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, cl.c.idgen, t.genericHead.owner, son = header.genericHead)
+  # The instantiating module owns the instance (and announces it as an offer):
+  # the generic body's module (`t.genericHead.owner`) has no business owning a
+  # type that references instantiation-site types — that is the IC parent->child
+  # heap leak the write-barrier surfaces.
+  result = newType(tyGenericInst, cl.c.idgen, cl.c.module, son = header.genericHead)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
@@ -834,15 +847,21 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       # trough replaceObjBranches in order to resolve any pending nkRecWhen nodes
       result = t
 
-      # Slow path, we have some work to do
-      if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and t.elementType.n != nil:
+      # Slow path, we have some work to do. CRUCIAL: only ever mutate a type that
+      # is LOCAL to the module we are instantiating in (`uniqueId.module ==
+      # idgen.module`). A type loaded from another module's NIF (foreign) already
+      # had its object branches resolved when it was originally compiled; mutating
+      # it in place here is an old→new heap write that re-homes the loaded type to
+      # the instantiation site (its sym then looks owned by the consumer module and
+      # loses its `info`, colliding C type names — the libp2p `Message` bug). The
+      # prior `state != Sealed` guard was insufficient: a freshly-LOADED type is
+      # `Complete`, not `Sealed` (`Sealed` only means "already re-written to a NIF").
+      if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and
+          t.elementType.n != nil and t.elementType.uniqueId.module == cl.c.idgen.module.int:
         discard replaceObjBranches(cl, t.elementType.n)
 
-      elif result.n != nil and t.kind == tyObject and result.state != Sealed:
-        # A type loaded from the IC cache already had its object branches
-        # resolved when it was originally compiled, and must not be mutated in
-        # place (nor copied, which would break object-inheritance identity), so
-        # only non-Sealed types are processed here.
+      elif result.n != nil and t.kind == tyObject and result.state != Sealed and
+          result.uniqueId.module == cl.c.idgen.module.int:
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)

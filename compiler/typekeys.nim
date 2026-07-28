@@ -13,7 +13,7 @@
 import std/[assertions, sets]
 
 import "../dist/nimony/src/lib" / [treemangler]
-import "../dist/nimony/src/gear2" / modnames
+import icmodnames
 
 import astdef, idents, options, lineinfos, msgs
 import ic / [enum2nif]
@@ -47,6 +47,11 @@ type
     CoConsiderOwned
     CoDistinct
     CoHashTypeInsideNode
+    CoPrecise                 # produce a FRONTEND-faithful, unique key (for the
+                              # stable NIF *name*, not hook dedup): keep distinctions
+                              # sem makes that the backend identity collapses — e.g.
+                              # an `int literal(x)` type carries its value so it does
+                              # not merge with `int`. See `getTypeKey`/`typeKeyHook`.
 
   TypeLoader* = proc (t: PType) {.nimcall.}
   SymLoader* = proc (s: PSym) {.nimcall.}
@@ -139,6 +144,39 @@ proc maybeImported(c: var Context; s: PSym; conf: ConfigRef) {.inline.} =
   if s != nil and {sfImportc, sfExportc} * s.flagsImpl != {}:
     c.symKey(s, conf)
 
+proc emitPreciseFlags(c: var Context; t: PType; flags: set[ConsiderFlag]) {.inline.} =
+  ## Under CoPrecise the NIF *name* must be as fine as `types.sameType`, which
+  ## compares `eqTypeFlags * flags` (see `sameFlags`). Without this a
+  ## `proc() {.gcsafe.}` keyed identically to `proc()`, and a `ref X not nil`
+  ## identically to `ref X` — the loader would then merge two frontend-distinct
+  ## types onto one NIF name. Emitted only for the naming path (CoPrecise); the
+  ## `setAttachedOp` hook key (no CoPrecise) is unaffected, so its byte layout is
+  ## unchanged.
+  if CoPrecise in flags:
+    let ef = eqTypeFlags * t.flagsImpl
+    if ef != {}:
+      withTree c.m, "´tflags":
+        for f in ef: c.m.addIntLit ord(f)
+
+proc backendTypeName(t: PType; conf: ConfigRef): string =
+  ## Stable cross-module identity of a backend-minted (lower-stage) type: its
+  ## serialized `@bk` NIF name (mirrors ast2nif.nifTypeName). A closure-env
+  ## object/ref minted by the `lower` stage has NO stable STRUCTURAL key — its
+  ## captured-field types re-resolve to different modules in the producing vs the
+  ## consuming process (e.g. field `x0` → `int` in the producer, → the consumer's
+  ## alias in the consumer) — but this name (kind + item + home-module suffix) is
+  ## identical in both, because the consumer loads the producer's name verbatim.
+  ## Keying hooks by it makes producer `setAttachedOp` and consumer `getAttachedOp`
+  ## agree. The trailing `@bk` (= ast2nif.BackendLocalMarker) keeps it disjoint
+  ## from any normal type's structural key.
+  result = "`t"
+  result.addInt ord(t.kind)
+  result.add '.'
+  result.addInt t.uniqueId.item
+  result.add '.'
+  result.add modname(t.uniqueId.module, conf)
+  result.add "@bk"
+
 proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
     c.m.addEmpty()
@@ -147,6 +185,14 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
   if t.state == Partial:
     assert c.tl != nil
     c.tl(t)
+
+  if t.uniqueId.isBackendMinted:
+    # Backend-minted (lower-stage) closure-env types key by their stable NIF name,
+    # never by structure (which diverges across the NIF boundary). An env `ref`
+    # that is itself NOT backend-minted still keys stably: it recurses here and
+    # reaches its `@bk` object, which short-circuits to a stable name.
+    c.m.addSymbol backendTypeName(t, conf)
+    return
 
   case t.kind
   of tyGenericInvocation:
@@ -202,6 +248,10 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
   of tyInt:
     withTree c.m, "i":
       c.m.addIntLit -1
+      # An `int literal(x)` type (nImpl holds the value) must stay distinct from
+      # plain `int` for the NIF name, else overload resolution breaks on reload.
+      if CoPrecise in flags and t.nImpl != nil:
+        c.m.addIntLit t.nImpl.intVal
       maybeImported(c, t.symImpl, conf)
   of tyInt8:
     withTree c.m, "i":
@@ -238,6 +288,14 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
   of tyUInt64:
     withTree c.m, "u":
       c.m.addIntLit 64
+      maybeImported(c, t.symImpl, conf)
+  of tyFloat:
+    withTree c.m, "f":
+      c.m.addIntLit -1
+      # A `float literal(x)` type (nImpl = nkFloatLit) must stay distinct from
+      # plain `float`, just like the `int literal(x)` case above.
+      if CoPrecise in flags and t.nImpl != nil and t.nImpl.kind in {nkFloatLit..nkFloat64Lit}:
+        c.m.addFloatLit t.nImpl.floatVal
       maybeImported(c, t.symImpl, conf)
   of tyObject, tyEnum:
     if t.typeInstImpl != nil:
@@ -354,6 +412,9 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
 
       c.m.addIdent toNifTag(t.callConvImpl)
       if tfVarargs in t.flagsImpl: c.m.addIdent "´varargs"
+      # `.gcsafe`/`.noSideEffect` (in eqTypeFlags) distinguish proc types under
+      # sameType, so they must distinguish the NIF name too.
+      emitPreciseFlags(c, t, flags)
   of tyArray:
     withTree c.m, toNifTag(t.kind):
       if t.sonsImpl.len == 0:
@@ -368,6 +429,9 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.typeKey t.sonsImpl[i], flags, conf
       if tfNotNil in t.flagsImpl and CoType notin flags:
         c.m.addIdent "´notnil"
+      # tfNotNil/tfVarIsPtr/tfIsOutParam (eqTypeFlags) part of sameType identity
+      # for ref/ptr/var/lent/sink; the hook path (no CoPrecise) keeps its layout.
+      emitPreciseFlags(c, t, flags)
 
 proc typeKey*(t: PType; conf: ConfigRef; tl: TypeLoader; sl: SymLoader): string =
   var c: Context = Context(m: createMangler(30, -1), tl: tl, sl: sl,

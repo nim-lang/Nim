@@ -1071,7 +1071,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
-proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
+proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym, ty: PType) =
   var test, u, v: TLoc
   for i in 1..<e.len:
     var it = e[i]
@@ -1081,10 +1081,17 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     if op.magic == mNot: it = it[1]
     let disc = it[2].skipConv
     assert(disc.kind == nkSym)
+    # Re-navigate the discriminant in the object type: under `nim ic` `disc.sym` is
+    # a field-use stub whose `loc.snippet` is empty (the backend fills it on the
+    # canonical reclist field, not on per-use leaves). Look up the canonical field
+    # for the C member name; `disc`'s own node still supplies its type (TLoc.t).
+    # Byte-neutral for non-IC, where re-navigation returns the same field.
+    var rr = obj
+    let dfield = lookupFieldAgain(p, ty, disc.sym, rr)
     test = initLoc(locNone, it, OnStack)
     u = initLocExpr(p, it[1])
     v = initLoc(locExpr, disc, OnUnknown)
-    v.snippet = dotField(obj, disc.sym.loc.snippet)
+    v.snippet = dotField(obj, dfield.loc.snippet)
     genInExprAux(p, it, u, v, test)
     var msg = ""
     if optDeclaredLocs in p.config.globalOptions:
@@ -1094,7 +1101,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # by encoding the file names separately from `file(line:col)`, essentially
       # passing around `TLineInfo` + the set of files in the project.
       msg.add toFileLineCol(p.config, e.info) & " "
-    msg.add genFieldDefect(p.config, field.name.s, disc.sym)
+    msg.add genFieldDefect(p.config, field.name.s, dfield)
     var strLitBuilder = newBuilder("")
     genStringLiteral(p.module, newStrNode(nkStrLit, msg), strLitBuilder)
     let strLit = extract(strLitBuilder)
@@ -1158,7 +1165,7 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     if field.loc.snippet == "": fillObjectFields(p.module, ty)
     if field.loc.snippet == "":
       internalError(p.config, e.info, "genCheckedRecordField") # generate the checks:
-    genFieldCheck(p, e, r, field)
+    genFieldCheck(p, e, r, field, ty)
     r = dotField(r, field.loc.snippet)
     putIntoDest(p, d, e[0], r, a.storage)
     r.freeze
@@ -1858,7 +1865,7 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField, val, c
   if field.loc.snippet == "": fillObjectFields(p.module, ty)
   if field.loc.snippet == "": internalError(p.config, info, "genFieldObjConstr")
   if check != nil and optFieldCheck in p.options:
-    genFieldCheck(p, check, r, field)
+    genFieldCheck(p, check, r, field, ty)
   tmp2.snippet = dotField(tmp2.snippet, field.loc.snippet)
   if useTemp:
     tmp2.k = locTemp
@@ -2933,6 +2940,13 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
 
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
+  of mAsgn:
+    let kind = if e[0].sym.name.s == "=sink": nkSinkAsgn else: nkAsgn
+    let lhs = e[1].skipHiddenAddr
+    let n = newTreeI(kind, e.info, lhs, e[2])
+    n.typ = e.typ
+    cow(p, e[2])
+    genAsgn(p, n, fastAsgn = kind != nkAsgn)
   of mOr, mAnd: genAndOr(p, e, d, op)
   of mNot..mUnaryMinusF64: unaryArith(p, e, d, op)
   of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
@@ -3128,6 +3142,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and optEnableDeepCopy notin p.config.globalOptions:
       localError(p.config, e.info,
         "for --mm:arc|atomicArc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
+
+    let typ = e[1].typ.skipTypes({tyVar, tyRef, tyGenericInst, tyTypeDesc,
+                                   tyAlias, tyInferred, tySink, tyLent, tyOwned})
+    if hasDisabledAsgn(p.module.g.graph, typ):
+      localError(p.config, e.info,
+        "'deepCopy' is not available for type <" & typeToString(typ) & ">")
 
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
     var a = initLocExpr(p, x)
@@ -3950,6 +3970,13 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo; result: var Builder)
     let elemTyp = skipTypes(t.elementType, abstractRange+{tyOwned}-{tyTypeDesc})
     if isOpaqueImportcType(elemTyp):
       result.add "{0}"
+    elif toInt(lengthOrd(p.config, t.indexType)) > broadcastArrayThreshold and
+        elemTyp.kind in {tyInt..tyUInt64, tyBool, tyChar, tyFloat..tyFloat128,
+                         tyPtr, tyPointer, tyCstring}:
+      # Large array of a scalar whose default is the zero representation: a single
+      # C `{0}` zero-fills all `lengthOrd` slots instead of emitting that many
+      # initializers (keeps huge SSZ-style zero buffers compact in the C output).
+      result.add "{0}"
     else:
       var arrInit: StructInitializer
       result.addStructInitializer(arrInit, kind = siArray):
@@ -4236,7 +4263,13 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType; resul
         var d: TLoc = initLocExpr(p, n)
         result.add rdLoc(d)
     of tyArray, tyVarargs:
-      genConstSimpleList(p, n, isConst, result)
+      if isDefaultBroadcastArray(n, p.config):
+        # Compact zero/null-default array (see `isDefaultBroadcastArray`): the
+        # whole thing is the null value of every slot, so a single C `{0}`
+        # zero-fills all `lengthOrd` elements — no need to materialise them.
+        result.add "{0}"
+      else:
+        genConstSimpleList(p, n, isConst, result)
     of tyTuple:
       genConstTuple(p, n, isConst, typ, result)
     of tyOpenArray:

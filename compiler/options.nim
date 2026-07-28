@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "6"
+  icFormatVersion* = "30"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -140,6 +140,7 @@ type                          # please make sure we have under 32 options
     optDocRaw                 # for documentation: Don't render markdown for JSON output
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optGenBif                 # generate semantic BIF alongside ordinary code generation
     optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
@@ -183,7 +184,6 @@ type
     cmdCheck # semantic checking for whole project
     cmdM     # only compile a single
     cmdParse # parse a single file (for debugging)
-    cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
     cmdDoc      # convert .nim doc comments to HTML
@@ -206,6 +206,7 @@ type
     cmdNifC  # generate C code from NIF files
     cmdIc  # generate .build.nif for nifmake
     cmdIcConfig # `nim ic`'s precompiled-config producer (writes ic_config.cfg.nif)
+    cmdTrack # `nim track --def/--usages`: IC frontend build + NIF scan for IDE queries
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -400,6 +401,13 @@ type
     evalMacroCounter*: int
     exitcode*: int8
     cmd*: Command  # raw command parsed as enum
+    ideActive*: bool # serving IDE tooling (nimsuggest): collect suggestions and
+                     # keep going after errors. Decoupled from `cmd` so the IDE
+                     # server can run under any compilation mode (cmdCheck, cmdM).
+    ideImportsFromNif*: bool # nimsuggest: load the unchanged import closure from
+                     # precompiled NIF (run under cmdM) instead of recompiling it
+                     # from source (cmdCheck). IC is opt-in: default off (cmdCheck);
+                     # `--ideImports:nif` opts in.
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`
@@ -685,6 +693,7 @@ proc newConfigRef*(): ConfigRef =
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
     commandLine: "",
+    ideImportsFromNif: false, # IC opt-in; see `--ideImports`
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: "",
@@ -786,7 +795,18 @@ template quitOrRaise*(conf: ConfigRef, msg = "") =
   else:
     quit(msg) # quits with QuitFailure
 
-proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
+proc icReuseSemLowering*(conf: ConfigRef): bool {.inline.} =
+  ## When ON, the per-module `lower` backend stage REUSES the VM/CT lowering that
+  ## sem cached in the `.s.nif` 2-way-body slot (the non-IC single-lowering
+  ## semantics) instead of re-deriving the transform. Default OFF: the backend
+  ## re-derives every body from the pristine semchecked body (simpler; allowed by
+  ## the 2026-06-27 spec that VM-requested frontend transforms need not influence
+  ## the backend). The switch exists so caching can be restored if a target (e.g.
+  ## Nimbus) depends on the cached lowering being reused, not re-derived. See
+  ## doc/ic_backend_simplify.md §6b.
+  isDefined(conf, "icReuseSemLowering")
+
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.ideActive or conf.cmd in cmdDocLike
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 proc usesSso*(conf: ConfigRef): bool {.inline.} = conf.selectedStrings == stringSso
 
@@ -912,7 +932,8 @@ proc getOsCacheDir(): string =
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   proc nimcacheSuffix(conf: ConfigRef): string =
-    if conf.cmd == cmdCheck: "_check"
+    if conf.ideActive: "_nimsuggest"  # dedicated cache, never shared with `nim c`
+    elif conf.cmd == cmdCheck: "_check"
     elif isDefined(conf, "release") or isDefined(conf, "danger"): "_r"
     else: "_d"
 
