@@ -918,6 +918,10 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
+  if finalCallee == c.p.owner and finalCallee.typ.returnType != nil and
+      finalCallee.typ.returnType.kind == tyAnything:
+    localError(c.config, info, "cannot infer type of recursive call")
+
   result = compactVoidArgs(x.call)
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
