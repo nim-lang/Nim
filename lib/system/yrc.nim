@@ -424,9 +424,19 @@ const
   epochBase = 0x40000000          # stamp namespace: tags stay below this
   epochMask = 0x3FFFFFFF
 
-# stamp layout: high word = epochBase|epoch, low word = survival age
+# Every packed word in this file squeezes two 32-bit fields into one int64 as
+# `(hi shl 32) or lo`. The claim word (a cell's `rootIdx`, see above) is either
+#   hi = owning collection's tag,   lo = the cell's dense capture index
+#   hi = epochBase|epoch (a stamp), lo = the cell's survival age
+# and a `gPendingWatch` entry is hi = slot, lo = tag. The high half is read
+# with a plain `shr 32` — every value stored there is below 2^31, so the shift
+# keeps it positive and needs no mask. The low half is the one that needs
+# masking: `shl 32` left the high half sitting above it, and `and 0xFFFFFFFF`
+# is what clears those bits back out.
+template loWord(w: int64): int64 = w and 0xFFFFFFFF
+
 template epochStamp(e: int): int64 = int64(epochBase or (e and epochMask)) shl 32
-template stampAge(w: int64): int = int(w and 0xFFFFFFFF)
+template stampAge(w: int64): int = int(loWord(w))
 template isEpochStamp(w: int64): bool = (w shr 32) >= epochBase
 
 template parkUntil(cond: untyped) =
@@ -471,7 +481,7 @@ template isStamped(c: Cell): bool =
   # value routes into claimCell which re-validates with acquire + CAS.
   (atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) shr 32) == gMyTag
 template denseIdx(c: Cell): int32 =
-  int32(atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) and 0xFFFFFFFF)
+  int32(loWord(atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED)))
 
 proc isActiveTag(t: int64): bool {.inline.} =
   result = false
@@ -737,7 +747,7 @@ proc graceSatisfied(): bool =
   for i in 0 ..< gPendingWatch.len:
     let w = gPendingWatch.d[i]
     let s = int(w shr 32)
-    let tg = w and 0xFFFFFFFF'i64
+    let tg = loWord(w)
     if atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) == tg and
        atomicLoadN(addr gSlotPhase[s], ATOMIC_ACQUIRE) == 1:
       return false
@@ -848,7 +858,7 @@ proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
     # design whenever collections do not actually overlap.
     let old = old0
     if (old shr 32) == gMyTag:
-      return int32(old and 0xFFFFFFFF)
+      return int32(loWord(old))
     if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
         stampAge(old) >= YrcPromoteAge:
       return -2
@@ -867,7 +877,7 @@ proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
   var old = old0
   while true:
     if (old shr 32) == gMyTag:
-      return int32(old and 0xFFFFFFFF)
+      return int32(loWord(old))
     if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
         stampAge(old) >= YrcPromoteAge:
       return -2
@@ -933,7 +943,7 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
       # and the dense-index extraction
       let cw = atomicLoadN(addr t.rootIdx, ATOMIC_ACQUIRE)
       if (cw shr 32) == gMyTag:
-        let v = int32(cw and 0xFFFFFFFF)
+        let v = int32(loWord(cw))
         if v == u:
           # A self edge is internal by construction and its reference is
           # already in `rcWord`, so it cancels out of `sumRefs - internal`
@@ -1154,7 +1164,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   template deadCell(w: int64): bool =
     ## `w` is the target's claim word, read once by the caller
     (w shr 32) == gMyTag and
-      (cap.sccs.d[cap.sccIdx.d[int32(w and 0xFFFFFFFF)]].flags and flagDead) != 0
+      (cap.sccs.d[cap.sccIdx.d[int32(loWord(w))]].flags and flagDead) != 0
   # Grace period: a collection still in its CAPTURE phase may hold stale
   # (slot, value) snapshots referencing our dead cells; disposing them now
   # could hand reused memory to its traversal. This used to BLOCK here until
