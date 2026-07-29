@@ -35,23 +35,16 @@ proc semAddr(c: PContext; n: PNode): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flagsImpl.incl(sfAddrTaken)
-  if isAssignable(c, x) notin {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
+  let aa = isAssignable(c, x)
+  if aa notin {arLValue, arLocalLValue, arAddressableConst, arLentValue} and
+     (aa != arDiscriminant or c.inUncheckedAssignSection <= 0):
     localError(c.config, n.info, errExprHasNoAddress)
   result.add x
   result.typ = makePtrType(c, x.typ.skipTypes({tySink}))
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
-  var m = BiggestInt 1 # typeOfIter
-  if n.len == 3:
-    let mode = semConstExpr(c, n[2])
-    if mode.kind != nkIntLit:
-      localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
-    else:
-      m = mode.intVal
+  let typExpr = semTypeOfImpl(c, n)
   result = newNodeI(nkTypeOfExpr, n.info)
-  inc c.inTypeofContext
-  defer: dec c.inTypeofContext # compiles can raise an exception
-  let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
   if typExpr.typ.kind == tyFromExpr:
     typExpr.typ.incl tfNonConstExpr
@@ -232,10 +225,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
-    let complexObj = containsGarbageCollectedRef(t) or
-                     hasDestructor(t)
-    result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.idgen, c.graph)
+    result = newIntNodeT(toInt128(ord(supportsCopyMem(operand))), traitCall, c.idgen, c.graph)
+  of "canFormCycles":
+    result = newIntNodeT(toInt128(ord(types.canFormAcycle(c.graph, operand))), traitCall, c.idgen, c.graph)
   of "hasDefaultValue":
     result = newIntNodeT(toInt128(ord(not operand.requiresInit)), traitCall, c.idgen, c.graph)
   of "isNamedTuple":
@@ -243,14 +235,17 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.idgen, c.graph)
   of "tupleLen":
-    var operand = operand.skipTypes({tyGenericInst})
+    var operand = operand.skipTypes({tyGenericInst, tyAlias})
     assert operand.kind == tyTuple, $operand.kind
     result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
-    var arg = operand.skipTypes({tyGenericInst})
+    var arg = operand.skipTypes(skippedTypes)
     let rec = semConstExpr(c, traitCall[2]).intVal != 0
-    while arg.kind == tyDistinct:
-      arg = arg.base.skipTypes(skippedTypes + {tyGenericInst})
+    while true:
+      let distinctArg = arg.skipTypes(skippedTypes + {tyGenericInst})
+      if distinctArg.kind != tyDistinct:
+        break
+      arg = distinctArg.base.skipTypes(skippedTypes)
       if not rec: break
     result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   of "rangeBase":
@@ -614,9 +609,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mAsgn:
     case n[0].sym.name.s
     of "=", "=copy":
-      result = semAsgnOpr(c, n, nkAsgn)
+      result = replaceHookMagic(c, n, attachedAsgn)
     of "=sink":
-      result = semAsgnOpr(c, n, nkSinkAsgn)
+      result = replaceHookMagic(c, n, attachedSink)
     else:
       result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
@@ -698,5 +693,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[1].kind in {nkStmtListExpr, nkBlockExpr,
               nkIfExpr, nkCaseStmt, nkTryStmt}:
       localError(c.config, n.info, "Nested expressions cannot be moved: '" & $n[1] & "'")
+  of mMove:
+    result = n
+    if isCursor(n[1]):
+      localError(c.config, n.info, errFailedMove,
+        "cannot move cursor '" & $n[1] & "'; a cursor does not own its value")
   else:
     result = n

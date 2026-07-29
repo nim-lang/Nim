@@ -16,7 +16,7 @@ import stacktraces
 const noStacktraceAvailable = "No stack traceback available\n"
 
 var
-  errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
+  errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], gcsafe,
                                             nimcall, raises: [].})
     ## Function that will be called
     ## instead of `stdmsg.write` when printing stacktrace.
@@ -61,10 +61,10 @@ proc showErrorMessage2(data: string) {.inline.} =
   # TODO showErrorMessage will turn it back to a string when a hook is set (!)
   showErrorMessage(data.cstring, data.len)
 
-proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
-proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
-proc chckRangeF(x, a, b: float): float {.inline, compilerproc, benign.}
-proc chckNil(p: pointer) {.noinline, compilerproc, benign.}
+proc chckIndx(i, a, b: int): int {.inline, compilerproc, gcsafe.}
+proc chckRange(i, a, b: int): int {.inline, compilerproc, gcsafe.}
+proc chckRangeF(x, a, b: float): float {.inline, compilerproc, gcsafe.}
+proc chckNil(p: pointer) {.noinline, compilerproc, gcsafe.}
 
 type
   GcFrame = ptr GcFrameHeader
@@ -207,10 +207,10 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
       if enabled:
         if dlresult != 0:
           var oldLen = s.len
-          add(s, tempDlInfo.dli_fname)
+          add(s, cstrToStrBuiltin(tempDlInfo.dli_fname))
           if tempDlInfo.dli_sname != nil:
             for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
-            add(s, tempDlInfo.dli_sname)
+            add(s, cstrToStrBuiltin(tempDlInfo.dli_sname))
         else:
           add(s, '?')
         add(s, "\n")
@@ -653,7 +653,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     rawQuit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
-  type Sighandler = proc (a: cint) {.noconv, benign.}
+  type Sighandler = proc (a: cint) {.noconv, gcsafe.}
     # xxx factor with ansi_c.CSighandlerT, posix.Sighandler
 
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv, raises: [].} =

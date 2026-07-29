@@ -179,29 +179,30 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
     let argB = getInt(b)
     result = newIntNodeT(if argA > argB: argA else: argB, n, idgen, g)
   of mShlI:
+    let valueB = toInt64(getInt(b)) and (n.typ.size * 8 - 1)
     case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result = newIntNodeT(toInt128(toInt8(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
-    of tyInt16: result = newIntNodeT(toInt128(toInt16(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
-    of tyInt32: result = newIntNodeT(toInt128(toInt32(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
-    of tyInt64: result = newIntNodeT(toInt128(toInt64(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
+    of tyInt8: result = newIntNodeT(toInt128(toInt8(getInt(a)) shl valueB), n, idgen, g)
+    of tyInt16: result = newIntNodeT(toInt128(toInt16(getInt(a)) shl valueB), n, idgen, g)
+    of tyInt32: result = newIntNodeT(toInt128(toInt32(getInt(a)) shl valueB), n, idgen, g)
+    of tyInt64: result = newIntNodeT(toInt128(toInt64(getInt(a)) shl valueB), n, idgen, g)
     of tyInt:
       if g.config.target.intSize == 4:
-        result = newIntNodeT(toInt128(toInt32(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
+        result = newIntNodeT(toInt128(toInt32(getInt(a)) shl valueB), n, idgen, g)
       else:
-        result = newIntNodeT(toInt128(toInt64(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
-    of tyUInt8: result = newIntNodeT(toInt128(toUInt8(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
-    of tyUInt16: result = newIntNodeT(toInt128(toUInt16(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
-    of tyUInt32: result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
-    of tyUInt64: result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
+        result = newIntNodeT(toInt128(toInt64(getInt(a)) shl valueB), n, idgen, g)
+    of tyUInt8: result = newIntNodeT(toInt128(toUInt8(getInt(a)) shl valueB), n, idgen, g)
+    of tyUInt16: result = newIntNodeT(toInt128(toUInt16(getInt(a)) shl valueB), n, idgen, g)
+    of tyUInt32: result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl valueB), n, idgen, g)
+    of tyUInt64: result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl valueB), n, idgen, g)
     of tyUInt:
       if g.config.target.intSize == 4:
-        result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
+        result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl valueB), n, idgen, g)
       else:
-        result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl toInt64(getInt(b))), n, idgen, g)
+        result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl valueB), n, idgen, g)
     else: internalError(g.config, n.info, "constant folding for shl")
   of mShrI:
-    var a = cast[uint64](getInt(a))
-    let b = cast[uint64](getInt(b))
+    var a = castToUInt64(getInt(a))
+    let b = castToUInt64(getInt(b)) and cast[uint64](n.typ.size * 8 - 1)
     # To support the ``-d:nimOldShiftRight`` flag, we need to mask the
     # signed integers to cut off the extended sign bit in the internal
     # representation.
@@ -220,12 +221,13 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
     let c = cast[BiggestInt](a shr b)
     result = newIntNodeT(toInt128(c), n, idgen, g)
   of mAshrI:
+    let valueB = toInt64(getInt(b)) and (n.typ.size * 8 - 1)
     case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result =  newIntNodeT(toInt128(ashr(toInt8(getInt(a)), toInt8(getInt(b)))), n, idgen, g)
-    of tyInt16: result = newIntNodeT(toInt128(ashr(toInt16(getInt(a)), toInt16(getInt(b)))), n, idgen, g)
-    of tyInt32: result = newIntNodeT(toInt128(ashr(toInt32(getInt(a)), toInt32(getInt(b)))), n, idgen, g)
+    of tyInt8: result =  newIntNodeT(toInt128(ashr(toInt8(getInt(a)), valueB)), n, idgen, g)
+    of tyInt16: result = newIntNodeT(toInt128(ashr(toInt16(getInt(a)), valueB)), n, idgen, g)
+    of tyInt32: result = newIntNodeT(toInt128(ashr(toInt32(getInt(a)), valueB)), n, idgen, g)
     of tyInt64, tyInt:
-      result = newIntNodeT(toInt128(ashr(toInt64(getInt(a)), toInt64(getInt(b)))), n, idgen, g)
+      result = newIntNodeT(toInt128(ashr(toInt64(getInt(a)), valueB)), n, idgen, g)
     else: internalError(g.config, n.info, "constant folding for ashr")
   of mDivI:
     let argA = getInt(a)
@@ -474,7 +476,12 @@ proc foldArrayAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNo
       #localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkBracket:
     idx -= toInt64(firstOrd(g.config, x.typ))
-    if idx >= 0 and idx < x.len: result = x[int(idx)]
+    if isDefaultBroadcastArray(x, g.config):
+      # compact default array: any in-bounds index folds to the default element
+      if idx >= 0 and idx < toInt64(lengthOrd(g.config, x.typ.skipTypes(abstractInst))):
+        result = copyTree(x[0])
+      else: result = nil
+    elif idx >= 0 and idx < x.len: result = x[int(idx)]
     else:
       result = nil
       #localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
@@ -608,10 +615,21 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     var s = n.sym
     case s.kind
     of skEnumField:
+      when defined(icDbg):
+        if n.typ == nil:
+          echo "ENUMFIELD niltyp sym=", s.name.s, " symtyp=",
+            (if s.typ == nil: "nil" else: $s.typ.kind), " lazy=", nfLazyType in n.flags,
+            " symstate=", s.state, " symid=", s.itemId
       result = newIntNodeT(toInt128(s.position), n, idgen, g)
     of skConst:
       case s.magic
-      of mIsMainModule: result = newIntNodeT(toInt128(ord(sfMainModule in m.flags)), n, idgen, g)
+      of mIsMainModule:
+        # Under `nim m` (IC) `sfMainModule` is set on every module that is being
+        # compiled (so it writes its own NIF), so it cannot answer `isMainModule`;
+        # the IC build file marks the real entry point with `--isMainModule:on`.
+        let isMain = if g.config.cmd == cmdM: g.config.isMainModule
+                     else: sfMainModule in m.flags
+        result = newIntNodeT(toInt128(ord(isMain)), n, idgen, g)
       of mCompileDate: result = newStrNodeT(getDateStr(), n, g)
       of mCompileTime: result = newStrNodeT(getClockStr(), n, g)
       of mCpuEndian: result = newIntNodeT(toInt128(ord(CPU[g.config.target.targetCPU].endian)), n, idgen, g)

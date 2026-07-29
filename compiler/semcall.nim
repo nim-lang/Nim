@@ -90,8 +90,14 @@ proc addTypeBoundSymbols(graph: ModuleGraph, arg: PType, name: PIdent,
     # argument must be typed first, meaning arguments always
     # matching `untyped` are ignored
     let t = nominalRoot(arg)
-    if t != nil and t.owner.kind == skModule:
-      # search module for routines attachable to `t`
+    if t != nil and t.owner.kind == skModule and
+        t.owner.position >= 0 and t.owner.position < graph.ifaces.len:
+      # search module for routines attachable to `t`.
+      # Under IC the nominal type may have been loaded from a NIF file, in which
+      # case its owner module is a stub whose `position` (a NIF-suffix file index)
+      # has no `ifaces` slot; such type-bound ops are reachable through normal
+      # imports instead, so skip the direct module scan to avoid an out-of-range
+      # access.
       let module = t.owner
       var iter = default(ModuleIter)
       var s = initModuleIter(iter, graph, module, name)
@@ -131,7 +137,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   var sym = syms[0].s
   let name = sym.name
   var scope = syms[0].scope
-
+  c.openShadowScope
   if allowTypeBoundOps:
     for a in 1 ..< n.len:
       # for every already typed argument, add type bound ops
@@ -160,9 +166,13 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           addTypeBoundSymbols(c.graph, arg.typ, name, filter, symMarker, syms)
 
       if z.state == csMatch:
-        # little hack so that iterators are preferred over everything else:
+        # Iterator preference is heuristic in iterator-admitting contexts.
+        # The dedicated iterable path uses `iteratorPreference`, other
+        # context use exact-match bump
         if sym.kind == skIterator:
-          if not (efWantIterator notin flags and efWantIterable in flags):
+          if efPreferIteratorForIterable in flags:
+            inc(z.iteratorPreference)
+          elif not (efWantIterator notin flags and efWantIterable in flags):
             inc(z.exactMatches, 200)
           else:
             dec(z.exactMatches, 200)
@@ -214,6 +224,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     scope = syms[nextSymIndex].scope
     inc(nextSymIndex)
 
+  if best.state == csMatch and best.calleeSym != nil and best.calleeSym.kind in {skTemplate, skMacro}:
+    c.closeShadowScope
+  else:
+    c.mergeShadowScope
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
@@ -671,7 +685,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
   # copied from semOverloadedCallAnalyzeEffects, might be overkill:
   const baseFilter = {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}
   let filter =
-    if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
+    if flags*{efInTypeof, efWantIterator, efWantIterable, efPreferIteratorForIterable} != {}:
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
@@ -718,6 +732,15 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
+  when defined(icDbg):
+    if result == nil and f != nil and a != nil and f.kind == tyEnum:
+      echo "INDEXMISMATCH f=", typeToString(f), " itemId=", f.itemId,
+        " uniqueId=", f.uniqueId, " mod=", toFullPath(c.config, f.itemId.module.FileIndex),
+        " sym=", (if f.sym != nil: $f.sym.itemId else: "nil"), " state=", f.state
+      let a2 = a.skipTypes({tyRange})
+      echo "  a=", typeToString(a), " itemId=", a2.itemId, " uniqueId=", a2.uniqueId,
+        " mod=", toFullPath(c.config, a2.itemId.module.FileIndex),
+        " sym=", (if a2.sym != nil: $a2.sym.itemId else: "nil"), " state=", a2.state
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode =
@@ -830,6 +853,21 @@ proc inheritBindings(c: PContext, x: var TCandidate, expectedType: PType) =
   for i in 0 ..< flatUnbound.len():
     x.bindings.put(flatUnbound[i], flatBound[i])
 
+proc compactVoidArgs(n: PNode): PNode =
+  # deletes void args from the argument list, which are created by `setSon`
+  var hasNil = false
+  for i in 0..<n.len:
+    if n[i] == nil:
+      hasNil = true
+      break
+  if not hasNil:
+    result = n
+  else:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      if n[i] != nil:
+        result.add n[i]
+
 proc semResolvedCall(c: PContext, x: var TCandidate,
                      n: PNode, flags: TExprFlags;
                      expectedType: PType = nil): PNode =
@@ -880,7 +918,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
-  result = x.call
+  result = compactVoidArgs(x.call)
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
@@ -945,7 +983,12 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
         diagnostics: m.diagnostics))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  newInst.typ.excl tfUnresolved
+  # `generateInstance` may return an instance REUSED from another module's NIF
+  # `(offer …)` — its type is Sealed (immutable). Such an instance is already
+  # fully resolved (`tfUnresolved` cleared at its original instantiation), so the
+  # `excl` is a no-op; skip it rather than assert on a Sealed-type mutation.
+  if newInst.typ.state != Sealed:
+    newInst.typ.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s, isGenericInstance = false)
   onUse(info, s, isGenericInstance = false)
@@ -966,7 +1009,7 @@ proc setGenericParams(c: PContext, n, expectedParams: PNode) =
     if e.typ == nil:
       n[i].typ = errorType(c)
     else:
-      n[i].typ = e.typ.skipTypes({tyTypeDesc})
+      n[i].typ = e.typ
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool): PNode =
   assert n.kind == nkBracketExpr

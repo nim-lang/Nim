@@ -87,6 +87,7 @@ tweeter_test.db
 
 /tests/megatest.nim
 /tests/ic/*_temp.nim
+/tests/ic/*_mm/
 /tests/navigator/*_temp.nim
 
 

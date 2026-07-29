@@ -239,7 +239,7 @@ template main {.dirty.} =
     # todo
     discard "fixme"
   else:
-    when defined(gcArc) or defined(gcOrc):
+    when defined(gcArc) or defined(gcOrc) or defined(gcYrc):
       block: #seq
         var x = newSeq[Object](10)
         let y = x[0]
@@ -375,7 +375,7 @@ template main {.dirty.} =
     type
       Color = enum
         Red, Blue, Yellow
-  
+
     type
       ObjectVarint3 = object
         case kind: Color = Blue
@@ -663,7 +663,7 @@ template main {.dirty.} =
 
       when not(T is void):
         v.vResultPrivate
-        
+
     type R = Result[int, string]
 
     proc testAssignResult() =
@@ -834,3 +834,36 @@ proc overloaded[T: object](x: T) =
     overloaded(v)
 
 overloaded(Thing())
+
+block:
+  type
+    Foo = object
+      x = Bar()
+
+    Bar = object
+      x: int
+
+  var f = Foo()
+  doassert f.x.x == 0
+
+block:
+  type
+    Foo = object
+      x = Bar(x: 55)
+
+    Bar = object
+      x: int
+
+  var f = Foo()
+  doassert f.x.x == 55
+
+block:
+  type
+    Bar = object
+      x: int
+
+    Foo = object
+      x = Bar()
+
+  var f = Foo()
+  doassert f.x.x == 0

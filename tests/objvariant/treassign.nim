@@ -27,9 +27,11 @@ t.curr = TokenObject(kind: Token.foo, foo: "foo")
 echo "SUCCESS"
 
 proc passToVar(x: var Token) = discard
+proc passToPtr(x: ptr Token) = discard
 
 {.cast(uncheckedAssign).}:
   passToVar(t.curr.kind)
+  passToPtr(addr t.curr.kind)
 
   t.curr = TokenObject(kind: t.curr.kind, foo: "abc")
 

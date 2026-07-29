@@ -143,8 +143,6 @@
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
-import std/private/syslocks
-
 type
   pbytes = ptr UncheckedArray[byte]
   RawChannel {.pure, final.} = object ## msg queue for a thread
@@ -183,10 +181,10 @@ proc deinitRawChannel(p: pointer) =
 
 when not usesDestructors:
   proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
-                mode: LoadStoreMode) {.benign.}
+                mode: LoadStoreMode) {.gcsafe.}
 
   proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
-                mode: LoadStoreMode) {.benign.} =
+                mode: LoadStoreMode) {.gcsafe.} =
     var
       d = cast[int](dest)
       s = cast[int](src)

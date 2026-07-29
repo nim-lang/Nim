@@ -26,15 +26,15 @@ import
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
-import ic / [cbackend, integrity, navigator, ic]
-
 import ../dist/checksums/src/checksums/sha1
 
 import pipelines
+from icconfig import produceIcConfig
 
 when not defined(nimKochBootstrap):
   import nifbackend
   import deps
+  import idetools
 
 when not defined(leanCompiler):
   import docgen
@@ -98,14 +98,6 @@ proc commandCheck(graph: ModuleGraph) =
     setTarget(conf.target, osJS, cpuJS)
   setPipeLinePass(graph, SemPass)
   compilePipelineProject(graph)
-
-  if conf.symbolFiles != disabledSf:
-    case conf.ideCmd
-    of ideDef: navDefinition(graph)
-    of ideUse: navUsages(graph)
-    of ideDus: navDefusages(graph)
-    else: discard
-    writeRodFiles(graph)
 
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; ext: string) =
@@ -173,15 +165,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   compilePipelineProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
-  if conf.symbolFiles == disabledSf:
-    cgenWriteModules(graph.backend, conf)
-  else:
-    if isDefined(conf, "nimIcIntegrityChecks"):
-      checkIntegrity(graph)
-    generateCode(graph)
-    # graph.backend can be nil under IC when nothing changed at all:
-    if graph.backend != nil:
-      cgenWriteModules(graph.backend, conf)
+  cgenWriteModules(graph.backend, conf)
   if conf.cmd != cmdTcc and graph.backend != nil:
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
@@ -240,10 +224,6 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
     closeLexer(L)
   else:
     rawMessage(config, errGenerated, "cannot open file: " & f.string)
-
-proc commandView(graph: ModuleGraph) =
-  let f = toAbsolute(mainCommandArg(graph.config), AbsoluteDir getCurrentDir()).addFileExt(RodExt)
-  rodViewer(f, graph.config, graph.cache)
 
 const
   PrintRopeCacheStats = false
@@ -342,8 +322,6 @@ proc mainCommand*(graph: ModuleGraph) =
   case conf.cmd
   of cmdBackends:
     compileToBackend()
-    when BenchIC:
-      echoTimes graph.packed
   of cmdTcc:
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
@@ -439,30 +417,55 @@ proc mainCommand*(graph: ModuleGraph) =
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmdCheck:
     commandCheck(graph)
+  of cmdTrack:
+    # `nim track --def:/--usages:/--track:` — IDE goto-definition / find-usages.
+    # Runs `nim ic`'s incremental frontend (nifler + per-module `nim m`, so only
+    # changed modules recompile and each writes a faithful, VM-executed `.s.bif`
+    # — covering stdlib too), then scans those NIF files (idetools.runIdeQuery).
+    # Shares the `nim ic` nimcache dir, so a prior `nim ic` build is reused.
+    setUseIc(true)
+    wantMainModule(conf)
+    setOutFile(conf)
+    when not defined(nimKochBootstrap):
+      commandIc(conf, frontendOnly = true)
+      runIdeQuery(conf)
+    else:
+      rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
-    setUseIc(false)
+    setUseIc(true)
+    # vtable dispatch needs a whole-program vtable layout, which the
+    # per-module compilation model cannot provide (yet); methods dispatch
+    # through the classic if-chain dispatchers instead
+    excl conf.features, Feature.vtables
     commandCheck(graph)
   of cmdNifC:
+    setUseIc(true)
+    excl conf.features, Feature.vtables
     # Generate C code from NIF files
     wantMainModule(conf)
     setOutFile(conf)
     commandNifC(graph)
-  of cmdDeps:
+  of cmdIc:
     # Generate .build.nif for nifmake
+    setUseIc(true)
     wantMainModule(conf)
+    # Resolve the output binary path (honoring `--out`) up front, like cmdNifC:
+    # the backend build file derives the link target from `conf.absOutFile`.
+    setOutFile(conf)
     when not defined(nimKochBootstrap):
-      commandDeps(conf)
+      commandIc(conf)
     else:
       rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
+  of cmdIcConfig:
+    # Produce the precompiled config artifact for `nim ic` (config already
+    # parsed by the normal pipeline); a separate process spawned by the driver.
+    wantMainModule(conf)
+    produceIcConfig(conf)
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
-  of cmdRod:
-    wantMainModule(conf)
-    commandView(graph)
-    #msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of cmdInteractive: commandInteractive(graph)
   of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard
@@ -473,10 +476,17 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdJsonscript:
     setOutFile(graph.config)
     commandJsonScript(graph)
-  of cmdUnknown, cmdNone, cmdIdeTools:
+  of cmdUnknown, cmdNone:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
+  if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop, cmdM} and
+      not (conf.cmd == cmdNifC and conf.icBackendStage.len > 0):
+    # The IC build runs hundreds of internal per-module child processes — the
+    # frontend `nim m` (cmdM) and the per-module backend stages (cg/emit/merge/
+    # link). Each would print a `[SuccessX]` summary that is pure noise (and
+    # misleading: `out: unknownOutput`, or `out: <the whole compiler>` for a
+    # step that only wrote one `.c.nif`/`.c`). The driving `nim ic` (and koch)
+    # reports the real result.
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
     genSuccessX(conf)

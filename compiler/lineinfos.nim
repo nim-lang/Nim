@@ -93,10 +93,14 @@ type
     warnBareExcept = "BareExcept",
     warnImplicitDefaultValue = "ImplicitDefaultValue",
     warnIgnoredSymbolInjection = "IgnoredSymbolInjection",
-    warnStdPrefix = "StdPrefix"
-    warnUnknownNotes = "UnknownNotes"
+    warnStdPrefix = "StdPrefix",
+    warnUnknownNotes = "UnknownNotes",
+    warnLongLiterals = "LongLiterals",
     warnUser = "User",
     warnGlobalVarConstructorTemporary = "GlobalVarConstructorTemporary",
+    warnImplicitRangeConversion = "ImplicitRangeConversion",
+    warnSystemRangeConversion = "SystemRangeConversion",
+    warnInvalidCmpOp = "InvalidCmpOp",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -202,8 +206,12 @@ const
     warnIgnoredSymbolInjection: "$1",
     warnStdPrefix: "$1 needs the 'std' prefix",
     warnUnknownNotes: "$1",
+    warnLongLiterals: "$1",
     warnUser: "$1",
     warnGlobalVarConstructorTemporary: "global variable '$1' initialization requires a temporary variable",
+    warnImplicitRangeConversion: "implicit range conversion $1",
+    warnSystemRangeConversion: "implicit range conversion $1",
+    warnInvalidCmpOp: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
@@ -258,9 +266,9 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result = default(array[0..3, TNoteKinds])
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix, warnSystemRangeConversion}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
-  result[1] = result[2] - {warnProveField, warnProveIndex,
+  result[1] = result[2] - {warnImplicitRangeConversion, warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,

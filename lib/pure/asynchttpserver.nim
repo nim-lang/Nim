@@ -153,7 +153,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
         protocol)
   result.orig = protocol
   i.inc protocol.parseSaturatedNatural(result.major, i)
-  i.inc # Skip .
+  if i < protocol.len: inc i # Skip .
   i.inc protocol.parseSaturatedNatural(result.minor, i)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
@@ -188,7 +188,7 @@ proc processRequest(
   # \n
   request.headers.clear()
   request.body = ""
-  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     request.hostname = address
   else:
     request.hostname.shallowCopy(address)

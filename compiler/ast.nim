@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg
+  lineinfos, options, idents, int128, wordrecg
 
 import std/[tables, hashes]
 from std/strutils import toLowerAscii
@@ -35,6 +35,13 @@ when not defined(nimKochBootstrap):
 proc setupProgram*(config: ConfigRef; cache: IdentCache) =
   when not defined(nimKochBootstrap):
     program = createDecodeContext(config, cache)
+
+proc setIcMainModule*(fileIdx: FileIndex) =
+  ## Tells the IC loader which module is being compiled fresh, so that
+  ## re-exports of that module's symbols by dependencies are not loaded as
+  ## duplicate stubs.
+  when not defined(nimKochBootstrap):
+    ast2nif.setMainModule(program, fileIdx)
 
 template loadSym(s: PSym) =
   ## Loads a symbol from NIF file if it's in Partial state.
@@ -69,6 +76,16 @@ proc backendEnsureMutable*(t: PType) {.inline.} =
   #assert t.state != Sealed
   # ^ IC review this later
   if t.state == Partial: loadType(t)
+
+proc unsealForTransform*(t: PType) {.inline.} =
+  ## The transformer/lambda lifting also run inside `nim m` when the VM
+  ## compiles a LOADED routine (macro evaluation, `getImpl`). Their mutations
+  ## are process-local — transformed bodies are never written back to a NIF —
+  ## so downgrade the loaded type to mutable, mirroring the `cmdNifC` loader
+  ## which loads everything `Complete` for exactly this reason (see
+  ## `ast2nif.loadedState`).
+  if t.state == Partial: loadType(t)
+  if t.state == Sealed: t.state = Complete
 
 proc owner*(s: PSym): PSym {.inline.} =
   if s.state == Partial: loadSym(s)
@@ -221,7 +238,10 @@ proc position*(s: PSym): int {.inline.} =
   result = s.positionImpl
 
 proc `position=`*(s: PSym, val: int) {.inline.} =
-  assert s.state != Sealed
+  # No `Sealed` guard: the VM reuses `position` as a register slot while compiling
+  # a macro for execution (see `vmgen.genGenericParams`), which under IC may be a
+  # macro loaded from a NIF file. The macro is run, not code-generated, so this
+  # scratch mutation is harmless.
   if s.state == Partial: loadSym(s)
   s.positionImpl = val
 
@@ -312,7 +332,10 @@ when defined(nimsuggest):
     result = s.allUsagesImpl
 
   proc `allUsages=`*(s: PSym, val: sink seq[TLineInfo]) {.inline.} =
-    assert s.state != Sealed
+    # No `assert s.state != Sealed`: `allUsagesImpl` is nimsuggest-only usage
+    # tracking, NOT part of the NIF-serialized symbol. nimsuggest loads symbols
+    # as `Sealed` (ast2nif.loadedState under cmdM) yet `suggestSym` legitimately
+    # records usages on them; the getter likewise doesn't assert.
     if s.state == Partial: loadSym(s)
     s.allUsagesImpl = val
 
@@ -445,11 +468,17 @@ var gconfig {.threadvar.}: Gconfig
 proc setUseIc*(useIc: bool) = gconfig.useIc = useIc
 
 proc comment*(n: PNode): string =
-  if nfHasComment in n.flags and not gconfig.useIc:
-    # IC doesn't track comments, see `packed_ast`, so this could fail
-    result = gconfig.comments[n.nodeId]
+  if nfHasComment in n.flags:
+    # NIF-based IC doesn't serialize comments, but the comment table is keyed by
+    # the node's address (`nodeId`), which is unique among live nodes; a loaded
+    # node that carries `nfHasComment` simply has no entry here (its comment was
+    # set in another process), so `getOrDefault` safely returns "" for it while
+    # in-process VM macro nodes (e.g. newCommentStmtNode) still round-trip.
+    result = gconfig.comments.getOrDefault(n.nodeId)
   else:
     result = ""
+
+nodeCommentReader = proc(n: PNode): string {.nimcall.} = comment(n)
 
 proc `comment=`*(n: PNode, a: string) =
   let id = n.nodeId
@@ -466,6 +495,8 @@ proc `comment=`*(n: PNode, a: string) =
     n.flags.excl nfHasComment
     gconfig.comments.del(id)
 
+nodeCommentWriter = proc(n: PNode; s: string) {.nimcall.} = n.comment = s
+
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
 # the poor naming choices in the standard library.
@@ -478,13 +509,6 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
-const
-  moduleShift = when defined(cpu32): 20 else: 24
-
-template toId*(a: ItemId): int =
-  let x = a
-  (x.module.int shl moduleShift) + x.item.int
-
 template id*(a: PType | PSym): int = toId(a.itemId)
 
 type
@@ -493,27 +517,62 @@ type
     symId*: int32
     typeId*: int32
     sealed*: bool
+    backendMinted*: bool
     disambTable*: CountTable[PIdent]
-
-const
-  PackageModuleId* = -3'i32
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
+  result.disambTable.inc m.name
+
+proc idGeneratorForBackend*(m: PSym): IdGenerator =
+  ## Like `idGeneratorFromModule`, but for IC codegen (`nim nifc`): symbols and
+  ## types minted fresh during codegen (transf labels/temps, lifted hooks, type
+  ## copies) must not collide with the itemIds the NIF loader synthesizes for
+  ## lazily-loaded symbols/types of the same module — those come from a
+  ## per-module load-order counter that keeps running while codegen mints its
+  ## own ids. A collision corrupts itemId-keyed tables, e.g. `transf`'s inline
+  ## iterator mapping then substitutes a random loaded sym (a call's callee)
+  ## with a `:tmp` block label. Backend-minted ids carry a marker bit in the
+  ## module half (see `itemids.backendItemId`), so the two id spaces are
+  ## disjoint by construction.
+  assert m.kind == skModule
+  result = IdGenerator(module: m.itemId.module, symId: 0, typeId: 0,
+                       backendMinted: true, disambTable: initCountTable[PIdent]())
+  result.disambTable.inc m.name
 
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
   result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
 
 proc nextSymId(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
+  when not defined(nimKochBootstrap):
+    if x.backendMinted:
+      # Share the loader's per-module backend counter so a freshly-minted
+      # backend sym never collides with an `@bk` sym loaded from the module's
+      # `.t.bif` (see ast2nif.nextBackendSymItem).
+      let it = nextBackendSymItem(program, x.module)
+      if it >= 0'i32:
+        return backendItemId(x.module, it)
   inc x.symId
-  result = ItemId(module: x.module, item: x.symId)
+  result = if x.backendMinted: backendItemId(x.module, x.symId)
+           else: itemId(x.module, x.symId)
 
 proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
+  when not defined(nimKochBootstrap):
+    if x.backendMinted:
+      # Share the loader's per-module backend TYPE counter (seeded from the
+      # module's `(unusedid)`) so a freshly-minted backend type sits ABOVE every
+      # loaded type — never colliding with a frontend type's `toId` (the bug that
+      # crashed cgen's `getTypeDescAux` cycle check on `AsyncBufferRef`). Mirrors
+      # `nextSymId` (see ast2nif.nextBackendTypeItem).
+      let it = nextBackendTypeItem(program, x.module)
+      if it >= 0'i32:
+        return backendItemId(x.module, it)
   inc x.typeId
-  result = ItemId(module: x.module, item: x.typeId)
+  result = if x.backendMinted: backendItemId(x.module, x.typeId)
+           else: itemId(x.module, x.typeId)
 
 when false:
   proc nextId*(x: IdGenerator): ItemId {.inline.} =
@@ -549,22 +608,25 @@ proc addAllowNil*(father, son: PNode) {.inline.} =
   father.sons.add(son)
 
 proc add*(father, son: PType) =
+  ensureMutable father
   assert father.kind != tyProc or father.sonsImpl.len == 0
   assert son != nil
   father.sonsImpl.add son
 
 proc addAllowNil*(father, son: PType) {.inline.} =
+  ensureMutable father
   assert father.kind != tyProc or father.sonsImpl.len == 0
   father.sonsImpl.add son
 
-template `[]`*(n: PType, i: int): PType =
+proc `[]`*(n: PType, i: int): PType {.inline.} =
   if n.state == Partial: loadType(n)
   if n.kind == tyProc and i > 0:
     assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
     n.nImpl[i].sym.typ
   else:
     n.sonsImpl[i]
-template `[]=`*(n: PType, i: int; x: PType) =
+
+proc `[]=`*(n: PType, i: int; x: PType) {.inline.} =
   if n.state == Partial: loadType(n)
   if n.kind == tyProc and i > 0:
     assert n.nImpl[i] != nil and n.nImpl[i].sym != nil
@@ -572,12 +634,13 @@ template `[]=`*(n: PType, i: int; x: PType) =
   else:
     n.sonsImpl[i] = x
 
-template `[]`*(n: PType, i: BackwardsIndex): PType =
+proc `[]`*(n: PType, i: BackwardsIndex): PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n[n.len - i.int]
-template `[]=`*(n: PType, i: BackwardsIndex; x: PType) =
+  n[n.sonsImpl.len - i.int]
+
+proc `[]=`*(n: PType, i: BackwardsIndex; x: PType) {.inline.} =
   if n.state == Partial: loadType(n)
-  n[n.len - i.int] = x
+  n[n.sonsImpl.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
   ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
@@ -786,6 +849,10 @@ proc newSymNode*(sym: PSym): PNode =
   result = newNode(nkSym)
   result.sym = sym
   result.typField = sym.typ
+  if result.typField == nil and nifcBackendActive:
+    # See the two-arg overload in astdef: in the NIF backend cg stage a sym node
+    # built from a not-yet-typed stub must track the symbol's type lazily.
+    result.flags.incl nfLazyType
   result.info = sym.info
 
 proc newOpenSym*(n: PNode): PNode {.inline.} =
@@ -930,6 +997,7 @@ proc `$`*(s: PSym): string =
     result = "<nil>"
 
 proc len*(n: PType): int {.inline.} =
+  if n.state == Partial: loadType(n)
   if n.kind == tyProc:
     result = if n.nImpl == nil: 0 else: n.nImpl.len
   else:
@@ -1037,6 +1105,11 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
     if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
+  when defined(icDbg):
+    if kind == tyOpenArray:
+      echo "NEWTYPE openArray id=", id.module, ".", id.item,
+        " owner=", (if owner != nil: owner.name.s else: "nil")
+      echo getStackTrace()
 
 proc setSons*(dest: PType; sons: sink seq[PType]) {.inline.} =
   assert dest.kind != tyProc or sons.len <= 1
@@ -1099,10 +1172,19 @@ proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 
-proc exactReplica*(t: PType): PType =
+proc exactReplica*(t: PType; idgen: IdGenerator): PType =
+  ## Replica that KEEPS `itemId` — the generic-param binding tables
+  ## (`LayeredIdTable`) key on it, so the copy must keep matching its
+  ## original — but mints a FRESH `uniqueId`: uniqueId is the SERIALIZATION
+  ## identity (NIF type names key on it) and must be unique per instance.
+  ## Replicas sharing the original's uniqueId serialized as duplicate defs
+  ## under one NIF name; the loader collapsed them into a single type,
+  ## losing their flag differences (use-site `tfUnresolved` typedescs) or
+  ## their structure (meta instance bodies shadowing a generic's canonical
+  ## body).
   result = PType(kind: t.kind, ownerFieldImpl: t.owner, sizeImpl: defaultSize,
                  alignImpl: defaultAlignment, itemId: t.itemId,
-                 uniqueId: t.uniqueId)
+                 uniqueId: nextTypeId(idgen))
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 
@@ -1168,6 +1250,7 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
+    if result.state == Partial: loadType(result)
     if result.sonsImpl.len == 0: return nil
     result = last(result)
 
@@ -1189,7 +1272,12 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyString, tySet, tyDistinct}:
-      o2.incl mask
+      if o2.state == Sealed:
+        # During the original compilation, propagateToOwner set tfHasAsgn/tfHasOwned on the type before it was sealed
+        # On IC reload, the sealed type already has those flags
+        assert mask <= o2.flags, "IC bug: sealed type missing propagated flags"
+      else:
+        o2.incl mask
       owner.incl mask
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
@@ -1259,11 +1347,15 @@ proc transitionNoneToSym*(n: PNode) =
   transitionNodeKindCommon(nkSym)
 
 template transitionSymKindCommon*(k: TSymKind) =
+  # Under IC the symbol may still be an unloaded stub (`skStub`); materialise it
+  # first so its kind-specific fields (read below as `obj.*`) actually exist.
+  if s.state == Partial: loadSym(s)
   let obj {.inject.} = s[]
   s[] = TSym(kindImpl: k, itemId: obj.itemId, magicImpl: obj.magicImpl, typImpl: obj.typImpl, name: obj.name,
              infoImpl: obj.infoImpl, ownerFieldImpl: obj.ownerFieldImpl, flagsImpl: obj.flagsImpl, astImpl: obj.astImpl,
              optionsImpl: obj.optionsImpl, positionImpl: obj.positionImpl, offsetImpl: obj.offsetImpl,
-             locImpl: obj.locImpl, annexImpl: obj.annexImpl, constraintImpl: obj.constraintImpl)
+             disamb: obj.disamb, locImpl: obj.locImpl, annexImpl: obj.annexImpl, constraintImpl: obj.constraintImpl,
+             instantiatedFromImpl: obj.instantiatedFromImpl)
   when hasFFI:
     s.cnameImpl = obj.cnameImpl
   when defined(nimsuggest):
@@ -1634,9 +1726,13 @@ proc canRaise*(fn: PNode): bool =
     if fn.typ.n[0].kind == nkSym:
       result = false
     else:
+      # A proc-typed value with no explicit raises slot still has
+      # unspecified effects, which sempass2 treats conservatively.
+      # Codegen needs to do the same in order to keep goto-exception
+      # checks after indirect/closure calls.
       result = ((fn.typ.n[0].len < effectListLen) or
-        (fn.typ.n[0][exceptionEffects] != nil and
-        fn.typ.n[0][exceptionEffects].safeLen > 0))
+        fn.typ.n[0][exceptionEffects] == nil or
+        fn.typ.n[0][exceptionEffects].safeLen > 0)
   else:
     result = false
 
@@ -1680,3 +1776,10 @@ type
 
 template initSymMapping*(): SymMapping = initIdTable[PSym]()
 template initTypeMapping*(): TypeMapping = initIdTable[PType]()
+
+proc sameModules*(a, b: PSym): bool {.inline.} =
+  assert a.kind == skModule and b.kind == skModule
+  result = a.position == b.position
+
+proc sameOwners*(a, b: PSym): bool =
+  result = a == b or (a.kind == skModule and b.kind == skModule and a.position == b.position) or a.id == b.id

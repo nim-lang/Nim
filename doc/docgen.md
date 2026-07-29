@@ -735,6 +735,24 @@ with a hyperlink to your own code repository.
 In the case of Nim's own documentation, the `commit` value is just a commit
 hash to append to a formatted URL to https://github.com/nim-lang/Nim.
 
+Substitution via environment variables
+--------------------------------------
+
+A simple substitution using environment variables is available.
+A reference written as ``|name|`` is replaced during documentation generation if
+a matching variable is provided. You can define it via the compiler with
+``--putenv``. This is useful for injecting values like version strings or
+build-specific text.
+
+  ```nim
+  ## |foo|
+  ```
+
+  ```cmd
+  nim --putenv:foo=bar doc filename.nim
+  ```
+
+The generated html will contain ``bar`` instead of ``foo``.
 
 Other Input Formats
 ===================

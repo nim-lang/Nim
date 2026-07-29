@@ -460,7 +460,9 @@ proc addInt128*(result: var string; value: Int128) =
     var i = initialSize
     var j = high(result)
     while i < j:
-      swap(result[i], result[j])
+      let tmp = result[i]
+      result[i] = result[j]
+      result[j] = tmp
       i += 1
       j -= 1
 

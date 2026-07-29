@@ -48,6 +48,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGener
   n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flagsImpl, {sfFromGeneric, sfNeverRaises}
+  setHookDisamb(g, result, "$enumtostr", t)
 
 proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
   case obj.kind

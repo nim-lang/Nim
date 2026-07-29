@@ -1,3 +1,4 @@
+import std/intsets
 import ast, options, lineinfos, pathutils, msgs, modulegraphs, packages
 
 proc skipCodegen*(config: ConfigRef; n: PNode): bool {.inline.} =
@@ -23,4 +24,3 @@ proc prepareConfigNotes*(graph: ModuleGraph; module: PSym) =
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   result = true
-  #module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")

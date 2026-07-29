@@ -25,9 +25,35 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2025"
+  copyrightYear* = "2026"
 
   nimEnableCovariance* = defined(nimEnableCovariance)
+
+  icFormatVersion* = "30"
+    ## Version of the IC cache format (the sem-NIF module layout written by
+    ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
+    ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
+    ## stamp differs, instead of letting a newer reader mis-parse records
+    ## written by an older compiler (nifmake's rebuild check is mtime-only
+    ## and knows nothing about format changes).
+    ## v2: iface cookie hashes routine SIGNATURES only (no inline-semantics
+    ## body folding); body access now records a NeedsImpl edge instead. A v1
+    ## cache mixes body-sensitive and body-insensitive cookies, so it must be
+    ## wiped rather than warm-rebuilt.
+    ## v3: added the `.s.deps` sidecar (real post-sem imports) and switched the
+    ## macro-generated-import discovery from `icmissing.txt` to it.
+    ## v4: backend C-name scheme change — the module suffix is now the trailing
+    ## token (`name_u<disamb>__<suffix>`, was `name__<suffix>_u<disamb>`), so
+    ## cached `.c.nif` artifacts hold incompatible names and must be wiped.
+    ## v5: data definitions (consts, RTTI) are now wrapped in droppable `'d'`
+    ## cdef directives with an always-present extern declaration, so the
+    ## per-module merge stage can assign them a single owner; old `.c.nif`
+    ## artifacts lack the wrappers.
+    ## v6: `signatureHash`/`hashType` of a builtin type class (`object`, `tuple`,
+    ## `proc`, ...) no longer mixes in the placeholder son's process-local type
+    ## id, so its hash is stable across the NIF boundary (was breaking
+    ## nim-serialization's auto-serialization lookup under IC). The sem-NIF
+    ## macrocache entries and baked generic-instance bodies hold the old hashes.
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -68,6 +94,7 @@ type                          # please make sure we have under 32 options
     optUseNimcache,           # save artifacts (including binary) in $nimcache
     optStyleHint,             # check that the names adhere to NEP-1
     optStyleError,            # enforce that the names adhere to NEP-1
+    optStyleWarning,          # emit style checks as warnings
     optStyleUsages,           # only enforce consistent **usages** of the symbol
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
@@ -110,8 +137,11 @@ type                          # please make sure we have under 32 options
     optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
     optShowNonExportedFields  # for documentation: show fields that are not exported
     optJsBigInt64             # use bigints for 64-bit integers in JS
+    optDocRaw                 # for documentation: Don't render markdown for JSON output
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optGenBif                 # generate semantic BIF alongside ordinary code generation
+    optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -154,8 +184,6 @@ type
     cmdCheck # semantic checking for whole project
     cmdM     # only compile a single
     cmdParse # parse a single file (for debugging)
-    cmdRod # .rod to some text representation (for debugging)
-    cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
     cmdDoc      # convert .nim doc comments to HTML
@@ -176,7 +204,9 @@ type
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
     cmdCompileToNif
     cmdNifC  # generate C code from NIF files
-    cmdDeps  # generate .build.nif for nifmake
+    cmdIc  # generate .build.nif for nifmake
+    cmdIcConfig # `nim ic`'s precompiled-config producer (writes ic_config.cfg.nif)
+    cmdTrack # `nim track --def/--usages`: IC frontend build + NIF scan for IDE queries
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -193,6 +223,7 @@ type
     gcRegions = "regions"
     gcArc = "arc"
     gcOrc = "orc"
+    gcYrc = "yrc"       # thread-safe ORC (concurrent cycle collector)
     gcAtomicArc = "atomicArc"
     gcMarkAndSweep = "markAndSweep"
     gcHooks = "hooks"
@@ -256,6 +287,14 @@ type
       ## Old transformation for closures in JS backend
     noPanicOnExcept
       ## don't panic on bare except
+    procParamTypeBackendAliases
+      ## Keep the old proc type compatibility rules that ignore backend
+      ## c type aliases.
+    injectedSymbolRedefinition
+      ## Allow a template to inject a symbol *definition* that is then emitted
+      ## more than once (e.g. a `typed` argument captured by a `{.dirty.}`
+      ## template and re-emitted). This is a redefinition and rejected by
+      ## default; enabling this restores the old, unsound behavior. See #25693.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
@@ -263,6 +302,10 @@ type
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
     ccTcc, ccEnv, ccIcl, ccIcc, ccClangCl, ccHipcc, ccNvcc
+
+  StringsMode* = enum
+    stringDefault = "default"
+    stringSso = "sso"
 
   ExceptionSystem* = enum
     excNone,   # no exception system selected yet
@@ -358,16 +401,67 @@ type
     evalMacroCounter*: int
     exitcode*: int8
     cmd*: Command  # raw command parsed as enum
+    ideActive*: bool # serving IDE tooling (nimsuggest): collect suggestions and
+                     # keep going after errors. Decoupled from `cmd` so the IDE
+                     # server can run under any compilation mode (cmdCheck, cmdM).
+    ideImportsFromNif*: bool # nimsuggest: load the unchanged import closure from
+                     # precompiled NIF (run under cmdM) instead of recompiling it
+                     # from source (cmdCheck). IC is opt-in: default off (cmdCheck);
+                     # `--ideImports:nif` opts in.
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
+    selectedStrings*: StringsMode
     hintProcessingDots*: bool # true for dots, false for filenames
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    ic*: bool # whether ic is enabled
+    icGroup*: HashSet[string] # under `nim m`: absolute paths of the modules in
+                              # this strongly-connected import group. They are all
+                              # compiled from source in one process (so mutual
+                              # recursion resolves in-memory) and each gets its NIF
+                              # written, instead of being loaded from a precompiled
+                              # NIF. See `compiler/deps.nim` (SCC grouping).
+    icProject*: string        # under `nim m`/`nim nifc`: absolute path of the
+                              # ORIGINAL project file. The child's own project file
+                              # is the module being compiled, which would make that
+                              # module's package the "main package" and unfilter
+                              # foreign-package diagnostics; the real project
+                              # restores whole-program filtering semantics.
+    icPreparsedConfig*: string # under the `nim ic` driver and its `nim m`/`nim nifc`
+                              # children: path of the precompiled config artifact.
+                              # When set, `loadConfigs` replays the recorded
+                              # config-file switches from it instead of re-reading
+                              # the `nim.cfg` chain and re-running `config.nims`
+                              # (which the VM makes expensive) per process. The
+                              # artifact itself is produced by a separate
+                              # `nim icconfig` process (see `cmdIcConfig`).
+    icConfigOut*: string      # under `nim icconfig`: the path to write the
+                              # precompiled config artifact to (set via `--o`).
+    icConfigSwitches*: seq[tuple[switch, arg: string]]
+                              # the config-file (`passPP`) switches applied while
+                              # loading config, in order. Recorded by every nim
+                              # process; only the `ic` driver serialises them.
+                              # Path-search switches are excluded — the driver
+                              # forwards the resolved `searchPaths` as `--path`.
+    icBackendStage*: string   # under `nim nifc`: which stage of the per-module
+                              # backend this invocation runs — "cg" (codegen one
+                              # module to its `.c.nif`), "merge" (global liveness
+                              # + owner assignment across all `.c.nif`), "emit"
+                              # (render one module's `.c` from its `.c.nif` + the
+                              # merge decision), "link" (cc + link every emitted
+                              # `.c`). Empty = whole-program backend (load all,
+                              # codegen+DCE+cc+link in one process). The stages
+                              # are wired as nifmake rules by `deps.nim`'s backend
+                              # build file. See `compiler/nifbackend.nim`.
+    icBackendModule*: string  # under `nim nifc` with icBackendStage in {cg,emit}:
+                              # the NIF module suffix this invocation codegens or
+                              # emits. The other modules are loaded only so types
+                              # resolve; their definitions are referenced extern.
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
@@ -414,6 +508,12 @@ type
     lastMsgWasDot*: set[StdOrrKind] # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
+    isMainModule*: bool # `nim m`/IC only: whether the single module being
+                        # semantically checked is the program's real entry point.
+                        # Under IC every module is compiled via `nim m` (which sets
+                        # `sfMainModule` so the module writes its own NIF), so
+                        # `sfMainModule` can no longer answer `isMainModule`. The IC
+                        # build file passes `--isMainModule:on` for the root module.
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
@@ -570,6 +670,7 @@ proc newConfigRef*(): ConfigRef =
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     cppDefines: initHashSet[string](),
+    icGroup: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {},
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
@@ -592,6 +693,7 @@ proc newConfigRef*(): ConfigRef =
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
     commandLine: "",
+    ideImportsFromNif: false, # IC opt-in; see `--ideImports`
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: "",
@@ -645,6 +747,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "x86": result = conf.target.targetCPU == cpuI386
     of "itanium": result = conf.target.targetCPU == cpuIa64
     of "x8664": result = conf.target.targetCPU == cpuAmd64
+    of "wasm": result = conf.target.targetCPU in {cpuWasm32, cpuWasm64}
     of "posix", "unix":
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
@@ -692,8 +795,20 @@ template quitOrRaise*(conf: ConfigRef, msg = "") =
   else:
     quit(msg) # quits with QuitFailure
 
-proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
+proc icReuseSemLowering*(conf: ConfigRef): bool {.inline.} =
+  ## When ON, the per-module `lower` backend stage REUSES the VM/CT lowering that
+  ## sem cached in the `.s.nif` 2-way-body slot (the non-IC single-lowering
+  ## semantics) instead of re-deriving the transform. Default OFF: the backend
+  ## re-derives every body from the pristine semchecked body (simpler; allowed by
+  ## the 2026-06-27 spec that VM-requested frontend transforms need not influence
+  ## the backend). The switch exists so caching can be restored if a target (e.g.
+  ## Nimbus) depends on the cached lowering being reused, not re-derived. See
+  ## doc/ic_backend_simplify.md §6b.
+  isDefined(conf, "icReuseSemLowering")
+
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.ideActive or conf.cmd in cmdDocLike
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
+proc usesSso*(conf: ConfigRef): bool {.inline.} = conf.selectedStrings == stringSso
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
   false
@@ -817,7 +932,8 @@ proc getOsCacheDir(): string =
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   proc nimcacheSuffix(conf: ConfigRef): string =
-    if conf.cmd == cmdCheck: "_check"
+    if conf.ideActive: "_nimsuggest"  # dedicated cache, never shared with `nim c`
+    elif conf.cmd == cmdCheck: "_check"
     elif isDefined(conf, "release") or isDefined(conf, "danger"): "_r"
     else: "_d"
 
@@ -1043,6 +1159,9 @@ proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
 
 proc showNonExportedFields*(conf: ConfigRef) =
   incl(conf.globalOptions, optShowNonExportedFields)
+
+proc docRawOutput*(conf: ConfigRef) =
+  incl(conf.globalOptions, optDocRaw)
 
 proc expandDone*(conf: ConfigRef): bool =
   result = conf.ideCmd == ideExpand and conf.expandLevels == 0 and conf.expandProgress

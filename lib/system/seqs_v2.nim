@@ -11,6 +11,97 @@
 # import std/typetraits
 # strs already imported allocateds for us.
 
+when defined(gcYrc):
+  include rwlocks
+  include threadids
+
+  const
+    NumLockStripes = 64
+
+  type
+    YrcLockState = enum
+      HasNoLock
+      HasMutatorLock
+      HasCollectorLock
+      Collecting
+
+    AlignedCounter = object
+      ## one counter per cache line to avoid false sharing between stripes
+      c {.align: 64.}: int
+
+  # Asymmetric two-class exclusion: seq structure mutations and collections
+  # exclude each other, but seq ops run concurrently with seq ops and
+  # collections run concurrently with collections. This replaces the old
+  # RwLock scheme (which allowed only ONE collector, serializing parallel
+  # collection) and also sidesteps POSIX's requirement that a rwlock be
+  # unlocked by its acquiring thread.
+  var
+    gSeqActive: array[NumLockStripes, AlignedCounter]  # in-flight seq ops
+    gGcActive: int                                     # active collections
+  var
+    lockState {.threadvar.}: YrcLockState
+
+  proc getYrcStripe(): int {.inline.} =
+    ## Map this thread to one of the NumLockStripes counter stripes.
+    ## getThreadId() is already cached thread-locally in threadids.nim.
+    getThreadId() and (NumLockStripes - 1)
+
+  proc acquireMutatorLock() {.compilerRtl, inl.} =
+    if lockState == HasNoLock:
+      let s = getYrcStripe()
+      while true:
+        # SEQ_CST inc-then-check pairs with the collector's SEQ_CST
+        # inc-then-drain (Dekker-style store/load ordering)
+        discard atomicFetchAdd(addr gSeqActive[s].c, 1, ATOMIC_SEQ_CST)
+        if atomicLoadN(addr gGcActive, ATOMIC_SEQ_CST) == 0: break
+        discard atomicFetchSub(addr gSeqActive[s].c, 1, ATOMIC_SEQ_CST)
+        while atomicLoadN(addr gGcActive, ATOMIC_ACQUIRE) != 0:
+          discard
+      lockState = HasMutatorLock
+
+  proc releaseMutatorLock() {.compilerRtl, inl.} =
+    if lockState == HasMutatorLock:
+      lockState = HasNoLock
+      discard atomicFetchSub(addr gSeqActive[getYrcStripe()].c, 1, ATOMIC_SEQ_CST)
+
+  proc yrcGcFenceEnter() =
+    ## A collection announces itself and waits for in-flight seq structure
+    ## mutations to drain. Multiple collections may hold the fence at once.
+    discard atomicFetchAdd(addr gGcActive, 1, ATOMIC_SEQ_CST)
+    for s in 0 ..< NumLockStripes:
+      while atomicLoadN(addr gSeqActive[s].c, ATOMIC_SEQ_CST) > 0:
+        discard
+
+  proc yrcGcFenceExit() =
+    discard atomicFetchSub(addr gGcActive, 1, ATOMIC_SEQ_CST)
+
+  template yrcMutatorLock*(t: typedesc; body: untyped) =
+    {.noSideEffect.}:
+      when canFormCycles(t):
+        acquireMutatorLock()
+    try:
+      body
+    finally:
+      {.noSideEffect.}:
+        when canFormCycles(t):
+          releaseMutatorLock()
+
+  template yrcMutatorLockUntyped(body: untyped) =
+    {.noSideEffect.}:
+      acquireMutatorLock()
+      try:
+        body
+      finally:
+        {.noSideEffect.}:
+          releaseMutatorLock()
+
+
+else:
+  template yrcMutatorLock*(t: typedesc; body: untyped) =
+    body
+
+  template yrcMutatorLockUntyped(body: untyped) =
+    body
 
 # Some optimizations here may be not to empty-seq-initialize some symbols, then StrictNotNil complains.
 {.push warning[StrictNotNil]: off.}  # See https://github.com/nim-lang/Nim/issues/21401
@@ -116,33 +207,35 @@ proc prepareSeqAddUninit(len: int; p: pointer; addlen, elemSize, elemAlign: int)
         q.cap = newCap
         result = q
 
-proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [].} =
+proc shrink*[T](x: var seq[T]; newLen: Natural) {.tags: [], raises: [], noSideEffect.} =
   when nimvm:
     {.cast(tags: []).}:
       setLen(x, newLen)
   else:
     #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
-    when not supportsCopyMem(T):
-      for i in countdown(x.len - 1, newLen):
-        reset x[i]
-    # XXX This is wrong for const seqs that were moved into 'x'!
-    {.noSideEffect.}:
-      cast[ptr NimSeqV2[T]](addr x).len = newLen
+    yrcMutatorLock(T):
+      when not supportsCopyMem(T):
+        for i in countdown(x.len - 1, newLen):
+          reset x[i]
+      # XXX This is wrong for const seqs that were moved into 'x'!
+      {.noSideEffect.}:
+        cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) {.nodestroy.} =
   let oldLen = x.len
   #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
-  var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
-    xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
-  xu.len = newLen
-  for i in oldLen .. newLen-1:
-    when (NimMajor, NimMinor, NimPatch) >= (2, 3, 1):
-      xu.p.data[i] = `=dup`(value)
-    else:
-      wasMoved(xu.p.data[i])
-      `=copy`(xu.p.data[i], value)
+  yrcMutatorLock(T):
+    var xu = cast[ptr NimSeqV2[T]](addr x)
+    if xu.p == nil or (xu.p.cap and not strlitFlag) < newLen:
+      xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
+    xu.len = newLen
+    for i in oldLen .. newLen-1:
+      when (NimMajor, NimMinor, NimPatch) >= (2, 3, 1):
+        xu.p.data[i] = `=dup`(value)
+      else:
+        wasMoved(xu.p.data[i])
+        `=copy`(xu.p.data[i], value)
 
 proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
@@ -152,30 +245,35 @@ proc add*[T](x: var seq[T]; y: sink T) {.magic: "AppendSeqElem", noSideEffect, n
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
   {.cast(noSideEffect).}:
-    let oldLen = x.len
-    var xu = cast[ptr NimSeqV2[T]](addr x)
-    if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
-      xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, 1, sizeof(T), alignof(T)))
-    xu.len = oldLen+1
-    # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
-    # copyMem(). This is fine as know by construction that
-    # in `xu.p.data[oldLen]` there is nothing to destroy.
-    # We also save the `wasMoved + destroy` pair for the sink parameter.
-    xu.p.data[oldLen] = y
+    yrcMutatorLock(T):
+      let oldLen = x.len
+      var xu = cast[ptr NimSeqV2[T]](addr x)
+      if xu.p == nil or (xu.p.cap and not strlitFlag) < oldLen+1:
+        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, 1, sizeof(T), alignof(T)))
+      xu.len = oldLen+1
+      # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+      # copyMem(). This is fine as know by construction that
+      # in `xu.p.data[oldLen]` there is nothing to destroy.
+      # We also save the `wasMoved + destroy` pair for the sink parameter.
+      xu.p.data[oldLen] = y
 
 proc setLen[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
   {.noSideEffect.}:
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      let oldLen = s.len
-      if newlen <= oldLen: return
-      var xu = cast[ptr NimSeqV2[T]](addr s)
-      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
-      xu.len = newlen
-      for i in oldLen..<newlen:
-        xu.p.data[i] = default(T)
+      yrcMutatorLock(T):
+        let oldLen = s.len
+        if newlen <= oldLen: return
+        var xu = cast[ptr NimSeqV2[T]](addr s)
+        if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
+          xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+        xu.len = newlen
+
+        {.push overflowChecks: off.}
+        for i in oldLen..<newlen:
+          xu.p.data[i] = default(T)
+        {.pop.}
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
@@ -184,6 +282,16 @@ proc newSeq[T](s: var seq[T], len: Natural) =
 proc sameSeqPayload(x: pointer, y: pointer): bool {.compilerRtl, inl.} =
   result = cast[ptr NimRawSeq](x)[].p == cast[ptr NimRawSeq](y)[].p
 
+proc nimCopySeqPayload(dest: pointer, src: pointer, elemSize: int, elemAlign: int) {.compilerRtl, inl.} =
+  ## Bulk-copies the payload data from src seq to dest seq using copyMem.
+  ## Only valid for trivially copyable element types (no GC refs, no destructors).
+  ## Caller must have already ensured dest has the correct length and capacity
+  ## (e.g. via setLen).
+  let d = cast[ptr NimRawSeq](dest)
+  let s = cast[ptr NimRawSeq](src)
+  if s.len > 0:
+    let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
+    copyMem(d.p +! headerSize, s.p +! headerSize, s.len * elemSize)
 
 func capacity*[T](self: seq[T]): int {.inline.} =
   ## Returns the current capacity of the seq.
@@ -214,11 +322,12 @@ func setLenUninit[T](s: var seq[T], newlen: Natural) {.nodestroy.} =
     if newlen < s.len:
       shrink(s, newlen)
     else:
-      let oldLen = s.len
-      if newlen <= oldLen: return
-      var xu = cast[ptr NimSeqV2[T]](addr s)
-      if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
-      xu.len = newlen
+      yrcMutatorLock(T):
+        let oldLen = s.len
+        if newlen <= oldLen: return
+        var xu = cast[ptr NimSeqV2[T]](addr s)
+        if xu.p == nil or (xu.p.cap and not strlitFlag) < newlen:
+          xu.p = cast[typeof(xu.p)](prepareSeqAddUninit(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
+        xu.len = newlen
 
 {.pop.}  # See https://github.com/nim-lang/Nim/issues/21401

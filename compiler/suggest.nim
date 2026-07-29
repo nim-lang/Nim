@@ -356,12 +356,12 @@ proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline
      not isKeyword(s.name)
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
-  let fmoduleId = getModule(f).id
-  result = sfExported in f.flags or fmoduleId == c.module.id
+  let fmodule = getModule(f)
+  result = sfExported in f.flags or sameModules(fmodule, c.module)
 
   if not result:
     for module in c.friendModules:
-      if fmoduleId == module.id: return true
+      if sameModules(fmodule, module): return true
     if f.kind == skField:
       var symObj = f.owner.typ.toObjectFromRefPtrGeneric.sym
       assert symObj != nil
@@ -911,7 +911,7 @@ proc suggestDecl*(c: PContext, n: PNode; s: PSym) =
   defer:
     if attached: dec(c.inTypeContext)
   # If user is typing out an enum field, then don't provide suggestions
-  if s.kind == skEnumField and c.config.cmd == cmdIdeTools and exactEquals(c.config.m.trackPos, n.info):
+  if s.kind == skEnumField and c.config.ideActive and exactEquals(c.config.m.trackPos, n.info):
     suggestQuit()
   suggestExpr(c, n)
 

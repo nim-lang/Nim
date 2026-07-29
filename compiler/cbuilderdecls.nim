@@ -154,14 +154,14 @@ template addField(builder: var Builder, constr: var StructInitializer, name: str
     # no name, can just add value
     valueBody
   of siOrderedStruct:
-    # no name, can just add value on C
-    assert name.len != 0, "name has to be given for struct initializer field"
+    # positional init - name not used in output (empty allowed for anonymous unions)
     valueBody
   of siNamedStruct:
-    assert name.len != 0, "name has to be given for struct initializer field"
-    builder.add(".")
-    builder.add(name)
-    builder.add(" = ")
+    # designated init - empty name for anonymous unions (skips .name = prefix)
+    if name.len != 0:
+      builder.add(".")
+      builder.add(name)
+      builder.add(" = ")
     valueBody
 
 proc finishStructInitializer(builder: var Builder, constr: StructInitializer) =

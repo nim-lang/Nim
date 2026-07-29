@@ -16,7 +16,7 @@ import
 
 import "../dist/nimony/src/lib" / nifbuilder
 import "../dist/nimony/src/models" / nifler_tags
-import "../dist/nimony/src/gear2" / modnames
+import icmodnames
 
 ## This was copied from Nifler's bridge.nim. However, this code will evolve
 ## in a different direction as it needs to translate the semchecked AST which
@@ -983,7 +983,7 @@ proc genericParamToNif(n: PNode; parent: PNode; c: var TranslationContext) =
     toNif n, parent, c
 
 proc addExternName(sym: PSym; c: var TranslationContext) =
-  if sym.loc.snippet != nil:
+  if sym.loc.snippet != "":
     c.b.addStrLit sym.loc.snippet
   else:
     c.b.addStrLit sym.name.s

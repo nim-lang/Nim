@@ -230,20 +230,29 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
   of tyString, tySequence:
     let atyp = skipTypes(a.t, abstractInst)
     if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
-        optSeqDestructors in p.config.globalOptions:
+        optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
       let bra = byRefLoc(p, a)
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
         bra)
-    var val: Snippet
-    if atyp.kind in {tyVar} and not compileToCpp(p.module):
-      val = cDeref(ra)
+    if p.config.usesSso() and
+        skipTypes(a.t, abstractVar + abstractInst).kind == tyString:
+      let strPtr = if atyp.kind in {tyVar} and not compileToCpp(p.module): ra
+                   else: addrLoc(p.config, a)
+      result = (
+        cCast(ptrType(dest), cOp(Add, NimInt,
+          cCall(cgsymValue(p.module, "nimStrData"), strPtr), rb)),
+        lengthExpr)
     else:
-      val = ra
-    result = (
-      cIfExpr(dataFieldAccessor(p, val),
-        cCast(ptrType(dest), cOp(Add, NimInt, dataField(p, val), rb)),
-        NimNil),
-      lengthExpr)
+      var val: Snippet
+      if atyp.kind in {tyVar} and not compileToCpp(p.module):
+        val = cDeref(ra)
+      else:
+        val = ra
+      result = (
+        cIfExpr(dataFieldAccessor(p, val),
+          cCast(ptrType(dest), cOp(Add, NimInt, dataField(p, val), rb)),
+          NimNil),
+        lengthExpr)
   else:
     result = ("", "")
     internalError(p.config, "openArrayLoc: " & typeToString(a.t))
@@ -287,11 +296,22 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
       if formalType.skipTypes(abstractInst).kind in {tyVar} and ntyp.kind == tyString and
-          optSeqDestructors in p.config.globalOptions:
+          optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
         let bra = byRefLoc(p, a)
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
           bra)
-      if ntyp.kind in {tyVar} and not compileToCpp(p.module):
+      if p.config.usesSso() and
+          skipTypes(n.typ, abstractVar + abstractInst).kind == tyString:
+        if ntyp.kind in {tyVar} and not compileToCpp(p.module):
+          let ra = a.rdLoc
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
+          result.addArgumentSeparator()
+          result.add(cCall(cgsymValue(p.module, "nimStrLen"), cDeref(ra)))
+        else:
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), addrLoc(p.config, a)))
+          result.addArgumentSeparator()
+          result.add(lenExpr(p, a))
+      elif ntyp.kind in {tyVar} and not compileToCpp(p.module):
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
@@ -315,9 +335,14 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
-        result.add(cIfExpr(dataFieldAccessor(p, t.snippet), dataField(p, t.snippet), NimNil))
-        result.addArgumentSeparator()
-        result.add(lt)
+        if p.config.usesSso():
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
+          result.addArgumentSeparator()
+          result.add(cCall(cgsymValue(p.module, "nimStrLen"), t.snippet))
+        else:
+          result.add(cIfExpr(dataFieldAccessor(p, t.snippet), dataField(p, t.snippet), NimNil))
+          result.addArgumentSeparator()
+          result.add(lt)
       of tyArray:
         let ra = rdLoc(a)
         result.add(ra)
@@ -331,7 +356,7 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   # Bug https://github.com/status-im/nimbus-eth2/issues/1549
   # Aliasing is preferred over stack overflows.
   # Also don't regress for non ARC-builds, too risky.
-  if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc} and
+  if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and
       getSize(p.config, a.lode.typ) < 1024:
     result = getTemp(p, a.lode.typ, needsInit=false)
     genAssignment(p, result, a, {})
@@ -344,7 +369,8 @@ proc expressionsNeedsTmp(p: BProc, a: TLoc): TLoc =
 
 proc genArgStringToCString(p: BProc, n: PNode; result: var Builder; needsTmp: bool) {.inline.} =
   var a = initLocExpr(p, n[0])
-  let ra = withTmpIfNeeded(p, a, needsTmp).rdLoc
+  let tmp = withTmpIfNeeded(p, a, needsTmp)
+  let ra = if p.config.usesSso(): byRefLoc(p, tmp) else: tmp.rdLoc
   result.addCall(cgsymValue(p.module, "nimToCStringConv"), ra)
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; needsTmp = false) =
@@ -368,7 +394,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     # variable. Thus, we create a temporary pointer variable instead.
     let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
     if needsIndirect:
-      n.typ = n.typ.exactReplica
+      n.typ = n.typ.exactReplica(p.module.idgen)
       n.typ.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
@@ -883,6 +909,16 @@ proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, ri):
     return
+  when defined(icDbgHash):
+    if ri[0].typ == nil:
+      echo "NILCALLEE kind=", ri[0].kind,
+        " sym=", (if ri[0].kind == nkSym: ri[0].sym.name.s else: "-"),
+        " symKind=", (if ri[0].kind == nkSym: $ri[0].sym.kind else: "-"),
+        " flags=", (if ri[0].kind == nkSym: $ri[0].sym.flags else: "-"),
+        " lazy=", nfLazyType in ri[0].flags,
+        " inProc=", (if p.prc != nil: p.prc.name.s else: "NIL"),
+        " module=", p.module.module.name.s
+      raiseAssert "nil callee type, see NILCALLEE above"
   if ri[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri[0].kind == nkSym and sfInfixCall in ri[0].sym.flags:

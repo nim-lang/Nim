@@ -12,7 +12,7 @@
 import std/private/syslocks
 
 when defined(memProfiler):
-  proc nimProfile(requestedSize: int) {.benign.}
+  proc nimProfile(requestedSize: int) {.gcsafe.}
 
 when defined(useMalloc):
   proc roundup(x, v: int): int {.inline.} =
@@ -41,7 +41,7 @@ else:
 # We also support 'finalizers'.
 
 type
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [], gcsafe.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, gcsafe, raises: [].}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -415,7 +415,6 @@ when hasThreadSupport:
 proc GC_disable() = discard
 proc GC_enable() = discard
 proc GC_fullCollect() = discard
-proc GC_setStrategy(strategy: GC_Strategy) = discard
 proc GC_enableMarkAndSweep() = discard
 proc GC_disableMarkAndSweep() = discard
 proc GC_getStatistics(): string = return ""

@@ -19,10 +19,11 @@ import std/tables
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-import packed_ast, ic, bitabs
-
-proc replayStateChanges*(module: PSym; g: ModuleGraph) =
-  let list = module.ast
+proc replayStateChanges*(module: PSym; g: ModuleGraph; list: PNode) =
+  ## `list` is an `nkStmtList` of `nkReplayAction` nodes (macro-cache puts/incs/
+  ## adds/incls and a few pragmas) recorded for `module`. Under the NIF backend a
+  ## loaded module's `ast` is never reconstructed, so the caller passes the replay
+  ## actions it parsed out of the module's NIF directly.
   assert list != nil
   assert list.kind == nkStmtList
   for n in list:
@@ -66,8 +67,9 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
           g.cacheTables[destKey] = initBTree[string, PNode]()
         if not contains(g.cacheTables[destKey], key):
           g.cacheTables[destKey].add(key, val)
-        else:
-          internalError(g.config, n.info, "key already exists: " & key)
+        # else: the same key was already replayed. Under IC the import closure is
+        # replayed (direct module + transitive deps), so the same registration can
+        # legitimately be reached twice; re-applying it is a no-op, not an error.
       of "incl":
         let destKey = n[1].strVal
         let val = n[2]
@@ -89,83 +91,36 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
       else:
         internalAssert g.config, false
 
-proc replayBackendProcs*(g: ModuleGraph; module: int) =
-  for it in mitems(g.packed[module].fromDisk.attachedOps):
-    let key = translateId(it[0], g.packed, module, g.config)
-    let op = it[1]
-    let tmp = translateId(it[2], g.packed, module, g.config)
-    let symId = FullId(module: tmp.module, packed: it[2])
-    g.attachedOps[op][key] = LazySym(id: symId, sym: nil)
-
-  for it in mitems(g.packed[module].fromDisk.enumToStringProcs):
-    let key = translateId(it[0], g.packed, module, g.config)
-    let tmp = translateId(it[1], g.packed, module, g.config)
-    let symId = FullId(module: tmp.module, packed: it[1])
-    g.enumToStringProcs[key] = LazySym(id: symId, sym: nil)
-
-  for it in mitems(g.packed[module].fromDisk.methodsPerType):
-    let key = translateId(it[0], g.packed, module, g.config)
-    let tmp = translateId(it[1], g.packed, module, g.config)
-    let symId = FullId(module: tmp.module, packed: it[1])
-    g.methodsPerType.mgetOrPut(key, @[]).add LazySym(id: symId, sym: nil)
-
-  for it in mitems(g.packed[module].fromDisk.dispatchers):
-    let tmp = translateId(it, g.packed, module, g.config)
-    let symId = FullId(module: tmp.module, packed: it)
-    g.dispatchers.add LazySym(id: symId, sym: nil)
-
-proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
-  ## We remember the generic instantiations a module performed
-  ## in order to to avoid the code bloat that generic code tends
-  ## to imply. This is cheaper than deduplication of identical
-  ## generic instantiations. However, deduplication is more
-  ## powerful and general and I hope to implement it soon too
-  ## (famous last words).
-  assert g.packed[module].status == loaded
-  for it in g.packed[module].fromDisk.typeInstCache:
-    let key = translateId(it[0], g.packed, module, g.config)
-    g.typeInstCache.mgetOrPut(key, @[]).add LazyType(id: FullId(module: module, packed: it[1]), typ: nil)
-
-  for it in mitems(g.packed[module].fromDisk.procInstCache):
-    let key = translateId(it.key, g.packed, module, g.config)
-    let sym = translateId(it.sym, g.packed, module, g.config)
-    var concreteTypes = newSeq[FullId](it.concreteTypes.len)
-    for i in 0..high(it.concreteTypes):
-      let tmp = translateId(it.concreteTypes[i], g.packed, module, g.config)
-      concreteTypes[i] = FullId(module: tmp.module, packed: it.concreteTypes[i])
-
-    g.procInstCache.mgetOrPut(key, @[]).add LazyInstantiation(
-      module: module, sym: FullId(module: sym.module, packed: it.sym),
-      concreteTypes: concreteTypes, inst: nil)
-
-  for it in mitems(g.packed[module].fromDisk.methodsPerGenericType):
-    let key = translateId(it[0], g.packed, module, g.config)
-    let col = it[1]
-    let tmp = translateId(it[2], g.packed, module, g.config)
-    let symId = FullId(module: tmp.module, packed: it[2])
-    g.methodsPerGenericType.mgetOrPut(key, @[]).add (col, LazySym(id: symId, sym: nil))
-
-  replayBackendProcs(g, module)
-
-  for it in mitems(g.packed[module].fromDisk.methods):
-    let sym = loadSymFromId(g.config, g.cache, g.packed, module,
-                            PackedItemId(module: LitId(0), item: it))
-    methodDef(g, g.idgen, sym)
-
-  when false:
-    # not used anymore:
-    for it in mitems(g.packed[module].fromDisk.compilerProcs):
-      let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it[1]))
-      g.lazyCompilerprocs[g.packed[module].fromDisk.sh.strings[it[0]]] = symId
-
-  for it in mitems(g.packed[module].fromDisk.converters):
-    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
-    g.ifaces[module].converters.add LazySym(id: symId, sym: nil)
-
-  for it in mitems(g.packed[module].fromDisk.trmacros):
-    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
-    g.ifaces[module].patterns.add LazySym(id: symId, sym: nil)
-
-  for it in mitems(g.packed[module].fromDisk.pureEnums):
-    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
-    g.ifaces[module].pureEnums.add LazySym(id: symId, sym: nil)
+proc replayBackendActions*(g: ModuleGraph; module: PSym; list: PNode) =
+  ## Applies the backend-relevant replay actions (C compile/link directives)
+  ## found in a NIF-loaded module's top-level statement list. The `nifc`
+  ## backend loads modules without going through sem's `replayStateChanges`,
+  ## so e.g. math's `{.passL: "-lm".}` was lost and the final link failed
+  ## with undefined references. VM cache actions are deliberately NOT
+  ## replayed here — codegen does not run macros.
+  if list == nil: return
+  for n in list:
+    if n.kind == nkReplayAction and n.len >= 2 and
+        n[0].kind == nkStrLit and n[1].kind == nkStrLit:
+      case n[0].strVal
+      of "compile":
+        if n.len == 4 and n[2].kind == nkStrLit:
+          let cname = AbsoluteFile n[1].strVal
+          var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                         obj: AbsoluteFile n[2].strVal,
+                         flags: {CfileFlag.External},
+                         customArgs: n[3].strVal)
+          extccomp.addExternalFileToCompile(g.config, cf)
+      of "link":
+        extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)
+      of "passl":
+        extccomp.addLinkOption(g.config, n[1].strVal)
+      of "passc":
+        extccomp.addCompileOption(g.config, n[1].strVal)
+      of "localpassc":
+        extccomp.addLocalCompileOption(g.config, n[1].strVal,
+          toFullPathConsiderDirty(g.config, module.info.fileIndex))
+      of "cppdefine":
+        options.cppDefine(g.config, n[1].strVal)
+      else:
+        discard

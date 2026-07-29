@@ -143,7 +143,7 @@ when nimCoroutines:
 
   proc find(first: var GcStack, bottom: pointer): ptr GcStack =
     ## Find stack struct based on bottom pointer. If `bottom` is nil then main
-    ## thread stack is is returned.
+    ## thread stack is returned.
     if bottom == nil:
       return addr(gch.stack)
 
@@ -457,7 +457,7 @@ proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
     initGC()
 
 type
-  GlobalMarkerProc = proc () {.nimcall, benign, raises: [].}
+  GlobalMarkerProc = proc () {.nimcall, gcsafe, raises: [].}
 var
   globalMarkersLen {.exportc.}: int
   globalMarkers {.exportc.}: array[0..3499, GlobalMarkerProc]

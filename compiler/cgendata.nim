@@ -75,10 +75,13 @@ type
     flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, label: Natural]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, isHidden: bool, label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
-                              # bool is true when are in the except part of a try block
+                              # `inExcept` is true when we are in the except part of a try block.
+                              # `isHidden` is true for compiler-injected `nkHiddenTryStmt` wrappers
+                              # (e.g. ARC's destructor try/finally around `except T as e:` bodies);
+                              # finallyActions walks past such wrappers to reach the user's try.
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
@@ -117,7 +120,7 @@ type
   BModuleList* = ref object of RootObj
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Builder
     mapping*: Rope             # the generated mapping file (if requested)
-    modules*: seq[BModule]     # list of all compiled modules
+    mods*: seq[BModule]     # list of all compiled modules
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # procs that did not yet have a body
     generatedHeader*: BModule
@@ -155,6 +158,12 @@ type
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
+    emittedContentDefs*: HashSet[string]
+      # cmdNifC per-module backend: content-addressed C names (generic
+      # instances and synthesized hooks) whose body this TU already emitted.
+      # Distinct symbols (minted in different source modules) can share one
+      # `_i<disamb>` name; `declaredThings` keys on symbol id and lets the
+      # second one through, so we dedup the body by name here instead.
     queue*: seq[PSym]         # queue of procs to generate
     alive*: IntSet            # symbol IDs of alive data as computed by `dce.nim`
     headerFiles*: seq[string] # needed headers to include
@@ -173,6 +182,17 @@ type
     extensionLoaders*: array['0'..'9', Builder] # special procs for the
                                              # OpenGL wrapper
     sigConflicts*: CountTable[SigHash]
+    icImplMods*: IntSet       # module ids whose routine BODIES this TU
+                              # embeds (redirected defs, shared instances,
+                              # hooks); recorded as the artifact's cdeps so
+                              # the reuse gate can check their impl cookies
+    icDataDefs*: seq[tuple[cname, nifname: string]]
+                              # C names of data definitions (consts, globals,
+                              # RTTI) this TU embeds plus their NIF symbol
+                              # names (empty for RTTI, which has no symbol);
+                              # recorded in the cnif artifact so a later run
+                              # can reuse the TU and re-demand definitions
+                              # that cached TUs still reference
     g*: BModuleList
 
 template config*(m: BModule): ConfigRef = m.g.config

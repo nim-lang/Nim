@@ -77,7 +77,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
   # templates perform some quick check whether the cursor is actually in
   # the generic or template.
   when defined(nimsuggest):
-    if c.config.cmd == cmdIdeTools and requiresCheck:
+    if c.config.ideActive and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
@@ -89,6 +89,18 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
     changeType(c, x, formal, check=true)
   result = arg
   result = skipHiddenSubConv(result, c.graph, c.idgen)
+  # Walk through nested statement-list/block expressions to find the innermost
+  # value node. Empty containers (e.g. `@[]`) inside `nkStmtListExpr` wrappers
+  # need their type resolved to match the formal type, otherwise the C codegen
+  # cannot map `tyEmpty` to a concrete type (fixes #25945).
+  var tail = result
+  while tail.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkPragmaBlock} and tail.len > 0:
+    tail = tail.lastSon
+
+  if tail.typ != nil and tail.typ.isEmptyContainer and
+        formal.kind notin {tyUntyped, tyBuiltInTypeClass, tyAnything}:
+    changeType(c, tail, formal, check=true)
+
   # mark inserted converter as used:
   var a = result
   if a.kind == nkHiddenDeref: a = a[0]
@@ -105,9 +117,12 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result.typ = formal
   elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
     # Pick the right 'sym' from the sym choice by looking at 'formal' type:
+    # The choice candidates may be wrapped in `var`/`lent` when they come from
+    # a loop-local view, but for enum disambiguation only the underlying enum
+    # type matters.
     result = nil
     for ch in arg:
-      if sameType(ch.typ, formal):
+      if sameType(ch.typ.skipTypes({tyVar, tyLent}), formal):
         return ch
     typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
@@ -247,12 +262,40 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     if result.kind notin {kind, skTemp}:
       localError(c.config, n.info, "cannot use symbol of kind '$1' as a '$2'" %
         [result.kind.toHumanStr, kind.toHumanStr])
+    # bug #25693: a local declared inside a template/macro operand (recorded in
+    # `shadowDiscardedDefs`) can be captured by a `{.dirty.}` template and
+    # re-emitted as a definition more than once. The first emission keeps the
+    # original symbol (so a leaked dirty-template name still resolves); every
+    # later emission gets a fresh copy, so distinct emissions don't share one
+    # symbol - which the destructor/liveness analysis would otherwise miscompile.
+    # Unlike a plain redefinition check this is control-flow agnostic, so the
+    # common "emit a `typed` body in several mutually-exclusive branches" pattern
+    # keeps working. gensym'ed locals (and ones derived from a gensym name) are
+    # excluded: the gensym machinery already keeps their names unique, and a
+    # fresh copy would reuse the unique name and clash in the same scope.
+    if kind in {skVar, skLet, skForVar} and
+        {sfGenSym, sfWasGenSym} * result.flags == {} and
+        result.id in c.shadowDiscardedDefs:
+      if containsOrIncl(c.realizedDefs, result.id):
+        let fresh = copySym(result, c.idgen)
+        fresh.ast = result.ast
+        put(c.p, result, fresh)
+        c.hasSymRedefs = true
+        result = fresh
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:
         result = copySym(result)
         result.ast = n.sym.ast
         put(c.p, n.sym, result)
+    if result.state == Sealed:
+      # the symbol was loaded from another module's NIF cache (e.g. a param
+      # symbol spliced out of an imported proc type by a `typed` macro) and is
+      # therefore immutable; the caller re-owns it and assigns its type/flags,
+      # so hand back a fresh, mutable copy owned by the current module instead.
+      let fresh = copySym(result, c.idgen)
+      fresh.ast = result.ast
+      result = fresh
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909
@@ -541,10 +584,12 @@ const
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}; expectedType: PType = nil): PNode =
-  rememberExpansion(c, nOrig.info, sym)
+  let info = getCallLineInfo(n)
+  # the callee identifier's position is the usage site tooling expects (matches
+  # `markUsed` below), not the whole-call `nOrig.info`.
+  rememberExpansion(c, info, sym)
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
-  let info = getCallLineInfo(n)
   markUsed(c, info, sym)
   onUse(info, sym)
   if sym == c.p.owner:
@@ -851,11 +896,11 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   result = hloStmt(c, result)
   if c.config.cmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
-  if c.config.cmd == cmdIdeTools:
+  if c.config.ideActive:
     appendToModule(c.module, result)
   trackStmt(c, c.module, result, isTopLevel = true)
   if optMultiMethods notin c.config.globalOptions and
-      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc} and
+      c.config.selectedGC in {gcArc, gcOrc, gcAtomicArc, gcYrc} and
       Feature.vtables in c.config.features:
     sortVTableDispatchers(c.graph)
 
@@ -888,9 +933,7 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
         result = nil
       else:
         result = newNodeI(nkEmpty, n.info)
-      #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
-  storeRodNode(c, result)
-
+      #if c.config.ideActive: findSuggest(c, n)
 
 proc reportUnusedModules(c: PContext) =
   if c.config.cmd == cmdM: return
@@ -899,7 +942,7 @@ proc reportUnusedModules(c: PContext) =
       message(c.config, info, warnUnusedImportX, s.name.s)
 
 proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
-  if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
+  if c.config.ideActive and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!

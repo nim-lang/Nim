@@ -8,18 +8,29 @@
 #
 
 import
-  lineinfos, options, ropes, idents, int128, wordrecg
+  lineinfos, options, ropes, idents, int128
 
 import std/[tables, hashes]
-from std/strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
 export int128
 
+var nifcBackendActive* = false
+  ## Set only while the per-module NIF backend codegen stage runs
+  ## (`nifbackend.generateCgStage`, `cmd == cmdNifC`). It gates `newSymNode`'s
+  ## lazy-type marking so it applies ONLY in the backend — where syms are loaded
+  ## from NIF and a cg-stage transform can build a sym node from a not-yet-typed
+  ## stub — and never during frontend sem, where the same marking would perturb
+  ## effect/exception inference (it diverges from a non-IC build, e.g.
+  ## `times.toDateTimeByWeek` gaining a spurious unlisted `Exception`).
+
 import nodekinds
 export nodekinds
+
+import itemids
+export itemids
 
 type
   TCallingConvention* = enum
@@ -203,7 +214,11 @@ type
     tySequence,
     tyProc,
     tyPointer, tyOpenArray,
-    tyString, tyCstring, tyForward,
+    tyString, tyCstring,
+    tyForward,
+      # a type not yet semchecked
+      # When semcheck a type section, all types defined in it are initialized to tyForward
+
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
@@ -324,6 +339,14 @@ type
                       # because openSym experimental switch is disabled
                       # gives warning instead
     nfLazyType  # node has a lazy type
+    nfLazyBody  # IC: this node is a placeholder for a routine body (bodyPos son)
+                # not yet materialized. Reading its children (via `len`/`safeLen`)
+                # triggers `forceLazyBodyHook`. Process-local, stripped on serialize.
+    nfBroadcast # this `nkBracket` is a *broadcast* default array: a single son
+                # standing for `lengthOrd` identical zero copies (see
+                # `broadcastArrayThreshold`). The flag disambiguates it from an
+                # ordinary 1-element collection (e.g. a seq value that happens to
+                # carry an array type), so it must survive copies + serialization.
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
@@ -569,23 +592,6 @@ const
     ## magics that are generated as normal procs in the backend
 
 type
-  ItemId* = object
-    module*: int32
-    item*: int32
-
-proc `$`*(x: ItemId): string =
-  "(module: " & $x.module & ", item: " & $x.item & ")"
-
-proc `==`*(a, b: ItemId): bool {.inline.} =
-  a.item == b.item and a.module == b.module
-
-proc hash*(x: ItemId): Hash =
-  var h: Hash = hash(x.module)
-  h = h !& hash(x.item)
-  result = !$h
-
-
-type
   PNode* = ref TNode
   TNodeSeq* = seq[PNode]
   PType* = ref TType
@@ -698,6 +704,7 @@ type
 
   PLib* = ref TLib
   TSym* {.acyclic.} = object # Keep in sync with ast2nif.nim
+                             # Check `transitionSymKindCommon` in ast.nim when add a new field.
     itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
     state*: ItemState
@@ -867,7 +874,8 @@ const
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload, nfLastRead,
                                       nfFirstWrite, nfSkipFieldChecking,
-                                      nfDisabledOpenSym, nfLazyType}
+                                      nfDisabledOpenSym, nfLazyType,
+                                      nfBroadcast}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -904,7 +912,24 @@ const
   defaultOffset* = -1
 
 
+var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
+  ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
+  ## to its children through `len` materializes the deferred routine body in place.
+  ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
+  ## never a leaf kind, so the `{nkNone..nkNilLit}` short-circuit never hides it.
+  ##
+  ## The type MUST be effect-free (`raises: []`/`tags: []`): `len` is a fundamental
+  ## `PNode` accessor that the whole compiler — and every compiler-as-library
+  ## consumer (nimble, nimsuggest, ...) — assumes cannot raise. An unannotated
+  ## `proc` var defaults to `raises: [Exception]`, so the indirect call tainted
+  ## `len`/`safeLen`/`items` with `Exception`, breaking any iterator/`{.raises.}`
+  ## over a `PNode` (e.g. nimble's `extract {.raises: [CatchableError].}`).
+  ## Materialization is a pure in-memory buffer transform; a corrupt buffer is a
+  ## `Defect` (`raiseAssert`), which is outside exception tracking.
+
 proc len*(n: PNode): int {.inline.} =
+  if nfLazyBody in n.flags and forceLazyBodyHook != nil:
+    forceLazyBodyHook(n)
   result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
@@ -980,6 +1005,14 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result = newNode(nkSym)
   result.sym = sym
   result.typField = sym.typImpl
+  if result.typField == nil and nifcBackendActive:
+    # In the per-module NIF backend cg stage a transform (chronos async
+    # closure-iterator lowering) builds `result = …` sym nodes from a not-yet-typed
+    # NIF stub; snapshotting the nil here would leave the node permanently typeless
+    # and the backend later reads `t.flags` off it and SIGSEGVs (injectdestructors
+    # hasDestructor). Mark it lazy so `typ` re-reads `sym.typ` once resolved. Gated
+    # on `nifcBackendActive` so frontend sem is untouched (see the flag's doc).
+    result.flags.incl nfLazyType
   result.info = info
 
 proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
@@ -996,7 +1029,8 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 
 type
   LogEntryKind* = enum
-    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry
+    HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,
+    PureEnumEntry
   LogEntry* = object
     kind*: LogEntryKind
     op*: TTypeAttachedOp
@@ -1159,3 +1193,11 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym =
     if result == nil: break
     if result.name.id == name.id: break
     h = nextTry(h, high(t.data))
+
+# --- doc-comment bridge for the NIF serializer -------------------------------
+# `ast2nif` (the NIF reader/writer) cannot import `ast` (where the comment
+# accessor and its `gconfig.comments` side table live) because `ast` imports
+# `ast2nif`. These hooks are assigned by `ast` and let the serializer carry a
+# decl's `##` doc comment across a NIF round-trip.
+var nodeCommentReader*: proc(n: PNode): string {.nimcall.}
+var nodeCommentWriter*: proc(n: PNode; s: string) {.nimcall.}

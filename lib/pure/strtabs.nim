@@ -380,8 +380,10 @@ proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
     result = "{:}"
   else:
     result = "{"
+    var first = true
     for key, val in pairs(t):
-      if result.len > 1: result.add(", ")
+      if first: first = false
+      else: result.add(", ")
       result.add(key)
       result.add(": ")
       result.add(val)

@@ -276,9 +276,9 @@ This parser has 2 modes for inline markup:
 
 2) Compatibility mode which is RST rules.
 
-.. Note:: in both modes the parser interpretes text between single
+.. Note:: in both modes the parser interprets text between single
      backticks (code) identically:
-     backslash does not escape; the only exception: ``\`` folowed by `
+     backslash does not escape; the only exception: ``\`` followed by `
      does escape so that we can always input a single backtick ` in
      inline code. However that makes impossible to input code with
      ``\`` at the end in *single* backticks, one must use *double*
