@@ -230,6 +230,12 @@ proc add[T](s: var RawSeq[T]; v: T) {.inline.} =
   s.d[s.len] = v
   s.len = s.len +% 1
 
+proc addUnchecked[T](s: var RawSeq[T]; v: T) {.inline.} =
+  ## `add` without the capacity branch; the caller guarantees the room.
+  ## Used by `claimCell`, which reserves for all four of its arrays at once.
+  s.d[s.len] = v
+  s.len = s.len +% 1
+
 proc pop[T](s: var RawSeq[T]): T {.inline.} =
   s.len = s.len -% 1
   result = s.d[s.len]
@@ -839,6 +845,20 @@ proc prepareCapture() =
     gCap.prunedSrc.len = 0
     gCap.ages.len = 0
 
+proc growCaptureArrays(cap: ptr CaptureBufs) {.noinline.} =
+  ## `recs`, `sccIdx`, `ages` and `tstack` are appended to together, and only
+  ## by `claimCell` — one entry each per claimed cell. So they are grown
+  ## together and ONE capacity check on `recs` covers all four: `recs` drives
+  ## the growth, the other three are topped up to at least its capacity.
+  ## `tstack` is popped as SCCs are emitted, so its length only ever trails
+  ## `recs.len`; matching capacities keeps its appends unchecked too.
+  ## Marked `noinline` to keep the cold resize path out of `claimCell`.
+  resize(cap.recs, cap.recs.len +% 1)
+  let n = cap.recs.cap
+  if cap.sccIdx.cap < n: resize(cap.sccIdx, n)
+  if cap.ages.cap < n: resize(cap.ages, n)
+  if cap.tstack.cap < n: resize(cap.tstack, n)
+
 # rc is captured without the flag bits: the collector itself toggles
 # inRootsFlag between capture and commit, which must not look like a
 # mutation to the commit-time rc validation.
@@ -867,12 +887,13 @@ proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
     when defined(nimOrcStats):
       bumpStat gStatCapTotal
       if old != 0: bumpStat gStatCapRepeat
-    cap.recs.add CaptureRec(cell: c, desc: desc,
+    if idx >= cap.recs.cap: growCaptureArrays(cap)
+    cap.recs.addUnchecked CaptureRec(cell: c, desc: desc,
                              rcWord: loadRc(c) and not rcMask,
                              lowlink: int32(idx), selfRefs: 0'i32)
-    cap.sccIdx.add -1'i32
-    cap.ages.add int32(if isEpochStamp(old): min(stampAge(old), 1000) else: 0)
-    cap.tstack.add int32(idx)
+    cap.sccIdx.addUnchecked -1'i32
+    cap.ages.addUnchecked int32(if isEpochStamp(old): min(stampAge(old), 1000) else: 0)
+    cap.tstack.addUnchecked int32(idx)
     return int32(idx)
   var old = old0
   while true:
@@ -893,12 +914,13 @@ proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
       when defined(nimOrcStats):
         bumpStat gStatCapTotal
         if old != 0: bumpStat gStatCapRepeat
-      cap.recs.add CaptureRec(cell: c, desc: desc,
+      if idx >= cap.recs.cap: growCaptureArrays(cap)
+      cap.recs.addUnchecked CaptureRec(cell: c, desc: desc,
                                rcWord: loadRc(c) and not rcMask,
                                lowlink: int32(idx), selfRefs: 0'i32)
-      cap.sccIdx.add -1'i32
-      cap.ages.add int32(if isEpochStamp(old): min(stampAge(old), 1000) else: 0)
-      cap.tstack.add int32(idx)
+      cap.sccIdx.addUnchecked -1'i32
+      cap.ages.addUnchecked int32(if isEpochStamp(old): min(stampAge(old), 1000) else: 0)
+      cap.tstack.addUnchecked int32(idx)
       return int32(idx)
     # a failed CAS leaves the fresh claim word in `old`; loop with it
 
@@ -966,7 +988,13 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
         elif v == -2:
           # target proven live this epoch: opaque live external, no descent.
           # Taint u's SCC — its own "live" verdict may lean on the stamp.
-          cap.prunedSrc.add u
+          # The list is only ever read as a set (and for its emptiness), and
+          # one cell's out-edges are consumed consecutively, so suppressing a
+          # repeat of the previous entry removes nearly every duplicate a
+          # multi-pruned cell would otherwise contribute.
+          if cap.prunedSrc.len == 0 or
+              cap.prunedSrc.d[cap.prunedSrc.len -% 1] != u:
+            cap.prunedSrc.add u
           when defined(nimOrcStats):
             bumpStat gStatCapPruned
         else:
@@ -1031,9 +1059,13 @@ proc computeDeadness(j: var GcEnv; cap: ptr CaptureBufs) =
     let s = cap.sccIdx.d[cap.prunedSrc.d[i]]
     cap.sccs.d[s].flags = cap.sccs.d[s].flags or flagPruned
   # cells that stay registered as roots (partial collection) count as
-  # externally referenced: the roots buffer itself points at them
-  for mi in 0 ..< cap.sccMembers.len:
-    let m = cap.sccMembers.d[mi]
+  # externally referenced: the roots buffer itself points at them.
+  # Scanned over `recs` rather than over `sccMembers`: every claimed cell is
+  # pushed to the Tarjan stack once and popped into `sccMembers` once, so the
+  # two cover exactly the same set, and the SCC comes from `sccIdx` either
+  # way. Going through `sccMembers` would only add a random 32-byte-stride
+  # gather in front of a load that already misses on the cell header.
+  for m in 0 ..< cap.recs.len:
     if (loadRc(cap.recs.d[m].cell) and inRootsFlag) != 0:
       let s = cap.sccIdx.d[m]
       cap.sccs.d[s].flags = cap.sccs.d[s].flags or flagForcedLive
@@ -1560,6 +1592,24 @@ proc nimYrcThreadTeardown() =
   deinit(gFreeBuf)
   deinit(gPendingCells)
   deinit(gPendingWatch)
+  # The capture side structure is persistent across this thread's collections
+  # (see `prepareCapture`, which only resets the lengths) and grows to the
+  # peak captured graph, so it must be released here too — otherwise every
+  # thread that ever collected leaks its peak-sized arrays for the rest of
+  # the process. `deinit` nils `d`, which is exactly the sentinel
+  # `prepareCapture` tests, so a later collection on a reused thread slot
+  # re-initializes cleanly.
+  deinit(gCap.recs)
+  deinit(gCap.sccIdx)
+  deinit(gCap.tstack)
+  deinit(gCap.frames)
+  deinit(gCap.edges)
+  deinit(gCap.sccs)
+  deinit(gCap.sccMembers)
+  deinit(gCap.crossTgt)
+  deinit(gCap.crossPend)
+  deinit(gCap.prunedSrc)
+  deinit(gCap.ages)
 
 proc GC_enableMarkAndSweep*() = GC_enableOrc()
 proc GC_disableMarkAndSweep*() = GC_disableOrc()
