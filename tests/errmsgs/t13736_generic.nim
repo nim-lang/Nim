@@ -3,7 +3,7 @@ discard """
   line: 6
 """
 
-proc foo(n: int): auto =
-  return foo(n + 1)
+proc foo[T](x: T): auto =
+  foo(x)
 
-discard foo(0)
+discard foo(1)

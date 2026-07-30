@@ -2125,6 +2125,15 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           internalAssert c.config, c.p.resultSym != nil
           # Make sure the type is valid for the result variable
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
+          # Earlier self-calls retain the old placeholder pointer. Resolve it
+          # in place as an alias before the routine switches to the concrete
+          # type, so those already-typed calls see the inferred type too.
+          if c.p.hasUnresolvedAutoCall and not rhsTyp.isMetaType and
+              isAutoReturnType(lhs.sym.typ):
+            let resolved = newTypeS(tyAlias, c)
+            rawAddSon(resolved, rhsTyp)
+            assignType(lhs.sym.typ, resolved)
+            c.p.hasUnresolvedAutoCall = false
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ.setReturnType rhsTyp
@@ -2196,7 +2205,11 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
         " flags=", c.p.resultSym.typ.flags,
         " uid=", c.p.resultSym.typ.uniqueId.module, ".", c.p.resultSym.typ.uniqueId.item,
         " state=", c.p.resultSym.typ.state
-    if isEmptyType(result.typ):
+    # With no concrete return, the recursive placeholder is still circular.
+    if c.p.hasUnresolvedAutoCall:
+      localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
+        c.p.owner.name.s)
+    elif isEmptyType(result.typ):
       # we inferred a 'void' return type:
       c.p.resultSym.typ = errorType(c)
       c.p.owner.typ.setReturnType nil

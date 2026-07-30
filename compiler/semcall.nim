@@ -918,16 +918,17 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
-  if finalCallee == c.p.owner and finalCallee.typ.returnType != nil and
-      finalCallee.typ.returnType.kind == tyAnything:
-    localError(c.config, info, "cannot infer type of recursive call")
-
   result = compactVoidArgs(x.call)
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
+    # Remember that this body contains a self-call still sharing its unresolved
+    # `auto` placeholder; a later concrete return must resolve that placeholder.
+    if c.p != nil and result.typ != nil and finalCallee == c.p.owner and
+        isAutoReturnType(result.typ):
+      c.p.hasUnresolvedAutoCall = true
   updateDefaultParams(c, result)
 
 proc canDeref(n: PNode): bool {.inline.} =

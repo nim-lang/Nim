@@ -108,6 +108,16 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
     markUsed(c, a.info, a[0].sym)
 
 
+template isAutoReturnType(t: PType): bool =
+  # `auto` return types are copied and marked so they are not generic params.
+  t.kind == tyAnything and tfRetType in t.flags
+
+template isUnresolvedAutoReturnType(c: PContext; t: PType): bool =
+  # During return-type inference a recursive call has the routine's exact
+  # `auto` placeholder type. It contributes no type information of its own.
+  c.p != nil and c.p.owner != nil and c.p.owner.typ != nil and
+    c.p.owner.typ.returnType == t and isAutoReturnType(t)
+
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
     localError(c.config, arg.info, "expression has no type: " &
@@ -125,6 +135,10 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       if sameType(ch.typ.skipTypes({tyVar, tyLent}), formal):
         return ch
     typeMismatch(c.config, info, formal, arg.typ, arg)
+  elif isUnresolvedAutoReturnType(c, arg.typ):
+    # A concrete sibling branch supplies the missing type for this branch.
+    result = arg
+    changeType(c, result, formal, check=true)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
@@ -158,8 +172,10 @@ proc commonType*(c: PContext; x, y: PType): PType =
   var a = skipTypes(x, {tyGenericInst, tyAlias, tySink})
   var b = skipTypes(y, {tyGenericInst, tyAlias, tySink})
   result = x
-  if a.kind in {tyUntyped, tyNil}: result = y
-  elif b.kind in {tyUntyped, tyNil}: result = x
+  # Recursive calls cannot contribute to their own `auto` return type, so let
+  # the other branch determine the common type when it has concrete evidence.
+  if a.kind in {tyUntyped, tyNil} or isUnresolvedAutoReturnType(c, a): result = y
+  elif b.kind in {tyUntyped, tyNil} or isUnresolvedAutoReturnType(c, b): result = x
   elif a.kind == tyTyped: result = a
   elif b.kind == tyTyped: result = b
   elif a.kind == tyTypeDesc:

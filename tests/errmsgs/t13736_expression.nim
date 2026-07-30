@@ -4,6 +4,9 @@ discard """
 """
 
 proc foo(n: int): auto =
-  return foo(n + 1)
+  if n > 0:
+    foo(n - 1)
+  else:
+    foo(n + 1)
 
-discard foo(0)
+discard foo(1)
