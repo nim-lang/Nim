@@ -364,6 +364,13 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
 # long-lived live structures are traced once per epoch instead of once per
 # collection. Roots always bypass the stamp: every death has a dec-witness
 # that gets registered, and registered cells are always scanned as roots.
+type
+  CollCtx = object
+    tag: int64
+    slot: int
+    epochStamp: int64   ## this collection's epoch, as a stamp word
+    amSolo: bool
+
 const
   MaxPar {.intdefine.} = 256
     ## CAPACITY of the slot table, not a tuning knob: a hard ceiling on
@@ -390,12 +397,9 @@ var
     ## Starting at 1 also means single-threaded programs scan one entry.
   gSoloCapture: int                      # a solo collection is in its capture phase
   gTagCounter: int64
-  gMyTag {.threadvar.}: int64
-  gMySlot {.threadvar.}: int
-  gAmSolo {.threadvar.}: bool
+  gCtx {.threadvar.}: CollCtx
   gEpoch: int                            # advanced every YrcEpochLen collections
   gCollectionCounter: int
-  gMyEpochStamp {.threadvar.}: int64     # this collection's epoch, as a stamp word
   gWaitLock: Lock                        # pairs gWaitCond's wait/broadcast; leaf
   gWaitCond: Cond                        # signaled on capture-end and collection-finish
 
@@ -481,11 +485,11 @@ proc anySlotFree(): bool {.inline.} =
     if atomicLoadN(addr gActiveTags[sl], ATOMIC_ACQUIRE) == 0:
       return true
 
-template isStamped(c: Cell): bool =
+template isStamped(c: Cell; ctx: ptr CollCtx): bool =
   # "stamped" means: claimed by THIS collection. A relaxed load suffices:
-  # only this thread ever stores gMyTag, and any stale read of a foreign
+  # only this thread ever stores ctx.tag, and any stale read of a foreign
   # value routes into claimCell which re-validates with acquire + CAS.
-  (atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) shr 32) == gMyTag
+  (atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED) shr 32) == ctx.tag
 template denseIdx(c: Cell): int32 =
   int32(loWord(atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED)))
 
@@ -634,7 +638,7 @@ proc registerLocal(c: Cell; desc: PNimTypeV2) {.inline.} =
     when defined(nimOrcStats):
       let st = atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED)
       if st == 0: bumpStat gStatRegFresh
-      elif gMyTag != 0 and (st shr 32) == gMyTag: bumpStat gStatRegSelf
+      elif gCtx.tag != 0 and (st shr 32) == gCtx.tag: bumpStat gStatRegSelf
       elif isActiveTag(st shr 32): bumpStat gStatRegCross
       else: bumpStat gStatRegRepeat
     if gLocalRoots.d == nil: init(gLocalRoots)
@@ -767,7 +771,7 @@ proc buildPendingWatch(): bool =
   if gPendingWatch.d == nil: init gPendingWatch
   gPendingWatch.len = 0
   for s in 0 ..< slotsInPlay():
-    if s != gMySlot:
+    if s != gCtx.slot:
       let tg = atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE)
       if tg != 0 and atomicLoadN(addr gSlotPhase[s], ATOMIC_ACQUIRE) == 1:
         gPendingWatch.add((int64(s) shl 32) or tg)
@@ -863,7 +867,7 @@ proc growCaptureArrays(cap: ptr CaptureBufs) {.noinline.} =
 # inRootsFlag between capture and commit, which must not look like a
 # mutation to the commit-time rc validation.
 proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
-               pruneLive: bool; old0: int64): int32 =
+               ctx: ptr CollCtx; pruneLive: bool; old0: int64): int32 =
   ## Dense index if this collection owns `c` (claiming and registering it
   ## if it was unclaimed), -1 if another ACTIVE collection owns it, or
   ## -2 if `pruneLive` and the cell was proven live in the current epoch
@@ -872,18 +876,18 @@ proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
   ## `old0` is `c`'s claim word as the caller already read it (acquire): the
   ## DFS reads it to test ownership, and re-reading it here would be a second
   ## dependent load of the same cold header word on every traversed edge.
-  if gAmSolo:
+  if ctx.amSolo:
     # no other collection is (or can start) capturing: plain stores.
     # This recovers the sequential capture speed of the single-collector
     # design whenever collections do not actually overlap.
     let old = old0
-    if (old shr 32) == gMyTag:
+    if (old shr 32) == ctx.tag:
       return int32(loWord(old))
-    if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
+    if pruneLive and (old shr 32) == (ctx.epochStamp shr 32) and
         stampAge(old) >= YrcPromoteAge:
       return -2
     let idx = cap.recs.len
-    c.rootIdx = (gMyTag shl 32) or int64(idx)
+    c.rootIdx = (ctx.tag shl 32) or int64(idx)
     when defined(nimOrcStats):
       bumpStat gStatCapTotal
       if old != 0: bumpStat gStatCapRepeat
@@ -897,9 +901,9 @@ proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
     return int32(idx)
   var old = old0
   while true:
-    if (old shr 32) == gMyTag:
+    if (old shr 32) == ctx.tag:
       return int32(loWord(old))
-    if pruneLive and (old shr 32) == (gMyEpochStamp shr 32) and
+    if pruneLive and (old shr 32) == (ctx.epochStamp shr 32) and
         stampAge(old) >= YrcPromoteAge:
       return -2
     # an epoch stamp is never a tag (tags are allocated below `epochBase`),
@@ -909,7 +913,7 @@ proc claimCell(c: Cell; desc: PNimTypeV2; cap: ptr CaptureBufs;
       return -1
     let idx = cap.recs.len
     if atomicCompareExchangeN(addr c.rootIdx, addr old,
-                               (gMyTag shl 32) or int64(idx), false,
+                               (ctx.tag shl 32) or int64(idx), false,
                                ATOMIC_ACQ_REL, ATOMIC_RELAXED):
       when defined(nimOrcStats):
         bumpStat gStatCapTotal
@@ -940,11 +944,14 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
   ## on the stack below u) or an SCC emitted earlier, so `sccIdx` is final
   ## for all of them and the cross targets can be appended to `crossTgt`
   ## contiguously — which makes `crossOff` a prefix offset for free.
+  # one TLS resolution for the whole traversal; `claimCell` and the per-edge
+  # ownership tests below read the context through this pointer
+  let ctx = addr gCtx
   let rootWord = atomicLoadN(addr s.rootIdx, ATOMIC_ACQUIRE)
-  if (rootWord shr 32) == gMyTag: return
+  if (rootWord shr 32) == ctx.tag: return
   orcAssert(j.traceStack.len == 0, "capture: trace stack not empty")
   # roots never prune: a dec-witnessed suspicion overrides any epoch stamp
-  let root = claimCell(s, desc, cap, pruneLive = false, old0 = rootWord)
+  let root = claimCell(s, desc, cap, ctx, pruneLive = false, old0 = rootWord)
   if root < 0:
     return   # another active collection owns this candidate; it handles it
   trace(s, desc, j)
@@ -964,7 +971,7 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
       # one load of the target's claim word serves both the ownership test
       # and the dense-index extraction
       let cw = atomicLoadN(addr t.rootIdx, ATOMIC_ACQUIRE)
-      if (cw shr 32) == gMyTag:
+      if (cw shr 32) == ctx.tag:
         let v = int32(loWord(cw))
         if v == u:
           # A self edge is internal by construction and its reference is
@@ -979,7 +986,7 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
       else:
         let tdesc = j.traceStack.d[last][1]
         let childBase = j.traceStack.len
-        let v = claimCell(t, tdesc, cap, pruneLive = true, old0 = cw)
+        let v = claimCell(t, tdesc, cap, ctx, pruneLive = true, old0 = cw)
         if v == -1:
           # cross-collection edge: the owner sees our reference in the rc
           # word and classifies the target live; we re-register it as a
@@ -1096,9 +1103,10 @@ proc markDirtyFromQueues(j: var GcEnv; cap: ptr CaptureBufs) =
   ## the last drain had its reference set changed during capture. Peek
   ## (don't drain!) the stripe queues and taint the affected SCCs; the
   ## entries stay queued and the next merge re-registers them as candidates.
+  let ctx = addr gCtx
   template taint(cp: Cell) =
     let c = cp
-    if isStamped(c):
+    if isStamped(c, ctx):
       let s = cap.sccIdx.d[denseIdx(c)]
       cap.sccs.d[s].flags = cap.sccs.d[s].flags or flagDirty
   for i in 0..<NumStripes:
@@ -1188,6 +1196,7 @@ proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
 
 proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   validateDead(j, cap)
+  let ctx = addr gCtx
   # publish cross-collection edge targets as candidate roots BEFORE any of
   # our commit decs could make them collectible: they are owner-live this
   # round, and the registration keeps them examinable in a later round
@@ -1195,7 +1204,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
     registerLocal(cap.crossPend.d[i][0], cap.crossPend.d[i][1])
   template deadCell(w: int64): bool =
     ## `w` is the target's claim word, read once by the caller
-    (w shr 32) == gMyTag and
+    (w shr 32) == ctx.tag and
       (cap.sccs.d[cap.sccIdx.d[int32(loWord(w))]].flags and flagDead) != 0
   # Grace period: a collection still in its CAPTURE phase may hold stale
   # (slot, value) snapshots referencing our dead cells; disposing them now
@@ -1247,7 +1256,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
       holdOrFree(cell, desc, deferred)
     j.freed = cap.recs.len
     if deferred:
-      gPendingSlot = gMySlot
+      gPendingSlot = ctx.slot
       gPendingActive = true
   else:
     if gFreeBuf.d == nil: init gFreeBuf
@@ -1304,7 +1313,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
         for mi in memStart ..< memEnd:
           let a = cap.ages.d[cap.sccMembers.d[mi]]
           if a < age: age = a
-        let stamp = gMyEpochStamp or int64(age +% 1)
+        let stamp = ctx.epochStamp or int64(age +% 1)
         for mi in memStart ..< memEnd:
           atomicStoreN(addr cap.recs.d[cap.sccMembers.d[mi]].cell.rootIdx,
                        stamp, ATOMIC_RELAXED)
@@ -1316,7 +1325,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
       gPendingCells = j.toFree
       j.toFree = spare
       j.toFree.len = 0
-      gPendingSlot = gMySlot
+      gPendingSlot = ctx.slot
       gPendingActive = true
     else:
       for i in 0 ..< j.toFree.len:
@@ -1368,18 +1377,18 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
     else:
       gTagCounter = (gTagCounter +% 1) and int64(epochBase - 1)  # tags below the stamp namespace
       if gTagCounter == 0: gTagCounter = 1
-      gMyTag = gTagCounter
-      gMySlot = slot
-      gMyEpochStamp = epochStamp(atomicLoadN(addr gEpoch, ATOMIC_RELAXED))
+      gCtx.tag = gTagCounter
+      gCtx.slot = slot
+      gCtx.epochStamp = epochStamp(atomicLoadN(addr gEpoch, ATOMIC_RELAXED))
       var othersActive = false
       for sl in 0 ..< gParSlots:
         if sl != slot and atomicLoadN(addr gActiveTags[sl], ATOMIC_RELAXED) != 0:
           othersActive = true
-      gAmSolo = not othersActive
-      if gAmSolo:
+      gCtx.amSolo = not othersActive
+      if gCtx.amSolo:
         atomicStoreN(addr gSoloCapture, 1, ATOMIC_RELEASE)
       atomicStoreN(addr gSlotPhase[slot], 1, ATOMIC_RELEASE)
-      atomicStoreN(addr gActiveTags[slot], gMyTag, ATOMIC_SEQ_CST)
+      atomicStoreN(addr gActiveTags[slot], gCtx.tag, ATOMIC_SEQ_CST)
       release gMergeLock
       # our buffer, our slice: no lock needed
       if keepBelow == 0:
@@ -1407,12 +1416,12 @@ proc finishCollection() =
     # `gActiveTags`: it is what stops a foreign capture from claiming, and
     # then freeing, a cell that is sitting in the batch. `releasePending`
     # gives the slot back.
-    atomicStoreN(addr gSlotPhase[gMySlot], 0, ATOMIC_RELEASE)
+    atomicStoreN(addr gSlotPhase[gCtx.slot], 0, ATOMIC_RELEASE)
   else:
-    atomicStoreN(addr gActiveTags[gMySlot], 0, ATOMIC_SEQ_CST)
-    atomicStoreN(addr gSlotPhase[gMySlot], 0, ATOMIC_RELEASE)
-  gMyTag = 0
-  gAmSolo = false
+    atomicStoreN(addr gActiveTags[gCtx.slot], 0, ATOMIC_SEQ_CST)
+    atomicStoreN(addr gSlotPhase[gCtx.slot], 0, ATOMIC_RELEASE)
+  gCtx.tag = 0
+  gCtx.amSolo = false
   collectorEvent()   # wake backpressure and grace waiters
 
 proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
@@ -1434,8 +1443,8 @@ proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
   for i in countdown(last, 0):
     capture(slice.d[i][0], slice.d[i][1], j, cap)
   j.touched = cap.recs.len
-  atomicStoreN(addr gSlotPhase[gMySlot], 2, ATOMIC_RELEASE)  # capture done
-  if gAmSolo:
+  atomicStoreN(addr gSlotPhase[gCtx.slot], 2, ATOMIC_RELEASE)  # capture done
+  if gCtx.amSolo:
     atomicStoreN(addr gSoloCapture, 0, ATOMIC_RELEASE)
   collectorEvent()   # wake solo-gate and grace waiters
 
@@ -1456,7 +1465,7 @@ proc runCollection(j: var GcEnv; slice: var CellSeq[Cell]) =
   ## Runs one collection over the stolen slice, concurrently with mutators
   ## AND with the other collecting threads over disjoint partitions.
   yrcGcFenceEnter()      # freeze seq structure mutations, not ref writes
-  if not gAmSolo:
+  if not gCtx.amSolo:
     # a solo collection claims with plain stores; nobody else may claim
     # cells until its capture phase is over
     parkUntil(atomicLoadN(addr gSoloCapture, ATOMIC_ACQUIRE) == 0)
