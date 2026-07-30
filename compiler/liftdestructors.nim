@@ -806,8 +806,22 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
 
-  # YRC uses dedicated runtime procs for the entire write barrier:
-  if c.g.config.selectedGC == gcYrc:
+  # YRC uses dedicated runtime procs for the entire write barrier -- but ONLY
+  # for refs that can actually form cycles. Routing an acyclic ref through
+  # `nimAsgnYrc` defeats the entire purpose of `.acyclic`: the barrier defers
+  # the dec into a stripe queue, `drainStripe` then hands the cell to
+  # `registerLocal`, and it enters the collector as a capture ROOT -- so a
+  # type annotated precisely to stay out of the cycle collector gets traced
+  # by it anyway. (The collector never reaches such a cell by TRAVERSAL: the
+  # attachedTrace hook below only emits `nimTraceRef` when `isCyclic`. The
+  # queued dec was the only way in.)
+  #
+  # Falling through instead gives acyclic refs the same prompt arc-style
+  # reclamation they get under --mm:arc/orc, which is also what lets a thread
+  # that avoids cycles at compile time avoid the collector entirely at run
+  # time. `canFormAcycle` is the same predicate ccgtypes.nim:1903 uses to set
+  # the descriptor's acyclic flag, so codegen and runtime cannot disagree.
+  if c.g.config.selectedGC == gcYrc and types.canFormAcycle(c.g, elemType):
     let desc =
       if isFinal(elemType):
         let ti = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
