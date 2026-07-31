@@ -158,6 +158,13 @@ proc commandCompileToC(graph: ModuleGraph) =
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
+  # Spawn a separate nim process for code generation to reclaim memory
+  # before C compilation. The subprocess runs with --compileOnly --genScript,
+  # generates the C code, and the script is executed here.
+  if optSpawnCodegen in conf.globalOptions and optCompileOnly notin conf.globalOptions:
+    if extccomp.spawnCodegenSubprocess(conf):
+      return  # Subprocess handled everything; skip in-process compilation
+
   if conf.symbolFiles == disabledSf:
     setPipeLinePass(graph, CgenPass)
   else:

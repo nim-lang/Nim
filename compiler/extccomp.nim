@@ -468,7 +468,9 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
     if conf.cCompiler == ccVcc:
       {optGenMapping}
     else:
-      {optGenScript, optGenMapping}
+      # TODO optGenScript was removed here - why should scripts have path-less
+      #      commands? Makes them useless, when using {.compile.} for example
+      {optGenMapping}
   result = conf.globalOptions * options != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
@@ -967,6 +969,88 @@ proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
       linkViaResponseFile(conf, linkCmd)
   else:
     execLinkCmd(conf, linkCmd)
+
+proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
+  ## Spawns a separate nim process with --compileOnly --genScript to perform
+  ## Nim-to-C code generation, then runs the C compile/link steps from the
+  ## generated JSON build instructions. This reclaims the Nim compiler's memory
+  ## before proceeding with C compilation.
+  let cmdline = os.commandLineParams()
+  # Build subprocess args: skip the command token (c/cpp/etc),
+  # insert --compileOnly --genScript before the project file
+  var subArgs = @["--compileOnly", "--genScript"]
+  var projectFileAdded = false
+  var commandAdded = false
+  for a in cmdline:
+    if a.len == 0:
+      continue
+
+    subArgs.add a
+
+    if a[0] != '-':
+      # This must be the command (`c`, `cpp` etc)
+      if commandAdded:
+        # This must be the project name - we're done for now
+        projectFileAdded = true
+        break
+      else:
+        commandAdded = true
+
+  doAssert projectFileAdded, "Could not find project file in command line, bug?"
+
+  # Spawn subprocess - the subprocess generates C files + JSON build instructions
+  let nimExe = getAppFilename()
+  try:
+    let p = startProcess(nimExe, args = subArgs, options = {})
+    let exitCode = p.waitForExit()
+    p.close()
+    if exitCode != 0:
+      return false
+  except:
+    return false
+
+  # Read the JSON build instructions to get the compile/link commands
+  let jsonFile = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
+  if not fileExists(jsonFile):
+    return false
+
+  # Parse JSON: compile = [[file, cmd], ...], linkcmd = string
+  let jdoc =
+    try:
+      parseFile(jsonFile.string)
+    except:
+      return false
+
+  var cmds: seq[(string, string)] = @[]
+  var linkcmd: string = ""
+
+  if jdoc.kind == JObject:
+    # Extract compile commands
+    if "compile" in jdoc:
+      let jcompile = jdoc["compile"]
+      if jcompile.kind == JArray:
+        for jitem in jcompile:
+          if jitem.kind == JArray and jitem.len == 2 and jitem[0].kind == JString and
+              jitem[1].kind == JString:
+            cmds.add((jitem[0].str, jitem[1].str))
+    # Extract link command
+    if "linkcmd" in jdoc and jdoc["linkcmd"].kind == JString:
+      linkcmd = jdoc["linkcmd"].str
+
+  if cmds.len > 0:
+    var prettyCmds: TStringSeq = default(TStringSeq)
+    for cmd in cmds:
+      prettyCmds.add displayProgressCC(conf, cmd[0], cmd[1])
+    let prettyCb = proc(idx: int) =
+      writePrettyCmdsStderr(prettyCmds[idx])
+
+    conf.execCmdsInParallel(cmds.mapIt(it[1]), prettyCb)
+
+  # Run link command
+  if linkcmd.len > 0:
+    preventLinkCmdMaxCmdLen(conf, linkcmd)
+
+  true
 
 proc callCCompiler*(conf: ConfigRef) =
   var
