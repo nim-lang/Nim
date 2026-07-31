@@ -120,8 +120,21 @@
 # while die-young data — never promoted — is never deferred. Roots always
 # bypass stamps (every death has a dec-witness that gets registered, and
 # registered cells are always scanned as roots), and explicit full
-# collects advance the epoch first, staying exhaustive. The price is
-# floating garbage bounded by ~2 epochs.
+# collects advance the epoch first, staying exhaustive.
+#
+# Young→old edges are generational: when commit frees a dead cell and
+# `trialDec`s a stamped survivor, it does NOT re-root that survivor for the
+# current epoch unless the dec drove its RC to zero (a true death blow).
+# Live old graphs just lose the young reference and stay pruned. An old
+# *cycle* whose last external refs were young is remembered in the
+# thread's `gCtx.genSuspects` buffer and promoted to the root set when the
+# epoch advances — the major-collection half of the generational scheme.
+# That buffer is a candidate buffer like `gLocalRoots` and takes the same
+# `inRootsFlag` token: it both dedupes the entry and keeps the cell alive
+# (forced live if captured, refused by `free`) until the flush. Marking the
+# stamp word instead does not work — `claimCell` CASes the whole word to
+# its tag on capture, losing the mark while the list entry survives.
+# Floating garbage is thus bounded by ~1 epoch.
 #
 # ## Why No Lost Objects
 #
@@ -142,7 +155,7 @@ import std/locks
 
 const
   NumStripes = 64
-  QueueSize {.intdefine.} = 128   # override with -d:QueueSize=N
+  QueueSize {.intdefine.} = 256   # override with -d:QueueSize=N
 
   # rc-word flag bits, layout shared with ORC. YRC does no tricolor
   # marking; colorMask survives only for the debug printout.
@@ -154,12 +167,12 @@ const
 type
   TraceProc = proc (p, env: pointer) {.nimcall, gcsafe, raises: [].}
 
-# The write barrier's incRef normally goes through a lock-free per-stripe
-# queue (drained by the collector), matching the deferred decRef. Define
-# `nimYrcDirectIncs` to bypass that queue and apply incRefs directly with an
-# atomic RMW instead — simpler, but the collector then observes every incRef
-# through commit-time rc validation rather than the queue peek.
-const useIncQueue = not defined(nimYrcDirectIncs)
+# Direct atomic incRefs are the default: `nimAsgnYrc` already increments that
+# way, and commit-time rc validation observes them. Define `nimYrcIncQueue`
+# to also buffer incRefs in the stripe queues (matching deferred decs); the
+# collector then peeks `toInc` at commit. `nimYrcDirectIncs` is kept as an
+# explicit alias for the default.
+const useIncQueue = defined(nimYrcIncQueue) and not defined(nimYrcDirectIncs)
 
 # With lock-free ref assignments, rc words are mutated concurrently with the
 # collector (direct atomic incRefs), so all collector-side rc accesses must
@@ -323,7 +336,14 @@ type
     crossTgt: RawSeq[int32]
     crossPend: CellSeq[Cell]  # edge targets owned by other active collections
     prunedSrc: RawSeq[int32]  # dense indices of cells with pruned out-edges
+    prunedTgt: CellSeq[Cell]  # epoch-stamped targets we did not descend into
     ages: RawSeq[int32]       # per captured cell: captures survived so far
+    slots: RawSeq[ptr pointer]
+      ## Field addresses seen in capture. The allDead commit path nils these
+      ## without re-tracing (dead cells are immutable, so the snapshot is
+      ## exact). The mixed path still re-traces — it needs live target
+      ## classification, and keeping full (slot,tgt,desc) logs in the DFS
+      ## hot path cost more than the re-trace saved.
 
   GcEnv = object
     traceStack: CellSeq[TraceEntry]
@@ -366,10 +386,34 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
 # that gets registered, and registered cells are always scanned as roots.
 type
   CollCtx = object
+    ## This thread's collector context, in ONE threadvar rather than one per
+    ## field. macOS resolves every `{.threadvar.}` access through a
+    ## `tlv_get_addr` thunk — an indirect call, not a register-relative load
+    ## — so N separate threadvars cost N calls in a function while N fields
+    ## of one cost ONE. The hot collector paths hoist `addr gCtx` once and
+    ## pass the pointer down; `claimCell` (entered once per captured cell)
+    ## and `rememberGenSuspect` (once per young→old dec) resolve no TLS at
+    ## all. Add new collector-thread state HERE rather than as a fresh
+    ## threadvar, or that win is given straight back.
+    ##
+    ## `tag`/`slot`/`epochStamp`/`amSolo` are per-collection and set by
+    ## `startCollection`; the rest persists across collections.
     tag: int64
     slot: int
     epochStamp: int64   ## this collection's epoch, as a stamp word
     amSolo: bool
+    genSuspects: CellSeq[Cell]
+      ## Stamped cells that received a young→old commit dec this epoch
+      ## without an RC death blow. Not roots (so minor collects keep
+      ## pruning); flushed into `gLocalRoots` when `gEpoch` advances — see
+      ## `flushGenSuspects`. Holds `inRootsFlag` on every entry, which is
+      ## what keeps the cells alive while listed.
+    seenEpoch: int
+      ## Last epoch for which this thread flushed `genSuspects`.
+    genFlushReady: bool
+      ## False until the first `flushGenSuspects` call (a zeroed context has
+      ## `seenEpoch == 0 == gEpoch`, so the flag distinguishes "never
+      ## flushed" from "already flushed epoch 0").
 
 const
   MaxPar {.intdefine.} = 256
@@ -644,6 +688,44 @@ proc registerLocal(c: Cell; desc: PNimTypeV2) {.inline.} =
     if gLocalRoots.d == nil: init(gLocalRoots)
     add(gLocalRoots, c, desc)
 
+proc rememberGenSuspect(c: Cell; desc: PNimTypeV2;
+                        ctx: ptr CollCtx) {.inline.} =
+  ## Note a stamped cell that lost a young→old edge without an RC death
+  ## blow. This IS a candidate buffer — just one that is not scanned until
+  ## the epoch advances — so it takes the same ownership token as
+  ## `gLocalRoots`: winning `inRootsFlag` is what keeps the cell in exactly
+  ## one buffer AND what keeps it alive while listed (`computeDeadness`
+  ## forces flagged cells live, and `free` refuses to dispose them).
+  ##
+  ## Marking the stamp word instead does NOT work: `claimCell` CASes the
+  ## whole word to its tag when a later collection captures the cell, so
+  ## the mark is lost while the list entry survives — and the cell is then
+  ## freed under a list that still points at it.
+  if rcTestSetFlag(c, inRootsFlag):
+    if ctx.genSuspects.d == nil: init(ctx.genSuspects)
+    add(ctx.genSuspects, c, desc)
+
+proc spillGenSuspects(ctx: ptr CollCtx) {.inline.} =
+  ## Move suspects into the root set (epoch advance, thread exit, or a
+  ## forced major collect). The cells stay flagged; they merely change
+  ## buffers, so the one-buffer invariant holds — same handover as
+  ## `adoptOrphans`. Going through `registerLocal` would be wrong here: it
+  ## would lose the test-and-set it already owns and drop every entry.
+  if ctx.genSuspects.len == 0: return
+  if gLocalRoots.d == nil: init(gLocalRoots)
+  for i in 0 ..< ctx.genSuspects.len:
+    add(gLocalRoots, ctx.genSuspects.d[i][0], ctx.genSuspects.d[i][1])
+  ctx.genSuspects.len = 0
+
+proc flushGenSuspects(ctx: ptr CollCtx) {.inline.} =
+  ## Promote deferred young→old dec targets into the root set after an
+  ## epoch advance (major collection). No-op while the epoch is stable.
+  let e = atomicLoadN(addr gEpoch, ATOMIC_RELAXED)
+  if ctx.genFlushReady and e == ctx.seenEpoch: return
+  ctx.genFlushReady = true
+  ctx.seenEpoch = e
+  spillGenSuspects(ctx)
+
 proc drainStripe(i: int) =
   ## Apply the pending RC operations of one stripe queue; freshly
   ## dead-looking cells become THIS thread's candidates. rc mutations are
@@ -835,7 +917,9 @@ proc prepareCapture() =
     init gCap.crossTgt
     init gCap.crossPend
     init gCap.prunedSrc
+    init gCap.prunedTgt
     init gCap.ages
+    init gCap.slots
   else:
     gCap.recs.len = 0
     gCap.sccIdx.len = 0
@@ -847,7 +931,9 @@ proc prepareCapture() =
     gCap.crossTgt.len = 0
     gCap.crossPend.len = 0
     gCap.prunedSrc.len = 0
+    gCap.prunedTgt.len = 0
     gCap.ages.len = 0
+    gCap.slots.len = 0
 
 proc growCaptureArrays(cap: ptr CaptureBufs) {.noinline.} =
   ## `recs`, `sccIdx`, `ages` and `tstack` are appended to together, and only
@@ -964,10 +1050,15 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
   var ebase = 0'i32
   while true:
     if j.traceStack.len > base:
-      # inlined pop: the stamped path never needs the entry's descriptor
+      # inlined pop: log every slot for commit (dead cells are immutable, so
+      # the capture-time value is what commit must nil/dec), then classify.
       let last = j.traceStack.len -% 1
       j.traceStack.len = last
-      let t = head(j.traceStack.d[last][0].val)
+      let entry = j.traceStack.d[last][0]
+      let tdesc = j.traceStack.d[last][1]
+      let t = head(entry.val)
+      # field address for the allDead nil pass (8 bytes; see CaptureBufs.slots)
+      cap.slots.add entry.slot
       # one load of the target's claim word serves both the ownership test
       # and the dense-index extraction
       let cw = atomicLoadN(addr t.rootIdx, ATOMIC_ACQUIRE)
@@ -984,7 +1075,6 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
           if cap.sccIdx.d[v] < 0 and v < cap.recs.d[u].lowlink:
             cap.recs.d[u].lowlink = v
       else:
-        let tdesc = j.traceStack.d[last][1]
         let childBase = j.traceStack.len
         let v = claimCell(t, tdesc, cap, ctx, pruneLive = true, old0 = cw)
         if v == -1:
@@ -1002,6 +1092,23 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
           if cap.prunedSrc.len == 0 or
               cap.prunedSrc.d[cap.prunedSrc.len -% 1] != u:
             cap.prunedSrc.add u
+          # If the stamped target itself looks RC-dead, keep it examinable
+          # (roots bypass stamps). Do NOT register live stamped targets:
+          # that would force a full re-trace of the long-lived web every
+          # collection and defeat epoch pruning. Survivors that may be
+          # pinned by phantom edges from a dead stamped cell are handled
+          # in demoteTouchedDead.
+          #
+          # `t` is NOT owned by this collection (it is stamped, i.e. claimable
+          # by anyone), so parking a bare pointer until commit is unsafe: the
+          # grace period only watches collections in their CAPTURE phase
+          # (`buildPendingWatch`), so once we reach phase 2 another thread may
+          # capture `t`, find it dead and free it — under a list still holding
+          # it. Winning `inRootsFlag` here makes `prunedTgt` a proper candidate
+          # buffer: the cell is then forced live by any collection that
+          # captures it and refused by `free`, so it survives to our commit.
+          if (loadRc(t) and not rcMask) == 0 and rcTestSetFlag(t, inRootsFlag):
+            cap.prunedTgt.add(t, tdesc)
           when defined(nimOrcStats):
             bumpStat gStatCapPruned
         else:
@@ -1160,18 +1267,15 @@ proc demoteTouchedDead(j: var GcEnv; cap: ptr CaptureBufs) =
         let m = cap.sccMembers.d[cap.sccs.d[s].memStart]
         registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
     elif cap.prunedSrc.len > 0:
-      # A prune happened somewhere in THIS collection, so every "live" verdict
-      # it produced is suspect: a pruned cell is not traced, yet its out-edges
-      # still count toward its targets' rc. If that pruned cell is itself dead
-      # (promoted while live, died later this epoch), its phantom references
-      # inflate unrelated SCCs' external counts and misclassify genuinely dead
-      # SCCs as plain survivors. Such a survivor is not flagPruned, so without
-      # this it would be re-stamped, dropped from the retry set, and orphaned
-      # forever once its last flagPruned neighbor resolves. Keeping ONE member
-      # of every survivor registered guarantees it is re-examined until the
-      # epoch advances, captures the dead promoted cells, and decrements the
-      # phantom edges away. Cheap in practice: pruning keeps the captured set
-      # small, so "every survivor" is only the few cells actually traced.
+      # A prune happened somewhere in THIS collection, so every "live"
+      # verdict it produced is suspect: a pruned cell is not traced, yet
+      # its out-edges still count toward its targets' rc. If that pruned
+      # cell is itself dead (promoted while live, died later this epoch),
+      # its phantom references inflate unrelated SCCs' external counts.
+      # Keeping ONE member of every survivor registered guarantees
+      # re-examination until the epoch advances. Cheap in practice:
+      # pruning keeps the captured set small. RC-dead stamped targets are
+      # additionally queued in prunedTgt (roots bypass stamps).
       let m = cap.sccMembers.d[cap.sccs.d[s].memStart]
       registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
 
@@ -1202,6 +1306,16 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   # round, and the registration keeps them examinable in a later round
   for i in 0 ..< cap.crossPend.len:
     registerLocal(cap.crossPend.d[i][0], cap.crossPend.d[i][1])
+  # pruned (epoch-stamped) targets: roots bypass stamps, so a later
+  # collection will capture a target that has since died and clear the
+  # phantom edges that would otherwise pin unrelated survivors. Capture
+  # already won `inRootsFlag` on these (see the `prunedTgt.add` site), so
+  # they only change buffers here — `registerLocal` would lose the
+  # test-and-set it already holds and drop every one of them.
+  if cap.prunedTgt.len > 0:
+    if gLocalRoots.d == nil: init(gLocalRoots)
+    for i in 0 ..< cap.prunedTgt.len:
+      add(gLocalRoots, cap.prunedTgt.d[i][0], cap.prunedTgt.d[i][1])
   template deadCell(w: int64): bool =
     ## `w` is the target's claim word, read once by the caller
     (w shr 32) == ctx.tag and
@@ -1232,28 +1346,22 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   # be decremented (the target survives this round), so the all-dead fast
   # path additionally requires that no cross-collection edge was seen.
   # pruned edges also disable the fused path: its nil-without-dec would
-  # leak rc on the stamped targets (and skip their re-registration)
+  # leak rc on the stamped targets (those still need trialDec)
   let allDead = j.nDeadScc == j.nScc and j.nAborted == 0 and
                 cap.crossPend.len == 0 and cap.prunedSrc.len == 0
   if allDead:
     # Everything captured dies and no slot can point outside the dead set:
-    # nil the slots and free in ONE pass over the cells — they went cold
-    # since capture, a second sweep would miss cache all over again.
-    # Freeing cell A before nil-ing a later cell B's slot that points at A
-    # is fine: nobody reads B's slots in between (mutators cannot reach the
-    # closed dead set, foreign captures never traverse our tagged cells,
-    # and a parked batch is not touched until its watch list is clear).
+    # nil from the capture-time slot log (no re-trace) and free. Freeing
+    # cell A before nil-ing a later cell B's slot that points at A is fine:
+    # nobody reads B's slots in between (mutators cannot reach the closed
+    # dead set, foreign captures never traverse our tagged cells, and a
+    # parked batch is not touched until its watch list is clear).
     let deferred = parkBatch()
     if deferred and gPendingCells.d == nil: init gPendingCells
+    for i in 0 ..< cap.slots.len:
+      cap.slots.d[i][] = nil
     for m in 0 ..< cap.recs.len:
-      let cell = cap.recs.d[m].cell
-      let desc = cap.recs.d[m].desc
-      orcAssert(j.traceStack.len == 0, "commitDead: trace stack not empty")
-      trace(cell, desc, j)
-      while j.traceStack.len > 0:
-        let (entry, _) = j.traceStack.pop()
-        entry.slot[] = nil
-      holdOrFree(cell, desc, deferred)
+      holdOrFree(cap.recs.d[m].cell, cap.recs.d[m].desc, deferred)
     j.freed = cap.recs.len
     if deferred:
       gPendingSlot = ctx.slot
@@ -1283,10 +1391,16 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
             let tw = atomicLoadN(addr t.rootIdx, ATOMIC_RELAXED)
             if not deadCell(tw):
               trialDec(t)
-              # a stamped target was not analyzed by THIS collection, so
-              # this dec may be the death blow: keep the cell examinable
+              # Stamped target: not analyzed by THIS collection. Generational
+              # young→old — re-root immediately only on a true RC death blow
+              # (refcount encoding: (rc shr rcShift) + 1 == #refs). Otherwise
+              # remember the cell as a suspect; epoch advance flushes
+              # suspects into the root set (major collection).
               if isEpochStamp(tw):
-                registerLocal(t, tdesc)
+                if (loadRc(t) shr rcShift) < 0:
+                  registerLocal(t, tdesc)
+                else:
+                  rememberGenSuspect(t, tdesc, ctx)
     # epoch-stamp what this collection PROVED live, carrying the survival
     # age: only cells that keep surviving get promoted to ages where
     # captures prune them, so die-young data is never deferred. Demoted
@@ -1350,6 +1464,7 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
   if drainAll: drainAllStripes()
   else: drainStripe(getStripeIdx())
   adoptOrphans()
+  flushGenSuspects(addr gCtx)  # epoch advanced ⇒ suspects become roots
   while gLocalRoots.len >= minRoots and gLocalRoots.len > keepBelow and
       mayRunCycleCollect():
     acquire gMergeLock
@@ -1542,16 +1657,57 @@ when defined(nimOrcStats):
       capRepeat: atomicLoadN(addr gStatCapRepeat, ATOMIC_RELAXED),
       capPruned: atomicLoadN(addr gStatCapPruned, ATOMIC_RELAXED))
 
+proc releaseCollectorScratch() =
+  ## Drop TLS collector scratch (capture side structure, trace/free buffers,
+  ## suspect list). Persistent across ordinary collections so small captures
+  ## don't reallocate; released on thread exit and after `GC_runOrc` so a
+  ## single large capture cannot pin tens of MB for the process lifetime.
+  ## `deinit` nils `d`, which is the sentinel `prepareCapture` tests.
+  deinit(gCtx.genSuspects)
+  deinit(gSpareRoots)
+  deinit(gTraceBuf)
+  deinit(gFreeBuf)
+  deinit(gPendingCells)
+  deinit(gPendingWatch)
+  deinit(gCap.recs)
+  deinit(gCap.sccIdx)
+  deinit(gCap.tstack)
+  deinit(gCap.frames)
+  deinit(gCap.edges)
+  deinit(gCap.sccs)
+  deinit(gCap.sccMembers)
+  deinit(gCap.crossTgt)
+  deinit(gCap.crossPend)
+  deinit(gCap.prunedSrc)
+  deinit(gCap.prunedTgt)
+  deinit(gCap.ages)
+  deinit(gCap.slots)
+
 proc GC_runOrc* =
   if lockState == Collecting: return
   # an explicit collect must be exhaustive: age out every liveness stamp
-  # so nothing is pruned
+  # so nothing is pruned, and young→old suspects become roots. Commit of
+  # one round may `rememberGenSuspect` further cells (e.g. a dying bridge
+  # dropping its last edge into a stamped web), so loop until quiet.
   discard atomicAddFetch(addr gEpoch, 1, ATOMIC_RELAXED)
   var slice: CellSeq[Cell]
-  if startCollection(1, 0, slice, wait = true, drainAll = true):
+  while true:
+    spillGenSuspects(addr gCtx)
+    if not startCollection(1, 0, slice, wait = true, drainAll = true):
+      break
     var j: GcEnv
     runCollection(j, slice)
+    when defined(nimOrcStats):
+      # collectCycles updates this; GC_runOrc must too (tests/benches read it)
+      inc freedCyclicObjects, j.freed
   releasePending()   # GC_fullCollect must not leave a batch parked
+  # A single large capture (e.g. reclaiming an 80k-node stamped web after
+  # epoch advance) otherwise leaves tens of MB of TLS RawSeq capacity
+  # resident for the rest of the process. Partial collects keep the
+  # buffers; only an exhaustive collect drops them. Spill first so a
+  # last-round suspect is not discarded with the list.
+  spillGenSuspects(addr gCtx)
+  releaseCollectorScratch()
   # note: aborted SCCs and cross-collection targets legitimately leave
   # re-registered roots behind; other RUNNING threads' local candidates
   # are theirs to collect (exiting threads spill to the orphan buffer)
@@ -1586,6 +1742,9 @@ proc nimYrcThreadTeardown() =
   ## collection on any thread adopts it.
   releasePending()   # nobody else can release this thread's parked batch
   drainStripe(getStripeIdx())
+  # Suspects → roots before the orphan spill, otherwise young→old dec
+  # targets on this thread would die with the TLS list.
+  spillGenSuspects(addr gCtx)
   if gLocalRoots.len > 0:
     acquire gMergeLock
     if roots.d == nil: init(roots)
@@ -1596,29 +1755,7 @@ proc nimYrcThreadTeardown() =
     deinit(gLocalRoots)
     gLocalRoots.d = nil
     gLocalRoots.len = 0
-  deinit(gSpareRoots)
-  deinit(gTraceBuf)
-  deinit(gFreeBuf)
-  deinit(gPendingCells)
-  deinit(gPendingWatch)
-  # The capture side structure is persistent across this thread's collections
-  # (see `prepareCapture`, which only resets the lengths) and grows to the
-  # peak captured graph, so it must be released here too — otherwise every
-  # thread that ever collected leaks its peak-sized arrays for the rest of
-  # the process. `deinit` nils `d`, which is exactly the sentinel
-  # `prepareCapture` tests, so a later collection on a reused thread slot
-  # re-initializes cleanly.
-  deinit(gCap.recs)
-  deinit(gCap.sccIdx)
-  deinit(gCap.tstack)
-  deinit(gCap.frames)
-  deinit(gCap.edges)
-  deinit(gCap.sccs)
-  deinit(gCap.sccMembers)
-  deinit(gCap.crossTgt)
-  deinit(gCap.crossPend)
-  deinit(gCap.prunedSrc)
-  deinit(gCap.ages)
+  releaseCollectorScratch()
 
 proc GC_enableMarkAndSweep*() = GC_enableOrc()
 proc GC_disableMarkAndSweep*() = GC_disableOrc()
@@ -1636,10 +1773,10 @@ proc enqueueDec(cell: Cell; desc: PNimTypeV2) {.inline.} =
   ## LOCK-FREE producer for the deferred-dec queue: reserve a slot with a
   ## fetch-add, store the cell, then publish by storing the desc (release;
   ## desc != nil is the ready marker consumers wait for/skip). A reservation
-  ## past QueueSize never writes anything — the reserver makes room by
-  ## draining (collectCycles always at least drains our own stripe, even
-  ## when nested in a collection or a seq critical section) and retries
-  ## with a fresh reservation.
+  ## past QueueSize never writes anything — the reserver drains our stripe
+  ## to make room and only starts a full collection when the candidate set
+  ## is already at threshold (bursty allocators otherwise paid a collect
+  ## on every overflow even when a plain drain would suffice).
   let idx = getStripeIdx()
   while true:
     let slot = atomicFetchAdd(addr stripes[idx].toDecLen, 1, ATOMIC_ACQ_REL)
@@ -1647,7 +1784,9 @@ proc enqueueDec(cell: Cell; desc: PNimTypeV2) {.inline.} =
       stripes[idx].toDec[slot][0] = cell
       atomicStoreN(addr stripes[idx].toDec[slot][1], desc, ATOMIC_RELEASE)
       break
-    collectCycles()
+    drainStripe(idx)
+    if gLocalRoots.len >= rootsThreshold:
+      collectCycles()
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   result = false
