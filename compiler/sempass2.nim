@@ -82,6 +82,7 @@ type
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
+    canRaiseDefect: bool # defects are deliberately omitted from `exc`
     isInnerProc: bool
     inEnforcedNoSideEffects: bool
     isArrayIndexing: bool
@@ -141,6 +142,11 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit
       createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
 
   createTypeBoundOps(tracked.graph, tracked.c, typ, info, tracked.c.idgen)
+  for kind in TTypeAttachedOp:
+    let op = getAttachedOp(tracked.graph, typ, kind)
+    if op != nil and sfNeverRaises notin op.flags:
+      tracked.canRaiseDefect = true
+      break
   if tracked.config.selectedGC == gcRefc or
       optSeqDestructors in tracked.config.globalOptions or
       tfHasAsgn in typ.flags:
@@ -495,7 +501,9 @@ proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
     if sameType(a.graph.excType(aa[i]), a.graph.excType(e)): return
 
   if e.typ != nil:
-    if not isDefectException(e.typ):
+    if isDefectException(e.typ):
+      a.canRaiseDefect = true
+    else:
       throws(a.exc, e, comesFrom)
 
 proc skipHiddenConv(n: PNode): PNode =
@@ -1115,6 +1123,32 @@ proc trackCall(tracked: PEffects; n: PNode) =
         markSideEffect(tracked, a, n.info)
   # p's effects are ours too:
   var a = n[0]
+  if a.kind == nkSym:
+    let s = a.sym
+    case s.magic
+    of mNone:
+      if {sfNeverRaises, sfImportc, sfCompilerProc} * s.flags == {} and
+          (sfSystemModule notin getModule(s).flags or
+           sfSystemRaisesDefect in s.flags):
+        tracked.canRaiseDefect = true
+    of mUnaryMinusI..mAbsI, mAddI..mPred:
+      if optOverflowCheck in tracked.currOptions:
+        tracked.canRaiseDefect = true
+    of mInc, mDec:
+      let typ = n[1].typ.skipTypes({tyGenericInst, tyAlias, tySink,
+                                    tyVar, tyLent, tyRange, tyDistinct})
+      if optOverflowCheck in tracked.currOptions and
+          typ.kind notin {tyUInt..tyUInt64}:
+        tracked.canRaiseDefect = true
+    of mDivU, mModU:
+      tracked.canRaiseDefect = true
+    of mAddF64..mDivF64:
+      if {optNaNCheck, optInfCheck} * tracked.currOptions != {}:
+        tracked.canRaiseDefect = true
+    else:
+      discard
+  else:
+    tracked.canRaiseDefect = true
   #if canRaise(a):
   #  echo "this can raise ", tracked.config $ n.info
   let op = a.typ
@@ -1411,6 +1445,7 @@ proc track(tracked: PEffects, n: PNode) =
     else:
       track(tracked, n[0])
   of nkRaiseStmt:
+    tracked.canRaiseDefect = true
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
@@ -1439,6 +1474,8 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0..<n.len: track(tracked, n[i])
     tracked.leftPartOfAsgn = oldLeftPartOfAsgn
   of nkCheckedFieldExpr:
+    if optFieldCheck in tracked.currOptions:
+      tracked.canRaiseDefect = true
     track(tracked, n[0])
     if tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features:
       checkFieldAccess(tracked.guards, n, tracked.config, strictCaseObjects in tracked.c.features)
@@ -1675,6 +1712,11 @@ proc track(tracked: PEffects, n: PNode) =
       if optStaticBoundsCheck in tracked.currOptions:
         checkRange(tracked, n[1], n.typ)
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+    if n.kind in {nkObjUpConv, nkObjDownConv}:
+      if optObjCheck in tracked.currOptions:
+        tracked.canRaiseDefect = true
+    elif optRangeCheck in tracked.currOptions:
+      tracked.canRaiseDefect = true
     if n.len == 1:
       track(tracked, n[0])
       if tracked.owner.kind != skMacro:
@@ -1689,6 +1731,8 @@ proc track(tracked: PEffects, n: PNode) =
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n.typ, n.info)
   of nkBracketExpr:
+    if optBoundsCheck in tracked.currOptions:
+      tracked.canRaiseDefect = true
     if optStaticBoundsCheck in tracked.currOptions and n.len == 2:
       if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
         checkBounds(tracked, n[0], n[1])
@@ -1869,6 +1913,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       incl res, sfNoInit
 
   track(t, body)
+
+  if t.exc.len == 0 and not t.canRaiseDefect:
+    s.incl sfNeverRaises
 
   if s.kind != skMacro:
     let params = s.typ.n
