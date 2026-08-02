@@ -2437,7 +2437,7 @@ when notJSnotNims and hasAlloc:
   {.push profiler: off.}
   include "system/mmdisp"
   {.pop.}
-  when hasThreadLocalAllocator and not defined(createNimRtl):
+  when hasThreadLocalAllocator:
     initThreadAllocator()
   {.push stackTrace: off, profiler: off.}
   when not defined(nimSeqsV2):
