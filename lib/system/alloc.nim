@@ -114,10 +114,6 @@ type
   PBigChunk = ptr BigChunk
   PSmallChunk = ptr SmallChunk
   SharedFreeLists = array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
-  RegionHandle = object
-    # Permanent chunk-owner identity and home of the remote-free queues.
-    sharedFreeLists: SharedFreeLists
-    sharedFreeListBigChunks: PBigChunk
   BaseChunk {.pure, inheritable.} = object
     prevSize: int        # size of previous chunk; for coalescing
                          # 0th bit == 1 if 'used
@@ -184,9 +180,14 @@ type
     when defined(nimTypeNames):
       allocCounter, deallocCounter: int
 
-  PooledRegion = object
+  RegionHandle = object
+    # Permanent chunk-owner identity and home of the remote-free queues.
+    sharedFreeLists: SharedFreeLists
+    sharedFreeListBigChunks: PBigChunk
+    # Keep the movable allocator state with its permanent owner while the
+    # owning thread is retired.
     region: MemRegion
-    next: ptr PooledRegion
+    next: ptr RegionHandle
 
 template smallChunkOverhead(): untyped = sizeof(SmallChunk)
 template bigChunkOverhead(): untyped = sizeof(BigChunk)
@@ -525,7 +526,7 @@ proc pageAddr(p: pointer): PChunk {.inline.} =
 
 when hasThreadLocalAllocator:
   var
-    regionPool: ptr PooledRegion
+    regionPool: ptr RegionHandle
     regionPoolLock: SysLock
   initSysLock(regionPoolLock)
 
@@ -540,32 +541,29 @@ when hasThreadLocalAllocator:
       return
 
     acquireSys(regionPoolLock)
-    let pooled = regionPool
-    if pooled != nil:
-      regionPool = pooled.next
+    let handle = regionPool
+    if handle != nil:
+      regionPool = handle.next
     releaseSys(regionPoolLock)
 
-    if pooled == nil:
-      let handle = cast[ptr RegionHandle](c_malloc(csize_t sizeof(RegionHandle)))
-      if handle == nil:
+    if handle == nil:
+      let newHandle = cast[ptr RegionHandle](c_malloc(csize_t sizeof(RegionHandle)))
+      if newHandle == nil:
         raiseOutOfMem()
-      zeroMem(handle, sizeof(RegionHandle))
-      a.regionHandle = handle
+      zeroMem(newHandle, sizeof(RegionHandle))
+      a.regionHandle = newHandle
     else:
-      moveMemRegion(addr a, addr pooled.region)
-      c_free(pooled)
+      moveMemRegion(addr a, addr handle.region)
 
   proc releaseMemRegion(a: var MemRegion) {.raises: [], gcsafe.} =
     if a.regionHandle == nil:
       return
-    let pooled = cast[ptr PooledRegion](c_malloc(csize_t sizeof(PooledRegion)))
-    if pooled == nil:
-      raiseOutOfMem()
-    moveMemRegion(addr pooled.region, addr a)
+    let handle = a.regionHandle
+    moveMemRegion(addr handle.region, addr a)
 
     acquireSys(regionPoolLock)
-    pooled.next = regionPool
-    regionPool = pooled
+    handle.next = regionPool
+    regionPool = handle
     releaseSys(regionPoolLock)
 
 when false:
