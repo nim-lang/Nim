@@ -149,6 +149,8 @@ type
       minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
       # List of available chunks per size class. Only one is expected to be active per class.
+    freeSmallCells: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
+      # Free cells made from the tail of a chunk that can contain only one cell.
     when defined(gcDestructors):
       sharedFreeLists: array[0..max(1, SmallChunkSize div MemAlign-1), ptr FreeCell]
         # When a thread frees a pointer it did not create, it must not adjust the counters.
@@ -462,6 +464,25 @@ proc isSmallChunk(c: PChunk): bool {.inline.} =
 proc chunkUnused(c: PChunk): bool {.inline.} =
   result = (c.prevSize and 1) == 0
 
+proc recycledCellSize(c: PSmallChunk): int {.inline.} =
+  ## The tail of a single-cell chunk is one cell of this size. It is derived
+  ## from the chunk rather than stored in the header so that SmallChunk keeps
+  ## its existing size and alignment.
+  result = SmallChunkSize - smallChunkOverhead() - c.chunkAlignOff.int - c.size
+  if result < sizeof(FreeCell) or result >= c.size:
+    result = 0
+
+proc recycledCell(c: PSmallChunk): pointer {.inline.} =
+  result = cast[pointer](cast[int](addr(c.data)) +% c.chunkAlignOff.int +% c.size)
+
+proc isRecycledCell(c: PSmallChunk; p: pointer): bool {.inline.} =
+  let size = recycledCellSize(c)
+  result = size != 0 and cast[int](p) >= cast[int](recycledCell(c))
+
+proc smallCellSize(c: PSmallChunk; p: pointer): int {.inline.} =
+  let recycledSize = recycledCellSize(c)
+  result = if recycledSize != 0 and isRecycledCell(c, p): recycledSize else: c.size
+
 iterator allObjects(m: var MemRegion): pointer {.inline.} =
   m.locked = true
   for s in elements(m.chunkStarts):
@@ -478,6 +499,10 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
           while a <% limit:
             yield cast[pointer](a)
             a = a +% size
+          when not defined(gcDestructors):
+            let recycledSize = recycledCellSize(c)
+            if recycledSize != 0 and cast[ptr FreeCell](recycledCell(c)).zeroField >% 1:
+              yield recycledCell(c)
         else:
           let c = cast[PBigChunk](c)
           # prev stores the aligned data pointer set during rawAlloc
@@ -907,10 +932,26 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
 
     # allocate a small block: for small chunks, we use only its next pointer
     let s = size div MemAlign
-    var c = a.freeSmallChunks[s]
-    if c != nil and c.chunkAlignOff != alignOff.int32:
-      c = nil
-    if c == nil:
+    var c: PSmallChunk
+    # Recycled cells are guaranteed to satisfy the default alignment. Keep
+    # explicitly over-aligned requests on the ordinary chunk path, where the
+    # alignment offset is part of the size-class lookup.
+    let recycled = if alignment <= MemAlign: a.freeSmallCells[s] else: nil
+    if recycled != nil:
+      # A single-cell chunk can provide its unused tail as one cell in a
+      # smaller size class. These cells are not part of a SmallChunk free list
+      # because the source chunk can also have its original cell available.
+      result = recycled
+      a.freeSmallCells[s] = recycled.next
+      c = cast[PSmallChunk](pageAddr(result))
+      sysAssert(c.owner == addr(a), "rawAlloc: recycled cell has no owner")
+      sysAssert(smallCellSize(c, result) == size, "rawAlloc: bad recycled cell")
+      dec(c.free, size)
+    else:
+      c = a.freeSmallChunks[s]
+      if c != nil and c.chunkAlignOff != alignOff.int32:
+        c = nil
+    if recycled == nil and c == nil:
       # There is no free chunk of the requested size available, we need a new one.
       c = getSmallChunk(a)
       # init all fields in case memory didn't get zeroed
@@ -924,6 +965,13 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
       sysAssert c.owner == addr(a), "rawAlloc: No owner set!"
       c.next = nil
       c.prev = nil
+      let recycledSize = recycledCellSize(c)
+      if recycledSize != 0:
+        let f = cast[ptr FreeCell](recycledCell(c))
+        f.next = a.freeSmallCells[recycledSize div MemAlign]
+        a.freeSmallCells[recycledSize div MemAlign] = f
+        when not defined(gcDestructors):
+          f.zeroField = 0
       # Shared cells are fetched here in case `c.size * 2 >= SmallChunkSize - smallChunkOverhead()`.
       # For those single cell chunks, we would otherwise have to allocate a new one almost every time.
       fetchSharedCells(c)
@@ -933,7 +981,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
         listAdd(a.freeSmallChunks[s], c)
       result = addr(c.data) +! alignOff
       sysAssert((cast[int](result) and (MemAlign-1)) == 0, "rawAlloc 4")
-    else:
+    elif recycled == nil:
       # There is a free chunk of the requested size available, use it.
       sysAssert(allocInv(a), "rawAlloc: begin c != nil")
       sysAssert c.next != c, "rawAlloc 5"
@@ -973,11 +1021,15 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
         sysAssert(allocInv(a), "rawAlloc: before listRemove test")
         listRemove(a.freeSmallChunks[s], c)
         sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
-               size == 0, "rawAlloc 21")
+    let resultChunk = cast[PSmallChunk](pageAddr(result))
+    if isRecycledCell(resultChunk, result):
+      sysAssert(smallCellSize(resultChunk, result) == size, "rawAlloc 21 recycled")
+    else:
+      sysAssert(((cast[int](result) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
+                 size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
-    trackSize(c.size)
+    trackSize(size)
   else:
     when defined(gcDestructors):
       freeDeferredObjects(a)
@@ -1026,7 +1078,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   if isSmallChunk(c):
     # `p` is within a small chunk:
     var c = cast[PSmallChunk](c)
-    let s = c.size
+    let s = smallCellSize(c, p)
+    let recycled = isRecycledCell(c, p)
     #       ^ We might access thread foreign storage here.
     # The other thread cannot possibly free this block as it's still alive.
     var f = cast[ptr FreeCell](p)
@@ -1035,8 +1088,11 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       dec a.occ, s
       untrackSize(s)
       sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
-      sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
-                s == 0, "rawDealloc 3")
+      if recycled:
+        sysAssert(p == recycledCell(c), "rawDealloc 3 recycled")
+      else:
+        sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
+                  s == 0, "rawDealloc 3")
       when not defined(gcDestructors):
         #echo("setting to nil: ", $cast[int](addr(f.zeroField)))
         sysAssert(f.zeroField != 0, "rawDealloc 1")
@@ -1057,6 +1113,12 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         activeChunk.freeList = f # lend the cell
         inc(activeChunk.free, s) # By not adjusting the current chunk's capacity it is prevented from being freed
         inc(activeChunk.foreignCells) # The cell is now considered foreign from the perspective of the active chunk
+      elif recycled:
+        # The source chunk can also have its original cell available, so a
+        # recycled tail cell is kept independently of its source chunk list.
+        f.next = a.freeSmallCells[s div MemAlign]
+        a.freeSmallCells[s div MemAlign] = f
+        inc(c.free, s)
       else:
         f.next = c.freeList
         c.freeList = f
@@ -1094,8 +1156,11 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
 
       when defined(gcDestructors):
         addToSharedFreeList(c, f, s div MemAlign)
-    sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
-               s == 0, "rawDealloc 2")
+    if recycled:
+      sysAssert(p == recycledCell(c), "rawDealloc 2 recycled")
+    else:
+      sysAssert(((cast[int](p) and PageMask) - smallChunkOverhead() - c.chunkAlignOff) %%
+                 s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
@@ -1120,7 +1185,10 @@ when not defined(gcDestructors):
           var c = cast[PSmallChunk](c)
           var offset = (cast[int](p) and (PageSize-1)) -%
                       smallChunkOverhead()
-          if c.acc.int >% offset:
+          let recycledSize = recycledCellSize(c)
+          if recycledSize != 0 and p == recycledCell(c):
+            result = cast[ptr FreeCell](p).zeroField >% 1
+          elif c.acc.int >% offset:
             let ao = c.chunkAlignOff.int
             result = (offset >= ao) and
               ((offset -% ao) %% c.size == 0) and
@@ -1144,7 +1212,15 @@ when not defined(gcDestructors):
           var offset = (cast[int](p) and (PageSize-1)) -%
                       smallChunkOverhead()
           let ao = c.chunkAlignOff.int
-          if c.acc.int >% offset and offset >= ao:
+          let recycledSize = recycledCellSize(c)
+          let recycledStart = cast[int](recycledCell(c))
+          if recycledSize != 0 and cast[int](p) >= recycledStart and
+              cast[int](p) <% recycledStart +% recycledSize:
+            let d = cast[ptr FreeCell](recycledStart)
+            if d.zeroField >% 1:
+              result = d
+              sysAssert isAllocatedPtr(a, result), " result wrong recycled pointer!"
+          elif c.acc.int >% offset and offset >= ao:
             sysAssert(cast[int](addr(c.data)) +% offset ==
                       cast[int](p), "offset is not what you think it is")
             var d = cast[ptr FreeCell](cast[int](addr(c.data)) +%
@@ -1179,14 +1255,18 @@ proc ptrSize(p: pointer): int =
     var x = cast[pointer](cast[int](p) -% sizeof(FreeCell))
     var c = pageAddr(p)
     sysAssert(not chunkUnused(c), "ptrSize")
-    result = c.size -% sizeof(FreeCell)
-    if not isSmallChunk(c):
+    if isSmallChunk(c):
+      result = smallCellSize(cast[PSmallChunk](c), x) -% sizeof(FreeCell)
+    else:
+      result = c.size -% sizeof(FreeCell)
       dec result, bigChunkOverhead()
   else:
     var c = pageAddr(p)
     sysAssert(not chunkUnused(c), "ptrSize")
-    result = c.size
-    if not isSmallChunk(c):
+    if isSmallChunk(c):
+      result = smallCellSize(cast[PSmallChunk](c), p)
+    else:
+      result = c.size
       dec result, bigChunkOverhead()
 
 proc alloc(allocator: var MemRegion, size: Natural): pointer {.gcsafe.} =
