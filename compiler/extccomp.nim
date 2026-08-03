@@ -1006,49 +1006,47 @@ proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
     p.close()
     if exitCode != 0:
       return false
-  except:
+  except OSError, IOError:
     return false
 
   # Read the JSON build instructions to get the compile/link commands
-  let jsonFile = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
-  if not fileExists(jsonFile):
-    return false
-
-  # Parse JSON: compile = [[file, cmd], ...], linkcmd = string
   let jdoc =
     try:
+      let jsonFile = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
+      if not fileExists(jsonFile):
+        return false
+
       parseFile(jsonFile.string)
-    except:
+    except IOError, OSError, ValueError:
       return false
 
   var cmds: seq[(string, string)] = @[]
-  var linkcmd: string = ""
 
-  if jdoc.kind == JObject:
-    # Extract compile commands
-    if "compile" in jdoc:
-      let jcompile = jdoc["compile"]
-      if jcompile.kind == JArray:
-        for jitem in jcompile:
-          if jitem.kind == JArray and jitem.len == 2 and jitem[0].kind == JString and
-              jitem[1].kind == JString:
-            cmds.add((jitem[0].str, jitem[1].str))
-    # Extract link command
-    if "linkcmd" in jdoc and jdoc["linkcmd"].kind == JString:
-      linkcmd = jdoc["linkcmd"].str
+  for jitem in jdoc{"compile"}.getElems():
+    if jitem.kind == JArray and jitem.len == 2 and jitem[0].kind == JString and
+        jitem[1].kind == JString:
+      cmds.add((jitem[0].str, jitem[1].str))
+  let linkcmd = jdoc{"linkcmd"}.getStr()
 
   if cmds.len > 0:
     var prettyCmds: TStringSeq = default(TStringSeq)
     for cmd in cmds:
-      prettyCmds.add displayProgressCC(conf, cmd[0], cmd[1])
+      try:
+        prettyCmds.add displayProgressCC(conf, cmd[0], cmd[1])
+      except ValueError:
+        raiseAssert "Fix progressCC"
     let prettyCb = proc(idx: int) =
       writePrettyCmdsStderr(prettyCmds[idx])
 
-    conf.execCmdsInParallel(cmds.mapIt(it[1]), prettyCb)
+    {.cast(raises: []).}: # TODO raises Exception
+      conf.execCmdsInParallel(cmds.mapIt(it[1]), prettyCb)
 
   # Run link command
   if linkcmd.len > 0:
-    preventLinkCmdMaxCmdLen(conf, linkcmd)
+    try:
+      preventLinkCmdMaxCmdLen(conf, linkcmd)
+    except IOError, OSError, KeyError, ERecoverableError, ValueError:
+      return false
 
   true
 
