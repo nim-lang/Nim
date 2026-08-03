@@ -976,8 +976,9 @@ proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
   ## generated JSON build instructions. This reclaims the Nim compiler's memory
   ## before proceeding with C compilation.
   let cmdline = os.commandLineParams()
-  # Build subprocess args: skip the command token (c/cpp/etc),
-  # insert --compileOnly --genScript before the project file
+  # Build subprocess args: insert --compileOnly --genScript before the command /
+  # project file and all other options then skip everything after the project
+  # file (since these are meant for running the application with `-r`)
   var subArgs = @["--compileOnly", "--genScript"]
   var projectFileAdded = false
   var commandAdded = false
@@ -988,9 +989,7 @@ proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
     subArgs.add a
 
     if a[0] != '-':
-      # This must be the command (`c`, `cpp` etc)
       if commandAdded:
-        # This must be the project name - we're done for now
         projectFileAdded = true
         break
       else:
@@ -1001,7 +1000,7 @@ proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
   # Spawn subprocess - the subprocess generates C files + JSON build instructions
   let nimExe = getAppFilename()
   try:
-    let p = startProcess(nimExe, args = subArgs, options = {})
+    let p = startProcess(nimExe, args = subArgs, options = {poParentStreams})
     let exitCode = p.waitForExit()
     p.close()
     if exitCode != 0:
