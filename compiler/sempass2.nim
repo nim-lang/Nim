@@ -199,6 +199,23 @@ proc shouldWarnRangeConversion(conf: ConfigRef; info: TLineInfo; formalType, arg
   else:
     result = false
 
+proc conversionCanRaiseDefect(conf: ConfigRef; destType, sourceType: PType): bool =
+  ## Keep this in sync with the range checks introduced by `transformConv`.
+  let
+    dest = destType.skipTypes(abstractVarRange)
+    source = sourceType.skipTypes(abstractVarRange)
+  case dest.kind
+  of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
+    if not source.isOrdinalType:
+      result = dest.kind in tyInt..tyInt64
+    else:
+      result = firstOrd(conf, destType) > firstOrd(conf, sourceType) or
+        lastOrd(conf, sourceType) > lastOrd(conf, destType)
+  of tyFloat..tyFloat128:
+    result = destType.skipTypes(abstractVar).kind == tyRange
+  else:
+    result = false
+
 proc lockLocations(a: PEffects; pragma: PNode) =
   if pragma.kind != nkExprColonExpr:
     localError(a.config, pragma.info, "locks pragma without argument")
@@ -1675,6 +1692,9 @@ proc track(tracked: PEffects, n: PNode) =
       if tracked.owner.kind != skMacro:
         createTypeBoundOps(tracked, n.typ, n.info)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if optRangeCheck in tracked.currOptions and
+        conversionCanRaiseDefect(tracked.config, n.typ, n[1].typ):
+      tracked.canRaiseDefect = true
     if n.kind in {nkHiddenStdConv, nkHiddenSubConv} and
         n.typ.skipTypes(abstractInst).kind == tyCstring and
         not allowCStringConv(n[1]):
