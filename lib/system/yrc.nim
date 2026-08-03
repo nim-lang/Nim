@@ -1272,12 +1272,26 @@ proc demoteTouchedDead(j: var GcEnv; cap: ptr CaptureBufs) =
       # its out-edges still count toward its targets' rc. If that pruned
       # cell is itself dead (promoted while live, died later this epoch),
       # its phantom references inflate unrelated SCCs' external counts.
-      # Keeping ONE member of every survivor registered guarantees
-      # re-examination until the epoch advances. Cheap in practice:
-      # pruning keeps the captured set small. RC-dead stamped targets are
-      # additionally queued in prunedTgt (roots bypass stamps).
+      # Keeping ONE member of every survivor examinable is what catches
+      # that. RC-dead stamped targets are additionally queued in prunedTgt
+      # (roots bypass stamps).
+      #
+      # A SUSPECT, not a root: the epoch advance is the only thing that can
+      # ever settle these. Re-examining a survivor without tracing the
+      # pruned cell reproduces the same verdict, so as roots they are
+      # captured, survive, and re-register every single collection — a loop
+      # that cannot converge and that grows the captured set without bound
+      # in exactly the workloads pruning is meant to speed up (on the
+      # generational bench, 56% of all captures and 84% of the repeats).
+      # The suspect buffer keeps the cell just as findable: same
+      # inRootsFlag ownership, forced live by computeDeadness and refused
+      # by free while listed, spilled into the root set by the epoch
+      # advance, by thread exit and by GC_fullCollect (which loops until
+      # quiet). Dropping the registration ENTIRELY instead is unsound and
+      # leaks: a survivor that is neither root nor suspect is invisible
+      # forever, and no later full collect can find it again.
       let m = cap.sccMembers.d[cap.sccs.d[s].memStart]
-      registerLocal(cap.recs.d[m].cell, cap.recs.d[m].desc)
+      rememberGenSuspect(cap.recs.d[m].cell, cap.recs.d[m].desc, addr gCtx)
 
 proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
   ## Demote every dead SCC that a mutator touched during capture: dirty via
