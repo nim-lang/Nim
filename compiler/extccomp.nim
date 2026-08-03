@@ -970,85 +970,6 @@ proc preventLinkCmdMaxCmdLen(conf: ConfigRef, linkCmd: string) =
   else:
     execLinkCmd(conf, linkCmd)
 
-proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
-  ## Spawns a separate nim process with --compileOnly --genScript to perform
-  ## Nim-to-C code generation, then runs the C compile/link steps from the
-  ## generated JSON build instructions. This reclaims the Nim compiler's memory
-  ## before proceeding with C compilation.
-  let cmdline = os.commandLineParams()
-  # Build subprocess args: insert --compileOnly --genScript before the command /
-  # project file and all other options then skip everything after the project
-  # file (since these are meant for running the application with `-r`)
-  var subArgs = @["--compileOnly", "--genScript"]
-  var projectFileAdded = false
-  var commandAdded = false
-  for a in cmdline:
-    if a.len == 0:
-      continue
-
-    subArgs.add a
-
-    if a[0] != '-':
-      if commandAdded:
-        projectFileAdded = true
-        break
-      else:
-        commandAdded = true
-
-  doAssert projectFileAdded, "Could not find project file in command line, bug?"
-
-  # Spawn subprocess - the subprocess generates C files + JSON build instructions
-  let nimExe = getAppFilename()
-  try:
-    let p = startProcess(nimExe, args = subArgs, options = {poParentStreams})
-    let exitCode = p.waitForExit()
-    p.close()
-    if exitCode != 0:
-      return false
-  except OSError, IOError:
-    return false
-
-  # Read the JSON build instructions to get the compile/link commands
-  let jdoc =
-    try:
-      let jsonFile = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
-      if not fileExists(jsonFile):
-        return false
-
-      parseFile(jsonFile.string)
-    except IOError, OSError, ValueError:
-      return false
-
-  var cmds: seq[(string, string)] = @[]
-
-  for jitem in jdoc{"compile"}.getElems():
-    if jitem.kind == JArray and jitem.len == 2 and jitem[0].kind == JString and
-        jitem[1].kind == JString:
-      cmds.add((jitem[0].str, jitem[1].str))
-  let linkcmd = jdoc{"linkcmd"}.getStr()
-
-  if cmds.len > 0:
-    var prettyCmds: TStringSeq = default(TStringSeq)
-    for cmd in cmds:
-      try:
-        prettyCmds.add displayProgressCC(conf, cmd[0], cmd[1])
-      except ValueError:
-        raiseAssert "Fix progressCC"
-    let prettyCb = proc(idx: int) =
-      writePrettyCmdsStderr(prettyCmds[idx])
-
-    {.cast(raises: []).}: # TODO raises Exception
-      conf.execCmdsInParallel(cmds.mapIt(it[1]), prettyCb)
-
-  # Run link command
-  if linkcmd.len > 0:
-    try:
-      preventLinkCmdMaxCmdLen(conf, linkcmd)
-    except IOError, OSError, KeyError, ERecoverableError, ValueError:
-      return false
-
-  true
-
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string = ""
@@ -1243,6 +1164,49 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   execCmdsInParallel(conf, cmds, prettyCb)
   preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
+
+proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
+  ## Spawns a separate nim process with --compileOnlyto perform
+  ## Nim-to-C code generation, then runs the C compile/link steps from the
+  ## generated JSON build instructions. This reclaims the Nim compiler's memory
+  ## before proceeding with C compilation.
+
+  # The subprocess args consist of the existing args and options up to the
+  # project file with `--compileOnly` injected first - anything after the project
+  # file is meant for running the project (`-r`) so we should have exactly two
+  # non-option arguments
+  var subArgs = @["--compileOnly"]
+  var projectFileAdded = false
+  var commandAdded = false
+  for a in os.commandLineParams():
+    if a.len == 0:
+      continue
+
+    subArgs.add a
+
+    if a[0] != '-':
+      if commandAdded:
+        projectFileAdded = true
+        break
+      else:
+        commandAdded = true
+
+  doAssert projectFileAdded, "Could not find project file in command line, bug?"
+
+  # Spawn subprocess - the subprocess generates C files + JSON build instructions
+  let nimExe = getAppFilename()
+  try:
+    let p = startProcess(nimExe, args = subArgs, options = {poParentStreams})
+    let exitCode = p.waitForExit()
+    p.close()
+    if exitCode != 0:
+      return false
+  except OSError, IOError:
+    return false
+
+  runJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile)
+
+  true
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   result = ""

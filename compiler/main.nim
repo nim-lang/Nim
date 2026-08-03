@@ -159,8 +159,8 @@ proc commandCompileToC(graph: ModuleGraph) =
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
   # Spawn a separate nim process for code generation to reclaim memory
-  # before C compilation. The subprocess runs with --compileOnly --genScript,
-  # generates the C code, and the script is executed here.
+  # before C compilation. The subprocess runs with --compileOnly, generates the
+  # C code, and the script is executed here.
   if optSpawnCodegen in conf.globalOptions and optCompileOnly notin conf.globalOptions:
     if extccomp.spawnCodegenSubprocess(conf):
       return  # Subprocess handled everything; skip in-process compilation
