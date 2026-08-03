@@ -95,7 +95,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     release(t.lock)
 
 template withValue*[A, B](t: var SharedTable[A, B], key: A,
-                          value, body1, body2: untyped) =
+                          value, body1, body2: untyped): untyped =
   ## Retrieves the value at `t[key]`.
   ## `value` can be modified in the scope of the `withValue` call.
   runnableExamples:
