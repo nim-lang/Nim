@@ -410,9 +410,15 @@ iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
   g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
 
-proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
-  let op = getAttachedOp(g, t, attachedAsgn)
+proc hasDisabledOp(g: ModuleGraph; t: PType; kind: TTypeAttachedOp): bool =
+  let op = getAttachedOp(g, t, kind)
   result = op != nil and sfError in op.flags
+
+proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
+  result = hasDisabledOp(g, t, attachedAsgn)
+
+proc hasDisabledDup*(g: ModuleGraph; t: PType): bool =
+  result = hasDisabledOp(g, t, attachedDup)
 
 proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
   for k in low(TTypeAttachedOp)..high(TTypeAttachedOp):
