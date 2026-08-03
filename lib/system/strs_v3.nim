@@ -514,10 +514,25 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: bool) =
         s.more.fullLen = newLen
         s.more.data[newLen] = '\0'
       else:
-        # shared or static block: detach and go back to inline
+        # shared or static block: detach from the shared/static buffer.
         if newLen <= 0:
           nimDestroyStrV1(s)
           s.bytes = 0
+        elif newLen > PayloadSize:
+          # Still too long for inline: detach into a fresh unique heap block
+          # rather than overflowing the inline overlay.
+          let old = s.more
+          let p = cast[ptr LongString](alloc(LongStringDataOffset + newLen + 1))
+          p.rc = 1
+          p.fullLen = newLen
+          p.capImpl = newLen
+          copyMem(addr p.data[0], addr old.data[0], newLen)
+          p.data[newLen] = '\0'
+          if slen == HeapSlen and atomicSubFetch(old.rc, 1) == 0:
+            dealloc(old)
+          s.more = p
+          setSSLen(s, HeapSlen)
+          copyMem(inlinePtr(s), addr p.data[0], AlwaysAvail)  # sync hot prefix
         else:
           let old = s.more
           let inl = inlinePtr(s)

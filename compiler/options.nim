@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "29"
+  icFormatVersion* = "30"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -140,6 +140,7 @@ type                          # please make sure we have under 32 options
     optDocRaw                 # for documentation: Don't render markdown for JSON output
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optGenBif                 # generate semantic BIF alongside ordinary code generation
     optWithinConfigSystem     # we still compile within the configuration system
 
   TGlobalOptions* = set[TGlobalOption]
@@ -205,6 +206,7 @@ type
     cmdNifC  # generate C code from NIF files
     cmdIc  # generate .build.nif for nifmake
     cmdIcConfig # `nim ic`'s precompiled-config producer (writes ic_config.cfg.nif)
+    cmdTrack # `nim track --def/--usages`: IC frontend build + NIF scan for IDE queries
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,

@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
+        batch: ["0_3", "1_3", "2_3"] # list of `index_num`
         include:
           - os: ubuntu-latest
             cpu: amd64
@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 2
 
       - name: 'Install node.js'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
 

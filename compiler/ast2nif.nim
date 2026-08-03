@@ -118,12 +118,23 @@ proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
 
 type
   LineInfoWriter = object
-    fileK: FileIndex # remember the current pair, even faster than the hash table
+    # `fileK`/`fileV` cache the most recently resolved (FileIndex -> FileId) pair,
+    # faster than the hash table. `fileK` MUST be constructed at an invalid
+    # sentinel (see `newLineInfoWriter`), never zero: `FileIndex(0)` is a real file
+    # index, and `fileV` zero-inits to `FileId(0)` == `NoFile`, so a zero `fileK`
+    # would make the first lookup of the module-at-index-0 falsely hit this cache
+    # and return `NoFile` — silently dropping ALL of that module's line info.
+    fileK: FileIndex
     fileV: FileId
     tab: Table[FileIndex, FileId]
     revTab: Table[FileId, FileIndex] # reverse mapping for oldLineInfo
     man: LineInfoManager
     config: ConfigRef
+
+proc newLineInfoWriter(config: ConfigRef): LineInfoWriter =
+  # `fileK` starts invalid so the one-entry cache never collides with a real
+  # `FileIndex(0)` (see the type's doc comment).
+  LineInfoWriter(config: config, fileK: astli.InvalidFileIdx)
 
 proc get(w: var LineInfoWriter; key: FileIndex): FileId =
   if w.fileK == key:
@@ -211,9 +222,8 @@ type
     decodedFileIndices: HashSet[FileIndex]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
-    writtenTypes: seq[PType]  # types sealed during this emit; under ideActive
-    writtenSyms: seq[PSym]    # they are reset to Complete afterwards so nimsuggest
-                              # can keep mutating its still-live query targets
+    writtenTypes: seq[PType]  # types sealed during a non-owning emit
+    writtenSyms: seq[PSym]    # reset afterwards so their owner can keep using them
     writtenPackages: HashSet[string]
     depSuffixes: HashSet[string]  # module suffixes already emitted as `(import ...)` deps
     emittedBackendTypes: HashSet[(int32, int32)]  # backend-local types already def'd this
@@ -462,6 +472,9 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false)
 proc writeType(w: var Writer; dest: var IcBuilder; typ: PType)
 proc writeSym(w: var Writer; dest: var IcBuilder; sym: PSym)
 
+func restoresWrittenState(config: ConfigRef): bool {.inline.} =
+  config.ideActive or optGenBif in config.globalOptions
+
 proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
   dest.addIdent toNifTag(loc.k)
   dest.addIdent toNifTag(loc.storage)
@@ -558,7 +571,7 @@ proc writeType(w: var Writer; dest: var IcBuilder; typ: PType) =
     # module (or nowhere), leaving dangling references (e.g. `symbol has no
     # offset` for a `pointer` type whose itemId.module drifted away).
     typ.state = Sealed
-    if w.infos.config.ideActive: w.writtenTypes.add typ
+    if restoresWrittenState(w.infos.config): w.writtenTypes.add typ
     writeTypeDef(w, dest, typ)
   else:
     dest.addSymUse pool.syms.getOrIncl(nifTypeName(w, typ)), NoLineInfo
@@ -723,7 +736,7 @@ proc writeSym(w: var Writer; dest: var IcBuilder; sym: PSym) =
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   elif shouldWriteSymDef(w, sym):
     sym.state = Sealed
-    if w.infos.config.ideActive: w.writtenSyms.add sym
+    if restoresWrittenState(w.infos.config): w.writtenSyms.add sym
     writeSymDef(w, dest, sym)
   else:
     # NIF has direct support for symbol references so we don't need to use a tag here,
@@ -758,7 +771,7 @@ proc writeSymNode(w: var Writer; dest: var IcBuilder; n: PNode; sym: PSym) =
     else: shouldWriteSymDef(w, sym)
   if wantDef:
     if not sym.itemId.isBackendMinted and not isField: sym.state = Sealed
-    if w.infos.config.ideActive: w.writtenSyms.add sym
+    if restoresWrittenState(w.infos.config): w.writtenSyms.add sym
     if nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, nodeTyp)
@@ -883,6 +896,16 @@ var reexpModTag = registerTag("reexpmod")
 var offerTag = registerTag("offer")
 var typeOfferTag = registerTag("toffer")
 var modulesrcTag = registerTag("modulesrc")
+var expansionTag = registerTag("expansion")
+# `(sig <symUse @src>)*` — signature occurrences (parameter names and the symbols
+# in their type expressions). A semchecked routine's params are dropped from the
+# serialized AST (`skipParams`) and reconstructed from `s.typ`, which holds the
+# RESOLVED type — so the source parameter names and the written type names (e.g.
+# an alias `Stream`, not `StreamObj`) carry no position in the module body. Like
+# the `expansion` records, these are teed into the `deps` side-channel: the loader
+# skips the tag, but `idetools` scans every Symbol token, so goto-def / find-usages
+# work on signatures.
+var sigTag = registerTag("sig")
 # `(unusedid <int>)` — the module's first FREE itemId after the frontend
 # (`.s.bif`) or the lower stage (`.t.bif`). The backend seeds its per-module
 # sym/type counters here so freshly-minted backend ids (closure envs, RTTI
@@ -923,6 +946,51 @@ proc registerNifAstTags*() =
   offerTag = registerTag("offer")
   typeOfferTag = registerTag("toffer")
   modulesrcTag = registerTag("modulesrc")
+  expansionTag = registerTag("expansion")
+  sigTag = registerTag("sig")
+
+proc emitSigOccurrences(w: var Writer; n: PNode) =
+  ## Record every `nkSym` in a routine-signature subtree (parameter names and the
+  ## symbols inside their type expressions, incl. the return type) as a `(sig ...)`
+  ## occurrence in the `deps` side-channel, carrying the SOURCE position. Called on
+  ## the params AST that `skipParams` is about to drop, so tooling keeps a
+  ## positioned token for each signature symbol without changing the module body
+  ## the loader / backend actually consume.
+  if n == nil: return
+  if n.kind == nkSym:
+    w.deps.addParLe sigTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(n.sym)), trLineInfo(w, n.info)
+    w.deps.addParRi
+  else:
+    for i in 0 ..< n.safeLen: emitSigOccurrences(w, n[i])
+
+proc emitFwdDecl(w: var Writer; n: PNode; sym: PSym) =
+  ## A routine's forward declaration (`proc foo(...)` with no body, later followed
+  ## by `proc foo(...) = ...`) is a distinct top-level node, but the routine has a
+  ## SINGLE `sdef`, emitted at the IMPLEMENTATION site (`sym.infoImpl`) — so the
+  ## prototype's own position would otherwise vanish from the `.bif`. Tee it into
+  ## the `deps` side-channel as a POSITIONED `(sig @proto <symDef>)`: the loader
+  ## skips the `sig` tag (processTopLevel), but `idetools.scanDef` finds the
+  ## `SymbolDef` and reports the enclosing tag's line info — so a `--def` on a
+  ## forward-declared proc returns TWO results (prototype + implementation), which
+  ## is desired. Safe against symbol resolution: the loader rebuilds its name->pos
+  ## table from the CONTENT body (`buildPosIndex`, written after `deps`, last write
+  ## wins) so the real `sdef` still resolves; the extra on-disk index entry has no
+  ## resolution consumer. The prototype's signature symbols (param names and the
+  ## symbols in their type expressions) are teed too, positioned at the prototype,
+  ## exactly as `emitSigOccurrences` records them for the implementation.
+  # The `SymbolDef` carries the prototype line info too (not just the enclosing
+  # tag): `scanDef` reads the position from the tag, but pass-1 `findPos` matches
+  # a token by its OWN line info, so this is what makes a query issued AT the
+  # prototype position resolve the symbol.
+  let protoInfo = trLineInfo(w, n[namePos].info)
+  let sid = pool.syms.getOrIncl(w.toNifSymName(sym))
+  w.deps.addParLe sigTag, protoInfo
+  w.deps.addSymDef sid, protoInfo   # scanDef reports this as a def
+  w.deps.addSymUse sid, protoInfo   # findPos (pass 1) / scanUses match a Symbol use
+  w.deps.addParRi
+  if sfFromGeneric notin sym.flagsImpl and paramsPos < n.safeLen:
+    emitSigOccurrences(w, n[paramsPos])
 
 proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
   if n == nil:
@@ -997,7 +1065,16 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
       # For top-level named routines (not forAst), just write the symbol.
       # The full AST will be stored in the symbol's sdef.
       if not forAst and n[namePos].kind == nkSym:
-        writeSym(w, dest, n[namePos].sym)
+        let s = n[namePos].sym
+        writeSym(w, dest, s)
+        # A forward declaration is a SECOND top-level node for `s` (body-less here;
+        # the real body — and the lone sdef — lands at the implementation). Tee the
+        # prototype's own position so goto-def / find-usages surface it as well.
+        let impl = s.astImpl
+        if n.safeLen > bodyPos and n[bodyPos].kind == nkEmpty and
+           impl != nil and impl != n and
+           impl.safeLen > bodyPos and impl[bodyPos].kind != nkEmpty:
+          emitFwdDecl(w, n, s)
       else:
         # Writing AST inside sdef or anonymous proc: write full structure
         inc w.inProc
@@ -1018,6 +1095,13 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
         w.withNode dest, ast:
           for i in 0 ..< ast.len:
             if i == paramsPos and skipParams:
+              # The dropped params still hold the source positions and the WRITTEN
+              # type names (before alias/type resolution); tee them into the `deps`
+              # side-channel for goto-def / find-usages (see `emitSigOccurrences`).
+              # Skip generic INSTANCES: their param syms are instance-specific, and
+              # the generic's own signature already records the source occurrences.
+              if sfFromGeneric notin n[namePos].sym.flagsImpl:
+                emitSigOccurrences(w, ast[i])
               # Parameters are redundant with s.typ.n (and re-emitting their syms
               # is dangerous for generic instances — we do not adapt the symbols
               # properly). Emit an `nkEmpty` placeholder rather than a dot token:
@@ -1548,8 +1632,9 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                                               genericParamsCount: int]] = @[];
                      typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[];
                      resolvedImportDeps: seq[FileIndex] = @[];
-                     firstUnusedId: int32 = 0) =
-  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
+                     firstUnusedId: int32 = 0;
+                     expansions: seq[(PSym, TLineInfo)] = @[]) =
+  var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   var content = newIcBuilder(300)
 
@@ -1626,6 +1711,17 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   w.deps.addStrLit toFullPath(config, FileIndex(thisModule))
   w.deps.addParRi
 
+  # Template/macro expansions leave no trace in the sem'checked AST, so record
+  # each as `(expansion <symUse @call-site>)`: a `Symbol` use of the expanded
+  # routine carrying the ORIGINAL call-site line info. The loader skips the tag
+  # (processTopLevel), but `idetools` scans every `Symbol` token in the buffer,
+  # so this restores "find usages / goto-def" for templates and macros.
+  for (sym, info) in expansions:
+    if sym == nil: continue
+    w.deps.addParLe expansionTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), trLineInfo(w, info)
+    w.deps.addParRi
+
   # Generic TYPE-instance OFFERS: the `tyGenericInst` types this module created
   # (e.g. `HashArray[8192, Gwei]`). Non-IC keeps ONE such instance in the global
   # `typeInstCache`, so a structural bound computed at the first instantiation
@@ -1694,17 +1790,15 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
       let s = op.sym
       if s.state != Sealed:
         s.state = Sealed
-        if config.ideActive: w.writtenSyms.add s
+        if restoresWrittenState(config): w.writtenSyms.add s
         writeSymDef w, dest, s
 
   dest.addParRi()
 
-  # nimsuggest reuses these symbols/types as live, mutable query targets (sem
-  # re-runs, usage tracking, flag updates). Sealing is only needed for intra-emit
-  # dedup; once the NIF is built, un-seal so suggest can keep mutating them
-  # (matches `loadedState` loading Complete under ideActive). The `Sealed` guard
-  # stays in force for a real `nim m`/`nim nifc` build.
-  if config.ideActive:
+  # Nimsuggest and normal code generation reuse these symbols/types as live,
+  # mutable targets. Sealing is only needed for intra-emit dedup; once the NIF
+  # is built, un-seal them. The guard stays in force for a real `nim m` build.
+  if restoresWrittenState(config):
     for s in w.writtenSyms:
       if s.state == Sealed: s.state = Complete
     for t in w.writtenTypes:
@@ -1824,7 +1918,7 @@ type
 
 proc createDecodeContext*(config: ConfigRef; cache: IdentCache): DecodeContext =
   ## Supposed to be a global variable
-  result = DecodeContext(infos: LineInfoWriter(config: config), cache: cache)
+  result = DecodeContext(infos: newLineInfoWriter(config), cache: cache)
 
 var loadStatsInit {.threadvar.}: int          # 0=unknown 1=on 2=off
 var statsCtxPtr {.threadvar.}: ptr DecodeContext
@@ -3251,6 +3345,14 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         # self-identification record for the standalone include-graph scanner;
         # not needed by the loader, just skip past it.
         skip cur
+      elif tagIs(cur, "expansion"):
+        # template/macro expansion usage record for tooling (`idetools` scans it
+        # as a `Symbol` use); the loader itself needs nothing from it.
+        skip cur
+      elif tagIs(cur, "sig"):
+        # signature-symbol occurrence record for tooling (`idetools` scans it as a
+        # `Symbol` use); the loader itself needs nothing from it.
+        skip cur
       elif tagIs(cur, "implementation"):
         cont = false
       elif LoadFullAst in flags or tagIs(cur, toNifTag(nkLetSection)) or
@@ -3312,7 +3414,7 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
   # types/globals/params/locals stay Complete and emit real defs (the `.t.nif` is
   # the sole source the cg stage reads — no `.s.nif` fallback for them).
   sealLoadedRoutines(c)
-  var w = Writer(infos: LineInfoWriter(config: config), currentModule: thisModule)
+  var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   w.inProc = 1
   w.lowering = true
@@ -3438,4 +3540,3 @@ when isMainModule:
   echo obj.name, " ", obj.module, " ", obj.count
   let objb = parseSymName("abcdef.0121")
   echo objb.name, " ", objb.module, " ", objb.count
-

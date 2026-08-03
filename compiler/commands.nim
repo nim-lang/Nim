@@ -509,6 +509,7 @@ proc parseCommand*(command: string): Command =
   of "nifc": cmdNifC  # generate C from NIF files
   of "ic": cmdIc  # generate .build.nif for nifmake
   of "icconfig": cmdIcConfig  # produce the precompiled config artifact
+  of "track": cmdTrack  # IDE goto-def / find-usages over `nim ic`'s NIF output
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
@@ -825,6 +826,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "expected nim|cpp but found " & arg)
   of "compress":
     conf.globalOptions.incl optCompress
+  of "genbif":
+    processOnOffSwitchG(conf, {optGenBif}, arg, pass, info)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir
@@ -1324,8 +1327,16 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
       # support UNIX style filenames everywhere for portable build scripts:
       if config.projectName.len == 0:
         config.projectName = unixToNativePath(p.key)
-      config.arguments = cmdLineRest(p)
-      result = true
+      if config.cmd == cmdTrack:
+        # `nim track PROJ --def:...`: unlike a normal command (where everything
+        # after the project file is passed to the compiled program), `track`
+        # accepts its IDE-query switches AFTER the project — the natural,
+        # nimsuggest-like invocation form. So don't swallow the rest of the line
+        # into `arguments`; keep parsing the remaining tokens as switches.
+        result = false
+      else:
+        config.arguments = cmdLineRest(p)
+        result = true
     else:
       result = false
   inc argsCount

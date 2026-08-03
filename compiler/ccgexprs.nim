@@ -1907,7 +1907,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         isRef or
         d.k == locNone or
         (d.t != nil and not sameBackendType(t, d.t.skipTypes(abstractInstOwned))) or
-        (isPartOf(d.lode, e) != arNo)
+        (isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo)
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
@@ -3143,7 +3143,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       localError(p.config, e.info,
         "for --mm:arc|atomicArc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
 
-    let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1].firstSon else: e[1]
+    let typ = e[1].typ.skipTypes({tyVar, tyRef, tyGenericInst, tyTypeDesc,
+                                   tyAlias, tyInferred, tySink, tyLent, tyOwned})
+    if hasDisabledAsgn(p.module.g.graph, typ):
+      localError(p.config, e.info,
+        "'deepCopy' is not available for type <" & typeToString(typ) & ">")
+
+    let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
     var a = initLocExpr(p, x)
     var b = initLocExpr(p, e[2])
     genDeepCopy(p, a, b)

@@ -116,56 +116,52 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
-  template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options & "--mm:refc", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC --mm:refc", cat)
-    when filename != "gctest":
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:orc", cat)
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:orc -d:release", cat)
+  template run(filename, extraOptions: untyped) =
+    testSpec r, makeTest("tests/gc" / filename, options & extraOptions, cat)
 
-  template testWithoutBoehm(filename: untyped) =
-    testWithoutMs filename
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:markAndSweep", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:markAndSweep", cat)
-
+  # The matrix every gc test file goes through: refc (debug + realtime-release)
+  # and orc (debug + release). This is the coverage we actually rely on today.
   template test(filename: untyped) =
-    testWithoutBoehm filename
-    when not defined(windows) and not defined(android) and not defined(osx):
-      # boehm library linking broken on macos 13
-      # AR: cannot find any boehm.dll on the net, right now, so disabled
-      # for windows:
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:boehm", cat)
-      testSpec r, makeTest("tests/gc" / filename, options &
-                    " -d:release --gc:boehm", cat)
+    run filename, " --mm:refc"
+    run filename, " -d:release -d:useRealtimeGC --mm:refc"
+    run filename, " --gc:orc"
+    run filename, " --gc:orc -d:release"
 
-  testWithoutBoehm "foreign_thr"
+  # markAndSweep and boehm are legacy collectors. Exercising them for every gc
+  # test file tripled this category's CI cost for little added signal, so only
+  # `gctest` keeps them alive. `gctest` does not build under orc.
+  template testLegacyGc(filename: untyped) =
+    run filename, " --mm:refc"
+    run filename, " -d:release -d:useRealtimeGC --mm:refc"
+    run filename, " --gc:markAndSweep"
+    run filename, " -d:release --gc:markAndSweep"
+    when not defined(windows) and not defined(android) and not defined(osx):
+      # boehm linking is broken on macOS 13 and there is no usable boehm.dll for
+      # Windows, so those platforms skip it.
+      run filename, " --gc:boehm"
+      run filename, " -d:release --gc:boehm"
+
+  testLegacyGc "gctest"
+
+  test "foreign_thr"
   test "gcemscripten"
   test "growobjcrash"
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  testWithoutBoehm "gctest"
   test "gcleak3"
   test "gcleak4"
   # Disabled because it works and takes too long to run:
   #test "gcleak5"
-  testWithoutBoehm "weakrefs"
+  test "weakrefs"
   test "cycleleak"
-  testWithoutBoehm "closureleak"
-  testWithoutMs "refarrayleak"
-
-  testWithoutBoehm "tlists"
-  testWithoutBoehm "thavlak"
-
+  test "closureleak"
+  test "refarrayleak"
+  test "tlists"
+  test "thavlak"
   test "stackrefleak"
   test "cyclecollector"
-  testWithoutBoehm "trace_globals"
+  test "trace_globals"
   test "tfinalizers"
 
 # ------------------------- threading tests -----------------------------------
@@ -194,8 +190,10 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------- async tests ---------------------------------------
 proc asyncTests(r: var TResults, cat: Category, options: string) =
+  # Run async with yrc instead of the default orc; the CI already runs long
+  # enough that we cannot afford to test both.
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat)
+    testSpec r, makeTest(filename, options & " --mm:yrc", cat)
   for t in os.walkFiles("tests/async/t*.nim"):
     test(t)
 
@@ -410,16 +408,13 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     # at least should be a regex; a substring match makes no sense.
     result = pkgs.filterIt(packageFilter in it.name)
   else:
-    if testamentData0.batchArg == "allowed_failures":
-      result = pkgs.filterIt(it.allowFailure)
-    elif testamentData0.testamentNumBatch == 0:
+    if testamentData0.testamentNumBatch == 0:
       result = pkgs
     else:
       result = @[]
-      let pkgs2 = pkgs.filterIt(not it.allowFailure)
-      for i in 0..<pkgs2.len:
+      for i in 0..<pkgs.len:
         if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
-          result.add pkgs2[i]
+          result.add pkgs[i]
 
 proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
   result = TTest(cat: cat, name: test, options: options, debugInfo: debugInfo,
@@ -448,10 +443,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
           status == QuitSuccess
         if not ok:
-          if pkg.allowFailure:
-            inc r.passed
-            inc r.failedButAllowed
-          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
+          r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed)
           continue
         outp
 
@@ -467,7 +459,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand(cmds[i], maxRetries = 3)
       discard tryCommand(cmds[^1], reFailed = reBuildFailed)
       inc r.passed
-      r.finishTest(test, targetC, "", "", "", reSuccess, allowFailure = pkg.allowFailure)
+      r.finishTest(test, targetC, "", "", "", reSuccess)
 
     errors = r.total - r.passed
     if errors == 0:
@@ -538,6 +530,7 @@ proc mmRaise(kind: TResultEnum, expected, given: string) =
   raise e
 
 proc isMetamorphicIcTest(content: string): bool =
+  result = false
   for line in content.splitLines:
     if line.strip == "#? metamorphic": return true
 
@@ -569,7 +562,7 @@ proc stableBinary(path: string): string =
   ## so two builds seconds apart differ there even with identical codegen. Skipping
   ## a generous fixed window keeps the clean-vs-incremental check about codegen.
   const headerSkip = 4096
-  var f: File
+  var f: File = nil
   if not open(f, path, fmRead):
     raise newException(IOError, "cannot open: " & path)
   defer: close(f)

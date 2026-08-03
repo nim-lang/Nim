@@ -27,6 +27,10 @@ else:
 template afterThreadRuns() =
   for i in countdown(nimThreadDestructionHandlers.len-1, 0):
     nimThreadDestructionHandlers[i]()
+  when declared(nimYrcThreadTeardown):
+    # YRC: spill this thread's candidate roots so its garbage remains
+    # collectible after the thread is gone
+    nimYrcThreadTeardown()
 
 proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's

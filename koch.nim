@@ -11,16 +11,16 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "42ef70c2102a942c46f13eb76872326edd525cec"    # 0.22.3
+  NimbleStableCommit = "a399f502dec7ffcd905c1cf54b13274ad990bada"    # 0.24.1
   AtlasStableCommit = "aa6fb162006f3015aa84c4305e15cb4d230f5ad6"     # 0.14.7
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "6f9ac6655dc6724ae4e5ccb93b8123c18d54391a" # unversioned \
+  NimonyStableCommit = "f831b953d7c21d9a4b11d0042039e7f84d7c8dc9" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-07-03 -- .bif files are memory mapped too
+    # Commit from 2026-07-10 -- stable .bif file format
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
@@ -619,7 +619,7 @@ proc runIcTestFile(inp: string) =
 const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
                  "tcompiletimeglobal", "tsighashstable", "tpureenum", "tgenericoffer",
                  "tconverterreexport", "ttypeoffer", "ttransitiveoffer",
-                 "tmodsymref", "tmethupref", "temit"]
+                 "tmodsymref", "tmethupref", "temit", "ttraitparam"]
 
 proc icTest(args: string) =
   temp("")
@@ -669,7 +669,16 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
-  kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
+  #
+  # Bootstrap exactly once per platform. The refc-mm bootstrap is a
+  # platform-independent compiler-correctness check, so Linux uses it as its sole
+  # boot (and then runs the whole suite against the refc-built compiler), while
+  # the other platforms cover the default ORC bootstrap. `koch` is rebuilt
+  # per-runner, so `when defined(linux)` selects the Linux job at compile time.
+  when defined(linux):
+    kochExecFold("Boot Nim refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
+  else:
+    kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
@@ -722,8 +731,6 @@ proc runCI(cmd: string) =
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
-
-    kochExecFold("Testing booting in refc", "boot -d:release --mm:refc -d:nimStrictMode --lib:lib")
 
 
 proc testUnixInstall(cmdLineRest: string) =
