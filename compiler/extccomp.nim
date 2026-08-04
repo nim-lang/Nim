@@ -1165,7 +1165,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
-proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
+proc spawnCodegenSubprocess*(conf: ConfigRef) =
   ## Spawns a separate nim process with --compileOnlyto perform
   ## Nim-to-C code generation, then runs the C compile/link steps from the
   ## generated JSON build instructions. This reclaims the Nim compiler's memory
@@ -1200,13 +1200,16 @@ proc spawnCodegenSubprocess*(conf: ConfigRef): bool =
     let exitCode = p.waitForExit()
     p.close()
     if exitCode != 0:
-      return false
-  except OSError, IOError:
-    return false
+      rawMessage(conf, errGenerated, "execution of codegen failed: '$1'" %
+        [$exitCode])
+
+      return
+  except CatchableError as e:
+    rawMessage(conf, errGenerated, "execution of codegen failed: '$1'" %
+      [e.msg])
+    return
 
   runJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile)
-
-  true
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   result = ""

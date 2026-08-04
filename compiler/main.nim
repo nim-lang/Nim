@@ -162,8 +162,8 @@ proc commandCompileToC(graph: ModuleGraph) =
   # before C compilation. The subprocess runs with --compileOnly, generates the
   # C code, and the script is executed here.
   if optSpawnCodegen in conf.globalOptions and optCompileOnly notin conf.globalOptions:
-    if extccomp.spawnCodegenSubprocess(conf):
-      return  # Subprocess handled everything; skip in-process compilation
+    extccomp.spawnCodegenSubprocess(conf)
+    return  # Subprocess handled everything; skip in-process compilation
 
   if conf.symbolFiles == disabledSf:
     setPipeLinePass(graph, CgenPass)
