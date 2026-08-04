@@ -24,7 +24,7 @@ import std/[strtabs, tables, strutils, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from trees import exprStructuralEquivalent, getRoot, whichPragma, getPotentialWrites
+from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites
 
 type
   Con = object
@@ -179,17 +179,6 @@ proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = skipConvDfa(n)
   result = nfFirstWrite in m.flags
-
-proc isCursor(n: PNode): bool =
-  case n.kind
-  of nkSym:
-    sfCursor in n.sym.flags
-  of nkDotExpr:
-    isCursor(n[1])
-  of nkCheckedFieldExpr:
-    isCursor(n[0])
-  else:
-    false
 
 template isFullyUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,

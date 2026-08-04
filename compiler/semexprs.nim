@@ -2742,6 +2742,22 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
   else:
     result = semDirectOp(c, n, flags, expectedType)
 
+proc semNimvmBranch(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  let
+    oldOptionStack = c.optionStack[0..^1]
+    oldOptions = c.config.options
+    oldNotes = c.config.notes
+    oldWarningAsErrors = c.config.warningAsErrors
+    oldFeatures = c.features
+  try:
+    result = semExpr(c, n, flags)
+  finally:
+    c.optionStack = oldOptionStack
+    c.config.options = oldOptions
+    c.config.notes = oldNotes
+    c.config.warningAsErrors = oldWarningAsErrors
+    c.features = oldFeatures
+
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # If semCheck is set to false, ``when`` will return the verbatim AST of
   # the correct branch. Otherwise the AST will be passed through semStmt.
@@ -2778,7 +2794,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 2, c.config)
       if whenNimvm:
         if semCheck:
-          it[1] = semExpr(c, it[1], flags)
+          it[1] = semNimvmBranch(c, it[1], flags)
           typ = commonType(c, typ, it[1].typ)
         result = n # when nimvm is not elimited until codegen
       elif c.inGenericContext > 0:
@@ -2809,7 +2825,8 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
         discard
       elif result == nil or whenNimvm:
         if semCheck:
-          it[0] = semExpr(c, it[0], flags)
+          it[0] = if whenNimvm: semNimvmBranch(c, it[0], flags)
+                  else: semExpr(c, it[0], flags)
           typ = commonType(c, typ, it[0].typ)
           if typ != nil and typ.kind != tyUntyped:
             it[0] = fitNode(c, typ, it[0], it[0].info)

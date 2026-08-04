@@ -51,7 +51,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   if le != nil:
     for i in 1..<ri.len:
       let r = ri[i]
-      if isPartOf(le, r) != arNo: return true
+      if isPartOf(le, r, {pfStructural}) != arNo: return true
     # we use the weaker 'canRaise' here in order to prevent too many
     # annoying warnings, see #14514
     if canRaise(ri[0]) and
@@ -61,7 +61,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   if dest != nil and dest != le:
     for i in 1..<ri.len:
       let r = ri[i]
-      if isPartOf(dest, r) != arNo: return true
+      if isPartOf(dest, r, {pfStructural}) != arNo: return true
 
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags

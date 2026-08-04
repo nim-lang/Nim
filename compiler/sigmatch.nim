@@ -2087,7 +2087,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               result = typeRel(c, f.base, a, flags)
         else:
           result = isGeneric
-        if result != isNone: put(c, f, aOrig)
+        if result != isNone:
+          if f.base.kind notin {tyNone, tyGenericParam} and
+              aOrig.kind == tyStatic and aOrig.n != nil and aOrig.n.typ != nil and
+              aOrig.n.typ.isEmptyContainer:
+            # we need to infer the inner type for empty containers
+            let literal = aOrig.n.copyTree
+            literal.typ = f.base
+            let staticArg = newTypeS(tyStatic, c.c, f.base)
+            staticArg.n = literal
+            put(c, f, staticArg)
+          else:
+            put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
         result = if f.base.kind != tyNone:
                    typeRel(c, f.last, aOrig.n.typ, flags)

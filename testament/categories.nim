@@ -190,8 +190,10 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------- async tests ---------------------------------------
 proc asyncTests(r: var TResults, cat: Category, options: string) =
+  # Run async with yrc instead of the default orc; the CI already runs long
+  # enough that we cannot afford to test both.
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat)
+    testSpec r, makeTest(filename, options & " --mm:yrc", cat)
   for t in os.walkFiles("tests/async/t*.nim"):
     test(t)
 
@@ -528,6 +530,7 @@ proc mmRaise(kind: TResultEnum, expected, given: string) =
   raise e
 
 proc isMetamorphicIcTest(content: string): bool =
+  result = false
   for line in content.splitLines:
     if line.strip == "#? metamorphic": return true
 
@@ -559,7 +562,7 @@ proc stableBinary(path: string): string =
   ## so two builds seconds apart differ there even with identical codegen. Skipping
   ## a generous fixed window keeps the clean-vs-incremental check about codegen.
   const headerSkip = 4096
-  var f: File
+  var f: File = nil
   if not open(f, path, fmRead):
     raise newException(IOError, "cannot open: " & path)
   defer: close(f)
