@@ -937,3 +937,23 @@ proc mainRegen() =
   doAssert b.a.c == right
 
 mainRegen()
+
+
+from std/typetraits import distinctBase, supportsCopyMem
+
+block: # bug #26025
+  type
+    M[B] = distinct seq[B]
+    W = object
+      g: U           # `U` is only declared below, so it used to be a `tyForward`
+                     # here and `W` ended up without `tfHasAsgn`
+    U = M[uint64]
+
+  doAssert not supportsCopyMem(W)
+
+  var h: M[W]
+  seq[W](h).add W(g: U(@[1'u64]))
+  var copied = h
+  for it in items(distinctBase(copied)):
+    doAssert seq[uint64](it.g) == @[1'u64]
+  doAssert seq[uint64](seq[W](h)[0].g) == @[1'u64]

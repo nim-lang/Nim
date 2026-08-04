@@ -1837,6 +1837,18 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]
+
+  # every type in the section started out as a `tyForward`, so types that were
+  # referenced before their definition could not propagate `tfHasAsgn` and
+  # friends to their owners yet. Now that all bodies are known, redo it:
+  block:
+    var marker = initIntSet()
+    for i in 0..<n.len:
+      let a = n[i]
+      if a.kind == nkCommentStmt: continue
+      let s = typeSectionTypeName(c, a[0]).sym
+      if s.typ != nil: repropagateFlags(s.typ, marker)
+
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue

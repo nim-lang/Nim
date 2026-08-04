@@ -356,6 +356,53 @@ proc containsForwardType(t: PType): bool =
   var seen = initIntSet()
   containsForwardTypeAux(t, seen)
 
+proc repropagateFlags(t: PType; marker: var IntSet)
+
+proc repropagateFlagsNode(owner: PType; n: PNode; marker: var IntSet) =
+  ## walks the fields of an object/tuple, see `searchTypeNodeForAux`.
+  case n.kind
+  of nkRecList:
+    for i in 0..<n.len: repropagateFlagsNode(owner, n[i], marker)
+  of nkRecCase:
+    repropagateFlagsNode(owner, n[0], marker)
+    for i in 1..<n.len:
+      case n[i].kind
+      of nkOfBranch, nkElse: repropagateFlagsNode(owner, lastSon(n[i]), marker)
+      else: discard
+  of nkSym:
+    let field = n.sym.typ
+    if field != nil and field.state == Complete:
+      repropagateFlags(field, marker)
+      propagateToOwner(owner, field)
+  else: discard
+
+proc repropagateFlags(t: PType; marker: var IntSet) =
+  ## `propagateToOwner` computes `tfHasAsgn` & friends when a type is
+  ## constructed. Within a type section a type can be used before it has been
+  ## reified, so back then a `tyForward` had nothing to propagate yet and the
+  ## enclosing types ended up with stale flags. Now that every forward
+  ## declaration has a body, redo the propagation bottom-up. Only value based
+  ## containment is followed (as in `searchTypeForAux`) because that is the
+  ## only relation `propagateToOwner` propagates these flags along; this also
+  ## keeps the traversal acyclic so a single pass suffices.
+  if t.state != Complete or containsOrIncl(marker, t.id): return
+
+  template follow(elem: PType) =
+    let e = elem
+    if e != nil and e.state == Complete:
+      repropagateFlags(e, marker)
+      propagateToOwner(t, e)
+
+  case t.kind
+  of tyObject:
+    follow(t.baseClass)
+    if t.n != nil: repropagateFlagsNode(t, t.n, marker)
+  of tyGenericInst, tyDistinct, tyAlias, tySink:
+    follow(t.skipModifier)
+  of tyArray, tySet, tyTuple:
+    for a in t.kids: follow(a)
+  else: discard
+
 proc semFieldDefault(c: PContext; owner, expectedType: PType; field: PNode): PType =
   result = expectedType
   field[^1] = semExprWithType(c, field[^1], {efDetermineType, efAllowSymChoice}, result)
