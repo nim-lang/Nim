@@ -468,9 +468,7 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
     if conf.cCompiler == ccVcc:
       {optGenMapping}
     else:
-      # TODO optGenScript was removed here - why should scripts have path-less
-      #      commands? Makes them useless, when using {.compile.} for example
-      {optGenMapping}
+      {optGenScript, optGenMapping}
   result = conf.globalOptions * options != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
