@@ -955,12 +955,12 @@ proc initLocExpr(p: BProc, e: PNode, flags: TLocFlags = {}): TLoc =
 
 proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
   result = initLoc(locNone, e, OnUnknown)
-  if e.kind in nkCallKinds and (e[0].kind != nkSym or e[0].sym.magic == mNone):
+  if e.kind in nkCallKinds and (e.firstSon.kind != nkSym or e.firstSon.sym.magic == mNone):
     # We cannot check for tfNoSideEffect here because of mutable parameters.
     discard "bug #8202; enforce evaluation order for nested calls for C++ too"
     # We may need to consider that 'f(g())' cannot be rewritten to 'tmp = g(); f(tmp)'
     # if 'tmp' lacks a move/assignment operator.
-    if e[0].kind == nkSym and sfCompileToCpp in e[0].sym.flags:
+    if e.firstSon.kind == nkSym and sfCompileToCpp in e.firstSon.sym.flags:
       result.flags.incl lfSingleUse
   else:
     result.flags.incl lfSingleUse
@@ -1104,7 +1104,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   inc(m.labels, 2)
   if isCall:
     let n = lib.path
-    var a: TLoc = initLocExpr(m.initProc, n[0])
+    var a: TLoc = initLocExpr(m.initProc, n.firstSon)
     let callee = rdLoc(a)
     var params: seq[Snippet] = @[]
     for i in 1..<n.len-1:
@@ -1260,15 +1260,15 @@ proc containsResult(n: PNode): bool =
   of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
     discard
   of nkReturnStmt:
-    for i in 0..<n.len:
-      if containsResult(n[i]): return true
-    result = n.len > 0 and n[0].kind == nkEmpty
+    for ni in n.sons:
+      if containsResult(ni): return true
+    result = n.len > 0 and n.firstSon.kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
   else:
-    for i in 0..<n.len:
-      if containsResult(n[i]): return true
+    for ni in n.sons:
+      if containsResult(ni): return true
 
 proc easyResultAsgn(n: PNode): PNode =
   result = nil
@@ -1278,12 +1278,12 @@ proc easyResultAsgn(n: PNode): PNode =
     while i < n.len and n[i].kind in harmless: inc i
     if i < n.len: result = easyResultAsgn(n[i])
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    if n[0].kind == nkSym and n[0].sym.kind == skResult and not containsResult(n[1]):
+    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult and not containsResult(n[1]):
       incl n.flags, nfPreventCg
       return n[1]
   of nkReturnStmt:
     if n.len > 0:
-      result = easyResultAsgn(n[0])
+      result = easyResultAsgn(n.firstSon)
       if result != nil: incl n.flags, nfPreventCg
   else: discard
 
@@ -1320,7 +1320,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       result = allPathsAsgnResult(p, it)
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    if n[0].kind == nkSym and n[0].sym.kind == skResult:
+    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult:
       if not containsResult(n[1]):
         if allPathsAsgnResult(p, n[1]) == InitRequired:
           result = InitRequired
@@ -1333,19 +1333,19 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       result = allPathsAsgnResult(p, n[1])
   of nkReturnStmt:
     if n.len > 0:
-      if n[0].kind == nkEmpty and result != InitSkippable:
+      if n.firstSon.kind == nkEmpty and result != InitSkippable:
         # This is a bare `return` statement, if `result` was not initialized
         # anywhere else (or if we're not sure about this) let's require it to be
         # initialized. This avoids cases like #9286 where this heuristic lead to
         # wrong code being generated.
         result = InitRequired
-      else: result = allPathsAsgnResult(p, n[0])
+      else: result = allPathsAsgnResult(p, n.firstSon)
   of nkIfStmt, nkIfExpr:
     var exhaustive = false
     result = InitSkippable
     for it in n:
       # Every condition must not use 'result':
-      if it.len == 2 and containsResult(it[0]):
+      if it.len == 2 and containsResult(it.firstSon):
         return InitRequired
       if it.len == 1: exhaustive = true
       allPathsInBranch(it.lastSon)
@@ -1353,9 +1353,9 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # in some way, say Unknown.
     if not exhaustive: result = Unknown
   of nkCaseStmt:
-    if containsResult(n[0]): return InitRequired
+    if containsResult(n.firstSon): return InitRequired
     result = InitSkippable
-    var exhaustive = skipTypes(n[0].typ,
+    var exhaustive = skipTypes(n.firstSon.typ,
         abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring}
     for i in 1..<n.len:
       let it = n[i]
@@ -1365,7 +1365,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   of nkWhileStmt:
     # some dubious code can assign the result in the 'while'
     # condition and that would be fine. Everything else isn't:
-    result = allPathsAsgnResult(p, n[0])
+    result = allPathsAsgnResult(p, n.firstSon)
     if result == Unknown:
       result = allPathsAsgnResult(p, n[1])
       # we cannot assume that the 'while' loop is really executed at least once:
@@ -1389,19 +1389,19 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # assignment this is not good enough! The only pattern we allow for
     # is 'finally: result = x'
     result = InitSkippable
-    allPathsInBranch(n[0])
+    allPathsInBranch(n.firstSon)
     for i in 1..<n.len:
       if n[i].kind == nkFinally:
         result = allPathsAsgnResult(p, n[i].lastSon)
       else:
         allPathsInBranch(n[i].lastSon)
   of nkCallKinds:
-    if canRaiseDisp(p, n[0]) or
-        (n[0].kind == nkSym and sfNoReturn in n[0].sym.flags):
+    if canRaiseDisp(p, n.firstSon) or
+        (n.firstSon.kind == nkSym and sfNoReturn in n.firstSon.sym.flags):
       # requires initializations when encountering unreachable code
       result = InitRequired
-    elif n[0].kind == nkSym and
-        n[0].sym.magic in {mUnaryMinusI..mAbsI, mAddI..mPred} and
+    elif n.firstSon.kind == nkSym and
+        n.firstSon.sym.magic in {mUnaryMinusI..mAbsI, mAddI..mPred} and
           optOverflowCheck in p.config.options:
       # arithmetic operations may raise exceptions
       result = InitRequired

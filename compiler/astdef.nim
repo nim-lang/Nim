@@ -946,6 +946,16 @@ template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x
 iterator items*(n: PNode): PNode =
   for i in 0..<n.safeLen: yield n[i]
 
+iterator sons*(n: PNode): PNode =
+  ## Iterates over the children of `n`. Preferred over `for i in 0..<n.len: n[i]`
+  ## as it does not rely on random indexed access (see doc/ic_backend_nif_native.md).
+  for i in 0..<n.safeLen: yield n[i]
+
+iterator isons*(n: PNode): tuple[i: int, n: PNode] =
+  ## Like `sons` but also yields the child index. Replaces
+  ## `for i in 0..<n.len: ... n[i] ...` when `i` itself is still needed.
+  for i in 0..<n.safeLen: yield (i, n[i])
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
