@@ -531,7 +531,9 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
 
   # Enable spawnCodegen by default for C/C++ compilation commands
   # (to reclaim memory before C compilation). Can be disabled with --nogencodegen.
-  if cmd in {cmdCompileToC, cmdCompileToCpp, cmdCrun}:
+  # In theory, `optCRun` would benefit from this treatment as well but this gets
+  # complex with its command line hashing
+  if cmd in {cmdCompileToC, cmdCompileToCpp}:
     conf.globalOptions.incl optSpawnCodegen
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
