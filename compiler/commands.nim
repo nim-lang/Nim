@@ -529,8 +529,8 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
     conf.globalOptions.incl optCompress
   else: discard
 
-  # Enable spawnCodegen by default for C/C++ compilation commands
-  # (to reclaim memory before C compilation). Can be disabled with --nogencodegen.
+  # Enable spawnCodegen by default for C/C++ compilation commands to reclaim
+  # memory before C compilation.
   # In theory, `optCRun` would benefit from this treatment as well but this gets
   # complex with its command line hashing
   if cmd in {cmdCompileToC, cmdCompileToCpp}:

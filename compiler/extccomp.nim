@@ -1164,7 +1164,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
 proc spawnCodegenSubprocess*(conf: ConfigRef) =
-  ## Spawns a separate nim process with --compileOnlyto perform
+  ## Spawns a separate nim process with --compileOnly to perform
   ## Nim-to-C code generation, then runs the C compile/link steps from the
   ## generated JSON build instructions. This reclaims the Nim compiler's memory
   ## before proceeding with C compilation.
