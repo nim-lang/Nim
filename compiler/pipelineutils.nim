@@ -21,6 +21,3 @@ proc prepareConfigNotes*(graph: ModuleGraph; module: PSym) =
   else:
     if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
     graph.config.notes = graph.config.foreignPackageNotes
-
-proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
-  result = true

@@ -2777,9 +2777,7 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
-    if not moduleHasChanged(m.g.graph, m.module):
-      result = false
-    elif not equalsFile(code, cfile.cname):
+    if not equalsFile(code, cfile.cname):
       when false:
         #m.config.symbolFiles == readOnlySf: #isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
@@ -2802,19 +2800,18 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
 proc genModuleCode(m: BModule; cf: var Cfile): string =
   ## First half of `writeModule`: finalizes the module and produces its code
   ## text. Under cmdNifC the text still carries the cnif marks.
-  if moduleHasChanged(m.g.graph, m.module):
-    genInitCode(m)
+  genInitCode(m)
 
-    while m.queue.len > 0:
-      let sym = m.queue.pop()
-      genProcLvl2(m, sym)
+  while m.queue.len > 0:
+    let sym = m.queue.pop()
+    genProcLvl2(m, sym)
 
-    finishTypeDescriptions(m)
-    if sfMainModule in m.module.flags:
-      # generate main file:
-      genMainProc(m)
-      m.s[cfsProcHeaders].add(extract(m.g.mainModProcs))
-      generateThreadVarsSize(m)
+  finishTypeDescriptions(m)
+  if sfMainModule in m.module.flags:
+    # generate main file:
+    genMainProc(m)
+    m.s[cfsProcHeaders].add(extract(m.g.mainModProcs))
+    generateThreadVarsSize(m)
 
   result = genModule(m, cf)
 
@@ -2885,54 +2882,54 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
       let dtor = generateLibraryDestroyGlobals(graph, m, body, optGenDynLib in m.config.globalOptions)
       genProcLvl3(m, dtor)
   if pipelineutils.skipCodegen(m.config, n): return
-  if moduleHasChanged(graph, m.module):
-    # if the module is cached, we don't regenerate the main proc
-    # nor the dispatchers? But if the dispatchers changed?
-    # XXX emit the dispatchers into its own .c file?
-    if n != nil:
-      m.initProc.options = initProcOptions(m)
-      genProcBody(m.initProc, n)
 
+  # if the module is cached, we don't regenerate the main proc
+  # nor the dispatchers? But if the dispatchers changed?
+  # XXX emit the dispatchers into its own .c file?
+  if n != nil:
+    m.initProc.options = initProcOptions(m)
+    genProcBody(m.initProc, n)
+
+  if m.hcrOn:
+    # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
+    let sym = magicsys.getCompilerProc(m.g.graph, "programResult")
+    # ignore when not available, could be a module imported early in `system`
+    if sym != nil:
+      cgsymImpl m, sym
+    if m.inHcrInitGuard:
+      endBlockWith(m.initProc):
+        finishBranch(m.initProc.s(cpsStmts), m.hcrInitGuard)
+        finishIfStmt(m.initProc.s(cpsStmts), m.hcrInitGuard)
+
+  if sfMainModule in m.module.flags:
     if m.hcrOn:
-      # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
-      let sym = magicsys.getCompilerProc(m.g.graph, "programResult")
-      # ignore when not available, could be a module imported early in `system`
-      if sym != nil:
-        cgsymImpl m, sym
-      if m.inHcrInitGuard:
-        endBlockWith(m.initProc):
-          finishBranch(m.initProc.s(cpsStmts), m.hcrInitGuard)
-          finishIfStmt(m.initProc.s(cpsStmts), m.hcrInitGuard)
+      # pull ("define" since they are inline when HCR is on) these functions in the main file
+      # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
+      # will in turn pass it to the other modules it initializes so they can initialize the
+      # register/get procs so they don't have to have the definitions of these functions as well
+      cgsym(m, "nimLoadLibrary")
+      cgsym(m, "nimLoadLibraryError")
+      cgsym(m, "nimGetProcAddr")
+      cgsym(m, "procAddrError")
+      cgsym(m, "rawWrite")
 
-    if sfMainModule in m.module.flags:
-      if m.hcrOn:
-        # pull ("define" since they are inline when HCR is on) these functions in the main file
-        # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
-        # will in turn pass it to the other modules it initializes so they can initialize the
-        # register/get procs so they don't have to have the definitions of these functions as well
-        cgsym(m, "nimLoadLibrary")
-        cgsym(m, "nimLoadLibraryError")
-        cgsym(m, "nimGetProcAddr")
-        cgsym(m, "procAddrError")
-        cgsym(m, "rawWrite")
+    # raise dependencies on behalf of genMainProc
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc}:
+      cgsym(m, "initStackBottomWith")
+    if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+      cgsym(m, "initThreadVarsEmulation")
 
-      # raise dependencies on behalf of genMainProc
-      if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc}:
-        cgsym(m, "initStackBottomWith")
-      if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
-        cgsym(m, "initThreadVarsEmulation")
-
-      if m.g.forwardedProcs.len == 0:
-        incl m.flags, objHasKidsValid
-      if m.config.cmd == cmdNifC:
-        # nifbackend synthesizes the dispatchers between the module loop
-        # and the finish loop (emitMethodDispatchers): TUs demand-created
-        # by the dispatcher bodies must still reach `modulesClosed`
-        discard
-      elif optMultiMethods in m.g.config.globalOptions or
-          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc, gcYrc} or
-          vtables notin m.g.config.features:
-        generateIfMethodDispatchers(graph, m.idgen)
+    if m.g.forwardedProcs.len == 0:
+      incl m.flags, objHasKidsValid
+    if m.config.cmd == cmdNifC:
+      # nifbackend synthesizes the dispatchers between the module loop
+      # and the finish loop (emitMethodDispatchers): TUs demand-created
+      # by the dispatcher bodies must still reach `modulesClosed`
+      discard
+    elif optMultiMethods in m.g.config.globalOptions or
+        m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc, gcYrc} or
+        vtables notin m.g.config.features:
+      generateIfMethodDispatchers(graph, m.idgen)
 
 
   let mm = m
