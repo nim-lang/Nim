@@ -190,10 +190,16 @@ proc bundleChecksums(latest: bool) =
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
+  # These are host tools: their build must not be affected by whatever
+  # `nim.cfg`/`config.nims` happens to live above the Nim checkout. Projects that
+  # vendor Nim (nimbus-eth1/eth2, nimbos) do pass `--skipUserCfg --skipParentCfg`
+  # to `koch boot`, but `nimCompileFold` spawns a fresh `nim c` that would
+  # otherwise inherit the ambient configuration.
+  const nifOptions = "-d:release --noNimblePath --skipUserCfg --skipParentCfg"
   if not fileExists("bin/nifler".exe):
-    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = nifOptions)
   if not fileExists("bin/nifmake".exe):
-    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
+    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = nifOptions)
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
