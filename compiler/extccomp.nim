@@ -1180,7 +1180,8 @@ proc spawnCodegenSubprocess*(conf: ConfigRef) =
     if a.len == 0:
       continue
 
-    subArgs.add a
+    if a notin ["-r", "--run"]:
+      subArgs.add a
 
     if a[0] != '-':
       if commandAdded:
