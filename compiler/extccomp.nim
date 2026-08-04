@@ -1172,8 +1172,10 @@ proc spawnCodegenSubprocess*(conf: ConfigRef) =
   # The subprocess args consist of the existing args and options up to the
   # project file with `--compileOnly` injected first - anything after the project
   # file is meant for running the project (`-r`) so we should have exactly two
-  # non-option arguments
-  var subArgs = @["--compileOnly"]
+  # non-option arguments.
+  # We also disable the conf hint since it would otherwise show twice as the
+  # config files get parsed by both processes.
+  var subArgs = @["--compileOnly", "--hint[Conf]:off"]
   var projectFileAdded = false
   var commandAdded = false
   for a in os.commandLineParams():

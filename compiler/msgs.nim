@@ -711,6 +711,9 @@ proc genSuccessX*(conf: ConfigRef) =
   var build = ""
   var flags = ""
   const debugModeHints = "none (DEBUG BUILD, `-d:release` generates faster code)"
+  if optCompileOnly in conf.globalOptions:
+    build = "codegen "
+
   if conf.cmd in cmdBackends:
     if conf.backend != backendJs:
       build.add "mm: $#; " % $conf.selectedGC
@@ -737,7 +740,7 @@ proc genSuccessX*(conf: ConfigRef) =
     # xxx honor conf.filenameOption more accurately
   var output: string
   if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
-    output = $conf.jsonBuildFile
+    output = $conf.getNimcacheDir()
   elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
     # for some cmd we expect a valid absOutFile
     output = "unknownOutput"
