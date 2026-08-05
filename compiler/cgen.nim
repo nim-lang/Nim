@@ -1528,11 +1528,13 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # Match genProcParams: it checks prc.typ.returnType.flags (not res.typ.flags)
       # because markResultVarIsPtr sets tfVarIsPtr on the result sym's type, which
       # can be a different object than prc.typ.returnType for generic instances.
-      # Checking the same type ensures the body ('*result' vs 'result') matches the
-      # signature ('T&' vs 'T*').
+      # For tyVar of tyArray, genProcParams forces '*' (ctPtrToArray path in
+      # getTypeDescAux overwrites '&' with '*'), so the signature is T* and we
+      # must return 'result' (the pointer), not '*result' (the element).
       let rt = prc.typ.returnType
       if m.compileToCpp and rt.skipTypes(abstractInst).kind == tyVar and
-          tfVarIsPtr in rt.flags:
+          tfVarIsPtr in rt.flags and
+          mapType(m.config, rt, false) != ctPtrToArray:
         rres = cDeref(rres)
       returnBuilder.addReturn(rres)
       returnStmt = extract(returnBuilder)
