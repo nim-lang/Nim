@@ -12,7 +12,7 @@
 import std / tables
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
-  lineinfos, modulegraphs, layeredtable
+  lineinfos, modulegraphs, layeredtable, typeallowed
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -296,9 +296,17 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
     if result.sym.kind == skField and
         (cl.owner == nil or result.sym.owner == cl.owner):
-      if not cl.allowMetaTypes and result.typ != nil and result.typ.isMetaType:
+      let invalidType =
+        if not cl.allowMetaTypes and result.typ != nil and result.typ.isMetaType and
+            result.sym.owner != nil and result.sym.owner.kind == skType:
+          typeAllowed(result.typ, skVar, cl.c, {taProcContextIsNotMacro})
+        else:
+          nil
+      # Constrained types can remain unresolved during overload matching. Only
+      # reject the type-valued storage that can reach code generation (#24848).
+      if invalidType != nil and invalidType.kind == tyTypeDesc:
         localError(cl.c.config, result.info,
-          "'" & result.typ.typeToString & "' is not a concrete type")
+          "'" & invalidType.typeToString & "' is not a concrete type")
         result.typ = errorType(cl.c)
         result.sym.typ = result.typ
       if result.sym.ast != nil:

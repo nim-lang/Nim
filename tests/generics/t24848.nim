@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'array[0..0, typedesc[R[system.int]]]' is not a concrete type"
+  errormsg: "'typedesc[R[system.int]]' is not a concrete type"
   line: 8
 """
 
