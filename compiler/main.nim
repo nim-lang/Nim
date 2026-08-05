@@ -161,8 +161,10 @@ proc commandCompileToC(graph: ModuleGraph) =
   # final output.
   # optHotCodeReloading is mostly broken in general
   # optUseNimcache requires changes to how command lines are hashed
-  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache} *
-      conf.globalOptions == {optSpawnCodegen}:
+  if {
+    optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache,
+    optGenStaticLib,
+  } * conf.globalOptions == {optSpawnCodegen}:
     extccomp.spawnCodegenSubprocess(conf)
     return # Subprocess handled everything; skip in-process compilation
 
