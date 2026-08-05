@@ -547,9 +547,10 @@ when hasThreadLocalAllocator:
     releaseSys(regionPoolLock)
 
     if handle == nil:
-      let newHandle = cast[ptr RegionHandle](c_malloc(csize_t sizeof(RegionHandle)))
-      if newHandle == nil:
-        raiseOutOfMem()
+      # RegionHandle is larger than llAlloc's one-page metadata slabs and is
+      # retained independently of any checked-out MemRegion.
+      let handleSize = roundup(sizeof(RegionHandle), PageSize)
+      let newHandle = cast[ptr RegionHandle](osAllocPages(handleSize))
       zeroMem(newHandle, sizeof(RegionHandle))
       a.regionHandle = newHandle
     else:
