@@ -296,6 +296,11 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         replaceTypeVarsS(cl, n.sym, replaceTypeVarsT(cl, n.sym.typ))
     if result.sym.kind == skField and
         (cl.owner == nil or result.sym.owner == cl.owner):
+      if not cl.allowMetaTypes and result.typ != nil and result.typ.isMetaType:
+        localError(cl.c.config, result.info,
+          "'" & result.typ.typeToString & "' is not a concrete type")
+        result.typ = errorType(cl.c)
+        result.sym.typ = result.typ
       if result.sym.ast != nil:
         # instantiate default value of object/tuple field
         var n = result.sym.ast
