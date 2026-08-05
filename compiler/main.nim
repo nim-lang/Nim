@@ -155,16 +155,19 @@ proc commandCompileToC(graph: ModuleGraph) =
         graph.config.notes = graph.config.mainPackageNotes
         return
 
-  if not extccomp.ccHasSaneOverflow(conf):
-    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
-
   # Spawn a separate nim process for code generation to reclaim memory
   # before C compilation. The subprocess runs with --compileOnly, generates the
-  # C code, and the script is executed here.
-  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading} * conf.globalOptions ==
-      {optSpawnCodegen}:
+  # C code and a JSON build script then executes the build script to build the
+  # final output.
+  # optHotCodeReloading is mostly broken in general
+  # optUseNimcache requires changes to how command lines are hashed
+  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache} *
+      conf.globalOptions == {optSpawnCodegen}:
     extccomp.spawnCodegenSubprocess(conf)
     return # Subprocess handled everything; skip in-process compilation
+
+  if not extccomp.ccHasSaneOverflow(conf):
+    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
   if conf.symbolFiles == disabledSf:
     setPipeLinePass(graph, CgenPass)
