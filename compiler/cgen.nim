@@ -1525,8 +1525,14 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
           initLocalVar(p, res, immediateAsgn=false)
       var returnBuilder = newBuilder("\t")
       var rres = rdLoc(res.loc)
-      if m.compileToCpp and res.typ.skipTypes(abstractInst).kind == tyVar and
-          tfVarIsPtr in res.typ.flags:
+      # Match genProcParams: it checks prc.typ.returnType.flags (not res.typ.flags)
+      # because markResultVarIsPtr sets tfVarIsPtr on the result sym's type, which
+      # can be a different object than prc.typ.returnType for generic instances.
+      # Checking the same type ensures the body ('*result' vs 'result') matches the
+      # signature ('T&' vs 'T*').
+      let rt = prc.typ.returnType
+      if m.compileToCpp and rt.skipTypes(abstractInst).kind == tyVar and
+          tfVarIsPtr in rt.flags:
         rres = cDeref(rres)
       returnBuilder.addReturn(rres)
       returnStmt = extract(returnBuilder)
