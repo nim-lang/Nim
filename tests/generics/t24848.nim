@@ -1,8 +1,9 @@
 discard """
   errormsg: "'array[0..0, typedesc[R[system.int]]]' is not a concrete type"
-  line: 7
+  line: 8
 """
 
+# issue #24848
 type R[C] = ref object
   b: C
 
