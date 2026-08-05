@@ -666,6 +666,30 @@ else:
 
 include categories
 
+const slowCategoriesFirst = [
+  # `execProcesses` schedules commands in order. Starting the longest categories
+  # first avoids leaving a large category as the tail after the other workers
+  # have gone idle. This approximate order comes from representative CI timings;
+  # exact runtimes vary by platform and batch.
+  "stdlib", "ic", "gc", "async", "misc", "lib", "arc", "js", "system",
+  "errmsgs", "ccgbugs", "megatest", "destructor", "vm", "threads",
+  "parallel", "cpp", "generics", "compilerapi", "iter", "exception",
+  "macros", "niminaction", "compiler", "effects", "types", "views", "tools",
+  "dll", "parser", "yrc", "template", "pragmas"
+]
+
+proc categoryScheduleRank(category: string): int =
+  let normalized = category.normalize
+  result = slowCategoriesFirst.len
+  for i, candidate in slowCategoriesFirst:
+    if normalized == candidate:
+      return i
+
+proc cmpCategorySchedule(a, b: string): int =
+  result = cmp(categoryScheduleRank(a), categoryScheduleRank(b))
+  if result == 0:
+    result = cmp(a, b)
+
 proc loadSkipFrom(name: string): seq[string] =
   result = @[]
   if name.len == 0: return
@@ -784,25 +808,12 @@ proc main() =
       for cat in AdditionalCategories:
         if cat notin cats: cats.add cat
     if useMegatest: cats.add MegaTestCat
+    cats.sort(cmpCategorySchedule)
 
-    var
-      cmds: seq[string] = @[]
-      cmdCatIndexes: seq[int] = @[]
-      icCmd = ""
-      icCatIndex = -1
-    for i, cat in cats:
+    var cmds: seq[string] = @[]
+    for cat in cats:
       let runtype = if useMegatest: " pcat " else: " cat "
-      let cmd = myself & runtype & quoteShell(cat) & rest
-      if cat.normalize == "ic":
-        # `nim ic` parallelizes its frontend and backend build graphs across all
-        # cores. Running another category process beside it creates nested
-        # contention on small CI runners, so give the IC category an exclusive
-        # phase and let its own scheduler keep the machine busy.
-        icCmd = cmd
-        icCatIndex = i
-      else:
-        cmds.add cmd
-        cmdCatIndexes.add i
+      cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
       echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $cats.len, cats[idx]]
@@ -814,18 +825,9 @@ proc main() =
         processCategory(r, Category(cati), p.cmdLineRest, testsDir, runJoinableTests = false)
     else:
       addExitProc azure.finalize
-      let processOptions = {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}
-      var exitCode = 0
-      if icCmd.len > 0:
-        proc progressIc(_: int) = progressStatus(icCatIndex)
-        exitCode = osproc.execProcesses([icCmd], processOptions, n = 1,
-                                        beforeRunEvent = progressIc)
-      if cmds.len > 0:
-        proc progressParallel(idx: int) = progressStatus(cmdCatIndexes[idx])
-        exitCode = max(exitCode,
-          osproc.execProcesses(cmds, processOptions,
-                               beforeRunEvent = progressParallel))
-      quit exitCode
+      quit osproc.execProcesses(cmds,
+        {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
+        beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
