@@ -929,6 +929,13 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     # bug #23453 #25265
     if e.typ != nil and e.typ.skipTypes(abstractInst).kind == tyObject:
       discard getTypeDesc(p.module, e.typ)
+    # C++: genProcParams strips tfVarIsPtr from the signature, so a var T
+    # return is T&. When used directly (lfSingleUse, a.k == locCall) it's a
+    # reference and must not be dereferenced. Temps hold T* (via cAddr) and
+    # still need '*'. The AST type keeps tfVarIsPtr (markResultVarIsPtr),
+    # so we check a.k to tell the two paths apart.
+    let isCppCallRef = p.module.compileToCpp and typ.kind in {tyVar} and
+        tfVarIsPtr in typ.flags and a.k == locCall
     if d.k == locNone:
       # dest = *a;  <-- We do not know that 'dest' is on the heap!
       # It is completely wrong to set 'd.storage' here, unless it's not yet
@@ -938,7 +945,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
         d.storage = OnHeap
       of tyVar, tyLent:
         d.storage = OnUnknown
-        if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
+        if (tfVarIsPtr notin typ.flags or isCppCallRef) and p.module.compileToCpp and
             e.kind == nkHiddenDeref:
           putIntoDest(p, d, e, rdLoc(a), a.storage)
           return
@@ -947,7 +954,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       else:
         internalError(p.config, e.info, "genDeref " & $typ.kind)
     elif p.module.compileToCpp:
-      if typ.kind in {tyVar} and tfVarIsPtr notin typ.flags and
+      if typ.kind in {tyVar} and (tfVarIsPtr notin typ.flags or isCppCallRef) and
            e.kind == nkHiddenDeref:
         putIntoDest(p, d, e, rdLoc(a), a.storage)
         return
