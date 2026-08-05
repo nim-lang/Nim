@@ -1201,9 +1201,9 @@ proc spawnCodegenSubprocess*(conf: ConfigRef) =
     let exitCode = p.waitForExit()
     p.close()
     if exitCode != 0:
-      rawMessage(conf, errGenerated, "execution of codegen failed: '$1'" %
-        [$exitCode])
-
+      # We assume the internal compiler has printed its own messages - the test
+      # suite depends on nothing being printed here
+      inc conf.errorCounter
       return
   except CatchableError as e:
     rawMessage(conf, errGenerated, "execution of codegen failed: '$1'" %

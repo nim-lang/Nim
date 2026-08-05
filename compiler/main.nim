@@ -161,9 +161,10 @@ proc commandCompileToC(graph: ModuleGraph) =
   # Spawn a separate nim process for code generation to reclaim memory
   # before C compilation. The subprocess runs with --compileOnly, generates the
   # C code, and the script is executed here.
-  if optSpawnCodegen in conf.globalOptions and optCompileOnly notin conf.globalOptions:
+  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading} * conf.globalOptions ==
+      {optSpawnCodegen}:
     extccomp.spawnCodegenSubprocess(conf)
-    return  # Subprocess handled everything; skip in-process compilation
+    return # Subprocess handled everything; skip in-process compilation
 
   if conf.symbolFiles == disabledSf:
     setPipeLinePass(graph, CgenPass)
