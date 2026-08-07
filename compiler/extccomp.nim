@@ -468,7 +468,7 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
     if conf.cCompiler == ccVcc:
       {optGenMapping}
     else:
-      {optGenScript, optGenMapping}
+      {optGenMapping}
   result = conf.globalOptions * options != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
@@ -616,12 +616,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
-  # Generated files live in nimcache, but external files are not copied there.
-  let cf =
-    if noAbsolutePaths(conf) and CfileFlag.External notin cfile.flags:
-      AbsoluteFile extractFilename(cfile.cname.string)
-    else:
-      cfile.cname
+  let cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
+            else: cfile.cname
 
   let objfile =
     if cfile.obj.isEmpty:
