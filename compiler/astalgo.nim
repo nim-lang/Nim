@@ -529,8 +529,11 @@ proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
 type
   TIdentIter* = object # iterator over all syms with same identifier
     h*: Hash           # current hash
-    name*: PIdent
+    name* {.cursor.}: PIdent
 
+# String tables are always initialized with non-empty, power-of-two storage,
+# and every probe is masked by `high(tab.data)`.
+{.push boundChecks: off.}
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   # hot spots
   var h = ti.h and high(tab.data)
@@ -548,6 +551,7 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   else:
     result = nil
   ti.h = nextTry(h, high(tab.data))
+{.pop.}
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   ti.h = s.h
