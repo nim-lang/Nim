@@ -87,11 +87,11 @@ proc unsealForTransform*(t: PType) {.inline.} =
   if t.state == Partial: loadType(t)
   if t.state == Sealed: t.state = Complete
 
-proc owner*(s: PSym): PSym {.inline.} =
+proc owner*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.ownerFieldImpl
 
-proc owner*(s: PType): PSym {.inline.} =
+proc owner*(s: PType): lent PSym {.inline.} =
   if s.state == Partial: loadType(s)
   result = s.ownerFieldImpl
 
@@ -114,7 +114,7 @@ proc `kind=`*(s: PSym, val: TSymKind) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.kindImpl = val
 
-proc gcUnsafetyReason*(s: PSym): PSym {.inline.} =
+proc gcUnsafetyReason*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.gcUnsafetyReasonImpl
 
@@ -123,7 +123,7 @@ proc `gcUnsafetyReason=`*(s: PSym, val: PSym) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.gcUnsafetyReasonImpl = val
 
-proc transformedBody*(s: PSym): PNode {.inline.} =
+proc transformedBody*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.transformedBodyImpl
 
@@ -133,7 +133,7 @@ proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.transformedBodyImpl = val
 
-proc guard*(s: PSym): PSym {.inline.} =
+proc guard*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.guardImpl
 
@@ -169,7 +169,7 @@ proc `magic=`*(s: PSym, val: TMagic) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.magicImpl = val
 
-proc typ*(s: PSym): PType {.inline.} =
+proc typ*(s: PSym): lent PType {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.typImpl
 
@@ -215,7 +215,7 @@ proc `flags=`*(s: PSym, val: TSymFlags) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.flagsImpl = val
 
-proc ast*(s: PSym): PNode {.inline.} =
+proc ast*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.astImpl
 
@@ -263,7 +263,7 @@ proc `loc=`*(s: PSym, val: TLoc) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.locImpl = val
 
-proc annex*(s: PSym): PLib {.inline.} =
+proc annex*(s: PSym): lent PLib {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.annexImpl
 
@@ -282,7 +282,7 @@ when hasFFI:
     if s.state == Partial: loadSym(s)
     s.cnameImpl = val
 
-proc constraint*(s: PSym): PNode {.inline.} =
+proc constraint*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.constraintImpl
 
@@ -291,7 +291,7 @@ proc `constraint=`*(s: PSym, val: PNode) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.constraintImpl = val
 
-proc instantiatedFrom*(s: PSym): PSym {.inline.} =
+proc instantiatedFrom*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.instantiatedFromImpl
 
@@ -367,7 +367,7 @@ proc `sons=`*(t: PType, val: sink TTypeSeq) {.inline.} =
   if t.state == Partial: loadType(t)
   t.sonsImpl = val
 
-proc n*(t: PType): PNode {.inline.} =
+proc n*(t: PType): lent PNode {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.nImpl
 
@@ -376,7 +376,7 @@ proc `n=`*(t: PType, val: PNode) {.inline.} =
   if t.state == Partial: loadType(t)
   t.nImpl = val
 
-proc sym*(t: PType): PSym {.inline.} =
+proc sym*(t: PType): lent PSym {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.symImpl
 
@@ -418,7 +418,7 @@ proc `loc=`*(t: PType, val: TLoc) {.inline.} =
   if t.state == Partial: loadType(t)
   t.locImpl = val
 
-proc typeInst*(t: PType): PType {.inline.} =
+proc typeInst*(t: PType): lent PType {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.typeInstImpl
 
@@ -866,7 +866,7 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: PNode): PNode {.inline.} = n.sons[^1]
+proc lastSon*(n: PNode): lent PNode {.inline.} = n.sons[^1]
 template setLastSon*(n: PNode, s: PNode) = n.sons[^1] = s
 
 template firstSon*(n: PNode): PNode = n.sons[0]
@@ -888,29 +888,29 @@ proc last*(n: PType): PType {.inline.} =
   else:
     n.sonsImpl[^1]
 
-proc elementType*(n: PType): PType {.inline.} =
+proc elementType*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[^1]
+  result = n.sonsImpl[^1]
 
-proc skipModifier*(n: PType): PType {.inline.} =
+proc skipModifier*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[^1]
+  result = n.sonsImpl[^1]
 
-proc indexType*(n: PType): PType {.inline.} =
+proc indexType*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
-proc baseClass*(n: PType): PType {.inline.} =
+proc baseClass*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
-proc base*(t: PType): PType {.inline.} =
+proc base*(t: PType): lent PType {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.sonsImpl[0]
 
-proc returnType*(n: PType): PType {.inline.} =
+proc returnType*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
 proc setReturnType*(n, r: PType) {.inline.} =
   if n.state == Partial: loadType(n)
@@ -927,17 +927,17 @@ proc firstParamType*(n: PType): PType {.inline.} =
   else:
     n.sonsImpl[1]
 
-proc firstGenericParam*(n: PType): PType {.inline.} =
+proc firstGenericParam*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[1]
+  result = n.sonsImpl[1]
 
-proc typeBodyImpl*(n: PType): PType {.inline.} =
+proc typeBodyImpl*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[^1]
+  result = n.sonsImpl[^1]
 
-proc genericHead*(n: PType): PType {.inline.} =
+proc genericHead*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
