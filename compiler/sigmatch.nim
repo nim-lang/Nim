@@ -2452,11 +2452,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   result = nil
   var
-    fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
     a = a
     c = m.c
-  if tfHasStatic in fMaybeStatic.flags:
+  let hasStatic = tfHasStatic in f.flags or
+    (f.kind == tyDistinct and tfHasStatic in f.skipTypes({tyDistinct}).flags)
+  if hasStatic:
+    let fMaybeStatic = if f.kind == tyDistinct: f.skipTypes({tyDistinct}) else: f
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
     # make sure that static types enter here
