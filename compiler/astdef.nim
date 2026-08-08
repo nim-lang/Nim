@@ -1109,8 +1109,11 @@ const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
   StartSize* = 8              # must be power of 2, > 0
 
+{.push overflowChecks: off.}
 proc nextTry*(h, maxHash: Hash): Hash {.inline.} =
+  # Overflow is intentional: only the low bits selected by maxHash are used.
   result = ((5 * h) + 1) and maxHash
+{.pop.}
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
