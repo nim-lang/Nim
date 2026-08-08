@@ -681,6 +681,10 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
+    bindings*: seq[tuple[key: ItemId, value: PType]]
+      ## An optional exact snapshot of the matcher bindings. In-process
+      ## instances use it for a fast cache probe; serialized instances fall
+      ## back to comparing the fully instantiated signature.
     genericParamsCount*: int   # for terrible reasons `concreteTypes` contains all the types,
                                # so we need to know how many generic params there were
                                # this is not serialized for IC and that is fine.
