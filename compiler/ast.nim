@@ -447,7 +447,7 @@ proc excl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   if t.state == Partial: loadType(t)
   t.flagsImpl.excl(flags)
 
-proc typ*(n: PNode): PType {.inline.} =
+proc typ*(n: PNode): lent PType {.inline.} =
   result = n.typField
   if result == nil and nfLazyType in n.flags:
     result = n.sym.typ
