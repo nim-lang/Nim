@@ -649,7 +649,7 @@ type
   SkippedPtr = enum skippedNone, skippedRef, skippedPtr
 
 proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
-  var r = t
+  var r {.cursor.} = t
   # we're allowed to skip one level of ptr/ref:
   var ptrs = 0
   while r != nil:
@@ -993,13 +993,6 @@ proc shouldSkipDistinct(m: TCandidate; rules: PNode, callIdent: PIdent): bool =
       if considerQuotedIdent(m.c, r) == callIdent: return false
     return true
 
-proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
-  if t != nil and t.kind == tyDistinct and t.n != nil and
-     shouldSkipDistinct(m, t.n, callee.name):
-    result = t.base
-  else:
-    result = t
-
 proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
                             allowUnresolved = false,
                             allowCalls = false,
@@ -1242,17 +1235,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   assert(aOrig != nil)
 
-  var
-    useTypeLoweringRuleInTypeClass = c.c.matchedConcept != nil and
-                                     not c.isNoCall and
-                                     f.kind != tyTypeDesc and
-                                     tfExplicit notin aOrig.flags and
-                                     tfConceptMatchedTypeSym notin aOrig.flags
+  let useTypeLoweringRuleInTypeClass = c.c.matchedConcept != nil and
+                                       not c.isNoCall and
+                                       f.kind != tyTypeDesc and
+                                       tfExplicit notin aOrig.flags and
+                                       tfConceptMatchedTypeSym notin aOrig.flags
 
-    aOrig = if useTypeLoweringRuleInTypeClass:
-          aOrig.skipTypes({tyTypeDesc})
-        else:
-          aOrig
+  template skipTypeCursor(it, kinds: untyped) =
+    while it.kind in kinds:
+      if it.kind == tyProc and it.nImpl.len > 1:
+        it = it.nImpl[^1].sym.typ
+      else:
+        it = it.sonsImpl[^1]
+
+  var aOrig {.cursor.} = aOrig
+  if useTypeLoweringRuleInTypeClass:
+    skipTypeCursor(aOrig, {tyTypeDesc})
 
   if aOrig.kind == tyInferred:
     let prev = aOrig.previouslyInferred
@@ -1289,8 +1287,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   template doBind: bool = trDontBind notin flags
 
   # var, sink and static arguments match regular modifier-free types
-  var a = maybeSkipDistinct(c, aOrig.skipTypes({tyStatic, tyVar, tyLent, tySink}), c.calleeSym)
-  # XXX: Theoretically, maybeSkipDistinct could be called before we even
+  var a {.cursor.} = aOrig
+  skipTypeCursor(a, {tyStatic, tyVar, tyLent, tySink})
+  # Keep this expanded: an expression template materializes a PType temporary
+  # here, adding an otherwise avoidable reference-counting pair.
+  if a.kind == tyDistinct and a.n != nil and
+      shouldSkipDistinct(c, a.n, c.calleeSym.name):
+    a = a.base
+  # XXX: Theoretically, distinct types could be skipped before we even
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
   # situation when nkDotExpr are rotated to nkDotCalls
@@ -2448,11 +2452,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   result = nil
   var
-    fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
     a = a
     c = m.c
-  if tfHasStatic in fMaybeStatic.flags:
+  let hasStatic = tfHasStatic in f.flags or
+    (f.kind == tyDistinct and tfHasStatic in f.skipTypes({tyDistinct}).flags)
+  if hasStatic:
+    let fMaybeStatic = if f.kind == tyDistinct: f.skipTypes({tyDistinct}) else: f
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
     # make sure that static types enter here
