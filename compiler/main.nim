@@ -160,7 +160,8 @@ proc commandCompileToC(graph: ModuleGraph) =
   # C code and a JSON build script then executes the build script to build the
   # final output.
   # optHotCodeReloading is mostly broken in general
-  # optUseNimcache requires changes to how command lines are hashed
+  # optUseNimcache requires changes to how command lines are hashed to avoid rebuild detection errors
+  # optGenStaticLib isn't supported by the JSON build script machinery
   if {
     optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache,
     optGenStaticLib,
