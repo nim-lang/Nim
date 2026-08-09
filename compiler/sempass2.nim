@@ -1281,6 +1281,7 @@ type
   PragmaBlockContext = object
     oldLocked: int
     enforcedGcSafety, enforceNoSideEffects: bool
+    oldInEnforcedGcSafe, oldInEnforcedNoSideEffects: bool
     oldExc, oldTags, oldForbids: int
     exc, tags, forbids: PNode
     excSource, tagsSource, forbidsSource: PNode
@@ -1290,6 +1291,8 @@ proc createBlockContext(tracked: PEffects): PragmaBlockContext =
   if tracked.forbids != nil: oldForbidsLen = tracked.forbids.len
   result = PragmaBlockContext(oldLocked: tracked.locked.len,
     enforcedGcSafety: false, enforceNoSideEffects: false,
+    oldInEnforcedGcSafe: tracked.inEnforcedGcSafe,
+    oldInEnforcedNoSideEffects: tracked.inEnforcedNoSideEffects,
     oldExc: tracked.exc.len, oldTags: tracked.tags.len,
     oldForbids: oldForbidsLen)
 
@@ -1298,8 +1301,9 @@ proc applyBlockContext(tracked: PEffects, bc: PragmaBlockContext) =
   if bc.enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
 
 proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
-  if bc.enforcedGcSafety: tracked.inEnforcedGcSafe = false
-  if bc.enforceNoSideEffects: tracked.inEnforcedNoSideEffects = false
+  if bc.enforcedGcSafety: tracked.inEnforcedGcSafe = bc.oldInEnforcedGcSafe
+  if bc.enforceNoSideEffects:
+    tracked.inEnforcedNoSideEffects = bc.oldInEnforcedNoSideEffects
   setLen(tracked.locked, bc.oldLocked)
   if bc.exc != nil:
     # beware that 'raises: []' is very different from not saying
