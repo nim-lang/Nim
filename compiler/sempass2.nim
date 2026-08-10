@@ -1873,7 +1873,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   track(t, body)
 
   if t.exc.len == 0 and not t.canRaiseDefect:
-    s.incl sfNeverRaises
+    s.flags.incl sfNeverRaises
 
   if s.kind != skMacro:
     let params = s.typ.n
