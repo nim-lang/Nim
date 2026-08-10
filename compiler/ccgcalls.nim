@@ -76,7 +76,8 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   else:
     result = false
 
-proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
+proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc;
+                 forceAddress = false): bool =
   if returnType.kind in {tyVar, tyLent}:
     # we don't need to worry about var/lent return types
     result = false
@@ -85,7 +86,7 @@ proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
     var op = initLocExpr(p, newSymNode(dtor))
     var callee = rdLoc(op)
     let destroyArg =
-      if dtor.typ.firstParamType.kind == tyVar:
+      if forceAddress or dtor.typ.firstParamType.kind == tyVar:
         cAddr(rdLoc(tmp))
       else:
         rdLoc(tmp)
@@ -120,6 +121,8 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         result.finishCallBuilder(call)
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(result))
+        if canRaise and not cleanupTemp(p, typ.returnType, d, forceAddress = true):
+          raiseExit(p)
       else:
         var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
         let ratmp = addrLoc(p.config, tmp)
@@ -128,8 +131,9 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         result.finishCallBuilder(call)
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(result))
+        if canRaise and not cleanupTemp(p, typ.returnType, tmp):
+          raiseExit(p)
         genAssignment(p, d, tmp, {}) # no need for deep copying
-      if canRaise: raiseExit(p)
     else:
       result.finishCallBuilder(call)
       if p.module.compileToCpp:
