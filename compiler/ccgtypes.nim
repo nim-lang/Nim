@@ -767,11 +767,11 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
                         check: var IntSet; result: var Builder; unionPrefix = "") =
   case n.kind
   of nkRecList:
-    for i in 0..<n.len:
-      genRecordFieldsAux(m, n[i], rectype, check, result, unionPrefix)
+    for ni in n.sons:
+      genRecordFieldsAux(m, ni, rectype, check, result, unionPrefix)
   of nkRecCase:
-    if n[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
-    genRecordFieldsAux(m, n[0], rectype, check, result, unionPrefix)
+    if n.firstSon.kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
+    genRecordFieldsAux(m, n.firstSon, rectype, check, result, unionPrefix)
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody = newBuilder("")
@@ -780,7 +780,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       of nkOfBranch, nkElse:
         let k = lastSon(n[i])
         if k.kind != nkSym:
-          let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
+          let structName = "_" & mangleRecFieldName(m, n.firstSon.sym) & "_" & $i
           var a = newBuilder("")
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
           if a.buf.len != 0:
@@ -1075,9 +1075,9 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
           let owner = hashOwner(t.sym)
           if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
             var vals: seq[(string, int)] = @[]
-            for i in 0..<t.n.len:
-              assert(t.n[i].kind == nkSym)
-              let field = t.n[i].sym
+            for son in t.n.sons:
+              assert(son.kind == nkSym)
+              let field = son.sym
               vals.add((field.name.s, field.position.int))
             gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
               name: t.sym.name.s, values: vals))
@@ -1497,14 +1497,14 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
   case n.kind
   of nkRecList:
     if n.len == 1:
-      genObjectFields(m, typ, origType, n[0], expr, info)
+      genObjectFields(m, typ, origType, n.firstSon, expr, info)
     elif n.len > 0:
       var tmp = getTempName(m) & "_" & $n.len
       genTNimNodeArray(m, tmp, n.len)
-      for i in 0..<n.len:
+      for i, ni in isons(n):
         var tmp2 = getNimNode(m)
         m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(i), cAddr(tmp2))
-        genObjectFields(m, typ, origType, n[i], tmp2, info)
+        genObjectFields(m, typ, origType, ni, tmp2, info)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "len", n.len)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "sons",
@@ -1513,8 +1513,8 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
       m.s[cfsTypeInit3].addFieldAssignment(expr, "len", n.len)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
   of nkRecCase:
-    assert(n[0].kind == nkSym)
-    var field = n[0].sym
+    assert(n.firstSon.kind == nkSym)
+    var field = n.firstSon.sym
     var tmp = discriminatorTableName(m, typ, field)
     var L = lengthOrd(m.config, field.typ)
     assert L > 0
@@ -1558,7 +1558,7 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
         for j in 0..<b.len - 1:
           if b[j].kind == nkRange:
-            var x = toInt(getOrdValue(b[j][0]))
+            var x = toInt(getOrdValue(b[j].firstSon))
             var y = toInt(getOrdValue(b[j][1]))
             while x <= y:
               m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(x), cAddr(tmp2))
@@ -1649,9 +1649,9 @@ proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
   var firstNimNode = m.typeNodes
   var hasHoles = false
   enumNames.addStructInitializer(enumNamesInit, kind = siArray):
-    for i in 0..<typ.n.len:
-      assert(typ.n[i].kind == nkSym)
-      var field = typ.n[i].sym
+    for i, son in isons(typ.n):
+      assert(son.kind == nkSym)
+      var field = son.sym
       var elemNode = getNimNode(m)
       enumNames.addField(enumNamesInit, name = ""):
         if field.ast == nil:
@@ -2268,7 +2268,7 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
 proc retrieveSym(n: PNode): PSym =
   case n.kind
   of nkPostfix: result = retrieveSym(n[1])
-  of nkPragmaExpr, nkTypeDef: result = retrieveSym(n[0])
+  of nkPragmaExpr, nkTypeDef: result = retrieveSym(n.firstSon)
   of nkSym: result = n.sym
   else: result = nil
 

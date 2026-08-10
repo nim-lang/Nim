@@ -137,6 +137,11 @@ parameter and result types, not just their source-level shape. Use
   See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#typeminusbound-overloads)
   for more information.
 
+- Seven more Unicode characters are now parsed as operators, implementing the RFC
+  https://github.com/nim-lang/RFCs/issues/571: `⟑ ⟇ ⩓ ⩔ ■ □ ☆`. They all have the
+  same priority as `*` (multiplication). As with the other Unicode operators, Nim
+  only lexes them; their meaning is up to user code.
+
 ## Compiler changes
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
