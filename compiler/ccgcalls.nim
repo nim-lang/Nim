@@ -76,8 +76,7 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   else:
     result = false
 
-proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc;
-                 forceAddress = false): bool =
+proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
   if returnType.kind in {tyVar, tyLent}:
     # we don't need to worry about var/lent return types
     result = false
@@ -86,7 +85,8 @@ proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc;
     var op = initLocExpr(p, newSymNode(dtor))
     var callee = rdLoc(op)
     let destroyArg =
-      if forceAddress or dtor.typ.firstParamType.kind == tyVar:
+      if dtor.typ.firstParamType.kind == tyVar or
+          ccgIntroducedPtr(p.config, dtor.typ.n[1].sym, dtor.typ.returnType):
         cAddr(rdLoc(tmp))
       else:
         rdLoc(tmp)
@@ -121,7 +121,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         result.finishCallBuilder(call)
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(result))
-        if canRaise and not cleanupTemp(p, typ.returnType, d, forceAddress = true):
+        if canRaise and not cleanupTemp(p, typ.returnType, d):
           raiseExit(p)
       else:
         var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
