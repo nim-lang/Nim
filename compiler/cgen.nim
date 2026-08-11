@@ -947,7 +947,7 @@ proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc genLiteral(p: BProc, n: PNode; result: var Builder)
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder; argBuilder: var CallBuilder)
 proc raiseExit(p: BProc)
-proc raiseExitCleanup(p: BProc, destroy: string)
+proc raiseExitCleanup(p: BProc, destroy: string, loc: TLoc)
 
 proc initLocExpr(p: BProc, e: PNode, flags: TLocFlags = {}): TLoc =
   result = initLoc(locNone, e, OnUnknown, flags)

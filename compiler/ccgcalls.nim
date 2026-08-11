@@ -91,7 +91,7 @@ proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
       else:
         rdLoc(tmp)
     let destroy = cCall(callee, destroyArg)
-    raiseExitCleanup(p, destroy)
+    raiseExitCleanup(p, destroy, tmp)
     result = true
   else:
     result = false
