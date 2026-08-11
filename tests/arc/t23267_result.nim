@@ -2,7 +2,11 @@ discard """
   valgrind: true
   cmd: "nim c -d:useMalloc $file"
   matrix: "--mm:arc; --mm:orc"
-  disabled: "freebsd;osx;openbsd;windows;32bit"
+  disabled: "freebsd"
+  disabled: "osx"
+  disabled: "openbsd"
+  disabled: "windows"
+  disabled: "32bit"
 """
 
 import std/options
