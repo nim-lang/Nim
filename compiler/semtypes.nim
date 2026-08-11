@@ -60,6 +60,18 @@ proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   else:
     result = newTypeS(kind, c)
 
+proc rememberFlagUpdate(c: PContext; owner, elem: PType) =
+  ## `propagateToOwner` just derived `owner`'s `tfHasAsgn` & friends from
+  ## `elem`, but inside a type section `elem` can still be an unreified
+  ## `tyForward` which has nothing to derive from yet -- and a type that read
+  ## such a type is provisional in turn. Remember the pair so
+  ## `typeSectionFinalPass` can redo the propagation once every forward
+  ## declaration has a body, the same way `forwardFieldUpdates` defers the
+  ## field defaults.
+  if elem != nil and (elem.kind == tyForward or elem.id in c.staleTypeFlags):
+    c.forwardFlagUpdates.add (owner, elem)
+    c.staleTypeFlags.incl owner.id
+
 proc newConstraint(c: PContext, k: TTypeKind): PType =
   result = newTypeS(tyBuiltInTypeClass, c)
   result.flags.incl tfCheckedForDestructor
@@ -201,6 +213,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     var base = semTypeNode(c, n[1], nil)
     if base.kind == tyTypeDesc: base = base.base  # unwrap from type traits like distinctBase
     addSonSkipIntLit(result, base, c.idgen)
+    rememberFlagUpdate(c, result, base)
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = skipModifier(base)
     if base.kind notin {tyGenericParam, tyGenericInvocation, tyFromExpr}:
       if base.kind == tyForward:
@@ -219,6 +232,7 @@ proc semContainerArg(c: PContext; n: PNode, kindStr: string; result: PType) =
     if base.kind == tyVoid:
       localError(c.config, n.info, errTIsNotAConcreteType % typeToString(base))
     addSonSkipIntLit(result, base, c.idgen)
+    rememberFlagUpdate(c, result, base)
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % kindStr)
     addSonSkipIntLit(result, errorType(c), c.idgen)
@@ -311,6 +325,7 @@ proc addSonSkipIntLitChecked(c: PContext; father, son: PType; it: PNode, id: IdG
     localError(c.config, it.info, "illegal recursion in type '" & typeToString(s) & "'")
   else:
     propagateToOwner(father, s)
+    rememberFlagUpdate(c, father, s)
 
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
@@ -475,6 +490,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     # index type:
     result = newOrPrevType(tyArray, prev, c, indx)
     addSonSkipIntLit(result, base, c.idgen)
+    rememberFlagUpdate(c, result, base)
   else:
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
     result = newOrPrevType(tyError, prev, c)
@@ -557,6 +573,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
           fSym.sym.ast.flags.incl nfSkipFieldChecking
         result.n.add fSym
         addSonSkipIntLit(result, typ, c.idgen)
+        rememberFlagUpdate(c, result, typ)
       styleCheckDef(c, a[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
@@ -917,6 +934,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         n[^1] = firstRange(c.config, typ)
         hasDefaultField = true
       propagateToOwner(rectype, typ)
+      rememberFlagUpdate(c, rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
     for i in 0..<n.len-2:
@@ -1039,6 +1057,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, realBase)
+  rememberFlagUpdate(c, result, realBase)
   if realBase == nil and tfInheritable in flags:
     result.flags.incl tfInheritable
   if tfAcyclic in flags: result.flags.incl tfAcyclic
