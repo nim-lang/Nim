@@ -1918,22 +1918,6 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   if p.config.exc == excGoto:
     raiseExit(p)
 
-when false:
-  proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
-    const ObjDiscMappingProcSlot = -5
-    var theProc: PSym = nil
-    for idx, p in items(t.methods):
-      if idx == ObjDiscMappingProcSlot:
-        theProc = p
-        break
-    if theProc == nil:
-      theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
-      t.methods.add((ObjDiscMappingProcSlot, theProc))
-    var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
-    call.add newSymNode(theProc)
-    call.add e
-    expr(p, call, d)
-
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   var dotExpr = e.firstSon
   if dotExpr.kind == nkCheckedFieldExpr: dotExpr = dotExpr.firstSon
