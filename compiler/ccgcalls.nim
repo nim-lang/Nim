@@ -76,25 +76,6 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   else:
     result = false
 
-proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
-  if returnType.kind in {tyVar, tyLent}:
-    # we don't need to worry about var/lent return types
-    result = false
-  elif hasDestructor(returnType) and getAttachedOp(p.module.g.graph, returnType, attachedDestructor) != nil:
-    let dtor = getAttachedOp(p.module.g.graph, returnType, attachedDestructor)
-    var op = initLocExpr(p, newSymNode(dtor))
-    var callee = rdLoc(op)
-    let destroyArg =
-      if dtor.typ.firstParamType.kind == tyVar:
-        cAddr(rdLoc(tmp))
-      else:
-        rdLoc(tmp)
-    let destroy = cCall(callee, destroyArg)
-    raiseExitCleanup(p, destroy)
-    result = true
-  else:
-    result = false
-
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                result: var Builder, call: var CallBuilder) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
@@ -151,25 +132,18 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
             if canRaise: raiseExit(p)
 
       elif isHarmlessStore(p, canRaise, d):
-        var useTemp = false
-        if d.k == locNone:
-          useTemp = true
-          d = getTemp(p, typ.returnType)
+        if d.k == locNone: d = getTemp(p, typ.returnType)
         assert(d.t != nil)        # generate an assignment to d:
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.snippet = extract(result)
         genAssignment(p, d, list, flags+{needAssignCall}) # no need for deep copying
-        if canRaise:
-          if not (useTemp and cleanupTemp(p, typ.returnType, d)):
-            raiseExit(p)
+        if canRaise: raiseExit(p)
       else:
         var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.snippet = extract(result)
         genAssignment(p, tmp, list, flags+{needAssignCall}) # no need for deep copying
-        if canRaise:
-          if not cleanupTemp(p, typ.returnType, tmp):
-            raiseExit(p)
+        if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:
     finishCallBuilder(result, call)

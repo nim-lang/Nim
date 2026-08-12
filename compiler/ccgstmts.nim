@@ -820,20 +820,6 @@ proc raiseExit(p: BProc) =
       else:
         p.s(cpsStmts).addGoto("LA" & $p.nestedTryStmts[^1].label & "_")
 
-proc raiseExitCleanup(p: BProc, destroy: string) =
-  assert p.config.exc == excGoto
-  if nimErrorFlagDisabled notin p.flags:
-    p.flags.incl nimErrorFlagAccessed
-    p.s(cpsStmts).addSingleIfStmt(cUnlikely(cDeref("nimErr_"))):
-      p.s(cpsStmts).addStmt():
-        p.s(cpsStmts).add(destroy)
-      if p.nestedTryStmts.len == 0:
-        p.flags.incl beforeRetNeeded
-        # easy case, simply goto 'ret':
-        p.s(cpsStmts).addGoto("BeforeRet_")
-      else:
-        p.s(cpsStmts).addGoto("LA" & $p.nestedTryStmts[^1].label & "_")
-
 proc finallyActions(p: BProc) =
   if p.config.exc != excGoto:
     # Walk past compiler-injected `nkHiddenTryStmt` wrappers (e.g. ARC's
