@@ -529,14 +529,16 @@ proc containsConstSeq(n: PNode): bool =
 
 proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope;
                        consume = false): PNode =
-  # Give destructible expressions a scoped owner. If the expression is
-  # consumed, move it out and clear the temporary before its finalizer runs.
+  # it can happen that we need to destroy expression contructors
+  # like [], (), closures explicitly in order to not leak them.
   if arg.typ != nil and hasDestructor(c, arg.typ):
     # produce temp creation for (fn, env). But we need to move 'env'?
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = c.getTemp(s, arg.typ, arg.info, true)
     result.add c.genSink(s, tmp, arg, {IsDecl})
+    # In consumed mode, the destination takes ownership of the data.
+    # Clear the temporary after moving from it to prevent double destruction.
     result.add if consume: destructiveMoveVar(tmp, c, s) else: tmp
     s.final.add c.genDestroy(tmp)
   else:
