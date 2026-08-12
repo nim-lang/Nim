@@ -956,7 +956,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       if canRaise(n[0]): s.needsTry = true
       # A raising call needs owned storage even when its value is consumed: the
       # callee can partially initialize the result before control unwinds.
-      if mode == normal or canRaise(n[0]):
+      # Keep the call directly below `spawn` intact. Spawn lowering requires a
+      # call node and moves it into a generated proc that gets destructor
+      # injection of its own.
+      if mode == normal or (canRaise(n[0]) and inSpawn == 0):
         if result.typ != nil and result.typ.kind notin {tyOpenArray, tyVarargs}:
           # Returns of openarray types shouldn't be destroyed
           # bug #19435; # bug #23247
