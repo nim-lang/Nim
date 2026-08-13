@@ -211,6 +211,13 @@ proc interestingVar(s: PSym): bool {.inline.} =
     s.typ.kind notin {tyStatic, tyTypeDesc}
 
 proc illegalCapture(s: PSym): bool {.inline.} =
+  # A `var`/`lent` PARAMETER already stores a pointer; capturing it copies that
+  # pointer into the closure env (well-defined for the callee's lifetime). A
+  # `var`/`lent` LOCAL still cannot be captured — its stack slot would dangle.
+  # Chronos `{.async.}` closes over `var` params (nimbus `LightClientManager.stop`);
+  # forbidding that made `nim ic` fail while `nim c` only survived via DCE of the
+  # unused routine.
+  if s.kind == skParam: return false
   result = classifyViewType(s.typ) != noView or s.kind == skResult
 
 proc isInnerProc*(s: PSym): bool =

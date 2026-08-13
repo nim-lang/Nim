@@ -252,6 +252,7 @@ proc isLocalSym(sym: PSym): bool {.inline.} =
 
 const
   FieldMarker = "`f"
+  ExportedFieldMarker = "`fx"
     ## Appended to the ident of `skField` symbols in NIF names. Object fields are
     ## emitted as *local* symbols (NIF spec sense): `<ident>`f.<disamb>` with NO
     ## module suffix, so they get no index entry and are never registered in the
@@ -265,7 +266,10 @@ const
     ## local name in a namespace disjoint from proc-locals (backtick cannot appear
     ## in a Nim identifier), so a field use can never be misrouted to a same-named
     ## local var/param. Mirrors the `` `t `` (`typeToNifSym`) and `PkgMarker`
-    ## namespaces.
+    ## namespaces. `` `fx `` marks an *exported* field: reclist entries are
+    ## sometimes loaded as typeless stubs (SymUse, not sdef), which would otherwise
+    ## drop `sfExported` and make `obj.field` from another module fail
+    ## ("the field is not accessible" — nimbus-eth2 `protobuf.Register.ttl`).
   PkgMarker = "`pkg"
     ## Appended to the ident of `skPackage` symbols in NIF names. A package sym
     ## has no module of its own: it is written once into every module NIF that
@@ -287,7 +291,10 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # agree by construction; the loader recovers `name.s` and `mangleField` produces
     # the matching struct member name regardless of which module references it.
     result = sym.name.s
-    result.add FieldMarker
+    if sfExported in sym.flagsImpl:
+      result.add ExportedFieldMarker
+    else:
+      result.add FieldMarker
     result.add '.'
     # Use the field's POSITION as the local name's numeric component: it is unique
     # within the owning type (so the local name is unambiguous there) AND it is what
@@ -380,10 +387,11 @@ proc parseSymName*(s: string): ParsedSymName =
   return ParsedSymName(name: s, module: "")
 
 proc isFieldNifName(name: string): bool {.inline.} =
-  ## True for an object field's local NIF name `<ident>`f.<disamb>` (see
-  ## `FieldMarker`): no module suffix, marker on the ident.
+  ## True for an object field's local NIF name `<ident>`f.<disamb>` /
+  ## `<ident>`fx.<disamb>` (see `FieldMarker`): no module suffix, marker on the ident.
   let sn = parseSymName(name)
-  sn.module.len == 0 and sn.name.endsWith(FieldMarker)
+  sn.module.len == 0 and
+    (sn.name.endsWith(ExportedFieldMarker) or sn.name.endsWith(FieldMarker))
 
 proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
   ## The user-visible name of a symbol stub must NOT keep NIF-only name
@@ -394,6 +402,8 @@ proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
   ## the marked NIF name for the index lookup.
   if rawName.endsWith(PkgMarker):
     (skPackage, cache.getIdent(rawName[0 ..< rawName.len - PkgMarker.len]))
+  elif rawName.endsWith(ExportedFieldMarker):
+    (skField, cache.getIdent(rawName[0 ..< rawName.len - ExportedFieldMarker.len]))
   elif rawName.endsWith(FieldMarker):
     # Object field (local NIF symbol, see `FieldMarker`): strip the marker so the
     # backend mangles the clean field name, and record the kind so a use-site stub
@@ -772,7 +782,14 @@ proc writeSymNode(w: var Writer; dest: var IcBuilder; n: PNode; sym: PSym) =
   if wantDef:
     if not sym.itemId.isBackendMinted and not isField: sym.state = Sealed
     if restoresWrittenState(w.infos.config): w.writtenSyms.add sym
-    if nodeTyp != n.sym.typImpl:
+    # Object-field defs live in the owning type's reclist. Wrapping them in
+    # `(ht <nodeType> (sd …))` when the node type is a replica of the sym type
+    # (typical for generic-inst fields like `Opt[uint64]`) made the loader's
+    # hidden-type path `loadSymStub` the sdef — which SKIPS it and mints a
+    # flagless field stub. Exported `ttl*` then loaded as not-exported
+    # ("the field is not accessible" compiling nimbus-eth2 under `nim ic`).
+    # The sdef already carries the field's type; reclist lookup uses `f.typ`.
+    if not isField and nodeTyp != n.sym.typImpl:
       dest.buildTree hiddenTypeTag, trLineInfo(w, n.info):
         writeType(w, dest, nodeTyp)
         writeSymDef(w, dest, sym)
@@ -2356,6 +2373,8 @@ proc loadFieldStub(c: var DecodeContext; symAsStr: string; thisModule: string;
   result = PSym(itemId: c.nextSymId(module, isBk = false), kindImpl: stubKind,
                 name: stubName, disamb: sn.count.int32, state: Complete)
   result.positionImpl = sn.count.int32
+  if sn.name.endsWith(ExportedFieldMarker):
+    result.flagsImpl.incl sfExported
   if typ != nil: result.typImpl = typ
 
 proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
@@ -2368,7 +2387,7 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
     result = localSyms.getOrDefault(symAsStr)
     if result != nil:
       return result
-    elif sn.name.endsWith(FieldMarker):
+    elif sn.name.endsWith(ExportedFieldMarker) or sn.name.endsWith(FieldMarker):
       # A cross-context object-field reference reaching a non-dotExpr slot (e.g. a
       # `{.guard.}` field, an owner): stub it like any other field use.
       return c.loadFieldStub(symAsStr, thisModule, localSyms)
@@ -2391,6 +2410,12 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
       result = PSym(itemId: itemId(module.int32, 0'i32), kindImpl: skModule,
                     name: c.cache.getIdent(sn.name), disamb: sn.count.int32,
                     infoImpl: newLineInfo(module, 1, 1), state: Complete)
+      # `sameModules` / `fieldVisible` match modules by `position` (FileIndex).
+      # Leaving it 0 made every synthesized stub compare equal to FileIndex 0
+      # and unequal to the real module, so private-field access inside a
+      # generic instantiated from another module either SIGSEGV'd (nil owner)
+      # or failed with "field is not accessible".
+      result.positionImpl = module.int
       c.syms[symAsStr] = (result, NifIndexEntry())
       return result
     result = c.makePartialSymStub(symAsStr, sn, id, offs)
@@ -2451,6 +2476,22 @@ proc loadLoc(c: var DecodeContext; n: var Cursor; loc: var TLoc) =
   loadField loc.flags
   loadField loc.snippet
 
+proc patchNilFieldOwners(n: PNode; owner: PSym) =
+  ## Fill in a nil `owner` on object/tuple fields in a loaded reclist so
+  ## `getModule` / `fieldVisible` can walk to the defining module. See the
+  ## call in `loadTypeFromCursor`.
+  if n == nil or owner == nil: return
+  case n.kind
+  of nkSym:
+    let s = n.sym
+    if s != nil and s.kindImpl == skField and s.ownerFieldImpl == nil:
+      s.ownerFieldImpl = owner
+  of nkRecList, nkRecCase, nkOfBranch, nkElse, nkElifBranch, nkRecWhen:
+    for i in 0..<n.len:
+      patchNilFieldOwners(n[i], owner)
+  else:
+    discard
+
 proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms: var Table[string, PSym]) =
   expect n, TagLit
   if not tagIs(n, typeDefTagName):
@@ -2490,6 +2531,11 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
     t.nImpl = loadNode(c, n, typesModule, localSyms)
     t.ownerFieldImpl = loadSymStub(c, n, typesModule, localSyms)
     t.symImpl = loadSymStub(c, n, typesModule, localSyms)
+    # A reclist field written as a bare SymUse (or whose owner was `.`) loads
+    # with a nil owner. `fieldVisible` then SIGSEGVs in `sameModules`. Attach
+    # the type's own symbol / owner so `getModule` can walk to the module.
+    let fieldOw = if t.symImpl != nil: t.symImpl else: t.ownerFieldImpl
+    patchNilFieldOwners(t.nImpl, fieldOw)
     loadLoc c, n, t.locImpl
 
     while n.hasMore:
@@ -2721,6 +2767,26 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             # type to re-serialize.
             s = c.loadFieldStub(symName(n), thisModule, localSyms, typ)
             skip n
+          elif n.kind == TagLit and tagIs(n, symDefTagName) and
+              parseSymName(symName(n.firstSon)).module.len == 0:
+            # `(ht <type> (sd …))`: a local DEF (typically an object field) wrapped
+            # because the node's type differs from the sym's — e.g. an `Opt[uint64]`
+            # field, whose node type is a replica/generic-inst. `loadSymStub` would
+            # skip the sdef and mint a flagless field stub, so an exported `ttl*`
+            # loaded as not-exported ("the field is not accessible" / "undeclared
+            # field" compiling nimbus-eth2 under `nim ic`).
+            let sname = symName(n.firstSon)
+            let sn = parseSymName(sname)
+            s = localSyms.getOrDefault(sname)
+            if s == nil:
+              let module = moduleId(c, thisModule)
+              let id = c.nextSymId(module, isBk = false)
+              let (_, stubName) = stubKindAndName(c.cache, sn.name)
+              s = PSym(itemId: id, kindImpl: skStub, name: stubName,
+                       disamb: sn.count.int32, state: Complete)
+              localSyms[sname] = s
+            loadSymFromCursor(c, s, n, thisModule, localSyms)
+            s.state = c.loadedState
           else:
             s = c.loadSymStub(n, thisModule, localSyms)
           result = newSymNode(s, info)

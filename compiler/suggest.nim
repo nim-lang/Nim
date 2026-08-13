@@ -357,12 +357,23 @@ proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmodule = getModule(f)
+  if fmodule == nil:
+    # IC: a field (or its owner) loaded from NIF can lack an owner chain, so
+    # `getModule` returns nil. Fall back to the itemId module half — the loader
+    # sets it from the owning type's NIF suffix — and compare against `position`
+    # (the FileIndex) of the current / friend module.
+    result = sfExported in f.flags or f.itemId.module == int32(c.module.position)
+    if not result:
+      for module in c.friendModules:
+        if module != nil and f.itemId.module == int32(module.position):
+          return true
+    return
   result = sfExported in f.flags or sameModules(fmodule, c.module)
 
   if not result:
     for module in c.friendModules:
       if sameModules(fmodule, module): return true
-    if f.kind == skField:
+    if f.kind == skField and f.owner != nil and f.owner.typ != nil:
       var symObj = f.owner.typ.toObjectFromRefPtrGeneric.sym
       assert symObj != nil
       for scope in allScopes(c.currentScope):

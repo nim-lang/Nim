@@ -340,7 +340,7 @@ type
                       # gives warning instead
     nfLazyType  # node has a lazy type
     nfLazyBody  # IC: this node is a placeholder for a routine body (bodyPos son)
-                # not yet materialized. Reading its children (via `len`/`safeLen`)
+                # not yet materialized. Reading its children (via `len`/`safeLen`/`[]`)
                 # triggers `forceLazyBodyHook`. Process-local, stripped on serialize.
     nfBroadcast # this `nkBracket` is a *broadcast* default array: a single son
                 # standing for `lengthOrd` identical zero copies (see
@@ -918,9 +918,12 @@ const
 
 var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
   ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
-  ## to its children through `len` materializes the deferred routine body in place.
-  ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
-  ## never a leaf kind, so the `{nkNone..nkNilLit}` short-circuit never hides it.
+  ## to its children through `len` or `[]` materializes the deferred routine body
+  ## in place. `safeLen`/`items`/`sons` delegate to `len`, so they are covered
+  ## transitively; a lazy body is never a leaf kind, so the `{nkNone..nkNilLit}`
+  ## short-circuit never hides it. Indexed `n[i]` used to skip this hook and
+  ## IndexDefect on an empty `nkAsgn`/`nkCall` placeholder (nimbus-eth2 `nim ic`
+  ## crashed in `getPotentialWrites` during destructor injection).
   ##
   ## The type MUST be effect-free (`raises: []`/`tags: []`): `len` is a fundamental
   ## `PNode` accessor that the whole compiler — and every compiler-as-library
@@ -941,8 +944,18 @@ proc safeLen*(n: PNode): int {.inline.} =
   if n.kind in {nkNone..nkNilLit}: result = 0
   else: result = n.len
 
-template `[]`*(n: PNode, i: int): PNode = n.sons[i]
-template `[]=`*(n: PNode, i: int; x: PNode) = n.sons[i] = x
+proc ensureLazyBody*(n: PNode): PNode {.inline, noSideEffect.} =
+  ## Identity; materializes a `nfLazyBody` placeholder so `n[i]` / `n[i] =` can
+  ## keep returning an lvalue into `sons` (a statement-list `[]` template would
+  ## break `var PNode` arguments). Materialization is a cache fill, not a
+  ## semantic side effect — same invariant as `len`.
+  {.cast(noSideEffect).}:
+    if nfLazyBody in n.flags and forceLazyBodyHook != nil:
+      forceLazyBodyHook(n)
+  result = n
+
+template `[]`*(n: PNode, i: int): PNode = n.ensureLazyBody.sons[i]
+template `[]=`*(n: PNode, i: int; x: PNode) = n.ensureLazyBody.sons[i] = x
 
 template `[]`*(n: PNode, i: BackwardsIndex): PNode = n[n.len - i.int]
 template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x

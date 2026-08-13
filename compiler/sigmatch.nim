@@ -1242,11 +1242,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
                                        tfConceptMatchedTypeSym notin aOrig.flags
 
   template skipTypeCursor(it, kinds: untyped) =
+    # `PType.kind` is stored on the stub and does NOT force a NIF load, so a
+    # Partial `tyTypeDesc`/`tyVar`/… would enter this loop with an empty
+    # `sonsImpl` and `IndexDefect` on `[^1]` (nimbus-eth2 `nim ic` crash in
+    # concept/`is` matching). Load via `skipTypesOrNil` in that case; the
+    # already-Complete hot path stays a direct last-son walk.
     while it.kind in kinds:
+      if it.state == Partial:
+        let skipped = skipTypesOrNil(it, kinds)
+        if skipped != nil: it = skipped
+        break
       if it.kind == tyProc and it.nImpl.len > 1:
         it = it.nImpl[^1].sym.typ
-      else:
+      elif it.sonsImpl.len > 0:
         it = it.sonsImpl[^1]
+      else:
+        break
 
   var aOrig {.cursor.} = aOrig
   if useTypeLoweringRuleInTypeClass:

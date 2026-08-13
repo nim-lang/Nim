@@ -475,8 +475,15 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     dec c.instCounter
     c.inTypeofContext = currentTypeofContext
   # NOTE: for access of private fields within generics from a different module
-  # we set the friend module:
-  let producer = getModule(fn)
+  # we set the friend module. Prefer the module-graph entry: a NIF-loaded
+  # generic's owner chain may be nil or a synthesized skModule stub (no
+  # `position`), and `fieldVisible` matches friends by `position` / FileIndex.
+  var producer = getModule(fn)
+  let producerFi =
+    if producer != nil: producer.itemId.module.FileIndex
+    else: fn.itemId.module.FileIndex
+  let fromGraph = c.graph.getModule(producerFi)
+  if fromGraph != nil: producer = fromGraph
   c.friendModules.add(producer)
   let oldMatchedConcept = c.matchedConcept
   c.matchedConcept = nil
@@ -486,9 +493,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   incl(result, sfFromGeneric)
   result.instantiatedFrom = fn
   if sfGlobal in result.flags and c.config.symbolFiles != disabledSf:
-    let passc = getLocalPassC(c, producer)
-    if passc != "": #pass the local compiler options to the consumer module too
-      extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
+    if producer != nil:
+      let passc = getLocalPassC(c, producer)
+      if passc != "": #pass the local compiler options to the consumer module too
+        extccomp.addLocalCompileOption(c.config, passc, toFullPathConsiderDirty(c.config, c.module.info.fileIndex))
     setOwner(result, c.module)
   else:
     setOwner(result, fn)

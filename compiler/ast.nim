@@ -1778,6 +1778,11 @@ template initSymMapping*(): SymMapping = initIdTable[PSym]()
 template initTypeMapping*(): TypeMapping = initIdTable[PType]()
 
 proc sameModules*(a, b: PSym): bool {.inline.} =
+  ## True when `a` and `b` are the same module. Nil-safe: NIF-loaded fields and
+  ## generics can have a broken owner chain (`getModule` returns nil) or a
+  ## synthesized module stub; calling this with nil used to SIGSEGV in
+  ## `fieldVisible` (`sameModules(nil, c.module)`).
+  if a == nil or b == nil: return false
   assert a.kind == skModule and b.kind == skModule
   result = a.position == b.position
 
