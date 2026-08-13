@@ -25,6 +25,11 @@ type
     pfStructural    ## use structural prefix-chain detection and tree-walk
     pfBidirectional ## also check reverse direction per field in nkObjConstr
 
+proc isCompileTimeOnlyNode(n: PNode): bool {.inline.} =
+  ## `typeof` and typedesc/static values describe types at compile time; they
+  ## do not read the runtime location that alias analysis is protecting.
+  n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.containsCompileTimeOnly)
+
 func sameLocation(a, b: PNode): bool =
   template sameConstIndex(a, b: PNode): bool =
     a.kind in nkLiterals and b.kind in nkLiterals and a.intVal == b.intVal
@@ -157,6 +162,9 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
   ##
   ##  x[]  ?<| y  depending on type
   ##  ```
+  if a.isCompileTimeOnlyNode or b.isCompileTimeOnlyNode:
+    return arNo
+
   if a.kind == b.kind:
     case a.kind
     of nkSym:
@@ -271,6 +279,11 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
     of nkCallKinds:
       result = arNo
       for i in 1..<b.len:
+        # A call such as `fill(typeof(result.f))` has a compile-time-only
+        # argument. It must not make the object constructor look aliased with
+        # `result.f`; runtime arguments remain subject to the normal analysis.
+        if b[i].isCompileTimeOnlyNode:
+          continue
         let res = isPartOf(a, b[i], flags)
         if res != arNo:
           result = res
