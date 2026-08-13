@@ -331,8 +331,16 @@ when defined(windows) or defined(nimdoc):
                          # when using RegisterWaitForSingleObject, because
                          # waiting is done in different thread.
 
-    PDispatcher* = ref object of PDispatcherBase
+    DispatcherGuard = object
+      # RAII owner of the dispatcher's IO completion port: `=destroy` closes
+      # the handle when the dispatcher object is destroyed and composes with
+      # the compiler-generated destruction of the remaining fields (unlike a
+      # `new`-attached finalizer, which replaces it). Only effective under
+      # ARC/ORC; refc uses a finalizer instead.
       ioPort: Handle
+
+    PDispatcher* = ref object of PDispatcherBase
+      guard: DispatcherGuard
       handles*: HashSet[AsyncFD] # Export handles so that an external library can register them.
 
     CustomObj = object of OVERLAPPED
@@ -360,6 +368,16 @@ when defined(windows) or defined(nimdoc):
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
 
+  when defined(gcDestructors):
+    proc `=copy`(dest: var DispatcherGuard, src: DispatcherGuard) {.error.}
+
+    proc `=destroy`(g: var DispatcherGuard) =
+      if g.ioPort != 0:
+        discard closeHandle(g.ioPort)
+        g.ioPort = 0
+
+  template ioPort(disp: PDispatcher): untyped = disp.guard.ioPort
+
   proc close*(disp: PDispatcher) =
     ## Closes the dispatcher's operating system resources: the underlying
     ## IO completion port handle is closed and pending timers and queued
@@ -380,16 +398,17 @@ when defined(windows) or defined(nimdoc):
       close(disp)
     except CatchableError:
       discard
-    # A finalizer attached via `new` replaces the generated destructor under
-    # ARC/ORC, so the object's fields are not destroyed automatically;
-    # release them explicitly to avoid trading the fd leak for a heap leak.
-    reset(disp.handles)
-    reset(disp.timers)
-    reset(disp.callbacks)
 
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
-    new(result, closeQuietly)
+    when defined(gcDestructors):
+      # DispatcherGuard's `=destroy` closes the IO port when the dispatcher
+      # is destroyed; fields are destroyed by the generated destructor.
+      new result
+    else:
+      # refc does not run destructor hooks for heap objects; use a finalizer
+      # (the GC frees the fields by tracing, so only the handle needs closing).
+      new(result, closeQuietly)
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initHashSet[AsyncFD]()
     result.timers.clear()
@@ -1256,10 +1275,34 @@ else:
 
     AsyncEvent* = distinct SelectEvent
 
-    PDispatcher* = ref object of PDispatcherBase
+    DispatcherGuard = object
+      # RAII owner of the dispatcher's selector: `=destroy` closes the
+      # selector's fd when the dispatcher object is destroyed and composes
+      # with the compiler-generated destruction of the remaining fields
+      # (unlike a `new`-attached finalizer, which replaces it). Only
+      # effective under ARC/ORC; refc uses a finalizer instead.
       selector: Selector[AsyncData]
+
+    PDispatcher* = ref object of PDispatcherBase
+      guard: DispatcherGuard
       when defined(genode):
         signalHandler: SignalHandler
+
+  when defined(gcDestructors):
+    proc `=copy`(dest: var DispatcherGuard, src: DispatcherGuard) {.error.}
+
+    proc `=destroy`(g: var DispatcherGuard) =
+      # A custom `=destroy` suppresses the generated destruction of the
+      # object's own fields, so release the selector explicitly after
+      # closing its fd.
+      if g.selector != nil:
+        try:
+          g.selector.close()
+        except CatchableError:
+          discard
+        g.selector = nil
+
+  template selector(disp: PDispatcher): untyped = disp.guard.selector
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
@@ -1289,17 +1332,16 @@ else:
       close(disp)
     except CatchableError:
       discard
-    # A finalizer attached via `new` replaces the generated destructor under
-    # ARC/ORC, so the object's fields are not destroyed automatically;
-    # release them explicitly to avoid trading the fd leak for a heap leak.
-    reset(disp.selector)
-    reset(disp.timers)
-    reset(disp.callbacks)
-    when defined(genode):
-      reset(disp.signalHandler)
 
   proc newDispatcher*(): owned(PDispatcher) =
-    new(result, closeQuietly)
+    when defined(gcDestructors):
+      # DispatcherGuard's `=destroy` closes the selector when the dispatcher
+      # is destroyed; fields are destroyed by the generated destructor.
+      new result
+    else:
+      # refc does not run destructor hooks for heap objects; use a finalizer
+      # (the GC frees the fields by tracing, so only the fd needs closing).
+      new(result, closeQuietly)
     result.selector = newSelector[AsyncData]()
     result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](InitDelayedCallbackListSize)
