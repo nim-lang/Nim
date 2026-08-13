@@ -186,6 +186,12 @@ type
     forwardFieldUpdates*: seq[(PType, PNode, PType)]
       # object/tuple field definitions whose default values mention forward
       # types and need delayed const checking
+    forwardFlagUpdates*: seq[(PType, PType)]
+      # (owner, son) pairs whose `propagateToOwner` ran on a not yet reified
+      # forward type and has to be redone in the final pass
+    staleTypeFlags*: IntSet
+      # ids of the owners in `forwardFlagUpdates`; their flags are provisional
+      # too, so reading them makes the reader provisional in turn
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
@@ -306,7 +312,7 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
     it = it.next
   result = s
 
-proc considerGenSyms*(c: PContext; n: PNode) =
+proc considerGenSymsAux(c: PContext; n: PNode) =
   if n == nil:
     discard "can happen for nkFormalParams/nkArgList"
   elif n.kind == nkSym:
@@ -315,7 +321,16 @@ proc considerGenSyms*(c: PContext; n: PNode) =
       n.sym = s
   else:
     for i in 0..<n.safeLen:
-      considerGenSyms(c, n[i])
+      considerGenSymsAux(c, n[i])
+
+proc considerGenSyms*(c: PContext; n: PNode) =
+  var it = c.p
+  while it != nil:
+    if it.mappingExists:
+      # Save a tree traversal when no mapping exists
+      considerGenSymsAux(c, n)
+      return
+    it = it.next
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result = POptionEntry(
@@ -360,6 +375,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     unknownIdents: initIntSet(),
     shadowDiscardedDefs: initIntSet(),
     realizedDefs: initIntSet(),
+    staleTypeFlags: initIntSet(),
     cache: graph.cache,
     graph: graph,
     signatures: initStrTable(),

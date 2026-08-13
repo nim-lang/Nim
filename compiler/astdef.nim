@@ -681,6 +681,10 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
+    bindings*: seq[tuple[key: ItemId, value: PType]]
+      ## An optional exact snapshot of the matcher bindings. In-process
+      ## instances use it for a fast cache probe; serialized instances fall
+      ## back to comparing the fully instantiated signature.
     genericParamsCount*: int   # for terrible reasons `concreteTypes` contains all the types,
                                # so we need to know how many generic params there were
                                # this is not serialized for IC and that is fine.
@@ -946,6 +950,16 @@ template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x
 iterator items*(n: PNode): PNode =
   for i in 0..<n.safeLen: yield n[i]
 
+iterator sons*(n: PNode): PNode =
+  ## Iterates over the children of `n`. Preferred over `for i in 0..<n.len: n[i]`
+  ## as it does not rely on random indexed access (see doc/ic_backend_nif_native.md).
+  for i in 0..<n.safeLen: yield n[i]
+
+iterator isons*(n: PNode): tuple[i: int, n: PNode] =
+  ## Like `sons` but also yields the child index. Replaces
+  ## `for i in 0..<n.len: ... n[i] ...` when `i` itself is still needed.
+  for i in 0..<n.safeLen: yield (i, n[i])
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
@@ -1095,8 +1109,11 @@ const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
   StartSize* = 8              # must be power of 2, > 0
 
+{.push overflowChecks: off.}
 proc nextTry*(h, maxHash: Hash): Hash {.inline.} =
+  # Overflow is intentional: only the low bits selected by maxHash are used.
   result = ((5 * h) + 1) and maxHash
+{.pop.}
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).

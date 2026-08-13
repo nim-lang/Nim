@@ -1837,6 +1837,24 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]
+
+  # a son that still was a `tyForward` could not propagate `tfHasAsgn` and
+  # friends to its owner back then, see `rememberFlagUpdate`. Now that every
+  # forward declaration has a body, redo those propagations. They are recorded
+  # in declaration order rather than dependency order and an owner can itself
+  # be the son of another pair, so repeat until nothing changes; this
+  # terminates because flags are only ever added.
+  if c.forwardFlagUpdates.len > 0:
+    let updates = move c.forwardFlagUpdates
+    c.staleTypeFlags = initIntSet()
+    var changed = true
+    while changed:
+      changed = false
+      for (owner, elem) in updates:
+        let before = owner.flags
+        propagateToOwner(owner, elem)
+        if owner.flags != before: changed = true
+
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue

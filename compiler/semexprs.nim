@@ -1461,7 +1461,11 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     # not sure the symbol really ends up being used:
     # var len = 0 # but won't be called
     # genericThatUsesLen(x) # marked as taking a closure?
-    if hasWarn(c.config, warnResultUsed):
+    # Lowered returns use resolved symbol nodes internally; warn only for
+    # source-level references to the implicit result variable.
+    if s.kind == skResult and
+        (n.kind != nkSym or nfFromTemplate in n.flags) and
+        hasWarn(c.config, warnResultUsed):
       message(c.config, n.info, warnResultUsed)
 
   of skGenericParam:
@@ -2160,6 +2164,8 @@ proc semReturn(c: PContext, n: PNode): PNode =
       # optimize away ``result = result``:
       if result[0][1].kind == nkSym and result[0][1].sym == c.p.resultSym:
         result[0] = c.graph.emptyNode
+    elif c.p.resultSym != nil and hasWarn(c.config, warnResultUsed):
+      message(c.config, n.info, warnResultUsed)
   else:
     localError(c.config, n.info, "'return' not allowed here")
 
@@ -2743,12 +2749,24 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: P
     result = semDirectOp(c, n, flags, expectedType)
 
 proc semNimvmBranch(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  let
+    oldOptionStack = c.optionStack[0..^1]
+    oldOptions = c.config.options
+    oldNotes = c.config.notes
+    oldWarningAsErrors = c.config.warningAsErrors
+    oldFeatures = c.features
+ 
   # Both branches are checked, but their declarations cannot affect later code.
   c.openShadowScope()
   try:
     result = semExpr(c, n, flags)
   finally:
     c.closeScope()
+    c.optionStack = oldOptionStack
+    c.config.options = oldOptions
+    c.config.notes = oldNotes
+    c.config.warningAsErrors = oldWarningAsErrors
+    c.features = oldFeatures
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # If semCheck is set to false, ``when`` will return the verbatim AST of

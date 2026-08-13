@@ -61,6 +61,17 @@ iterator pairs*(pt: LayeredIdTable): (ItemId, PType) =
       break
     tm.setToPreviousLayer
 
+proc lookupById*(typeMap: LayeredIdTable, key: ItemId): PType =
+  ## Looks up an ItemId directly, observing the same layer shadowing rules as
+  ## `lookup`. This form is useful when a binding key was previously captured.
+  result = nil
+  var tm = typeMap
+  while true:
+    result = getOrDefault(tm.topLayer, key)
+    if result != nil or tm.nextLayer == nil:
+      return
+    tm.setToPreviousLayer
+
 proc lookup(typeMap: ref LayeredIdTableObj, key: ItemId): PType =
   result = nil
   var tm = typeMap
