@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc"
+  matrix: "--mm:refc -d:nimAllocStats; --mm:orc -d:nimAllocStats"
   output: '''ok'''
   disabled: "windows"
 """
@@ -7,7 +7,9 @@ discard """
 # Dispatchers used to leak their epoll/kqueue fd: there was no way to close
 # a PDispatcher, and threads/finalization never released it (bugs.txt #2).
 
-import std/[asyncdispatch, os]
+import std/[asyncdispatch, os, importutils]
+
+privateAccess(AllocStats)
 
 proc openFds(): int =
   when defined(macosx) or defined(bsd):
@@ -51,10 +53,19 @@ when defined(gcOrc) or defined(gcArc):
       setGlobalDispatcher(disp)
       pump()
       setGlobalDispatcher(nil)  # drop without explicit close
+    makeAndDrop()  # warm up one-time allocations
+    GC_fullCollect()
+    let statsBefore = getAllocStats()
     for i in 0..<10:
       makeAndDrop()
     GC_fullCollect()
+    let statsAfter = getAllocStats()
     doAssert openFds() == base, "finalizer did not close dispatcher"
+    # a `new`-attached finalizer replaces the generated destructor, so the
+    # finalizer must release the dispatcher's fields itself; catch regressions
+    doAssert statsAfter.allocCount - statsAfter.deallocCount ==
+             statsBefore.allocCount - statsBefore.deallocCount,
+             "finalizer-collected dispatchers retain heap blocks"
 
 when compileOption("threads"):
   block threadExitClosesDispatcher:

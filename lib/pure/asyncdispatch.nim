@@ -380,6 +380,12 @@ when defined(windows) or defined(nimdoc):
       close(disp)
     except CatchableError:
       discard
+    # A finalizer attached via `new` replaces the generated destructor under
+    # ARC/ORC, so the object's fields are not destroyed automatically;
+    # release them explicitly to avoid trading the fd leak for a heap leak.
+    reset(disp.handles)
+    reset(disp.timers)
+    reset(disp.callbacks)
 
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
@@ -1283,6 +1289,14 @@ else:
       close(disp)
     except CatchableError:
       discard
+    # A finalizer attached via `new` replaces the generated destructor under
+    # ARC/ORC, so the object's fields are not destroyed automatically;
+    # release them explicitly to avoid trading the fd leak for a heap leak.
+    reset(disp.selector)
+    reset(disp.timers)
+    reset(disp.callbacks)
+    when defined(genode):
+      reset(disp.signalHandler)
 
   proc newDispatcher*(): owned(PDispatcher) =
     new(result, closeQuietly)
