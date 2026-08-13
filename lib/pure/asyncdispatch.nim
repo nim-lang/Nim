@@ -360,15 +360,51 @@ when defined(windows) or defined(nimdoc):
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
 
+  proc close*(disp: PDispatcher) =
+    ## Closes the dispatcher's operating system resources: the underlying
+    ## IO completion port handle is closed and pending timers and queued
+    ## callbacks are dropped, releasing the futures they retain. Pending
+    ## operations never complete after this.
+    ##
+    ## The dispatcher must not be used for further operations after closing
+    ## it. Closing an already closed dispatcher is a no-op.
+    if disp.ioPort != 0:
+      discard closeHandle(disp.ioPort)
+      disp.ioPort = 0
+    disp.handles.clear()
+    disp.timers.clear()
+    disp.callbacks.clear()
+
+  proc closeQuietly(disp: PDispatcher) {.nimcall, raises: [].} =
+    try:
+      close(disp)
+    except CatchableError:
+      discard
+
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
-    new result
+    new(result, closeQuietly)
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initHashSet[AsyncFD]()
     result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](64)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
+
+  when compileOption("threads"):
+    var gCleanupRegistered {.threadvar.}: bool
+
+  proc registerThreadDispatcherCleanup() =
+    # Makes a thread that used async release its dispatcher's OS resources
+    # (notably the IO completion port handle) when the thread finishes;
+    # without this every terminated thread leaks one handle.
+    when compileOption("threads"):
+      if not gCleanupRegistered:
+        gCleanupRegistered = true
+        onThreadDestruction(proc () {.gcsafe, raises: [].} =
+          if not gDisp.isNil:
+            closeQuietly(gDisp)
+            gDisp = nil)
 
   proc setGlobalDispatcher*(disp: sink PDispatcher) =
     if not gDisp.isNil:
@@ -379,7 +415,17 @@ when defined(windows) or defined(nimdoc):
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
       setGlobalDispatcher(newDispatcher())
+      registerThreadDispatcherCleanup()
     result = gDisp
+
+  proc closeGlobalDispatcher*() =
+    ## Closes the global dispatcher of the current thread (if any) and
+    ## releases its operating system resources. A subsequent
+    ## `getGlobalDispatcher` call (or any async operation) creates a fresh
+    ## dispatcher.
+    if not gDisp.isNil:
+      close(gDisp)
+      gDisp = nil
 
   proc getIoHandler*(disp: PDispatcher): Handle =
     ## Returns the underlying IO Completion Port handle (Windows) or selector
@@ -1218,8 +1264,28 @@ else:
       writeList: newSeqOfCap[Callback](InitCallbackListSize)
     )
 
+  proc close*(disp: PDispatcher) =
+    ## Closes the dispatcher's operating system resources: the underlying
+    ## selector (epoll/kqueue file descriptor) is closed and pending timers
+    ## and queued callbacks are dropped, releasing the futures they retain.
+    ## Pending operations never complete after this.
+    ##
+    ## The dispatcher must not be used for further operations after closing
+    ## it. Closing an already closed dispatcher is a no-op.
+    if disp.selector != nil:
+      disp.selector.close()
+      disp.selector = nil
+    disp.timers.clear()
+    disp.callbacks.clear()
+
+  proc closeQuietly(disp: PDispatcher) {.nimcall, raises: [].} =
+    try:
+      close(disp)
+    except CatchableError:
+      discard
+
   proc newDispatcher*(): owned(PDispatcher) =
-    new result
+    new(result, closeQuietly)
     result.selector = newSelector[AsyncData]()
     result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](InitDelayedCallbackListSize)
@@ -1230,10 +1296,27 @@ else:
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
+  when compileOption("threads"):
+    var gCleanupRegistered {.threadvar.}: bool
+
+  proc registerThreadDispatcherCleanup() =
+    # Makes a thread that used async release its dispatcher's OS resources
+    # (notably the epoll/kqueue fd) when the thread finishes; without this
+    # every terminated thread leaks one file descriptor.
+    when compileOption("threads"):
+      if not gCleanupRegistered:
+        gCleanupRegistered = true
+        onThreadDestruction(proc () {.gcsafe, raises: [].} =
+          if not gDisp.isNil:
+            closeQuietly(gDisp)
+            gDisp = nil)
+
   when defined(nuttx):
     import std/exitprocs
 
     proc cleanDispatcher() {.noconv.} =
+      if not gDisp.isNil:
+        closeQuietly(gDisp)
       gDisp = nil
 
     proc addFinalyzer() =
@@ -1248,9 +1331,19 @@ else:
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
       setGlobalDispatcher(newDispatcher())
+      registerThreadDispatcherCleanup()
       when defined(nuttx):
         addFinalyzer()
     result = gDisp
+
+  proc closeGlobalDispatcher*() =
+    ## Closes the global dispatcher of the current thread (if any) and
+    ## releases its operating system resources. A subsequent
+    ## `getGlobalDispatcher` call (or any async operation) creates a fresh
+    ## dispatcher.
+    if not gDisp.isNil:
+      close(gDisp)
+      gDisp = nil
 
   proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
     return disp.selector

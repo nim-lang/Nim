@@ -127,6 +127,7 @@ proc close*[T](s: Selector[T]) =
   when hasThreadSupport:
     deinitLock(s.changesLock)
     deallocSharedArray(s.fds)
+    deallocSharedArray(s.changes)
     deallocShared(cast[pointer](s))
   if res1 != 0 or res2 != 0:
     raiseIOSelectorsError(osLastError())
