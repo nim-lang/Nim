@@ -1,6 +1,6 @@
 discard """
   action: compile
-  ccodeCheck: "@'f_.*((*Result).f)' .*"
+  ccodeCheck: "@'((*Result).f);' .*"
 """
 
 # bug #26104: a compile-time-only `typeof` argument was treated as a runtime

@@ -28,7 +28,7 @@ type
 proc isCompileTimeOnlyNode(n: PNode): bool {.inline.} =
   ## `typeof` and typedesc/static values describe types at compile time; they
   ## do not read the runtime location that alias analysis is protecting.
-  n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.containsCompileTimeOnly)
+  n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
 
 func sameLocation(a, b: PNode): bool =
   template sameConstIndex(a, b: PNode): bool =
