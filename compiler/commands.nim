@@ -784,6 +784,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "hotcodereloading":
     processOnOffSwitchG(conf, {optHotCodeReloading}, arg, pass, info)
     if conf.hcrOn:
+      warningDeprecated(conf, info, "hotCodeReloading is deprecated, see https://github.com/nim-lang/RFCs/issues/573 for further information")
       defineSymbol(conf.symbols, "hotcodereloading")
       defineSymbol(conf.symbols, "useNimRtl")
       # hardcoded linking with dynamic runtime for MSVC for smaller binaries
