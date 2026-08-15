@@ -84,8 +84,30 @@ else:
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:
     when not defined(useNimRtl):
-      var allocator {.rtlThreadVar.}: MemRegion
-      instantiateForRegion(allocator)
+      when hasThreadLocalAllocator:
+        # TLS only holds the pointer, the region itself is pooled, see
+        # `acquireMemRegion`. This also keeps ~16K of `MemRegion` out of every
+        # thread's TLS block.
+        var allocatorPtr {.rtlThreadVar.}: ptr MemRegion
+
+        proc currentAllocator(): ptr MemRegion {.inline, gcsafe, raises: [].} =
+          result = allocatorPtr
+          if result == nil:
+            result = acquireMemRegion()
+            allocatorPtr = result
+
+        proc initThreadAllocator() {.gcsafe, raises: [].} =
+          discard currentAllocator()
+
+        proc releaseThreadAllocator() {.gcsafe, raises: [].} =
+          if allocatorPtr != nil:
+            releaseMemRegion(allocatorPtr)
+            allocatorPtr = nil
+
+        instantiateForRegion(currentAllocator()[])
+      else:
+        var allocator {.rtlThreadVar.}: MemRegion
+        instantiateForRegion(allocator)
     when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):
