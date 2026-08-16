@@ -176,7 +176,7 @@ pkg "unittest2"
 pkg "unpack"
 when not defined(arm64):
   pkg "weave", "nimble install -y cligen@#HEAD; nimble test_gc_arc", useHead = true
-pkg "web3", useHead = true
+pkg "web3", "nimble test_slim", "https://github.com/status-im/nim-web3/tree/tests/slim_tests", useHead = true
 pkg "websock", "nim c -d:chronicles_log_level=INFO tests/all_tests.nim"
 pkg "websocket", "nim c websocket.nim"
 pkg "with"
