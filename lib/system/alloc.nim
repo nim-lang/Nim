@@ -154,16 +154,14 @@ type
     next: ptr HeapLinks
 
   MemRegion = object
-    when usesRegionHandles:
-      regionHandle: ptr RegionHandle
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
       # List of available chunks per size class. Only one is expected to be active per class.
-    when defined(gcDestructors):
+    when defined(gcDestructors) and not usesRegionHandles:
       sharedFreeLists: SharedFreeLists
-        # Used directly without threads. Threaded builds use RegionHandle but
-        # retain this 2 KiB spacer: removing it regresses 2-4 KiB allocations.
+        # Remote-free buckets live on the MemRegion when there is no
+        # RegionHandle. Threaded ORC keeps them on the handle instead.
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
@@ -183,6 +181,10 @@ type
     heapLinks: HeapLinks
     when defined(nimTypeNames):
       allocCounter, deallocCounter: int
+    when usesRegionHandles:
+      # Keep this off the front: a leading pointer shifts freeSmallChunks and
+      # the TLSF bitmaps by 8 bytes and regresses 2-4 KiB allocations.
+      regionHandle: ptr RegionHandle
 
   RegionHandle = object
     # Permanent chunk-owner identity and home of the remote-free queues.
