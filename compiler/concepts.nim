@@ -269,10 +269,8 @@ proc conceptsMatch(c: PContext, fc, ac: PType; m: var MatchCon): MatchKind =
   let
     fn = fc.conceptBody
     an = ac.conceptBody
-    sameLen = fc.len == ac.len
   var match = false
   for fdef in fn:
-    var cmpResult = false
     for ia, ndef in an:
       match = cmpConceptDefs(c, fdef, ndef, m)
       if match:
@@ -330,13 +328,10 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
     result = matchType(c, f.skipModifier, a, m)
   of tyTypeDesc:
     if isSelf(f):
-      let ua = a.skipTypes(asymmetricConceptParamMods)
       if m.magic in {mArrPut, mArrGet}:
         if m.potentialImplementation.reduceToBase.kind in arrPutGetMagicApplies:
           bindParam(c, m, a, last m.potentialImplementation)
           result = true
-      #elif ua.isConcept:
-      #  result = matchType(c, m.concpt, ua, m)
       else:
         result = matchType(c, a.skipTypes(ignorableForArgType), m.potentialImplementation, m)
     else:

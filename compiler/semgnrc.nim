@@ -233,7 +233,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         if s.kind == skType: # don't put types in sym choice
           var ambig = false
           if candidates.len > 1:
-            let s2 = searchInScopes(c, ident, ambig)
+            discard searchInScopes(c, ident, ambig)
           result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags,
             isAmbiguous = ambig, fromDotExpr = true))
         else:

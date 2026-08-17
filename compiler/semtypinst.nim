@@ -180,35 +180,6 @@ proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
     for i in 0..<n.safeLen:
       result.add(prepareNode(cl, n[i]))
 
-proc isTypeParam(n: PNode): bool =
-  # XXX: generic params should use skGenericParam instead of skType
-  return n.kind == nkSym and
-         (n.sym.kind == skGenericParam or
-           (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
-
-when false: # old workaround
-  proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
-    # This is needed for tuninstantiatedgenericcalls
-    # It's possible that a generic param will be used in a proc call to a
-    # typedesc accepting proc. After generic param substitution, such procs
-    # should be optionally instantiated with the correct type. In order to
-    # perform this instantiation, we need to re-run the generateInstance path
-    # in the compiler, but it's quite complicated to do so at the moment so we
-    # resort to a mild hack; the head symbol of the call is temporary reset and
-    # overload resolution is executed again (which may trigger generateInstance).
-    if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
-      var needsFixing = false
-      for i in 1..<n.safeLen:
-        if isTypeParam(n[i]): needsFixing = true
-      if needsFixing:
-        n[0] = newSymNode(n[0].sym.owner)
-        return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
-
-    for i in 0..<n.safeLen:
-      n[i] = reResolveCallsWithTypedescParams(cl, n[i])
-
-    return n
-
 proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
   result = n
   case n.kind
