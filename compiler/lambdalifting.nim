@@ -126,11 +126,6 @@ const
   paramName* = ":envP"
   envName* = ":env"
 
-proc newCall(a: PSym, b: PNode): PNode =
-  result = newNodeI(nkCall, a.info)
-  result.add newSymNode(a)
-  result.add b
-
 proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PType =
   var n = newNodeI(nkRange, iter.info)
   n.add newIntNode(nkIntLit, -1)
@@ -288,7 +283,6 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
     addVar(v, env)
     result.add(v)
   # add 'new' statement:
-  #result.add newCall(getSysSym(g, n.info, "internalNew"), env)
   result.add genCreateEnv(env)
   createTypeBoundOpsLL(g, env.typ, n.info, idgen, owner)
   result.add makeClosure(g, idgen, iter, env, n.info)

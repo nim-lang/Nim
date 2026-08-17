@@ -16,7 +16,6 @@ proc dispatch(x: Base, params: ...) =
   var disp = newNodeI(nkIfStmt, base.info)
 
   let nimGetVTableSym = getCompilerProc(g, "nimGetVTable")
-  let ptrPNimType = nimGetVTableSym.typ.n[1].sym.typ
 
   var nTyp = base.typ.n[1].sym.typ
   var dispatchObject = newSymNode(base.typ.n[1].sym)

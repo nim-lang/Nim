@@ -425,12 +425,6 @@ template dispA(conf: ConfigRef; dest: var string, xml, tex: string,
   if not conf.isLatexCmd: dest.addf(xml, args)
   else: dest.addf(tex, args)
 
-proc getVarIdx(varnames: openArray[string], id: string): int =
-  for i in 0..high(varnames):
-    if cmpIgnoreStyle(varnames[i], id) == 0:
-      return i
-  result = -1
-
 proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
     if optDocRaw in d.conf.globalOptions:
