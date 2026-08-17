@@ -689,7 +689,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
-  var r = resolveOverloads(c, n, n, filter, flags, errors, true)
+  discard resolveOverloads(c, n, n, filter, flags, errors, true)
   if errors.len == 0:
     localError(c.config, n.info, "could not resolve: " & $n)
   else:
@@ -925,15 +925,6 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
-
-proc canDeref(n: PNode): bool {.inline.} =
-  result = n.len >= 2 and (let t = n[1].typ;
-    t != nil and t.skipTypes({tyGenericInst, tyAlias, tySink}).kind in {tyPtr, tyRef})
-
-proc tryDeref(n: PNode): PNode =
-  result = newNodeI(nkHiddenDeref, n.info)
-  result.typ = n.typ.skipTypes(abstractInst)[0]
-  result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags;

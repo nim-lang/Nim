@@ -1895,10 +1895,6 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   addNimDefines(res, conf)
   result = extract(res)
 
-proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
-  ## Returns a mangled module name.
-  result = mangleModuleName(conf, filename).mangle
-
 proc getSomeNameForModule*(m: BModule): Rope =
   ## Returns a mangled module name.
   assert m.module.kind == skModule
@@ -2354,7 +2350,6 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
   assert prc != nil
   fillProcLoc(m, prc.ast[namePos])
 
-  var extname = prefix & sym
   var tmp = mangleDynLibProc(prc)
   backendEnsureMutable prc
   prc.locImpl.snippet = tmp
@@ -2835,15 +2830,6 @@ proc writeModule(m: BModule) =
   if m.config.cmd == cmdNifC:
     code = stripCnifMarks(code)
   registerModuleCode(m, cf, code)
-
-proc updateCachedModule(m: BModule) =
-  let cfile = getCFile(m)
-  var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                 obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-  if sfMainModule notin m.module.flags:
-    genMainProc(m)
-  cf.flags = {CfileFlag.Cached}
-  addFileToCompile(m.config, cf)
 
 proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"

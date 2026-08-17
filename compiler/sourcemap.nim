@@ -97,9 +97,7 @@ iterator tokenize*(line: string): (int, string) =
   ## normal JS code. This allows us to map mangled names back to Nim names.
   ## Yields (column, name). Doesn't yield anything but identifiers.
   ## See mangleName in compiler/jsgen.nim for how name mangling is done
-  var
-    col = 0
-    token = ""
+  var col = 0
   while col < line.len:
     var
       token: string = ""
@@ -128,7 +126,6 @@ func parse*(source: string): SourceInfo =
   ## So it can convert those into a series of mappings
   result = default(SourceInfo)
   var
-    skipFirstLine = true
     currColumn = 0
     currLine = 0
     currFile = ""

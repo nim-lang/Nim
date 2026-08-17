@@ -209,22 +209,6 @@ proc commandInteractive(graph: ModuleGraph) =
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
     discard processPipelineModule(graph, m, idgen, s)
 
-proc commandScan(cache: IdentCache, config: ConfigRef) =
-  var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
-  var stream = llStreamOpen(f, fmRead)
-  if stream != nil:
-    var
-      L: Lexer = default(Lexer)
-      tok: Token = default(Token)
-    openLexer(L, f, stream, cache, config)
-    while true:
-      rawGetTok(L, tok)
-      printTok(config, tok)
-      if tok.tokType == tkEof: break
-    closeLexer(L)
-  else:
-    rawMessage(config, errGenerated, "cannot open file: " & f.string)
-
 const
   PrintRopeCacheStats = false
 

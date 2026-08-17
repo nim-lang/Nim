@@ -19,13 +19,11 @@ const
   errOverflowInEnumX = "The enum '$1' exceeds its maximum value ($2)"
   errOrdinalTypeExpected = "ordinal type expected; given: $1"
   errSetTooBig = "set is too large; use `std/sets` for ordinal types with more than 2^16 elements"
-  errBaseTypeMustBeOrdinal = "base type of a set must be an ordinal"
   errInheritanceOnlyWithNonFinalObjects = "inheritance only works with non-final objects"
   errXExpectsOneTypeParam = "'$1' expects one type parameter"
   errArrayExpectsTwoTypeParams = "array expects two type parameters"
   errInvalidVisibilityX = "invalid visibility: '$1'"
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
-  errIteratorNotAllowed = "iterators can only be defined at the module's top level"
   errXNeedsReturnType = "$1 needs a return type"
   errNoReturnTypeDeclared = "no return type declared"
   errTIsNotAConcreteType = "'$1' is not a concrete type"
@@ -1966,7 +1964,6 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     return result
 
   let
-    pragmas = n[1]
     inherited = n[2]
 
   var owner = getCurrOwner(c)

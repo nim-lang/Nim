@@ -22,7 +22,6 @@ const
   errNamedExprExpected = "named expression expected"
   errNamedExprNotAllowed = "named expression not allowed here"
   errFieldInitTwice = "field initialized twice: '$1'"
-  errUndeclaredFieldX = "undeclared field: '$1'"
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
@@ -770,17 +769,6 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
 
   n.typ = newType
 
-proc arrayConstrType(c: PContext, n: PNode): PType =
-  var typ = newTypeS(tyArray, c)
-  rawAddSon(typ, nil)     # index type
-  if n.len == 0:
-    rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
-  else:
-    var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-    addSonSkipIntLit(typ, t, c.idgen)
-  typ.setIndexType makeRangeType(c, 0, n.len - 1, n.info)
-  result = typ
-
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = newNodeI(nkBracket, n.info)
   # nkBracket nodes can also be produced by the VM as seq constant nodes
@@ -1339,7 +1327,6 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
   else: illFormedAst(n, c.config)
 
 const
-  tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
   tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
 proc readTypeParameter(c: PContext, typ: PType,
@@ -2326,24 +2313,6 @@ proc semDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
-proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
-  ## The argument to the proc should be nkCall(...) or similar
-  ## Returns the macro/template symbol
-  if isCallExpr(n):
-    var expandedSym = qualifiedLookUp(c, n[0], {checkUndeclared})
-    if expandedSym == nil:
-      errorUndeclaredIdentifier(c, n.info, n[0].renderTree)
-      return errorSym(c, n[0])
-
-    if expandedSym.kind notin {skMacro, skTemplate}:
-      localError(c.config, n.info, "'$1' is not a macro or template" % expandedSym.name.s)
-      return errorSym(c, n[0])
-
-    result = expandedSym
-  else:
-    localError(c.config, n.info, "'$1' is not a macro or template" % n.renderTree)
-    result = errorSym(c, n)
-
 proc expectString(c: PContext, n: PNode): string =
   var n = semConstExpr(c, n)
   if n.kind in nkStrKinds:
@@ -2357,14 +2326,6 @@ proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
-
-  when false:
-    let expandedSym = expectMacroOrTemplateCall(c, macroCall)
-    if expandedSym.kind == skError: return n
-
-    macroCall[0] = newSymNode(expandedSym, macroCall.info)
-    markUsed(c, n.info, expandedSym)
-    onUse(n.info, expandedSym)
 
   if isCallExpr(macroCall):
     for i in 1..<macroCall.len:
@@ -2537,7 +2498,6 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldInStaticContext = c.inStaticContext
   let oldProcCon = c.p
   c.generics = @[]
-  var err: string
   try:
     result = semExpr(c, n, flags)
     if result != nil and efNoSem2Check notin flags:
