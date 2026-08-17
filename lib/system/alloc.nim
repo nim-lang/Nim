@@ -963,13 +963,19 @@ proc bigChunkAlignOffset(alignment: int): int {.inline.} =
   else:
     result = align(sizeof(BigChunk) + sizeof(FreeCell), alignment) - sizeof(BigChunk) - sizeof(FreeCell)
 
-proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer =
+template rawAllocAux(aligned: static bool) {.dirty.} =
   when defined(nimTypeNames):
     inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-  var size = roundup(requestedSize, max(MemAlign, alignment))
-  let alignOff = smallChunkAlignOffset(alignment)
+  when aligned:
+    var size = roundup(requestedSize, max(MemAlign, alignment))
+    let alignOff = smallChunkAlignOffset(alignment)
+  else:
+    # Common `alloc` path: no custom alignment. Keep this a separate
+    # instantiation so clang does not emit `smallChunkAlignOffset(0)`.
+    var size = (requestedSize + (MemAlign - 1)) and not (MemAlign - 1)
+    const alignOff = 0
   sysAssert(size >= sizeof(FreeCell), "rawAlloc: requested size too small")
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
@@ -986,11 +992,12 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
             if atomicLoadN(sharedHead, ATOMIC_RELAXED) != nil:
               tc.freeList = atomicExchangeN(sharedHead, nil, ATOMIC_ACQUIRE)
           else:
-            tc.freeList = a.sharedFreeLists[s]
-            a.sharedFreeLists[s] = nil
-          # If `tc.freeList` isn't nil, `tc` gains capacity. Calculate how
-          # much it gained and how many foreign cells are included.
-          compensateCounters(a, tc, size)
+            tc.freeList = sharedHead[]
+            sharedHead[] = nil
+          # Empty peeks are the common local case; skip the walk and the
+          # `free += 0` / `occ -= 0` stores clang would otherwise keep.
+          if tc.freeList != nil:
+            compensateCounters(a, tc, size)
 
     # allocate a small block: for small chunks, we use only its next pointer
     let s = size div MemAlign
@@ -1071,7 +1078,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
     # For big chunks with custom alignment, allocate extra space.
     # Since chunks are page-aligned, the needed padding is a compile-time
     # deterministic value rather than a worst-case estimate.
-    let alignPad = bigChunkAlignOffset(alignment)
+    let alignPad = when aligned: bigChunkAlignOffset(alignment) else: 0
     size = requestedSize + bigChunkOverhead() + alignPad
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
@@ -1095,6 +1102,12 @@ proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int = 0): pointer
   when logAlloc: cprintf("var pointer_%p = alloc(%ld) # %p\n", result, requestedSize, addr a)
   when defined(heaptrack):
     heaptrack_malloc(result, requestedSize)
+
+proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
+  rawAllocAux(false)
+
+proc rawAlloc(a: var MemRegion, requestedSize: int, alignment: int): pointer =
+  rawAllocAux(true)
 
 proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
