@@ -161,7 +161,7 @@ type
     when defined(gcDestructors) and not usesRegionHandles:
       sharedFreeLists: SharedFreeLists
         # Remote-free buckets live on the MemRegion when there is no
-        # RegionHandle. Threaded ORC keeps them on the handle instead.
+        # RegionHandle. Threaded memory managers with handles keep them on the handle instead.
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
@@ -994,6 +994,7 @@ template rawAllocAux(aligned: static bool) {.dirty.} =
             if atomicLoadN(sharedHead, ATOMIC_RELAXED) != nil:
               tc.freeList = atomicExchangeN(sharedHead, nil, ATOMIC_ACQUIRE)
           else:
+            let sharedHead = addr a.sharedFreeLists[s]
             tc.freeList = sharedHead[]
             sharedHead[] = nil
           # Empty peeks are the common local case; skip the walk and the
