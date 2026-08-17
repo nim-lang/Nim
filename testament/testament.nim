@@ -593,7 +593,11 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions: s
       let nimcache = nimcacheDir(test.name, test.options, target)
       var testClone = test
       let target = changeTarget(extraOptions, target)
-      testSpecHelper(r, testClone, expected, target, extraOptions, nimcache)
+      if target notin gTargets:
+        r.finishTest(test, target, extraOptions, "", "", reDisabled)
+        inc(r.skipped)
+      else:
+        testSpecHelper(r, testClone, expected, target, extraOptions, nimcache)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
