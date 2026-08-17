@@ -1157,7 +1157,19 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite "\n"
       rawQuit 1
 
-const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
+const
+  hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
+  hasDefaultAllocator =
+    hasAlloc and
+    not (defined(useNimRtl) or defined(useMalloc) or defined(gcRegions) or
+         defined(nogc) or defined(boehmgc) or defined(gogc))
+  hasThreadLocalAllocator =
+    hasDefaultAllocator and hasThreadSupport and defined(gcDestructors)
+
+when hasThreadLocalAllocator:
+  # threadimpl is included before mmdisp provides these implementations.
+  proc initThreadAllocator() {.gcsafe, raises: [].}
+  proc releaseThreadAllocator() {.gcsafe, raises: [].}
 
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, gcsafe.}
@@ -2327,6 +2339,8 @@ when notJSnotNims and hasAlloc:
   {.push profiler: off.}
   include "system/mmdisp"
   {.pop.}
+  when hasThreadLocalAllocator:
+    initThreadAllocator()
   {.push stackTrace: off, profiler: off.}
   when not defined(nimSeqsV2):
     include "system/sysstr"
