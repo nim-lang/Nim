@@ -154,6 +154,10 @@ type
     next: ptr HeapLinks
 
   MemRegion = object
+    when usesRegionHandles:
+      # Keeping the handle here does change the layout, but until proven otherwise
+      # this layout is more readable and shouldn't regress performance.
+      regionHandle: ptr RegionHandle
     when not defined(gcDestructors):
       minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..max(1, SmallChunkSize div MemAlign-1), PSmallChunk]
@@ -181,10 +185,6 @@ type
     heapLinks: HeapLinks
     when defined(nimTypeNames):
       allocCounter, deallocCounter: int
-    when usesRegionHandles:
-      # Keep this off the front: a leading pointer shifts freeSmallChunks and
-      # the TLSF bitmaps by 8 bytes and regresses 2-4 KiB allocations.
-      regionHandle: ptr RegionHandle
 
   RegionHandle = object
     # Permanent chunk-owner identity and home of the remote-free queues.
