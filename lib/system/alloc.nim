@@ -221,10 +221,9 @@ when defined(gcDestructors):
     else:
       false
 
-when usesRegionHandles:
-  static:
-    doAssert sizeof(SharedFreeLists) + sizeof(PBigChunk) <= PageSize,
-             "remote-free queues must fit on the RegionHandle's first page"
+  when usesRegionHandles:
+    sysAssert sizeof(SharedFreeLists) + sizeof(PBigChunk) <= PageSize,
+              "remote-free queues must fit on the RegionHandle's first page"
 
 template setBigForeignQueue(c: untyped; a: var MemRegion) =
   when defined(gcDestructors):
