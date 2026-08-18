@@ -11,12 +11,12 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs, wordrecg
+  lineinfos, int128, modulegraphs, astmsgs
 
 import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, formatfloat]
+  import std/[assertions]
 
 export isResolvedUserTypeClass, TPreferedDesc, typeToString
 
@@ -868,11 +868,6 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
       result = false
   else:
     result = false
-
-proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
-  if not sameTypeOrNilAux(a.baseClass, b.baseClass, c): return false
-  if not sameObjectTree(a.n, b.n, c): return false
-  result = true
 
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
   if not sameTupleLengths(a, b): return false

@@ -596,12 +596,6 @@ proc newSeqCall(c: var TLiftCtx; x, y: PNode): PNode =
   lenCall.typ = getSysType(c.g, x.info, tyInt)
   result.add lenCall
 
-proc setLenStrCall(c: var TLiftCtx; x, y: PNode): PNode =
-  let lenCall = genBuiltin(c, mLengthStr, "len", y)
-  lenCall.typ = getSysType(c.g, x.info, tyInt)
-  result = genBuiltin(c, mSetLengthStr, "setLen", x) # genAddr(g, x))
-  result.add lenCall
-
 proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode; noinit = false): PNode =
   let lenCall = genBuiltin(c, mLengthSeq, "len", y)
   lenCall.typ = getSysType(c.g, x.info, tyInt)

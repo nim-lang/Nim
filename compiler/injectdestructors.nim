@@ -173,7 +173,6 @@ template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructorOrAsgn(c, n.typ): return true
 
-  let m = skipConvDfa(n)
   result = isLastReadImpl(n, c, s)
 
 proc isFirstWrite(n: PNode; c: var Con): bool =

@@ -148,11 +148,6 @@ proc newGlobals(): PGlobals =
         typeInfoGenerated: initIntSet()
         )
 
-proc initCompRes(): TCompRes =
-  result = TCompRes(address: "", res: "",
-    tmpLoc: "", typ: etyNone, kind: resNone
-  )
-
 proc rdLoc(a: TCompRes): Rope {.inline.} =
   if a.typ != etyBaseIndex:
     result = a.res
@@ -592,15 +587,6 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
     else:
       let trimmer = unsignedTrimmer(size)
       r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
-  r.kind = resExpr
-
-template ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
-  var x, y, z: TCompRes
-  useMagic(p, magic)
-  gen(p, n[1], x)
-  gen(p, n[2], y)
-  gen(p, n[3], z)
-  r.res = frmt % [x.rdLoc, y.rdLoc, z.rdLoc]
   r.kind = resExpr
 
 template unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
@@ -1182,7 +1168,6 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode; isAsmStmt = false) =
     of nkStrLit..nkTripleStrLit:
       p.body.add(it.strVal)
     of nkSym:
-      let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
       if false:
         discard
@@ -1254,17 +1239,6 @@ proc generateHeader(p: PProc, prc: PSym): Rope =
       result.add(", ")
       result.add(name)
       result.add("_Idx")
-
-proc countJsParams(typ: PType): int =
-  result = 0
-  for i in 1..<typ.n.len:
-    assert(typ.n[i].kind == nkSym)
-    var param = typ.n[i].sym
-    if isCompileTimeOnly(param.typ): continue
-    if mapType(param.typ) == etyBaseIndex:
-      inc result, 2
-    else:
-      inc result
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
@@ -1797,12 +1771,6 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
     inc emitted
     hasArgs = true
   r.res.add(")")
-  when false:
-    # XXX look into this:
-    let jsp = countJsParams(typ)
-    if emitted != jsp and tfVarargs notin typ.flags:
-      localError(p.config, n.info, "wrong number of parameters emitted; expected: " & $jsp &
-        " but got: " & $emitted)
   r.kind = resExpr
 
 proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
@@ -2335,9 +2303,6 @@ proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.res.add("]")
 
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
-  var
-    a: TCompRes
-    line, filen: Rope
   var op = n[0].sym.magic
   case op
   of mOr: genOr(p, n[1], n[2], r)
@@ -2594,7 +2559,6 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
   var initList : Rope = ""
   var fieldIDs = initIntSet()
-  let nTyp = n.typ.skipTypes(abstractInst)
   for i in 1..<n.len:
     if i > 1: initList.add(", ")
     var it = n[i]

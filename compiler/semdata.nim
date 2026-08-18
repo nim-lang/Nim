@@ -186,6 +186,12 @@ type
     forwardFieldUpdates*: seq[(PType, PNode, PType)]
       # object/tuple field definitions whose default values mention forward
       # types and need delayed const checking
+    forwardFlagUpdates*: seq[(PType, PType)]
+      # (owner, son) pairs whose `propagateToOwner` ran on a not yet reified
+      # forward type and has to be redone in the final pass
+    staleTypeFlags*: IntSet
+      # ids of the owners in `forwardFlagUpdates`; their flags are provisional
+      # too, so reading them makes the reader provisional in turn
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
@@ -369,6 +375,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     unknownIdents: initIntSet(),
     shadowDiscardedDefs: initIntSet(),
     realizedDefs: initIntSet(),
+    staleTypeFlags: initIntSet(),
     cache: graph.cache,
     graph: graph,
     signatures: initStrTable(),

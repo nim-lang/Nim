@@ -432,10 +432,6 @@ proc addDispatchers*(g: ModuleGraph, value: PSym) =
   # TODO: add it for packed modules
   g.dispatchers.add value
 
-iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[PSym]): PSym =
-  for it in list.mitems:
-    yield it
-
 proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[PSym]) =
   # TODO: add it for packed modules
   g.methodsPerType[id] = methods
@@ -667,10 +663,6 @@ proc hash*(u: SigHash): Hash =
     result = (result shl 8) or u.MD5Digest[x].int
 
 proc hash*(x: FileIndex): Hash {.borrow.}
-
-template getPContext(): untyped =
-  when c is PContext: c
-  else: c.c
 
 when defined(nimsuggest):
   template onUse*(info: TLineInfo; s: PSym; isGenericInstance = false) = discard

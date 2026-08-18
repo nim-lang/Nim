@@ -182,7 +182,6 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
   ## state is set to `csMatch` if all generic params match, `csEmpty` if
   ## implicit generic parameters are missing (matches but cannot instantiate),
   ## `csNoMatch` if a constraint fails or param count doesn't match
-  let c = m.c
   let typeParams = callee.ast[genericParamsPos]
   let paramCount = typeParams.len
   let bindingCount = binding.len-1
@@ -707,8 +706,6 @@ proc recordRel(c: var TCandidate, f, a: PType, flags: TTypeRelFlags): TTypeRelat
     result = isEqual
   elif sameTupleLengths(a, f):
     result = isEqual
-    let firstField = if f.kind == tyTuple: 0
-                     else: 1
     for _, ff, aa in tupleTypePairs(f, a):
       var m = typeRel(c, ff, aa, flags)
       if m < isSubtype: return isNone
