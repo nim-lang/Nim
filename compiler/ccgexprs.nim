@@ -251,7 +251,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # (for objects, etc.):
   if optSeqDestructors in p.config.globalOptions:
     simpleAsgn(p.s(cpsStmts), dest, src)
-  elif needToCopy notin flags or
+  elif (needToCopy notin flags and src.storage != OnStatic) or
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
     if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
       let rad = addrLoc(p.config, dest)
