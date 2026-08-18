@@ -1461,8 +1461,6 @@ proc discriminatorTableName(m: BModule; objtype: PType, d: PSym): Rope =
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype, m.config)), rope(d.name.s.mangle)]
 
-proc rope(arg: Int128): Rope = rope($arg)
-
 proc discriminatorTableDecl(m: BModule; objtype: PType, d: PSym, result: var Builder) =
   cgsym(m, "TNimNode")
   var tmp = discriminatorTableName(m, objtype, d)
