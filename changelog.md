@@ -90,6 +90,7 @@ parameter and result types, not just their source-level shape. Use
   works without single-quoting.
 - `std/uri`: The `?` operator now appends query parameters to an existing query
   string instead of replacing it. Fixes [#19782](https://github.com/nim-lang/Nim/issues/19782).
+- `std/jsonutils`: `fromJson` now throws an exception when converting to `array`/`seq` if the JSON isn't an array instead of silently failing
 
 ## Language changes
 
