@@ -3,6 +3,7 @@ discard """
 123
 123
 '''
+  ccodecheck: "'extern NI /* custom declaration */ codegenDeclGlobal'"
   targets: "c cpp"
 """
 
