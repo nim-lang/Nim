@@ -1854,10 +1854,16 @@ proc genVarPrototype(m: BModule, n: PNode) =
         typ = ptrType(typ)
       if lfDynamicLib in sym.loc.flags:
         typ = ptrType(typ)
-      m.s[cfsVars].addVar(m, sym,
-        name = sym.loc.snippet,
-        typ = typ,
-        visibility = vis)
+      if sfCodegenDecl in sym.flags:
+        m.s[cfsVars].addDeclWithVisibility(vis):
+          m.s[cfsVars].addVar(m, sym,
+            name = sym.loc.snippet,
+            typ = typ)
+      else:
+        m.s[cfsVars].addVar(m, sym,
+          name = sym.loc.snippet,
+          typ = typ,
+          visibility = vis)
       if m.hcrOn:
         m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,

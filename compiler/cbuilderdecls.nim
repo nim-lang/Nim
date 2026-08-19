@@ -634,7 +634,6 @@ type VarInitializerKind = enum
 
 proc addVar(builder: var Builder, m: BModule, s: PSym, name: string, typ: Snippet, kind = Local, visibility: DeclVisibility = None, initializer: Snippet = "", initializerKind: VarInitializerKind = Assignment) =
   if sfCodegenDecl in s.flags:
-    builder.addVisibilityPrefix(visibility)
     builder.add(runtimeFormat(s.cgDeclFrmt, [typ, name]))
     if initializer.len != 0:
       if initializerKind == Assignment:
