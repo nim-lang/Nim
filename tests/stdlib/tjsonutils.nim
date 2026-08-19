@@ -451,6 +451,12 @@ template fn() =
       let json = inner.toJson(ToJsonOptions(enumMode: joptEnumSymbol))
       doAssert $json == """{"x":"hello","y":"A"}"""
 
+    block arrayTypeCheck:
+      let json = """{"key": "value"}""".parseJson()
+      var output: seq[int]
+      doAssertRaises(ValueError):
+        output.fromJson(json)
+
     block: # bug #21638
       type Something = object
 
