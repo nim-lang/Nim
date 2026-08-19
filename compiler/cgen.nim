@@ -1854,20 +1854,10 @@ proc genVarPrototype(m: BModule, n: PNode) =
         typ = ptrType(typ)
       if lfDynamicLib in sym.loc.flags:
         typ = ptrType(typ)
-      if sfCodegenDecl in sym.flags:
-        # `codegenDecl` customizes the definition, but a reference from a
-        # different module still needs a plain declaration. Applying the
-        # custom format here can turn the declaration into a tentative
-        # definition (and thus cause duplicate symbols at link time).
-        m.s[cfsVars].addDeclWithVisibility(vis):
-          m.s[cfsVars].addVar(kind = Local,
-            name = sym.loc.snippet,
-            typ = typ)
-      else:
-        m.s[cfsVars].addVar(m, sym,
-          name = sym.loc.snippet,
-          typ = typ,
-          visibility = vis)
+      m.s[cfsVars].addVar(m, sym,
+        name = sym.loc.snippet,
+        typ = typ,
+        visibility = vis)
       if m.hcrOn:
         m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,
