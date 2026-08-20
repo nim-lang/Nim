@@ -13,7 +13,7 @@
 # included from testament.nim
 
 import important_packages
-import std/[strformat, strutils, tables]
+import std/[strformat, strutils, tables, varints]
 from std/sequtils import filterIt
 
 const
@@ -640,19 +640,27 @@ const
 type BifParse = object
   tokens: seq[uint32]
   tags, strings, syms, files: seq[string]
+  tokenOff: int
   ok: bool
   err: string
 
 proc readVu(s: string; i: var int): uint64 =
+  ## SQLite-style varint (`std/varints.readVu64`), matching `dist/nimony/src/lib/bif.nim`.
   result = 0
-  var shift = 0
-  while i < s.len:
-    let b = uint8(ord(s[i]))
-    inc i
-    result = result or (uint64(b and 0x7F) shl shift)
-    if (b and 0x80) == 0: return
-    shift += 7
-    if shift > 63: return
+  if i >= s.len: return
+  let b0 = uint8(ord(s[i]))
+  let n =
+    if b0 <= 240: 1
+    elif b0 <= 248: 2
+    else: int(b0) - 246
+  if n < 1 or n > maxVarIntLen or i + n > s.len:
+    i = s.len
+    return 0
+  var buf: array[maxVarIntLen, byte]
+  for k in 0 ..< n:
+    buf[k] = uint8(ord(s[i + k]))
+  discard readVu64(buf.toOpenArray(0, n - 1), result)
+  inc i, n
 
 proc readBifStr(s: string; i: var int): string =
   let n = int readVu(s, i)
@@ -676,6 +684,7 @@ proc parseBif(s: string): BifParse =
   let nFiles = int readVu(s, i)
   let pad = (4 - (i and 3)) and 3
   inc i, pad
+  result.tokenOff = i
   let tokBytes = tokenCount * 4
   if tokenCount < 0 or tokBytes < 0 or i + tokBytes > s.len:
     result.err = "token overflow"
@@ -771,47 +780,72 @@ proc fmtBifToken(n: uint32; p: BifParse): string =
     result.add " payload="
     result.add $payload
 
-proc bifTokenReport(a, b: string; leftName, rightName: string): string =
+proc bifHeaderLine(label: string; p: BifParse): string =
+  result = "  bif " & label & ": tokens=" & $p.tokens.len &
+    " tags=" & $(p.tags.len - 1) &
+    " strings=" & $(p.strings.len - 1) &
+    " syms=" & $(p.syms.len - 1) &
+    " files=" & $(p.files.len - 1) &
+    " tokenOff=" & $p.tokenOff & "\n"
+
+proc poolDiff(name: string; a, b: seq[string]; leftName, rightName: string): string =
   result = ""
-  let pa = parseBif(a)
-  let pb = parseBif(b)
-  if not pa.ok or not pb.ok:
-    result.add "  bif parse failed: "
-    result.add pa.err
-    result.add " / "
-    result.add pb.err
+  let na = max(0, a.len - 1)
+  let nb = max(0, b.len - 1)
+  if na != nb:
+    result.add "  "
+    result.add name
+    result.add " pool len: "
+    result.add leftName
+    result.add "="
+    result.add $na
+    result.add " "
+    result.add rightName
+    result.add "="
+    result.add $nb
     result.add '\n'
-    return
-  result.add "  bif tokens: "
-  result.add leftName
-  result.add "="
-  result.add $pa.tokens.len
-  result.add " "
-  result.add rightName
-  result.add "="
-  result.add $pb.tokens.len
-  result.add '\n'
-  var diffs: seq[int] = @[]
+  var n = 0
+  let m = min(a.len, b.len)
+  for i in 1 ..< m:
+    if a[i] != b[i]:
+      inc n
+      if n <= 16:
+        result.add "  "
+        result.add name
+        result.add "["
+        result.add $i
+        result.add "] "
+        result.add leftName
+        result.add "="
+        result.add escape(a[i])
+        result.add " "
+        result.add rightName
+        result.add "="
+        result.add escape(b[i])
+        result.add '\n'
+  if n > 16:
+    result.add "  ... "
+    result.add $(n - 16)
+    result.add " more "
+    result.add name
+    result.add " diffs\n"
+  elif n == 0 and na == nb:
+    result.add "  "
+    result.add name
+    result.add " pool identical ("
+    result.add $na
+    result.add " entries)\n"
+
+proc dumpTokenWindow(pa, pb: BifParse; leftName, rightName: string; center: int): string =
+  result = ""
   let ntok = min(pa.tokens.len, pb.tokens.len)
-  for i in 0 ..< ntok:
-    if pa.tokens[i] != pb.tokens[i]:
-      diffs.add i
-      if diffs.len >= 32: break
-  if pa.tokens.len != pb.tokens.len:
-    result.add "  token count differs\n"
-  result.add "  differing tokens ("
-  result.add $diffs.len
-  if diffs.len >= 32: result.add "+, capped"
-  result.add "): "
-  result.add diffs.join(", ")
-  result.add '\n'
-  if diffs.len == 0: return
-  let center = diffs[0]
-  let lo = max(0, center - 12)
-  let hi = min(ntok - 1, center + 12)
-  result.add "  token window around first differ (token "
-  result.add $center
-  result.add "):\n"
+  if ntok <= 0: return
+  let c = max(0, min(center, ntok - 1))
+  let lo = max(0, c - 12)
+  let hi = min(ntok - 1, c + 12)
+  result.add "  token window around token "
+  result.add $c
+  result.add ":\n"
   for i in lo .. hi:
     let mark = if pa.tokens[i] != pb.tokens[i]: " <<<" else: ""
     if pa.tokens[i] == pb.tokens[i]:
@@ -838,6 +872,54 @@ proc bifTokenReport(a, b: string; leftName, rightName: string): string =
       result.add fmtBifToken(pb.tokens[i], pb)
       result.add mark
       result.add '\n'
+
+proc bifTokenReport(a, b: string; leftName, rightName: string; firstByte: int): string =
+  result = ""
+  let pa = parseBif(a)
+  let pb = parseBif(b)
+  if not pa.ok or not pb.ok:
+    result.add "  bif parse failed: "
+    result.add pa.err
+    result.add " / "
+    result.add pb.err
+    result.add '\n'
+    return
+  result.add bifHeaderLine(leftName, pa)
+  result.add bifHeaderLine(rightName, pb)
+  var diffs: seq[int] = @[]
+  let ntok = min(pa.tokens.len, pb.tokens.len)
+  for i in 0 ..< ntok:
+    if pa.tokens[i] != pb.tokens[i]:
+      diffs.add i
+      if diffs.len >= 32: break
+  if pa.tokens.len != pb.tokens.len:
+    result.add "  token count differs\n"
+  result.add "  differing tokens ("
+  result.add $diffs.len
+  if diffs.len >= 32: result.add "+, capped"
+  result.add "): "
+  result.add diffs.join(", ")
+  result.add '\n'
+  var center = if diffs.len > 0: diffs[0] else: -1
+  let tokEnd = pa.tokenOff + pa.tokens.len * 4
+  if firstByte < pa.tokenOff:
+    result.add "  first-differ byte is in header/pad\n"
+  elif firstByte < tokEnd:
+    let idx = (firstByte - pa.tokenOff) div 4
+    result.add "  first-differ byte is token "
+    result.add $idx
+    result.add " (tokenOff="
+    result.add $pa.tokenOff
+    result.add ")\n"
+    if center < 0: center = idx
+  else:
+    result.add "  first-differ byte is after token block (pools/index)\n"
+  if center >= 0:
+    result.add dumpTokenWindow(pa, pb, leftName, rightName, center)
+  result.add poolDiff("tags", pa.tags, pb.tags, leftName, rightName)
+  result.add poolDiff("strings", pa.strings, pb.strings, leftName, rightName)
+  result.add poolDiff("syms", pa.syms, pb.syms, leftName, rightName)
+  result.add poolDiff("files", pa.files, pb.files, leftName, rightName)
 
 proc cacheDiffReport(paths: seq[string]; left, right: Table[string, string];
                      leftName, rightName: string): string =
@@ -882,7 +964,7 @@ proc cacheDiffReport(paths: seq[string]; left, right: Table[string, string];
       result.add "  " & rightName & " full xxd:\n"
       result.add xxdRange(b, 0, b.len)
     if a.startsWith("NIFBIN") and b.startsWith("NIFBIN"):
-      result.add bifTokenReport(a, b, leftName, rightName)
+      result.add bifTokenReport(a, b, leftName, rightName, at)
     let sa = printableSpans(a)
     let sb = printableSpans(b)
     if sa == sb:
