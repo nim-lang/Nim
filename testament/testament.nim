@@ -756,9 +756,8 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    # TEMPORARY CI debug: tmeta_async plus a sibling category so the Linux
-    # runner has allocator/CPU contention like a normal `testament all`.
-    echo "CI debug: tests/ic/tmeta_async.nim in parallel with megatest"
+    # TEMPORARY CI debug: full `ic` category plus megatest for contention.
+    echo "CI debug: full ic category in parallel with megatest"
     var myself = quoteShell(getAppFilename())
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)

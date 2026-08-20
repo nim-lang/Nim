@@ -843,9 +843,6 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     # tests; never collect their files as tests in their own right.
     if "_mm" in it: continue
     if isTestFile(it) and not it.endsWith(tempExt):
-      # TEMPORARY CI debug: only tests/ic/tmeta_async.nim
-      if extractFilename(it) != "tmeta_async.nim":
-        continue
       let content = readFile(it)
       if isMetamorphicIcTest(content):
         runMetamorphicIcTest(r, it, cat, options)
