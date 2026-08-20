@@ -633,6 +633,212 @@ proc countDiffBytes(a, b: string): int =
   for i in 0 ..< n:
     if a[i] != b[i]: inc result
 
+const
+  bifKindNames = ["Dot", "Char", "Str", "Int", "UInt", "Float",
+                  "Sym", "SymDef", "Ident", "Tag", "Ext", "LineInfo"]
+
+type BifParse = object
+  tokens: seq[uint32]
+  tags, strings, syms, files: seq[string]
+  ok: bool
+  err: string
+
+proc readVu(s: string; i: var int): uint64 =
+  result = 0
+  var shift = 0
+  while i < s.len:
+    let b = uint8(ord(s[i]))
+    inc i
+    result = result or (uint64(b and 0x7F) shl shift)
+    if (b and 0x80) == 0: return
+    shift += 7
+    if shift > 63: return
+
+proc readBifStr(s: string; i: var int): string =
+  let n = int readVu(s, i)
+  if n < 0 or i + n > s.len:
+    return ""
+  result = s.substr(i, i + n - 1)
+  inc i, n
+
+proc parseBif(s: string): BifParse =
+  result = BifParse(ok: false, err: "short")
+  if s.len < 16 or not s.startsWith("NIFBIN"):
+    result.err = "not NIFBIN"
+    return
+  var i = 8
+  # skip indexOffset u64
+  inc i, 8
+  let tokenCount = int readVu(s, i)
+  let nTags = int readVu(s, i)
+  let nStrings = int readVu(s, i)
+  let nSyms = int readVu(s, i)
+  let nFiles = int readVu(s, i)
+  let pad = (4 - (i and 3)) and 3
+  inc i, pad
+  let tokBytes = tokenCount * 4
+  if tokenCount < 0 or tokBytes < 0 or i + tokBytes > s.len:
+    result.err = "token overflow"
+    return
+  result.tokens = newSeq[uint32](tokenCount)
+  for t in 0 ..< tokenCount:
+    result.tokens[t] =
+      uint32(ord(s[i])) or
+      (uint32(ord(s[i+1])) shl 8) or
+      (uint32(ord(s[i+2])) shl 16) or
+      (uint32(ord(s[i+3])) shl 24)
+    inc i, 4
+  template readPool(n: int, dest: untyped) =
+    dest = newSeq[string](n + 1) # 1-based ids
+    for k in 1 .. n:
+      dest[k] = readBifStr(s, i)
+  readPool nTags, result.tags
+  readPool nStrings, result.strings
+  readPool nSyms, result.syms
+  readPool nFiles, result.files
+  result.ok = true
+  result.err = ""
+
+proc bifInlineStr(payload: uint32): string =
+  if (payload and 1'u32) == 0: return ""
+  let length = int((payload shr 1) and 3)
+  let chars = payload shr 3
+  result = newString(length)
+  for k in 0 ..< length:
+    result[k] = char((chars shr (uint32(k) * 8)) and 0xFF)
+
+proc fmtBifToken(n: uint32; p: BifParse): string =
+  let kind = int(n and 0xF)
+  let payload = n shr 4
+  let kn = if kind >= 0 and kind < bifKindNames.len: bifKindNames[kind] else: "?"
+  result = kn & "(" & toHex(n, 8) & ")"
+  case kind
+  of 1: # Char
+    result.add " "
+    result.add escape($char(payload and 0xFF))
+  of 2, 8: # Str / Ident
+    if (payload and 1) != 0:
+      result.add " inline="
+      result.add escape(bifInlineStr(payload))
+    else:
+      let id = int(payload shr 1)
+      result.add " pool#"
+      result.add $id
+      if id >= 1 and id < p.strings.len:
+        result.add "="
+        result.add escape(p.strings[id])
+  of 3: # Int
+    result.add " "
+    result.add $cast[int32](n shr 4)
+  of 4: # UInt
+    result.add " "
+    result.add $payload
+  of 6, 7: # Sym / SymDef
+    if (payload and 1) != 0:
+      result.add " inline="
+      result.add escape(bifInlineStr(payload))
+    else:
+      let id = int(payload shr 1)
+      result.add " pool#"
+      result.add $id
+      if id >= 1 and id < p.syms.len:
+        result.add "="
+        result.add escape(p.syms[id])
+  of 9: # Tag
+    let tag = int(payload and 0x1FF)
+    let jump = int(n shr 13)
+    result.add " tag#"
+    result.add $tag
+    if tag >= 1 and tag < p.tags.len:
+      result.add "="
+      result.add p.tags[tag]
+    result.add " jump="
+    result.add $jump
+  of 11: # LineInfo: col 7 | file 7 | line 14
+    let col = int(payload and 0x7F)
+    let file = int((payload shr 7) and 0x7F)
+    let line = int((payload shr 14) and 0x3FFF)
+    result.add " file#"
+    result.add $file
+    if file >= 1 and file < p.files.len:
+      result.add "="
+      result.add p.files[file]
+    result.add " line="
+    result.add $line
+    result.add " col="
+    result.add $col
+  else:
+    result.add " payload="
+    result.add $payload
+
+proc bifTokenReport(a, b: string; leftName, rightName: string): string =
+  result = ""
+  let pa = parseBif(a)
+  let pb = parseBif(b)
+  if not pa.ok or not pb.ok:
+    result.add "  bif parse failed: "
+    result.add pa.err
+    result.add " / "
+    result.add pb.err
+    result.add '\n'
+    return
+  result.add "  bif tokens: "
+  result.add leftName
+  result.add "="
+  result.add $pa.tokens.len
+  result.add " "
+  result.add rightName
+  result.add "="
+  result.add $pb.tokens.len
+  result.add '\n'
+  var diffs: seq[int] = @[]
+  let ntok = min(pa.tokens.len, pb.tokens.len)
+  for i in 0 ..< ntok:
+    if pa.tokens[i] != pb.tokens[i]:
+      diffs.add i
+      if diffs.len >= 32: break
+  if pa.tokens.len != pb.tokens.len:
+    result.add "  token count differs\n"
+  result.add "  differing tokens ("
+  result.add $diffs.len
+  if diffs.len >= 32: result.add "+, capped"
+  result.add "): "
+  result.add diffs.join(", ")
+  result.add '\n'
+  if diffs.len == 0: return
+  let center = diffs[0]
+  let lo = max(0, center - 12)
+  let hi = min(ntok - 1, center + 12)
+  result.add "  token window around first differ (token "
+  result.add $center
+  result.add "):\n"
+  for i in lo .. hi:
+    let mark = if pa.tokens[i] != pb.tokens[i]: " <<<" else: ""
+    if pa.tokens[i] == pb.tokens[i]:
+      result.add "    ["
+      result.add $i
+      result.add "] "
+      result.add fmtBifToken(pa.tokens[i], pa)
+      result.add mark
+      result.add '\n'
+    else:
+      result.add "    ["
+      result.add $i
+      result.add "] "
+      result.add leftName
+      result.add ": "
+      result.add fmtBifToken(pa.tokens[i], pa)
+      result.add mark
+      result.add '\n'
+      result.add "    ["
+      result.add $i
+      result.add "] "
+      result.add rightName
+      result.add ": "
+      result.add fmtBifToken(pb.tokens[i], pb)
+      result.add mark
+      result.add '\n'
+
 proc cacheDiffReport(paths: seq[string]; left, right: Table[string, string];
                      leftName, rightName: string): string =
   ## Comparison of differing cache files only. Cookies are dumped entirely;
@@ -675,6 +881,8 @@ proc cacheDiffReport(paths: seq[string]; left, right: Table[string, string];
     if b.len <= 512:
       result.add "  " & rightName & " full xxd:\n"
       result.add xxdRange(b, 0, b.len)
+    if a.startsWith("NIFBIN") and b.startsWith("NIFBIN"):
+      result.add bifTokenReport(a, b, leftName, rightName)
     let sa = printableSpans(a)
     let sb = printableSpans(b)
     if sa == sb:
