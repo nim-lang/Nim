@@ -1405,13 +1405,30 @@ proc hashRegion(s: var Sha1State; c: var CookieCtx; flat: seq[CookieTok];
     inc i
   # pass 2: hash
   first = keepFirstDefLiteral
+  # Indices of the `nonUniqueId` int inside every `(td ...)` met on the way; see
+  # the comment where they are collected.
+  var tdIdSkips = initHashSet[int]()
   i = start
   while i < theEnd:
     if i == skipFrom:
       i = skipTo
       continue
     let t = flat[i]
-    if t.kind in {ckSym, ckSymDef}:
+    if t.kind == ckParLe and t.tag == typeDefTagName and i+8 < theEnd:
+      # `writeTypeDef` emits: (td :name . flags callConv size align paddingAtEnd
+      # itemId.item ...) -- `flags` is always exactly one token (ident or dot),
+      # so `itemId.item` is always at `i+8`. That field is a module-wide mint
+      # COUNTER: creating one extra type renumbers every type minted after it,
+      # so hashing it made the interface cookie depend on declaration ORDER.
+      # Inserting a private proc at the top of a module then changed the cookie
+      # of a module whose interface had not changed, invalidating every importer
+      # (measured: 98 re-sems for one line added to ast.nim). The type's real
+      # identity survives without it -- its structure is hashed here, and its
+      # nominal identity rides on `typ.symImpl`, a literal cross-region name.
+      tdIdSkips.incl i+8
+    if i in tdIdSkips:
+      s.update " #"   # placeholder: keeps the field's presence, drops its value
+    elif t.kind in {ckSym, ckSymDef}:
       let sym = t.sym
       let name = t.name
       s.update(if t.kind == ckSymDef: " :" else: " ")
@@ -1473,9 +1490,31 @@ proc cookieSd(s: var Sha1State; c: var CookieCtx; flat: seq[CookieTok]; start: i
       if ok:
         skipFrom = p
         skipTo = nextTree(flat, p)
+        # Drop `resultPos` (son 7) as well -- sem appends it right after the
+        # body, and it is a bare REFERENCE to the routine's `result` symbol
+        # whose def lives inside the body we just skipped. Unresolvable to a
+        # region ordinal, it hashes as the literal `result.<disamb>.<module>`,
+        # and that disamb is a module-wide per-name counter that shifts when any
+        # routine is inserted above this one. Nothing importer-visible is lost:
+        # the return type is already carried by the routine's proc type.
+        if skipTo < astEnd - 1:
+          skipTo = nextTree(flat, skipTo)
   # non-routine kinds (consts carry their value, types their structure incl.
   # default field values): hash everything.
-  hashRegion(s, c, flat, start, result, skipFrom, skipTo, keepFirstDefLiteral = true)
+  #
+  # One more thing comes off the end for routines: `writeSymDef` closes every
+  # `sd` with the TRANSFORMED-body slot (a plain dot for non-routines), and for
+  # a routine that slot holds a fully LOWERED body -- closure envs, `chckrange`,
+  # inlined `instantiationInfo` tuples and with them SOURCE LINE NUMBERS. A
+  # dependent's sem never reads it (the loader deliberately skips the slot under
+  # `cmdM`: "a dependent needs no foreign lowered body"), so hashing it only made
+  # the interface cookie shift whenever a line was inserted anywhere above the
+  # routine. Stop the region before that slot and close the tree by hand.
+  var theEnd = result
+  if kind in routineKinds and i < result - 1:
+    theEnd = i
+  hashRegion(s, c, flat, start, theEnd, skipFrom, skipTo, keepFirstDefLiteral = true)
+  if theEnd != result: s.update ")"
 
 proc scanStmtsForCookie(s: var Sha1State; c: var CookieCtx; flat: seq[CookieTok]) =
   ## Walks the whole written module, hashing only the importer-visible pieces;
