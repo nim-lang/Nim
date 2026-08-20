@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "30"
+  icFormatVersion* = "31"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -54,6 +54,10 @@ const
     ## id, so its hash is stable across the NIF boundary (was breaking
     ## nim-serialization's auto-serialization lookup under IC). The sem-NIF
     ## macrocache entries and baked generic-instance bodies hold the old hashes.
+    ## v7 (=31): anonymous wrapper types (`var T`, `lent T`, `sink T`, tuples)
+    ## are named by their CONTENT instead of `uniqueId.item`, the module-wide
+    ## type-mint counter (see ast2nif.CanonTypeKinds). Old caches name the same
+    ## type differently, so every `.s.bif` reference would dangle.
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
