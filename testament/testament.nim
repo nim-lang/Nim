@@ -11,7 +11,7 @@
 
 import
   std/[strutils, pegs, os, osproc, streams, json,
-    parseopt, browsers, terminal,
+    parseopt, browsers, terminal, exitprocs,
     algorithm, times, intsets, macros]
 
 import backend, specs, azure, htmlgen
@@ -756,12 +756,33 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    # TEMPORARY CI debug: do not merge. Isolates tests/ic/tmeta_async.nim so the
-    # Linux runner can dump an untruncated clean-vs-incremental IC cache diff.
-    echo "CI debug: isolating tests/ic/tmeta_async.nim (verbose, full cache diffs)"
-    optVerbose = true
-    skips = loadSkipFrom(skipFrom)
-    runMetamorphicIcTest(r, "tests/ic/tmeta_async.nim", Category"ic", p.cmdLineRest)
+    # TEMPORARY CI debug: tmeta_async plus a sibling category so the Linux
+    # runner has allocator/CPU contention like a normal `testament all`.
+    echo "CI debug: tests/ic/tmeta_async.nim in parallel with megatest"
+    var myself = quoteShell(getAppFilename())
+    if targetsStr.len > 0:
+      myself &= " " & quoteShell("--targets:" & targetsStr)
+    myself &= " " & quoteShell("--nim:" & compilerPrefix)
+    myself &= " --colors:off"
+    if testamentData0.batchArg.len > 0:
+      myself &= " --batch:" & testamentData0.batchArg
+    if skipFrom.len > 0:
+      myself &= " " & quoteShell("--skipFrom:" & skipFrom)
+    let rest = if p.cmdLineRest.len > 0: " " & p.cmdLineRest else: ""
+    let cmds = @[
+      myself & " --verbose pcat ic" & rest,
+      myself & " pcat megatest" & rest,
+    ]
+    proc progressStatus(idx: int) =
+      echo "progress[all]: $1/$2 starting: $3" % [$idx, $cmds.len, cmds[idx]]
+    if simulate:
+      for i, c in cmds:
+        progressStatus(i)
+        echo c
+    else:
+      addExitProc azure.finalize
+      quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
+                                beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)

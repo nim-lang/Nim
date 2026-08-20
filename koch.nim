@@ -686,7 +686,7 @@ proc runCI(cmd: string) =
   else:
     kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
-  when true: # TEMPORARY CI debug: testament `all` is isolated to tmeta_async
+  when true: # TEMPORARY CI debug: tmeta_async in parallel with megatest
     block:
       let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
       execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
