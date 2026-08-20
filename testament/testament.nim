@@ -11,7 +11,7 @@
 
 import
   std/[strutils, pegs, os, osproc, streams, json,
-    parseopt, browsers, terminal, exitprocs,
+    parseopt, browsers, terminal,
     algorithm, times, intsets, macros]
 
 import backend, specs, azure, htmlgen
@@ -756,51 +756,12 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    #processCategory(r, Category"megatest", p.cmdLineRest, testsDir, runJoinableTests = false)
-
-    var myself = quoteShell(getAppFilename())
-    if targetsStr.len > 0:
-      myself &= " " & quoteShell("--targets:" & targetsStr)
-
-    myself &= " " & quoteShell("--nim:" & compilerPrefix)
-    if testamentData0.batchArg.len > 0:
-      myself &= " --batch:" & testamentData0.batchArg
-
-    if skipFrom.len > 0:
-      myself &= " " & quoteShell("--skipFrom:" & skipFrom)
-
-    var cats: seq[string] = @[]
-    let rest = if p.cmdLineRest.len > 0: " " & p.cmdLineRest else: ""
-    for kind, dir in walkDir(testsDir):
-      assert testsDir.startsWith(testsDir)
-      let cat = dir[testsDir.len .. ^1]
-      if kind == pcDir and cat notin ["testdata", "nimcache"]:
-        cats.add cat
-    if isNimRepoTests():
-      # `ic` and `navigator` are real `tests/` dirs (already collected above) *and*
-      # listed in AdditionalCategories; without this guard they'd run twice, which
-      # doubled the (expensive) `ic` category on every `all` run. `debugger`,
-      # `examples` and `lib` have no matching `tests/` dir, so they are still added.
-      for cat in AdditionalCategories:
-        if cat notin cats: cats.add cat
-    if useMegatest: cats.add MegaTestCat
-
-    var cmds: seq[string] = @[]
-    for cat in cats:
-      let runtype = if useMegatest: " pcat " else: " cat "
-      cmds.add(myself & runtype & quoteShell(cat) & rest)
-
-    proc progressStatus(idx: int) =
-      echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $cats.len, cats[idx]]
-
-    if simulate:
-      skips = loadSkipFrom(skipFrom)
-      for i, cati in cats:
-        progressStatus(i)
-        processCategory(r, Category(cati), p.cmdLineRest, testsDir, runJoinableTests = false)
-    else:
-      addExitProc azure.finalize
-      quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
+    # TEMPORARY CI debug: do not merge. Isolates tests/ic/tmeta_async.nim so the
+    # Linux runner can dump an untruncated clean-vs-incremental IC cache diff.
+    echo "CI debug: isolating tests/ic/tmeta_async.nim (verbose, full cache diffs)"
+    optVerbose = true
+    skips = loadSkipFrom(skipFrom)
+    runMetamorphicIcTest(r, "tests/ic/tmeta_async.nim", Category"ic", p.cmdLineRest)
   of "c", "cat", "category":
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)

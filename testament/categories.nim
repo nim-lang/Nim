@@ -579,6 +579,116 @@ proc changedModuleCount(changed: seq[string]): int =
       if key notin mods: mods.add key
   result = mods.len
 
+proc xxdRange(s: string; start, count: int): string =
+  ## 16-byte hex+ASCII lines. Kept to short lines so Azure does not clip them.
+  result = ""
+  if s.len == 0:
+    return "  (empty)\n"
+  var i = max(0, start)
+  let last = min(s.len, i + max(count, 0))
+  if i >= last:
+    return "  (no bytes in window)\n"
+  while i < last:
+    result.add "  "
+    result.add toHex(i, 8)
+    result.add ": "
+    let lineEnd = min(i + 16, last)
+    var ascii = newStringOfCap(16)
+    var j = i
+    while j < lineEnd:
+      result.add toHex(uint8(ord(s[j])), 2)
+      result.add ' '
+      let c = s[j]
+      ascii.add(if c >= ' ' and c <= '~': c else: '.')
+      inc j
+    var pad = lineEnd
+    while pad < i + 16:
+      result.add "   "
+      inc pad
+    result.add ' '
+    result.add ascii
+    result.add '\n'
+    i = lineEnd
+
+proc printableSpans(s: string; minLen = 8): seq[string] =
+  ## ASCII runs from a `.bif` (string/symbol pools, cookie hashes).
+  result = @[]
+  var cur = ""
+  for c in s:
+    if c >= ' ' and c <= '~':
+      cur.add c
+    else:
+      if cur.len >= minLen: result.add cur
+      cur.setLen 0
+  if cur.len >= minLen: result.add cur
+
+proc firstDiffAt(a, b: string): int =
+  let n = min(a.len, b.len)
+  result = 0
+  while result < n and a[result] == b[result]: inc result
+
+proc countDiffBytes(a, b: string): int =
+  let n = min(a.len, b.len)
+  result = abs(a.len - b.len)
+  for i in 0 ..< n:
+    if a[i] != b[i]: inc result
+
+proc cacheDiffReport(paths: seq[string]; left, right: Table[string, string];
+                     leftName, rightName: string): string =
+  ## Comparison of differing cache files only. Cookies are dumped entirely;
+  ## larger `.s.bif`/`.t.bif` files get a hex window around the first difference
+  ## plus a unified diff of printable spans (pool strings / hashes).
+  var sorted = paths
+  sorted.sort()
+  result = leftName & " files: " & $left.len & "\n"
+  result.add rightName & " files: " & $right.len & "\n"
+  result.add "differing paths (" & $sorted.len & "):\n"
+  for p in sorted:
+    result.add "==== "
+    result.add p
+    result.add " ====\n"
+    let inL = p in left
+    let inR = p in right
+    if not inL:
+      result.add "  only in " & rightName & " (" & $right[p].len & " B)\n"
+      continue
+    if not inR:
+      result.add "  only in " & leftName & " (" & $left[p].len & " B)\n"
+      continue
+    let a = left[p]
+    let b = right[p]
+    result.add "  " & leftName & ": " & $a.len & " B  md5=" & getMD5(a) & "\n"
+    result.add "  " & rightName & ": " & $b.len & " B  md5=" & getMD5(b) & "\n"
+    let at = firstDiffAt(a, b)
+    result.add "  first differ at byte " & $at &
+      " (minLen=" & $min(a.len, b.len) & ")\n"
+    result.add "  differing bytes (incl. size delta): " & $countDiffBytes(a, b) & "\n"
+    const window = 128
+    let hexStart = max(0, at - window div 2)
+    result.add "  " & leftName & " xxd around first diff:\n"
+    result.add xxdRange(a, hexStart, window)
+    result.add "  " & rightName & " xxd around first diff:\n"
+    result.add xxdRange(b, hexStart, window)
+    if a.len <= 512:
+      result.add "  " & leftName & " full xxd:\n"
+      result.add xxdRange(a, 0, a.len)
+    if b.len <= 512:
+      result.add "  " & rightName & " full xxd:\n"
+      result.add xxdRange(b, 0, b.len)
+    let sa = printableSpans(a)
+    let sb = printableSpans(b)
+    if sa == sb:
+      result.add "  printable spans IDENTICAL (" & $sa.len &
+        " spans) — difference is binary layout/padding/ids\n"
+    else:
+      result.add "  printable span diff (" & leftName & " vs " & rightName & "):\n"
+      try:
+        result.add diffStrings(sa.join("\n") & "\n", sb.join("\n") & "\n").output
+      except CatchableError as e:
+        result.add "  (git diff failed: " & e.msg & "; span counts " &
+          $sa.len & " vs " & $sb.len & ")\n"
+      result.add '\n'
+
 proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options: string) =
   var test = TTest(cat: cat, name: file, options: options,
                    spec: initSpec(file), startTime: epochTime())
@@ -663,8 +773,10 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
       if stepIdx > 1:
         let changed = changedPaths(prevSnap, snap)
         if "noop" in attrs and (changed.len != 0 or binBytes != prevBin):
+          let report = cacheDiffReport(changed, prevSnap, snap, "before", "after")
+          echo report
           mmRaise(reOutputsDiffer, "no artifact change",
-            where & ": no-op edit changed " & $changed.len & " cache file(s): " & changed.join(", "))
+            where & ": no-op edit changed " & $changed.len & " cache file(s):\n" & report)
         if "body-edit" in attrs:
           for p in changed:
             if p.endsWith(".iface.bif"):
@@ -701,8 +813,14 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         for p in changedPaths(snap, cleanSnap):
           if not isProvenance(p): diff.add p
         if diff.len != 0:
+          let report = cacheDiffReport(diff, snap, cleanSnap, "incremental", "clean")
+          createDir("testresults")
+          let dumpPath = "testresults" / extractFilename(file) & "_cache_diff.txt"
+          writeFile(dumpPath, report)
+          echo "wrote ", dumpPath
+          echo report
           mmRaise(reOutputsDiffer, "clean cache == incremental cache",
-            where & ": clean rebuild differs in " & $diff.len & " cache file(s): " & diff.join(", "))
+            where & ": clean rebuild differs in " & $diff.len & " cache file(s):\n" & report)
         prevSnap = cleanSnap
         prevBin = cleanBin
     finishTest(r, test, targetC, "", "", "", reSuccess)
@@ -725,6 +843,9 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     # tests; never collect their files as tests in their own right.
     if "_mm" in it: continue
     if isTestFile(it) and not it.endsWith(tempExt):
+      # TEMPORARY CI debug: only tests/ic/tmeta_async.nim
+      if extractFilename(it) != "tmeta_async.nim":
+        continue
       let content = readFile(it)
       if isMetamorphicIcTest(content):
         runMetamorphicIcTest(r, it, cat, options)

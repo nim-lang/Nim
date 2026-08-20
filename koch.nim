@@ -686,6 +686,11 @@ proc runCI(cmd: string) =
   else:
     kochExecFold("Boot Nim ORC", "boot -d:release -d:nimStrictMode --lib:lib")
 
+  when true: # TEMPORARY CI debug: testament `all` is isolated to tmeta_async
+    let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
+    execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
+    return
+
   when false: # debugging: when you need to run only 1 test in CI, use something like this:
     execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
     doAssert false, "debugging only"
