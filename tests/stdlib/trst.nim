@@ -1630,6 +1630,19 @@ And this should **NOT** be visible in `docs.html`
     doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
+
+  test "Literal include":
+    "code.nim".writeFile("""
+discard
+""")
+
+    let input = """
+.. include:: code.nim
+             :literal:
+"""
+    check "<pre>discard\n</pre>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
+    removeFile("code.nim")
+
 suite "RST escaping":
   test "backspaces":
     check("""\ this""".toAst == dedent"""
