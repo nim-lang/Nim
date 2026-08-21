@@ -454,7 +454,7 @@ proc gen(c: var Con; n: PNode) =
   of nkPragmaBlock: gen(c, n.lastSon)
   of nkDiscardStmt, nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString:
     gen(c, n[0])
-  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, PathKinds1:
+  of nkConv, nkExprColonExpr, nkExprEqExpr, PathKinds1:
     gen(c, n[1])
   of nkVarSection, nkLetSection: genVarSection(c, n)
   of nkDefer: raiseAssert "dfa construction pass requires the elimination of 'defer'"
