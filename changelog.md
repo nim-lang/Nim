@@ -145,6 +145,13 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- Fixed a bug in `lowerStmtListExprs` where variables introduced by template/macro
+  expansion in the second operand of `and`/`or` inside async procs were scoped to
+  the short-circuit `if` block, causing "undeclared identifier" C-level errors when
+  those variables were used in the enclosing `if` body. Note: as a consequence of
+  this fix, setup statements in the second operand (e.g., `let` declarations from
+  template expansion) are no longer short-circuited.
+
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
   The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
