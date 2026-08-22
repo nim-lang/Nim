@@ -136,13 +136,15 @@ template drain(src: untyped): untyped =
   else:
     src
 
-proc `=destroy`*[T](deq: var Deque[T]) =
-  # Prevent the auto-generated `=destroy` from running on the full capacity (the
-  # empty items have already been destroyed)
-  when needsReset(T):
-    let L = deq.len
-    for i in 0..<L:
-      reset(deq.elem(i))
+when false: # TODO no obvious way to get rid of the seq data without having it re-destroy
+  proc `=destroy`*[T](deq: var Deque[T]) =
+    # Prevent the auto-generated `=destroy` from running on the full capacity (the
+    # empty items have already been destroyed)
+    when needsReset(T):
+      let L = deq.len
+      for i in 0..<L:
+        reset(deq.elem(i))
+    `=dispose`(deq.data) # TODO dispose doesn't work for seq
 
 func initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## Initialize a deque with the given pre-allocated capacity.
@@ -331,7 +333,6 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
     bulkDrain(n, deq.data.toOpenArray(head, deq.data.high()))
     if head > 0:
       bulkDrain(n.toOpenArray(toCap, n.high()), deq.data.toOpenArray(0, head - 1))
-
     deq.data = move n
     deq.tail = cap.uint
     deq.head = 0
@@ -522,12 +523,12 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
 
   when needsReset(T):
     for i in 0 ..< fromFirst:
-      reset(deq.uncheckedElem(0))
+      reset(deq.data[deq.head and deq.mask])
       inc deq.head
 
     for i in 0 ..< fromLast:
-      reset(deq.uncheckedElem(deq.tail - 1))
       dec deq.tail
+      reset(deq.data[deq.tail and deq.mask])
   else:
     deq.head += uint(fromFirst)
     deq.tail -= uint(fromLast)
