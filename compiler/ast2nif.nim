@@ -3316,11 +3316,26 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       # `ast[bodyPos].kind != nkEmpty` checks need no load) whose children are
       # materialized on demand (see `materializeLazyBody`, driven by the `len`
       # hook). An empty body is a single node — not worth deferring.
+      #
+      # ONLY an `nkStmtList` body is deferred, and that restriction is what keeps
+      # the placeholder a WELL-FORMED node. The compiler's most basic invariant is
+      # that a node's kind implies its arity: every `case n.kind` is entitled to
+      # reach `n[0]`/`n[1]` without asking `len` first, and hundreds do. A
+      # childless placeholder claiming to be an `nkAsgn` breaks that — `x = s` as a
+      # nested proc's whole body IndexDefect'd in `trees.getPotentialWrites`, which
+      # does exactly `n[0]`/`n[1]` under `of nkAsgn`. A childless `nkStmtList` is
+      # legal, so no such reader can be surprised.
+      #
+      # Hooking `[]` instead would not close this: `sons` is a public field with
+      # ~35 direct uses in the compiler, plus `firstSon`/`secondSon`/`lastSon`,
+      # and none of them route through `[]`. Nor does the restriction cost much:
+      # `nkStmtList` is 82.5% of the 278_604 bodies a `nim ic` of the compiler
+      # defers, and 13.1% of the rest are one-line `nkAsgn` bodies.
       c.withNode n, result, kind:
         var idx = 0
         while n.hasMore:
           if idx == bodyPos and n.kind == TagLit and
-             n.nodeKind notin {nkEmpty, nkNone}:
+             n.nodeKind == nkStmtList:
             let info = c.infos.oldLineInfo(n.info, cursorPool(n))
             let ph = newNodeI(n.nodeKind, info)
             ph.flags.incl nfLazyBody
