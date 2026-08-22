@@ -523,6 +523,44 @@ const
     ## still on the counter -- `tyInt`, `tyTypeDesc`, `tyDistinct` -- plus the
     ## content-named wrappers that cascade off them.
 
+const
+  CanonLitCopyKinds = {tyInt, tyFloat}
+    ## Kinds that sem COPIES per module out of `system`, keeping the ORIGINAL's
+    ## `sym`: the int literal types (`semdata.getIntLitType`,
+    ## `semfold.getIntLitTypeG`) and the plain copies `magicsys.skipIntLit`
+    ## makes of them when a literal type reaches a parameter. `tyFloat` is here
+    ## because `skipIntLit` accepts it, not because anything mints one today --
+    ## every one of the copies measured below is a `tyInt`. `getIntLitType` caches only the small values, so everything
+    ## else mints a fresh type per occurrence: `nilcheck.nim` alone writes 132
+    ## and the whole compiler writes 20107 -- 91% of every per-module copy in
+    ## the build, and each one holds a mint-counter name that an insert
+    ## anywhere above it shifts.
+    ##
+    ## They are the last mover that actually BREAKS a build rather than just
+    ## churning bytes. Inserting a proc at the top of `nilcheck.nim` renamed one
+    ## of them and `pipelines.t.bif` -- cached, not re-sem'd, because the iface
+    ## cookie is order-insensitive since `fab55cff6` -- still pointed at the old
+    ## name: `symbol has no offset: t31.4199.nilrwrcn11`. That reproduces on
+    ## `2bed712f6` and not on `901ca7905`.
+    ##
+    ## Merging two of these is safe in a way merging a nominal type is not: the
+    ## key carries the flags, the size and the literal in `n` -- everything
+    ## `isIntLit` and `sameType` look at -- plus the `sym`, which is what keeps
+    ## a copy of plain `int` apart from a copy of an int-shaped alias like
+    ## posix's `Off`. Merging is in fact what `getIntLitType`'s own cache
+    ## already does for the values it covers.
+    ##
+    ## The test is deliberately a MODULE comparison and not `sym.typ != typ`;
+    ## the comment on `isCanonType` records what that cost. It also means a copy
+    ## minted while compiling `system` itself is not covered -- sym and type
+    ## agree on the module there -- which is fine: nothing above `system` can
+    ## shift its counter.
+    ##
+    ## The OTHER copies are deliberately not here. 1375 are `tyObject` -- a
+    ## generic instance's body -- and 184 `tySequence`, both nominal: their
+    ## identity is the declaration, not the content, and collapsing two of them
+    ## loses exactly what `exactReplica` exists to keep apart.
+
 const CanonIdBias = 0x4000_0000'i32
   ## Canonical ids live above every mint counter so a content hash can never
   ## collide with the `uniqueId.item` of a same-kind type that kept its counter
@@ -617,17 +655,36 @@ proc isCanonType(w: Writer; typ: PType): bool =
   ##    (>= CanonIdBias), which is exactly what `typeToNifSym` prints;
   ##  * loaded `exactReplica`     -> the loader rebuilds `itemId` from the
   ##    serialized nonUniqueId, so `itemId != uniqueId` and it keeps its counter;
-  ##  * a `Partial` stub          -> no sons to hash, and its id is already final.
+  ##  * a `Partial` stub          -> its id is already final; for a wrapper the
+  ##    `sonsImpl` test below rejects it, and a literal copy is decided purely
+  ##    from the two module ids its NIF name already carries.
   ##
   ## Depends on nothing that changes during a write -- in particular not on
   ## `typ.state`, which flips to `Sealed` the moment the def is emitted -- so a
   ## type's def site and every reference to it agree.
-  typ.kind in CanonTypeKinds and
-    not typ.uniqueId.isBackendMinted and
-    typ.uniqueId.item < CanonIdBias and
-    typ.itemId == typ.uniqueId and   # an `exactReplica` keeps its counter
-    typ.symImpl == nil and
-    typ.sonsImpl.len > 0
+  if typ.uniqueId.isBackendMinted or typ.uniqueId.item >= CanonIdBias or
+      typ.itemId != typ.uniqueId:   # an `exactReplica` keeps its counter
+    result = false
+  elif typ.kind in CanonTypeKinds:
+    # An anonymous wrapper. A `sym` means the type was DECLARED and is nominal.
+    result = typ.symImpl == nil and typ.sonsImpl.len > 0
+  elif typ.kind in CanonLitCopyKinds:
+    # A per-module literal copy: it wears `system.int`'s `sym` but was minted
+    # into ANOTHER module's id space, so the sym and the type disagree about
+    # which module they belong to. A declaration never does -- `type Off = int`
+    # in posix owns both halves -- and neither does `system.int` itself.
+    #
+    # The obvious test, `typ.sym.typ != typ` ("the sym's own type is the
+    # original, so this is a copy"), is wrong ACROSS THE NIF BOUNDARY and cost a
+    # cold build: a loaded `Off` sym is a stub whose `typImpl` is still nil, so
+    # posix named its `Off` by the counter while `os` read the same type as a
+    # copy and referenced a content id posix never wrote -- `symbol has no
+    # offset: t31.2136968888.pos7l6hwt`. Both halves of this test come off the
+    # NIF name, so a consumer and the owner always agree.
+    result = typ.symImpl != nil and
+      typ.symImpl.itemId.module != typ.uniqueId.module
+  else:
+    result = false
 
 proc addNodeKey(w: var Writer; key: var string; n: PNode) =
   ## Structural digest of a type's `n` node, for the kinds whose identity lives
@@ -668,8 +725,9 @@ proc addNodeKey(w: var Writer; key: var string; n: PNode) =
   key.add ')'
 
 proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
-  ## Stable id of an anonymous wrapper: its CONTENT, or -- for a proc type that
-  ## is a routine's signature -- the routine that owns it.
+  ## Stable id for a type that would otherwise wear the mint counter: its
+  ## CONTENT for a wrapper or a literal copy, and for a proc type that is a
+  ## routine's signature, the routine that owns it.
   ##
   ## SOUNDNESS RULE: the key must cover everything `writeTypeDef` serializes
   ## except the id itself, so that two types sharing a name would have been
@@ -757,6 +815,13 @@ proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
   key.addInt typ.paddingAtEndImpl
   key.add '|'
   if typ.typeInstImpl != nil: key.add nifTypeName(w, typ.typeInstImpl)
+  # The `sym` is load-bearing for a literal copy and nil for every wrapper, so
+  # adding it leaves the wrapper keys byte-identical. It has to be here: a copy
+  # of plain `int` and a copy of an int-shaped alias such as posix's `Off` agree
+  # on kind, flags and size, and the sym is all that tells them apart.
+  if typ.symImpl != nil:
+    key.add '$'
+    key.add toNifSymName(w, typ.symImpl)
   if typ.ownerFieldImpl != nil:
     key.add '<'
     key.add toNifSymName(w, typ.ownerFieldImpl)
@@ -768,6 +833,12 @@ proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
   # params -- all of them serialized, so all of them part of the key.
   addNodeKey(w, key, typ.nImpl)
   result = claimCanonId(typ, key, canonHash(key))
+  when defined(icLitDbg):
+    if typ.kind in CanonLitCopyKinds:
+      stderr.writeLine "[litkey] cur=" & modname(w.currentModule, w.infos.config) &
+        " uidmod=" & modname(typ.uniqueId.module, w.infos.config) &
+        " uid=" & $typ.uniqueId.item & " state=" & $typ.state &
+        " id=" & $result & " key=" & key
   canonTypeIds[typ.uniqueId] = result
 
 proc nifTypeName(w: var Writer; typ: PType): string =
@@ -2070,7 +2141,15 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.inst)), NoLineInfo
     w.deps.addIntLit off.genericParamsCount
     for ct in off.concreteTypes:
-      w.deps.addSymUse pool.syms.getOrIncl(typeToNifSym(ct, w.infos.config)), NoLineInfo
+      # `nifTypeName`, NOT `typeToNifSym`: the def this offer has to resolve
+      # against was emitted under the CANONICAL name, and `typeToNifSym` prints
+      # the raw mint counter. The mismatch is silent -- the loader is
+      # best-effort and just drops the offer -- so the consumer re-instantiates
+      # the generic in its own scope and fails wherever that scope differs
+      # (`tests/ic/ttransitiveoffer`: `TScopeSize` ambiguous between two
+      # imports). `fromRaw(64)` reaches it through an `int` literal copy, but
+      # every wrapper kind has been exposed to this since `2bed712f6`.
+      w.deps.addSymUse pool.syms.getOrIncl(nifTypeName(w, ct)), NoLineInfo
     w.deps.addParRi
   # Record this module's own absolute source path. The NIF suffix is a hash of
   # the (relative) path (gear2/modnames.moduleSuffix) and is NOT reversible, so
@@ -2112,7 +2191,7 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     # directly (cf. `loadImport`, which carries module suffixes the same way).
     w.deps.addParLe typeOfferTag, NoLineInfo
     w.deps.addStrLit w.toNifSymName(off.generic)
-    w.deps.addStrLit typeToNifSym(off.inst, w.infos.config)
+    w.deps.addStrLit nifTypeName(w, off.inst)   # canonical name, see above
     w.deps.addParRi
 
   # OWNER MUST EMIT: a type reachable only through an offered instance — the
@@ -3860,12 +3939,13 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
     w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.inst)), NoLineInfo
     w.deps.addIntLit off.genericParamsCount
     for ct in off.concreteTypes:
-      w.deps.addSymUse pool.syms.getOrIncl(typeToNifSym(ct, w.infos.config)), NoLineInfo
+      # Canonical name, see `writeNifModule`'s copy of this loop.
+      w.deps.addSymUse pool.syms.getOrIncl(nifTypeName(w, ct)), NoLineInfo
     w.deps.addParRi
   for off in precomp.typeOffers:
     w.deps.addParLe typeOfferTag, NoLineInfo
     w.deps.addStrLit w.toNifSymName(off.generic)
-    w.deps.addStrLit typeToNifSym(off.inst, w.infos.config)
+    w.deps.addStrLit nifTypeName(w, off.inst)   # canonical name, see above
     w.deps.addParRi
   # OWNER MUST EMIT offered types this module owns (see writeNifModule).
   for off in precomp.genericOffers:

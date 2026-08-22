@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "32"
+  icFormatVersion* = "33"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -61,6 +61,9 @@ const
     ## v8 (=32): the same for `tyProc`, except that a proc type which is a
     ## routine's SIGNATURE is named after that routine rather than by content
     ## (see ast2nif.sigRoutineOf). Renames types, so old caches dangle again.
+    ## v9 (=33): and for the per-module `int`/`float` LITERAL COPIES (see
+    ## ast2nif.CanonLitCopyKinds), the last mover that broke a build outright
+    ## (`symbol has no offset` out of a cached `.t.bif`). Renames types again.
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
