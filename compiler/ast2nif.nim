@@ -485,9 +485,10 @@ proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
 const
   CanonTypeKinds = {tyVar, tyLent, tySink, tyTuple, tyRef, tyPtr, tySequence,
                     tyOpenArray, tyVarargs, tySet, tyUncheckedArray, tyArray,
-                    tyRange}
-    ## Anonymous structural wrappers whose NIF name is derived from their CONTENT
-    ## rather than from `uniqueId.item`, the module-wide type-mint counter.
+                    tyRange, tyProc}
+    ## Anonymous types whose NIF name is derived from what they ARE -- their
+    ## content, or for a routine's signature the routine -- rather than from
+    ## `uniqueId.item`, the module-wide type-mint counter.
     ##
     ## The counter is assigned in sem order, so creating ONE extra type renumbers
     ## every type minted after it. Types declared in a `type` section are minted
@@ -502,20 +503,25 @@ const
     ## for a structurally identical copy so the two stay distinguishable, and
     ## collapsing them loses the flag or body difference they were split over.
     ##
-    ## `tyProc` is NOT in this set, and that is the main thing left undone here.
-    ## It is also the largest remaining source of counter-shift: 142 of the 349
-    ## references that still move when `msgs.nim` is edited are proc types, and
-    ## `msgs` is exactly the shape of module this does not yet help.
+    ## `tyProc` is in the set, but it never takes the content key: a proc type
+    ## that is some routine's SIGNATURE is named after that routine (see
+    ## `sigRoutineOf`), and any other proc type keeps its counter. Content-keying
+    ## a signature is what "everything `writeTypeDef` serializes" gets wrong,
+    ## because a signature's identity is not in its content at all -- it is in
+    ## the PARAM SYMBOLS the routine's body refers to.
+    ## Merging two signatures leaves the survivor's params in the loser's
+    ## `typ.n`, its body then references params the C backend never declared, and
+    ## codegen dies with "expr: param not init". Measured on a hello-world under
+    ## `nim ic`: 238 proc-type merges, every single one a lifted `=sink` hook
+    ## (`(dest: var T, src: T)`, two hooks minted for the same T, identical in
+    ## everything `writeTypeDef` writes) -- so no amount of extra content in the
+    ## key would ever have separated them.
     ##
-    ## Two merges had to be fixed before it got close -- a generic `==[Enum]`
-    ## collapsing onto its own `FileInfoKind` instance (its parameters live in
-    ## `n`, not `sonsImpl`, and `addNodeKey` was hashing their names but not
-    ## their types), and two proc types differing only in `tfUnresolved`. Both
-    ## are fixed above, yet enabling `tyProc` still fails, now inside the VM:
-    ## `system.newStringUninitImpl` reports "param not init". So something about
-    ## proc-type identity is still not captured by "everything writeTypeDef
-    ## serializes", and finding it wants the same measure-first treatment the
-    ## rest of this scheme got rather than another guess.
+    ## Effect on `msgs.nim`, the module the wrapper pass could not help: an
+    ## insert at the top moved 259 of its 530 type names, 153 of them proc types.
+    ## All 153 now hold still and 106 names move. What is left is other kinds
+    ## still on the counter -- `tyInt`, `tyTypeDesc`, `tyDistinct` -- plus the
+    ## content-named wrappers that cascade off them.
 
 const CanonIdBias = 0x4000_0000'i32
   ## Canonical ids live above every mint counter so a content hash can never
@@ -540,9 +546,61 @@ var canonTypeIds: Table[ItemId, int32]
   ## first computation makes the process self-consistent; across processes the
   ## question does not arise, since a consumer LOADS the id out of the name.
 
+var canonClaims: Table[ItemId, string]
+  ## `(module, canonical id) -> the key that minted it`, so a hash COLLISION
+  ## cannot silently merge two unrelated types. `canonHash` has 30 usable bits;
+  ## across a module's ~2000 types a birthday collision is unlikely but not
+  ## negligible, and until now it would have been a miscompile rather than a
+  ## wasted slot. A second, DIFFERENT key landing on a taken id falls back to
+  ## `uniqueId.item`, which is safe for exactly the reason the re-entrancy guard
+  ## below is: the mint counter is unique within the module, so nothing else can
+  ## be wearing that name.
+
+var canonSigOwners: Table[string, ItemId]
+  ## `signature key -> the one PType allowed to wear it`. A signature name is an
+  ## IDENTITY, not a digest: two `PType`s that agree on it are NOT
+  ## interchangeable, so unlike a content key it must never be shared. A routine
+  ## has one type at a time, yet `prc.typ` is REPLACED in places (a forward
+  ## declaration adopting its prototype, `instantiateProcType` overwriting the
+  ## signature it copied), and the previous occupant can still be reachable and
+  ## still get written. The first claimant keeps the name; a later one keeps its
+  ## counter.
+
 proc canonicalTypeItem(w: var Writer; typ: PType): int32
 proc nifTypeName(w: var Writer; typ: PType): string
 proc addNodeKey(w: var Writer; key: var string; n: PNode)
+
+proc claimCanonId(typ: PType; key: string; h: int32): int32 =
+  ## Hand out `h` unless another key already holds it in this module.
+  let slot = itemId(typ.uniqueId.module, h)
+  canonClaims.withValue(slot, prev):
+    return (if prev[] == key: h else: typ.uniqueId.item)
+  do:
+    canonClaims[slot] = key
+    return h
+
+proc sigRoutineOf(typ: PType): PSym =
+  ## The routine whose signature `typ` is, or nil for a proc type that is merely
+  ## a value's type (`var cb: proc (x: int)`).
+  ##
+  ## The parameters are asked FIRST and `typ.owner` only second, because a
+  ## generic instance's owner is the wrong symbol: `instCopyType` copies the
+  ## generic's type with `copyType(t, idgen, t.owner)` and `instantiateProcType`
+  ## then does `prc.typ = result` without ever re-owning it, so `typ.owner` is
+  ## still the GENERIC while `setOwner(param, prc)` has already pointed every
+  ## parameter at the instance. Both routes then confirm with `o.typ == typ`,
+  ## which is what separates a routine's own signature from an anonymous proc
+  ## type minted inside its body (same owner, different type).
+  result = nil
+  let n = typ.nImpl
+  if n != nil and n.kind == nkFormalParams and n.len > 1 and
+      n[1].kind == nkSym and n[1].sym != nil:
+    let o = n[1].sym.ownerFieldImpl
+    if o != nil and o.kindImpl in routineKinds and o.typImpl == typ:
+      return o
+  let o = typ.ownerFieldImpl
+  if o != nil and o.kindImpl in routineKinds and o.typImpl == typ:
+    return o
 
 proc isCanonType(w: Writer; typ: PType): bool =
   ## True only when the id must be OVERRIDDEN, i.e. for a wrapper minted in THIS
@@ -610,7 +668,8 @@ proc addNodeKey(w: var Writer; key: var string; n: PNode) =
   key.add ')'
 
 proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
-  ## Content id of an anonymous wrapper.
+  ## Stable id of an anonymous wrapper: its CONTENT, or -- for a proc type that
+  ## is a routine's signature -- the routine that owns it.
   ##
   ## SOUNDNESS RULE: the key must cover everything `writeTypeDef` serializes
   ## except the id itself, so that two types sharing a name would have been
@@ -630,6 +689,49 @@ proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
   # Re-entrancy guard: a son that leads back here sees the mint counter, and this
   # type still gets a deterministic (if less stable) id.
   canonTypeIds[typ.uniqueId] = typ.uniqueId.item
+
+  # A routine's signature is named after the ROUTINE, not after its content.
+  # Content cannot work here (see CanonTypeKinds): two `=sink` hooks for one type
+  # agree in every serialized byte yet own different param symbols, and the
+  # merged loser's body loses its parameters. The routine's own NIF name is both
+  # unique -- a routine has one signature -- and stable, since `disamb` counts
+  # per identifier rather than per module, which is the whole point. It is also
+  # stable across a signature CHANGE: adding a parameter or an effect no longer
+  # renames the type, so importers keep their references and only the iface
+  # cookie (which reads the signature itself) notices.
+  let sigRoutine = if typ.kind == tyProc: sigRoutineOf(typ) else: nil
+  if sigRoutine != nil:
+    var sigKey = "sig|"
+    sigKey.add modname(typ.uniqueId.module, w.infos.config)
+    sigKey.add '|'
+    sigKey.add toNifSymName(w, sigRoutine)
+    var taken = false
+    canonSigOwners.withValue(sigKey, holder):
+      taken = holder[] != typ.uniqueId
+    do:
+      canonSigOwners[sigKey] = typ.uniqueId
+    if not taken:
+      result = claimCanonId(typ, sigKey, canonHash(sigKey))
+      canonTypeIds[typ.uniqueId] = result
+      return result
+    # Someone else is already this routine's signature; keep the mint counter.
+    return typ.uniqueId.item
+  elif typ.kind == tyProc:
+    # An anonymous proc type -- a parameter's or a variable's `proc (x: int)`.
+    # It keeps the mint counter, and `nifTypeName` then prints exactly what
+    # `typeToNifSym` would. Content-keying it looked harmless and is not: the
+    # `raises`/`tags` effects that separate two otherwise identical proc types
+    # live as `nkType` nodes under `n[0]`'s `nkEffectList`, and `addNodeKey`
+    # hashes a node's kind and children but never its TYPE, so every effect set
+    # digests the same. Enabling it collapsed two `proc () {.closure.}` params in
+    # `seqs_v2.yrcMutatorLock` and `tests/ic/tmeta_async` stopped compiling with
+    # "type mismatch: got <proc (){.closure, gcsafe.}> but expected 'proc
+    # (){.closure, gcsafe.}' .raise effects differ". Teaching `addNodeKey` about
+    # node types would fix that particular merge, but there is nothing to win:
+    # the churn this whole scheme exists to remove is in the SIGNATURES an
+    # importer references, and those are handled above.
+    return typ.uniqueId.item
+
   var key = newStringOfCap(96)
   key.addInt ord(typ.kind)
   key.add '|'
@@ -665,7 +767,7 @@ proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
   # `n` carries a tuple's field names, a range's bounds and a proc's formal
   # params -- all of them serialized, so all of them part of the key.
   addNodeKey(w, key, typ.nImpl)
-  result = canonHash(key)
+  result = claimCanonId(typ, key, canonHash(key))
   canonTypeIds[typ.uniqueId] = result
 
 proc nifTypeName(w: var Writer; typ: PType): string =
