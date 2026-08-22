@@ -203,7 +203,7 @@ func `[]`*[T](deq: Deque[T], i: BackwardsIndex): lent T {.inline.} =
     assert a[^4] == 20
     doAssertRaises(IndexDefect, echo a[^9])
 
-  return deq[deq.len - int(i)]
+  return deq.elem(deq.len - int(i))
 
 func `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
   ## Accesses the backwards indexed `i`-th element and returns a mutable
@@ -215,7 +215,7 @@ func `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
     inc(a[^1])
     assert a[^1] == 51
 
-  return deq[deq.len - int(i)]
+  return deq.elem(deq.len - int(i))
 
 proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: sink T) {.inline.} =
   ## Sets the backwards indexed `i`-th element of `deq` to `x`.
@@ -227,7 +227,7 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: sink T) {.inline.} =
     a[^3] = 77
     assert $a == "[10, 20, 77, 40, 99]"
 
-  deq[deq.len - int(i)] = x
+  deq.elem(deq.len - int(i)) = x
 
 iterator items*[T](deq: Deque[T]): lent T =
   ## Yields every element of `deq`.
