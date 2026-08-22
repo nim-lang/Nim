@@ -1239,11 +1239,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
                                        tfConceptMatchedTypeSym notin aOrig.flags
 
   template skipTypeCursor(it, kinds: untyped) =
+    # `ast.last`, not a hand-inlined copy of it. What this replaces was `last`'s
+    # body verbatim MINUS its `if state == Partial: loadType` line -- and that
+    # line is the whole point: a NIF-loaded stub answers `kind` off its NIF name
+    # while `sonsImpl` is still EMPTY, so `sonsImpl[^1]` raised IndexDefect.
+    # nimbus-eth2 died on it in the very first `nim ic` pass, inside the `x is T`
+    # under a chronos `{.async.}` iterator's `when`. The second call site below
+    # is unguarded and runs on EVERY `typeRel`, so this is not a concept-only
+    # corner: a probe counts 195 Partial `tyVar`/`tyLent` arrivals across one
+    # nimbus frontend, each of which was an IndexDefect waiting for its turn.
     while it.kind in kinds:
-      if it.kind == tyProc and it.nImpl.len > 1:
-        it = it.nImpl[^1].sym.typ
-      else:
-        it = it.sonsImpl[^1]
+      it = it.last
 
   var aOrig {.cursor.} = aOrig
   if useTypeLoweringRuleInTypeClass:
