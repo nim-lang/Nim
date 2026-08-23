@@ -1379,7 +1379,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
     for i in 0..<paramType.len - 1:
       if paramType[i].kind == tyStatic:
-        var staticCopy = paramType[i].exactReplica(c.idgen)
+        var staticCopy = copyType(paramType[i], c.idgen, paramType[i].owner)
         staticCopy.incl tfInferrableStatic
         result.rawAddSon staticCopy
       else:

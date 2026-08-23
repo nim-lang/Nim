@@ -913,16 +913,14 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         case typ.kind
         of tyStatic:
           param = paramSym skConst
-          param.typ = typ.exactReplica(m.c.idgen)
-          #copyType(typ, c.idgen, typ.owner)
+          param.typ = copyType(typ, m.c.idgen, typ.owner)
           if typ.n == nil:
             param.typ.incl tfInferrableStatic
           else:
             param.ast = typ.n
         of tyFromExpr:
           param = paramSym skVar
-          param.typ = typ.exactReplica(m.c.idgen)
-          #copyType(typ, c.idgen, typ.owner)
+          param.typ = copyType(typ, m.c.idgen, typ.owner)
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
@@ -974,8 +972,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if ff.kind == tyUserTypeClassInst:
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
-    result = ff.exactReplica(m.c.idgen)
-    #copyType(ff, c.idgen, ff.owner)
+    result = copyType(ff, m.c.idgen, ff.owner)
 
   result.n = checkedBody
 
@@ -2695,7 +2692,7 @@ proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelat
     # The ast of the type does not point to the symbol.
     # Without this we will never resolve a `static proc` with overloads
     let copiedNode = copyNode(arg)
-    copiedNode.typ = exactReplica(copiedNode.typ, m.c.idgen)
+    copiedNode.typ = copyType(copiedNode.typ, m.c.idgen, copiedNode.typ.owner)
     copiedNode.typ.n = arg
     arg = copiedNode
   typeRel(m, f, arg.typ)
