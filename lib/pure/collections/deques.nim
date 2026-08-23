@@ -136,6 +136,12 @@ template drain(src: untyped): untyped =
   else:
     src
 
+template newData(T: type, size: int): seq[T] =
+  when needsReset(T) or not declared(newSeqUninit):
+    newSeq[T](size)
+  else:
+    newSeqUninit[T](size)
+
 when false: # TODO no obvious way to get rid of the seq data without having it re-destroy
   proc `=destroy`*[T](deq: var Deque[T]) =
     # Prevent the auto-generated `=destroy` from running on the full capacity (the
@@ -157,13 +163,7 @@ func initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## **See also:**
   ## * `toDeque func <#toDeque,openArray[T]>`_
   let correctSize = nextPowerOfTwo(initialSize)
-  Deque[T](
-    data:
-      when needsReset(T):
-        newSeq[T](correctSize)
-      else:
-        newSeqUninit[T](correctSize)
-  )
+  Deque[T](data: newData(T, correctSize))
 
 func `[]`*[T](deq: Deque[T], i: Natural): lent T {.inline.} =
   ## Accesses the `i`-th element of `deq`.
@@ -324,11 +324,7 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
       head = cast[int](deq.head and deq.mask)
       toCap = cap - head
 
-    var n =
-      when needsReset(T):
-        newSeq[T](max(cap * 2, defaultInitialSize))
-      else:
-        newSeqUninit[T](max(cap * 2, defaultInitialSize))
+    var n = newData(T, max(cap * 2, defaultInitialSize))
 
     bulkDrain(n, deq.data.toOpenArray(head, deq.data.high()))
     if head > 0:
