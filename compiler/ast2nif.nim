@@ -208,11 +208,13 @@ const
   hiddenTypeTagName = "ht"
   symDefTagName = "sd"
   typeDefTagName = "td"
+  bindingIdTagName = "bid"
 
 var
   sdefTag = registerTag(symDefTagName)
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
+  bindingIdTag = registerTag(bindingIdTagName)
 
 type
   Writer = object
@@ -891,15 +893,25 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
     # SAME id the name carries (`bindingId == itemId` is what made it eligible,
     # and writing the mint counter here would keep the byte churn the content
     # scheme exists to remove).
-    dest.addIntLit (if isCanonType(w, typ): canonicalTypeItem(w, typ)
-                    else: typ.bindingId.item)
-    # A replica of a FOREIGN type has a `bindingId` naming another module, which
-    # the loader cannot reconstruct from the name -- serialize that half too.
-    if typ.bindingId.module != typ.itemId.module and
-        not typ.bindingId.isBackendMinted:
-      dest.addStrLit modname(typ.bindingId.module, w.infos.config)
-    else:
+    # `bindingId` (see astdef.TType): the generic binding-table key. Only an
+    # `exactReplica` has one that differs from its own `itemId`, and `itemId` is
+    # exactly what the loader rebuilds from the type's NIF name -- so everything
+    # else would only repeat what the name already says. Emit the node solely
+    # when it carries information (18 of 11894 type defs in a `nim ic` build of
+    # tests/ic/timp), TAGGED rather than positional: the interface cookie has to
+    # drop this field (it is a module-wide mint counter, so hashing it made the
+    # cookie depend on declaration ORDER -- one line added to ast.nim cost 98
+    # re-sems), and a tag lets `hashRegion` skip it by name instead of counting
+    # tokens into this tree and silently mis-skipping when the layout changes.
+    if typ.bindingId == typ.itemId:
       dest.addDotToken
+    else:
+      dest.buildTree bindingIdTag:
+        dest.addIntLit typ.bindingId.item
+        # a replica of a FOREIGN type: the module half is not in the name either
+        if typ.bindingId.module != typ.itemId.module and
+            not typ.bindingId.isBackendMinted:
+          dest.addStrLit modname(typ.bindingId.module, w.infos.config)
 
     writeType(w, dest, typ.typeInstImpl)
     #if typ.kind in {tyProc, tyIterator} and typ.nImpl != nil and typ.nImpl.kind != nkFormalParams:
@@ -1332,6 +1344,7 @@ proc registerNifAstTags*() =
   sdefTag = registerTag(symDefTagName)
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
+  bindingIdTag = registerTag(bindingIdTagName)
   replayTag = registerTag("replay")
   repConverterTag = registerTag("repconverter")
   repDestroyTag = registerTag("repdestroy")
@@ -1806,30 +1819,25 @@ proc hashRegion(s: var Sha1State; c: var CookieCtx; flat: seq[CookieTok];
     inc i
   # pass 2: hash
   first = keepFirstDefLiteral
-  # Indices of the `bindingId` int inside every `(td ...)` met on the way; see
-  # the comment where they are collected.
-  var tdIdSkips = initHashSet[int]()
   i = start
   while i < theEnd:
     if i == skipFrom:
       i = skipTo
       continue
     let t = flat[i]
-    if t.kind == ckParLe and t.tag == typeDefTagName and i+8 < theEnd:
-      # `writeTypeDef` emits: (td :name . flags callConv size align paddingAtEnd
-      # bindingId.item ...) -- `flags` is always exactly one token (ident or dot),
-      # so `bindingId.item` is always at `i+8`. That field is a module-wide mint
-      # COUNTER: creating one extra type renumbers every type minted after it,
-      # so hashing it made the interface cookie depend on declaration ORDER.
-      # Inserting a private proc at the top of a module then changed the cookie
-      # of a module whose interface had not changed, invalidating every importer
-      # (measured: 98 re-sems for one line added to ast.nim). The type's real
-      # identity survives without it -- its structure is hashed here, and its
-      # nominal identity rides on `typ.symImpl`, a literal cross-region name.
-      tdIdSkips.incl i+8
-    if i in tdIdSkips:
+    if t.kind == ckParLe and t.tag == bindingIdTagName:
+      # A type's `bindingId` is a module-wide mint COUNTER: creating one extra
+      # type renumbers every type minted after it, so hashing it made the
+      # interface cookie depend on declaration ORDER -- inserting a private proc
+      # at the top of a module changed the cookie of a module whose interface had
+      # not changed and invalidated every importer (measured: 98 re-sems for one
+      # line added to ast.nim). The type's real identity survives without it: its
+      # structure is hashed here, and its nominal identity rides on `typ.symImpl`,
+      # a literal cross-region name.
       s.update " #"   # placeholder: keeps the field's presence, drops its value
-    elif t.kind in {ckSym, ckSymDef}:
+      i = nextTree(flat, i)
+      continue
+    if t.kind in {ckSym, ckSymDef}:
       let sym = t.sym
       let name = t.name
       s.update(if t.kind == ckSymDef: " :" else: " ")
@@ -2929,14 +2937,19 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
     loadField t.sizeImpl
     loadField t.alignImpl
     loadField t.paddingAtEndImpl
-    t.bindingId = itemId(t.bindingId.module, loadAtom(int32, n))  # the serialized bindingId
-    if n.kind == StrLit:
-      # itemId.module differs from itemId.module (an `exactReplica` of a
-      # foreign type): restore the canonical module half
-      t.bindingId = itemId(int32(moduleId(c, strVal(n))), t.bindingId.item)
+    if n.kind == DotToken:
+      # no `(bid ...)`: not a replica, so the binding id is the type's own id,
+      # which `createTypeStub` already took from the name
       skip n
-    elif n.kind == DotToken:
-      skip n
+    else:
+      n.into:
+        t.bindingId = itemId(t.bindingId.module, loadAtom(int32, n))
+        # `hasMore` first: inside `into` the module half is optional, and asking
+        # a spent cursor for its `kind` asserts
+        if n.hasMore and n.kind == StrLit:
+          # a replica of a foreign type: restore the module half too
+          t.bindingId = itemId(int32(moduleId(c, strVal(n))), t.bindingId.item)
+          skip n
 
     t.typeInstImpl = loadTypeStub(c, n, localSyms)
     t.nImpl = loadNode(c, n, typesModule, localSyms)
