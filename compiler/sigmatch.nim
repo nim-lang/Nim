@@ -137,8 +137,8 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "binding ", key, " -> ", val
   when defined(icDbgRefc):
     if key.kind in {tyGenericParam, tyTypeDesc}:
-      echo "[icBind] put ", key.kind, " ", typeToString(key), " uid=", key.uniqueId.module, ".",
-        key.uniqueId.item, " itemId=", key.itemId.module, ".", key.itemId.item,
+      echo "[icBind] put ", key.kind, " ", typeToString(key), " itemId=", key.itemId.module, ".",
+        key.itemId.item, " bindingId=", key.bindingId.module, ".", key.bindingId.item,
         " state=", key.state, " -> ", typeToString(val)
   put(c.bindings, key, val.skipIntLit(c.c.idgen))
 

@@ -343,8 +343,8 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
-  if g.attachedOps[op].contains(t.itemId):
-    result = g.attachedOps[op][t.itemId]
+  if g.attachedOps[op].contains(t.bindingId):
+    result = g.attachedOps[op][t.bindingId]
   elif g.config.cmd in {cmdNifC, cmdM}:
     # Fall back to key-based lookup for NIF-loaded hooks
     let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
@@ -373,7 +373,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # references derived env-field syms that no module's NIF defines
     if g.loadedOps[op].getOrDefault(key) == nil:
       g.loadedOps[op][key] = value
-    g.attachedOps[op][t.itemId] = value
+    g.attachedOps[op][t.bindingId] = value
     return
   let existing = g.loadedOps[op].getOrDefault(key)
   if existing == nil:
@@ -411,7 +411,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
         break
     if not updated:
       g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
-  g.attachedOps[op][t.itemId] = value
+  g.attachedOps[op][t.bindingId] = value
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
   ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
@@ -419,7 +419,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttach
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = value
+  g.attachedOps[op][t.bindingId] = value
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) {.inline.} =
   discard
@@ -441,19 +441,19 @@ proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
   g.nifReplayActions.mgetOrPut(module, @[]).add n
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
-  if g.methodsPerType.contains(t.itemId):
-    for it in mitems g.methodsPerType[t.itemId]:
+  if g.methodsPerType.contains(t.bindingId):
+    for it in mitems g.methodsPerType[t.bindingId]:
       yield it
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
-  result = g.enumToStringProcs.getOrDefault(t.itemId)
+  result = g.enumToStringProcs.getOrDefault(t.bindingId)
   if result == nil and g.config.cmd in {cmdNifC, cmdM}:
     let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
     result = g.loadedEnumToStringProcs.getOrDefault(key)
   assert result != nil
 
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
-  g.enumToStringProcs[t.itemId] = value
+  g.enumToStringProcs[t.bindingId] = value
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
   # Stamp with the module that owns the generated proc, not the enum's def
   # module: the def module's process may never have generated it (same
@@ -461,12 +461,12 @@ proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   g.opsLog.add LogEntry(kind: EnumToStrEntry, module: value.itemId.module.int, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
-  if g.methodsPerGenericType.contains(t.itemId):
-    for it in mitems g.methodsPerGenericType[t.itemId]:
+  if g.methodsPerGenericType.contains(t.bindingId):
+    for it in mitems g.methodsPerGenericType[t.bindingId]:
       yield (it[0], it[1])
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
-  g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, m)
+  g.methodsPerGenericType.mgetOrPut(t.bindingId, @[]).add (col, m)
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
   let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
   g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)

@@ -742,8 +742,8 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 
 proc hasCppCtor(m: BModule; typ: PType): bool =
   result = false
-  if m.compileToCpp and typ != nil and typ.itemId in m.g.graph.memberProcsPerType:
-    for prc in m.g.graph.memberProcsPerType[typ.itemId]:
+  if m.compileToCpp and typ != nil and typ.bindingId in m.g.graph.memberProcsPerType:
+    for prc in m.g.graph.memberProcsPerType[typ.bindingId]:
       if sfConstructor in prc.flags:
         return true
 
@@ -752,8 +752,8 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string
 proc genCppInitializer(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): string =
   #To avoid creating a BProc per test when called inside a struct nil BProc is allowed
   result = "{}"
-  if typ.itemId in m.g.graph.initializersPerType:
-    let call = m.g.graph.initializersPerType[typ.itemId]
+  if typ.bindingId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.bindingId]
     if call != nil:
       var p = prc
       if p == nil:
@@ -833,8 +833,8 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
 
 proc addRecordFields(result: var Builder; m: BModule; typ: PType, check: var IntSet) =
   genRecordFieldsAux(m, typ.n, typ, check, result)
-  if typ.itemId in m.g.graph.memberProcsPerType:
-    let procs = m.g.graph.memberProcsPerType[typ.itemId]
+  if typ.bindingId in m.g.graph.memberProcsPerType:
+    let procs = m.g.graph.memberProcsPerType[typ.bindingId]
     var isDefaultCtorGen, isCtorGen: bool = false
     for prc in procs:
       if sfConstructor in prc.flags:
@@ -2070,7 +2070,7 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   result = "NTIv2$1_" % [rope($sig)]
   m.typeInfoMarkerV2[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).itemId.module
+  let owner = t.skipTypes(typedescPtrs).bindingId.module
   # In the per-module backend (`cg`) RTTI is emit-everywhere like procs and
   # consts: every demanding module emits the `'d'` definition (deduped to one
   # owner by the merge stage). The owner-routing below would instead push the
@@ -2173,7 +2173,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     declareNimType(m, "TNimType", result, old.int)
     return prefixTI(result)
 
-  var owner = t.skipTypes(typedescPtrs).itemId.module
+  var owner = t.skipTypes(typedescPtrs).bindingId.module
   # In the per-module backend (`cg`) V1 RTTI is emit-everywhere like procs,
   # consts and V2 type info: every demanding module emits the `'d'` definition
   # (deduped to one owner by the merge stage). The owner-routing below would
@@ -2289,8 +2289,8 @@ proc genTypeSection(m: BModule, n: PNode) =
 # declarations where the type is already written separately before the initializer.
 proc genCppConstructorExpr(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): Snippet =
   var params = ""
-  if typ.itemId in m.g.graph.initializersPerType:
-    let call = m.g.graph.initializersPerType[typ.itemId]
+  if typ.bindingId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.bindingId]
     if call != nil:
       var p = prc
       if p == nil:

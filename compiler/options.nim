@@ -55,7 +55,7 @@ const
     ## nim-serialization's auto-serialization lookup under IC). The sem-NIF
     ## macrocache entries and baked generic-instance bodies hold the old hashes.
     ## v7 (=31): anonymous wrapper types (`var T`, `lent T`, `sink T`, tuples)
-    ## are named by their CONTENT instead of `uniqueId.item`, the module-wide
+    ## are named by their CONTENT instead of `itemId.item`, the module-wide
     ## type-mint counter (see ast2nif.CanonTypeKinds). Old caches name the same
     ## type differently, so every `.s.bif` reference would dangle.
     ## v8 (=32): the same for `tyProc`, except that a proc type which is a

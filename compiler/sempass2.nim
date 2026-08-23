@@ -109,7 +109,7 @@ proc getObjDepth(t: PType): (int, ItemId) =
     x = skipTypes(x, skipPtrs)
     if x.kind != tyObject:
       return (-3, default(ItemId))
-    stack.add x.itemId
+    stack.add x.bindingId
     x = x.baseClass
     inc(result[0])
   result[1] = stack[^2]

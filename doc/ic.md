@@ -210,8 +210,10 @@ Edge cases (and why the machinery exists)
 - **`nil` sons of loaded ASTs.** NIF dot-tokens load as `nil` where from-source
   ASTs have `nkEmpty`; several passes gained `nil` guards.
 - **Sealed loaded types.** Loaded types are `Sealed`; sem/transform mutate via
-  `unsealForTransform`/`exactReplica(idgen)` (the latter mints a fresh `uniqueId`
-  so serialized replicas don't collapse).
+  `unsealForTransform`/`copyType`, or -- where the copy must still answer to the
+  original in the generic binding tables -- `exactReplica(idgen)`, which gives the
+  copy its own `itemId` (so serialized replicas don't collapse) while inheriting
+  the original's `bindingId`.
 - **Methods/RTTI ownership.** RTTI and type-bound hooks are emit-everywhere at
   `cg` and deduplicated by the `merge` stage, like generic instances; the main
   module's `cg` owns the whole-program method dispatchers.
