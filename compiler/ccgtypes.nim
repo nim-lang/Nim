@@ -1780,7 +1780,7 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
 
   dest.typ = getSysType(g, info, tyPointer)
 
-  result.typ = newProcType(info, idgen, owner)
+  result.typ = newProcType(info, idgen, result)
   result.typ.addParam dest
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)

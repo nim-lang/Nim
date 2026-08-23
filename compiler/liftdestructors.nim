@@ -1233,7 +1233,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   res.typ = typ
   src.typ = typ
 
-  result.typ = newType(tyProc, idgen, owner)
+  result.typ = newType(tyProc, idgen, result)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)
@@ -1279,7 +1279,8 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   else:
     src.typ = typ
 
-  result.typ = newProcType(info, idgen, owner)
+  # the hook OWNS its signature, like any routine sem'd from source
+  result.typ = newProcType(info, idgen, result)
   result.typ.addParam dest
   if kind notin {attachedDestructor, attachedWasMoved}:
     result.typ.addParam src

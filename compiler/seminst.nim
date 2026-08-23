@@ -407,6 +407,10 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   eraseVoidParams(result)
   skipIntLiteralParams(result, c.idgen)
 
+  # The signature belongs to the INSTANCE, not to the generic it was copied
+  # from: `instCopyType` above kept the generic's owner, and every parameter has
+  # already been re-owned with `setOwner(param, prc)`.
+  setOwner(result, prc)
   prc.typ = result
   popInfoContext(c.config)
 

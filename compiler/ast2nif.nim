@@ -621,24 +621,16 @@ proc sigRoutineOf(typ: PType): PSym =
   ## The routine whose signature `typ` is, or nil for a proc type that is merely
   ## a value's type (`var cb: proc (x: int)`).
   ##
-  ## The parameters are asked FIRST and `typ.owner` only second, because a
-  ## generic instance's owner is the wrong symbol: `instCopyType` copies the
-  ## generic's type with `copyType(t, idgen, t.owner)` and `instantiateProcType`
-  ## then does `prc.typ = result` without ever re-owning it, so `typ.owner` is
-  ## still the GENERIC while `setOwner(param, prc)` has already pointed every
-  ## parameter at the instance. Both routes then confirm with `o.typ == typ`,
-  ## which is what separates a routine's own signature from an anonymous proc
-  ## type minted inside its body (same owner, different type).
+  ## Every routine owns its own signature: sem does it through `getCurrOwner`,
+  ## and so do the synthesizers -- generic instantiation
+  ## (`seminst.instantiateProcType`), the lifted type-bound hooks, `$` for enums
+  ## and the backend's rtti/globals procs. The `o.typ == typ` confirmation is
+  ## what separates a routine's own signature from an anonymous proc type minted
+  ## inside its body (same owner, different type).
   result = nil
-  let n = typ.nImpl
-  if n != nil and n.kind == nkFormalParams and n.len > 1 and
-      n[1].kind == nkSym and n[1].sym != nil:
-    let o = n[1].sym.ownerFieldImpl
-    if o != nil and o.kindImpl in routineKinds and o.typImpl == typ:
-      return o
   let o = typ.ownerFieldImpl
   if o != nil and o.kindImpl in routineKinds and o.typImpl == typ:
-    return o
+    result = o
 
 proc isCanonType(w: Writer; typ: PType): bool =
   ## True only when the id must be OVERRIDDEN, i.e. for a wrapper minted in THIS
