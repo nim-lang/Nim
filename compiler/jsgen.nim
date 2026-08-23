@@ -34,7 +34,7 @@ import
   ropes, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos,
   transf, injectdestructors, sourcemap, astmsgs, pushpoppragmas,
-  mangleutils
+  mangleutils, varpartitions
 
 import pipelineutils
 
@@ -147,11 +147,6 @@ proc newGlobals(): PGlobals =
         generatedSyms: initIntSet(),
         typeInfoGenerated: initIntSet()
         )
-
-proc initCompRes(): TCompRes =
-  result = TCompRes(address: "", res: "",
-    tmpLoc: "", typ: etyNone, kind: resNone
-  )
 
 proc rdLoc(a: TCompRes): Rope {.inline.} =
   if a.typ != etyBaseIndex:
@@ -592,15 +587,6 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
     else:
       let trimmer = unsignedTrimmer(size)
       r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
-  r.kind = resExpr
-
-template ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
-  var x, y, z: TCompRes
-  useMagic(p, magic)
-  gen(p, n[1], x)
-  gen(p, n[2], y)
-  gen(p, n[3], z)
-  r.res = frmt % [x.rdLoc, y.rdLoc, z.rdLoc]
   r.kind = resExpr
 
 template unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
@@ -1182,7 +1168,6 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode; isAsmStmt = false) =
     of nkStrLit..nkTripleStrLit:
       p.body.add(it.strVal)
     of nkSym:
-      let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
       if false:
         discard
@@ -1255,17 +1240,6 @@ proc generateHeader(p: PProc, prc: PSym): Rope =
       result.add(name)
       result.add("_Idx")
 
-proc countJsParams(typ: PType): int =
-  result = 0
-  for i in 1..<typ.n.len:
-    assert(typ.n[i].kind == nkSym)
-    var param = typ.n[i].sym
-    if isCompileTimeOnly(param.typ): continue
-    if mapType(param.typ) == etyBaseIndex:
-      inc result, 2
-    else:
-      inc result
-
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
     nkFloatLit..nkFloat64Lit, nkPar, nkStringToCString,
@@ -1298,14 +1272,16 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     xtyp = etySeq
   case xtyp
   of etySeq:
-    if x.typ.kind in {tyVar, tyLent} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyLent} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded or
+        (x.kind == nkSym and sfCursor in x.sym.flags):
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if x.typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyLent, tyOpenArray, tyVarargs} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded or
+        (x.kind == nkSym and sfCursor in x.sym.flags):
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
@@ -1795,12 +1771,6 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
     inc emitted
     hasArgs = true
   r.res.add(")")
-  when false:
-    # XXX look into this:
-    let jsp = countJsParams(typ)
-    if emitted != jsp and tfVarargs notin typ.flags:
-      localError(p.config, n.info, "wrong number of parameters emitted; expected: " & $jsp &
-        " but got: " & $emitted)
   r.kind = resExpr
 
 proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
@@ -2092,7 +2062,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     gen(p, n, a)
     case mapType(p, v.typ)
     of etyObject, etySeq:
-      if v.typ.kind in {tyOpenArray, tyVarargs} or needsNoCopy(p, n):
+      if v.typ.kind in {tyOpenArray, tyVarargs} or needsNoCopy(p, n) or
+          sfCursor in v.flags:
         s = a.res
       else:
         useMagic(p, "nimCopy")
@@ -2332,9 +2303,6 @@ proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.res.add("]")
 
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
-  var
-    a: TCompRes
-    line, filen: Rope
   var op = n[0].sym.magic
   case op
   of mOr: genOr(p, n[1], n[2], r)
@@ -2591,7 +2559,6 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
   var initList : Rope = ""
   var fieldIDs = initIntSet()
-  let nTyp = n.typ.skipTypes(abstractInst)
   for i in 1..<n.len:
     if i > 1: initList.add(", ")
     var it = n[i]
@@ -2798,6 +2765,11 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, {})
   if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
+  else:
+    # JS has a GC, so the destructor pass is off; but the cursor (alias) analysis
+    # is independent of ownership and always memory-safe on a traced target.
+    # Running it lets last-use `var b = a` aliases skip the deep `nimCopy`.
+    computeCursors(prc, transformedBody, p.module.graph)
 
   p.nested: genStmt(p, transformedBody)
 

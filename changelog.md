@@ -43,6 +43,15 @@ parameter and result types, not just their source-level shape. Use
 
 [//]: # "Additions:"
 
+- Added `system.readRawDataStable`, a companion to `readRawData` that returns a
+  raw `ptr UncheckedArray[char]` into a string's character data which stays valid
+  across moves and copies of the string value. It is available under every string
+  implementation (refc, ARC/ORC and `--strings:sso`) with the same signature, so
+  code can pin an interior buffer pointer today and be ready for `--strings:sso`
+  without `when declared` guards. Under `--strings:sso` it promotes a small inline
+  string to its heap representation first; under the other implementations the data
+  is already heap-resident, so it is equivalent to `readRawData`.
+
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
@@ -70,7 +79,11 @@ parameter and result types, not just their source-level shape. Use
   Modes include `Nim` (default, fully compatible) and two new experimental modes:
   `Lax` and `Gnu` for different option parsing behaviors.
 
+- `std/symlinks.expandSymlink` now supports Windows symlinks and junctions with
+  POSIX-like single-hop `readlink` semantics.
 - `std/nre2` is added to replace deprecated NRE.
+
+- `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
 
 [//]: # "Changes:"
 
@@ -81,6 +94,12 @@ parameter and result types, not just their source-level shape. Use
 - `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
   Use https://github.com/nitely/nim-regex or `std/nre2`.
   See: https://github.com/nim-lang/Nim/issues/23668.
+- `std/pegs` now correctly lexes UTF-8 bytes inside bare identifier-style
+  terminals, so case-insensitive matching of non-ASCII terms (e.g. ``\i café``)
+  works without single-quoting.
+- `std/uri`: The `?` operator now appends query parameters to an existing query
+  string instead of replacing it. Fixes [#19782](https://github.com/nim-lang/Nim/issues/19782).
+- `std/jsonutils`: `fromJson` now throws an exception when converting to `array`/`seq` if the JSON isn't an array instead of silently failing
 
 ## Language changes
 
@@ -118,6 +137,11 @@ parameter and result types, not just their source-level shape. Use
 
   See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#typeminusbound-overloads)
   for more information.
+
+- Seven more Unicode characters are now parsed as operators, implementing the RFC
+  https://github.com/nim-lang/RFCs/issues/571: `⟑ ⟇ ⩓ ⩔ ■ □ ☆`. They all have the
+  same priority as `*` (multiplication). As with the other Unicode operators, Nim
+  only lexes them; their meaning is up to user code.
 
 ## Compiler changes
 

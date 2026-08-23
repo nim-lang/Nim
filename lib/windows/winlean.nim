@@ -26,6 +26,7 @@ type WinChar* = Utf16Char
 # See https://docs.microsoft.com/en-us/windows/win32/winprog/windows-data-types
 type
   Handle* = int
+  SHORT* = int16
   LONG* = int32
   ULONG* = int32
   PULONG* = ptr int
@@ -261,6 +262,11 @@ const
   FILE_ATTRIBUTE_OFFLINE* = 0x00001000'i32
   FILE_ATTRIBUTE_NOT_CONTENT_INDEXED* = 0x00002000'i32
 
+  IO_REPARSE_TAG_MOUNT_POINT* = 0xA0000003'i32
+  IO_REPARSE_TAG_SYMLINK* = 0xA000000C'i32
+  MAXIMUM_REPARSE_DATA_BUFFER_SIZE* = 16 * 1024
+  SYMLINK_FLAG_RELATIVE* = 0x1'i32
+
   FILE_FLAG_FIRST_PIPE_INSTANCE* = 0x00080000'i32
   FILE_FLAG_OPEN_NO_RECALL* = 0x00100000'i32
   FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
@@ -281,6 +287,10 @@ const
   MOVEFILE_FAIL_IF_NOT_TRACKABLE* = 0x20'i32
   MOVEFILE_REPLACE_EXISTING* = 0x1'i32
   MOVEFILE_WRITE_THROUGH* = 0x8'i32
+
+  # CTL_CODE(FILE_DEVICE_FILE_SYSTEM = 9, func = 42, METHOD_BUFFERED = 0,
+  # FILE_ANY_ACCESS = 0)
+  FSCTL_GET_REPARSE_POINT* = 0x000900A8'i32
 
 type
   WIN32_FIND_DATA* {.pure.} = object
@@ -654,6 +664,12 @@ proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
                   dwCreationDisposition, dwFlagsAndAttributes: DWORD,
                   hTemplateFile: Handle): Handle {.
     stdcall, dynlib: "kernel32", importc: "CreateFileW".}
+proc deviceIoControl*(hDevice: Handle, dwIoControlCode: DWORD,
+                      lpInBuffer: pointer, nInBufferSize: DWORD,
+                      lpOutBuffer: pointer, nOutBufferSize: DWORD,
+                      lpBytesReturned: var DWORD,
+                      lpOverlapped: pointer): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "DeviceIoControl".}
 proc deleteFileW*(pathName: WideCString): int32 {.
   importc: "DeleteFileW", dynlib: "kernel32", stdcall.}
 proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
@@ -998,9 +1014,56 @@ type
     uChar*: int16
     dwControlKeyState*: DWORD
 
+  # https://learn.microsoft.com/en-us/windows/console/coord-str
+  COORD* = object
+    x*: SHORT
+    y*: SHORT
+
+const
+  # used by std/terminal
+  # https://learn.microsoft.com/en-us/windows/console/setconsolemode
+  ENABLE_ECHO_INPUT* = 0x0004
+  ENABLE_INSERT_MODE* = 0x0020
+  ENABLE_LINE_INPUT* = 0x0002
+  ENABLE_MOUSE_INPUT* = 0x0010
+  ENABLE_PROCESSED_INPUT* = 0x0001
+  ENABLE_QUICK_EDIT_MODE* = 0x0040
+  ENABLE_WINDOW_INPUT* = 0x0008
+  ENABLE_VIRTUAL_TERMINAL_INPUT* = 0x0200
+
+  ENABLE_PROCESSED_OUTPUT* = 0x0001
+  ENABLE_WRAP_AT_EOL_OUTPUT* = 0x0002
+  ENABLE_VIRTUAL_TERMINAL_PROCESSING* = 0x0004
+  DISABLE_NEWLINE_AUTO_RETURN* = 0x0008
+  ENABLE_LVB_GRID_WORLDWIDE* = 0x0010
+
 proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                       lpNumberOfEventsRead: ptr cint): cint
      {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
+
+proc getConsoleMode*(hConsoleHandle: Handle, dwMode: ptr DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "GetConsoleMode".}
+
+proc setConsoleMode*(hConsoleHandle: Handle, dwMode: DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "SetConsoleMode".}
+
+proc setConsoleCursorPosition*(hConsoleOutput: Handle,
+                              dwCursorPosition: COORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "SetConsoleCursorPosition".}
+
+proc fillConsoleOutputCharacter*(hConsoleOutput: Handle, cCharacter: char,
+                                nLength: DWORD, dwWriteCoord: COORD,
+                                lpNumberOfCharsWritten: ptr DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterA".}
+
+proc fillConsoleOutputAttribute*(hConsoleOutput: Handle, wAttribute: int16,
+                                nLength: DWORD, dwWriteCoord: COORD,
+                                lpNumberOfAttrsWritten: ptr DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "FillConsoleOutputAttribute".}
+
+proc setConsoleTextAttribute*(hConsoleOutput: Handle,
+                              wAttributes: int16): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
 
 type
   LPFIBER_START_ROUTINE* = proc (param: pointer) {.stdcall.}

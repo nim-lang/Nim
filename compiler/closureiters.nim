@@ -167,6 +167,8 @@ type
     curExcSym: PSym # Current exception
     externExcSym: PSym # Extern exception: what would getCurrentException() return outside of closure iter
 
+    enclosingPragmas: seq[PNode] # stack of pragma blocks wrapping stmtlist
+
     states: seq[State] # The resulting states. Label is int literal.
     finallyPathStack: seq[FinallyTarget] # Stack of split blocks, whiles and finallies
     stateLoopLabel: PSym # Label to break on, when jumping between states.
@@ -252,7 +254,8 @@ proc newCurExcAccess(ctx: var Ctx): PNode =
   ctx.newEnvVarAccess(ctx.curExcSym)
 
 proc newStateLabel(ctx: Ctx): PNode =
-  ctx.g.newIntLit(TLineInfo(), 0)
+  result = nkIntLit.newIntNode(0)
+  result.typ = getSysType(ctx.g, TLineInfo(), tyInt16)
 
 proc newState(ctx: var Ctx, n: PNode, inlinable: bool, label: PNode): PNode =
   # Creates a new state, adds it to the context
@@ -333,9 +336,14 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
         var cond: PNode = nil
         for i in 0..<c.len - 1:
           assert(c[i].kind == nkType)
+          # Use the :curExc env field (set by the wrapper before entering the
+          # except landing state) instead of calling getCurrentException():
+          # injectdestructors does not process the args of this raw generic
+          # `of` magic call, so an owning getCurrentException() temp would
+          # never be destroyed and the caught exception would leak (#23615).
           let nextCond = newTreeIT(nkCall, c.info, ctx.g.getSysType(c.info, tyBool),
             newSymNode(g.getSysMagic(c.info, "of", mOf)),
-            g.callCodegenProc("getCurrentException"),
+            ctx.newCurExcAccess(),
             c[i])
 
           cond = if cond.isNil: nextCond
@@ -592,10 +600,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let branch = n[i]
           case branch.kind
           of nkExceptBranch:
-            if branch[0].kind == nkType:
-              branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
-            else:
-              branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
+            branch[^1] = ctx.convertExprBodyToAsgn(branch[^1], tmp)
           of nkFinally:
             discard
           else:
@@ -985,9 +990,14 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         for j in i + 1..<n.len:
           s.add(n[j])
 
+        var body = s
+        for pragma in ctx.enclosingPragmas:
+          body = newTreeI(nkPragmaBlock, n[i + 1].info,
+                          pragma[0].copyTree, body)
+
         n.sons.setLen(i + 1)
-        discard ctx.newState(s, true, label)
-        if ctx.transformClosureIteratorBody(s, gotoOut) != s:
+        discard ctx.newState(body, true, label)
+        if ctx.transformClosureIteratorBody(body, gotoOut) != body:
           internalError(ctx.g.config, "transformClosureIteratorBody != s")
         break
       else:
@@ -1124,6 +1134,14 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         let finallyExit = newTree(nkGotoState, ctx.newFinallyPathAccess(ctx.curFinallyLevel - 1, finallyBody.info))
         finallyBody = ctx.transformClosureIteratorBody(finallyBody, finallyExit)
         dec ctx.curFinallyLevel
+
+  of nkPragmaBlock:
+    # Propagate the pragma blocks so that blocks like {.cast(uncheckedAssign).}
+    # remain effective
+    ctx.enclosingPragmas.add(n)
+    n[1] = ctx.transformClosureIteratorBody(n[1], gotoOut)
+    discard ctx.enclosingPragmas.pop()
+    result = n
 
   of nkGotoState, nkForStmt:
     internalError(ctx.g.config, "closure iter " & $n.kind)

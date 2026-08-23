@@ -135,6 +135,11 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
         writeStackTrace()
     if c.c.module.name.s == "temp3":
       echo "binding ", key, " -> ", val
+  when defined(icDbgRefc):
+    if key.kind in {tyGenericParam, tyTypeDesc}:
+      echo "[icBind] put ", key.kind, " ", typeToString(key), " uid=", key.uniqueId.module, ".",
+        key.uniqueId.item, " itemId=", key.itemId.module, ".", key.itemId.item,
+        " state=", key.state, " -> ", typeToString(val)
   put(c.bindings, key, val.skipIntLit(c.c.idgen))
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
@@ -177,7 +182,6 @@ proc matchGenericParams*(m: var TCandidate, binding: PNode, callee: PSym) =
   ## state is set to `csMatch` if all generic params match, `csEmpty` if
   ## implicit generic parameters are missing (matches but cannot instantiate),
   ## `csNoMatch` if a constraint fails or param count doesn't match
-  let c = m.c
   let typeParams = callee.ast[genericParamsPos]
   let paramCount = typeParams.len
   let bindingCount = binding.len-1
@@ -644,7 +648,7 @@ type
   SkippedPtr = enum skippedNone, skippedRef, skippedPtr
 
 proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
-  var r = t
+  var r {.cursor.} = t
   # we're allowed to skip one level of ptr/ref:
   var ptrs = 0
   while r != nil:
@@ -702,8 +706,6 @@ proc recordRel(c: var TCandidate, f, a: PType, flags: TTypeRelFlags): TTypeRelat
     result = isEqual
   elif sameTupleLengths(a, f):
     result = isEqual
-    let firstField = if f.kind == tyTuple: 0
-                     else: 1
     for _, ff, aa in tupleTypePairs(f, a):
       var m = typeRel(c, ff, aa, flags)
       if m < isSubtype: return isNone
@@ -791,8 +793,10 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # different C types (size_t vs unsigned long long).
     let fCheck = concreteType(c, f)
     let aCheck = concreteType(c, a)
+    # Note that `result` is equal; now check whether they have the same
+    # backend type.
     if fCheck != nil and aCheck != nil and
-        not sameBackendTypePickyAliases(fCheck, aCheck):
+      not sameBackendTypePickyAliases(fCheck, aCheck, {IgnoreFlags}):
       result = isNone
 
   if result <= isSubrange or inconsistentVarTypes(f, a):
@@ -909,7 +913,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         case typ.kind
         of tyStatic:
           param = paramSym skConst
-          param.typ = typ.exactReplica
+          param.typ = typ.exactReplica(m.c.idgen)
           #copyType(typ, c.idgen, typ.owner)
           if typ.n == nil:
             param.typ.incl tfInferrableStatic
@@ -917,7 +921,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
             param.ast = typ.n
         of tyFromExpr:
           param = paramSym skVar
-          param.typ = typ.exactReplica
+          param.typ = typ.exactReplica(m.c.idgen)
           #copyType(typ, c.idgen, typ.owner)
         else:
           param = paramSym skType
@@ -970,7 +974,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if ff.kind == tyUserTypeClassInst:
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
-    result = ff.exactReplica
+    result = ff.exactReplica(m.c.idgen)
     #copyType(ff, c.idgen, ff.owner)
 
   result.n = checkedBody
@@ -985,13 +989,6 @@ proc shouldSkipDistinct(m: TCandidate; rules: PNode, callIdent: PIdent): bool =
     for r in rules:
       if considerQuotedIdent(m.c, r) == callIdent: return false
     return true
-
-proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
-  if t != nil and t.kind == tyDistinct and t.n != nil and
-     shouldSkipDistinct(m, t.n, callee.name):
-    result = t.base
-  else:
-    result = t
 
 proc tryResolvingStaticExpr(c: var TCandidate, n: PNode,
                             allowUnresolved = false,
@@ -1166,6 +1163,10 @@ proc enterConceptMatch(c: var TCandidate; f,a: PType, flags: TTypeRelFlags): TTy
   if concpt.kind != tyConcept:
     container = concpt
     concpt = container.reduceToBase
+  # considerPreviousT-like behavior
+  let prev = lookup(c.bindings, concpt)
+  if prev != nil:
+    return typeRel(c, prev, a, flags)
   if trDontBind in flags:
     conceptFlags.incl mfDontBind
   if trCheckGeneric in flags:
@@ -1231,17 +1232,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   assert(aOrig != nil)
 
-  var
-    useTypeLoweringRuleInTypeClass = c.c.matchedConcept != nil and
-                                     not c.isNoCall and
-                                     f.kind != tyTypeDesc and
-                                     tfExplicit notin aOrig.flags and
-                                     tfConceptMatchedTypeSym notin aOrig.flags
+  let useTypeLoweringRuleInTypeClass = c.c.matchedConcept != nil and
+                                       not c.isNoCall and
+                                       f.kind != tyTypeDesc and
+                                       tfExplicit notin aOrig.flags and
+                                       tfConceptMatchedTypeSym notin aOrig.flags
 
-    aOrig = if useTypeLoweringRuleInTypeClass:
-          aOrig.skipTypes({tyTypeDesc})
-        else:
-          aOrig
+  template skipTypeCursor(it, kinds: untyped) =
+    while it.kind in kinds:
+      if it.kind == tyProc and it.nImpl.len > 1:
+        it = it.nImpl[^1].sym.typ
+      else:
+        it = it.sonsImpl[^1]
+
+  var aOrig {.cursor.} = aOrig
+  if useTypeLoweringRuleInTypeClass:
+    skipTypeCursor(aOrig, {tyTypeDesc})
 
   if aOrig.kind == tyInferred:
     let prev = aOrig.previouslyInferred
@@ -1278,8 +1284,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   template doBind: bool = trDontBind notin flags
 
   # var, sink and static arguments match regular modifier-free types
-  var a = maybeSkipDistinct(c, aOrig.skipTypes({tyStatic, tyVar, tyLent, tySink}), c.calleeSym)
-  # XXX: Theoretically, maybeSkipDistinct could be called before we even
+  var a {.cursor.} = aOrig
+  skipTypeCursor(a, {tyStatic, tyVar, tyLent, tySink})
+  # Keep this expanded: an expression template materializes a PType temporary
+  # here, adding an otherwise avoidable reference-counting pair.
+  if a.kind == tyDistinct and a.n != nil and
+      shouldSkipDistinct(c, a.n, c.calleeSym.name):
+    a = a.base
+  # XXX: Theoretically, distinct types could be skipped before we even
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
   # situation when nkDotExpr are rotated to nkDotCalls
@@ -1757,6 +1769,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let ff = last(f)
       if ff != nil:
         result = typeRel(c, ff, a, flags)
+      if result == isNone and a.kind == tyGenericInst and trBindGenericParam in flags:
+        var depth = -1
+        # Generic-parameter constraints like `F: Future` can miss in `last(f)`
+        # when the actual type inherits from a concrete generic instantiation.
+        # Keep this fallback scoped to generic-parameter matching so typedesc
+        # overloads such as `type Future[T]` still prefer more specific
+        # descendants like `InternalRaisesFuture[T, E]`.
+        if isGenericSubtype(c, a, f, depth, f) and depth > 0:
+          var askip = skippedNone
+          let aobj = a.skipToObject(askip)
+          if aobj != nil and tfFinal notin aobj.flags:
+            # Keep overload ranking consistent with other inheritance-based
+            # matches: deeper descendants are slightly worse candidates.
+            inc c.inheritancePenalty, depth + int(c.inheritancePenalty < 0)
+          result = isGeneric
   of tyGenericInvocation:
     var x = a.skipGenericAlias
     if x.kind == tyGenericParam and x.len > 0:
@@ -2061,7 +2088,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               result = typeRel(c, f.base, a, flags)
         else:
           result = isGeneric
-        if result != isNone: put(c, f, aOrig)
+        if result != isNone:
+          if f.base.kind notin {tyNone, tyGenericParam} and
+              aOrig.kind == tyStatic and aOrig.n != nil and aOrig.n.typ != nil and
+              aOrig.n.typ.isEmptyContainer:
+            # we need to infer the inner type for empty containers
+            let literal = aOrig.n.copyTree
+            literal.typ = f.base
+            let staticArg = newTypeS(tyStatic, c.c, f.base)
+            staticArg.n = literal
+            put(c, f, staticArg)
+          else:
+            put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
         result = if f.base.kind != tyNone:
                    typeRel(c, f.last, aOrig.n.typ, flags)
@@ -2411,11 +2449,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   result = nil
   var
-    fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
     a = a
     c = m.c
-  if tfHasStatic in fMaybeStatic.flags:
+  let hasStatic = tfHasStatic in f.flags or
+    (f.kind == tyDistinct and tfHasStatic in f.skipTypes({tyDistinct}).flags)
+  if hasStatic:
+    let fMaybeStatic = if f.kind == tyDistinct: f.skipTypes({tyDistinct}) else: f
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
     # make sure that static types enter here
@@ -2471,6 +2511,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif f.kind == tyStatic and arg.typ.n != nil:
       return arg.typ.n
+    elif f.kind == tyUntyped:
+      # bug #25693: a different overload candidate may have sem-checked the
+      # operand and left symbols behind; templates expect the pristine AST.
+      return argOrig
     else:
       return argSemantized # argOrig
 
@@ -2645,7 +2689,7 @@ proc staticAwareTypeRel(m: var TCandidate, f: PType, arg: var PNode): TTypeRelat
     # The ast of the type does not point to the symbol.
     # Without this we will never resolve a `static proc` with overloads
     let copiedNode = copyNode(arg)
-    copiedNode.typ = exactReplica(copiedNode.typ)
+    copiedNode.typ = exactReplica(copiedNode.typ, m.c.idgen)
     copiedNode.typ.n = arg
     arg = copiedNode
   typeRel(m, f, arg.typ)
@@ -2849,6 +2893,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     if m.calleeSym != nil and m.calleeSym.kind notin {skTemplate, skMacro}:
       c.mergeShadowScope
     else:
+      c.rememberShadowDefs
       c.closeShadowScope
     m.state = csNoMatch
     m.firstMismatch.arg = a
@@ -2905,7 +2950,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           setSon(m.call, formal.position + 1, container)
         else:
           incrIndexType(container.typ)
-        container.add n[a]
+        # bug #25693: like the scalar `tyUntyped` case in `paramTypesMatchAux`,
+        # a previous overload candidate may have sem-checked the operand in
+        # place; templates/macros expect the pristine AST, so use `nOrig`.
+        container.add nOrig[a]
     elif n[a].kind == nkExprEqExpr:
       # named param
       m.firstMismatch.kind = kUnknownNamedParam
@@ -3004,7 +3052,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             setSon(m.call, formal.position + 1, container)
           else:
             incrIndexType(container.typ)
-          container.add n[a]
+          # bug #25693: see the leading isVarargsUntyped branch above.
+          container.add nOrig[a]
         else:
           m.baseTypeMatch = false
           m.typedescMatched = false
@@ -3056,6 +3105,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
     if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
       c.mergeShadowScope
     else:
+      c.rememberShadowDefs
       c.closeShadowScope
 
     inc a

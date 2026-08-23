@@ -36,7 +36,12 @@ type
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
-    when defined(gcOrc) or defined(gcYrc):
+    when defined(gcYrc):
+      rootIdx: int64 # the collector's claim word: collection tag or epoch
+                     # stamp packed with the dense capture index. Explicitly
+                     # 64 bit so that 32-bit targets run the same concurrent
+                     # claim and epoch-stamp algorithms
+    elif defined(gcOrc):
       rootIdx: int # thanks to this we can delete potential cycle roots
                    # in O(1) without doubly linked lists
     when defined(nimArcDebug) or defined(nimArcIds):
@@ -247,7 +252,36 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
         writeStackTrace()
         cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.count)
 
-    when (defined(gcAtomicArc) or defined(gcYrc)) and hasThreadSupport:
+    when defined(gcAtomicArc) and hasThreadSupport and
+        not defined(nimNoAtomicArcFastPath):
+      # Uniquely-referenced fast path: skip the RMW entirely.
+      #
+      # A counted reference can only be derived from the location being
+      # destroyed (which happens-before this destructor, or the program races
+      # on that location) or from another counted reference (whose
+      # contribution is already in `rc`, forcing the RMW below). So observing
+      # a zero count proves no other thread holds a reference to this cell and
+      # therefore none can be inside this destructor: there is nothing to
+      # adjudicate and no RMW is needed. This is only sound because
+      # `--mm:atomicArc` has no collector -- ORC/YRC mutate `rc` from a
+      # participant that holds no counted reference at all.
+      #
+      # The load must be ACQUIRE: the count may have reached zero because
+      # another thread's release-decrement got there first, and we have to see
+      # its writes before destroying the object.
+      #
+      # The slow path stays self-testing (it frees on the value the RMW
+      # returned, never on a separate load), which is what keeps this out of
+      # the nim-lang/threading#45 bug class.
+      if (atomicLoadN(addr cell.rc, ATOMIC_ACQUIRE) and not rcMask) == 0:
+        result = true
+        when traceCollector:
+          cprintf("[ABOUT TO DESTROY] %p\n", cell)
+      elif atomicDec(cell.rc, rcIncrement) == -rcIncrement:
+        result = true
+        when traceCollector:
+          cprintf("[ABOUT TO DESTROY] %p\n", cell)
+    elif (defined(gcAtomicArc) or defined(gcYrc)) and hasThreadSupport:
       # `atomicDec` returns the new value
       if atomicDec(cell.rc, rcIncrement) == -rcIncrement:
         result = true
@@ -278,13 +312,17 @@ when not (defined(gcOrc) or defined(gcYrc)):
     ## Forces a full garbage collection pass. With `--mm:arc` a nop.
     discard
 
-template setupForeignThreadGc* =
-  ## With `--mm:arc` a nop.
-  discard
-
-template tearDownForeignThreadGc* =
-  ## With `--mm:arc` a nop.
-  discard
+when not hasThreadSupport:
+  template setupForeignThreadGc* = discard
+  template tearDownForeignThreadGc* = discard
+elif emulatedThreadVars:
+  template setupForeignThreadGc* =
+    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+  template tearDownForeignThreadGc* =
+    {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+elif not hasThreadLocalAllocator:
+  template setupForeignThreadGc* = discard
+  template tearDownForeignThreadGc* = discard
 
 proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inl.} =
   result = targetDepth <= source.depth and source.display[targetDepth] == token

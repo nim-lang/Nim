@@ -283,3 +283,13 @@ block: # bug #23952
       doAssert s1 != s2
     static: foo()
     foo()
+
+# bug #25908
+type S {.pure.} = enum a, b
+
+iterator foo(x: array[1, S]): lent S =
+  yield x[0]
+
+iterator f(_: int | int): S =
+  for a in foo([S.b]): yield a
+for v in f(0): doAssert v == S.b

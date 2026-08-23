@@ -43,13 +43,13 @@ proc flagsToStr[T](flags: set[T]): string =
 proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): string =
   result = "["
   result.addYamlString(toFilename(conf, info))
-  result.addf ", $1, $2]", [toLinenumber(info), toColumn(info)]
+  result.addf ", $1, $2]", toLinenumber(info), toColumn(info)
 
-proc treeToYamlAux(res: var string; conf: ConfigRef; n: PNode; marker: var IntSet; indent, maxRecDepth: int)
-proc symToYamlAux(res: var string; conf: ConfigRef; n: PSym; marker: var IntSet; indent, maxRecDepth: int)
-proc typeToYamlAux(res: var string; conf: ConfigRef; n: PType; marker: var IntSet; indent, maxRecDepth: int)
+proc treeToYamlAux(res: var string; conf: ConfigRef; n: PNode; marker: var IntSet; nl: bool, indent, maxRecDepth: int)
+proc symToYamlAux(res: var string; conf: ConfigRef; n: PSym; marker: var IntSet; nl: bool, indent, maxRecDepth: int)
+proc typeToYamlAux(res: var string; conf: ConfigRef; n: PType; marker: var IntSet; nl: bool, indent, maxRecDepth: int)
 
-proc symToYamlAux(res: var string; conf: ConfigRef; n: PSym; marker: var IntSet; indent: int; maxRecDepth: int) =
+proc symToYamlAux(res: var string; conf: ConfigRef; n: PSym; marker: var IntSet; nl: bool, indent: int; maxRecDepth: int) =
   if n == nil:
     res.add("null")
   elif containsOrIncl(marker, n.id):
@@ -57,10 +57,12 @@ proc symToYamlAux(res: var string; conf: ConfigRef; n: PSym; marker: var IntSet;
   else:
     let istr = spaces(indent * 4)
 
+    if nl:
+      res.addf("\n$1", istr)
     res.addf("kind: $1", [makeYamlString($n.kind)])
     res.addf("\n$1name: $2", [istr, makeYamlString(n.name.s)])
     res.addf("\n$1typ: ", [istr])
-    res.typeToYamlAux(conf, n.typ, marker, indent + 1, maxRecDepth - 1)
+    res.typeToYamlAux(conf, n.typ, marker, true, indent + 1, maxRecDepth - 1)
     if conf != nil:
       # if we don't pass the config, we probably don't care about the line info
       res.addf("\n$1info: $2", [istr, lineInfoToStr(conf, n.info)])
@@ -68,7 +70,7 @@ proc symToYamlAux(res: var string; conf: ConfigRef; n: PSym; marker: var IntSet;
       res.addf("\n$1flags: $2", [istr, flagsToStr(n.flags)])
     res.addf("\n$1magic: $2", [istr, makeYamlString($n.magic)])
     res.addf("\n$1ast: ", [istr])
-    res.treeToYamlAux(conf, n.ast, marker, indent + 1, maxRecDepth - 1)
+    res.treeToYamlAux(conf, n.ast, marker, true, indent + 1, maxRecDepth - 1)
     res.addf("\n$1options: $2", [istr, flagsToStr(n.options)])
     res.addf("\n$1position: $2", [istr, $n.position])
     res.addf("\n$1k: $2", [istr, makeYamlString($n.loc.k)])
@@ -76,53 +78,57 @@ proc symToYamlAux(res: var string; conf: ConfigRef; n: PSym; marker: var IntSet;
     if card(n.loc.flags) > 0:
       res.addf("\n$1flags: $2", [istr, makeYamlString($n.loc.flags)])
     res.addf("\n$1snippet: $2", [istr, n.loc.snippet])
-    res.addf("\n$1lode: $2", [istr])
-    res.treeToYamlAux(conf, n.loc.lode, marker, indent + 1, maxRecDepth - 1)
+    res.addf("\n$1lode: ", [istr])
+    res.treeToYamlAux(conf, n.loc.lode, marker, true, indent + 1, maxRecDepth - 1)
 
-proc typeToYamlAux(res: var string; conf: ConfigRef; n: PType; marker: var IntSet; indent: int; maxRecDepth: int) =
+proc typeToYamlAux(res: var string; conf: ConfigRef; n: PType; marker: var IntSet; nl: bool, indent: int; maxRecDepth: int) =
   if n == nil:
     res.add("null")
   elif containsOrIncl(marker, n.id):
     res.addf "\"$1 @$2\"" % [$n.kind, strutils.toHex(cast[uint](n), sizeof(n) * 2)]
   else:
     let istr = spaces(indent * 4)
+    if nl:
+      res.addf("\n$1", istr)
     res.addf("kind: $2", [istr, makeYamlString($n.kind)])
-    res.addf("\n$1sym: ")
-    res.symToYamlAux(conf, n.sym, marker, indent + 1, maxRecDepth - 1)
-    res.addf("\n$1n: ")
-    res.treeToYamlAux(conf, n.n, marker, indent + 1, maxRecDepth - 1)
+    res.addf("\n$1sym: ", istr)
+    res.symToYamlAux(conf, n.sym, marker, true, indent + 1, maxRecDepth - 1)
+    res.addf("\n$1n: ", istr)
+    res.treeToYamlAux(conf, n.n, marker, true, indent + 1, maxRecDepth - 1)
     if card(n.flags) > 0:
       res.addf("\n$1flags: $2", [istr, flagsToStr(n.flags)])
     res.addf("\n$1callconv: $2", [istr, makeYamlString($n.callConv)])
     res.addf("\n$1size: $2", [istr, $(n.size)])
     res.addf("\n$1align: $2", [istr, $(n.align)])
     if n.hasElementType:
-      res.addf("\n$1sons:")
+      res.addf("\n$1sons:", istr)
       for a in n.kids:
-        res.addf("\n  - ")
-        res.typeToYamlAux(conf, a, marker, indent + 1, maxRecDepth - 1)
+        res.addf("\n$1  - ", istr)
+        res.typeToYamlAux(conf, a, marker, false, indent + 1, maxRecDepth - 1)
 
-proc treeToYamlAux(res: var string; conf: ConfigRef; n: PNode; marker: var IntSet; indent: int;
+proc treeToYamlAux(res: var string; conf: ConfigRef; n: PNode; marker: var IntSet; nl: bool, indent: int;
                    maxRecDepth: int) =
   if n == nil:
     res.add("null")
   else:
     var istr = spaces(indent * 4)
+    if nl:
+      res.addf("\n$1", istr)
     res.addf("kind: $1" % [makeYamlString($n.kind)])
 
     if maxRecDepth != 0:
       if conf != nil:
         res.addf("\n$1info: $2", [istr, lineInfoToStr(conf, n.info)])
       case n.kind
-      of nkCharLit .. nkInt64Lit:
+      of nkCharLit .. nkUInt64Lit:
         res.addf("\n$1intVal: $2", [istr, $(n.intVal)])
-      of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
+      of nkFloatLit .. nkFloat128Lit:
         res.addf("\n$1floatVal: $2", [istr, n.floatVal.toStrMaxPrecision])
       of nkStrLit .. nkTripleStrLit:
         res.addf("\n$1strVal: $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         res.addf("\n$1sym: ", [istr])
-        res.symToYamlAux(conf, n.sym, marker, indent + 1, maxRecDepth)
+        res.symToYamlAux(conf, n.sym, marker, true, indent + 1, maxRecDepth)
       of nkIdent:
         if n.ident != nil:
           res.addf("\n$1ident: $2", [istr, makeYamlString(n.ident.s)])
@@ -133,22 +139,22 @@ proc treeToYamlAux(res: var string; conf: ConfigRef; n: PNode; marker: var IntSe
           res.addf("\n$1sons: ", [istr])
           for i in 0 ..< n.len:
             res.addf("\n$1  - ", [istr])
-            res.treeToYamlAux(conf, n[i], marker, indent + 1, maxRecDepth - 1)
+            res.treeToYamlAux(conf, n[i], marker, false, indent + 1, maxRecDepth - 1)
       if n.typ != nil:
         res.addf("\n$1typ: ", [istr])
-        res.typeToYamlAux(conf, n.typ, marker, indent + 1, maxRecDepth)
+        res.typeToYamlAux(conf, n.typ, marker, true, indent + 1, maxRecDepth)
 
 proc treeToYaml*(conf: ConfigRef; n: PNode; indent: int = 0; maxRecDepth: int = -1): string =
   var marker = initIntSet()
   result = newStringOfCap(1024)
-  result.treeToYamlAux(conf, n, marker, indent, maxRecDepth)
+  result.treeToYamlAux(conf, n, marker, false, indent, maxRecDepth)
 
 proc typeToYaml*(conf: ConfigRef; n: PType; indent: int = 0; maxRecDepth: int = -1): string =
   var marker = initIntSet()
   result = newStringOfCap(1024)
-  result.typeToYamlAux(conf, n, marker, indent, maxRecDepth)
+  result.typeToYamlAux(conf, n, marker, false, indent, maxRecDepth)
 
 proc symToYaml*(conf: ConfigRef; n: PSym; indent: int = 0; maxRecDepth: int = -1): string =
   var marker = initIntSet()
   result = newStringOfCap(1024)
-  result.symToYamlAux(conf, n, marker, indent, maxRecDepth)
+  result.symToYamlAux(conf, n, marker, false, indent, maxRecDepth)

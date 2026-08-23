@@ -90,8 +90,14 @@ proc addTypeBoundSymbols(graph: ModuleGraph, arg: PType, name: PIdent,
     # argument must be typed first, meaning arguments always
     # matching `untyped` are ignored
     let t = nominalRoot(arg)
-    if t != nil and t.owner.kind == skModule:
-      # search module for routines attachable to `t`
+    if t != nil and t.owner.kind == skModule and
+        t.owner.position >= 0 and t.owner.position < graph.ifaces.len:
+      # search module for routines attachable to `t`.
+      # Under IC the nominal type may have been loaded from a NIF file, in which
+      # case its owner module is a stub whose `position` (a NIF-suffix file index)
+      # has no `ifaces` slot; such type-bound ops are reachable through normal
+      # imports instead, so skip the direct module scan to avoid an out-of-range
+      # access.
       let module = t.owner
       var iter = default(ModuleIter)
       var s = initModuleIter(iter, graph, module, name)
@@ -683,7 +689,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
-  var r = resolveOverloads(c, n, n, filter, flags, errors, true)
+  discard resolveOverloads(c, n, n, filter, flags, errors, true)
   if errors.len == 0:
     localError(c.config, n.info, "could not resolve: " & $n)
   else:
@@ -726,6 +732,15 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
+  when defined(icDbg):
+    if result == nil and f != nil and a != nil and f.kind == tyEnum:
+      echo "INDEXMISMATCH f=", typeToString(f), " itemId=", f.itemId,
+        " uniqueId=", f.uniqueId, " mod=", toFullPath(c.config, f.itemId.module.FileIndex),
+        " sym=", (if f.sym != nil: $f.sym.itemId else: "nil"), " state=", f.state
+      let a2 = a.skipTypes({tyRange})
+      echo "  a=", typeToString(a), " itemId=", a2.itemId, " uniqueId=", a2.uniqueId,
+        " mod=", toFullPath(c.config, a2.itemId.module.FileIndex),
+        " sym=", (if a2.sym != nil: $a2.sym.itemId else: "nil"), " state=", a2.state
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode =
@@ -911,15 +926,6 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
     result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
 
-proc canDeref(n: PNode): bool {.inline.} =
-  result = n.len >= 2 and (let t = n[1].typ;
-    t != nil and t.skipTypes({tyGenericInst, tyAlias, tySink}).kind in {tyPtr, tyRef})
-
-proc tryDeref(n: PNode): PNode =
-  result = newNodeI(nkHiddenDeref, n.info)
-  result.typ = n.typ.skipTypes(abstractInst)[0]
-  result.add n
-
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags;
                        expectedType: PType = nil): PNode =
@@ -968,7 +974,12 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
         diagnostics: m.diagnostics))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  newInst.typ.excl tfUnresolved
+  # `generateInstance` may return an instance REUSED from another module's NIF
+  # `(offer …)` — its type is Sealed (immutable). Such an instance is already
+  # fully resolved (`tfUnresolved` cleared at its original instantiation), so the
+  # `excl` is a no-op; skip it rather than assert on a Sealed-type mutation.
+  if newInst.typ.state != Sealed:
+    newInst.typ.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s, isGenericInstance = false)
   onUse(info, s, isGenericInstance = false)
