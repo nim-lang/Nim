@@ -113,7 +113,7 @@ template mask[T](deq: Deque[T]): uint =
 {.push boundChecks: off.} # Bounds checks are done via xBoundsCheck
 
 template uncheckedElem(deq, i): untyped =
-  deq.data[(deq.head + uint(i)) and deq.mask]
+  (deq.head + uint(i)) and deq.mask
 
 template elem(deq, i): untyped =
   let iv = i
@@ -143,7 +143,7 @@ when false: # TODO no obvious way to get rid of the seq data without having it r
     when needsReset(T):
       let L = deq.len
       for i in 0..<L:
-        reset(deq.elem(i))
+        reset(deq.data[deq.elem(i)])
     `=dispose`(deq.data) # TODO dispose doesn't work for seq
 
 func initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
@@ -173,7 +173,7 @@ func `[]`*[T](deq: Deque[T], i: Natural): lent T {.inline.} =
     assert a[3] == 40
     doAssertRaises(IndexDefect, echo a[8])
 
-  return deq.elem(i)
+  return deq.data[deq.elem(i)]
 
 func `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   ## Accesses the `i`-th element of `deq` and returns a mutable
@@ -183,7 +183,7 @@ func `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
     inc(a[0])
     assert a[0] == 11
 
-  return deq.elem(i)
+  return deq.data[deq.elem(i)]
 
 proc `[]=`*[T](deq: var Deque[T], i: Natural, val: sink T) {.inline.} =
   ## Sets the `i`-th element of `deq` to `val`.
@@ -193,7 +193,7 @@ proc `[]=`*[T](deq: var Deque[T], i: Natural, val: sink T) {.inline.} =
     a[3] = 66
     assert $a == "[99, 20, 30, 66, 50]"
 
-  deq.elem(i) = val
+  deq.data[deq.elem(i)] = val
 
 func `[]`*[T](deq: Deque[T], i: BackwardsIndex): lent T {.inline.} =
   ## Accesses the backwards indexed `i`-th element.
@@ -205,7 +205,7 @@ func `[]`*[T](deq: Deque[T], i: BackwardsIndex): lent T {.inline.} =
     assert a[^4] == 20
     doAssertRaises(IndexDefect, echo a[^9])
 
-  return deq.elem(deq.len - int(i))
+  return deq.data[deq.elem(deq.len - int(i))]
 
 func `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
   ## Accesses the backwards indexed `i`-th element and returns a mutable
@@ -217,7 +217,7 @@ func `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
     inc(a[^1])
     assert a[^1] == 51
 
-  return deq.elem(deq.len - int(i))
+  return deq.data[deq.elem(deq.len - int(i))]
 
 proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: sink T) {.inline.} =
   ## Sets the backwards indexed `i`-th element of `deq` to `x`.
@@ -229,7 +229,7 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: sink T) {.inline.} =
     a[^3] = 77
     assert $a == "[10, 20, 77, 40, 99]"
 
-  deq.elem(deq.len - int(i)) = x
+  deq.data[deq.elem(deq.len - int(i))] = x
 
 iterator items*[T](deq: Deque[T]): lent T =
   ## Yields every element of `deq`.
@@ -244,7 +244,7 @@ iterator items*[T](deq: Deque[T]): lent T =
 
   let L = len(deq)
   for c in 0 ..< L:
-    yield deq.uncheckedElem(c)
+    yield deq.data[deq.uncheckedElem(c)]
     assert(len(deq) == L, "the length of the Deque changed while iterating over it")
 
 iterator mitems*[T](deq: var Deque[T]): var T =
@@ -261,7 +261,7 @@ iterator mitems*[T](deq: var Deque[T]): var T =
 
   let L = len(deq)
   for c in 0 ..< L:
-    yield deq.uncheckedElem(c)
+    yield deq.data[deq.uncheckedElem(c)]
     assert(len(deq) == L, "the length of the Deque changed while iterating over it")
 
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
@@ -274,7 +274,7 @@ iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
 
   let L = len(deq)
   for c in 0 ..< L:
-    yield (c, deq.uncheckedElem(c))
+    yield (c, deq.data[deq.uncheckedElem(c)])
     assert(len(deq) == L, "the length of the Deque changed while iterating over it")
 
 func contains*[T](deq: Deque[T], item: T): bool {.inline.} =
@@ -562,7 +562,7 @@ func `==`*[T](deq1, deq2: Deque[T]): bool =
     return false
 
   for i in 0 ..< deq1.len:
-    if deq1.uncheckedElem(i) != deq2.uncheckedElem(i):
+    if deq1.data[deq1.uncheckedElem(i)] != deq2.data[deq2.uncheckedElem(i)]:
       return false
 
   true
