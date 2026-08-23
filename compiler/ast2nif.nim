@@ -561,6 +561,15 @@ const
     ## identity is the declaration, not the content, and collapsing two of them
     ## loses exactly what `exactReplica` exists to keep apart.
 
+proc hasDerivedSize(typ: PType): bool {.inline.} =
+  ## True for a type whose `size`/`align`/`paddingAtEnd` are a pure function of
+  ## the structure that is serialized with it, so a consumer can recompute them
+  ## and no measurement needs to cross the NIF boundary. That is every ANONYMOUS
+  ## structural wrapper: `{.size.}`/`{.align.}` are pragmas on a type
+  ## DECLARATION, so a type without a `sym` cannot carry one, and the remaining
+  ## kinds (an object's field offsets, an enum's declared size) are excluded.
+  typ.kind in CanonTypeKinds and typ.symImpl == nil
+
 const CanonIdBias = 0x4000_0000'i32
   ## Canonical ids live above every mint counter so a content hash can never
   ## collide with the `itemId.item` of a same-kind type that kept its counter
@@ -791,21 +800,11 @@ proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
   key.add '|'
   key.addInt ord(typ.callConvImpl)
   key.add '|'
-  # size/align/paddingAtEnd are serialized, so they belong in the key even though
-  # they are filled in LAZILY. Leaving them out is what made `koch bootic` stop
-  # converging: two types can then share a name while differing in size, and
-  # whichever `writeType` reached first decided the bytes -- so the output
-  # depended on the compiler generation and the fixed point moved one iteration
-  # out of reach. Hashing a lazily-filled field is safe only because the memo
-  # above is process-global: the id is pinned at its first computation, so an
-  # `--icGroup` cycle writing member A before B cannot hash the same type as
-  # unsized once and sized once and mint two names for it.
-  key.addInt typ.sizeImpl
-  key.add ','
-  key.addInt typ.alignImpl
-  key.add ','
-  key.addInt typ.paddingAtEndImpl
-  key.add '|'
+  # size/align/paddingAtEnd are deliberately ABSENT. They are filled in lazily,
+  # so hashing them would make a type's NAME depend on whether anyone had asked
+  # for its `sizeof` yet -- and they are not serialized for these kinds either
+  # (see `hasDerivedSize` in writeTypeDef), so there is nothing to distinguish:
+  # everything they are computed FROM is in this key already.
   if typ.typeInstImpl != nil: key.add nifTypeName(w, typ.typeInstImpl)
   # The `sym` is load-bearing for a literal copy and nil for every wrapper, so
   # adding it leaves the wrapper keys byte-identical. It has to be here: a copy
@@ -869,9 +868,23 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
     #dest.addIdent toNifTag(typ.kind)
     writeFlags(dest, typ.flagsImpl)
     dest.addIdent toNifTag(typ.callConvImpl)
-    dest.addIntLit typ.sizeImpl
-    dest.addIntLit typ.alignImpl
-    dest.addIntLit typ.paddingAtEndImpl
+    if hasDerivedSize(typ):
+      # Do not export a MEASUREMENT. `size`/`align`/`paddingAtEnd` are filled in
+      # lazily by `computeSizeAlign`, so writing what this process happened to
+      # have measured makes a module's bytes depend on WHEN some other module
+      # asked for a `sizeof` -- churn for the interface cookie, and outright
+      # non-determinism for a content-named type, whose def two writers may
+      # reach in either order (that is what once cost `koch bootic` its fixed
+      # point). For these kinds the values are derived from the structure that
+      # is serialized anyway, so hand the consumer the unmeasured sentinel and
+      # let it compute them exactly like it would for a from-source type.
+      dest.addIntLit defaultSize
+      dest.addIntLit defaultAlignment
+      dest.addIntLit 0
+    else:
+      dest.addIntLit typ.sizeImpl
+      dest.addIntLit typ.alignImpl
+      dest.addIntLit typ.paddingAtEndImpl
     # `bindingId`, the generic binding-table key (see astdef.TType). It equals
     # `itemId` for everything except an `exactReplica`, and the loader rebuilds
     # `itemId` from the NIF name -- so for a content-named type this must be the
