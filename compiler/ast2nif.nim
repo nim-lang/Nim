@@ -800,7 +800,11 @@ proc writeSymNode(w: var Writer; dest: var IcBuilder; n: PNode; sym: PSym) =
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), info
 
 proc writeNodeFlags(dest: var IcBuilder; flags: set[TNodeFlag]) {.inline.} =
-  writeFlags(dest, flags)
+  # Comment text is not stored in NIF; `nfHasComment` is process-local
+  # (see `comment` in ast.nim). Emitting it made IC non-deterministic:
+  # `copyTree` from a parsed generic kept the comment (`"sh"`) while
+  # `copyTree` from a cache-loaded generic did not (`"s"`).
+  writeFlags(dest, flags - {nfHasComment})
 
 template withNode(w: var Writer; dest: var IcBuilder; n: PNode; body: untyped) =
   dest.addParLe pool.tags.getOrIncl(toNifTag(n.kind)), trLineInfo(w, n.info)
