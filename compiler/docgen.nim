@@ -1965,12 +1965,13 @@ proc commandBuildIndexJson*(conf: ConfigRef, dir: string, outFile = RelativeFile
 
 proc commandBook*(cache: IdentCache, conf: ConfigRef) =
   let bookDir = conf.projectFull.string
+  conf.projectPath = AbsoluteDir(bookDir) # setting bookDir to be the documentation root,
+                                          # so that we don't end up with our output in `<outDir>/<bookDir>`;
+                                          # we want it in `<outDir>`
   let summaryFilePath = bookDir / "SUMMARY.md"
-
   if not fileExists(summaryFilePath):
     rawMessage(conf, errCannotOpenFile, summaryFilePath)
     return
-
   let summaryFile = AbsoluteFile(summaryFilePath)
   var d = newDocumentor(summaryFile, cache, conf, HtmlExt,
                         standaloneDoc = true, preferMarkdown = true, hasToc = true)
