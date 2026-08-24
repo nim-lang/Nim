@@ -290,6 +290,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   ## command prepass
   if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
+  if conf.cmd == cmdBook: conf.globalOptions.incl {optGenIndex}
   if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
   if conf.outDir.isEmpty:
     # doc like commands can generate a lot of files (especially with --project)
