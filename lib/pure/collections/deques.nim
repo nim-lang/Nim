@@ -292,27 +292,28 @@ func contains*[T](deq: Deque[T], item: T): bool {.inline.} =
     if e == item: return true
   return false
 
-proc bulkCopy[T](tgt: var openArray[T], src: openArray[T]) =
+# TODO https://github.com/nim-lang/Nim/issues/15952
+#      this should really be using `var openArray`
+proc bulkCopy[T](tgt: var seq[T], src: openArray[T], to, so, n: int) =
   when nimvm:
-    for i in 0..<src.len():
-      tgt[i] = src[i]
+    for i in 0..<n:
+      tgt[i + to] = src[i + so]
   else:
-    when needsReset(T):
-      for i in 0..<src.len():
-        tgt[i] = src[i]
+    when not (supportsCopyMem(T) and declared(copyMem)):
+      for i in 0..<n:
+        tgt[i + to] = src[i + so]
     else:
-      copyMem(addr tgt[0], addr src[0], src.len() * sizeof(T))
+      copyMem(addr tgt[to], addr src[so], n * sizeof(T))
 
-proc bulkDrain[T](tgt, src: var openArray[T]) =
-  when nimvm:
-    for i in 0..<src.len():
-      tgt[i] = drain src[i]
+proc bulkDrain[T](tgt, src: var seq[T], to, so, n: int) =
+  when needsReset(T):
+    for i in 0..<n:
+      let iso = i + so
+      when T is int:
+        debugEcho tgt
+      tgt[i + to] = move src[iso]
   else:
-    when needsReset(T):
-      for i in 0..<src.len():
-        tgt[i] = drain src[i]
-    else:
-      copyMem(addr tgt[0], addr src[0], src.len() * sizeof(T))
+    bulkCopy(tgt, src, to, so, n)
 
 proc expandIfNeeded[T](deq: var Deque[T]) =
   let
@@ -325,10 +326,10 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
       toCap = cap - head
 
     var n = newData(T, max(cap * 2, defaultInitialSize))
-
-    bulkDrain(n, deq.data.toOpenArray(head, deq.data.high()))
+    bulkDrain(n, deq.data, 0, head, toCap)
     if head > 0:
-      bulkDrain(n.toOpenArray(toCap, n.high()), deq.data.toOpenArray(0, head - 1))
+      bulkDrain(n, deq.data, toCap, 0, head)
+
     deq.data = move n
     deq.tail = cap.uint
     deq.head = 0
@@ -373,21 +374,22 @@ func toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
     assert len(a) == 3
     assert $a == "[7, 8, 9]"
   result = initDeque[T](x.len)
-  bulkCopy(result.data, x)
+  bulkCopy(result.data, x, 0, 0, x.len)
   result.tail = uint x.len
 
-proc toDequeSink*[T](x: sink seq[T]): Deque[T] {.since: (2, 3).} =
-  ## Creates a new deque that moves the elements of `x` (in the same order).
-  ##
-  ## **See also:**
-  ## * `initDeque func <#initDeque,int>`_
-  runnableExamples:
-    let a = toDeque(@[7, 8, 9])
-    assert len(a) == 3
-    assert $a == "[7, 8, 9]"
-  result = initDeque[T](x.len)
-  bulkDrain(result.data, x)
-  result.tail = uint x.len
+when not declared(js):
+  proc toDequeSink*[T](x: sink seq[T]): Deque[T] {.since: (2, 3).} =
+    ## Creates a new deque that moves the elements of `x` (in the same order).
+    ##
+    ## **See also:**
+    ## * `initDeque func <#initDeque,int>`_
+    runnableExamples:
+      let a = toDeque(@[7, 8, 9])
+      assert len(a) == 3
+      assert $a == "[7, 8, 9]"
+    result = initDeque[T](x.len)
+    bulkDrain(result.data, x, 0, 0, x.len)
+    result.tail = uint x.len
 
 func peekFirst*[T](deq: Deque[T]): lent T {.inline.} =
   ## Returns the first element of `deq`, but does not remove it from the deque.

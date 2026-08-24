@@ -263,9 +263,10 @@ block:
       d.addFirst(NoCopy())
       discard d.popLast()
 
-    block:
-      var d = @[NoCopy()].toDequeSink()
-      doAssert(d.len == 1)
+    when not declared(js): # moves broken
+      block:
+        var d = @[NoCopy()].toDequeSink()
+        doAssert(d.len == 1)
 
 static: main()
 main()
