@@ -298,7 +298,7 @@ proc mainCommand*(graph: ModuleGraph) =
               else: conf.projectPath
     if not ret.string.isAbsolute: # `AbsoluteDir` is not a real guarantee
       rawMessage(conf, errCannotOpenFile, ret.string & "/")
-    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex}:
+    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex, cmdBook}:
       ret = ret / htmldocsDir
     conf.outDir = ret
 
