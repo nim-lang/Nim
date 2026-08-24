@@ -325,6 +325,10 @@ proc mainCommand*(graph: ModuleGraph) =
       commandDoc2(graph, HtmlExt)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
+  of cmdBook:
+    loadConfigs(DocConfig, cache, conf, graph.idgen)
+    conf.setNoteDefaults(warnRstRedefinitionOfLabel, false)
+    commandBook(cache, conf)
   of cmdRst2html, cmdMd2html:
     # XXX: why are warnings disabled by default for rst2html and rst2tex?
     for warn in rstWarnings:
