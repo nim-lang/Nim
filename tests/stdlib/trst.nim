@@ -1630,6 +1630,38 @@ And this should **NOT** be visible in `docs.html`
     doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
+
+  test "`:literal:` flag":
+    "code.nim".writeFile("""
+discard
+""")
+
+    let input = """
+.. include:: code.nim
+             :literal:
+"""
+    check "<pre>discard\n</pre>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
+    removeFile("code.nim")
+
+
+  test "Include everything between in `:literal:` mode":
+    "code.nim".writeFile("""
+proc notIncluded = discard
+#CodeStart
+proc included = discard
+#CodeEnd
+proc notIncluded = discard
+""")
+
+    let input = """
+.. include:: code.nim
+             :literal:
+             :start-after: #CodeStart
+             :end-before: #CodeEnd
+"""
+    check "<pre>\nproc included = discard\n</pre>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
+    removeFile("code.nim")
+
 suite "RST escaping":
   test "backspaces":
     check("""\ this""".toAst == dedent"""
