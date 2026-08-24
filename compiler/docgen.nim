@@ -1852,10 +1852,10 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string,
-                   preferMarkdown: bool) =
+                   preferMarkdown: bool, hasToc = false) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, cache, conf, outExt, standaloneDoc = true,
-                        preferMarkdown = preferMarkdown, hasToc = false)
+                        preferMarkdown = preferMarkdown, hasToc = hasToc)
   try:
     let rst = parseRst(readFile(filen.string),
                       line=LineRstInit, column=ColRstInit,
@@ -1962,3 +1962,46 @@ proc commandBuildIndexJson*(conf: ConfigRef, dir: string, outFile = RelativeFile
     writeFile(filename, $body)
   except IOError:
     rawMessage(conf, errCannotOpenFile, filename.string)
+
+proc commandBook*(cache: IdentCache, conf: ConfigRef) =
+  let bookDir = conf.projectFull.string
+  let summaryFilePath = bookDir / "SUMMARY.md"
+
+  if not fileExists(summaryFilePath):
+    rawMessage(conf, errCannotOpenFile, summaryFilePath)
+    return
+
+  let summaryFile = AbsoluteFile(summaryFilePath)
+  var d = newDocumentor(summaryFile, cache, conf, HtmlExt,
+                        standaloneDoc = true, preferMarkdown = true, hasToc = true)
+  let rst = parseRst(readFile(summaryFile.string),
+                    line=LineRstInit, column=ColRstInit, conf, d.sharedState)
+
+  proc generatePage(filename: AbsoluteFile) =
+    conf.outFile = RelativeFile"" # resetting to force the path generation for each page
+    var d = newDocumentor(filename, cache, conf, HtmlExt,
+                          standaloneDoc = true, preferMarkdown = true, hasToc = true)
+    try:
+      let rst = parseRst(readFile(filename.string),
+                        line=LineRstInit, column=ColRstInit,
+                        conf, d.sharedState)
+      d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
+      finishGenerateDoc(d)
+      writeOutput(d)
+      generateIndex(d)
+    except ERecoverableError:
+      discard "already reported the error"
+
+  proc generatePagesFromLinks(node: PRstNode) =
+    if node.kind == rnHyperlink:
+      let dest = node.sons[1].text
+      let pageFilePath = bookDir / dest
+      if fileExists(pageFilePath):
+        let pageFile = AbsoluteFile(pageFilePath)
+        generatePage(pageFile)
+      else:
+        rawMessage(conf, warnCannotOpenFile, pageFilePath)
+    for son in node.sons:
+      generatePagesFromLinks(son)
+  
+  generatePagesFromLinks(rst)
