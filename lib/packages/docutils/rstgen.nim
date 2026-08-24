@@ -614,7 +614,7 @@ proc readIndexDir*(dir: string):
         result.docs[title] = fileEntries
 
       for i in 0 ..< fileEntries.len:
-        if fileEntries[i].kind != ieIdxRole:
+        if fileEntries[i].kind notin {ieIdxRole, ieHeading}:
           continue
 
         setLen(result.symbols, L + 1)
