@@ -1931,7 +1931,7 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
     PathKinds0 = {nkDotExpr, nkCheckedFieldExpr,
                   nkBracketExpr, nkAddr, nkHiddenAddr,
                   nkObjDownConv, nkObjUpConv}
-    PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv}
+    PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv, nkCast}
 
   proc getRoot(n: PNode; followDeref: bool): PNode =
     result = n
