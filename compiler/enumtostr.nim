@@ -14,7 +14,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGener
   let res = newSym(skResult, getIdent(g.cache, "result"), idgen, result, info)
   res.typ = getSysType(g, info, tyString)
 
-  result.typ = newType(tyProc, idgen, t.owner)
+  result.typ = newType(tyProc, idgen, result)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)

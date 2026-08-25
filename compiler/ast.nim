@@ -509,7 +509,8 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
-template id*(a: PType | PSym): int = toId(a.itemId)
+template id*(a: PSym): int = toId(a.itemId)
+template id*(a: PType): int = toId(a.bindingId)
 
 type
   IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
@@ -1097,7 +1098,7 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
   let id = nextTypeId idgen
   result = PType(kind: kind, ownerFieldImpl: owner, sizeImpl: defaultSize,
                  alignImpl: defaultAlignment, itemId: id,
-                 uniqueId: id, sonsImpl: @[])
+                 bindingId: id, sonsImpl: @[])
   if son != nil:
     assert kind != tyProc
     result.sonsImpl.add son
@@ -1173,18 +1174,23 @@ proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result.symImpl = t.sym          # backend-info should not be copied
 
 proc exactReplica*(t: PType; idgen: IdGenerator): PType =
-  ## Replica that KEEPS `itemId` — the generic-param binding tables
-  ## (`LayeredIdTable`) key on it, so the copy must keep matching its
-  ## original — but mints a FRESH `uniqueId`: uniqueId is the SERIALIZATION
-  ## identity (NIF type names key on it) and must be unique per instance.
-  ## Replicas sharing the original's uniqueId serialized as duplicate defs
-  ## under one NIF name; the loader collapsed them into a single type,
+  ## Copy that INHERITS `bindingId` — the generic-param binding tables
+  ## (`LayeredIdTable`) key on it, so the copy must keep matching its original
+  ## there — while getting its own `itemId`, like every other type. The two
+  ## remaining callers are `semtypinst.instCopyType` (a partially instantiated
+  ## meta type must still bind in the next instantiation round) and the
+  ## `tfUnresolved` typedesc replica in `semtypes.semTypeIdent`; everything
+  ## else that used to come through here is a plain `copyType`.
+  ##
+  ## Do not "simplify" this to share `itemId` as well: `itemId` is the
+  ## serialization identity, and replicas sharing it serialized as duplicate
+  ## defs under one NIF name, which the loader collapsed into a single type —
   ## losing their flag differences (use-site `tfUnresolved` typedescs) or
   ## their structure (meta instance bodies shadowing a generic's canonical
   ## body).
   result = PType(kind: t.kind, ownerFieldImpl: t.owner, sizeImpl: defaultSize,
-                 alignImpl: defaultAlignment, itemId: t.itemId,
-                 uniqueId: nextTypeId(idgen))
+                 alignImpl: defaultAlignment, itemId: nextTypeId(idgen),
+                 bindingId: t.bindingId)
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 
