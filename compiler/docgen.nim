@@ -1726,8 +1726,8 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
         "\\\\\\vspace{0.5em}\\large $1", [esc(d.target, d.meta[metaSubtitle])])
 
-  let theIndexRef = relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile)
-  let indexLink = getConfigVar(d.conf, "doc.body_toc_indexlink") % ["theindexhref", theIndexRef]
+  let theIndexHref = relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile)
+  let indexLink = getConfigVar(d.conf, "doc.body_toc_indexlink") % ["theindexhref", theIndexHref]
   let navLinks = "<ul>HERE BE NAV LINKS</ul>"
   let globalLinks = getConfigVar(d.conf, "doc.body_toc_globallinks") % [
       "body_toc_navlinks", navLinks,
@@ -1981,7 +1981,7 @@ proc commandBuildIndexJson*(conf: ConfigRef, dir: string, outFile = RelativeFile
 
 proc commandBook*(cache: IdentCache, conf: ConfigRef) =
   let bookDir = conf.projectFull.string
-  conf.projectPath = AbsoluteDir(bookDir) # setting bookDir to be the documentation root,
+  conf.projectPath = AbsoluteDir(bookDir) # set bookDir to be the documentation root,
                                           # so that we don't end up with our output in `<outDir>/<bookDir>`;
                                           # we want it in `<outDir>`
   let summaryFilePath = bookDir / "SUMMARY.md"
@@ -1996,7 +1996,7 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
 
 
   proc generatePage(filename: AbsoluteFile) =
-    conf.outFile = RelativeFile"" # resetting to force path re-generation for each page
+    conf.outFile = RelativeFile"" # reset to force path re-generation for each page
     commandRstAux(cache, conf, filename, HtmlExt,
                   preferMarkdown = true, hasToc = true, addTxtExt = false)
 
