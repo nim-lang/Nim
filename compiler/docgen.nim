@@ -1726,6 +1726,14 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
         "\\\\\\vspace{0.5em}\\large $1", [esc(d.target, d.meta[metaSubtitle])])
 
+  let theIndexRef = relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile)
+  let indexLink = getConfigVar(d.conf, "doc.body_toc_indexlink") % ["theindexhref", theIndexRef]
+  let navLinks = "<ul>HERE BE NAV LINKS</ul>"
+  let globalLinks = getConfigVar(d.conf, "doc.body_toc_globallinks") % [
+      "body_toc_navlinks", navLinks,
+      "body_toc_indexlink", indexLink]
+  let searchBox = getConfigVar(d.conf, "doc.body_toc_searchbox")
+  let themeSelect = getConfigVar(d.conf, "doc.body_toc_themeselect")
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
   let bodyname = if d.hasToc and not d.standaloneDoc and not d.conf.isLatexCmd:
                    groupsection.setLen 0
@@ -1738,9 +1746,11 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
       "tableofcontents", toc, "moduledesc", d.modDescFinal, "date", getDateStr(),
       "time", getClockStr(), "content", code,
       "deprecationMsg", d.modDeprecationMsg,
-      "theindexhref", relLink(d.conf.outDir, d.destFile.AbsoluteFile,
-                              theindexFname.RelativeFile),
-      "body_toc_groupsection", groupsection, "seeSrc", seeSrc]
+      "body_toc_groupsection", groupsection,
+      "body_toc_globallinks", globalLinks,
+      "body_toc_searchbox", searchBox,
+      "body_toc_themeselect", themeSelect,
+      "seeSrc", seeSrc]
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = getConfigVar(d.conf, "doc.file") % [
@@ -1983,12 +1993,13 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
   let rst = parseRst(readFile(summaryFile.string),
                     line=LineRstInit, column=ColRstInit, conf, d.sharedState)
 
+
   proc generatePage(filename: AbsoluteFile) =
     conf.outFile = RelativeFile"" # resetting to force path re-generation for each page
     commandRstAux(cache, conf, filename, HtmlExt,
                   preferMarkdown = true, hasToc = true, addTxtExt = false)
 
-  proc generatePagesFromLinks(node: PRstNode) =
+  proc parseSummaryNode(node: PRstNode) =
     if node.kind == rnHyperlink:
       let dest = node.sons[1].text
       let pageFilePath = bookDir / dest
@@ -1998,6 +2009,7 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
       else:
         rawMessage(conf, warnCannotOpenFile, pageFilePath)
     for son in node.sons:
-      generatePagesFromLinks(son)
+      parseSummaryNode(son)
   
-  generatePagesFromLinks(rst)
+  setConfigVar(conf, "doc.body_toc_groupsection", "") # we don't need "Group by" section in prose
+  parseSummaryNode(rst)
