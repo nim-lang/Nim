@@ -11,6 +11,7 @@
 ## This enables incremental and parallel compilation using the `m` switch.
 
 import std / [os, tables, sets, times, osproc, algorithm, strtabs, strutils, syncio]
+from std/sha1 import secureHash, `$`
 import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
 
@@ -805,6 +806,15 @@ proc pruneDeadSpeculative(c: var DepContext) =
   var cascaded = 0
   for i in 0 ..< n:
     if not alive[i]:
+      # Drop the scan artifacts of a module that just left the graph. `nifler`
+      # ran on it during `traverseDeps` (that is how we learned it cannot
+      # build), and leaving its `.p.nif`/`.deps.nif` behind makes an
+      # edit-accumulated cache differ from a clean one for no reason. Re-running
+      # nifler if it ever comes back costs a single parse.
+      for f in c.nodes[i].files:
+        removeFile(c.parsedFile(f))
+        removeFile(c.depsFile(f))
+        removeFile(c.parsedFile(f).changeFileExt("") & ".deps.nif")
       if c.nodes[i].missingImport.len > 0:
         rawMessage(c.config, hintSuccess,
           "ic: skipping " & c.nodes[i].files[0].nimFile &
@@ -983,12 +993,37 @@ proc configSignatureFile(c: DepContext; forwardedArgs: seq[string]): string =
   ## OLD configuration. Reify the configuration as a FILE and make every rule
   ## that consumes it an input, so a config change moves an mtime like any edit.
   ## Written `OnlyIfChanged` so a genuine no-op run stays a no-op.
+  ##
+  ## Deliberately EXCLUDES the two per-build path switches (`--icproject:`,
+  ## `--icPreparsedConfig:`): they name where this build lives, not what it
+  ## produces, so including them made the signature differ between two caches
+  ## holding byte-identical artifacts — which defeats prefilling a test's cache
+  ## from a shared warm one (every rule would re-fire on the rewritten
+  ## signature). The precompiled config still counts, by CONTENT: a `nim.cfg`
+  ## edit changes the artifact, hence the hash, hence every rule.
   result = getNimcacheDir(c.config).string / "ic_build_args.txt"
   var content = ""
   for p in c.config.searchPaths:
     content.add "--path:" & p.string & "\n"
   for a in forwardedArgs:
+    if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:"):
+      continue
     content.add a & "\n"
+  if c.config.icPreparsedConfig.len > 0 and fileExists(c.config.icPreparsedConfig):
+    # Hash the precompiled config MINUS its `(nimcache "...")` entry — the one
+    # line in the artifact that records where this build's cache lives rather
+    # than what the config says. Everything else is genuinely config-derived, so
+    # two builds with the same `nim.cfg`/`config.nims` hash the same no matter
+    # which directory they run in.
+    var normalized = ""
+    try:
+      for line in lines(c.config.icPreparsedConfig):
+        if "(nimcache " in line: continue
+        normalized.add line
+        normalized.add '\n'
+    except IOError, OSError:
+      normalized = c.config.icPreparsedConfig
+    content.add "config:" & $secureHash(normalized) & "\n"
   if not fileExists(result) or readFile(result) != content:
     writeFile(result, content)
 
@@ -1383,13 +1418,29 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     outputStr cnifFiles[i]
     b.endTree()
 
-  # merge: read every `.c.nif`, write the ownership/liveness decision.
+  # merge: read the live modules' `.c.nif`, write the ownership/liveness
+  # decision. The list is handed over as a FILE (`LiveModulesFile`) because the
+  # merge child is a separate process that never sees the build file: without it
+  # merge globbed `*.c.nif` off the nimcache and so silently absorbed artifacts
+  # belonging to some other program that shares the directory.
+  let liveFile = nimcache / LiveModulesFile
+  block:
+    var manifest = ""
+    for i in 0 ..< c.nodes.len:
+      if live[i]:
+        manifest.add cnifFiles[i]
+        manifest.add "\n"
+    # OnlyIfChanged: its mtime is a merge input, so rewriting it every run would
+    # re-fire merge (and, through the decision, every `emit`) on a no-op build.
+    if not fileExists(liveFile) or readFile(liveFile) != manifest:
+      writeFile(liveFile, manifest)
   b.addTree "do"
   b.addIdent "nim_nifc"
   b.withTree "args":
     b.addStrLit "--icBackendStage:merge"
   for i in 0 ..< c.nodes.len:
     if live[i]: inputStr cnifFiles[i]
+  inputStr liveFile
   outputStr mergeFile
   b.endTree()
 
@@ -1443,7 +1494,17 @@ proc deriveFromSemDeps(c: var DepContext): bool =
   ## Editing `dyn.nim` then changed nothing at all: the build silently reused the
   ## `.s.bif` from the run that discovered it. Seeding from the sidecars makes
   ## the discovery stick across runs.
+  ##
+  ## The edges are recorded SPECULATIVELY: a sidecar says what the module
+  ## imported the last time it was semmed, which is a statement about the past.
+  ## Flip a `when`, or delete an `import`, and a module that is no longer reached
+  ## would otherwise linger in the graph forever (and fail to build, if what it
+  ## imports is gone). Marking the edge speculative lets `pruneDeadSpeculative`
+  ## drop such a leftover, while a genuinely-needed macro import — which compiles
+  ## fine — stays.
   result = false
+  inc c.speculating
+  defer: dec c.speculating
   let n0 = c.nodes.len  # snapshot: new nodes are traversed as they're added
   for ni in 0 ..< n0:
     for p in readSemDeps(c, c.nodes[ni].files[0]):
@@ -1463,7 +1524,7 @@ proc deriveFromSemDeps(c: var DepContext): bool =
         traverseDeps(c, pair, newNode)
         result = true
       if idx != ni and idx notin c.nodes[ni].deps:
-        c.nodes[ni].deps.add idx
+        addDepEdge(c, c.nodes[ni], idx)
         result = true
 
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
@@ -1563,15 +1624,16 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
 
+    # Re-apply what earlier runs discovered post-sem (macro-generated imports),
+    # so those modules keep their rules on a warm build instead of vanishing from
+    # the graph until the next failure. No-op on a cold cache. Runs BEFORE the
+    # prune so a sidecar entry that has since gone stale is prunable too.
+    discard deriveFromSemDeps(c)
+
     # Modules that only a `when` the scanner cannot decide pulls in, and that
     # import something not installed, are dead in this configuration; scheduling
     # them would fail the build over code the classic compiler never reads.
     pruneDeadSpeculative(c)
-
-    # Re-apply what earlier runs discovered post-sem (macro-generated imports),
-    # so those modules keep their rules on a warm build instead of vanishing from
-    # the graph until the next failure. No-op on a cold cache.
-    discard deriveFromSemDeps(c)
 
     # Discovery via `.s.deps`: imports GENERATED by macros (chronicles builds
     # `import chronicles/textlines` via parseStmt from the chronicles_sinks
@@ -1645,7 +1707,18 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       if rounds <= 20:
         discovered = deriveFromSemDeps(c)
       if not discovered:
-        rawMessage(conf, errGenerated, "nifmake failed with exit code: " & $exitCode)
+        # The children have already printed the real diagnostics. Adding an
+        # `Error:` line of our own here made a build-system status the LAST error
+        # in the stream, hiding the compiler's own message from anything that
+        # reads the final error (testament's `errormsg:`, editors, CI log
+        # scrapers) — every `reject`-style test under `nim ic` reported
+        # "nifmake failed with exit code: 1" instead of what the compiler said.
+        # The non-zero exit is what signals failure; this line is context.
+        rawMessage(conf, hintExecuting,
+          "nifmake reported failures (exit code " & $exitCode & ")")
+        # Fail the run without printing an `Error:` of our own (see above): the
+        # exit code is derived from `errorCounter`.
+        inc conf.errorCounter
         break
 
     # Phase 2 — backend (whole-program `nim nifc`), run once over the now-final
@@ -1660,6 +1733,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       if exitCode != 0:
-        rawMessage(conf, errGenerated, "nifmake (backend) failed with exit code: " & $exitCode)
+        rawMessage(conf, hintExecuting,
+          "nifmake reported backend failures (exit code " & $exitCode & ")")
+        inc conf.errorCounter
   else:
     rawMessage(conf, errGenerated, "nim ic not available in bootstrap build")

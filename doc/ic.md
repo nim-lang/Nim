@@ -405,3 +405,62 @@ See also
 
 - NIF format spec: [nifspec/doc/nif-spec.md](../nifspec/doc/nif-spec.md)
 - NIFC (C-like target) spec: dist/nimony/doc/nifc-spec.md
+
+Testing IC
+==========
+
+Two mechanisms, at very different scales.
+
+**`tests/ic` — metamorphic tests.** A `t*.nim` whose body contains `#? metamorphic`
+drives a sequence of cross-module edits through `nim ic` in one fixed build
+directory (see `testament/categories.nim`, `runMetamorphicIcTest`). Directives:
+
+| directive | effect |
+| --------- | ------ |
+| ``#!FILE <name>`` | (re)write a module in the virtual file system |
+| ``#!DELETE <name>`` | remove a module, from the vfs and from disk |
+| ``#!FLAGS <switches>`` | change the compiler switches from here on |
+| ``#!STEP <attrs>`` | materialise the files, build, run, check |
+
+Step attributes: ``expect: <stdout>``, ``fails: <substring>`` (BOTH compilers must
+reject it, with that text), ``noop``, ``body-edit``, ``iface-edit``,
+``modules: <n>``, ``clean``, ``no-oracle``.
+
+Every successful step is **also compiled with `nim c` and run, and the two
+outputs must agree**. That oracle is the only check in the suite that is not
+IC-against-IC: `clean == incremental`, `noop changes nothing` and the cookie
+invariants are all satisfied by an IC that is *consistently* wrong, which is how
+two silent miscompilations survived (a NIF-loaded module's `sfInjectDestructors`
+was lost, so top-level destructors were never injected; `nfFirstWrite`/`nfLastRead`
+had nowhere to live on a serialized sym node, so every first assignment to a
+destructor-bearing local became `=sink` over zeroed memory). `koch bootic` has the
+same blind spot — it proves the compiler reproduces *itself*.
+
+**`testament --ic` — the whole corpus.** Compiles every C-target test with
+`nim ic` instead of `nim c`, so IC inherits the existing ~10k programs and their
+expected output instead of the handful written for it by hand. Tests that
+override the command (`cmd: "nim c --gc:arc $file"`) are rewritten too, and get a
+private nimcache; without one they would share a cache and thrash it.
+
+To keep that affordable, testament borrows nimony's hastur model
+(`warmupSharedCache` + `prefillFromWarmup`): a generated warmup program pulling in
+`system` and the most-imported stdlib modules is compiled once per distinct
+compile configuration into `nimcache/ic_warmup_<hash>`, and each test's empty
+cache is seeded from it with **mtimes preserved** (nifmake compares
+output-mtime > input-mtime, so stamping the copies "now" would re-fire the whole
+graph). Only program-independent artifacts are copied — the frontend NIFs and
+cookies plus the per-module `lower`/`cg` outputs. The `.c`/`.o` are deliberately
+left behind: the merge decision (which module owns each emit-everywhere
+definition) is whole-program, so those are re-rendered for every program anyway.
+
+Measured on `tests/destructor` (97 test runs, 32-core box):
+
+| | cold | warm |
+| - | ---- | ---- |
+| `nim c` | 35s | 32s |
+| `nim ic` | ~3m30 | **9.8s** |
+
+The warm number is the developer loop and it is 3.2x faster than the classic
+backend; the cold number is paid once per configuration and then cached on disk.
+The disk cost is real and worth knowing: ~3.4 GB of nimcache for that one
+category.

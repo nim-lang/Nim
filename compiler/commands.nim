@@ -627,7 +627,11 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       conf.selectedGC = gcHooks
       defineSymbol(conf.symbols, "gchooks")
       incl conf.globalOptions, optSeqDestructors
-      processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
+      # (The `arg` here is the mm MODE — "hooks" — so feeding it to an on/off
+      # switch made `--mm:hooks` fail outright with "'on' or 'off' expected, but
+      # 'hooks' found". The `incl` above is what that call was meant to do.
+      # Reachable only via the explicit switch: `--newruntime` sets
+      # `selectedGC` directly, which is why this stayed hidden.)
       if pass in {passCmd2, passPP}:
         defineSymbol(conf.symbols, "nimSeqsV2")
     of "go":

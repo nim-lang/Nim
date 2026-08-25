@@ -724,8 +724,19 @@ proc generateMergeStage(g: ModuleGraph) =
   ## in-process first-claimant/DCE coordination.
   let nimcache = getNimcacheDir(g.config).string
   var files: seq[string] = @[]
-  for artifact in walkFiles(nimcache / "*.c.nif"):
-    files.add artifact
+  # The driver lists the live modules' artifacts explicitly (deps.nim's
+  # `writeLiveModules`); only fall back to globbing when that manifest is
+  # absent (a cache written by an older compiler). Globbing merges whatever
+  # `.c.nif` happens to sit in the directory, which is wrong the moment the
+  # cache is shared with another program — see `LiveModulesFile`.
+  let manifest = nimcache / LiveModulesFile
+  if fileExists(manifest):
+    for line in lines(manifest):
+      let p = line.strip()
+      if p.len > 0: files.add p
+  else:
+    for artifact in walkFiles(nimcache / "*.c.nif"):
+      files.add artifact
   sort files
   let decision = computeMergeDecision(files)
   if decision.broken:

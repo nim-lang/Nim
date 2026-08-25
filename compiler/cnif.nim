@@ -585,6 +585,13 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
     if d in result.live: inc result.liveDefs
 
 const MergeDecisionFile* = "ic.backend.merge.nif"
+const LiveModulesFile* = "ic.backend.live.txt"
+  ## One `.c.nif` path per line: exactly the artifacts of the modules the CURRENT
+  ## build graph considers live. The `merge` stage reads this instead of globbing
+  ## `*.c.nif` off the nimcache, so a leftover artifact from an unrelated build
+  ## that happens to share the cache directory cannot be merged in (which is what
+  ## made a shared prebuilt cache unusable: merge picked owners in modules the
+  ## program does not import, and the link then wanted their objects).
   ## Fixed name of the merge stage's output in the nimcache, read by `emit`.
 
 proc writeMergeDecision*(outfile: string; d: MergeDecision) =
