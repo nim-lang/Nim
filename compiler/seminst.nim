@@ -349,7 +349,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     when defined(icDbgRefc):
       echo "[icInst] ", prc.name.s, " param ", oldParam.name.s,
         ": ", typeToString(resulti), " (kind=", resulti.kind,
-        " uid=", resulti.uniqueId.module, ".", resulti.uniqueId.item,
+        " itemId=", resulti.itemId.module, ".", resulti.itemId.item,
         " flags=", resulti.flags, ") -> ", typeToString(paramType),
         " (kind=", paramType.kind, ")"
 
@@ -407,6 +407,10 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   eraseVoidParams(result)
   skipIntLiteralParams(result, c.idgen)
 
+  # The signature belongs to the INSTANCE, not to the generic it was copied
+  # from: `instCopyType` above kept the generic's owner, and every parameter has
+  # already been re-owned with `setOwner(param, prc)`.
+  setOwner(result, prc)
   prc.typ = result
   popInfoContext(c.config)
 

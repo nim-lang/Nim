@@ -305,7 +305,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       var typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[]
       for genItemId, instList in graph.typeInstCache:
         for inst in instList:
-          if inst != nil and inst.uniqueId.module == module.position and
+          if inst != nil and inst.itemId.module == module.position and
               inst.kidsLen > 0 and inst[0] != nil and
               inst[0].kind == tyGenericBody and inst[0].sym != nil:
             typeOffers.add (inst[0].sym, inst)

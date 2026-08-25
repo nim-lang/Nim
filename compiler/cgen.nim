@@ -1854,10 +1854,16 @@ proc genVarPrototype(m: BModule, n: PNode) =
         typ = ptrType(typ)
       if lfDynamicLib in sym.loc.flags:
         typ = ptrType(typ)
-      m.s[cfsVars].addVar(m, sym,
-        name = sym.loc.snippet,
-        typ = typ,
-        visibility = vis)
+      if sfCodegenDecl in sym.flags:
+        m.s[cfsVars].addDeclWithVisibility(vis):
+          m.s[cfsVars].addVar(m, sym,
+            name = sym.loc.snippet,
+            typ = typ)
+      else:
+        m.s[cfsVars].addVar(m, sym,
+          name = sym.loc.snippet,
+          typ = typ,
+          visibility = vis)
       if m.hcrOn:
         m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,
@@ -2835,7 +2841,7 @@ proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; 
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"
   let procname = getIdent(graph.cache, prefixedName)
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
-  result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
+  result.typ = newProcType(m.module.info, m.idgen, result)
   result.typ.callConv = ccCDecl
   backendEnsureMutable result
   incl result.flagsImpl, sfExportc

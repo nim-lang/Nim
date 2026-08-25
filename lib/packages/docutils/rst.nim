@@ -3319,31 +3319,31 @@ proc dirInclude(p: var RstParser): PRstNode =
     rstMessage(p, meCannotOpenFile, filename)
   else:
     # XXX: error handling; recursive file inclusion!
+    let inputString = readFile(path)
+    let startPosition =
+      block:
+        let searchFor = n.getFieldValue("start-after").strip()
+        if searchFor != "":
+          let pos = inputString.find(searchFor)
+          if pos != -1: pos + searchFor.len
+          else: 0
+        else:
+          0
+
+    let endPosition =
+      block:
+        let searchFor = n.getFieldValue("end-before").strip()
+        if searchFor != "":
+          let pos = inputString.find(searchFor, start = startPosition)
+          if pos != -1: pos - 1
+          else: 0
+        else:
+          inputString.len - 1
+
     if getFieldValue(n, "literal") != "":
       result = newRstNode(rnLiteralBlock)
-      result.add newLeaf(readFile(path))
+      result.add newLeaf(inputString[startPosition..endPosition])
     else:
-      let inputString = readFile(path)
-      let startPosition =
-        block:
-          let searchFor = n.getFieldValue("start-after").strip()
-          if searchFor != "":
-            let pos = inputString.find(searchFor)
-            if pos != -1: pos + searchFor.len
-            else: 0
-          else:
-            0
-
-      let endPosition =
-        block:
-          let searchFor = n.getFieldValue("end-before").strip()
-          if searchFor != "":
-            let pos = inputString.find(searchFor, start = startPosition)
-            if pos != -1: pos - 1
-            else: 0
-          else:
-            inputString.len - 1
-
       var q: RstParser
       initParser(q, p.s)
       let saveFileIdx = p.s.currFileIdx
