@@ -1819,7 +1819,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       var reified = semTypeNode(c, typeNode, nil)
       assert reified != nil
       assignType(typ, reified)
-      typ.itemId = reified.itemId  # same id
+      typ.bindingId = reified.bindingId  # same id
       if containsForwardType(typ):
         c.forwardTypeUpdates.add (owner, typ, typeNode)
       elif not remainingOwners.missingOrExcl(owner.id):
@@ -2409,7 +2409,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
       if typ.kind != tyObject:
         localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
       if sameOwners(typ.owner, s.owner) and sameOwners(c.module, s.owner):
-        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+        c.graph.memberProcsPerType.mgetOrPut(typ.bindingId, @[]).add s
       else:
         localError(c.config, n.info,
           pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
@@ -2417,7 +2417,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
       localError(c.config, n.info, pragmaName & " procs are only supported in C++")
   else:
     var typ = s.typ.returnType
-    if typ != nil and typ.kind == tyObject and typ.itemId notin c.graph.initializersPerType:
+    if typ != nil and typ.kind == tyObject and typ.bindingId notin c.graph.initializersPerType:
       var initializerCall = newTree(nkCall, newSymNode(s))
       var isInitializer = n[paramsPos].len > 1
       for i in  1..<n[paramsPos].len:
@@ -2431,7 +2431,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
           initializerCall.add val
           inc j
       if isInitializer:
-        c.graph.initializersPerType[typ.itemId] = initializerCall
+        c.graph.initializersPerType[typ.bindingId] = initializerCall
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if s.isGenericRoutine:

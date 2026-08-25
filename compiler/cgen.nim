@@ -2841,7 +2841,7 @@ proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; 
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"
   let procname = getIdent(graph.cache, prefixedName)
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
-  result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
+  result.typ = newProcType(m.module.info, m.idgen, result)
   result.typ.callConv = ccCDecl
   backendEnsureMutable result
   incl result.flagsImpl, sfExportc
