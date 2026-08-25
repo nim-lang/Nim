@@ -1379,7 +1379,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
     for i in 0..<paramType.len - 1:
       if paramType[i].kind == tyStatic:
-        var staticCopy = paramType[i].exactReplica(c.idgen)
+        var staticCopy = copyType(paramType[i], c.idgen, paramType[i].owner)
         staticCopy.incl tfInferrableStatic
         result.rawAddSon staticCopy
       else:
@@ -2481,7 +2481,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         # bugfix: keep the fresh id for aliases to integral types:
         if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
                              tyUInt..tyUInt64}:
-          prev.itemId = s.typ.itemId
+          prev.bindingId = s.typ.bindingId
         result = prev
   of nkSym:
     let s = getGenSym(c, n.sym)

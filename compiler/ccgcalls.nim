@@ -394,7 +394,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     # variable. Thus, we create a temporary pointer variable instead.
     let needsIndirect = mapType(p.config, n.firstSon.typ, mapTypeChooser(n.firstSon) == skParam) != ctArray
     if needsIndirect:
-      n.typ = n.typ.exactReplica(p.module.idgen)
+      n.typ = copyType(n.typ, p.module.idgen, n.typ.owner)
       n.typ.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
