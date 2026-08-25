@@ -1731,7 +1731,8 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   let navLinks = "<ul>HERE BE NAV LINKS</ul>"
   let globalLinks = getConfigVar(d.conf, "doc.body_toc_globallinks") % [
       "body_toc_navlinks", navLinks,
-      "body_toc_indexlink", indexLink]
+      "body_toc_indexlink", indexLink,
+      "theindexhref", theIndexHref] # added because the `boot` branch uses `$theindexhref` directly
   let searchBox = getConfigVar(d.conf, "doc.body_toc_searchbox")
   let themeSelect = getConfigVar(d.conf, "doc.body_toc_themeselect")
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
