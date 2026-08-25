@@ -26,6 +26,14 @@ type
   Node = ref object
     files: seq[FilePair]  # main file + includes
     deps: seq[int]        # indices into DepContext.nodes
+    specDeps: seq[int]    # the subset of `deps` reached ONLY through a `when`
+                          # condition the scanner could not evaluate
+    missingImport: string # an `import` path this module's source names, under a
+                          # `when` the scanner could not decide, that does not
+                          # exist on disk (empty when all resolved)
+    missingHardImport: string ## ditto but NOT under any undecidable `when`: the
+                              ## real compile would reach this `import`, so it is
+                              ## a genuine "cannot open file" error
     id: int
 
   DepContext = object
@@ -41,6 +49,9 @@ type
     scanningMain: bool # currently scanning the project main module's deps;
                        # makes `when isMainModule` conditions evaluate true
                        # only there (every other module is imported)
+    speculating: int   # nesting depth of `when` guards the scanner could not
+                       # decide; every import edge added while this is > 0 is
+                       # recorded as speculative (see pruneDeadSpeculative)
 
 proc toPair(c: DepContext; f: string): FilePair =
   FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
@@ -206,6 +217,18 @@ proc getsImplicitImports(c: DepContext; nimFile: string): bool =
   ## system.nim and never reaches them). Stdlib == under conf.libpath.
   not isRelativeTo(nimFile, c.config.libpath.string)
 
+proc addDepEdge(c: DepContext; current: Node; depId: int) =
+  ## Record `current -> depId`. While the scanner is inside a `when` guard it
+  ## could not evaluate (`c.speculating > 0`) the edge is *speculative*: it may
+  ## not exist in the real compile at all. An edge seen at least once outside
+  ## such a guard is hard and stays hard.
+  if depId notin current.deps: current.deps.add depId
+  if c.speculating > 0:
+    if depId notin current.specDeps: current.specDeps.add depId
+  else:
+    let i = current.specDeps.find(depId)
+    if i >= 0: current.specDeps.delete i
+
 proc processImport(c: var DepContext; importPath: string; current: Node; origin: string) =
   # `origin` = the file the `import` literally appears in. Crucial for imports
   # inside `include`d files: e.g. `system.nim` includes `system/excpt.nim`, which
@@ -217,6 +240,14 @@ proc processImport(c: var DepContext; importPath: string; current: Node; origin:
   # only after the post-sem `.s.deps` revealed the edge.
   let resolved = resolveImport(c, origin, importPath)
   if resolved.len == 0 or not fileExists(resolved):
+    # The module does not exist on disk. Silently ignoring this is right for the
+    # scanner (the `import` may sit in a dead `when` branch and the real compile
+    # never looks at it), but remember it: `pruneDeadSpeculative` uses it to tell
+    # a module that is merely unused apart from one that cannot compile at all.
+    if c.speculating > 0:
+      if current.missingImport.len == 0: current.missingImport = importPath
+    elif current.missingHardImport.len == 0:
+      current.missingHardImport = importPath
     return
 
   let pair = c.toPair(resolved)
@@ -225,7 +256,7 @@ proc processImport(c: var DepContext; importPath: string; current: Node; origin:
   if existingIdx == -1:
     # New module - create node and process it
     let newNode = Node(files: @[pair], id: c.nodes.len)
-    current.deps.add newNode.id
+    addDepEdge(c, current, newNode.id)
     # Every module depends on system.nim
     if c.systemNodeId >= 0:
       newNode.deps.add c.systemNodeId
@@ -243,8 +274,7 @@ proc processImport(c: var DepContext; importPath: string; current: Node; origin:
     traverseDeps(c, pair, newNode)
   else:
     # Already processed - just add dependency
-    if existingIdx notin current.deps:
-      current.deps.add existingIdx
+    addDepEdge(c, current, existingIdx)
 
 proc skipSubtree(s: var Stream; first: PackedToken) =
   ## Consume tokens until the ParLe at `first` is balanced. Caller has
@@ -533,14 +563,19 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
         # entirely. Otherwise advance past the marker and parse the path.
         t = next(s)
         var live = true
+        var speculative = false
         if t.kind == ParLe and pool.tags[t.tagId] == "when":
           # whenMarkerHolds consumes everything up to and including the
           # closing `)` of the `(when ...)` subtree. Drop the import only when
           # the condition is PROVABLY false; a `cvUnknown` condition (e.g. an
           # `else:` branch guarded by `not <unevaluatable call>`, as in
           # `when tryImport x: ... else: import x`) keeps the dependency so the
-          # static graph never misses a real import.
-          live = whenMarkerHolds(c, s) != cvFalse
+          # static graph never misses a real import — but marks every edge it
+          # creates speculative, so `pruneDeadSpeculative` can still drop a
+          # subtree that provably cannot compile in this configuration.
+          let cond = whenMarkerHolds(c, s)
+          live = cond != cvFalse
+          speculative = cond == cvUnknown
           t = next(s)
         if not live:
           # Drain the rest of this import/include node.
@@ -558,6 +593,7 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
         # that expand to several imports. A plain `import a, b, c` lists several
         # modules as siblings; a `fromimport` has a single path followed by the
         # imported symbol list, which must not be treated as modules.
+        if speculative: inc c.speculating
         if tag == "fromimport" or tag == "importexcept":
           # `from m import syms` / `import m except syms`: the first child is the
           # module path; the rest is the (in/ex)cluded symbol list, which must not
@@ -573,6 +609,7 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
                   processInclude(c, importPath, current, pair.nimFile)
                 else:
                   processImport(c, importPath, current, pair.nimFile)
+        if speculative: dec c.speculating
         # Drain any remaining tokens of this node (e.g. the symbol list of a
         # `fromimport`), up to and including the node's closing ')'.
         var depth = 1
@@ -689,6 +726,122 @@ proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
     return
   readDepsFile(c, pair, current)
 
+proc pruneDeadSpeculative(c: var DepContext) =
+  ## Drop modules that are reachable only through a `when` guard the scanner
+  ## cannot evaluate AND that cannot possibly compile because they import a
+  ## module which does not exist on disk.
+  ##
+  ## The motivating shape is the ordinary `{.strdefine.}` backend switch:
+  ##
+  ##   const figdrawTextBackend* {.strdefine.} = "pixie"
+  ##   when figdrawTextBackend == "harfbuzzy":
+  ##     import ./textrasters/glyphid_raster   # imports `pkg/harfbuzzy`
+  ##
+  ## The value of that const needs sem, so `evalCondCmp` answers `cvUnknown` and
+  ## the conservative rule keeps the import — the right call for an edge, but it
+  ## also gives `glyphid_raster` its own `nim m` rule. The classic compiler never
+  ## looks at that file; IC compiles it, cannot find `pkg/harfbuzzy`, and the
+  ## whole build dies on a package the user never installed because they never
+  ## selected that backend.
+  ##
+  ## Dropping is safe: if the guard *was* live, the importer's own `nim m` fails
+  ## on the missing NIF, records the import in its `.s.deps` sidecar, and the
+  ## discovery fixpoint re-adds the node — this time reporting the honest
+  ## `cannot open file: pkg/harfbuzzy/raw` instead of a cascade of
+  ## `undeclared identifier` noise.
+  let n = c.nodes.len
+  if n == 0: return
+
+  var roots = @[0]
+  if c.systemNodeId >= 0: roots.add c.systemNodeId
+  for i in c.implicitNodeIds: roots.add i
+
+  # Reachability through NON-speculative edges only: these modules are compiled
+  # for certain, so a missing import in them is a genuine user error to report.
+  var hard = newSeq[bool](n)
+  var stack = roots
+  while stack.len > 0:
+    let v = stack.pop()
+    if hard[v]: continue
+    hard[v] = true
+    for d in c.nodes[v].deps:
+      if d notin c.nodes[v].specDeps and not hard[d]: stack.add d
+
+  # A module the real compile DOES reach, naming an import that is not on disk,
+  # is a plain user error — and one nifmake cannot notice on its own: deleting
+  # `effects.nim` moves no mtime, so the importer's `nim m` never re-fires and
+  # `nim ic` happily relinked a stale binary while `nim c` said "cannot open
+  # file". Report it here, where the graph scan is the only thing that looks at
+  # import paths at all.
+  var reported = false
+  for i in 0 ..< n:
+    if hard[i] and c.nodes[i].missingHardImport.len > 0:
+      rawMessage(c.config, errGenerated,
+        c.nodes[i].files[0].nimFile & ": cannot open file: " &
+        c.nodes[i].missingHardImport)
+      reported = true
+  if reported: return
+
+  var dead = newSeq[bool](n)
+  var anyDead = false
+  for i in 0 ..< n:
+    if not hard[i] and c.nodes[i].missingImport.len > 0:
+      dead[i] = true
+      anyDead = true
+  if not anyDead: return
+
+  # Anything left reachable only through a dead node is dead too.
+  var alive = newSeq[bool](n)
+  stack = @[]
+  for r in roots:
+    if not dead[r]: stack.add r
+  while stack.len > 0:
+    let v = stack.pop()
+    if alive[v]: continue
+    alive[v] = true
+    for d in c.nodes[v].deps:
+      if not dead[d] and not alive[d]: stack.add d
+
+  var cascaded = 0
+  for i in 0 ..< n:
+    if not alive[i]:
+      if c.nodes[i].missingImport.len > 0:
+        rawMessage(c.config, hintSuccess,
+          "ic: skipping " & c.nodes[i].files[0].nimFile &
+          " (reached only under an undecidable `when`, and imports " &
+          c.nodes[i].missingImport & ", which is not installed)")
+      else:
+        inc cascaded
+  if cascaded > 0:
+    rawMessage(c.config, hintSuccess,
+      "ic: " & $cascaded & " further module(s) skipped, reachable only through those")
+
+  # Compact `c.nodes`; node ids ARE indices everywhere, so remap them all.
+  var remap = newSeq[int](n)
+  var newNodes: seq[Node] = @[]
+  for i in 0 ..< n:
+    if alive[i]:
+      remap[i] = newNodes.len
+      newNodes.add c.nodes[i]
+    else:
+      remap[i] = -1
+  proc remapped(remap: seq[int]; src: seq[int]): seq[int] =
+    result = @[]
+    for x in src:
+      if remap[x] >= 0 and remap[x] notin result: result.add remap[x]
+  for node in newNodes:
+    node.id = remap[node.id]
+    node.deps = remapped(remap, node.deps)
+    node.specDeps = remapped(remap, node.specDeps)
+  c.nodes = newNodes
+
+  var pm = initTable[string, int]()
+  for name, idx in c.processedModules:
+    if idx >= 0 and idx < n and remap[idx] >= 0: pm[name] = remap[idx]
+  c.processedModules = pm
+  if c.systemNodeId >= 0: c.systemNodeId = remap[c.systemNodeId]
+  c.implicitNodeIds = remapped(remap, c.implicitNodeIds)
+
 proc computeSCCs(c: DepContext): seq[seq[int]] =
   ## Tarjan's strongly-connected-components over the module dependency graph
   ## (`node.deps`). Each returned component is a list of node indices; a module
@@ -798,6 +951,46 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
   # replayed (`conf.icPreparsedConfig`); `commandIc` has already guaranteed it
   # exists, else it bailed.
   result.add "--icPreparsedConfig:" & c.config.icPreparsedConfig
+  # Everything else the user typed on the `nim ic` command line. The children
+  # replay the project's CONFIG FILES (ic_config.cfg.nif), never the driver's
+  # argv, so a switch that exists only there — `--opt:speed`, `--panics:on`,
+  # `--experimental:…`, `--passC:…` — silently did not reach them: `nim ic
+  # --opt:speed` produced a byte-identical debug binary. Forward the switches
+  # verbatim, minus the ones that MUST differ per child (the output/cache paths,
+  # the command itself, and IC's own per-rule switches, which each rule sets).
+  const notForwarded = [
+    "nimcache", "out", "o", "outdir", "usenimcache", "run", "r",
+    "incremental", "ic", "symbolfiles", "genbif",
+    "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
+    "icbackendstage", "icbackendmodule", "ismainmodule",
+    "help", "h", "fullhelp", "version", "v", "advanced"]
+  for a in commandLineParams():
+    if a.len < 2 or a[0] != '-': continue
+    var i = 1
+    if i < a.len and a[i] == '-': inc i
+    var name = ""
+    while i < a.len and a[i] notin {':', '='}:
+      name.add a[i]
+      inc i
+    if normalize(name) notin notForwarded and a notin result:
+      result.add a
+
+proc configSignatureFile(c: DepContext; forwardedArgs: seq[string]): string =
+  ## nifmake decides staleness from file mtimes alone — it never looks at a
+  ## rule's command line. So changing `-d:someDefine`, `--mm:` or `--threads:`
+  ## between two `nim ic` runs re-generated the build file with the new switches
+  ## but re-fired nothing: the user got a silently stale binary built with the
+  ## OLD configuration. Reify the configuration as a FILE and make every rule
+  ## that consumes it an input, so a config change moves an mtime like any edit.
+  ## Written `OnlyIfChanged` so a genuine no-op run stays a no-op.
+  result = getNimcacheDir(c.config).string / "ic_build_args.txt"
+  var content = ""
+  for p in c.config.searchPaths:
+    content.add "--path:" & p.string & "\n"
+  for a in forwardedArgs:
+    content.add a & "\n"
+  if not fileExists(result) or readFile(result) != content:
+    writeFile(result, content)
 
 proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
   ## Frontend build file: the nifler (parse) and `nim m` (sem) rules only. The
@@ -878,6 +1071,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
   # a NIF for each. Only dependencies *outside* the component become build-graph
   # inputs — intra-component edges are produced by this very rule and listing
   # them would reintroduce the cycle nifmake just rejected.
+  let argsFile = configSignatureFile(c, forwardedArgs)
   let sccs = computeSCCs(c)
   var sccOf = newSeq[int](c.nodes.len)
   for sccId, comp in sccs:
@@ -906,6 +1100,10 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
     # Input 0 (the project file passed to `nim m`): the representative's .nim.
     b.withTree "input":
       b.addStrLit repPair.nimFile
+    # The configuration this child is invoked with (see configSignatureFile).
+    b.addTree "input"
+    b.addStrLit argsFile
+    b.endTree()
     # All parsed files of every member (nifler outputs this group consumes).
     for m in members:
       for f in c.nodes[m].files:
@@ -1096,6 +1294,8 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   if prunedStale:
     removeFile(mergeFile)
 
+  let argsFile = configSignatureFile(c, forwardedArgs)
+
   var b = nifbuilder.open(result)
   defer: b.close()
 
@@ -1153,6 +1353,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       b.addStrLit "--icBackendStage:lower"
       b.addStrLit "--icBackendModule:" & node.files[0].modname
     inputStr c.semmedFile(node.files[0])
+    inputStr argsFile
     outputStr tFiles[i]
     b.endTree()
 
@@ -1174,6 +1375,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       b.addStrLit "--icBackendStage:cg"
       b.addStrLit "--icBackendModule:" & node.files[0].modname
     inputStr tFiles[i]
+    inputStr argsFile
     if node.id == 0:
       for j in 0 ..< c.nodes.len:
         if c.nodes[j].id != 0 and live[j]:
@@ -1221,10 +1423,48 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     b.addStrLit "--out:" & exeFile
   for i in 0 ..< c.nodes.len:
     if live[i]: inputStr cFiles[i]
+  inputStr argsFile
   outputStr exeFile
   b.endTree()
 
   b.endTree()  # stmts
+
+proc deriveFromSemDeps(c: var DepContext): bool =
+  ## Fold every already-compiled module's `.s.deps` sidecar (its REAL post-sem
+  ## imports, macro-generated ones included) back into the graph. Returns true
+  ## if anything new was added.
+  ##
+  ## Run BEFORE the first nifmake pass as well as after a failure. The static
+  ## scanner cannot see `parseStmt("import dyn")`, so on the run that first hits
+  ## it the frontend fails, this recovers the node, and the retry succeeds. But
+  ## the graph is rebuilt from scratch on every `nim ic`, so on the NEXT run the
+  ## frontend succeeds on round one — with `dyn` absent from the graph again,
+  ## hence with no nifler/`nim m` rule of its own and no edge into its importer.
+  ## Editing `dyn.nim` then changed nothing at all: the build silently reused the
+  ## `.s.bif` from the run that discovered it. Seeding from the sidecars makes
+  ## the discovery stick across runs.
+  result = false
+  let n0 = c.nodes.len  # snapshot: new nodes are traversed as they're added
+  for ni in 0 ..< n0:
+    for p in readSemDeps(c, c.nodes[ni].files[0]):
+      let pair = c.toPair(p)
+      var idx = c.processedModules.getOrDefault(pair.modname, -1)
+      if idx == -1:
+        if not fileExists(pair.nimFile): continue
+        let newNode = Node(files: @[pair], id: c.nodes.len)
+        if c.systemNodeId >= 0:
+          newNode.deps.add c.systemNodeId
+        if getsImplicitImports(c, pair.nimFile):
+          for impId in c.implicitNodeIds:
+            if impId != newNode.id: newNode.deps.add impId
+        c.processedModules[pair.modname] = newNode.id
+        c.nodes.add newNode
+        idx = newNode.id
+        traverseDeps(c, pair, newNode)
+        result = true
+      if idx != ni and idx notin c.nodes[ni].deps:
+        c.nodes[ni].deps.add idx
+        result = true
 
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
@@ -1323,6 +1563,16 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
 
+    # Modules that only a `when` the scanner cannot decide pulls in, and that
+    # import something not installed, are dead in this configuration; scheduling
+    # them would fail the build over code the classic compiler never reads.
+    pruneDeadSpeculative(c)
+
+    # Re-apply what earlier runs discovered post-sem (macro-generated imports),
+    # so those modules keep their rules on a warm build instead of vanishing from
+    # the graph until the next failure. No-op on a cold cache.
+    discard deriveFromSemDeps(c)
+
     # Discovery via `.s.deps`: imports GENERATED by macros (chronicles builds
     # `import chronicles/textlines` via parseStmt from the chronicles_sinks
     # define) are invisible to the static scanner. Each `nim m` records the
@@ -1393,26 +1643,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       var discovered = false
       inc rounds
       if rounds <= 20:
-        let n0 = c.nodes.len  # snapshot: new nodes are traversed as they're added
-        for ni in 0 ..< n0:
-          for p in readSemDeps(c, c.nodes[ni].files[0]):
-            let pair = c.toPair(p)
-            var idx = c.processedModules.getOrDefault(pair.modname, -1)
-            if idx == -1:
-              let newNode = Node(files: @[pair], id: c.nodes.len)
-              if c.systemNodeId >= 0:
-                newNode.deps.add c.systemNodeId
-              if getsImplicitImports(c, pair.nimFile):
-                for impId in c.implicitNodeIds:
-                  if impId != newNode.id: newNode.deps.add impId
-              c.processedModules[pair.modname] = newNode.id
-              c.nodes.add newNode
-              idx = newNode.id
-              traverseDeps(c, pair, newNode)
-              discovered = true
-            if idx != ni and idx notin c.nodes[ni].deps:
-              c.nodes[ni].deps.add idx
-              discovered = true
+        discovered = deriveFromSemDeps(c)
       if not discovered:
         rawMessage(conf, errGenerated, "nifmake failed with exit code: " & $exitCode)
         break

@@ -1070,6 +1070,10 @@ when not defined(nimKochBootstrap):
                            g.ifaces[fileIdx.int].interf,
                            g.ifaces[fileIdx.int].interfHidden, flags)
     result.module = m
+    # Restore the module symbol's persisted flags (see ast2nif `(modflags)`);
+    # `cgen.genTopLevelStmt` gates the destructor pass on `sfInjectDestructors`.
+    if (result.moduleFlags and ModFlagInjectDestructors) != 0:
+      m.incl sfInjectDestructors
     for (mname, msuffix) in result.reexportedModules:
       let ms = materializeReexportedModule(g, mname, msuffix)
       if ms != nil:

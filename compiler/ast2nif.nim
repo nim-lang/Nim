@@ -1330,6 +1330,29 @@ var sigTag = registerTag("sig")
 # by construction (replaces relying on the `@bk` module-marker bit, which the
 # loader dropped on type USES). Mirrors NIF's `.unusedname` directive.
 var unusedIdTag = registerTag("unusedid")
+# `(modflags <int>)` — the MODULE symbol's backend-relevant flags. Only
+# `sfInjectDestructors` (bit 0) so far: sempass2 sets it on the module sym when
+# the module's TOP-LEVEL statements need the destructor pass, and `cgen.
+# genTopLevelStmt` gates `injectDestructorCalls` on it. `moduleFromNifFile`
+# builds the module PSym from scratch, so without this record the flag was lost
+# and a NIF-loaded module's top-level locals were never destroyed (`block: let
+# h = openHandle()` leaked, silently and only under `nim ic`).
+const ModFlagInjectDestructors* = 1'i32
+var modFlagsTag = registerTag("modflags")
+
+# `(nflags <ident> <symuse>)` — an `nkSym` NODE's own flags. A sym node is
+# normally emitted as a bare NIF `SymUse` token, which has nowhere to put them,
+# so every node flag on a sym use was silently dropped. Two of those flags are
+# the frontend's move/first-write analysis results (`nfFirstWrite`, `nfLastRead`,
+# both listed in `PersistentNodeFlags`) that `injectdestructors` reads in the
+# backend: without them EVERY first assignment to a destructor-bearing local
+# compiled as `=sink` (i.e. `=destroy` on still-zeroed memory, then a copy)
+# instead of a plain construction, and no read was ever recognised as a move.
+# Only wrap when there is something to say, so the common sym use stays a bare
+# token.
+const symNodeFlagsTagName = "nflags"
+var symNodeFlagsTag = registerTag(symNodeFlagsTagName)
+const PersistedSymNodeFlags = PersistentNodeFlags - {nfLazyType, nfHasComment}
 
 proc registerNifAstTags*() =
   ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
@@ -1345,6 +1368,8 @@ proc registerNifAstTags*() =
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
   bindingIdTag = registerTag(bindingIdTagName)
+  modFlagsTag = registerTag("modflags")
+  symNodeFlagsTag = registerTag(symNodeFlagsTagName)
   replayTag = registerTag("replay")
   repConverterTag = registerTag("repconverter")
   repDestroyTag = registerTag("repdestroy")
@@ -1437,7 +1462,14 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
       w.withNode dest, n:
         dest.addIdent n.ident.s
     of nkSym:
-      writeSymNode(w, dest, n, n.sym)
+      let persisted = n.flags * PersistedSymNodeFlags
+      if persisted == {}:
+        writeSymNode(w, dest, n, n.sym)
+      else:
+        dest.addParLe symNodeFlagsTag, trLineInfo(w, n.info)
+        writeFlags(dest, persisted)
+        writeSymNode(w, dest, n, n.sym)
+        dest.addParRi
     of nkCharLit:
       w.withNode dest, n:
         dest.add charToken(n.intVal.char, NoLineInfo)
@@ -2085,7 +2117,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[];
                      resolvedImportDeps: seq[FileIndex] = @[];
                      firstUnusedId: int32 = 0;
-                     expansions: seq[(PSym, TLineInfo)] = @[]) =
+                     expansions: seq[(PSym, TLineInfo)] = @[];
+                     moduleFlags: int32 = 0) =
   var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   var content = newIcBuilder(300)
@@ -2238,6 +2271,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # First child: the backend id seed (see `(unusedid)` / readUnusedId).
   dest.addParLe unusedIdTag, NoLineInfo
   dest.addIntLit firstUnusedId.int64
+  dest.addParRi()
+  # The module symbol's backend-relevant flags (see `(modflags)`).
+  dest.addParLe modFlagsTag, NoLineInfo
+  dest.addIntLit moduleFlags.int64
   dest.addParRi()
   addAll(dest, w.deps)
   # do not write the (stmts .. ) wrapper:
@@ -3259,6 +3296,13 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             loadSymFromCursor(c, sym, n, thisModule, localSyms)
           result = newSymNode(sym, info)
           result.flags.incl nfLazyType
+      elif tagIs(n, symNodeFlagsTagName):
+        # `(nflags <ident> <symuse>)`: node flags for the wrapped sym use.
+        n.into:
+          let flags = loadAtom(TNodeFlags, n)
+          result = loadNode(c, n, thisModule, localSyms)
+          if result != nil: result.flags = result.flags + flags
+          while n.hasMore: skip n
       elif tagIs(n, typeDefTagName):
         raiseAssert "`td` tag in invalid context"
       elif tagIs(n, "none"):
@@ -3592,6 +3636,8 @@ type
       ## `typeInstCache` from them so a consumer reuses the baked instance
       ## (e.g. a `mixin`/`compiles()`-dependent array bound) instead of
       ## re-instantiating it with a different bound in its own scope.
+    moduleFlags*: int32 ## the module SYMBOL's backend-relevant flags; see
+                        ## `(modflags)` / `ModFlagInjectDestructors`.
     includes*: seq[string] # resolved full paths of files this module `include`s;
                            # replayed into `inclToMod` by modulegraphs.nim so that
                            # nimsuggest can map a query in an include file back to
@@ -3737,6 +3783,12 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         # backend id seed — consumed eagerly by `moduleId`/`readUnusedId`; just
         # skip past it here so the rest of the header still loads.
         skip cur
+      elif tagIs(cur, "modflags"):
+        cur.into:
+          if cur.hasMore and cur.kind == IntLit:
+            result.moduleFlags = int32 intVal(cur)
+            skip cur
+          while cur.hasMore: skip cur
       elif tagIs(cur, "repconverter"): loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
       elif tagIs(cur, "repdestroy"):   loadLogOp(c, result.logOps, cur, HookEntry, attachedDestructor, module)
       elif tagIs(cur, "repwasmoved"):  loadLogOp(c, result.logOps, cur, HookEntry, attachedWasMoved, module)
@@ -4009,6 +4061,10 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
                     else: 0'i32
   dest.addParLe unusedIdTag, NoLineInfo
   dest.addIntLit loweredSeed.int64
+  dest.addParRi()
+  # Carry the module flags forward: `cg` loads THIS `.t.bif`, not the `.s.bif`.
+  dest.addParLe modFlagsTag, NoLineInfo
+  dest.addIntLit precomp.moduleFlags.int64
   dest.addParRi()
   addAll(dest, w.deps)
   addStmtsBody(dest, content)
