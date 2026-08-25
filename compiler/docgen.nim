@@ -1852,8 +1852,13 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string,
-                   preferMarkdown: bool, hasToc = false) =
-  var filen = addFileExt(filename, "txt")
+                   preferMarkdown: bool, hasToc=false, addTxtExt=true) =
+  let filen =
+    if addTxtExt:
+      filename
+    else:
+      addFileExt(filename, "txt")
+
   var d = newDocumentor(filen, cache, conf, outExt, standaloneDoc = true,
                         preferMarkdown = preferMarkdown, hasToc = hasToc)
   try:
@@ -1979,19 +1984,9 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
                     line=LineRstInit, column=ColRstInit, conf, d.sharedState)
 
   proc generatePage(filename: AbsoluteFile) =
-    conf.outFile = RelativeFile"" # resetting to force the path generation for each page
-    var d = newDocumentor(filename, cache, conf, HtmlExt,
-                          standaloneDoc = true, preferMarkdown = true, hasToc = true)
-    try:
-      let rst = parseRst(readFile(filename.string),
-                        line=LineRstInit, column=ColRstInit,
-                        conf, d.sharedState)
-      d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
-      finishGenerateDoc(d)
-      writeOutput(d)
-      generateIndex(d)
-    except ERecoverableError:
-      discard "already reported the error"
+    conf.outFile = RelativeFile"" # resetting to force path re-generation for each page
+    commandRstAux(cache, conf, filename, HtmlExt,
+                  preferMarkdown = true, hasToc = true, addTxtExt = false)
 
   proc generatePagesFromLinks(node: PRstNode) =
     if node.kind == rnHyperlink:
