@@ -269,6 +269,16 @@ const
     ## in a Nim identifier), so a field use can never be misrouted to a same-named
     ## local var/param. Mirrors the `` `t `` (`typeToNifSym`) and `PkgMarker`
     ## namespaces.
+  CursorFieldMarker = "`fc"
+    ## `FieldMarker` for a field declared `{.cursor.}`. A field USE serializes as
+    ## a bare `SymUse` — there is nowhere to put symbol flags — and the use-site
+    ## stub `loadFieldStub` mints carries none, so `trees.isCursor` (which reads
+    ## `sfCursor` off the field sym of an `nkDotExpr`) said "not a cursor" for
+    ## every loaded field. `lists.DoublyLinkedNode.prev` then became a COUNTED
+    ## reference: every node held its predecessor alive, no refcount ever hit
+    ## zero, and a doubly linked list leaked its whole contents. Both the reclist
+    ## def and every use derive their name from the same `PSym`, so marking the
+    ## name keeps them in lockstep.
   PkgMarker = "`pkg"
     ## Appended to the ident of `skPackage` symbols in NIF names. A package sym
     ## has no module of its own: it is written once into every module NIF that
@@ -290,7 +300,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # agree by construction; the loader recovers `name.s` and `mangleField` produces
     # the matching struct member name regardless of which module references it.
     result = sym.name.s
-    result.add FieldMarker
+    result.add (if sfCursor in sym.flagsImpl: CursorFieldMarker else: FieldMarker)
     result.add '.'
     # Use the field's POSITION as the local name's numeric component: it is unique
     # within the owning type (so the local name is unambiguous there) AND it is what
@@ -382,11 +392,20 @@ proc parseSymName*(s: string): ParsedSymName =
     dec i
   return ParsedSymName(name: s, module: "")
 
+proc isFieldMarked(rawName: string): bool {.inline.} =
+  rawName.endsWith(FieldMarker) or rawName.endsWith(CursorFieldMarker)
+
+proc stripFieldMarker(rawName: string): string {.inline.} =
+  if rawName.endsWith(CursorFieldMarker):
+    rawName[0 ..< rawName.len - CursorFieldMarker.len]
+  else:
+    rawName[0 ..< rawName.len - FieldMarker.len]
+
 proc isFieldNifName(name: string): bool {.inline.} =
   ## True for an object field's local NIF name `<ident>`f.<disamb>` (see
   ## `FieldMarker`): no module suffix, marker on the ident.
   let sn = parseSymName(name)
-  sn.module.len == 0 and sn.name.endsWith(FieldMarker)
+  sn.module.len == 0 and isFieldMarked(sn.name)
 
 proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
   ## The user-visible name of a symbol stub must NOT keep NIF-only name
@@ -397,11 +416,11 @@ proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
   ## the marked NIF name for the index lookup.
   if rawName.endsWith(PkgMarker):
     (skPackage, cache.getIdent(rawName[0 ..< rawName.len - PkgMarker.len]))
-  elif rawName.endsWith(FieldMarker):
+  elif isFieldMarked(rawName):
     # Object field (local NIF symbol, see `FieldMarker`): strip the marker so the
     # backend mangles the clean field name, and record the kind so a use-site stub
     # is a real `skField` (cgen branches on it for `obj.field` access).
-    (skField, cache.getIdent(rawName[0 ..< rawName.len - FieldMarker.len]))
+    (skField, cache.getIdent(stripFieldMarker(rawName)))
   else:
     (skStub, cache.getIdent(rawName))
 
@@ -2853,6 +2872,9 @@ proc loadFieldStub(c: var DecodeContext; symAsStr: string; thisModule: string;
   result = PSym(itemId: c.nextSymId(module, isBk = false), kindImpl: stubKind,
                 name: stubName, disamb: sn.count.int32, state: Complete)
   result.positionImpl = sn.count.int32
+  # `{.cursor.}` rides in the marker (see `CursorFieldMarker`) because the move
+  # optimizer reads it straight off the use site (`trees.isCursor`).
+  if sn.name.endsWith(CursorFieldMarker): result.flagsImpl.incl sfCursor
   if typ != nil: result.typImpl = typ
 
 proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
@@ -2865,7 +2887,7 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
     result = localSyms.getOrDefault(symAsStr)
     if result != nil:
       return result
-    elif sn.name.endsWith(FieldMarker):
+    elif isFieldMarked(sn.name):
       # A cross-context object-field reference reaching a non-dotExpr slot (e.g. a
       # `{.guard.}` field, an owner): stub it like any other field use.
       return c.loadFieldStub(symAsStr, thisModule, localSyms)
@@ -3502,13 +3524,23 @@ proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
   ## symbol can register new modules and invalidate the iterator), so the caller
   ## forces full load (`.kind`, `.ast`) and filters AFTER this returns, with the
   ## index back in place.
+  ##
+  ## Ordered by the entry's OFFSET, i.e. the order the writer emitted them, which
+  ## is source order. A `Table` iteration is hash order — arbitrary, and not even
+  ## stable between two compilers — so the `lower` stage transformed a module's
+  ## routines in a random order. That is visible (`--expandArc` diagnostics came
+  ## out shuffled) and it makes the backend's minted ids depend on the hash seed.
   result = @[]
   if not c.mods.hasKey(module): return
   var indexTab = move c.mods[module].index
   let thisModule = c.mods[module].suffix
+  var entries: seq[(int, string)] = @[]
   for nifName, entry in indexTab:
     if nifName.startsWith("`t"): continue  # types are not routines
-    let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
+    entries.add (entry.offset, nifName)
+  sort entries
+  for (_, nifName) in entries:
+    let sym = loadSymFromIndexEntry(c, module, nifName, indexTab[nifName], thisModule)
     if sym != nil: result.add sym
   c.mods[module].index = move indexTab
 
@@ -3902,6 +3934,23 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
           result.topLevel.sons.add stmtNode
       else:
         cont = false
+
+proc registerModuleSelfSym*(c: var DecodeContext; suffix: string; m: PSym) =
+  ## Bind the module's NIF name to the ONE module symbol the graph registered.
+  ##
+  ## A module's own symbol is the owner of every top-level symbol, so the writer
+  ## emits it as a real `(sd)` with an index entry (`mymod.0.<suffix>`). Without
+  ## this binding the loader mints a SECOND `skModule` PSym for it the first time
+  ## some symbol's owner slot is resolved — and `sym.owner == owner` is an
+  ## IDENTITY test in `aliasanalysis.isAnalysableFieldAccess`, so every
+  ## module-level location looked un-analysable to the move optimizer: a
+  ## top-level `let (a, b) = f()` copied instead of moved, which is a hard error
+  ## for a type with a disabled `=copy`.
+  ##
+  ## Only the backend (`nim nifc`) does this — see the call site.
+  let key = m.name.s & ".0." & suffix
+  if not c.syms.hasKey(key):
+    c.syms[key] = (m, NifIndexEntry())
 
 proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =

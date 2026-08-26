@@ -136,6 +136,10 @@ type
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
+    missingCompilerProcs*: HashSet[string]
+                                  # `nim nifc` only: compilerproc names no
+                                  # loaded module defines, so the whole-program
+                                  # index scan in `loadCompilerProc` runs once
     exposed*: TStrTable
     packageTypes*: TStrTable
     emptyNode*: PNode
@@ -165,6 +169,11 @@ type
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     globalDestructors*: seq[PNode]
+    icModuleDtors*: seq[string]   # per-module backend: the C names of the
+                                  # other modules' global-destructor procs
+                                  # (`genIcModuleDestroyGlobals`), already in
+                                  # call order; only the main module's `cg`
+                                  # fills this, from the `.c.nif` meta heads
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
@@ -638,6 +647,29 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
             strTableAdd(g.compilerprocs, result)
             return result
 
+        # `nim nifc`: a module loaded from a NIF is named by its mangled suffix
+        # (`thrkxstl4`), not by its source name, and its file index resolves to
+        # that suffix too — so the `"threadpool"` match below can never fire and
+        # `spawn`, expanded at codegen time, died on `system module needs:
+        # nimArgsPassingDone`. The backend loads the WHOLE program before
+        # codegen starts, so just consult every loaded module's index; a miss is
+        # final for the rest of the process (nothing more gets loaded) and is
+        # remembered, because `getCompilerProc` is also used as a mere presence
+        # probe and would otherwise rescan every index on every call.
+        if g.config.cmd == cmdNifC:
+          if name in g.missingCompilerProcs: return nil
+          for moduleIdx in 0..<g.ifaces.len:
+            let module = g.ifaces[moduleIdx].module
+            if module == nil or module.position.FileIndex == systemFileIdx: continue
+            if not fileExists(toNifFilename(g.config, module.position.FileIndex)):
+              continue
+            result = tryResolveCompilerProc(ast.program, name, module.position.FileIndex)
+            if result != nil:
+              strTableAdd(g.compilerprocs, result)
+              return result
+          g.missingCompilerProcs.incl name
+          return nil
+
         # Try threadpool module (some compilerprocs like FlowVar are there)
         # Find threadpool module by searching loaded modules
         for moduleIdx in 0..<g.ifaces.len:
@@ -1065,6 +1097,15 @@ when not defined(nimKochBootstrap):
     setOwner(m, getPackage(g.config, g.cache, fileIdx))
     # Register module in graph
     registerModule(g, m)
+    # ... and, in the BACKEND, bind its NIF name to THIS symbol before anything
+    # in the file is decoded, so the loader never mints a second `skModule` for
+    # it (see `registerModuleSelfSym`). Backend-only: under `nim m` a module is
+    # loaded for its INTERFACE, and re-pointing the owner slot of every loaded
+    # symbol at the freshly built module sym changes what sem sees for an
+    # imported routine — `times.toDateTimeByWeek` then lost its inferred
+    # `raises` and the importer failed with "can raise an unlisted exception".
+    if g.config.cmd == cmdNifC:
+      registerModuleSelfSym(ast.program, cachedModuleSuffix(g.config, fileIdx), m)
 
     result = loadNifModule(ast.program, fileIdx,
                            g.ifaces[fileIdx.int].interf,

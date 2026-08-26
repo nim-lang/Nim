@@ -464,3 +464,10 @@ The warm number is the developer loop and it is 3.2x faster than the classic
 backend; the cold number is paid once per configuration and then cached on disk.
 The disk cost is real and worth knowing: ~3.4 GB of nimcache for that one
 category.
+
+One property of an incremental compiler is worth spelling out because it looks
+like a test bug: **a cached stage emits no diagnostics**. `--expandArc` output, a
+hint, a warning — all of it is produced by the process that actually runs, so a
+build that reuses every artifact prints nothing. Tests that check `nimout` (and
+anything you are debugging by eye) therefore need a cold cache; running the same
+test twice in a row makes the second run's `nimout` empty.

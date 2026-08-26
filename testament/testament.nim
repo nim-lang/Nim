@@ -545,21 +545,28 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
     result = r.finishTestRetryable(test, target, extraOptions, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
-proc generatedFile(test: TTest, target: TTarget): string =
+proc generatedFile(test: TTest, target: TTarget, extraOptions: string): string =
   if target == targetJS:
     result = test.name.changeFileExt("js")
   else:
     let (_, name, _) = test.name.splitFile
     let ext = targetToExt[target]
-    result = nimcacheDir(test.name, test.options, target) / "@m" & name.changeFileExt(ext)
+    # `extraOptions` must match what `testSpecWithNimcache` passed to the
+    # compiler — the matrix entry is part of the nimcache key, so leaving it out
+    # here looks for the `.c` of a DIFFERENT variant's cache (which does not
+    # exist) and every `ccodeCheck` test with a `matrix:` failed as
+    # `reCodeNotFound`.
+    result = nimcacheDir(test.name, test.options, target, extraOptions) /
+             "@m" & name.changeFileExt(ext)
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
 
-proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var string,
+proc codegenCheck(test: TTest, target: TTarget, extraOptions: string,
+                  spec: TSpec, expectedMsg: var string,
                   given: var TSpec) =
   try:
-    let genFile = generatedFile(test, target)
+    let genFile = generatedFile(test, target, extraOptions)
     let contents = readFile(genFile)
     for check in spec.ccodeCheck:
       if check.len > 0 and check[0] == '\\':
@@ -587,7 +594,7 @@ proc compilerOutputTests(test: TTest, target: TTarget, extraOptions: string,
   var givenmsg: string = ""
   if given.err == reSuccess:
     if expected.needsCodegenCheck:
-      codegenCheck(test, target, expected, expectedmsg, given)
+      codegenCheck(test, target, extraOptions, expected, expectedmsg, given)
       givenmsg = given.msg
     if not nimoutCheck(expected, given) or
        not checkForInlineErrors(expected, given):

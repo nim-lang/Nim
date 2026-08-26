@@ -635,6 +635,14 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # lifted hooks via moduleFromNifFile's registerLoadedHooks. Nothing to apply.
   generateCodeForModule(g, target)
   let bl = BModuleList(g.backend)
+  if sfMainModule notin target.module.flags:
+    # This module's top-level `var`s with a `=destroy` registered their teardown
+    # in `graph.globalDestructors` during `genTopLevelStmt` above. Main's `cg` is
+    # a different process and never sees them, so emit them as this TU's own
+    # exported proc and announce the name in the meta head.
+    let tbm = bl.mods[target.module.position]
+    if tbm != nil:
+      tbm.icGlobalDtorName = genIcModuleDestroyGlobals(g, tbm)
   # The main module also owns the whole-program method dispatchers + NimMain.
   if sfMainModule in target.module.flags:
     emitMethodDispatchers(g)
@@ -695,6 +703,13 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     for m in ordered:
       let heads = readCnifHeads(getCFile(m).string & ".nif")
       registerReusedModuleToMain(bl, m, heads.initRequired, heads.datInitRequired)
+      if heads.globalDtor.len > 0: g.icModuleDtors.add heads.globalDtor
+    # `ordered` is dependency (post-order) init order; teardown runs in reverse,
+    # so an importer's globals are destroyed before the ones it may still point
+    # at. This mirrors whole-program cgen, which walks its single accumulated
+    # `globalDestructors` list backwards. Main's own destructors come first and
+    # are added by `finalCodegenActions` itself.
+    reverse g.icModuleDtors
   let tb = bl.mods[target.module.position]
   if tb != nil:
     finishModule(g, tb)

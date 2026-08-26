@@ -2611,6 +2611,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
                       m.icDataDefs,
                       semmedNif = toNifFilename(m.config, FileIndex m.module.position),
                       moduleBase = getSomeNameForModule(m),
+                      globalDtor = m.icGlobalDtorName,
                       implDeps = implDeps)
     m.g.graph.icCnifFiles.add artifact
   # NB: under cmdNifC the returned text still carries the cnif marks; the
@@ -2855,6 +2856,42 @@ proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; 
   theProc[bodyPos] = body
   result.ast = theProc
 
+proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
+  ## Per-module backend (`cg` stage), non-main module: wrap this module's
+  ## accumulated top-level global destructors in a nullary exported proc and
+  ## return its C name ("" when there are none).
+  ##
+  ## `graph.globalDestructors` is filled while a module's own `cg` process
+  ## injects destructors into its top level, but the teardown code is emitted
+  ## by the MAIN module's `cg` — a different process, whose `graph` only ever
+  ## sees its own entries. So each module emits its own teardown here and
+  ## records the name in its `.c.nif` meta head; the main module's `cg` reads
+  ## the heads (like it already does for init/datInit) and calls them.
+  result = ""
+  if graph.globalDestructors.len == 0: return
+  var body = newNodeI(nkStmtList, m.module.info)
+  for i in countdown(high(graph.globalDestructors), 0):
+    body.add graph.globalDestructors[i]
+  body.flags.incl nfTransf # should not be further transformed
+  graph.globalDestructors.setLen 0
+
+  result = m.config.nimMainPrefix & "NimDestroyGlobals__" & $getSomeNameForModule(m)
+  let procname = getIdent(graph.cache, result)
+  var dtor = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
+  dtor.typ = newProcType(m.module.info, m.idgen, dtor)
+  dtor.typ.callConv = ccNimCall
+  backendEnsureMutable dtor
+  incl dtor.flagsImpl, sfExportc # a root for the merge stage's DCE: nothing
+                                 # inside this TU calls it, only main does
+  dtor.locImpl.snippet = result
+
+  let theProc = newNodeI(nkProcDef, m.module.info, bodyPos+1)
+  for i in 0..<theProc.len: theProc[i] = newNodeI(nkEmpty, m.module.info)
+  theProc[namePos] = newSymNode(dtor)
+  theProc[bodyPos] = body
+  dtor.ast = theProc
+  genProcLvl3(m, dtor)
+
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
@@ -2881,6 +2918,22 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   if n != nil:
     m.initProc.options = initProcOptions(m)
     genProcBody(m.initProc, n)
+
+  if graph.icModuleDtors.len > 0 and sfMainModule in m.module.flags and
+      {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
+    # Per-module backend: the other modules' top-level global destructors were
+    # emitted into their own TUs (`genIcModuleDestroyGlobals`); call them from
+    # the end of the main module's init proc — which IS the program body — right
+    # after main's own destructors, in the order `generateCgStage` computed
+    # (reverse dependency order, mirroring whole-program cgen's single reversed
+    # `globalDestructors` list). The lib/noMain flavour — where the whole-program
+    # backend collects the destructors into an exported `NimDestroyGlobals`
+    # instead — is not reachable: `nim ic` only builds executables.
+    for dn in graph.icModuleDtors:
+      m.g.mainModProcs.addDeclWithVisibility(Private):
+        m.g.mainModProcs.addProcHeader(ccNimCall, dn, CVoid, cProcParams())
+        m.g.mainModProcs.finishProcHeaderAsProto()
+      m.initProc.s(cpsStmts).addCallStmt(markCName(dn))
 
   if m.hcrOn:
     # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
