@@ -166,3 +166,15 @@ type Vector*[T] = object
 # proc `=destroy`*(x: var Vector[int]) = discard # this will remove error
 proc `=destroy`*[T](x: var Vector[T]) = discard
 var a: Vector[int] # Error: unresolved generic parameter
+
+# issue #26132
+
+block:
+  type UnparameterizedGeneric[T] = object
+
+  proc `=destroy`(x: var UnparameterizedGeneric) = discard
+  proc `=wasMoved`(x: var UnparameterizedGeneric) = discard
+  proc `=trace`(x: var UnparameterizedGeneric; env: pointer) = discard
+
+  var x: UnparameterizedGeneric[int]
+  discard x

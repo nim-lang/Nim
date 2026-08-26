@@ -2233,7 +2233,10 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     var obj = t.firstParamType.skipTypes({tyVar})
     while true:
       incl(obj, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
+      # An unparameterized generic type is represented as a composite type class.
+      if obj.kind == tyCompositeTypeClass and obj.base.kind == tyGenericBody:
+        obj = obj.base
+      elif obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
       elif obj.kind == tyGenericInvocation: obj = obj.genericHead
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
