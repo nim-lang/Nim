@@ -201,32 +201,31 @@ proc prepareTestCmd(cmdTemplate, filename, options, nimcache: string,
   var options = target.defaultOptions & ' ' & options
   if nimcache.len > 0: options.add(" --nimCache:$#" % nimcache.quoteShell)
   options.add ' ' & extraOptions
-  # `--ic` swaps the C target's command; every other target is left alone (the
-  # incremental compiler has a C backend only).
-  let targetCmd =
-    if useIc and target == targetC: "ic" else: targetToCmd[target]
   # we avoid using `parseCmdLine` which is buggy, refs bug #14343
-  result = cmdTemplate % ["target", targetCmd,
+  result = cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir(), "nim", compilerPrefix]
-  if useIc and target == targetC:
-    # Roughly half the corpus overrides the command wholesale (`cmd: "nim c
-    # --gc:arc $file"`), which neither goes through `$target` nor picks up
-    # `$options` — so those tests would silently keep using the classic backend
-    # and share one nimcache. Rewrite the compile verb and give them a private
-    # cache, which is what makes them incremental at all.
-    let prefix = compilerPrefix & " c "
-    if result.startsWith(prefix):
-      result = compilerPrefix & " ic " & result[prefix.len .. ^1]
+  if useIc and target in {targetC, targetCpp}:
+    # `--ic:on` turns the ordinary compile command into the IC driver, so the
+    # verb is left alone: roughly half the corpus overrides the command wholesale
+    # (`cmd: "nim c --gc:arc $file"`), which neither goes through `$target` nor
+    # picks up `$options`, and such a test now simply gains the switch. Each also
+    # gets a private nimcache, which is what makes it incremental at all.
+    #
+    # Switches must land BEFORE the project file: anything after it is swallowed
+    # into `config.arguments`, and a non-empty `arguments` without `--run` is a
+    # hard error ("arguments can only be given if the '--run' option is
+    # selected").
+    var switches = "--ic:on "
     if nimcache.len > 0 and "--nimCache:" notin result and "--nimcache:" notin result:
-      # Must land BEFORE the project file: anything after it is swallowed into
-      # `config.arguments`, and a non-empty `arguments` without `--run` is a hard
-      # error ("arguments can only be given if the '--run' option is selected").
-      let fileArg = filename.quoteShell
-      let at = result.find(fileArg)
-      let switch = "--nimCache:" & nimcache.quoteShell & " "
-      if at >= 0: result = result[0 ..< at] & switch & result[at .. ^1]
-      else: result.add " " & switch
+      switches.add "--nimCache:" & nimcache.quoteShell & " "
+    # `rfind`, not `find`: the private nimcache path embeds the test's file name
+    # (`nimcache/tests/destructor/tmove.nim_<hash>`), so the FIRST occurrence is
+    # inside a switch's value. The project file is the last one.
+    let fileArg = filename.quoteShell
+    let at = result.rfind(fileArg)
+    if at >= 0: result = result[0 ..< at] & switches & result[at .. ^1]
+    else: result.add " " & switches
 
 proc icWarmupCache(cmdTemplate, filename, options: string, target: TTarget,
                    extraOptions: string): string =
@@ -280,7 +279,8 @@ proc prefillIcCache(warmup, nimcache: string) =
   if warmup.len == 0 or not dirExists(warmup): return
   if dirExists(nimcache): return          # the test already has its own cache
   const wanted = [".p.nif", ".p.deps.nif", ".deps.nif", ".s.bif", ".iface.bif",
-                  ".impl.bif", ".edges.bif", ".s.deps.bif", ".t.bif", ".c.nif"]
+                  ".impl.bif", ".edges.bif", ".s.deps.bif", ".t.bif",
+                  ".c.nif", ".cpp.nif"]
   try:
     createDir(nimcache)
     for path in walkFiles(warmup / "*"):
@@ -299,7 +299,7 @@ proc prefillIcCache(warmup, nimcache: string) =
 
 proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
                      target: TTarget, extraOptions = ""): TSpec =
-  if useIc and target == targetC and nimcache.len > 0 and not buildingIcWarmup:
+  if useIc and target in {targetC, targetCpp} and nimcache.len > 0 and not buildingIcWarmup:
     prefillIcCache(icWarmupCache(cmdTemplate, filename, options, target, extraOptions),
                    nimcache)
   result = TSpec(cmd: prepareTestCmd(cmdTemplate, filename, options, nimcache, target,

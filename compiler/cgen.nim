@@ -1635,8 +1635,17 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # `extern`/`rtl` pragma at sem time), so its uses are invisible to the
       # artifact's liveness walk — conservatively keep the definition.
       defFlags.add 'x'
-    m.s[cfsProcs].add(cnifDefDirective(stripCnifMarks(prc.loc.snippet), defFlags,
-                                       icNifName(m, prc)))
+    # A C++ member's `loc.snippet` is a CALL PATTERN (`#->salute(@)`), not a
+    # linker name — and every member of that name, in every class, mints the
+    # same one. Ownership is assigned per name, so `Loo::salute` and `Foo::salute`
+    # collided: the merge stage handed both to one artifact and the other TU's
+    # definition was dropped (undefined vtable at link). Key member definitions by
+    # their NIF name instead, which is unique by construction. Dots cannot occur
+    # in a mangled C name, so the two namespaces stay disjoint.
+    let defName =
+      if sfCppMember * prc.flags != {}: icNifName(m, prc)
+      else: stripCnifMarks(prc.loc.snippet)
+    m.s[cfsProcs].add(cnifDefDirective(defName, defFlags, icNifName(m, prc)))
     m.s[cfsProcs].add(extract(generatedProc))
     m.s[cfsProcs].add(cnifEndDefs())
   else:
@@ -1661,7 +1670,20 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.flags or sfCppMember * sym.flags != {}: return
+  if lfNoDecl in sym.loc.flags: return
+  if sfCppMember * sym.flags != {}:
+    # A C++ member is declared INSIDE its class, never as a free prototype — but
+    # this TU still needs its CALL-SITE name (`x->salute(@)`), and only
+    # `genMemberProcHeader` derives that (from the pragma's declaration pattern).
+    # Whole-program cgen got it for free: the module defining the member was code
+    # generated in the same process, ahead of any caller. The per-module backend
+    # emits that body in ANOTHER process, so the caller was left with the mangled
+    # Nim name `fillBackendName` minted and C++ rejected
+    # `loo->salute_u0__vireouyks1()` ("struct Loo has no member named ...").
+    if m.compileToCpp:
+      var scratch = newBuilder("")
+      genMemberProcHeader(m, sym, scratch, false, true)
+    return
   if lfDynamicLib in sym.loc.flags:
     if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
       # Under IC per-module cg every demander emits the dynlib proc's DEFINITION
@@ -2711,7 +2733,7 @@ proc getCFile*(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
       elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
-      else: ".nim.c"
+      else: icCFileExt(m.config)
   result = changeFileExt(completeCfilePath(m.config, mangleModuleName(m.config, m.cfilename).AbsoluteFile), ext)
 
 when false:

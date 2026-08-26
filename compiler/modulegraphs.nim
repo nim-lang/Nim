@@ -490,6 +490,49 @@ proc logMethodDef*(g: ModuleGraph; s: PSym) =
     g.opsLog.add LogEntry(kind: MethodEntry, module: s.itemId.module.int,
                           key: "", sym: s)
 
+proc logCppMember*(g: ModuleGraph; s: PSym) =
+  ## Log a C++ `{.member.}`/`{.virtual.}`/`{.constructor.}` registration (and the
+  ## `importcpp` default-initializer flavour) so the NIF backend can rebuild
+  ## `memberProcsPerType`/`initializersPerType`, which live only in the sem
+  ## process. Without them the per-module backend emitted the struct WITHOUT its
+  ## in-class member declarations and the out-of-class definitions did not match
+  ## ("no declaration matches 'void Doo::memberProc()'").
+  ##
+  ## No type key: `replayCppMember` re-derives the type from the routine's
+  ## signature exactly as `semCppMember` does, so nothing has to survive the
+  ## round trip except the routine itself.
+  if g.config.cmd in {cmdNifC, cmdM}:
+    g.opsLog.add LogEntry(kind: CppMemberEntry, module: s.itemId.module.int,
+                          key: "", sym: s)
+
+proc replayCppMember*(g: ModuleGraph; s: PSym) =
+  ## Inverse of `logCppMember`, mirroring `semstmts.semCppMember`'s derivation.
+  if s == nil or s.typ == nil: return
+  if sfImportc notin s.flags:
+    var typ = if sfConstructor in s.flags: s.typ.returnType else: s.typ.firstParamType
+    if typ != nil and typ.kind == tyPtr and sfConstructor notin s.flags:
+      typ = typ.elementType
+    if typ != nil and typ.kind == tyObject:
+      let procs = addr g.memberProcsPerType.mgetOrPut(typ.bindingId, @[])
+      for prc in procs[]:
+        if prc == s: return
+      procs[].add s
+  else:
+    let typ = s.typ.returnType
+    if typ != nil and typ.kind == tyObject and
+        typ.bindingId notin g.initializersPerType and s.typ.n != nil:
+      # The default values sem read off the `nkIdentDefs` live on the param syms.
+      var call = newTree(nkCall, newSymNode(s))
+      var isInitializer = s.typ.n.len > 1
+      for i in 1 ..< s.typ.n.len:
+        let p = s.typ.n[i]
+        if p.kind != nkSym or p.sym.ast == nil or p.sym.ast.kind == nkEmpty:
+          isInitializer = false
+          break
+        call.add p.sym.ast
+      if isInitializer:
+        g.initializersPerType[typ.bindingId] = call
+
 proc registerLoadedMethod*(g: ModuleGraph; m: PSym) =
   ## Rebuild the dispatch buckets from a serialized method registration.
   ## Buckets group the methods sharing a dispatcher; the dispatcher's BODY
@@ -972,6 +1015,8 @@ when not defined(nimKochBootstrap):
           g.loadedOps[x.op][x.key] = x.sym
       of EnumToStrEntry:
         g.loadedEnumToStringProcs[x.key] = x.sym
+      of CppMemberEntry:
+        replayCppMember(g, x.sym)
       of MethodEntry:
         # only `methodDef` registrations (empty key) rebuild dispatch
         # buckets; the `addMethodToGeneric` flavor (typeKey key) announces
@@ -1162,7 +1207,7 @@ when not defined(nimKochBootstrap):
         discard "dispatch buckets already rebuilt by registerLoadedHooks"
       of GenericInstEntry:
         raiseAssert "GenericInstEntry should not be in the NIF index"
-      of HookEntry, EnumToStrEntry:
+      of HookEntry, EnumToStrEntry, CppMemberEntry:
         discard "already done by registerLoadedHooks"
     # Register methods per type from NIF index
     discard "todo"

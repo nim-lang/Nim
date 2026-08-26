@@ -1324,6 +1324,7 @@ var repDeepCopyTag = registerTag("repdeepcopy")
 var repEnumToStrTag = registerTag("repenumtostr")
 var repMethodTag = registerTag("repmethod")
 var repPureEnumTag = registerTag("reppureenum")
+var repCppMemberTag = registerTag("repcppmember")
 #var repClassTag = registerTag("repclass")
 var includeTag = registerTag("include")
 var importTag = registerTag("import")
@@ -1401,6 +1402,7 @@ proc registerNifAstTags*() =
   repEnumToStrTag = registerTag("repenumtostr")
   repMethodTag = registerTag("repmethod")
   repPureEnumTag = registerTag("reppureenum")
+  repCppMemberTag = registerTag("repcppmember")
   includeTag = registerTag("include")
   importTag = registerTag("import")
   implTag = registerTag("implementation")
@@ -1716,6 +1718,11 @@ proc writeOp(w: var Writer; content: var IcBuilder; op: LogEntry) =
     content.addParRi()
   of PureEnumEntry:
     content.addParLe repPureEnumTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
+  of CppMemberEntry:
+    content.addParLe repCppMemberTag, NoLineInfo
     content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
     content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
     content.addParRi()
@@ -3832,6 +3839,7 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
       elif tagIs(cur, "repenumtostr"): loadLogOp(c, result.logOps, cur, EnumToStrEntry, attachedTrace, module)
       elif tagIs(cur, "repmethod"):    loadLogOp(c, result.logOps, cur, MethodEntry, attachedTrace, module)
       elif tagIs(cur, "reppureenum"):  loadLogOp(c, result.logOps, cur, PureEnumEntry, attachedTrace, module)
+      elif tagIs(cur, "repcppmember"): loadLogOp(c, result.logOps, cur, CppMemberEntry, attachedTrace, module)
       elif tagIs(cur, "export"):
         cur.into:
           while cur.hasMore and cur.kind == DotToken: skip cur  # flags / type

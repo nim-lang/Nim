@@ -1092,9 +1092,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
   of "symbolfiles", "incremental", "ic":
-    if switch.normalize == "symbolfiles": deprecatedAlias(switch, "incremental")
+    if pass in {passCmd2, passPP} and switch.normalize == "symbolfiles":
+      deprecatedAlias(switch, "incremental")
       # xxx maybe also ic, since not in help?
-    if pass in {passCmd2, passPP}:
+    # `--ic:on` is read in passCmd1 too: `nim.nim` decides BEFORE config loading
+    # whether this run is an IC driver (`ensureIcConfig` must produce the
+    # precompiled config the driver itself then replays), and passCmd1 is the
+    # only pass that has run by then.
+    if pass in {passCmd1, passCmd2, passPP}:
       case arg.normalize
       of "on": conf.ic = true
       of "legacy": conf.symbolFiles = v2Sf

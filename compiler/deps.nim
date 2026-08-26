@@ -934,6 +934,19 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
   # them — phantom outputs that re-fire the build on every rerun).
   if c.config.selectedGC != gcUnselected:
     result.add "--mm:" & $c.config.selectedGC
+  # The children are invoked as `nim m` / `nim nifc`, so the driver's own command
+  # token (`c`, `cpp`, `ic`) is gone and with it the backend it selected. Name it
+  # explicitly — `nim cpp --ic:on` must not have its stdlib sem'd and its TUs
+  # emitted as C. The exception model rides along for the same reason: `nim cpp`
+  # defaults to `--exceptions:cpp`, which changes both codegen and sem.
+  if c.config.backend != backendInvalid:
+    result.add "--backend:" & $c.config.backend
+  if c.config.exc != excNone:
+    result.add "--exceptions:" & (case c.config.exc
+                                  of excGoto: "goto"
+                                  of excCpp: "cpp"
+                                  of excQuirky: "quirky"
+                                  else: "setjmp")
   # method dispatch semantics must match across the child processes:
   # a child compiled without --multimethods:on builds different dispatch
   # buckets (and rejects calls as ambiguous that multi-dispatch accepts)
@@ -1232,7 +1245,7 @@ proc backendCFile(c: DepContext; node: Node): string =
     if node.id == 0: AbsoluteFile node.files[0].nimFile
     else: AbsoluteFile node.files[0].modname
   result = changeFileExt(completeCfilePath(c.config,
-    mangleModuleName(c.config, cfilename).AbsoluteFile), ".nim.c").string
+    mangleModuleName(c.config, cfilename).AbsoluteFile), icCFileExt(c.config)).string
 
 proc computeLiveBackendNodes(c: DepContext): seq[bool] =
   ## Which nodes the backend must code-generate: the closure reachable from the

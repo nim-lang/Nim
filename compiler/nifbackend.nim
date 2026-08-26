@@ -750,7 +750,7 @@ proc generateMergeStage(g: ModuleGraph) =
       let p = line.strip()
       if p.len > 0: files.add p
   else:
-    for artifact in walkFiles(nimcache / "*.c.nif"):
+    for artifact in walkFiles(nimcache / ("*" & icCFileExt(g.config) & ".nif")):
       files.add artifact
   sort files
   let decision = computeMergeDecision(files)
@@ -790,7 +790,7 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     if targetIsMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
     else: AbsoluteFile g.config.icBackendModule
   let cfile = changeFileExt(completeCfilePath(g.config,
-    mangleModuleName(g.config, cfilename).AbsoluteFile), ".nim.c").string
+    mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
   let artifact = cfile & ".nif"
   if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
@@ -873,7 +873,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     if not decision.broken:
       var liveOwners = initHashSet[string]()
       for cname, owner in decision.owners:
-        if owner.endsWith(".c.nif") and cname in decision.live:
+        if owner.endsWith(icCFileExt(g.config) & ".nif") and cname in decision.live:
           liveOwners.incl owner
       for owner in liveOwners:
         let cbase = owner[0 ..< owner.len - ".nif".len]  # "@m….nim.c.nif" -> ".c"

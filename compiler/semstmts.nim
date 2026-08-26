@@ -2410,6 +2410,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
         localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
       if sameOwners(typ.owner, s.owner) and sameOwners(c.module, s.owner):
         c.graph.memberProcsPerType.mgetOrPut(typ.bindingId, @[]).add s
+        logCppMember(c.graph, s)
       else:
         localError(c.config, n.info,
           pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
@@ -2432,6 +2433,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
           inc j
       if isInitializer:
         c.graph.initializersPerType[typ.bindingId] = initializerCall
+        logCppMember(c.graph, s)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if s.isGenericRoutine:
