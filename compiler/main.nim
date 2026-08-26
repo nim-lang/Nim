@@ -328,7 +328,7 @@ proc mainCommand*(graph: ModuleGraph) =
         commandBuildIndex(conf, $conf.outDir)
   of cmdBook:
     loadConfigs(DocConfig, cache, conf, graph.idgen)
-    conf.setNoteDefaults(warnRstRedefinitionOfLabel, false)
+    conf.setNoteDefaults(warnCannotOpenFile, true)
     commandBook(cache, conf)
     commandBuildIndex(conf, $conf.outDir)
   of cmdRst2html, cmdMd2html:
