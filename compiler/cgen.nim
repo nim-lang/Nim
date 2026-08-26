@@ -955,12 +955,12 @@ proc initLocExpr(p: BProc, e: PNode, flags: TLocFlags = {}): TLoc =
 
 proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
   result = initLoc(locNone, e, OnUnknown)
-  if e.kind in nkCallKinds and (e[0].kind != nkSym or e[0].sym.magic == mNone):
+  if e.kind in nkCallKinds and (e.firstSon.kind != nkSym or e.firstSon.sym.magic == mNone):
     # We cannot check for tfNoSideEffect here because of mutable parameters.
     discard "bug #8202; enforce evaluation order for nested calls for C++ too"
     # We may need to consider that 'f(g())' cannot be rewritten to 'tmp = g(); f(tmp)'
     # if 'tmp' lacks a move/assignment operator.
-    if e[0].kind == nkSym and sfCompileToCpp in e[0].sym.flags:
+    if e.firstSon.kind == nkSym and sfCompileToCpp in e.firstSon.sym.flags:
       result.flags.incl lfSingleUse
   else:
     result.flags.incl lfSingleUse
@@ -1104,7 +1104,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   inc(m.labels, 2)
   if isCall:
     let n = lib.path
-    var a: TLoc = initLocExpr(m.initProc, n[0])
+    var a: TLoc = initLocExpr(m.initProc, n.firstSon)
     let callee = rdLoc(a)
     var params: seq[Snippet] = @[]
     for i in 1..<n.len-1:
@@ -1260,15 +1260,15 @@ proc containsResult(n: PNode): bool =
   of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
     discard
   of nkReturnStmt:
-    for i in 0..<n.len:
-      if containsResult(n[i]): return true
-    result = n.len > 0 and n[0].kind == nkEmpty
+    for ni in n.sons:
+      if containsResult(ni): return true
+    result = n.len > 0 and n.firstSon.kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
   else:
-    for i in 0..<n.len:
-      if containsResult(n[i]): return true
+    for ni in n.sons:
+      if containsResult(ni): return true
 
 proc easyResultAsgn(n: PNode): PNode =
   result = nil
@@ -1278,12 +1278,12 @@ proc easyResultAsgn(n: PNode): PNode =
     while i < n.len and n[i].kind in harmless: inc i
     if i < n.len: result = easyResultAsgn(n[i])
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    if n[0].kind == nkSym and n[0].sym.kind == skResult and not containsResult(n[1]):
+    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult and not containsResult(n[1]):
       incl n.flags, nfPreventCg
       return n[1]
   of nkReturnStmt:
     if n.len > 0:
-      result = easyResultAsgn(n[0])
+      result = easyResultAsgn(n.firstSon)
       if result != nil: incl n.flags, nfPreventCg
   else: discard
 
@@ -1320,7 +1320,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       result = allPathsAsgnResult(p, it)
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    if n[0].kind == nkSym and n[0].sym.kind == skResult:
+    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult:
       if not containsResult(n[1]):
         if allPathsAsgnResult(p, n[1]) == InitRequired:
           result = InitRequired
@@ -1333,19 +1333,19 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       result = allPathsAsgnResult(p, n[1])
   of nkReturnStmt:
     if n.len > 0:
-      if n[0].kind == nkEmpty and result != InitSkippable:
+      if n.firstSon.kind == nkEmpty and result != InitSkippable:
         # This is a bare `return` statement, if `result` was not initialized
         # anywhere else (or if we're not sure about this) let's require it to be
         # initialized. This avoids cases like #9286 where this heuristic lead to
         # wrong code being generated.
         result = InitRequired
-      else: result = allPathsAsgnResult(p, n[0])
+      else: result = allPathsAsgnResult(p, n.firstSon)
   of nkIfStmt, nkIfExpr:
     var exhaustive = false
     result = InitSkippable
     for it in n:
       # Every condition must not use 'result':
-      if it.len == 2 and containsResult(it[0]):
+      if it.len == 2 and containsResult(it.firstSon):
         return InitRequired
       if it.len == 1: exhaustive = true
       allPathsInBranch(it.lastSon)
@@ -1353,9 +1353,9 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # in some way, say Unknown.
     if not exhaustive: result = Unknown
   of nkCaseStmt:
-    if containsResult(n[0]): return InitRequired
+    if containsResult(n.firstSon): return InitRequired
     result = InitSkippable
-    var exhaustive = skipTypes(n[0].typ,
+    var exhaustive = skipTypes(n.firstSon.typ,
         abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring}
     for i in 1..<n.len:
       let it = n[i]
@@ -1365,7 +1365,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   of nkWhileStmt:
     # some dubious code can assign the result in the 'while'
     # condition and that would be fine. Everything else isn't:
-    result = allPathsAsgnResult(p, n[0])
+    result = allPathsAsgnResult(p, n.firstSon)
     if result == Unknown:
       result = allPathsAsgnResult(p, n[1])
       # we cannot assume that the 'while' loop is really executed at least once:
@@ -1389,19 +1389,19 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # assignment this is not good enough! The only pattern we allow for
     # is 'finally: result = x'
     result = InitSkippable
-    allPathsInBranch(n[0])
+    allPathsInBranch(n.firstSon)
     for i in 1..<n.len:
       if n[i].kind == nkFinally:
         result = allPathsAsgnResult(p, n[i].lastSon)
       else:
         allPathsInBranch(n[i].lastSon)
   of nkCallKinds:
-    if canRaiseDisp(p, n[0]) or
-        (n[0].kind == nkSym and sfNoReturn in n[0].sym.flags):
+    if canRaiseDisp(p, n.firstSon) or
+        (n.firstSon.kind == nkSym and sfNoReturn in n.firstSon.sym.flags):
       # requires initializations when encountering unreachable code
       result = InitRequired
-    elif n[0].kind == nkSym and
-        n[0].sym.magic in {mUnaryMinusI..mAbsI, mAddI..mPred} and
+    elif n.firstSon.kind == nkSym and
+        n.firstSon.sym.magic in {mUnaryMinusI..mAbsI, mAddI..mPred} and
           optOverflowCheck in p.config.options:
       # arithmetic operations may raise exceptions
       result = InitRequired
@@ -1854,10 +1854,16 @@ proc genVarPrototype(m: BModule, n: PNode) =
         typ = ptrType(typ)
       if lfDynamicLib in sym.loc.flags:
         typ = ptrType(typ)
-      m.s[cfsVars].addVar(m, sym,
-        name = sym.loc.snippet,
-        typ = typ,
-        visibility = vis)
+      if sfCodegenDecl in sym.flags:
+        m.s[cfsVars].addDeclWithVisibility(vis):
+          m.s[cfsVars].addVar(m, sym,
+            name = sym.loc.snippet,
+            typ = typ)
+      else:
+        m.s[cfsVars].addVar(m, sym,
+          name = sym.loc.snippet,
+          typ = typ,
+          visibility = vis)
       if m.hcrOn:
         m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,
@@ -1894,10 +1900,6 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   if conf.hcrOn: res.add("#define NIM_HOT_CODE_RELOADING\L")
   addNimDefines(res, conf)
   result = extract(res)
-
-proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
-  ## Returns a mangled module name.
-  result = mangleModuleName(conf, filename).mangle
 
 proc getSomeNameForModule*(m: BModule): Rope =
   ## Returns a mangled module name.
@@ -2354,7 +2356,6 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
   assert prc != nil
   fillProcLoc(m, prc.ast[namePos])
 
-  var extname = prefix & sym
   var tmp = mangleDynLibProc(prc)
   backendEnsureMutable prc
   prc.locImpl.snippet = tmp
@@ -2777,9 +2778,7 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
-    if not moduleHasChanged(m.g.graph, m.module):
-      result = false
-    elif not equalsFile(code, cfile.cname):
+    if not equalsFile(code, cfile.cname):
       when false:
         #m.config.symbolFiles == readOnlySf: #isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
@@ -2802,19 +2801,18 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
 proc genModuleCode(m: BModule; cf: var Cfile): string =
   ## First half of `writeModule`: finalizes the module and produces its code
   ## text. Under cmdNifC the text still carries the cnif marks.
-  if moduleHasChanged(m.g.graph, m.module):
-    genInitCode(m)
+  genInitCode(m)
 
-    while m.queue.len > 0:
-      let sym = m.queue.pop()
-      genProcLvl2(m, sym)
+  while m.queue.len > 0:
+    let sym = m.queue.pop()
+    genProcLvl2(m, sym)
 
-    finishTypeDescriptions(m)
-    if sfMainModule in m.module.flags:
-      # generate main file:
-      genMainProc(m)
-      m.s[cfsProcHeaders].add(extract(m.g.mainModProcs))
-      generateThreadVarsSize(m)
+  finishTypeDescriptions(m)
+  if sfMainModule in m.module.flags:
+    # generate main file:
+    genMainProc(m)
+    m.s[cfsProcHeaders].add(extract(m.g.mainModProcs))
+    generateThreadVarsSize(m)
 
   result = genModule(m, cf)
 
@@ -2839,20 +2837,11 @@ proc writeModule(m: BModule) =
     code = stripCnifMarks(code)
   registerModuleCode(m, cf, code)
 
-proc updateCachedModule(m: BModule) =
-  let cfile = getCFile(m)
-  var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                 obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-  if sfMainModule notin m.module.flags:
-    genMainProc(m)
-  cf.flags = {CfileFlag.Cached}
-  addFileToCompile(m.config, cf)
-
 proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"
   let procname = getIdent(graph.cache, prefixedName)
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
-  result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
+  result.typ = newProcType(m.module.info, m.idgen, result)
   result.typ.callConv = ccCDecl
   backendEnsureMutable result
   incl result.flagsImpl, sfExportc
@@ -2885,54 +2874,54 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
       let dtor = generateLibraryDestroyGlobals(graph, m, body, optGenDynLib in m.config.globalOptions)
       genProcLvl3(m, dtor)
   if pipelineutils.skipCodegen(m.config, n): return
-  if moduleHasChanged(graph, m.module):
-    # if the module is cached, we don't regenerate the main proc
-    # nor the dispatchers? But if the dispatchers changed?
-    # XXX emit the dispatchers into its own .c file?
-    if n != nil:
-      m.initProc.options = initProcOptions(m)
-      genProcBody(m.initProc, n)
 
+  # if the module is cached, we don't regenerate the main proc
+  # nor the dispatchers? But if the dispatchers changed?
+  # XXX emit the dispatchers into its own .c file?
+  if n != nil:
+    m.initProc.options = initProcOptions(m)
+    genProcBody(m.initProc, n)
+
+  if m.hcrOn:
+    # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
+    let sym = magicsys.getCompilerProc(m.g.graph, "programResult")
+    # ignore when not available, could be a module imported early in `system`
+    if sym != nil:
+      cgsymImpl m, sym
+    if m.inHcrInitGuard:
+      endBlockWith(m.initProc):
+        finishBranch(m.initProc.s(cpsStmts), m.hcrInitGuard)
+        finishIfStmt(m.initProc.s(cpsStmts), m.hcrInitGuard)
+
+  if sfMainModule in m.module.flags:
     if m.hcrOn:
-      # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
-      let sym = magicsys.getCompilerProc(m.g.graph, "programResult")
-      # ignore when not available, could be a module imported early in `system`
-      if sym != nil:
-        cgsymImpl m, sym
-      if m.inHcrInitGuard:
-        endBlockWith(m.initProc):
-          finishBranch(m.initProc.s(cpsStmts), m.hcrInitGuard)
-          finishIfStmt(m.initProc.s(cpsStmts), m.hcrInitGuard)
+      # pull ("define" since they are inline when HCR is on) these functions in the main file
+      # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
+      # will in turn pass it to the other modules it initializes so they can initialize the
+      # register/get procs so they don't have to have the definitions of these functions as well
+      cgsym(m, "nimLoadLibrary")
+      cgsym(m, "nimLoadLibraryError")
+      cgsym(m, "nimGetProcAddr")
+      cgsym(m, "procAddrError")
+      cgsym(m, "rawWrite")
 
-    if sfMainModule in m.module.flags:
-      if m.hcrOn:
-        # pull ("define" since they are inline when HCR is on) these functions in the main file
-        # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
-        # will in turn pass it to the other modules it initializes so they can initialize the
-        # register/get procs so they don't have to have the definitions of these functions as well
-        cgsym(m, "nimLoadLibrary")
-        cgsym(m, "nimLoadLibraryError")
-        cgsym(m, "nimGetProcAddr")
-        cgsym(m, "procAddrError")
-        cgsym(m, "rawWrite")
+    # raise dependencies on behalf of genMainProc
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc}:
+      cgsym(m, "initStackBottomWith")
+    if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+      cgsym(m, "initThreadVarsEmulation")
 
-      # raise dependencies on behalf of genMainProc
-      if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcAtomicArc, gcOrc, gcYrc}:
-        cgsym(m, "initStackBottomWith")
-      if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
-        cgsym(m, "initThreadVarsEmulation")
-
-      if m.g.forwardedProcs.len == 0:
-        incl m.flags, objHasKidsValid
-      if m.config.cmd == cmdNifC:
-        # nifbackend synthesizes the dispatchers between the module loop
-        # and the finish loop (emitMethodDispatchers): TUs demand-created
-        # by the dispatcher bodies must still reach `modulesClosed`
-        discard
-      elif optMultiMethods in m.g.config.globalOptions or
-          m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc, gcYrc} or
-          vtables notin m.g.config.features:
-        generateIfMethodDispatchers(graph, m.idgen)
+    if m.g.forwardedProcs.len == 0:
+      incl m.flags, objHasKidsValid
+    if m.config.cmd == cmdNifC:
+      # nifbackend synthesizes the dispatchers between the module loop
+      # and the finish loop (emitMethodDispatchers): TUs demand-created
+      # by the dispatcher bodies must still reach `modulesClosed`
+      discard
+    elif optMultiMethods in m.g.config.globalOptions or
+        m.g.config.selectedGC notin {gcArc, gcOrc, gcAtomicArc, gcYrc} or
+        vtables notin m.g.config.features:
+      generateIfMethodDispatchers(graph, m.idgen)
 
 
   let mm = m

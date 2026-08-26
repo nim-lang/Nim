@@ -150,7 +150,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if hashDepth > hashMaxDepth: hashMaxDepth = hashDepth
     if hashCalls >= 500_000_000 and hashCalls <= 500_000_300:
       echo "HASHLOOP n=", hashCalls, " d=", hashDepth, " kind=", t.kind, " id=", t.itemId,
-        " uniq=", t.uniqueId, " sym=", (if t.sym != nil: t.sym.name.s else: "NIL"),
+        " bindingId=", t.bindingId, " sym=", (if t.sym != nil: t.sym.name.s else: "NIL"),
         " state=", t.state, " owner=", (if t.owner != nil: t.owner.name.s else: "NIL")
     elif hashCalls == 500_000_301:
       echo "HASHLOOP maxDepth=", hashMaxDepth

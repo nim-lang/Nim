@@ -874,11 +874,6 @@ proc genBinaryStmtVar(c: PCtx; n: PNode; opc: TOpcode) =
   c.freeTemp(tmp)
   c.freeTemp(dest)
 
-proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
-  let tmp = c.genx(n[1])
-  c.gABC(n, opc, tmp, 0, 0)
-  c.freeTemp(tmp)
-
 proc genVarargsABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   if dest < 0: dest = getTemp(c, n.typ)
   var x = c.getTempRange(n.len-1, slotTempStr)

@@ -148,11 +148,6 @@ proc newGlobals(): PGlobals =
         typeInfoGenerated: initIntSet()
         )
 
-proc initCompRes(): TCompRes =
-  result = TCompRes(address: "", res: "",
-    tmpLoc: "", typ: etyNone, kind: resNone
-  )
-
 proc rdLoc(a: TCompRes): Rope {.inline.} =
   if a.typ != etyBaseIndex:
     result = a.res
@@ -592,15 +587,6 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
     else:
       let trimmer = unsignedTrimmer(size)
       r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
-  r.kind = resExpr
-
-template ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
-  var x, y, z: TCompRes
-  useMagic(p, magic)
-  gen(p, n[1], x)
-  gen(p, n[2], y)
-  gen(p, n[3], z)
-  r.res = frmt % [x.rdLoc, y.rdLoc, z.rdLoc]
   r.kind = resExpr
 
 template unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
@@ -1182,7 +1168,6 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode; isAsmStmt = false) =
     of nkStrLit..nkTripleStrLit:
       p.body.add(it.strVal)
     of nkSym:
-      let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
       if false:
         discard
@@ -1254,17 +1239,6 @@ proc generateHeader(p: PProc, prc: PSym): Rope =
       result.add(", ")
       result.add(name)
       result.add("_Idx")
-
-proc countJsParams(typ: PType): int =
-  result = 0
-  for i in 1..<typ.n.len:
-    assert(typ.n[i].kind == nkSym)
-    var param = typ.n[i].sym
-    if isCompileTimeOnly(param.typ): continue
-    if mapType(param.typ) == etyBaseIndex:
-      inc result, 2
-    else:
-      inc result
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
@@ -1476,6 +1450,20 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
     r.res = "$1.$2" % [tmp, field.loc.snippet]
   r.kind = resExpr
 
+proc isVarOpenArrayParam(n: PNode): bool =
+  ## True if `n` resolves to a `var openArray` parameter. The JS backend
+  ## represents such parameters as a `{base, off, len}` slice view so that
+  ## writes through a `toOpenArray` view reach the caller's storage (bug #15952).
+  var it = n
+  while true:
+    case it.kind
+    of nkHiddenDeref, nkDerefExpr, nkHiddenAddr, nkAddr: it = it[0]
+    of nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv: it = it[1]
+    else: break
+  result = it.kind == nkSym and it.sym.kind == skParam and
+    it.sym.typ != nil and it.sym.typ.kind == tyVar and
+    it.sym.typ.len > 0 and it.sym.typ[0].kind == tyOpenArray
+
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b: TCompRes = default(TCompRes)
@@ -1484,6 +1472,19 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   let m = if n.kind == nkHiddenAddr: n[0] else: n
   gen(p, m[0], a)
   gen(p, m[1], b)
+  if isVarOpenArrayParam(m[0]):
+    # `var openArray` param is a `{base, off, len}` view; index the base with
+    # the offset applied. `m[0]` is a plain param name, safe to reference
+    # repeatedly (no side effects, so no temp needed).
+    let pn = a.rdLoc
+    r.address = "($1).base" % [pn]
+    if optBoundsCheck in p.options:
+      useMagic(p, "chckIndx")
+      r.res = "($1).off + chckIndx($2, 0, ($1).len - 1)" % [pn, b.rdLoc]
+    else:
+      r.res = "($1).off + ($2)" % [pn, b.rdLoc]
+    r.kind = resExpr
+    return
   #internalAssert p.config, a.typ != etyBaseIndex and b.typ != etyBaseIndex
   let (x, tmp) = maybeMakeTemp(p, m[0], a)
   r.address = x
@@ -1752,8 +1753,47 @@ proc genArgNoParam(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add(a.res)
 
+proc genVarOpenArrayArg(p: PProc, n: PNode, r: var TCompRes) =
+  ## Emit a `{base, off, len}` slice view for an argument to a `var openArray`
+  ## parameter (bug #15952). The view always aliases the base storage, so writes
+  ## through the callee's `openArray` reach the caller's array/seq/typed array.
+  var b, lo, hi, v: TCompRes = default(TCompRes)
+  # the argument reaches codegen as `addr(toOpenArray(x, lo, hi))` (possibly
+  # under conversions); unwrap to the actual `toOpenArray` call.
+  var sl = n
+  while true:
+    case sl.kind
+    of nkHiddenAddr, nkAddr, nkHiddenDeref, nkDerefExpr: sl = sl[0]
+    of nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv: sl = sl[1]
+    else: break
+  if sl.kind in nkCallKinds and getMagic(sl) == mSlice:
+    gen(p, sl[1], b)
+    gen(p, sl[2], lo)
+    gen(p, sl[3], hi)
+    if isVarOpenArrayParam(sl[1]):
+      # slicing a `var openArray` view: rebase onto the same underlying storage
+      r.res = "{base: ($1).base, off: ($1).off + $2, len: $3 - $2 + 1}" % [
+        b.rdLoc, lo.rdLoc, hi.rdLoc]
+    else:
+      r.res = "{base: $1, off: $2, len: $3 - $2 + 1}" % [
+        b.rdLoc, lo.rdLoc, hi.rdLoc]
+  elif isVarOpenArrayParam(sl):
+    # already a view from another `var openArray` param: forward it unchanged
+    gen(p, sl, b)
+    r.res = b.rdLoc
+  else:
+    # a whole array/seq/typed-array value: wrap with a zero offset
+    gen(p, n, v)
+    r.res = "{base: $1, off: 0, len: ($1).length}" % [v.rdLoc]
+  r.kind = resExpr
+
 proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int = nil) =
   var a: TCompRes = default(TCompRes)
+  if param.typ != nil and param.typ.kind == tyVar and param.typ[0].kind == tyOpenArray:
+    # `var openArray` params are passed as a `{base, off, len}` slice view.
+    genVarOpenArrayArg(p, n, a)
+    r.res.add(a.rdLoc)
+    return
   gen(p, n, a)
   if skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs} and
       a.typ == etyBaseIndex:
@@ -1763,6 +1803,13 @@ proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int =
     r.res.add(", ")
     r.res.add(a.res)
     if emitted != nil: inc emitted[]
+  elif skipTypes(param.typ, abstractVar).kind == tyOpenArray and
+      isVarOpenArrayParam(n):
+    # a `var openArray` view passed to a read-only `openArray` param: materialize
+    # a snapshot so the callee sees a plain array.
+    var w: TCompRes = default(TCompRes)
+    gen(p, n, w)
+    r.res.add("(($1).base).slice(($1).off, ($1).off + ($1).len)" % [w.rdLoc])
   elif n.typ.kind in {tyVar, tyPtr, tyRef, tyLent, tyOwned} and
       n.kind in nkCallKinds and mapType(param.typ) == etyBaseIndex:
     # this fixes bug #5608:
@@ -1797,12 +1844,6 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
     inc emitted
     hasArgs = true
   r.res.add(")")
-  when false:
-    # XXX look into this:
-    let jsp = countJsParams(typ)
-    if emitted != jsp and tfVarargs notin typ.flags:
-      localError(p.config, n.info, "wrong number of parameters emitted; expected: " & $jsp &
-        " but got: " & $emitted)
   r.kind = resExpr
 
 proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
@@ -2335,9 +2376,6 @@ proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.res.add("]")
 
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
-  var
-    a: TCompRes
-    line, filen: Rope
   var op = n[0].sym.magic
   case op
   of mOr: genOr(p, n[1], n[2], r)
@@ -2406,13 +2444,21 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       useMagic(p, "nimCopy")
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
   of mOpenArrayToSeq:
-    genCall(p, n, r)
+    if isVarOpenArrayParam(n[1]):
+      var x: TCompRes = default(TCompRes)
+      gen(p, n[1], x)
+      r.res = "(($1).base).slice(($1).off, ($1).off + ($1).len)" % [x.rdLoc]
+      r.kind = resExpr
+    else:
+      genCall(p, n, r)
   of mDestroy, mTrace: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     var x: TCompRes = default(TCompRes)
     gen(p, n[1], x)
-    if skipTypes(n[1].typ, abstractInst).kind == tyCstring:
+    if isVarOpenArrayParam(n[1]):
+      r.res = "($1).len" % [x.rdLoc]
+    elif skipTypes(n[1].typ, abstractInst).kind == tyCstring:
       let (a, tmp) = maybeMakeTemp(p, n[1], x)
       r.res = "(($1) == null ? 0 : ($2).length)" % [a, tmp]
     else:
@@ -2421,7 +2467,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mHigh:
     var x: TCompRes = default(TCompRes)
     gen(p, n[1], x)
-    if skipTypes(n[1].typ, abstractInst).kind == tyCstring:
+    if isVarOpenArrayParam(n[1]):
+      r.res = "($1).len - 1" % [x.rdLoc]
+    elif skipTypes(n[1].typ, abstractInst).kind == tyCstring:
       let (a, tmp) = maybeMakeTemp(p, n[1], x)
       r.res = "(($1) == null ? -1 : ($2).length - 1)" % [a, tmp]
     else:
@@ -2504,11 +2552,24 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     genCall(p, n, r)
   of mSlice:
     # arr.slice([begin[, end]]): 'end' is exclusive
+    # Fixed homogeneous numeric arrays lower to JS typed arrays; `slice`
+    # copies, which silently breaks `var openArray` write-through (bug #15952).
+    # `subarray` returns a live shared-buffer view with the same
+    # exclusive-end signature, so use it there; keep `slice` for seqs/strings.
     var x, y, z: TCompRes = default(TCompRes)
     gen(p, n[1], x)
     gen(p, n[2], y)
     gen(p, n[3], z)
-    r.res = "($1.slice($2, $3 + 1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
+    if isVarOpenArrayParam(n[1]):
+      # re-slicing a `var openArray` view: materialize from the view's base/offset
+      r.res = "(($1).base).slice(($1).off + $2, ($1).off + $3 + 1)" % [
+        x.rdLoc, y.rdLoc, z.rdLoc]
+    else:
+      let baseTy = skipTypes(n[1].typ, abstractVarRange + {tyLent})
+      if baseTy.kind == tyArray and arrayTypeForElemType(p.config, elemType(baseTy)).len > 0:
+        r.res = "($1.subarray($2, $3 + 1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
+      else:
+        r.res = "($1.slice($2, $3 + 1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
     r.kind = resExpr
   of mMove:
     genMove(p, n, r)
@@ -2594,7 +2655,6 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
   var initList : Rope = ""
   var fieldIDs = initIntSet()
-  let nTyp = n.typ.skipTypes(abstractInst)
   for i in 1..<n.len:
     if i > 1: initList.add(", ")
     var it = n[i]

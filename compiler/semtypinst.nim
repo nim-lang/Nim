@@ -183,35 +183,6 @@ proc prepareNode*(cl: var TReplTypeVars, n: PNode): PNode =
     for i in 0..<n.safeLen:
       result.add(prepareNode(cl, n[i]))
 
-proc isTypeParam(n: PNode): bool =
-  # XXX: generic params should use skGenericParam instead of skType
-  return n.kind == nkSym and
-         (n.sym.kind == skGenericParam or
-           (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
-
-when false: # old workaround
-  proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
-    # This is needed for tuninstantiatedgenericcalls
-    # It's possible that a generic param will be used in a proc call to a
-    # typedesc accepting proc. After generic param substitution, such procs
-    # should be optionally instantiated with the correct type. In order to
-    # perform this instantiation, we need to re-run the generateInstance path
-    # in the compiler, but it's quite complicated to do so at the moment so we
-    # resort to a mild hack; the head symbol of the call is temporary reset and
-    # overload resolution is executed again (which may trigger generateInstance).
-    if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
-      var needsFixing = false
-      for i in 1..<n.safeLen:
-        if isTypeParam(n[i]): needsFixing = true
-      if needsFixing:
-        n[0] = newSymNode(n[0].sym.owner)
-        return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
-
-    for i in 0..<n.safeLen:
-      n[i] = reResolveCallsWithTypedescParams(cl, n[i])
-
-    return n
-
 proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
   result = n
   case n.kind
@@ -408,8 +379,8 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = cl.typeMap.lookup(t)
   when defined(icDbgRefc):
     if t.kind in {tyGenericParam, tyTypeDesc}:
-      echo "[icBind] lookup ", t.kind, " ", typeToString(t), " uid=", t.uniqueId.module, ".",
-        t.uniqueId.item, " itemId=", t.itemId.module, ".", t.itemId.item,
+      echo "[icBind] lookup ", t.kind, " ", typeToString(t), " itemId=", t.itemId.module, ".",
+        t.itemId.item, " bindingId=", t.bindingId.module, ".", t.bindingId.item,
         " state=", t.state, " flags=", t.flags, " -> ",
         (if result != nil: typeToString(result) else: "MISS"),
         " allowMeta=", cl.allowMetaTypes
@@ -460,7 +431,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var header = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
-    result = getOrDefault(cl.localCache, t.itemId)
+    result = getOrDefault(cl.localCache, t.bindingId)
   else:
     result = searchInstTypes(cl.c.graph, t)
 
@@ -512,7 +483,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if not cl.allowMetaTypes:
     cacheTypeInst(cl.c, result)
   else:
-    cl.localCache[t.itemId] = result
+    cl.localCache[t.bindingId] = result
 
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
@@ -690,7 +661,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
         # type
         #   Vector[N: static[int]] = array[N, float64]
         #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
-        result = getOrDefault(cl.localCache, t.itemId)
+        result = getOrDefault(cl.localCache, t.bindingId)
         if result != nil: return result
       inc cl.recursionLimit
 
@@ -790,7 +761,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       return
     bailout()
     result = instCopyType(cl, t)
-    cl.localCache[t.itemId] = result
+    cl.localCache[t.bindingId] = result
     for i in FirstGenericParamAt..<result.kidsLen:
       var r = result[i]
       if r != nil:
@@ -808,7 +779,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
   of tyGenericInst, tyUserTypeClassInst:
     bailout()
     result = instCopyType(cl, t)
-    cl.localCache[t.itemId] = result
+    cl.localCache[t.bindingId] = result
     for i in FirstGenericParamAt..<result.kidsLen:
       let tmp = replaceTypeVarsT(cl, result[i])
       if cl.probing and tmp.kind == tyError:
@@ -826,7 +797,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
       #if not cl.allowMetaTypes:
-      cl.localCache[t.itemId] = result
+      cl.localCache[t.bindingId] = result
       let propagateInstValue = isInstValue and isRefPtrObject(t)
 
       for i, resulti in result.ikids:
@@ -877,7 +848,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       result = t
 
       # Slow path, we have some work to do. CRUCIAL: only ever mutate a type that
-      # is LOCAL to the module we are instantiating in (`uniqueId.module ==
+      # is LOCAL to the module we are instantiating in (`itemId.module ==
       # idgen.module`). A type loaded from another module's NIF (foreign) already
       # had its object branches resolved when it was originally compiled; mutating
       # it in place here is an old→new heap write that re-homes the loaded type to
@@ -886,11 +857,11 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       # prior `state != Sealed` guard was insufficient: a freshly-LOADED type is
       # `Complete`, not `Sealed` (`Sealed` only means "already re-written to a NIF").
       if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and
-          t.elementType.n != nil and t.elementType.uniqueId.module == cl.c.idgen.module.int:
+          t.elementType.n != nil and t.elementType.itemId.module == cl.c.idgen.module.int:
         discard replaceObjBranches(cl, t.elementType.n)
 
       elif result.n != nil and t.kind == tyObject and result.state != Sealed and
-          result.uniqueId.module == cl.c.idgen.module.int:
+          result.itemId.module == cl.c.idgen.module.int:
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)

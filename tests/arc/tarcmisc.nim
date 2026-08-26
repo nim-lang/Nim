@@ -937,3 +937,47 @@ proc mainRegen() =
   doAssert b.a.c == right
 
 mainRegen()
+
+
+from std/typetraits import distinctBase, supportsCopyMem
+
+block: # bug #26025
+  type
+    M[B] = distinct seq[B]
+    W = object
+      g: U           # `U` is only declared below, so it used to be a `tyForward`
+                     # here and `W` ended up without `tfHasAsgn`
+    U = M[uint64]
+
+  doAssert not supportsCopyMem(W)
+
+  var h: M[W]
+  seq[W](h).add W(g: U(@[1'u64]))
+  var copied = h
+  for it in items(distinctBase(copied)):
+    doAssert seq[uint64](it.g) == @[1'u64]
+  doAssert seq[uint64](seq[W](h)[0].g) == @[1'u64]
+
+block: # bug #26025, the propagation has to reach the indirect owners too
+  type
+    M2[B] = distinct seq[B]
+
+    ViaArray = object
+      g: array[2, Late]      # the forward type sits inside the field's type
+
+    Outer = object           # `Inner` is forward here...
+      a: Inner
+    Inner = object
+      b: Late
+    Late = M2[uint64]
+
+    Reader = object          # ...whereas `Outer` is already reified but its
+      z: Outer               # own flags were still provisional
+
+    AsTuple = tuple[a: Late]
+
+  doAssert not supportsCopyMem(ViaArray)
+  doAssert not supportsCopyMem(Inner)
+  doAssert not supportsCopyMem(Outer)
+  doAssert not supportsCopyMem(Reader)
+  doAssert not supportsCopyMem(AsTuple)

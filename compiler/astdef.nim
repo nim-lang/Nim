@@ -681,6 +681,10 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
+    bindings*: seq[tuple[key: ItemId, value: PType]]
+      ## An optional exact snapshot of the matcher bindings. In-process
+      ## instances use it for a fast cache probe; serialized instances fall
+      ## back to comparing the fully instantiated signature.
     genericParamsCount*: int   # for terrible reasons `concreteTypes` contains all the types,
                                # so we need to know how many generic params there were
                                # this is not serialized for IC and that is fine.
@@ -780,11 +784,16 @@ type
                               # same id; there may be multiple copies of a type
                               # in memory!
                               # Keep in sync with PackedType
-    itemId*: ItemId
+    itemId*: ItemId           # THE identity of this type: unique per instance, forever.
+                              # Names the type in the NIF cache and decides which
+                              # module owns its definition.
     kind*: TTypeKind          # kind of type
     state*: ItemState
-    uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
-                              # is required by the --incremental:on mode.
+    bindingId*: ItemId        # the id of the type this one is a REPLICA of (its own
+                              # `itemId` when it is not a replica). Only the generic
+                              # binding tables (`LayeredIdTable` & friends) key on it:
+                              # `exactReplica` produces a copy that must keep matching
+                              # its original in those tables. Never an identity.
     callConvImpl*: TCallingConvention # for procs
     flagsImpl*: TTypeFlags        # flags of the type
     sonsImpl*: TTypeSeq           # base types, etc.
@@ -946,6 +955,16 @@ template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x
 iterator items*(n: PNode): PNode =
   for i in 0..<n.safeLen: yield n[i]
 
+iterator sons*(n: PNode): PNode =
+  ## Iterates over the children of `n`. Preferred over `for i in 0..<n.len: n[i]`
+  ## as it does not rely on random indexed access (see doc/ic_backend_nif_native.md).
+  for i in 0..<n.safeLen: yield n[i]
+
+iterator isons*(n: PNode): tuple[i: int, n: PNode] =
+  ## Like `sons` but also yields the child index. Replaces
+  ## `for i in 0..<n.len: ... n[i] ...` when `i` itself is still needed.
+  for i in 0..<n.safeLen: yield (i, n[i])
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
@@ -1077,7 +1096,7 @@ proc forcePartial*(s: PSym) =
 proc forcePartial*(t: PType) =
   ## Resets all impl-fields to their default values and sets state to Partial.
   ## This is useful for creating a stub type that can be lazily loaded later.
-  ## The fields itemId, kind, uniqueId are preserved.
+  ## The fields itemId, kind, bindingId are preserved.
   t.state = Partial
   t.callConvImpl = ccNimCall
   t.flagsImpl = {}
@@ -1095,8 +1114,11 @@ const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
   StartSize* = 8              # must be power of 2, > 0
 
+{.push overflowChecks: off.}
 proc nextTry*(h, maxHash: Hash): Hash {.inline.} =
+  # Overflow is intentional: only the low bits selected by maxHash are used.
   result = ((5 * h) + 1) and maxHash
+{.pop.}
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
