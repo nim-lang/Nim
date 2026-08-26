@@ -835,9 +835,11 @@ template matchOrParse(mopProc: untyped) =
     of pkCapture:
       enter(pkCapture, s, p, start)
       if p.sons.len == 0 or p.sons[0].kind == pkEmpty:
-        # empty capture removes last match
-        dec(c.ml)
-        c.matches[c.ml] = (0, 0)
+        # empty capture removes last match; if there is no previous capture,
+        # treat it as a no-op instead of underflowing the matches array:
+        if c.ml > 0:
+          dec(c.ml)
+          c.matches[c.ml] = (0, 0)
         result = 0 # match of length 0
       else:
         var idx = c.ml # reserve a slot for the subpattern
@@ -1625,6 +1627,9 @@ func getCharSet(c: var PegLexer, tok: var Token) =
         c.bufpos = pos
         getEscapedChar(c, tok)
         pos = c.bufpos
+        if tok.kind == tkInvalid:
+          # unknown builtin or malformed escape: propagate the error
+          break
         ch = tok.literal[tok.literal.len-1]
       of '\C', '\L', '\0':
         tok.kind = tkInvalid
@@ -1648,6 +1653,9 @@ func getCharSet(c: var PegLexer, tok: var Token) =
             c.bufpos = pos
             getEscapedChar(c, tok)
             pos = c.bufpos
+            if tok.kind == tkInvalid:
+              # unknown builtin or malformed escape: propagate the error
+              break
             ch2 = tok.literal[tok.literal.len-1]
           of '\C', '\L', '\0':
             tok.kind = tkInvalid
@@ -1973,6 +1981,11 @@ func primary(p: var PegParser): Peg {.raises: [EInvalidPeg].}=
       result = ?result
       getTok(p)
     of tkStar:
+      if result.kind in {pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet,
+                         pkGreedyAny, pkOption}:
+        # an operand that can match the empty input would produce an endless
+        # loop in the matcher, so reject it here instead:
+        pegError(p, "repetition of an expression that can match the empty input")
       result = *result
       getTok(p)
     of tkPlus:

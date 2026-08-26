@@ -347,3 +347,22 @@ call()
   pegsTest()
   static:
     pegsTest()
+
+block: # pegs shouldn't crash for invalid inputs but raise EInvalidPeg
+  var captures: array[20, string]
+
+  # star of an expression that can match the empty input used to abort with
+  # AssertionDefect("unreachable") from `*`
+  doAssertRaises(EInvalidPeg): discard peg"(! '>' .)* *"
+  doAssertRaises(EInvalidPeg): discard peg"'a'? *"
+
+  # an unknown builtin escape inside a character class doesn't crash with
+  # IndexDefect in getCharSet
+  doAssertRaises(EInvalidPeg): discard peg"[^\n]"
+  doAssertRaises(EInvalidPeg): discard peg"[z-\n]"
+
+  # an empty capture with no previous capture doesn't underflow c.matches
+  doAssert "abc".match(peg"^{}")
+  # documented behavior (deleting the last capture) still works:
+  doAssert "ab".match(peg"{[a-z]} {}", captures)
+  doAssert captures[0] == ""
