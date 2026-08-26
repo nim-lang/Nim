@@ -329,7 +329,18 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # copies this back into `disamb` (sn.count), so `globalName` round-trips.
     result = sym.name.s
     result.add '.'
-    result.addInt sym.itemId.item
+    if (sym.disamb and HookDisambBit) != 0'i32:
+      # EXCEPTION, mirroring `mangleProcNameExt`: a lifted hook's `disamb` is
+      # CONTENT-derived (`setHookDisamb`), so it is the same in every process,
+      # whereas `itemId.item` is a per-process backend counter. Such a hook DOES
+      # cross process boundaries — the `lower` stage mints the env hooks of
+      # nested routines while `cg` mints those of the module's top level, and
+      # both end up in the same translation unit — so two unrelated hooks
+      # collided on `_c<item>` and the merge stage kept one body for both
+      # (C accepted the mistyped call, C++ rejected it).
+      result.addInt sym.disamb
+    else:
+      result.addInt sym.itemId.item
     result.add '.'
     result.add modname(w.currentModule, w.infos.config)
     result.add BackendLocalMarker

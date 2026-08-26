@@ -1046,6 +1046,20 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 # handling for IC, they end up in IC indexes etc. Thus we "log" them in the module graph
 # and to pass them around to the NIF writer. This is not very elegant but it works.
 
+const
+  InstanceDisambBit* = 0x4000_0000'i32
+    ## Set in the `disamb` of routine instances whose value is content-derived
+    ## (see `modulegraphs.setInstanceDisamb`); keeps them disjoint from the
+    ## small counter range ordinary symbols draw from, so the NIF name
+    ## `name.disamb.module` stays collision-free within a module.
+  HookDisambBit* = 0x2000_0000'i32
+    ## Set in the `disamb` of synthesized type-bound operators and `$enum`
+    ## procs whose value is content-derived (see `modulegraphs.setHookDisamb`);
+    ## disjoint from both the small counter range and `InstanceDisambBit`.
+    ##
+    ## Both live here rather than in `modulegraphs` because `ast2nif` — which
+    ## cannot import that module — names symbols by them.
+
 type
   LogEntryKind* = enum
     HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,

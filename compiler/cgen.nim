@@ -150,6 +150,17 @@ proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   # on demand and emits it nowhere → undefined at link.
   if (prc.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32:
     return true
+  # A BACKEND-MINTED routine (a hook or nested proc that lambda-lifting /
+  # `injectDestructorCalls` created during the `lower` stage) exists in no
+  # module's semmed NIF: it is written into the `.t.bif` of every module that
+  # references it, re-homed there with the `@bk` marker. So there IS no other
+  # `cg` process that could emit it, and the owner walk below — which lands on
+  # the ORIGINAL generic's module for the env `=destroy` of a generic closure
+  # iterator instantiated elsewhere — leaves it in no TU at all
+  # (`undefined reference to eqdestroy__c485__…`). Every referencing TU emits it;
+  # the merge stage keeps one.
+  if isBackendMinted(prc.itemId):
+    return true
   var top = prc
   while top.skipGenericOwner != nil and top.skipGenericOwner.kind != skModule:
     top = top.skipGenericOwner

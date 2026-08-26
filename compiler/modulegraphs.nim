@@ -574,12 +574,6 @@ proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
     let ownerModule = inst.itemId.module.int
     g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
 
-const
-  InstanceDisambBit* = 0x4000_0000'i32
-    ## Set in the `disamb` of routine instances whose value is content-derived
-    ## (see `setInstanceDisamb`); keeps them disjoint from the small counter
-    ## range ordinary symbols draw from, so the NIF name `name.disamb.module`
-    ## stays collision-free within a module.
 
 proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
                         concreteTypes: openArray[PType]) =
@@ -617,12 +611,6 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
       g.instDisambs[probe] = inst.itemId
       break
   inst.disamb = h
-
-const
-  HookDisambBit* = 0x2000_0000'i32
-    ## Set in the `disamb` of synthesized type-bound operators and `$enum`
-    ## procs whose value is content-derived (see `setHookDisamb`); disjoint
-    ## from both the small counter range and the `InstanceDisambBit` range.
 
 proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
   ## Under IC, replace a synthesized hook's counter-based `disamb` with a
