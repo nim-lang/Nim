@@ -2045,7 +2045,7 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
 
   proc generateNavLinks(navSubTree: seq[NavItem], destFile: AbsoluteFile, nested=false): string =
     ## Generate the navigation links for the sidebar.
-    # Each page has a different set of those, adjusted for relative location.
+    ## Each page has a different set of those, adjusted for relative location.
     let tocClassName =
       if nested:
         "nested-toc-section"
@@ -2066,7 +2066,9 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
             relLink(conf.outDir, destFile, RelativeFile(item.dest.changeFileExt(HtmlExt)))
         result &= """<li><a href="$#">$#</a>""" % [href, esc(outHtml, item.title)]
       if len(item.sons) > 0:
+        result &= """<details><summary></summary>"""
         result &= generateNavLinks(item.sons, destFile, nested=true)
+        result &= """</details>"""
       result &= """</li>"""
     result &= """</ul>"""
 
