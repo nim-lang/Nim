@@ -2012,13 +2012,14 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
     ## Recursively go through a bullet list and generate a nav subtree from it.
     result = @[]
     for node in list.sons:
-      let innerBody = node.sons[0].sons[0]
+      let inner = node.sons[0]
+      let innerBody = inner.sons[0]
       var item =
         case innerBody.kind
         of rnHyperlink:
           NavItem(title: innerBody.sons[0].text, kind: niLink, dest:innerBody.sons[1].text)
         of rnLeaf:
-          NavItem(title: innerBody.renderRstToText(), kind: niLabel)
+          NavItem(title: inner.renderRstToText(), kind: niLabel)
         else:
           NavItem()
 
