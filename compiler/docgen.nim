@@ -24,7 +24,7 @@ import
 import packages/docutils/rstast except FileIndex, TLineInfo
 
 import std/[os, strutils, strtabs, algorithm, json, osproc, tables, intsets, xmltree, sequtils]
-from std/uri import encodeUrl
+from std/uri import encodeUrl, parseUri, isAbsolute
 from nodejs import findNodeJs
 
 when defined(nimPreviewSlimSystem):
@@ -76,6 +76,19 @@ type
     json: JsonNode
     rst: PRstNode
     rstField: string
+  NavItemKind = enum
+    niLink
+    niLabel
+    niHeading
+  NavItem = object
+    ## Navigation entry for the sidebar navigation.
+    title: string
+    case kind: NavItemKind
+    of niLink:
+      dest: string
+    else:
+      discard
+    sons: seq[NavItem]
   TDocumentor = object of rstgen.RstGenerator
     modDescPre: ItemPre   # module description, not finalized
     modDescFinal: string  # module description, after RST pass 2 and rendering
@@ -1728,7 +1741,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
 
   let theIndexHref = relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile)
   let indexLink = getConfigVar(d.conf, "doc.body_toc_indexlink") % ["theindexhref", theIndexHref]
-  let navLinks = "<ul>HERE BE NAV LINKS</ul>"
+  let navLinks = getConfigVar(d.conf, "doc.body_toc_navlinks", "")
   let globalLinks = getConfigVar(d.conf, "doc.body_toc_globallinks") % [
       "body_toc_navlinks", navLinks,
       "body_toc_indexlink", indexLink,
@@ -1993,24 +2006,91 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
                         standaloneDoc = true, preferMarkdown = true, hasToc = true)
   let rst = parseRst(readFile(summaryFile.string),
                     line=LineRstInit, column=ColRstInit, conf, d.sharedState)
+  var navTree: seq[NavItem] = @[]
 
+  proc traverseBulletList(list: PRstNode): seq[NavItem] =
+    ## Recursively go through a bullet list and generate a nav subtree from it.
+    result = @[]
+    for node in list.sons:
+      let innerBody = node.sons[0].sons[0]
+      var item =
+        case innerBody.kind
+        of rnHyperlink:
+          NavItem(title: innerBody.sons[0].text, kind: niLink, dest:innerBody.sons[1].text)
+        of rnLeaf:
+          NavItem(title: innerBody.renderRstToText(), kind: niLabel)
+        else:
+          NavItem()
+
+      if len(node.sons) > 1:
+        item.sons = traverseBulletList(node.sons[1])
+
+      result.add(item)
+
+  proc parseSummary(root: PRstNode): seq[NavItem] =
+    ## Parse the root node from the summary file and generate the nav tree.
+    result = @[]
+    for node in root.sons:
+      case node.kind
+      of rnMarkdownHeadline:
+        let title = node.renderRstToText()
+        result.add(NavItem(title: title, kind: niHeading))
+      of rnBulletList:
+        result &= traverseBulletList(node)
+      else:
+        discard
+
+  proc isExternalUri(dest: string): bool =
+    parseUri(dest).isAbsolute()
+
+  proc generateNavLinks(navSubTree: seq[NavItem], destFile: AbsoluteFile, nested=false): string =
+    ## Generate the navigation links for the sidebar.
+    # Each page has a different set of those, adjusted for relative location.
+    let tocClassName =
+      if nested:
+        "nested-toc-section"
+      else:
+        "simple-toc-section"
+    result = """<ul class="simple $#">""" % [tocClassName]
+    for item in navSubTree:
+      case item.kind
+      of niHeading:
+        result &= """<li><strong>$#</strong>""" % [esc(outHtml, item.title)]
+      of niLabel:
+        result &= """<li>$#""" % [esc(outHtml, item.title)]
+      of niLink:
+        let href =
+          if item.dest.isExternalUri():
+            item.dest
+          else:
+            relLink(conf.outDir, destFile, RelativeFile(item.dest.changeFileExt(HtmlExt)))
+        result &= """<li><a href="$#">$#</a>""" % [href, esc(outHtml, item.title)]
+      if len(item.sons) > 0:
+        result &= generateNavLinks(item.sons, destFile, nested=true)
+      result &= """</li>"""
+    result &= """</ul>"""
 
   proc generatePage(filename: AbsoluteFile) =
+    ## Generate an HTML page from a Markdown file.
     conf.outFile = RelativeFile"" # reset to force path re-generation for each page
+    let destFile = getOutFile2(conf, presentationPath(conf, filename), HtmlExt, false)
+    let navLinks = generateNavLinks(navTree, destFile)
+    setConfigVar(conf, "doc.body_toc_navlinks", navLinks)
     commandRstAux(cache, conf, filename, HtmlExt,
-                  preferMarkdown = true, hasToc = true, addTxtExt = false)
+                  preferMarkdown=true, hasToc=true, addTxtExt=false)
 
-  proc parseSummaryNode(node: PRstNode) =
-    if node.kind == rnHyperlink:
-      let dest = node.sons[1].text
-      let pageFilePath = bookDir / dest
-      if fileExists(pageFilePath):
-        let pageFile = AbsoluteFile(pageFilePath)
-        generatePage(pageFile)
-      else:
-        rawMessage(conf, warnCannotOpenFile, pageFilePath)
-    for son in node.sons:
-      parseSummaryNode(son)
+  proc generatePages(navSubTree: seq[NavItem]) =
+    ## Generate all pages from the Markdown files listed in the summary file.
+    for item in navSubTree:
+      if item.kind == niLink and not item.dest.isExternalUri():
+        let pageFilePath = bookDir / item.dest
+        if fileExists(pageFilePath):
+          let pageFile = AbsoluteFile(pageFilePath)
+          generatePage(pageFile)
+        else:
+          rawMessage(conf, warnCannotOpenFile, pageFilePath)
+      generatePages(item.sons)
   
-  setConfigVar(conf, "doc.body_toc_groupsection", "") # we don't need "Group by" section in prose
-  parseSummaryNode(rst)
+  setConfigVar(conf, "doc.body_toc_groupsection", "") # we don't need "Group by" section in standalone docs
+  navTree = parseSummary(rst)
+  generatePages(navTree)
