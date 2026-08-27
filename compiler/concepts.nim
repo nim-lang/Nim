@@ -71,7 +71,8 @@ proc semConceptDeclaration*(c: PContext; n: PNode): PNode =
 
 type
   MatchFlags* = enum
-    mfDontBind  # Do not bind generic parameters
+    mfDontBind  # Do not export bindings from the concept match
+    mfBindGenericParam  # Export inferred invocation parameters despite mfDontBind
     mfCheckGeneric  # formal <- formal comparison as opposed to formal <- operand
 
   ConceptTypePair = tuple[conceptId, typeId: ItemId]
@@ -602,6 +603,19 @@ proc fixBindings(bindings: var LayeredIdTable; concpt: PType; invocation: PType;
         bindings.put(invocation[i], boundV)
   bindings.put(concpt, m.potentialImplementation)
 
+proc fixConstraintBindings(bindings: var LayeredIdTable; invocation: PType; m: MatchCon) =
+  ## Propagates only the dependent parameters of a concept constraint. The
+  ## concept itself and its private matcher bindings must remain unbound so
+  ## that independent constraints using the same concept don't get coupled.
+  if invocation != nil and invocation.kind == tyGenericInvocation:
+    let genBody = invocation.base
+    assert genBody.kind == tyGenericBody
+    for i in FirstGenericParamAt ..< invocation.kidsLen:
+      if lookup(bindings, invocation[i]) == nil:
+        let boundValue = m.bindings.lookup(genBody[i - 1])
+        if boundValue != nil:
+          bindings.put(invocation[i], boundValue)
+
 proc processConcept(c: PContext; concpt, invocation: PType, bindings: var LayeredIdTable; m: var MatchCon): bool =
   m.bindings = m.bindings.newTypeMapLayer()
   if invocation != nil and invocation.kind == tyGenericInst:
@@ -611,8 +625,11 @@ proc processConcept(c: PContext; concpt, invocation: PType, bindings: var Layere
       if invocation[i].kind != tyVoid:
         bindParam(c, m, genericBody[i-1], invocation[i])
   result = conceptMatchNode(c, concpt.conceptBody, m)
-  if result and mfDontBind notin m.flags:
-    fixBindings(bindings, concpt, invocation, m)
+  if result:
+    if mfDontBind notin m.flags:
+      fixBindings(bindings, concpt, invocation, m)
+    elif mfBindGenericParam in m.flags:
+      fixConstraintBindings(bindings, invocation, m)
 
 proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var LayeredIdTable; invocation: PType, flags: set[MatchFlags] = {}): bool =
   ## Entry point from sigmatch. 'concpt' is the concept we try to match (here still a PType but
