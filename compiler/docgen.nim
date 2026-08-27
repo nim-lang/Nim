@@ -2054,23 +2054,24 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
         "simple-toc-section"
     result = """<ul class="simple $#">""" % [tocClassName]
     for item in navSubTree:
-      case item.kind
-      of niHeading:
-        result &= """<li><strong>$#</strong>""" % [esc(outHtml, item.title)]
-      of niLabel:
-        result &= """<li>$#""" % [esc(outHtml, item.title)]
-      of niLink:
-        let href =
-          if item.dest.isExternalUri():
-            item.dest
-          else:
-            relLink(conf.outDir, destFile, RelativeFile(item.dest.changeFileExt(HtmlExt)))
-        result &= """<li><a href="$#">$#</a>""" % [href, esc(outHtml, item.title)]
-      if len(item.sons) > 0:
-        result &= """<details><summary></summary>"""
-        result &= generateNavLinks(item.sons, destFile, nested=true)
-        result &= """</details>"""
-      result &= """</li>"""
+      let content =
+        case item.kind
+        of niHeading:
+          """<strong>$#</strong>""" % [esc(outHtml, item.title)]
+        of niLabel:
+          esc(outHtml, item.title)
+        of niLink:
+          let href =
+            if item.dest.isExternalUri():
+              item.dest
+            else:
+              relLink(conf.outDir, destFile, RelativeFile(item.dest.changeFileExt(HtmlExt)))
+          """<a href="$#">$#</a>""" % [href, esc(outHtml, item.title)]
+      if len(item.sons) == 0:
+        result &= """<li>$#</li>""" % [content]
+      else:
+        let navLinks = generateNavLinks(item.sons, destFile, nested=true)
+        result &= """<li><details><summary>$#</summary>$#</details></li>""" % [content, navLinks]
     result &= """</ul>"""
 
   proc generatePage(filename: AbsoluteFile) =
