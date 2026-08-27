@@ -3304,13 +3304,21 @@ proc dirInclude(p: var RstParser): PRstNode =
   ##     Only the content before the first occurrence of the specified
   ##     text (but after any after text) will be included. If text is
   ##     not found inclusion will happen until the end of the file.
-  #literal : flag (empty)
-  #    The entire included text is inserted into the document as a single
-  #    literal block (useful for program listings).
-  #encoding : name of text encoding
-  #    The text encoding of the external data file. Defaults to the document's
-  #    encoding (if specified).
-  #
+  ##
+  ## :literal: flag (empty)
+  ##
+  ##     The entire included text is inserted into the document as a single
+  ##     literal block (useful for program listings).
+  ##
+  ## :code: language (if empty, `nim` is assumed by default)
+  ##
+  ##     The argument and the included content are passed to the code directive
+  ##     (useful for program listings).
+  ##
+  ## :encoding: name of text encoding
+  ##
+  ##     The text encoding of the external data file. Defaults to the document's
+  ##     encoding (if specified).
   result = nil
   var n = parseDirective(p, rnDirective, {hasArg, argIsFile, hasOptions}, nil)
   var filename = strip(addNodes(n.sons[0]))
@@ -3343,6 +3351,19 @@ proc dirInclude(p: var RstParser): PRstNode =
     if getFieldValue(n, "literal") != "":
       result = newRstNode(rnLiteralBlock)
       result.add newLeaf(inputString[startPosition..endPosition])
+    elif getFieldValue(n, "code") != "":
+      result = newRstNode(rnCodeBlock)
+      result.sons.setLen(3)
+      let lang = getFieldValue(n, "code").strip()
+      if lang notin ["", "\x01\x01"]:
+        var codeArg = newRstNode(rnDirArg)
+        codeArg.add(newLeaf(lang))
+        result.sons[0] = codeArg
+      result.sons[1] = newRstNode(rnFieldList)
+      defaultCodeLangNim(p, result)
+      var litBlock = newRstNode(rnLiteralBlock)
+      litBlock.add newLeaf(inputString[startPosition..endPosition])
+      result.sons[2] = litBlock
     else:
       var q: RstParser
       initParser(q, p.s)
