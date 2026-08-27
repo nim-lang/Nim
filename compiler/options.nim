@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "34"
+  icFormatVersion* = "37"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -939,6 +939,24 @@ proc getOsCacheDir(): string =
     result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
   else:
     result = getHomeDir() / genSubDir.string
+
+proc isIcDriver*(conf: ConfigRef): bool =
+  ## True for `nim c --ic:on` / `nim cpp --ic:on`: this process is the `nim ic`
+  ## DRIVER (it builds the nifmake graph and spawns the per-module children),
+  ## not a compilation. `nim ic` itself keeps its own `cmdIc` branch.
+  conf.ic and conf.cmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}
+
+proc icCFileExt*(conf: ConfigRef): string =
+  ## The extension the per-module backend gives a module's translation unit.
+  ## Mirrors `cgen.getCFile` at BACKEND granularity, which is all the `nim ic`
+  ## driver can know: it DECLARES every module's `.c`/`.cpp` output to nifmake
+  ## without loading a single module, so a per-module `{.compile: cpp.}`
+  ## (`sfCompileToCpp`) is out of reach — and `nim cpp` selects the backend for
+  ## the whole program anyway.
+  case conf.backend
+  of backendCpp: ".nim.cpp"
+  of backendObjc: ".nim.m"
+  else: ".nim.c"
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   proc nimcacheSuffix(conf: ConfigRef): string =

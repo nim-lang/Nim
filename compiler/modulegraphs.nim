@@ -136,6 +136,10 @@ type
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
+    missingCompilerProcs*: HashSet[string]
+                                  # `nim nifc` only: compilerproc names no
+                                  # loaded module defines, so the whole-program
+                                  # index scan in `loadCompilerProc` runs once
     exposed*: TStrTable
     packageTypes*: TStrTable
     emptyNode*: PNode
@@ -165,6 +169,11 @@ type
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     globalDestructors*: seq[PNode]
+    icModuleDtors*: seq[string]   # per-module backend: the C names of the
+                                  # other modules' global-destructor procs
+                                  # (`genIcModuleDestroyGlobals`), already in
+                                  # call order; only the main module's `cg`
+                                  # fills this, from the `.c.nif` meta heads
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
@@ -481,6 +490,49 @@ proc logMethodDef*(g: ModuleGraph; s: PSym) =
     g.opsLog.add LogEntry(kind: MethodEntry, module: s.itemId.module.int,
                           key: "", sym: s)
 
+proc logCppMember*(g: ModuleGraph; s: PSym) =
+  ## Log a C++ `{.member.}`/`{.virtual.}`/`{.constructor.}` registration (and the
+  ## `importcpp` default-initializer flavour) so the NIF backend can rebuild
+  ## `memberProcsPerType`/`initializersPerType`, which live only in the sem
+  ## process. Without them the per-module backend emitted the struct WITHOUT its
+  ## in-class member declarations and the out-of-class definitions did not match
+  ## ("no declaration matches 'void Doo::memberProc()'").
+  ##
+  ## No type key: `replayCppMember` re-derives the type from the routine's
+  ## signature exactly as `semCppMember` does, so nothing has to survive the
+  ## round trip except the routine itself.
+  if g.config.cmd in {cmdNifC, cmdM}:
+    g.opsLog.add LogEntry(kind: CppMemberEntry, module: s.itemId.module.int,
+                          key: "", sym: s)
+
+proc replayCppMember*(g: ModuleGraph; s: PSym) =
+  ## Inverse of `logCppMember`, mirroring `semstmts.semCppMember`'s derivation.
+  if s == nil or s.typ == nil: return
+  if sfImportc notin s.flags:
+    var typ = if sfConstructor in s.flags: s.typ.returnType else: s.typ.firstParamType
+    if typ != nil and typ.kind == tyPtr and sfConstructor notin s.flags:
+      typ = typ.elementType
+    if typ != nil and typ.kind == tyObject:
+      let procs = addr g.memberProcsPerType.mgetOrPut(typ.bindingId, @[])
+      for prc in procs[]:
+        if prc == s: return
+      procs[].add s
+  else:
+    let typ = s.typ.returnType
+    if typ != nil and typ.kind == tyObject and
+        typ.bindingId notin g.initializersPerType and s.typ.n != nil:
+      # The default values sem read off the `nkIdentDefs` live on the param syms.
+      var call = newTree(nkCall, newSymNode(s))
+      var isInitializer = s.typ.n.len > 1
+      for i in 1 ..< s.typ.n.len:
+        let p = s.typ.n[i]
+        if p.kind != nkSym or p.sym.ast == nil or p.sym.ast.kind == nkEmpty:
+          isInitializer = false
+          break
+        call.add p.sym.ast
+      if isInitializer:
+        g.initializersPerType[typ.bindingId] = call
+
 proc registerLoadedMethod*(g: ModuleGraph; m: PSym) =
   ## Rebuild the dispatch buckets from a serialized method registration.
   ## Buckets group the methods sharing a dispatcher; the dispatcher's BODY
@@ -637,6 +689,29 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
           if result != nil:
             strTableAdd(g.compilerprocs, result)
             return result
+
+        # `nim nifc`: a module loaded from a NIF is named by its mangled suffix
+        # (`thrkxstl4`), not by its source name, and its file index resolves to
+        # that suffix too — so the `"threadpool"` match below can never fire and
+        # `spawn`, expanded at codegen time, died on `system module needs:
+        # nimArgsPassingDone`. The backend loads the WHOLE program before
+        # codegen starts, so just consult every loaded module's index; a miss is
+        # final for the rest of the process (nothing more gets loaded) and is
+        # remembered, because `getCompilerProc` is also used as a mere presence
+        # probe and would otherwise rescan every index on every call.
+        if g.config.cmd == cmdNifC:
+          if name in g.missingCompilerProcs: return nil
+          for moduleIdx in 0..<g.ifaces.len:
+            let module = g.ifaces[moduleIdx].module
+            if module == nil or module.position.FileIndex == systemFileIdx: continue
+            if not fileExists(toNifFilename(g.config, module.position.FileIndex)):
+              continue
+            result = tryResolveCompilerProc(ast.program, name, module.position.FileIndex)
+            if result != nil:
+              strTableAdd(g.compilerprocs, result)
+              return result
+          g.missingCompilerProcs.incl name
+          return nil
 
         # Try threadpool module (some compilerprocs like FlowVar are there)
         # Find threadpool module by searching loaded modules
@@ -940,6 +1015,8 @@ when not defined(nimKochBootstrap):
           g.loadedOps[x.op][x.key] = x.sym
       of EnumToStrEntry:
         g.loadedEnumToStringProcs[x.key] = x.sym
+      of CppMemberEntry:
+        replayCppMember(g, x.sym)
       of MethodEntry:
         # only `methodDef` registrations (empty key) rebuild dispatch
         # buckets; the `addMethodToGeneric` flavor (typeKey key) announces
@@ -1065,11 +1142,24 @@ when not defined(nimKochBootstrap):
     setOwner(m, getPackage(g.config, g.cache, fileIdx))
     # Register module in graph
     registerModule(g, m)
+    # ... and, in the BACKEND, bind its NIF name to THIS symbol before anything
+    # in the file is decoded, so the loader never mints a second `skModule` for
+    # it (see `registerModuleSelfSym`). Backend-only: under `nim m` a module is
+    # loaded for its INTERFACE, and re-pointing the owner slot of every loaded
+    # symbol at the freshly built module sym changes what sem sees for an
+    # imported routine — `times.toDateTimeByWeek` then lost its inferred
+    # `raises` and the importer failed with "can raise an unlisted exception".
+    if g.config.cmd == cmdNifC:
+      registerModuleSelfSym(ast.program, cachedModuleSuffix(g.config, fileIdx), m)
 
     result = loadNifModule(ast.program, fileIdx,
                            g.ifaces[fileIdx.int].interf,
                            g.ifaces[fileIdx.int].interfHidden, flags)
     result.module = m
+    # Restore the module symbol's persisted flags (see ast2nif `(modflags)`);
+    # `cgen.genTopLevelStmt` gates the destructor pass on `sfInjectDestructors`.
+    if (result.moduleFlags and ModFlagInjectDestructors) != 0:
+      m.incl sfInjectDestructors
     for (mname, msuffix) in result.reexportedModules:
       let ms = materializeReexportedModule(g, mname, msuffix)
       if ms != nil:
@@ -1117,7 +1207,7 @@ when not defined(nimKochBootstrap):
         discard "dispatch buckets already rebuilt by registerLoadedHooks"
       of GenericInstEntry:
         raiseAssert "GenericInstEntry should not be in the NIF index"
-      of HookEntry, EnumToStrEntry:
+      of HookEntry, EnumToStrEntry, CppMemberEntry:
         discard "already done by registerLoadedHooks"
     # Register methods per type from NIF index
     discard "todo"

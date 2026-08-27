@@ -1119,6 +1119,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
       result = n
+    of nkReplayAction:
+      # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded
+      # module's TOP-LEVEL statements (the loader prepends the `(replay ...)`
+      # entries there); cgen discards it, so pass it through untouched.
+      result = n
     else:
       result = nil
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
