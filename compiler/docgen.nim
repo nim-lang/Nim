@@ -2044,16 +2044,17 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
   proc isExternalUri(dest: string): bool =
     parseUri(dest).isAbsolute()
 
-  proc generateNavLinks(navSubTree: seq[NavItem], destFile: AbsoluteFile, nested=false): string =
+  proc generateNavLinks(navSubTree: seq[NavItem], destFile: AbsoluteFile,
+                        nested=false): tuple[navLinks: string, hasCurrentPage: bool] =
     ## Generate the navigation links for the sidebar.
     ## Each page has a different set of those, adjusted for relative location.
     let tocClassName =
-      if nested:
-        "nested-toc-section"
-      else:
-        "simple-toc-section"
-    result = """<ul class="simple $#">""" % [tocClassName]
+      if nested: "nested-toc-section"
+      else: "simple-toc-section"
+    var navLinks = """<ul class="simple $#">""" % [tocClassName]
+    var containsCurrent = false
     for item in navSubTree:
+      var isCurrent = false
       let content =
         case item.kind
         of niHeading:
@@ -2066,19 +2067,31 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
               item.dest
             else:
               relLink(conf.outDir, destFile, RelativeFile(item.dest.changeFileExt(HtmlExt)))
-          """<a href="$#">$#</a>""" % [href, esc(outHtml, item.title)]
+          isCurrent =
+            not item.dest.isExternalUri() and
+            destFile == getOutFile2(conf, presentationPath(conf, AbsoluteFile(bookDir / item.dest)), HtmlExt, false)
+          let cls =
+            if isCurrent: "current"
+            else: ""
+          """<a href="$#" class="$#">$#</a>""" % [href, cls, esc(outHtml, item.title)]
       if len(item.sons) == 0:
-        result &= """<li>$#</li>""" % [content]
+        navLinks &= """<li>$#</li>""" % [content]
       else:
-        let navLinks = generateNavLinks(item.sons, destFile, nested=true)
-        result &= """<li><details><summary>$#</summary>$#</details></li>""" % [content, navLinks]
-    result &= """</ul>"""
+        let (sonsNavLinks, sonsContainCurrent) = generateNavLinks(item.sons, destFile, nested=true)
+        let unfold = isCurrent or sonsContainCurrent
+        let openAttr = if unfold: " open" else: ""
+        navLinks &= """<li><details$#><summary>$#</summary>$#</details></li>""" %
+          [openAttr, content, sonsNavLinks]
+        containsCurrent = containsCurrent or unfold
+      containsCurrent = containsCurrent or isCurrent
+    navLinks &= """</ul>"""
+    result = (navLinks, containsCurrent)
 
   proc generatePage(filename: AbsoluteFile) =
     ## Generate an HTML page from a Markdown file.
     conf.outFile = RelativeFile"" # reset to force path re-generation for each page
     let destFile = getOutFile2(conf, presentationPath(conf, filename), HtmlExt, false)
-    let navLinks = generateNavLinks(navTree, destFile)
+    let (navLinks, _) = generateNavLinks(navTree, destFile)
     setConfigVar(conf, "doc.body_toc_navlinks", navLinks)
     commandRstAux(cache, conf, filename, HtmlExt,
                   preferMarkdown=true, hasToc=true, addTxtExt=false)
