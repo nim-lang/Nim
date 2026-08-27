@@ -326,7 +326,7 @@ proc startStruct(obj: var Builder; m: BModule; t: PType; name: string; baseType:
     # rest of the options add a field or don't need it due to inheritance,
     # we need to add the dummy field for uncheckedarray ahead of time
     # so that it remains trailing
-    if t.itemId notin m.g.graph.memberProcsPerType and
+    if t.bindingId notin m.g.graph.memberProcsPerType and
         t.n != nil and t.n.len == 1 and t.n[0].kind == nkSym and
         t.n[0].sym.typ.skipTypes(abstractInst).kind == tyUncheckedArray:
       # only consists of flexible array field, add *initial* dummy field
@@ -341,7 +341,7 @@ proc startStruct(obj: var Builder; m: BModule; t: PType; name: string; baseType:
 
 proc finishStruct(obj: var Builder; m: BModule; t: PType; info: StructBuilderInfo) =
   if info.baseKind == bcNone and info.preFieldsLen == obj.buf.len and
-      t.itemId notin m.g.graph.memberProcsPerType:
+      t.bindingId notin m.g.graph.memberProcsPerType:
     # no fields were added, add dummy field
     obj.addField(name = "dummy", typ = CChar)
   if info.named:

@@ -173,7 +173,6 @@ template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructorOrAsgn(c, n.typ): return true
 
-  let m = skipConvDfa(n)
   result = isLastReadImpl(n, c, s)
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
@@ -1119,6 +1118,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 1..<n.len:
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
+      result = n
+    of nkReplayAction:
+      # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded
+      # module's TOP-LEVEL statements (the loader prepends the `(replay ...)`
+      # entries there); cgen discards it, so pass it through untouched.
       result = n
     else:
       result = nil

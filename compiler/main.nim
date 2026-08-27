@@ -29,7 +29,7 @@ when defined(nimPreviewSlimSystem):
 import ../dist/checksums/src/checksums/sha1
 
 import pipelines
-from icconfig import produceIcConfig
+from icconfig import produceIcConfig, ensureIcConfig
 
 when not defined(nimKochBootstrap):
   import nifbackend
@@ -209,22 +209,6 @@ proc commandInteractive(graph: ModuleGraph) =
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
     discard processPipelineModule(graph, m, idgen, s)
 
-proc commandScan(cache: IdentCache, config: ConfigRef) =
-  var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
-  var stream = llStreamOpen(f, fmRead)
-  if stream != nil:
-    var
-      L: Lexer = default(Lexer)
-      tok: Token = default(Token)
-    openLexer(L, f, stream, cache, config)
-    while true:
-      rawGetTok(L, tok)
-      printTok(config, tok)
-      if tok.tokType == tkEof: break
-    closeLexer(L)
-  else:
-    rawMessage(config, errGenerated, "cannot open file: " & f.string)
-
 const
   PrintRopeCacheStats = false
 
@@ -285,6 +269,28 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
+    if isIcDriver(conf):
+      # `nim c --ic:on` / `nim cpp --ic:on`: same driver as `nim ic`, entered
+      # through the ordinary compile command so every backend switch the user
+      # already knows keeps working (`nim cpp`, `--exceptions:`, `-d:`, ...).
+      # `customizeForBackend` above has already defined the backend symbol and
+      # picked the exception model, which is exactly what the per-module
+      # children must inherit — `computeForwardedArgs` forwards both.
+      setUseIc(true)
+      wantMainModule(conf)
+      setOutFile(conf)
+      when not defined(nimKochBootstrap):
+        if conf.icPreparsedConfig.len == 0:
+          # `--ic:on` came from a `nim.cfg`/`config.nims` rather than the command
+          # line, so `nim.nim` could not see it before config loading and the
+          # precompiled config the children replay does not exist yet. Produce it
+          # now. (The driver then keeps the config IT parsed instead of replaying
+          # the artifact; both come from the same files.)
+          ensureIcConfig(conf)
+        commandIc(conf)
+      else:
+        rawMessage(conf, errGenerated, "--ic:on not available in bootstrap build")
+      return
     setOutFile(conf)
     case conf.backend
     of backendC: commandCompileToC(graph)

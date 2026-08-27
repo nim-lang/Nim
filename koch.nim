@@ -76,7 +76,7 @@ Options:
   --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  bootic [options]         bootstraps via the incremental compiler (`nim ic`)
+  bootic [options]         bootstraps via the incremental compiler (`--ic:on`)
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
   toolsNoExternal          builds Nim related tools (except external tools,
@@ -190,10 +190,16 @@ proc bundleChecksums(latest: bool) =
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
+  # These are host tools: their build must not be affected by whatever
+  # `nim.cfg`/`config.nims` happens to live above the Nim checkout. Projects that
+  # vendor Nim (nimbus-eth1/eth2, nimbos) do pass `--skipUserCfg --skipParentCfg`
+  # to `koch boot`, but `nimCompileFold` spawns a fresh `nim c` that would
+  # otherwise inherit the ambient configuration.
+  const nifOptions = "-d:release --noNimblePath --skipUserCfg --skipParentCfg"
   if not fileExists("bin/nifler".exe):
-    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
+    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = nifOptions)
   if not fileExists("bin/nifmake".exe):
-    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
+    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = nifOptions)
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
@@ -444,7 +450,7 @@ proc bootic(args: string, skipIntegrityCheck: bool) =
     # everything.
     if i > 0: removeDir smartNimcache
     let nimi = if i == 0: nimStart else: i.thVersion
-    exec "$# ic --nimcache:$# $# compiler" / "nim.nim" %
+    exec "$# c --ic:on --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
@@ -609,7 +615,7 @@ proc runIcTestFile(inp: string) =
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
-    var cmd = nimExe & " ic --hint:Conf:off --warnings:off "
+    var cmd = nimExe & " c --ic:on --hint:Conf:off --warnings:off "
     cmd.add quoteShell(file)
     exec(cmd)
 
@@ -619,7 +625,7 @@ proc runIcTestFile(inp: string) =
 const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
                  "tcompiletimeglobal", "tsighashstable", "tpureenum", "tgenericoffer",
                  "tconverterreexport", "ttypeoffer", "ttransitiveoffer",
-                 "tmodsymref", "tmethupref", "temit", "ttraitparam"]
+                 "tmodsymref", "tmethupref", "temit", "ttraitparam", "tnestasgn"]
 
 proc icTest(args: string) =
   temp("")

@@ -73,14 +73,15 @@ proc stripCnifMarks*(s: string): string =
       inc i
 
 const
-  CnifVersion* = "4"
+  CnifVersion* = "5"
     ## Artifact format version, stored in the meta head. Artifacts written
     ## by an older compiler lack the NIF names and the cref group the
     ## def-retention check needs (v2), the cdeps group the fine-grained
-    ## reuse gate needs (v3), or the type NIF names and cnif-marked extern
+    ## reuse gate needs (v3), the type NIF names and cnif-marked extern
     ## RTTI references the typeinfo flavor of the def-retention check
-    ## needs (v4); `readCnifHeads` reports them as invalid so their TUs
-    ## simply regenerate once.
+    ## needs (v4), or the global-destructor name the main module's `cg`
+    ## calls at teardown (v5); `readCnifHeads` reports them as invalid so
+    ## their TUs simply regenerate once.
 
 proc cnifDefDirective*(name, flags, nifName: string): string =
   CnifDefStart & name & CnifDefSep & flags & CnifDefSep & nifName & CnifDefEnd
@@ -91,15 +92,17 @@ proc cnifEndDefs*(): string =
 proc writeCnifArtifact*(code: string; outfile: string;
                         initRequired = false; datInitRequired = false;
                         dataDefs: openArray[tuple[cname, nifname: string]] = [];
-                        semmedNif = ""; moduleBase = "";
+                        semmedNif = ""; moduleBase = ""; globalDtor = "";
                         implDeps: openArray[string] = []) =
   ## Splits the marked module text into the `.c.nif` artifact.
   ## The artifact starts with a `(meta <flags> "semmedNif" "moduleBase"
-  ## "version")` head — whether the module has an init/datInit proc
-  ## ('i'/'d'), which semmed NIF it was generated from and the module's
+  ## "version" "globalDtor")` head — whether the module has an init/datInit
+  ## proc ('i'/'d'), which semmed NIF it was generated from, the module's
   ## mangled base name (what `registerModuleToMain` and the reuse decision
   ## need when the TU is reused in a later run, possibly without the module
-  ## ever being loaded again) — a `(cdata (SymbolDef StrLit)*)` group naming
+  ## ever being loaded again) and the C name of the module's global-destructor
+  ## proc, if any (what the main module's `cg` calls at program teardown; see
+  ## `cgen.genIcModuleDestroyGlobals`) — a `(cdata (SymbolDef StrLit)*)` group naming
   ## the data definitions (consts, globals, RTTI) the TU embeds together
   ## with their NIF names, a `(cref Ident*)` group naming every C name
   ## the TU references but does not define itself (what the def-retention
@@ -153,6 +156,7 @@ proc writeCnifArtifact*(code: string; outfile: string;
       b.addStrLit semmedNif
       b.addStrLit moduleBase
       b.addStrLit CnifVersion
+      b.addStrLit globalDtor
     b.withTree "cdata":
       for d in dataDefs:
         b.addSymbolDef d.cname
@@ -261,6 +265,8 @@ type
     datInitRequired*: bool
     semmedNif*: string       ## the semmed NIF this TU was generated from
     moduleBase*: string      ## the module's mangled base name
+    globalDtor*: string      ## C name of the module's global-destructor proc
+                             ## ("" when the module has no global destructors)
     cdefs*: seq[tuple[cname, nifname: string]] ## the proc definitions
     cdata*: seq[tuple[cname, nifname: string]] ## the data definitions
     crefs*: seq[string]      ## C names referenced but not defined here
@@ -303,6 +309,7 @@ proc readCnifHeads*(f: string): CnifHeads =
             if strIdx == 0: result.semmedNif = strVal(c)
             elif strIdx == 1: result.moduleBase = strVal(c)
             elif strIdx == 2: version = strVal(c)
+            elif strIdx == 3: result.globalDtor = strVal(c)
             inc strIdx
             inc c
           else:
@@ -585,6 +592,13 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
     if d in result.live: inc result.liveDefs
 
 const MergeDecisionFile* = "ic.backend.merge.nif"
+const LiveModulesFile* = "ic.backend.live.txt"
+  ## One `.c.nif` path per line: exactly the artifacts of the modules the CURRENT
+  ## build graph considers live. The `merge` stage reads this instead of globbing
+  ## `*.c.nif` off the nimcache, so a leftover artifact from an unrelated build
+  ## that happens to share the cache directory cannot be merged in (which is what
+  ## made a shared prebuilt cache unusable: merge picked owners in modules the
+  ## program does not import, and the link then wanted their objects).
   ## Fixed name of the merge stage's output in the nimcache, read by `emit`.
 
 proc writeMergeDecision*(outfile: string; d: MergeDecision) =
