@@ -2160,14 +2160,42 @@ proc checkedForDestructor(t: PType): bool =
     return true
   result = false
 
-proc whereToBindTypeHook(c: PContext; t: PType): PType =
+proc normalizeTypeHook(t: PType; markAsgn = false): PType =
   result = t
   while true:
-    if result.kind in {tyGenericBody, tyGenericInst}: result = result.skipModifier
-    elif result.kind == tyGenericInvocation: result = result[0]
-    else: break
+    if markAsgn:
+      incl(result, tfHasAsgn)
+    if result.kind == tyCompositeTypeClass and result.base.kind == tyGenericBody:
+      result = result.base
+    elif result.kind in {tyGenericBody, tyGenericInst}:
+      result = result.skipModifier
+    elif result.kind == tyGenericInvocation:
+      result = result.genericHead
+    else:
+      break
+
+proc whereToBindTypeHook(c: PContext; t: PType): PType =
+  result = normalizeTypeHook(t)
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
     result = canonType(c, result)
+
+proc bindHookToType(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp;
+                    typeToBind: PType): bool =
+  var obj = typeToBind
+  if obj.kind notin {tyObject, tyDistinct, tySequence, tyString}:
+    return false
+  obj = canonType(c, obj)
+  let ao = getAttachedOp(c.graph, obj, op)
+  if ao == s:
+    discard "forward declared hook"
+  elif ao.isNil and not checkedForDestructor(obj):
+    setAttachedOp(c.graph, c.module.position, obj, op, s)
+  else:
+    prevDestructor(c, op, ao, obj, n.info)
+  if obj.owner.getModule != s.getModule:
+    localError(c.config, n.info, errGenerated,
+      "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+  result = true
 
 proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
@@ -2175,32 +2203,11 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let cond = t.len == 2 and t.returnType != nil
 
   if cond:
-    var obj = t.firstParamType
-    while true:
-      incl(obj, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
-      elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-      else: break
+    var obj = normalizeTypeHook(t.firstParamType, markAsgn = true)
+    let res = normalizeTypeHook(t.returnType)
 
-    var res = t.returnType
-    while true:
-      if res.kind in {tyGenericBody, tyGenericInst}: res = res.skipModifier
-      elif res.kind == tyGenericInvocation: res = res.genericHead
-      else: break
-
-    if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, res):
-      obj = canonType(c, obj)
-      let ao = getAttachedOp(c.graph, obj, op)
-      if ao == s:
-        discard "forward declared destructor"
-      elif ao.isNil and not checkedForDestructor(obj):
-        setAttachedOp(c.graph, c.module.position, obj, op, s)
-      else:
-        prevDestructor(c, op, ao, obj, n.info)
-      noError = true
-      if obj.owner.getModule != s.getModule:
-        localError(c.config, n.info, errGenerated,
-          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+    if sameType(obj, res):
+      noError = bindHookToType(c, s, n, op, obj)
 
   if not noError and sfSystemModule notin s.owner.flags:
     localError(c.config, n.info, errGenerated,
@@ -2230,28 +2237,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
                t.len >= 2 and t.returnType == nil
 
   if cond:
-    var obj = t.firstParamType.skipTypes({tyVar})
-    while true:
-      incl(obj, tfHasAsgn)
-      # An unparameterized generic type is represented as a composite type class.
-      if obj.kind == tyCompositeTypeClass and obj.base.kind == tyGenericBody:
-        obj = obj.base
-      elif obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
-      elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-      else: break
-    if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-      obj = canonType(c, obj)
-      let ao = getAttachedOp(c.graph, obj, op)
-      if ao == s:
-        discard "forward declared destructor"
-      elif ao.isNil and not checkedForDestructor(obj):
-        setAttachedOp(c.graph, c.module.position, obj, op, s)
-      else:
-        prevDestructor(c, op, ao, obj, n.info)
-      noError = true
-      if obj.owner.getModule != s.getModule:
-        localError(c.config, n.info, errGenerated,
-          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+    var obj = normalizeTypeHook(t.firstParamType.skipTypes({tyVar}), markAsgn = true)
+    noError = bindHookToType(c, s, n, op, obj)
   if not noError and sfSystemModule notin s.owner.flags:
     case op
     of attachedTrace:
@@ -2318,35 +2305,12 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       message(c.config, n.info, warnDeprecated, "Overriding `=` hook is deprecated; Override `=copy` hook instead")
     let t = s.typ
     if t.len == 3 and t.returnType == nil and t.firstParamType.kind == tyVar:
-      var obj = t.firstParamType.elementType
-      while true:
-        incl(obj, tfHasAsgn)
-        if obj.kind == tyGenericBody: obj = obj.skipModifier
-        elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-        else: break
-      var objB = t[2]
-      while true:
-        if objB.kind == tyGenericBody: objB = objB.skipModifier
-        elif objB.kind in {tyGenericInvocation, tyGenericInst}:
-          objB = objB.genericHead
-        else: break
-      if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
+      var obj = normalizeTypeHook(t.firstParamType.elementType, markAsgn = true)
+      let objB = normalizeTypeHook(t[2])
+      if sameType(obj, objB):
         # attach these ops to the canonical tySequence
-        obj = canonType(c, obj)
-        #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let k = if name == "=" or name == "=copy": attachedAsgn else: attachedSink
-        let ao = getAttachedOp(c.graph, obj, k)
-        if ao == s:
-          discard "forward declared op"
-        elif ao.isNil and not checkedForDestructor(obj):
-          setAttachedOp(c.graph, c.module.position, obj, k, s)
-        else:
-          prevDestructor(c, k, ao, obj, n.info)
-        if obj.owner.getModule != s.getModule:
-          localError(c.config, n.info, errGenerated,
-            "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
-
-        return
+        if bindHookToType(c, s, n, k, obj): return
     if sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
                 "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
