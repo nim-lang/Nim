@@ -1139,3 +1139,7 @@ span.pragmawrap {
 span.attachedType {
   display: none;
   visibility: hidden; }
+
+summary {
+  cursor: pointer;
+}
