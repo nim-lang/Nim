@@ -73,23 +73,6 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
             [accessor, getTypeDesc(p.module, typ)])
       else:
         specializeResetN(p, accessor, typ.n, typ)
-        if isCaseObj(typ.n):
-          # The active branch was released above. Clear the complete object so
-          # stale bytes from overlapping branches cannot be traced by the GC.
-          # type
-          #   Foo = object
-          #     case kind: bool
-          #     of true:
-          #       a: ref Bar   # 8 bytes (pointer)
-          #     of false:
-          #       b: int       # 4 bytes
-          # specializeResetT for b emits accessor.b = 0 — writes 4 bytes
-          # But the union is 8 bytes wide (sized by the largest branch)
-          # The remaining 4 bytes where a used to live are untouched
-          # Those stale bytes could contain a heap pointer the GC traces → crash
-          p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimZeroMem"),
-            cCast(CPointer, cAddr(accessor)),
-            cSizeof(getTypeDesc(p.module, typ)))
   of tyTuple:
     let typ = getUniqueType(typ)
     for i, a in typ.ikids:
