@@ -1955,10 +1955,11 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
     except IOError:
       rawMessage(conf, errCannotOpenFile, filename.string)
 
-proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") =
+proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"",
+                        exclCode = false) =
   if optGenIndexOnly in conf.globalOptions:
     return
-  var content = mergeIndexes(dir)
+  var content = mergeIndexes(dir, exclCode)
 
   var outFile = outFile
   if outFile.isEmpty: outFile = theindexFname.RelativeFile.changeFileExt("")

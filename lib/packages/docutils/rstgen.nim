@@ -574,9 +574,11 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   result.add(chunks.join(", ") & ".<br/>")
 
-proc readIndexDir*(dir: string):
+proc readIndexDir*(dir: string, exclCode = false):
     tuple[modules: seq[string], symbols: seq[IndexEntry], docs: IndexedDocs] =
   ## Walks `dir` reading ``.idx`` files converting them in IndexEntry items.
+  ##
+  ## If  `exclCode` is  `true`, skip  `.idx ` files for Nim modules.
   ##
   ## Returns the list of found module names, the list of free symbol entries
   ## and the different documentation indexes. The list of modules is sorted.
@@ -593,6 +595,8 @@ proc readIndexDir*(dir: string):
       # Depending on type add this to the list of symbols or table of APIs.
 
       if title.kind == ieNimTitle:
+        if exclCode:
+          continue
         for i in 0 ..< fileEntries.len:
           if fileEntries[i].kind != ieNim:
             continue
@@ -621,7 +625,7 @@ proc readIndexDir*(dir: string):
         result.symbols[L] = fileEntries[i]
         inc L
 
-proc mergeIndexes*(dir: string): string =
+proc mergeIndexes*(dir: string, markupOnly = false): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
   ## This proc will first scan `dir` for index files with the ``.idx``
@@ -649,7 +653,7 @@ proc mergeIndexes*(dir: string): string =
   ##
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
-  var (modules, symbols, docs) = readIndexDir(dir)
+  var (modules, symbols, docs) = readIndexDir(dir, markupOnly)
   sort(modules, system.cmp)
 
   result = ""
