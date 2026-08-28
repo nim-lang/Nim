@@ -18,6 +18,7 @@ import options, msgs, lineinfos, pathutils, condsyms,
 import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
 import icmodnames
 import icnifcore
+from ic/replayer import BackendActionsExt
 
 type
   FilePair = object
@@ -1362,6 +1363,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       removeFile(cnifFiles[i])
       removeFile(cFiles[i])
       removeFile(cFiles[i] & ".stamp")
+      removeFile(cFiles[i] & BackendActionsExt)
   # The merge decision is a pure function of the set of `.c.nif`s present; if we
   # just removed an over-approximated module's artifacts, a decision computed
   # while they were present is stale — it can name a now-absent module as a
@@ -1459,6 +1461,10 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
         if c.nodes[j].id != 0 and live[j]:
           inputStr cnifFiles[j]
     outputStr cnifFiles[i]
+    # The module's C compile/link directives (`{.passL.}` etc.), recorded so the
+    # `link` stage recovers them without loading the module graph. See
+    # `replayer.writeBackendActions`.
+    outputStr cFiles[i] & BackendActionsExt
     b.endTree()
 
   # merge: read the live modules' `.c.nif`, write the ownership/liveness
@@ -1520,7 +1526,9 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     # path splits back into outDir+outFile in the child).
     b.addStrLit "--out:" & exeFile
   for i in 0 ..< c.nodes.len:
-    if live[i]: inputStr cFiles[i]
+    if live[i]:
+      inputStr cFiles[i]
+      inputStr cFiles[i] & BackendActionsExt
   inputStr argsFile
   outputStr exeFile
   b.endTree()

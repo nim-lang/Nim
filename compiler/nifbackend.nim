@@ -628,6 +628,11 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   let tb = bl.mods[target.module.position]
   if tb != nil:
     finishModule(g, tb)
+    # Record this module's C compile/link directives next to its `.c` so the
+    # `link` stage can recover them without loading the module graph. See
+    # `replayer.writeBackendActions`.
+    writeBackendActions(g, target.module, target.topLevel,
+                        getCFile(tb).string & BackendActionsExt)
 
   # Writes only the target's `.c.nif` (every other loaded module's TU is empty,
   # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
@@ -746,53 +751,62 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend link (`--icBackendStage:link`): the `emit` stages have
   ## written every module's `.c`; register them and run the C compiler + linker
   ## once via `extccomp.callCCompiler` (which parallelizes the per-file cc and
-  ## skips up-to-date objects itself). No codegen runs — the graph is loaded only
-  ## so `getCFile` yields each module's emitted `.c` path.
-  let (modules, precompSys, _) = loadBackendModules(g, mainFileIdx)
-  if modules.len == 0:
-    rawMessage(g.config, errGenerated,
-      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-    return
-  # The per-module `cg` processes each collect their module's C compile/link
-  # directives (`{.passL: "-lm".}` etc.) via `replayBackendActions`, but those
-  # live in the cg process and never reach this separate link process. Re-collect
-  # every loaded module's directives here so the final `callCCompiler` sees them
-  # (without this, math's `-lm` is lost → undefined `floor`/`pow`/… at link).
-  for m in modules:
-    replayBackendActions(g, m.module, m.topLevel)
-  if precompSys.module != nil:
-    replayBackendActions(g, precompSys.module, precompSys.topLevel)
-  let bl = BModuleList(g.backend)
+  ## skips up-to-date objects itself). No codegen runs and NO MODULE GRAPH IS
+  ## LOADED.
+  ##
+  ## It used to load the whole import closure (`loadBackendModules`) for two
+  ## things only: each module's `.c` path via `getCFile`, and its recorded C
+  ## directives via `replayBackendActions`. That was 3.7s of the ~11s serial
+  ## backend critical path on a 219-module program — a whole-program
+  ## deserialization to recover a list of paths and a handful of strings. Both
+  ## are now read from artifacts the earlier stages already produce:
+  ##   * the driver's `LiveModulesFile` manifest lists every live module's
+  ##     `.c.nif`, and the `.c` sits beside it (`emit`'s output);
+  ##   * each module's `cg` wrote its directives to a `.cflags` sidecar.
+  let nimcache = getNimcacheDir(g.config).string
+  var cfiles: seq[string] = @[]
+  let manifest = nimcache / LiveModulesFile
+  if fileExists(manifest):
+    for line in lines(manifest):
+      let p = line.strip()
+      if p.len > 0 and p.endsWith(".nif"): cfiles.add p[0 ..< p.len - ".nif".len]
+  else:
+    # A cache written by an older compiler has no manifest; fall back to the
+    # `.c` files sitting next to the artifacts.
+    for artifact in walkFiles(nimcache / ("*" & icCFileExt(g.config) & ".nif")):
+      cfiles.add artifact[0 ..< artifact.len - ".nif".len]
+  sort cfiles
+
   var addedCFiles = initHashSet[string]()
-  for m in bl.mods:
-    if m != nil:
-      let cfile = getCFile(m)
-      # Only modules that are their own cg/emit target produced a `.c`; the rest
-      # (extra members of system's closure that no build rule targets) had their
-      # code emit-everywhere'd into the targets, so they have no file to compile.
-      if not fileExists(cfile.string): continue
-      addedCFiles.incl extractFilename(cfile.string)
-      var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                     obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
-                     flags: {})
-      # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
-      # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
-      # `callCCompiler` skips its compile but still links the existing object. This
-      # is what makes a localized edit recompile only the handful of `.c`s the
-      # `emit` stage actually rewrote, instead of every object every time — the
-      # final piece of per-module backend incrementality after the merge barrier.
-      addExternalFileToCompile(g.config, cf)
+  for cpath in cfiles:
+    # Only modules that are their own cg/emit target produced a `.c`; the rest
+    # had their code emit-everywhere'd into the targets, so there is nothing to
+    # compile for them.
+    if not fileExists(cpath): continue
+    addedCFiles.incl extractFilename(cpath)
+    # The directives this module recorded (`{.passL: "-lm".}` etc.); without
+    # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
+    applyBackendActions(g, cpath & BackendActionsExt)
+    let cfile = AbsoluteFile cpath
+    var cf = Cfile(nimname: splitFile(cfile).name, cname: cfile,
+                   obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
+                   flags: {})
+    # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
+    # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
+    # `callCCompiler` skips its compile but still links the existing object. This
+    # is what makes a localized edit recompile only the handful of `.c`s the
+    # `emit` stage actually rewrote, instead of every object every time.
+    addExternalFileToCompile(g.config, cf)
+
   # deps.nim's static scanner can keep a CONDITIONALLY-imported module as a build
-  # node (e.g. `net`'s `when defineSsl: import openssl`, or a `when defined(os)`
-  # import) that the NIF-`deps` walk above never reaches because the condition is
-  # off. Such a node still emitted a `.c`, and it can OWN a live generic instance
-  # that a REACHABLE module reuses (openssl owns `toHex[uint8]`, reused by
-  # `strutils.escape`) — so its body must be at link or that reference is
+  # node (e.g. `net`'s `when defineSsl: import openssl`) that the manifest above
+  # may not cover. Such a node still emitted a `.c`, and it can OWN a live generic
+  # instance that a REACHABLE module reuses (openssl owns `toHex[uint8]`, reused
+  # by `strutils.escape`) — so its body must be at link or that reference is
   # undefined. Link every emitted `.c` the merge decision says OWNS a LIVE symbol;
   # a node that owns nothing live (a Windows-only winsock node on Linux) is
   # correctly skipped.
   block:
-    let nimcache = getNimcacheDir(g.config).string
     let decision = readMergeDecision(nimcache / MergeDecisionFile)
     if not decision.broken:
       var liveOwners = initHashSet[string]()
@@ -804,6 +818,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         if addedCFiles.containsOrIncl(cbase): continue
         let cfile = AbsoluteFile(nimcache / cbase)
         if not fileExists(cfile.string): continue
+        applyBackendActions(g, cfile.string & BackendActionsExt)
         var cf = Cfile(nimname: cbase, cname: cfile,
                        obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                        flags: {})
