@@ -1749,9 +1749,9 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   let searchBox = getConfigVar(d.conf, "doc.body_toc_searchbox")
   let themeSelect = getConfigVar(d.conf, "doc.body_toc_themeselect")
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
-  let bodyname = if d.hasToc and not d.standaloneDoc and not d.conf.isLatexCmd:
+  let bodyname = if d.hasToc and d.standaloneDoc and not d.conf.isLatexCmd:
                    groupsection.setLen 0
-                   "doc.body_toc_group"
+                   "doc.body_toc"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   let seeSrc = genSeeSrc(d, d.filename, 1)
