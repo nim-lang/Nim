@@ -2032,7 +2032,8 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
   proc parseSummary(root: PRstNode): seq[NavItem] =
     ## Parse the root node from the summary file and generate the nav tree.
     result = @[]
-    for node in root.sons:
+    let nodes = if root.kind == rnInner: root.sons else: @[root]
+    for node in nodes:
       case node.kind
       of rnMarkdownHeadline:
         let title = node.renderRstToText()
@@ -2111,7 +2112,7 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
         else:
           rawMessage(conf, warnCannotOpenFile, pageFilePath)
       generatePages(item.sons)
-  
+
   setConfigVar(conf, "doc.body_toc_groupsection", "") # we don't need "Group by" section in standalone docs
   navTree = parseSummary(rst)
   generatePages(navTree)
