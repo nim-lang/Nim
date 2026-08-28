@@ -2042,8 +2042,11 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
       else:
         discard
 
-  proc isExternalUri(dest: string): bool =
-    parseUri(dest).isAbsolute()
+  proc isGlobalUri(path: string): bool =
+    parseUri(path).isAbsolute()
+
+  proc existsSrcFile(path: string): bool =
+    not path.isGlobalUri and fileExists(bookDir / path)
 
   proc generateNavLinks(navSubTree: seq[NavItem], destFile: AbsoluteFile,
                         nested=false): tuple[navLinks: string, hasCurrentPage: bool] =
@@ -2064,12 +2067,12 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
           esc(outHtml, item.title)
         of niLink:
           let href =
-            if item.dest.isExternalUri():
-              item.dest
-            else:
+            if item.dest.existsSrcFile():
               relLink(conf.outDir, destFile, RelativeFile(item.dest.changeFileExt(HtmlExt)))
+            else:
+              item.dest
           isCurrent =
-            not item.dest.isExternalUri() and
+            not item.dest.isGlobalUri() and
             destFile == getOutFile2(conf, presentationPath(conf, AbsoluteFile(bookDir / item.dest)), HtmlExt, false)
           let cls =
             if isCurrent: "current"
@@ -2100,7 +2103,7 @@ proc commandBook*(cache: IdentCache, conf: ConfigRef) =
   proc generatePages(navSubTree: seq[NavItem]) =
     ## Generate all pages from the Markdown files listed in the summary file.
     for item in navSubTree:
-      if item.kind == niLink and not item.dest.isExternalUri():
+      if item.kind == niLink and not item.dest.isGlobalUri():
         let pageFilePath = bookDir / item.dest
         if fileExists(pageFilePath):
           let pageFile = AbsoluteFile(pageFilePath)
