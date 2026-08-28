@@ -20,6 +20,32 @@ for x in Dummy(@[1, 2, 3]):
   acc += x
 doAssert acc == 6
 
+# Inferred concept parameters are resolved through the implementation's own
+# generic bindings before being exported to the surrounding routine.
+type
+  Elem[T] = object
+    value: T
+  NestedDummy[T] = ref object
+    data: seq[T]
+
+proc `[]`[T](d: NestedDummy[T], i: int): Elem[T] =
+  Elem[T](value: d.data[i])
+proc len[T](d: NestedDummy[T]): int = d.data.len
+
+iterator directItems[T](indexable: Indexable[T]): T =
+  for index in 0 ..< indexable.len:
+    yield indexable[index]
+
+var nestedAcc = 0
+for x in NestedDummy[int](data: @[4, 5, 6]):
+  nestedAcc += x.value
+doAssert nestedAcc == 15
+
+var directNestedAcc = 0
+for x in directItems(NestedDummy[int](data: @[7, 8, 9])):
+  directNestedAcc += x.value
+doAssert directNestedAcc == 24
+
 # All dependent parameters inferred while checking a concept constraint must
 # be propagated to the constrained routine.
 type
