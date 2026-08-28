@@ -25,6 +25,7 @@ exported symbols (`*`), including procedures, types, and variables.
 command               output format
 ===================   ==============
 `nim doc`:cmd:        ``.html`` HTML
+`nim book`:cmd:       ``.html`` HTML
 `nim doc2tex`:cmd:    ``.tex`` LaTeX
 `nim jsondoc`:cmd:    ``.json`` JSON
 ===================   ==============
@@ -35,6 +36,8 @@ standalone documents like user's guides and technical specifications.
 See [Nim-flavored Markdown and reStructuredText] document for the description
 of this feature and particularly section [Command line usage] for the full
 list of supported commands.
+
+You can also generate a full documentation site from a directory with [Nim-flavored Markdown and reStructuredText] files and `SUMMARY.md` using `nim book`:cmd:, similarly to how [mdBook](https://rust-lang.github.io/mdBook/) and other doc generators work.
 
 Quick start
 -----------
@@ -60,6 +63,12 @@ Generate HTML documentation for a whole project:
   # and likewise without `--project`.
   # Adding `-r` will open in a browser directly.
   # Use `--showNonExports` to show non-exported fields of an exported type.
+  ```
+
+Generate a site from a directory of Markdown files and `SUMMARY.md`:
+
+  ```cmd
+  nim book <srcDir>
   ```
 
 Documentation Comments
@@ -177,6 +186,94 @@ Index (``.idx``) files are used for 2 different purposes:
    files described in [Nim external referencing]
 2. creating a whole-project index for searching of symbols and keywords,
    see [Buildindex command].
+
+
+Book Generator
+==============
+
+Nim ships with a complete book generator that lets you build sites from Markdown/reST files organized in folders.
+
+Powered by `nim doc`:cmd:, `nim book`:cmd: has all its features like built-in admonitions, code inclusion syntax, and checked Nim code references, but also offers `SUMMARY.md`-based source collection and navigation generation that should be familiar to [mdBook](https://rust-lang.github.io/mdBook/) users and simplify migration.
+
+Quickstart
+----------
+
+1. Create a directory for the book source, e.g `bookSrc`.
+2. Put a Markdown file in this directory, e.g. `welcome.md`:
+
+  ```markdown
+  # Welcome to Nim Book
+
+  This is the first paragraph.
+  ```
+
+3. Put a file called `SUMMARY.md` in the same directory. The file lists all your pages (one so far):
+
+  ```markdown
+  - [Welcome](./welcome.md)
+  ```
+
+4. Run `nim book`:cmd: with the book source directory:
+
+  ```cmd
+  $ nim book boorSrc
+  ```
+
+The docs will be generated in `htmldocs`, which is the default for `nim docs`:cmd:. You can customize the location with `--outDir:OUTDIR`:option:, just like for `nim doc`:cmd:.
+
+To see your book in the browser, serve `htmldocs` with any static server (e.g. `python3 -m http.server -d htmldocs/` ) and open the localhost location that it provides (e.g. http://localhost:8000). This way you'll have search working.
+
+To set the title for the page, use ``.. title::``:
+
+  ```markdown
+  .. title:: Welcome to Nim Book
+
+  # Part 1
+
+  This is the first paragraph.
+  ```
+
+To customize the way your page is listed in the sidebar navigation, set its link title in `SUMMARY.md`:
+
+  ```markdown
+  - [Intro](./welcome.md)
+  ```
+
+As your `SUMMARY.md` grows, you'll want to group the pages into sections. You can do that using nested bullet lists and headers:
+
+  ```markdown
+  - [Intro](./welcome.md)
+  - [Guides](./guides.md)                      <!-- This is page that is also a section header   -->
+    - [Dev Guide](./guides/dev.md)             <!-- These pages are rendered in a folded section -->
+    - [User Guide](./guides/user.md)
+
+  # References                                 <!-- Headers serve as visual separators           -->
+
+  - accounts                                   <!-- Section headers can be plain text            -->
+    - [Intro](./ref/accounts/intro.md)
+    - [Glossary](./ref/accounts/glossary.md)
+  - billing
+    - [Intro](./ref/billing/intro.md)
+    - [Glossary](./ref/billing/glossary.md)
+  ```
+
+Migrating from mdBook
+---------------------
+
+1. Keep your source directory as it is along with `SUMMARY.md`.
+2. Remove `book.toml`, you won't need it.
+3. In your Markdown files:
+  - replace `admonish` admonitions with the standard ``.. admonition::`` directives
+  - replace `shiftinclude` code samples with ``.. include::`` directives combined with ``:start-after``, ``end-before``, and ``code`` arguments to selectively include parts of the code and enable code highlighting
+  - update page references, see [Markup external referencing]
+  - if you have images or other assets, copy them to the output directory—`nim book`:cmd: won't automatically copy them during build
+  - (optionally) promote your top headers to ``.. title::`` and all lower-level headers one level up 
+
+Notes
+-----
+
+- ``.. title::`` values are escaped, e.g. `&` is turned into `&amp`, so you should avoid using tags or special simbols in titles
+- if your docs won't build because an ``.idx`` file cannot be found, pre-build the indexes with `nim book --index:only bookSrc`
 
 
 Document Types

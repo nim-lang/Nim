@@ -42,17 +42,18 @@ the result to HTML [^html] or Latex [^latex].
 
 Full list of supported commands:
 
-===================   ======================   ============   ==============
-command               runs on...               input format   output format
-===================   ======================   ============   ==============
-`nim md2html`:cmd:    standalone md files      ``.md``        ``.html`` HTML
-`nim md2tex`:cmd:     same                     same           ``.tex`` LaTeX
-`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
-`nim rst2tex`:cmd:    same                     same           ``.tex`` LaTeX
-`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
-`nim doc2tex`:cmd:    same                     same           ``.tex`` LaTeX
-`nim jsondoc`:cmd:    same                     same           ``.json`` JSON
-===================   ======================   ============   ==============
+===================   =======================   ============   ==============
+command               runs on...                input format   output format
+===================   =======================   ============   ==============
+`nim md2html`:cmd:    standalone md files       ``.md``        ``.html`` HTML
+`nim book`:cmd:       directory with md files   same           same
+`nim md2tex`:cmd:     same                      same           ``.tex`` LaTeX
+`nim rst2html`:cmd:   standalone rst files      ``.rst``       ``.html`` HTML
+`nim rst2tex`:cmd:    same                      same           ``.tex`` LaTeX
+`nim doc`:cmd:        documentation comments    ``.nim``       ``.html`` HTML
+`nim doc2tex`:cmd:    same                      same           ``.tex`` LaTeX
+`nim jsondoc`:cmd:    same                      same           ``.json`` JSON
+===================   =======================   ============   ==============
 
 
 Basic markup
