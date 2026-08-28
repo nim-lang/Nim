@@ -143,7 +143,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     # backend spelling instead of collapsing into the generic Nim builtin:
     c &= char(t.kind)
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
-      c.hashSym(t.sym)
+      # Aliases inherit the external name, but have a different symbol.
+      if t.sym.loc.snippet != "":
+        c &= t.sym.loc.snippet
+      else:
+        c.hashSym(t.sym)
   of tyObject, tyEnum:
     if t.typeInst != nil:
       # prevent against infinite recursions here, see bug #8883:
