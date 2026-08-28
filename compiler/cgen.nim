@@ -2929,6 +2929,23 @@ proc genModuleCode(m: BModule; cf: var Cfile): string =
 proc registerModuleCode(m: BModule; cf: var Cfile; code: string) =
   ## Second half of `writeModule`: writes the .c file if it changed and
   ## registers it for compilation.
+  ##
+  ## NOT under the per-module backend's `cg` stage. There the `.c` belongs to
+  ## `emit`, which renders it from the `.c.nif` using the GLOBAL merge decision;
+  ## `cg` can only filter by the liveness its own process can see, so writing
+  ## here puts a second, differently-filtered `.c` at the very path `emit`
+  ## declares as its nifmake output. Two stages then claim one output, and the
+  ## `.c` ends up newer than `emit`'s own `.c.nif` input — so any build in which
+  ## `emit` is not forced to run anyway keeps `cg`'s unfiltered text and hands it
+  ## to the linker ("multiple definition of eqdup__…").
+  ##
+  ## Today nothing surfaces this: `merge` rewrites the decision file on every
+  ## run and every `emit` lists it as an input, so all of them re-fire and
+  ## overwrite the stray file. That makes the fire-all load-bearing rather than
+  ## the "insurance" it is documented as, and it silently blocks making the
+  ## decision content-stable. `cg`'s product is the `.c.nif`; the compile
+  ## registration is likewise the `link` stage's job.
+  if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg": return
   if code != "" or m.config.symbolFiles != disabledSf:
     when hasTinyCBackend:
       if m.config.cmd == cmdTcc:
