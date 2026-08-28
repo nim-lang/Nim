@@ -352,7 +352,7 @@ proc mainCommand*(graph: ModuleGraph) =
     loadConfigs(DocConfig, cache, conf, graph.idgen)
     conf.setNoteDefaults(warnCannotOpenFile, true)
     commandBook(cache, conf)
-    commandBuildIndex(conf, $conf.outDir, exclCode = true)
+    commandBuildIndex(conf, $conf.outDir, exclCode = true, inclHeaders = true)
   of cmdRst2html, cmdMd2html:
     # XXX: why are warnings disabled by default for rst2html and rst2tex?
     for warn in rstWarnings:

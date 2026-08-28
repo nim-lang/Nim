@@ -942,7 +942,7 @@ rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string)
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
 The purpose of `idx` files is to hold the interesting symbols and their HTML
 references so they can be later concatenated into a big index file with
-[mergeIndexes()](rstgen.html#mergeIndexes,string).  This section documents
+[mergeIndexes()](rstgen.html#mergeIndexes,string,bool,bool).  This section documents
 the file format in detail.
 
 Index files are line-oriented and tab-separated (newline and tab characters
