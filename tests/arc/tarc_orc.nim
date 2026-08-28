@@ -35,6 +35,20 @@ proc bug20303() =
 
 bug20303()
 
+block: # bug #26143
+  var indexCalls = 0
+
+  proc nextIndex(): int =
+    result = indexCalls
+    inc indexCalls
+
+  proc consume(value: sink string) =
+    doAssert value == "A"
+
+  var values = @["A", "B"]
+  consume(values[nextIndex()])
+  doAssert indexCalls == 1
+
 proc main() = # todo bug with templates
   block: # bug #11267
     var a: seq[char] = block: @[]
