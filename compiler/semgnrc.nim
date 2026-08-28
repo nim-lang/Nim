@@ -129,7 +129,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result.typ = nil
     onUse(n.info, s)
   of skParam:
-    if s.owner == c.p.owner:
+    if s.typ != nil and s.typ.kind == tyStatic and s.typ.n != nil:
+      # The enclosing routine gives this static parameter a concrete value.
+      # Keep that value so the nested generic can fold it as a compile-time
+      # expression instead of generating a runtime parameter reference.
+      result = s.typ.n
+    elif s.owner == c.p.owner:
       # Parameters of the routine currently being semchecked stay as local
       # identifiers
       result = n
@@ -681,4 +686,3 @@ proc semConceptBody(c: PContext, n: PNode): PNode =
   )
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
-
