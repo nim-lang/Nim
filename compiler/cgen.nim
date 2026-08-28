@@ -113,68 +113,144 @@ proc icNifName(m: BModule; t: PType): string =
     result = ""
 
 
+proc signatureHasMetaType*(t: PType; depth: int = 0): bool =
+  ## Whether a routine signature mentions a compile-time/meta element type
+  ## (`typed`/`untyped` — e.g. `echo`'s `varargs[typed]` — typedesc, static,
+  ## generic param). Such routines are expanded at their call sites and never
+  ## emitted standalone, so the per-module owned-routine seeding must skip them
+  ## (`getTypeDescAux(tyTyped)` otherwise). `tfHasMeta` alone misses the varargs
+  ## element case, hence the explicit scan.
+  result = false
+  if t == nil or depth > 8: return false
+  if t.kind == tyGenericBody:
+    # The uninstantiated template carried as a `tyGenericInst`'s first child
+    # always mentions its `tyGenericParam` placeholders, but the instance
+    # itself is fully concrete (e.g. `var CountTable[SigHash]`). Descending
+    # here would wrongly flag every routine with a generic-instance parameter
+    # as meta and drop it from the owned-routine seeding -> undefined symbols
+    # at link (its only definer never emits it).
+    return false
+  if t.kind == tyStatic:
+    # A RESOLVED static value (the `256` in `MDigest[256]`, the `N` in
+    # `HashList[T, N]`, …) is carried as a `tyStatic` node inside the otherwise
+    # fully-concrete `tyGenericInst`, but it is NOT meta: the routine is a normal
+    # runtime routine the owner must emit. Only an UNRESOLVED `static T` parameter
+    # (no bound value, `t.n == nil`) is meta. Without this, every routine whose
+    # signature touches a `static`-parameterized generic instance (the bulk of
+    # the SSZ/`MDigest` API) is dropped from the owned-routine seeding and ends up
+    # an undefined reference at link (mirrors the tyGenericBody case above).
+    return t.n == nil
+  if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyGenericParam,
+                tyAnything, tyFromExpr, tyError}:
+    return true
+  for k in t.kids:
+    if signatureHasMetaType(k, depth + 1): return true
+
+proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
+  ## A concrete, non-generic, runtime routine with a real body, OWNED by the
+  ## module at `modPos`. Shared by the `cg` stage's owned-routine seeding (so a
+  ## routine called only from other modules is still emitted by somebody) and
+  ## the `lower` stage's owned-routine enumeration, so both stages see exactly
+  ## the same set. The exclusions:
+  ## - nested/closure procs (owner is a proc, not a module): emitted via their
+  ##   enclosing routine's lambda-lifting, never standalone;
+  ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
+  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
+  ##   not real codegen targets.
+  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
+  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
+  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
+  ##   method's body sub-tree (incl. its closure iterator); transforming it here
+  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
+  ##   identity, baking a conflicting `up` field → "up references do not agree"
+  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
+  ##   at lift time). So a dispatcher is never an owned runtime routine.
+  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
+  ## iterator, which is expanded at each call site) and must be emitted by its
+  ## owner — else a cross-module `for` over it links to nothing.
+  ##
+  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine — not
+  ## in `cg` and not in the `lower` stage. They are demanded by the backend's
+  ## emit-everywhere path and deduped by `merge` (content C name); the frontend
+  ## materialises them through the `(offer)` mechanism. The `lower` stage must
+  ## not transform an instance: a not-fully-concrete instance (a closure factory
+  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
+  ## its further-specialised use sites) still carries unresolved overload choices
+  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
+  s.itemId.module == modPos and
+  (s.kind in {skProc, skFunc, skConverter, skMethod} or
+   (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
+  s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
+  s.magic == mNone and
+  sfFromGeneric notin s.flags and
+  sfDispatcher notin s.flags and
+  {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+  s.typ != nil and not signatureHasMetaType(s.typ) and
+  s.ast != nil and s.ast.safeLen > bodyPos and
+  s.ast[genericParamsPos].kind == nkEmpty
+  # NOTE: an `nkEmpty` body is NOT a disqualifier. A concrete, owned, non-
+  # forward/-importc/-magic routine whose body folds to nothing is still a real
+  # definition the owner must emit (`void f(void){}`), exactly as whole-program
+  # cgen does — else a cross-module caller links to nothing. This bites e.g.
+  # Nimbus' `extras.incInternalErrors`, a plain `proc` whose sole statement is a
+  # metrics-counter `.inc()` that the `metrics` library expands to a no-op when
+  # the importing tool (ncli) builds with `-u:metrics`; the body is then a bare
+  # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
+  # (the other empty-body case) carry `sfForward` and are excluded above.
+
+proc bodyIsSeededByItsOwner(prc: PSym): bool =
+  ## Whether SOME module's `cg` is guaranteed to emit `prc`'s body on its own,
+  ## without this TU asking for it. There are exactly two seeders in the
+  ## per-module backend, and this enumerates them:
+  ##
+  ##   * `nifbackend.generateCodeForModule` walks its module's index and
+  ##     `requestProcDef`s every `ownsRuntimeRoutine` — the SAME predicate the
+  ##     `lower` stage uses to decide what it transforms into that module's
+  ##     `.t.bif`. So asking it about `prc`'s OWN defining module answers
+  ##     "will that module's cg seed this?".
+  ##   * `nifbackend.emitMethodDispatchers` synthesizes every method dispatcher
+  ##     into the MAIN TU. A dispatcher is a `copySym` clone that no module's
+  ##     index enumerates, so the first rule cannot see it.
+  ##
+  ## Anything else — a generic instance, a synthesized hook, a nested routine
+  ## (emitted as part of its enclosing routine's lambda-lifted body), an inline
+  ## iterator (expanded at each call site) — is seeded by nobody. Those are
+  ## emitted by EVERY demander and `merge` keeps one per content-addressed C
+  ## name. That is the single default, and it is the safe direction: emitting a
+  ## body twice costs a merge dedup, while emitting it nowhere is a link error.
+  ##
+  ## A BACKEND-MINTED routine (a hook or nested proc that lambda-lifting /
+  ## `injectDestructorCalls` created during `lower`) exists in no module's semmed
+  ## NIF: it is written into the `.t.bif` of every module that references it,
+  ## re-homed there with `@bk`. Its `itemId.module` therefore names whichever
+  ## `.t.bif` it was read from rather than a module that seeds it, so it must not
+  ## be routed through the ownership question at all.
+  if isBackendMinted(prc.itemId): return false
+  result = sfDispatcher in prc.flags or
+           ownsRuntimeRoutine(prc, prc.itemId.module)
+
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## Per-module backend codegen is concerned with ONE module: it emits the
-  ## bodies of the routines that module OWNS (its own top-level defs) and only
-  ## *prototypes* a routine owned by another module — that routine's body is
-  ## emitted by its own module's `cg` process, and the merge stage's DCE prunes
-  ## whatever ends up globally dead. The funnel where the main module re-emitted
-  ## its entire transitive closure (≈1.8 GB, a 56 MB `.c.nif`) is exactly this
-  ## rule being absent.
+  ## bodies whose owner is this module and only *prototypes* a body some other
+  ## module's `cg` process is going to emit. The funnel where the main module
+  ## re-emitted its entire transitive closure (~1.8 GB, a 56 MB `.c.nif`) is
+  ## exactly this rule being absent.
   ##
-  ## Generic instances and synthesized hooks (`=destroy`, `$`, …) have no single
-  ## owning-module top-level — they are minted on demand — so each demander emits
-  ## them and the merge stage deduplicates by their content-addressed C name.
-  ##
-  ## A NESTED routine is not emitted on its own: it is lambda-lifted and emitted
-  ## as part of its ENCLOSING routine's body, into the same TU. So the decision
-  ## must follow the OUTERMOST enclosing routine (the one directly under the
-  ## module — `skipGenericOwner` stops at a generic *instance*, not its
-  ## originating generic), never the nested symbol's own identity. Otherwise a
-  ## nested proc whose enclosing is a generic instance (content-addressed,
-  ## emitted by every demander) — e.g. nim-serialization's per-field `readField`
-  ## inside the `makeFieldReadersTable[R,W]` instance, whose address fills the
-  ## returned table — is gated out (its own `itemId.module` is the minting module
-  ## and its disamb is a plain counter), so the enclosing's lift degrades it to a
-  ## prototype and its body lands in no TU → undefined at link.
+  ## The decision is a lookup against `bodyIsSeededByItsOwner`, i.e. against the
+  ## very predicates that drive the seeding, rather than a re-derivation from
+  ## symbol ancestry. Re-derivation is what made this function a five-clause
+  ## tower and the source of a run of "emitted by nobody" / "two hooks on one C
+  ## name" bugs: the walk answered a question about who WILL emit by inspecting
+  ## who DECLARED, and the two drifted apart for every symbol the backend mints.
   if not (m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"):
     return true
-  # The symbol may ITSELF be content-addressed (a synthesized hook or a generic
-  # instance carries `Hook/InstanceDisambBit` on its OWN `disamb`): then it has no
-  # single owning module and every demander emits it (merge dedups by C name),
-  # regardless of what it is nested under. This must be checked on `prc` directly,
-  # not on `top`: a `=destroy`/`=sink` lifted while compiling some enclosing proc
-  # (e.g. system's `isZeroMemory` destroying a `ptr array`) has that PROC as its
-  # `skipGenericOwner`, so `top` walks up to a plain routine whose own disamb has
-  # no bit — gating the hook to that routine's owner module, which mints it
-  # on demand and emits it nowhere → undefined at link.
-  if (prc.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32:
-    return true
-  # A BACKEND-MINTED routine (a hook or nested proc that lambda-lifting /
-  # `injectDestructorCalls` created during the `lower` stage) exists in no
-  # module's semmed NIF: it is written into the `.t.bif` of every module that
-  # references it, re-homed there with the `@bk` marker. So there IS no other
-  # `cg` process that could emit it, and the owner walk below — which lands on
-  # the ORIGINAL generic's module for the env `=destroy` of a generic closure
-  # iterator instantiated elsewhere — leaves it in no TU at all
-  # (`undefined reference to eqdestroy__c485__…`). Every referencing TU emits it;
-  # the merge stage keeps one.
-  if isBackendMinted(prc.itemId):
-    return true
-  var top = prc
-  while top.skipGenericOwner != nil and top.skipGenericOwner.kind != skModule:
-    top = top.skipGenericOwner
-  result = top.itemId.module == m.module.position or
-           (top.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32 or
-           # An INLINE iterator has no standalone body — it is expanded at each
-           # call site — so it is materialized in every module that iterates over
-           # it, never in its owner. A proc nested in one (e.g. std/uri's
-           # `parseData` inside `iterator decodeQuery`) is lambda-lifted into each
-           # of those consumer TUs and must be emitted there (its stable
-           # owner-suffixed name + `'u'` flag let the merge stage keep one); gating
-           # it to the iterator's owner module leaves it in no TU → undefined.
-           (top.kind == skIterator and top.typ != nil and
-            top.typ.callConv != ccClosure)
+  if not bodyIsSeededByItsOwner(prc):
+    # Seeded by nobody: every demander emits it, merge keeps one.
+    result = true
+  elif sfDispatcher in prc.flags:
+    result = sfMainModule in m.module.flags
+  else:
+    result = prc.itemId.module == m.module.position
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
