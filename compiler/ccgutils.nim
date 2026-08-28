@@ -113,20 +113,12 @@ proc encodeName*(name: string): string =
 proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   result = if name == "": s.name.s else: name
   # keep backend-minted ids out of the `_u` namespace; their item counter
-  # restarts at 0 and would collide with loaded symbols' ids
+  # restarts at 0 and would collide with loaded symbols' ids. Which integer
+  # identifies such a symbol is decided ONCE, in `astdef.backendMintedDisamb`,
+  # shared with `mangleProcNameExt` and `ast2nif.toNifSymName`.
   if s.itemId.isBackendMinted:
     result.add "_c"
-    if (s.disamb and HookDisambBit) != 0'i32:
-      # A backend-minted sym whose `disamb` is content-derived (setHookDisamb gave
-      # it HookDisambBit) — e.g. the `rttiDestroy` wrapper. Its `itemId.item` is a
-      # PER-PROCESS backend counter, so using it makes the C name diverge across
-      # the emit-everywhere processes: the type's RTTI table (emit-everywhere,
-      # merge-deduped) ends up referencing one process's `_c<item>` while the
-      # wrapper is defined with another's -> undefined at link (`rttiDestroy_c23`).
-      # The content-derived disamb is stable across processes, so use it.
-      result.add $s.disamb
-    else:
-      result.add $s.itemId.item
+    result.add $backendMintedDisamb(s)
   else:
     result.add "_u"
     # Mirror `mangleProcNameExt`: use the per-(module,name) `disamb`, NOT

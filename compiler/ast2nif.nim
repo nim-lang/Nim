@@ -314,33 +314,15 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # during a VM transform): re-home to the current module with the `@bk`
     # marker so each referencing module self-contains it. See transformBody.
     #
-    # Use `itemId.item` (the writer's dedup identity, see `emittedBackendSyms`)
-    # as the numeric name component, NOT `disamb`: closure `:env` syms in one
-    # module are minted from TWO id spaces — the backend lower stage's
-    # `tb.idgen` and sem's `vmTransfIdgen` (transf.transformBody) — whose
-    # `disambTable`s each start `:env` at the same low count, so a macro-lowered
-    # `:env` (e.g. `implementSendProcBody`) and a backend-lowered one
-    # (`peerTrimmerHeartbeat`) collide on `:env.2.<mod>@bk`. Two distinct syms
-    # then share a NIF name; the loader's name-keyed index/`c.syms` return the
-    # first for both, so one proc's `:env` gets the OTHER proc's env type
-    # (mismatched-pointer C, "has no member colonup_" at link). `itemId.item` is
-    # unique per `@bk` sym (both are emitted as defs, see writeSym), mirroring
-    # how `@bk` TYPES already key off `itemId.item` (nifTypeName). The loader
-    # copies this back into `disamb` (sn.count), so `globalName` round-trips.
+    # The numeric name component comes from `astdef.backendMintedDisamb` — the
+    # ONE definition of which integer identifies a backend-minted symbol, shared
+    # with the two C-name manglers (`mangleProcNameExt`, `ccgutils.makeUnique`)
+    # so the NIF name and the C name cannot disagree. `@bk` TYPES key off
+    # `itemId.item` the same way (see `nifTypeName`). The loader copies this back
+    # into `disamb` (sn.count), so `globalName` round-trips.
     result = sym.name.s
     result.add '.'
-    if (sym.disamb and HookDisambBit) != 0'i32:
-      # EXCEPTION, mirroring `mangleProcNameExt`: a lifted hook's `disamb` is
-      # CONTENT-derived (`setHookDisamb`), so it is the same in every process,
-      # whereas `itemId.item` is a per-process backend counter. Such a hook DOES
-      # cross process boundaries — the `lower` stage mints the env hooks of
-      # nested routines while `cg` mints those of the module's top level, and
-      # both end up in the same translation unit — so two unrelated hooks
-      # collided on `_c<item>` and the merge stage kept one body for both
-      # (C accepted the mistyped call, C++ rejected it).
-      result.addInt sym.disamb
-    else:
-      result.addInt sym.itemId.item
+    result.addInt backendMintedDisamb(sym)
     result.add '.'
     result.add modname(w.currentModule, w.infos.config)
     result.add BackendLocalMarker

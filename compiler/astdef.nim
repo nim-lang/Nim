@@ -1060,6 +1060,38 @@ const
     ## Both live here rather than in `modulegraphs` because `ast2nif` — which
     ## cannot import that module — names symbols by them.
 
+proc backendMintedDisamb*(s: PSym): int32 {.inline.} =
+  ## The integer that identifies a BACKEND-MINTED symbol (`isBackendMinted`) in
+  ## every name derived from it: its NIF name (`ast2nif.toNifSymName`) and its C
+  ## name (`mangleutils.mangleProcNameExt`, `ccgutils.makeUnique`).
+  ##
+  ## Two cases, and the whole point of having ONE function is that all three
+  ## sites take the same one:
+  ##
+  ## * A lifted HOOK's `disamb` is CONTENT-derived (`modulegraphs.setHookDisamb`),
+  ##   so it is identical in every process. Such a hook really does cross process
+  ##   boundaries — `lower` mints the env hooks of nested routines while `cg`
+  ##   mints those of the module's top level, and both land in the same
+  ##   translation unit — and its C name is also baked into emit-everywhere RTTI
+  ##   tables. `itemId.item` would differ per process, so two unrelated hooks
+  ##   collided on one `_c<item>` and the merge stage kept a single body for both
+  ##   (C accepted the mistyped call, C++ rejected it).
+  ## * Otherwise `itemId.item` — the writer's dedup identity, unique per `@bk`
+  ##   sym. `disamb` cannot serve here: a module's `:env` syms are minted from TWO
+  ##   id spaces (the backend `lower` stage's idgen and sem's `vmTransfIdgen`)
+  ##   whose `disambTable`s each start `:env` at the same low count, so a
+  ##   macro-lowered and a backend-lowered `:env` collide on `:env.2.<mod>@bk`.
+  ##
+  ## The loader copies the name's numeric component back into `disamb`, so after a
+  ## round trip `disamb` equals this value and `ast2nif.globalName` — which always
+  ## reads `disamb` — agrees with the name the writer produced.
+  ##
+  ## This rule used to be written out at each of the three sites. They drifted:
+  ## `toNifSymName` lacked the hook exception, so a content-derived value was
+  ## overwritten by the loader and two backend hooks merged into one C function.
+  if (s.disamb and HookDisambBit) != 0'i32: s.disamb
+  else: s.itemId.item
+
 type
   LogEntryKind* = enum
     HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,
