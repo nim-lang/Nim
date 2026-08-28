@@ -2545,6 +2545,18 @@ proc cursorFromIndexEntry(c: var DecodeContext; module: FileIndex; entry: NifInd
 type
   LoadFlag* = enum
     LoadFullAst, AlwaysLoadInterface
+    SkipInterfaceTables
+      ## Do not eagerly build the module's interface string tables. Set by
+      ## `modulegraphs.loadTransitiveHooks`, which loads a module only to
+      ## register its hooks / macro-cache replay / generic-instance offers and
+      ## throws the tables away — the module is a dep-of-a-dep, not an import, so
+      ## none of its symbols are visible to the module being semchecked.
+      ##
+      ## The eager pass calls `loadSymFromIndexEntry` for EVERY index entry, and
+      ## its only other effect is pre-populating the name-keyed `c.syms` cache —
+      ## which `resolveSym` fills lazily on a miss anyway, straight from the same
+      ## index. So for these loads it is pure work: on a 219-module program a
+      ## one-line edit paid it 209 times over.
 
 proc isGlobalIndexSym(s, dottedSuffix: string): bool =
   ## Mirror of `nifbuilder.addSymbolDefRetIsGlobal` / `bif.isGlobalSymbol`: a sym
@@ -3834,6 +3846,13 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
       elif tagIs(cur, "reppureenum"):  loadLogOp(c, result.logOps, cur, PureEnumEntry, attachedTrace, module)
       elif tagIs(cur, "repcppmember"): loadLogOp(c, result.logOps, cur, CppMemberEntry, attachedTrace, module)
       elif tagIs(cur, "export"):
+        if SkipInterfaceTables in flags:
+          # Same reason the interface tables are skipped: `interf` is a scratch
+          # table this caller throws away, so every `resolveSym` here (one per
+          # exported symbol, plus `addReexportedEnumFields`) only warms the
+          # name-keyed `c.syms` cache that `resolveSym` refills lazily on a miss.
+          skip cur
+          continue
         cur.into:
           while cur.hasMore and cur.kind == DotToken: skip cur  # flags / type
           while cur.hasMore:
@@ -3973,7 +3992,8 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
   # Populate interface tables from the NIF index structure
   # Symbols are created as stubs (Partial state) and will be loaded lazily via loadSym
   # Use exports collected by processTopLevel
-  populateInterfaceTablesFromIndex(c, module, interf, interfHidden, string(suffix))
+  if SkipInterfaceTables notin flags:
+    populateInterfaceTablesFromIndex(c, module, interf, interfHidden, string(suffix))
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =

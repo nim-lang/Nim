@@ -1035,7 +1035,13 @@ when not defined(nimKochBootstrap):
       var isKnownFile = false
       let fileIdx = g.config.registerNifSuffix(string suffix, isKnownFile)
       if not g.hookClosure.containsOrIncl(fileIdx.int):
-        let precomp = loadNifModule(ast.program, suffix, interf, interfHidden, {})
+        # `SkipInterfaceTables`: `interf`/`interfHidden` here are scratch tables
+        # shared by every iteration and never read — this module is a
+        # dep-of-a-dep, so none of its symbols are visible to the module being
+        # semchecked. Building them called `loadSymFromIndexEntry` for every
+        # index entry of every closure member.
+        let precomp = loadNifModule(ast.program, suffix, interf, interfHidden,
+                                    {SkipInterfaceTables})
         registerLoadedHooks(g, precomp.logOps)
         # Record this transitively-loaded module so the sem driver applies its
         # VM-level load effects (macro-cache replay + `{.compileTime.}` global init)
