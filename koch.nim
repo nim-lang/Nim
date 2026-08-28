@@ -76,7 +76,7 @@ Options:
   --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  bootic [options]         bootstraps via the incremental compiler (`nim ic`)
+  bootic [options]         bootstraps via the incremental compiler (`--ic:on`)
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
   toolsNoExternal          builds Nim related tools (except external tools,
@@ -450,7 +450,7 @@ proc bootic(args: string, skipIntegrityCheck: bool) =
     # everything.
     if i > 0: removeDir smartNimcache
     let nimi = if i == 0: nimStart else: i.thVersion
-    exec "$# ic --nimcache:$# $# compiler" / "nim.nim" %
+    exec "$# c --ic:on --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
@@ -615,7 +615,7 @@ proc runIcTestFile(inp: string) =
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
-    var cmd = nimExe & " ic --hint:Conf:off --warnings:off "
+    var cmd = nimExe & " c --ic:on --hint:Conf:off --warnings:off "
     cmd.add quoteShell(file)
     exec(cmd)
 

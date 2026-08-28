@@ -1289,6 +1289,14 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
     name = typDesc
   if isFnConst:
     fnConst = " const"
+  if not isCtor:
+    # The call-site form (`x->salute(@)`), not the mangled Nim name. Set it on
+    # BOTH paths: whole-program cgen always emitted the out-of-class definition
+    # (the `else` branch) before any caller, but the per-module backend emits a
+    # foreign member proc's body in ITS OWN module, so the caller's TU only ever
+    # reaches the in-class declaration below — and called the member by the
+    # mangled name (`loo->salute_u0__vireouyks1()`, "struct Loo has no member").
+    prc.locImpl.snippet = "$1$2(@)" % [memberOp, name]
   if isFwdDecl:
     if isStatic:
       result.add "static "
@@ -1298,9 +1306,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
         override = " override"
     superCall = ""
   else:
-    if not isCtor:
-      prc.locImpl.snippet = "$1$2(@)" % [memberOp, name]
-    elif superCall != "":
+    if isCtor and superCall != "":
       superCall = " : " & superCall
 
     name = "$1::$2" % [typDesc, name]
@@ -1891,11 +1897,30 @@ proc genVTable(result: var Builder, seqs: seq[PSym]) =
         result.add(cCast(CPointer, seqs[i].loc.snippet))
 
 proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
+  ## The C++/HCR flavour: C++ has no designated initializers, so the RTTI record
+  ## is a bare variable that the module's `DatInit` fills field by field.
   cgsym(m, "TNimTypeV2")
-  m.s[cfsStrData].addDeclWithVisibility(Private):
-    m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
   if m.config.cmd == cmdNifC:
+    # Same emit-everywhere split as `genTypeInfoV2Impl`: every `cg` process that
+    # demands this type declares it `extern`, and the DEFINITION is a droppable
+    # `'d'` unit the merge stage gives a single owner. Without the split the bare
+    # `TNimTypeV2 x;` in each TU is a tentative definition — which C's linker
+    # merges but C++'s does not, so `nim cpp --ic:on` died at link with
+    # "multiple definition of NTIv2__…". The field ASSIGNMENTS stay in every
+    # TU's `DatInit`: they are top-level code, not a definition, and every module
+    # computes the same values.
+    m.s[cfsStrData].addDeclWithVisibility(Extern):
+      m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+    m.s[cfsVars].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+    var def = newBuilder("")
+    def.addDeclWithVisibility(Private):
+      def.addVar(kind = Local, name = name, typ = "TNimTypeV2")
+    m.s[cfsVars].add extract(def)
+    m.s[cfsVars].add(cnifEndDefs())
     m.icDataDefs.add (name, icNifName(m, origType))
+  else:
+    m.s[cfsStrData].addDeclWithVisibility(Private):
+      m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1

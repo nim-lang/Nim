@@ -269,6 +269,16 @@ const
     ## in a Nim identifier), so a field use can never be misrouted to a same-named
     ## local var/param. Mirrors the `` `t `` (`typeToNifSym`) and `PkgMarker`
     ## namespaces.
+  CursorFieldMarker = "`fc"
+    ## `FieldMarker` for a field declared `{.cursor.}`. A field USE serializes as
+    ## a bare `SymUse` — there is nowhere to put symbol flags — and the use-site
+    ## stub `loadFieldStub` mints carries none, so `trees.isCursor` (which reads
+    ## `sfCursor` off the field sym of an `nkDotExpr`) said "not a cursor" for
+    ## every loaded field. `lists.DoublyLinkedNode.prev` then became a COUNTED
+    ## reference: every node held its predecessor alive, no refcount ever hit
+    ## zero, and a doubly linked list leaked its whole contents. Both the reclist
+    ## def and every use derive their name from the same `PSym`, so marking the
+    ## name keeps them in lockstep.
   PkgMarker = "`pkg"
     ## Appended to the ident of `skPackage` symbols in NIF names. A package sym
     ## has no module of its own: it is written once into every module NIF that
@@ -290,7 +300,7 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
     # agree by construction; the loader recovers `name.s` and `mangleField` produces
     # the matching struct member name regardless of which module references it.
     result = sym.name.s
-    result.add FieldMarker
+    result.add (if sfCursor in sym.flagsImpl: CursorFieldMarker else: FieldMarker)
     result.add '.'
     # Use the field's POSITION as the local name's numeric component: it is unique
     # within the owning type (so the local name is unambiguous there) AND it is what
@@ -382,11 +392,20 @@ proc parseSymName*(s: string): ParsedSymName =
     dec i
   return ParsedSymName(name: s, module: "")
 
+proc isFieldMarked(rawName: string): bool {.inline.} =
+  rawName.endsWith(FieldMarker) or rawName.endsWith(CursorFieldMarker)
+
+proc stripFieldMarker(rawName: string): string {.inline.} =
+  if rawName.endsWith(CursorFieldMarker):
+    rawName[0 ..< rawName.len - CursorFieldMarker.len]
+  else:
+    rawName[0 ..< rawName.len - FieldMarker.len]
+
 proc isFieldNifName(name: string): bool {.inline.} =
   ## True for an object field's local NIF name `<ident>`f.<disamb>` (see
   ## `FieldMarker`): no module suffix, marker on the ident.
   let sn = parseSymName(name)
-  sn.module.len == 0 and sn.name.endsWith(FieldMarker)
+  sn.module.len == 0 and isFieldMarked(sn.name)
 
 proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
   ## The user-visible name of a symbol stub must NOT keep NIF-only name
@@ -397,11 +416,11 @@ proc stubKindAndName(cache: IdentCache; rawName: string): (TSymKind, PIdent) =
   ## the marked NIF name for the index lookup.
   if rawName.endsWith(PkgMarker):
     (skPackage, cache.getIdent(rawName[0 ..< rawName.len - PkgMarker.len]))
-  elif rawName.endsWith(FieldMarker):
+  elif isFieldMarked(rawName):
     # Object field (local NIF symbol, see `FieldMarker`): strip the marker so the
     # backend mangles the clean field name, and record the kind so a use-site stub
     # is a real `skField` (cgen branches on it for `obj.field` access).
-    (skField, cache.getIdent(rawName[0 ..< rawName.len - FieldMarker.len]))
+    (skField, cache.getIdent(stripFieldMarker(rawName)))
   else:
     (skStub, cache.getIdent(rawName))
 
@@ -1305,6 +1324,7 @@ var repDeepCopyTag = registerTag("repdeepcopy")
 var repEnumToStrTag = registerTag("repenumtostr")
 var repMethodTag = registerTag("repmethod")
 var repPureEnumTag = registerTag("reppureenum")
+var repCppMemberTag = registerTag("repcppmember")
 #var repClassTag = registerTag("repclass")
 var includeTag = registerTag("include")
 var importTag = registerTag("import")
@@ -1330,6 +1350,29 @@ var sigTag = registerTag("sig")
 # by construction (replaces relying on the `@bk` module-marker bit, which the
 # loader dropped on type USES). Mirrors NIF's `.unusedname` directive.
 var unusedIdTag = registerTag("unusedid")
+# `(modflags <int>)` — the MODULE symbol's backend-relevant flags. Only
+# `sfInjectDestructors` (bit 0) so far: sempass2 sets it on the module sym when
+# the module's TOP-LEVEL statements need the destructor pass, and `cgen.
+# genTopLevelStmt` gates `injectDestructorCalls` on it. `moduleFromNifFile`
+# builds the module PSym from scratch, so without this record the flag was lost
+# and a NIF-loaded module's top-level locals were never destroyed (`block: let
+# h = openHandle()` leaked, silently and only under `nim ic`).
+const ModFlagInjectDestructors* = 1'i32
+var modFlagsTag = registerTag("modflags")
+
+# `(nflags <ident> <symuse>)` — an `nkSym` NODE's own flags. A sym node is
+# normally emitted as a bare NIF `SymUse` token, which has nowhere to put them,
+# so every node flag on a sym use was silently dropped. Two of those flags are
+# the frontend's move/first-write analysis results (`nfFirstWrite`, `nfLastRead`,
+# both listed in `PersistentNodeFlags`) that `injectdestructors` reads in the
+# backend: without them EVERY first assignment to a destructor-bearing local
+# compiled as `=sink` (i.e. `=destroy` on still-zeroed memory, then a copy)
+# instead of a plain construction, and no read was ever recognised as a move.
+# Only wrap when there is something to say, so the common sym use stays a bare
+# token.
+const symNodeFlagsTagName = "nflags"
+var symNodeFlagsTag = registerTag(symNodeFlagsTagName)
+const PersistedSymNodeFlags = PersistentNodeFlags - {nfLazyType, nfHasComment}
 
 proc registerNifAstTags*() =
   ## (Re)registers ast2nif's NIF tags explicitly. The top-level `registerTag`
@@ -1345,6 +1388,8 @@ proc registerNifAstTags*() =
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
   bindingIdTag = registerTag(bindingIdTagName)
+  modFlagsTag = registerTag("modflags")
+  symNodeFlagsTag = registerTag(symNodeFlagsTagName)
   replayTag = registerTag("replay")
   repConverterTag = registerTag("repconverter")
   repDestroyTag = registerTag("repdestroy")
@@ -1357,6 +1402,7 @@ proc registerNifAstTags*() =
   repEnumToStrTag = registerTag("repenumtostr")
   repMethodTag = registerTag("repmethod")
   repPureEnumTag = registerTag("reppureenum")
+  repCppMemberTag = registerTag("repcppmember")
   includeTag = registerTag("include")
   importTag = registerTag("import")
   implTag = registerTag("implementation")
@@ -1437,7 +1483,14 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
       w.withNode dest, n:
         dest.addIdent n.ident.s
     of nkSym:
-      writeSymNode(w, dest, n, n.sym)
+      let persisted = n.flags * PersistedSymNodeFlags
+      if persisted == {}:
+        writeSymNode(w, dest, n, n.sym)
+      else:
+        dest.addParLe symNodeFlagsTag, trLineInfo(w, n.info)
+        writeFlags(dest, persisted)
+        writeSymNode(w, dest, n, n.sym)
+        dest.addParRi
     of nkCharLit:
       w.withNode dest, n:
         dest.add charToken(n.intVal.char, NoLineInfo)
@@ -1665,6 +1718,11 @@ proc writeOp(w: var Writer; content: var IcBuilder; op: LogEntry) =
     content.addParRi()
   of PureEnumEntry:
     content.addParLe repPureEnumTag, NoLineInfo
+    content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
+    content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
+    content.addParRi()
+  of CppMemberEntry:
+    content.addParLe repCppMemberTag, NoLineInfo
     content.add strToken(pool.strings.getOrIncl(op.key), NoLineInfo)
     content.add symToken(pool.syms.getOrIncl(w.toNifSymName(op.sym)), NoLineInfo)
     content.addParRi()
@@ -2085,7 +2143,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[];
                      resolvedImportDeps: seq[FileIndex] = @[];
                      firstUnusedId: int32 = 0;
-                     expansions: seq[(PSym, TLineInfo)] = @[]) =
+                     expansions: seq[(PSym, TLineInfo)] = @[];
+                     moduleFlags: int32 = 0) =
   var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   w.deps = newIcBuilder(64)
   var content = newIcBuilder(300)
@@ -2238,6 +2297,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # First child: the backend id seed (see `(unusedid)` / readUnusedId).
   dest.addParLe unusedIdTag, NoLineInfo
   dest.addIntLit firstUnusedId.int64
+  dest.addParRi()
+  # The module symbol's backend-relevant flags (see `(modflags)`).
+  dest.addParLe modFlagsTag, NoLineInfo
+  dest.addIntLit moduleFlags.int64
   dest.addParRi()
   addAll(dest, w.deps)
   # do not write the (stmts .. ) wrapper:
@@ -2816,6 +2879,9 @@ proc loadFieldStub(c: var DecodeContext; symAsStr: string; thisModule: string;
   result = PSym(itemId: c.nextSymId(module, isBk = false), kindImpl: stubKind,
                 name: stubName, disamb: sn.count.int32, state: Complete)
   result.positionImpl = sn.count.int32
+  # `{.cursor.}` rides in the marker (see `CursorFieldMarker`) because the move
+  # optimizer reads it straight off the use site (`trees.isCursor`).
+  if sn.name.endsWith(CursorFieldMarker): result.flagsImpl.incl sfCursor
   if typ != nil: result.typImpl = typ
 
 proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
@@ -2828,7 +2894,7 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
     result = localSyms.getOrDefault(symAsStr)
     if result != nil:
       return result
-    elif sn.name.endsWith(FieldMarker):
+    elif isFieldMarked(sn.name):
       # A cross-context object-field reference reaching a non-dotExpr slot (e.g. a
       # `{.guard.}` field, an owner): stub it like any other field use.
       return c.loadFieldStub(symAsStr, thisModule, localSyms)
@@ -3259,6 +3325,13 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             loadSymFromCursor(c, sym, n, thisModule, localSyms)
           result = newSymNode(sym, info)
           result.flags.incl nfLazyType
+      elif tagIs(n, symNodeFlagsTagName):
+        # `(nflags <ident> <symuse>)`: node flags for the wrapped sym use.
+        n.into:
+          let flags = loadAtom(TNodeFlags, n)
+          result = loadNode(c, n, thisModule, localSyms)
+          if result != nil: result.flags = result.flags + flags
+          while n.hasMore: skip n
       elif tagIs(n, typeDefTagName):
         raiseAssert "`td` tag in invalid context"
       elif tagIs(n, "none"):
@@ -3458,13 +3531,23 @@ proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
   ## symbol can register new modules and invalidate the iterator), so the caller
   ## forces full load (`.kind`, `.ast`) and filters AFTER this returns, with the
   ## index back in place.
+  ##
+  ## Ordered by the entry's OFFSET, i.e. the order the writer emitted them, which
+  ## is source order. A `Table` iteration is hash order — arbitrary, and not even
+  ## stable between two compilers — so the `lower` stage transformed a module's
+  ## routines in a random order. That is visible (`--expandArc` diagnostics came
+  ## out shuffled) and it makes the backend's minted ids depend on the hash seed.
   result = @[]
   if not c.mods.hasKey(module): return
   var indexTab = move c.mods[module].index
   let thisModule = c.mods[module].suffix
+  var entries: seq[(int, string)] = @[]
   for nifName, entry in indexTab:
     if nifName.startsWith("`t"): continue  # types are not routines
-    let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
+    entries.add (entry.offset, nifName)
+  sort entries
+  for (_, nifName) in entries:
+    let sym = loadSymFromIndexEntry(c, module, nifName, indexTab[nifName], thisModule)
     if sym != nil: result.add sym
   c.mods[module].index = move indexTab
 
@@ -3592,6 +3675,8 @@ type
       ## `typeInstCache` from them so a consumer reuses the baked instance
       ## (e.g. a `mixin`/`compiles()`-dependent array bound) instead of
       ## re-instantiating it with a different bound in its own scope.
+    moduleFlags*: int32 ## the module SYMBOL's backend-relevant flags; see
+                        ## `(modflags)` / `ModFlagInjectDestructors`.
     includes*: seq[string] # resolved full paths of files this module `include`s;
                            # replayed into `inclToMod` by modulegraphs.nim so that
                            # nimsuggest can map a query in an include file back to
@@ -3737,6 +3822,12 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         # backend id seed — consumed eagerly by `moduleId`/`readUnusedId`; just
         # skip past it here so the rest of the header still loads.
         skip cur
+      elif tagIs(cur, "modflags"):
+        cur.into:
+          if cur.hasMore and cur.kind == IntLit:
+            result.moduleFlags = int32 intVal(cur)
+            skip cur
+          while cur.hasMore: skip cur
       elif tagIs(cur, "repconverter"): loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
       elif tagIs(cur, "repdestroy"):   loadLogOp(c, result.logOps, cur, HookEntry, attachedDestructor, module)
       elif tagIs(cur, "repwasmoved"):  loadLogOp(c, result.logOps, cur, HookEntry, attachedWasMoved, module)
@@ -3748,6 +3839,7 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
       elif tagIs(cur, "repenumtostr"): loadLogOp(c, result.logOps, cur, EnumToStrEntry, attachedTrace, module)
       elif tagIs(cur, "repmethod"):    loadLogOp(c, result.logOps, cur, MethodEntry, attachedTrace, module)
       elif tagIs(cur, "reppureenum"):  loadLogOp(c, result.logOps, cur, PureEnumEntry, attachedTrace, module)
+      elif tagIs(cur, "repcppmember"): loadLogOp(c, result.logOps, cur, CppMemberEntry, attachedTrace, module)
       elif tagIs(cur, "export"):
         cur.into:
           while cur.hasMore and cur.kind == DotToken: skip cur  # flags / type
@@ -3850,6 +3942,23 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
           result.topLevel.sons.add stmtNode
       else:
         cont = false
+
+proc registerModuleSelfSym*(c: var DecodeContext; suffix: string; m: PSym) =
+  ## Bind the module's NIF name to the ONE module symbol the graph registered.
+  ##
+  ## A module's own symbol is the owner of every top-level symbol, so the writer
+  ## emits it as a real `(sd)` with an index entry (`mymod.0.<suffix>`). Without
+  ## this binding the loader mints a SECOND `skModule` PSym for it the first time
+  ## some symbol's owner slot is resolved — and `sym.owner == owner` is an
+  ## IDENTITY test in `aliasanalysis.isAnalysableFieldAccess`, so every
+  ## module-level location looked un-analysable to the move optimizer: a
+  ## top-level `let (a, b) = f()` copied instead of moved, which is a hard error
+  ## for a type with a disabled `=copy`.
+  ##
+  ## Only the backend (`nim nifc`) does this — see the call site.
+  let key = m.name.s & ".0." & suffix
+  if not c.syms.hasKey(key):
+    c.syms[key] = (m, NifIndexEntry())
 
 proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =
@@ -4009,6 +4118,10 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
                     else: 0'i32
   dest.addParLe unusedIdTag, NoLineInfo
   dest.addIntLit loweredSeed.int64
+  dest.addParRi()
+  # Carry the module flags forward: `cg` loads THIS `.t.bif`, not the `.s.bif`.
+  dest.addParLe modFlagsTag, NoLineInfo
+  dest.addIntLit precomp.moduleFlags.int64
   dest.addParRi()
   addAll(dest, w.deps)
   addStmtsBody(dest, content)

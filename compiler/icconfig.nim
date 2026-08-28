@@ -32,7 +32,7 @@
 ## would misresolve.
 
 import options, commands, lineinfos, pathutils, msgs
-import std/[algorithm, os, sets, osproc, times, streams, syncio]
+import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
 
 const
@@ -269,11 +269,26 @@ proc ensureIcConfig*(conf: ConfigRef) =
     # verbatim: all `-`-prefixed switches first (in encounter order), then the
     # non-switch project token(s). The producer re-reads `nim.cfg` itself.
     var pargs = @["icconfig", "--icConfigOut:" & outPath]
+    # The command token is dropped below, so `nim cpp --ic:on` would hand the
+    # producer a C-backend config: name the backend explicitly. (`nim ic
+    # --backend:cpp` already carries the switch; the duplicate is harmless.)
+    if conf.backend != backendInvalid:
+      pargs.add "--backend:" & $conf.backend
     var rest: seq[string] = @[]
     var droppedCmd = false
     for a in commandLineParams():
       if a.len == 0: continue
       if a[0] == '-':
+        # `--run`/`-r` must not reach the producer: it only serialises the
+        # resolved config, has no output binary, and `nim.nim`'s run step asserts
+        # on the empty `outFile` (`nim cpp --ic:on -r foo.nim`).
+        var name = ""
+        var i = 1
+        if i < a.len and a[i] == '-': inc i
+        while i < a.len and a[i] notin {':', '='}:
+          name.add a[i]
+          inc i
+        if normalize(name) in ["r", "run"]: continue
         pargs.add a
       elif not droppedCmd:
         droppedCmd = true  # drop the original command token (`ic`/`track`)

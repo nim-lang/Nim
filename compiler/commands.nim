@@ -628,7 +628,11 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       conf.selectedGC = gcHooks
       defineSymbol(conf.symbols, "gchooks")
       incl conf.globalOptions, optSeqDestructors
-      processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
+      # (The `arg` here is the mm MODE — "hooks" — so feeding it to an on/off
+      # switch made `--mm:hooks` fail outright with "'on' or 'off' expected, but
+      # 'hooks' found". The `incl` above is what that call was meant to do.
+      # Reachable only via the explicit switch: `--newruntime` sets
+      # `selectedGC` directly, which is why this stayed hidden.)
       if pass in {passCmd2, passPP}:
         defineSymbol(conf.symbols, "nimSeqsV2")
     of "go":
@@ -1089,9 +1093,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
   of "symbolfiles", "incremental", "ic":
-    if switch.normalize == "symbolfiles": deprecatedAlias(switch, "incremental")
+    if pass in {passCmd2, passPP} and switch.normalize == "symbolfiles":
+      deprecatedAlias(switch, "incremental")
       # xxx maybe also ic, since not in help?
-    if pass in {passCmd2, passPP}:
+    # `--ic:on` is read in passCmd1 too: `nim.nim` decides BEFORE config loading
+    # whether this run is an IC driver (`ensureIcConfig` must produce the
+    # precompiled config the driver itself then replays), and passCmd1 is the
+    # only pass that has run by then.
+    if pass in {passCmd1, passCmd2, passPP}:
       case arg.normalize
       of "on": conf.ic = true
       of "legacy": conf.symbolFiles = v2Sf
