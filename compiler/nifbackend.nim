@@ -814,6 +814,15 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # up-to-date check, not a shared prerequisite in nifmake's mtime ordering.
   if not fileExists(cfile) or readFile(cfile) != code:
     writeFile(cfile, code)
+  # ... but nifmake needs SOME output whose mtime proves "this rule ran since its
+  # inputs last moved". With the `.c` as the only output, the content-stable write
+  # above is indistinguishable from not having run: `merge` rewrites the decision
+  # file unconditionally, so every `emit` whose `.c` came out byte-identical stays
+  # older than a declared input and re-fires on every warm build from then on
+  # (measured: all 218 emit rules of a 219-module program, on a NO-OP build).
+  # The stamp is written unconditionally and is the rule's freshness proof; the
+  # `.c` keeps its content-stable mtime so `callCCompiler` still reuses the `.o`.
+  writeFile(cfile & ".stamp", $code.len & " " & $dropped & "\n")
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icEmit] " & extractFilename(cfile) & " dropped " &
       $dropped & " bodies (" & $code.len & " bytes)"

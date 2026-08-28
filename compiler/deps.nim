@@ -63,6 +63,13 @@ proc depsFile(c: DepContext; f: FilePair): string =
 proc parsedFile(c: DepContext; f: FilePair): string =
   getNimcacheDir(c.config).string / f.modname & ".p.nif"
 
+proc parsedDepsFile(c: DepContext; f: FilePair): string =
+  ## The deps sidecar `nifler parse --deps <src> <out>.p.nif` actually writes: it
+  ## appends `.deps.nif` to the OUTPUT path, giving `<mod>.p.deps.nif`. Not to be
+  ## confused with `depsFile` (`<mod>.deps.nif`), which the driver's own
+  ## `nifler deps` pre-scan writes.
+  parsedFile(c, f).changeFileExt("") & ".deps.nif"
+
 proc semmedFile(c: DepContext; f: FilePair): string =
   getNimcacheDir(c.config).string / f.modname & ".s.bif"
 
@@ -803,18 +810,35 @@ proc pruneDeadSpeculative(c: var DepContext) =
     for d in c.nodes[v].deps:
       if not dead[d] and not alive[d]: stack.add d
 
+  # Drop the scan artifacts of a module that just left the graph, so an
+  # edit-accumulated cache does not differ from a clean one for no reason
+  # (`tests/ic/tdead_when_import` pins that). Re-running nifler if it ever comes
+  # back costs a single parse.
+  #
+  # But a FILE can belong to several nodes, and only the NODE is dead.
+  # `lib/system/inclrtl.nim` is `include`d by dozens of live stdlib modules and
+  # also sits in the file set of a dead-speculative one; a clean build therefore
+  # has its `.p.nif`, and deleting it here does not tidy the cache, it corrupts
+  # it. The consequences compound: the missing output re-fires that file's
+  # `nifler` rule, which rewrites the parsed file with a fresh mtime, which
+  # re-fires every `nim_m` rule listing it as an input — 16 full module re-sems
+  # (system, os, times, strutils, macros, unicode, ...) on every warm build, for
+  # ever, because the scanner is stateless and rediscovers the dead node each
+  # run. Measured on a 219-module program: an 11 s NO-OP build. So delete only
+  # what no live node claims.
+  var liveFiles = initHashSet[string]()
+  for i in 0 ..< n:
+    if alive[i]:
+      for f in c.nodes[i].files: liveFiles.incl f.nimFile
+
   var cascaded = 0
   for i in 0 ..< n:
     if not alive[i]:
-      # Drop the scan artifacts of a module that just left the graph. `nifler`
-      # ran on it during `traverseDeps` (that is how we learned it cannot
-      # build), and leaving its `.p.nif`/`.deps.nif` behind makes an
-      # edit-accumulated cache differ from a clean one for no reason. Re-running
-      # nifler if it ever comes back costs a single parse.
       for f in c.nodes[i].files:
+        if f.nimFile in liveFiles: continue
         removeFile(c.parsedFile(f))
         removeFile(c.depsFile(f))
-        removeFile(c.parsedFile(f).changeFileExt("") & ".deps.nif")
+        removeFile(c.parsedDepsFile(f))
       if c.nodes[i].missingImport.len > 0:
         rawMessage(c.config, hintSuccess,
           "ic: skipping " & c.nodes[i].files[0].nimFile &
@@ -1102,8 +1126,13 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
         b.addTree "output"
         b.addStrLit parsed
         b.endTree()
+        # The deps sidecar this command really produces is `<mod>.p.deps.nif`,
+        # not `<mod>.deps.nif` (which only the driver's `nifler deps` pre-scan
+        # writes). Declaring the latter made the rule permanently stale — a
+        # missing output is nifmake's strongest rebuild trigger — for every
+        # module the pre-scan does not also cover.
         b.addTree "output"
-        b.addStrLit c.depsFile(pair)
+        b.addStrLit c.parsedDepsFile(pair)
         b.endTree()
         b.endTree()
 
@@ -1332,6 +1361,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       if fileExists(cnifFiles[i]) or fileExists(cFiles[i]): prunedStale = true
       removeFile(cnifFiles[i])
       removeFile(cFiles[i])
+      removeFile(cFiles[i] & ".stamp")
   # The merge decision is a pure function of the set of `.c.nif`s present; if we
   # just removed an over-approximated module's artifacts, a decision computed
   # while they were present is stale — it can name a now-absent module as a
@@ -1473,6 +1503,10 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     inputStr cnifFiles[i]
     inputStr mergeFile
     outputStr cFiles[i]
+    # The freshness proof for this rule; see nifbackend.generateEmitStage. The
+    # `.c` alone cannot serve: it is written OnlyIfChanged, so a rule that ran
+    # and produced identical bytes looks exactly like a rule that never ran.
+    outputStr cFiles[i] & ".stamp"
     b.endTree()
 
   # link: compile + link every emitted `.c` in one process.
