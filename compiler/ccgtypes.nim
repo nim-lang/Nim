@@ -611,9 +611,9 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     types.add getTypeDescWeak(m, this.typ, check, dkParam)
 
   let firstParam = if isCtor: 1 else: 2
-  for i in firstParam..<t.n.len:
-    if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genMemberProcParams")
-    var param = t.n[i].sym
+  for it in sonsFrom(t.n, firstParam):
+    if it.kind != nkSym: internalError(m.config, t.n.info, "genMemberProcParams")
+    var param = it.sym
     var descKind = dkParam
     if optByRef in param.options:
       if param.typ.kind == tyGenericInst:
@@ -623,7 +623,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     var typ, name: string
     backendEnsureMutable param
     fillParamName(m, param)
-    fillLoc(param.locImpl, locParam, t.n[i],
+    fillLoc(param.locImpl, locParam, it,
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
       typ = getTypeDescWeak(m, param.typ, check, descKind) & "*"
@@ -668,9 +668,9 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
     rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
   var paramBuilder: ProcParamBuilder
   params.addProcParams(paramBuilder):
-    for i in 1..<t.n.len:
-      if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
-      var param = t.n[i].sym
+    for child in sonsFrom(t.n, 1):
+      if child.kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
+      var param = child.sym
       # The hidden closure environment param (`:envP`) is not a real C parameter:
       # the environment is passed via the trailing `ClE_0` (added below) and
       # `closureSetup` materialises `:envP` as a local cast of it. In a from-source
@@ -692,7 +692,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       if isCompileTimeOnly(param.typ): continue
       backendEnsureMutable param
       fillParamName(m, param)
-      fillLoc(param.locImpl, locParam, t.n[i],
+      fillLoc(param.locImpl, locParam, child,
               param.paramStorageLoc)
       if isClosureEnv: continue  # name/loc filled, but not part of the C signature
       var typ: Rope
@@ -775,10 +775,10 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody = newBuilder("")
-    for i in 1..<n.len:
-      case n[i].kind
+    for i, it in isons(n, 1):
+      case it.kind
       of nkOfBranch, nkElse:
-        let k = lastSon(n[i])
+        let k = lastSon(it)
         if k.kind != nkSym:
           let structName = "_" & mangleRecFieldName(m, n.firstSon.sym) & "_" & $i
           var a = newBuilder("")
@@ -1552,8 +1552,7 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
     else:
       m.s[cfsData].addArrayVar(kind = Local, name = tmp,
         elementType = ptrType("TNimNode"), len = toInt(L)+1)
-    for i in 1..<n.len:
-      var b = n[i]           # branch
+    for b in sonsFrom(n, 1):
       var tmp2 = getNimNode(m)
       genObjectFields(m, typ, origType, lastSon(b), tmp2, info)
       case b.kind

@@ -22,13 +22,13 @@ proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
     result = nil
-    for i in 0..<n.len:
-      result = getPragmaStmt(n[i], w)
+    for it in sons(n):
+      result = getPragmaStmt(it, w)
       if result != nil: break
   of nkPragma:
     result = nil
-    for i in 0..<n.len:
-      if whichPragma(n[i]) == w: return n[i]
+    for it in sons(n):
+      if whichPragma(it) == w: return it
   else:
     result = nil
 

@@ -19,8 +19,8 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
   if n == nil: return
   case n.kind
   of nkRecList:
-    for i in 0..<n.len:
-      specializeResetN(p, accessor, n[i], typ)
+    for it in sons(n):
+      specializeResetN(p, accessor, it, typ)
   of nkRecCase:
     if (n[0].kind != nkSym): internalError(p.config, n.info, "specializeResetN")
     let disc = n[0].sym
@@ -29,8 +29,7 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
       internalError(p.config, n.info, "specializeResetN()")
     let discField = dotField(accessor, disc.loc.snippet)
     p.s(cpsStmts).addSwitchStmt(discField):
-      for i in 1..<n.len:
-        let branch = n[i]
+      for branch in sonsFrom(n, 1):
         assert branch.kind in {nkOfBranch, nkElse}
         var caseBuilder: SwitchCaseBuilder
         p.s(cpsStmts).addSwitchCase(caseBuilder):

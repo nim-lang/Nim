@@ -960,10 +960,22 @@ iterator sons*(n: PNode): PNode =
   ## as it does not rely on random indexed access (see doc/ic_backend_nif_native.md).
   for i in 0..<n.safeLen: yield n[i]
 
-iterator isons*(n: PNode): tuple[i: int, n: PNode] =
-  ## Like `sons` but also yields the child index. Replaces
-  ## `for i in 0..<n.len: ... n[i] ...` when `i` itself is still needed.
-  for i in 0..<n.safeLen: yield (i, n[i])
+iterator isons*(n: PNode; start = 0): tuple[i: int, n: PNode] =
+  ## Like `sons` but also yields the child index, and optionally skips the first
+  ## `start` children. Replaces `for i in start..<n.len: ... n[i] ...` when `i`
+  ## itself is still needed — for a parameter position, a `needTmp[i-1]` lookup,
+  ## a parallel index into the routine's `PType`, and so on. `start` is almost
+  ## always 1, to step over a call's callee or a case statement's selector.
+  ##
+  ## Use `sonsFrom` instead when the index is only ever used to subscript `n`.
+  for i in start..<n.safeLen: yield (i, n[i])
+
+iterator sonsFrom*(n: PNode; start: int): PNode =
+  ## `sons` skipping the first `start` children. Replaces
+  ## `for i in start..<n.len: ... n[i] ...`, which is by far the commonest
+  ## indexed shape in the code generator — `start` is almost always 1, to step
+  ## over a case/try statement's selector or a call's callee.
+  for i in start..<n.safeLen: yield n[i]
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968

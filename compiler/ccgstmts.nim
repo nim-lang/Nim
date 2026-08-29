@@ -329,18 +329,18 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): Snippet =
   var argBuilder = default(CallBuilder) # not init, only building params
   let typ = skipTypes(call.firstSon.typ, abstractInst)
   assert(typ.kind == tyProc)
-  for i in 1..<call.len:
+  for i, child in isons(call, 1):
     #if it's a type we can just generate here another initializer as we are in an initializer context
-    if call[i].kind == nkCall and call[i].firstSon.kind == nkSym and call[i].firstSon.sym.kind == skType:
+    if child.kind == nkCall and child.firstSon.kind == nkSym and child.firstSon.sym.kind == skType:
       res.addArgument(argBuilder):
-        res.add genCppInitializer(p.module, p, call[i].firstSon.sym.typ, didGenTemp)
+        res.add genCppInitializer(p.module, p, child.firstSon.sym.typ, didGenTemp)
     else:
       #We need to test for temp in globals, see: #23657
       let param =
-        if typ[i].kind in {tyVar} and call[i].kind == nkHiddenAddr:
-          call[i].firstSon
+        if typ[i].kind in {tyVar} and child.kind == nkHiddenAddr:
+          child.firstSon
         else:
-          call[i]
+          child
       if not param.typ.isCompileTimeOnly and (param.kind != nkBracketExpr or param.typ.kind in
         {tyRef, tyPtr, tyUncheckedArray, tyArray, tyOpenArray,
           tyVarargs, tySequence, tyString, tyCstring, tyTuple}):
@@ -574,10 +574,10 @@ proc genReturnStmt(p: BProc, t: PNode) =
   p.s(cpsStmts).addGoto("BeforeRet_")
 
 proc genGotoForCase(p: BProc; caseStmt: PNode) =
-  for i in 1..<caseStmt.len:
+  for child in sonsFrom(caseStmt, 1):
     var scope: ScopeBuilder
     startSimpleBlock(p, scope)
-    let it = caseStmt[i]
+    let it = child
     for j in 0..<it.len-1:
       if it[j].kind == nkRange:
         localError(p.config, it.info, "range notation not available for computed goto")
@@ -646,10 +646,10 @@ proc genComputedGoto(p: BProc; n: PNode) =
   # first goto:
   p.s(cpsStmts).addComputedGoto(subscript(tmp, ra))
 
-  for i in 1..<caseStmt.len:
+  for child in sonsFrom(caseStmt, 1):
     var scope: ScopeBuilder
     startSimpleBlock(p, scope)
-    let it = caseStmt[i]
+    let it = child
     for j in 0..<it.len-1:
       if it[j].kind == nkRange:
         localError(p.config, it.info, "range notation not available for computed goto")
@@ -992,18 +992,18 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
 proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
   # count how many constant strings there are in the case:
   var strings = 0
-  for i in 1..<t.len:
-    if t[i].kind == nkOfBranch: inc(strings, t[i].len - 1)
+  for it in sonsFrom(t, 1):
+    if it.kind == nkOfBranch: inc(strings, it.len - 1)
   if strings > stringCaseThreshold:
     var bitMask = math.nextPowerOfTwo(strings) - 1
     var branches: seq[Builder]
     newSeq(branches, bitMask + 1)
     var a: TLoc = initLocExpr(p, t.firstSon) # first pass: generate ifs+goto:
     var labId = p.labels
-    for i in 1..<t.len:
+    for it in sonsFrom(t, 1):
       inc(p.labels)
-      if t[i].kind == nkOfBranch:
-        genCaseStringBranch(p, t[i], a, "LA" & rope(p.labels) & "_",
+      if it.kind == nkOfBranch:
+        genCaseStringBranch(p, it, a, "LA" & rope(p.labels) & "_",
                             stringKind, branches)
       else:
         # else statement: nothing to do yet
@@ -1048,8 +1048,7 @@ proc branchHasTooBigRange(b: PNode): bool =
 
 proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
   result = 0
-  for i in 1..<n.len:
-    var branch = n[i]
+  for i, branch in isons(n, 1):
     var stmtBlock = lastSon(branch)
     if stmtBlock.stmtsContainPragma(wLinearScanEnd):
       result = i
@@ -1300,39 +1299,39 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   var catchAllPresent = false
   incl p.flags, noSafePoints # mark as not needing 'popCurrentException'
   if hasImportedCppExceptions:
-    for i in 1..<t.len:
-      if t[i].kind != nkExceptBranch: break
+    for it in sonsFrom(t, 1):
+      if it.kind != nkExceptBranch: break
 
       # bug #4230: avoid false sharing between branches:
       if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
 
-      if t[i].len == 1:
+      if it.len == 1:
         # general except section:
         startBlockWith(p):
           p.s(cpsStmts).add("catch (...) {\n")
-        genExceptBranchBody(t[i].firstSon)
+        genExceptBranchBody(it.firstSon)
         endBlockWith(p):
           p.s(cpsStmts).add("}\n")
         catchAllPresent = true
       else:
-        for j in 0..<t[i].len-1:
-          var typeNode = t[i][j]
-          if t[i][j].isInfixAs():
-            typeNode = t[i][j][1]
+        for j in 0..<it.len-1:
+          var typeNode = it[j]
+          if it[j].isInfixAs():
+            typeNode = it[j][1]
             if isImportedException(typeNode.typ, p.config):
-              let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
+              let exvar = it[j][2] # ex1 in `except ExceptType as ex1:`
               fillLocalName(p, exvar.sym)
               backendEnsureMutable exvar.sym
               fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
               startBlockWith(p):
                 lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc)])
-              genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
+              genExceptBranchBody(it[^1])  # exception handler body will duplicated for every type
               endBlockWith(p):
                 p.s(cpsStmts).add("}\n")
           elif isImportedException(typeNode.typ, p.config):
             startBlockWith(p):
-              lineCg(p, cpsStmts, "catch ($1&) {$n", [getTypeDesc(p.module, t[i][j].typ)])
-            genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
+              lineCg(p, cpsStmts, "catch ($1&) {$n", [getTypeDesc(p.module, it[j].typ)])
+            genExceptBranchBody(it[^1])  # exception handler body will duplicated for every type
             endBlockWith(p):
               p.s(cpsStmts).add("}\n")
 
@@ -1360,8 +1359,8 @@ proc bodyCanRaise(p: BProc; n: PNode): bool =
     result = canRaiseDisp(p, n.firstSon)
     if not result:
       # also check the arguments:
-      for i in 1 ..< n.len:
-        if bodyCanRaise(p, n[i]): return true
+      for it in sonsFrom(n, 1):
+        if bodyCanRaise(p, it): return true
   of nkRaiseStmt:
     result = true
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
@@ -1710,8 +1709,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
     if isAsmStmt: 1 # first son is pragmas
     else: 0
 
-  for i in offset..<t.len:
-    let it = t[i]
+  for it in sonsFrom(t, offset):
     case it.kind
     of nkStrLit..nkTripleStrLit:
       res.add(it.strVal)

@@ -49,8 +49,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
 
   result = false
   if le != nil:
-    for i in 1..<ri.len:
-      let r = ri[i]
+    for r in sonsFrom(ri, 1):
       if isPartOf(le, r, {pfStructural}) != arNo: return true
     # we use the weaker 'canRaise' here in order to prevent too many
     # annoying warnings, see #14514
@@ -59,8 +58,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
       message(p.config, le.info, warnObservableStores, $le)
   # bug #19613 prevent dangerous aliasing too:
   if dest != nil and dest != le:
-    for i in 1..<ri.len:
-      let r = ri[i]
+    for r in sonsFrom(ri, 1):
       if isPartOf(dest, r, {pfStructural}) != arNo: return true
 
 proc hasNoInit(call: PNode): bool {.inline.} =
@@ -474,19 +472,19 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Builder, argBuilder:
         # Optimization: don't use a temp, if we would only take the address anyway
         needTmp[i - 1] = false
 
-  for i in 1..<ri.len:
+  for i, it in isons(ri, 1):
     if i < typ.n.len:
       assert(typ.n[i].kind == nkSym)
       let paramType = typ.n[i]
       if not paramType.typ.isCompileTimeOnly:
         var arg = newBuilder("")
-        genArg(p, ri[i], paramType.sym, ri, arg, needTmp[i-1])
+        genArg(p, it, paramType.sym, ri, arg, needTmp[i-1])
         if arg.buf.len != 0:
           result.addArgument(argBuilder):
             result.add(extract(arg))
     else:
       var arg = newBuilder("")
-      genArgNoParam(p, ri[i], arg, needTmp[i-1])
+      genArgNoParam(p, it, arg, needTmp[i-1])
       if arg.buf.len != 0:
         result.addArgument(argBuilder):
           result.add(extract(arg))
@@ -727,7 +725,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
     case pat[i]
     of '@':
       var callBuilder = default(CallBuilder) # not init call builder
-      for k in j..<ri.len:
+      for k, _ in isons(ri, j):
         genOtherArg(p, ri, k, typ, result, callBuilder)
       inc i
     of '#':
@@ -811,7 +809,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     pl.add(op.snippet)
     var res = newBuilder("")
     var call = initCallBuilder(res, extract(pl))
-    for i in 2..<ri.len:
+    for i, _ in isons(ri, 2):
       genOtherArg(p, ri, i, typ, res, call)
     fixupCall(p, le, ri, d, res, call)
 
@@ -842,7 +840,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     if ri.len > 2:
       pl.add(": ")
       genArg(p, ri[2], typ.n[2].sym, ri, pl)
-  for i in start..<ri.len:
+  for i, it in isons(ri, start):
     if i >= typ.n.len:
       internalError(p.config, ri.info, "varargs for objective C method?")
     assert(typ.n[i].kind == nkSym)
@@ -850,7 +848,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(" ")
     pl.add(param.name.s)
     pl.add(": ")
-    genArg(p, ri[i], param, ri, pl)
+    genArg(p, it, param, ri, pl)
   if typ.returnType != nil:
     if isInvalidReturnType(p.config, typ):
       if ri.len > 1: pl.add(" ")

@@ -1194,8 +1194,11 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     var a: TLoc = initLocExpr(m.initProc, n.firstSon)
     let callee = rdLoc(a)
     var params: seq[Snippet] = @[]
-    for i in 1..<n.len-1:
-      a = initLocExpr(m.initProc, n[i])
+    var remaining = n.len - 2   # children 1 ..< len-1
+    for it in sonsFrom(n, 1):
+      if remaining <= 0: break
+      dec remaining
+      a = initLocExpr(m.initProc, it)
       params.add(rdLoc(a))
     params.add(makeCString($extname))
     template load(builder: var Builder) =
@@ -1444,8 +1447,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     result = InitSkippable
     var exhaustive = skipTypes(n.firstSon.typ,
         abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring}
-    for i in 1..<n.len:
-      let it = n[i]
+    for it in sonsFrom(n, 1):
       allPathsInBranch(it.lastSon)
       if it.kind == nkElse: exhaustive = true
     if not exhaustive: result = Unknown
@@ -1477,11 +1479,11 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # is 'finally: result = x'
     result = InitSkippable
     allPathsInBranch(n.firstSon)
-    for i in 1..<n.len:
-      if n[i].kind == nkFinally:
-        result = allPathsAsgnResult(p, n[i].lastSon)
+    for it in sonsFrom(n, 1):
+      if it.kind == nkFinally:
+        result = allPathsAsgnResult(p, it.lastSon)
       else:
-        allPathsInBranch(n[i].lastSon)
+        allPathsInBranch(it.lastSon)
   of nkCallKinds:
     if canRaiseDisp(p, n.firstSon) or
         (n.firstSon.kind == nkSym and sfNoReturn in n.firstSon.sym.flags):
@@ -1635,8 +1637,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         backendEnsureMutable res
         res.locImpl.storage = OnUnknown
 
-  for i in 1..<prc.typ.n.len:
-    let param = prc.typ.n[i].sym
+  for paramNode in sonsFrom(prc.typ.n, 1):
+    let param = paramNode.sym
     if param.typ.isCompileTimeOnly: continue
     if prc.typ.callConv == ccClosure and param.name.s == ":envP":
       # The hidden closure-env param is materialised by `closureSetup`, never a
