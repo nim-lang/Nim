@@ -205,19 +205,35 @@ when defined(newIcBackend):
           inc i
           pending.delete(0)
 
-  # Still to migrate. The `{.error.}` stubs make flipping the define report the
-  # exact missing piece AT ITS CALL SITE, rather than collapsing into a cascade
-  # of unrelated type errors.
+  # The three that need MORE THAN THE CURSOR, which is the real boundary this
+  # migration now sits at: none of them can stay a unary accessor.
+  #
+  # `sym`  — a `Symbol` token holds only a NAME. `ast2nif.loadSymStub` turns one
+  #          into a `PSym` from a `DecodeContext` plus the OWNING MODULE's name
+  #          plus that routine body's `localSyms` table, because a name with no
+  #          module suffix is body-local and is not in any index.
+  # `typ`  — same shape: `ast2nif.createTypeStub(c, symName(n))`, so also a
+  #          `DecodeContext`.
+  # `info` — `rawLineInfo(n)` gives a `NifLineInfo` whose `FileId` belongs to the
+  #          `.bif`'s own pool; `ast2nif.oldLineInfo` maps it to a `TLineInfo`
+  #          through a `LineInfoWriter`, which needs the `ConfigRef`.
+  #
+  # So the next step is not "implement these three" but deciding where codegen
+  # gets that context from — a parameter, or module-global state for the span of
+  # one module's `cg` stage, the way `ast2nif` already keeps its writer state.
+  # Until then the `{.error.}` stubs report the exact missing piece AT ITS CALL
+  # SITE rather than collapsing into a cascade of unrelated type errors.
   proc sym*(n: BNode): PSym {.error:
-    "BNode.sym: not implemented for Cursor yet — a SymUse token holds a NAME " &
-    "(`symName(n)`), so this needs the decoder's name -> PSym map, which lives " &
-    "in ast2nif's DecodeContext and is not reachable from here yet.".} = discard
+    "BNode.sym: needs a resolution context, not just the cursor — a Symbol " &
+    "token is a NAME, and ast2nif.loadSymStub resolves it from a DecodeContext " &
+    "plus the owning module plus the body's localSyms.".} = discard
   proc typ*(n: BNode): PType {.error:
-    "BNode.typ: not implemented for Cursor yet — types are not inline in the " &
-    "node stream; they are resolved through the module's type index.".} = discard
+    "BNode.typ: needs a resolution context — ast2nif.createTypeStub takes a " &
+    "DecodeContext.".} = discard
   proc info*(n: BNode): TLineInfo {.error:
-    "BNode.info: not implemented for Cursor yet — `rawLineInfo(n)` gives a " &
-    "NifLineInfo whose FileId must be mapped to a compiler FileIndex.".} = discard
+    "BNode.info: needs a resolution context — rawLineInfo(n) is a NifLineInfo " &
+    "in the .bif's own file pool; ast2nif.oldLineInfo maps it through a " &
+    "LineInfoWriter, which holds the ConfigRef.".} = discard
 
 else:
   type BNode* = PNode
