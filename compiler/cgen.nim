@@ -16,7 +16,7 @@ import
   rodutils, renderer, cgendata, aliases,
   lowerings, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, pushpoppragmas,
-  mangleutils, cbuilderbase, modulegraphs
+  mangleutils, cbuilderbase, modulegraphs, bnode
 
 from expanddefaults import caseObjDefaultBranch
 from ast2nif import globalName, toNifFilename, icNifTypeName
@@ -1344,7 +1344,7 @@ const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTempl
                   nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
                   declarativeDefs
 
-proc containsResult(n: PNode): bool =
+proc containsResult(n: BNode): bool =
   result = false
   case n.kind
   of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
@@ -1380,7 +1380,10 @@ proc easyResultAsgn(n: PNode): PNode =
 type
   InitResultEnum = enum Unknown, InitSkippable, InitRequired
 
-proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
+proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
+  ## Migrated to `BNode` (see bnode.nim). With `newIcBackend` off this is
+  ## `PNode` and nothing changes; with it on, this body is where the Cursor
+  ## vocabulary has to exist, and its `{.error.}` stubs name what is missing.
   # Exceptions coming from calls don't have not be considered here:
   #
   # proc bar(): string = raise newException(...)
