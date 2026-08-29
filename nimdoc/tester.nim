@@ -2,8 +2,8 @@
 # To run this, cd to the git repo root, and run "nim r nimdoc/tester.nim".
 # to change expected results (after carefully verifying everything), use -d:nimTestsNimdocFixup
 
-import strutils, os, sequtils
-from std/private/gitutils import diffStrings
+import strutils, os
+from std/private/gitutils import diffFiles
 
 const fixup = defined(nimTestsNimdocFixup)
 
@@ -26,13 +26,6 @@ type
 proc exec(cmd: string) =
   if execShellCmd(cmd) != 0:
     quit("FAILURE: " & cmd)
-
-proc isSameHtml(s1, s2: string): bool =
-  ## Compare two strings ignoring indentation and blank lines:
-  ## In HTML, indentation and blank lines do not matter.
-  let l1 = s1.splitLines().mapIt(unindent it).filterIt(it !=  "")
-  let l2 = s2.splitLines().mapIt(unindent it).filterIt(it !=  "")
-  l1 == l2
 
 proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
   let
@@ -71,11 +64,10 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
     if not fileExists(produced):
       echo "FAILURE: files not found: ", produced
       inc failures
-    let expectedFile = readFile(expected)
     let producedFile = readFile(produced).replace(versionCacheParam,"") #remove version cache param used for cache invalidation
-    if not isSameHtml(expectedFile, producedFile):
+    if readFile(expected) != producedFile:
       echo "FAILURE: files differ: ", produced
-      echo diffStrings(expectedFile, producedFile).output
+      echo diffFiles(expected, produced).output
       inc failures
       if fixup:
         writeFile(expected, producedFile)
