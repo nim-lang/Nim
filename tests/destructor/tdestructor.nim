@@ -166,3 +166,99 @@ type Vector*[T] = object
 # proc `=destroy`*(x: var Vector[int]) = discard # this will remove error
 proc `=destroy`*[T](x: var Vector[T]) = discard
 var a: Vector[int] # Error: unresolved generic parameter
+
+# issue #26132
+
+block:
+  type UnparameterizedGeneric[T] = object
+
+  proc `=destroy`(x: var UnparameterizedGeneric) = discard
+  proc `=wasMoved`(x: var UnparameterizedGeneric) = discard
+  proc `=trace`(x: var UnparameterizedGeneric; env: pointer) = discard
+
+  var x: UnparameterizedGeneric[int]
+  discard x
+
+# Exercise every type-bound hook with the generic parameter omitted.
+block:
+  type
+    Generic[T] = object
+      value: T
+
+  var destroys, moves, traces, copies, sinks, dups: int
+
+  proc `=destroy`(x: var Generic) = inc destroys
+  proc `=wasMoved`(x: var Generic) =
+    inc moves
+    x.value = default(typeof(x.value))
+  proc `=trace`(x: var Generic; env: pointer) = inc traces
+  proc `=copy`(dest: var Generic; src: Generic) =
+    inc copies
+    dest.value = src.value
+  proc `=sink`(dest: var Generic; src: Generic) =
+    inc sinks
+    dest.value = src.value
+  proc `=dup`(src: Generic): Generic =
+    inc dups
+    Generic(value: src.value)
+  proc deepCopy(src: ref Generic): ref Generic = src
+
+  proc exercise[T]() =
+    var first = Generic[T](value: default(T))
+    var second = Generic[T](value: default(T))
+    second = first
+    doAssert second.value == first.value
+    second = Generic[T](value: default(T))
+    doAssert second.value == default(T)
+    `=trace`(first, nil)
+    `=wasMoved`(first)
+    let implicitDuplicate = first
+    discard implicitDuplicate
+    let duplicate = `=dup`(first)
+    discard duplicate
+    let original = new(Generic[T])
+    doAssert deepCopy(original) == original
+
+  exercise[string]()
+  exercise[int]()
+  exercise[seq[int]]()
+
+  doAssert copies > 0
+  doAssert sinks > 0
+  doAssert dups > 0
+  doAssert moves > 0
+  doAssert traces > 0
+  doAssert destroys > 0
+
+  block:
+    type GenericDistinct[T] = distinct Generic[T]
+
+    proc `=destroy`(x: var GenericDistinct) = discard
+    proc `=wasMoved`(x: var GenericDistinct) = discard
+    proc `=trace`(x: var GenericDistinct; env: pointer) = discard
+    proc `=copy`(dest: var GenericDistinct; src: GenericDistinct) = discard
+    proc `=sink`(dest: var GenericDistinct; src: GenericDistinct) = discard
+    proc `=dup`(src: GenericDistinct): GenericDistinct = src
+    proc deepCopy(src: ref GenericDistinct): ref GenericDistinct = src
+
+    var first = GenericDistinct[string](Generic[string](value: "first"))
+    var second = GenericDistinct[string](Generic[string](value: "second"))
+    second = first
+    second = GenericDistinct[string](Generic[string](value: "third"))
+    `=trace`(first, nil)
+    `=wasMoved`(first)
+    let moved = move(first)
+    let duplicate = `=dup`(moved)
+    discard duplicate
+    let original = new(GenericDistinct[string])
+    doAssert deepCopy(original) == original
+
+  block:
+    type GenericPair[A, B] = object
+      left: A
+      right: B
+
+    proc `=destroy`(x: var GenericPair) = discard
+
+    var pair = GenericPair[int, string](left: 42, right: "pair")
+    discard pair
