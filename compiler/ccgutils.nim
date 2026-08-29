@@ -92,7 +92,7 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
       result = true
     elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
       result = true           # requested anyway
-    elif (tfFinal in pt.flags) and (pt[0] == nil):
+    elif (tfFinal in pt.flags) and (pt.baseClass == nil):
       result = false          # no need, because no subtyping possible
     else:
       result = true           # ordinary objects are always passed by reference,
@@ -148,7 +148,7 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
   of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam:
     result = encodeSym(m, t.sym)
   of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
-    result = encodeName(t[0].sym.name.s)
+    result = encodeName(t.genericHead.sym.name.s)
     result.add "I"
     for i in 1..<t.len - 1:
       result.add encodeType(m, t[i], staticLists)
@@ -160,8 +160,7 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
       of tySequence: encodeName("seq")
       else: encodeName(kindName)
     result.add "I"
-    for i in 0..<t.len:
-      let s = t[i]
+    for s in kids(t):
       if s.isNil: continue
       result.add encodeType(m, s, staticLists)
     result.add "E"

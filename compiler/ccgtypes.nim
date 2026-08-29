@@ -59,10 +59,10 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
   var params = ""
   var staticLists = ""
-  if s.typ.len > 1: #we dont care about the return param
-    for i in 1..<s.typ.len:
-      if s.typ[i].isNil: continue
-      params.add encodeType(m, s.typ[i], staticLists)
+  if s.typ.paramsLen > 0: # we dont care about the return param
+    for _, pt in paramTypes(s.typ):
+      if pt.isNil: continue
+      params.add encodeType(m, pt, staticLists)
 
   result.add encodeSym(m, s, makeUnique, staticLists)
   result.add params
@@ -311,7 +311,7 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   var rettype = typ
   var isAllowedCall = true
   if isProc:
-    rettype = rettype[0]
+    rettype = rettype.returnType
     isAllowedCall = typ.callConv in {ccClosure, ccInline, ccNimCall}
   if rettype == nil or (isAllowedCall and
                     getSize(conf, rettype) > conf.target.floatSize*3):
@@ -480,7 +480,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TypeDescKind
   of tySequence:
     let sig = hashType(t, m.config)
     if optSeqDestructors in m.config.globalOptions:
-      if skipTypes(etB[0], typedescInst).kind == tyEmpty:
+      if skipTypes(etB.elementType, typedescInst).kind == tyEmpty:
         internalError(m.config, "cannot map the empty seq type to a C type")
 
       result = cacheGetType(m.forwTypeCache, sig)
@@ -524,7 +524,7 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   if result == "":
     discard getTypeDescAux(m, t, check, dkVar)
   else:
-    let dataTyp = getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar)
+    let dataTyp = getTypeDescAux(m, t.skipTypes(abstractInst).elementType, check, dkVar)
     m.s[cfsTypes].addSimpleStruct(m, name = result & "_Content", baseType = ""):
       m.s[cfsTypes].addField(name = "cap", typ = NimInt)
       m.s[cfsTypes].addField(name = "data",
@@ -715,7 +715,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
         # need to pass hidden parameter:
         params.addParam(paramBuilder, name = param.locImpl.snippet & "Len_" & $j, typ = NimInt)
         inc(j)
-        arr = arr[0].skipTypes({tySink})
+        arr = arr.elementType.skipTypes({tySink})
     if t.returnType != nil and isInvalidReturnType(m.config, t):
       var arr = t.returnType
       var typ: Snippet
@@ -915,7 +915,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   result = typ[idx]
   for i in 1..stars:
     if result != nil and result.kidsLen > 0:
-      result = if result.kind == tyGenericInst: result[FirstGenericParamAt]
+      result = if result.kind == tyGenericInst: result.firstGenericParam
                else: result.elemType
 
 proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKind): Rope =
@@ -1462,7 +1462,7 @@ proc discriminatorTableName(m: BModule; objtype: PType, d: PSym): Rope =
   # bugfix: we need to search the type that contains the discriminator:
   var objtype = objtype.skipTypes(abstractPtrs)
   while lookupInRecord(objtype.n, d.name) == nil:
-    objtype = objtype[0].skipTypes(abstractPtrs)
+    objtype = objtype.baseClass.skipTypes(abstractPtrs)
   if objtype.sym == nil:
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype, m.config)), rope(d.name.s.mangle)]
@@ -1861,7 +1861,7 @@ proc getObjDepth(t: PType): int16 =
   result = -1
   while x != nil:
     x = skipTypes(x, skipPtrs)
-    x = x[0]
+    x = x.baseClass
     inc(result)
 
 proc genDisplayElem(d: MD5Digest): uint32 =
@@ -1877,7 +1877,7 @@ proc genDisplay(result: var Builder, m: BModule; t: PType, depth: int) =
   while x != nil:
     x = skipTypes(x, skipPtrs)
     seqs[i] = cIntValue(genDisplayElem(MD5Digest(hashType(x, m.config))))
-    x = x[0]
+    x = x.baseClass
     inc i
 
   var arr: StructInitializer

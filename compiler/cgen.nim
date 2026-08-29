@@ -645,9 +645,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     if mode == constructRefObj: r = cDeref(r)
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s[0] != nil:
+      while s.kind == tyObject and s.baseClass != nil:
         r = dotField(r, "Sup")
-        s = skipTypes(s[0], skipPtrs)
+        s = skipTypes(s.baseClass, skipPtrs)
     if optTinyRtti in p.config.globalOptions:
       p.s(section).addFieldAssignment(r, "m_type", genTypeInfoV2(p.module, t, a.lode.info))
     else:
@@ -680,9 +680,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     if mode == constructRefObj: r = cDeref(r)
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s[0] != nil and s.sym.magic != mException:
+      while s.kind == tyObject and s.baseClass != nil and s.sym.magic != mException:
         r = dotField(r, "Sup")
-        s = skipTypes(s[0], skipPtrs)
+        s = skipTypes(s.baseClass, skipPtrs)
     p.s(section).addFieldAssignment(r, "name", makeCString(t.skipTypes(abstractInst).sym.name.s))
 
 proc genRefAssign(p: BProc, dest, src: TLoc)

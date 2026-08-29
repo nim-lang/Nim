@@ -61,10 +61,23 @@
 ## remaining subscripts are writes that build a fresh `nkProcDef`
 ## (`theProc[namePos] = ...`), which a `Cursor` backend will not do at all, and
 ## accesses to a `PType`, a `string`, a `seq` or a `Table`, none of which are
-## `BNode`s. `PType` is the trap to watch for: `ast.sons(t: PType)` is a `proc`
-## returning `var TTypeSeq`, NOT the iterator of the same name, so `t[i]` there
-## means something else entirely. The `firstSon`/`secondSon`/`lastSon`/`son`
-## family is defined for `PNode` only, so a mistaken base does not compile.
+## `BNode`s. The `firstSon`/`secondSon`/`lastSon`/`son` family is defined for
+## `PNode` only, so a mistaken base does not compile.
+##
+## A `PType` has its own vocabulary and its own reason for preferring it: `t[0]`
+## is the return type, the base class, the index type or the generic head
+## depending on the kind, and `ast.sons(t: PType)` is a `proc` returning the raw
+## seq — NOT the iterator of the same name — which for a `tyProc` does not hold
+## the parameters at all. Reach for `returnType` / `baseClass` / `elementType` /
+## `genericHead` and the `kids` / `ikids` / `paramTypes` / `signature`
+## iterators, which name the child and go through `[]`.
+##
+## There is deliberately no `BType` alongside `BNode`. Types stay `PType`s even
+## under `newIcBackend` — `typ` below returns one — because the backend asks
+## them semantic questions (`skipTypes`, `getSize`, `lengthOrd`, the record
+## walk over `t.n`) that a raw cursor cannot answer. `ast2nif` already
+## materializes them lazily from the module's type index, which is the seam
+## that matters on that side.
 
 import ast, lineinfos
 

@@ -412,7 +412,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     elif not isObjLackingTypeField(ty):
       genGenericAsgn(p, dest, src, flags)
     elif containsGarbageCollectedRef(ty):
-      if ty[0].isNil and asgnComplexity(ty.n) <= 4 and
+      if ty.baseClass.isNil and asgnComplexity(ty.n) <= 4 and
             needAssignCall notin flags: # calls might contain side effects
         discard getTypeDesc(p.module, ty)
         internalAssert p.config, ty.n != nil
@@ -1040,7 +1040,7 @@ proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
       break
     if not p.module.compileToCpp:
       r = dotField(r, "Sup")
-    ty = ty[0]
+    ty = ty.baseClass
   if result == nil: internalError(p.config, field.info, "genCheckedRecordField")
 
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
@@ -2336,7 +2336,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc, noinit = false) =
 
   let name = if noinit: "setLengthSeqUninit" else: "setLengthSeqV2"
   call.snippet = cCast(rt, cgCall(p, name, pExpr, rti, rb,
-          isTrivialTypesToSnippet(t.skipTypes(abstractInst)[0])))
+          isTrivialTypesToSnippet(t.skipTypes(abstractInst).elementType)))
 
   genAssignment(p, a, call, {})
   gcUsage(p.config, e)
@@ -4127,7 +4127,7 @@ proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType; result: var Bu
         genBracedInit(p, it, isConst, tup[i], result)
 
 proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool; result: var Builder) =
-  let base = t.skipTypes(abstractInst)[0]
+  let base = t.skipTypes(abstractInst).elementType
   let tmpName = getTempName(p.module)
 
   # genBracedInit can modify cfsStrData, we need an intermediate builder:
@@ -4160,7 +4160,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool; result: var Builde
   result.add cCast(typ = getTypeDesc(p.module, t), value = cAddr(tmpName))
 
 proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool; result: var Builder) =
-  let base = t.skipTypes(abstractInst)[0]
+  let base = t.skipTypes(abstractInst).elementType
   let payload = getTempName(p.module)
 
   # genBracedInit can modify cfsStrData, we need an intermediate builder:

@@ -359,6 +359,18 @@ proc `flags=`*(t: PType, val: TTypeFlags) {.inline.} =
   t.flagsImpl = val
 
 proc sons*(t: PType): var TTypeSeq {.inline.} =
+  ## The RAW child seq. Despite the name this is NOT the counterpart of the
+  ## `sons` ITERATOR over a `PNode`, and it is not the way to walk a type's
+  ## children — use `kids` / `ikids` / `paramTypes` / `signature`, or the named
+  ## accessors (`returnType`, `baseClass`, `elementType`, `indexType`,
+  ## `genericHead`, ...), which say WHICH child they mean.
+  ##
+  ## The difference is not cosmetic. A `tyProc` keeps its parameter types in
+  ## `n`, not here — `setSons` asserts `sonsImpl.len <= 1` for one — so `[]`,
+  ## `len` and every iterator built on them route parameters through
+  ## `n[i].sym.typ`, while this seq holds only the return type. `for x in
+  ## t.sons` therefore compiles, looks like the `PNode` idiom, and silently
+  ## visits a different set of types.
   if t.state == Partial: loadType(t)
   result = t.sonsImpl
 
