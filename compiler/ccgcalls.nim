@@ -11,7 +11,11 @@
 
 proc canRaiseDisp(p: BProc; n: PNode): bool =
   # we assume things like sysFatal cannot raise themselves
-  if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
+  if n.kind == nkSym and n.sym.kind == skMethod:
+    # A base method may be overridden by a branch with a wider exception set.
+    # Its inferred effects describe only the base body, not every vtable target.
+    result = true
+  elif n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
       (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags and
