@@ -20,11 +20,11 @@
 ## below one area at a time and the compiler keeps building throughout, because
 ## on the `PNode` side the vocabulary is what `ast`/`astdef` already provide —
 ## `kind`, `len`, `safeLen`, `sym`, `typ`, `info`, `firstSon`, `secondSon`,
-## `lastSon` and the `sons`/`isons`/`sonsFrom` iterators all exist. This module
-## deliberately does
-## NOT redefine them for `PNode`: an identical second overload would make every
-## call site ambiguous. It adds only what the AST lacks (`son`, `hasSons`), and
-## supplies the whole vocabulary on the `Cursor` side.
+## `lastSon` and the `sons`/`isons`/`sonsFrom`/`sonsButLast`/`isonsButLast`
+## iterators all exist. This module deliberately does NOT redefine them for
+## `PNode`: an identical second overload would make every call site ambiguous.
+## It adds only what the AST lacks (`son`, `hasSons`), and supplies the whole
+## vocabulary on the `Cursor` side.
 ##
 ## THE COST MODEL DIFFERS, and that is what the vocabulary is shaped around. A
 ## `Cursor` is a copyable position in a token buffer, so a child is reached by
@@ -32,14 +32,27 @@
 ## whole subtree. Reading child `i` is therefore O(size of children 0..<i):
 ##
 ## * `firstSon` / `secondSon` / `son(n, k)` with small constant `k` — cheap, and
-##   already how most structural access reads (344 of 777 indexed accesses in
-##   the cgen files use a constant or a `*Pos` index).
-## * `for x in sons(n)` / `sonsFrom(n, k)` — one linear pass. ALWAYS migrate an
-##   indexed loop to these: `for i in 0..<n.len: n[i]` is O(n^2) once `BNode` is
-##   a `Cursor`, and ~196 such accesses remain.
-## * `lastSon(n)` — O(len). Fine once, a trap inside a loop; 28 `n[^1]` uses.
+##   how nearly all structural access in the cgen files now reads.
+## * `for x in sons(n)` / `sonsFrom(n, k)` / `sonsButLast(n, k)`, and the
+##   index-yielding `isons` / `isonsButLast` — one linear pass. ALWAYS use these
+##   for a loop: `for i in 0..<n.len: n[i]` is O(n^2) once `BNode` is a `Cursor`.
+##   A loop that stops at a computed position walks forward and breaks
+##   (`for i, it in isons(n): if i >= casePos: break`) rather than counting up to
+##   the bound.
+## * `lastSon(n)` — O(len). Fine once, a trap inside a loop.
 ## * `len(n)` — O(len) on a `Cursor`, which has to count. Do not put it in a loop
 ##   condition; use `sons`/`sonsFrom`, or `hasSons` for an emptiness test.
+##
+## The cgen files hold to one invariant, which is what makes the eventual flip
+## mechanical: NO `[]` ON A `PNode` OUTSIDE OF TREE CONSTRUCTION. Every read is
+## `firstSon`/`secondSon`/`lastSon`/`son(n, k)` or one of the iterators; the
+## remaining subscripts are writes that build a fresh `nkProcDef`
+## (`theProc[namePos] = ...`), which a `Cursor` backend will not do at all, and
+## accesses to a `PType`, a `string`, a `seq` or a `Table`, none of which are
+## `BNode`s. `PType` is the trap to watch for: `ast.sons(t: PType)` is a `proc`
+## returning `var TTypeSeq`, NOT the iterator of the same name, so `t[i]` there
+## means something else entirely. The `firstSon`/`secondSon`/`lastSon`/`son`
+## family is defined for `PNode` only, so a mistaken base does not compile.
 
 import ast, lineinfos
 
@@ -70,6 +83,9 @@ when defined(newIcBackend):
   proc info*(n: BNode): TLineInfo {.error: "BNode.info: not implemented for Cursor yet".} = discard
   iterator sons*(n: BNode): BNode {.error: "BNode.sons: not implemented for Cursor yet".} = discard
   iterator sonsFrom*(n: BNode; start: int): BNode {.error: "BNode.sonsFrom: not implemented for Cursor yet".} = discard
+  iterator sonsButLast*(n: BNode; count = 1): BNode {.error: "BNode.sonsButLast: not implemented for Cursor yet (one pass with `count` nodes of lookahead)".} = discard
+  iterator isons*(n: BNode; start = 0): tuple[i: int, n: BNode] {.error: "BNode.isons: not implemented for Cursor yet".} = discard
+  iterator isonsButLast*(n: BNode; count = 1): tuple[i: int, n: BNode] {.error: "BNode.isonsButLast: not implemented for Cursor yet".} = discard
 else:
   type BNode* = PNode
 

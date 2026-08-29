@@ -22,8 +22,8 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
     for it in sons(n):
       specializeResetN(p, accessor, it, typ)
   of nkRecCase:
-    if (n[0].kind != nkSym): internalError(p.config, n.info, "specializeResetN")
-    let disc = n[0].sym
+    if (n.firstSon.kind != nkSym): internalError(p.config, n.info, "specializeResetN")
+    let disc = n.firstSon.sym
     if disc.loc.snippet == "": fillObjectFields(p.module, typ)
     if disc.loc.t == nil:
       internalError(p.config, n.info, "specializeResetN()")

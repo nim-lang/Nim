@@ -187,7 +187,7 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
   {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
   s.typ != nil and not signatureHasMetaType(s.typ) and
   s.ast != nil and s.ast.safeLen > bodyPos and
-  s.ast[genericParamsPos].kind == nkEmpty
+  son(s.ast, genericParamsPos).kind == nkEmpty
   # NOTE: an `nkEmpty` body is NOT a disqualifier. A concrete, owned, non-
   # forward/-importc/-magic routine whose body folds to nothing is still a real
   # definition the owner must emit (`void f(void){}`), exactly as whole-program
@@ -1207,7 +1207,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
         cCast(getTypeDesc(m, sym.typ, dkVar),
           cCall(callee, params)))
     var last = lastSon(n)
-    if last.kind == nkHiddenStdConv: last = last[1]
+    if last.kind == nkHiddenStdConv: last = last.secondSon
     internalAssert(m.config, last.kind == nkStrLit)
     let idx = last.strVal
     if idx.len == 0:
@@ -1312,14 +1312,14 @@ proc closeNamespaceNim(result: var Builder) =
 
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
-  # prc.ast[paramsPos].last contains the type we're after — BUT a closure loaded
+  # The `paramsPos` child of `prc.ast` has the type we're after — BUT a closure loaded
   # from a `.t.bif` (a lambda-lifted nested proc / generic instance the `lower`
   # stage transformed) can arrive with an EMPTY AST param node: the lifted hidden
   # `:env` param lives in `typ.n`, the authoritative signature (`genProc` already
   # reads `typ.n`, not the AST). The two param nodes diverge across the NIF
   # boundary; fall back to `typ.n` so the env param resolves instead of indexing
   # an empty container.
-  var params = prc.ast[paramsPos]
+  var params = son(prc.ast, paramsPos)
   if params.safeLen == 0 and prc.typ.n != nil and prc.typ.n.kind == nkFormalParams:
     params = prc.typ.n
   var ls = lastSon(params)
@@ -1352,7 +1352,7 @@ proc containsResult(n: BNode): bool =
   of nkReturnStmt:
     for ni in n.sons:
       if containsResult(ni): return true
-    result = n.len > 0 and n.firstSon.kind == nkEmpty
+    result = n.hasSons and n.firstSon.kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
@@ -1368,11 +1368,11 @@ proc easyResultAsgn(n: PNode): PNode =
     while i < n.len and n[i].kind in harmless: inc i
     if i < n.len: result = easyResultAsgn(n[i])
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult and not containsResult(n[1]):
+    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult and not containsResult(n.secondSon):
       incl n.flags, nfPreventCg
-      return n[1]
+      return n.secondSon
   of nkReturnStmt:
-    if n.len > 0:
+    if n.hasSons:
       result = easyResultAsgn(n.firstSon)
       if result != nil: incl n.flags, nfPreventCg
   else: discard
@@ -1414,8 +1414,8 @@ proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult:
-      if not containsResult(n[1]):
-        if allPathsAsgnResult(p, n[1]) == InitRequired:
+      if not containsResult(n.secondSon):
+        if allPathsAsgnResult(p, n.secondSon) == InitRequired:
           result = InitRequired
         else:
           result = InitSkippable
@@ -1423,9 +1423,9 @@ proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
     elif containsResult(n):
       result = InitRequired
     else:
-      result = allPathsAsgnResult(p, n[1])
+      result = allPathsAsgnResult(p, n.secondSon)
   of nkReturnStmt:
-    if n.len > 0:
+    if n.hasSons:
       if n.firstSon.kind == nkEmpty and result != InitSkippable:
         # This is a bare `return` statement, if `result` was not initialized
         # anywhere else (or if we're not sure about this) let's require it to be
@@ -1459,7 +1459,7 @@ proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
     # condition and that would be fine. Everything else isn't:
     result = allPathsAsgnResult(p, n.firstSon)
     if result == Unknown:
-      result = allPathsAsgnResult(p, n[1])
+      result = allPathsAsgnResult(p, n.secondSon)
       # we cannot assume that the 'while' loop is really executed at least once:
       if result == InitSkippable: result = Unknown
   of harmless:
@@ -1592,7 +1592,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
-    let resNode = prc.ast[resultPos]
+    let resNode = son(prc.ast, resultPos)
     let res = resNode.sym # get result symbol
     if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:
       if sfNoInit in prc.flags: incl(res, sfNoInit)
@@ -1832,17 +1832,17 @@ include inliner
 
 proc genProcLvl2(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
     useHeader(m, prc)
     # dependency to a compilerproc:
     cgsym(m, prc.name.s)
     return
   if lfNoDecl in prc.loc.flags:
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
     genProcPrototype(m, prc)
   elif lfDynamicLib in prc.loc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
+    fillProcLoc(q, son(prc.ast, namePos))
     genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       symInDynamicLib(q, prc)
@@ -1869,13 +1869,13 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       # not on the first module that uses it
       if m.module.itemId.module != prc.itemId.module and optCompress in m.config.globalOptions:
         let prcCopy = prc # copyInlineProc(prc, m.idgen)
-        fillProcLoc(m, prcCopy.ast[namePos])
+        fillProcLoc(m, son(prcCopy.ast, namePos))
         genProcPrototype(m, prcCopy)
         genProcLvl3(m, prcCopy)
       else:
         let m2 = if m.config.symbolFiles != disabledSf: m
                 else: findPendingModule(m, prc)
-        fillProcLoc(m2, prc.ast[namePos])
+        fillProcLoc(m2, son(prc.ast, namePos))
         #elif {sfExportc, sfImportc} * prc.flags == {}:
         #  # reset name to restore consistency in case of hashing collisions:
         #  #echo "resetting ", prc.id, " by ", m.module.name.s
@@ -1885,7 +1885,7 @@ proc genProcLvl2(m: BModule, prc: PSym) =
         genProcLvl3(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
+    fillProcLoc(q, son(prc.ast, namePos))
     # generate a getProc call to initialize the pointer for this
     # externally-to-the-current-module defined proc, also important
     # to do the declaredProtos check before the call to genProcPrototype
@@ -1906,7 +1906,7 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       if emitsBodyInThisModule(m, prc):
         genProcLvl3(q, prc)
   else:
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
     useHeader(m, prc)
     if sfInfixCall notin prc.flags: genProcPrototype(m, prc)
 
@@ -1928,7 +1928,7 @@ proc genProc(m: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc): return
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
   else:
     genProcLvl2(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
@@ -2468,7 +2468,7 @@ proc genDatInitCode(m: BModule) =
 proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, getProcFunc: string) =
   let prc = magicsys.getCompilerProc(m.g.graph, sym)
   assert prc != nil
-  fillProcLoc(m, prc.ast[namePos])
+  fillProcLoc(m, son(prc.ast, namePos))
 
   var tmp = mangleDynLibProc(prc)
   backendEnsureMutable prc

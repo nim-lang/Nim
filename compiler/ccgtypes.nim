@@ -598,10 +598,10 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
       rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t.returnType, check, dkResult)])
   var types, names, args: seq[string] = @[]
   if not isCtor:
-    var this = t.n[1].sym
+    var this = t.n.secondSon.sym
     backendEnsureMutable this
     fillParamName(m, this)
-    fillLoc(this.locImpl, locParam, t.n[1],
+    fillLoc(this.locImpl, locParam, t.n.secondSon,
             this.paramStorageLoc)
     if this.typ.kind == tyPtr:
       this.locImpl.snippet = "this"
@@ -1267,7 +1267,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
   var check = initIntSet()
   fillBackendName(m, prc)
   backendEnsureMutable prc
-  fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
+  fillLoc(prc.locImpl, locProc, son(prc.ast, namePos), OnUnknown)
   var memberOp = "#." #only virtual
   var typ: PType
   if isCtor:
@@ -1321,7 +1321,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   var check = initIntSet()
   fillBackendName(m, prc)
   backendEnsureMutable prc
-  fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
+  fillLoc(prc.locImpl, locProc, son(prc.ast, namePos), OnUnknown)
   var rettype: Snippet = ""
   var desc = newBuilder("")
   genProcParams(m, prc.typ, rettype, desc, check, true, false)
@@ -1559,15 +1559,15 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
       of nkOfBranch:
         if b.len < 2:
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in 0..<b.len - 1:
-          if b[j].kind == nkRange:
-            var x = toInt(getOrdValue(b[j].firstSon))
-            var y = toInt(getOrdValue(b[j][1]))
+        for label in sonsButLast(b):
+          if label.kind == nkRange:
+            var x = toInt(getOrdValue(label.firstSon))
+            var y = toInt(getOrdValue(label.secondSon))
             while x <= y:
               m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(x), cAddr(tmp2))
               inc(x)
           else:
-            m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(getOrdValue(b[j])), cAddr(tmp2))
+            m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(getOrdValue(label)), cAddr(tmp2))
       of nkElse:
         m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(L), cAddr(tmp2))
       else: internalError(m.config, n.info, "genObjectFields(nkRecCase)")
@@ -2289,7 +2289,7 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
 
 proc retrieveSym(n: PNode): PSym =
   case n.kind
-  of nkPostfix: result = retrieveSym(n[1])
+  of nkPostfix: result = retrieveSym(n.secondSon)
   of nkPragmaExpr, nkTypeDef: result = retrieveSym(n.firstSon)
   of nkSym: result = n.sym
   else: result = nil

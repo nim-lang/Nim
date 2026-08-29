@@ -172,12 +172,12 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
       raiseAssert "unreachable"
   of tyRange:
     var val = "range_"
-    if t.n[0].typ.kind in {tyFloat..tyFloat128}:
-      val.addFloat t.n[0].floatVal
+    if t.n.firstSon.typ.kind in {tyFloat..tyFloat128}:
+      val.addFloat t.n.firstSon.floatVal
       val.add "_"
-      val.addFloat t.n[1].floatVal
+      val.addFloat t.n.secondSon.floatVal
     else:
-      val.add $t.n[0].intVal & "_" & $t.n[1].intVal
+      val.add $t.n.firstSon.intVal & "_" & $t.n.secondSon.intVal
     result = encodeName(val)
   of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil, tyEmpty:
     result = encodeName(kindName)

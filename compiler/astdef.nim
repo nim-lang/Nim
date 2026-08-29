@@ -977,6 +977,23 @@ iterator sonsFrom*(n: PNode; start: int): PNode =
   ## over a case/try statement's selector or a call's callee.
   for i in start..<n.safeLen: yield n[i]
 
+iterator sonsButLast*(n: PNode; count = 1): PNode =
+  ## `sons` without the last `count` children. Replaces `for i in 0..<n.len-1:
+  ## ... n[i] ...`, which is what an `nkOfBranch`/`nkExceptBranch` walk looks
+  ## like: the last child is the branch BODY, the ones before it are the labels
+  ## it matches. `count = 2` is the `nkVarTuple`/`nkIdentDefs` shape, whose last
+  ## two children are the type and the value. A `Cursor` can serve this with a
+  ## single pass and `count` nodes of lookahead; the indexed form has to re-walk
+  ## the children for every label.
+  ##
+  ## Use `isonsButLast` instead when the index is still needed.
+  for i in 0 ..< n.safeLen - count: yield n[i]
+
+iterator isonsButLast*(n: PNode; count = 1): tuple[i: int, n: PNode] =
+  ## Like `sonsButLast` but also yields the child index — for a tuple field
+  ## position, a parallel index into the tuple's `PType`, and so on.
+  for i in 0 ..< n.safeLen - count: yield (i, n[i])
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
