@@ -186,8 +186,10 @@ proc genRefAssign(p: BProc, dest, src: TLoc) =
     let rs = rdLoc(src)
     p.s(cpsStmts).addCallStmt(fnName, cCast(ptrType(CPointer), rad), rs)
 
-proc asgnComplexity(n: AnyNode): int =
-  if not n.isNilNode:
+proc asgnComplexity(n: PNode): int =
+  ## Walks a TYPE's record tree (`PType.n`), never a body, so it is not a
+  ## migration candidate — see the type-record-tree blocker in `bnode`.
+  if n != nil:
     case n.kind
     of nkSym: result = 1
     of nkRecCase:
@@ -1867,7 +1869,7 @@ proc genFieldObjConstr[F: AnyNode; V: AnyNode](p: BProc; ty: PType; useTemp, isR
   let field = lookupFieldAgain(p, ty, nField.sym, tmp2.snippet)
   if field.loc.snippet == "": fillObjectFields(p.module, ty)
   if field.loc.snippet == "": internalError(p.config, info, "genFieldObjConstr")
-  if not check.isNilNode and optFieldCheck in p.options:
+  if check != nil and optFieldCheck in p.options:
     genFieldCheck(p, check, r, field, ty)
   tmp2.snippet = dotField(tmp2.snippet, field.loc.snippet)
   if useTemp:
@@ -3872,14 +3874,15 @@ proc isOpaqueImportcType(t: PType): bool =
     if tfCompleteStruct notin t.flags:
       if tfIncompleteStruct in t.flags:
         return true
-      if t.kind == tyObject and (t.n.isNilNode or not t.n.hasSons):
+      if t.kind == tyObject and (t.n == nil or not t.n.hasSons):
         return true
   return false
 
 proc containsOpaqueImportcField(typ: PType): bool
 
-proc containsOpaqueImportcFieldAux(t: PType; n: AnyNode): bool =
-  if n.isNilNode: return false
+proc containsOpaqueImportcFieldAux(t: PType; n: PNode): bool =
+  ## Also a type-record walk; `n` is `t.n`.
+  if n == nil: return false
   case n.kind
   of nkRecList:
     for child in sons(n):

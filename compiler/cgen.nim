@@ -135,11 +135,11 @@ proc signatureHasMetaType*(t: PType; depth: int = 0): bool =
     # `HashList[T, N]`, …) is carried as a `tyStatic` node inside the otherwise
     # fully-concrete `tyGenericInst`, but it is NOT meta: the routine is a normal
     # runtime routine the owner must emit. Only an UNRESOLVED `static T` parameter
-    # (no bound value, `t.n.isNilNode`) is meta. Without this, every routine whose
+    # (no bound value, `t.n == nil`) is meta. Without this, every routine whose
     # signature touches a `static`-parameterized generic instance (the bulk of
     # the SSZ/`MDigest` API) is dropped from the owned-routine seeding and ends up
     # an undefined reference at link (mirrors the tyGenericBody case above).
-    return t.n.isNilNode
+    return t.n == nil
   if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyGenericParam,
                 tyAnything, tyFromExpr, tyError}:
     return true
@@ -1748,7 +1748,7 @@ when defined(newIcBackend):
     # `(ht . <sym>)` type difference. Only a subtree that clean is handed to
     # `grindPredicates` — see the descent below for why.
     result = true
-    if a.isNilNode:
+    if a == nil:
       if not c.isNilNode: bail("nil-ness", "not-nil", "nil")
       return
     if c.isNilNode: bail("nil-ness", "nil", "not-nil")
@@ -1891,7 +1891,7 @@ when defined(newIcBackend):
     ## disagreement with the original, so both directions are checked by the one
     ## oracle rather than by a hand-written comparator that could agree with the
     ## bug.
-    if bnodeGrind == 0 or body.isNilNode: return
+    if bnodeGrind == 0 or body == nil: return
     let htBefore = tolHtNil
     let fieldBefore = tolFieldSym
 
@@ -1908,7 +1908,7 @@ when defined(newIcBackend):
     # Asserted rather than assumed, with `==` on the reference: an equal copy
     # would not do.
     proc grindOrigins(enc: var BridgeBuf; c: BNode; a: PNode; path: string) =
-      if a.isNilNode: return
+      if a == nil: return
       # Through the AMBIENT accessor (`bnode.origin`, via `currentNav`), which
       # is the one a migrated generator proc will call from inside `initLoc` —
       # not the direct `originOf`, which would test a path nothing uses.
@@ -1988,7 +1988,7 @@ when defined(newIcBackend):
     let ast = prc.ast
     if ast == nil or ast.safeLen <= bodyPos: return
     let body = son(ast, bodyPos)
-    if body.isNilNode: return
+    if body == nil: return
     var scope = default(BodyScope)
     var viaCursor = default(BNode)
     if not lazyBodyBNode(body, scope, viaCursor): return

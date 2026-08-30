@@ -68,7 +68,7 @@ proc preventNrvo(p: BProc; dest, le: PNode; ri: AnyNode): bool =
         return true
 
   result = false
-  if not le.isNilNode:
+  if le != nil:
     for r in sonsFrom(ri, 1):
       # `isPartOf` compares field symbols by identity and so has not moved to
       # the seam; `origin` hands it the same nodes it always compared.
@@ -79,7 +79,7 @@ proc preventNrvo(p: BProc; dest, le: PNode; ri: AnyNode): bool =
         locationEscapes(p, le, p.nestedTryStmts.len > 0):
       message(p.config, le.info, warnObservableStores, $le)
   # bug #19613 prevent dangerous aliasing too:
-  if not dest.isNilNode and dest != le:
+  if dest != nil and dest != le:
     for r in sonsFrom(ri, 1):
       if isPartOf(dest, origin(r), {pfStructural}) != arNo: return true
 
