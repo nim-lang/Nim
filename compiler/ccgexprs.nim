@@ -539,7 +539,7 @@ proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc) =
   else:
     d = s # ``d`` is free, so fill it with ``s``
 
-proc putDataIntoDest(p: BProc, d: var TLoc, n: PNode, r: Rope) =
+proc putDataIntoDest(p: BProc, d: var TLoc, n: AnyNode, r: Rope) =
   if d.k != locNone:
     var a: TLoc = initLoc(locData, n, OnStatic)
     # need to generate an assignment here
@@ -550,10 +550,10 @@ proc putDataIntoDest(p: BProc, d: var TLoc, n: PNode, r: Rope) =
     # we cannot call initLoc() here as that would overwrite
     # the flags field!
     d.k = locData
-    d.lode = n
+    d.lode = origin(n)
     d.snippet = r
 
-proc putIntoDest(p: BProc, d: var TLoc, n: PNode, r: Rope; s=OnUnknown) =
+proc putIntoDest(p: BProc, d: var TLoc, n: AnyNode, r: Rope; s=OnUnknown) =
   if d.k != locNone:
     # need to generate an assignment here
     var a: TLoc = initLoc(locExpr, n, s)
@@ -564,7 +564,7 @@ proc putIntoDest(p: BProc, d: var TLoc, n: PNode, r: Rope; s=OnUnknown) =
     # we cannot call initLoc() here as that would overwrite
     # the flags field!
     d.k = locExpr
-    d.lode = n
+    d.lode = origin(n)
     d.snippet = r
 
 proc binaryStmt(p: BProc, e: PNode, d: var TLoc, op: TypedBinaryOp) =

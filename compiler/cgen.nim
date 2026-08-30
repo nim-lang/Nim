@@ -252,23 +252,30 @@ proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   else:
     result = prc.itemId.module == m.module.position
 
-proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
-  result = TLoc(k: k, storage: s, lode: lode,
+# `TLoc.lode` stays a `PNode` even when the generator is driven off a cursor,
+# and `origin` is why: on a bridged buffer it answers the very node the encoder
+# was handed, so a location built from a cursor holds the same object a location
+# built from the tree would have held. That is what keeps the identity
+# comparisons the backend already does (`preventNrvo`'s `dest != le`,
+# `isPartOf(d.lode, …)`) meaning what they meant. Taking `AnyNode` here is what
+# unblocks the 99 generator procs that build a location from their node.
+proc initLoc(k: TLocKind, lode: AnyNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
+  result = TLoc(k: k, storage: s, lode: origin(lode),
                 snippet: "", flags: flags)
 
-proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) {.inline.} =
+proc fillLoc(a: var TLoc, k: TLocKind, lode: AnyNode, r: Rope, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
   if a.k == locNone:
     a.k = k
-    a.lode = lode
+    a.lode = origin(lode)
     a.storage = s
     if a.snippet == "": a.snippet = r
 
-proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) {.inline.} =
+proc fillLoc(a: var TLoc, k: TLocKind, lode: AnyNode, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
   if a.k == locNone:
     a.k = k
-    a.lode = lode
+    a.lode = origin(lode)
     a.storage = s
 
 proc t(a: TLoc): PType {.inline.} =
@@ -1902,7 +1909,10 @@ when defined(newIcBackend):
     # would not do.
     proc grindOrigins(enc: var BridgeBuf; c: BNode; a: PNode; path: string) =
       if a == nil: return
-      let src = originOf(enc, c.raw)
+      # Through the AMBIENT accessor (`bnode.origin`, via `currentNav`), which
+      # is the one a migrated generator proc will call from inside `initLoc` —
+      # not the direct `originOf`, which would test a path nothing uses.
+      let src = origin(c)
       if src != a:
         internalError(m.config, prc.info,
           "bridge origin is not the source node at <body>" & path & " in " &
@@ -1914,7 +1924,8 @@ when defined(newIcBackend):
         for child in sons(a):
           grindOrigins(enc, son(c, i), child, path & "[" & $i & "]")
           inc i
-    grindOrigins(enc, BNode(rootCursor(enc)), body, "")
+    withBridge(enc.tables):
+      grindOrigins(enc, BNode(rootCursor(enc)), body, "")
 
     var rt = toPNode(enc)
     var enc2 = toTokenBuf(rt, m.config)

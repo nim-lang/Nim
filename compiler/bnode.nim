@@ -592,6 +592,26 @@ when defined(newIcBackend):
   # every expression node, so nothing in the expression codegen can migrate
   # until they exist.
 
+  proc origin*(n: BNode): PNode =
+    ## The `PNode` this cursor was encoded from, when it is reading a bridged
+    ## buffer. This is what lets a cursor-driven generator keep filling
+    ## `TLoc.lode` with a `PNode`: the answer is the SAME OBJECT the encoder was
+    ## handed, so the identity comparisons the backend already does still hold.
+    ##
+    ## A node head on a bridged buffer always has an origin, so a miss is a bug
+    ## rather than a shrug — most likely a cursor that is not at a node head.
+    ## Reading a FILE-backed body has no origins at all and answers nil, which is
+    ## correct: there is no `PNode` those tokens came from.
+    let b = currentNav().bridge
+    if b == nil: return nil
+    result = originAt(b, n.raw)
+    doAssert result != nil or nifcore.kind(n.raw) == DotToken,
+      "bridged node has no origin: " & rawDesc(n)
+
+  template origin*(n: PNode): PNode = n
+    ## The `PNode` spelling, so `AnyNode` code can ask for an origin without
+    ## caring which representation it holds.
+
   proc atom(n: BNode): Cursor {.inline.} =
     ## The payload token of a leaf node.
     result = astChildren(n)
@@ -708,6 +728,9 @@ else:
 
   # Only the three the AST does not already have. Everything else in the
   # vocabulary is `ast`/`astdef`'s own `PNode` API — see the module doc.
+  template origin*(n: BNode): BNode = n
+    ## No bridge in this build: a node IS its own origin.
+
   template son*(n: BNode; i: int): BNode =
     ## Named indexed access. Exists so a call site states "child i" in a form
     ## that survives `BNode` becoming a `Cursor`; keep `i` small and constant.

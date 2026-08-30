@@ -98,6 +98,15 @@ type
     ## symbol kind, fields included.
     syms*: seq[PSym]
     types*: seq[PType]
+    origins*: Table[int, PNode]
+      ## Token position -> the `PNode` encoded there, so a cursor can name the
+      ## node it came from. Lives here rather than in `BridgeBuf` because the
+      ## lookup has to be reachable from wherever a location is built, which is
+      ## everywhere in the generator — the same reason `syms` is here.
+    buf*: ptr TokenBuf
+      ## The buffer `origins` is keyed against; `cursorToPosition` needs it.
+      ## Borrowed, not owned: it points into the `BridgeBuf` that a scoped
+      ## `withBridge` is currently reading, and never outlives it.
 
   BodyNav* = object
     ## The resolution context for ONE routine body. `base` is what the decoder
@@ -114,6 +123,12 @@ type
     hits*: int              ## resolved from the chain
     fallbacks*: int         ## resolved through the decoder
     registered*: int        ## definitions the walk registered
+
+proc originAt*(t: BridgeTables; c: Cursor): PNode =
+  ## The source node a cursor was encoded from, or nil when there is none (a
+  ## `DotToken`, or a cursor that is not at a node head).
+  if t == nil or t.buf == nil: return nil
+  result = t.origins.getOrDefault(cursorToPosition(t.buf[], c), nil)
 
 proc initBodyNav*(base: sink BodyScope): BodyNav =
   ## A nav over a body, seeded with whatever resolution context the decoder
