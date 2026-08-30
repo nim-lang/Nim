@@ -1166,6 +1166,8 @@ proc enterConceptMatch(c: var TCandidate; f,a: PType, flags: TTypeRelFlags): TTy
     return typeRel(c, prev, a, flags)
   if trDontBind in flags:
     conceptFlags.incl mfDontBind
+  if trBindGenericParam in flags:
+    conceptFlags.incl mfBindGenericParam
   if trCheckGeneric in flags:
     conceptFlags.incl mfCheckGeneric
   let mres = concepts.conceptMatch(c.c, concpt, a, c.bindings, container, flags = conceptFlags)

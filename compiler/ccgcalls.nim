@@ -15,9 +15,13 @@ proc canRaiseDisp(p: BProc; n: AnyNode): bool =
   # keeps whatever the PREVIOUS call left in it and the early return below
   # attributes this answer to a branch that did not execute — which is how the
   # first run of this differential came to claim effect-list coverage it did
-  # not have.
+  # not have. Both short-circuits below leave it at 5.
   markCanRaiseBranch 5
-  if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
+  if n.kind == nkSym and n.sym.kind == skMethod:
+    # A base method may be overridden by a branch with a wider exception set.
+    # Its inferred effects describe only the base body, not every vtable target.
+    result = true
+  elif n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
       (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags and
