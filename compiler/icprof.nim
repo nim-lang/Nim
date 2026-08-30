@@ -31,11 +31,12 @@ when defined(icBNodeProf):
     ProfSlot* = enum
       pKind, pTagKindHit, pTagKindMiss, pAstChildren, pSkip, pSon, pLen,
       pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
-      pGenBodyCalls, pInfo, pIfaceExported, pIfaceHidden, pIfaceModules
+      pGenBodyCalls, pInfo, pIfaceExported, pIfaceHidden, pIfaceModules,
+      pTopNodes, pExportSyms
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,
-      tSym, tTyp, tInfo, tOrigin
+      tSym, tTyp, tInfo, tOrigin, tExportBranch
 
   var profCounts: array[ProfSlot, int]
   var profNanos: array[TimeSlot, int64]

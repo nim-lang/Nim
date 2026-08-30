@@ -3996,6 +3996,80 @@ proc addReexportedEnumFields(c: var DecodeContext; sym: PSym; interf: var TStrTa
     if f != nil and f.kind == nkSym and f.sym != nil:
       strTableAdd(interf, f.sym)
 
+type
+  TopTag = enum
+    ## Which top-level directive a tag names. `processTopLevel` used to decide
+    ## this with an `elif` chain of ~20 `tagIs` calls, i.e. up to twenty tag-NAME
+    ## string comparisons per node, and the common cases (a real statement, or
+    ## `implementation`) sit at the END of the chain so the average node walked
+    ## all of it — 1.46M nodes on a 68-module build. Resolved once per tag id
+    ## instead, and the chain becomes a `case`.
+    ttOther, ttReplay, ttUnusedId, ttModFlags,
+    ttRepConverter, ttRepDestroy, ttRepWasMoved, ttRepCopy, ttRepSink, ttRepDup,
+    ttRepTrace, ttRepDeepCopy, ttRepEnumToStr, ttRepMethod, ttRepPureEnum,
+    ttRepCppMember, ttExport, ttInclude, ttImport, ttReexpMod, ttOffer, ttTOffer,
+    ttModuleSrc, ttExpansion, ttSig, ttImplementation,
+    ttLetSection, ttVarSection, ttPragma
+
+const
+  letSectionTag = toNifTag(nkLetSection)
+  varSectionTag = toNifTag(nkVarSection)
+  pragmaTag = toNifTag(nkPragma)
+
+proc classifyTopTag(name: string): TopTag =
+  case name
+  of "replay": ttReplay
+  of "unusedid": ttUnusedId
+  of "modflags": ttModFlags
+  of "repconverter": ttRepConverter
+  of "repdestroy": ttRepDestroy
+  of "repwasmoved": ttRepWasMoved
+  of "repcopy": ttRepCopy
+  of "repsink": ttRepSink
+  of "repdup": ttRepDup
+  of "reptrace": ttRepTrace
+  of "repdeepcopy": ttRepDeepCopy
+  of "repenumtostr": ttRepEnumToStr
+  of "repmethod": ttRepMethod
+  of "reppureenum": ttRepPureEnum
+  of "repcppmember": ttRepCppMember
+  of "export": ttExport
+  of "include": ttInclude
+  of "import": ttImport
+  of "reexpmod": ttReexpMod
+  of "offer": ttOffer
+  of "toffer": ttTOffer
+  of "modulesrc": ttModuleSrc
+  of "expansion": ttExpansion
+  of "sig": ttSig
+  of "implementation": ttImplementation
+  else:
+    if name == letSectionTag: ttLetSection
+    elif name == varSectionTag: ttVarSection
+    elif name == pragmaTag: ttPragma
+    else: ttOther
+
+var topTagPool: TagPool = nil
+var topTagCache: seq[int8] = @[]
+  ## `TagId -> TopTag`, -1 unresolved, for ONE tag pool. `topTagPool` holds the
+  ## pool by REFERENCE so it stays alive and a freed pool cannot be replaced at
+  ## the same address — the same argument `indexFromBif`'s and `bnode`'s memos
+  ## rest on.
+
+proc topTagAt(cur: Cursor): TopTag =
+  let pool {.cursor.} = cur.tags
+  if pool != topTagPool:
+    topTagPool = pool
+    topTagCache = @[]
+  let id = int(uint32(cursorTagId(cur)))
+  if id >= topTagCache.len:
+    let oldLen = topTagCache.len
+    topTagCache.setLen(id + 1)
+    for i in oldLen ..< topTagCache.len: topTagCache[i] = -1'i8
+  if topTagCache[id] < 0:
+    topTagCache[id] = int8(ord(classifyTopTag(pool.tagName(cursorTagId(cur)))))
+  result = TopTag(topTagCache[id])
+
 proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag];
                      interf: var TStrTable; suffix: string; module: int): PrecompiledModule =
   ## Step 2 phase 2: walk the module body directly over the resident `buf` cursor
@@ -4013,39 +4087,41 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
   # `topLevel`. They sit in the module header before `(implementation)`.
   var cont = true
   while cont and cur.hasMore:
+    prof pTopNodes
     if cur.kind != TagLit:
       cont = false
     else:
-      if tagIs(cur, "replay"):
+      case topTagAt(cur)
+      of ttReplay:
         # Always load replay actions (macro cache operations)
         cur.into:
           while cur.hasMore:
             let replayNode = loadNode(c, cur, suffix, localSyms)
             if replayNode != nil:
               result.topLevel.sons.add replayNode
-      elif tagIs(cur, "unusedid"):
+      of ttUnusedId:
         # backend id seed — consumed eagerly by `moduleId`/`readUnusedId`; just
         # skip past it here so the rest of the header still loads.
         skip cur
-      elif tagIs(cur, "modflags"):
+      of ttModFlags:
         cur.into:
           if cur.hasMore and cur.kind == IntLit:
             result.moduleFlags = int32 intVal(cur)
             skip cur
           while cur.hasMore: skip cur
-      elif tagIs(cur, "repconverter"): loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
-      elif tagIs(cur, "repdestroy"):   loadLogOp(c, result.logOps, cur, HookEntry, attachedDestructor, module)
-      elif tagIs(cur, "repwasmoved"):  loadLogOp(c, result.logOps, cur, HookEntry, attachedWasMoved, module)
-      elif tagIs(cur, "repcopy"):      loadLogOp(c, result.logOps, cur, HookEntry, attachedAsgn, module)
-      elif tagIs(cur, "repsink"):      loadLogOp(c, result.logOps, cur, HookEntry, attachedSink, module)
-      elif tagIs(cur, "repdup"):       loadLogOp(c, result.logOps, cur, HookEntry, attachedDup, module)
-      elif tagIs(cur, "reptrace"):     loadLogOp(c, result.logOps, cur, HookEntry, attachedTrace, module)
-      elif tagIs(cur, "repdeepcopy"):  loadLogOp(c, result.logOps, cur, HookEntry, attachedDeepCopy, module)
-      elif tagIs(cur, "repenumtostr"): loadLogOp(c, result.logOps, cur, EnumToStrEntry, attachedTrace, module)
-      elif tagIs(cur, "repmethod"):    loadLogOp(c, result.logOps, cur, MethodEntry, attachedTrace, module)
-      elif tagIs(cur, "reppureenum"):  loadLogOp(c, result.logOps, cur, PureEnumEntry, attachedTrace, module)
-      elif tagIs(cur, "repcppmember"): loadLogOp(c, result.logOps, cur, CppMemberEntry, attachedTrace, module)
-      elif tagIs(cur, "export"):
+      of ttRepConverter: loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
+      of ttRepDestroy:   loadLogOp(c, result.logOps, cur, HookEntry, attachedDestructor, module)
+      of ttRepWasMoved:  loadLogOp(c, result.logOps, cur, HookEntry, attachedWasMoved, module)
+      of ttRepCopy:      loadLogOp(c, result.logOps, cur, HookEntry, attachedAsgn, module)
+      of ttRepSink:      loadLogOp(c, result.logOps, cur, HookEntry, attachedSink, module)
+      of ttRepDup:       loadLogOp(c, result.logOps, cur, HookEntry, attachedDup, module)
+      of ttRepTrace:     loadLogOp(c, result.logOps, cur, HookEntry, attachedTrace, module)
+      of ttRepDeepCopy:  loadLogOp(c, result.logOps, cur, HookEntry, attachedDeepCopy, module)
+      of ttRepEnumToStr: loadLogOp(c, result.logOps, cur, EnumToStrEntry, attachedTrace, module)
+      of ttRepMethod:    loadLogOp(c, result.logOps, cur, MethodEntry, attachedTrace, module)
+      of ttRepPureEnum:  loadLogOp(c, result.logOps, cur, PureEnumEntry, attachedTrace, module)
+      of ttRepCppMember: loadLogOp(c, result.logOps, cur, CppMemberEntry, attachedTrace, module)
+      of ttExport:
         if SkipInterfaceTables in flags:
           # Same reason the interface tables are skipped: `interf` is a scratch
           # table this caller throws away, so every `resolveSym` here (one per
@@ -4053,10 +4129,12 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
           # name-keyed `c.syms` cache that `resolveSym` refills lazily on a miss.
           skip cur
           continue
+        icProfStart(tExportBranch)
         cur.into:
           while cur.hasMore and cur.kind == DotToken: skip cur  # flags / type
           while cur.hasMore:
             if cur.kind == Symbol:
+              prof pExportSyms
               let symAsStr = symName(cur)
               # Skip symbols re-exported by this dependency but owned by the module
               # being compiled fresh (they would collide with the fresh originals).
@@ -4070,9 +4148,10 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
             else:
               raiseAssert "expected Symbol or ParRi but got " & $cur.kind &
                 " in export list of module " & suffix
-      elif tagIs(cur, "include"): loadInclude(c, cur, result.includes)
-      elif tagIs(cur, "import"):  loadImport(c, cur, result.deps)
-      elif tagIs(cur, "reexpmod"):
+        icProfStop(tExportBranch)
+      of ttInclude: loadInclude(c, cur, result.includes)
+      of ttImport:  loadImport(c, cur, result.deps)
+      of ttReexpMod:
         # a re-exported MODULE: (reexpmod "name" "suffix"); the module sym is a
         # qualifier in this module's interface — materialized by modulegraphs.
         var mname, msuffix = ""
@@ -4081,7 +4160,7 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
           if cur.hasMore and cur.kind == StrLit: (msuffix = strVal(cur); skip cur)
         if mname.len > 0 and msuffix.len > 0:
           result.reexportedModules.add (mname, msuffix)
-      elif tagIs(cur, "offer"):
+      of ttOffer:
         # (offer <genericSym> <instSym> <genericParamsCount> <type>...) — resolve
         # to PSyms/PTypes; modulegraphs registers them into `procInstCache`.
         # Best-effort: a type that fails to resolve drops the whole offer.
@@ -4107,7 +4186,7 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
             else: skip cur
         if ok and genSym != nil and instSym != nil:
           result.genericOffers.add (genSym, instSym, cts, paramsCount)
-      elif tagIs(cur, "toffer"):
+      of ttTOffer:
         # (toffer "<genericBodySym>" "<instType>") — intern the two full names,
         # resolve, FULLY load the instance (so `searchInstTypes` can match its
         # params). Best-effort: a failure to resolve drops the offer.
@@ -4127,22 +4206,21 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
           if genSym != nil and inst != nil:
             loadType(c, inst)
             result.typeOffers.add (genSym, inst)
-      elif tagIs(cur, "modulesrc"):
+      of ttModuleSrc:
         # self-identification record for the standalone include-graph scanner;
         # not needed by the loader, just skip past it.
         skip cur
-      elif tagIs(cur, "expansion"):
+      of ttExpansion:
         # template/macro expansion usage record for tooling (`idetools` scans it
         # as a `Symbol` use); the loader itself needs nothing from it.
         skip cur
-      elif tagIs(cur, "sig"):
+      of ttSig:
         # signature-symbol occurrence record for tooling (`idetools` scans it as a
         # `Symbol` use); the loader itself needs nothing from it.
         skip cur
-      elif tagIs(cur, "implementation"):
+      of ttImplementation:
         cont = false
-      elif LoadFullAst in flags or tagIs(cur, toNifTag(nkLetSection)) or
-           tagIs(cur, toNifTag(nkVarSection)) or tagIs(cur, toNifTag(nkPragma)):
+      of ttLetSection, ttVarSection, ttPragma:
         # Parse the full statement. let/var sections are loaded unconditionally
         # (see above) so `{.compileTime.}` globals reach the eager initializer.
         # Top-level pragmas are loaded too: a module-level `{.emit.}` (and the
@@ -4152,8 +4230,13 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         let stmtNode = loadNode(c, cur, suffix, localSyms)
         if stmtNode != nil:
           result.topLevel.sons.add stmtNode
-      else:
-        cont = false
+      of ttOther:
+        if LoadFullAst in flags:
+          let stmtNode = loadNode(c, cur, suffix, localSyms)
+          if stmtNode != nil:
+            result.topLevel.sons.add stmtNode
+        else:
+          cont = false
 
 proc registerModuleSelfSym*(c: var DecodeContext; suffix: string; m: PSym) =
   ## Bind the module's NIF name to the ONE module symbol the graph registered.
