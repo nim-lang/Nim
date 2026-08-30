@@ -2062,13 +2062,10 @@ proc genNewFinalize(p: BProc, e: PNode) =
   genObjectInit(p, cpsStmts, bt, a, constructRefObj)
   gcUsage(p.config, e)
 
-proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo; result: var Builder) =
+proc genOfHelper(p: BProc; sourceType, dest: PType; a: Rope; info: TLineInfo;
+                 result: var Builder) =
   if optTinyRtti in p.config.globalOptions:
-    let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
-    result.addCall(cgsymValue(p.module, "isObjDisplayCheck"),
-      dotField(a, "m_type"),
-      cIntValue(int(getObjDepth(dest))),
-      token)
+    result.add genDisplayCheck(p, dotField(a, "m_type"), sourceType, dest, info)
   else:
     # unfortunately 'genTypeInfoV1' sets tfObjHasKids as a side effect, so we
     # have to call it here first:
@@ -2100,6 +2097,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
       r = cDeref(r)
     t = skipTypes(t.elementType, typedescInst+{tyOwned})
+  let sourceType = t
   discard getTypeDesc(p.module, t)
   if not p.module.compileToCpp:
     while t.kind == tyObject and t.baseClass != nil:
@@ -2110,7 +2108,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
       "no 'of' operator available for pure objects")
 
   var ro = newBuilder("")
-  genOfHelper(p, dest, r, x.info, ro)
+  genOfHelper(p, sourceType, dest, r, x.info, ro)
   var ofExpr = extract(ro)
   if nilCheck != "":
     ofExpr = cOp(And, nilCheck, ofExpr)
@@ -3348,9 +3346,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var r: Snippet = ""
     rdMType(p, a, nilCheck, r)
     if optTinyRtti in p.config.globalOptions:
-      let checkFor = $getObjDepth(dest)
-      let token = $genDisplayElem(MD5Digest(hashType(dest, p.config)))
-      let objCheck = cOp(Not, cgCall(p, "isObjDisplayCheck", r, checkFor, token))
+      let objCheck = cOp(Not, genDisplayCheck(p, r, a.t.skipTypes(abstractPtrs), dest, n.info))
       let check = if nilCheck != "": cOp(And, nilCheck, objCheck) else: objCheck
       p.s(cpsStmts).addSingleIfStmt(check):
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseObjectConversionError"))

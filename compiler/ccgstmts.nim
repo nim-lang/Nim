@@ -31,6 +31,8 @@ proc registerTraverseProc(p: BProc, v: PSym) =
     p.module.preInitProc.procSec(cpsInit).addCallStmt(fnName, traverseProc)
     p.module.preInitProc.procSec(cpsInit).add("\n")
 
+proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope; result: var Snippet; enforceV1 = false)
+
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty:
     result = false
@@ -211,6 +213,168 @@ proc exprBlock(p: BProc, n: PNode, d: var TLoc) =
   startSimpleBlock(p, scope)
   expr(p, n, d)
   endSimpleBlock(p, scope)
+
+type
+  ObjectOfSwitchKind = enum
+    oskSibling
+    oskBase
+
+  ObjectOfBranch = object
+    token: uint32
+    body: PNode
+
+proc skipObjectOfCond(cond: PNode): PNode =
+  result = cond
+  while result != nil:
+    case result.kind
+    of nkStmtListExpr:
+      result = result.lastSon
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      result = result[1]
+    of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+      result = result[0]
+    else:
+      break
+
+proc collectObjectOfCond(cond: PNode; selectorSym: var PSym; target: var PType): bool =
+  let cond = skipObjectOfCond(cond)
+  if cond == nil:
+    return false
+  if cond.kind in nkCallKinds and cond.len == 3 and cond[0].kind == nkSym and
+      cond[0].sym.magic == mOf:
+    if cond[1].kind != nkSym:
+      return false
+    if selectorSym == nil:
+      selectorSym = cond[1].sym
+    elif selectorSym.itemId != cond[1].sym.itemId:
+      return false
+
+    target = skipTypes(cond[2].typ, typedescPtrs)
+    if target == nil or target.kind != tyObject or target.baseClass == nil:
+      return false
+    return true
+
+  result = false
+
+proc detectObjectOfSwitch(p: BProc; n: PNode): tuple[ok: bool, selectorSym: PSym,
+                                            kind: ObjectOfSwitchKind, childDepth: int16,
+                                            branches: seq[ObjectOfBranch], elseBody: PNode] =
+  result = (ok: false, selectorSym: nil, kind: oskSibling, childDepth: int16(-1),
+    branches: @[], elseBody: nil)
+  if n.len < 2:
+    return
+
+  var parentId = ItemId()
+  var sameParent = true
+
+  for i, it in n.sons:
+    if it.len == 2:
+      var target: PType = nil
+      if not collectObjectOfCond(it[0], result.selectorSym, target):
+        return
+      if target == nil:
+        return
+      let targetDepth = getObjDepth(target)
+      if result.childDepth < 0:
+        result.childDepth = targetDepth
+      elif targetDepth != result.childDepth:
+        return
+      let parent = skipTypes(target.baseClass, skipPtrs)
+      if parent == nil or parent.kind != tyObject:
+        return
+      if parentId == ItemId():
+        parentId = parent.uniqueId
+      elif sameParent and parent.uniqueId != parentId:
+        sameParent = false
+      let token = displayToken(p.module.g.graph, target)
+      result.branches.add ObjectOfBranch(body: it[1], token: token)
+    elif it.len == 1:
+      if i != n.len - 1 or result.elseBody != nil:
+        return
+      result.elseBody = it[0]
+    else:
+      return
+
+  if result.selectorSym == nil or result.branches.len == 0:
+    return
+
+  result.kind = if sameParent and parentId != ItemId(): oskSibling else: oskBase
+  var seenTokens: seq[uint16] = @[]
+  var uniqueBranches: seq[ObjectOfBranch] = @[]
+  for branch in result.branches:
+    let caseToken =
+      if result.kind == oskSibling: siblingDisplayToken(branch.token)
+      else: baseDisplayToken(branch.token)
+    if caseToken in seenTokens:
+      # Unreachable duplicate, however this assumes the branch order here
+      # mirrors the Nim code. If branches are re-ordered, this is incorrect.
+      continue
+    seenTokens.add caseToken
+    var unique = branch
+    unique.token = caseToken.uint32
+    uniqueBranches.add unique
+
+  result.ok = true
+  result.branches = uniqueBranches
+
+proc genObjectOfSwitch(p: BProc; n: PNode; d: var TLoc): bool =
+  if optTinyRtti notin p.config.globalOptions:
+    return false
+
+  let detected = detectObjectOfSwitch(p, n)
+  if not detected.ok:
+    return false
+
+  if detected.childDepth < 0:
+    return false
+
+  var a = initLocExprSingleUse(p, newSymNode(detected.selectorSym, n.info))
+  var nilCheck: Rope = ""
+  var mtype: Snippet = ""
+  rdMType(p, a, nilCheck, mtype)
+  # Guard the display lookup so shallower runtime types fall through safely.
+  let depthCheck = cOp(GreaterEqual, derefField(mtype, "depth"),
+    cIntValue(int(detected.childDepth)))
+  let displayAtDepth = subscript(derefField(mtype, "display"), cIntValue(int(detected.childDepth)))
+  let discr =
+    if detected.kind == oskSibling:
+      cOp(Shr, NimUint32, displayAtDepth, cIntValue(16))
+    else:
+      cOp(BitAnd, NimUint32, displayAtDepth, cUintValue(0xFFFF'u))
+
+  template emitSwitchBody() =
+    p.s(cpsStmts).addSwitchStmt(discr):
+      for branch in detected.branches:
+        p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(branch.token))):
+          exprBlock(p, branch.body, d)
+          p.s(cpsStmts).addBreak()
+
+  let switchCheck =
+    if nilCheck != "":
+      cOp(And, cOp(NotEqual, nilCheck, NimNil), depthCheck)
+    else:
+      depthCheck
+
+  if detected.elseBody != nil:
+    let elseLabel = getLabel(p)
+    let endLabel = getLabel(p)
+    p.s(cpsStmts).addSingleIfStmt(cOp(Not, switchCheck)):
+      p.s(cpsStmts).addGoto(elseLabel)
+    p.s(cpsStmts).addSwitchStmt(discr):
+      for branch in detected.branches:
+        p.s(cpsStmts).addSingleSwitchCase(cIntValue(int(branch.token))):
+          exprBlock(p, branch.body, d)
+          p.s(cpsStmts).addBreak()
+      p.s(cpsStmts).addSwitchElse():
+        p.s(cpsStmts).addGoto(elseLabel)
+    p.s(cpsStmts).addGoto(endLabel)
+    fixLabel(p, elseLabel)
+    exprBlock(p, detected.elseBody, d)
+    fixLabel(p, endLabel)
+  else:
+    p.s(cpsStmts).addSingleIfStmt(switchCheck):
+      emitSwitchBody()
+  result = true
 
 template preserveBreakIdx(body: untyped): untyped =
   var oldBreakIdx = p.breakIdx
@@ -522,6 +686,8 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
   if not isEmptyType(n.typ) and d.k == locNone:
     d = getTemp(p, n.typ)
   genLineDir(p, n)
+  if genObjectOfSwitch(p, n, d):
+    return
   let lend = getLabel(p)
   for it in n.sons:
     # bug #4230: avoid false sharing between branches:
@@ -1257,11 +1423,15 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           hasImportedCppExceptions = true
         else:
           if orExpr.len != 0: orExpr.add("||")
-          let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           if optTinyRtti in p.config.globalOptions:
-            let checkFor = $getObjDepth(typeNode.typ)
-            appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ, p.config)))])
+            let excVal = cCall(cgsymValue(p.module, "nimBorrowCurrentException"))
+            let member = if p.module.compileToCpp:
+                derefField(excVal, "m_type")
+              else:
+                dotField(derefField(excVal, "Sup"), "m_type")
+            orExpr.add(genDisplayCheck(p, member, nil, typeNode.typ, typeNode.info))
           else:
+            let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
             let checkFor = genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
             appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1440,11 +1610,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
             dotField(derefField(excVal, "Sup"), "m_type")
         var branch: Snippet = ""
         if optTinyRtti in p.config.globalOptions:
-          let checkFor = $getObjDepth(t[i][j].typ)
-          branch = cCall(cgsymValue(p.module, "isObjDisplayCheck"),
-            member,
-            checkFor,
-            $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config))))
+          branch = genDisplayCheck(p, member, nil, t[i][j].typ, t[i][j].info)
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           branch = cCall(cgsymValue(p.module, "isObj"),
@@ -1645,7 +1811,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
           branch = cCall(cgsymValue(p.module, "isObjDisplayCheck"),
             member,
             checkFor,
-            $genDisplayElem(MD5Digest(hashType(t[i][j].typ, p.config))))
+            cUintValue(uint(getDisplayToken(p.module.g.graph, t[i][j].typ))))
         else:
           let checkFor = genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
           branch = cCall(cgsymValue(p.module, "isObj"),
