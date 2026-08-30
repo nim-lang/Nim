@@ -28,6 +28,7 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen,
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
 from injectdestructors import injectDestructorCalls
+import icprof
 import ic / replayer
 
 proc systemNifSuffix(conf: ConfigRef): string =
@@ -387,7 +388,11 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       return
     target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
   else:
-    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
+    (modules, precompSys, target) = block:
+      icProfStart(tLoadClosure)
+      let r = loadDepClosure(g, g.config.icBackendModule)
+      icProfStop(tLoadClosure)
+      r
   if target.module == nil:
     rawMessage(g.config, errGenerated,
       "per-module lowering: module not found for suffix: " & g.config.icBackendModule)
@@ -538,7 +543,11 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   else:
     # No whole-program load, hence no whole-program DCE: the target emits its
     # full demanded closure and the merge stage drops what is globally dead.
-    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
+    (modules, precompSys, target) = block:
+      icProfStart(tLoadClosure)
+      let r = loadDepClosure(g, g.config.icBackendModule)
+      icProfStop(tLoadClosure)
+      r
   if target.module == nil:
     rawMessage(g.config, errGenerated,
       "per-module codegen: module not found for suffix: " & g.config.icBackendModule)

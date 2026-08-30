@@ -2092,9 +2092,11 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   when defined(newIcBackend):
     grindBNode(m, p, prc)
   let wasLoaded = m.config.cmd == cmdNifC and prc.transformedBody != nil
+  icProfStart(tTransform)
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  icProfStop(tTransform)
   # THE HANDOFF (`transf.handOffBody`). Rewriting is done for this body —
   # transformed, and destructor-injected when this process did the injecting —
   # so from here the reading side works off a cursor.

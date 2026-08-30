@@ -34,6 +34,7 @@ import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
 import icnifcore
 import ic / [enum2nif]
+import icprof
 
 const SysModuleSuffix* = "@sys"
 const BackendLocalMarker* = "@bk"
@@ -4120,7 +4121,9 @@ proc registerModuleSelfSym*(c: var DecodeContext; suffix: string; m: PSym) =
 proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
+  icProfStart(tModuleId)
   let module = moduleId(c, string(suffix), flags)
+  icProfStop(tModuleId)
 
   # Load the module AST (or just replay actions if loadFullAst is false).
   # processTopLevel also collects export instructions. Step 2 phase 2: read the
@@ -4130,7 +4133,9 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
   if cur.kind == TagLit and tagIs(cur, toNifTag(nkStmtList)):
     inc cur        # enter (stmts (past the tag head, onto the flags dot)
     skip cur       # flags dot  (processTopLevel skips the type dot itself)
+    icProfStart(tTopLevel)
     result = processTopLevel(c, cur, flags, interf, string(suffix), module.int)
+    icProfStop(tTopLevel)
   else:
     result = PrecompiledModule(topLevel: newNode(nkStmtList))
 
@@ -4138,7 +4143,9 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
   # Symbols are created as stubs (Partial state) and will be loaded lazily via loadSym
   # Use exports collected by processTopLevel
   if SkipInterfaceTables notin flags:
+    icProfStart(tInterfTables)
     populateInterfaceTablesFromIndex(c, module, interf, interfHidden, string(suffix))
+    icProfStop(tInterfTables)
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =

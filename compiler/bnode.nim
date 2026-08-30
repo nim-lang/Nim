@@ -10,10 +10,32 @@
 ## `BNode` — the backend's node type, and the seam for running codegen off a
 ## `.bif` `Cursor` instead of a deserialized `PNode` tree.
 ##
-## Building those trees is the bulk of the `lower` and `cg` stages: their cost
-## tracks the size of the dependency CLOSURE a stage loads, not the module it
-## compiles (measured: a 370-byte module costs 0.20s/0.16s in lower/cg, the main
-## module 3.40s/3.16s, and the two are ~85% of the serial backend critical path).
+## A stage's cost tracks the size of the dependency CLOSURE it loads, not the
+## module it compiles. That is why this seam exists — but WHERE the closure's
+## cost sits has since been measured, and it is not where the seam can reach.
+## On a cold `--ic:on` build of a 68-module target (10.1s wall, `-d:icBNodeProf`,
+## `-d:icNoParallel`), summed over all 177 backend processes:
+##
+##     loadDepClosure   3306ms     of which  moduleId        1285ms
+##                                           processTopLevel 1516ms
+##                                           interface tbls  1323ms
+##     genProcBody       333ms
+##     handOffBody        60ms   <- the bridge encode
+##     transformBody      28ms
+##
+## So reading a routine body off a cursor instead of a tree is DONE and free —
+## `genProcBody` costs the same either way (see "WHAT IT COSTS" below) — but
+## finishing the job, i.e. reading a `.t.bif` body directly and never
+## materialising the `PNode`, can only win back the `handOffBody` +
+## `transformBody` line: under 1% of the build. The 41% is in getting the
+## closure's INTERFACE into memory, which no amount of body-reading touches.
+## (Skipping the interface tables for dep-of-a-dep loads was tried as the
+## obvious lever and returns ~200ms, not enough to justify a name that silently
+## fails to resolve; see `SkipInterfaceTables`, which stays restricted to
+## `loadTransitiveHooks`.)
+##
+## Anyone about to spend a week on the remaining blockers below — `TLoc.lode`
+## above all — should weigh them against that budget first.
 ##
 ## With `-d:newIcBackend` `BNode` is a `distinct Cursor`; without it a plain
 ## `PNode`, which is what every build does today. Codegen migrates to the
@@ -243,63 +265,10 @@
 
 import ast, lineinfos, idents
 
-# ---- opt-in profiling (-d:icBNodeProf) --------------------------------------
-# Counts and coarse phase timings; the accessors are far too small to time
-# individually. Each backend process appends one line to $NIM_IC_BNODE_PROF (or
-# stderr) at exit, so a parallel build still produces attributable output.
-when defined(icBNodeProf):
-  import std / [envvars, exitprocs, syncio, monotimes]
-  from std / times import inNanoseconds
-
-  type
-    ProfSlot* = enum
-      pKind, pTagKindHit, pTagKindMiss, pAstChildren, pSkip, pSon, pLen,
-      pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
-      pGenBodyCalls, pInfo
-    TimeSlot* = enum tHandOff, tGenBody, tAnalyses, tSym, tTyp, tInfo, tOrigin
-
-  var profCounts: array[ProfSlot, int]
-  var profNanos: array[TimeSlot, int64]
-  var profStart: array[TimeSlot, MonoTime]
-  var profArmed = false
-
-  proc profDump() =
-    var line = "BNODEPROF"
-    for s in ProfSlot: line.add " " & ($s)[1..^1] & "=" & $profCounts[s]
-    for s in TimeSlot: line.add " " & ($s)[1..^1] & "ms=" & $(profNanos[s] div 1_000_000)
-    let f = getEnv("NIM_IC_BNODE_PROF")
-    if f.len > 0:
-      let h = open(f, fmAppend)
-      h.writeLine line
-      h.close()
-    else:
-      stderr.writeLine line
-
-  template armProf() =
-    if not profArmed:
-      profArmed = true
-      addExitProc profDump
-
-  template prof*(s: ProfSlot; n = 1) =
-    armProf()
-    inc profCounts[s], n
-  template icProfStart*(s: TimeSlot) =
-    armProf()
-    profStart[s] = getMonoTime()
-  template icProfStop*(s: TimeSlot) =
-    profNanos[s] += (getMonoTime() - profStart[s]).inNanoseconds
-
-  template timed*(s: TimeSlot; body: untyped) =
-    ## Leaf-accessor timing. NOT re-entrant: `typ` reaches `sym`, so read those
-    ## two as overlapping rather than additive.
-    let t0 = getMonoTime()
-    body
-    profNanos[s] += (getMonoTime() - t0).inNanoseconds
-else:
-  template prof*(s: untyped; n = 1) = discard
-  template icProfStart*(s: untyped) = discard
-  template icProfStop*(s: untyped) = discard
-  template timed*(s: untyped; body: untyped) = body
+# Re-exported so `cgen`, which includes the `ccg*` files, gets the
+# instrumentation along with the seam.
+import icprof
+export icprof
 
 when defined(newIcBackend):
   when defined(nimPreviewSlimSystem):
