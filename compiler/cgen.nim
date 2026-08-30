@@ -2061,11 +2061,32 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  # THE HANDOFF (`transf.handOffBody`). Rewriting is done for this body —
+  # transformed, and destructor-injected when this process did the injecting —
+  # so from here the reading side works off a cursor.
+  #
+  # Under `-d:newIcBackend` only, because that is what the switch means: the
+  # generator still needs a `PNode` (`expr` dispatches to ~60 emitters that have
+  # to move together or not at all), so building a buffer in a default build
+  # would cost every routine a tree walk and buy nothing. The ANALYSES below are
+  # already `AnyNode`, and they are the part that moves now.
   when defined(newIcBackend):
-    # AFTER every rewrite this routine's body gets, which is the tree the bridge
-    # actually has to carry: transformed, and destructor-injected when this
-    # process did the injecting.
+    var bodyBuf = handOffBody(procBody, m.config)
     grindBridge(m, p, prc, procBody)
+
+  template readBody(res, call: untyped) =
+    ## Run a migrated `AnyNode` analysis over the body the READING side sees:
+    ## a cursor over the handed-off buffer when there is one, the `PNode`
+    ## otherwise. Both spellings type-check, and the generated C must not depend
+    ## on which one ran — which is what the byte-identical `.c` check verifies
+    ## end to end, a stronger statement than the node-level grinder can make.
+    when defined(newIcBackend):
+      withBridge(bodyBuf.tables):
+        let n {.inject.} = BNode(bodyBuf.rootCursor)
+        res = call
+    else:
+      let n {.inject.} = procBody
+      res = call
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
@@ -2085,8 +2106,10 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.snippet != "")
+        var paths = Unknown
+        readBody(paths, allPathsAsgnResult(p, n))
         if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and
-            allPathsAsgnResult(p, procBody) == InitSkippable:
+            paths == InitSkippable:
           # In an ideal world the codegen could rely on injectdestructors doing its job properly
           # and then the analysis step would not be required.
           discard "result init optimized out"

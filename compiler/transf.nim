@@ -37,6 +37,7 @@ type
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: TransformFlags): PNode
 
 import closureiters, lambdalifting
+import nodebridge
 
 type
   PTransCon = ref object # part of TContext; stackable
@@ -1435,6 +1436,24 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
 
   #if prc.name.s == "main":
   #  echo "transformed into ", renderTree(result, {renderIds})
+
+proc handOffBody*(body: PNode; conf: ConfigRef): BridgeBuf =
+  ## THE HANDOFF from the rewriting stage to the reading stage: the transformed
+  ## body, as a `TokenBuf` a reader can cursor over (`nodebridge`).
+  ##
+  ## It lives here because the invariant it carries is this module's: a bridged
+  ## buffer is a SNAPSHOT, so it must be taken after the LAST rewrite the body
+  ## will receive. Anything that mutates a node afterwards — `cgen.easyResultAsgn`
+  ## setting `nfPreventCg` is the one that does — leaves the buffer describing a
+  ## tree that no longer exists.
+  ##
+  ## The call site is in `cgen` rather than at the end of `transformBody` for
+  ## exactly that reason: destructor injection runs *after* `transformBody`
+  ## returns and is another rewrite, so transforming is not the last step and a
+  ## buffer taken here would be stale before it was read. `transformBody` returns
+  ## a `PNode` on purpose; this is the point where a caller that has finished
+  ## rewriting says so.
+  result = toTokenBuf(body, conf)
 
 proc transformStmt*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode; flags: TransformFlags = {}): PNode =
   if nfTransf in n.flags:
