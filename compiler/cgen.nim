@@ -1893,6 +1893,29 @@ when defined(newIcBackend):
       grindLockstep(m, p, prc, BNode(rootCursor(enc)), body, "<bridge>",
                     gradeable = true)
 
+    # ORIGIN IDENTITY, at every node. The generator migration rests on this and
+    # on nothing else: if a cursor can name the very `PNode` it was encoded
+    # from, `TLoc.lode` stays a `PNode` and the identity comparisons already in
+    # the backend keep working, so the 99 of 180 generator procs that build a
+    # location from a node do not force `TLoc` to change representation.
+    # Asserted rather than assumed, with `==` on the reference: an equal copy
+    # would not do.
+    proc grindOrigins(enc: var BridgeBuf; c: BNode; a: PNode; path: string) =
+      if a == nil: return
+      let src = originOf(enc, c.raw)
+      if src != a:
+        internalError(m.config, prc.info,
+          "bridge origin is not the source node at <body>" & path & " in " &
+          prc.name.s & ": got " &
+          (if src == nil: "nil" else: $src.kind & "@" & $cast[int](src)) &
+          " want " & $a.kind & "@" & $cast[int](a))
+      if a.safeLen > 0:
+        var i = 0
+        for child in sons(a):
+          grindOrigins(enc, son(c, i), child, path & "[" & $i & "]")
+          inc i
+    grindOrigins(enc, BNode(rootCursor(enc)), body, "")
+
     var rt = toPNode(enc)
     var enc2 = toTokenBuf(rt, m.config)
     withBridge(enc2.tables):

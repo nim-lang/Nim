@@ -84,10 +84,12 @@ type
     conf: ConfigRef
     symIdx: Table[int, int]    ## PSym identity -> index into `tables.syms`
     typeIdx: Table[int, int]   ## PType identity -> index into `tables.types`
+    origins: Table[int, PNode] ## token position -> the `PNode` encoded there
 
 proc initBridgeBuf*(conf: ConfigRef; cap = 64): BridgeBuf =
   BridgeBuf(bld: newIcBuilder(cap), tables: BridgeTables(), conf: conf,
-            symIdx: initTable[int, int](), typeIdx: initTable[int, int]())
+            symIdx: initTable[int, int](), typeIdx: initTable[int, int](),
+            origins: initTable[int, PNode]())
 
 # ---------------------------------------------------------------------------
 # Encode
@@ -162,8 +164,20 @@ proc encodeSym(b: var BridgeBuf; n: PNode) =
 
 proc encodeNode(b: var BridgeBuf; n: PNode) =
   if n == nil:
+    # A nil child is a `DotToken` and has no origin: there is no node to
+    # remember, and `originOf` answering nil for it is the right answer.
     b.bld.addDotToken()
     return
+  # ORIGIN TRACKING. `len` is where this node's head token is about to land, and
+  # `cursorToPosition` is its inverse — nifcore documents that index as a stable
+  # key for exactly this. Recording it is what keeps `TLoc.lode` a `PNode`: a
+  # cursor-driven generator can still put the ORIGINAL node in a location, so
+  # the identity comparisons that already exist (`preventNrvo`'s `dest != le`,
+  # `isPartOf(d.lode, …)`) keep meaning what they meant. Without this the
+  # generator could not migrate without `TLoc` itself changing representation —
+  # and `TLoc` lives in `astdef`, at the bottom of the module graph, so that
+  # would push the seam far below the backend.
+  b.origins[b.bld.buf.len] = n
   if n.kind == nkSym and n.sym != nil:
     encodeSym(b, n)
     return
@@ -199,6 +213,12 @@ proc toTokenBuf*(n: PNode; conf: ConfigRef): BridgeBuf =
   ## tokens, and the tables hold the `PSym`/`PType` objects the tree pointed at.
   result = initBridgeBuf(conf)
   encodeNode(result, n)
+
+proc originOf*(b: var BridgeBuf; c: Cursor): PNode =
+  ## The `PNode` that was encoded at `c`, or nil when `c` is a `DotToken` (a nil
+  ## child) or does not point at a node head. Identity-preserving: this is the
+  ## very object the encoder was handed, not a copy, which is the whole point.
+  b.origins.getOrDefault(cursorToPosition(b.bld.buf, c), nil)
 
 proc rootCursor*(b: var BridgeBuf): Cursor {.inline.} =
   ## A read cursor at the encoded root. `beginRead` asserts every tag was
