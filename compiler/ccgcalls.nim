@@ -696,7 +696,7 @@ y.v()          --> y.v() is correct
 
 """
 
-proc skipAddrDeref(node: PNode): PNode =
+proc skipAddrDeref[T: AnyNode](node: T): T =
   var n = node
   var isAddr = false
   case n.kind
@@ -915,7 +915,7 @@ proc notYetAlive(n: AnyNode): bool {.inline.} =
   let r = getRoot(n)
   result = r != nil and r.loc.lode == nil
 
-proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
+proc isInactiveDestructorCall(p: BProc, e: AnyNode): bool =
   #[ Consider this example.
 
     var :tmpD_3281815
@@ -932,7 +932,7 @@ proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
   We want to return early but the 'finally' section is traversed before
   the 'let args = ...' statement. We exploit this to generate better
   code for 'return'. ]#
-  result = e.len == 2 and e.firstSon.kind == nkSym and
+  result = e.safeLen == 2 and e.firstSon.kind == nkSym and
     e.firstSon.sym.name.s == "=destroy" and notYetAlive(e.secondSon.skipAddr)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =

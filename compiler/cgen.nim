@@ -1622,6 +1622,7 @@ when defined(newIcBackend):
     check "isDeepConstExpr", isDeepConstExpr(n)
     check "stmtsContainPragma", stmtsContainPragma(n, wLinearScanEnd)
     check "notYetAlive", notYetAlive(n)
+    check "isInactiveDestructorCall", isInactiveDestructorCall(p, n)
     check "getInt", (if n.kind in nkIntLits: $getInt(n) else: "")
     check "sameValue self", sameValue(n, n)
 
@@ -1655,14 +1656,22 @@ when defined(newIcBackend):
     # spine, so two different stopping points on the same input differ in one or
     # the other unless the tree has two identical nodes at one position, which
     # would make the choice immaterial anyway.
-    block:
-      let cs = skipTrivialIndirections(c)
-      let a2 = skipTrivialIndirections(a)
-      if cs.kind != a2.kind:
-        bail("skipTrivialIndirections kind", $cs.kind, $a2.kind)
-      if cs.info != a2.info:
-        bail("skipTrivialIndirections info",
-             $(m.config, cs.info), $(m.config, a2.info))
+    template checkNodeResult(what: string; call: untyped) =
+      block:
+        let cs = block:
+          let n {.inject.} = c
+          call
+        let a2 = block:
+          let n {.inject.} = a
+          call
+        if cs.kind != a2.kind:
+          bail(what & " kind", $cs.kind, $a2.kind)
+        if cs.info != a2.info:
+          bail(what & " info", $(m.config, cs.info), $(m.config, a2.info))
+
+    checkNodeResult "skipTrivialIndirections", skipTrivialIndirections(n)
+    checkNodeResult "skipAddr", skipAddr(n)
+    checkNodeResult "skipAddrDeref", skipAddrDeref(n)
 
     # Shape-guarded, matching the contexts production calls them from.
     if a.kind in nkCallKinds and a.safeLen > 0:

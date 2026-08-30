@@ -161,6 +161,35 @@
 ## `genericHead` and the `kids` / `ikids` / `paramTypes` / `signature`
 ## iterators, which name the child and go through `[]`.
 ##
+## WHERE THE LEAF MIGRATION ENDS. Of the 191 `PNode`-taking procs across
+## `cgen` and the `ccg*` files, 160 EMIT — they take a `Builder`/`TLoc`
+## out-param or write into `p` directly. Those do not move one at a time: they
+## are one mutual recursion rooted at `expr`/`genStmts`, so the whole generator
+## has to move together, and it needs write-side capability this seam does not
+## have. What is left over splits into named blockers rather than a backlog, and
+## each is recorded at its own site:
+##
+## * A type's RECORD TREE is not a body. `asgnComplexity`, `isEmptyCaseObjectBranch`,
+##   `containsOpaqueImportcFieldAux`, `genRecordFieldsAux`, `fillResult` and the
+##   type-section walkers read `PType.n`, which stays a `PNode` by design (see
+##   the `BType` note below). They are not migration candidates at all.
+## * RETURNS A NODE OR NIL — `ccgutils.getPragmaStmt`. `.bif` spells a missing
+##   child as a `DotToken` INSIDE a tree; there is no nil token to hand back as a
+##   return value and a `Cursor` is not nilable. The fix is to split the
+##   predicate out, as `stmtsContainPragma` does.
+## * WRITES TO THE NODE — `cgen.easyResultAsgn` does `incl n.flags, nfPreventCg`.
+##   The seam is read-only and a `Cursor` points into a shared token buffer.
+## * NEEDS RENDERING — `ccgcalls.preventNrvo` interpolates `$le` into
+##   `warnObservableStores`. Reconstructing source text is a different job from
+##   reading a node, and only a diagnostic wants it.
+## * NEEDS STABLE FIELD IDENTITY — `lhsDoesAlias` and `potentialAlias` through
+##   `aliases.isPartOf`, which compares field `sym.id`. See the note on `sym`
+##   below: it is not idempotent for fields, so this one is not blocked on
+##   effort, it is blocked on a property the seam does not currently have.
+## * MIXED REPRESENTATION — `potentialAlias` and `getPotentialReads` build and
+##   consume a `seq[PNode]` alongside the node, so both sides would have to be
+##   the same spelling.
+##
 ## There is deliberately no `BType` alongside `BNode`. Types stay `PType`s even
 ## under `newIcBackend` — `typ` below returns one — because the backend asks
 ## them semantic questions (`skipTypes`, `getSize`, `lengthOrd`, the record

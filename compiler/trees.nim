@@ -254,8 +254,8 @@ proc isRunnableExamples*(n: PNode): bool =
   result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
     n.kind == nkIdent and n.ident.id == ord(wRunnableExamples)
 
-proc skipAddr*(n: PNode): PNode {.inline.} =
-  result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n
+proc skipAddr*[T: AnyNode](n: T): T {.inline.} =
+  result = if n.kind in {nkAddr, nkHiddenAddr}: n.firstSon else: n
 
 proc getPotentialWrites*(n: PNode; mutate: bool; result: var seq[PNode]) =
   case n.kind:
