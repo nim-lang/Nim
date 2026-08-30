@@ -36,7 +36,7 @@ when defined(icBNodeProf):
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,
-      tSym, tTyp, tInfo, tOrigin, tExportBranch
+      tSym, tTyp, tInfo, tOrigin, tExportBranch, tResolveSym, tEnumFields
 
   var profCounts: array[ProfSlot, int]
   var profNanos: array[TimeSlot, int64]

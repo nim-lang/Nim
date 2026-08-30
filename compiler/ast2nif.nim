@@ -4140,10 +4140,14 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
               # being compiled fresh (they would collide with the fresh originals).
               if c.mainModuleSuffix.len == 0 or
                  parseSymName(symAsStr).module != c.mainModuleSuffix:
+                icProfStart(tResolveSym)
                 let sym = resolveSym(c, symAsStr, false)
+                icProfStop(tResolveSym)
                 if sym != nil:
                   strTableAdd(interf, sym)
+                  icProfStart(tEnumFields)
                   addReexportedEnumFields(c, sym, interf)
+                  icProfStop(tEnumFields)
               skip cur
             else:
               raiseAssert "expected Symbol or ParRi but got " & $cur.kind &
