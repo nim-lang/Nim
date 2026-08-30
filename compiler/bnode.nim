@@ -460,19 +460,20 @@ when defined(newIcBackend):
         # `(ht <type> <sym>)`: the node type is spelled out because it differed
         # from the symbol's at write time.
         result = typeAt(currentNav()[], childCursor(c))
-        if result == nil:
-          # `(ht . <sym>)` — an EXPLICITLY nil node type, which the writer tries
-          # hard not to emit but does for a sym whose own type was nil. The
-          # loader does not read it as nil either: `newSymNode(sym, info)` runs
-          # first and sets `nfLazyType` whenever the symbol was still an
-          # unloaded stub (`typImpl == nil`), and only then is `typField`
-          # overwritten with this nil — so `ast.typ` falls back to `sym.typ`.
-          # Mirror that. (The AST's answer is strictly speaking load-order
-          # dependent — a sym already loaded at that moment would leave
-          # `nfLazyType` clear and yield nil — which is a fragility of the
-          # loader, not of this mirror. The grinder walks every body in the
-          # dependency closure and this is the branch it lands on.)
-          result = symTyp(n)
+        # A nil here is `(ht . <sym>)`, an EXPLICITLY nil node type, and it is
+        # answered as nil — the writer only emits the wrapper when the node's
+        # type differed from its symbol's, so nil means the node really had
+        # none. Do NOT fall back to `sym.typ`: a type symbol used as a value
+        # (`newException(KeyError, ...)`) is exactly this shape, and giving it
+        # the symbol's type makes sem read the typedesc as an expression of the
+        # type it denotes. That was tried, and it broke `--ic:on` compilation of
+        # anything instantiating `tables.[]`.
+        #
+        # `ast.typ` may still answer `sym.typ` here, because the loader's
+        # `nfLazyType` marking depends on whether the symbol happened to be
+        # loaded already (see `ast2nif`). That is a pre-existing load-order
+        # dependence in the AST, not a disagreement this side can resolve, and
+        # the grinder excludes this shape for that reason.
       elif name == symNodeFlagsTagName:
         var inner = childCursor(c)
         skip inner
@@ -487,6 +488,24 @@ when defined(newIcBackend):
         result = typeAt(currentNav()[], t)
     else:
       result = nil
+
+  proc hasExplicitNilType*(n: BNode): bool =
+    ## Whether this is the `(ht . <sym>)` shape — a sym node the writer gave an
+    ## EXPLICITLY nil type — after peeling any `(nflags ...)` wrapper, which is
+    ## how it usually arrives. See `typ` for why nil is the faithful answer and
+    ## why `ast.typ` may nonetheless say otherwise.
+    var c = n.raw
+    while nifcore.kind(c) == TagLit:
+      let tag = c.tags.tagName(cursorTagId(c))
+      if tag == symNodeFlagsTagName:
+        var inner = childCursor(c)
+        skip inner              # the node flags
+        c = inner
+      elif tag == hiddenTypeTagName:
+        return nifcore.kind(childCursor(c)) == DotToken
+      else:
+        return false
+    result = false
 
   proc rawDesc*(n: BNode): string =
     ## What the token stream literally says here — the NIF token kind and, for a

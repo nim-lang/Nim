@@ -1735,14 +1735,63 @@ const magicsThatCanRaise* = {
 # templates and `bnode.nim` instantiates them for its own node type: one source
 # of truth, no import cycle, and no second copy to keep in sync.
 #
-# `fn.typ.n` below is a *type's* formal-params node, not a routine body: it is
-# always fully materialised, so indexing it is not the hazard that indexing a
-# body node is.
+# The effect list is reached through `effectsOf` / `raisesNothing` rather than
+# by subscripting `fn.typ.n`, so the templates below contain no knowledge of the
+# layout and the `BNode` instantiation inherits none. `fn.typ` stays a `PType`
+# in both spellings -- there is deliberately no `BType` (see `bnode.nim`) -- so
+# what "works on a `.bif`" means for these two is that the type the decoder
+# materialises must carry the same effect list the from-source one did. That is
+# a claim about the WRITER, not about the vocabulary, and it is checked
+# separately: `-d:icCanRaiseLog` logs every answer, and the same program built
+# with and without `--ic:on` must produce the same verdicts.
+
+when defined(icCanRaiseLog):
+  var canRaiseBranch* = 0
+    ## Which branch decided the last answer: 1 = the symbol's magic/flags,
+    ## 2 = `mEcho`, 3 = the EFFECT LIST reached through `effectsOf`, 4 = the
+    ## conservative predicate, 5 = short-circuited in `canRaiseDisp` before
+    ## either predicate ran, 0 = fell through. Only branch 3 reads anything
+    ## that had to survive a `.bif` round trip, so a differential in which no
+    ## callee reaches it would prove nothing about the writer — which is the
+    ## whole point of running the differential. See `-d:icCanRaiseLog`.
+
+template markCanRaiseBranch*(n: int) =
+  when defined(icCanRaiseLog): canRaiseBranch = n
 
 template canRaiseConservativeImpl*(fnArg: typed): bool =
   block:
     let fn = fnArg
+    markCanRaiseBranch 4
     not (fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise)
+
+proc effectsOf*(t: PType): PNode {.inline.} =
+  ## The `nkEffectList` a proc type carries as child 0 of its formal-params
+  ## node, with the parameters following from index 1 (`newProcType` builds it
+  ## that way; `cgen` reads the params back with `sonsFrom(prc.typ.n, 1)`).
+  ##
+  ## Named rather than subscripted so that the layout is written down in ONE
+  ## place. `.n` here is a TYPE's node, never a routine body, so it is always
+  ## fully materialised and `firstSon` is safe — the `nfLazyBody` hazard that
+  ## makes raw child access dangerous elsewhere (see `astdef.sons`) cannot reach
+  ## it. A proc type always has this child; `t.n` with no children is not a
+  ## shape the writer or sem produces, and this deliberately does not paper over
+  ## one appearing.
+  result = if t.n == nil: nil else: t.n.firstSon
+
+proc raisesNothing*(effects: PNode): bool =
+  ## Whether an effect list says DEFINITIVELY that nothing is raised: it is long
+  ## enough to have a raises slot at all, the slot is present, and it is empty.
+  ##
+  ## Every other shape — a list too short to carry the slot, an absent slot, a
+  ## non-empty one — means the effects are unspecified or non-empty, and a
+  ## caller must assume a raise. Stating it as the NEGATIVE is the point: the
+  ## safe default has to be "can raise", so the one narrow case that licenses
+  ## dropping an exception check is the one spelled out here, and a shape nobody
+  ## anticipated falls on the conservative side by construction rather than by
+  ## luck.
+  result = effects != nil and effects.len >= effectListLen and
+           effects[exceptionEffects] != nil and
+           effects[exceptionEffects].safeLen == 0
 
 template canRaiseImpl*(fnArg: typed): bool =
   block:
@@ -1751,22 +1800,27 @@ template canRaiseImpl*(fnArg: typed): bool =
     if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
         {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
         sfGeneratedOp in fn.sym.flags):
+      markCanRaiseBranch 1
       res = false
     elif fn.kind == nkSym and fn.sym.magic == mEcho:
+      markCanRaiseBranch 2
       res = true
     elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
-      # TODO check for n having sons? or just return false for now if not
-      if fn.typ.n[0].kind == nkSym:
+      markCanRaiseBranch 3
+      let effects = effectsOf(fn.typ)
+      if effects.kind == nkSym:
+        # The historical shape: slot 0 used to be an `nkType` before the effects
+        # moved in (see `newProcType`). Nothing to read, so nothing licenses a
+        # raise.
         res = false
       else:
         # A proc-typed value with no explicit raises slot still has
         # unspecified effects, which sempass2 treats conservatively.
         # Codegen needs to do the same in order to keep goto-exception
         # checks after indirect/closure calls.
-        res = ((fn.typ.n[0].len < effectListLen) or
-          fn.typ.n[0][exceptionEffects] == nil or
-          fn.typ.n[0][exceptionEffects].safeLen > 0)
+        res = not raisesNothing(effects)
     else:
+      markCanRaiseBranch 0
       res = false
     res
 

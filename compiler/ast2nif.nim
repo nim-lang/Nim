@@ -3280,18 +3280,23 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             s = c.loadSymStub(n, thisModule, localSyms)
           result = newSymNode(s, info)
           result.typField = typ
-          if typ == nil:
-            # `(ht . <sym>)` — an EXPLICITLY nil node type. Without this the
-            # node's type is LOAD-ORDER DEPENDENT: `newSymNode` above marks the
-            # node lazy only when the symbol was still an unloaded stub at this
-            # moment, so the very same `.bif` node answers `sym.typ` or `nil`
-            # for `n.typ` depending on whether something else happened to touch
-            # that symbol first. Pin it to the lazy reading — the one `newSymNode`
-            # exists to provide (see `nifcBackendActive` in astdef: snapshotting
-            # a nil leaves the node permanently typeless and the backend then
-            # reads `t.flags` off it) — so the answer is a property of the file,
-            # not of the traversal order.
-            result.flags.incl nfLazyType
+          # `(ht . <sym>)` — an EXPLICITLY nil node type — is left exactly as the
+          # writer meant it: NIL. The wrapper is only emitted when the node's own
+          # type differed from its symbol's (`writeSymNode`), so a nil here says
+          # the node genuinely had no type while the symbol had one, and that is
+          # load-bearing: a type symbol used as a VALUE (`newException(KeyError,
+          # ...)`) is exactly that shape, and handing it `sym.typ` makes sem read
+          # the typedesc as an expression of the type it denotes ("only a 'ref
+          # object' can be raised").
+          #
+          # There IS a load-order dependence here — `newSymNode` above marks the
+          # node lazy when the symbol was still an unloaded stub, so `ast.typ`
+          # answers `sym.typ` for that population and `nil` for the rest — and it
+          # is NOT fixed by pinning the flag either way: setting it breaks sem as
+          # above, and clearing it would strip the fallback from the stub
+          # population that `nifcBackendActive` exists to serve. Left alone
+          # deliberately; `bnode.typ` answers the faithful `nil` and the grinder
+          # excludes this one shape with the reason recorded there.
       elif tagIs(n, symDefTagName):
         let info = c.infos.oldLineInfo(n.info, cursorPool(n))
         let name = n.firstSon

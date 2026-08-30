@@ -11,6 +11,12 @@
 
 proc canRaiseDisp(p: BProc; n: AnyNode): bool =
   # we assume things like sysFatal cannot raise themselves
+  # 5 = "decided here, neither predicate ran". Without resetting, the marker
+  # keeps whatever the PREVIOUS call left in it and the early return below
+  # attributes this answer to a branch that did not execute — which is how the
+  # first run of this differential came to claim effect-list coverage it did
+  # not have.
+  markCanRaiseBranch 5
   if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
@@ -21,6 +27,15 @@ proc canRaiseDisp(p: BProc; n: AnyNode): bool =
   else:
     # we have to be *very* conservative:
     result = canRaiseConservative(n)
+  when defined(icCanRaiseLog):
+    # `canRaise` reads the raises spec off `fn.typ.n`, and under `--ic:on` that
+    # node came back from a `.bif`. Whether it came back INTACT is not something
+    # the `BNode`/`PNode` grinder can answer — both spellings ask the same
+    # `PType` and so agree however wrong it is. The only oracle is the same
+    # program built without IC. Log the verdict per callee; the two builds must
+    # produce the same one.
+    if n.kind == nkSym:
+      logCanRaise(n.sym, result)
 
 proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =

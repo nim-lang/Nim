@@ -1053,6 +1053,22 @@ proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
     result.flags.incl lfSingleUse
   expr(p, e, result)
 
+when defined(icCanRaiseLog):
+  import std / syncio
+
+  proc logCanRaise(s: PSym; verdict: bool) =
+    ## One line per verdict, keyed by name + disamb + OWNING MODULE, and carrying
+    ## the magic that usually decides the answer.
+    ##
+    ## The module is not decoration: `disamb` is a per-module counter, so `len.0`
+    ## names a different routine in every module that has one, and a key without
+    ## the module reports a collision as a disagreement. NOT the itemId — that is
+    ## a per-build counter and would make every line differ for no reason.
+    let m = getModule(s)
+    stderr.writeLine "CANRAISE " & s.name.s & "." & $s.disamb & "." &
+      (if m == nil: "?" else: m.name.s) & "|" & $verdict & "|" & $s.magic &
+      "|b" & $canRaiseBranch
+
 include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
@@ -1593,7 +1609,17 @@ when defined(newIcBackend):
 
     let ct = c.typ
     let at = a.typ
-    if (ct == nil) != (at == nil):
+    # `(ht . <sym>)` is the one shape where the two spellings may legitimately
+    # differ: the cursor answers the faithful `nil`, while `ast.typ` answers
+    # `sym.typ` for whichever nodes the loader happened to mark `nfLazyType`
+    # (see `bnode.typ`). Excluded rather than papered over — and narrowly: only
+    # when the cursor says nil AND the AST is saying exactly the symbol's type.
+    let htNilTyp = ct == nil and at != nil and a.kind == nkSym and
+                   a.typField == nil and a.sym != nil and at == a.sym.typ and
+                   c.hasExplicitNilType
+    if htNilTyp:
+      discard
+    elif (ct == nil) != (at == nil):
       bail("typ nil-ness",
         (if ct == nil: "nil" else: $ct.kind) & " raw=" & c.rawDesc,
         (if at == nil: "nil" else: $at.kind) & " kind=" & $a.kind &
