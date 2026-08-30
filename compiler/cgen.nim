@@ -1344,20 +1344,20 @@ const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTempl
                   nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
                   declarativeDefs
 
-proc containsResult(n: BNode): bool =
+proc containsResult(n: AnyNode): bool =
   result = false
   case n.kind
   of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
     discard
   of nkReturnStmt:
-    for ni in n.sons:
+    for ni in sons(n):
       if containsResult(ni): return true
     result = n.hasSons and n.firstSon.kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
   else:
-    for ni in n.sons:
+    for ni in sons(n):
       if containsResult(ni): return true
 
 proc easyResultAsgn(n: PNode): PNode =
@@ -1380,10 +1380,7 @@ proc easyResultAsgn(n: PNode): PNode =
 type
   InitResultEnum = enum Unknown, InitSkippable, InitRequired
 
-proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
-  ## Migrated to `BNode` (see bnode.nim). With `newIcBackend` off this is
-  ## `PNode` and nothing changes; with it on, this body is where the Cursor
-  ## vocabulary has to exist, and its `{.error.}` stubs name what is missing.
+proc allPathsAsgnResult(p: BProc; n: AnyNode): InitResultEnum =
   # Exceptions coming from calls don't have not be considered here:
   #
   # proc bar(): string = raise newException(...)
@@ -1409,7 +1406,7 @@ proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
   result = Unknown
   case n.kind
   of nkStmtList, nkStmtListExpr:
-    for it in n:
+    for it in sons(n):
       result = allPathsAsgnResult(p, it)
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
@@ -1436,7 +1433,7 @@ proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
   of nkIfStmt, nkIfExpr:
     var exhaustive = false
     result = InitSkippable
-    for it in n:
+    for it in sons(n):
       # Every condition must not use 'result':
       if it.len == 2 and containsResult(it.firstSon):
         return InitRequired
@@ -1498,8 +1495,8 @@ proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
       # arithmetic operations may raise exceptions
       result = InitRequired
     else:
-      for i in 0..<n.safeLen:
-        allPathsInBranch(n[i])
+      for it in sons(n):
+        allPathsInBranch(it)
   of nkRaiseStmt:
     result = InitRequired
   of nkChckRangeF, nkChckRange64, nkChckRange:
@@ -1507,8 +1504,195 @@ proc allPathsAsgnResult(p: BProc; n: BNode): InitResultEnum =
     # bug #22852
     result = InitRequired
   else:
-    for i in 0..<n.safeLen:
-      allPathsInBranch(n[i])
+    for it in sons(n):
+      allPathsInBranch(it)
+
+when defined(newIcBackend):
+  import std / [exitprocs, syncio]
+
+  var bnodeGrind = -1
+  # Whether the scope chain is load-bearing or decorative is a question with a
+  # number for an answer, so it gets counted rather than asserted. Reported per
+  # process on exit; a run in which `navHits` is 0 means every lookup fell
+  # through to the decoder and the chain is doing nothing.
+  var navHits, navFallbacks, navRegistered: int
+
+  proc grindLockstep(m: BModule; prc: PSym; c: BNode; a: PNode; path: string) =
+    ## Walk the `.bif` cursor and the materialised `PNode` for the SAME body in
+    ## lockstep and require every vocabulary member to answer identically at
+    ## every node. This grades the VOCABULARY rather than any one migrated proc,
+    ## which is the difference that matters: a proc-level oracle only sees an
+    ## accessor that the proc happens to reach on that body, so a wrong accessor
+    ## stays invisible until some later proc migrates and quietly miscompiles.
+    ## `typ` was exactly that — it answered `nil` for every bare `Symbol`, which
+    ## no `containsResult` body could notice.
+    ##
+    ## Must run AFTER the proc-level comparisons: reading `a.kind`/`a.len` fires
+    ## the lazy-body hook and materialises the body, which is fine here (the
+    ## cursor is unaffected) but would spoil their cursor-answer-first ordering.
+    template bail(what, cur, ast: string) =
+      internalError(m.config, prc.info,
+        "BNode/PNode disagree on " & what & " at <body>" & path & " in " &
+        prc.name.s & ": cursor=" & cur & " ast=" & ast)
+
+    if a == nil:
+      if not c.isNilNode: bail("nil-ness", "not-nil", "nil")
+      return
+    if c.isNilNode: bail("nil-ness", "nil", "not-nil")
+    if c.kind != a.kind: bail("kind", $c.kind, $a.kind)
+    let here = path & "." & $a.kind
+    if c.safeLen != a.safeLen: bail("len", $c.safeLen, $a.safeLen)
+    if c.info != a.info:
+      bail("info", $(m.config, c.info), $(m.config, a.info))
+
+    # Symbols first: a wrong symbol shows up as a wrong TYPE two lines below,
+    # and "cursor=nil ast=tyProc" is a much worse bug report than "these are
+    # different symbols".
+    if a.kind == nkSym:
+      let cs = c.sym
+      let asym = a.sym
+      template describe(x: PSym): string =
+        (if x == nil: "nil"
+         else: x.name.s & "/" & $x.kind & "/" & $x.itemId & "/" & $x.state)
+      if cs == nil or asym == nil:
+        if cs != asym: bail("sym nil-ness", describe(cs), describe(asym))
+      elif cs != asym:
+        # A cross-context object-field reference is stubbed FRESH at every use
+        # (`loadFieldStub`: two distinct fields can share a local name and
+        # position across types, so ONE shared stub would mistype one of them).
+        # Pointer identity is therefore not part of the contract for fields —
+        # what codegen consumes is the name it re-navigates the reclist with
+        # (`lookupFieldAgain`) and, for tuples, the position.
+        if cs.kind == skField and asym.kind == skField:
+          if cs.name.s != asym.name.s or cs.position != asym.position:
+            bail("field sym", describe(cs) & "@" & $cs.position,
+                              describe(asym) & "@" & $asym.position)
+        else:
+          bail("sym identity", describe(cs), describe(asym))
+
+    # `nfHasComment` is never serialised and `nfLazyType` is a `PNode`-side
+    # marker (see `bnode.flags`); everything else must round-trip exactly.
+    const ownedByTheAst = {nfHasComment, nfLazyType}
+    if c.flags - ownedByTheAst != a.flags - ownedByTheAst:
+      bail("flags", $(c.flags - ownedByTheAst), $(a.flags - ownedByTheAst))
+
+    case a.kind
+    of nkCharLit..nkUInt64Lit:
+      if c.intVal != a.intVal: bail("intVal", $c.intVal, $a.intVal)
+    of nkFloatLit..nkFloat128Lit:
+      # Compare the BITS: two NaNs are never `==`, and a float that survives the
+      # round trip must be the same float, not merely an equal one.
+      if cast[uint64](c.floatVal) != cast[uint64](a.floatVal):
+        bail("floatVal bits", $cast[uint64](c.floatVal),
+                             $cast[uint64](a.floatVal))
+    of nkStrLit..nkTripleStrLit:
+      if c.strVal != a.strVal: bail("strVal", c.strVal, a.strVal)
+    of nkIdent:
+      if c.ident != a.ident: bail("ident", c.ident.s, a.ident.s)
+    else: discard
+
+    let ct = c.typ
+    let at = a.typ
+    if (ct == nil) != (at == nil):
+      bail("typ nil-ness",
+        (if ct == nil: "nil" else: $ct.kind) & " raw=" & c.rawDesc,
+        (if at == nil: "nil" else: $at.kind) & " kind=" & $a.kind &
+          " typField=" & (if a.typField == nil: "nil" else: $a.typField.kind) &
+          " lazy=" & $(nfLazyType in a.flags) &
+          (if a.kind != nkSym: "" else:
+             " sym=" & a.sym.name.s & "/" & $a.sym.kind & "/" & $a.sym.state &
+             " symTypImpl=" & (if a.sym.typImpl == nil: "nil" else: $a.sym.typImpl.kind)))
+    elif ct != nil and ct != at:
+      # Fields carry their own stub type, so a tolerated field-sym difference
+      # brings a tolerated type difference with it; compare by kind there.
+      if a.kind == nkSym and a.sym.kind == skField:
+        if ct.kind != at.kind:
+          bail("field typ", $ct.kind, $at.kind)
+      else:
+        bail("typ identity", $ct.kind & "/" & $ct.itemId, $at.kind & "/" & $at.itemId)
+
+    # `safeLen` already matched, so indexed access stays in range on both sides.
+    # `son` rescans from the first child each time, which is quadratic — fine for
+    # a debug-only oracle over routine bodies, and it keeps the walk honest by
+    # exercising the same accessor migrated code will use.
+    #
+    # The descent is bracketed by a nav scope and each child is offered to
+    # `registerDefHere` BEFORE it is entered, so this walk maintains the scope
+    # chain exactly the way a cursor-native pass would have to (see `bodynav`).
+    # That is the part being graded here: not just that the accessors agree, but
+    # that they still agree when the resolution context is built by the
+    # traversal instead of handed to it.
+    if a.safeLen > 0:
+      withNodeScope(nsBlock):
+        var i = 0
+        for child in sons(a):
+          let cc = son(c, i)
+          registerDefHere(cc)
+          grindLockstep(m, prc, cc, child, here & "[" & $i & "]")
+          inc i
+
+  proc grindBNode(m: BModule; p: BProc; prc: PSym) =
+    ## Differential grinding for the migrating vocabulary, opt-in via
+    ## `NIM_IC_BNODE_GRIND`: run every proc that has moved to `AnyNode` over
+    ## BOTH representations of the SAME body and require the same answer. This
+    ## is the only thing that executes the `Cursor` accessors — codegen itself
+    ## is still driven off `PNode`s — and it is deliberately the same technique
+    ## that found the IC bugs earlier on this branch: an oracle beats a
+    ## hand-written expectation, because it compares everything, not what
+    ## someone thought to check.
+    ##
+    ## Order matters. The `PNode` walk calls `len`, which fires the lazy-body
+    ## hook and MATERIALIZES the deferred body; the cursor answer is therefore
+    ## taken first. `lazyBodyBNode` itself does not consume the pending entry.
+    ##
+    ## `allPathsAsgnResult` is graded here too, and it is the more valuable of
+    ## the two: it reaches `typ` (via `skipTypes` on a case selector) and
+    ## `canRaiseDisp` (via `sym`), so a disagreement exercises the resolution
+    ## path — `symFromCursor` / `typeFromCursor` against the body's `localSyms`
+    ## — and not just the child walk.
+    ##
+    ## `grindLockstep` runs last and grades the vocabulary itself rather than
+    ## these two procs; it is the check that actually covers accessors no
+    ## migrated proc happens to call yet.
+    if bnodeGrind < 0:
+      bnodeGrind = ord(existsEnv("NIM_IC_BNODE_GRIND"))
+      if bnodeGrind == 1:
+        addExitProc proc () =
+          stderr.writeLine "BNODEGRIND navHits=" & $navHits &
+            " navFallbacks=" & $navFallbacks & " navRegistered=" & $navRegistered
+    if bnodeGrind == 0: return
+    let ast = prc.ast
+    if ast == nil or ast.safeLen <= bodyPos: return
+    let body = son(ast, bodyPos)
+    if body == nil: return
+    var scope = default(BodyScope)
+    var viaCursor = default(BNode)
+    if not lazyBodyBNode(body, scope, viaCursor): return
+
+    var curResult = false
+    var curPaths = Unknown
+    withBodyScope(scope):
+      curResult = containsResult(viaCursor)
+      curPaths = allPathsAsgnResult(p, viaCursor)
+
+    let astResult = containsResult(body)
+    if curResult != astResult:
+      internalError(m.config, prc.info,
+        "BNode/PNode disagree on containsResult for " & prc.name.s &
+        ": cursor=" & $curResult & " ast=" & $astResult)
+    let astPaths = allPathsAsgnResult(p, body)
+    if curPaths != astPaths:
+      internalError(m.config, prc.info,
+        "BNode/PNode disagree on allPathsAsgnResult for " & prc.name.s &
+        ": cursor=" & $curPaths & " ast=" & $astPaths)
+
+    withBodyScope(scope):
+      grindLockstep(m, prc, viaCursor, body, "")
+      let (hits, fallbacks, registered) = navStats()
+      navHits += hits
+      navFallbacks += fallbacks
+      navRegistered += registered
+
 
 proc getProcTypeCast(m: BModule, prc: PSym): Rope =
   result = getTypeDesc(m, prc.loc.t)
@@ -1581,6 +1765,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # CT-evaluated or earlier-referenced routine), NOT a `.t.bif` load — gating on
   # it there would WRONGLY skip destructor injection and miscompile (orc
   # decref-on-freed). The `.t.bif`-loaded-body concept exists only under cmdNifC.
+  when defined(newIcBackend):
+    grindBNode(m, p, prc)
   let wasLoaded = m.config.cmd == cmdNifC and prc.transformedBody != nil
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:

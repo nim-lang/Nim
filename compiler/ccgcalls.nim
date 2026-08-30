@@ -9,7 +9,7 @@
 #
 # included from cgen.nim
 
-proc canRaiseDisp(p: BProc; n: PNode): bool =
+proc canRaiseDisp(p: BProc; n: AnyNode): bool =
   # we assume things like sysFatal cannot raise themselves
   if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false

@@ -1723,36 +1723,56 @@ proc addParam*(procType: PType; param: PSym) =
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
-const magicsThatCanRaise = {
+const magicsThatCanRaise* = {
   mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst, mEcho}
 
-proc canRaiseConservative*(fn: PNode): bool =
-  if fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise:
-    result = false
-  else:
-    result = true
+# `canRaise` and `canRaiseConservative` are asked by the C backend, which is
+# migrating to reading routine bodies straight off a `.bif` `Cursor` rather than
+# off a materialised `PNode` tree (see `compiler/bnode.nim`). Both predicates
+# only ever look at a node's `kind`, `sym` and `typ`, so ONE body serves either
+# spelling -- but `BNode` is defined in `bnode.nim`, which imports this module,
+# so the `BNode` overloads cannot live here. The bodies therefore live in
+# templates and `bnode.nim` instantiates them for its own node type: one source
+# of truth, no import cycle, and no second copy to keep in sync.
+#
+# `fn.typ.n` below is a *type's* formal-params node, not a routine body: it is
+# always fully materialised, so indexing it is not the hazard that indexing a
+# body node is.
 
-proc canRaise*(fn: PNode): bool =
-  if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
-      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
-      sfGeneratedOp in fn.sym.flags):
-    result = false
-  elif fn.kind == nkSym and fn.sym.magic == mEcho:
-    result = true
-  elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
-    # TODO check for n having sons? or just return false for now if not
-    if fn.typ.n[0].kind == nkSym:
-      result = false
+template canRaiseConservativeImpl*(fnArg: typed): bool =
+  block:
+    let fn = fnArg
+    not (fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise)
+
+template canRaiseImpl*(fnArg: typed): bool =
+  block:
+    let fn = fnArg
+    var res: bool
+    if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
+        {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
+        sfGeneratedOp in fn.sym.flags):
+      res = false
+    elif fn.kind == nkSym and fn.sym.magic == mEcho:
+      res = true
+    elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
+      # TODO check for n having sons? or just return false for now if not
+      if fn.typ.n[0].kind == nkSym:
+        res = false
+      else:
+        # A proc-typed value with no explicit raises slot still has
+        # unspecified effects, which sempass2 treats conservatively.
+        # Codegen needs to do the same in order to keep goto-exception
+        # checks after indirect/closure calls.
+        res = ((fn.typ.n[0].len < effectListLen) or
+          fn.typ.n[0][exceptionEffects] == nil or
+          fn.typ.n[0][exceptionEffects].safeLen > 0)
     else:
-      # A proc-typed value with no explicit raises slot still has
-      # unspecified effects, which sempass2 treats conservatively.
-      # Codegen needs to do the same in order to keep goto-exception
-      # checks after indirect/closure calls.
-      result = ((fn.typ.n[0].len < effectListLen) or
-        fn.typ.n[0][exceptionEffects] == nil or
-        fn.typ.n[0][exceptionEffects].safeLen > 0)
-  else:
-    result = false
+      res = false
+    res
+
+proc canRaiseConservative*(fn: PNode): bool = canRaiseConservativeImpl(fn)
+
+proc canRaise*(fn: PNode): bool = canRaiseImpl(fn)
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind

@@ -522,7 +522,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     d = getTemp(p, n.typ)
   genLineDir(p, n)
   let lend = getLabel(p)
-  for it in n.sons:
+  for it in sons(n):
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(n.typ): d.k = locNone
     if it.len == 2:

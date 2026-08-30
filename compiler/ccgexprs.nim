@@ -1441,7 +1441,7 @@ proc genEcho(p: BProc, n: PNode) =
     var logCall: CallBuilder
     p.s(cpsStmts).addStmt():
       p.s(cpsStmts).addCall(logCall, logName):
-        for it in n.sons:
+        for it in sons(n):
           if it.skipConv.kind == nkNilLit:
             p.s(cpsStmts).addArgument(logCall):
               p.s(cpsStmts).add("\"\"")
@@ -3173,7 +3173,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimZeroMem"),
         rdLoc(d),
         cSizeof(getTypeDesc(p.module, e.typ)))
-      for it in e.sons:
+      for it in sons(e):
         if it.kind == nkRange:
           idx = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
           a = initLocExpr(p, it.firstSon)
@@ -3202,7 +3202,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       # small set
       var ts = cUintType(size * 8)
       p.s(cpsStmts).addAssignment(rdLoc(d), cIntValue(0))
-      for it in e.sons:
+      for it in sons(e):
         if it.kind == nkRange:
           idx = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt)) # our counter
           a = initLocExpr(p, it.firstSon)
@@ -3853,7 +3853,7 @@ proc containsOpaqueImportcFieldAux(t: PType; n: PNode): bool =
   if n == nil: return false
   case n.kind
   of nkRecList:
-    for child in n.sons:
+    for child in sons(n):
       if containsOpaqueImportcFieldAux(t, child):
         return true
   of nkRecCase:
@@ -3990,7 +3990,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
   case obj.kind
   of nkRecList:
     let isUnion = tfUnion in t.flags
-    for it in obj.sons:
+    for it in sons(obj):
       getNullValueAux(p, t, it, constOrNil, result, init, isConst, info)
       if isUnion:
         # generate only 1 field for default value of union
@@ -4100,7 +4100,7 @@ proc genConstSimpleList(p: BProc, n: PNode; isConst: bool; result: var Builder) 
     if p.vccAndC and not n.hasSons and n.typ.kind == tyArray:
       result.addField(arrInit, name = ""):
         getDefaultValue(p, n.typ.elementType, n.info, result)
-    for it in n.sons:
+    for it in sons(n):
       var ind, val: PNode
       if it.kind == nkExprColonExpr:
         ind = it.firstSon
@@ -4152,7 +4152,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool; result: var Builde
         def.addField(structInit, name = "data"):
           var arrInit: StructInitializer
           def.addStructInitializer(arrInit, kind = siArray):
-            for ni in n.sons:
+            for ni in sons(n):
               def.addField(arrInit, name = ""):
                 genBracedInit(p, ni, isConst, base, def)
   p.module.s[cfsStrData].add extract(def)
@@ -4180,7 +4180,7 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool; result: var Buil
         def.addField(structInit, name = "data"):
           var arrInit: StructInitializer
           def.addStructInitializer(arrInit, kind = siArray):
-            for ni in n.sons:
+            for ni in sons(n):
               def.addField(arrInit, name = ""):
                 genBracedInit(p, ni, isConst, base, def)
   p.module.s[cfsStrData].add extract(def)

@@ -957,7 +957,10 @@ iterator items*(n: PNode): PNode =
 
 iterator sons*(n: PNode): PNode =
   ## Iterates over the children of `n`. Preferred over `for i in 0..<n.len: n[i]`
-  ## as it does not rely on random indexed access (see doc/ic_backend_nif_native.md).
+  ## as it does not rely on random indexed access, and over `for x in n.sons`,
+  ## which reads the raw FIELD and so skips the `len` hook that materialises a
+  ## deferred `nfLazyBody` body — over such a body that loop silently visits
+  ## nothing. See `compiler/bnode.nim` for the backend vocabulary this feeds.
   for i in 0..<n.safeLen: yield n[i]
 
 iterator isons*(n: PNode; start = 0): tuple[i: int, n: PNode] =

@@ -767,7 +767,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
                         check: var IntSet; result: var Builder; unionPrefix = "") =
   case n.kind
   of nkRecList:
-    for ni in n.sons:
+    for ni in sons(n):
       genRecordFieldsAux(m, ni, rectype, check, result, unionPrefix)
   of nkRecCase:
     if n.firstSon.kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
@@ -1075,7 +1075,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
           let owner = hashOwner(t.sym)
           if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
             var vals: seq[(string, int)] = @[]
-            for son in t.n.sons:
+            for son in sons(t.n):
               assert(son.kind == nkSym)
               let field = son.sym
               vals.add((field.name.s, field.position.int))
