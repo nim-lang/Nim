@@ -1950,7 +1950,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
 
 proc lhsDoesAlias(a, b: PNode): bool =
   result = false
-  for y in b:
+  for y in sons(b):
     if isPartOf(a, y) != arNo: return true
 
 proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =

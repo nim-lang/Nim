@@ -13,7 +13,7 @@
 
 import
   ast, astyaml, options, lineinfos, idents, rodutils,
-  msgs
+  msgs, bnode
 
 import std/[hashes, intsets]
 import std/strutils except addf
@@ -100,7 +100,7 @@ proc skipConvCastAndClosure*(n: PNode): PNode =
       result = result[1]
     else: break
 
-proc sameValue*(a, b: PNode): bool =
+proc sameValue*[T: AnyNode](a, b: T): bool =
   result = false
   case a.kind
   of nkCharLit..nkUInt64Lit:

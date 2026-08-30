@@ -1622,6 +1622,22 @@ when defined(newIcBackend):
     check "isDeepConstExpr", isDeepConstExpr(n)
     check "stmtsContainPragma", stmtsContainPragma(n, wLinearScanEnd)
     check "notYetAlive", notYetAlive(n)
+    check "getInt", (if n.kind in nkIntLits: $getInt(n) else: "")
+    check "sameValue self", sameValue(n, n)
+
+    # `sym` IS NOT A FUNCTION OF ITS ARGUMENT for object fields, so this asserts
+    # the property the rest of the seam quietly assumes everywhere else. Two
+    # calls on the SAME token mint two `skField` stubs with consecutive item
+    # ids (`loadFieldStub`, by design: two distinct fields can share a name and
+    # a position across types, so one shared stub would mistype one of them).
+    # Anything that reads a field sym twice and compares identity is therefore
+    # wrong on a cursor and right on an AST — which is exactly how the attempt
+    # to migrate `aliases.isPartOf` failed, and it failed LOUDLY only because
+    # this grinder existed. Left as a live check so the day it starts holding
+    # is visible.
+    if a.kind == nkSym and a.sym != nil and a.sym.kind != skField:
+      if c.sym != c.sym:
+        bail("sym is not idempotent", "two different PSyms", "one PSym")
 
     # `stmtsContainPragma` had to be re-derived rather than defined as
     # `getPragmaStmt(...) != nil`, because a `Cursor` has no nil to return (see

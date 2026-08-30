@@ -430,6 +430,27 @@ when defined(newIcBackend):
     ## (`(nflags <flags> <symnode>)`, `(ht <type> <symnode>)`) are peeled by
     ## `bodynav.symToken`, beside the code that derives the lookup key from them,
     ## so the two cannot drift apart.
+    ##
+    ## NOT IDEMPOTENT FOR OBJECT FIELDS, and anything built on this accessor has
+    ## to know it. Two calls on the SAME token yield two different `skField`
+    ## `PSym`s with consecutive item ids: field uses deliberately bypass the
+    ## nav's memo and go to `loadFieldStub`, which mints per use because two
+    ## distinct fields can share a name AND a position across types, so one
+    ## shared stub would mistype one of them (see `bodynav`). For every other
+    ## symbol kind the answer is stable — the nav memoises it — and `cgen`'s
+    ## grinder asserts that for the non-field case at every node.
+    ##
+    ## The consequence is not theoretical. A proc that reads a field sym twice
+    ## and compares IDENTITY is correct on a `PNode` and wrong on a `Cursor`:
+    ## `aliases.isPartOf` does exactly that (`a[1].sym.id != b[1].sym.id`, to
+    ## decide whether two accessor chains touch the same field) and so CANNOT be
+    ## migrated as written. What codegen actually consumes for a field is the
+    ## name it re-navigates the reclist with (`lookupFieldAgain`) plus, for
+    ## tuples, the position — which is also the tolerance the grinder applies —
+    ## so the fix is either to compare fields that way or to give a field token
+    ## a stable identity. The latter needs the token's own position as a key,
+    ## and `nifcore.Cursor` keeps that pointer private, so it is not something
+    ## this module can do alone.
     result = symAt(currentNav()[], n.raw)
 
   proc symTyp(n: BNode): PType =
@@ -609,6 +630,8 @@ when defined(newIcBackend):
   # `BNode` is defined HERE and this module imports `ast`; so `ast.nim` keeps
   # the body in a template and these two instantiate it. There is no second
   # copy of the logic — change the template and both spellings change.
+
+  proc getInt*(n: BNode): Int128 = getIntImpl(n)
 
   proc canRaiseConservative*(fn: BNode): bool = canRaiseConservativeImpl(fn)
 

@@ -1464,18 +1464,28 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc getInt*(a: PNode): Int128 =
-  case a.kind
-  of nkCharLit, nkUIntLit..nkUInt64Lit:
-    result = toInt128(cast[uint64](a.intVal))
-  of nkInt8Lit..nkInt64Lit:
-    result = toInt128(a.intVal)
-  of nkIntLit:
-    # XXX: enable this assert
-    # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
-    result = toInt128(a.intVal)
-  else:
-    raiseRecoverableError("cannot extract number from invalid AST node")
+template getIntImpl*(aArg: typed): Int128 =
+  ## The body of `getInt`, in a form `bnode.nim` can instantiate for a `BNode`
+  ## too — same reason as `canRaiseImpl`: `BNode` is defined there and that
+  ## module imports this one, so the shared logic has to live in a template
+  ## rather than an `AnyNode` proc. There is no second copy.
+  block:
+    let a = aArg
+    var res: Int128
+    case a.kind
+    of nkCharLit, nkUIntLit..nkUInt64Lit:
+      res = toInt128(cast[uint64](a.intVal))
+    of nkInt8Lit..nkInt64Lit:
+      res = toInt128(a.intVal)
+    of nkIntLit:
+      # XXX: enable this assert
+      # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
+      res = toInt128(a.intVal)
+    else:
+      raiseRecoverableError("cannot extract number from invalid AST node")
+    res
+
+proc getInt*(a: PNode): Int128 = getIntImpl(a)
 
 proc getInt64*(a: PNode): int64 {.deprecated: "use getInt".} =
   case a.kind

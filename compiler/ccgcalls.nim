@@ -38,6 +38,13 @@ proc canRaiseDisp(p: BProc; n: AnyNode): bool =
       logCanRaise(n.sym, result)
 
 proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
+  ## STAYS on `PNode`, and the reason is a capability the seam does not have
+  ## rather than an accessor it is missing: the `warnObservableStores` message
+  ## interpolates `$le`, i.e. it RENDERS the node. Rendering is `renderer.nim`
+  ## reconstructing source text, which is a different job from reading a node's
+  ## kind/sym/type, and nothing needs it until a diagnostic does. The alias
+  ## analysis this calls (`isPartOf`) is already `AnyNode`, so only the message
+  ## is in the way.
   proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
     result = false
     var n = le
