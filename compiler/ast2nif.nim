@@ -130,6 +130,16 @@ type
     revTab: Table[FileId, FileIndex] # reverse mapping for oldLineInfo
     man: LineInfoManager
     config: ConfigRef
+    # The READ direction's cache, which `revTab` cannot serve: `revTab` is keyed
+    # by a `FileId` in the WRITER's global `pool.files`, while a decoded token's
+    # `FileId` indexes the buffer's OWN filename pool. So the cache has to be
+    # keyed by (pool, FileId), and it is a `seq` because `FileId`s are small and
+    # dense within one pool. `readPool` holds a REFERENCE rather than a raw
+    # pointer on purpose: it keeps the pool alive, so a freed pool cannot be
+    # replaced by a new one at the same address and silently answer from the
+    # wrong file table.
+    readPool: Pool
+    readTab: seq[FileIndex]
 
 proc newLineInfoWriter(config: ConfigRef): LineInfoWriter =
   # `fileK` starts invalid so the one-entry cache never collides with a real
@@ -178,12 +188,26 @@ proc oldLineInfo(w: var LineInfoWriter; info: NifLineInfo; p: Pool): TLineInfo =
   ## it to a `TLineInfo`. `info.file` indexes the loaded buffer's OWN filename
   ## pool `p` (= `cursorPool(n)`), which is the shared `icPool` for a text-parsed
   ## module but a fresh per-file pool for a `bif`-loaded one.
+  ##
+  ## Memoized per pool. Resolving a name costs a string copy out of the pool
+  ## plus a hash of a full path, and the generator asks for a node's line info
+  ## on essentially every statement it emits — 259k times on a 68-module build,
+  ## which was 1.36s of the 1.88s the cursor-driven generator spent.
   if info.file == NoFile:
     result = unknownLineInfo
   else:
-    let filePath = p.filenames[info.file]
-    let fileIdx = msgs.fileInfoIdx(w.config, AbsoluteFile filePath)
-    result = TLineInfo(line: info.line.uint16, col: info.col.int16, fileIndex: fileIdx)
+    if p != w.readPool:
+      w.readPool = p
+      w.readTab = @[]
+    let id = int(uint32(info.file))
+    if id >= w.readTab.len:
+      let oldLen = w.readTab.len
+      w.readTab.setLen(id + 1)
+      for i in oldLen ..< w.readTab.len: w.readTab[i] = astli.InvalidFileIdx
+    if w.readTab[id] == astli.InvalidFileIdx:
+      w.readTab[id] = msgs.fileInfoIdx(w.config, AbsoluteFile p.filenames[info.file])
+    result = TLineInfo(line: info.line.uint16, col: info.col.int16,
+                       fileIndex: w.readTab[id])
 
 
 # ------------- Writer ---------------------------------------------------------------
