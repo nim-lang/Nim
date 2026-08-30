@@ -41,8 +41,21 @@
 ##   `aliases.isPartOf` from moving to the seam (see `bnode.sym`). A bridged
 ##   buffer hands back the same object every time, so code that compares field
 ##   identity is correct on it.
-## * It is cheap. No string formatting, no pool lookups for names, no index
-##   seeks — the encoder is a tree walk and two `seq.add`s.
+## * The ENCODER is cheap, and that part is measured: no string formatting, no
+##   pool lookups for names, no index seeks, just a tree walk and two `seq.add`s.
+##   Building a buffer for every routine and NOT reading it costs 6.79s against a
+##   6.75s baseline on a 50-module target — inside the noise.
+##
+## READING is not free, and that is where the cost of the whole seam sits.
+## Driving the generator off cursors takes the same target from 6.75s to 8.85s,
+## **+31%**, stable across interleaved runs. Since a compile is mostly frontend,
+## codegen itself is slowed by considerably more than 31%. The suspects are the
+## per-access costs a `PNode` does not have: `son(n, i)` is O(i) because it skips
+## from the first child, `kind` checks the tag pool and indexes a memo on every
+## call, `sym`/`typ` go through the nav, and `origin` is a hash lookup on every
+## location built. None of that is inherent — `son` could cache, `origin` could
+## key on something cheaper — but none of it has been optimised, and the number
+## is here so nobody has to rediscover it before deciding whether to.
 ##
 ## WHAT IT IS NOT. The buffer is transient and process-local: `(bsym …)` means
 ## nothing without the tables beside it, so a bridged buffer must never be

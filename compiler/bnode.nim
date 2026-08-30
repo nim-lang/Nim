@@ -161,34 +161,50 @@
 ## `genericHead` and the `kids` / `ikids` / `paramTypes` / `signature`
 ## iterators, which name the child and go through `[]`.
 ##
-## WHERE THE LEAF MIGRATION ENDS. Of the 191 `PNode`-taking procs across
-## `cgen` and the `ccg*` files, 160 EMIT — they take a `Builder`/`TLoc`
-## out-param or write into `p` directly. Those do not move one at a time: they
-## are one mutual recursion rooted at `expr`/`genStmts`, so the whole generator
-## has to move together, and it needs write-side capability this seam does not
-## have. What is left over splits into named blockers rather than a backlog, and
-## each is recorded at its own site:
+## WHAT RUNS ON A CURSOR, AND WHAT STILL DOES NOT. `expr` and the ~160 emitters
+## under it read the routine body through a cursor: `cgen.genProcBody` is handed
+## `BNode(bodyBuf.rootCursor)` and the whole generator follows. It had to land in
+## one step — `expr` dispatches to all of them — and what made that possible
+## without changing `TLoc` was `nodebridge`'s ORIGIN TRACKING: a cursor can name
+## the `PNode` it was encoded from, so `TLoc.lode` stays a `PNode` holding the
+## same object a tree-driven build would have stored, and the identity
+## comparisons already in the backend keep meaning what they meant.
 ##
-## * A type's RECORD TREE is not a body. `asgnComplexity`, `isEmptyCaseObjectBranch`,
-##   `containsOpaqueImportcFieldAux`, `genRecordFieldsAux`, `fillResult` and the
-##   type-section walkers read `PType.n`, which stays a `PNode` by design (see
-##   the `BType` note below). They are not migration candidates at all.
+## `origin` is also how the generator's own REWRITES survive. It does mutate in
+## places (`mAppendSeqElem`, `mNewSeq`, `genSetLengthSeq`, `genWasMoved`,
+## `genArrToSeq` replace a child or a type in place; `genEnumToStr`, `mAsgn` and
+## `spawn` build fresh trees), and those run on the origin. Where the mutation is
+## then read back, generation continues on the origin too — the buffer does not
+## see the write, so a cursor would keep reading the slot as encoded. That is the
+## one hazard to remember when migrating anything else that writes.
+##
+## What is left is not a backlog, it is named blockers, each recorded at its own
+## site:
+##
+## * A type's RECORD TREE is not a body. `asgnComplexity`,
+##   `isEmptyCaseObjectBranch`, `containsOpaqueImportcFieldAux`,
+##   `genRecordFieldsAux`, `fillResult` and the type-section walkers read
+##   `PType.n`, which stays a `PNode` by design (see the `BType` note below).
+##   They are not migration candidates at all.
 ## * RETURNS A NODE OR NIL — `ccgutils.getPragmaStmt`. `.bif` spells a missing
 ##   child as a `DotToken` INSIDE a tree; there is no nil token to hand back as a
 ##   return value and a `Cursor` is not nilable. The fix is to split the
-##   predicate out, as `stmtsContainPragma` does.
-## * WRITES TO THE NODE — `cgen.easyResultAsgn` does `incl n.flags, nfPreventCg`.
-##   The seam is read-only and a `Cursor` points into a shared token buffer.
-## * NEEDS RENDERING — `ccgcalls.preventNrvo` interpolates `$le` into
-##   `warnObservableStores`. Reconstructing source text is a different job from
-##   reading a node, and only a diagnostic wants it.
-## * NEEDS STABLE FIELD IDENTITY — `lhsDoesAlias` and `potentialAlias` through
-##   `aliases.isPartOf`, which compares field `sym.id`. See the note on `sym`
-##   below: it is not idempotent for fields, so this one is not blocked on
-##   effort, it is blocked on a property the seam does not currently have.
+##   predicate out, as `stmtsContainPragma` does. The same reason keeps the
+##   assignment DESTINATION a `PNode` throughout the call family (`genCall`
+##   passes nil), along with `check`, `exvar`, `stepNode` and a try's `fin`.
+## * WRITES TO THE NODE — `cgen.easyResultAsgn` sets `nfPreventCg`. Unlike the
+##   generator's rewrites it cannot use `origin`, because it runs BEFORE the
+##   handoff and the buffer is a snapshot taken after it.
+## * THE ALIAS FAMILY stays on `PNode`, and NOT for the reason first recorded
+##   here. Field identity is exact on a bridged buffer (see `sym` below), so that
+##   is no longer what blocks it — but every call site passes `d.lode` as one
+##   operand, and that is a `PNode`, so a generic `isPartOf` would still be
+##   handed a `PNode` on one side and buy nothing. It moves when `TLoc.lode`
+##   does, not before.
 ## * MIXED REPRESENTATION — `potentialAlias` and `getPotentialReads` build and
 ##   consume a `seq[PNode]` alongside the node, so both sides would have to be
-##   the same spelling.
+##   the same spelling. `genParams` materialises its arguments as origins for
+##   exactly this reason.
 ##
 ## There is deliberately no `BType` alongside `BNode`. Types stay `PType`s even
 ## under `newIcBackend` — `typ` below returns one — because the backend asks
@@ -482,14 +498,20 @@ when defined(newIcBackend):
     ## grinder asserts that for the non-field case at every node.
     ##
     ## The consequence is not theoretical. A proc that reads a field sym twice
-    ## and compares IDENTITY is correct on a `PNode` and wrong on a `Cursor`:
-    ## `aliases.isPartOf` does exactly that (`a[1].sym.id != b[1].sym.id`, to
-    ## decide whether two accessor chains touch the same field) and so CANNOT be
-    ## migrated as written. What codegen actually consumes for a field is the
+    ## and compares IDENTITY is correct on a `PNode` and wrong on a FILE-BACKED
+    ## cursor: `aliases.isPartOf` does exactly that (`a[1].sym.id != b[1].sym.id`,
+    ## to decide whether two accessor chains touch the same field).
+    ##
+    ## A BRIDGED buffer does not have this problem — `nodebridge` hands back the
+    ## object it was given, and the grinder asserts idempotence for fields there
+    ## while excluding them here. So field identity is no longer what keeps the
+    ## alias family on `PNode`; see the note in the module header for what does.
+    ## What codegen actually consumes for a field is the
     ## name it re-navigates the reclist with (`lookupFieldAgain`) plus, for
     ## tuples, the position — which is also the tolerance the grinder applies —
-    ## so the fix is either to compare fields that way or to give a field token
-    ## a stable identity. The latter needs the token's own position as a key,
+    ## so the fix for the FILE path is either to compare fields that way or to
+    ## give a field token a stable identity. The latter needs the token's own
+    ## position as a key,
     ## and `nifcore.Cursor` keeps that pointer private, so it is not something
     ## this module can do alone.
     result = symAt(currentNav()[], n.raw)
