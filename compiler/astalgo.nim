@@ -740,7 +740,7 @@ proc listSymbolNames*(symbols: openArray[PSym]): string =
       result.add ", "
     result.add sym.name.s
 
-proc isDiscriminantField*(n: PNode): bool =
-  if n.kind == nkCheckedFieldExpr: sfDiscriminant in n[0][1].sym.flags
-  elif n.kind == nkDotExpr: sfDiscriminant in n[1].sym.flags
+proc isDiscriminantField*(n: AnyNode): bool =
+  if n.kind == nkCheckedFieldExpr: sfDiscriminant in n.firstSon.secondSon.sym.flags
+  elif n.kind == nkDotExpr: sfDiscriminant in n.secondSon.sym.flags
   else: false

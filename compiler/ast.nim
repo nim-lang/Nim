@@ -714,6 +714,10 @@ proc extractPragma*(s: PSym): PNode =
 proc skipPragmaExpr*(n: PNode): PNode =
   ## if pragma expr, give the node the pragmas are applied to,
   ## otherwise give node itself
+  ##
+  ## `bnode` carries the `BNode` spelling. It is a separate one-liner rather
+  ## than a shared template because this sits above the point in this module
+  ## where `firstSon` for a `PNode` exists.
   if n.kind == nkPragmaExpr:
     result = n[0]
   else:
@@ -1505,14 +1509,21 @@ proc getFloat*(a: PNode): BiggestFloat =
     #internalError(a.info, "getFloat")
     #result = 0.0
 
-proc getStr*(a: PNode): string =
-  case a.kind
-  of nkStrLit..nkTripleStrLit: result = a.strVal
-  of nkNilLit:
-    # let's hope this fixes more problems than it creates:
-    result = ""
-  else:
-    raiseRecoverableError("cannot extract string from invalid AST node")
+template getStrImpl*(aArg: typed): string =
+  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
+  block:
+    let gs = aArg
+    var res = ""
+    case gs.kind
+    of nkStrLit..nkTripleStrLit: res = gs.strVal
+    of nkNilLit:
+      # let's hope this fixes more problems than it creates:
+      res = ""
+    else:
+      raiseRecoverableError("cannot extract string from invalid AST node")
+    res
+
+proc getStr*(a: PNode): string = getStrImpl(a)
     #doAssert false, "getStr"
     #internalError(a.info, "getStr")
     #result = ""
@@ -1655,8 +1666,14 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
   result = base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}
 
-proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == ord(wAs)
+template isInfixAsImpl*(nArg: typed): bool =
+  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
+  block:
+    let ia = nArg
+    ia.kind == nkInfix and ia.firstSon.kind == nkIdent and
+      ia.firstSon.ident.id == ord(wAs)
+
+proc isInfixAs*(n: PNode): bool = isInfixAsImpl(n)
 
 proc skipColon*(n: PNode): PNode =
   result = n
@@ -1851,8 +1868,13 @@ proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
 
-proc skipHiddenAddr*(n: PNode): PNode {.inline.} =
-  (if n.kind == nkHiddenAddr: n[0] else: n)
+template skipHiddenAddrImpl*(nArg: typed): untyped =
+  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
+  block:
+    let sha = nArg
+    (if sha.kind == nkHiddenAddr: sha.firstSon else: sha)
+
+proc skipHiddenAddr*(n: PNode): PNode {.inline.} = skipHiddenAddrImpl(n)
 
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy

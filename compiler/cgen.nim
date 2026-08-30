@@ -135,11 +135,11 @@ proc signatureHasMetaType*(t: PType; depth: int = 0): bool =
     # `HashList[T, N]`, …) is carried as a `tyStatic` node inside the otherwise
     # fully-concrete `tyGenericInst`, but it is NOT meta: the routine is a normal
     # runtime routine the owner must emit. Only an UNRESOLVED `static T` parameter
-    # (no bound value, `t.n == nil`) is meta. Without this, every routine whose
+    # (no bound value, `t.n.isNilNode`) is meta. Without this, every routine whose
     # signature touches a `static`-parameterized generic instance (the bulk of
     # the SSZ/`MDigest` API) is dropped from the owned-routine seeding and ends up
     # an undefined reference at link (mirrors the tyGenericBody case above).
-    return t.n == nil
+    return t.n.isNilNode
   if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyGenericParam,
                 tyAnything, tyFromExpr, tyError}:
     return true
@@ -512,7 +512,7 @@ proc genCLineDir(r: var Builder, p: BProc, info: TLineInfo; conf: ConfigRef) =
     if freshLineInfo(p, info):
       genCLineDir(r, info.fileIndex, info.safeLineNm, p, info, lastFileIndex)
 
-proc genLineDir(p: BProc, t: PNode) =
+proc genLineDir(p: BProc; t: AnyNode) =
   if p == p.module.preInitProc: return
   let line = t.info.safeLineNm
 
@@ -595,7 +595,7 @@ include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
 
-template mapTypeChooser(n: PNode): TSymKind =
+template mapTypeChooser(n: AnyNode): TSymKind =
   (if n.kind == nkSym: n.sym.kind else: skVar)
 
 template mapTypeChooser(a: TLoc): TSymKind = mapTypeChooser(a.lode)
@@ -632,8 +632,8 @@ type
     needAssignCall
   TAssignmentFlags = set[TAssignmentFlag]
 
-proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
-proc rawConstExpr(p: BProc, n: PNode; d: var TLoc)
+proc genObjConstr(p: BProc; e: AnyNode, d: var TLoc)
+proc rawConstExpr(p: BProc; n: AnyNode; d: var TLoc)
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 type
@@ -852,7 +852,7 @@ proc getIntTemp(p: BProc): TLoc =
                 flags: {})
   p.s(cpsLocals).addVar(kind = Local, name = result.snippet, typ = NimInt)
 
-proc localVarDecl(res: var Builder, p: BProc; n: PNode,
+proc localVarDecl(res: var Builder, p: BProc; n: AnyNode,
                   initializer: Snippet = "",
                   initializerKind: VarInitializerKind = Assignment) =
   let s = n.sym
@@ -870,7 +870,7 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
     initializer = initializer,
     initializerKind = initializerKind)
 
-proc assignLocalVar(p: BProc, n: PNode) =
+proc assignLocalVar(p: BProc; n: AnyNode) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
@@ -894,7 +894,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
-proc genGlobalVarDecl(res: var Builder, p: BProc, n: PNode; td: Snippet;
+proc genGlobalVarDecl(res: var Builder, p: BProc; n: AnyNode; td: Snippet;
                       initializer: Snippet = "",
                       initializerKind: VarInitializerKind = Assignment,
                       allowConst = true) =
@@ -935,7 +935,7 @@ proc genGlobalVarDecl(res: var Builder, p: BProc, n: PNode; td: Snippet;
       initializer = initializer,
       initializerKind = initializerKind)
 
-proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
+proc assignGlobalVar(p: BProc; n: AnyNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
     fillBackendName(p.module, s)
@@ -999,7 +999,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     backendEnsureMutable s
     resetLoc(p, s.locImpl)
 
-proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode; didGenTemp: var bool) =
+proc callGlobalVarCppCtor[V: AnyNode; W: AnyNode](p: BProc; v: PSym; vn: V; value: W; didGenTemp: var bool) =
   let s = vn.sym
   fillBackendName(p.module, s)
   backendEnsureMutable s
@@ -1018,7 +1018,7 @@ proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.snippet != "")
   scopeMangledParam(p, s)
 
-proc fillProcLoc(m: BModule; n: PNode) =
+proc fillProcLoc(m: BModule; n: AnyNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
     fillBackendName(m, sym)
@@ -1032,22 +1032,22 @@ proc getLabel(p: BProc): TLabel =
 proc fixLabel(p: BProc, labl: TLabel) =
   p.s(cpsStmts).addLabel(labl)
 
-proc genVarPrototype(m: BModule, n: PNode)
+proc genVarPrototype(m: BModule, n: AnyNode)
 proc requestConstImpl(p: BProc, sym: PSym)
-proc genStmts(p: BProc, t: PNode)
-proc expr(p: BProc, n: PNode, d: var TLoc)
+proc genStmts(p: BProc, t: AnyNode)
+proc expr(p: BProc, n: AnyNode, d: var TLoc)
 
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
-proc genLiteral(p: BProc, n: PNode; result: var Builder)
-proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder; argBuilder: var CallBuilder)
+proc genLiteral(p: BProc; n: AnyNode; result: var Builder)
+proc genOtherArg(p: BProc; ri: AnyNode; i: int; typ: PType; result: var Builder; argBuilder: var CallBuilder)
 proc raiseExit(p: BProc)
 proc raiseExitCleanup(p: BProc, destroy: string)
 
-proc initLocExpr(p: BProc, e: PNode, flags: TLocFlags = {}): TLoc =
+proc initLocExpr(p: BProc; e: AnyNode, flags: TLocFlags = {}): TLoc =
   result = initLoc(locNone, e, OnUnknown, flags)
   expr(p, e, result)
 
-proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
+proc initLocExprSingleUse(p: BProc; e: AnyNode): TLoc =
   result = initLoc(locNone, e, OnUnknown)
   if e.kind in nkCallKinds and (e.firstSon.kind != nkSym or e.firstSon.sym.magic == mNone):
     # We cannot check for tfNoSideEffect here because of mutable parameters.
@@ -1748,7 +1748,7 @@ when defined(newIcBackend):
     # `(ht . <sym>)` type difference. Only a subtree that clean is handed to
     # `grindPredicates` — see the descent below for why.
     result = true
-    if a == nil:
+    if a.isNilNode:
       if not c.isNilNode: bail("nil-ness", "not-nil", "nil")
       return
     if c.isNilNode: bail("nil-ness", "nil", "not-nil")
@@ -1891,7 +1891,7 @@ when defined(newIcBackend):
     ## disagreement with the original, so both directions are checked by the one
     ## oracle rather than by a hand-written comparator that could agree with the
     ## bug.
-    if bnodeGrind == 0 or body == nil: return
+    if bnodeGrind == 0 or body.isNilNode: return
     let htBefore = tolHtNil
     let fieldBefore = tolFieldSym
 
@@ -1908,7 +1908,7 @@ when defined(newIcBackend):
     # Asserted rather than assumed, with `==` on the reference: an equal copy
     # would not do.
     proc grindOrigins(enc: var BridgeBuf; c: BNode; a: PNode; path: string) =
-      if a == nil: return
+      if a.isNilNode: return
       # Through the AMBIENT accessor (`bnode.origin`, via `currentNav`), which
       # is the one a migrated generator proc will call from inside `initLoc` —
       # not the direct `originOf`, which would test a path nothing uses.
@@ -1988,7 +1988,7 @@ when defined(newIcBackend):
     let ast = prc.ast
     if ast == nil or ast.safeLen <= bodyPos: return
     let body = son(ast, bodyPos)
-    if body == nil: return
+    if body.isNilNode: return
     var scope = default(BodyScope)
     var viaCursor = default(BNode)
     if not lazyBodyBNode(body, scope, viaCursor): return
@@ -2028,7 +2028,7 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     let params = extract(desc)
     result = procPtrTypeUnnamed(rettype = rettype, params = params)
 
-proc genProcBody(p: BProc; procBody: PNode) =
+proc genProcBody(p: BProc; procBody: AnyNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared, nimErrorFlagDisabled} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
@@ -2194,7 +2194,14 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       continue
     assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
-  genProcBody(p, procBody)
+  # THE FLIP: under `-d:newIcBackend` the generator is driven off the cursor
+  # into the handed-off buffer, not the tree. Both spellings must produce the
+  # same C, which is what the cursor-vs-`PNode` `.c` comparison checks.
+  when defined(newIcBackend):
+    withBridge(bodyBuf.tables):
+      genProcBody(p, BNode(bodyBuf.rootCursor))
+  else:
+    genProcBody(p, procBody)
 
   # IC: spurious write, seems fine for now:
   prc.infoImpl = tmpInfo
@@ -2482,7 +2489,7 @@ proc requestProcDef*(m: BModule, prc: PSym) =
   ## code had referenced it.
   genProc(m, prc)
 
-proc genVarPrototype(m: BModule, n: PNode) =
+proc genVarPrototype(m: BModule, n: AnyNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
@@ -3373,9 +3380,9 @@ when false:
     readMergeInfo(getCFile(m), m)
     result = m
 
-proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool, init: var IfBuilder) =
+proc addHcrInitGuards(p: BProc; n: AnyNode, inInitGuard: var bool, init: var IfBuilder) =
   if n.kind == nkStmtList:
-    for child in n:
+    for child in sons(n):
       addHcrInitGuards(p, child, inInitGuard, init)
   else:
     let stmtShouldExecute = n.kind in {nkVarSection, nkLetSection} or
@@ -3412,7 +3419,7 @@ proc handleProcGlobals(m: BModule) =
     handleProcGlobals(m)
     m.preInitProc.s(cpsStmts).add stmts.extract()
 
-proc genTopLevelStmt*(m: BModule; n: PNode) =
+proc genTopLevelStmt*(m: BModule; n: AnyNode) =
   ## Also called from `ic/cbackend.nim`.
   if pipelineutils.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
@@ -3507,7 +3514,7 @@ proc writeModule(m: BModule) =
     code = stripCnifMarks(code)
   registerModuleCode(m, cf, code)
 
-proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
+proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: AnyNode; isDynlib: bool): PSym =
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"
   let procname = getIdent(graph.cache, prefixedName)
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
@@ -3561,7 +3568,7 @@ proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
   dtor.ast = theProc
   genProcLvl3(m, dtor)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: AnyNode) =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
@@ -3584,7 +3591,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   # if the module is cached, we don't regenerate the main proc
   # nor the dispatchers? But if the dispatchers changed?
   # XXX emit the dispatchers into its own .c file?
-  if n != nil:
+  if not n.isNilNode:
     m.initProc.options = initProcOptions(m)
     genProcBody(m.initProc, n)
 

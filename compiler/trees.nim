@@ -93,7 +93,7 @@ proc getMagic*(op: AnyNode): TMagic =
     else: result = mNone
   else: result = mNone
 
-proc isConstExpr*(n: PNode): bool =
+proc isConstExpr*(n: AnyNode): bool =
   const atomKinds = {nkCharLit..nkNilLit} # Char, Int, UInt, Str, Float and Nil literals
   n.kind in atomKinds or nfAllConst in n.flags
 

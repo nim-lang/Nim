@@ -699,6 +699,16 @@ when defined(newIcBackend):
 
   proc getInt*(n: BNode): Int128 = getIntImpl(n)
 
+  proc skipHiddenAddr*(n: BNode): BNode {.inline.} = skipHiddenAddrImpl(n)
+
+  proc isInfixAs*(n: BNode): bool = isInfixAsImpl(n)
+
+  proc getStr*(n: BNode): string = getStrImpl(n)
+
+  proc skipPragmaExpr*(n: BNode): BNode {.inline.} =
+    ## The `BNode` spelling of `ast.skipPragmaExpr`.
+    (if n.kind == nkPragmaExpr: n.firstSon else: n)
+
   proc canRaiseConservative*(fn: BNode): bool = canRaiseConservativeImpl(fn)
 
   proc canRaise*(fn: BNode): bool = canRaiseImpl(fn)

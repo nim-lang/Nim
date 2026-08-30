@@ -37,14 +37,12 @@ proc canRaiseDisp(p: BProc; n: AnyNode): bool =
     if n.kind == nkSym:
       logCanRaise(n.sym, result)
 
-proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
-  ## STAYS on `PNode`, and the reason is a capability the seam does not have
-  ## rather than an accessor it is missing: the `warnObservableStores` message
-  ## interpolates `$le`, i.e. it RENDERS the node. Rendering is `renderer.nim`
-  ## reconstructing source text, which is a different job from reading a node's
-  ## kind/sym/type, and nothing needs it until a diagnostic does. The alias
-  ## analysis this calls (`isPartOf`) is already `AnyNode`, so only the message
-  ## is in the way.
+proc preventNrvo(p: BProc; dest, le: PNode; ri: AnyNode): bool =
+  ## `dest` and `le` stay `PNode`s: they are DESTINATIONS, which the whole call
+  ## family keeps as `PNode`s so they can be nil and so they can be handed to
+  ## the alias analysis, and it is also what keeps the `warnObservableStores`
+  ## message able to RENDER `le` — rendering being a capability the cursor seam
+  ## does not have at all. `ri`, the call being generated, is a cursor.
   proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
     result = false
     var n = le
@@ -70,18 +68,20 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
         return true
 
   result = false
-  if le != nil:
+  if not le.isNilNode:
     for r in sonsFrom(ri, 1):
-      if isPartOf(le, r, {pfStructural}) != arNo: return true
+      # `isPartOf` compares field symbols by identity and so has not moved to
+      # the seam; `origin` hands it the same nodes it always compared.
+      if isPartOf(le, origin(r), {pfStructural}) != arNo: return true
     # we use the weaker 'canRaise' here in order to prevent too many
     # annoying warnings, see #14514
     if canRaise(ri.firstSon) and
         locationEscapes(p, le, p.nestedTryStmts.len > 0):
       message(p.config, le.info, warnObservableStores, $le)
   # bug #19613 prevent dangerous aliasing too:
-  if dest != nil and dest != le:
+  if not dest.isNilNode and dest != le:
     for r in sonsFrom(ri, 1):
-      if isPartOf(dest, r, {pfStructural}) != arNo: return true
+      if isPartOf(dest, origin(r), {pfStructural}) != arNo: return true
 
 proc hasNoInit(call: AnyNode): bool {.inline.} =
   result = call.firstSon.kind == nkSym and sfNoInit in call.firstSon.sym.flags
@@ -115,7 +115,11 @@ proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
   else:
     result = false
 
-proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
+# `le` — the assignment DESTINATION — stays a `PNode` throughout this family.
+# It is nilable (`genCall` passes nil, and a cursor has no standalone nil), and
+# it is what `preventNrvo` and `isPartOf` are handed, both of which are still
+# `PNode`-typed. `ri`, the expression being generated, is the part that moves.
+proc fixupCall(p: BProc, le: PNode, ri: AnyNode, d: var TLoc,
                result: var Builder, call: var CallBuilder) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
   genLineDir(p, ri)
@@ -214,7 +218,7 @@ proc reifiedOpenArray(n: AnyNode): bool {.inline.} =
   else:
     result = true
 
-proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareForMutation = false): (Rope, Rope) =
+proc genOpenArraySlice(p: BProc; q: AnyNode; formalType, destType: PType; prepareForMutation = false): (Rope, Rope) =
   var a = initLocExpr(p, q.secondSon)
   var b = initLocExpr(p, son(q, 2))
   var c = initLocExpr(p, son(q, 3))
@@ -277,7 +281,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
     result = ("", "")
     internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
-proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
+proc openArrayLoc(p: BProc, formalType: PType, n: AnyNode; result: var Builder) =
   var q = skipConv(n)
   var skipped = false
   while q.kind == nkStmtListExpr and q.hasSons:
@@ -387,13 +391,13 @@ proc expressionsNeedsTmp(p: BProc, a: TLoc): TLoc =
   result = getTemp(p, a.lode.typ, needsInit=false)
   genAssignment(p, result, a, {})
 
-proc genArgStringToCString(p: BProc, n: PNode; result: var Builder; needsTmp: bool) {.inline.} =
+proc genArgStringToCString(p: BProc, n: AnyNode; result: var Builder; needsTmp: bool) {.inline.} =
   var a = initLocExpr(p, n.firstSon)
   let tmp = withTmpIfNeeded(p, a, needsTmp)
   let ra = if p.config.usesSso(): byRefLoc(p, tmp) else: tmp.rdLoc
   result.addCall(cgsymValue(p.module, "nimToCStringConv"), ra)
 
-proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; needsTmp = false) =
+proc genArg(p: BProc, n: AnyNode, param: PSym; call: AnyNode; result: var Builder; needsTmp = false) =
   var a: TLoc
   if n.kind == nkStringToCString:
     genArgStringToCString(p, n, result, needsTmp)
@@ -413,10 +417,16 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     # will be a reference in C++ and we cannot create a temporary reference
     # variable. Thus, we create a temporary pointer variable instead.
     let needsIndirect = mapType(p.config, n.firstSon.typ, mapTypeChooser(n.firstSon) == skParam) != ctArray
+    # A REWRITE, and one that has to be followed. The node's type is replaced in
+    # place, and a cursor would keep reading the type slot as it was ENCODED —
+    # the buffer does not see the mutation. So from here this site works on the
+    # origin, which is the node being mutated and therefore the one that has the
+    # new type.
+    let nn = origin(n)
     if needsIndirect:
-      n.typ = copyType(n.typ, p.module.idgen, n.typ.owner)
-      n.typ.incl tfVarIsPtr
-    a = initLocExprSingleUse(p, n)
+      nn.typ = copyType(nn.typ, p.module.idgen, nn.typ.owner)
+      nn.typ.incl tfVarIsPtr
+    a = initLocExprSingleUse(p, nn)
     a = withTmpIfNeeded(p, a, needsTmp)
     if needsIndirect: a.flags.incl lfIndirect
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
@@ -438,7 +448,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     addRdLoc(withTmpIfNeeded(p, a, needsTmp), result)
   #assert result != nil
 
-proc genArgNoParam(p: BProc, n: PNode; result: var Builder; needsTmp = false) =
+proc genArgNoParam(p: BProc, n: AnyNode; result: var Builder; needsTmp = false) =
   var a: TLoc
   if n.kind == nkStringToCString:
     genArgStringToCString(p, n, result, needsTmp)
@@ -448,7 +458,7 @@ proc genArgNoParam(p: BProc, n: PNode; result: var Builder; needsTmp = false) =
 
 import aliasanalysis
 
-proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
+proc potentialAlias(n: AnyNode, potentialWrites: seq[PNode]): bool =
   result = false
   for p in potentialWrites:
     if p.aliases(n) != no or n.aliases(p) != no:
@@ -467,23 +477,30 @@ proc skipTrivialIndirections[T: AnyNode](n: T): T =
       result = result.secondSon
     else: break
 
-proc getPotentialReads(n: PNode; result: var seq[PNode]) =
+proc getPotentialReads(n: AnyNode; result: var seq[PNode]) =
   case n.kind:
   of nkLiterals, nkIdent, nkFormalParams: discard
   of nkSym: result.add n
   else:
-    for s in n:
+    for s in sons(n):
       getPotentialReads(s, result)
 
-proc genParams(p: BProc, ri: PNode, typ: PType; result: var Builder, argBuilder: var CallBuilder) =
+proc genParams(p: BProc, ri: AnyNode, typ: PType; result: var Builder, argBuilder: var CallBuilder) =
   # We must generate temporaries in cases like #14396
   # to keep the strict Left-To-Right evaluation
   # The arguments are walked BACKWARDS below, which a `Cursor` cannot do and
   # which costs a re-walk per step even on a `PNode`. Materialize them in one
   # forward pass and index that; `needTmp` already allocates per call, so this
   # is the same order of work.
+  #
+  # The arguments are materialized as `PNode`s, not cursors, because the alias
+  # analysis below (`potentialAlias`, `getPotentialReads`) carries a
+  # `seq[PNode]` beside the node and has not moved to the seam — see the
+  # mixed-representation blocker in `bnode`'s module doc. `origin` gives the
+  # same objects the tree-driven build used, so this is the argument list it
+  # always was; when that analysis moves, this becomes `seq[AnyNode]`.
   var args: seq[PNode] = @[]
-  for it in sonsFrom(ri, 1): args.add it
+  for it in sonsFrom(ri, 1): args.add origin(it)
   var needTmp = newSeq[bool](args.len)
   var potentialWrites: seq[PNode] = @[]
   for i in countdown(args.high, 0):
@@ -525,7 +542,7 @@ proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
       (sym.typ.callConv == ccInline or sym.owner.id == module.id):
     res = res & "_actual".rope
 
-proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genPrefixCall(p: BProc, le: PNode, ri: AnyNode, d: var TLoc) =
   # this is a hotspot in the compiler
   var op = initLocExpr(p, ri.firstSon)
   # getUniqueType() is too expensive here:
@@ -541,7 +558,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   genParams(p, ri, typ, res, call)
   fixupCall(p, le, ri, d, res, call)
 
-proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genClosureCall(p: BProc, le: PNode, ri: AnyNode, d: var TLoc) =
 
   template callProc(rp, params, pTyp: Snippet): Snippet =
     let e = dotField(rp, "ClE_0")
@@ -576,6 +593,12 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var argBuilder = default(CallBuilder) # not initCallBuilder, we just want the params
   genParams(p, ri, typ, params, argBuilder)
 
+  # `rawProc` is bound BEFORE the `{.dirty.}` template that uses it. Inside a
+  # generic proc a dirty template's identifiers resolve at instantiation, and a
+  # local declared after the template loses to the module-level `rawProc` proc
+  # — which type-checks as a completely different thing.
+  let rawProc = getClosureType(p.module, typ, clHalf)
+
   template genCallPattern {.dirty.} =
     let rp = rdLoc(op)
     let pars = extract(params)
@@ -584,8 +607,6 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         p.s(cpsStmts).add(callIter(rp, pars))
       else:
         p.s(cpsStmts).add(callProc(rp, pars, rawProc))
-
-  let rawProc = getClosureType(p.module, typ, clHalf)
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
   if typ.returnType != nil:
     if isInvalidReturnType(p.config, typ):
@@ -637,7 +658,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genCallPattern()
     if canRaise: raiseExit(p)
 
-proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder;
+proc genOtherArg(p: BProc; ri: AnyNode; i: int; typ: PType; result: var Builder;
                  argBuilder: var CallBuilder) =
   if i < typ.n.len:
     # 'var T' is 'T&' in C++. This means we ignore the request of
@@ -714,7 +735,7 @@ proc skipAddrDeref[T: AnyNode](node: T): T =
   else:
     result = node
 
-proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder) =
+proc genThisArg(p: BProc; ri: AnyNode; i: int; typ: PType; result: var Builder) =
   # for better or worse c2nim translates the 'this' argument to a 'var T'.
   # However manual wrappers may also use 'ptr T'. In any case we support both
   # for convenience.
@@ -749,7 +770,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder) =
     genArgNoParam(p, ri, result) #, son(typ.n, i).sym)
     result.add(".")
 
-proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Builder) =
+proc genPatternCall(p: BProc; ri: AnyNode; pat: string; typ: PType; result: var Builder) =
   var i = 0
   var j = 1
   while i < pat.len:
@@ -803,7 +824,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
       if i - 1 >= start:
         result.add(substr(pat, start, i - 1))
 
-proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genInfixCall(p: BProc, le: PNode, ri: AnyNode, d: var TLoc) =
   var op = initLocExpr(p, ri.firstSon)
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.firstSon.typ, abstractInst)
@@ -844,7 +865,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
       genOtherArg(p, ri, i, typ, res, call)
     fixupCall(p, le, ri, d, res, call)
 
-proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
+proc genNamedParamCall(p: BProc, ri: AnyNode, d: var TLoc) =
   # generates a crappy ObjC call
   var op = initLocExpr(p, ri.firstSon)
   var pl = newBuilder("[")
@@ -935,7 +956,7 @@ proc isInactiveDestructorCall(p: BProc, e: AnyNode): bool =
   result = e.safeLen == 2 and e.firstSon.kind == nkSym and
     e.firstSon.sym.name.s == "=destroy" and notYetAlive(e.secondSon.skipAddr)
 
-proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genAsgnCall(p: BProc, le: PNode, ri: AnyNode, d: var TLoc) =
   if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, ri):
     return
   when defined(icDbgHash):
@@ -957,4 +978,4 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, le, ri, d)
 
-proc genCall(p: BProc, e: PNode, d: var TLoc) = genAsgnCall(p, nil, e, d)
+proc genCall(p: BProc, e: AnyNode, d: var TLoc) = genAsgnCall(p, nil, e, d)
