@@ -33,7 +33,7 @@ when defined(icBNodeProf):
       pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
       pGenBodyCalls, pInfo
     TimeSlot* = enum
-      tLoadClosure, tModuleId, tTopLevel, tInterfTables,
+      tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,
       tSym, tTyp, tInfo, tOrigin
 

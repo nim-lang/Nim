@@ -28,7 +28,7 @@ import "../dist/nimony/src/lib" / [bitabs, nifstreams, lineinfos,
 # `pool(c: Cursor)` accessor would shadow nifstreams' global `pool` var the writer
 # uses; the reader reaches pools via `symName(c)`/`strVal(c)` etc.
 import "../dist/nimony/src/lib/nifcore" except pool
-from "../dist/nimony/src/lib" / bif import load, BifModule
+from "../dist/nimony/src/lib" / bif import load, BifModule, IndexVis, ivHidden
 import icmodnames
 import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
@@ -2621,14 +2621,9 @@ proc isGlobalIndexSym(s, dottedSuffix: string): bool =
     if s[i] == '.': inc dots
   dots >= 2
 
-proc buildPosIndex(buf: var TokenBuf; suffix: string): Table[string, NifIndexEntry] =
-  ## Step 2a token-position index: scan the eagerly-parsed module `buf` for the
-  ## global `SymbolDef`s it OWNS and record each at the token position of its
-  ## enclosing tag (`(sd`/`(td`), with visibility from the marker that follows
-  ## the def. Replaces `readEmbeddedIndex` (whose byte offsets are meaningless
-  ## once the file is parsed); mirrors `bif.buildIndex` and the text writer's
-  ## `(.index …)`. Foreign symbols appear only as `Symbol` uses (never
-  ## `SymbolDef`s) so they are naturally excluded.
+proc rescanPosIndex(buf: var TokenBuf; suffix: string): Table[string, NifIndexEntry] =
+  ## VERIFICATION ONLY (`-d:icIndexCheck`): the old full-token-stream rescan,
+  ## kept so `indexFromBif` can be graded against it over a whole real build.
   result = initTable[string, NifIndexEntry]()
   let dotted = "." & suffix
   if buf.len == 0: return
@@ -2638,16 +2633,52 @@ proc buildPosIndex(buf: var TokenBuf; suffix: string): Table[string, NifIndexEnt
     case c.kind
     of TagLit:
       mostRecentTagPos = cursorToPosition(buf, c)
-      inc c                       # descend into the body (visit every token)
+      inc c
     of SymbolDef:
       let nm = symName(c)
       let tagPos = mostRecentTagPos
-      inc c                       # advance to the marker / next sibling
+      inc c
       if isGlobalIndexSym(nm, dotted):
         let vis = if c.hasMore and c.kind == DotToken: Hidden else: Exported
         result[nm] = NifIndexEntry(offset: tagPos, info: NoLineInfo, vis: vis)
     else:
       inc c
+
+proc indexFromBif(m: BifModule): Table[string, NifIndexEntry] =
+  ## The module's name -> token-position index, taken from the index the `.bif`
+  ## ALREADY CARRIES rather than recomputed.
+  ##
+  ## `bif.store` builds that index in one forward traversal at write time
+  ## (`bif.buildIndex`) and writes it into the file; `bif.load` reads it back as
+  ## `BifModule.index`, with `pos` already a TOKEN index of the declaration's
+  ## enclosing tag — the very thing this used to rescan the whole token stream
+  ## to recompute, once per module per backend process. That rescan was 909ms of
+  ## a 10.1s cold `--ic:on` build (`-d:icBNodeProf`, `tPosIndex`).
+  ##
+  ## The two agree by construction, and it is worth saying exactly why, because
+  ## "the file has an index" would not be enough on its own: the writer filters
+  ## with `bif.isGlobalSymbol(name, dottedSuffix)` and every `storeBif` call site
+  ## passes `"." & extractModuleSuffix(path)`, which is the same `dottedSuffix`
+  ## the reader would have formed — so the two filters select the same symbols,
+  ## and the `vis` rule (a `DotToken` marker after the def means hidden) is the
+  ## same test on the same token.
+  result = initTable[string, NifIndexEntry](m.index.len)
+  for e in m.index:
+    result[poolSym(m.buf.pool, e.sym)] =
+      NifIndexEntry(offset: int(e.pos), info: NoLineInfo,
+                    vis: (if e.vis == ivHidden: Hidden else: Exported))
+
+proc indexFromBif(m: var BifModule; suffix: string): Table[string, NifIndexEntry] =
+  result = indexFromBif(m)
+  when defined(icIndexCheck):
+    let want = rescanPosIndex(m.buf, suffix)
+    doAssert result.len == want.len,
+      "index size differs for " & suffix & ": carried " & $result.len &
+      " rescanned " & $want.len
+    for k, v in want:
+      let got = result.getOrDefault(k)
+      doAssert got.offset == v.offset and got.vis == v.vis,
+        "index entry differs for " & k & " in " & suffix
 
 proc readUnusedId(buf: var TokenBuf): int32 =
   ## Find the module's `(unusedid <int>)` directive — emitted as the FIRST child
@@ -2687,7 +2718,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     # This mirrors `toNifFilename` (kept in sync). `bif.load` mints FRESH per-file
     # pools, so the buffer's literals/tags resolve through its own
     # `cursorPool(n)`/`n.tags` (the reader is pool-agnostic); the token-position
-    # index is rebuilt name-based via `buildPosIndex`.
+    # index is taken from the one the file carries (`indexFromBif`).
     let conf = c.infos.config
     let useLowered = conf.cmd == cmdNifC and
                      (conf.icBackendStage == "cg" or conf.icBackendStage == "emit")
@@ -2699,8 +2730,12 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
       raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
         ". This can happen when loading a module from NIF that references another module " &
         "whose NIF file hasn't been written yet."
+    icProfStart(tBifLoad)
     var m = bif.load(modFile)
-    let index = buildPosIndex(m.buf, suffix)
+    icProfStop(tBifLoad)
+    icProfStart(tPosIndex)
+    let index = indexFromBif(m, suffix)
+    icProfStop(tPosIndex)
     # Seed the backend id counters ABOVE every id the file already uses, so a
     # freshly-minted backend sym/type (closure env, RTTI hook, temp) can never
     # share a `toId` with a loaded one. See `readUnusedId` / `(unusedid)`.
@@ -2725,7 +2760,7 @@ proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
   let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
   if not fileExists(semFile): return
   var sm = bif.load(semFile)
-  m.semIndex = buildPosIndex(sm.buf, m.suffix)
+  m.semIndex = indexFromBif(sm, m.suffix)
   m.semBuf = ensureMove sm.buf
 
 proc hasTypeOffset(c: var DecodeContext; module: FileIndex; nifName: string): bool =
