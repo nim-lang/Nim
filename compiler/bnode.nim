@@ -84,6 +84,34 @@
 ## there can be no process-global id -> `TNodeKind` table; the answer is
 ## memoized per pool instead, and the memo is dropped when the pool changes.
 ##
+## WHAT IT COSTS, AND HOW TO MEASURE IT. Cursor-driven generation is now the
+## same speed as tree-driven: summed over the 2420 routines of a 68-module
+## target, `genProcBody` takes 369ms off a cursor and 366ms off a `PNode`. It
+## did not start there — it was 1877ms, 5.1x — and the whole difference was ONE
+## accessor, so the tools are worth keeping:
+##
+## * `-d:icBNodeProf` counts every accessor and times the phases (`handOffBody`,
+##   `genProcBody`, the analyses, and `sym`/`typ`/`info`/`origin`). Each backend
+##   process appends a line to `$NIM_IC_BNODE_PROF`, so a parallel build still
+##   produces attributable output.
+## * `-d:icBridgeOnly` builds the buffer but generates off the tree, which
+##   separates the ENCODER's cost from the READER's. Encoding is free — it does
+##   not show in wall time at all.
+##
+## Three plausible suspects were measured and were all wrong. They are recorded
+## so nobody re-guesses them: the tag-name string compares in `typ`/`flags`
+## (worth 0.3% of the build); `Cursor`'s reference-counting lifetime hooks,
+## which really do run 6M times on that target but cost 60ms of 1900ms; and the
+## structural accessors as a whole — `kind`, `son` and the iterators together
+## are 32ms of 1877ms.
+##
+## The cost was `info`: 259k calls at 5.2us each, because resolving a token's
+## `FileId` copied a path out of the buffer's filename pool and hashed it, every
+## single time. `ast2nif.oldLineInfo` memoizes that per pool now. That also
+## halved the cold `--ic:on` build for BOTH representations, because the decoder
+## was paying the same price on every node it loaded — so the accessor that
+## looked like the cursor path's problem was really the whole IC pipeline's.
+##
 ## RESOLUTION CONTEXT. `sym`, `typ` and `info` cannot be answered by the cursor
 ## alone: a `Symbol` token holds only a NAME, a type slot only a type's name,
 ## and a packed line info a `FileId` in the `.bif`'s own filename pool. All
@@ -218,6 +246,64 @@ import ast, lineinfos, idents
 when defined(nimPreviewSlimSystem):
   import std / assertions
 
+# ---- opt-in profiling (-d:icBNodeProf) --------------------------------------
+# Counts and coarse phase timings; the accessors are far too small to time
+# individually. Each backend process appends one line to $NIM_IC_BNODE_PROF (or
+# stderr) at exit, so a parallel build still produces attributable output.
+when defined(icBNodeProf):
+  import std / [envvars, exitprocs, syncio, monotimes]
+  from std / times import inNanoseconds
+
+  type
+    ProfSlot* = enum
+      pKind, pTagKindHit, pTagKindMiss, pAstChildren, pSkip, pSon, pLen,
+      pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
+      pGenBodyCalls, pInfo
+    TimeSlot* = enum tHandOff, tGenBody, tAnalyses, tSym, tTyp, tInfo, tOrigin
+
+  var profCounts: array[ProfSlot, int]
+  var profNanos: array[TimeSlot, int64]
+  var profStart: array[TimeSlot, MonoTime]
+  var profArmed = false
+
+  proc profDump() =
+    var line = "BNODEPROF"
+    for s in ProfSlot: line.add " " & ($s)[1..^1] & "=" & $profCounts[s]
+    for s in TimeSlot: line.add " " & ($s)[1..^1] & "ms=" & $(profNanos[s] div 1_000_000)
+    let f = getEnv("NIM_IC_BNODE_PROF")
+    if f.len > 0:
+      let h = open(f, fmAppend)
+      h.writeLine line
+      h.close()
+    else:
+      stderr.writeLine line
+
+  template armProf() =
+    if not profArmed:
+      profArmed = true
+      addExitProc profDump
+
+  template prof*(s: ProfSlot; n = 1) =
+    armProf()
+    inc profCounts[s], n
+  template icProfStart*(s: TimeSlot) =
+    armProf()
+    profStart[s] = getMonoTime()
+  template icProfStop*(s: TimeSlot) =
+    profNanos[s] += (getMonoTime() - profStart[s]).inNanoseconds
+
+  template timed*(s: TimeSlot; body: untyped) =
+    ## Leaf-accessor timing. NOT re-entrant: `typ` reaches `sym`, so read those
+    ## two as overlapping rather than additive.
+    let t0 = getMonoTime()
+    body
+    profNanos[s] += (getMonoTime() - t0).inNanoseconds
+else:
+  template prof*(s: untyped; n = 1) = discard
+  template icProfStart*(s: untyped) = discard
+  template icProfStop*(s: untyped) = discard
+  template timed*(s: untyped; body: untyped) = body
+
 when defined(newIcBackend):
   import "../dist/nimony/src/lib/nifcore" except pool
   import ic / enum2nif
@@ -255,47 +341,73 @@ when defined(newIcBackend):
       ## sitting after their flags/type prefix is a PAYLOAD (an int, a string,
       ## an ident), not a child.
 
-  var kindCachePool: TagPool = nil
-  var kindCache: seq[int16] = @[]
-    ## `TagId -> TNodeKind` for ONE tag pool, -1 where not yet resolved.
-    ## Not a process-global table: a `.bif` carries its OWN tag pool, so ids
-    ## only mean anything relative to the pool the cursor came from. Codegen
-    ## works through one module at a time, so a single-entry memo is enough;
-    ## a pool switch just drops the cache.
+  type
+    SpecialTag = enum
+      ## The wrapper tags that are not AST kinds. `typ` and `hasExplicitNilType`
+      ## have to tell them apart, and did it by comparing the tag NAME on every
+      ## call — 197k string compares on a 68-module build. They are resolved
+      ## once per tag id instead, in the same miss path that resolves the kind.
+      stOther, stHiddenType, stSymDef, stSymNodeFlags, stBridgeSym
 
-  proc tagKind(c: Cursor): TNodeKind =
+    TagInfo = object
+      kind: int16      ## `TNodeKind` ordinal, -1 while unresolved
+      special: SpecialTag
+
+  var tagCachePool: TagPool = nil
+  var tagCache: seq[TagInfo] = @[]
+    ## `TagId -> (TNodeKind, SpecialTag)` for ONE tag pool. Not a process-global
+    ## table: a `.bif` carries its OWN tag pool, so ids only mean anything
+    ## relative to the pool the cursor came from. Codegen works through one
+    ## module at a time, so a single-entry memo is enough; a pool switch drops
+    ## it. `tagCachePool` holds a REFERENCE rather than a raw pointer: that is
+    ## what keeps the pool alive, so a freed pool cannot be replaced by a new
+    ## one at the same address and silently answer from the wrong tag table.
+
+  proc tagInfoAt(c: Cursor): TagInfo =
+    ## Memoized decode of the tag at `c`. The miss path is the only place that
+    ## touches a tag NAME: `parse` is a compare against ~180 strings, and the
+    ## wrapper tags need four more, so both answers are cached together.
+    prof pTagKindHit
+    let pool {.cursor.} = c.tags
+    if pool != tagCachePool:
+      tagCachePool = pool
+      tagCache = @[]
+    let id = int(uint32(cursorTagId(c)))
+    if id >= tagCache.len:
+      let oldLen = tagCache.len
+      tagCache.setLen(id + 1)
+      for i in oldLen ..< tagCache.len: tagCache[i] = TagInfo(kind: -1'i16)
+    if tagCache[id].kind < 0:
+      prof pTagKindMiss
+      let name = pool.tagName(cursorTagId(c))
+      let sp = if name == hiddenTypeTagName: stHiddenType
+               elif name == symDefTagName: stSymDef
+               elif name == symNodeFlagsTagName: stSymNodeFlags
+               elif name == bridgeSymTagName: stBridgeSym
+               else: stOther
+      let k = if sp != stOther: nkSym else: parse(TNodeKind, name)
+      tagCache[id] = TagInfo(kind: int16(ord(k)), special: sp)
+    result = tagCache[id]
+
+  proc tagKind(c: Cursor): TNodeKind {.inline.} =
     ## The `TNodeKind` a `.bif` TAG encodes — the inverse of `toNifTag`, which
     ## is what wrote it (`ast2nif`: `pool.tags.getOrIncl(toNifTag(n.kind))`).
-    ## `parse` is a compare against ~180 strings, far too much per node, so the
-    ## answer is memoized per tag id. The three wrapper tags that encode an
-    ## `nkSym` are folded into the memo; `parse` answers `nkNone` for them (and
-    ## for every non-AST tag, such as the module-level `(unusedid ...)`).
-    let pool = c.tags
-    if pool != kindCachePool:
-      kindCachePool = pool
-      kindCache = @[]
-    let id = int(uint32(cursorTagId(c)))
-    if id >= kindCache.len:
-      let oldLen = kindCache.len
-      kindCache.setLen(id + 1)
-      for i in oldLen ..< kindCache.len: kindCache[i] = -1'i16
-    if kindCache[id] < 0:
-      let name = pool.tagName(cursorTagId(c))
-      let k = if name == hiddenTypeTagName or name == symDefTagName or
-                 name == symNodeFlagsTagName or name == bridgeSymTagName: nkSym
-              else: parse(TNodeKind, name)
-      kindCache[id] = int16(ord(k))
-    result = TNodeKind(kindCache[id])
+    ## The wrapper tags that encode an `nkSym` are folded in; `parse` answers
+    ## `nkNone` for them (and for every non-AST tag, such as the module-level
+    ## `(unusedid ...)`).
+    TNodeKind(tagInfoAt(c).kind)
 
   proc kind*(n: BNode): TNodeKind =
     ## The node kind. A bare `Symbol`/`SymbolDef` token IS an `nkSym` node — it
     ## is how the common symbol use is written — and a `DotToken` is the nil
     ## child, which has no kind at all and answers `nkNone`; test it with
     ## `isNilNode` rather than comparing kinds.
-    case nifcore.kind(n.raw)
-    of TagLit: tagKind(n.raw)
-    of Symbol, SymbolDef: nkSym
-    else: nkNone
+    prof pKind
+    result =
+      case nifcore.kind(n.raw)
+      of TagLit: tagKind(n.raw)
+      of Symbol, SymbolDef: nkSym
+      else: nkNone
 
   proc isNilNode*(n: BNode): bool {.inline.} =
     ## The `n == nil` of the `PNode` world: `ast2nif` writes a nil child as a
@@ -311,6 +423,7 @@ when defined(newIcBackend):
   proc astChildren(n: BNode): Cursor =
     ## A cursor at AST child 0, or an exhausted cursor when there is none.
     ## Steps over the two-token flags/type prefix; see "THE NODE ENCODING".
+    prof pAstChildren
     result = childCursor(n.raw)
     if result.hasMore: skip result   # flags
     if result.hasMore: skip result   # type
@@ -330,6 +443,8 @@ when defined(newIcBackend):
   proc son*(n: BNode; i: int): BNode =
     ## Child `i`. O(i) — `skip` is a single pointer add, because a `TagLit`
     ## token carries the width of its whole subtree.
+    prof pSon
+    prof(pSkip, i)
     walkChildren(n, c):
       for _ in 0 ..< i:
         doAssert c.hasMore, "son: index out of range"
@@ -345,6 +460,7 @@ when defined(newIcBackend):
     ## Counts the children — O(len). Never put this in a loop condition; the
     ## iterators below and `hasSons` exist so it is not needed there. Follows
     ## `safeLen`: a leaf kind answers 0 even though its payload token is there.
+    prof pLen
     result = 0
     walkChildren(n, c):
       while c.hasMore:
@@ -359,6 +475,7 @@ when defined(newIcBackend):
   proc lastSon*(n: BNode): BNode =
     ## O(len) — the token stream has no back pointer. Fine once per node, a
     ## trap inside a loop; `sonsButLast` is the loop form.
+    prof pLastSon
     walkChildren(n, c):
       while c.hasMore:
         result = BNode(c)
@@ -369,6 +486,7 @@ when defined(newIcBackend):
   iterator sons*(n: BNode): BNode =
     walkChildren(n, c):
       while c.hasMore:
+        prof pIterYield
         yield BNode(c)
         skip c
 
@@ -514,7 +632,9 @@ when defined(newIcBackend):
     ## position as a key,
     ## and `nifcore.Cursor` keeps that pointer private, so it is not something
     ## this module can do alone.
-    result = symAt(currentNav()[], n.raw)
+    prof pSym
+    timed tSym:
+      result = symAt(currentNav()[], n.raw)
 
   proc symTyp(n: BNode): PType =
     ## The type of the symbol a sym-shaped node names, or nil.
@@ -532,6 +652,9 @@ when defined(newIcBackend):
     ## call's callee, so a nil type turns "this call can raise" into "it cannot"
     ## and the goto-exception check after the call is dropped. The
     ## `.bif`-vs-`PNode` grinder found exactly that.
+    prof pTyp
+    icProfStart(tTyp)
+    defer: icProfStop(tTyp)
     let c = n.raw
     case nifcore.kind(c)
     of Symbol, SymbolDef:
@@ -539,8 +662,9 @@ when defined(newIcBackend):
     of DotToken:
       result = nil
     of TagLit:
-      let name = c.tags.tagName(cursorTagId(c))
-      if name == hiddenTypeTagName:
+      prof pTypTagLit
+      case tagInfoAt(c).special
+      of stHiddenType:
         # `(ht <type> <sym>)`: the node type is spelled out because it differed
         # from the symbol's at write time.
         result = typeAt(currentNav()[], childCursor(c))
@@ -558,22 +682,23 @@ when defined(newIcBackend):
         # loaded already (see `ast2nif`). That is a pre-existing load-order
         # dependence in the AST, not a disagreement this side can resolve, and
         # the grinder excludes this shape for that reason.
-      elif name == symNodeFlagsTagName:
+      of stSymNodeFlags:
         var inner = childCursor(c)
         skip inner
         result = typ(BNode(inner))
-      elif name == symDefTagName or name == bridgeSymTagName:
+      of stSymDef, stBridgeSym:
         # A bare `(bsym …)` is the bridge's spelling of a bare `Symbol`, so it
         # answers the same thing: the symbol's own type. The bridge encoder
         # always wraps a sym node in `(ht …)`, so this is the belt to that
         # braces rather than a path it relies on.
         result = symTyp(n)
-      elif not hasPrefix(c):
-        result = nil
-      else:
-        var t = childCursor(c)
-        skip t                  # the flags slot
-        result = typeAt(currentNav()[], t)
+      of stOther:
+        if not hasPrefix(c):
+          result = nil
+        else:
+          var t = childCursor(c)
+          skip t                  # the flags slot
+          result = typeAt(currentNav()[], t)
     else:
       result = nil
 
@@ -582,14 +707,15 @@ when defined(newIcBackend):
     ## EXPLICITLY nil type — after peeling any `(nflags ...)` wrapper, which is
     ## how it usually arrives. See `typ` for why nil is the faithful answer and
     ## why `ast.typ` may nonetheless say otherwise.
+    prof pNilType
     var c = n.raw
     while nifcore.kind(c) == TagLit:
-      let tag = c.tags.tagName(cursorTagId(c))
-      if tag == symNodeFlagsTagName:
+      case tagInfoAt(c).special
+      of stSymNodeFlags:
         var inner = childCursor(c)
         skip inner              # the node flags
         c = inner
-      elif tag == hiddenTypeTagName:
+      of stHiddenType:
         return nifcore.kind(childCursor(c)) == DotToken
       else:
         return false
@@ -624,9 +750,12 @@ when defined(newIcBackend):
     ## rather than a shrug — most likely a cursor that is not at a node head.
     ## Reading a FILE-backed body has no origins at all and answers nil, which is
     ## correct: there is no `PNode` those tokens came from.
+    prof pOrigin
+    icProfStart(tOrigin)
     let b = currentNav().bridge
     if b == nil: return nil
     result = originAt(b, n.raw)
+    icProfStop(tOrigin)
     doAssert result != nil or nifcore.kind(n.raw) == DotToken,
       "bridged node has no origin: " & rawDesc(n)
 
@@ -670,21 +799,21 @@ when defined(newIcBackend):
     let c = n.raw
     case nifcore.kind(c)
     of TagLit:
-      let name = c.tags.tagName(cursorTagId(c))
-      if name == symNodeFlagsTagName:
+      case tagInfoAt(c).special
+      of stSymNodeFlags:
         # `(nflags <flags> <symuse>)`: the wrapper carries the flags the bare
         # `Symbol` token had nowhere to put.
         var inner = childCursor(c)
         result = nodeFlagsFromCursor(inner)
         skip inner
         result = result + flags(BNode(inner))
-      elif name == hiddenTypeTagName or name == symDefTagName or
-           name == bridgeSymTagName:
+      of stHiddenType, stSymDef, stBridgeSym:
         result = {}
-      elif not hasPrefix(c):
-        result = {}
-      else:
-        result = nodeFlagsFromCursor(childCursor(c))
+      of stOther:
+        if not hasPrefix(c):
+          result = {}
+        else:
+          result = nodeFlagsFromCursor(childCursor(c))
     else:
       result = {}
 
@@ -702,7 +831,9 @@ when defined(newIcBackend):
   proc info*(n: BNode): TLineInfo =
     ## No body scope needed: the packed line info resolves through the
     ## `.bif`'s own filename pool plus the `ConfigRef`.
-    result = lineInfoFromCursor(program, n.raw)
+    prof pInfo
+    timed tInfo:
+      result = lineInfoFromCursor(program, n.raw)
 
   proc isAtom*(n: BNode): bool {.inline.} =
     ## `ast.isAtom`, which is a pure `kind` test and so needs nothing from the

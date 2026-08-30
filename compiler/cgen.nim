@@ -2105,7 +2105,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # would cost every routine a tree walk and buy nothing. The ANALYSES below are
   # already `AnyNode`, and they are the part that moves now.
   when defined(newIcBackend):
+    icProfStart(tHandOff)
     var bodyBuf = handOffBody(procBody, m.config)
+    icProfStop(tHandOff)
     grindBridge(m, p, prc, procBody)
 
   template readBody(res, call: untyped) =
@@ -2114,13 +2116,15 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     ## otherwise. Both spellings type-check, and the generated C must not depend
     ## on which one ran — which is what the byte-identical `.c` check verifies
     ## end to end, a stronger statement than the node-level grinder can make.
-    when defined(newIcBackend):
+    icProfStart(tAnalyses)
+    when defined(newIcBackend) and not defined(icBridgeOnly):
       withBridge(bodyBuf.tables):
         let n {.inject.} = BNode(bodyBuf.rootCursor)
         res = call
     else:
       let n {.inject.} = procBody
       res = call
+    icProfStop(tAnalyses)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
@@ -2197,11 +2201,19 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # THE FLIP: under `-d:newIcBackend` the generator is driven off the cursor
   # into the handed-off buffer, not the tree. Both spellings must produce the
   # same C, which is what the cursor-vs-`PNode` `.c` comparison checks.
-  when defined(newIcBackend):
+  #
+  # `-d:icBridgeOnly` is a MEASUREMENT switch, not a mode: it still builds the
+  # buffer but generates off the tree, which is the only way to separate what
+  # the encoder costs from what reading costs. Keep it working — it is what
+  # showed encoding to be free, and so that the reader was the thing to profile.
+  prof pGenBodyCalls
+  icProfStart(tGenBody)
+  when defined(newIcBackend) and not defined(icBridgeOnly):
     withBridge(bodyBuf.tables):
       genProcBody(p, BNode(bodyBuf.rootCursor))
   else:
     genProcBody(p, procBody)
+  icProfStop(tGenBody)
 
   # IC: spurious write, seems fine for now:
   prc.infoImpl = tmpInfo
