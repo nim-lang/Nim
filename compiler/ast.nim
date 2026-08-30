@@ -781,10 +781,28 @@ when false:
       echo k
       echo v
 
+when defined(icSymCount):
+  import std / [syncio, exitprocs, tables as symCountTables]
+  var symMints*: symCountTables.CountTable[string]
+  var symMintTotal*: int
+  var symCountHooked = false
+
 proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   assert not name.isNil
+  when defined(icSymCount):
+    # Counting symbol MINTS, not their names in the output: a gensym's number is
+    # its item id, so one extra symbol anywhere shifts every later name. A count
+    # is therefore far more sensitive than diffing generated C, and it localises
+    # the extra mint by kind instead of by whatever file happened to show it.
+    inc symMintTotal
+    symMints.inc $symKind
+    if not symCountHooked:
+      symCountHooked = true
+      addExitProc proc () =
+        stderr.writeLine "SYMMINT total=" & $symMintTotal
+        for k, v in symMints: stderr.writeLine "SYMMINT " & k & "=" & $v
   let id = nextSymId idgen
   result = PSym(name: name, kindImpl: symKind, flagsImpl: {}, infoImpl: info, itemId: id,
                 optionsImpl: options, ownerFieldImpl: owner, offsetImpl: defaultOffset,
