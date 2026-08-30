@@ -1532,8 +1532,130 @@ when defined(newIcBackend):
   # process on exit; a run in which `navHits` is 0 means every lookup fell
   # through to the decoder and the chain is doing nothing.
   var navHits, navFallbacks, navRegistered: int
+  # Same reasoning for the predicate grinder: "0 disagreements" is only worth
+  # something next to how many nodes were actually graded and how many were
+  # excused, so all three are counted and reported together.
+  var gradeGraded, gradeSkipDecl, gradeSkipTyp: int
 
-  proc grindLockstep(m: BModule; prc: PSym; c: BNode; a: PNode; path: string) =
+  const nkIntLits = {nkCharLit..nkUInt64Lit}
+
+  const notGradeable = {nkTypeSection, nkConstSection, nkProcDef, nkConverterDef,
+                        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
+                        nkLambda, nkDo, nkFuncDef}
+    ## Subtrees the predicates are not graded inside, because production never
+    ## evaluates an expression there either — `bodyCanRaise` declares the same
+    ## boundary and returns `false` for the whole set without looking in. The
+    ## nodes inside carry unresolved types (a template's parameters, a generic's
+    ## `tyGenericParam`), and asking `getSize` about one is not a disagreement
+    ## between the two spellings, it is a question with no answer in either.
+
+  proc ordinalRanges(a: PNode): bool =
+    ## Whether every `nkRange` directly under `a` has integer endpoints. The
+    ## gate for `branchHasTooBigRange`, which reads `intVal` off them: a `case`
+    ## over strings or floats has `nkOfBranch`es whose ranges hold no integer,
+    ## and production only ever reaches that proc from the ordinal path. Computed
+    ## from the AST side ALONE so the two spellings are gated identically — a
+    ## gate that consulted the cursor could hide the very disagreement it is
+    ## supposed to expose.
+    result = true
+    for it in sons(a):
+      if it.kind == nkRange and
+         (it.firstSon.kind notin nkIntLits or it.secondSon.kind notin nkIntLits):
+        return false
+
+  proc grindPredicates(m: BModule; p: BProc; prc: PSym; c: BNode; a: PNode;
+                       path: string) =
+    ## Every migrated pure predicate, run on BOTH spellings of the SAME node.
+    ##
+    ## The point of doing it HERE rather than once per body is coverage. A proc
+    ## graded at the root of a body is graded on the shapes that body happens to
+    ## start with; graded at every node it meets every shape the closure
+    ## contains, which over a standard-library build is tens of thousands of
+    ## nodes and effectively all of them. These predicates are pure and cheap,
+    ## so the whole set can be run at every node for the price of the walk that
+    ## is already happening.
+    ##
+    ## Only calls that are TOTAL on the node are made, and the predicates split
+    ## in two on that question.
+    ##
+    ## The structural ones — `isSimpleExpr`, `bodyCanRaise`, the indirection
+    ## walkers — read `kind`, children and (defensively) `sym`, and answer for
+    ## any node in a body. They are graded everywhere.
+    ##
+    ## The type-consuming ones — `isAssignedImmediately`, `fewCmps` — hand
+    ## `n.typ` to `getSize` / `mapType`, which are total only over types the C
+    ## backend can lay out. Production reaches them from exactly one shape each
+    ## (the value of a var definition; the set operand of an `in`), and away
+    ## from that shape they meet types codegen never maps — a `tyGenericParam`,
+    ## a `tyAnything` — and abort. That is not a disagreement between the two
+    ## spellings, it is a question with no answer in either, so these are graded
+    ## FROM THE PARENT at the position production calls them from. Widening a
+    ## guard until the run goes green would be the wrong move; restricting the
+    ## call to where it is defined is not the same thing.
+    template bail(what: string; cur, ast: string) =
+      internalError(m.config, prc.info,
+        "BNode/PNode disagree on " & what & " at <body>" & path & " in " &
+        prc.name.s & ": cursor=" & cur & " ast=" & ast)
+
+    template checkAt(what: string; cn: BNode; an: PNode; call: untyped) =
+      ## `call` is written ONCE and instantiated twice — once with `n` bound to
+      ## the cursor, once to the AST. Writing it twice is what would let the two
+      ## sides drift into asking different questions.
+      block:
+        let cv = block:
+          let n {.inject.} = cn
+          call
+        let av = block:
+          let n {.inject.} = an
+          call
+        if cv != av: bail(what, $cv, $av)
+
+    template check(what: string; call: untyped) = checkAt(what, c, a, call)
+
+    # Total on any well-formed node.
+    check "isSimpleExpr", isSimpleExpr(n)
+    check "reifiedOpenArray", reifiedOpenArray(n)
+    check "bodyCanRaise", bodyCanRaise(p, n)
+
+    # `skipTrivialIndirections` returns a NODE, and the two spellings return
+    # values of different types that cannot be compared directly. Kind plus
+    # line info pins which node was landed on: the proc only ever walks DOWN a
+    # spine, so two different stopping points on the same input differ in one or
+    # the other unless the tree has two identical nodes at one position, which
+    # would make the choice immaterial anyway.
+    block:
+      let cs = skipTrivialIndirections(c)
+      let a2 = skipTrivialIndirections(a)
+      if cs.kind != a2.kind:
+        bail("skipTrivialIndirections kind", $cs.kind, $a2.kind)
+      if cs.info != a2.info:
+        bail("skipTrivialIndirections info",
+             $(m.config, cs.info), $(m.config, a2.info))
+
+    # Shape-guarded, matching the contexts production calls them from.
+    if a.kind in nkCallKinds and a.safeLen > 0:
+      check "hasNoInit", hasNoInit(n)
+    if a.kind in {nkClosure, nkPar, nkTupleConstr} and a.safeLen == 2:
+      check "isConstClosure", isConstClosure(n)
+    if a.kind == nkOfBranch and ordinalRanges(a):
+      check "branchHasTooBigRange", branchHasTooBigRange(n)
+
+    # Graded from the parent — see the note above on why these two cannot be
+    # asked at an arbitrary node. `genVarTuple` asks about the tuple's last
+    # child; `genSingleVar` about the value of an `nkIdentDefs` that defines a
+    # symbol; `genInOp` about the set operand of an `in`.
+    if a.kind == nkVarTuple and a.safeLen > 0:
+      checkAt "isAssignedImmediately", c.lastSon, a.lastSon,
+              isAssignedImmediately(m.config, n)
+    elif a.kind == nkIdentDefs and a.safeLen == 3 and a.firstSon.kind == nkSym:
+      checkAt "isAssignedImmediately", son(c, 2), son(a, 2),
+              isAssignedImmediately(m.config, n)
+    if a.kind in nkCallKinds and a.safeLen > 1 and a.secondSon.kind == nkCurly and
+       a.secondSon.typ != nil:
+      checkAt "fewCmps", c.secondSon, a.secondSon, fewCmps(m.config, n)
+
+  proc grindLockstep(m: BModule; p: BProc; prc: PSym; c: BNode; a: PNode;
+                     path: string; gradeable: bool): bool {.discardable.} =
     ## Walk the `.bif` cursor and the materialised `PNode` for the SAME body in
     ## lockstep and require every vocabulary member to answer identically at
     ## every node. This grades the VOCABULARY rather than any one migrated proc,
@@ -1551,6 +1673,10 @@ when defined(newIcBackend):
         "BNode/PNode disagree on " & what & " at <body>" & path & " in " &
         prc.name.s & ": cursor=" & cur & " ast=" & ast)
 
+    # The result says: nothing ANYWHERE in this subtree hit the tolerated
+    # `(ht . <sym>)` type difference. Only a subtree that clean is handed to
+    # `grindPredicates` — see the descent below for why.
+    result = true
     if a == nil:
       if not c.isNilNode: bail("nil-ness", "not-nil", "nil")
       return
@@ -1618,7 +1744,7 @@ when defined(newIcBackend):
                    a.typField == nil and a.sym != nil and at == a.sym.typ and
                    c.hasExplicitNilType
     if htNilTyp:
-      discard
+      result = false
     elif (ct == nil) != (at == nil):
       bail("typ nil-ness",
         (if ct == nil: "nil" else: $ct.kind) & " raw=" & c.rawDesc,
@@ -1648,14 +1774,32 @@ when defined(newIcBackend):
     # That is the part being graded here: not just that the accessors agree, but
     # that they still agree when the resolution context is built by the
     # traversal instead of handed to it.
+    let gradeHere = gradeable and a.kind notin notGradeable
     if a.safeLen > 0:
       withNodeScope(nsBlock):
         var i = 0
         for child in sons(a):
           let cc = son(c, i)
           registerDefHere(cc)
-          grindLockstep(m, prc, cc, child, here & "[" & $i & "]")
+          if not grindLockstep(m, p, prc, cc, child, here & "[" & $i & "]",
+                               gradeHere):
+            result = false
           inc i
+
+    # AFTER the descent, and only on a subtree with no tolerated type difference
+    # anywhere in it. The predicates RECURSE, so one excused node poisons every
+    # ancestor's answer too: grading `bodyCanRaise` at a call whose callee is an
+    # `(ht . <sym>)` sym would re-report that one known difference as a fresh
+    # finding at every enclosing node. Excused, not ignored — the exclusions are
+    # counted, so a run that grades nothing cannot pass for a run that grades
+    # everything.
+    if not gradeHere:
+      inc gradeSkipDecl
+    elif not result:
+      inc gradeSkipTyp
+    else:
+      inc gradeGraded
+      grindPredicates(m, p, prc, c, a, here)
 
   proc grindBNode(m: BModule; p: BProc; prc: PSym) =
     ## Differential grinding for the migrating vocabulary, opt-in via
@@ -1679,13 +1823,25 @@ when defined(newIcBackend):
     ##
     ## `grindLockstep` runs last and grades the vocabulary itself rather than
     ## these two procs; it is the check that actually covers accessors no
-    ## migrated proc happens to call yet.
+    ## migrated proc happens to call yet, and it carries `grindPredicates` —
+    ## every OTHER migrated proc, run at every node of the body.
+    ##
+    ## WHAT THIS CANNOT SEE. Only a body that arrived as a deferred `nfLazyBody`
+    ## placeholder can be graded, and `ast2nif` defers only bodies whose root is
+    ## an `nkStmtList`. A one-line `proc f(x: int): int = case x ...` has an
+    ## `nkAsgn` body, is loaded eagerly, and never reaches this proc — 652 of
+    ## 1434 bodies on the reference target (`tools/icgrind`). Nor is the main
+    ## module graded at all: its routines are built in-process. Both are stated
+    ## because they are invisible from the outside — a shape added to a grind
+    ## target can produce exactly zero coverage and no diagnostic.
     if bnodeGrind < 0:
       bnodeGrind = ord(existsEnv("NIM_IC_BNODE_GRIND"))
       if bnodeGrind == 1:
         addExitProc proc () =
           stderr.writeLine "BNODEGRIND navHits=" & $navHits &
-            " navFallbacks=" & $navFallbacks & " navRegistered=" & $navRegistered
+            " navFallbacks=" & $navFallbacks & " navRegistered=" & $navRegistered &
+            " graded=" & $gradeGraded & " skipDecl=" & $gradeSkipDecl &
+            " skipTyp=" & $gradeSkipTyp
     if bnodeGrind == 0: return
     let ast = prc.ast
     if ast == nil or ast.safeLen <= bodyPos: return
@@ -1713,7 +1869,7 @@ when defined(newIcBackend):
         ": cursor=" & $curPaths & " ast=" & $astPaths)
 
     withBodyScope(scope):
-      grindLockstep(m, prc, viaCursor, body, "")
+      grindLockstep(m, p, prc, viaCursor, body, "", gradeable = true)
       let (hits, fallbacks, registered) = navStats()
       navHits += hits
       navFallbacks += fallbacks

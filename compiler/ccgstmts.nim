@@ -31,10 +31,10 @@ proc registerTraverseProc(p: BProc, v: PSym) =
     p.module.preInitProc.procSec(cpsInit).addCallStmt(fnName, traverseProc)
     p.module.preInitProc.procSec(cpsInit).add("\n")
 
-proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
+proc isAssignedImmediately(conf: ConfigRef; n: AnyNode): bool {.inline.} =
   if n.kind == nkEmpty:
     result = false
-  elif n.kind in nkCallKinds and n.firstSon != nil and n.firstSon.typ != nil and n.firstSon.typ.skipTypes(abstractInst).kind == tyProc:
+  elif n.kind in nkCallKinds and not n.firstSon.isNilNode and n.firstSon.typ != nil and n.firstSon.typ.skipTypes(abstractInst).kind == tyProc:
     if n.firstSon.kind == nkSym and sfConstructor in n.firstSon.sym.flags:
       result = true
     elif isInvalidReturnType(conf, n.firstSon.typ, true):
@@ -1039,9 +1039,9 @@ proc genStringCase(p: BProc, t: PNode, stringKind: TTypeKind, d: var TLoc) =
           cCall(eqFn, ra, rb)):
         p.s(cpsStmts).addGoto(rlabel)
 
-proc branchHasTooBigRange(b: PNode): bool =
+proc branchHasTooBigRange(b: AnyNode): bool =
   result = false
-  for it in b:
+  for it in sons(b):
     # last son is block
     if (it.kind == nkRange) and
         it.secondSon.intVal - it.firstSon.intVal > RangeExpandLimit:
@@ -1354,7 +1354,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     linefmt(p, cpsStmts, "if (T$1_) std::rethrow_exception(T$1_);$n", [etmp])
     endSimpleBlock(p, scope)
 
-proc bodyCanRaise(p: BProc; n: PNode): bool =
+proc bodyCanRaise(p: BProc; n: AnyNode): bool =
   case n.kind
   of nkCallKinds:
     result = canRaiseDisp(p, n.firstSon)
@@ -1368,9 +1368,9 @@ proc bodyCanRaise(p: BProc; n: PNode): bool =
       nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     result = false
   else:
-    for i in 0 ..< safeLen(n):
-      if bodyCanRaise(p, n[i]): return true
     result = false
+    for it in sons(n):
+      if bodyCanRaise(p, it): return true
 
 proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let fin = if t.lastSon.kind == nkFinally: t.lastSon else: nil

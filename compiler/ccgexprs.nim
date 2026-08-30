@@ -1357,13 +1357,13 @@ proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   else: internalError(p.config, n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   discard getTypeDesc(p.module, n.typ)
 
-proc isSimpleExpr(n: PNode): bool =
+proc isSimpleExpr(n: AnyNode): bool =
   # calls all the way down --> can stay expression based
   case n.kind
   of nkCallKinds, nkDotExpr, nkPar, nkTupleConstr,
       nkObjConstr, nkBracket, nkCurly, nkHiddenDeref, nkDerefExpr, nkHiddenAddr,
       nkHiddenStdConv, nkHiddenSubConv, nkConv, nkAddr:
-    for c in n:
+    for c in sons(n):
       if not isSimpleExpr(c): return false
     result = true
   of nkStmtListExpr:
@@ -2377,7 +2377,7 @@ proc rdSetElemLoc(conf: ConfigRef; a: TLoc, typ: PType; result: var Snippet) =
   if firstOrd(conf, setType) != 0:
     result = cOp(Sub, NimUint, result, cIntValue(firstOrd(conf, setType)))
 
-proc fewCmps(conf: ConfigRef; s: PNode): bool =
+proc fewCmps(conf: ConfigRef; s: AnyNode): bool =
   # this function estimates whether it is better to emit code
   # for constructing the set or generating a bunch of comparisons directly
   if s.kind != nkCurly: return false
@@ -3257,7 +3257,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genAssignment(p, d, tmp, {})
 
-proc isConstClosure(n: PNode): bool {.inline.} =
+proc isConstClosure(n: AnyNode): bool {.inline.} =
   result = n.firstSon.kind == nkSym and isRoutine(n.firstSon.sym) and
       n.secondSon.kind == nkNilLit
 

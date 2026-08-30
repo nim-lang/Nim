@@ -595,6 +595,12 @@ when defined(newIcBackend):
     ## `.bif`'s own filename pool plus the `ConfigRef`.
     result = lineInfoFromCursor(program, n.raw)
 
+  proc isAtom*(n: BNode): bool {.inline.} =
+    ## `ast.isAtom`, which is a pure `kind` test and so needs nothing from the
+    ## body scope. It exists here only because `ast.isAtom` is typed `PNode`;
+    ## the predicate itself is the same one.
+    result = n.kind >= nkNone and n.kind <= nkNilLit
+
   # ---- predicates shared with the `PNode` spelling ---------------------------
   #
   # `ast.canRaise` / `ast.canRaiseConservative` only ever look at a node's

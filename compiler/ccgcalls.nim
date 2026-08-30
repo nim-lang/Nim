@@ -76,7 +76,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
     for r in sonsFrom(ri, 1):
       if isPartOf(dest, r, {pfStructural}) != arNo: return true
 
-proc hasNoInit(call: PNode): bool {.inline.} =
+proc hasNoInit(call: AnyNode): bool {.inline.} =
   result = call.firstSon.kind == nkSym and sfNoInit in call.firstSon.sym.flags
 
 proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
@@ -192,7 +192,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
 
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc; arrTyp: PType)
 
-proc reifiedOpenArray(n: PNode): bool {.inline.} =
+proc reifiedOpenArray(n: AnyNode): bool {.inline.} =
   var x = n
   while true:
     case x.kind
@@ -447,7 +447,10 @@ proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
     if p.aliases(n) != no or n.aliases(p) != no:
       return true
 
-proc skipTrivialIndirections(n: PNode): PNode =
+proc skipTrivialIndirections[T: AnyNode](n: T): T =
+  ## Explicitly generic rather than `(n: AnyNode): AnyNode`: two occurrences of
+  ## a type class in one signature are two INDEPENDENT parameters, so that
+  ## spelling would let the result type drift from the argument's.
   result = n
   while true:
     case result.kind
