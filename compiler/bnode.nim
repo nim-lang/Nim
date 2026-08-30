@@ -266,7 +266,7 @@ when defined(newIcBackend):
     if kindCache[id] < 0:
       let name = pool.tagName(cursorTagId(c))
       let k = if name == hiddenTypeTagName or name == symDefTagName or
-                 name == symNodeFlagsTagName: nkSym
+                 name == symNodeFlagsTagName or name == bridgeSymTagName: nkSym
               else: parse(TNodeKind, name)
       kindCache[id] = int16(ord(k))
     result = TNodeKind(kindCache[id])
@@ -423,6 +423,18 @@ when defined(newIcBackend):
     finally:
       popBodyNav()
 
+  template withBridge*(tables: BridgeTables; body: untyped) =
+    ## Read a bridged buffer: the nav resolves `(bsym …)` / `(btyp …)` straight
+    ## out of `tables`. `base` stays empty on purpose — a bridged buffer names
+    ## nothing, so there is nothing for the decoder to resolve, and leaving a
+    ## fallback in place would turn a corrupt index into a confusing name
+    ## lookup instead of the assertion it should be.
+    pushBodyNav(initBridgeNav(tables))
+    try:
+      body
+    finally:
+      popBodyNav()
+
   proc currentNav*(): ptr BodyNav =
     ## The nav for the body being read. A `ptr` because the accessors below
     ## MUTATE it (the frame cache), and because copying a nav per access would
@@ -528,7 +540,11 @@ when defined(newIcBackend):
         var inner = childCursor(c)
         skip inner
         result = typ(BNode(inner))
-      elif name == symDefTagName:
+      elif name == symDefTagName or name == bridgeSymTagName:
+        # A bare `(bsym …)` is the bridge's spelling of a bare `Symbol`, so it
+        # answers the same thing: the symbol's own type. The bridge encoder
+        # always wraps a sym node in `(ht …)`, so this is the belt to that
+        # braces rather than a path it relies on.
         result = symTyp(n)
       elif not hasPrefix(c):
         result = nil
@@ -620,7 +636,8 @@ when defined(newIcBackend):
         result = nodeFlagsFromCursor(inner)
         skip inner
         result = result + flags(BNode(inner))
-      elif name == hiddenTypeTagName or name == symDefTagName:
+      elif name == hiddenTypeTagName or name == symDefTagName or
+           name == bridgeSymTagName:
         result = {}
       elif not hasPrefix(c):
         result = {}

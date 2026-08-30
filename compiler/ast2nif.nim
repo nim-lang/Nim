@@ -210,6 +210,18 @@ const
   typeDefTagName* = "td"
   bindingIdTagName = "bid"
 
+  bridgeSymTagName* = "bsym"
+    ## `(bsym <intlit>)` — a symbol reference in the IN-PROCESS bridge format
+    ## (`nodebridge.nim`), where the payload is an INDEX into the bridge's own
+    ## `seq[PSym]` rather than a NIF name. Never written to a file: a `.bif` has
+    ## to name symbols because the reader is a different process, but a bridged
+    ## buffer is read by the process that built it, so it can hand back the very
+    ## same `PSym` object. That is what makes the bridge lossless, and
+    ## incidentally what makes `sym` idempotent for FIELDS on a bridged buffer —
+    ## the file path cannot be, because `loadFieldStub` mints per use.
+  bridgeTypeTagName* = "btyp"
+    ## `(btyp <intlit>)` — the same for a node's type slot.
+
 var
   sdefTag = registerTag(symDefTagName)
   tdefTag = registerTag(typeDefTagName)

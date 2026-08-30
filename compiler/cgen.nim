@@ -1525,6 +1525,7 @@ proc allPathsAsgnResult(p: BProc; n: AnyNode): InitResultEnum =
 
 when defined(newIcBackend):
   import std / [exitprocs, syncio]
+  import nodebridge
 
   var bnodeGrind = -1
   # Whether the scope chain is load-bearing or decorative is a question with a
@@ -1536,6 +1537,12 @@ when defined(newIcBackend):
   # something next to how many nodes were actually graded and how many were
   # excused, so all three are counted and reported together.
   var gradeGraded, gradeSkipDecl, gradeSkipTyp: int
+  # The two differences `grindLockstep` EXCUSES on the file path. Counted so the
+  # bridge can assert it needed neither: a bridged buffer hands back the very
+  # objects it was given, so any tolerance firing there is a bug in the bridge,
+  # not a property of the format.
+  var tolHtNil, tolFieldSym: int
+  var bridgeGraded: int
 
   const nkIntLits = {nkCharLit..nkUInt64Lit}
 
@@ -1636,7 +1643,14 @@ when defined(newIcBackend):
     # to migrate `aliases.isPartOf` failed, and it failed LOUDLY only because
     # this grinder existed. Left as a live check so the day it starts holding
     # is visible.
-    if a.kind == nkSym and a.sym != nil and a.sym.kind != skField:
+    # On the FILE path fields are excluded: `loadFieldStub` mints per use, so
+    # two reads of one token give two stubs. On a BRIDGED buffer they are NOT
+    # excluded, because the bridge hands back the object it was given — that is
+    # the property that makes field-comparing code (`aliases.isPartOf`) correct
+    # on a bridge and wrong on a file, and it is asserted here rather than
+    # merely claimed in `nodebridge`'s doc.
+    let bridged = currentNav().bridge != nil
+    if a.kind == nkSym and a.sym != nil and (bridged or a.sym.kind != skField):
       if c.sym != c.sym:
         bail("sym is not idempotent", "two different PSyms", "one PSym")
 
@@ -1756,6 +1770,7 @@ when defined(newIcBackend):
         # what codegen consumes is the name it re-navigates the reclist with
         # (`lookupFieldAgain`) and, for tuples, the position.
         if cs.kind == skField and asym.kind == skField:
+          inc tolFieldSym
           if cs.name.s != asym.name.s or cs.position != asym.position:
             bail("field sym", describe(cs) & "@" & $cs.position,
                               describe(asym) & "@" & $asym.position)
@@ -1794,6 +1809,7 @@ when defined(newIcBackend):
                    a.typField == nil and a.sym != nil and at == a.sym.typ and
                    c.hasExplicitNilType
     if htNilTyp:
+      inc tolHtNil
       result = false
     elif (ct == nil) != (at == nil):
       bail("typ nil-ness",
@@ -1851,6 +1867,48 @@ when defined(newIcBackend):
       inc gradeGraded
       grindPredicates(m, p, prc, c, a, here)
 
+  proc grindBridge(m: BModule; p: BProc; prc: PSym; body: PNode) =
+    ## Grade the `PNode` -> `TokenBuf` bridge against its own input.
+    ##
+    ## This is a strictly harder test than the file path gets, and deliberately.
+    ## `grindBNode` compares a cursor loaded from a `.bif` against a `PNode`
+    ## loaded from the same `.bif` — two decodings of one file, which is why it
+    ## has to excuse two differences (a field symbol is stubbed per use, and
+    ## `(ht . <sym>)`'s nil is load-order dependent). The bridge is handed a live
+    ## tree and hands the same objects back, so it must need NEITHER excuse, and
+    ## the counters are checked to make sure the run did not quietly take one.
+    ##
+    ## Then the same buffer is decoded and RE-ENCODED, and the second buffer is
+    ## graded against the ORIGINAL tree. That is what covers `toPNode`: anything
+    ## the decoder drops is missing from the re-encoding and shows up as a
+    ## disagreement with the original, so both directions are checked by the one
+    ## oracle rather than by a hand-written comparator that could agree with the
+    ## bug.
+    if bnodeGrind == 0 or body == nil: return
+    let htBefore = tolHtNil
+    let fieldBefore = tolFieldSym
+
+    var enc = toTokenBuf(body, m.config)
+    withBridge(enc.tables):
+      grindLockstep(m, p, prc, BNode(rootCursor(enc)), body, "<bridge>",
+                    gradeable = true)
+
+    var rt = toPNode(enc)
+    var enc2 = toTokenBuf(rt, m.config)
+    withBridge(enc2.tables):
+      grindLockstep(m, p, prc, BNode(rootCursor(enc2)), body, "<bridge-rt>",
+                    gradeable = true)
+
+    if tolHtNil != htBefore:
+      internalError(m.config, prc.info,
+        "bridge needed the `(ht . <sym>)` tolerance in " & prc.name.s &
+        " — it encodes the node's own type explicitly, so it cannot legitimately")
+    if tolFieldSym != fieldBefore:
+      internalError(m.config, prc.info,
+        "bridge needed the field-symbol tolerance in " & prc.name.s &
+        " — it hands back the same PSym, so identity must already match")
+    inc bridgeGraded
+
   proc grindBNode(m: BModule; p: BProc; prc: PSym) =
     ## Differential grinding for the migrating vocabulary, opt-in via
     ## `NIM_IC_BNODE_GRIND`: run every proc that has moved to `AnyNode` over
@@ -1891,7 +1949,7 @@ when defined(newIcBackend):
           stderr.writeLine "BNODEGRIND navHits=" & $navHits &
             " navFallbacks=" & $navFallbacks & " navRegistered=" & $navRegistered &
             " graded=" & $gradeGraded & " skipDecl=" & $gradeSkipDecl &
-            " skipTyp=" & $gradeSkipTyp
+            " skipTyp=" & $gradeSkipTyp & " bridged=" & $bridgeGraded
     if bnodeGrind == 0: return
     let ast = prc.ast
     if ast == nil or ast.safeLen <= bodyPos: return
@@ -2003,6 +2061,11 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  when defined(newIcBackend):
+    # AFTER every rewrite this routine's body gets, which is the tree the bridge
+    # actually has to carry: transformed, and destructor-injected when this
+    # process did the injecting.
+    grindBridge(m, p, prc, procBody)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)

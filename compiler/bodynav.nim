@@ -87,11 +87,29 @@ type
     parent: NavScope
     kind: NavScopeKind
 
+  BridgeTables* = ref object
+    ## The side tables of an IN-PROCESS bridged buffer (`nodebridge.nim`).
+    ## A `.bif` names its symbols because the reader is a different process; a
+    ## buffer built and read inside ONE process does not have to, and paying the
+    ## name round trip anyway would be worse than pointless — it is what makes
+    ## the file path unable to give a field a stable identity (`loadFieldStub`
+    ## mints per use). Here a symbol reference is an index and resolution hands
+    ## back the very same object, so `symAt` is exact and idempotent for every
+    ## symbol kind, fields included.
+    syms*: seq[PSym]
+    types*: seq[PType]
+
   BodyNav* = object
     ## The resolution context for ONE routine body. `base` is what the decoder
     ## itself needs (the owning module plus a table `loadSymStub` can write
     ## into); the frame chain on top of it is this module's contribution.
+    ##
+    ## `bridge` is non-nil only while reading a bridged buffer. It is consulted
+    ## FIRST and, when it answers, it answers exactly — there is no fallback,
+    ## because a `(bsym …)` index that the tables cannot resolve is a corrupt
+    ## buffer, not a cache miss.
     base*: BodyScope
+    bridge*: BridgeTables
     current: NavScope
     hits*: int              ## resolved from the chain
     fallbacks*: int         ## resolved through the decoder
@@ -101,6 +119,16 @@ proc initBodyNav*(base: sink BodyScope): BodyNav =
   ## A nav over a body, seeded with whatever resolution context the decoder
   ## handed out. The root frame is a routine frame: a body IS one.
   result = BodyNav(base: base,
+                   current: NavScope(locals: initTable[string, PSym](),
+                                     parent: nil, kind: nsRoutine))
+
+proc initBridgeNav*(tables: BridgeTables): BodyNav =
+  ## A nav over an in-process bridged buffer. `base` stays empty — a bridged
+  ## buffer names nothing, so there is nothing for the decoder to resolve — but
+  ## the ROOT FRAME still has to exist: a walk brackets its descent with
+  ## `openScope`/`closeScope`, and a nav without a root frame makes the first
+  ## `closeScope` pop past the bottom.
+  result = BodyNav(bridge: tables,
                    current: NavScope(locals: initTable[string, PSym](),
                                      parent: nil, kind: nsRoutine))
 
@@ -206,8 +234,25 @@ proc cacheFrame(nav: var BodyNav): NavScope =
   while result.kind != nsRoutine and result.parent != nil:
     result = result.parent
 
+proc bridgeIndex(n: Cursor; tag: string): int =
+  ## The `<intlit>` payload of a `(bsym …)` / `(btyp …)` token, or -1 when `n`
+  ## is not that shape.
+  result = -1
+  if nifcore.kind(n) == TagLit and n.tags.tagName(cursorTagId(n)) == tag:
+    let payload = childCursor(n)
+    if nifcore.kind(payload) == IntLit:
+      result = int(nifcore.intVal(payload))
+
 proc symAt*(nav: var BodyNav; n: Cursor): PSym =
-  ## The symbol a token names: the chain first, the decoder second.
+  ## The symbol a token names: the bridge first (exact), then the chain, then
+  ## the decoder.
+  if nav.bridge != nil:
+    let idx = bridgeIndex(symToken(n), bridgeSymTagName)
+    if idx >= 0:
+      doAssert idx < nav.bridge.syms.len,
+        "bridged sym index out of range: " & $idx
+      inc nav.hits
+      return nav.bridge.syms[idx]
   let name = navName(n)
   if name.len > 0:
     let cached = lookupLocal(nav, name)
@@ -219,10 +264,17 @@ proc symAt*(nav: var BodyNav; n: Cursor): PSym =
   if result != nil and name.len > 0 and not isFieldNifName(name):
     cacheFrame(nav).locals[name] = result
 
-proc typeAt*(nav: var BodyNav; n: Cursor): PType {.inline.} =
+proc typeAt*(nav: var BodyNav; n: Cursor): PType =
   ## Types are not navigated: `ast2nif` already materializes them lazily from
   ## the module's type index, keyed by name, so there is no per-body state to
   ## keep and nothing a frame could cache that the decoder does not already.
+  if nav.bridge != nil:
+    if nifcore.kind(n) == DotToken: return nil
+    let idx = bridgeIndex(n, bridgeTypeTagName)
+    if idx >= 0:
+      doAssert idx < nav.bridge.types.len,
+        "bridged type index out of range: " & $idx
+      return nav.bridge.types[idx]
   result = typeFromCursor(program, n, nav.base)
 
 # ---------------------------------------------------------------------------
