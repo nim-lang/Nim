@@ -32,7 +32,7 @@ when defined(icBNodeProf):
       pKind, pTagKindHit, pTagKindMiss, pAstChildren, pSkip, pSon, pLen,
       pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
       pGenBodyCalls, pInfo, pIfaceExported, pIfaceHidden, pIfaceModules,
-      pTopNodes, pExportSyms
+      pTopNodes, pExportSyms, pPeekKind, pPeekFallback, pPeekLoaded
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,

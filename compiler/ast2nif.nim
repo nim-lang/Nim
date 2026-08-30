@@ -3977,12 +3977,71 @@ proc nifModuleHasIncludes*(config: ConfigRef; fileIdx: FileIndex): bool =
         done = true
         skip c
 
-proc addReexportedEnumFields(c: var DecodeContext; sym: PSym; interf: var TStrTable) =
+proc peekSymKind(c: var DecodeContext; module: FileIndex;
+                 entry: NifIndexEntry): TSymKind =
+  ## The kind a symbol's `(sd …)` header records, WITHOUT decoding the symbol.
+  ##
+  ## The layout is `(sd <SymbolDef name> <marker: `x` | `.`> <kind> …)`, which is
+  ## exactly what `loadSymFromCursor` walks — that proc is the definition this
+  ## mirrors, so the two must be changed together. Anything unexpected answers
+  ## `skUnknown` and the caller falls back to a real load rather than guessing.
+  var n = cursorFromIndexEntry(c, module, entry)
+  if n.kind != TagLit or not tagIs(n, symDefTagName): return skUnknown
+  var k = childCursor(n)
+  if not k.hasMore or k.kind != SymbolDef: return skUnknown
+  skip k                     # the name
+  if not k.hasMore: return skUnknown
+  skip k                     # the `x` / `.` export marker
+  if not k.hasMore or k.kind != TagLit: return skUnknown
+  result = parse(TSymKind, cursorTag(k))
+
+proc symKindFast(c: var DecodeContext; sym: PSym; symAsStr: string): TSymKind =
+  ## `sym`'s kind, taken from its def header while it is still `Partial` rather
+  ## than by forcing the full decode. An already-loaded symbol answers from the
+  ## field, and anything the peek cannot read falls back to loading.
+  ##
+  ## `-d:icPeekKindCheck` grades the peek against the load it replaces, on every
+  ## call: the loaded kind is authoritative, so a disagreement is the peek's bug.
+  ## The oracle has to be run for the answer to mean anything — and broken on
+  ## purpose once, to confirm it fires.
+  if sym.state != Partial:
+    prof pPeekLoaded
+    return sym.kindImpl
+  let e = c.syms.getOrDefault(symAsStr)
+  if e[1].offset == 0:
+    prof pPeekFallback
+    loadSym(c, sym)
+    return sym.kindImpl
+  result = peekSymKind(c, sym.itemId.module.FileIndex, e[1])
+  if result == skUnknown:
+    # The peek could not read the header. Correct, but it is also how a walk
+    # that has drifted out of step with `loadSymFromCursor` would present, so
+    # the rate is counted rather than shrugged at: `-d:icBNodeProf` reports
+    # `PeekFallback` beside `PeekKind`, and it should stay at zero.
+    prof pPeekFallback
+    loadSym(c, sym)
+    return sym.kindImpl
+  prof pPeekKind
+  when defined(icPeekKindCheck):
+    let peeked = result
+    loadSym(c, sym)
+    doAssert peeked == sym.kindImpl,
+      "peekSymKind disagrees for " & symAsStr & ": peeked " & $peeked &
+      " but the load says " & $sym.kindImpl
+
+proc addReexportedEnumFields(c: var DecodeContext; sym: PSym; symAsStr: string;
+                             interf: var TStrTable) =
   ## When a non-pure enum type is (re-)exported, its fields must also become
   ## visible (unqualified) to importers. In a from-source build this happens via
   ## `rawImportSymbol`'s enum handling when the type is imported; the lazy IC
   ## importer never runs that, so we materialise the fields into the interface
   ## here, when the export list is processed.
+  ##
+  ## Only a TYPE can contribute fields, and almost none of an export list is
+  ## types — so the kind is read off the def header first (`symKindFast`) rather
+  ## than by forcing every exported symbol through a full decode to find out.
+  ## That decode was 290ms of an 8.6s build over 34815 symbols.
+  if symKindFast(c, sym, symAsStr) != skType: return
   loadSym(c, sym)
   if sym.kindImpl != skType or sfPure in sym.flagsImpl: return
   let et = sym.typImpl
@@ -4146,7 +4205,7 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
                 if sym != nil:
                   strTableAdd(interf, sym)
                   icProfStart(tEnumFields)
-                  addReexportedEnumFields(c, sym, interf)
+                  addReexportedEnumFields(c, sym, symAsStr, interf)
                   icProfStop(tEnumFields)
               skip cur
             else:
