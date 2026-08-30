@@ -31,7 +31,7 @@ when defined(icBNodeProf):
     ProfSlot* = enum
       pKind, pTagKindHit, pTagKindMiss, pAstChildren, pSkip, pSon, pLen,
       pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
-      pGenBodyCalls, pInfo
+      pGenBodyCalls, pInfo, pIfaceExported, pIfaceHidden, pIfaceModules
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,
