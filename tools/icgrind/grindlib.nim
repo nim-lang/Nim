@@ -96,3 +96,41 @@ proc guardedLib*(x: int): string =
     result = "err"
   finally:
     discard
+
+proc scanEnd*(x: int): int =
+  ## `stmtsContainPragma(wLinearScanEnd)` and, through it, a NON-ZERO
+  ## `ifSwitchSplitPoint`. Without this both answer the same thing at every node
+  ## in the closure — the stdlib uses neither pragma — and the grinder grades
+  ## two constants.
+  var r = 0
+  case x
+  of 0:
+    r = 1
+  of 1:
+    {.linearScanEnd.}
+    r = 2
+  of 2: r = 3
+  else: r = 4
+  result = r
+
+type Op* = enum opAdd, opAdd2, opSub, opEnd
+
+proc computedGotoLoop*(inp: openArray[Op]): int =
+  ## `stmtsContainPragma(wComputedGoto)`, the other word the equivalence check
+  ## against `getPragmaStmt` looks for. The operand is an ENUM because
+  ## `computedGoto` requires an exhaustive case and rejects an `else`, and it
+  ## jumps straight from the end of one branch to the next dispatch — the
+  ## `while` condition is NOT re-evaluated, so termination has to come from an
+  ## explicit op.
+  var r = 0
+  var i = 0
+  while true:
+    {.computedGoto.}
+    let op = inp[i]
+    case op
+    of opAdd: r += 1
+    of opAdd2: r += 2
+    of opSub: r -= 1
+    of opEnd: break
+    inc i
+  result = r

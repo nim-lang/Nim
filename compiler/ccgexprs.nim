@@ -148,7 +148,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     result = getStorageLoc(n.firstSon)
   else: result = OnUnknown
 
-proc canMove(p: BProc, n: PNode; dest: TLoc): bool =
+proc canMove(p: BProc, n: AnyNode; dest: TLoc): bool =
   # for now we're conservative here:
   if n.kind == nkBracket:
     # This needs to be kept consistent with 'const' seq code

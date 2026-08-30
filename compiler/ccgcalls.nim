@@ -904,7 +904,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     p.s(cpsStmts).addStmt():
       p.s(cpsStmts).add(extract(pl))
 
-proc notYetAlive(n: PNode): bool {.inline.} =
+proc notYetAlive(n: AnyNode): bool {.inline.} =
   let r = getRoot(n)
   result = r != nil and r.loc.lode == nil
 

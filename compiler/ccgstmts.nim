@@ -1047,7 +1047,7 @@ proc branchHasTooBigRange(b: AnyNode): bool =
         it.secondSon.intVal - it.firstSon.intVal > RangeExpandLimit:
       return true
 
-proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
+proc ifSwitchSplitPoint(p: BProc, n: AnyNode): int =
   result = 0
   for i, branch in isons(n, 1):
     var stmtBlock = lastSon(branch)

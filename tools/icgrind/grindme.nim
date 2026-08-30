@@ -44,3 +44,4 @@ when isMainModule:
   echo classifyChar('Q'), bigRange(150000), smallRange(5), inSets('e'), bigSet('q')
   echo viaOpen(@[1, 2, 3]), adder(4)(5), constClosure()(3), noInitVar()
   echo tuples()
+  echo scanEnd(1), " ", computedGotoLoop([opAdd, opAdd2, opSub, opEnd])

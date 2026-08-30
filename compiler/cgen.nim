@@ -1616,6 +1616,22 @@ when defined(newIcBackend):
     check "isSimpleExpr", isSimpleExpr(n)
     check "reifiedOpenArray", reifiedOpenArray(n)
     check "bodyCanRaise", bodyCanRaise(p, n)
+    check "getMagic", getMagic(n)
+    check "whichPragma", whichPragma(n)
+    check "getRoot", getRoot(n)
+    check "isDeepConstExpr", isDeepConstExpr(n)
+    check "stmtsContainPragma", stmtsContainPragma(n, wLinearScanEnd)
+    check "notYetAlive", notYetAlive(n)
+
+    # `stmtsContainPragma` had to be re-derived rather than defined as
+    # `getPragmaStmt(...) != nil`, because a `Cursor` has no nil to return (see
+    # the note at its definition). That leaves two copies of one traversal, so
+    # the equivalence is asserted here instead of assumed — on the AST side,
+    # where `getPragmaStmt` exists.
+    for w in [wLinearScanEnd, wComputedGoto]:
+      if stmtsContainPragma(a, w) != (getPragmaStmt(a, w) != nil):
+        bail("stmtsContainPragma vs getPragmaStmt for " & $w,
+             $stmtsContainPragma(a, w), $(getPragmaStmt(a, w) != nil))
 
     # `skipTrivialIndirections` returns a NODE, and the two spellings return
     # values of different types that cannot be compared directly. Kind plus
@@ -1639,6 +1655,15 @@ when defined(newIcBackend):
       check "isConstClosure", isConstClosure(n)
     if a.kind == nkOfBranch and ordinalRanges(a):
       check "branchHasTooBigRange", branchHasTooBigRange(n)
+    if a.kind == nkCaseStmt and a.safeLen > 1 and
+       (block:
+          # `ifSwitchSplitPoint` reaches `branchHasTooBigRange`, so the same
+          # ordinal gate has to hold for every branch it will look at.
+          var ok = true
+          for br in sonsFrom(a, 1):
+            if br.kind == nkOfBranch and not ordinalRanges(br): ok = false
+          ok):
+      check "ifSwitchSplitPoint", ifSwitchSplitPoint(p, n)
 
     # Graded from the parent — see the note above on why these two cannot be
     # asked at an arbitrary node. `genVarTuple` asks about the tuple's last
