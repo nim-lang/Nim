@@ -243,9 +243,6 @@
 
 import ast, lineinfos, idents
 
-when defined(nimPreviewSlimSystem):
-  import std / assertions
-
 # ---- opt-in profiling (-d:icBNodeProf) --------------------------------------
 # Counts and coarse phase timings; the accessors are far too small to time
 # individually. Each backend process appends one line to $NIM_IC_BNODE_PROF (or
@@ -305,6 +302,8 @@ else:
   template timed*(s: untyped; body: untyped) = body
 
 when defined(newIcBackend):
+  when defined(nimPreviewSlimSystem):
+    import std / assertions   # only this branch asserts
   import "../dist/nimony/src/lib/nifcore" except pool
   import ic / enum2nif
   import ast2nif, icnifcore, bodynav
