@@ -149,35 +149,20 @@
 ##   up front — a macro-generated `{.all.}` import cannot be seen syntactically,
 ##   and guessing wrong loses symbols silently.
 ##
-##   That lazy conversion has been ATTEMPTED and does not work as a
-##   substitution. The shape is easy: `modulegraphs` already imports `ast2nif`
-##   (the dependency runs that way, so no callback hook is needed), every read of
-##   `interfHidden` goes through `interfSelect`, and its 4 call sites all have
-##   the graph and the module to hand. It builds and it keeps privacy — a plain
-##   `import` still rejects a private symbol under both `--ic:on` and
-##   `--ic:off` — but `import x {.all.}` then fails under `--ic:on` with
-##   "undeclared identifier", where it works today and works under `--ic:off`.
-##   The failure is silent and it is entangled with the driver's discovery loop:
-##   the module is not in `DecodeContext.mods` at the point the lookup asks, on
-##   a COLD cache and on a warm one.
-##
-##   Three fixes were tried and none of them is it, recorded so nobody
-##   re-guesses them:
-##     * clearing `hiddenPending` only when the build SUCCEEDS, so an import
-##       whose `.s.bif` does not exist yet is retried rather than written off.
-##       Necessary — one early miss otherwise costs the module its hidden
-##       symbols for the whole process — but not sufficient.
-##     * loading the module inside the lazy builder (`moduleId` is idempotent)
-##       instead of assuming the caller already did.
-##     * building into a LOCAL `TStrTable` and assigning it back, in case the
-##       `var` alias into `g.ifaces` was being invalidated by the seq growing
-##       during the load.
-##   After all three, `ensureHiddenIface` still reports the module missing from
-##   `DecodeContext.mods` on every one of its 19 calls. Whatever populates
-##   `hiddenPending` and whatever populates `c.mods` are not agreeing about
-##   which module they mean, and that is where the next attempt should start —
-##   with `moduleId`'s FileIndex against `moduleFromNifFile`'s, instrumented at
-##   both ends, before any more of the mechanism is written.
+##   That conversion is DONE (`modulegraphs.ensureHiddenIface` +
+##   `ast2nif.buildHiddenInterface`), and the thing that made it hard is worth
+##   knowing: a module has TWO FileIndexes. `registerNifSuffix` keys
+##   `filenameToIndexTbl` by the NIF SUFFIX and mints a `fikNifModule` entry,
+##   while the graph indexes `g.ifaces` by the module's `fikSource` file.
+##   `DecodeContext.mods` is keyed by the former. Asking it with the latter
+##   misses every single time, silently, and `import x {.all.}` then reports
+##   "undeclared identifier" for a symbol that is right there. So the lazy
+##   builder takes a SUFFIX, not a FileIndex. Two further conditions are also
+##   load-bearing: clear the pending flag only when the build SUCCEEDS (an
+##   import whose `.s.bif` does not exist yet must be retried, not written off),
+##   and build into a LOCAL table before assigning it back (loading symbols can
+##   grow `g.ifaces`, which would leave a `var` alias into it dangling).
+##   `tests/ic/timporthidden.nim` is what says all of this still holds.
 ## * `-d:icBridgeOnly` builds the buffer but generates off the tree, which
 ##   separates the ENCODER's cost from the READER's. Encoding is free — it does
 ##   not show in wall time at all.

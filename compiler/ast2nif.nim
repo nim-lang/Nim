@@ -3698,23 +3698,10 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
   # (moduleId can add to c.mods which would invalidate Table iterators)
   var indexTab = move c.mods[module].index
 
-  # Add all symbols to interf (exported interface) and interfHidden
-  # A BACKEND stage cannot read the hidden-only half, so it does not build it.
-  # `interfHidden` is reached exclusively through `modulegraphs.interfSelect`,
-  # which picks it only when `optImportHidden` is in the module's options — and
-  # that flag is set in exactly one place, `importer.importModuleAs`, i.e.
-  # during sem. `cg`/`emit` build their module symbols in `moduleFromNifFile`
-  # and never import anything, so the flag cannot be set and the table cannot be
-  # selected. The saving is the bulk of this proc: on a 68-module target the
-  # hidden branch stubs 2.0M symbols against the exported branch's 0.33M.
-  #
-  # Exported symbols are still added to BOTH tables. That costs little beside
-  # the above and leaves `interfHidden` a coherent view (a module with no hidden
-  # symbols) rather than an empty one, should anything ever consult it.
-  let conf = c.infos.config
-  let backendStage = conf.cmd == cmdNifC and
-                     (conf.icBackendStage == "cg" or conf.icBackendStage == "emit")
-
+  # Only the EXPORTED half; `buildHiddenInterface` below does the rest, on
+  # demand. Exported symbols go into both tables, which costs little and leaves
+  # `interfHidden` a coherent view of a module with no hidden symbols rather
+  # than an empty one.
   prof pIfaceModules
   for nifName, entry in indexTab:
     if entry.vis == Exported:
@@ -3723,16 +3710,47 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
       if sym != nil:
         strTableAdd(interf, sym)
         strTableAdd(interfHidden, sym)
-    elif not backendStage and not nifName.startsWith("`t"):
-      prof pIfaceHidden
-      # do not load types, they are not part of an interface but an implementation detail!
-      #echo "LOADING SYM ", nifName, " ", entry.offset
-      let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
-      if sym != nil:
-        strTableAdd(interfHidden, sym)
 
   # Move index table back
   c.mods[module].index = move indexTab
+
+proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
+                           interfHidden: var TStrTable): bool {.discardable.} =
+  ## The hidden-only half of a loaded module's interface, materialised on
+  ## demand. Deferred because almost nothing reads it: `interfHidden` is reached
+  ## exclusively through `modulegraphs.interfSelect`, which picks it only when
+  ## `optImportHidden` is in the module's options, and that flag is set in
+  ## exactly one place — an `import x {.all.}`. Building it eagerly was 1.05s of
+  ## a cold Atlas build: 1.70M hidden stubs against 0.29M exported ones, made by
+  ## every `nim m` for every module it imports and read by none of them.
+  ##
+  ## Takes the module SUFFIX, not a FileIndex, and that is the whole trick. A
+  ## module has TWO FileIndexes: `registerNifSuffix` keys
+  ## `filenameToIndexTbl` by the suffix string and mints a `fikNifModule` entry,
+  ## while the graph indexes `g.ifaces` by the module's `fikSource` file. `c.mods`
+  ## is keyed by the former. Asking it with the latter misses every single time,
+  ## silently, and an `import x {.all.}` then reports "undeclared identifier"
+  ## for a symbol that is right there.
+  ##
+  ## Returns false when the artifact is not on disk yet — an import the build
+  ## has not produced. The caller must leave the request PENDING then: writing
+  ## it off on that first miss costs the module its hidden symbols for the rest
+  ## of the process.
+  let conf = c.infos.config
+  if not fileExists((getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string):
+    return false
+  let module = moduleId(c, suffix, {})
+  if not c.mods.hasKey(module): return false
+  var indexTab = move c.mods[module].index
+  for nifName, entry in indexTab:
+    if entry.vis != Exported and not nifName.startsWith("`t"):
+      prof pIfaceHidden
+      # do not load types, they are not part of an interface but an implementation detail!
+      let sym = loadSymFromIndexEntry(c, module, nifName, entry, suffix)
+      if sym != nil:
+        strTableAdd(interfHidden, sym)
+  c.mods[module].index = move indexTab
+  result = true
 
 proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
   ## Stubs for every non-type symbol serialized in `module`'s NIF index. The

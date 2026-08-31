@@ -36,6 +36,10 @@ type
     pureEnums*: seq[PSym]
     interf: TStrTable
     interfHidden: TStrTable
+    hiddenPending: bool ## `interfHidden` holds only the exported half so far;
+                        ## `ensureHiddenIface` materialises the hidden-only
+                        ## symbols on first use. See
+                        ## `ast2nif.buildHiddenInterface`.
     uniqueName*: Rope
 
   Operators* = object
@@ -257,6 +261,25 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
+proc ensureHiddenIface(g: ModuleGraph; pos: int) =
+  ## Materialise a loaded module's hidden-only interface the first time anything
+  ## asks for it. Every READ of `interfHidden` goes through `interfSelect`, so
+  ## guarding those sites is complete.
+  if g.ifaces[pos].hiddenPending:
+    when not defined(nimKochBootstrap):
+      # By SUFFIX: `c.mods` and `g.ifaces` use different FileIndexes for the
+      # same module (see `buildHiddenInterface`). Into a LOCAL table, because
+      # loading symbols can grow `g.ifaces` and a `var` alias into it would then
+      # point at the freed buffer. Cleared only on success, so an import whose
+      # `.s.bif` does not exist yet is retried rather than written off.
+      var tab = g.ifaces[pos].interfHidden
+      if buildHiddenInterface(ast.program,
+                              cachedModuleSuffix(g.config, FileIndex pos), tab):
+        g.ifaces[pos].interfHidden = tab
+        g.ifaces[pos].hiddenPending = false
+    else:
+      g.ifaces[pos].hiddenPending = false
+
 template interfSelect(iface: Iface, importHidden: bool): TStrTable =
   var ret = iface.interf.addr # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
   if importHidden: ret = iface.interfHidden.addr
@@ -292,6 +315,7 @@ proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent):
   assert m.kind == skModule
   mi.modIndex = m.position
   mi.importHidden = optImportHidden in m.options
+  if mi.importHidden: ensureHiddenIface(g, mi.modIndex)
   result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
@@ -299,6 +323,7 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   for s in g.ifaces[m.position].interfSelect(importHidden).data:
     if s != nil:
       yield s
@@ -334,10 +359,12 @@ proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
 
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
 
 proc someSymAmb*(g: ModuleGraph; m: PSym; name: PIdent; amb: var bool): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   var ti: TIdentIter = default(TIdentIter)
   result = initIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden), name)
   if result != nil and nextIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden)) != nil:
@@ -1122,6 +1149,7 @@ when not defined(nimKochBootstrap):
           strTableAdd(interf, inner)
       g.ifaces[fIdx.int].interf = interf
       g.ifaces[fIdx.int].interfHidden = interfHidden
+      g.ifaces[fIdx.int].hiddenPending = true
 
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
                           flags: set[LoadFlag] = {}): PrecompiledModule =
@@ -1167,6 +1195,8 @@ when not defined(nimKochBootstrap):
     result = loadNifModule(ast.program, fileIdx,
                            g.ifaces[fileIdx.int].interf,
                            g.ifaces[fileIdx.int].interfHidden, flags)
+    # The hidden-only half was not built; `ensureHiddenIface` will, if asked.
+    g.ifaces[fileIdx.int].hiddenPending = true
     result.module = m
     # Restore the module symbol's persisted flags (see ast2nif `(modflags)`);
     # `cgen.genTopLevelStmt` gates the destructor pass on `sfInjectDestructors`.

@@ -522,6 +522,18 @@ proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
       for r in parseImportPath(s, t):
         result.add op & r
       if t.kind == ParRi: t = next(s)  # skip closing ')'
+    elif tag == "pragmax":
+      # `import x {.all.}` serialises as `(pragmax x (pragmas all))`. Without
+      # this it fell into the unknown-subtree skip below and the import was
+      # DROPPED from the static graph: the build only learned about it from the
+      # `.s.deps` sidecar a round later, after a round that failed with
+      # "requires precompiled NIF for import". Correct, but a wasted round and
+      # an alarming error line for an ordinary import.
+      t = next(s)                      # skip 'pragmax' tag
+      result = parseImportPath(s, t)   # the path is the first child
+      while t.kind != ParRi and t.kind != EofToken:
+        discard parseImportPath(s, t)  # the pragma list; consumed, not a path
+      if t.kind == ParRi: t = next(s)  # skip closing ')'
     elif tag == "bracket":
       t = next(s)                      # skip 'bracket' tag
       while t.kind != ParRi and t.kind != EofToken:
