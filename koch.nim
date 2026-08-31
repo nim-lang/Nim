@@ -196,10 +196,31 @@ proc bundleChecksums(latest: bool) =
   # to `koch boot`, but `nimCompileFold` spawns a fresh `nim c` that would
   # otherwise inherit the ambient configuration.
   const nifOptions = "-d:release --noNimblePath --skipUserCfg --skipParentCfg"
-  if not fileExists("bin/nifler".exe):
-    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = nifOptions)
-  if not fileExists("bin/nifmake".exe):
-    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = nifOptions)
+
+  # Rebuilding these only when the binary is ABSENT silently keeps the tools of
+  # the PREVIOUS pin: bump `NimonyStableCommit` in a checkout that already has
+  # `bin/nifler`, and the compiler links the new `dist/nimony/src/lib` while
+  # `nifler`/`nifmake` still speak the old one. A fresh CI checkout has no
+  # `bin/`, so it builds them and looks green — only the working tree that
+  # already has them breaks, which is the worst way round to find out. So stamp
+  # each tool with the nimony commit it came from and rebuild on a mismatch.
+  # If the commit cannot be determined (a bundled `dist` with no `.git`), fall
+  # back to the old build-if-absent rule rather than rebuilding every time.
+  let nimonyHead = block:
+    let (outp, status) = osproc.execCmdEx(
+      "git -C " & quoteShell(distDir / "nimony") & " rev-parse HEAD")
+    if status == 0: outp.strip else: ""
+
+  proc bundleNifTool(name, src: string) =
+    let stamp = "bin" / ("." & name & ".nimony-commit")
+    let builtFrom = if fileExists(stamp): readFile(stamp).strip else: ""
+    if not fileExists(("bin" / name).exe) or
+       (nimonyHead.len > 0 and builtFrom != nimonyHead):
+      nimCompileFold("Compile " & name, src, options = nifOptions)
+      if nimonyHead.len > 0: writeFile(stamp, nimonyHead)
+
+  bundleNifTool("nifler", "dist/nimony/src/nifler/nifler.nim")
+  bundleNifTool("nifmake", "dist/nimony/src/nifmake/nifmake.nim")
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
