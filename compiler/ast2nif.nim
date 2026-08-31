@@ -277,6 +277,9 @@ type
     inTypeReclist: int   # >0 while writing a type's OWN reclist: fields must be SELF-CONTAINED
                          # defs (the type can be seek-loaded in isolation), not entry-deduped uses
     emittedCanonTypes: Table[string, int32]  # canonical type name -> itemId.item of the def
+    extraExports: HashSet[ItemId]  # symbols made importable by an explicit `export s`
+                         # rather than by a `*` on the declaration; see
+                         # `modulegraphs.reexportedLocalSyms`
 
 
 when defined(icLocalSymStats):
@@ -1106,8 +1109,13 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
   # ("undeclared field 'Number'").
   let isPureEnumField = sym.kindImpl == skEnumField and sym.typImpl != nil and
     sym.typImpl.symImpl != nil and sfPure in sym.typImpl.symImpl.flagsImpl
+  # `sfExported` is the declaration's `*`. An explicit `export s` makes a symbol
+  # importable WITHOUT it (semExport -> reexportSym -> the interface table only),
+  # so ask the interface as well or those symbols ship as non-importable and the
+  # importer reports "undeclared identifier".
   if sym.kindImpl != skField and not isPureEnumField and
-      {sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported}:
+      ({sfExported, sfFromGeneric} * sym.flagsImpl == {sfExported} or
+       sym.itemId in w.extraExports):
     dest.addIdent "x"
   else:
     dest.addDotToken
@@ -2188,8 +2196,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      resolvedImportDeps: seq[FileIndex] = @[];
                      firstUnusedId: int32 = 0;
                      expansions: seq[(PSym, TLineInfo)] = @[];
-                     moduleFlags: int32 = 0) =
+                     moduleFlags: int32 = 0;
+                     extraExports: seq[ItemId] = @[]) =
   var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
+  for id in extraExports: w.extraExports.incl id
   w.deps = newIcBuilder(64)
   var content = newIcBuilder(300)
 

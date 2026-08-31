@@ -315,6 +315,23 @@ proc reexportedModuleSyms*(g: ModuleGraph; m: PSym): seq[(string, string)] =
         not seen.containsOrIncl(s.position):
       result.add (s.name.s, cachedModuleSuffix(g.config, FileIndex s.position))
 
+proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
+  ## Symbols DEFINED in `m` that reached `m`'s interface through an explicit
+  ## `export s` rather than through a `*` marker on their declaration.
+  ##
+  ## `semExport` re-exports by `reexportSym`, which adds to the interface table
+  ## and does NOT set `sfExported` — so a symbol can be importable while its
+  ## declaration says otherwise. The NIF writer decides importability from
+  ## `sfExported` alone and therefore missed exactly these. `std/random` does it
+  ## (`proc initRand(): Rand` private, then `since (1, 5, 1): export initRand`),
+  ## which is why `--ic:on` could not compile anything that reached
+  ## `std/tempfiles` — `initRand()` was undeclared in the importer.
+  result = @[]
+  for s in g.ifaces[m.position].interf.data:
+    if s != nil and s.kind != skModule and sfExported notin s.flags and
+        s.itemId.module == m.position:
+      result.add s.itemId
+
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
   result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
