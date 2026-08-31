@@ -2592,12 +2592,27 @@ proc headerTop(): Rope =
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   result = headerTop()
   if optCompileOnly notin conf.globalOptions:
-    result.add ("/* Compiled for: $1, $2, $3 */$N" &
-        "/* Command for C compiler:$n   $4 */$N") %
+    result.add ("/* Compiled for: $1, $2, $3 */$N") %
         [rope(platform.OS[conf.target.targetOS].name),
         rope(platform.CPU[conf.target.targetCPU].name),
-        rope(extccomp.CC[conf.cCompiler].name),
-        rope(getCompileCFileCmd(conf, cfile))]
+        rope(extccomp.CC[conf.cCompiler].name)]
+    # The per-module IC backend cannot write this line truthfully. A global
+    # `{.passC.}` (system's `-pthread`, say) reaches `conf.compileOptions` only
+    # in a process that compiled the module declaring it, and a `cg` process
+    # sees one module's import closure — so the command it would print is a
+    # partial snapshot, and WHICH part depends on how modules were grouped into
+    # processes. Measured on a 67-module program: 2 of 67 `.c` carried
+    # `-pthread` at batch size 1, 4 at size 4, 5 at size 8, against 16 of 16 for
+    # a whole-program `nim c`. The real command is assembled by the `link`
+    # stage, which applies every module's recorded directives first
+    # (`replayer.applyBackendActions`) — so the object files were always
+    # correct; only this comment was wrong, and non-deterministically so.
+    if conf.cmd == cmdNifC and conf.icBackendStage.len > 0:
+      result.add "/* Command for C compiler: assembled by the link stage\L" &
+                 "   from every module's recorded C directives. */\L"
+    else:
+      result.add ("/* Command for C compiler:$n   $1 */$N") %
+          [rope(getCompileCFileCmd(conf, cfile))]
 
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   var res = newBuilder(getCopyright(conf, cfile))
