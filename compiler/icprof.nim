@@ -44,7 +44,10 @@ when defined(icBNodeProf):
       tStage,
       tLowerOwned, tLowerHooks, tLowerWrite,
       tCgGen, tCgInit, tCgFinish, tCgWrite,
-      tMergeStage, tEmitRender, tLinkStage
+      tMergeStage, tEmitRender, tLinkStage,
+      # `nim m` (the frontend): the sem pass as a whole, and writing the module's
+      # `.s.bif`. `Stage - WriteNif - <the loading slots>` is then sem proper.
+      tWriteNif
 
   let procStart = getMonoTime()
     ## Set when this module initialises, i.e. essentially at process start, so

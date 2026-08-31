@@ -129,6 +129,26 @@
 ##   processes are 9.9s, and the 28 backend ones are 6.8s of which 6.7s is
 ##   inside the stage bodies — `.t.bif` writing 1.68s and cg's demand-driven
 ##   generation 1.91s are the two largest single items.
+##
+##   The frontend splits (same run, `Stage`/`WriteNif` + the loading slots):
+##
+##       startup (exec+runtime+config)    0.17s    2%
+##       loading imported `.s.bif`        4.57s   46%
+##       writing this module's `.s.bif`   1.84s   18%
+##       sem + parse                      3.41s   34%
+##
+##   So two thirds of the frontend is artifact I/O, not compilation. Within the
+##   loading, `interfHidden` is 1.05s of it: 1.70M hidden-symbol stubs against
+##   0.29M exported ones, built by every `nim m` for every module it imports.
+##   That table is reached ONLY through `modulegraphs.interfSelect` when
+##   `optImportHidden` is set, which happens in exactly one place — an
+##   `import x {.all.}`. Skipping it outright (measured with a probe, not a
+##   guess) takes `InterfTables` 1161ms -> 80ms, the frontend 9.98s -> 8.93s and
+##   the whole Atlas build 22.19s -> 20.47s. Doing it CORRECTLY means populating
+##   the table lazily on first `interfSelect(true)` rather than deciding
+##   up front — a macro-generated `{.all.}` import cannot be seen syntactically,
+##   and guessing wrong loses symbols silently. `loaderCtx` is the hook: the
+##   module index is still in the DecodeContext after loading.
 ## * `-d:icBridgeOnly` builds the buffer but generates off the tree, which
 ##   separates the ENCODER's cost from the READER's. Encoding is free — it does
 ##   not show in wall time at all.

@@ -10,6 +10,7 @@ when not defined(nimKochBootstrap):
   import "../dist/nimony/src/lib" / bitabs
 
 import pipelineutils
+import icprof
 
 import ../dist/checksums/src/checksums/sha1
 
@@ -336,11 +337,12 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       # `injectDestructorCalls` and top-level locals were never destroyed.
       let moduleFlags =
         if sfInjectDestructors in module.flags: ModFlagInjectDestructors else: 0'i32
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
-                     replayActions, implDeps, reexportedModuleSyms(graph, module),
-                     genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
-                     expansions, moduleFlags,
-                     reexportedLocalSyms(graph, module))
+      timed tWriteNif:
+        writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
+                       replayActions, implDeps, reexportedModuleSyms(graph, module),
+                       genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
+                       expansions, moduleFlags,
+                       reexportedLocalSyms(graph, module))
       # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]
