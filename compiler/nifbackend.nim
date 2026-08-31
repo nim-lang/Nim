@@ -813,9 +813,16 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     rawMessage(g.config, errGenerated,
       "per-module emit: missing or unparsable merge decision " & MergeDecisionFile)
     return
-  let members = if batch.isMain: @[mainSuffix] else: batch.members
+  let members = if batch.members.len == 0: @[mainSuffix] else: batch.members
   for member in members:
-    emitOneModule(g, mainFileIdx, member, batch.isMain, decision)
+    # Per MEMBER, not per batch. `backendBatch.isMain` answers "is this
+    # invocation the main-module invocation", which is the right question for
+    # `lower`/`cg` (main loads the whole program, so it is never batched with
+    # anything). emit has no such constraint and batches freely, so main can sit
+    # in a batch with others — and then the batch-wide flag sent main's `.c` to
+    # the path derived from its SUFFIX rather than from its source file, and its
+    # `.c` was never written.
+    emitOneModule(g, mainFileIdx, member, member == mainSuffix, decision)
 
 proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
                    isMain: bool; decision: MergeDecision) =

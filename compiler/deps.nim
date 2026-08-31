@@ -1337,6 +1337,22 @@ proc backendBatchSize(conf: ConfigRef; liveCount: int): int =
     result = (liveCount + jobs - 1) div jobs
   result = max(1, result)
 
+proc emitBatches(c: DepContext; live: seq[bool];
+                 shared: seq[seq[int]]): seq[seq[int]] =
+  ## emit's partition. Unlike `lower`/`cg` it takes the MAIN module too and, by
+  ## default, puts every live node in one batch: emit owns no decisions, so
+  ## there is nothing for a grouping to get wrong (see the rule that uses this).
+  ## An explicit `-d:icBatchSize` reuses the shared partition instead, plus main,
+  ## so the fan-out remains available to compare against.
+  if isDefined(c.config, "icBatchSize"):
+    result = shared
+    if live.len > 0 and live[0]: result.add @[0]
+  else:
+    var all: seq[int] = @[]
+    for i in 0 ..< c.nodes.len:
+      if live[i]: all.add i
+    result = if all.len > 0: @[all] else: @[]
+
 proc backendBatches(c: DepContext; live: seq[bool]): seq[seq[int]] =
   ## Partition the live non-main nodes into batches of node indices. The main
   ## module is never in one: it loads the whole program, so batching it with
@@ -1584,7 +1600,18 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.endTree()
 
   # emit: render each module's `.c` from its `.c.nif` + the merge decision.
-  for batch in batches:
+  #
+  # ONE rule for everything, main included. emit is a pure function of a
+  # `.c.nif` and the merge decision — `renderCFromArtifact` filters text and
+  # touches no AST, and the stage loads no module graph at all — so batching it
+  # cannot change what it produces, and measurement agrees: 67 processes and one
+  # process give byte-identical `.c`, in 0.502 s versus 0.041 s. What that buys
+  # is not the cold build (where 0.5 s serial is ~0.05 s across cores) but the
+  # fire-all: every `emit` re-fires whenever `merge` rewrites the decision, which
+  # is every edit that reaches the backend. That now costs one process start.
+  #
+  # `-d:icBatchSize:N` still splits it, for A/B-ing against the fan-out.
+  for batch in emitBatches(c, live, batches):
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
@@ -1605,19 +1632,6 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       # and produced identical bytes looks exactly like a rule that never ran.
       outputStr cFiles[idx] & ".stamp"
     b.endTree()
-  block:
-    let i = 0
-    if live[i]:
-      b.addTree "do"
-      b.addIdent "nim_nifc"
-      b.withTree "args":
-        b.addStrLit "--icBackendStage:emit"
-        b.addStrLit "--icBackendModules:" & c.nodes[i].files[0].modname
-      inputStr cnifFiles[i]
-      inputStr mergeFile
-      outputStr cFiles[i]
-      outputStr cFiles[i] & ".stamp"
-      b.endTree()
 
   # link: compile + link every emitted `.c` in one process.
   b.addTree "do"
