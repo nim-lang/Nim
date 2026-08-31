@@ -468,10 +468,16 @@ type
                               # codegen+DCE+cc+link in one process). The stages
                               # are wired as nifmake rules by `deps.nim`'s backend
                               # build file. See `compiler/nifbackend.nim`.
-    icBackendModule*: string  # under `nim nifc` with icBackendStage in {cg,emit}:
-                              # the NIF module suffix this invocation codegens or
-                              # emits. The other modules are loaded only so types
-                              # resolve; their definitions are referenced extern.
+    icBackendModules*: seq[string]
+                              # under `nim nifc` with icBackendStage in
+                              # {lower,cg,emit}: the NIF module suffixes this
+                              # invocation processes — its BATCH. One entry is
+                              # the per-module fan-out; several share one process
+                              # and therefore ONE dependency-closure load between
+                              # them, which is the whole point (see
+                              # `nifbackend.loadDepClosure`). Every other module
+                              # is loaded only so types resolve; its definitions
+                              # are referenced extern. Empty = the main module.
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)

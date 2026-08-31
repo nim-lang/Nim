@@ -253,11 +253,18 @@ proc bodyIsSeededByItsOwner(prc: PSym): bool =
            ownsRuntimeRoutine(prc, prc.itemId.module)
 
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
-  ## Per-module backend codegen is concerned with ONE module: it emits the
-  ## bodies whose owner is this module and only *prototypes* a body some other
-  ## module's `cg` process is going to emit. The funnel where the main module
-  ## re-emitted its entire transitive closure (~1.8 GB, a 56 MB `.c.nif`) is
-  ## exactly this rule being absent.
+  ## Whether the translation unit `m` emits `prc`'s BODY, as opposed to only a
+  ## prototype for a body some other `cg` process emits. The funnel where the
+  ## main module re-emitted its entire transitive closure (~1.8 GB, a 56 MB
+  ## `.c.nif`) is exactly this rule being absent.
+  ##
+  ## `m` is the TU the body would go INTO — `findPendingModule`'s answer — not
+  ## the one that demanded it. The two were the same module for as long as a `cg`
+  ## process wrote exactly one TU, and asking with the demander was harmless.
+  ## With a batch they differ, and asking with the demander is the bug: a
+  ## definition routed to its owner inside the batch was marked declared there
+  ## and then emitted by nobody, since the demander is not the owner and the
+  ## owner never gets asked again (18 undefined symbols at link, batch size 4).
   ##
   ## The decision is a lookup against `bodyIsSeededByItsOwner`, i.e. against the
   ## very predicates that drive the seeding, rather than a re-derivation from
@@ -2485,7 +2492,8 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       # which will actually become a function pointer
       if isReloadable(m, prc):
         genProcPrototype(q, prc)
-      if emitsBodyInThisModule(m, prc):
+      # Ask about `q`, the TU the body goes into. Outside a batch `q` IS `m`.
+      if emitsBodyInThisModule(q, prc):
         genProcLvl3(q, prc)
   else:
     fillProcLoc(m, son(prc.ast, namePos))
