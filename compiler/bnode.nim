@@ -113,9 +113,22 @@
 ## accessor, so the tools are worth keeping:
 ##
 ## * `-d:icBNodeProf` counts every accessor and times the phases (`handOffBody`,
-##   `genProcBody`, the analyses, and `sym`/`typ`/`info`/`origin`). Each backend
-##   process appends a line to `$NIM_IC_BNODE_PROF`, so a parallel build still
+##   `genProcBody`, the analyses, and `sym`/`typ`/`info`/`origin`), plus the
+##   COARSE phases that say where a process's time goes when none of those
+##   account for it: `Stage` (the whole stage body, so `Process - Stage` is
+##   startup: exec, runtime init, config replay, graph setup) and the per-stage
+##   slots `LowerOwned`/`LowerHooks`/`LowerWrite` and
+##   `CgGen`/`CgInit`/`CgFinish`/`CgWrite`. Each process appends a line to
+##   `$NIM_IC_BNODE_PROF` tagged `stage=<name>`, so a parallel build still
 ##   produces attributable output.
+##
+##   Read the tag. A `nim m` process arms the profiler through ast2nif but never
+##   enters a backend stage, so without splitting on `stage=` those 180-odd
+##   frontend runs land in the "startup" column and invent an enormous phantom
+##   cost. Atlas at batch size 16, serially, is where that shows: 180 frontend
+##   processes are 9.9s, and the 28 backend ones are 6.8s of which 6.7s is
+##   inside the stage bodies — `.t.bif` writing 1.68s and cg's demand-driven
+##   generation 1.91s are the two largest single items.
 ## * `-d:icBridgeOnly` builds the buffer but generates off the tree, which
 ##   separates the ENCODER's cost from the READER's. Encoding is free — it does
 ##   not show in wall time at all.

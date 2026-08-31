@@ -36,7 +36,26 @@ when defined(icBNodeProf):
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,
-      tSym, tTyp, tInfo, tOrigin, tExportBranch, tResolveSym, tEnumFields
+      tSym, tTyp, tInfo, tOrigin, tExportBranch, tResolveSym, tEnumFields,
+      # Coarse phases, added to find where a backend process spends the time
+      # that none of the slots above account for. `tStage` is the whole stage
+      # body, so `Process - tStage` is everything before it: exec, the Nim
+      # runtime, config replay, `registerNifSuffix`/graph setup.
+      tStage,
+      tLowerOwned, tLowerHooks, tLowerWrite,
+      tCgGen, tCgInit, tCgFinish, tCgWrite,
+      tMergeStage, tEmitRender, tLinkStage
+
+  let procStart = getMonoTime()
+    ## Set when this module initialises, i.e. essentially at process start, so
+    ## the dump can report total process wall time and the startup share can be
+    ## derived as `Process - Stage`.
+
+  var profStageName* = "frontend"
+    ## Which invocation this is: the backend stage name, or "frontend" for a
+    ## `nim m` process, which arms the profiler through ast2nif but never enters
+    ## a backend stage. Without it the `Process - Stage` startup figure is
+    ## meaningless — 204 frontend processes' whole runtime lands in it.
 
   var profCounts: array[ProfSlot, int]
   var profNanos: array[TimeSlot, int64]
@@ -44,9 +63,10 @@ when defined(icBNodeProf):
   var profArmed = false
 
   proc profDump() =
-    var line = "BNODEPROF"
+    var line = "BNODEPROF stage=" & profStageName
     for s in ProfSlot: line.add " " & ($s)[1..^1] & "=" & $profCounts[s]
     for s in TimeSlot: line.add " " & ($s)[1..^1] & "ms=" & $(profNanos[s] div 1_000_000)
+    line.add " Processms=" & $((getMonoTime() - procStart).inNanoseconds div 1_000_000)
     let f = getEnv("NIM_IC_BNODE_PROF")
     if f.len > 0:
       let h = open(f, fmAppend)

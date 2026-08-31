@@ -470,6 +470,7 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
   # comment at its declaration. Within one module it already served to transform
   # + destructor-inject a nested routine reachable from more than one owner
   # EXACTLY once (double injection would emit two `=destroy`/`=copy` runs).
+  icProfStart(tLowerOwned)
   for s in moduleSymbolStubs(ast.program, FileIndex modPos):
     if ownsRuntimeRoutine(s, modPos):
       # REUSE path (`icReuseSemLowering` ON): a routine already transformed during
@@ -513,6 +514,8 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
   # into the `.t.nif`; `cg` re-attaches them so `injectDestructorCalls` resolves
   # the loaded env's `=destroy`. Iterate to a fixpoint: a hook body can lift
   # further hooks (a field's `=destroy`).
+  icProfStop(tLowerOwned)
+  icProfStart(tLowerHooks)
   var hooks: seq[LogEntry] = @[]
   var i = opsLogStart
   while i < g.opsLog.len:
@@ -532,9 +535,11 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
   # Re-serialize the whole module to its suffix-based `.t.nif` (the path
   # `toNifFilename` resolves for the cg/emit stages). `writeLoweredModule` seals
   # routines itself.
+  icProfStop(tLowerHooks)
   let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
   let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.bif").string
-  writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
+  timed tLowerWrite:
+    writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icLower] " & extractFilename(wholeArtifact) & " " &
       $hooks.len & " hooks"
@@ -623,14 +628,17 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # definitions that arrived afterwards were silently dropped: 18 undefined
   # symbols at link, all of them `_u`-flagged uniques whose owner happened to
   # sort earlier in its batch.
-  for target in targets:
-    cgGenerateModule(g, target)
-  for target in targets:
-    cgFinishModule(g, target, modules, precompSys)
+  timed tCgGen:
+    for target in targets:
+      cgGenerateModule(g, target)
+  timed tCgFinish:
+    for target in targets:
+      cgFinishModule(g, target, modules, precompSys)
 
   # Writes each batch member's `.c.nif` (every other loaded module's TU is empty,
   # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
-  cgenWriteModules(g.backend, g.config)
+  timed tCgWrite:
+    cgenWriteModules(g.backend, g.config)
 
   # Always leave a `.c.nif` for every member, even one whose module has no code
   # (a leaf library whose procs all emit into their users): the nifmake graph
@@ -672,6 +680,7 @@ proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
   let bl = BModuleList(g.backend)
   # The main module also owns the whole-program method dispatchers + NimMain.
   if sfMainModule in target.module.flags:
+    icProfStart(tCgInit)
     emitMethodDispatchers(g)
     # NimMain (generated when the main module is finished) must call every other
     # module's init/datInit. Those translation units are produced by their own
@@ -737,6 +746,7 @@ proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
     # `globalDestructors` list backwards. Main's own destructors come first and
     # are added by `finalCodegenActions` itself.
     reverse g.icModuleDtors
+    icProfStop(tCgInit)
   let tb = bl.mods[target.module.position]
   if tb != nil:
     finishModule(g, tb)
@@ -946,20 +956,27 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
+  when defined(icBNodeProf): profStageName = g.config.icBackendStage
   if g.config.icBackendStage == "lower":
-    generateLowerStage(g, mainFileIdx)
+    timed tStage: generateLowerStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage == "cg":
-    generateCgStage(g, mainFileIdx)
+    timed tStage: generateCgStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage == "merge":
-    generateMergeStage(g)
+    timed tStage:
+      timed tMergeStage:
+        generateMergeStage(g)
     return
   elif g.config.icBackendStage == "emit":
-    generateEmitStage(g, mainFileIdx)
+    timed tStage:
+      timed tEmitRender:
+        generateEmitStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage == "link":
-    generateLinkStage(g, mainFileIdx)
+    timed tStage:
+      timed tLinkStage:
+        generateLinkStage(g, mainFileIdx)
     return
   else:
     rawMessage(g.config, errGenerated,
