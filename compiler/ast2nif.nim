@@ -20,7 +20,8 @@ import "../dist/checksums/src/checksums" / sha1
 import astdef, idents, msgs, options
 import lineinfos as astli
 import pathutils #, modulegraphs
-import "../dist/nimony/src/lib" / [bitabs, nifstreams, lineinfos,
+import nifstreams
+import "../dist/nimony/src/lib" / [bitabs, lineinfos,
   nifindexes, nifreader]
 # Step 2b: the READER speaks nifcore; the WRITER keeps nifstreams (global `pool`,
 # PackedToken/PackedLineInfo). nifstreams does NOT export Cursor/TokenBuf/NifKind,

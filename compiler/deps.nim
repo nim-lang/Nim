@@ -15,7 +15,8 @@ from std/sha1 import secureHash, `$`
 import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
 
-import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
+import nifstreams
+import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
 import icmodnames
 import icnifcore
 from ic/replayer import BackendActionsExt

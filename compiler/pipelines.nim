@@ -6,7 +6,8 @@ import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
 when not defined(nimKochBootstrap):
   import vmdef
   import ast2nif
-  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
+  import nifstreams
+  import "../dist/nimony/src/lib" / bitabs
 
 import pipelineutils
 
