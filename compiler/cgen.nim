@@ -67,28 +67,51 @@ proc addForwardedProc(m: BModule, prc: PSym) =
 proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef; idgen: IdGenerator): BModule
 proc getCFile*(m: BModule): AbsoluteFile
 
+proc ownerModule(m: BModule; s: PSym): BModule =
+  ## The BModule of `s`'s own module, created on demand. A NIF backend loads
+  ## modules lazily, so the owner may have no BModule yet even though the symbol
+  ## resolved.
+  var ms = getModule(s)
+  registerModule m.g.graph, ms
+  if ms.position >= m.g.mods.len:
+    result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
+  else:
+    result = m.g.mods[ms.position]
+    if result == nil:
+      result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
+
 proc findPendingModule(m: BModule, s: PSym): BModule =
-  # TODO fixme
   if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
-    # Per-module backend codegen: only module M (`m`) is emitted in this
-    # process, so every demanded definition — whether a normal proc owned by
-    # another (here unwritten) module or a minted instance/hook — is emitted
-    # into M's TU. Definitions owned elsewhere are emitted again by their own
-    # module's cg process; the merge stage keeps one per C name and turns the
-    # rest into prototypes (which already live in the unmarked protos section).
+    # Per-module backend codegen. `m.g.icEmitted` is the set of modules THIS
+    # process writes a TU for, so it — not the identity of whichever TU happened
+    # to demand `s` — decides where the definition goes:
+    #
+    # * owner in `icEmitted`: this process is writing that module's TU, so the
+    #   definition belongs in it and nowhere else. That is the ordinary
+    #   whole-program routing below, and honouring it is what lets one process
+    #   emit SEVERAL modules without their definitions collapsing into the first
+    #   TU to ask for them. With the set at its current size of one, the owner
+    #   IS `m` and this returns exactly what the old unconditional `return m`
+    #   did — the point of the branch is that it stops being a special case.
+    #
+    # * owner elsewhere: the module is not written in this process, so the
+    #   definition has nowhere else to go and is emitted here as well
+    #   (emit-everywhere). The process that owns it emits it too; `merge` keeps
+    #   one per C name and turns the rest into prototypes, which already live in
+    #   the unmarked protos section.
+    #
+    # `getModule` walks the owner chain and yields nil if it never reaches a
+    # module (backend-minted symbols can be parented outside one), which is a
+    # definition with no owning TU: emit it here.
+    let ms = getModule(s)
+    if ms != nil and ms.kind == skModule and m.g.icEmitted.contains(ms.position):
+      return ownerModule(m, s)
     return m
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.mods[ms]
   elif m.config.cmd in {cmdNifC, cmdM}:
-    var ms = getModule(s)
-    registerModule m.g.graph, ms
-    if ms.position >= m.g.mods.len:
-      result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
-    else:
-      result = m.g.mods[ms.position]
-      if result == nil:
-        result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
+    result = ownerModule(m, s)
   else:
     var ms = getModule(s)
     result = m.g.mods[ms.position]

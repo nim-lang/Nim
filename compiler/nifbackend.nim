@@ -553,6 +553,13 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       "per-module codegen: module not found for suffix: " & g.config.icBackendModule)
     return
 
+  # Declare which modules this process writes a TU for. `findPendingModule`
+  # reads it to route a demanded definition to its owner when the owner is one
+  # of them, and into the current TU otherwise. One member today — the set is
+  # what a batched `cg` grows, and what keeps its members' definitions in their
+  # own TUs instead of in whichever one demanded them first.
+  BModuleList(g.backend).icEmitted.incl target.module.position
+
   # The `lower` stage already wrote each module's transformed bodies + lifted
   # hooks into its `.t.nif`, which the loaders above read directly (toNifFilename
   # resolves the `.t.nif`); transformed bodies arrive via loadSymFromCursor and
