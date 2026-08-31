@@ -4182,11 +4182,13 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
       case topTagAt(cur)
       of ttReplay:
         # Always load replay actions (macro cache operations)
+        icProfStart(tTopReplay)
         cur.into:
           while cur.hasMore:
             let replayNode = loadNode(c, cur, suffix, localSyms)
             if replayNode != nil:
               result.topLevel.sons.add replayNode
+        icProfStop(tTopReplay)
       of ttUnusedId:
         # backend id seed — consumed eagerly by `moduleId`/`readUnusedId`; just
         # skip past it here so the rest of the header still loads.
@@ -4197,18 +4199,42 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
             result.moduleFlags = int32 intVal(cur)
             skip cur
           while cur.hasMore: skip cur
-      of ttRepConverter: loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
-      of ttRepDestroy:   loadLogOp(c, result.logOps, cur, HookEntry, attachedDestructor, module)
-      of ttRepWasMoved:  loadLogOp(c, result.logOps, cur, HookEntry, attachedWasMoved, module)
-      of ttRepCopy:      loadLogOp(c, result.logOps, cur, HookEntry, attachedAsgn, module)
-      of ttRepSink:      loadLogOp(c, result.logOps, cur, HookEntry, attachedSink, module)
-      of ttRepDup:       loadLogOp(c, result.logOps, cur, HookEntry, attachedDup, module)
-      of ttRepTrace:     loadLogOp(c, result.logOps, cur, HookEntry, attachedTrace, module)
-      of ttRepDeepCopy:  loadLogOp(c, result.logOps, cur, HookEntry, attachedDeepCopy, module)
-      of ttRepEnumToStr: loadLogOp(c, result.logOps, cur, EnumToStrEntry, attachedTrace, module)
-      of ttRepMethod:    loadLogOp(c, result.logOps, cur, MethodEntry, attachedTrace, module)
-      of ttRepPureEnum:  loadLogOp(c, result.logOps, cur, PureEnumEntry, attachedTrace, module)
-      of ttRepCppMember: loadLogOp(c, result.logOps, cur, CppMemberEntry, attachedTrace, module)
+      of ttRepConverter:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
+      of ttRepDestroy:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, HookEntry, attachedDestructor, module)
+      of ttRepWasMoved:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, HookEntry, attachedWasMoved, module)
+      of ttRepCopy:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, HookEntry, attachedAsgn, module)
+      of ttRepSink:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, HookEntry, attachedSink, module)
+      of ttRepDup:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, HookEntry, attachedDup, module)
+      of ttRepTrace:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, HookEntry, attachedTrace, module)
+      of ttRepDeepCopy:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, HookEntry, attachedDeepCopy, module)
+      of ttRepEnumToStr:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, EnumToStrEntry, attachedTrace, module)
+      of ttRepMethod:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, MethodEntry, attachedTrace, module)
+      of ttRepPureEnum:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, PureEnumEntry, attachedTrace, module)
+      of ttRepCppMember:
+        timed tTopLogOps:
+          loadLogOp(c, result.logOps, cur, CppMemberEntry, attachedTrace, module)
       of ttExport:
         if SkipInterfaceTables in flags:
           # Same reason the interface tables are skipped: `interf` is a scratch
@@ -4261,6 +4287,7 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         var cts: seq[PType] = @[]
         var idx = 0
         var ok = true
+        icProfStart(tTopOffers)
         cur.into:
           while cur.hasMore:
             if cur.kind == Symbol:
@@ -4278,12 +4305,14 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
             else: skip cur
         if ok and genSym != nil and instSym != nil:
           result.genericOffers.add (genSym, instSym, cts, paramsCount)
+        icProfStop(tTopOffers)
       of ttTOffer:
         # (toffer "<genericBodySym>" "<instType>") — intern the two full names,
         # resolve, FULLY load the instance (so `searchInstTypes` can match its
         # params). Best-effort: a failure to resolve drops the offer.
         var genName, instName = ""
         var idx = 0
+        icProfStart(tTopOffers)
         cur.into:
           while cur.hasMore:
             if cur.kind == StrLit:
@@ -4298,15 +4327,19 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
           if genSym != nil and inst != nil:
             loadType(c, inst)
             result.typeOffers.add (genSym, inst)
+        icProfStop(tTopOffers)
       of ttModuleSrc:
+        prof pTopToolingSkip
         # self-identification record for the standalone include-graph scanner;
         # not needed by the loader, just skip past it.
         skip cur
       of ttExpansion:
+        prof pTopToolingSkip
         # template/macro expansion usage record for tooling (`idetools` scans it
         # as a `Symbol` use); the loader itself needs nothing from it.
         skip cur
       of ttSig:
+        prof pTopToolingSkip
         # signature-symbol occurrence record for tooling (`idetools` scans it as a
         # `Symbol` use); the loader itself needs nothing from it.
         skip cur
@@ -4319,9 +4352,11 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         # `{.push/pop.}` around it) must reach the `cg` stage's genPragma/genEmit,
         # else e.g. a `#include` is dropped and the generated C won't compile.
         # writeToplevelNode routes these into this header section.
+        icProfStart(tTopStmts)
         let stmtNode = loadNode(c, cur, suffix, localSyms)
         if stmtNode != nil:
           result.topLevel.sons.add stmtNode
+        icProfStop(tTopStmts)
       of ttOther:
         if LoadFullAst in flags:
           let stmtNode = loadNode(c, cur, suffix, localSyms)

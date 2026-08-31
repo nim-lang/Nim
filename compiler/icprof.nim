@@ -32,7 +32,8 @@ when defined(icBNodeProf):
       pKind, pTagKindHit, pTagKindMiss, pAstChildren, pSkip, pSon, pLen,
       pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
       pGenBodyCalls, pInfo, pIfaceExported, pIfaceHidden, pIfaceModules,
-      pTopNodes, pExportSyms, pPeekKind, pPeekFallback, pPeekLoaded
+      pTopNodes, pExportSyms, pPeekKind, pPeekFallback, pPeekLoaded,
+      pTopToolingSkip
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,
@@ -47,7 +48,9 @@ when defined(icBNodeProf):
       tMergeStage, tEmitRender, tLinkStage,
       # `nim m` (the frontend): the sem pass as a whole, and writing the module's
       # `.s.bif`. `Stage - WriteNif - <the loading slots>` is then sem proper.
-      tWriteNif
+      tWriteNif,
+      # `processTopLevel`'s branches: which part of a module HEADER costs what.
+      tTopReplay, tTopLogOps, tTopOffers, tTopStmts
 
   let procStart = getMonoTime()
     ## Set when this module initialises, i.e. essentially at process start, so

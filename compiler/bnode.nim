@@ -164,6 +164,33 @@
 ##   grow `g.ifaces`, which would leave a `var` alias into it dangling).
 ##   `tests/ic/timporthidden.nim` is what says all of this still holds.
 ##
+## THE FRONTEND'S LOADING, after the `interfHidden` fix above, is 3.55s of
+## Atlas's 9.2s frontend and it is NOT concentrated anywhere:
+##
+##     BifLoad 695ms   PosIndex 519ms   ModuleId 841ms   InterfTables 80ms
+##     TopLevel 1459ms = Offers 569 + ExportBranch 312 + LogOps 137
+##                       + the bare cursor walk ~371 + Replay/Stmts ~11
+##
+## Two candidates inside it were probed and only one paid:
+##
+##  * hidden interface stubs — 1.05s, taken (see above).
+##  * the tooling-only header records (`sig`, one per signature-symbol
+##    occurrence, plus `expansion`/`modulesrc`). These are 80% of every header
+##    the loader walks: 3.36M of 4.19M nodes on Atlas, skipped immediately,
+##    existing only for `idetools`. Grouping or relocating them looks like an
+##    obvious win and IS NOT ONE. Emitting none of them at all: nodes walked
+##    4.19M -> 0.85M, `.s.bif` 44.7MB -> 44.0MB, `TopLevel` 1459ms -> 1406ms,
+##    the frontend 9.29s -> 9.18s. Walking 3.3M records costs 53ms, because
+##    `skip` on a `TagLit` is a jump, not a scan — about 16ns a node. Measured
+##    with a probe before anything was built, which is the only reason no
+##    format change was made for 0.5%.
+##
+## What is left is the per-process re-load itself: 180 `nim m` processes each
+## parsing ~20 modules' interfaces out of 44.7MB of `.s.bif`. No single item
+## dominates because there is no single item — it is the same amortisation
+## problem batching solved for the backend (`loadDepClosure` 10.2s -> 1.3s), and
+## the frontend is where it has not been solved yet.
+##
 ## THE C COMPILER is the largest CPU item of a cold Atlas build and the smallest
 ## wall lever, which is worth writing down so nobody spends a week on it. gcc is
 ## 12.2s of CPU against a whole-program build's 10.2s — but `callCCompiler`
