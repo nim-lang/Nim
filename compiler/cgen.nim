@@ -891,6 +891,16 @@ proc localVarDecl(res: var Builder, p: BProc; n: AnyNode,
     backendEnsureMutable s
     fillLoc(s.locImpl, locLocalVar, n, OnStack)
     if s.kind == skLet: incl(s, lfNoDeepCopy)
+  else:
+    # Already named by an EARLIER emission of this same routine — an inline proc
+    # regenerated per user, or (under a batched `cg`) a definition emitted into
+    # two of this process's TUs. `fillLocalName` caches the C name on the PSym
+    # but takes the uniquifying counter from the BProc, and this BProc is a new
+    # one whose `sigConflicts` never saw that name. Claim it, or the next local
+    # of the same base name minted HERE starts from `_1` again and redeclares
+    # it: gcc "redeclaration of 'i_1' with no linkage", 64 of Atlas's 204 `.c`
+    # at batch size 4.
+    p.sigConflicts.inc(s.name.s.mangle)
 
   genCLineDir(res, p, n.info, p.config)
 
@@ -2366,13 +2376,23 @@ proc genProcPrototype(m: BModule, sym: PSym) =
       genMemberProcHeader(m, sym, scratch, false, true)
     return
   if lfDynamicLib in sym.loc.flags:
-    if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
-      # Under IC per-module cg every demander emits the dynlib proc's DEFINITION
-      # locally (findPendingModule returns `m`, so symInDynamicLib follows this
-      # call and the merge stage keeps one def per C name). Emitting the
-      # cross-module `extern` proto here would register `sym.id` in
-      # `m.declaredThings` and thereby make that `symInDynamicLib` skip, leaving
-      # the `Dl_*` symbol declared-but-never-defined -> undefined at link.
+    # Does THIS TU emit the dynlib proc's definition? Under IC cg it does
+    # whenever `findPendingModule` routes the symbol here — which it does unless
+    # the owner is another member of this process's batch. Mirrored rather than
+    # called, because `findPendingModule` creates a `BModule` on demand and a
+    # prototype has no business doing that.
+    let owner = getModule(sym)
+    let emittedByABatchSibling =
+      owner != nil and owner.kind == skModule and
+      owner.position != m.module.position and
+      m.g.icEmitted.contains(owner.position)
+    if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg" and
+        not emittedByABatchSibling:
+      # This TU emits the DEFINITION itself: `symInDynamicLib` follows this call
+      # and the merge stage keeps one def per C name. Emitting the cross-module
+      # `extern` proto here would register `sym.id` in `m.declaredThings` and
+      # thereby make that `symInDynamicLib` skip, leaving the `Dl_*` symbol
+      # declared-but-never-defined -> undefined at link.
       discard "definition emitted by symInDynamicLib"
     elif sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):
