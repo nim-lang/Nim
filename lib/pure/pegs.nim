@@ -235,8 +235,6 @@ func `?`*(a: Peg): Peg {.rtl, extern: "npegsOptional".} =
 func `*`*(a: Peg): Peg {.rtl, extern: "npegsGreedyRep".} =
   ## constructs a "greedy repetition" for the PEG `a`
   case a.kind
-  of pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet, pkGreedyAny, pkOption:
-    raiseAssert "unreachable"  # produces endless loop!
   of pkChar:
     result = Peg(kind: pkGreedyRepChar, ch: a.ch)
   of pkCharChoice:
@@ -244,6 +242,9 @@ func `*`*(a: Peg): Peg {.rtl, extern: "npegsGreedyRep".} =
   of pkAny, pkAnyRune:
     result = Peg(kind: pkGreedyAny)
   else:
+    # Note that `a` may match the empty input (e.g. `?a`): the matcher
+    # breaks out of the repetition loop on a zero-length match, so this
+    # does not produce an endless loop.
     result = Peg(kind: pkGreedyRep, sons: @[a])
 
 func `!*`*(a: Peg): Peg {.rtl, extern: "npegsSearch".} =
@@ -1981,11 +1982,6 @@ func primary(p: var PegParser): Peg {.raises: [EInvalidPeg].}=
       result = ?result
       getTok(p)
     of tkStar:
-      if result.kind in {pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet,
-                         pkGreedyAny, pkOption}:
-        # an operand that can match the empty input would produce an endless
-        # loop in the matcher, so reject it here instead:
-        pegError(p, "repetition of an expression that can match the empty input")
       result = *result
       getTok(p)
     of tkPlus:
