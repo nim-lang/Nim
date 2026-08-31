@@ -96,6 +96,11 @@ when defined(icBNodeProf):
     ## Leaf timing. NOT re-entrant, and the phase slots are not disjoint —
     ## `tTransform` contains body materialization, `tTyp` reaches `tSym`. Read
     ## them as nested, not additive.
+    ##
+    ## Arms the dump like `prof`/`icProfStart` do. It did not, and so a process
+    ## whose ONLY instrumentation is a `timed` never reported at all: the
+    ## `merge`, `emit` and `link` stages were silently absent from every profile.
+    armProf()
     let t0 = getMonoTime()
     body
     profNanos[s] += (getMonoTime() - t0).inNanoseconds

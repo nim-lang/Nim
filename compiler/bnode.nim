@@ -163,6 +163,33 @@
 ##   and build into a LOCAL table before assigning it back (loading symbols can
 ##   grow `g.ifaces`, which would leave a `var` alias into it dangling).
 ##   `tests/ic/timporthidden.nim` is what says all of this still holds.
+##
+## THE C COMPILER is the largest CPU item of a cold Atlas build and the smallest
+## wall lever, which is worth writing down so nobody spends a week on it. gcc is
+## 12.2s of CPU against a whole-program build's 10.2s — but `callCCompiler`
+## fans out across cores, so the whole `link` stage is 1.65s of the parallel
+## build's 9.66s, and the EXCESS over a whole-program build is ~0.4s of wall.
+##
+## Where the excess is, measured on Atlas (204 IC TUs / 20.85MB against
+## non-IC's 139 / 15.47MB):
+##
+##     function definitions   3097 vs 3471   (IC emits FEWER; `merge` dedups,
+##                                            and 0 duplicated definitions)
+##     prototypes            11782 vs  7185   +64%
+##     typedefs (instances)   5870 vs  4854
+##     declaration bytes      8.14MB (39%) vs 4.37MB (28%)
+##     body bytes            12.71MB vs 11.10MB
+##
+## So 3.8MB of the 5.4MB excess is per-TU DECLARATIONS — prototypes and
+## typedefs each TU needs for what it references. That is intrinsic to having
+## 204 translation units instead of 139, and the only real fix is fewer, larger
+## TUs, which trades directly against the thing IC exists for: a sandwich edit
+## currently rebuilds exactly one `.c` and one `.o`.
+##
+## The tempting sub-target is a dead end too: 76 of the 204 TUs contain no
+## function definition at all and 53 produce object files that define NOTHING,
+## but compiling all 53 costs 0.23s of user time. Skipping them is worth ~5% of
+## the C compile and nothing measurable in wall.
 ## * `-d:icBridgeOnly` builds the buffer but generates off the tree, which
 ##   separates the ENCODER's cost from the READER's. Encoding is free — it does
 ##   not show in wall time at all.
