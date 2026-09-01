@@ -380,6 +380,59 @@ widely-imported module is not, and the cost is almost entirely frontend re-sem.
   (see the comment at `generateEmitStage`): partial `emit` leaves inconsistent
   ownership across the `.c` set. This path was tried and reverted; do not retry.
 
+Where a cold build's time is (measured)
+---------------------------------------
+
+Numbers from `-d:icBNodeProf` (`compiler/icprof.nim`; each process appends a
+line to `$NIM_IC_BNODE_PROF` tagged `stage=<name>`), on Atlas, 204 modules,
+cold, 2026-08-31. They are recorded here because two obvious optimisations
+were tried against them and did not pay.
+
+Per stage, summed process wall, parallel build of 9.66s elapsed:
+
+| stage | procs | wall |
+| ----- | ----- | ---- |
+| frontend (`nim m`) | 181 | 10.60s |
+| lower | 14 | 4.49s |
+| cg | 14 | 4.50s |
+| merge | 1 | 0.20s |
+| emit | 14 | 0.42s |
+| link (the whole C compile + link) | 1 | 1.65s |
+
+A `nim m` process splits as: startup 2%, loading imported `.s.bif` 46%,
+writing its own `.s.bif` 18%, sem + parse 34% — two thirds of the frontend is
+artifact I/O. The loading is not concentrated anywhere (`BifLoad` 695ms,
+`PosIndex` 519ms, `ModuleId` 841ms, `TopLevel` 1459ms = offers 569 + export
+branch 312 + log ops 137 + the bare cursor walk ~371); it is 180 processes each
+re-parsing ~20 modules' interfaces out of 44.7MB of `.s.bif`, i.e. the
+amortisation problem that batching solved for the backend
+(`loadDepClosure` 10.2s -> 1.3s) and the frontend has not solved.
+
+- **Hidden interface stubs** were 1.05s of that loading (1.70M stubs against
+  0.29M exported ones) and are now built on demand
+  (`modulegraphs.ensureHiddenIface`). A module has TWO FileIndexes — the NIF
+  suffix's `fikNifModule` entry keys `DecodeContext.mods`, the source file's
+  keys `g.ifaces` — so the lazy builder takes a suffix.
+- **The tooling-only header records** (`sig`, `expansion`, `modulesrc`) are
+  80% of every module header the loader walks (3.36M of 4.19M nodes) and
+  skipping them entirely was measured at 53ms: `skip` on a `TagLit` is a
+  jump, ~16ns a node. Not worth a format change.
+- **The C compiler** is the largest CPU item (12.2s against a whole-program
+  build's 10.2s) and the smallest wall lever: it fans out across cores, and the
+  excess over a whole-program build is ~0.4s of wall. 3.8MB of the 5.4MB of
+  extra C is per-TU prototypes and typedefs, intrinsic to 204 translation units
+  instead of 139; 53 of the 204 object files define nothing and compiling all
+  of them costs 0.23s of user time. Fewer, larger TUs is the only real fix and
+  trades directly against what IC exists for.
+- **Reading routine bodies off a `.bif` cursor instead of a `PNode`** was
+  built and measured (branch `araq-ic-fixes2`, removed again in
+  `araq-ic-fixes3`): it reached parity with the tree, not a win, and could
+  only ever have saved `transformBody` + the body hand-off — under 1% of the
+  build. The lasting result of that work is the loader's `oldLineInfo`
+  memoization, which halved a cold `--ic:on` build, and the cgen files'
+  iterator/named-accessor vocabulary (`sons`/`sonsFrom`/`sonsButLast`,
+  `firstSon`/`secondSon`/`son`, `baseClass`/`returnType`/`elementType`).
+
 Code, logic & debugging
 ========================
 

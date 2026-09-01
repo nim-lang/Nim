@@ -714,10 +714,6 @@ proc extractPragma*(s: PSym): PNode =
 proc skipPragmaExpr*(n: PNode): PNode =
   ## if pragma expr, give the node the pragmas are applied to,
   ## otherwise give node itself
-  ##
-  ## `bnode` carries the `BNode` spelling. It is a separate one-liner rather
-  ## than a shared template because this sits above the point in this module
-  ## where `firstSon` for a `PNode` exists.
   if n.kind == nkPragmaExpr:
     result = n[0]
   else:
@@ -1486,28 +1482,18 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-template getIntImpl*(aArg: typed): Int128 =
-  ## The body of `getInt`, in a form `bnode.nim` can instantiate for a `BNode`
-  ## too — same reason as `canRaiseImpl`: `BNode` is defined there and that
-  ## module imports this one, so the shared logic has to live in a template
-  ## rather than an `AnyNode` proc. There is no second copy.
-  block:
-    let a = aArg
-    var res: Int128
-    case a.kind
-    of nkCharLit, nkUIntLit..nkUInt64Lit:
-      res = toInt128(cast[uint64](a.intVal))
-    of nkInt8Lit..nkInt64Lit:
-      res = toInt128(a.intVal)
-    of nkIntLit:
-      # XXX: enable this assert
-      # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
-      res = toInt128(a.intVal)
-    else:
-      raiseRecoverableError("cannot extract number from invalid AST node")
-    res
-
-proc getInt*(a: PNode): Int128 = getIntImpl(a)
+proc getInt*(a: PNode): Int128 =
+  case a.kind
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
+    result = toInt128(cast[uint64](a.intVal))
+  of nkInt8Lit..nkInt64Lit:
+    result = toInt128(a.intVal)
+  of nkIntLit:
+    # XXX: enable this assert
+    # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
+    result = toInt128(a.intVal)
+  else:
+    raiseRecoverableError("cannot extract number from invalid AST node")
 
 proc getInt64*(a: PNode): int64 {.deprecated: "use getInt".} =
   case a.kind
@@ -1527,21 +1513,14 @@ proc getFloat*(a: PNode): BiggestFloat =
     #internalError(a.info, "getFloat")
     #result = 0.0
 
-template getStrImpl*(aArg: typed): string =
-  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
-  block:
-    let gs = aArg
-    var res = ""
-    case gs.kind
-    of nkStrLit..nkTripleStrLit: res = gs.strVal
-    of nkNilLit:
-      # let's hope this fixes more problems than it creates:
-      res = ""
-    else:
-      raiseRecoverableError("cannot extract string from invalid AST node")
-    res
-
-proc getStr*(a: PNode): string = getStrImpl(a)
+proc getStr*(a: PNode): string =
+  case a.kind
+  of nkStrLit..nkTripleStrLit: result = a.strVal
+  of nkNilLit:
+    # let's hope this fixes more problems than it creates:
+    result = ""
+  else:
+    raiseRecoverableError("cannot extract string from invalid AST node")
     #doAssert false, "getStr"
     #internalError(a.info, "getStr")
     #result = ""
@@ -1684,14 +1663,8 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
   result = base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}
 
-template isInfixAsImpl*(nArg: typed): bool =
-  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
-  block:
-    let ia = nArg
-    ia.kind == nkInfix and ia.firstSon.kind == nkIdent and
-      ia.firstSon.ident.id == ord(wAs)
-
-proc isInfixAs*(n: PNode): bool = isInfixAsImpl(n)
+proc isInfixAs*(n: PNode): bool =
+  return n.kind == nkInfix and n.firstSon.kind == nkIdent and n.firstSon.ident.id == ord(wAs)
 
 proc skipColon*(n: PNode): PNode =
   result = n
@@ -1768,27 +1741,14 @@ proc addParam*(procType: PType; param: PSym) =
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
-const magicsThatCanRaise* = {
+const magicsThatCanRaise = {
   mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst, mEcho}
 
-# `canRaise` and `canRaiseConservative` are asked by the C backend, which is
-# migrating to reading routine bodies straight off a `.bif` `Cursor` rather than
-# off a materialised `PNode` tree (see `compiler/bnode.nim`). Both predicates
-# only ever look at a node's `kind`, `sym` and `typ`, so ONE body serves either
-# spelling -- but `BNode` is defined in `bnode.nim`, which imports this module,
-# so the `BNode` overloads cannot live here. The bodies therefore live in
-# templates and `bnode.nim` instantiates them for its own node type: one source
-# of truth, no import cycle, and no second copy to keep in sync.
-#
-# The effect list is reached through `effectsOf` / `raisesNothing` rather than
-# by subscripting `fn.typ.n`, so the templates below contain no knowledge of the
-# layout and the `BNode` instantiation inherits none. `fn.typ` stays a `PType`
-# in both spellings -- there is deliberately no `BType` (see `bnode.nim`) -- so
-# what "works on a `.bif`" means for these two is that the type the decoder
-# materialises must carry the same effect list the from-source one did. That is
-# a claim about the WRITER, not about the vocabulary, and it is checked
-# separately: `-d:icCanRaiseLog` logs every answer, and the same program built
-# with and without `--ic:on` must produce the same verdicts.
+# `canRaise` reaches the effect list through `effectsOf` / `raisesNothing`
+# rather than by subscripting `fn.typ.n`, so the layout is written down in one
+# place. Under `--ic:on` that list came back from a `.bif`, and whether it came
+# back intact is checked separately: `-d:icCanRaiseLog` logs every verdict, and
+# the same program built with and without `--ic:on` must produce the same ones.
 
 when defined(icCanRaiseLog):
   var canRaiseBranch* = 0
@@ -1803,11 +1763,9 @@ when defined(icCanRaiseLog):
 template markCanRaiseBranch*(n: int) =
   when defined(icCanRaiseLog): canRaiseBranch = n
 
-template canRaiseConservativeImpl*(fnArg: typed): bool =
-  block:
-    let fn = fnArg
-    markCanRaiseBranch 4
-    not (fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise)
+proc canRaiseConservative*(fn: PNode): bool =
+  markCanRaiseBranch 4
+  result = not (fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise)
 
 proc effectsOf*(t: PType): PNode {.inline.} =
   ## The `nkEffectList` a proc type carries as child 0 of its formal-params
@@ -1838,40 +1796,32 @@ proc raisesNothing*(effects: PNode): bool =
            effects[exceptionEffects] != nil and
            effects[exceptionEffects].safeLen == 0
 
-template canRaiseImpl*(fnArg: typed): bool =
-  block:
-    let fn = fnArg
-    var res: bool
-    if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
-        {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
-        sfGeneratedOp in fn.sym.flags):
-      markCanRaiseBranch 1
-      res = false
-    elif fn.kind == nkSym and fn.sym.magic == mEcho:
-      markCanRaiseBranch 2
-      res = true
-    elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
-      markCanRaiseBranch 3
-      let effects = effectsOf(fn.typ)
-      if effects.kind == nkSym:
-        # The historical shape: slot 0 used to be an `nkType` before the effects
-        # moved in (see `newProcType`). Nothing to read, so nothing licenses a
-        # raise.
-        res = false
-      else:
-        # A proc-typed value with no explicit raises slot still has
-        # unspecified effects, which sempass2 treats conservatively.
-        # Codegen needs to do the same in order to keep goto-exception
-        # checks after indirect/closure calls.
-        res = not raisesNothing(effects)
+proc canRaise*(fn: PNode): bool =
+  if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
+      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
+      sfGeneratedOp in fn.sym.flags):
+    markCanRaiseBranch 1
+    result = false
+  elif fn.kind == nkSym and fn.sym.magic == mEcho:
+    markCanRaiseBranch 2
+    result = true
+  elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
+    markCanRaiseBranch 3
+    let effects = effectsOf(fn.typ)
+    if effects.kind == nkSym:
+      # The historical shape: slot 0 used to be an `nkType` before the effects
+      # moved in (see `newProcType`). Nothing to read, so nothing licenses a
+      # raise.
+      result = false
     else:
-      markCanRaiseBranch 0
-      res = false
-    res
-
-proc canRaiseConservative*(fn: PNode): bool = canRaiseConservativeImpl(fn)
-
-proc canRaise*(fn: PNode): bool = canRaiseImpl(fn)
+      # A proc-typed value with no explicit raises slot still has
+      # unspecified effects, which sempass2 treats conservatively.
+      # Codegen needs to do the same in order to keep goto-exception
+      # checks after indirect/closure calls.
+      result = not raisesNothing(effects)
+  else:
+    markCanRaiseBranch 0
+    result = false
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind
@@ -1886,13 +1836,8 @@ proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
 
-template skipHiddenAddrImpl*(nArg: typed): untyped =
-  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
-  block:
-    let sha = nArg
-    (if sha.kind == nkHiddenAddr: sha.firstSon else: sha)
-
-proc skipHiddenAddr*(n: PNode): PNode {.inline.} = skipHiddenAddrImpl(n)
+proc skipHiddenAddr*(n: PNode): PNode {.inline.} =
+  (if n.kind == nkHiddenAddr: n.firstSon else: n)
 
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy

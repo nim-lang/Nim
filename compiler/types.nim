@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs, bnode
+  lineinfos, int128, modulegraphs, astmsgs
 
 import std/[intsets, strutils]
 
@@ -102,7 +102,7 @@ proc isPureObject*(typ: PType): bool =
 proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
-proc getOrdValueAux*(n: AnyNode, err: var bool): Int128 =
+proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   var k = n.kind
   if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
     k = nkUIntLit
@@ -124,12 +124,12 @@ proc getOrdValueAux*(n: AnyNode, err: var bool): Int128 =
     err = true
     int128.Zero
 
-proc getOrdValue*(n: AnyNode): Int128 =
+proc getOrdValue*(n: PNode): Int128 =
   var err: bool = false
   result = getOrdValueAux(n, err)
   #assert err == false
 
-proc getOrdValue*(n: AnyNode, onError: Int128): Int128 =
+proc getOrdValue*(n: PNode, onError: Int128): Int128 =
   var err = false
   result = getOrdValueAux(n, err)
   if err:
@@ -1392,7 +1392,7 @@ proc classify*(t: PType): OrdinalType =
       result = IntLike
     else: result = NoneLike
 
-proc skipConv*[T: AnyNode](n: T): T =
+proc skipConv*(n: PNode): PNode =
   result = n
   case n.kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:

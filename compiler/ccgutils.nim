@@ -11,7 +11,7 @@
 
 import
   ast, types, msgs, wordrecg,
-  platform, trees, options, cgendata, mangleutils, renderer, modulegraphs, bnode
+  platform, trees, options, cgendata, mangleutils, renderer, modulegraphs
 
 import std/[hashes, strutils, formatfloat]
 
@@ -32,28 +32,8 @@ proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   else:
     result = nil
 
-proc stmtsContainPragma*(n: AnyNode, w: TSpecialWord): bool =
-  ## Deliberately NOT `getPragmaStmt(n, w) != nil`, and the reason is the one
-  ## shape the `AnyNode` seam cannot serve: a proc that returns a node OR nil.
-  ## `.bif` spells a missing child as a `DotToken` *inside* a tree, so there is
-  ## no nil token to hand back as a return value, and a `Cursor` is not nilable.
-  ## Predicates split out from such a proc are the way across.
-  ##
-  ## The duplicated traversal is the cost, and it is checked rather than
-  ## trusted: `grindPredicates` asserts this answers exactly
-  ## `getPragmaStmt(n, w) != nil` at every node, so the two cannot drift apart
-  ## silently.
-  case n.kind
-  of nkStmtList:
-    result = false
-    for it in sons(n):
-      if stmtsContainPragma(it, w): return true
-  of nkPragma:
-    result = false
-    for it in sons(n):
-      if whichPragma(it) == w: return true
-  else:
-    result = false
+proc stmtsContainPragma*(n: PNode, w: TSpecialWord): bool =
+  result = getPragmaStmt(n, w) != nil
 
 proc hashString*(conf: ConfigRef; s: string): BiggestInt =
   # has to be the same algorithm as strmantle.hashString!

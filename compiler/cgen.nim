@@ -16,7 +16,7 @@ import
   rodutils, renderer, cgendata, aliases,
   lowerings, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, pushpoppragmas,
-  mangleutils, cbuilderbase, modulegraphs, bnode
+  mangleutils, cbuilderbase, modulegraphs, icprof
 
 from expanddefaults import caseObjDefaultBranch
 from ast2nif import globalName, toNifFilename, icNifTypeName
@@ -282,30 +282,23 @@ proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   else:
     result = prc.itemId.module == m.module.position
 
-# `TLoc.lode` stays a `PNode` even when the generator is driven off a cursor,
-# and `origin` is why: on a bridged buffer it answers the very node the encoder
-# was handed, so a location built from a cursor holds the same object a location
-# built from the tree would have held. That is what keeps the identity
-# comparisons the backend already does (`preventNrvo`'s `dest != le`,
-# `isPartOf(d.lode, …)`) meaning what they meant. Taking `AnyNode` here is what
-# unblocks the 99 generator procs that build a location from their node.
-proc initLoc(k: TLocKind, lode: AnyNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
-  result = TLoc(k: k, storage: s, lode: origin(lode),
+proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
+  result = TLoc(k: k, storage: s, lode: lode,
                 snippet: "", flags: flags)
 
-proc fillLoc(a: var TLoc, k: TLocKind, lode: AnyNode, r: Rope, s: TStorageLoc) {.inline.} =
+proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
   if a.k == locNone:
     a.k = k
-    a.lode = origin(lode)
+    a.lode = lode
     a.storage = s
     if a.snippet == "": a.snippet = r
 
-proc fillLoc(a: var TLoc, k: TLocKind, lode: AnyNode, s: TStorageLoc) {.inline.} =
+proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) {.inline.} =
   # fills the loc if it is not already initialized
   if a.k == locNone:
     a.k = k
-    a.lode = origin(lode)
+    a.lode = lode
     a.storage = s
 
 proc t(a: TLoc): PType {.inline.} =
@@ -542,7 +535,7 @@ proc genCLineDir(r: var Builder, p: BProc, info: TLineInfo; conf: ConfigRef) =
     if freshLineInfo(p, info):
       genCLineDir(r, info.fileIndex, info.safeLineNm, p, info, lastFileIndex)
 
-proc genLineDir(p: BProc; t: AnyNode) =
+proc genLineDir(p: BProc; t: PNode) =
   if p == p.module.preInitProc: return
   let line = t.info.safeLineNm
 
@@ -625,7 +618,7 @@ include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
 
-template mapTypeChooser(n: AnyNode): TSymKind =
+template mapTypeChooser(n: PNode): TSymKind =
   (if n.kind == nkSym: n.sym.kind else: skVar)
 
 template mapTypeChooser(a: TLoc): TSymKind = mapTypeChooser(a.lode)
@@ -662,8 +655,8 @@ type
     needAssignCall
   TAssignmentFlags = set[TAssignmentFlag]
 
-proc genObjConstr(p: BProc; e: AnyNode, d: var TLoc)
-proc rawConstExpr(p: BProc; n: AnyNode; d: var TLoc)
+proc genObjConstr(p: BProc; e: PNode, d: var TLoc)
+proc rawConstExpr(p: BProc; n: PNode; d: var TLoc)
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 type
@@ -882,7 +875,7 @@ proc getIntTemp(p: BProc): TLoc =
                 flags: {})
   p.s(cpsLocals).addVar(kind = Local, name = result.snippet, typ = NimInt)
 
-proc localVarDecl(res: var Builder, p: BProc; n: AnyNode,
+proc localVarDecl(res: var Builder, p: BProc; n: PNode,
                   initializer: Snippet = "",
                   initializerKind: VarInitializerKind = Assignment) =
   let s = n.sym
@@ -910,7 +903,7 @@ proc localVarDecl(res: var Builder, p: BProc; n: AnyNode,
     initializer = initializer,
     initializerKind = initializerKind)
 
-proc assignLocalVar(p: BProc; n: AnyNode) =
+proc assignLocalVar(p: BProc; n: PNode) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
@@ -934,7 +927,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
-proc genGlobalVarDecl(res: var Builder, p: BProc; n: AnyNode; td: Snippet;
+proc genGlobalVarDecl(res: var Builder, p: BProc; n: PNode; td: Snippet;
                       initializer: Snippet = "",
                       initializerKind: VarInitializerKind = Assignment,
                       allowConst = true) =
@@ -975,7 +968,7 @@ proc genGlobalVarDecl(res: var Builder, p: BProc; n: AnyNode; td: Snippet;
       initializer = initializer,
       initializerKind = initializerKind)
 
-proc assignGlobalVar(p: BProc; n: AnyNode; value: Rope) =
+proc assignGlobalVar(p: BProc; n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
     fillBackendName(p.module, s)
@@ -1039,7 +1032,7 @@ proc assignGlobalVar(p: BProc; n: AnyNode; value: Rope) =
     backendEnsureMutable s
     resetLoc(p, s.locImpl)
 
-proc callGlobalVarCppCtor[V: AnyNode; W: AnyNode](p: BProc; v: PSym; vn: V; value: W; didGenTemp: var bool) =
+proc callGlobalVarCppCtor(p: BProc; v: PSym; vn: PNode; value: PNode; didGenTemp: var bool) =
   let s = vn.sym
   fillBackendName(p.module, s)
   backendEnsureMutable s
@@ -1058,7 +1051,7 @@ proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.snippet != "")
   scopeMangledParam(p, s)
 
-proc fillProcLoc(m: BModule; n: AnyNode) =
+proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
     fillBackendName(m, sym)
@@ -1072,22 +1065,22 @@ proc getLabel(p: BProc): TLabel =
 proc fixLabel(p: BProc, labl: TLabel) =
   p.s(cpsStmts).addLabel(labl)
 
-proc genVarPrototype(m: BModule, n: AnyNode)
+proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
-proc genStmts(p: BProc, t: AnyNode)
-proc expr(p: BProc, n: AnyNode, d: var TLoc)
+proc genStmts(p: BProc, t: PNode)
+proc expr(p: BProc, n: PNode, d: var TLoc)
 
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
-proc genLiteral(p: BProc; n: AnyNode; result: var Builder)
-proc genOtherArg(p: BProc; ri: AnyNode; i: int; typ: PType; result: var Builder; argBuilder: var CallBuilder)
+proc genLiteral(p: BProc; n: PNode; result: var Builder)
+proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder; argBuilder: var CallBuilder)
 proc raiseExit(p: BProc)
 proc raiseExitCleanup(p: BProc, destroy: string)
 
-proc initLocExpr(p: BProc; e: AnyNode, flags: TLocFlags = {}): TLoc =
+proc initLocExpr(p: BProc; e: PNode, flags: TLocFlags = {}): TLoc =
   result = initLoc(locNone, e, OnUnknown, flags)
   expr(p, e, result)
 
-proc initLocExprSingleUse(p: BProc; e: AnyNode): TLoc =
+proc initLocExprSingleUse(p: BProc; e: PNode): TLoc =
   result = initLoc(locNone, e, OnUnknown)
   if e.kind in nkCallKinds and (e.firstSon.kind != nkSym or e.firstSon.sym.magic == mNone):
     # We cannot check for tfNoSideEffect here because of mutable parameters.
@@ -1407,7 +1400,7 @@ const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTempl
                   nkMacroDef, nkMixinStmt, nkBindStmt, nkFormalParams} +
                   declarativeDefs
 
-proc containsResult(n: AnyNode): bool =
+proc containsResult(n: PNode): bool =
   result = false
   case n.kind
   of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
@@ -1443,7 +1436,7 @@ proc easyResultAsgn(n: PNode): PNode =
 type
   InitResultEnum = enum Unknown, InitSkippable, InitRequired
 
-proc allPathsAsgnResult(p: BProc; n: AnyNode): InitResultEnum =
+proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   # Exceptions coming from calls don't have not be considered here:
   #
   # proc bar(): string = raise newException(...)
@@ -1570,494 +1563,6 @@ proc allPathsAsgnResult(p: BProc; n: AnyNode): InitResultEnum =
     for it in sons(n):
       allPathsInBranch(it)
 
-when defined(newIcBackend):
-  import std / [exitprocs, syncio]
-  import nodebridge
-
-  var bnodeGrind = -1
-  # Whether the scope chain is load-bearing or decorative is a question with a
-  # number for an answer, so it gets counted rather than asserted. Reported per
-  # process on exit; a run in which `navHits` is 0 means every lookup fell
-  # through to the decoder and the chain is doing nothing.
-  var navHits, navFallbacks, navRegistered: int
-  # Same reasoning for the predicate grinder: "0 disagreements" is only worth
-  # something next to how many nodes were actually graded and how many were
-  # excused, so all three are counted and reported together.
-  var gradeGraded, gradeSkipDecl, gradeSkipTyp: int
-  # The two differences `grindLockstep` EXCUSES on the file path. Counted so the
-  # bridge can assert it needed neither: a bridged buffer hands back the very
-  # objects it was given, so any tolerance firing there is a bug in the bridge,
-  # not a property of the format.
-  var tolHtNil, tolFieldSym: int
-  var bridgeGraded: int
-
-  const nkIntLits = {nkCharLit..nkUInt64Lit}
-
-  const notGradeable = {nkTypeSection, nkConstSection, nkProcDef, nkConverterDef,
-                        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
-                        nkLambda, nkDo, nkFuncDef}
-    ## Subtrees the predicates are not graded inside, because production never
-    ## evaluates an expression there either — `bodyCanRaise` declares the same
-    ## boundary and returns `false` for the whole set without looking in. The
-    ## nodes inside carry unresolved types (a template's parameters, a generic's
-    ## `tyGenericParam`), and asking `getSize` about one is not a disagreement
-    ## between the two spellings, it is a question with no answer in either.
-
-  proc ordinalRanges(a: PNode): bool =
-    ## Whether every `nkRange` directly under `a` has integer endpoints. The
-    ## gate for `branchHasTooBigRange`, which reads `intVal` off them: a `case`
-    ## over strings or floats has `nkOfBranch`es whose ranges hold no integer,
-    ## and production only ever reaches that proc from the ordinal path. Computed
-    ## from the AST side ALONE so the two spellings are gated identically — a
-    ## gate that consulted the cursor could hide the very disagreement it is
-    ## supposed to expose.
-    result = true
-    for it in sons(a):
-      if it.kind == nkRange and
-         (it.firstSon.kind notin nkIntLits or it.secondSon.kind notin nkIntLits):
-        return false
-
-  proc grindPredicates(m: BModule; p: BProc; prc: PSym; c: BNode; a: PNode;
-                       path: string) =
-    ## Every migrated pure predicate, run on BOTH spellings of the SAME node.
-    ##
-    ## The point of doing it HERE rather than once per body is coverage. A proc
-    ## graded at the root of a body is graded on the shapes that body happens to
-    ## start with; graded at every node it meets every shape the closure
-    ## contains, which over a standard-library build is tens of thousands of
-    ## nodes and effectively all of them. These predicates are pure and cheap,
-    ## so the whole set can be run at every node for the price of the walk that
-    ## is already happening.
-    ##
-    ## Only calls that are TOTAL on the node are made, and the predicates split
-    ## in two on that question.
-    ##
-    ## The structural ones — `isSimpleExpr`, `bodyCanRaise`, the indirection
-    ## walkers — read `kind`, children and (defensively) `sym`, and answer for
-    ## any node in a body. They are graded everywhere.
-    ##
-    ## The type-consuming ones — `isAssignedImmediately`, `fewCmps` — hand
-    ## `n.typ` to `getSize` / `mapType`, which are total only over types the C
-    ## backend can lay out. Production reaches them from exactly one shape each
-    ## (the value of a var definition; the set operand of an `in`), and away
-    ## from that shape they meet types codegen never maps — a `tyGenericParam`,
-    ## a `tyAnything` — and abort. That is not a disagreement between the two
-    ## spellings, it is a question with no answer in either, so these are graded
-    ## FROM THE PARENT at the position production calls them from. Widening a
-    ## guard until the run goes green would be the wrong move; restricting the
-    ## call to where it is defined is not the same thing.
-    template bail(what: string; cur, ast: string) =
-      internalError(m.config, prc.info,
-        "BNode/PNode disagree on " & what & " at <body>" & path & " in " &
-        prc.name.s & ": cursor=" & cur & " ast=" & ast)
-
-    template checkAt(what: string; cn: BNode; an: PNode; call: untyped) =
-      ## `call` is written ONCE and instantiated twice — once with `n` bound to
-      ## the cursor, once to the AST. Writing it twice is what would let the two
-      ## sides drift into asking different questions.
-      block:
-        let cv = block:
-          let n {.inject.} = cn
-          call
-        let av = block:
-          let n {.inject.} = an
-          call
-        if cv != av: bail(what, $cv, $av)
-
-    template check(what: string; call: untyped) = checkAt(what, c, a, call)
-
-    # Total on any well-formed node.
-    check "isSimpleExpr", isSimpleExpr(n)
-    check "reifiedOpenArray", reifiedOpenArray(n)
-    check "bodyCanRaise", bodyCanRaise(p, n)
-    check "getMagic", getMagic(n)
-    check "whichPragma", whichPragma(n)
-    check "getRoot", getRoot(n)
-    check "isDeepConstExpr", isDeepConstExpr(n)
-    check "stmtsContainPragma", stmtsContainPragma(n, wLinearScanEnd)
-    check "notYetAlive", notYetAlive(n)
-    check "isInactiveDestructorCall", isInactiveDestructorCall(p, n)
-    check "getInt", (if n.kind in nkIntLits: $getInt(n) else: "")
-    check "sameValue self", sameValue(n, n)
-
-    # `sym` IS NOT A FUNCTION OF ITS ARGUMENT for object fields, so this asserts
-    # the property the rest of the seam quietly assumes everywhere else. Two
-    # calls on the SAME token mint two `skField` stubs with consecutive item
-    # ids (`loadFieldStub`, by design: two distinct fields can share a name and
-    # a position across types, so one shared stub would mistype one of them).
-    # Anything that reads a field sym twice and compares identity is therefore
-    # wrong on a cursor and right on an AST — which is exactly how the attempt
-    # to migrate `aliases.isPartOf` failed, and it failed LOUDLY only because
-    # this grinder existed. Left as a live check so the day it starts holding
-    # is visible.
-    # On the FILE path fields are excluded: `loadFieldStub` mints per use, so
-    # two reads of one token give two stubs. On a BRIDGED buffer they are NOT
-    # excluded, because the bridge hands back the object it was given — that is
-    # the property that makes field-comparing code (`aliases.isPartOf`) correct
-    # on a bridge and wrong on a file, and it is asserted here rather than
-    # merely claimed in `nodebridge`'s doc.
-    let bridged = currentNav().bridge != nil
-    if a.kind == nkSym and a.sym != nil and (bridged or a.sym.kind != skField):
-      if c.sym != c.sym:
-        bail("sym is not idempotent", "two different PSyms", "one PSym")
-
-    # `stmtsContainPragma` had to be re-derived rather than defined as
-    # `getPragmaStmt(...) != nil`, because a `Cursor` has no nil to return (see
-    # the note at its definition). That leaves two copies of one traversal, so
-    # the equivalence is asserted here instead of assumed — on the AST side,
-    # where `getPragmaStmt` exists.
-    for w in [wLinearScanEnd, wComputedGoto]:
-      if stmtsContainPragma(a, w) != (getPragmaStmt(a, w) != nil):
-        bail("stmtsContainPragma vs getPragmaStmt for " & $w,
-             $stmtsContainPragma(a, w), $(getPragmaStmt(a, w) != nil))
-
-    # `skipTrivialIndirections` returns a NODE, and the two spellings return
-    # values of different types that cannot be compared directly. Kind plus
-    # line info pins which node was landed on: the proc only ever walks DOWN a
-    # spine, so two different stopping points on the same input differ in one or
-    # the other unless the tree has two identical nodes at one position, which
-    # would make the choice immaterial anyway.
-    template checkNodeResult(what: string; call: untyped) =
-      block:
-        let cs = block:
-          let n {.inject.} = c
-          call
-        let a2 = block:
-          let n {.inject.} = a
-          call
-        if cs.kind != a2.kind:
-          bail(what & " kind", $cs.kind, $a2.kind)
-        if cs.info != a2.info:
-          bail(what & " info", $(m.config, cs.info), $(m.config, a2.info))
-
-    checkNodeResult "skipTrivialIndirections", skipTrivialIndirections(n)
-    checkNodeResult "skipAddr", skipAddr(n)
-    checkNodeResult "skipAddrDeref", skipAddrDeref(n)
-
-    # Shape-guarded, matching the contexts production calls them from.
-    if a.kind in nkCallKinds and a.safeLen > 0:
-      check "hasNoInit", hasNoInit(n)
-    if a.kind in {nkClosure, nkPar, nkTupleConstr} and a.safeLen == 2:
-      check "isConstClosure", isConstClosure(n)
-    if a.kind == nkOfBranch and ordinalRanges(a):
-      check "branchHasTooBigRange", branchHasTooBigRange(n)
-    if a.kind == nkCaseStmt and a.safeLen > 1 and
-       (block:
-          # `ifSwitchSplitPoint` reaches `branchHasTooBigRange`, so the same
-          # ordinal gate has to hold for every branch it will look at.
-          var ok = true
-          for br in sonsFrom(a, 1):
-            if br.kind == nkOfBranch and not ordinalRanges(br): ok = false
-          ok):
-      check "ifSwitchSplitPoint", ifSwitchSplitPoint(p, n)
-
-    # Graded from the parent — see the note above on why these two cannot be
-    # asked at an arbitrary node. `genVarTuple` asks about the tuple's last
-    # child; `genSingleVar` about the value of an `nkIdentDefs` that defines a
-    # symbol; `genInOp` about the set operand of an `in`.
-    if a.kind == nkVarTuple and a.safeLen > 0:
-      checkAt "isAssignedImmediately", c.lastSon, a.lastSon,
-              isAssignedImmediately(m.config, n)
-    elif a.kind == nkIdentDefs and a.safeLen == 3 and a.firstSon.kind == nkSym:
-      checkAt "isAssignedImmediately", son(c, 2), son(a, 2),
-              isAssignedImmediately(m.config, n)
-    if a.kind in nkCallKinds and a.safeLen > 1 and a.secondSon.kind == nkCurly and
-       a.secondSon.typ != nil:
-      checkAt "fewCmps", c.secondSon, a.secondSon, fewCmps(m.config, n)
-
-  proc grindLockstep(m: BModule; p: BProc; prc: PSym; c: BNode; a: PNode;
-                     path: string; gradeable: bool): bool {.discardable.} =
-    ## Walk the `.bif` cursor and the materialised `PNode` for the SAME body in
-    ## lockstep and require every vocabulary member to answer identically at
-    ## every node. This grades the VOCABULARY rather than any one migrated proc,
-    ## which is the difference that matters: a proc-level oracle only sees an
-    ## accessor that the proc happens to reach on that body, so a wrong accessor
-    ## stays invisible until some later proc migrates and quietly miscompiles.
-    ## `typ` was exactly that — it answered `nil` for every bare `Symbol`, which
-    ## no `containsResult` body could notice.
-    ##
-    ## Must run AFTER the proc-level comparisons: reading `a.kind`/`a.len` fires
-    ## the lazy-body hook and materialises the body, which is fine here (the
-    ## cursor is unaffected) but would spoil their cursor-answer-first ordering.
-    template bail(what, cur, ast: string) =
-      internalError(m.config, prc.info,
-        "BNode/PNode disagree on " & what & " at <body>" & path & " in " &
-        prc.name.s & ": cursor=" & cur & " ast=" & ast)
-
-    # The result says: nothing ANYWHERE in this subtree hit the tolerated
-    # `(ht . <sym>)` type difference. Only a subtree that clean is handed to
-    # `grindPredicates` — see the descent below for why.
-    result = true
-    if a == nil:
-      if not c.isNilNode: bail("nil-ness", "not-nil", "nil")
-      return
-    if c.isNilNode: bail("nil-ness", "nil", "not-nil")
-    if c.kind != a.kind: bail("kind", $c.kind, $a.kind)
-    let here = path & "." & $a.kind
-    if c.safeLen != a.safeLen: bail("len", $c.safeLen, $a.safeLen)
-    if c.info != a.info:
-      bail("info", $(m.config, c.info), $(m.config, a.info))
-
-    # Symbols first: a wrong symbol shows up as a wrong TYPE two lines below,
-    # and "cursor=nil ast=tyProc" is a much worse bug report than "these are
-    # different symbols".
-    if a.kind == nkSym:
-      let cs = c.sym
-      let asym = a.sym
-      template describe(x: PSym): string =
-        (if x == nil: "nil"
-         else: x.name.s & "/" & $x.kind & "/" & $x.itemId & "/" & $x.state)
-      if cs == nil or asym == nil:
-        if cs != asym: bail("sym nil-ness", describe(cs), describe(asym))
-      elif cs != asym:
-        # A cross-context object-field reference is stubbed FRESH at every use
-        # (`loadFieldStub`: two distinct fields can share a local name and
-        # position across types, so ONE shared stub would mistype one of them).
-        # Pointer identity is therefore not part of the contract for fields —
-        # what codegen consumes is the name it re-navigates the reclist with
-        # (`lookupFieldAgain`) and, for tuples, the position.
-        if cs.kind == skField and asym.kind == skField:
-          inc tolFieldSym
-          if cs.name.s != asym.name.s or cs.position != asym.position:
-            bail("field sym", describe(cs) & "@" & $cs.position,
-                              describe(asym) & "@" & $asym.position)
-        else:
-          bail("sym identity", describe(cs), describe(asym))
-
-    # `nfHasComment` is never serialised and `nfLazyType` is a `PNode`-side
-    # marker (see `bnode.flags`); everything else must round-trip exactly.
-    const ownedByTheAst = {nfHasComment, nfLazyType}
-    if c.flags - ownedByTheAst != a.flags - ownedByTheAst:
-      bail("flags", $(c.flags - ownedByTheAst), $(a.flags - ownedByTheAst))
-
-    case a.kind
-    of nkCharLit..nkUInt64Lit:
-      if c.intVal != a.intVal: bail("intVal", $c.intVal, $a.intVal)
-    of nkFloatLit..nkFloat128Lit:
-      # Compare the BITS: two NaNs are never `==`, and a float that survives the
-      # round trip must be the same float, not merely an equal one.
-      if cast[uint64](c.floatVal) != cast[uint64](a.floatVal):
-        bail("floatVal bits", $cast[uint64](c.floatVal),
-                             $cast[uint64](a.floatVal))
-    of nkStrLit..nkTripleStrLit:
-      if c.strVal != a.strVal: bail("strVal", c.strVal, a.strVal)
-    of nkIdent:
-      if c.ident != a.ident: bail("ident", c.ident.s, a.ident.s)
-    else: discard
-
-    let ct = c.typ
-    let at = a.typ
-    # `(ht . <sym>)` is the one shape where the two spellings may legitimately
-    # differ: the cursor answers the faithful `nil`, while `ast.typ` answers
-    # `sym.typ` for whichever nodes the loader happened to mark `nfLazyType`
-    # (see `bnode.typ`). Excluded rather than papered over — and narrowly: only
-    # when the cursor says nil AND the AST is saying exactly the symbol's type.
-    let htNilTyp = ct == nil and at != nil and a.kind == nkSym and
-                   a.typField == nil and a.sym != nil and at == a.sym.typ and
-                   c.hasExplicitNilType
-    if htNilTyp:
-      inc tolHtNil
-      result = false
-    elif (ct == nil) != (at == nil):
-      bail("typ nil-ness",
-        (if ct == nil: "nil" else: $ct.kind) & " raw=" & c.rawDesc,
-        (if at == nil: "nil" else: $at.kind) & " kind=" & $a.kind &
-          " typField=" & (if a.typField == nil: "nil" else: $a.typField.kind) &
-          " lazy=" & $(nfLazyType in a.flags) &
-          (if a.kind != nkSym: "" else:
-             " sym=" & a.sym.name.s & "/" & $a.sym.kind & "/" & $a.sym.state &
-             " symTypImpl=" & (if a.sym.typImpl == nil: "nil" else: $a.sym.typImpl.kind)))
-    elif ct != nil and ct != at:
-      # Fields carry their own stub type, so a tolerated field-sym difference
-      # brings a tolerated type difference with it; compare by kind there.
-      if a.kind == nkSym and a.sym.kind == skField:
-        if ct.kind != at.kind:
-          bail("field typ", $ct.kind, $at.kind)
-      else:
-        bail("typ identity", $ct.kind & "/" & $ct.itemId, $at.kind & "/" & $at.itemId)
-
-    # `safeLen` already matched, so indexed access stays in range on both sides.
-    # `son` rescans from the first child each time, which is quadratic — fine for
-    # a debug-only oracle over routine bodies, and it keeps the walk honest by
-    # exercising the same accessor migrated code will use.
-    #
-    # The descent is bracketed by a nav scope and each child is offered to
-    # `registerDefHere` BEFORE it is entered, so this walk maintains the scope
-    # chain exactly the way a cursor-native pass would have to (see `bodynav`).
-    # That is the part being graded here: not just that the accessors agree, but
-    # that they still agree when the resolution context is built by the
-    # traversal instead of handed to it.
-    let gradeHere = gradeable and a.kind notin notGradeable
-    if a.safeLen > 0:
-      withNodeScope(nsBlock):
-        var i = 0
-        for child in sons(a):
-          let cc = son(c, i)
-          registerDefHere(cc)
-          if not grindLockstep(m, p, prc, cc, child, here & "[" & $i & "]",
-                               gradeHere):
-            result = false
-          inc i
-
-    # AFTER the descent, and only on a subtree with no tolerated type difference
-    # anywhere in it. The predicates RECURSE, so one excused node poisons every
-    # ancestor's answer too: grading `bodyCanRaise` at a call whose callee is an
-    # `(ht . <sym>)` sym would re-report that one known difference as a fresh
-    # finding at every enclosing node. Excused, not ignored — the exclusions are
-    # counted, so a run that grades nothing cannot pass for a run that grades
-    # everything.
-    if not gradeHere:
-      inc gradeSkipDecl
-    elif not result:
-      inc gradeSkipTyp
-    else:
-      inc gradeGraded
-      grindPredicates(m, p, prc, c, a, here)
-
-  proc grindBridge(m: BModule; p: BProc; prc: PSym; body: PNode) =
-    ## Grade the `PNode` -> `TokenBuf` bridge against its own input.
-    ##
-    ## This is a strictly harder test than the file path gets, and deliberately.
-    ## `grindBNode` compares a cursor loaded from a `.bif` against a `PNode`
-    ## loaded from the same `.bif` — two decodings of one file, which is why it
-    ## has to excuse two differences (a field symbol is stubbed per use, and
-    ## `(ht . <sym>)`'s nil is load-order dependent). The bridge is handed a live
-    ## tree and hands the same objects back, so it must need NEITHER excuse, and
-    ## the counters are checked to make sure the run did not quietly take one.
-    ##
-    ## Then the same buffer is decoded and RE-ENCODED, and the second buffer is
-    ## graded against the ORIGINAL tree. That is what covers `toPNode`: anything
-    ## the decoder drops is missing from the re-encoding and shows up as a
-    ## disagreement with the original, so both directions are checked by the one
-    ## oracle rather than by a hand-written comparator that could agree with the
-    ## bug.
-    if bnodeGrind == 0 or body == nil: return
-    let htBefore = tolHtNil
-    let fieldBefore = tolFieldSym
-
-    var enc = toTokenBuf(body, m.config)
-    withBridge(enc.tables):
-      grindLockstep(m, p, prc, BNode(rootCursor(enc)), body, "<bridge>",
-                    gradeable = true)
-
-    # ORIGIN IDENTITY, at every node. The generator migration rests on this and
-    # on nothing else: if a cursor can name the very `PNode` it was encoded
-    # from, `TLoc.lode` stays a `PNode` and the identity comparisons already in
-    # the backend keep working, so the 99 of 180 generator procs that build a
-    # location from a node do not force `TLoc` to change representation.
-    # Asserted rather than assumed, with `==` on the reference: an equal copy
-    # would not do.
-    proc grindOrigins(enc: var BridgeBuf; c: BNode; a: PNode; path: string) =
-      if a == nil: return
-      # Through the AMBIENT accessor (`bnode.origin`, via `currentNav`), which
-      # is the one a migrated generator proc will call from inside `initLoc` —
-      # not the direct `originOf`, which would test a path nothing uses.
-      let src = origin(c)
-      if src != a:
-        internalError(m.config, prc.info,
-          "bridge origin is not the source node at <body>" & path & " in " &
-          prc.name.s & ": got " &
-          (if src == nil: "nil" else: $src.kind & "@" & $cast[int](src)) &
-          " want " & $a.kind & "@" & $cast[int](a))
-      if a.safeLen > 0:
-        var i = 0
-        for child in sons(a):
-          grindOrigins(enc, son(c, i), child, path & "[" & $i & "]")
-          inc i
-    withBridge(enc.tables):
-      grindOrigins(enc, BNode(rootCursor(enc)), body, "")
-
-    var rt = toPNode(enc)
-    var enc2 = toTokenBuf(rt, m.config)
-    withBridge(enc2.tables):
-      grindLockstep(m, p, prc, BNode(rootCursor(enc2)), body, "<bridge-rt>",
-                    gradeable = true)
-
-    if tolHtNil != htBefore:
-      internalError(m.config, prc.info,
-        "bridge needed the `(ht . <sym>)` tolerance in " & prc.name.s &
-        " — it encodes the node's own type explicitly, so it cannot legitimately")
-    if tolFieldSym != fieldBefore:
-      internalError(m.config, prc.info,
-        "bridge needed the field-symbol tolerance in " & prc.name.s &
-        " — it hands back the same PSym, so identity must already match")
-    inc bridgeGraded
-
-  proc grindBNode(m: BModule; p: BProc; prc: PSym) =
-    ## Differential grinding for the migrating vocabulary, opt-in via
-    ## `NIM_IC_BNODE_GRIND`: run every proc that has moved to `AnyNode` over
-    ## BOTH representations of the SAME body and require the same answer. This
-    ## is the only thing that executes the `Cursor` accessors — codegen itself
-    ## is still driven off `PNode`s — and it is deliberately the same technique
-    ## that found the IC bugs earlier on this branch: an oracle beats a
-    ## hand-written expectation, because it compares everything, not what
-    ## someone thought to check.
-    ##
-    ## Order matters. The `PNode` walk calls `len`, which fires the lazy-body
-    ## hook and MATERIALIZES the deferred body; the cursor answer is therefore
-    ## taken first. `lazyBodyBNode` itself does not consume the pending entry.
-    ##
-    ## `allPathsAsgnResult` is graded here too, and it is the more valuable of
-    ## the two: it reaches `typ` (via `skipTypes` on a case selector) and
-    ## `canRaiseDisp` (via `sym`), so a disagreement exercises the resolution
-    ## path — `symFromCursor` / `typeFromCursor` against the body's `localSyms`
-    ## — and not just the child walk.
-    ##
-    ## `grindLockstep` runs last and grades the vocabulary itself rather than
-    ## these two procs; it is the check that actually covers accessors no
-    ## migrated proc happens to call yet, and it carries `grindPredicates` —
-    ## every OTHER migrated proc, run at every node of the body.
-    ##
-    ## WHAT THIS CANNOT SEE. Only a body that arrived as a deferred `nfLazyBody`
-    ## placeholder can be graded, and `ast2nif` defers only bodies whose root is
-    ## an `nkStmtList`. A one-line `proc f(x: int): int = case x ...` has an
-    ## `nkAsgn` body, is loaded eagerly, and never reaches this proc — 652 of
-    ## 1434 bodies on the reference target (`tools/icgrind`). Nor is the main
-    ## module graded at all: its routines are built in-process. Both are stated
-    ## because they are invisible from the outside — a shape added to a grind
-    ## target can produce exactly zero coverage and no diagnostic.
-    if bnodeGrind < 0:
-      bnodeGrind = ord(existsEnv("NIM_IC_BNODE_GRIND"))
-      if bnodeGrind == 1:
-        addExitProc proc () =
-          stderr.writeLine "BNODEGRIND navHits=" & $navHits &
-            " navFallbacks=" & $navFallbacks & " navRegistered=" & $navRegistered &
-            " graded=" & $gradeGraded & " skipDecl=" & $gradeSkipDecl &
-            " skipTyp=" & $gradeSkipTyp & " bridged=" & $bridgeGraded
-    if bnodeGrind == 0: return
-    let ast = prc.ast
-    if ast == nil or ast.safeLen <= bodyPos: return
-    let body = son(ast, bodyPos)
-    if body == nil: return
-    var scope = default(BodyScope)
-    var viaCursor = default(BNode)
-    if not lazyBodyBNode(body, scope, viaCursor): return
-
-    var curResult = false
-    var curPaths = Unknown
-    withBodyScope(scope):
-      curResult = containsResult(viaCursor)
-      curPaths = allPathsAsgnResult(p, viaCursor)
-
-    let astResult = containsResult(body)
-    if curResult != astResult:
-      internalError(m.config, prc.info,
-        "BNode/PNode disagree on containsResult for " & prc.name.s &
-        ": cursor=" & $curResult & " ast=" & $astResult)
-    let astPaths = allPathsAsgnResult(p, body)
-    if curPaths != astPaths:
-      internalError(m.config, prc.info,
-        "BNode/PNode disagree on allPathsAsgnResult for " & prc.name.s &
-        ": cursor=" & $curPaths & " ast=" & $astPaths)
-
-    withBodyScope(scope):
-      grindLockstep(m, p, prc, viaCursor, body, "", gradeable = true)
-      let (hits, fallbacks, registered) = navStats()
-      navHits += hits
-      navFallbacks += fallbacks
-      navRegistered += registered
-
-
 proc getProcTypeCast(m: BModule, prc: PSym): Rope =
   result = getTypeDesc(m, prc.loc.t)
   if prc.typ.callConv == ccClosure:
@@ -2068,7 +1573,7 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     let params = extract(desc)
     result = procPtrTypeUnnamed(rettype = rettype, params = params)
 
-proc genProcBody(p: BProc; procBody: AnyNode) =
+proc genProcBody(p: BProc; procBody: PNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared, nimErrorFlagDisabled} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
@@ -2129,44 +1634,12 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # CT-evaluated or earlier-referenced routine), NOT a `.t.bif` load — gating on
   # it there would WRONGLY skip destructor injection and miscompile (orc
   # decref-on-freed). The `.t.bif`-loaded-body concept exists only under cmdNifC.
-  when defined(newIcBackend):
-    grindBNode(m, p, prc)
   let wasLoaded = m.config.cmd == cmdNifC and prc.transformedBody != nil
   icProfStart(tTransform)
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
   icProfStop(tTransform)
-  # THE HANDOFF (`transf.handOffBody`). Rewriting is done for this body —
-  # transformed, and destructor-injected when this process did the injecting —
-  # so from here the reading side works off a cursor.
-  #
-  # Under `-d:newIcBackend` only, because that is what the switch means: the
-  # generator still needs a `PNode` (`expr` dispatches to ~60 emitters that have
-  # to move together or not at all), so building a buffer in a default build
-  # would cost every routine a tree walk and buy nothing. The ANALYSES below are
-  # already `AnyNode`, and they are the part that moves now.
-  when defined(newIcBackend):
-    icProfStart(tHandOff)
-    var bodyBuf = handOffBody(procBody, m.config)
-    icProfStop(tHandOff)
-    grindBridge(m, p, prc, procBody)
-
-  template readBody(res, call: untyped) =
-    ## Run a migrated `AnyNode` analysis over the body the READING side sees:
-    ## a cursor over the handed-off buffer when there is one, the `PNode`
-    ## otherwise. Both spellings type-check, and the generated C must not depend
-    ## on which one ran — which is what the byte-identical `.c` check verifies
-    ## end to end, a stronger statement than the node-level grinder can make.
-    icProfStart(tAnalyses)
-    when defined(newIcBackend) and not defined(icBridgeOnly):
-      withBridge(bodyBuf.tables):
-        let n {.inject.} = BNode(bodyBuf.rootCursor)
-        res = call
-    else:
-      let n {.inject.} = procBody
-      res = call
-    icProfStop(tAnalyses)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
@@ -2186,8 +1659,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.snippet != "")
-        var paths = Unknown
-        readBody(paths, allPathsAsgnResult(p, n))
+        let paths = allPathsAsgnResult(p, procBody)
         if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and
             paths == InitSkippable:
           # In an ideal world the codegen could rely on injectdestructors doing its job properly
@@ -2240,21 +1712,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       continue
     assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
-  # THE FLIP: under `-d:newIcBackend` the generator is driven off the cursor
-  # into the handed-off buffer, not the tree. Both spellings must produce the
-  # same C, which is what the cursor-vs-`PNode` `.c` comparison checks.
-  #
-  # `-d:icBridgeOnly` is a MEASUREMENT switch, not a mode: it still builds the
-  # buffer but generates off the tree, which is the only way to separate what
-  # the encoder costs from what reading costs. Keep it working — it is what
-  # showed encoding to be free, and so that the reader was the thing to profile.
-  prof pGenBodyCalls
   icProfStart(tGenBody)
-  when defined(newIcBackend) and not defined(icBridgeOnly):
-    withBridge(bodyBuf.tables):
-      genProcBody(p, BNode(bodyBuf.rootCursor))
-  else:
-    genProcBody(p, procBody)
+  genProcBody(p, procBody)
   icProfStop(tGenBody)
 
   # IC: spurious write, seems fine for now:
@@ -2554,7 +2013,7 @@ proc requestProcDef*(m: BModule, prc: PSym) =
   ## code had referenced it.
   genProc(m, prc)
 
-proc genVarPrototype(m: BModule, n: AnyNode) =
+proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
@@ -3460,7 +2919,7 @@ when false:
     readMergeInfo(getCFile(m), m)
     result = m
 
-proc addHcrInitGuards(p: BProc; n: AnyNode, inInitGuard: var bool, init: var IfBuilder) =
+proc addHcrInitGuards(p: BProc; n: PNode, inInitGuard: var bool, init: var IfBuilder) =
   if n.kind == nkStmtList:
     for child in sons(n):
       addHcrInitGuards(p, child, inInitGuard, init)
@@ -3499,7 +2958,7 @@ proc handleProcGlobals(m: BModule) =
     handleProcGlobals(m)
     m.preInitProc.s(cpsStmts).add stmts.extract()
 
-proc genTopLevelStmt*(m: BModule; n: AnyNode) =
+proc genTopLevelStmt*(m: BModule; n: PNode) =
   ## Also called from `ic/cbackend.nim`.
   if pipelineutils.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
@@ -3594,7 +3053,7 @@ proc writeModule(m: BModule) =
     code = stripCnifMarks(code)
   registerModuleCode(m, cf, code)
 
-proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: AnyNode; isDynlib: bool): PSym =
+proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"
   let procname = getIdent(graph.cache, prefixedName)
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
@@ -3648,7 +3107,7 @@ proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
   dtor.ast = theProc
   genProcLvl3(m, dtor)
 
-proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: AnyNode) =
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
@@ -3671,7 +3130,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: AnyNode) =
   # if the module is cached, we don't regenerate the main proc
   # nor the dispatchers? But if the dispatchers changed?
   # XXX emit the dispatchers into its own .c file?
-  if not n.isNilNode:
+  if n != nil:
     m.initProc.options = initProcOptions(m)
     genProcBody(m.initProc, n)
 

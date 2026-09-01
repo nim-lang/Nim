@@ -11,8 +11,8 @@
 ## Off, every template below is `discard` and nothing is linked in.
 ##
 ## It lives in its own module with NO compiler imports so that any stage can
-## use it without creating a cycle — `bnode` needs it for the accessors,
-## `nifbackend` for the stage phases, `cgen` for what happens per routine.
+## use it without creating a cycle — `ast2nif` for the loader, `nifbackend` for
+## the stage phases, `cgen` for what happens per routine.
 ##
 ## Each backend process appends ONE line to `$NIM_IC_BNODE_PROF` at exit (or to
 ## stderr when that is unset), because a `--ic:on` build fans out a process per
@@ -20,8 +20,8 @@
 ## when the numbers need to be attributable to a particular module.
 ##
 ## Counts are for volume, timings for cost, and the two answer different
-## questions: the accessors turned out to be 700k calls worth 8ms, while `info`
-## was 259k calls worth 1.36s. Neither number alone would have found that.
+## questions: a call count alone once pointed at the wrong accessor (700k calls
+## worth 8ms) while the real cost was 259k `info` resolutions worth 1.36s.
 
 when defined(icBNodeProf):
   import std / [envvars, exitprocs, syncio, monotimes]
@@ -29,15 +29,12 @@ when defined(icBNodeProf):
 
   type
     ProfSlot* = enum
-      pKind, pTagKindHit, pTagKindMiss, pAstChildren, pSkip, pSon, pLen,
-      pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
-      pGenBodyCalls, pInfo, pIfaceExported, pIfaceHidden, pIfaceModules,
+      pTyp, pIfaceExported, pIfaceHidden, pIfaceModules,
       pTopNodes, pExportSyms, pPeekKind, pPeekFallback, pPeekLoaded,
       pTopToolingSkip
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
-      tTransform, tHandOff, tGenBody, tAnalyses,
-      tSym, tTyp, tInfo, tOrigin, tExportBranch, tResolveSym, tEnumFields,
+      tTransform, tGenBody, tExportBranch, tResolveSym, tEnumFields,
       # Coarse phases, added to find where a backend process spends the time
       # that none of the slots above account for. `tStage` is the whole stage
       # body, so `Process - tStage` is everything before it: exec, the Nim
@@ -97,8 +94,8 @@ when defined(icBNodeProf):
 
   template timed*(s: TimeSlot; body: untyped) =
     ## Leaf timing. NOT re-entrant, and the phase slots are not disjoint —
-    ## `tTransform` contains body materialization, `tTyp` reaches `tSym`. Read
-    ## them as nested, not additive.
+    ## `tTransform` contains body materialization. Read them as nested, not
+    ## additive.
     ##
     ## Arms the dump like `prof`/`icProfStart` do. It did not, and so a process
     ## whose ONLY instrumentation is a `timed` never reported at all: the

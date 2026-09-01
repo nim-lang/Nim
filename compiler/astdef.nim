@@ -960,7 +960,7 @@ iterator sons*(n: PNode): PNode =
   ## as it does not rely on random indexed access, and over `for x in n.sons`,
   ## which reads the raw FIELD and so skips the `len` hook that materialises a
   ## deferred `nfLazyBody` body — over such a body that loop silently visits
-  ## nothing. See `compiler/bnode.nim` for the backend vocabulary this feeds.
+  ## nothing.
   for i in 0..<n.safeLen: yield n[i]
 
 iterator isons*(n: PNode; start = 0): tuple[i: int, n: PNode] =
@@ -996,6 +996,15 @@ iterator isonsButLast*(n: PNode; count = 1): tuple[i: int, n: PNode] =
   ## Like `sonsButLast` but also yields the child index — for a tuple field
   ## position, a parallel index into the tuple's `PType`, and so on.
   for i in 0 ..< n.safeLen - count: yield (i, n[i])
+
+template son*(n: PNode; i: int): PNode =
+  ## Named indexed access to child `i`, for the small constant positions that
+  ## `firstSon`/`secondSon`/`lastSon` do not cover.
+  n[i]
+
+template hasSons*(n: PNode): bool =
+  ## Emptiness test; goes through `safeLen` so a deferred body is materialised.
+  n.safeLen > 0
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968

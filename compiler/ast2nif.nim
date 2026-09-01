@@ -282,19 +282,6 @@ type
                          # `modulegraphs.reexportedLocalSyms`
 
 
-when defined(icLocalSymStats):
-  # TEMPORARY instrumentation: how is `localSyms` actually populated? The
-  # snapshot-vs-shared-table question only matters if body-local NIF names exist
-  # at all, and `isLocalSym` below returns a hardwired `false`.
-  import std / exitprocs
-
-  var lsLocalHit, lsFieldStub, lsMiss, lsSdReg, lsExtractReg: int
-  addExitProc proc () =
-    if lsLocalHit + lsFieldStub + lsMiss + lsSdReg + lsExtractReg > 0:
-      stderr.writeLine "LOCALSYM localHit=" & $lsLocalHit &
-        " fieldStub=" & $lsFieldStub & " miss=" & $lsMiss &
-        " sdReg=" & $lsSdReg & " extractReg=" & $lsExtractReg
-
 proc isLocalSym(sym: PSym): bool {.inline.} =
   ## Every symbol is emitted as a *global* (module-suffixed) name so that its
   ## `sdef` gets an index entry and is resolvable by index lookup even when
@@ -2929,7 +2916,6 @@ proc extractLocalSymsFromTree(c: var DecodeContext; n: var Cursor; thisModule: s
       let sym = PSym(itemId: id, kindImpl: skStub, name: stubName,
                     disamb: sn.count.int32, state: Complete)
       localSyms[symName] = sym
-      when defined(icLocalSymStats): inc lsExtractReg
       # `loadSymFromCursor` enters the `(sd` and consumes the whole block,
       # leaving n positioned after the closing `)`.
       loadSymFromCursor(c, sym, n, thisModule, localSyms)
@@ -2995,15 +2981,12 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
   if sn.module.len == 0:
     result = localSyms.getOrDefault(symAsStr)
     if result != nil:
-      when defined(icLocalSymStats): inc lsLocalHit
       return result
     elif isFieldMarked(sn.name):
-      when defined(icLocalSymStats): inc lsFieldStub
       # A cross-context object-field reference reaching a non-dotExpr slot (e.g. a
       # `{.guard.}` field, an owner): stub it like any other field use.
       return c.loadFieldStub(symAsStr, thisModule, localSyms)
     else:
-      when defined(icLocalSymStats): inc lsMiss
       raiseAssert "local symbol '" & symAsStr & "' not found in localSyms."
   # Global symbol - look up in index for lazy loading
   result = c.syms.getOrDefault(symAsStr)[0]
@@ -3378,8 +3361,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           # is NOT fixed by pinning the flag either way: setting it breaks sem as
           # above, and clearing it would strip the fallback from the stub
           # population that `nifcBackendActive` exists to serve. Left alone
-          # deliberately; `bnode.typ` answers the faithful `nil` and the grinder
-          # excludes this one shape with the reason recorded there.
+          # deliberately.
       elif tagIs(n, symDefTagName):
         let info = c.infos.oldLineInfo(n.info, cursorPool(n))
         let name = n.firstSon
@@ -3405,7 +3387,6 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             sym = PSym(itemId: id, kindImpl: skStub, name: stubName,
                        disamb: sn.count.int32, state: Complete)
             localSyms[symName] = sym  # register for later references
-            when defined(icLocalSymStats): inc lsSdReg
           # Now fully load the symbol from the sdef
           loadSymFromCursor(c, sym, n, thisModule, localSyms)
           sym.state = c.loadedState  # mark as fully loaded
@@ -3583,80 +3564,6 @@ proc materializeLazyBody*(c: var DecodeContext; node: PNode) =
   node.sons = real.sons
   node.typField = real.typField
   node.flags = real.flags
-
-# ---------------------------------------------------------------------------
-# Cursor-native backend seam (see `bnode.nim`)
-#
-# The three things a `.bif` `Cursor` cannot answer on its own — what symbol a
-# `Symbol` token names, what type a node's type slot denotes, and what
-# `TLineInfo` its packed line info maps to — all need the decoder's state. They
-# are exposed here rather than reimplemented in `bnode` so that the Cursor
-# backend and the `PNode` loader resolve names through exactly the same code.
-# ---------------------------------------------------------------------------
-
-type
-  BodyScope* = object
-    ## Resolution scope for reading ONE routine body straight off a cursor.
-    ## `thisModule` is the owning module's NIF suffix (a `Symbol` token with no
-    ## module suffix is body-local and appears in no index) and `localSyms` is
-    ## the enclosing sym def's local symbols, so a param/local reference
-    ## resolves to the SAME `PSym` the signature already created.
-    thisModule*: string
-    localSyms*: Table[string, PSym]
-
-proc lazyBodyCursor*(c: var DecodeContext; node: PNode; scope: var BodyScope;
-                     body: var Cursor): bool =
-  ## Non-destructive lookup of a deferred routine body: the cursor at its
-  ## `(stmtlist ...)` plus the scope its symbol references resolve in. Unlike
-  ## `materializeLazyBody` this does NOT consume the pending entry, so the
-  ## `PNode` path still works afterwards and the two representations of the same
-  ## body can be walked side by side and compared — which is how a proc migrated
-  ## to `BNode` is checked against the one it replaces.
-  let key = cast[int](node)
-  if not c.pendingBodies.hasKey(key): return false
-  let pb = c.pendingBodies[key]
-  body = pb.cursor
-  scope = BodyScope(thisModule: pb.thisModule, localSyms: pb.localSyms)
-  result = true
-
-proc symFromCursor*(c: var DecodeContext; n: Cursor; scope: var BodyScope): PSym =
-  ## The `PSym` a `Symbol` / `SymbolDef` / `(sd ...)` token names. Non-consuming
-  ## (`loadSymStub` advances a `var Cursor`; this one works on a copy).
-  ##
-  ## The bare `SymbolDef` case goes through the by-name overload: the cursor
-  ## overload of `loadSymStub` deliberately rejects it, because inside the
-  ## loader a def token is always reached through its `(sd ...)` wrapper and a
-  ## bare one means a malformed stream. A reader that starts at an arbitrary
-  ## token has no such guarantee, and the def NAMES the same symbol the use
-  ## does.
-  var cur = n
-  if cur.kind == SymbolDef:
-    result = loadSymStub(c, symName(cur), scope.thisModule, scope.localSyms)
-  else:
-    result = loadSymStub(c, cur, scope.thisModule, scope.localSyms)
-
-proc typeFromCursor*(c: var DecodeContext; n: Cursor; scope: var BodyScope): PType =
-  ## The `PType` a node's type slot denotes — a `Symbol`, an inline `(td ...)`,
-  ## or a `DotToken` for "no type of its own". Non-consuming.
-  var cur = n
-  result = loadTypeStub(c, cur, scope.localSyms)
-
-proc nodeFlagsFromCursor*(n: Cursor): TNodeFlags =
-  ## The node-flags slot: an `Ident` naming the set, or a `DotToken` for empty.
-  ## Non-consuming.
-  var cur = n
-  result = loadAtom(TNodeFlags, cur)
-
-proc identFromCursor*(c: var DecodeContext; n: Cursor): PIdent =
-  ## The `PIdent` an `Ident` token names, interned in the SAME cache the loader
-  ## uses — `nkIdent` nodes compare by identity in places.
-  result = c.cache.getIdent(strVal(n))
-
-proc lineInfoFromCursor*(c: var DecodeContext; n: Cursor): TLineInfo =
-  ## The `TLineInfo` for a token's packed line info. The `FileId` inside belongs
-  ## to the `.bif`'s OWN filename pool, so the mapping needs both the pool and
-  ## the `ConfigRef` the `LineInfoWriter` holds.
-  result = c.infos.oldLineInfo(n.info, cursorPool(n))
 
 forceLazyBodyHook = proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.} =
   # `len` (the sole caller path) MUST stay effect-free, so this hook is typed
@@ -4141,8 +4048,7 @@ var topTagPool: TagPool = nil
 var topTagCache: seq[int8] = @[]
   ## `TagId -> TopTag`, -1 unresolved, for ONE tag pool. `topTagPool` holds the
   ## pool by REFERENCE so it stays alive and a freed pool cannot be replaced at
-  ## the same address — the same argument `indexFromBif`'s and `bnode`'s memos
-  ## rest on.
+  ## the same address — the same argument `indexFromBif`'s memo rests on.
 
 proc topTagAt(cur: Cursor): TopTag =
   let pool {.cursor.} = cur.tags

@@ -32,8 +32,8 @@ Cap the fan-out to fit the machine — precedence documented at `deps.nim`'s
     -d:icNoParallel       # serial, and non-interleaved child output
 
 Serial output matters for a second reason: the parallel backend processes share
-one stderr, so any per-process diagnostic printing (`NIM_IC_BNODE_GRIND`,
-`-d:icCanRaiseLog`) interleaves and produces torn lines. Either use
+one stderr, so any per-process diagnostic printing (`-d:icCanRaiseLog`)
+interleaves and produces torn lines. Either use
 `-d:icNoParallel` or parse defensively and count what you dropped.
 
 ## Running a single test
