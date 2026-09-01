@@ -1039,16 +1039,17 @@ proc split*(s: openArray[char], sep: Rune, maxsplit: int = -1): seq[string] {.no
 
 func getRuneHeadIdx(s: openArray[char], idx: int): int =
   ## Given `[idx]` is within a Rune, then `s[result]` is the first byte of that Rune.
+  ##
+  ## For invalid UTF-8 the walk backwards may not find a rune head at all;
+  ## the result is then clamped at `0` so that no out-of-bounds access occurs.
   result = idx
-  if s[result] <= '\x7F': # 0b0111_1111
+  if uint8(s[result]) <= 0x7F: # 0b0111_1111, plain ASCII
     return
   # 0b1...
-  dec result
-  for _ in 0..1:
-    if s[result] >= '\xC0': # 0b11xx_xxxx
-      # 0b110... or 0b1110...
-      return
+  while result > 0 and (uint8(s[result]) shr 6) == 0b10: # 0b10xx_xxxx, continuation byte
     dec result
+  # `result` is now 0 or points at a non-continuation byte (a rune head,
+  # or an invalid byte, which `fastRuneAt` treats as its own pseudo-rune)
 
 proc strip*(s: openArray[char], leading = true, trailing = true,
             runes: openArray[Rune] = unicodeSpaces): string {.noSideEffect,
