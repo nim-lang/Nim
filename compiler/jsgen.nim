@@ -1801,9 +1801,11 @@ proc genVarOpenArrayArg(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "{base: $1, off: 0, len: ($1).length}" % [v.rdLoc]
   r.kind = resExpr
 
-proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int = nil) =
+proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes;
+            emitted: ptr int = nil; skipVarOpenArray = false) =
   var a: TCompRes = default(TCompRes)
-  if param.typ != nil and param.typ.kind == tyVar and param.typ[0].kind == tyOpenArray:
+  if (not skipVarOpenArray) and param.typ != nil and param.typ.kind == tyVar and
+      param.typ[0].kind == tyOpenArray:
     # `var openArray` params are passed as a `{base, off, len}` slice view.
     genVarOpenArrayArg(p, n, a)
     r.res.add(a.rdLoc)
@@ -1867,7 +1869,8 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
   r.kind = resExpr
 
 proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
-                 generated: var int; r: var TCompRes) =
+                 generated: var int; r: var TCompRes;
+                 skipVarOpenArray = false) =
   if i >= n.len:
     globalError(p.config, n.info, "wrong importcpp pattern; expected parameter at position " & $i &
         " but got only: " & $(n.len-1))
@@ -1880,11 +1883,12 @@ proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
   if paramType.isNil:
     genArgNoParam(p, it, r)
   else:
-    genArg(p, it, paramType.sym, r)
+    genArg(p, it, paramType.sym, r, skipVarOpenArray = skipVarOpenArray)
   inc generated
 
 proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
                     r: var TCompRes) =
+  let skipVarOpenArray = sfImportc in n[0].sym.flags
   var i = 0
   var j = 1
   r.kind = resExpr
@@ -1894,11 +1898,11 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
       var generated = 0
       for k in j..<n.len:
         if generated > 0: r.res.add(", ")
-        genOtherArg(p, n, k, typ, generated, r)
+        genOtherArg(p, n, k, typ, generated, r, skipVarOpenArray)
       inc i
     of '#':
       var generated = 0
-      genOtherArg(p, n, j, typ, generated, r)
+      genOtherArg(p, n, j, typ, generated, r, skipVarOpenArray)
       inc j
       inc i
     of '\31':
