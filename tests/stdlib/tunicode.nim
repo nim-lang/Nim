@@ -211,6 +211,16 @@ block stripTests:
     doAssert(strip(grinning_face & thinking_face & thinking_face,
                    runes = thinking_face.toRunes) == grinning_face)
 
+  # invalid UTF-8 must not raise IndexDefect from getRuneHeadIdx
+  block:
+    doAssert(strip("\xe9") == "\xe9")
+    doAssert(strip("\xe9caf") == "\xe9caf")
+    doAssert(strip("\xe9caf\xe9") == "\xe9caf\xe9")
+    doAssert(strip(" \xe9caf\xe9 ") == "\xe9caf\xe9")
+    doAssert(strip("\xe9 \xe9") == "\xe9 \xe9")
+    # consecutive continuation bytes collapse to their shared "head"
+    doAssert(strip("\xbf\xbf") == "\xbf")
+
 block repeatTests:
   doAssert repeat('c'.Rune, 5) == "ccccc"
   doAssert repeat("×".asRune, 5) == "×××××"
