@@ -99,6 +99,7 @@ parameter and result types, not just their source-level shape. Use
   works without single-quoting.
 - `std/uri`: The `?` operator now appends query parameters to an existing query
   string instead of replacing it. Fixes [#19782](https://github.com/nim-lang/Nim/issues/19782).
+- `std/jsonutils`: `fromJson` now throws an exception when converting to `array`/`seq` if the JSON isn't an array instead of silently failing
 
 ## Language changes
 
@@ -148,6 +149,13 @@ parameter and result types, not just their source-level shape. Use
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
   The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
   `tyTypeDesc(tyGenericParam)` as an unresolved generic parameter.
+
+- The JS backend now implements write-through for `var openArray` parameters that
+  receive a `toOpenArray` view (bug #15952): mutations reach the caller's storage
+  instead of silently writing to a copy. Fixed homogeneous numeric arrays
+  (`array[N, T]`, JS typed arrays) slice via `subarray`; `seq` and non-numeric
+  arrays slice via a `{base, off, len}` view. This also covers seq/non-numeric-array
+  write-through, pass-through, re-slicing and `@` (openArray-to-seq) of such views.
 
 ## Tool changes
 

@@ -24,10 +24,6 @@ template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
 
-proc toLowerAscii(a: var string) {.inline.} =
-  for c in mitems(a):
-    if isUpperAscii(c): c = char(uint8(c) xor 0b0010_0000'u8)
-
 proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
   let stdOrr = if optStdout in conf.globalOptions: stdout else: stderr
@@ -83,7 +79,8 @@ proc canonicalCase(path: var string) {.inline.} =
   ## the idea is to only use this for checking whether a path is already in
   ## the table but otherwise keep the original case
   when FileSystemCaseSensitive: discard
-  else: toLowerAscii(path)
+  else:
+    for c in mitems(path): c = toLowerAscii(c)
 
 proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   var

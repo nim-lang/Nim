@@ -635,6 +635,14 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # lifted hooks via moduleFromNifFile's registerLoadedHooks. Nothing to apply.
   generateCodeForModule(g, target)
   let bl = BModuleList(g.backend)
+  if sfMainModule notin target.module.flags:
+    # This module's top-level `var`s with a `=destroy` registered their teardown
+    # in `graph.globalDestructors` during `genTopLevelStmt` above. Main's `cg` is
+    # a different process and never sees them, so emit them as this TU's own
+    # exported proc and announce the name in the meta head.
+    let tbm = bl.mods[target.module.position]
+    if tbm != nil:
+      tbm.icGlobalDtorName = genIcModuleDestroyGlobals(g, tbm)
   # The main module also owns the whole-program method dispatchers + NimMain.
   if sfMainModule in target.module.flags:
     emitMethodDispatchers(g)
@@ -695,6 +703,13 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     for m in ordered:
       let heads = readCnifHeads(getCFile(m).string & ".nif")
       registerReusedModuleToMain(bl, m, heads.initRequired, heads.datInitRequired)
+      if heads.globalDtor.len > 0: g.icModuleDtors.add heads.globalDtor
+    # `ordered` is dependency (post-order) init order; teardown runs in reverse,
+    # so an importer's globals are destroyed before the ones it may still point
+    # at. This mirrors whole-program cgen, which walks its single accumulated
+    # `globalDestructors` list backwards. Main's own destructors come first and
+    # are added by `finalCodegenActions` itself.
+    reverse g.icModuleDtors
   let tb = bl.mods[target.module.position]
   if tb != nil:
     finishModule(g, tb)
@@ -724,8 +739,19 @@ proc generateMergeStage(g: ModuleGraph) =
   ## in-process first-claimant/DCE coordination.
   let nimcache = getNimcacheDir(g.config).string
   var files: seq[string] = @[]
-  for artifact in walkFiles(nimcache / "*.c.nif"):
-    files.add artifact
+  # The driver lists the live modules' artifacts explicitly (deps.nim's
+  # `writeLiveModules`); only fall back to globbing when that manifest is
+  # absent (a cache written by an older compiler). Globbing merges whatever
+  # `.c.nif` happens to sit in the directory, which is wrong the moment the
+  # cache is shared with another program — see `LiveModulesFile`.
+  let manifest = nimcache / LiveModulesFile
+  if fileExists(manifest):
+    for line in lines(manifest):
+      let p = line.strip()
+      if p.len > 0: files.add p
+  else:
+    for artifact in walkFiles(nimcache / ("*" & icCFileExt(g.config) & ".nif")):
+      files.add artifact
   sort files
   let decision = computeMergeDecision(files)
   if decision.broken:
@@ -764,7 +790,7 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     if targetIsMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
     else: AbsoluteFile g.config.icBackendModule
   let cfile = changeFileExt(completeCfilePath(g.config,
-    mangleModuleName(g.config, cfilename).AbsoluteFile), ".nim.c").string
+    mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
   let artifact = cfile & ".nif"
   if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
@@ -847,7 +873,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     if not decision.broken:
       var liveOwners = initHashSet[string]()
       for cname, owner in decision.owners:
-        if owner.endsWith(".c.nif") and cname in decision.live:
+        if owner.endsWith(icCFileExt(g.config) & ".nif") and cname in decision.live:
           liveOwners.incl owner
       for owner in liveOwners:
         let cbase = owner[0 ..< owner.len - ".nif".len]  # "@m….nim.c.nif" -> ".c"

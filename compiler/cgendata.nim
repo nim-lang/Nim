@@ -186,6 +186,10 @@ type
                               # embeds (redirected defs, shared instances,
                               # hooks); recorded as the artifact's cdeps so
                               # the reuse gate can check their impl cookies
+    icGlobalDtorName*: string # per-module backend: the C name of this
+                              # module's global-destructor proc, recorded in
+                              # the artifact's meta head so the main module's
+                              # `cg` — a different process — can call it
     icDataDefs*: seq[tuple[cname, nifname: string]]
                               # C names of data definitions (consts, globals,
                               # RTTI) this TU embeds plus their NIF symbol

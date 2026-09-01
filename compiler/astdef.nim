@@ -784,11 +784,16 @@ type
                               # same id; there may be multiple copies of a type
                               # in memory!
                               # Keep in sync with PackedType
-    itemId*: ItemId
+    itemId*: ItemId           # THE identity of this type: unique per instance, forever.
+                              # Names the type in the NIF cache and decides which
+                              # module owns its definition.
     kind*: TTypeKind          # kind of type
     state*: ItemState
-    uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
-                              # is required by the --incremental:on mode.
+    bindingId*: ItemId        # the id of the type this one is a REPLICA of (its own
+                              # `itemId` when it is not a replica). Only the generic
+                              # binding tables (`LayeredIdTable` & friends) key on it:
+                              # `exactReplica` produces a copy that must keep matching
+                              # its original in those tables. Never an identity.
     callConvImpl*: TCallingConvention # for procs
     flagsImpl*: TTypeFlags        # flags of the type
     sonsImpl*: TTypeSeq           # base types, etc.
@@ -1044,7 +1049,7 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 type
   LogEntryKind* = enum
     HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,
-    PureEnumEntry
+    PureEnumEntry, CppMemberEntry
   LogEntry* = object
     kind*: LogEntryKind
     op*: TTypeAttachedOp
@@ -1091,7 +1096,7 @@ proc forcePartial*(s: PSym) =
 proc forcePartial*(t: PType) =
   ## Resets all impl-fields to their default values and sets state to Partial.
   ## This is useful for creating a stub type that can be lazily loaded later.
-  ## The fields itemId, kind, uniqueId are preserved.
+  ## The fields itemId, kind, bindingId are preserved.
   t.state = Partial
   t.callConvImpl = ccNimCall
   t.flagsImpl = {}

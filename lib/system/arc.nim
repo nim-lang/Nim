@@ -312,13 +312,17 @@ when not (defined(gcOrc) or defined(gcYrc)):
     ## Forces a full garbage collection pass. With `--mm:arc` a nop.
     discard
 
-template setupForeignThreadGc* =
-  ## With `--mm:arc` a nop.
-  discard
-
-template tearDownForeignThreadGc* =
-  ## With `--mm:arc` a nop.
-  discard
+when not hasThreadSupport:
+  template setupForeignThreadGc* = discard
+  template tearDownForeignThreadGc* = discard
+elif emulatedThreadVars:
+  template setupForeignThreadGc* =
+    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+  template tearDownForeignThreadGc* =
+    {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+elif not hasThreadLocalAllocator:
+  template setupForeignThreadGc* = discard
+  template tearDownForeignThreadGc* = discard
 
 proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inl.} =
   result = targetDepth <= source.depth and source.display[targetDepth] == token

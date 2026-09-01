@@ -8,7 +8,7 @@ const
                  nkBracketExpr, nkDerefExpr, nkHiddenDeref,
                  nkAddr, nkHiddenAddr,
                  nkObjDownConv, nkObjUpConv}
-  PathKinds1* = {nkHiddenStdConv, nkHiddenSubConv}
+  PathKinds1* = {nkHiddenStdConv, nkHiddenSubConv, nkCast}
 
 proc skipConvDfa*(n: PNode): PNode =
   result = n
@@ -125,4 +125,3 @@ proc aliases*(obj, field: PNode): AliasKind =
       else:
         result = maybe
     else: assert false # unreachable
-

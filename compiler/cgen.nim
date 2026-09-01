@@ -1635,8 +1635,17 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # `extern`/`rtl` pragma at sem time), so its uses are invisible to the
       # artifact's liveness walk — conservatively keep the definition.
       defFlags.add 'x'
-    m.s[cfsProcs].add(cnifDefDirective(stripCnifMarks(prc.loc.snippet), defFlags,
-                                       icNifName(m, prc)))
+    # A C++ member's `loc.snippet` is a CALL PATTERN (`#->salute(@)`), not a
+    # linker name — and every member of that name, in every class, mints the
+    # same one. Ownership is assigned per name, so `Loo::salute` and `Foo::salute`
+    # collided: the merge stage handed both to one artifact and the other TU's
+    # definition was dropped (undefined vtable at link). Key member definitions by
+    # their NIF name instead, which is unique by construction. Dots cannot occur
+    # in a mangled C name, so the two namespaces stay disjoint.
+    let defName =
+      if sfCppMember * prc.flags != {}: icNifName(m, prc)
+      else: stripCnifMarks(prc.loc.snippet)
+    m.s[cfsProcs].add(cnifDefDirective(defName, defFlags, icNifName(m, prc)))
     m.s[cfsProcs].add(extract(generatedProc))
     m.s[cfsProcs].add(cnifEndDefs())
   else:
@@ -1661,7 +1670,20 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.flags or sfCppMember * sym.flags != {}: return
+  if lfNoDecl in sym.loc.flags: return
+  if sfCppMember * sym.flags != {}:
+    # A C++ member is declared INSIDE its class, never as a free prototype — but
+    # this TU still needs its CALL-SITE name (`x->salute(@)`), and only
+    # `genMemberProcHeader` derives that (from the pragma's declaration pattern).
+    # Whole-program cgen got it for free: the module defining the member was code
+    # generated in the same process, ahead of any caller. The per-module backend
+    # emits that body in ANOTHER process, so the caller was left with the mangled
+    # Nim name `fillBackendName` minted and C++ rejected
+    # `loo->salute_u0__vireouyks1()` ("struct Loo has no member named ...").
+    if m.compileToCpp:
+      var scratch = newBuilder("")
+      genMemberProcHeader(m, sym, scratch, false, true)
+    return
   if lfDynamicLib in sym.loc.flags:
     if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
       # Under IC per-module cg every demander emits the dynlib proc's DEFINITION
@@ -1854,10 +1876,16 @@ proc genVarPrototype(m: BModule, n: PNode) =
         typ = ptrType(typ)
       if lfDynamicLib in sym.loc.flags:
         typ = ptrType(typ)
-      m.s[cfsVars].addVar(m, sym,
-        name = sym.loc.snippet,
-        typ = typ,
-        visibility = vis)
+      if sfCodegenDecl in sym.flags:
+        m.s[cfsVars].addDeclWithVisibility(vis):
+          m.s[cfsVars].addVar(m, sym,
+            name = sym.loc.snippet,
+            typ = typ)
+      else:
+        m.s[cfsVars].addVar(m, sym,
+          name = sym.loc.snippet,
+          typ = typ,
+          visibility = vis)
       if m.hcrOn:
         m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,
@@ -1894,10 +1922,6 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   if conf.hcrOn: res.add("#define NIM_HOT_CODE_RELOADING\L")
   addNimDefines(res, conf)
   result = extract(res)
-
-proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
-  ## Returns a mangled module name.
-  result = mangleModuleName(conf, filename).mangle
 
 proc getSomeNameForModule*(m: BModule): Rope =
   ## Returns a mangled module name.
@@ -2354,7 +2378,6 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
   assert prc != nil
   fillProcLoc(m, prc.ast[namePos])
 
-  var extname = prefix & sym
   var tmp = mangleDynLibProc(prc)
   backendEnsureMutable prc
   prc.locImpl.snippet = tmp
@@ -2610,6 +2633,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
                       m.icDataDefs,
                       semmedNif = toNifFilename(m.config, FileIndex m.module.position),
                       moduleBase = getSomeNameForModule(m),
+                      globalDtor = m.icGlobalDtorName,
                       implDeps = implDeps)
     m.g.graph.icCnifFiles.add artifact
   # NB: under cmdNifC the returned text still carries the cnif marks; the
@@ -2709,7 +2733,7 @@ proc getCFile*(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
       elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
-      else: ".nim.c"
+      else: icCFileExt(m.config)
   result = changeFileExt(completeCfilePath(m.config, mangleModuleName(m.config, m.cfilename).AbsoluteFile), ext)
 
 when false:
@@ -2836,20 +2860,11 @@ proc writeModule(m: BModule) =
     code = stripCnifMarks(code)
   registerModuleCode(m, cf, code)
 
-proc updateCachedModule(m: BModule) =
-  let cfile = getCFile(m)
-  var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                 obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-  if sfMainModule notin m.module.flags:
-    genMainProc(m)
-  cf.flags = {CfileFlag.Cached}
-  addFileToCompile(m.config, cf)
-
 proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"
   let procname = getIdent(graph.cache, prefixedName)
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
-  result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
+  result.typ = newProcType(m.module.info, m.idgen, result)
   result.typ.callConv = ccCDecl
   backendEnsureMutable result
   incl result.flagsImpl, sfExportc
@@ -2862,6 +2877,42 @@ proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; 
   theProc[namePos] = newSymNode(result)
   theProc[bodyPos] = body
   result.ast = theProc
+
+proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
+  ## Per-module backend (`cg` stage), non-main module: wrap this module's
+  ## accumulated top-level global destructors in a nullary exported proc and
+  ## return its C name ("" when there are none).
+  ##
+  ## `graph.globalDestructors` is filled while a module's own `cg` process
+  ## injects destructors into its top level, but the teardown code is emitted
+  ## by the MAIN module's `cg` — a different process, whose `graph` only ever
+  ## sees its own entries. So each module emits its own teardown here and
+  ## records the name in its `.c.nif` meta head; the main module's `cg` reads
+  ## the heads (like it already does for init/datInit) and calls them.
+  result = ""
+  if graph.globalDestructors.len == 0: return
+  var body = newNodeI(nkStmtList, m.module.info)
+  for i in countdown(high(graph.globalDestructors), 0):
+    body.add graph.globalDestructors[i]
+  body.flags.incl nfTransf # should not be further transformed
+  graph.globalDestructors.setLen 0
+
+  result = m.config.nimMainPrefix & "NimDestroyGlobals__" & $getSomeNameForModule(m)
+  let procname = getIdent(graph.cache, result)
+  var dtor = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
+  dtor.typ = newProcType(m.module.info, m.idgen, dtor)
+  dtor.typ.callConv = ccNimCall
+  backendEnsureMutable dtor
+  incl dtor.flagsImpl, sfExportc # a root for the merge stage's DCE: nothing
+                                 # inside this TU calls it, only main does
+  dtor.locImpl.snippet = result
+
+  let theProc = newNodeI(nkProcDef, m.module.info, bodyPos+1)
+  for i in 0..<theProc.len: theProc[i] = newNodeI(nkEmpty, m.module.info)
+  theProc[namePos] = newSymNode(dtor)
+  theProc[bodyPos] = body
+  dtor.ast = theProc
+  genProcLvl3(m, dtor)
 
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
@@ -2889,6 +2940,22 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   if n != nil:
     m.initProc.options = initProcOptions(m)
     genProcBody(m.initProc, n)
+
+  if graph.icModuleDtors.len > 0 and sfMainModule in m.module.flags and
+      {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
+    # Per-module backend: the other modules' top-level global destructors were
+    # emitted into their own TUs (`genIcModuleDestroyGlobals`); call them from
+    # the end of the main module's init proc — which IS the program body — right
+    # after main's own destructors, in the order `generateCgStage` computed
+    # (reverse dependency order, mirroring whole-program cgen's single reversed
+    # `globalDestructors` list). The lib/noMain flavour — where the whole-program
+    # backend collects the destructors into an exported `NimDestroyGlobals`
+    # instead — is not reachable: `nim ic` only builds executables.
+    for dn in graph.icModuleDtors:
+      m.g.mainModProcs.addDeclWithVisibility(Private):
+        m.g.mainModProcs.addProcHeader(ccNimCall, dn, CVoid, cProcParams())
+        m.g.mainModProcs.finishProcHeaderAsProto()
+      m.initProc.s(cpsStmts).addCallStmt(markCName(dn))
 
   if m.hcrOn:
     # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)

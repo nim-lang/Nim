@@ -2,12 +2,23 @@
   Incremental Compilation (IC)
 ======================================
 
-The ``nim ic`` command provides incremental compilation for Nim projects. It
-decomposes compilation into per-module steps whose results are cached as NIF
-files, and uses the external ``nifmake`` build tool to re-run only the steps
-whose inputs changed.
+``--ic:on`` turns an ordinary compile into an incremental one. It decomposes
+compilation into per-module steps whose results are cached as NIF files, and
+uses the external ``nifmake`` build tool to re-run only the steps whose inputs
+changed.
 
-This document describes **how `nim ic` works today**, including the edge cases
+.. code-block:: cmd
+
+  nim c   --ic:on  myproject.nim
+  nim cpp --ic:on  myproject.nim
+
+It is a switch on the normal compile commands, not a command of its own, so
+everything else keeps working unchanged: ``cpp`` and ``objc`` backends, ``-r``,
+``-d:release``, ``--exceptions:``, and a project-wide opt-in from ``nim.cfg`` /
+``config.nims``. The older spelling ``nim ic`` still works and drives the same
+code, but it is the C backend only and cannot run the binary it built.
+
+This document describes **how IC works today**, including the edge cases
 that shaped the current design. The per-module backend rewrite that earlier
 editions of this document listed as a *Plan* has **landed**: the whole-program,
 reuse/redirect/def-retention backend is gone and codegen is now a set of
@@ -16,7 +27,7 @@ reuse/redirect/def-retention backend is gone and codegen is now a set of
 Overview
 ========
 
-The pipeline has two halves driven by one process (`nim ic`, `commandIc` in
+The pipeline has two halves driven by one process (the *driver*, `commandIc` in
 ``compiler/deps.nim``) that constructs a dependency graph, writes a build file,
 and hands it to ``nifmake``:
 
@@ -210,15 +221,17 @@ Edge cases (and why the machinery exists)
 - **`nil` sons of loaded ASTs.** NIF dot-tokens load as `nil` where from-source
   ASTs have `nkEmpty`; several passes gained `nil` guards.
 - **Sealed loaded types.** Loaded types are `Sealed`; sem/transform mutate via
-  `unsealForTransform`/`exactReplica(idgen)` (the latter mints a fresh `uniqueId`
-  so serialized replicas don't collapse).
+  `unsealForTransform`/`copyType`, or -- where the copy must still answer to the
+  original in the generic binding tables -- `exactReplica(idgen)`, which gives the
+  copy its own `itemId` (so serialized replicas don't collapse) while inheriting
+  the original's `bindingId`.
 - **Methods/RTTI ownership.** RTTI and type-bound hooks are emit-everywhere at
   `cg` and deduplicated by the `merge` stage, like generic instances; the main
   module's `cg` owns the whole-program method dispatchers.
 - **Config cost.** Each child re-parsing `nim.cfg` + re-running `config.nims` in
   the VM was ~80 ms; replaced by a precompiled `ic_config.cfg.nif` replayed in
   `loadConfigs` (`compiler/icconfig.nim`).
-- **`koch bootic`** bootstraps the compiler through `nim ic` (a 3-iteration
+- **`koch bootic`** bootstraps the compiler through `--ic:on` (a 3-iteration
   fixed-point check). It writes its binary to ``bin/nim_ic`` and never clobbers
   ``bin/nim``.
 
@@ -245,7 +258,7 @@ Known residual hack
 Status and performance
 ======================
 
-`nim ic` self-builds the compiler (`koch bootic`'s byte-identical fixed-point
+IC self-builds the compiler (`koch bootic`'s byte-identical fixed-point
 check) under both `orc` and `--mm:refc`, and passes the external-package CI set.
 
 Cold full bootstrap on a 32-core box (`-d:release`, **no edits** — IC's worst
@@ -254,7 +267,7 @@ case, since incremental reuse is not exercised):
 | | wall | notes |
 | - | ---- | ----- |
 | `koch boot` (classic) | ~1m00s | reference |
-| `koch bootic` (`nim ic`) | ~1m39s | **~1.66×** |
+| `koch bootic` (`--ic:on`) | ~1m39s | **~1.66×** |
 
 This is down from ~7.5× in the whole-program-backend era. IC does modestly more
 aggregate work (more processes, NIF re-parsing of imports per process), but on a
@@ -403,3 +416,101 @@ See also
 
 - NIF format spec: [nifspec/doc/nif-spec.md](../nifspec/doc/nif-spec.md)
 - NIFC (C-like target) spec: dist/nimony/doc/nifc-spec.md
+
+Testing IC
+==========
+
+Two mechanisms, at very different scales.
+
+**`tests/ic` — metamorphic tests.** A `t*.nim` whose body contains `#? metamorphic`
+drives a sequence of cross-module edits through the IC driver in one fixed build
+directory (see `testament/categories.nim`, `runMetamorphicIcTest`). Directives:
+
+| directive | effect |
+| --------- | ------ |
+| ``#!FILE <name>`` | (re)write a module in the virtual file system |
+| ``#!DELETE <name>`` | remove a module, from the vfs and from disk |
+| ``#!FLAGS <switches>`` | change the compiler switches from here on |
+| ``#!STEP <attrs>`` | materialise the files, build, run, check |
+
+Step attributes: ``expect: <stdout>``, ``fails: <substring>`` (BOTH compilers must
+reject it, with that text), ``noop``, ``body-edit``, ``iface-edit``,
+``modules: <n>``, ``clean``, ``no-oracle``.
+
+Every successful step is **also compiled with `nim c` and run, and the two
+outputs must agree**. That oracle is the only check in the suite that is not
+IC-against-IC: `clean == incremental`, `noop changes nothing` and the cookie
+invariants are all satisfied by an IC that is *consistently* wrong, which is how
+two silent miscompilations survived (a NIF-loaded module's `sfInjectDestructors`
+was lost, so top-level destructors were never injected; `nfFirstWrite`/`nfLastRead`
+had nowhere to live on a serialized sym node, so every first assignment to a
+destructor-bearing local became `=sink` over zeroed memory). `koch bootic` has the
+same blind spot — it proves the compiler reproduces *itself*.
+
+**`testament --ic` — the whole corpus.** Appends `--ic:on` to every C and C++
+test compile, so IC inherits the existing ~10k programs and their expected
+output instead of the handful written for it by hand. Because it is a switch and
+not a command, a test that overrides the command wholesale (`cmd: "nim cpp -r
+$file"`) simply gains the switch — no verb rewriting, and the C++ corpus comes
+along for free. Each also gets a private nimcache; without one they would share
+a cache and thrash it.
+
+To keep that affordable, testament borrows nimony's hastur model
+(`warmupSharedCache` + `prefillFromWarmup`): a generated warmup program pulling in
+`system` and the most-imported stdlib modules is compiled once per distinct
+compile configuration into `nimcache/ic_warmup_<hash>`, and each test's empty
+cache is seeded from it with **mtimes preserved** (nifmake compares
+output-mtime > input-mtime, so stamping the copies "now" would re-fire the whole
+graph). Only program-independent artifacts are copied — the frontend NIFs and
+cookies plus the per-module `lower`/`cg` outputs. The `.c`/`.o` are deliberately
+left behind: the merge decision (which module owns each emit-everywhere
+definition) is whole-program, so those are re-rendered for every program anyway.
+
+Measured on `tests/destructor` (97 test runs, 32-core box):
+
+| | cold | warm |
+| - | ---- | ---- |
+| `nim c` | 35s | 32s |
+| `--ic:on` | ~3m30 | **9.8s** |
+
+The warm number is the developer loop and it is 3.2x faster than the classic
+backend; the cold number is paid once per configuration and then cached on disk.
+The disk cost is real and worth knowing: ~3.4 GB of nimcache for that one
+category.
+
+One property of an incremental compiler is worth spelling out because it looks
+like a test bug: **a cached stage emits no diagnostics**. `--expandArc` output, a
+hint, a warning — all of it is produced by the process that actually runs, so a
+build that reuses every artifact prints nothing. Tests that check `nimout` (and
+anything you are debugging by eye) therefore need a cold cache; running the same
+test twice in a row makes the second run's `nimout` empty.
+
+The C++ backend
+===============
+
+``nim cpp --ic:on`` works, and `tests/cpp` passes under it. Three things had to
+change for that, and they are worth knowing because they are the shape of every
+"C++ needs the whole program" problem the per-module backend has:
+
+* **The driver must name the right file.** ``deps.nim`` DECLARES each module's
+  translation unit to ``nifmake`` without loading a single module, so it cannot
+  ask ``cgen.getCFile``; ``options.icCFileExt`` mirrors that formula at backend
+  granularity (``.nim.cpp`` / ``.nim.m`` / ``.nim.c``).
+
+* **C++ has no designated initializers**, so the RTTI record is a bare variable
+  that ``DatInit`` fills field by field. That bare ``TNimTypeV2 x;`` is a
+  tentative definition, which C's linker merges and C++'s does not — every TU
+  that demanded the type defined it. It now gets the same extern-declaration +
+  owned-``'d'``-definition split the C flavour has.
+
+* **A C++ member is declared inside its class.** ``memberProcsPerType`` and
+  ``initializersPerType`` live only in the sem process, so the backend emitted
+  the struct WITHOUT its member declarations; they are replayed from a
+  ``(repcppmember …)`` log entry now (``modulegraphs.replayCppMember`` re-derives
+  the type from the routine's signature, exactly as ``semCppMember`` does).
+  Two follow-on details: a member's ``loc.snippet`` is a CALL PATTERN
+  (``#->salute(@)``), so it must be computed even in the TU that only *calls* the
+  member (whole-program cgen got that for free by generating the defining module
+  first), and it is not a linker name — every ``salute`` member in every class
+  mints the same one, so definitions are keyed by their NIF name in the merge
+  stage instead.

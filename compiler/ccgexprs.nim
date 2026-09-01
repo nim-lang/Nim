@@ -1048,7 +1048,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   if p.module.compileToCpp and e.kind == nkDotExpr and e[1].kind == nkSym and e[1].typ.kind == tyPtr:
     # special case for C++: we need to pull the type of the field as member and friends require the complete type.
     let typ = e[1].typ.elementType
-    if typ.itemId in p.module.g.graph.memberProcsPerType:
+    if typ.bindingId in p.module.g.graph.memberProcsPerType:
       discard getTypeDesc(p.module, typ)
 
   genRecordFieldAux(p, e, d, a)
@@ -2901,22 +2901,6 @@ proc genDestroy(p: BProc; n: PNode) =
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
-proc genDispose(p: BProc; n: PNode) =
-  when false:
-    let elemType = n[1].typ.skipTypes(abstractVar).elementType
-
-    var a: TLoc = initLocExpr(p, n[1].skipAddr)
-
-    if isFinal(elemType):
-      if elemType.destructor != nil:
-        var destroyCall = newNodeI(nkCall, n.info)
-        genStmts(p, destroyCall)
-      lineFmt(p, cpsStmts, "#nimRawDispose($1, NIM_ALIGNOF($2))", [rdLoc(a), getTypeDesc(p.module, elemType)])
-    else:
-      # ``nimRawDisposeVirtual`` calls the ``finalizer`` which is the same as the
-      # destructor, but it uses the runtime type. Afterwards the memory is freed:
-      lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
-
 proc genSlice(p: BProc; e: PNode; d: var TLoc) =
   let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.elementType,
     prepareForMutation = e[1].kind == nkHiddenDeref and
@@ -3490,7 +3474,6 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
     m.initProc.procSec(cpsLocals).add('\t')
     m.initProc.procSec(cpsLocals).addAssignmentWithValue(sym.loc.snippet):
       m.initProc.procSec(cpsLocals).addCast(ptrType(getTypeDesc(m, sym.loc.t, dkVar))):
-        var getGlobalCall: CallBuilder
         m.initProc.procSec(cpsLocals).addCall("hcrGetGlobal",
           getModuleDllPath(q, sym),
           '"' & sym.loc.snippet & '"')
@@ -3768,7 +3751,6 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if delayedCodegen(p.module):
       genConstStmt(p, n)
     else: # enforce addressable consts for exportc
-      let m = p.module
       for it in n:
         let symNode = skipPragmaExpr(it.firstSon)
         if symNode.kind == nkSym and sfExportc in symNode.sym.flags:

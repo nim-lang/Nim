@@ -109,7 +109,7 @@ proc getObjDepth(t: PType): (int, ItemId) =
     x = skipTypes(x, skipPtrs)
     if x.kind != tyObject:
       return (-3, default(ItemId))
-    stack.add x.itemId
+    stack.add x.bindingId
     x = x.baseClass
     inc(result[0])
   result[1] = stack[^2]
@@ -1006,7 +1006,6 @@ proc trackIf(tracked: PEffects, n: PNode) =
 
 proc trackBlock(tracked: PEffects, n: PNode; typ: PType) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
-    let myBlock = tracked.currentBlock
     var oldState = -1
     for i in 0..<n.len:
       if hasSubnodeWith(n[i], nkBreakStmt):
@@ -1028,11 +1027,6 @@ proc trackBlock(tracked: PEffects, n: PNode; typ: PType) =
             "' which does not live long enough")
   else:
     track(tracked, n)
-
-proc cstringCheck(tracked: PEffects; n: PNode) =
-  if n[0].typ.kind == tyCstring and (let a = skipConv(n[1]);
-      a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
-    message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
 proc patchResult(c: PEffects; n: PNode) =
   if n.kind == nkSym and n.sym.kind == skResult:
@@ -1511,7 +1505,6 @@ proc track(tracked: PEffects, n: PNode) =
     dec tracked.leftPartOfAsgn
     addAsgnFact(tracked.guards, n[0], n[1])
     notNilCheck(tracked, n[1], n[0].typ)
-    when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro and n[0].typ.kind notin {tyOpenArray, tyVarargs}:
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalSym(tracked, n[0].sym):
@@ -2001,7 +1994,6 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     patchResult(t, ensuresSpec)
     effects[ensuresEffects] = ensuresSpec
 
-  var mutationInfo = MutationInfo()
   if views in c.features:
     var partitions = computeGraphPartitions(s, body, g, {borrowChecking})
     checkBorrowedLocations(partitions, body, g.config)
