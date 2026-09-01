@@ -119,7 +119,7 @@ proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   of nkNilLit:
     int128.Zero
   of nkHiddenStdConv:
-    getOrdValueAux(n[1], err)
+    getOrdValueAux(n.secondSon, err)
   else:
     err = true
     int128.Zero
@@ -1398,11 +1398,11 @@ proc skipConv*(n: PNode): PNode =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     # only skip the conversion if it doesn't lose too important information
     # (see bug #1334)
-    if n[0].typ.classify == n.typ.classify:
-      result = n[0]
+    if n.firstSon.typ.classify == n.typ.classify:
+      result = n.firstSon
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if n[1].typ.classify == n.typ.classify:
-      result = n[1]
+    if n.secondSon.typ.classify == n.typ.classify:
+      result = n.secondSon
   else: discard
 
 proc skipHidden*(n: PNode): PNode =

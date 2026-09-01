@@ -6,9 +6,11 @@ import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
 when not defined(nimKochBootstrap):
   import vmdef
   import ast2nif
-  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
+  import nifstreams
+  import "../dist/nimony/src/lib" / bitabs
 
 import pipelineutils
+import icprof
 
 import ../dist/checksums/src/checksums/sha1
 
@@ -248,7 +250,15 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     # current strongly-connected import group (`--icGroup`) are the exception:
     # they are compiled from source here, so each must write its own NIF.
     let shouldWriteNif =
-      if graph.config.ideActive:
+      if graph.config.errorCounter > 0:
+        # Never persist an artifact built from erroneous AST. `nim m` does exit
+        # non-zero, but its outputs would still land on disk NEWER than their
+        # inputs, so nifmake sees the rule as satisfied on the next run: the
+        # build then "succeeds" from a poisoned NIF — a silently wrong binary,
+        # or an internal error once codegen meets an `nkError` body. Leaving the
+        # outputs missing keeps the rule dirty so it re-fires and re-reports.
+        false
+      elif graph.config.ideActive:
         # nimsuggest (cmdM): persist NIF for cleanly-compiled, SAVED modules so
         # later queries load them instead of recompiling. Never persist the
         # actively edited buffer (it may hold unsaved/incomplete code) nor a
@@ -305,7 +315,7 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       var typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[]
       for genItemId, instList in graph.typeInstCache:
         for inst in instList:
-          if inst != nil and inst.uniqueId.module == module.position and
+          if inst != nil and inst.itemId.module == module.position and
               inst.kidsLen > 0 and inst[0] != nil and
               inst[0].kind == tyGenericBody and inst[0].sym != nil:
             typeOffers.add (inst[0].sym, inst)
@@ -320,10 +330,19 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       let firstUnusedId = max(idgen.symId, idgen.typeId)
       var expansions: seq[(PSym, TLineInfo)] = @[]
       discard graph.nifExpansions.take(module.position.int32, expansions)
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
-                     replayActions, implDeps, reexportedModuleSyms(graph, module),
-                     genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
-                     expansions)
+      # The module symbol's own backend-relevant flags. `sfInjectDestructors` is
+      # set by sempass2 when the module's TOP-LEVEL statements need the
+      # destructor pass; `moduleFromNifFile` builds a fresh module PSym, so
+      # without persisting it `cgen.genTopLevelStmt` skipped
+      # `injectDestructorCalls` and top-level locals were never destroyed.
+      let moduleFlags =
+        if sfInjectDestructors in module.flags: ModFlagInjectDestructors else: 0'i32
+      timed tWriteNif:
+        writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
+                       replayActions, implDeps, reexportedModuleSyms(graph, module),
+                       genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
+                       expansions, moduleFlags,
+                       reexportedLocalSyms(graph, module))
       # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]

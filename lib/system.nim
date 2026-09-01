@@ -1254,7 +1254,9 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     a.del(2)
     assert a == @[10, 11, 14, 13]
   let xl = x.len - 1
-  movingCopy(x[i], x[xl])
+  # Avoid moving the element onto itself when deleting the last item.
+  if i != xl:
+    movingCopy(x[i], x[xl])
   setLen(x, xl)
 
 proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =

@@ -29,7 +29,8 @@ when defined(nimPreviewSlimSystem):
 import ../dist/checksums/src/checksums/sha1
 
 import pipelines
-from icconfig import produceIcConfig
+import icprof
+from icconfig import produceIcConfig, ensureIcConfig
 
 when not defined(nimKochBootstrap):
   import nifbackend
@@ -269,6 +270,28 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
+    if isIcDriver(conf):
+      # `nim c --ic:on` / `nim cpp --ic:on`: same driver as `nim ic`, entered
+      # through the ordinary compile command so every backend switch the user
+      # already knows keeps working (`nim cpp`, `--exceptions:`, `-d:`, ...).
+      # `customizeForBackend` above has already defined the backend symbol and
+      # picked the exception model, which is exactly what the per-module
+      # children must inherit — `computeForwardedArgs` forwards both.
+      setUseIc(true)
+      wantMainModule(conf)
+      setOutFile(conf)
+      when not defined(nimKochBootstrap):
+        if conf.icPreparsedConfig.len == 0:
+          # `--ic:on` came from a `nim.cfg`/`config.nims` rather than the command
+          # line, so `nim.nim` could not see it before config loading and the
+          # precompiled config the children replay does not exist yet. Produce it
+          # now. (The driver then keeps the config IT parsed instead of replaying
+          # the artifact; both come from the same files.)
+          ensureIcConfig(conf)
+        commandIc(conf)
+      else:
+        rawMessage(conf, errGenerated, "--ic:on not available in bootstrap build")
+      return
     setOutFile(conf)
     case conf.backend
     of backendC: commandCompileToC(graph)
@@ -423,7 +446,9 @@ proc mainCommand*(graph: ModuleGraph) =
     # per-module compilation model cannot provide (yet); methods dispatch
     # through the classic if-chain dispatchers instead
     excl conf.features, Feature.vtables
-    commandCheck(graph)
+    # `tStage` for a `nim m` process, so `Process - Stage` is its real startup
+    # (exec, runtime init, config replay) rather than its whole runtime.
+    timed tStage: commandCheck(graph)
   of cmdNifC:
     setUseIc(true)
     excl conf.features, Feature.vtables

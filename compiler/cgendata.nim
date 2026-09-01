@@ -142,6 +142,13 @@ type
                             # not a list of IDs nor can it be made to be one.
     mangledPrcs*: HashSet[string]
 
+    icEmitted*: IntSet
+      ## Under `--icBackendStage:cg`: the positions of the modules THIS process
+      ## writes a translation unit for. `cgen.findPendingModule` consults it to
+      ## decide where a demanded definition goes — see the comment there. Empty
+      ## outside that stage, which is why every other backend keeps the ordinary
+      ## whole-program routing.
+
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
     flags*: set[CodegenFlag]
@@ -186,6 +193,10 @@ type
                               # embeds (redirected defs, shared instances,
                               # hooks); recorded as the artifact's cdeps so
                               # the reuse gate can check their impl cookies
+    icGlobalDtorName*: string # per-module backend: the C name of this
+                              # module's global-destructor proc, recorded in
+                              # the artifact's meta head so the main module's
+                              # `cg` — a different process — can call it
     icDataDefs*: seq[tuple[cname, nifname: string]]
                               # C names of data definitions (consts, globals,
                               # RTTI) this TU embeds plus their NIF symbol
@@ -234,7 +245,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),
-    config: g.config, graph: g, nimtvDeclared: initIntSet())
+    config: g.config, graph: g, nimtvDeclared: initIntSet(),
+    icEmitted: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:

@@ -423,6 +423,20 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
   result.typ = t
 
+proc stabilizeBracketIndex(n: PNode; c: var Con; body: var PNode): PNode =
+  ## Evaluate a side-effecting index once and return the stable access.
+  doAssert n.kind == nkBracketExpr and not isAtom(n[1])
+  let temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), c.idgen,
+                    c.owner, n[1].info)
+  temp.typ = n[1].typ
+  let tempAsNode = newSymNode(temp)
+  body.add newTree(nkLetSection, n[1].info,
+                   newTree(nkIdentDefs, tempAsNode,
+                           newNodeI(nkEmpty, tempAsNode.info), n[1]))
+  result = copyNode(n)
+  result.add n[0]
+  result.add tempAsNode
+
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   if (not hasDestructor(c, n.typ)) and c.inEnsureMove == 0:
@@ -433,6 +447,10 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
     result = copyTree(n)
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+
+    var n = n
+    if n.kind == nkBracketExpr and not isAtom(n[1]):
+      n = stabilizeBracketIndex(n, c, result)
 
     var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.idgen, c.owner, n.info)
     temp.typ = n.typ
@@ -1124,6 +1142,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
       result = n
+    of nkReplayAction:
+      # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded
+      # module's TOP-LEVEL statements (the loader prepends the `(replay ...)`
+      # entries there); cgen discards it, so pass it through untouched.
+      result = n
     else:
       result = nil
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
@@ -1155,24 +1178,11 @@ proc sameLocation*(a, b: PNode): bool =
     else: false
 
 proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
-  # with side effects
-  var temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), c.idgen, c.owner, ri[1].info)
-  temp.typ = ri[1].typ
-  var v = newNodeI(nkLetSection, ri[1].info)
-  let tempAsNode = newSymNode(temp)
-
-  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
-  vpart[0] = tempAsNode
-  vpart[1] = newNodeI(nkEmpty, tempAsNode.info)
-  vpart[2] = ri[1]
-  v.add(vpart)
-
-  var newAccess = copyNode(ri)
-  newAccess.add ri[0]
-  newAccess.add tempAsNode
-
-  var snk = c.genSink(s, dest, newAccess, flags)
-  result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
+  result = newNodeI(nkStmtList, ri.info)
+  let newAccess = stabilizeBracketIndex(ri, c, result)
+  let snk = c.genSink(s, dest, newAccess, flags)
+  result.add snk
+  result.add c.genWasMoved(newAccess)
 
 proc ownsData(c: var Con; s: var Scope; orig: PNode; flags: set[MoveOrCopyFlag]): PNode =
   var n = orig
