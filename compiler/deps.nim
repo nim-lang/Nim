@@ -15,9 +15,11 @@ from std/sha1 import secureHash, `$`
 import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
 
-import "../dist/nimony/src/lib" / [nifstreams, bitabs, nifreader, nifbuilder]
+import nifstreams
+import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
 import icmodnames
 import icnifcore
+from ic/replayer import BackendActionsExt
 
 type
   FilePair = object
@@ -62,6 +64,13 @@ proc depsFile(c: DepContext; f: FilePair): string =
 
 proc parsedFile(c: DepContext; f: FilePair): string =
   getNimcacheDir(c.config).string / f.modname & ".p.nif"
+
+proc parsedDepsFile(c: DepContext; f: FilePair): string =
+  ## The deps sidecar `nifler parse --deps <src> <out>.p.nif` actually writes: it
+  ## appends `.deps.nif` to the OUTPUT path, giving `<mod>.p.deps.nif`. Not to be
+  ## confused with `depsFile` (`<mod>.deps.nif`), which the driver's own
+  ## `nifler deps` pre-scan writes.
+  parsedFile(c, f).changeFileExt("") & ".deps.nif"
 
 proc semmedFile(c: DepContext; f: FilePair): string =
   getNimcacheDir(c.config).string / f.modname & ".s.bif"
@@ -513,6 +522,18 @@ proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
       for r in parseImportPath(s, t):
         result.add op & r
       if t.kind == ParRi: t = next(s)  # skip closing ')'
+    elif tag == "pragmax":
+      # `import x {.all.}` serialises as `(pragmax x (pragmas all))`. Without
+      # this it fell into the unknown-subtree skip below and the import was
+      # DROPPED from the static graph: the build only learned about it from the
+      # `.s.deps` sidecar a round later, after a round that failed with
+      # "requires precompiled NIF for import". Correct, but a wasted round and
+      # an alarming error line for an ordinary import.
+      t = next(s)                      # skip 'pragmax' tag
+      result = parseImportPath(s, t)   # the path is the first child
+      while t.kind != ParRi and t.kind != EofToken:
+        discard parseImportPath(s, t)  # the pragma list; consumed, not a path
+      if t.kind == ParRi: t = next(s)  # skip closing ')'
     elif tag == "bracket":
       t = next(s)                      # skip 'bracket' tag
       while t.kind != ParRi and t.kind != EofToken:
@@ -803,18 +824,35 @@ proc pruneDeadSpeculative(c: var DepContext) =
     for d in c.nodes[v].deps:
       if not dead[d] and not alive[d]: stack.add d
 
+  # Drop the scan artifacts of a module that just left the graph, so an
+  # edit-accumulated cache does not differ from a clean one for no reason
+  # (`tests/ic/tdead_when_import` pins that). Re-running nifler if it ever comes
+  # back costs a single parse.
+  #
+  # But a FILE can belong to several nodes, and only the NODE is dead.
+  # `lib/system/inclrtl.nim` is `include`d by dozens of live stdlib modules and
+  # also sits in the file set of a dead-speculative one; a clean build therefore
+  # has its `.p.nif`, and deleting it here does not tidy the cache, it corrupts
+  # it. The consequences compound: the missing output re-fires that file's
+  # `nifler` rule, which rewrites the parsed file with a fresh mtime, which
+  # re-fires every `nim_m` rule listing it as an input — 16 full module re-sems
+  # (system, os, times, strutils, macros, unicode, ...) on every warm build, for
+  # ever, because the scanner is stateless and rediscovers the dead node each
+  # run. Measured on a 219-module program: an 11 s NO-OP build. So delete only
+  # what no live node claims.
+  var liveFiles = initHashSet[string]()
+  for i in 0 ..< n:
+    if alive[i]:
+      for f in c.nodes[i].files: liveFiles.incl f.nimFile
+
   var cascaded = 0
   for i in 0 ..< n:
     if not alive[i]:
-      # Drop the scan artifacts of a module that just left the graph. `nifler`
-      # ran on it during `traverseDeps` (that is how we learned it cannot
-      # build), and leaving its `.p.nif`/`.deps.nif` behind makes an
-      # edit-accumulated cache differ from a clean one for no reason. Re-running
-      # nifler if it ever comes back costs a single parse.
       for f in c.nodes[i].files:
+        if f.nimFile in liveFiles: continue
         removeFile(c.parsedFile(f))
         removeFile(c.depsFile(f))
-        removeFile(c.parsedFile(f).changeFileExt("") & ".deps.nif")
+        removeFile(c.parsedDepsFile(f))
       if c.nodes[i].missingImport.len > 0:
         rawMessage(c.config, hintSuccess,
           "ic: skipping " & c.nodes[i].files[0].nimFile &
@@ -1102,8 +1140,13 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
         b.addTree "output"
         b.addStrLit parsed
         b.endTree()
+        # The deps sidecar this command really produces is `<mod>.p.deps.nif`,
+        # not `<mod>.deps.nif` (which only the driver's `nifler deps` pre-scan
+        # writes). Declaring the latter made the rule permanently stale — a
+        # missing output is nifmake's strongest rebuild trigger — for every
+        # module the pre-scan does not also cover.
         b.addTree "output"
-        b.addStrLit c.depsFile(pair)
+        b.addStrLit c.parsedDepsFile(pair)
         b.endTree()
         b.endTree()
 
@@ -1277,6 +1320,76 @@ proc computeLiveBackendNodes(c: DepContext): seq[bool] =
       let idx = c.processedModules.getOrDefault(c.toPair(p).modname, -1)
       if idx >= 0: stack.add idx
 
+proc intDefine(conf: ConfigRef; name: string; fallback: int): int =
+  ## `-d:<name>:N` as an int, or `fallback` when unset or unparsable.
+  result = fallback
+  if isDefined(conf, name):
+    try: result = parseInt(conf.symbols[name])
+    except ValueError: result = fallback
+
+proc backendBatchSize(conf: ConfigRef; liveCount: int): int =
+  ## How many modules share one backend process. 1 is the historical per-module
+  ## fan-out; larger batches amortise the process floor and the dependency
+  ## closure load (measured on a 67-module program: 7.6 ms of process startup
+  ## and ~10 ms of closure loading per child, against 3.5 ms of actual codegen).
+  ##
+  ## `-d:icBatchSize:N` pins it. The default is 1 — the plumbing is in place but
+  ## the policy is not yet validated. `-d:icBatchSize:0` means "one batch per
+  ## job", which is the shape a tuned default will take: enough batches to keep
+  ## every core busy and no more, since a batch beyond that only buys
+  ## amortisation at the price of parallelism.
+  if not isDefined(conf, "icBatchSize"): return 1
+  result = intDefine(conf, "icBatchSize", 1)
+  if result == 0:
+    let jobs =
+      if isDefined(conf, "icNoParallel"): 1
+      elif isDefined(conf, "icJobs"): max(1, intDefine(conf, "icJobs", 1))
+      elif conf.numberOfProcessors > 0: conf.numberOfProcessors
+      else: 1
+    result = (liveCount + jobs - 1) div jobs
+  result = max(1, result)
+
+proc emitBatches(c: DepContext; live: seq[bool];
+                 shared: seq[seq[int]]): seq[seq[int]] =
+  ## emit's partition. Unlike `lower`/`cg` it takes the MAIN module too and, by
+  ## default, puts every live node in one batch: emit owns no decisions, so
+  ## there is nothing for a grouping to get wrong (see the rule that uses this).
+  ## An explicit `-d:icBatchSize` reuses the shared partition instead, plus main,
+  ## so the fan-out remains available to compare against.
+  if isDefined(c.config, "icBatchSize"):
+    result = shared
+    if live.len > 0 and live[0]: result.add @[0]
+  else:
+    var all: seq[int] = @[]
+    for i in 0 ..< c.nodes.len:
+      if live[i]: all.add i
+    result = if all.len > 0: @[all] else: @[]
+
+proc backendBatches(c: DepContext; live: seq[bool]): seq[seq[int]] =
+  ## Partition the live non-main nodes into batches of node indices. The main
+  ## module is never in one: it loads the whole program, so batching it with
+  ## anything defeats the memory bound the per-module split exists to give.
+  ##
+  ## Contiguous runs of `c.nodes`, which is import-traversal order, so a batch's
+  ## members tend to share dependencies and its union closure stays close to one
+  ## member's. A smarter partition (by closure overlap, or by the dirty set on an
+  ## incremental build) belongs here and nowhere else — every stage already takes
+  ## whatever grouping this returns.
+  var liveIdx: seq[int] = @[]
+  for i in 0 ..< c.nodes.len:
+    if live[i] and c.nodes[i].id != 0: liveIdx.add i
+  let size = backendBatchSize(c.config, liveIdx.len)
+  result = @[]
+  var i = 0
+  while i < liveIdx.len:
+    var batch: seq[int] = @[]
+    var j = i
+    while j < liveIdx.len and batch.len < size:
+      batch.add liveIdx[j]
+      inc j
+    result.add batch
+    i = j
+
 proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
   ## Per-module backend build file. One `nim_nifc` command template (the actual
   ## stage/module switches ride in each rule's `(args …)`), then the stages of
@@ -1332,6 +1445,8 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       if fileExists(cnifFiles[i]) or fileExists(cFiles[i]): prunedStale = true
       removeFile(cnifFiles[i])
       removeFile(cFiles[i])
+      removeFile(cFiles[i] & ".stamp")
+      removeFile(cFiles[i] & BackendActionsExt)
   # The merge decision is a pure function of the set of `.c.nif`s present; if we
   # just removed an over-approximated module's artifacts, a decision computed
   # while they were present is stale — it can name a now-absent module as a
@@ -1393,17 +1508,39 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # frontend writes `.s.nif`s content-stably, so an interface change to a
   # dependency re-sems (and re-emits the `.s.nif` of) every transitive importer;
   # a module whose own `.s.nif` is unchanged genuinely needs no re-lowering.
-  for i, node in c.nodes:
-    if not live[i]: continue
+  let batches = backendBatches(c, live)
+  template suffixList(batch: seq[int]): string =
+    var acc = ""
+    for k, idx in batch:
+      if k > 0: acc.add ","
+      acc.add c.nodes[idx].files[0].modname
+    acc
+
+  for batch in batches:
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
       b.addStrLit "--icBackendStage:lower"
-      b.addStrLit "--icBackendModule:" & node.files[0].modname
-    inputStr c.semmedFile(node.files[0])
+      b.addStrLit "--icBackendModules:" & suffixList(batch)
+    for idx in batch:
+      inputStr c.semmedFile(c.nodes[idx].files[0])
     inputStr argsFile
-    outputStr tFiles[i]
+    for idx in batch:
+      outputStr tFiles[idx]
     b.endTree()
+  # The main module is its own rule in every stage: it loads the whole program.
+  block:
+    let i = 0
+    if live[i]:
+      b.addTree "do"
+      b.addIdent "nim_nifc"
+      b.withTree "args":
+        b.addStrLit "--icBackendStage:lower"
+        b.addStrLit "--icBackendModules:" & c.nodes[i].files[0].modname
+      inputStr c.semmedFile(c.nodes[i].files[0])
+      inputStr argsFile
+      outputStr tFiles[i]
+      b.endTree()
 
   # cg: one rule per module. Input is this module's OWN `.t.nif`. cg DOES read
   # its dependencies' `.t.nif`s at runtime (loadDepClosure), but ordering is
@@ -1415,21 +1552,38 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # emit-everywhere'd but does not own is dropped by `emit` regardless, so a
   # stale copy here is harmless. The main module additionally depends on every
   # other `.c.nif` (it reads their init/datInit metas to wire up NimMain).
-  for i, node in c.nodes:
-    if not live[i]: continue
+  for batch in batches:
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
       b.addStrLit "--icBackendStage:cg"
-      b.addStrLit "--icBackendModule:" & node.files[0].modname
-    inputStr tFiles[i]
+      b.addStrLit "--icBackendModules:" & suffixList(batch)
+    for idx in batch:
+      inputStr tFiles[idx]
     inputStr argsFile
-    if node.id == 0:
+    for idx in batch:
+      outputStr cnifFiles[idx]
+      # The module's C compile/link directives (`{.passL.}` etc.), recorded so
+      # the `link` stage recovers them without loading the module graph. See
+      # `replayer.writeBackendActions`.
+      outputStr cFiles[idx] & BackendActionsExt
+    b.endTree()
+  block:
+    let i = 0
+    if live[i]:
+      b.addTree "do"
+      b.addIdent "nim_nifc"
+      b.withTree "args":
+        b.addStrLit "--icBackendStage:cg"
+        b.addStrLit "--icBackendModules:" & c.nodes[i].files[0].modname
+      inputStr tFiles[i]
+      inputStr argsFile
       for j in 0 ..< c.nodes.len:
         if c.nodes[j].id != 0 and live[j]:
           inputStr cnifFiles[j]
-    outputStr cnifFiles[i]
-    b.endTree()
+      outputStr cnifFiles[i]
+      outputStr cFiles[i] & BackendActionsExt
+      b.endTree()
 
   # merge: read the live modules' `.c.nif`, write the ownership/liveness
   # decision. The list is handed over as a FILE (`LiveModulesFile`) because the
@@ -1458,21 +1612,37 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.endTree()
 
   # emit: render each module's `.c` from its `.c.nif` + the merge decision.
-  for i, node in c.nodes:
-    if not live[i]: continue
+  #
+  # ONE rule for everything, main included. emit is a pure function of a
+  # `.c.nif` and the merge decision — `renderCFromArtifact` filters text and
+  # touches no AST, and the stage loads no module graph at all — so batching it
+  # cannot change what it produces, and measurement agrees: 67 processes and one
+  # process give byte-identical `.c`, in 0.502 s versus 0.041 s. What that buys
+  # is not the cold build (where 0.5 s serial is ~0.05 s across cores) but the
+  # fire-all: every `emit` re-fires whenever `merge` rewrites the decision, which
+  # is every edit that reaches the backend. That now costs one process start.
+  #
+  # `-d:icBatchSize:N` still splits it, for A/B-ing against the fan-out.
+  for batch in emitBatches(c, live, batches):
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
       b.addStrLit "--icBackendStage:emit"
-      b.addStrLit "--icBackendModule:" & node.files[0].modname
-    # Inputs: this module's OWN `.c.nif` and the global merge decision. emit also
-    # loads `.t.nif`s at runtime (getCFile/type resolution), but those are depth 1
-    # and emit is past the merge barrier, so they always exist — no need to list
-    # them. (emit still re-fires for every module whenever `merge` rewrites the
-    # decision file; making that incremental is a separate concern.)
-    inputStr cnifFiles[i]
+      b.addStrLit "--icBackendModules:" & suffixList(batch)
+    # Inputs: each member's OWN `.c.nif` and the global merge decision. emit
+    # reads nothing else — it derives its output paths rather than loading a
+    # module graph. (It still re-fires for every module whenever `merge` rewrites
+    # the decision file; making that incremental is a separate concern — though
+    # batching is what makes the re-fire cheap.)
+    for idx in batch:
+      inputStr cnifFiles[idx]
     inputStr mergeFile
-    outputStr cFiles[i]
+    for idx in batch:
+      outputStr cFiles[idx]
+      # The freshness proof for this rule; see nifbackend.generateEmitStage. The
+      # `.c` alone cannot serve: it is written OnlyIfChanged, so a rule that ran
+      # and produced identical bytes looks exactly like a rule that never ran.
+      outputStr cFiles[idx] & ".stamp"
     b.endTree()
 
   # link: compile + link every emitted `.c` in one process.
@@ -1486,7 +1656,9 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     # path splits back into outDir+outFile in the child).
     b.addStrLit "--out:" & exeFile
   for i in 0 ..< c.nodes.len:
-    if live[i]: inputStr cFiles[i]
+    if live[i]:
+      inputStr cFiles[i]
+      inputStr cFiles[i] & BackendActionsExt
   inputStr argsFile
   outputStr exeFile
   b.endTree()

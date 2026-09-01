@@ -59,10 +59,10 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   result = "_Z"  # Common prefix in Itanium ABI
   var params = ""
   var staticLists = ""
-  if s.typ.len > 1: #we dont care about the return param
-    for i in 1..<s.typ.len:
-      if s.typ[i].isNil: continue
-      params.add encodeType(m, s.typ[i], staticLists)
+  if s.typ.paramsLen > 0: # we dont care about the return param
+    for _, pt in paramTypes(s.typ):
+      if pt.isNil: continue
+      params.add encodeType(m, pt, staticLists)
 
   result.add encodeSym(m, s, makeUnique, staticLists)
   result.add params
@@ -311,7 +311,7 @@ proc isInvalidReturnType(conf: ConfigRef; typ: PType, isProc = true): bool =
   var rettype = typ
   var isAllowedCall = true
   if isProc:
-    rettype = rettype[0]
+    rettype = rettype.returnType
     isAllowedCall = typ.callConv in {ccClosure, ccInline, ccNimCall}
   if rettype == nil or (isAllowedCall and
                     getSize(conf, rettype) > conf.target.floatSize*3):
@@ -480,7 +480,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TypeDescKind
   of tySequence:
     let sig = hashType(t, m.config)
     if optSeqDestructors in m.config.globalOptions:
-      if skipTypes(etB[0], typedescInst).kind == tyEmpty:
+      if skipTypes(etB.elementType, typedescInst).kind == tyEmpty:
         internalError(m.config, "cannot map the empty seq type to a C type")
 
       result = cacheGetType(m.forwTypeCache, sig)
@@ -524,7 +524,7 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   if result == "":
     discard getTypeDescAux(m, t, check, dkVar)
   else:
-    let dataTyp = getTypeDescAux(m, t.skipTypes(abstractInst)[0], check, dkVar)
+    let dataTyp = getTypeDescAux(m, t.skipTypes(abstractInst).elementType, check, dkVar)
     m.s[cfsTypes].addSimpleStruct(m, name = result & "_Content", baseType = ""):
       m.s[cfsTypes].addField(name = "cap", typ = NimInt)
       m.s[cfsTypes].addField(name = "data",
@@ -598,10 +598,10 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
       rettype = runtimeFormat(rettype.replace("'0", "$1"), [getTypeDescAux(m, t.returnType, check, dkResult)])
   var types, names, args: seq[string] = @[]
   if not isCtor:
-    var this = t.n[1].sym
+    var this = t.n.secondSon.sym
     backendEnsureMutable this
     fillParamName(m, this)
-    fillLoc(this.locImpl, locParam, t.n[1],
+    fillLoc(this.locImpl, locParam, t.n.secondSon,
             this.paramStorageLoc)
     if this.typ.kind == tyPtr:
       this.locImpl.snippet = "this"
@@ -611,9 +611,9 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     types.add getTypeDescWeak(m, this.typ, check, dkParam)
 
   let firstParam = if isCtor: 1 else: 2
-  for i in firstParam..<t.n.len:
-    if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genMemberProcParams")
-    var param = t.n[i].sym
+  for it in sonsFrom(t.n, firstParam):
+    if it.kind != nkSym: internalError(m.config, t.n.info, "genMemberProcParams")
+    var param = it.sym
     var descKind = dkParam
     if optByRef in param.options:
       if param.typ.kind == tyGenericInst:
@@ -623,7 +623,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
     var typ, name: string
     backendEnsureMutable param
     fillParamName(m, param)
-    fillLoc(param.locImpl, locParam, t.n[i],
+    fillLoc(param.locImpl, locParam, it,
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
       typ = getTypeDescWeak(m, param.typ, check, descKind) & "*"
@@ -668,9 +668,9 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
     rettype = getTypeDescWeak(m, t.returnType, check, dkResult)
   var paramBuilder: ProcParamBuilder
   params.addProcParams(paramBuilder):
-    for i in 1..<t.n.len:
-      if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
-      var param = t.n[i].sym
+    for child in sonsFrom(t.n, 1):
+      if child.kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
+      var param = child.sym
       # The hidden closure environment param (`:envP`) is not a real C parameter:
       # the environment is passed via the trailing `ClE_0` (added below) and
       # `closureSetup` materialises `:envP` as a local cast of it. In a from-source
@@ -692,7 +692,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       if isCompileTimeOnly(param.typ): continue
       backendEnsureMutable param
       fillParamName(m, param)
-      fillLoc(param.locImpl, locParam, t.n[i],
+      fillLoc(param.locImpl, locParam, child,
               param.paramStorageLoc)
       if isClosureEnv: continue  # name/loc filled, but not part of the C signature
       var typ: Rope
@@ -715,7 +715,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
         # need to pass hidden parameter:
         params.addParam(paramBuilder, name = param.locImpl.snippet & "Len_" & $j, typ = NimInt)
         inc(j)
-        arr = arr[0].skipTypes({tySink})
+        arr = arr.elementType.skipTypes({tySink})
     if t.returnType != nil and isInvalidReturnType(m.config, t):
       var arr = t.returnType
       var typ: Snippet
@@ -767,7 +767,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
                         check: var IntSet; result: var Builder; unionPrefix = "") =
   case n.kind
   of nkRecList:
-    for ni in n.sons:
+    for ni in sons(n):
       genRecordFieldsAux(m, ni, rectype, check, result, unionPrefix)
   of nkRecCase:
     if n.firstSon.kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
@@ -775,10 +775,10 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody = newBuilder("")
-    for i in 1..<n.len:
-      case n[i].kind
+    for i, it in isons(n, 1):
+      case it.kind
       of nkOfBranch, nkElse:
-        let k = lastSon(n[i])
+        let k = lastSon(it)
         if k.kind != nkSym:
           let structName = "_" & mangleRecFieldName(m, n.firstSon.sym) & "_" & $i
           var a = newBuilder("")
@@ -915,7 +915,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   result = typ[idx]
   for i in 1..stars:
     if result != nil and result.kidsLen > 0:
-      result = if result.kind == tyGenericInst: result[FirstGenericParamAt]
+      result = if result.kind == tyGenericInst: result.firstGenericParam
                else: result.elemType
 
 proc getOpenArrayDesc(m: BModule; t: PType, check: var IntSet; kind: TypeDescKind): Rope =
@@ -1075,7 +1075,7 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
           let owner = hashOwner(t.sym)
           if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
             var vals: seq[(string, int)] = @[]
-            for son in t.n.sons:
+            for son in sons(t.n):
               assert(son.kind == nkSym)
               let field = son.sym
               vals.add((field.name.s, field.position.int))
@@ -1267,7 +1267,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
   var check = initIntSet()
   fillBackendName(m, prc)
   backendEnsureMutable prc
-  fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
+  fillLoc(prc.locImpl, locProc, son(prc.ast, namePos), OnUnknown)
   var memberOp = "#." #only virtual
   var typ: PType
   if isCtor:
@@ -1321,7 +1321,7 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   var check = initIntSet()
   fillBackendName(m, prc)
   backendEnsureMutable prc
-  fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
+  fillLoc(prc.locImpl, locProc, son(prc.ast, namePos), OnUnknown)
   var rettype: Snippet = ""
   var desc = newBuilder("")
   genProcParams(m, prc.typ, rettype, desc, check, true, false)
@@ -1462,7 +1462,7 @@ proc discriminatorTableName(m: BModule; objtype: PType, d: PSym): Rope =
   # bugfix: we need to search the type that contains the discriminator:
   var objtype = objtype.skipTypes(abstractPtrs)
   while lookupInRecord(objtype.n, d.name) == nil:
-    objtype = objtype[0].skipTypes(abstractPtrs)
+    objtype = objtype.baseClass.skipTypes(abstractPtrs)
   if objtype.sym == nil:
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype, m.config)), rope(d.name.s.mangle)]
@@ -1552,23 +1552,22 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
     else:
       m.s[cfsData].addArrayVar(kind = Local, name = tmp,
         elementType = ptrType("TNimNode"), len = toInt(L)+1)
-    for i in 1..<n.len:
-      var b = n[i]           # branch
+    for b in sonsFrom(n, 1):
       var tmp2 = getNimNode(m)
       genObjectFields(m, typ, origType, lastSon(b), tmp2, info)
       case b.kind
       of nkOfBranch:
         if b.len < 2:
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in 0..<b.len - 1:
-          if b[j].kind == nkRange:
-            var x = toInt(getOrdValue(b[j].firstSon))
-            var y = toInt(getOrdValue(b[j][1]))
+        for label in sonsButLast(b):
+          if label.kind == nkRange:
+            var x = toInt(getOrdValue(label.firstSon))
+            var y = toInt(getOrdValue(label.secondSon))
             while x <= y:
               m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(x), cAddr(tmp2))
               inc(x)
           else:
-            m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(getOrdValue(b[j])), cAddr(tmp2))
+            m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(getOrdValue(label)), cAddr(tmp2))
       of nkElse:
         m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(L), cAddr(tmp2))
       else: internalError(m.config, n.info, "genObjectFields(nkRecCase)")
@@ -1862,7 +1861,7 @@ proc getObjDepth(t: PType): int16 =
   result = -1
   while x != nil:
     x = skipTypes(x, skipPtrs)
-    x = x[0]
+    x = x.baseClass
     inc(result)
 
 proc genDisplayElem(d: MD5Digest): uint32 =
@@ -1878,7 +1877,7 @@ proc genDisplay(result: var Builder, m: BModule; t: PType, depth: int) =
   while x != nil:
     x = skipTypes(x, skipPtrs)
     seqs[i] = cIntValue(genDisplayElem(MD5Digest(hashType(x, m.config))))
-    x = x[0]
+    x = x.baseClass
     inc i
 
   var arr: StructInitializer
@@ -2290,7 +2289,7 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
 
 proc retrieveSym(n: PNode): PSym =
   case n.kind
-  of nkPostfix: result = retrieveSym(n[1])
+  of nkPostfix: result = retrieveSym(n.secondSon)
   of nkPragmaExpr, nkTypeDef: result = retrieveSym(n.firstSon)
   of nkSym: result = n.sym
   else: result = nil

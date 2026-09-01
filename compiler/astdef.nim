@@ -957,13 +957,54 @@ iterator items*(n: PNode): PNode =
 
 iterator sons*(n: PNode): PNode =
   ## Iterates over the children of `n`. Preferred over `for i in 0..<n.len: n[i]`
-  ## as it does not rely on random indexed access (see doc/ic_backend_nif_native.md).
+  ## as it does not rely on random indexed access, and over `for x in n.sons`,
+  ## which reads the raw FIELD and so skips the `len` hook that materialises a
+  ## deferred `nfLazyBody` body — over such a body that loop silently visits
+  ## nothing.
   for i in 0..<n.safeLen: yield n[i]
 
-iterator isons*(n: PNode): tuple[i: int, n: PNode] =
-  ## Like `sons` but also yields the child index. Replaces
-  ## `for i in 0..<n.len: ... n[i] ...` when `i` itself is still needed.
-  for i in 0..<n.safeLen: yield (i, n[i])
+iterator isons*(n: PNode; start = 0): tuple[i: int, n: PNode] =
+  ## Like `sons` but also yields the child index, and optionally skips the first
+  ## `start` children. Replaces `for i in start..<n.len: ... n[i] ...` when `i`
+  ## itself is still needed — for a parameter position, a `needTmp[i-1]` lookup,
+  ## a parallel index into the routine's `PType`, and so on. `start` is almost
+  ## always 1, to step over a call's callee or a case statement's selector.
+  ##
+  ## Use `sonsFrom` instead when the index is only ever used to subscript `n`.
+  for i in start..<n.safeLen: yield (i, n[i])
+
+iterator sonsFrom*(n: PNode; start: int): PNode =
+  ## `sons` skipping the first `start` children. Replaces
+  ## `for i in start..<n.len: ... n[i] ...`, which is by far the commonest
+  ## indexed shape in the code generator — `start` is almost always 1, to step
+  ## over a case/try statement's selector or a call's callee.
+  for i in start..<n.safeLen: yield n[i]
+
+iterator sonsButLast*(n: PNode; count = 1): PNode =
+  ## `sons` without the last `count` children. Replaces `for i in 0..<n.len-1:
+  ## ... n[i] ...`, which is what an `nkOfBranch`/`nkExceptBranch` walk looks
+  ## like: the last child is the branch BODY, the ones before it are the labels
+  ## it matches. `count = 2` is the `nkVarTuple`/`nkIdentDefs` shape, whose last
+  ## two children are the type and the value. A `Cursor` can serve this with a
+  ## single pass and `count` nodes of lookahead; the indexed form has to re-walk
+  ## the children for every label.
+  ##
+  ## Use `isonsButLast` instead when the index is still needed.
+  for i in 0 ..< n.safeLen - count: yield n[i]
+
+iterator isonsButLast*(n: PNode; count = 1): tuple[i: int, n: PNode] =
+  ## Like `sonsButLast` but also yields the child index — for a tuple field
+  ## position, a parallel index into the tuple's `PType`, and so on.
+  for i in 0 ..< n.safeLen - count: yield (i, n[i])
+
+template son*(n: PNode; i: int): PNode =
+  ## Named indexed access to child `i`, for the small constant positions that
+  ## `firstSon`/`secondSon`/`lastSon` do not cover.
+  n[i]
+
+template hasSons*(n: PNode): bool =
+  ## Emptiness test; goes through `safeLen` so a deferred body is materialised.
+  n.safeLen > 0
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
@@ -1045,6 +1086,52 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 # Hooks, converters, method dispatchers and enum-to-string generated procs need special
 # handling for IC, they end up in IC indexes etc. Thus we "log" them in the module graph
 # and to pass them around to the NIF writer. This is not very elegant but it works.
+
+const
+  InstanceDisambBit* = 0x4000_0000'i32
+    ## Set in the `disamb` of routine instances whose value is content-derived
+    ## (see `modulegraphs.setInstanceDisamb`); keeps them disjoint from the
+    ## small counter range ordinary symbols draw from, so the NIF name
+    ## `name.disamb.module` stays collision-free within a module.
+  HookDisambBit* = 0x2000_0000'i32
+    ## Set in the `disamb` of synthesized type-bound operators and `$enum`
+    ## procs whose value is content-derived (see `modulegraphs.setHookDisamb`);
+    ## disjoint from both the small counter range and `InstanceDisambBit`.
+    ##
+    ## Both live here rather than in `modulegraphs` because `ast2nif` — which
+    ## cannot import that module — names symbols by them.
+
+proc backendMintedDisamb*(s: PSym): int32 {.inline.} =
+  ## The integer that identifies a BACKEND-MINTED symbol (`isBackendMinted`) in
+  ## every name derived from it: its NIF name (`ast2nif.toNifSymName`) and its C
+  ## name (`mangleutils.mangleProcNameExt`, `ccgutils.makeUnique`).
+  ##
+  ## Two cases, and the whole point of having ONE function is that all three
+  ## sites take the same one:
+  ##
+  ## * A lifted HOOK's `disamb` is CONTENT-derived (`modulegraphs.setHookDisamb`),
+  ##   so it is identical in every process. Such a hook really does cross process
+  ##   boundaries — `lower` mints the env hooks of nested routines while `cg`
+  ##   mints those of the module's top level, and both land in the same
+  ##   translation unit — and its C name is also baked into emit-everywhere RTTI
+  ##   tables. `itemId.item` would differ per process, so two unrelated hooks
+  ##   collided on one `_c<item>` and the merge stage kept a single body for both
+  ##   (C accepted the mistyped call, C++ rejected it).
+  ## * Otherwise `itemId.item` — the writer's dedup identity, unique per `@bk`
+  ##   sym. `disamb` cannot serve here: a module's `:env` syms are minted from TWO
+  ##   id spaces (the backend `lower` stage's idgen and sem's `vmTransfIdgen`)
+  ##   whose `disambTable`s each start `:env` at the same low count, so a
+  ##   macro-lowered and a backend-lowered `:env` collide on `:env.2.<mod>@bk`.
+  ##
+  ## The loader copies the name's numeric component back into `disamb`, so after a
+  ## round trip `disamb` equals this value and `ast2nif.globalName` — which always
+  ## reads `disamb` — agrees with the name the writer produced.
+  ##
+  ## This rule used to be written out at each of the three sites. They drifted:
+  ## `toNifSymName` lacked the hook exception, so a content-derived value was
+  ## overwritten by the loader and two backend hooks merged into one C function.
+  if (s.disamb and HookDisambBit) != 0'i32: s.disamb
+  else: s.itemId.item
 
 type
   LogEntryKind* = enum

@@ -17,7 +17,8 @@ import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, 
 
 when not defined(nimKochBootstrap):
   import ast2nif
-  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
+  import nifstreams
+  import "../dist/nimony/src/lib" / bitabs
 
 import typekeys
 
@@ -35,6 +36,10 @@ type
     pureEnums*: seq[PSym]
     interf: TStrTable
     interfHidden: TStrTable
+    hiddenPending: bool ## `interfHidden` holds only the exported half so far;
+                        ## `ensureHiddenIface` materialises the hidden-only
+                        ## symbols on first use. See
+                        ## `ast2nif.buildHiddenInterface`.
     uniqueName*: Rope
 
   Operators* = object
@@ -256,6 +261,25 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
+proc ensureHiddenIface(g: ModuleGraph; pos: int) =
+  ## Materialise a loaded module's hidden-only interface the first time anything
+  ## asks for it. Every READ of `interfHidden` goes through `interfSelect`, so
+  ## guarding those sites is complete.
+  if g.ifaces[pos].hiddenPending:
+    when not defined(nimKochBootstrap):
+      # By SUFFIX: `c.mods` and `g.ifaces` use different FileIndexes for the
+      # same module (see `buildHiddenInterface`). Into a LOCAL table, because
+      # loading symbols can grow `g.ifaces` and a `var` alias into it would then
+      # point at the freed buffer. Cleared only on success, so an import whose
+      # `.s.bif` does not exist yet is retried rather than written off.
+      var tab = g.ifaces[pos].interfHidden
+      if buildHiddenInterface(ast.program,
+                              cachedModuleSuffix(g.config, FileIndex pos), tab):
+        g.ifaces[pos].interfHidden = tab
+        g.ifaces[pos].hiddenPending = false
+    else:
+      g.ifaces[pos].hiddenPending = false
+
 template interfSelect(iface: Iface, importHidden: bool): TStrTable =
   var ret = iface.interf.addr # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
   if importHidden: ret = iface.interfHidden.addr
@@ -291,6 +315,7 @@ proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent):
   assert m.kind == skModule
   mi.modIndex = m.position
   mi.importHidden = optImportHidden in m.options
+  if mi.importHidden: ensureHiddenIface(g, mi.modIndex)
   result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
@@ -298,6 +323,7 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   for s in g.ifaces[m.position].interfSelect(importHidden).data:
     if s != nil:
       yield s
@@ -314,12 +340,31 @@ proc reexportedModuleSyms*(g: ModuleGraph; m: PSym): seq[(string, string)] =
         not seen.containsOrIncl(s.position):
       result.add (s.name.s, cachedModuleSuffix(g.config, FileIndex s.position))
 
+proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
+  ## Symbols DEFINED in `m` that reached `m`'s interface through an explicit
+  ## `export s` rather than through a `*` marker on their declaration.
+  ##
+  ## `semExport` re-exports by `reexportSym`, which adds to the interface table
+  ## and does NOT set `sfExported` — so a symbol can be importable while its
+  ## declaration says otherwise. The NIF writer decides importability from
+  ## `sfExported` alone and therefore missed exactly these. `std/random` does it
+  ## (`proc initRand(): Rand` private, then `since (1, 5, 1): export initRand`),
+  ## which is why `--ic:on` could not compile anything that reached
+  ## `std/tempfiles` — `initRand()` was undeclared in the importer.
+  result = @[]
+  for s in g.ifaces[m.position].interf.data:
+    if s != nil and s.kind != skModule and sfExported notin s.flags and
+        s.itemId.module == m.position:
+      result.add s.itemId
+
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
 
 proc someSymAmb*(g: ModuleGraph; m: PSym; name: PIdent; amb: var bool): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   var ti: TIdentIter = default(TIdentIter)
   result = initIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden), name)
   if result != nil and nextIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden)) != nil:
@@ -574,12 +619,6 @@ proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
     let ownerModule = inst.itemId.module.int
     g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
 
-const
-  InstanceDisambBit* = 0x4000_0000'i32
-    ## Set in the `disamb` of routine instances whose value is content-derived
-    ## (see `setInstanceDisamb`); keeps them disjoint from the small counter
-    ## range ordinary symbols draw from, so the NIF name `name.disamb.module`
-    ## stays collision-free within a module.
 
 proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
                         concreteTypes: openArray[PType]) =
@@ -617,12 +656,6 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
       g.instDisambs[probe] = inst.itemId
       break
   inst.disamb = h
-
-const
-  HookDisambBit* = 0x2000_0000'i32
-    ## Set in the `disamb` of synthesized type-bound operators and `$enum`
-    ## procs whose value is content-derived (see `setHookDisamb`); disjoint
-    ## from both the small counter range and the `InstanceDisambBit` range.
 
 proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
   ## Under IC, replace a synthesized hook's counter-based `disamb` with a
@@ -1047,7 +1080,13 @@ when not defined(nimKochBootstrap):
       var isKnownFile = false
       let fileIdx = g.config.registerNifSuffix(string suffix, isKnownFile)
       if not g.hookClosure.containsOrIncl(fileIdx.int):
-        let precomp = loadNifModule(ast.program, suffix, interf, interfHidden, {})
+        # `SkipInterfaceTables`: `interf`/`interfHidden` here are scratch tables
+        # shared by every iteration and never read — this module is a
+        # dep-of-a-dep, so none of its symbols are visible to the module being
+        # semchecked. Building them called `loadSymFromIndexEntry` for every
+        # index entry of every closure member.
+        let precomp = loadNifModule(ast.program, suffix, interf, interfHidden,
+                                    {SkipInterfaceTables})
         registerLoadedHooks(g, precomp.logOps)
         # Record this transitively-loaded module so the sem driver applies its
         # VM-level load effects (macro-cache replay + `{.compileTime.}` global init)
@@ -1110,6 +1149,7 @@ when not defined(nimKochBootstrap):
           strTableAdd(interf, inner)
       g.ifaces[fIdx.int].interf = interf
       g.ifaces[fIdx.int].interfHidden = interfHidden
+      g.ifaces[fIdx.int].hiddenPending = true
 
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
                           flags: set[LoadFlag] = {}): PrecompiledModule =
@@ -1155,6 +1195,8 @@ when not defined(nimKochBootstrap):
     result = loadNifModule(ast.program, fileIdx,
                            g.ifaces[fileIdx.int].interf,
                            g.ifaces[fileIdx.int].interfHidden, flags)
+    # The hidden-only half was not built; `ensureHiddenIface` will, if asked.
+    g.ifaces[fileIdx.int].hiddenPending = true
     result.module = m
     # Restore the module symbol's persisted flags (see ast2nif `(modflags)`);
     # `cgen.genTopLevelStmt` gates the destructor pass on `sfInjectDestructors`.
