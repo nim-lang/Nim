@@ -129,7 +129,19 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result.typ = nil
     onUse(n.info, s)
   of skParam:
-    result = n
+    if s.typ != nil and s.typ.kind == tyStatic and s.typ.n != nil:
+      # The enclosing routine gives this static parameter a concrete value.
+      # Keep that value so the nested generic can fold it as a compile-time
+      # expression instead of generating a runtime parameter reference.
+      result = s.typ.n
+    elif s.owner == c.p.owner:
+      # Parameters of the routine currently being semchecked stay as local
+      # identifiers
+      result = n
+    else:
+      # Preserve captured outer parameters so nested generic procs can still
+      # see them after the generic pre-pass.
+      result = newSymNode(s, n.info)
     onUse(n.info, s)
   of skType:
     if (s.typ != nil) and
@@ -226,7 +238,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         if s.kind == skType: # don't put types in sym choice
           var ambig = false
           if candidates.len > 1:
-            let s2 = searchInScopes(c, ident, ambig)
+            discard searchInScopes(c, ident, ambig)
           result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags,
             isAmbiguous = ambig, fromDotExpr = true))
         else:
@@ -266,7 +278,7 @@ proc semGenericStmt(c: PContext, n: PNode,
   when defined(nimsuggest):
     if withinTypeDesc in flags: inc c.inTypeContext
 
-  #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
+  #if conf.ideActive: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   case n.kind
@@ -674,4 +686,3 @@ proc semConceptBody(c: PContext, n: PNode): PNode =
   )
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
-

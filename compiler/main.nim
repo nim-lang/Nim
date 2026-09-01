@@ -29,10 +29,12 @@ when defined(nimPreviewSlimSystem):
 import ../dist/checksums/src/checksums/sha1
 
 import pipelines
+from icconfig import produceIcConfig, ensureIcConfig
 
 when not defined(nimKochBootstrap):
   import nifbackend
   import deps
+  import idetools
 
 when not defined(leanCompiler):
   import docgen
@@ -207,22 +209,6 @@ proc commandInteractive(graph: ModuleGraph) =
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
     discard processPipelineModule(graph, m, idgen, s)
 
-proc commandScan(cache: IdentCache, config: ConfigRef) =
-  var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
-  var stream = llStreamOpen(f, fmRead)
-  if stream != nil:
-    var
-      L: Lexer = default(Lexer)
-      tok: Token = default(Token)
-    openLexer(L, f, stream, cache, config)
-    while true:
-      rawGetTok(L, tok)
-      printTok(config, tok)
-      if tok.tokType == tkEof: break
-    closeLexer(L)
-  else:
-    rawMessage(config, errGenerated, "cannot open file: " & f.string)
-
 const
   PrintRopeCacheStats = false
 
@@ -283,6 +269,28 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
+    if isIcDriver(conf):
+      # `nim c --ic:on` / `nim cpp --ic:on`: same driver as `nim ic`, entered
+      # through the ordinary compile command so every backend switch the user
+      # already knows keeps working (`nim cpp`, `--exceptions:`, `-d:`, ...).
+      # `customizeForBackend` above has already defined the backend symbol and
+      # picked the exception model, which is exactly what the per-module
+      # children must inherit — `computeForwardedArgs` forwards both.
+      setUseIc(true)
+      wantMainModule(conf)
+      setOutFile(conf)
+      when not defined(nimKochBootstrap):
+        if conf.icPreparsedConfig.len == 0:
+          # `--ic:on` came from a `nim.cfg`/`config.nims` rather than the command
+          # line, so `nim.nim` could not see it before config loading and the
+          # precompiled config the children replay does not exist yet. Produce it
+          # now. (The driver then keeps the config IT parsed instead of replaying
+          # the artifact; both come from the same files.)
+          ensureIcConfig(conf)
+        commandIc(conf)
+      else:
+        rawMessage(conf, errGenerated, "--ic:on not available in bootstrap build")
+      return
     setOutFile(conf)
     case conf.backend
     of backendC: commandCompileToC(graph)
@@ -415,13 +423,32 @@ proc mainCommand*(graph: ModuleGraph) =
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmdCheck:
     commandCheck(graph)
+  of cmdTrack:
+    # `nim track --def:/--usages:/--track:` — IDE goto-definition / find-usages.
+    # Runs `nim ic`'s incremental frontend (nifler + per-module `nim m`, so only
+    # changed modules recompile and each writes a faithful, VM-executed `.s.bif`
+    # — covering stdlib too), then scans those NIF files (idetools.runIdeQuery).
+    # Shares the `nim ic` nimcache dir, so a prior `nim ic` build is reused.
+    setUseIc(true)
+    wantMainModule(conf)
+    setOutFile(conf)
+    when not defined(nimKochBootstrap):
+      commandIc(conf, frontendOnly = true)
+      runIdeQuery(conf)
+    else:
+      rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
     setUseIc(true)
+    # vtable dispatch needs a whole-program vtable layout, which the
+    # per-module compilation model cannot provide (yet); methods dispatch
+    # through the classic if-chain dispatchers instead
+    excl conf.features, Feature.vtables
     commandCheck(graph)
   of cmdNifC:
     setUseIc(true)
+    excl conf.features, Feature.vtables
     # Generate C code from NIF files
     wantMainModule(conf)
     setOutFile(conf)
@@ -430,10 +457,18 @@ proc mainCommand*(graph: ModuleGraph) =
     # Generate .build.nif for nifmake
     setUseIc(true)
     wantMainModule(conf)
+    # Resolve the output binary path (honoring `--out`) up front, like cmdNifC:
+    # the backend build file derives the link target from `conf.absOutFile`.
+    setOutFile(conf)
     when not defined(nimKochBootstrap):
       commandIc(conf)
     else:
       rawMessage(conf, errGenerated, "nim deps not available in bootstrap build")
+  of cmdIcConfig:
+    # Produce the precompiled config artifact for `nim ic` (config already
+    # parsed by the normal pipeline); a separate process spawned by the driver.
+    wantMainModule(conf)
+    produceIcConfig(conf)
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
@@ -447,10 +482,17 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdJsonscript:
     setOutFile(graph.config)
     commandJsonScript(graph)
-  of cmdUnknown, cmdNone, cmdIdeTools:
+  of cmdUnknown, cmdNone:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
+  if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop, cmdM} and
+      not (conf.cmd == cmdNifC and conf.icBackendStage.len > 0):
+    # The IC build runs hundreds of internal per-module child processes — the
+    # frontend `nim m` (cmdM) and the per-module backend stages (cg/emit/merge/
+    # link). Each would print a `[SuccessX]` summary that is pure noise (and
+    # misleading: `out: unknownOutput`, or `out: <the whole compiler>` for a
+    # step that only wrote one `.c.nif`/`.c`). The driving `nim ic` (and koch)
+    # reports the real result.
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
     genSuccessX(conf)

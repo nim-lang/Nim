@@ -457,3 +457,32 @@ let runes1 = buggyVersion("en")  # <-- CRASHES HERE
 
 doAssert runes1.len == runes2.len
 # echo "Got ", runes1.len, " runes"
+
+
+block: # bug #25724
+  iterator c(): int =
+    when nimvm: yield 0
+    else: yield 1
+  for w in c():
+    let n = w
+    (proc() = discard n)()
+
+block:
+  iterator c(): int =
+    yield 1
+    yield 1
+
+  for w in c():
+    proc p(s: int) =
+      let sap = s
+    p(0)
+
+block: # bug #25725
+  iterator c(): int =
+    when nimvm: yield 0
+    else: yield 1
+  for w in c():
+    let n = w
+    proc p(s: int) =
+      let s = s; discard n
+    p(0)

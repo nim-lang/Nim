@@ -148,7 +148,7 @@ proc cmpDecimalsIgnoreCase(a, b: string): int =
         limitB = iB
       while limitA < aLen and isDigit(a[limitA]): inc limitA
       while limitB < bLen and isDigit(b[limitB]): inc limitB
-      var pos = max(limitA-iA, limitB-iA)
+      var pos = max(limitA-iA, limitB-iB)
       while pos > 0:
         if limitA-pos < iA:  # digit in `a` is 0 effectively
           result = ord('0') - ord(b[limitB-pos])
@@ -425,12 +425,6 @@ template dispA(conf: ConfigRef; dest: var string, xml, tex: string,
   if not conf.isLatexCmd: dest.addf(xml, args)
   else: dest.addf(tex, args)
 
-proc getVarIdx(varnames: openArray[string], id: string): int =
-  for i in 0..high(varnames):
-    if cmpIgnoreStyle(varnames[i], id) == 0:
-      return i
-  result = -1
-
 proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
     if optDocRaw in d.conf.globalOptions:
@@ -540,10 +534,11 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var string;
       elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
            sfExported in s.flags and s.owner != nil and
            belongsToProjectPackage(d.conf, s.owner) and d.target == outHtml:
-        let external = externalDep(d, s.owner)
-        result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
-          [changeFileExt(external, "html"), literal,
-           escLit]
+        let href = (if d.module == s.owner: ""
+            else: externalDep(d, s.owner).changeFileExt("html")
+          ) & "#" & literal
+        result.addf "<a href=\"$1\"><span class=\"Identifier\">$2</span></a>",
+            [href, escLit]
       else:
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
               "\\spanIdentifier{$1}", [escLit])

@@ -24,7 +24,7 @@ import std/[strtabs, tables, strutils, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from trees import exprStructuralEquivalent, getRoot, whichPragma, getPotentialWrites
+from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites
 
 type
   Con = object
@@ -173,23 +173,11 @@ template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructorOrAsgn(c, n.typ): return true
 
-  let m = skipConvDfa(n)
   result = isLastReadImpl(n, c, s)
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
   let m = skipConvDfa(n)
   result = nfFirstWrite in m.flags
-
-proc isCursor(n: PNode): bool =
-  case n.kind
-  of nkSym:
-    sfCursor in n.sym.flags
-  of nkDotExpr:
-    isCursor(n[1])
-  of nkCheckedFieldExpr:
-    isCursor(n[0])
-  else:
-    false
 
 template isFullyUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
@@ -245,6 +233,18 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
+  if op == nil or op.ast.isGenericRoutine:
+    # IC: injectDestructorCalls is demand-driven and runs HERE (cg), not in the
+    # `lower` stage, so a structural, env-agnostic op the lower stage never had
+    # reason to serialize — most often a closure PROC type's `=destroy`/`=sink`
+    # (which act on the `(ClP_0, ClE_0)` tuple, NOT the concrete env) — must be
+    # lifted on demand, exactly as the lazy path's cg does. This is safe now:
+    # closure-env identity resolves via `attachedOps[itemId]`/env-erased typeKey,
+    # env objects load complete, and atomicRefOp's type-erased path covers any
+    # still-incomplete env (so the lift never walks a nil field).
+    excl t.flagsImpl, tfCheckedForDestructor
+    createTypeBoundOps(c.graph, nil, t, dest.info, c.idgen)
+    op = getAttachedOp(c.graph, t, kind)
   if op == nil:
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
@@ -423,6 +423,20 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
   result.typ = t
 
+proc stabilizeBracketIndex(n: PNode; c: var Con; body: var PNode): PNode =
+  ## Evaluate a side-effecting index once and return the stable access.
+  doAssert n.kind == nkBracketExpr and not isAtom(n[1])
+  let temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), c.idgen,
+                    c.owner, n[1].info)
+  temp.typ = n[1].typ
+  let tempAsNode = newSymNode(temp)
+  body.add newTree(nkLetSection, n[1].info,
+                   newTree(nkIdentDefs, tempAsNode,
+                           newNodeI(nkEmpty, tempAsNode.info), n[1]))
+  result = copyNode(n)
+  result.add n[0]
+  result.add tempAsNode
+
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   if (not hasDestructor(c, n.typ)) and c.inEnsureMove == 0:
@@ -433,6 +447,10 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
     result = copyTree(n)
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+
+    var n = n
+    if n.kind == nkBracketExpr and not isAtom(n[1]):
+      n = stabilizeBracketIndex(n, c, result)
 
     var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.idgen, c.owner, n.info)
     temp.typ = n.typ
@@ -803,6 +821,23 @@ proc hasCustomDestructor(c: Con, t: PType): bool =
     obj = skipTypes(obj.baseClass, abstractPtrs)
     result = result or isCustomDestructor(c, obj)
 
+const
+  exprBranchKinds = {nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt,
+                     nkTryStmt, nkPragmaBlock}
+
+proc distributeAsgn(asgnKind: TNodeKind; dest, ri: PNode; c: var Con; s: var Scope): PNode =
+  ## Distributes an assignment ``dest = ri`` into the leaf expressions of
+  ## ``ri`` when ``ri`` is an expression-based control flow construct. This
+  ## avoids creating pointless intermediate temporaries (bug #25850). The
+  ## descent is recursive so that nestings like ``block: ...; if c: a else: b``
+  ## assign directly to ``dest`` instead of going through a temp per branch.
+  if ri.kind in exprBranchKinds:
+    template process(child, s): untyped =
+      distributeAsgn(asgnKind, dest, child, c, s)
+    handleNestedTempl(ri, process, willProduceStmt = true)
+  else:
+    result = newTree(asgnKind, dest, p(ri, c, s, consumed))
+
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}; inReturn = false): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
@@ -1004,6 +1039,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
+      elif n[1].kind in exprBranchKinds:
+        # Distribute the assignment into each branch to avoid
+        # creating pointless temporaries for expression-based control flow.
+        let dest = p(n[0], c, s, mode)
+        result = distributeAsgn(n.kind, dest, n[1], c, s)
       else:
         result = copyNode(n)
         result.add p(n[0], c, s, mode)
@@ -1097,6 +1137,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
       result = n
+    of nkReplayAction:
+      # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded
+      # module's TOP-LEVEL statements (the loader prepends the `(replay ...)`
+      # entries there); cgen discards it, so pass it through untouched.
+      result = n
     else:
       result = nil
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
@@ -1128,24 +1173,11 @@ proc sameLocation*(a, b: PNode): bool =
     else: false
 
 proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
-  # with side effects
-  var temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), c.idgen, c.owner, ri[1].info)
-  temp.typ = ri[1].typ
-  var v = newNodeI(nkLetSection, ri[1].info)
-  let tempAsNode = newSymNode(temp)
-
-  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
-  vpart[0] = tempAsNode
-  vpart[1] = newNodeI(nkEmpty, tempAsNode.info)
-  vpart[2] = ri[1]
-  v.add(vpart)
-
-  var newAccess = copyNode(ri)
-  newAccess.add ri[0]
-  newAccess.add tempAsNode
-
-  var snk = c.genSink(s, dest, newAccess, flags)
-  result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
+  result = newNodeI(nkStmtList, ri.info)
+  let newAccess = stabilizeBracketIndex(ri, c, result)
+  let snk = c.genSink(s, dest, newAccess, flags)
+  result.add snk
+  result.add c.genWasMoved(newAccess)
 
 proc ownsData(c: var Con; s: var Scope; orig: PNode; flags: set[MoveOrCopyFlag]): PNode =
   var n = orig

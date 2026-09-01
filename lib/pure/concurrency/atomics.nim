@@ -256,12 +256,8 @@ else:
       cast[T](interlockedExchange(addr(location.value), cast[int64](desired)))
     proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       cast[T](interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-      compareExchange(location, expected, desired, order, order)
     proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       compareExchange(location, expected, desired, success, failure)
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-      compareExchangeWeak(location, expected, desired, order, order)
 
     proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       var currentValue = location.load()
@@ -358,13 +354,9 @@ else:
       cast[T](atomic_exchange_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order))
     proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       atomic_compare_exchange_strong_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-      compareExchange(location, expected, desired, order, order)
 
     proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       atomic_compare_exchange_weak_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-      compareExchangeWeak(location, expected, desired, order, order)
 
     # Numerical operations
     proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
@@ -377,6 +369,21 @@ else:
       cast[T](atomic_fetch_or_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
     proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
+
+  func compareExchangeFailureOrder(order: MemoryOrder): MemoryOrder {.inline.} =
+    case order
+    of moRelease:
+      moRelaxed
+    of moAcquireRelease:
+      moAcquire
+    else:
+      order
+
+  proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    compareExchange(location, expected, desired, order, compareExchangeFailureOrder(order))
+
+  proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    compareExchangeWeak(location, expected, desired, order, compareExchangeFailureOrder(order))
 
   template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
     while testAndSet(location.guard, moAcquire): discard
@@ -411,10 +418,10 @@ else:
     compareExchange(location, expected, desired, success, failure)
 
   proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchange(location, expected, desired, order, order)
+    compareExchange(location, expected, desired, order, compareExchangeFailureOrder(order))
 
   proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchangeWeak(location, expected, desired, order, order)
+    compareExchangeWeak(location, expected, desired, order, compareExchangeFailureOrder(order))
 
 proc atomicInc*[T: SomeInteger](location: var Atomic[T]; value: T = 1) {.inline.} =
   ## Atomically increments the atomic integer by some `value`.

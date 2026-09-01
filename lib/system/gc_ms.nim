@@ -491,8 +491,6 @@ when not defined(useNimRtl):
             "API usage error: GC_enable called but GC is already enabled")
     dec(gch.recGcLock)
 
-  proc GC_setStrategy(strategy: GC_Strategy) = discard
-
   proc GC_enableMarkAndSweep() =
     gch.cycleThreshold = InitialThreshold
 

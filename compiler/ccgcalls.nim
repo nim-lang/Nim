@@ -11,7 +11,11 @@
 
 proc canRaiseDisp(p: BProc; n: PNode): bool =
   # we assume things like sysFatal cannot raise themselves
-  if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
+  if n.kind == nkSym and n.sym.kind == skMethod:
+    # A base method may be overridden by a branch with a wider exception set.
+    # Its inferred effects describe only the base body, not every vtable target.
+    result = true
+  elif n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
       (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags and
@@ -40,7 +44,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
         return false
       of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
           nkCheckedFieldExpr:
-        n = n[0]
+        n = n.firstSon
       of nkHiddenStdConv, nkHiddenSubConv, nkConv:
         n = n[1]
       else:
@@ -51,20 +55,20 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   if le != nil:
     for i in 1..<ri.len:
       let r = ri[i]
-      if isPartOf(le, r) != arNo: return true
+      if isPartOf(le, r, {pfStructural}) != arNo: return true
     # we use the weaker 'canRaise' here in order to prevent too many
     # annoying warnings, see #14514
-    if canRaise(ri[0]) and
+    if canRaise(ri.firstSon) and
         locationEscapes(p, le, p.nestedTryStmts.len > 0):
       message(p.config, le.info, warnObservableStores, $le)
   # bug #19613 prevent dangerous aliasing too:
   if dest != nil and dest != le:
     for i in 1..<ri.len:
       let r = ri[i]
-      if isPartOf(dest, r) != arNo: return true
+      if isPartOf(dest, r, {pfStructural}) != arNo: return true
 
 proc hasNoInit(call: PNode): bool {.inline.} =
-  result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
+  result = call.firstSon.kind == nkSym and sfNoInit in call.firstSon.sym.flags
 
 proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   if d.k in {locTemp, locNone} or not canRaise:
@@ -97,10 +101,10 @@ proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
 
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                result: var Builder, call: var CallBuilder) =
-  let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
+  let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
   genLineDir(p, ri)
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri[0].typ, abstractInst)
+  var typ = skipTypes(ri.firstSon.typ, abstractInst)
   if typ.returnType != nil:
     var flags: TAssignmentFlags = {}
     if typ.returnType.kind in {tyOpenArray, tyVarargs}:
@@ -184,7 +188,7 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
   while true:
     case x.kind
     of {nkAddr, nkHiddenAddr, nkHiddenDeref}:
-      x = x[0]
+      x = x.firstSon
     of nkHiddenStdConv:
       x = x[1]
     else:
@@ -230,20 +234,29 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
   of tyString, tySequence:
     let atyp = skipTypes(a.t, abstractInst)
     if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
-        optSeqDestructors in p.config.globalOptions:
+        optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
       let bra = byRefLoc(p, a)
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
         bra)
-    var val: Snippet
-    if atyp.kind in {tyVar} and not compileToCpp(p.module):
-      val = cDeref(ra)
+    if p.config.usesSso() and
+        skipTypes(a.t, abstractVar + abstractInst).kind == tyString:
+      let strPtr = if atyp.kind in {tyVar} and not compileToCpp(p.module): ra
+                   else: addrLoc(p.config, a)
+      result = (
+        cCast(ptrType(dest), cOp(Add, NimInt,
+          cCall(cgsymValue(p.module, "nimStrData"), strPtr), rb)),
+        lengthExpr)
     else:
-      val = ra
-    result = (
-      cIfExpr(dataFieldAccessor(p, val),
-        cCast(ptrType(dest), cOp(Add, NimInt, dataField(p, val), rb)),
-        NimNil),
-      lengthExpr)
+      var val: Snippet
+      if atyp.kind in {tyVar} and not compileToCpp(p.module):
+        val = cDeref(ra)
+      else:
+        val = ra
+      result = (
+        cIfExpr(dataFieldAccessor(p, val),
+          cCast(ptrType(dest), cOp(Add, NimInt, dataField(p, val), rb)),
+          NimNil),
+        lengthExpr)
   else:
     result = ("", "")
     internalError(p.config, "openArrayLoc: " & typeToString(a.t))
@@ -287,11 +300,22 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
       if formalType.skipTypes(abstractInst).kind in {tyVar} and ntyp.kind == tyString and
-          optSeqDestructors in p.config.globalOptions:
+          optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
         let bra = byRefLoc(p, a)
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
           bra)
-      if ntyp.kind in {tyVar} and not compileToCpp(p.module):
+      if p.config.usesSso() and
+          skipTypes(n.typ, abstractVar + abstractInst).kind == tyString:
+        if ntyp.kind in {tyVar} and not compileToCpp(p.module):
+          let ra = a.rdLoc
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
+          result.addArgumentSeparator()
+          result.add(cCall(cgsymValue(p.module, "nimStrLen"), cDeref(ra)))
+        else:
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), addrLoc(p.config, a)))
+          result.addArgumentSeparator()
+          result.add(lenExpr(p, a))
+      elif ntyp.kind in {tyVar} and not compileToCpp(p.module):
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
@@ -315,9 +339,14 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
-        result.add(cIfExpr(dataFieldAccessor(p, t.snippet), dataField(p, t.snippet), NimNil))
-        result.addArgumentSeparator()
-        result.add(lt)
+        if p.config.usesSso():
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
+          result.addArgumentSeparator()
+          result.add(cCall(cgsymValue(p.module, "nimStrLen"), t.snippet))
+        else:
+          result.add(cIfExpr(dataFieldAccessor(p, t.snippet), dataField(p, t.snippet), NimNil))
+          result.addArgumentSeparator()
+          result.add(lt)
       of tyArray:
         let ra = rdLoc(a)
         result.add(ra)
@@ -343,8 +372,9 @@ proc expressionsNeedsTmp(p: BProc, a: TLoc): TLoc =
   genAssignment(p, result, a, {})
 
 proc genArgStringToCString(p: BProc, n: PNode; result: var Builder; needsTmp: bool) {.inline.} =
-  var a = initLocExpr(p, n[0])
-  let ra = withTmpIfNeeded(p, a, needsTmp).rdLoc
+  var a = initLocExpr(p, n.firstSon)
+  let tmp = withTmpIfNeeded(p, a, needsTmp)
+  let ra = if p.config.usesSso(): byRefLoc(p, tmp) else: tmp.rdLoc
   result.addCall(cgsymValue(p.module, "nimToCStringConv"), ra)
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; needsTmp = false) =
@@ -352,9 +382,9 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
   if n.kind == nkStringToCString:
     genArgStringToCString(p, n, result, needsTmp)
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
-    var n = if n.kind != nkHiddenAddr: n else: n[0]
+    var n = if n.kind != nkHiddenAddr: n else: n.firstSon
     openArrayLoc(p, param.typ, n, result)
-  elif ccgIntroducedPtr(p.config, param, call[0].typ.returnType) and
+  elif ccgIntroducedPtr(p.config, param, call.firstSon.typ.returnType) and
     (optByRef notin param.options or not p.module.compileToCpp):
     a = initLocExpr(p, n)
     if n.kind in {nkCharLit..nkNilLit}:
@@ -366,16 +396,16 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode; result: var Builder; n
     # bug #23748: we need to introduce a temporary here. The expression type
     # will be a reference in C++ and we cannot create a temporary reference
     # variable. Thus, we create a temporary pointer variable instead.
-    let needsIndirect = mapType(p.config, n[0].typ, mapTypeChooser(n[0]) == skParam) != ctArray
+    let needsIndirect = mapType(p.config, n.firstSon.typ, mapTypeChooser(n.firstSon) == skParam) != ctArray
     if needsIndirect:
-      n.typ = n.typ.exactReplica
+      n.typ = copyType(n.typ, p.module.idgen, n.typ.owner)
       n.typ.incl tfVarIsPtr
     a = initLocExprSingleUse(p, n)
     a = withTmpIfNeeded(p, a, needsTmp)
     if needsIndirect: a.flags.incl lfIndirect
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
-    let callee = call[0]
+    let callee = call.firstSon
     if callee.kind == nkSym and
         {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {} and
@@ -413,7 +443,7 @@ proc skipTrivialIndirections(n: PNode): PNode =
   while true:
     case result.kind
     of nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv:
-      result = result[0]
+      result = result.firstSon
     of nkHiddenStdConv, nkHiddenSubConv:
       result = result[1]
     else: break
@@ -472,14 +502,14 @@ proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
 
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # this is a hotspot in the compiler
-  var op = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri.firstSon)
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri[0].typ, abstractInstOwned)
+  var typ = skipTypes(ri.firstSon.typ, abstractInstOwned)
   assert(typ.kind == tyProc)
 
   var callee = rdLoc(op)
-  if p.hcrOn and ri[0].kind == nkSym:
-    callee.addActualSuffixForHCR(p.module.module, ri[0].sym)
+  if p.hcrOn and ri.firstSon.kind == nkSym:
+    callee.addActualSuffixForHCR(p.module.module, ri.firstSon.sym)
 
   var res = newBuilder("")
   var call = initCallBuilder(res, callee)
@@ -511,10 +541,10 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     else:
       cCall(p, params, e)
 
-  var op = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri.firstSon)
 
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri[0].typ, abstractInstOwned)
+  var typ = skipTypes(ri.firstSon.typ, abstractInstOwned)
   assert(typ.kind == tyProc)
 
   var params = newBuilder("")
@@ -531,7 +561,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         p.s(cpsStmts).add(callProc(rp, pars, rawProc))
 
   let rawProc = getClosureType(p.module, typ, clHalf)
-  let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
+  let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
   if typ.returnType != nil:
     if isInvalidReturnType(p.config, typ):
       # beware of 'result = p(result)'. We may need to allocate a temporary:
@@ -593,7 +623,7 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder;
       discard
     elif paramType.typ.kind in {tyVar} and ri[i].kind == nkHiddenAddr:
       result.addArgument(argBuilder):
-        genArgNoParam(p, ri[i][0], result)
+        genArgNoParam(p, ri[i].firstSon, result)
     else:
       result.addArgument(argBuilder):
         genArgNoParam(p, ri[i], result) #, typ.n[i].sym)
@@ -646,16 +676,16 @@ proc skipAddrDeref(node: PNode): PNode =
   var isAddr = false
   case n.kind
   of nkAddr, nkHiddenAddr:
-    n = n[0]
+    n = n.firstSon
     isAddr = true
   of nkDerefExpr, nkHiddenDeref:
-    n = n[0]
+    n = n.firstSon
   else: return n
-  if n.kind == nkObjDownConv: n = n[0]
+  if n.kind == nkObjDownConv: n = n.firstSon
   if isAddr and n.kind in {nkDerefExpr, nkHiddenDeref}:
-    result = n[0]
+    result = n.firstSon
   elif n.kind in {nkAddr, nkHiddenAddr}:
-    result = n[0]
+    result = n.firstSon
   else:
     result = node
 
@@ -668,29 +698,29 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder) =
   # if the parameter is lying (tyVar) and thus we required an additional deref,
   # skip the deref:
   var ri = ri[i]
-  while ri.kind == nkObjDownConv: ri = ri[0]
+  while ri.kind == nkObjDownConv: ri = ri.firstSon
   let t = typ[i].skipTypes({tyGenericInst, tyAlias, tySink})
   if t.kind in {tyVar}:
-    let x = if ri.kind == nkHiddenAddr: ri[0] else: ri
+    let x = if ri.kind == nkHiddenAddr: ri.firstSon else: ri
     if x.typ.kind == tyPtr:
       genArgNoParam(p, x, result)
       result.add("->")
-    elif x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].typ.kind == tyPtr:
-      genArgNoParam(p, x[0], result)
+    elif x.kind in {nkHiddenDeref, nkDerefExpr} and x.firstSon.typ.kind == tyPtr:
+      genArgNoParam(p, x.firstSon, result)
       result.add("->")
     else:
       genArgNoParam(p, x, result)
       result.add(".")
   elif t.kind == tyPtr:
     if ri.kind in {nkAddr, nkHiddenAddr}:
-      genArgNoParam(p, ri[0], result)
+      genArgNoParam(p, ri.firstSon, result)
       result.add(".")
     else:
       genArgNoParam(p, ri, result)
       result.add("->")
   else:
     ri = skipAddrDeref(ri)
-    if ri.kind in {nkAddr, nkHiddenAddr}: ri = ri[0]
+    if ri.kind in {nkAddr, nkHiddenAddr}: ri = ri.firstSon
     genArgNoParam(p, ri, result) #, typ.n[i].sym)
     result.add(".")
 
@@ -708,8 +738,8 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
       if i+1 < pat.len and pat[i+1] in {'+', '@'}:
         let ri = ri[j]
         if ri.kind in nkCallKinds:
-          let typ = skipTypes(ri[0].typ, abstractInst)
-          if pat[i+1] == '+': genArgNoParam(p, ri[0], result)
+          let typ = skipTypes(ri.firstSon.typ, abstractInst)
+          if pat[i+1] == '+': genArgNoParam(p, ri.firstSon, result)
           result.add("(")
           if 1 < ri.len:
             var callBuilder: CallBuilder = default(CallBuilder)
@@ -726,7 +756,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
         inc i
       elif i+1 < pat.len and pat[i+1] == '[':
         var arg = ri[j].skipAddrDeref
-        while arg.kind in {nkAddr, nkHiddenAddr, nkObjDownConv}: arg = arg[0]
+        while arg.kind in {nkAddr, nkHiddenAddr, nkObjDownConv}: arg = arg.firstSon
         genArgNoParam(p, arg, result)
         #result.add debugTree(arg, 0, 10)
       else:
@@ -749,18 +779,18 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
         result.add(substr(pat, start, i - 1))
 
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  var op = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri.firstSon)
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri[0].typ, abstractInst)
+  var typ = skipTypes(ri.firstSon.typ, abstractInst)
   assert(typ.kind == tyProc)
   # don't call '$' here for efficiency:
-  let pat = $ri[0].sym.loc.snippet
+  let pat = $ri.firstSon.sym.loc.snippet
   internalAssert p.config, pat.len > 0
   if pat.contains({'#', '(', '@', '\''}):
     var pl = newBuilder("")
     genPatternCall(p, ri, pat, typ, pl)
     # simpler version of 'fixupCall' that works with the pl+params combination:
-    var typ = skipTypes(ri[0].typ, abstractInst)
+    var typ = skipTypes(ri.firstSon.typ, abstractInst)
     if typ.returnType != nil:
       if p.module.compileToCpp and lfSingleUse in d.flags:
         # do not generate spurious temporaries for C++! For C we're better off
@@ -791,14 +821,14 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
-  var op = initLocExpr(p, ri[0])
+  var op = initLocExpr(p, ri.firstSon)
   var pl = newBuilder("[")
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri[0].typ, abstractInst)
+  var typ = skipTypes(ri.firstSon.typ, abstractInst)
   assert(typ.kind == tyProc)
 
   # don't call '$' here for efficiency:
-  let pat = $ri[0].sym.loc.snippet
+  let pat = $ri.firstSon.sym.loc.snippet
   internalAssert p.config, pat.len > 0
   var start = 3
   if ' ' in pat:
@@ -877,17 +907,27 @@ proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
   We want to return early but the 'finally' section is traversed before
   the 'let args = ...' statement. We exploit this to generate better
   code for 'return'. ]#
-  result = e.len == 2 and e[0].kind == nkSym and
-    e[0].sym.name.s == "=destroy" and notYetAlive(e[1].skipAddr)
+  result = e.len == 2 and e.firstSon.kind == nkSym and
+    e.firstSon.sym.name.s == "=destroy" and notYetAlive(e[1].skipAddr)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, ri):
     return
-  if ri[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
+  when defined(icDbgHash):
+    if ri.firstSon.typ == nil:
+      echo "NILCALLEE kind=", ri.firstSon.kind,
+        " sym=", (if ri.firstSon.kind == nkSym: ri.firstSon.sym.name.s else: "-"),
+        " symKind=", (if ri.firstSon.kind == nkSym: $ri.firstSon.sym.kind else: "-"),
+        " flags=", (if ri.firstSon.kind == nkSym: $ri.firstSon.sym.flags else: "-"),
+        " lazy=", nfLazyType in ri.firstSon.flags,
+        " inProc=", (if p.prc != nil: p.prc.name.s else: "NIL"),
+        " module=", p.module.module.name.s
+      raiseAssert "nil callee type, see NILCALLEE above"
+  if ri.firstSon.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
-  elif ri[0].kind == nkSym and sfInfixCall in ri[0].sym.flags:
+  elif ri.firstSon.kind == nkSym and sfInfixCall in ri.firstSon.sym.flags:
     genInfixCall(p, le, ri, d)
-  elif ri[0].kind == nkSym and sfNamedParamCall in ri[0].sym.flags:
+  elif ri.firstSon.kind == nkSym and sfNamedParamCall in ri.firstSon.sym.flags:
     genNamedParamCall(p, ri, d)
   else:
     genPrefixCall(p, le, ri, d)

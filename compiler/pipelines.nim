@@ -15,7 +15,7 @@ import ../dist/checksums/src/checksums/sha1
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils, strtabs]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs, sets, intsets]
 import renderer
 import ic/replayer
 
@@ -167,7 +167,8 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
     s = stream
     graph.interactive = stream.kind == llsStdIn
   var topLevelStmts =
-    if optCompress in graph.config.globalOptions or graph.config.cmd == cmdM:
+    if {optCompress, optGenBif} * graph.config.globalOptions != {} or
+        graph.config.cmd == cmdM:
       newNodeI(nkStmtList, module.info)
     else:
       nil
@@ -243,9 +244,31 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
 
   when not defined(nimKochBootstrap):
     # For cmdM: only write NIF for the main module, not for imported modules
-    # (imported modules should be loaded from existing NIF files)
-    let shouldWriteNif = (optCompress in graph.config.globalOptions) or
-                         (graph.config.cmd == cmdM and sfMainModule in module.flags)
+    # (imported modules should be loaded from existing NIF files). Members of the
+    # current strongly-connected import group (`--icGroup`) are the exception:
+    # they are compiled from source here, so each must write its own NIF.
+    let shouldWriteNif =
+      if graph.config.errorCounter > 0:
+        # Never persist an artifact built from erroneous AST. `nim m` does exit
+        # non-zero, but its outputs would still land on disk NEWER than their
+        # inputs, so nifmake sees the rule as satisfied on the next run: the
+        # build then "succeeds" from a poisoned NIF — a silently wrong binary,
+        # or an internal error once codegen meets an `nkError` body. Leaving the
+        # outputs missing keeps the rule dirty so it re-fires and re-reports.
+        false
+      elif graph.config.ideActive:
+        # nimsuggest (cmdM): persist NIF for cleanly-compiled, SAVED modules so
+        # later queries load them instead of recompiling. Never persist the
+        # actively edited buffer (it may hold unsaved/incomplete code) nor a
+        # module that failed to compile — that would poison the cache.
+        graph.config.cmd == cmdM and graph.config.errorCounter == 0 and
+          graph.config.m.fileInfos[module.position].dirtyFile.isEmpty
+      else:
+        ({optCompress, optGenBif} * graph.config.globalOptions != {}) or
+        (graph.config.cmd == cmdM and
+         (sfMainModule in module.flags or
+          (graph.config.icGroup.len > 0 and
+           toFullPath(graph.config, module.position.FileIndex) in graph.config.icGroup)))
     if shouldWriteNif and not graph.config.isDefined("nimscript"):
       topLevelStmts.add finalNode
       # Collect replay actions from both pragma computations and VM state diff
@@ -259,9 +282,132 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
           if m == module:
             replayActions.add n
 
-      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog, replayActions)
+      # NeedsImpl edge recording: which modules' bodies this process consumed
+      # at compile time (VM/getImpl). For an --icGroup cycle every member gets
+      # the union; intra-group entries are filtered by the writer.
+      var implDeps: seq[int] = @[]
+      for id in graph.icImplDeps: implDeps.add id
+      # Generic-instance OFFERS: every instance THIS module created, so a
+      # consumer reuses it rather than re-instantiating in its own scope (which
+      # cannot see symbols visible only at the generic's definition site — e.g.
+      # a distinct type's `==`). See ast2nif.writeNifModule / moduleFromNifFile.
+      var genericOffers: seq[tuple[generic, inst: PSym;
+                                   concreteTypes: seq[PType]; genericParamsCount: int]] = @[]
+      for genItemId, instList in graph.procInstCache:
+        for inst in instList:
+          if inst.sym != nil and inst.sym.itemId.module == module.position and
+              inst.sym.instantiatedFrom != nil and inst.compilesId == 0:
+            # `concreteTypes` is pre-sized to `paramsLen+gp.len`; a tail slot can
+            # stay nil (e.g. fewer materialized params than `paramsLen`). Such an
+            # offer can't be serialized — skip it (the consumer re-instantiates,
+            # the prior behaviour) rather than emit a nil type reference.
+            var hasNil = false
+            for ct in inst.concreteTypes:
+              if ct == nil: hasNil = true; break
+            if not hasNil:
+              genericOffers.add (inst.sym.instantiatedFrom, inst.sym,
+                                 inst.concreteTypes, inst.genericParamsCount)
+      # Generic TYPE-instance OFFERS: every `tyGenericInst` THIS module created,
+      # so a consumer reuses its baked structure (array bounds etc.) rather than
+      # re-instantiating with a scope-divergent bound. See ast2nif.writeNifModule.
+      var typeOffers: seq[tuple[generic: PSym; inst: PType]] = @[]
+      for genItemId, instList in graph.typeInstCache:
+        for inst in instList:
+          if inst != nil and inst.itemId.module == module.position and
+              inst.kidsLen > 0 and inst[0] != nil and
+              inst[0].kind == tyGenericBody and inst[0].sym != nil:
+            typeOffers.add (inst[0].sym, inst)
+      # The module's REAL resolved direct imports (incl. macro/template-generated
+      # ones with no surviving syntactic node). Passed to writeNifModule so the
+      # NIF `deps` section is complete (the backend closure walk needs it), and
+      # reused below for the `.s.deps` sidecar (frontend graph re-derivation).
+      let resolvedImportDeps = graph.importDeps.getOrDefault(module.position.FileIndex, @[])
+      # The frontend's highest used itemId (max of the sym and type counters):
+      # the backend seeds its id minting ABOVE this so closure envs / RTTI hooks
+      # never share a `toId` with a frontend sym/type. See ast2nif `(unusedid)`.
+      let firstUnusedId = max(idgen.symId, idgen.typeId)
+      var expansions: seq[(PSym, TLineInfo)] = @[]
+      discard graph.nifExpansions.take(module.position.int32, expansions)
+      # The module symbol's own backend-relevant flags. `sfInjectDestructors` is
+      # set by sempass2 when the module's TOP-LEVEL statements need the
+      # destructor pass; `moduleFromNifFile` builds a fresh module PSym, so
+      # without persisting it `cgen.genTopLevelStmt` skipped
+      # `injectDestructorCalls` and top-level locals were never destroyed.
+      let moduleFlags =
+        if sfInjectDestructors in module.flags: ModFlagInjectDestructors else: 0'i32
+      writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
+                     replayActions, implDeps, reexportedModuleSyms(graph, module),
+                     genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
+                     expansions, moduleFlags)
+      # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
+      # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
+      var semDepPaths: seq[string] = @[]
+      for f in resolvedImportDeps:
+        semDepPaths.add toFullPath(graph.config, f)
+      writeSemDeps(graph.config, module.position.int32, semDepPaths)
 
   result = true
+
+proc loadedDefSym(defs: PNode): PSym =
+  ## The defined symbol of a let/var entry as it loads back from a NIF: the
+  ## section child is a bare `nkSym` (the `(sd …)` reference), but be defensive
+  ## about the from-source shapes too (`nkIdentDefs`, a pragma-wrapped name).
+  case defs.kind
+  of nkSym: result = defs.sym
+  of nkPragmaExpr:
+    result = if defs.len > 0: loadedDefSym(defs[0]) else: nil
+  of nkIdentDefs, nkConstDef:
+    result = if defs.len > 0: loadedDefSym(defs[0]) else: nil
+  else: result = nil
+
+proc initLoadedCompileTimeGlobals(graph: ModuleGraph; module: PSym; topLevel: PNode) =
+  ## Eagerly initialize the compile-time globals (`let/var {.compileTime.}`) of a
+  ## module restored from a NIF. In a normal sem these VM slots are filled by
+  ## `setupCompileTimeVar` (semstmts) as the section is semchecked; a NIF-loaded
+  ## module is never semchecked, so without this a macro or compile-time proc that
+  ## reads such a global finds a nil slot. The lazy `vmgen.genGlobalInit` fallback
+  ## is order-fragile across proc boundaries (it emits the init at the first
+  ## VM-gen'd reference, which need not be the first one executed), so the init has
+  ## to happen here, once, before any of the module's code can run. The symbol's
+  ## own `ast` is the `nkIdentDefs` (initializer included); re-wrap it in a section
+  ## exactly as semstmts does and hand it to the same evaluator.
+  if topLevel == nil: return
+  let idgen = idGeneratorFromModule(module)
+  for stmt in topLevel:
+    if stmt.kind notin {nkLetSection, nkVarSection}: continue
+    for defs in stmt:
+      let s = loadedDefSym(defs)
+      if s != nil and s.kind in {skLet, skVar} and
+         {sfCompileTime, sfGlobal} <= s.flags and
+         s.ast != nil and s.ast.kind == nkIdentDefs:
+        var sect = newNodeI(stmt.kind, s.info)
+        sect.add s.ast
+        setupCompileTimeVar(module, idgen, graph, sect)
+
+proc finalizeLoadedModules(graph: ModuleGraph) =
+  ## Apply the VM-level load effects of every module just loaded from a NIF —
+  ## direct import OR dep-of-a-dep, both collected in `graph.pendingNifInit` by the
+  ## loader (modulegraphs.moduleFromNifFile / loadTransitiveHooks). This is the ONE
+  ## place that knows what loading a module does to global VM state, so a
+  ## transitively-reached module (which never passes through this proc's caller)
+  ## gets identical treatment. Modules are in dependency order (deps before
+  ## dependents), which is the correct macro-cache replay order.
+  ##   1. macro-cache replay: std/macrocache put/inc/add/incl recorded in the
+  ##      module's top level (pragma replay actions are a backend concern, skipped).
+  ##   2. eager `{.compileTime.}` global init (see initLoadedCompileTimeGlobals).
+  ## To add a new per-load effect, extend this proc — do not add a parallel buffer.
+  if graph.pendingNifInit.len == 0: return
+  for (m, topLevel) in graph.pendingNifInit:
+    if topLevel == nil: continue
+    var replayList = newNodeI(nkStmtList, m.info)
+    for n in topLevel:
+      if n.kind == nkReplayAction and n.len >= 1 and n[0].kind == nkStrLit and
+         n[0].strVal in ["put", "inc", "add", "incl"]:
+        replayList.add n
+    if replayList.len > 0:
+      replayStateChanges(m, graph, replayList)
+    initLoadedCompileTimeGlobals(graph, m, topLevel)
+  graph.pendingNifInit.setLen 0
 
 proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym =
   var flags = flags
@@ -269,6 +415,15 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   result = graph.getModule(fileIdx)
 
   template processModuleAux(moduleStatus) =
+    when defined(icDbg):
+      block:
+        let dbgf = open("/tmp/defdbg.txt", fmAppend)
+        dbgf.writeLine toFullPath(graph.config, fileIdx) &
+          " nimStackTraceOverride=" & $isDefined(graph.config, "nimStackTraceOverride") &
+          " nimscript=" & $isDefined(graph.config, "nimscript") &
+          " optCompress=" & $(optCompress in graph.config.globalOptions) &
+          " cmd=" & $graph.config.cmd
+        dbgf.close()
     onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
     var s: PLLStream = nil
     if sfMainModule in flags:
@@ -278,27 +433,57 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
   if result == nil:
     when not defined(nimKochBootstrap):
       # For cmdM: load imports from NIF files (but compile the main module from source)
-      # Skip when withinSystem is true (compiling system.nim itself)
+      # Skip when withinSystem is true (compiling system.nim itself).
+      # Also skip for members of the current strongly-connected import group
+      # (`--icGroup`): those are mutually recursive with the main module and have
+      # no precompiled NIF yet, so they must be compiled from source in this same
+      # process (falling through below) — that resolves the cycle in-memory, the
+      # same way the non-incremental compiler handles recursive module imports.
       if graph.config.cmd == cmdM and
          sfMainModule notin flags and
          not graph.withinSystem and
-         not graph.config.isDefined("nimscript"):
+         not graph.config.isDefined("nimscript") and
+         (graph.config.icGroup.len == 0 or
+          toFullPath(graph.config, fileIdx) notin graph.config.icGroup):
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
-          let nifPath = toNifFilename(graph.config, fileIdx)
-          globalError(graph.config, unknownLineInfo,
-            "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
-            " (expected: " & nifPath & ")")
-          return nil  # Don't fall through to compile from source
+          if graph.config.ideActive:
+            # nimsuggest bootstrap: this import has no precompiled NIF yet (cold
+            # cache, or it was invalidated). Don't error — fall through to the
+            # source-compile path below; the pass-close emits a fresh NIF so the
+            # next query loads it instead of recompiling.
+            discard
+          else:
+            let nifPath = toNifFilename(graph.config, fileIdx)
+            # Macro-generated imports (e.g. chronicles' parseStmt("import
+            # chronicles/textlines") driven by the chronicles_sinks define) are
+            # invisible to the static scanner, so this module's NIF was never
+            # built. The importer already recorded this import via
+            # addImportFileDep, so flush every module's `.s.deps`: `nim ic` reads
+            # it, re-derives the graph with the missing node + edge, and reruns
+            # the frontend. We still error — this process cannot finish sem
+            # without the import — but the discovery is structured data now, not
+            # a side-channel file.
+            for importer, deps in graph.importDeps.pairs:
+              var paths: seq[string] = @[]
+              for f in deps: paths.add toFullPath(graph.config, f)
+              writeSemDeps(graph.config, importer.int32, paths)
+            globalError(graph.config, unknownLineInfo,
+              "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
+              " (expected: " & nifPath & ")")
+            return nil  # Don't fall through to compile from source
         else:
           # Module successfully loaded from NIF file - use it and skip processing
           result = precomp.module
           if sfSystemModule in flags:
             graph.systemModule = result
           partialInitModule(result, graph, fileIdx, AbsoluteFile(toFullPath(graph.config, fileIdx)))
-          # Replay state changes from the loaded NIF module
-          if result.ast != nil:
-            replayStateChanges(result, graph)
+          # Apply the VM-level load effects of this module AND every dep it pulled in
+          # (moduleFromNifFile recorded them all in graph.pendingNifInit): macro-cache
+          # replay (else a NIF-loaded module's macro cache is lost — e.g.
+          # nim-serialization flavor registration) and eager `{.compileTime.}` global
+          # init. Uniform for direct and transitive deps — see finalizeLoadedModules.
+          finalizeLoadedModules(graph)
           return result  # Return early, don't process from source
     let path = toFullPath(graph.config, fileIdx)
     let filename = AbsoluteFile path
@@ -364,7 +549,14 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   let projectFile = if projectFileIdx == InvalidFileIdx: conf.projectMainIdx else: projectFileIdx
   conf.projectMainIdx2 = projectFile
 
-  let packSym = getPackage(graph, projectFile)
+  var packSym = getPackage(graph, projectFile)
+  if graph.config.cmd in {cmdM, cmdNifC} and graph.config.icProject.len > 0:
+    # per-module IC children: the process' project file is the MODULE being
+    # compiled, which would make its package the "main package" and unfilter
+    # foreign-package diagnostics (a vendored package's hintAsError promotion
+    # then aborts builds the whole-program compilation accepts). Use the
+    # original project, forwarded by deps.nim via --icproject.
+    packSym = getPackage(graph, fileInfoIdx(graph.config, AbsoluteFile graph.config.icProject))
   graph.config.mainPackageId = packSym.getPackageId
   graph.importStack.add projectFile
 
@@ -375,16 +567,32 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
   elif graph.config.cmd == cmdM:
     # For cmdM: load system.nim from NIF first, then compile the main module
     connectPipelineCallbacks(graph)
+    # Record the main module so the IC loader won't materialise duplicate stubs
+    # for its own symbols when a dependency (e.g. system) re-exports them.
+    setIcMainModule(projectFile)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     when not defined(nimKochBootstrap):
-      let precomp = moduleFromNifFile(graph, graph.config.m.systemFileIdx)
-      graph.systemModule = precomp.module
+      # Don't clobber an already-compiled system: nimsuggest's NimScript config
+      # evaluation compiles `system` into this same graph before we get here.
       if graph.systemModule == nil:
-        let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
-        localError(graph.config, unknownLineInfo,
-          "nim m requires precompiled NIF for system module (expected: " & nifPath & ")")
-        return
+        let precomp = moduleFromNifFile(graph, graph.config.m.systemFileIdx)
+        graph.systemModule = precomp.module
+      if graph.systemModule == nil:
+        if graph.config.ideActive:
+          # nimsuggest bootstrap: no system NIF yet — compile it from source
+          # (the pass-close emits it), then continue with the main module.
+          graph.compilePipelineSystemModule()
+        else:
+          let nifPath = toNifFilename(graph.config, graph.config.m.systemFileIdx)
+          localError(graph.config, unknownLineInfo,
+            "nim m requires precompiled NIF for system module (expected: " & nifPath & ")")
+          return
+      # Apply system's (and its deps') load effects now: the main module is
+      # compiled from source and never re-enters the moduleFromNifFile drain for
+      # system, so without this its macro-cache / CT globals would wait until the
+      # first NIF import is processed. See finalizeLoadedModules.
+      finalizeLoadedModules(graph)
     discard graph.compilePipelineModule(projectFile, {sfMainModule})
   else:
     graph.compilePipelineSystemModule()

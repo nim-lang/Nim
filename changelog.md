@@ -35,12 +35,24 @@ errors.
 
 - Adds a new warning `--warning:ImplicitRangeConversion` that detects downsizing implicit conversions to range types (e.g., `int -> range[0..255]` or `range[1..256] -> range[0..255]`) that could cause runtime panics. Safe conversions like `range[0..255] -> range[0..65535]` and explicit casts do not trigger warnings. `int` to `Natural` and `Positive` conversions do not trigger warnings, which can be enabled with `--warning:systemRangeConversion`.
 
+- Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
 
 - Standard posix calls on Linux and Windows are not all thread safe, switch to
   ugly but thread-safe extensions where affected in `nativesockets` and `times`.
+- Added `system.readRawDataStable`, a companion to `readRawData` that returns a
+  raw `ptr UncheckedArray[char]` into a string's character data which stays valid
+  across moves and copies of the string value. It is available under every string
+  implementation (refc, ARC/ORC and `--strings:sso`) with the same signature, so
+  code can pin an interior buffer pointer today and be ready for `--strings:sso`
+  without `when declared` guards. Under `--strings:sso` it promotes a small inline
+  string to its heap representation first; under the other implementations the data
+  is already heap-resident, so it is equivalent to `readRawData`.
 
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
@@ -63,10 +75,17 @@ errors.
     - `copyDirWithPermissions` to recursively preserve attributes
 
 - `system.setLenUninit` now supports refc, JS and VM backends.
+- `system.setLenUninit` for the `string` type. Allows setting length without initializing new memory on growth.
 
 - `std/parseopt` now supports multiple parser modes via a `CliMode` enum.
   Modes include `Nim` (default, fully compatible) and two new experimental modes:
   `Lax` and `Gnu` for different option parsing behaviors.
+
+- `std/symlinks.expandSymlink` now supports Windows symlinks and junctions with
+  POSIX-like single-hop `readlink` semantics.
+- `std/nre2` is added to replace deprecated NRE.
+
+- `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
 
 [//]: # "Changes:"
 
@@ -74,6 +93,15 @@ errors.
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
+- `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
+  Use https://github.com/nitely/nim-regex or `std/nre2`.
+  See: https://github.com/nim-lang/Nim/issues/23668.
+- `std/pegs` now correctly lexes UTF-8 bytes inside bare identifier-style
+  terminals, so case-insensitive matching of non-ASCII terms (e.g. ``\i café``)
+  works without single-quoting.
+- `std/uri`: The `?` operator now appends query parameters to an existing query
+  string instead of replacing it. Fixes [#19782](https://github.com/nim-lang/Nim/issues/19782).
+- `std/jsonutils`: `fromJson` now throws an exception when converting to `array`/`seq` if the JSON isn't an array instead of silently failing
 
 ## Language changes
 
@@ -112,12 +140,24 @@ errors.
   See the [experimental manual](https://nim-lang.github.io/Nim/manual_experimental.html#typeminusbound-overloads)
   for more information.
 
+- Seven more Unicode characters are now parsed as operators, implementing the RFC
+  https://github.com/nim-lang/RFCs/issues/571: `⟑ ⟇ ⩓ ⩔ ■ □ ☆`. They all have the
+  same priority as `*` (multiplication). As with the other Unicode operators, Nim
+  only lexes them; their meaning is up to user code.
+
 ## Compiler changes
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
   The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
   `tyTypeDesc(tyGenericParam)` as an unresolved generic parameter.
+
+- The JS backend now implements write-through for `var openArray` parameters that
+  receive a `toOpenArray` view (bug #15952): mutations reach the caller's storage
+  instead of silently writing to a copy. Fixed homogeneous numeric arrays
+  (`array[N, T]`, JS typed arrays) slice via `subarray`; `seq` and non-numeric
+  arrays slice via a `{base, off, len}` view. This also covers seq/non-numeric-array
+  write-through, pass-through, re-slicing and `@` (openArray-to-seq) of such views.
 
 ## Tool changes
 

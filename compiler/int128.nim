@@ -340,9 +340,6 @@ proc `*`*(a: Int128, b: int32): Int128 =
   if b < 0:
     result = -result
 
-proc `*=`(a: var Int128, b: int32) =
-  a = a * b
-
 proc makeInt128(high, low: uint64): Int128 =
   result = Zero
   result.udata[0] = cast[uint32](low)
@@ -460,7 +457,9 @@ proc addInt128*(result: var string; value: Int128) =
     var i = initialSize
     var j = high(result)
     while i < j:
-      swap(result[i], result[j])
+      let tmp = result[i]
+      result[i] = result[j]
+      result[j] = tmp
       i += 1
       j -= 1
 

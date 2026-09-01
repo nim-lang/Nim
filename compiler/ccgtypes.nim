@@ -72,20 +72,67 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   else:
     m.g.mangledPrcs.incl(result)
 
+proc sharedInstanceCName(m: BModule; s: PSym): string =
+  ## The module-free canonical C name for a content-keyed generic instance,
+  ## or "" when the symbol must keep its module-suffixed name. With a shared
+  ## name, every TU that instantiated the same generic with the same type
+  ## arguments calls one extern definition (first claimant's TU embeds it,
+  ## see `genProcLvl3`) instead of compiling its own static copy.
+  ##
+  ## The name is program-unique only if the 30-bit content hash does not
+  ## collide for same-named instances of *different* instantiations across
+  ## modules — the per-module probe in `setInstanceDisamb` cannot see that.
+  ## Claimants therefore must present the same signature; on mismatch the
+  ## later one keeps its module-suffixed name (no merge, still correct).
+  ## Residual risk: same name and signature, different generic args, AND a
+  ## 30-bit collision — vanishingly unlikely; a full-typeKey verification
+  ## channel can close it later.
+  result = ""
+  if m.config.cmd == cmdNifC and s.kind in routineKinds and
+      (s.disamb and InstanceDisambBit) != 0'i32 and
+      s.typ != nil and s.typ.callConv != ccInline and not m.hcrOn and
+      {sfImportc, sfExportc, sfCodegenDecl} * s.flags == {}:
+    # The content-derived `disamb` is unique per process (collision-probed in
+    # `setInstanceDisamb`), so the mint-site-independent `_i<disamb>` name is
+    # safe to use directly; identical instances across modules collide on it
+    # exactly and the merge stage keeps one.
+    result = s.name.s.mangle & "_i" & $s.disamb
+
+proc isSharedInstanceCName(m: BModule; s: PSym): bool =
+  m.config.cmd == cmdNifC and s.kind in routineKinds and
+    (s.disamb and InstanceDisambBit) != 0'i32 and
+    stripCnifMarks(s.loc.snippet) == s.name.s.mangle & "_i" & $s.disamb
+
 proc fillBackendName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
     var result: Rope
     if s.kind in routineKinds and {optCDebug, optItaniumMangle} * m.g.config.globalOptions == {optCDebug, optItaniumMangle} and
       m.g.config.symbolFiles == disabledSf:
-      result = mangleProc(m, s, false).rope
+      # Under the per-module IC backend the bare-name uniqueness probe
+      # (`m.g.mangledPrcs`) only sees the routines of the CURRENT module, so the
+      # clean-vs-`makeUnique` decision is made independently per process: a
+      # method base mangles clean at its owner but loses the in-module race to
+      # its same-signature dispatcher elsewhere (clean `speak` defined twice ->
+      # "multiple definition"; demanders call `speak_u<n>` that nobody defines).
+      # Force the stable, disamb-based unique name so every process agrees.
+      result = mangleProc(m, s, makeUnique = m.config.cmd == cmdNifC).rope
     else:
-      result = s.name.s.mangle.rope
-      result.add mangleProcNameExt(m.g.graph, s)
+      let shared = sharedInstanceCName(m, s)
+      if shared.len > 0:
+        result = shared.rope
+      else:
+        result = s.name.s.mangle.rope
+        result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
       result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
     backendEnsureMutable s
-    s.locImpl.snippet = result
+    if m.config.cmd == cmdNifC:
+      # mark the name so the cnif artifact writer can turn every occurrence
+      # into a Symbol token; stripped from the actual C output in genModule
+      s.locImpl.snippet = markCName(result)
+    else:
+      s.locImpl.snippet = result
 
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
@@ -309,7 +356,7 @@ proc addAbiCheck(m: BModule; t: PType, name: Rope) =
 
 
 proc fillResult(conf: ConfigRef; param: PNode, proctype: PType) =
-  ensureMutable param.sym
+  backendEnsureMutable param.sym
   fillLoc(param.sym.locImpl, locParam, param, "Result",
           OnStack)
   let t = param.sym.typ
@@ -339,6 +386,10 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
       cgsym(m, "NimStrPayload")
       cgsym(m, "NimStringV2")
       result = typeNameOrLiteral(m, typ, "NimStringV2")
+    of 3:
+      cgsym(m, "LongString")
+      cgsym(m, "SmallString")
+      result = typeNameOrLiteral(m, typ, "SmallString")
     else:
       cgsym(m, "NimStringDesc")
       result = typeNameOrLiteral(m, typ, "NimStringDesc*")
@@ -369,6 +420,12 @@ proc getSimpleTypeDesc(m: BModule; typ: PType): Rope =
       m.typeCache[sig] = result
 
 proc pushType(m: BModule; typ: PType) =
+  when defined(icDbgRefc):
+    if typ.kind == tySequence and
+        typ.elementType.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyGenericParam:
+      echo "[icRefc] pushType seq-of-genericparam t=", typeToString(typ),
+        " itemId=", typ.itemId.module, ".", typ.itemId.item, " mod=", m.module.name.s
+      echo getStackTrace()
   for i in 0..high(m.typeStack):
     # pointer equality is good enough here:
     if m.typeStack[i] == typ: return
@@ -542,7 +599,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
   var types, names, args: seq[string] = @[]
   if not isCtor:
     var this = t.n[1].sym
-    ensureMutable this
+    backendEnsureMutable this
     fillParamName(m, this)
     fillLoc(this.locImpl, locParam, t.n[1],
             this.paramStorageLoc)
@@ -564,7 +621,7 @@ proc genMemberProcParams(m: BModule; prc: PSym, superCall, rettype, name, params
       else:
         descKind = dkRefParam
     var typ, name: string
-    ensureMutable param
+    backendEnsureMutable param
     fillParamName(m, param)
     fillLoc(param.locImpl, locParam, t.n[i],
             param.paramStorageLoc)
@@ -614,6 +671,18 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
     for i in 1..<t.n.len:
       if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
       var param = t.n[i].sym
+      # The hidden closure environment param (`:envP`) is not a real C parameter:
+      # the environment is passed via the trailing `ClE_0` (added below) and
+      # `closureSetup` materialises `:envP` as a local cast of it. In a from-source
+      # build `:envP` only lives in the routine's AST params, never in the proc
+      # *type's* `n`, so it never reaches here. Under IC `closureParams` re-shares
+      # the AST param node with `typ.n`, so the lifted `:envP` leaks into `t.n`;
+      # emitting it would produce a bogus extra parameter that collides with the
+      # `closureSetup` local (the "redeclared as different kind of symbol" / env
+      # pointer-type mismatch). We still must fill its name/loc (later passes such
+      # as `assignParam` and `closureSetup` reference it), but it is omitted from
+      # the C signature to match the from-source ABI.
+      let isClosureEnv = t.callConv == ccClosure and param.name.s == ":envP"
       var descKind = dkParam
       if m.config.backend == backendCpp and optByRef in param.options:
         if param.typ.kind == tyGenericInst:
@@ -625,6 +694,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       fillParamName(m, param)
       fillLoc(param.locImpl, locParam, t.n[i],
               param.paramStorageLoc)
+      if isClosureEnv: continue  # name/loc filled, but not part of the C signature
       var typ: Rope
       if ccgIntroducedPtr(m.config, param, t.returnType) and descKind == dkParam:
         typ = ptrType(getTypeDescWeak(m, param.typ, check, descKind))
@@ -672,8 +742,8 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 
 proc hasCppCtor(m: BModule; typ: PType): bool =
   result = false
-  if m.compileToCpp and typ != nil and typ.itemId in m.g.graph.memberProcsPerType:
-    for prc in m.g.graph.memberProcsPerType[typ.itemId]:
+  if m.compileToCpp and typ != nil and typ.bindingId in m.g.graph.memberProcsPerType:
+    for prc in m.g.graph.memberProcsPerType[typ.bindingId]:
       if sfConstructor in prc.flags:
         return true
 
@@ -682,8 +752,8 @@ proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string
 proc genCppInitializer(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): string =
   #To avoid creating a BProc per test when called inside a struct nil BProc is allowed
   result = "{}"
-  if typ.itemId in m.g.graph.initializersPerType:
-    let call = m.g.graph.initializersPerType[typ.itemId]
+  if typ.bindingId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.bindingId]
     if call != nil:
       var p = prc
       if p == nil:
@@ -697,11 +767,11 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
                         check: var IntSet; result: var Builder; unionPrefix = "") =
   case n.kind
   of nkRecList:
-    for i in 0..<n.len:
-      genRecordFieldsAux(m, n[i], rectype, check, result, unionPrefix)
+    for ni in n.sons:
+      genRecordFieldsAux(m, ni, rectype, check, result, unionPrefix)
   of nkRecCase:
-    if n[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
-    genRecordFieldsAux(m, n[0], rectype, check, result, unionPrefix)
+    if n.firstSon.kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
+    genRecordFieldsAux(m, n.firstSon, rectype, check, result, unionPrefix)
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody = newBuilder("")
@@ -710,7 +780,7 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
       of nkOfBranch, nkElse:
         let k = lastSon(n[i])
         if k.kind != nkSym:
-          let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
+          let structName = "_" & mangleRecFieldName(m, n.firstSon.sym) & "_" & $i
           var a = newBuilder("")
           genRecordFieldsAux(m, k, rectype, check, a, unionPrefix & $structName & ".")
           if a.buf.len != 0:
@@ -749,7 +819,11 @@ proc genRecordFieldsAux(m: BModule; n: PNode,
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
         let noInit = sfNoInit in field.flags or (field.typ.sym != nil and sfNoInit in field.typ.sym.flags)
-        if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, field.owner.typ)):
+        # Under `nim ic`, object fields are local NIF syms restored without an
+        # `owner`; `rectype` is the owning record type, so fall back to it rather
+        # than deref a nil `field.owner`.
+        let ownerTyp = if field.owner != nil: field.owner.typ else: rectype
+        if not noInit and (fieldType.isOrHasImportedCppType() or hasCppCtor(m, ownerTyp)):
           var didGenTemp = false
           initializer = genCppInitializer(m, nil, fieldType, didGenTemp)
       result.addField(field, sname, typ, isFlexArray, initializer)
@@ -759,8 +833,8 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
 
 proc addRecordFields(result: var Builder; m: BModule; typ: PType, check: var IntSet) =
   genRecordFieldsAux(m, typ.n, typ, check, result)
-  if typ.itemId in m.g.graph.memberProcsPerType:
-    let procs = m.g.graph.memberProcsPerType[typ.itemId]
+  if typ.bindingId in m.g.graph.memberProcsPerType:
+    let procs = m.g.graph.memberProcsPerType[typ.bindingId]
     var isDefaultCtorGen, isCtorGen: bool = false
     for prc in procs:
       if sfConstructor in prc.flags:
@@ -1001,9 +1075,9 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
           let owner = hashOwner(t.sym)
           if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
             var vals: seq[(string, int)] = @[]
-            for i in 0..<t.n.len:
-              assert(t.n[i].kind == nkSym)
-              let field = t.n[i].sym
+            for son in t.n.sons:
+              assert(son.kind == nkSym)
+              let field = son.sym
               vals.add((field.name.s, field.position.int))
             gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
               name: t.sym.name.s, values: vals))
@@ -1104,6 +1178,11 @@ proc getTypeDescAux(m: BModule; origTyp: PType, check: var IntSet; kind: TypeDes
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, skipModifier(t), check, kind)
   else:
+    when defined(icDbgRefc):
+      echo "[icRefc] getTypeDescAux ", t.kind, " t=", typeToString(t),
+        " origTyp=", typeToString(origTyp), " t.itemId=", t.itemId.module, ".", t.itemId.item,
+        " sym=", (if t.sym != nil: t.sym.name.s else: "nil"),
+        " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = ""
   # fixes bug #145:
@@ -1142,6 +1221,10 @@ proc finishTypeDescriptions(m: BModule) =
   var check = initIntSet()
   while i < m.typeStack.len:
     let t = m.typeStack[i]
+    when defined(icDbgRefc):
+      echo "[icRefc] finishTypeDescriptions[", i, "] mod=", m.module.name.s,
+        " t=", typeToString(t), " kind=", t.kind,
+        " itemId=", t.itemId.module, ".", t.itemId.item
     if optSeqDestructors in m.config.globalOptions and t.skipTypes(abstractInst).kind == tySequence:
       seqV2ContentType(m, t, check)
     else:
@@ -1183,7 +1266,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
   let isCtor = sfConstructor in prc.flags
   var check = initIntSet()
   fillBackendName(m, prc)
-  ensureMutable prc
+  backendEnsureMutable prc
   fillLoc(prc.locImpl, locProc, prc.ast[namePos], OnUnknown)
   var memberOp = "#." #only virtual
   var typ: PType
@@ -1206,6 +1289,14 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
     name = typDesc
   if isFnConst:
     fnConst = " const"
+  if not isCtor:
+    # The call-site form (`x->salute(@)`), not the mangled Nim name. Set it on
+    # BOTH paths: whole-program cgen always emitted the out-of-class definition
+    # (the `else` branch) before any caller, but the per-module backend emits a
+    # foreign member proc's body in ITS OWN module, so the caller's TU only ever
+    # reaches the in-class declaration below — and called the member by the
+    # mangled name (`loo->salute_u0__vireouyks1()`, "struct Loo has no member").
+    prc.locImpl.snippet = "$1$2(@)" % [memberOp, name]
   if isFwdDecl:
     if isStatic:
       result.add "static "
@@ -1215,9 +1306,7 @@ proc genMemberProcHeader(m: BModule; prc: PSym; result: var Builder; asPtr: bool
         override = " override"
     superCall = ""
   else:
-    if not isCtor:
-      prc.locImpl.snippet = "$1$2(@)" % [memberOp, name]
-    elif superCall != "":
+    if isCtor and superCall != "":
       superCall = " : " & superCall
 
     name = "$1::$2" % [typDesc, name]
@@ -1256,7 +1345,9 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
     elif prc.typ.callConv == ccInline or isNonReloadable(m, prc):
       visibility = StaticProc
     elif sfImportc notin prc.flags:
-      visibility = Private
+      if not isSharedInstanceCName(m, prc):
+        visibility = Private
+      # else: plain extern — the definition is shared across TUs
     if asPtr:
       result.addProcVar(m, prc, name, params, rettype, isStatic = isStaticVar, ignoreAttributes = true)
     else:
@@ -1334,8 +1425,24 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
           m.hcrCreateTypeInfosProc.addCast(typ = ptrType(CPointer)):
             m.hcrCreateTypeInfosProc.add(cAddr(name))
   else:
-    m.s[cfsStrData].addDeclWithVisibility(Private):
-      m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
+    if m.config.cmd == cmdNifC:
+      # Emit-everywhere (see genTypeInfoV1's perModuleCg gate): every demanding
+      # `cg` process emits this type info's tentative definition. Declare it
+      # `extern` first (the data analogue of a proc prototype) so a TU whose copy
+      # the merge stage drops still has a valid declaration; wrap the definition
+      # as a droppable `'d'` unit the merge stage assigns to a single owner so
+      # exactly one external-linkage tentative definition survives (preserving
+      # the RTTI pointer identity refc relies on).
+      m.s[cfsStrData].addDeclWithVisibility(Extern):
+        m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
+      m.s[cfsStrData].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+      m.s[cfsStrData].addDeclWithVisibility(Private):
+        m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
+      m.s[cfsStrData].add(cnifEndDefs())
+      m.icDataDefs.add (name, icNifName(m, origType))
+    else:
+      m.s[cfsStrData].addDeclWithVisibility(Private):
+        m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
 
 proc genTypeInfoAux(m: BModule; typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1359,8 +1466,6 @@ proc discriminatorTableName(m: BModule; objtype: PType, d: PSym): Rope =
   if objtype.sym == nil:
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype, m.config)), rope(d.name.s.mangle)]
-
-proc rope(arg: Int128): Rope = rope($arg)
 
 proc discriminatorTableDecl(m: BModule; objtype: PType, d: PSym, result: var Builder) =
   cgsym(m, "TNimNode")
@@ -1396,14 +1501,14 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
   case n.kind
   of nkRecList:
     if n.len == 1:
-      genObjectFields(m, typ, origType, n[0], expr, info)
+      genObjectFields(m, typ, origType, n.firstSon, expr, info)
     elif n.len > 0:
       var tmp = getTempName(m) & "_" & $n.len
       genTNimNodeArray(m, tmp, n.len)
-      for i in 0..<n.len:
+      for i, ni in isons(n):
         var tmp2 = getNimNode(m)
         m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(i), cAddr(tmp2))
-        genObjectFields(m, typ, origType, n[i], tmp2, info)
+        genObjectFields(m, typ, origType, ni, tmp2, info)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "len", n.len)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "sons",
@@ -1412,8 +1517,8 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
       m.s[cfsTypeInit3].addFieldAssignment(expr, "len", n.len)
       m.s[cfsTypeInit3].addFieldAssignment(expr, "kind", 2)
   of nkRecCase:
-    assert(n[0].kind == nkSym)
-    var field = n[0].sym
+    assert(n.firstSon.kind == nkSym)
+    var field = n.firstSon.sym
     var tmp = discriminatorTableName(m, typ, field)
     var L = lengthOrd(m.config, field.typ)
     assert L > 0
@@ -1428,8 +1533,25 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
     m.s[cfsTypeInit3].addFieldAssignment(expr, "name", makeCString(field.name.s))
     m.s[cfsTypeInit3].addFieldAssignment(expr, "sons", cAddr(subscript(tmp, cIntValue(0))))
     m.s[cfsTypeInit3].addFieldAssignment(expr, "len", L)
-    m.s[cfsData].addArrayVar(kind = Local, name = tmp,
-      elementType = ptrType("TNimNode"), len = toInt(L)+1)
+    if m.config.cmd == cmdNifC:
+      # The discriminator table has a content-addressed name
+      # (`NimDT_<hashType>_<field>`) and is emitted by every module that demands
+      # this variant type's RTTI (emit-everywhere; RTTI has no single owner —
+      # emission is lazy and often skipped). Declare it `extern` + wrap the
+      # tentative definition as a droppable `'d'` unit so the merge stage keeps
+      # exactly one external-linkage definition (mirrors the `TNimType` var and
+      # consts); otherwise the identical name collides across modules at link.
+      m.s[cfsData].addDeclWithVisibility(Extern):
+        m.s[cfsData].addArrayVar(kind = Local, name = tmp,
+          elementType = ptrType("TNimNode"), len = toInt(L)+1)
+      m.s[cfsData].add(cnifDefDirective(tmp, "d", ""))
+      m.s[cfsData].addArrayVar(kind = Local, name = tmp,
+        elementType = ptrType("TNimNode"), len = toInt(L)+1)
+      m.s[cfsData].add(cnifEndDefs())
+      m.icDataDefs.add (tmp, "")
+    else:
+      m.s[cfsData].addArrayVar(kind = Local, name = tmp,
+        elementType = ptrType("TNimNode"), len = toInt(L)+1)
     for i in 1..<n.len:
       var b = n[i]           # branch
       var tmp2 = getNimNode(m)
@@ -1440,7 +1562,7 @@ proc genObjectFields(m: BModule; typ, origType: PType, n: PNode, expr: Rope;
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
         for j in 0..<b.len - 1:
           if b[j].kind == nkRange:
-            var x = toInt(getOrdValue(b[j][0]))
+            var x = toInt(getOrdValue(b[j].firstSon))
             var y = toInt(getOrdValue(b[j][1]))
             while x <= y:
               m.s[cfsTypeInit3].addSubscriptAssignment(tmp, cIntValue(x), cAddr(tmp2))
@@ -1531,9 +1653,9 @@ proc genEnumInfo(m: BModule; typ: PType, name: Rope; info: TLineInfo) =
   var firstNimNode = m.typeNodes
   var hasHoles = false
   enumNames.addStructInitializer(enumNamesInit, kind = siArray):
-    for i in 0..<typ.n.len:
-      assert(typ.n[i].kind == nkSym)
-      var field = typ.n[i].sym
+    for i, son in isons(typ.n):
+      assert(son.kind == nkSym)
+      var field = son.sym
       var elemNode = getNimNode(m)
       enumNames.addField(enumNamesInit, name = ""):
         if field.ast == nil:
@@ -1623,8 +1745,13 @@ proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
           m.s[cfsTypeInit1].addArgument(hcrGlobal):
             m.s[cfsTypeInit1].add("\"" & str & "\"")
   else:
+    # cnif-mark the name: this extern declaration is the reference the
+    # def-retention check consults when the defining TU regenerates and
+    # the typeinfo cannot be re-demanded (type vanished) — the referencing
+    # TU must lose its reuse then instead of producing a link error
+    let declName = if m.config.cmd == cmdNifC: markCName(str) else: str
     m.s[cfsStrData].addDeclWithVisibility(Extern):
-      m.s[cfsStrData].addVar(kind = Local, name = str, typ = nr)
+      m.s[cfsStrData].addVar(kind = Local, name = declName, typ = nr)
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var it = t
@@ -1659,7 +1786,7 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
 
   dest.typ = getSysType(g, info, tyPointer)
 
-  result.typ = newProcType(info, idgen, owner)
+  result.typ = newProcType(info, idgen, result)
   result.typ.addParam dest
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
@@ -1688,6 +1815,16 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
 
   incl result.flagsImpl, sfFromGeneric
   incl result.flagsImpl, sfGeneratedOp
+  # Under IC the `rttiDestroy` wrapper is generated independently in every cg
+  # process that emits `typ`'s RTTI (the type-info is emit-everywhere). A plain
+  # counter `disamb` renumbers per process, so the RTTI table baked in module A
+  # references `rttiDestroy_c<n>` while module B (the =destroy owner) defines a
+  # different number → undefined at link. Give it a content-derived `disamb`
+  # (stable across processes) + `HookDisambBit`, exactly like `symPrototype` does
+  # for the hook itself: same `typ` ⇒ same C name everywhere, and the bit makes
+  # `emitsBodyInThisModule` emit the body in every demander (merge dedups). The
+  # `"rttiDestroy"` op-name keeps its key disjoint from the real `=destroy` hook's.
+  setHookDisamb(g, result, "rttiDestroy", typ)
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Builder) =
   let theProc = getAttachedOp(m.g.graph, t, op)
@@ -1760,9 +1897,30 @@ proc genVTable(result: var Builder, seqs: seq[PSym]) =
         result.add(cCast(CPointer, seqs[i].loc.snippet))
 
 proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
+  ## The C++/HCR flavour: C++ has no designated initializers, so the RTTI record
+  ## is a bare variable that the module's `DatInit` fills field by field.
   cgsym(m, "TNimTypeV2")
-  m.s[cfsStrData].addDeclWithVisibility(Private):
-    m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+  if m.config.cmd == cmdNifC:
+    # Same emit-everywhere split as `genTypeInfoV2Impl`: every `cg` process that
+    # demands this type declares it `extern`, and the DEFINITION is a droppable
+    # `'d'` unit the merge stage gives a single owner. Without the split the bare
+    # `TNimTypeV2 x;` in each TU is a tentative definition — which C's linker
+    # merges but C++'s does not, so `nim cpp --ic:on` died at link with
+    # "multiple definition of NTIv2__…". The field ASSIGNMENTS stay in every
+    # TU's `DatInit`: they are top-level code, not a definition, and every module
+    # computes the same values.
+    m.s[cfsStrData].addDeclWithVisibility(Extern):
+      m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+    m.s[cfsVars].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+    var def = newBuilder("")
+    def.addDeclWithVisibility(Private):
+      def.addVar(kind = Local, name = name, typ = "TNimTypeV2")
+    m.s[cfsVars].add extract(def)
+    m.s[cfsVars].add(cnifEndDefs())
+    m.icDataDefs.add (name, icNifName(m, origType))
+  else:
+    m.s[cfsStrData].addDeclWithVisibility(Private):
+      m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1825,8 +1983,15 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
-  m.s[cfsStrData].addDeclWithVisibility(Private):
+  # Under `nim nifc` every `cg` process that demands this type's RTTI emits its
+  # definition (emit-everywhere). The forward declaration must therefore be a
+  # real `extern` (not a tentative definition) so a TU whose copy the merge
+  # stage drops still only *declares* it; the definition itself is wrapped as a
+  # droppable `'d'` unit below and assigned to a single owner.
+  m.s[cfsStrData].addDeclWithVisibility(if m.config.cmd == cmdNifC: Extern else: Private):
     m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+  if m.config.cmd == cmdNifC:
+    m.icDataDefs.add (name, icNifName(m, origType))
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1
@@ -1887,7 +2052,12 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
         else:
           typeEntry.addField(typeInit, name = "flags"):
             typeEntry.addIntValue(flags)
-  m.s[cfsVars].add extract(typeEntry)
+  if m.config.cmd == cmdNifC:
+    m.s[cfsVars].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+    m.s[cfsVars].add extract(typeEntry)
+    m.s[cfsVars].add(cnifEndDefs())
+  else:
+    m.s[cfsVars].add extract(typeEntry)
 
   if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
@@ -1925,8 +2095,14 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   result = "NTIv2$1_" % [rope($sig)]
   m.typeInfoMarkerV2[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
+  let owner = t.skipTypes(typedescPtrs).bindingId.module
+  # In the per-module backend (`cg`) RTTI is emit-everywhere like procs and
+  # consts: every demanding module emits the `'d'` definition (deduped to one
+  # owner by the merge stage). The owner-routing below would instead push the
+  # definition into the owner module's *unwritten* backend module (discarded in
+  # this process) and emit only an extern here, leaving the symbol undefined.
+  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
+  if not perModuleCg and owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.mods[owner], origType, info)
     # reference the type info as extern here
@@ -1993,6 +2169,10 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   let marker = m.g.typeInfoMarker.getOrDefault(sig)
   if marker.str != "":
+    when defined(icDbgRefc):
+      if "catchableerror" in marker.str:
+        echo "[icNti] ", marker.str, " in mod=", m.module.name.s,
+          " -> extern:globalMarker owner=", marker.owner
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", marker.str, marker.owner)
@@ -2003,15 +2183,32 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
 
+  when defined(icDbgRefc):
+    template dbgNti(branch: string) =
+      if "catchableerror" in result:
+        echo "[icNti] ", result, " in mod=", m.module.name.s, " -> ", branch
+  else:
+    template dbgNti(branch: string) = discard
+
   let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
   if old != FileIndex(0):
+    dbgNti "extern:emittedTypeInfo"
     cgsym(m, "TNimType")
     cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, old.int)
     return prefixTI(result)
 
-  var owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
+  var owner = t.skipTypes(typedescPtrs).bindingId.module
+  # In the per-module backend (`cg`) V1 RTTI is emit-everywhere like procs,
+  # consts and V2 type info: every demanding module emits the `'d'` definition
+  # (deduped to one owner by the merge stage). The owner-routing below would
+  # instead push the definition into the owner module's *unwritten* backend
+  # module (discarded in this process) and emit only an extern here, leaving the
+  # symbol undefined at link — the refc `NTI*` undefined-reference bug. (V2 got
+  # this gate in 8e0dd4bfb; V1, only reached under `--mm:refc`, was missed.)
+  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
+  if not perModuleCg and owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
+    dbgNti "extern:ownerRouted"
     # make sure the type info is created in the owner module
     discard genTypeInfoV1(m.g.mods[owner], origType, info)
     # reference the type info as extern here
@@ -2022,6 +2219,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   else:
     owner = m.module.position.int32
 
+  dbgNti "DEFINED-HERE"
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
   #rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
@@ -2093,7 +2291,7 @@ proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rop
 proc retrieveSym(n: PNode): PSym =
   case n.kind
   of nkPostfix: result = retrieveSym(n[1])
-  of nkPragmaExpr, nkTypeDef: result = retrieveSym(n[0])
+  of nkPragmaExpr, nkTypeDef: result = retrieveSym(n.firstSon)
   of nkSym: result = n.sym
   else: result = nil
 
@@ -2108,3 +2306,21 @@ proc genTypeSection(m: BModule, n: PNode) =
       discard getTypeDescAux(m, s.typ, intSet, descKindFromSymKind(s.kind))
       if m.g.generatedHeader != nil:
         discard getTypeDescAux(m.g.generatedHeader, s.typ, intSet, descKindFromSymKind(s.kind))
+
+# Unlike genCppInitializer which returns just the braced value list (e.g. "{a, b}"),
+# genCppConstructorExpr returns a full type-prefixed expression (e.g. "Foo(a, b)").
+# This is used when a standalone construction expression is needed — e.g. on the
+# right-hand side of an assignment — whereas genCppInitializer is used in variable
+# declarations where the type is already written separately before the initializer.
+proc genCppConstructorExpr(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): Snippet =
+  var params = ""
+  if typ.bindingId in m.g.graph.initializersPerType:
+    let call = m.g.graph.initializersPerType[typ.bindingId]
+    if call != nil:
+      var p = prc
+      if p == nil:
+        p = BProc(module: m)
+      params = genCppParamsForCtor(p, call, didGenTemp)
+      if prc == nil:
+        assert p.blocks.len == 0, "BProc belongs to a struct doesnt have blocks"
+  result = getTypeDesc(m, typ, dkVar) & "(" & params & ")"

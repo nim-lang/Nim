@@ -183,12 +183,6 @@ func `<`*(a: ExprIndex, b: ExprIndex): bool =
 func `<=`*(a: ExprIndex, b: ExprIndex): bool =
   a.int16 <= b.int16
 
-func `>`*(a: ExprIndex, b: ExprIndex): bool =
-  a.int16 > b.int16
-
-func `>=`*(a: ExprIndex, b: ExprIndex): bool =
-  a.int16 >= b.int16
-
 func `==`*(a: ExprIndex, b: ExprIndex): bool =
   a.int16 == b.int16
 

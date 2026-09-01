@@ -537,10 +537,6 @@ proc putNL(g: var TSrcGen, indent: int) =
   g.lineLen = indent
   g.pendingWhitespace = -1
 
-proc previousNL(g: TSrcGen): bool =
-  result = g.pendingNL >= 0 or (g.tokens.len > 0 and
-                                g.tokens[^1].kind == tkSpaces)
-
 proc putNL(g: var TSrcGen) =
   putNL(g, g.indent)
 
@@ -582,6 +578,7 @@ proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   inc(g.lineLen, s.len)
 
 proc putComment(g: var TSrcGen, s: string) =
+  const SpecialWhitespace = {' ', '\t', '\r', '\n', '\0'}
   if s.len == 0: return
   var i = 0
   let hi = s.len - 1
@@ -611,12 +608,12 @@ proc putComment(g: var TSrcGen, s: string) =
       # gets too long:
       # compute length of the following word:
       var j = i
-      while j <= hi and s[j] > ' ': inc(j)
+      while j <= hi and s[j] notin SpecialWhitespace: inc(j)
       if not isCode and (g.col + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
         com = "## "
-      while i <= hi and s[i] > ' ':
+      while i <= hi and s[i] notin SpecialWhitespace:
         com.add(s[i])
         inc(i)
   put(g, tkComment, com)
@@ -644,28 +641,6 @@ proc maxLineLength(s: string): int =
     else:
       inc(lineLen)
       inc(i)
-
-proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
-  var i = 0
-  let hi = s.len - 1
-  var str = ""
-  while i <= hi:
-    case s[i]
-    of '\r':
-      put(g, kind, str)
-      str = ""
-      inc(i)
-      if i <= hi and s[i] == '\n': inc(i)
-      optNL(g, 0)
-    of '\n':
-      put(g, kind, str)
-      str = ""
-      inc(i)
-      optNL(g, 0)
-    else:
-      str.add(s[i])
-      inc(i)
-  put(g, kind, str)
 
 proc containsNL(s: string): bool =
   for i in 0..<s.len:
@@ -1783,7 +1758,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     gsub(g, n, 1)
   of nkInfix:
     if n.len < 3:
-      var i = 0
       put(g, tkOpr, "Too few children for nkInfix")
       return
     let oldLineLen = g.lineLen # we cache this because lineLen gets updated below
@@ -2075,7 +2049,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkPragma:
     if g.inPragma <= 0:
       inc g.inPragma
-      #if not previousNL(g):
       put(g, tkSpaces, Space)
       put(g, tkCurlyDotLe, "{.")
       gcomma(g, n, emptyContext)
