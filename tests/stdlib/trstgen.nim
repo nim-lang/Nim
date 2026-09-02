@@ -1307,6 +1307,36 @@ Test1
     doAssert "endOfNote</div>" in output3
     doAssert "class=\"admonition admonition-info\"" in output3
 
+    let input4 = dedent"""
+      .. admonition::
+        :title: Custom title
+        :collapsible:
+
+        endOfAdmonition
+    """
+
+    let output4 = input4.toHtml(
+      NoSandboxOpts
+    )
+    doAssert "Custom title</b></span></summary>" in output4
+    doAssert "<details open>" in output4
+    doAssert "endOfAdmonition</details></div>" in output4
+
+    let input5 = dedent"""
+      .. admonition::
+        :title: Custom title
+        :collapsible: closed
+
+        endOfAdmonition
+    """
+
+    let output5 = input5.toHtml(
+      NoSandboxOpts
+    )
+    doAssert "Custom title</b></span></summary>" in output5
+    doAssert "<details>" in output5
+    doAssert "endOfAdmonition</details></div>" in output5
+
   test "RST internal links":
     let input1 = dedent """
       Start.
