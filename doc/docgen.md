@@ -266,7 +266,7 @@ The easiest way to migrate to `nim book`:cmd: from mdBook is to feed the pre-coo
   :title: Migrate from mdBook prompt
   :collapsible: closed
 
-  .. include:: ./mdbookmigration.md
+  .. include:: ./mdbookmigration.prompt
     :literal:
 
 Or use the same prompt as a checklist to do the migration manually.
