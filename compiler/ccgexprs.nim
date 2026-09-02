@@ -274,8 +274,9 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts,
         "$1 = $2;$n",
         [rdLoc(dest), rdLoc(src)])
-  elif needToCopy notin flags or
-      tfShallow in skipTypes(dest.t, abstractVarRange).flags:
+  elif src.storage != OnStatic and
+      (needToCopy notin flags or
+       tfShallow in skipTypes(dest.t, abstractVarRange).flags):
     if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
       linefmt(p, cpsStmts,
            "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
