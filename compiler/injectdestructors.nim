@@ -544,7 +544,8 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
-proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
+proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope;
+                       consume = false): PNode =
   # it can happen that we need to destroy expression contructors
   # like [], (), closures explicitly in order to not leak them.
   if arg.typ != nil and hasDestructor(c, arg.typ):
@@ -553,7 +554,9 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = c.getTemp(s, arg.typ, arg.info, true)
     result.add c.genSink(s, tmp, arg, {IsDecl})
-    result.add tmp
+    # In consumed mode, the destination takes ownership of the data.
+    # Clear the temporary after moving from it to prevent double destruction.
+    result.add if consume: destructiveMoveVar(tmp, c, s) else: tmp
     s.final.add c.genDestroy(tmp)
   else:
     result = arg
@@ -970,11 +973,13 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       else:
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
-      if mode == normal:
+      # A raising call needs owned storage even when its value is consumed: the
+      # callee can partially initialize the result before control unwinds.
+      if mode == normal or (canRaise(n[0]) and inSpawn == 0):
         if result.typ != nil and result.typ.kind notin {tyOpenArray, tyVarargs}:
           # Returns of openarray types shouldn't be destroyed
           # bug #19435; # bug #23247
-          result = ensureDestruction(result, n, c, s)
+          result = ensureDestruction(result, n, c, s, consume = mode != normal)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
