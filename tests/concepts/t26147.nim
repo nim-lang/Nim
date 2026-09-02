@@ -73,3 +73,21 @@ proc unpackBoth[K1, V1, K2, V2;
 
 let otherPair = Pair[string, float](k: "eight", v: 8.0)
 doAssert unpackBoth(pair, otherPair) == ((7, "seven"), ("eight", 8.0))
+
+# A concrete `items` overload must win over one declared over a concept that
+# the type happens to satisfy, and not generate an "ambiguous call".
+type OverloadDummy[T] = ref object
+  data: seq[T]
+
+proc `[]`[T](d: OverloadDummy[T], i: int): T = d.data[i]
+proc len[T](d: OverloadDummy[T]): int = d.data.len
+
+iterator items[T](d: OverloadDummy[T]): T =
+  # deliberately distinguishable from the concept-provided iterator
+  for i in 0 ..< d.len:
+    yield d.data[i] * 10
+
+var overloadAcc: seq[int] = @[]
+for x in OverloadDummy[int](data: @[1, 2, 3]):
+  overloadAcc.add x
+doAssert overloadAcc == @[10, 20, 30]
