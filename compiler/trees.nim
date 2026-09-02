@@ -87,8 +87,9 @@ proc getMagic*(op: PNode): TMagic =
   if op == nil: return mNone
   case op.kind
   of nkCallKinds:
-    case op[0].kind
-    of nkSym: result = op[0].sym.magic
+    let callee = op.firstSon
+    case callee.kind
+    of nkSym: result = callee.sym.magic
     else: result = mNone
   else: result = mNone
 
@@ -107,10 +108,11 @@ proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
   of nkCharLit..nkNilLit:
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
-    result = isDeepConstExpr(n[1], preventInheritance)
+    result = isDeepConstExpr(n.secondSon, preventInheritance)
   of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
-    for i in ord(n.kind == nkObjConstr)..<n.len:
-      if not isDeepConstExpr(n[i], preventInheritance): return false
+    # `nkObjConstr` carries its TYPE as child 0 and its fields from 1.
+    for it in sonsFrom(n, ord(n.kind == nkObjConstr)):
+      if not isDeepConstExpr(it, preventInheritance): return false
     if n.typ.isNil: result = true
     else:
       let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
@@ -140,16 +142,16 @@ proc isRange*(n: PNode): bool {.inline.} =
     result = false
 
 proc whichPragma*(n: PNode): TSpecialWord =
-  let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
+  let key = if n.kind in nkPragmaCallKinds and n.hasSons: n.firstSon else: n
   case key.kind
   of nkIdent: result = whichKeyword(key.ident)
   of nkSym: result = whichKeyword(key.sym.name)
   of nkCast: return wCast
   of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym:
-    return whichPragma(key[0])
+    return whichPragma(key.firstSon)
   of nkBracketExpr:
     if n.kind notin nkPragmaCallKinds: return wInvalid
-    result = whichPragma(key[0])
+    result = whichPragma(key.firstSon)
     if result notin {wHint, wHintAsError, wWarning, wWarningAsError}:
       # note bracket pragmas, see processNote
       result = wInvalid
@@ -217,11 +219,11 @@ proc getRoot*(n: PNode): PSym =
       result = nil
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
-    result = getRoot(n[0])
+    result = getRoot(n.firstSon)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = getRoot(n[1])
+    result = getRoot(n.secondSon)
   of nkCallKinds:
-    if getMagic(n) == mSlice: result = getRoot(n[1])
+    if getMagic(n) == mSlice: result = getRoot(n.secondSon)
     else: result = nil
   else: result = nil
 
@@ -253,7 +255,7 @@ proc isRunnableExamples*(n: PNode): bool =
     n.kind == nkIdent and n.ident.id == ord(wRunnableExamples)
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
-  result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n
+  result = if n.kind in {nkAddr, nkHiddenAddr}: n.firstSon else: n
 
 proc getPotentialWrites*(n: PNode; mutate: bool; result: var seq[PNode]) =
   case n.kind:

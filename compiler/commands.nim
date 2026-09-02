@@ -990,12 +990,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
       conf.icBackendStage = arg
-  of "icbackendmodule":
-    # `nim nifc` only: the NIF module suffix the cg/emit stage operates on (see
-    # options.icBackendModule).
+  of "icbackendmodule", "icbackendmodules":
+    # `nim nifc` only: the NIF module suffixes the lower/cg/emit stage operates
+    # on, comma-separated — the invocation's batch (see
+    # options.icBackendModules). The singular spelling is the same switch: a
+    # one-module batch is what the per-module fan-out passes.
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
-      conf.icBackendModule = arg
+      conf.icBackendModules = @[]
+      for suffix in arg.split(','):
+        if suffix.len > 0: conf.icBackendModules.add suffix
   of "import":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:

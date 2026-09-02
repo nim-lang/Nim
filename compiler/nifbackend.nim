@@ -28,6 +28,7 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen,
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
 from injectdestructors import injectDestructorCalls
+import icprof
 import ic / replayer
 
 proc systemNifSuffix(conf: ConfigRef): string =
@@ -134,91 +135,6 @@ proc emitMethodDispatchers(g: ModuleGraph) =
     if not containsOrIncl(mainMod.declaredThings, disp.id):
       genProcLvl3(mainMod, disp)
 
-proc signatureHasMetaType(t: PType; depth: int = 0): bool =
-  ## Whether a routine signature mentions a compile-time/meta element type
-  ## (`typed`/`untyped` — e.g. `echo`'s `varargs[typed]` — typedesc, static,
-  ## generic param). Such routines are expanded at their call sites and never
-  ## emitted standalone, so the per-module owned-routine seeding must skip them
-  ## (`getTypeDescAux(tyTyped)` otherwise). `tfHasMeta` alone misses the varargs
-  ## element case, hence the explicit scan.
-  result = false
-  if t == nil or depth > 8: return false
-  if t.kind == tyGenericBody:
-    # The uninstantiated template carried as a `tyGenericInst`'s first child
-    # always mentions its `tyGenericParam` placeholders, but the instance
-    # itself is fully concrete (e.g. `var CountTable[SigHash]`). Descending
-    # here would wrongly flag every routine with a generic-instance parameter
-    # as meta and drop it from the owned-routine seeding -> undefined symbols
-    # at link (its only definer never emits it).
-    return false
-  if t.kind == tyStatic:
-    # A RESOLVED static value (the `256` in `MDigest[256]`, the `N` in
-    # `HashList[T, N]`, …) is carried as a `tyStatic` node inside the otherwise
-    # fully-concrete `tyGenericInst`, but it is NOT meta: the routine is a normal
-    # runtime routine the owner must emit. Only an UNRESOLVED `static T` parameter
-    # (no bound value, `t.n == nil`) is meta. Without this, every routine whose
-    # signature touches a `static`-parameterized generic instance (the bulk of
-    # the SSZ/`MDigest` API) is dropped from the owned-routine seeding and ends up
-    # an undefined reference at link (mirrors the tyGenericBody case above).
-    return t.n == nil
-  if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyGenericParam,
-                tyAnything, tyFromExpr, tyError}:
-    return true
-  for k in t.kids:
-    if signatureHasMetaType(k, depth + 1): return true
-
-proc ownsRuntimeRoutine(s: PSym; modPos: int): bool =
-  ## A concrete, non-generic, runtime routine with a real body, OWNED by the
-  ## module at `modPos`. Shared by the `cg` stage's owned-routine seeding (so a
-  ## routine called only from other modules is still emitted by somebody) and
-  ## the `lower` stage's owned-routine enumeration, so both stages see exactly
-  ## the same set. The exclusions:
-  ## - nested/closure procs (owner is a proc, not a module): emitted via their
-  ##   enclosing routine's lambda-lifting, never standalone;
-  ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
-  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
-  ##   not real codegen targets.
-  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
-  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
-  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
-  ##   method's body sub-tree (incl. its closure iterator); transforming it here
-  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
-  ##   identity, baking a conflicting `up` field → "up references do not agree"
-  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
-  ##   at lift time). So a dispatcher is never an owned runtime routine.
-  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
-  ## iterator, which is expanded at each call site) and must be emitted by its
-  ## owner — else a cross-module `for` over it links to nothing.
-  ##
-  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine — not
-  ## in `cg` and not in the `lower` stage. They are demanded by the backend's
-  ## emit-everywhere path and deduped by `merge` (content C name); the frontend
-  ## materialises them through the `(offer)` mechanism. The `lower` stage must
-  ## not transform an instance: a not-fully-concrete instance (a closure factory
-  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
-  ## its further-specialised use sites) still carries unresolved overload choices
-  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
-  s.itemId.module == modPos and
-  (s.kind in {skProc, skFunc, skConverter, skMethod} or
-   (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
-  s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
-  s.magic == mNone and
-  sfFromGeneric notin s.flags and
-  sfDispatcher notin s.flags and
-  {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
-  s.typ != nil and not signatureHasMetaType(s.typ) and
-  s.ast != nil and s.ast.safeLen > bodyPos and
-  s.ast[genericParamsPos].kind == nkEmpty
-  # NOTE: an `nkEmpty` body is NOT a disqualifier. A concrete, owned, non-
-  # forward/-importc/-magic routine whose body folds to nothing is still a real
-  # definition the owner must emit (`void f(void){}`), exactly as whole-program
-  # cgen does — else a cross-module caller links to nothing. This bites e.g.
-  # Nimbus' `extras.incInternalErrors`, a plain `proc` whose sole statement is a
-  # metrics-counter `.inc()` that the `metrics` library expands to a no-op when
-  # the importing tool (ncli) builds with `-u:metrics`; the body is then a bare
-  # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
-  # (the other empty-body case) carry `sfForward` and are excluded above.
-
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
   let moduleId = precomp.module.position
@@ -309,24 +225,30 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
     discard setupNifBackendModule(g, precompSys.module)
   result = (modules, precompSys, nifFiles)
 
-proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
+proc loadDepClosure(g: ModuleGraph; targetSuffixes: seq[string]):
     tuple[modules: seq[PrecompiledModule], precompSys: PrecompiledModule,
-          target: PrecompiledModule] =
-  ## Per-module `cg`/`emit` for a NON-main target: load system + the target
-  ## module + the target's transitive import closure ONLY — not the whole
-  ## program. This is the "process the one file it is passed" model (à la
-  ## Nimony's `hexer c file.nif`): the foreign symbols the target's codegen
-  ## demands are loaded lazily by `ast2nif.moduleId`, which opens any referenced
-  ## module's NIF index on first touch, so a body in a not-loaded module still
-  ## resolves. The closure is loaded as full `BModule`s only so that the
-  ## incidental `g.mods[pos]` accesses during codegen resolve; system's own
-  ## internal closure (allocators, locks, …) is included because a target's
-  ## emit-everywhere codegen can demand those without importing them directly.
+          targets: seq[PrecompiledModule]] =
+  ## Per-module `lower`/`cg`/`emit` for a NON-main batch: load system + every
+  ## module in the batch + their transitive import closure ONLY — not the whole
+  ## program. This is the "process the files it is passed" model (à la Nimony's
+  ## `hexer c file.nif`): the foreign symbols a target's codegen demands are
+  ## loaded lazily by `ast2nif.moduleId`, which opens any referenced module's NIF
+  ## index on first touch, so a body in a not-loaded module still resolves. The
+  ## closure is loaded as full `BModule`s only so that the incidental
+  ## `g.mods[pos]` accesses during codegen resolve; system's own internal closure
+  ## (allocators, locks, …) is included because a target's emit-everywhere
+  ## codegen can demand those without importing them directly.
   ##
   ## The whole program is no longer loaded in this process, which is what bounds
   ## per-process memory under nifmake's parallel fan-out (the main module's `cg`,
   ## which still loads everything for NimMain's init list and the method
   ## dispatchers, runs essentially alone since every other `.c.nif` precedes it).
+  ##
+  ## The batch is loaded as ONE closure: `resetForBackend`, the system load and
+  ## the closure walk happen once no matter how many targets share the process,
+  ## and a module in two targets' closures is loaded once. That amortization is
+  ## the reason batches exist — a per-module process spends far more time here
+  ## than it spends generating code.
   resetForBackend(g)
   var isKnownFile = false
   let systemFileIdx = registerNifSuffix(g.config, systemNifSuffix(g.config), isKnownFile)
@@ -338,18 +260,30 @@ proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
   var visited = initHashSet[string]()
   visited.incl systemNifSuffix(g.config)
 
-  # Only the target is codegen'd, so only it needs its full AST; the closure is
-  # loaded interface-only (demanded bodies come lazily from the kept-open
-  # streams), which is what keeps a per-module process light under parallel fan-out.
-  var isKnown = false
-  let targetIdx = registerNifSuffix(g.config, targetSuffix, isKnown)
-  let target = moduleFromNifFile(g, targetIdx, {LoadFullAst})
-  visited.incl targetSuffix
-
+  # Only the batch is codegen'd, so only it needs full ASTs; the surrounding
+  # closure is loaded interface-only (demanded bodies come lazily from the
+  # kept-open streams), which is what keeps the process light under fan-out.
+  var targets: seq[PrecompiledModule] = @[]
   var stack: seq[ModuleSuffix] = @[]
-  if target.module != nil:
-    modules.add target
-    for dep in target.deps: stack.add dep
+  # Separate from `visited`, which exists to keep the closure walk off modules
+  # already loaded. System is in `visited` from the start yet can perfectly well
+  # BE a batch member — it is a live node with its own `.t.bif` and `.c.nif` —
+  # and then it needs the full-AST load like any other member, on top of the
+  # interface-only load above. Reusing `visited` to deduplicate members skipped
+  # it and produced a batch with nothing in it.
+  var claimed = initHashSet[string]()
+  for targetSuffix in targetSuffixes:
+    if claimed.containsOrIncl(targetSuffix): continue
+    var isKnown = false
+    let targetIdx = registerNifSuffix(g.config, targetSuffix, isKnown)
+    let target = moduleFromNifFile(g, targetIdx, {LoadFullAst})
+    targets.add target
+    # A member that is also another member's dependency must keep its full AST,
+    # so claim it before the closure walk can load it interface-only.
+    visited.incl targetSuffix
+    if target.module != nil:
+      modules.add target
+      for dep in target.deps: stack.add dep
   if precompSys.module != nil:
     for dep in precompSys.deps: stack.add dep
   while stack.len > 0:
@@ -366,7 +300,7 @@ proc loadDepClosure(g: ModuleGraph; targetSuffix: string):
     discard setupNifBackendModule(g, m.module)
   if precompSys.module != nil:
     discard setupNifBackendModule(g, precompSys.module)
-  result = (modules, precompSys, target)
+  result = (modules, precompSys, targets)
 
 proc findTargetModule(g: ModuleGraph; modules: seq[PrecompiledModule];
                       precompSys: PrecompiledModule; suffix: string): PrecompiledModule =
@@ -379,6 +313,18 @@ proc findTargetModule(g: ModuleGraph; modules: seq[PrecompiledModule];
   if precompSys.module != nil and
       cachedModuleSuffix(g.config, FileIndex precompSys.module.position) == suffix:
     return precompSys
+
+proc backendBatch(conf: ConfigRef; mainSuffix: string):
+    tuple[members: seq[string], isMain: bool] =
+  ## The module suffixes this invocation processes, and whether it is the
+  ## main-module invocation. Main is never batched with anything else: it loads
+  ## the WHOLE program (NimMain's init list and the method dispatchers are
+  ## whole-program facts), so putting another module in with it would defeat the
+  ## bound on per-process memory that the per-module split exists to provide.
+  let members = conf.icBackendModules
+  result = (members: members,
+            isMain: members.len == 0 or
+                    (members.len == 1 and members[0] == mainSuffix))
 
 proc setNestedClosureBodies(g: ModuleGraph; idgen: IdGenerator; n: PNode;
                             owner: PSym; seen: var IntSet) =
@@ -444,8 +390,12 @@ proc reownFromTwin(n: PNode; twin, s: PSym) =
   for i in 0 ..< n.safeLen:
     reownFromTwin(n[i], twin, s)
 
+proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
+                    seenNested: var IntSet)
+
 proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
-  ## Per-module backend lowering (`--icBackendStage:lower --icBackendModule:<suffix>`):
+  ## Backend lowering for this invocation's batch
+  ## (`--icBackendStage:lower --icBackendModules:<a,b,c>`):
   ## enumerate the routines this module OWNS and write them to `<module>.t.nif`.
   ## Eventually this transforms each owned routine once, in the owner's id space,
   ## so `cg` reads the result instead of re-deriving it (re-derivation per
@@ -458,30 +408,46 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## stage does.
   nifcBackendActive = true
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
-  let targetIsMain = g.config.icBackendModule.len == 0 or
-                     g.config.icBackendModule == mainSuffix
+  let batch = backendBatch(g.config, mainSuffix)
   var modules: seq[PrecompiledModule]
   var precompSys: PrecompiledModule
-  var target: PrecompiledModule
-  if targetIsMain:
+  var targets: seq[PrecompiledModule]
+  if batch.isMain:
     var nifFiles: seq[string]
     (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
     if modules.len == 0:
       rawMessage(g.config, errGenerated,
         "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
       return
-    target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+    targets = @[findTargetModule(g, modules, precompSys, mainSuffix)]
   else:
-    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
+    (modules, precompSys, targets) = block:
+      icProfStart(tLoadClosure)
+      let r = loadDepClosure(g, batch.members)
+      icProfStop(tLoadClosure)
+      r
+  # ONE PSym graph for the whole batch, so the guard against transforming a
+  # nested routine twice has to span it: two members reaching the same nested
+  # closure would otherwise inject its destructors twice into the same `PSym`.
+  # (In the one-module-per-process fan-out the two members are two processes
+  # with two copies, and each injects once.)
+  var seenNested = initIntSet()
+  for target in targets:
+    lowerOneModule(g, target, seenNested)
+
+proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
+                    seenNested: var IntSet) =
+  ## Lower the routines `target` OWNS and write its `.t.bif`. One batch member.
   if target.module == nil:
     rawMessage(g.config, errGenerated,
-      "per-module lowering: module not found for suffix: " & g.config.icBackendModule)
+      "per-module lowering: module not found for suffix")
     return
   let modPos = target.module.position
   let tb = BModuleList(g.backend).mods[modPos]
   if tb == nil:
     rawMessage(g.config, errGenerated,
-      "per-module lowering: no backend module for suffix: " & g.config.icBackendModule)
+      "per-module lowering: no backend module for suffix: " &
+        cachedModuleSuffix(g.config, FileIndex modPos))
     return
   # Transform every owned routine ONCE in this single process's id space and
   # re-serialize the ENTIRE module as a proper indexed NIF (`writeLoweredModule`)
@@ -497,11 +463,14 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # `transformBody`/lambda-lifting LIFTS the closure env's type-bound ops
   # (`=destroy` etc.) into `g.opsLog`; snapshot its length so we serialize exactly
   # the ops THIS stage created (not those loaded from `.s.nif`).
+  # Per MEMBER, not per batch: each member's `.t.bif` must carry exactly the ops
+  # ITS lowering lifted, the way its own process would have written them.
   let opsLogStart = g.opsLog.len
-  # Shared across the owned loop so a nested routine reachable from more than one
-  # owner is transformed + destructor-injected EXACTLY once (double injection
-  # would emit two `=destroy`/`=copy` runs).
-  var seenNested = initIntSet()
+  # `seenNested` comes from the caller and spans the whole batch — see the
+  # comment at its declaration. Within one module it already served to transform
+  # + destructor-inject a nested routine reachable from more than one owner
+  # EXACTLY once (double injection would emit two `=destroy`/`=copy` runs).
+  icProfStart(tLowerOwned)
   for s in moduleSymbolStubs(ast.program, FileIndex modPos):
     if ownsRuntimeRoutine(s, modPos):
       # REUSE path (`icReuseSemLowering` ON): a routine already transformed during
@@ -545,6 +514,8 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # into the `.t.nif`; `cg` re-attaches them so `injectDestructorCalls` resolves
   # the loaded env's `=destroy`. Iterate to a fixpoint: a hook body can lift
   # further hooks (a field's `=destroy`).
+  icProfStop(tLowerOwned)
+  icProfStart(tLowerHooks)
   var hooks: seq[LogEntry] = @[]
   var i = opsLogStart
   while i < g.opsLog.len:
@@ -564,9 +535,11 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # Re-serialize the whole module to its suffix-based `.t.nif` (the path
   # `toNifFilename` resolves for the cg/emit stages). `writeLoweredModule` seals
   # routines itself.
+  icProfStop(tLowerHooks)
   let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
   let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.bif").string
-  writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
+  timed tLowerWrite:
+    writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icLower] " & extractFilename(wholeArtifact) & " " &
       $hooks.len & " hooks"
@@ -587,13 +560,19 @@ proc visitDep(suffix: string;
     let bm = bl.mods[pm.module.position]
     if bm != nil: ordered.add bm
 
+proc cgGenerateModule(g: ModuleGraph; target: PrecompiledModule)
+proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
+                    modules: seq[PrecompiledModule];
+                    precompSys: PrecompiledModule)
+
 proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
-  ## Per-module backend codegen (`--icBackendStage:cg --icBackendModule:<suffix>`):
-  ## generate C for the single module named by `icBackendModule` and write only
-  ## its `.c.nif` artifact (no merge, no `.c` render, no cc/link — those are
-  ## separate nifmake rules).
+  ## Backend codegen for this invocation's batch
+  ## (`--icBackendStage:cg --icBackendModules:<a,b,c>`): generate C for each
+  ## member and write its `.c.nif` artifact (no merge, no `.c` render, no
+  ## cc/link — those are separate nifmake rules).
   ##
-  ## `findPendingModule` routes every demand into the target (emit-everywhere).
+  ## `findPendingModule` routes a demand to its owner when the owner is in the
+  ## batch and into the demanding TU otherwise (emit-everywhere).
   ##
   ## A NON-main target loads only its own import closure (`loadDepClosure`); the
   ## whole program is no longer pulled into every parallel `cg` process. The main
@@ -603,12 +582,11 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # gate `newSymNode`'s lazy-type marking to this stage only (see astdef)
   nifcBackendActive = true
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
-  let targetIsMain = g.config.icBackendModule.len == 0 or
-                     g.config.icBackendModule == mainSuffix
+  let batch = backendBatch(g.config, mainSuffix)
   var modules: seq[PrecompiledModule]
   var precompSys: PrecompiledModule
-  var target: PrecompiledModule
-  if targetIsMain:
+  var targets: seq[PrecompiledModule]
+  if batch.isMain:
     var nifFiles: seq[string]
     (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
     if modules.len == 0:
@@ -619,16 +597,64 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     # MERGE stage recomputes the one program-wide live set across all `.c.nif`s.
     # Running a whole-program liveness pass over all ~260 NIFs in the main `cg`
     # would cost ~900 MB for a result the merge stage throws away.
-    target = findTargetModule(g, modules, precompSys, g.config.icBackendModule)
+    targets = @[findTargetModule(g, modules, precompSys, mainSuffix)]
   else:
-    # No whole-program load, hence no whole-program DCE: the target emits its
+    # No whole-program load, hence no whole-program DCE: each member emits its
     # full demanded closure and the merge stage drops what is globally dead.
-    (modules, precompSys, target) = loadDepClosure(g, g.config.icBackendModule)
-  if target.module == nil:
-    rawMessage(g.config, errGenerated,
-      "per-module codegen: module not found for suffix: " & g.config.icBackendModule)
-    return
+    (modules, precompSys, targets) = block:
+      icProfStart(tLoadClosure)
+      let r = loadDepClosure(g, batch.members)
+      icProfStop(tLoadClosure)
+      r
+  for i, target in targets:
+    if target.module == nil:
+      rawMessage(g.config, errGenerated,
+        "per-module codegen: module not found for suffix: " &
+          (if i < batch.members.len: batch.members[i] else: mainSuffix))
+      return
 
+  let bl = BModuleList(g.backend)
+  # Declare which modules this process writes a TU for, BEFORE any code is
+  # generated: `findPendingModule` consults the set on the very first demand, so
+  # a member added later would have its definitions routed into whichever TU
+  # asked first — which is precisely what the set exists to prevent.
+  for target in targets:
+    bl.icEmitted.incl target.module.position
+
+  # Generate EVERY member before finishing ANY of them. `finishModule` closes a
+  # TU (`finalCodegenActions` puts it in `modulesClosed`), and a later member's
+  # codegen routes definitions it does not own INTO an earlier member's TU — see
+  # `findPendingModule`. Finishing as we went closed those TUs first, and the
+  # definitions that arrived afterwards were silently dropped: 18 undefined
+  # symbols at link, all of them `_u`-flagged uniques whose owner happened to
+  # sort earlier in its batch.
+  timed tCgGen:
+    for target in targets:
+      cgGenerateModule(g, target)
+  timed tCgFinish:
+    for target in targets:
+      cgFinishModule(g, target, modules, precompSys)
+
+  # Writes each batch member's `.c.nif` (every other loaded module's TU is empty,
+  # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
+  timed tCgWrite:
+    cgenWriteModules(g.backend, g.config)
+
+  # Always leave a `.c.nif` for every member, even one whose module has no code
+  # (a leaf library whose procs all emit into their users): the nifmake graph
+  # declares a `.c.nif` output per member, so a missing one would re-fire the
+  # rule forever. An empty artifact renders to an empty `.c`.
+  for target in targets:
+    let tb = bl.mods[target.module.position]
+    if tb != nil:
+      let artifact = getCFile(tb).string & ".nif"
+      if not fileExists(artifact):
+        writeCnifArtifact("", artifact,
+          semmedNif = toNifFilename(g.config, FileIndex target.module.position),
+          moduleBase = $getSomeNameForModule(tb))
+
+proc cgGenerateModule(g: ModuleGraph; target: PrecompiledModule) =
+  ## Generate ONE batch member's code. Does NOT finish its TU — see the caller.
   # The `lower` stage already wrote each module's transformed bodies + lifted
   # hooks into its `.t.nif`, which the loaders above read directly (toNifFilename
   # resolves the `.t.nif`); transformed bodies arrive via loadSymFromCursor and
@@ -639,12 +665,22 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     # This module's top-level `var`s with a `=destroy` registered their teardown
     # in `graph.globalDestructors` during `genTopLevelStmt` above. Main's `cg` is
     # a different process and never sees them, so emit them as this TU's own
-    # exported proc and announce the name in the meta head.
+    # exported proc and announce the name in the meta head. Stays HERE, in the
+    # generate pass: it consumes the destructors this module just registered.
     let tbm = bl.mods[target.module.position]
     if tbm != nil:
       tbm.icGlobalDtorName = genIcModuleDestroyGlobals(g, tbm)
+
+proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
+                    modules: seq[PrecompiledModule];
+                    precompSys: PrecompiledModule) =
+  ## Close ONE batch member's translation unit, once every member of the batch
+  ## has generated. The artifact write is not here: `cgenWriteModules` is a
+  ## single whole-list operation the caller runs after the whole batch.
+  let bl = BModuleList(g.backend)
   # The main module also owns the whole-program method dispatchers + NimMain.
   if sfMainModule in target.module.flags:
+    icProfStart(tCgInit)
     emitMethodDispatchers(g)
     # NimMain (generated when the main module is finished) must call every other
     # module's init/datInit. Those translation units are produced by their own
@@ -710,24 +746,15 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     # `globalDestructors` list backwards. Main's own destructors come first and
     # are added by `finalCodegenActions` itself.
     reverse g.icModuleDtors
+    icProfStop(tCgInit)
   let tb = bl.mods[target.module.position]
   if tb != nil:
     finishModule(g, tb)
-
-  # Writes only the target's `.c.nif` (every other loaded module's TU is empty,
-  # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
-  cgenWriteModules(g.backend, g.config)
-
-  # Always leave a `.c.nif` for the target, even when the module has no code
-  # (a leaf library whose procs all emit into their users): the per-module
-  # nifmake graph declares one `.c.nif` output per `cg` rule, so a missing one
-  # would re-fire the rule forever. An empty artifact renders to an empty `.c`.
-  if tb != nil:
-    let artifact = getCFile(tb).string & ".nif"
-    if not fileExists(artifact):
-      writeCnifArtifact("", artifact,
-        semmedNif = toNifFilename(g.config, FileIndex target.module.position),
-        moduleBase = $getSomeNameForModule(tb))
+    # Record this module's C compile/link directives next to its `.c` so the
+    # `link` stage can recover them without loading the module graph. See
+    # `replayer.writeBackendActions`.
+    writeBackendActions(g, target.module, target.topLevel,
+                        getCFile(tb).string & BackendActionsExt)
 
 proc generateMergeStage(g: ModuleGraph) =
   ## Per-module backend merge (`--icBackendStage:merge`): a pure artifact
@@ -764,16 +791,19 @@ proc generateMergeStage(g: ModuleGraph) =
       " live: " & $decision.live.len & " defs: " & $decision.defs &
       " liveDefs: " & $decision.liveDefs & " owned: " & $decision.owners.len
 
+proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
+                   isMain: bool; decision: MergeDecision)
+
 proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
-  ## Per-module backend emit (`--icBackendStage:emit --icBackendModule:<suffix>`):
+  ## Backend emit for this invocation's batch
+  ## (`--icBackendStage:emit --icBackendModules:<a,b,c>`):
   ## render the target module's final `.c` from its `.c.nif` and the merge
   ## decision. Loads the target the same way `cg` does so `getCFile` returns the
   ## identical path `cg` wrote to (the main module's source-vs-suffix aliasing in
   ## particular); no codegen runs. A non-main target loads only its own closure
   ## (`loadDepClosure`) so emit, like `cg`, stays bounded under parallel fan-out.
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
-  let targetIsMain = g.config.icBackendModule.len == 0 or
-                     g.config.icBackendModule == mainSuffix
+  let batch = backendBatch(g.config, mainSuffix)
   # emit renders a module's final `.c` PURELY from its own `.c.nif` and the merge
   # decision (see `renderCFromArtifact` — text filtering, no AST is touched). It
   # used to load the target's whole transitive import closure as BModules solely
@@ -786,20 +816,37 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # path directly instead — the SAME pure computation `deps.nim.backendCFile`
   # uses to DECLARE this stage's output (`getCFile` == that formula) — so an emit
   # process loads nothing and the fire-all costs process-startup, not a graph load.
+  # The decision is read ONCE for the batch: it is a whole-program artifact, and
+  # re-reading it per member was a per-process cost the batch exists to remove.
+  let decision = readMergeDecision(getNimcacheDir(g.config).string / MergeDecisionFile)
+  if decision.broken:
+    rawMessage(g.config, errGenerated,
+      "per-module emit: missing or unparsable merge decision " & MergeDecisionFile)
+    return
+  let members = if batch.members.len == 0: @[mainSuffix] else: batch.members
+  for member in members:
+    # Per MEMBER, not per batch. `backendBatch.isMain` answers "is this
+    # invocation the main-module invocation", which is the right question for
+    # `lower`/`cg` (main loads the whole program, so it is never batched with
+    # anything). emit has no such constraint and batches freely, so main can sit
+    # in a batch with others — and then the batch-wide flag sent main's `.c` to
+    # the path derived from its SUFFIX rather than from its source file, and its
+    # `.c` was never written.
+    emitOneModule(g, mainFileIdx, member, member == mainSuffix, decision)
+
+proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
+                   isMain: bool; decision: MergeDecision) =
+  ## Render ONE batch member's final `.c` from its `.c.nif` and the batch's
+  ## merge decision.
   let cfilename =
-    if targetIsMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
-    else: AbsoluteFile g.config.icBackendModule
+    if isMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
+    else: AbsoluteFile member
   let cfile = changeFileExt(completeCfilePath(g.config,
     mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
   let artifact = cfile & ".nif"
   if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
-      "per-module emit: missing .c.nif artifact for suffix: " & g.config.icBackendModule)
-    return
-  let decision = readMergeDecision(getNimcacheDir(g.config).string / MergeDecisionFile)
-  if decision.broken:
-    rawMessage(g.config, errGenerated,
-      "per-module emit: missing or unparsable merge decision " & MergeDecisionFile)
+      "per-module emit: missing .c.nif artifact for suffix: " & member)
     return
   var dropped = 0
   let code = renderCFromArtifact(artifact, decision, extractFilename(artifact), dropped)
@@ -814,6 +861,15 @@ proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   # up-to-date check, not a shared prerequisite in nifmake's mtime ordering.
   if not fileExists(cfile) or readFile(cfile) != code:
     writeFile(cfile, code)
+  # ... but nifmake needs SOME output whose mtime proves "this rule ran since its
+  # inputs last moved". With the `.c` as the only output, the content-stable write
+  # above is indistinguishable from not having run: `merge` rewrites the decision
+  # file unconditionally, so every `emit` whose `.c` came out byte-identical stays
+  # older than a declared input and re-fires on every warm build from then on
+  # (measured: all 218 emit rules of a 219-module program, on a NO-OP build).
+  # The stamp is written unconditionally and is the rule's freshness proof; the
+  # `.c` keeps its content-stable mtime so `callCCompiler` still reuses the `.o`.
+  writeFile(cfile & ".stamp", $code.len & " " & $dropped & "\n")
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icEmit] " & extractFilename(cfile) & " dropped " &
       $dropped & " bodies (" & $code.len & " bytes)"
@@ -822,53 +878,62 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Per-module backend link (`--icBackendStage:link`): the `emit` stages have
   ## written every module's `.c`; register them and run the C compiler + linker
   ## once via `extccomp.callCCompiler` (which parallelizes the per-file cc and
-  ## skips up-to-date objects itself). No codegen runs — the graph is loaded only
-  ## so `getCFile` yields each module's emitted `.c` path.
-  let (modules, precompSys, _) = loadBackendModules(g, mainFileIdx)
-  if modules.len == 0:
-    rawMessage(g.config, errGenerated,
-      "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-    return
-  # The per-module `cg` processes each collect their module's C compile/link
-  # directives (`{.passL: "-lm".}` etc.) via `replayBackendActions`, but those
-  # live in the cg process and never reach this separate link process. Re-collect
-  # every loaded module's directives here so the final `callCCompiler` sees them
-  # (without this, math's `-lm` is lost → undefined `floor`/`pow`/… at link).
-  for m in modules:
-    replayBackendActions(g, m.module, m.topLevel)
-  if precompSys.module != nil:
-    replayBackendActions(g, precompSys.module, precompSys.topLevel)
-  let bl = BModuleList(g.backend)
+  ## skips up-to-date objects itself). No codegen runs and NO MODULE GRAPH IS
+  ## LOADED.
+  ##
+  ## It used to load the whole import closure (`loadBackendModules`) for two
+  ## things only: each module's `.c` path via `getCFile`, and its recorded C
+  ## directives via `replayBackendActions`. That was 3.7s of the ~11s serial
+  ## backend critical path on a 219-module program — a whole-program
+  ## deserialization to recover a list of paths and a handful of strings. Both
+  ## are now read from artifacts the earlier stages already produce:
+  ##   * the driver's `LiveModulesFile` manifest lists every live module's
+  ##     `.c.nif`, and the `.c` sits beside it (`emit`'s output);
+  ##   * each module's `cg` wrote its directives to a `.cflags` sidecar.
+  let nimcache = getNimcacheDir(g.config).string
+  var cfiles: seq[string] = @[]
+  let manifest = nimcache / LiveModulesFile
+  if fileExists(manifest):
+    for line in lines(manifest):
+      let p = line.strip()
+      if p.len > 0 and p.endsWith(".nif"): cfiles.add p[0 ..< p.len - ".nif".len]
+  else:
+    # A cache written by an older compiler has no manifest; fall back to the
+    # `.c` files sitting next to the artifacts.
+    for artifact in walkFiles(nimcache / ("*" & icCFileExt(g.config) & ".nif")):
+      cfiles.add artifact[0 ..< artifact.len - ".nif".len]
+  sort cfiles
+
   var addedCFiles = initHashSet[string]()
-  for m in bl.mods:
-    if m != nil:
-      let cfile = getCFile(m)
-      # Only modules that are their own cg/emit target produced a `.c`; the rest
-      # (extra members of system's closure that no build rule targets) had their
-      # code emit-everywhere'd into the targets, so they have no file to compile.
-      if not fileExists(cfile.string): continue
-      addedCFiles.incl extractFilename(cfile.string)
-      var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                     obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
-                     flags: {})
-      # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
-      # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
-      # `callCCompiler` skips its compile but still links the existing object. This
-      # is what makes a localized edit recompile only the handful of `.c`s the
-      # `emit` stage actually rewrote, instead of every object every time — the
-      # final piece of per-module backend incrementality after the merge barrier.
-      addExternalFileToCompile(g.config, cf)
+  for cpath in cfiles:
+    # Only modules that are their own cg/emit target produced a `.c`; the rest
+    # had their code emit-everywhere'd into the targets, so there is nothing to
+    # compile for them.
+    if not fileExists(cpath): continue
+    addedCFiles.incl extractFilename(cpath)
+    # The directives this module recorded (`{.passL: "-lm".}` etc.); without
+    # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
+    applyBackendActions(g, cpath & BackendActionsExt)
+    let cfile = AbsoluteFile cpath
+    var cf = Cfile(nimname: splitFile(cfile).name, cname: cfile,
+                   obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
+                   flags: {})
+    # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
+    # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
+    # `callCCompiler` skips its compile but still links the existing object. This
+    # is what makes a localized edit recompile only the handful of `.c`s the
+    # `emit` stage actually rewrote, instead of every object every time.
+    addExternalFileToCompile(g.config, cf)
+
   # deps.nim's static scanner can keep a CONDITIONALLY-imported module as a build
-  # node (e.g. `net`'s `when defineSsl: import openssl`, or a `when defined(os)`
-  # import) that the NIF-`deps` walk above never reaches because the condition is
-  # off. Such a node still emitted a `.c`, and it can OWN a live generic instance
-  # that a REACHABLE module reuses (openssl owns `toHex[uint8]`, reused by
-  # `strutils.escape`) — so its body must be at link or that reference is
+  # node (e.g. `net`'s `when defineSsl: import openssl`) that the manifest above
+  # may not cover. Such a node still emitted a `.c`, and it can OWN a live generic
+  # instance that a REACHABLE module reuses (openssl owns `toHex[uint8]`, reused
+  # by `strutils.escape`) — so its body must be at link or that reference is
   # undefined. Link every emitted `.c` the merge decision says OWNS a LIVE symbol;
   # a node that owns nothing live (a Windows-only winsock node on Linux) is
   # correctly skipped.
   block:
-    let nimcache = getNimcacheDir(g.config).string
     let decision = readMergeDecision(nimcache / MergeDecisionFile)
     if not decision.broken:
       var liveOwners = initHashSet[string]()
@@ -880,6 +945,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         if addedCFiles.containsOrIncl(cbase): continue
         let cfile = AbsoluteFile(nimcache / cbase)
         if not fileExists(cfile.string): continue
+        applyBackendActions(g, cfile.string & BackendActionsExt)
         var cf = Cfile(nimname: cbase, cname: cfile,
                        obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                        flags: {})
@@ -890,20 +956,27 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
   ## Traverses the module dependency graph and generates C code.
+  when defined(icBNodeProf): profStageName = g.config.icBackendStage
   if g.config.icBackendStage == "lower":
-    generateLowerStage(g, mainFileIdx)
+    timed tStage: generateLowerStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage == "cg":
-    generateCgStage(g, mainFileIdx)
+    timed tStage: generateCgStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage == "merge":
-    generateMergeStage(g)
+    timed tStage:
+      timed tMergeStage:
+        generateMergeStage(g)
     return
   elif g.config.icBackendStage == "emit":
-    generateEmitStage(g, mainFileIdx)
+    timed tStage:
+      timed tEmitRender:
+        generateEmitStage(g, mainFileIdx)
     return
   elif g.config.icBackendStage == "link":
-    generateLinkStage(g, mainFileIdx)
+    timed tStage:
+      timed tLinkStage:
+        generateLinkStage(g, mainFileIdx)
     return
   else:
     rawMessage(g.config, errGenerated,

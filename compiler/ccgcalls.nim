@@ -11,6 +11,12 @@
 
 proc canRaiseDisp(p: BProc; n: PNode): bool =
   # we assume things like sysFatal cannot raise themselves
+  # 5 = "decided here, neither predicate ran". Without resetting, the marker
+  # keeps whatever the PREVIOUS call left in it and the early return below
+  # attributes this answer to a branch that did not execute — which is how the
+  # first run of this differential came to claim effect-list coverage it did
+  # not have. Both short-circuits below leave it at 5.
+  markCanRaiseBranch 5
   if n.kind == nkSym and n.sym.kind == skMethod:
     # A base method may be overridden by a branch with a wider exception set.
     # Its inferred effects describe only the base body, not every vtable target.
@@ -25,6 +31,13 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
   else:
     # we have to be *very* conservative:
     result = canRaiseConservative(n)
+  when defined(icCanRaiseLog):
+    # `canRaise` reads the raises spec off `fn.typ.n`, and under `--ic:on` that
+    # node came back from a `.bif`. The only oracle for whether it came back
+    # INTACT is the same program built without IC. Log the verdict per callee;
+    # the two builds must produce the same one.
+    if n.kind == nkSym:
+      logCanRaise(n.sym, result)
 
 proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
@@ -46,15 +59,14 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
           nkCheckedFieldExpr:
         n = n.firstSon
       of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-        n = n[1]
+        n = n.secondSon
       else:
         # cannot analyse the location; assume the worst
         return true
 
   result = false
   if le != nil:
-    for i in 1..<ri.len:
-      let r = ri[i]
+    for r in sonsFrom(ri, 1):
       if isPartOf(le, r, {pfStructural}) != arNo: return true
     # we use the weaker 'canRaise' here in order to prevent too many
     # annoying warnings, see #14514
@@ -63,8 +75,7 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
       message(p.config, le.info, warnObservableStores, $le)
   # bug #19613 prevent dangerous aliasing too:
   if dest != nil and dest != le:
-    for i in 1..<ri.len:
-      let r = ri[i]
+    for r in sonsFrom(ri, 1):
       if isPartOf(dest, r, {pfStructural}) != arNo: return true
 
 proc hasNoInit(call: PNode): bool {.inline.} =
@@ -99,7 +110,7 @@ proc cleanupTemp(p: BProc; returnType: PType, tmp: TLoc): bool =
   else:
     result = false
 
-proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
+proc fixupCall(p: BProc, le: PNode, ri: PNode, d: var TLoc,
                result: var Builder, call: var CallBuilder) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
   genLineDir(p, ri)
@@ -190,7 +201,7 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
     of {nkAddr, nkHiddenAddr, nkHiddenDeref}:
       x = x.firstSon
     of nkHiddenStdConv:
-      x = x[1]
+      x = x.secondSon
     else:
       break
   if x.kind == nkSym and x.sym.kind == skParam:
@@ -199,9 +210,9 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
     result = true
 
 proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareForMutation = false): (Rope, Rope) =
-  var a = initLocExpr(p, q[1])
-  var b = initLocExpr(p, q[2])
-  var c = initLocExpr(p, q[3])
+  var a = initLocExpr(p, q.secondSon)
+  var b = initLocExpr(p, son(q, 2))
+  var c = initLocExpr(p, son(q, 3))
   # bug #23321: In the function mapType, ptrs (tyPtr, tyVar, tyLent, tyRef)
   # are mapped into ctPtrToArray, the dereference of which is skipped
   # in the `genDeref`. We need to skip these ptrs here
@@ -227,7 +238,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
       let lit = cIntLiteral(first)
       result = (cCast(ptrType(dest), cOp(Add, NimInt, ra, cOp(Sub, NimInt, rb, lit))), lengthExpr)
   of tyOpenArray, tyVarargs:
-    let data = if reifiedOpenArray(q[1]): dotField(ra, "Field0") else: ra
+    let data = if reifiedOpenArray(q.secondSon): dotField(ra, "Field0") else: ra
     result = (cCast(ptrType(dest), cOp(Add, NimInt, data, rb)), lengthExpr)
   of tyUncheckedArray, tyCstring:
     result = (cCast(ptrType(dest), cOp(Add, NimInt, ra, rb)), lengthExpr)
@@ -264,23 +275,23 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
 proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
   var q = skipConv(n)
   var skipped = false
-  while q.kind == nkStmtListExpr and q.len > 0:
+  while q.kind == nkStmtListExpr and q.hasSons:
     skipped = true
     q = q.lastSon
   if getMagic(q) == mSlice:
     # magic: pass slice to openArray:
     if skipped:
       q = skipConv(n)
-      while q.kind == nkStmtListExpr and q.len > 0:
-        for i in 0..<q.len-1:
-          genStmts(p, q[i])
+      while q.kind == nkStmtListExpr and q.hasSons:
+        for it in sonsButLast(q):
+          genStmts(p, it)
         q = q.lastSon
     let (x, y) = genOpenArraySlice(p, q, formalType, n.typ.elementType)
     result.add(x)
     result.addArgumentSeparator()
     result.add(y)
   else:
-    var a = initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n)
+    var a = initLocExpr(p, if n.kind == nkHiddenStdConv: n.secondSon else: n)
     case skipTypes(a.t, abstractVar+{tyStatic}).kind
     of tyOpenArray, tyVarargs:
       let ra = rdLoc(a)
@@ -445,7 +456,7 @@ proc skipTrivialIndirections(n: PNode): PNode =
     of nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv:
       result = result.firstSon
     of nkHiddenStdConv, nkHiddenSubConv:
-      result = result[1]
+      result = result.secondSon
     else: break
 
 proc getPotentialReads(n: PNode; result: var seq[PNode]) =
@@ -453,44 +464,47 @@ proc getPotentialReads(n: PNode; result: var seq[PNode]) =
   of nkLiterals, nkIdent, nkFormalParams: discard
   of nkSym: result.add n
   else:
-    for s in n:
+    for s in sons(n):
       getPotentialReads(s, result)
 
 proc genParams(p: BProc, ri: PNode, typ: PType; result: var Builder, argBuilder: var CallBuilder) =
   # We must generate temporaries in cases like #14396
   # to keep the strict Left-To-Right evaluation
-  var needTmp = newSeq[bool](ri.len - 1)
+  # The arguments are walked BACKWARDS below; collect them once and index that.
+  var args: seq[PNode] = @[]
+  for it in sonsFrom(ri, 1): args.add it
+  var needTmp = newSeq[bool](args.len)
   var potentialWrites: seq[PNode] = @[]
-  for i in countdown(ri.len - 1, 1):
-    if ri[i].skipTrivialIndirections.kind == nkSym:
-      needTmp[i - 1] = potentialAlias(ri[i], potentialWrites)
+  for i in countdown(args.high, 0):
+    if args[i].skipTrivialIndirections.kind == nkSym:
+      needTmp[i] = potentialAlias(args[i], potentialWrites)
     else:
-      #if not ri[i].typ.isCompileTimeOnly:
+      #if not args[i].typ.isCompileTimeOnly:
       var potentialReads: seq[PNode] = @[]
-      getPotentialReads(ri[i], potentialReads)
+      getPotentialReads(args[i], potentialReads)
       for n in potentialReads:
-        if not needTmp[i - 1]:
-          needTmp[i - 1] = potentialAlias(n, potentialWrites)
-      getPotentialWrites(ri[i], false, potentialWrites)
+        if not needTmp[i]:
+          needTmp[i] = potentialAlias(n, potentialWrites)
+      getPotentialWrites(args[i], false, potentialWrites)
     when false:
       # this optimization is wrong, see bug #23748
-      if ri[i].kind in {nkHiddenAddr, nkAddr}:
+      if args[i].kind in {nkHiddenAddr, nkAddr}:
         # Optimization: don't use a temp, if we would only take the address anyway
-        needTmp[i - 1] = false
+        needTmp[i] = false
 
-  for i in 1..<ri.len:
+  for i, it in isons(ri, 1):
     if i < typ.n.len:
-      assert(typ.n[i].kind == nkSym)
-      let paramType = typ.n[i]
+      assert(son(typ.n, i).kind == nkSym)
+      let paramType = son(typ.n, i)
       if not paramType.typ.isCompileTimeOnly:
         var arg = newBuilder("")
-        genArg(p, ri[i], paramType.sym, ri, arg, needTmp[i-1])
+        genArg(p, it, paramType.sym, ri, arg, needTmp[i-1])
         if arg.buf.len != 0:
           result.addArgument(argBuilder):
             result.add(extract(arg))
     else:
       var arg = newBuilder("")
-      genArgNoParam(p, ri[i], arg, needTmp[i-1])
+      genArgNoParam(p, it, arg, needTmp[i-1])
       if arg.buf.len != 0:
         result.addArgument(argBuilder):
           result.add(extract(arg))
@@ -500,7 +514,7 @@ proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
       (sym.typ.callConv == ccInline or sym.owner.id == module.id):
     res = res & "_actual".rope
 
-proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genPrefixCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
   # this is a hotspot in the compiler
   var op = initLocExpr(p, ri.firstSon)
   # getUniqueType() is too expensive here:
@@ -516,7 +530,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   genParams(p, ri, typ, res, call)
   fixupCall(p, le, ri, d, res, call)
 
-proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
 
   template callProc(rp, params, pTyp: Snippet): Snippet =
     let e = dotField(rp, "ClE_0")
@@ -551,6 +565,12 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var argBuilder = default(CallBuilder) # not initCallBuilder, we just want the params
   genParams(p, ri, typ, params, argBuilder)
 
+  # `rawProc` is bound BEFORE the `{.dirty.}` template that uses it. Inside a
+  # generic proc a dirty template's identifiers resolve at instantiation, and a
+  # local declared after the template loses to the module-level `rawProc` proc
+  # — which type-checks as a completely different thing.
+  let rawProc = getClosureType(p.module, typ, clHalf)
+
   template genCallPattern {.dirty.} =
     let rp = rdLoc(op)
     let pars = extract(params)
@@ -559,8 +579,6 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         p.s(cpsStmts).add(callIter(rp, pars))
       else:
         p.s(cpsStmts).add(callProc(rp, pars, rawProc))
-
-  let rawProc = getClosureType(p.module, typ, clHalf)
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
   if typ.returnType != nil:
     if isInvalidReturnType(p.config, typ):
@@ -617,22 +635,22 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder;
   if i < typ.n.len:
     # 'var T' is 'T&' in C++. This means we ignore the request of
     # any nkHiddenAddr when it's a 'var T'.
-    let paramType = typ.n[i]
+    let paramType = son(typ.n, i)
     assert(paramType.kind == nkSym)
     if paramType.typ.isCompileTimeOnly:
       discard
-    elif paramType.typ.kind in {tyVar} and ri[i].kind == nkHiddenAddr:
+    elif paramType.typ.kind in {tyVar} and son(ri, i).kind == nkHiddenAddr:
       result.addArgument(argBuilder):
-        genArgNoParam(p, ri[i].firstSon, result)
+        genArgNoParam(p, son(ri, i).firstSon, result)
     else:
       result.addArgument(argBuilder):
-        genArgNoParam(p, ri[i], result) #, typ.n[i].sym)
+        genArgNoParam(p, son(ri, i), result) #, son(typ.n, i).sym)
   else:
     if tfVarargs notin typ.flags:
       localError(p.config, ri.info, "wrong argument count")
     else:
       result.addArgument(argBuilder):
-        genArgNoParam(p, ri[i], result)
+        genArgNoParam(p, son(ri, i), result)
 
 discard """
 Dot call syntax in C++
@@ -694,10 +712,10 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder) =
   # However manual wrappers may also use 'ptr T'. In any case we support both
   # for convenience.
   internalAssert p.config, i < typ.n.len
-  assert(typ.n[i].kind == nkSym)
+  assert(son(typ.n, i).kind == nkSym)
   # if the parameter is lying (tyVar) and thus we required an additional deref,
   # skip the deref:
-  var ri = ri[i]
+  var ri = son(ri, i)
   while ri.kind == nkObjDownConv: ri = ri.firstSon
   let t = typ[i].skipTypes({tyGenericInst, tyAlias, tySink})
   if t.kind in {tyVar}:
@@ -721,7 +739,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder) =
   else:
     ri = skipAddrDeref(ri)
     if ri.kind in {nkAddr, nkHiddenAddr}: ri = ri.firstSon
-    genArgNoParam(p, ri, result) #, typ.n[i].sym)
+    genArgNoParam(p, ri, result) #, son(typ.n, i).sym)
     result.add(".")
 
 proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Builder) =
@@ -731,12 +749,12 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
     case pat[i]
     of '@':
       var callBuilder = default(CallBuilder) # not init call builder
-      for k in j..<ri.len:
+      for k, _ in isons(ri, j):
         genOtherArg(p, ri, k, typ, result, callBuilder)
       inc i
     of '#':
       if i+1 < pat.len and pat[i+1] in {'+', '@'}:
-        let ri = ri[j]
+        let ri = son(ri, j)
         if ri.kind in nkCallKinds:
           let typ = skipTypes(ri.firstSon.typ, abstractInst)
           if pat[i+1] == '+': genArgNoParam(p, ri.firstSon, result)
@@ -744,7 +762,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
           if 1 < ri.len:
             var callBuilder: CallBuilder = default(CallBuilder)
             genOtherArg(p, ri, 1, typ, result, callBuilder)
-          for k in j+1..<ri.len:
+          for k, _ in isons(ri, j+1):
             var callBuilder: CallBuilder = default(CallBuilder)
             genOtherArg(p, ri, k, typ, result, callBuilder)
           result.add(")")
@@ -755,7 +773,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
         genThisArg(p, ri, j, typ, result)
         inc i
       elif i+1 < pat.len and pat[i+1] == '[':
-        var arg = ri[j].skipAddrDeref
+        var arg = son(ri, j).skipAddrDeref
         while arg.kind in {nkAddr, nkHiddenAddr, nkObjDownConv}: arg = arg.firstSon
         genArgNoParam(p, arg, result)
         #result.add debugTree(arg, 0, 10)
@@ -778,7 +796,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType; result: var Bu
       if i - 1 >= start:
         result.add(substr(pat, start, i - 1))
 
-proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genInfixCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
   var op = initLocExpr(p, ri.firstSon)
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.firstSon.typ, abstractInst)
@@ -815,7 +833,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     pl.add(op.snippet)
     var res = newBuilder("")
     var call = initCallBuilder(res, extract(pl))
-    for i in 2..<ri.len:
+    for i, _ in isons(ri, 2):
       genOtherArg(p, ri, i, typ, res, call)
     fixupCall(p, le, ri, d, res, call)
 
@@ -836,25 +854,25 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(op.snippet)
     if ri.len > 1:
       pl.add(": ")
-      genArg(p, ri[1], typ.n[1].sym, ri, pl)
+      genArg(p, ri.secondSon, typ.n.secondSon.sym, ri, pl)
       start = 2
   else:
     if ri.len > 1:
-      genArg(p, ri[1], typ.n[1].sym, ri, pl)
+      genArg(p, ri.secondSon, typ.n.secondSon.sym, ri, pl)
       pl.add(" ")
     pl.add(op.snippet)
     if ri.len > 2:
       pl.add(": ")
-      genArg(p, ri[2], typ.n[2].sym, ri, pl)
-  for i in start..<ri.len:
+      genArg(p, son(ri, 2), son(typ.n, 2).sym, ri, pl)
+  for i, it in isons(ri, start):
     if i >= typ.n.len:
       internalError(p.config, ri.info, "varargs for objective C method?")
-    assert(typ.n[i].kind == nkSym)
-    var param = typ.n[i].sym
+    assert(son(typ.n, i).kind == nkSym)
+    var param = son(typ.n, i).sym
     pl.add(" ")
     pl.add(param.name.s)
     pl.add(": ")
-    genArg(p, ri[i], param, ri, pl)
+    genArg(p, it, param, ri, pl)
   if typ.returnType != nil:
     if isInvalidReturnType(p.config, typ):
       if ri.len > 1: pl.add(" ")
@@ -907,10 +925,10 @@ proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
   We want to return early but the 'finally' section is traversed before
   the 'let args = ...' statement. We exploit this to generate better
   code for 'return'. ]#
-  result = e.len == 2 and e.firstSon.kind == nkSym and
-    e.firstSon.sym.name.s == "=destroy" and notYetAlive(e[1].skipAddr)
+  result = e.safeLen == 2 and e.firstSon.kind == nkSym and
+    e.firstSon.sym.name.s == "=destroy" and notYetAlive(e.secondSon.skipAddr)
 
-proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
+proc genAsgnCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
   if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, ri):
     return
   when defined(icDbgHash):

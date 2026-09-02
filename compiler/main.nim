@@ -29,6 +29,7 @@ when defined(nimPreviewSlimSystem):
 import ../dist/checksums/src/checksums/sha1
 
 import pipelines
+import icprof
 from icconfig import produceIcConfig, ensureIcConfig
 
 when not defined(nimKochBootstrap):
@@ -451,7 +452,9 @@ proc mainCommand*(graph: ModuleGraph) =
     # per-module compilation model cannot provide (yet); methods dispatch
     # through the classic if-chain dispatchers instead
     excl conf.features, Feature.vtables
-    commandCheck(graph)
+    # `tStage` for a `nim m` process, so `Process - Stage` is its real startup
+    # (exec, runtime init, config replay) rather than its whole runtime.
+    timed tStage: commandCheck(graph)
   of cmdNifC:
     setUseIc(true)
     excl conf.features, Feature.vtables

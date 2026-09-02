@@ -3425,8 +3425,13 @@ proc dirIndex(p: var RstParser): PRstNode =
   result = parseDirective(p, rnIndex, {}, parseSectionWrapper)
 
 proc dirAdmonition(p: var RstParser, d: string): PRstNode =
-  result = parseDirective(p, rnAdmonition, {}, parseSectionWrapper)
+  result = parseDirective(p, rnAdmonition, {hasOptions}, parseSectionWrapper)
   result.adType = d
+  result.title = result.getFieldValue("title").strip()
+  result.collapsible = result.getFieldValue("collapsible") != ""
+  result.closed = result.collapsible and
+    result.getFieldValue("collapsible").strip() == "closed"
+  result.sons[1] = nil
 
 proc dirDefaultRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDefaultRole, {hasArg}, nil)
