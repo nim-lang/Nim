@@ -100,6 +100,13 @@ parameter and result types, not just their source-level shape. Use
 - `std/uri`: The `?` operator now appends query parameters to an existing query
   string instead of replacing it. Fixes [#19782](https://github.com/nim-lang/Nim/issues/19782).
 - `std/jsonutils`: `fromJson` now throws an exception when converting to `array`/`seq` if the JSON isn't an array instead of silently failing
+- `std/pegs` no longer crashes on some patterns: repetition of an expression
+  that can match the empty input (e.g. ``('a'?)*``) is now valid (the matcher
+  terminates on zero-length matches) instead of aborting with
+  `AssertionDefect`; unknown builtin escapes inside character classes
+  (e.g. ``[^\n]``) raise `EInvalidPeg` instead of `IndexDefect`. An empty
+  capture `{}` with no previous capture is now a no-op instead of
+  underflowing the matcher's capture array.
 
 ## Language changes
 
