@@ -277,6 +277,7 @@ Notes
 - if your docs won't build because an ``.idx`` file cannot be found, pre-build the indexes with `nim book --index:only bookSrc`:cmd: and then run `nim book bookSrc`:cmd: again
 - `nim book`:cmd: doesn't automatically copy assets from the source directory to the destination directory. The recommended pattern to work with images and other assets is to place them in a specialized directory (i.e. `bookSrc/img`) and copy it into `htmldocs/img` after build
 - for your readers' convenience, you can make a certain page your welcome page, i.e. opened by default when the reader opens your book; to do that, simply copy the desired page to ``index.html`` after build: `cp htmldocs/welcome.html htmldocs/index.html`
+- to add links to page source reading and editing, use the standard `--git.url`:option: and `--git.commit`:option: options: `nim book --git.url:https://github.com/owner/repo --git.commit:master bookSrc`:cmd:
 
 
 Document Types
