@@ -260,20 +260,23 @@ As your `SUMMARY.md` grows, you'll want to group the pages into sections. You ca
 Migrating from mdBook
 ---------------------
 
-1. Keep your source directory as it is along with `SUMMARY.md`.
-2. Remove `book.toml`, you won't need it.
-3. In your Markdown files:
-  - replace `admonish` admonitions with the standard ``.. admonition::`` directives
-  - replace `shiftinclude` code samples with ``.. include::`` directives combined with ``:start-after``, ``end-before``, and ``code`` arguments to selectively include parts of the code and enable code highlighting
-  - update page references, see [Markup external referencing]
-  - if you have images or other assets, copy them to the output directory—`nim book`:cmd: won't automatically copy them during build
-  - (optionally) promote your top headers to ``.. title::`` and all lower-level headers one level up 
+The easiest way to migrate to `nim book`:cmd: from mdBook is to feed the pre-cooked prompt to an LLM of your choice.
+
+.. note::
+  :title: Migrate from mdBook prompt
+  :collapsible: closed
+
+  .. include:: ./mdbookmigration.md
+    :literal:
+
+Or use the same prompt as a checklist to do the migration manually.
 
 Notes
 -----
 
-- ``.. title::`` values are escaped, e.g. `&` is turned into `&amp`, so you should avoid using tags or special simbols in titles
-- if your docs won't build because an ``.idx`` file cannot be found, pre-build the indexes with `nim book --index:only bookSrc`
+- if your docs won't build because an ``.idx`` file cannot be found, pre-build the indexes with `nim book --index:only bookSrc`:cmd: and then run `nim book bookSrc`:cmd: again
+- `nim book`:cmd: doesn't automatically copy assets from the source directory to the destination directory. The recommended pattern to work with images and other assets is to place them in a specialized directory (i.e. `bookSrc/img`) and copy it into `htmldocs/img` after build
+- for your readers' convenience, you can make a certain page your welcome page, i.e. opened by default when the reader opens your book; to do that, simply copy the desired page to ``index.html`` after build: `cp htmldocs/welcome.html htmldocs/index.html`
 
 
 Document Types
