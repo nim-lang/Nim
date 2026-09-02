@@ -174,3 +174,19 @@ iterator pairs(): (int, int) {.closure.} =
 
 for pair in pairs():
   echo pair
+
+# issue #26158: static array literals containing strings must be copied safely
+# when a closure iterator stores them in its environment.
+iterator fromStatic(): int {.closure.} =
+  for _ in static([(" ",)]):
+    break
+
+for _ in fromStatic():
+  break
+
+iterator fromLiteral(): int {.closure.} =
+  for _ in [(" ",)]:
+    break
+
+for _ in fromLiteral():
+  break
