@@ -95,6 +95,10 @@ Supported common RST/Markdown features:
     - ``include``
     - admonitions: "attention", "caution", "danger", "error", "hint",
       "important", "note", "tip", "warning", "admonition"
+      - ``:title:`` option sets custom title for an admonition,
+        otherwise its kind capitalized is used
+      - ``:collapsible:`` makes an admonition collapsible in HTML output
+        ``:collapsible: closed`` makes it closed by default
     - substitution definitions: `replace` and `image`
   + comments
 * inline markup
