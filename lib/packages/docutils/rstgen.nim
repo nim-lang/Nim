@@ -1069,15 +1069,25 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   of "danger", "error":
     htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"
   else: discard
-  let txt = n.adType.capitalizeAscii()
+  let txt = if n.title != "": n.title else: n.adType.capitalizeAscii()
   let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
-  renderAux(d, n,
+  let htmlBody =
+    if n.collapsible:
+      if n.closed:
+        htmlHead & "<details><summary><span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
+        "</b></span></summary>\n" & "$1</details></div>\n"
+      else:
+        htmlHead & "<details open><summary><span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
+        "</b></span></summary>\n" & "$1</details></div>\n"
+    else:
       htmlHead & "<span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
-        ":</b></span>\n" & "$1</div>\n",
-      "\n\n\\begin{rstadmonition}[borderline west={0.2em}{0pt}{" &
-        texColor & "}]$2\n" &
-        "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
-        "$1\n\\end{rstadmonition}\n",
+      ":</b></span>\n" & "$1</div>\n"
+  let texBody = "\n\n\\begin{rstadmonition}[borderline west={0.2em}{0pt}{" &
+    texColor & "}]$2\n" &
+    "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
+    "$1\n\\end{rstadmonition}\n"
+  renderAux(d, n,
+      htmlBody, texBody,
       result)
 
 proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string,
