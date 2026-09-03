@@ -95,6 +95,8 @@ type
     bld*: IcBuilder
     tables*: BridgeTables
     conf: ConfigRef
+    root: PNode                ## what was encoded; `registerOrigins` walks it
+    originsDone: bool
     symIdx: Table[int, int]    ## PSym identity -> index into `tables.syms`
     typeIdx: Table[int, int]   ## PType identity -> index into `tables.types`
 
@@ -179,16 +181,7 @@ proc encodeNode(b: var BridgeBuf; n: PNode) =
     # remember, and `originOf` answering nil for it is the right answer.
     b.bld.addDotToken()
     return
-  # ORIGIN TRACKING. `len` is where this node's head token is about to land, and
-  # `cursorToPosition` is its inverse — nifcore documents that index as a stable
-  # key for exactly this. Recording it is what keeps `TLoc.lode` a `PNode`: a
-  # cursor-driven generator can still put the ORIGINAL node in a location, so
-  # the identity comparisons that already exist (`preventNrvo`'s `dest != le`,
-  # `isPartOf(d.lode, …)`) keep meaning what they meant. Without this the
-  # generator could not migrate without `TLoc` itself changing representation —
-  # and `TLoc` lives in `astdef`, at the bottom of the module graph, so that
-  # would push the seam far below the backend.
-  b.tables.origins[b.bld.buf.len] = n
+  # Origins are NOT recorded here — see `registerOrigins`.
   if n.kind == nkSym and n.sym != nil:
     encodeSym(b, n)
     return
@@ -220,10 +213,52 @@ proc encodeNode(b: var BridgeBuf; n: PNode) =
   b.bld.closeTag()
 
 proc toTokenBuf*(n: PNode; conf: ConfigRef): BridgeBuf =
-  ## Encode a whole tree. `n` is not modified and not retained: the buffer holds
-  ## tokens, and the tables hold the `PSym`/`PType` objects the tree pointed at.
+  ## Encode a whole tree. `n` is not modified; it is retained as `root` until
+  ## the origins are registered (`rootCursor`), and the tables hold the
+  ## `PSym`/`PType` objects the tree pointed at.
   result = initBridgeBuf(conf)
+  result.root = n
   encodeNode(result, n)
+
+const payloadKinds = {nkIdent, nkCharLit..nkTripleStrLit}
+  ## The leaf kinds `encodeNode` follows with ONE payload token.
+
+proc registerOrigins(b: var BridgeBuf; c: var Cursor; n: PNode) =
+  ## ORIGIN TRACKING: `cursorToPosition` of each node's head token, in the
+  ## FINISHED buffer, -> the `PNode` it was encoded from. This is what keeps
+  ## `TLoc.lode` a `PNode`: a cursor-driven generator can still put the
+  ## ORIGINAL node in a location, so the identity comparisons that already
+  ## exist (`preventNrvo`'s `dest != le`, `isPartOf(d.lode, …)`) keep meaning
+  ## what they meant. Without it the generator could not migrate without
+  ## `TLoc` itself changing representation — and `TLoc` lives in `astdef`, at
+  ## the bottom of the module graph, so that would push the seam far below the
+  ## backend.
+  ##
+  ## A SECOND WALK, after encoding, and not a note taken while encoding: the
+  ## position a head is about to land on is not where it ends up. `closeTag`
+  ## splices a jump `ExtendedSuffix` in behind the head of any subtree too
+  ## wide for the inline jump field (524k tokens), shifting everything after
+  ## it by one — and a routine body of two million tokens exists (Nimbus's
+  ## `kzgrfueff`), so the positions noted for its later nodes were all off by
+  ## one and `origin` reported "no origin" for a head that was plainly there.
+  ## Walking the final buffer in `encodeNode`'s order makes the positions the
+  ## reader's own, whatever the builder did to get there.
+  if n == nil:
+    skip c                        # a nil child is a `DotToken`
+    return
+  b.tables.origins[cursorToPosition(b.bld.buf, c)] = n
+  if n.kind == nkSym and n.sym != nil:
+    skip c                        # the whole `(nflags (ht (bsym)))` chain
+    return
+  c.into:
+    skip c                        # the flags slot
+    skip c                        # the type slot
+    if n.kind in payloadKinds:
+      skip c                      # the payload
+    elif n.kind in {nkSym, nkNone, nkEmpty, nkNilLit, nkType, nkCommentStmt}:
+      discard                     # no children, no payload
+    else:
+      for child in sons(n): registerOrigins(b, c, child)
   # `tables.buf` is deliberately NOT set here. It is a BORROWED pointer to the
   # `TokenBuf` INSIDE this object, and `result` is about to be moved into the
   # caller's variable — through `handOffBody` and then into `cgen`'s
@@ -251,7 +286,11 @@ proc rootCursor*(b: var BridgeBuf): Cursor {.inline.} =
   ## here, on the object that will be read, so this is the one place the
   ## borrowed pointer is known to name live memory (see `toTokenBuf`).
   b.tables.buf = addr b.bld.buf
-  beginRead(b.bld.buf)
+  result = beginRead(b.bld.buf)
+  if not b.originsDone:
+    b.originsDone = true
+    var c = result
+    registerOrigins(b, c, b.root)
 
 # ---------------------------------------------------------------------------
 # Decode

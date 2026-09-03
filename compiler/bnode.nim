@@ -386,6 +386,8 @@ when defined(newIcBackend):
   # `nifcore.Cursor`. `nifcursors` is the writer/builder cursor over
   # `PackedToken`s and is a different type entirely.
 
+  import std / [algorithm, tables]   # `originMissDetail` walks and sorts the positions it reports
+
   type BNode* = distinct Cursor
     ## A cursor at an AST NODE, as distinct from a raw structural cursor: see
     ## "THE NODE ENCODING" above. The conversion is deliberately not implicit.
@@ -809,6 +811,20 @@ when defined(newIcBackend):
   # every expression node, so nothing in the expression codegen can migrate
   # until they exist.
 
+  proc originMissDetail(b: BridgeTables; c: Cursor): string =
+    ## What the assertion below needs to be diagnosable from a log: where the
+    ## cursor sits in the buffer it is keyed against, and which positions ARE
+    ## registered around it.
+    if b.buf == nil: return " (tables have no buffer)"
+    let pos = cursorToPosition(b.buf[], c)
+    result = " at position " & $pos & " of " & $b.buf[].len & "; registered near:"
+    var near: seq[int] = @[]
+    for k in b.origins.keys:
+      if abs(k - pos) <= 6: near.add k
+    sort near
+    for k in near: result.add " " & $k
+    if near.len == 0: result.add " none"
+
   proc origin*(n: BNode): PNode =
     ## The `PNode` this cursor was encoded from, when it is reading a bridged
     ## buffer. This is what lets a cursor-driven generator keep filling
@@ -826,7 +842,7 @@ when defined(newIcBackend):
     result = originAt(b, n.raw)
     icProfStop(tOrigin)
     doAssert result != nil or nifcore.kind(n.raw) == DotToken,
-      "bridged node has no origin: " & rawDesc(n)
+      "bridged node has no origin: " & rawDesc(n) & originMissDetail(b, n.raw)
 
   template origin*(n: PNode): PNode = n
     ## The `PNode` spelling, so `AnyNode` code can ask for an origin without
