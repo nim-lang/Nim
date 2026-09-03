@@ -374,7 +374,8 @@ export icprof
 when defined(newIcBackend):
   when defined(nimPreviewSlimSystem):
     import std / assertions   # only this branch asserts
-  import "../dist/nimony/src/lib/nifcore" except pool
+  import "../dist/nimony/src/lib/nifcore" except pool, symName, strVal, poolSym, poolStr, lineInfoFile
+  import icbif
   import ic / enum2nif
   import ast2nif, icnifcore, bodynav
   export ast2nif.BodyScope
@@ -868,7 +869,7 @@ when defined(newIcBackend):
   proc strVal*(n: BNode): string =
     let c = atom(n)
     doAssert nifcore.kind(c) == StrLit, "strVal on " & rawDesc(n)
-    result = nifcore.strVal(c)
+    result = strVal(c)
 
   proc ident*(n: BNode): PIdent =
     let c = atom(n)

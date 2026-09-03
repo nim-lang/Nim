@@ -27,9 +27,12 @@ import "../dist/nimony/src/lib" / [bitabs, lineinfos,
 # PackedToken/PackedLineInfo). nifstreams does NOT export Cursor/TokenBuf/NifKind,
 # so those resolve unambiguously to nifcore. `except pool`: nifcore's
 # `pool(c: Cursor)` accessor would shadow nifstreams' global `pool` var the writer
-# uses; the reader reaches pools via `symName(c)`/`strVal(c)` etc.
-import "../dist/nimony/src/lib/nifcore" except pool
-from "../dist/nimony/src/lib" / bif import load, BifModule, IndexVis, ivHidden, IndexEntry
+# uses. The reader reads names through `icbif`'s `symName(c)`/`strVal(c)` etc.:
+# a loaded buffer's pool keeps its names in the mapped file until they are
+# read, and nifcore's own accessors do not know that.
+import "../dist/nimony/src/lib/nifcore" except pool, symName, strVal, poolSym, poolStr, lineInfoFile
+from "../dist/nimony/src/lib" / bif import BifModule, IndexVis, ivHidden, IndexEntry
+import icbif
 import icmodnames
 import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
@@ -207,7 +210,7 @@ proc oldLineInfo(w: var LineInfoWriter; info: NifLineInfo; p: Pool): TLineInfo =
       w.readTab.setLen(id + 1)
       for i in oldLen ..< w.readTab.len: w.readTab[i] = astli.InvalidFileIdx
     if w.readTab[id] == astli.InvalidFileIdx:
-      w.readTab[id] = msgs.fileInfoIdx(w.config, AbsoluteFile p.filenames[info.file])
+      w.readTab[id] = msgs.fileInfoIdx(w.config, AbsoluteFile poolFile(p, info.file))
     result = TLineInfo(line: info.line.uint16, col: info.col.int16,
                        fileIndex: w.readTab[id])
 
@@ -2737,12 +2740,9 @@ proc toNifIndexEntry(e: IndexEntry): NifIndexEntry {.inline.} =
 
 proc find(ix: NifIndex; buf: TokenBuf; name: string): int =
   ## Position in `ix.entries` of the declaration named `name`, or -1.
-  # A pool filled by `addOrdered`/`addLazy` has no reverse index until
-  # something asks for one; the first lookup into THIS file builds it, so a
-  # file nobody looks a name up in never pays for one. (`pool` is a ref, so
-  # the table is mutable through a non-`var` buffer.)
-  ensureIndexed(buf.pool.syms)
-  let id = getKeyId(buf.pool.syms, name)
+  # The pool's names are looked up in the mapped file, and the index for that
+  # is built by the first lookup into THIS file (`icbif.findSym`).
+  let id = findSym(buf.pool, name)
   if id.int == 0: return -1
   let i = id.int
   result = if i < ix.bySym.len: int(ix.bySym[i]) else: -1
@@ -2847,7 +2847,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
         ". This can happen when loading a module from NIF that references another module " &
         "whose NIF file hasn't been written yet."
     icProfStart(tBifLoad)
-    var m = bif.load(modFile, lazyPools = not defined(icEagerPools))
+    var m = icbif.load(modFile)
     prof pBifLoads
     icProfStop(tBifLoad)
     icProfStart(tPosIndex)
@@ -2875,7 +2875,7 @@ proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
   m.semTried = true
   let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
   if not fileExists(semFile): return
-  var sm = bif.load(semFile, lazyPools = not defined(icEagerPools))
+  var sm = icbif.load(semFile)
   prof pBifLoads
   prof pSemBufLoads
   m.semIndex = indexFromBif(sm, m.suffix)

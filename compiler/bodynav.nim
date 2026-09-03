@@ -75,7 +75,8 @@ import ast, ast2nif
 when defined(nimPreviewSlimSystem):
   import std / assertions
 
-import "../dist/nimony/src/lib/nifcore" except pool
+import "../dist/nimony/src/lib/nifcore" except pool, symName, strVal, poolSym, poolStr, lineInfoFile
+import icbif
 
 type
   NavScopeKind* = enum
