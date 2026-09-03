@@ -224,10 +224,16 @@ proc toTokenBuf*(n: PNode; conf: ConfigRef): BridgeBuf =
   ## tokens, and the tables hold the `PSym`/`PType` objects the tree pointed at.
   result = initBridgeBuf(conf)
   encodeNode(result, n)
-  # The tables carry a BORROWED pointer to the buffer so `originAt` can key
-  # against it. Set once, here, after encoding is finished and the buffer will
-  # not be reallocated out from under it.
-  result.tables.buf = addr result.bld.buf
+  # `tables.buf` is deliberately NOT set here. It is a BORROWED pointer to the
+  # `TokenBuf` INSIDE this object, and `result` is about to be moved into the
+  # caller's variable — through `handOffBody` and then into `cgen`'s
+  # `bodyBuf`. Whether that move keeps the address depends on whether NRVO
+  # applied at every hop, which is not something to rely on: with it, the
+  # pointer stayed valid; without it, it named a dead return slot, and a
+  # NESTED routine's generation (which reuses that stack depth) then keyed
+  # `originAt` against the wrong buffer and reported a head with "no origin".
+  # `rootCursor` anchors the pointer instead, at the object that is actually
+  # being read.
 
 proc originOf*(b: var BridgeBuf; c: Cursor): PNode {.inline.} =
   ## The `PNode` that was encoded at `c`, or nil when `c` is a `DotToken` (a nil
@@ -240,6 +246,11 @@ proc rootCursor*(b: var BridgeBuf): Cursor {.inline.} =
   ## A read cursor at the encoded root. `beginRead` asserts every tag was
   ## closed, so a mis-nested encode is caught here rather than as nonsense
   ## further along.
+  ##
+  ## Also where `tables.buf` is anchored: every read of a bridged buffer starts
+  ## here, on the object that will be read, so this is the one place the
+  ## borrowed pointer is known to name live memory (see `toTokenBuf`).
+  b.tables.buf = addr b.bld.buf
   beginRead(b.bld.buf)
 
 # ---------------------------------------------------------------------------
