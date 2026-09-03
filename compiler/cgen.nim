@@ -2356,12 +2356,14 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     releaseLazyBody(procBody)
   elif m.config.cmd == cmdNifC:
     # RE-DERIVED here — a demanded generic instance whose `.t.bif` slot is
-    # empty, so `transformBody` lowered it from the pristine body and cached
-    # the result on the symbol. Neither is needed again: drop the lowered
-    # body and hand the pristine one back to the loader. On Nimbus's
-    # `res1slopv1` cg that cache was 324MB of a 684MB heap (`TransformdKB`).
-    backendEnsureMutable prc
-    prc.transformedBody = nil
+    # empty, so `transformBody` lowered it from the pristine body. The
+    # pristine body is handed back to the loader; the LOWERED one stays
+    # cached on the symbol. It was dropped too, until Nimbus showed why it
+    # must not be: an inline routine, or an instance two batch members
+    # demand, is generated once per member in the same process, and a second
+    # `transformBody` runs lambda lifting again over nested procs the first
+    # lift already rewrote — `readField` inside `makeFieldReadersTable` then
+    # reports its captured `var` parameter as an illegal capture.
     if prc.ast != nil and prc.ast.safeLen > bodyPos:
       releaseLazyBody(son(prc.ast, bodyPos))
 
