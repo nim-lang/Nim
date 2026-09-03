@@ -3383,7 +3383,11 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   # Pre-scan the ENTIRE symbol definition to extract ALL local symbols upfront.
   # This ensures local symbols are registered before any references to them,
   # regardless of where they appear in the definition (in types, nested procs, etc.)
-  var localSyms = initTable[string, PSym]()
+  # Sized for what it holds, not the default 64 slots: every deferred body
+  # keeps a COPY of this table alive, ~20k of them on a Nimbus cg, and nearly
+  # all of them are empty. At the default size that was 40MB of a 536MB heap
+  # (`--mm:refc -d:nimTypeNames`); sized like this the tables leave the census.
+  var localSyms = initTable[string, PSym](4)
   var scanCursor = n
   extractLocalSymsFromTree(c, scanCursor, c.mods[symsModule].suffix, localSyms)
 
