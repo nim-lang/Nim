@@ -35,7 +35,8 @@ when defined(icBNodeProf):
       pLastSon, pIterYield, pSym, pTyp, pTypTagLit, pOrigin, pNilType,
       pGenBodyCalls, pInfo, pIfaceExported, pIfaceHidden, pIfaceModules,
       pTopNodes, pExportSyms, pPeekKind, pPeekFallback, pPeekLoaded,
-      pTopToolingSkip
+      pTopToolingSkip,
+      pBifLoads, pSemBufLoads   ## `.bif` files opened; of which `.s.bif` companions
     TimeSlot* = enum
       tLoadClosure, tModuleId, tBifLoad, tPosIndex, tTopLevel, tInterfTables,
       tTransform, tHandOff, tGenBody, tAnalyses,

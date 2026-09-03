@@ -2800,6 +2800,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
         "whose NIF file hasn't been written yet."
     icProfStart(tBifLoad)
     var m = bif.load(modFile)
+    prof pBifLoads
     icProfStop(tBifLoad)
     icProfStart(tPosIndex)
     let index = indexFromBif(m, suffix)
@@ -2827,6 +2828,8 @@ proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
   let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
   if not fileExists(semFile): return
   var sm = bif.load(semFile)
+  prof pBifLoads
+  prof pSemBufLoads
   m.semIndex = indexFromBif(sm, m.suffix)
   m.semBuf = ensureMove sm.buf
 
