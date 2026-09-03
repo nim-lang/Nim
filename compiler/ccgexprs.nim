@@ -393,7 +393,15 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyArray:
     if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcAtomicArc, gcOrc, gcHooks}:
-      genGenericAsgn(p, dest, src, flags)
+      # Static array literals may contain GC-managed values (for example,
+      # strings). They must be copied deeply so that the destination does not
+      # attempt to adjust the reference count of the static literal's
+      # interior pointers. This mirrors the handling for tuples and objects
+      # above, where static sources force a real copy.
+      let newflags =
+        if src.storage == OnStatic: flags + {needToCopy}
+        else: flags
+      genGenericAsgn(p, dest, src, newflags)
     else:
       linefmt(p, cpsStmts,
            "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
