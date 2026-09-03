@@ -4279,6 +4279,21 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         if mname.len > 0 and msuffix.len > 0:
           result.reexportedModules.add (mname, msuffix)
       of ttOffer:
+        # The offers exist to rebuild the FRONTEND's instantiation caches
+        # (`procInstCache`/`typeInstCache`, see modulegraphs) so a later `nim m`
+        # reuses an instance instead of re-instantiating it in its own scope.
+        # No backend stage instantiates anything — nothing under `nifc` reads
+        # either cache — yet resolving them was the single largest item in a
+        # `cg` process's heap: 73MB of 152MB in the compiler's main-module `cg`,
+        # 17MB of 40MB in the average one (`-d:icBNodeProf`, `TopOffersdKB`).
+        # A `(toffer)` in particular FULLY loads its instance type, so this is
+        # where most of a program's generic type instances got materialised in
+        # every backend process. The lowered `.t.bif` then carries no offers
+        # either (`writeLoweredModule` writes what was loaded), which is fine:
+        # its only readers are backend stages.
+        if c.infos.config.cmd == cmdNifC:
+          skip cur
+          continue
         # (offer <genericSym> <instSym> <genericParamsCount> <type>...) — resolve
         # to PSyms/PTypes; modulegraphs registers them into `procInstCache`.
         # Best-effort: a type that fails to resolve drops the whole offer.
@@ -4307,6 +4322,9 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
           result.genericOffers.add (genSym, instSym, cts, paramsCount)
         icProfStop(tTopOffers)
       of ttTOffer:
+        if c.infos.config.cmd == cmdNifC:
+          skip cur              # see `ttOffer`
+          continue
         # (toffer "<genericBodySym>" "<instType>") — intern the two full names,
         # resolve, FULLY load the instance (so `searchInstTypes` can match its
         # params). Best-effort: a failure to resolve drops the offer.
