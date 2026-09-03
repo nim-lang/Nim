@@ -1169,7 +1169,21 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
   # transformed routines write the empty marker. (`transformedBodyImpl` only
   # exists in the routine branch of the `TSym` variant.)
   if sym.kindImpl in routineKinds:
-    writeNode(w, dest, sym.transformedBodyImpl)
+    let tb = sym.transformedBodyImpl
+    if tb != nil and tb.kind notin {nkStmtList, nkEmpty}:
+      # Always an `nkStmtList` on the wire, so the READER can defer it: the
+      # `nfLazyBody` placeholder has to be a kind whose arity a childless node
+      # can honour, and `nkStmtList` is the one that is (see `loadNode`'s
+      # `routineDefs` branch). A one-line body — `x = s` after transformation
+      # — is wrapped; for the generator `(stmts body)` and `body` are the same
+      # statement, and this slot has no other reader.
+      dest.addParLe pool.tags.getOrIncl(toNifTag(nkStmtList)), NoLineInfo
+      dest.addDotToken            # no node flags (what `writeFlags({})` emits)
+      dest.addDotToken            # no node type
+      writeNode(w, dest, tb)
+      dest.addParRi
+    else:
+      writeNode(w, dest, tb)
   else:
     dest.addDotToken
   dest.addParRi
@@ -2488,10 +2502,14 @@ type
     cursor: Cursor
     thisModule: string
     localSyms: Table[string, PSym]
+    when defined(icReleaseStrict):
+      released: bool
 
   DecodeContext* = object
     infos: LineInfoWriter
     pendingBodies: Table[int, PendingBody]  # nodeId(placeholder) -> deferred body
+    consumedBodies: Table[int, PendingBody] # the same, once materialised — kept
+                                            # so `releaseLazyBody` can re-defer
     #moduleIds: Table[string, int32]
     types: Table[string, (PType, NifIndexEntry)]
     syms: Table[string, (PSym, NifIndexEntry)]
@@ -2517,6 +2535,9 @@ var loaderCtx {.threadvar.}: ptr DecodeContext  # the live `program`; for lazy-b
                                                 # materialization off the len hook
 var nodesDecoded {.threadvar.}: int           # all PNodes materialized this proc
 var astFieldNodes {.threadvar.}: int          # subset: routine-body (s.ast) subtrees
+var astNodesByKind {.threadvar.}: array[TSymKind, int]  # `s.ast` nodes, by sym kind
+var bodyNodes {.threadvar.}: int              # `transformedBody` slot nodes
+var typeTreeNodes {.threadvar.}: int          # `t.n` nodes
 
 proc dumpLoadStatsExit() {.noconv.} =
   if statsCtxPtr == nil: return
@@ -2540,6 +2561,11 @@ proc dumpLoadStatsExit() {.noconv.} =
   let pct = if nodesDecoded > 0: 100 * astFieldNodes div nodesDecoded else: 0
   stderr.writeLine "  PNODES decoded=" & $nodesDecoded & " routineBody=" &
     $astFieldNodes & " (" & $pct & "% deferrable via lazy PSym.ast)"
+  stderr.writeLine "  PNODES transformedBody=" & $bodyNodes & " typeTrees=" & $typeTreeNodes
+  var byKind = ""
+  for k in TSymKind:
+    if astNodesByKind[k] > 0: byKind.add " " & $k & "=" & $astNodesByKind[k]
+  stderr.writeLine "  PNODES s.ast by kind:" & byKind
   for m in order:
     let a = merged[m]
     let name = if c.mods.hasKey(m): c.mods[m].suffix else: "?"
@@ -3182,7 +3208,9 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
           skip n
 
     t.typeInstImpl = loadTypeStub(c, n, localSyms)
+    let before = nodesDecoded
     t.nImpl = loadNode(c, n, typesModule, localSyms)
+    if loadStatsInit == 1: typeTreeNodes += nodesDecoded - before
     t.ownerFieldImpl = loadSymStub(c, n, typesModule, localSyms)
     t.symImpl = loadSymStub(c, n, typesModule, localSyms)
     loadLoc c, n, t.locImpl
@@ -3291,8 +3319,10 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
     # Constants need their AST for astdef() to return the constant's value
     let astNodesBefore = nodesDecoded
     s.astImpl = loadNode(c, n, thisModule, localSyms)
-    if loadStatsInit == 1 and s.kindImpl in routineKinds:
-      astFieldNodes += nodesDecoded - astNodesBefore
+    if loadStatsInit == 1:
+      if s.kindImpl in routineKinds:
+        astFieldNodes += nodesDecoded - astNodesBefore
+      astNodesByKind[s.kindImpl] += nodesDecoded - astNodesBefore
     loadLoc c, n, s.locImpl
     s.constraintImpl = loadNode(c, n, thisModule, localSyms)
     s.instantiatedFromImpl = loadSymStub(c, n, thisModule, localSyms)
@@ -3312,7 +3342,25 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
       (conf.icBackendStage == "cg" or conf.icBackendStage == "emit" or
        (conf.icBackendStage == "lower" and icReuseSemLowering(conf)))
     if loadSlot:
-      s.transformedBodyImpl = loadNode(c, n, thisModule, localSyms)
+      if n.kind == TagLit and n.nodeKind == nkStmtList:
+        # DEFERRED, exactly like a routine def's `bodyPos` son: a childless
+        # `nkStmtList` placeholder that `len` fills in from this cursor. Loaded
+        # eagerly, this slot was 61% of everything a `cg` process materialised
+        # — the bodies of every routine its closure touched, generated or not
+        # (`NIM_IC_LOADSTATS`, `transformedBody=424401` of 697459 nodes on the
+        # compiler's `sem` batch). The writer wraps any other body kind in a
+        # `(stmts)` so that this branch is the only one a lowered body takes.
+        let info = c.infos.oldLineInfo(n.info, cursorPool(n))
+        let ph = newNodeI(nkStmtList, info)
+        ph.flags.incl nfLazyBody
+        c.pendingBodies[cast[int](ph)] =
+          PendingBody(cursor: n, thisModule: thisModule, localSyms: localSyms)
+        s.transformedBodyImpl = ph
+        skip n
+      else:
+        let before = nodesDecoded
+        s.transformedBodyImpl = loadNode(c, n, thisModule, localSyms)
+        if loadStatsInit == 1: bodyNodes += nodesDecoded - before
     else:
       skip n
 
@@ -3638,6 +3686,8 @@ proc materializeLazyBody*(c: var DecodeContext; node: PNode) =
   let key = cast[int](node)
   var pb = PendingBody()
   if not c.pendingBodies.pop(key, pb): return
+  when defined(icReleaseStrict):
+    if pb.released: raiseAssert "lazy body re-materialised after release"
   var cur = pb.cursor
   let real = c.loadNode(cur, pb.thisModule, pb.localSyms)
   # `real` has the same kind as the placeholder (peeked at defer time); graft its
@@ -3645,6 +3695,28 @@ proc materializeLazyBody*(c: var DecodeContext; node: PNode) =
   node.sons = real.sons
   node.typField = real.typField
   node.flags = real.flags
+  c.consumedBodies[key] = pb
+
+proc releaseLazyBody*(c: var DecodeContext; node: PNode) =
+  ## The inverse of `materializeLazyBody`: the children are dropped and the
+  ## placeholder goes back to `pendingBodies`, so the next `len` on it loads
+  ## the body from the `.bif` again — the cursor still points into the
+  ## mmap'd file, which lives as long as the process.
+  ##
+  ## Why: a `cg` process keeps every body it generates on the symbol's
+  ## `transformedBody` until it exits. On the compiler's `sem` batch that is
+  ## ~700k `PNode`s, the whole 77MB its generation adds to a 44MB closure
+  ## (`-d:icBNodeProf`, `CgGendKB`; `NIM_IC_LOADSTATS`), for routines that
+  ## are read exactly once. Re-deferring rather than merely dropping is what
+  ## makes this safe: a reader that does come back gets the same body, not an
+  ## empty one and not a re-lowered one.
+  let key = cast[int](node)
+  var pb = PendingBody()
+  if not c.consumedBodies.pop(key, pb): return
+  node.sons = @[]
+  node.flags.incl nfLazyBody
+  when defined(icReleaseStrict): pb.released = true
+  c.pendingBodies[key] = pb
 
 # ---------------------------------------------------------------------------
 # Cursor-native backend seam (see `bnode.nim`)
@@ -3719,6 +3791,13 @@ proc lineInfoFromCursor*(c: var DecodeContext; n: Cursor): TLineInfo =
   ## to the `.bif`'s OWN filename pool, so the mapping needs both the pool and
   ## the `ConfigRef` the `LineInfoWriter` holds.
   result = c.infos.oldLineInfo(n.info, cursorPool(n))
+
+releaseLazyBodyHook = proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.} =
+  if loaderCtx != nil:
+    {.cast(raises: []).}:
+      {.cast(tags: []).}:
+        {.cast(gcsafe).}:
+          releaseLazyBody(loaderCtx[], n)
 
 forceLazyBodyHook = proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.} =
   # `len` (the sole caller path) MUST stay effect-free, so this hook is typed

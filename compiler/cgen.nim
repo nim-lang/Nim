@@ -2348,6 +2348,11 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
           getModuleDllPath(m, prc),
           '"' & prc.loc.snippet & '"',
           cCast(CPointer, prc.loc.snippet & "_actual"))
+  # The body came from a `.t.bif` and has been read: hand it back to the
+  # loader (see `ast2nif.releaseLazyBody`). Only for a LOADED body — one this
+  # process re-derived is not the loader's to re-defer, and in a non-IC build
+  # the cache is what a second `transformBody` returns.
+  if wasLoaded: releaseLazyBody(procBody)
 
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and

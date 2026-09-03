@@ -922,6 +922,17 @@ const
 
 
 var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
+var releaseLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
+  ## The inverse: hand a materialised body back to the loader so it becomes
+  ## the `nfLazyBody` placeholder again (see `ast2nif.releaseLazyBody`).
+
+proc releaseLazyBody*(n: PNode) =
+  ## Drop a routine body's materialised children after the one reader that
+  ## needed them is done. Nothing is lost: the placeholder goes back to
+  ## pending and the next `len` on it loads the body from the `.bif` again.
+  ## A no-op for a node the loader never deferred.
+  if n != nil and releaseLazyBodyHook != nil:
+    releaseLazyBodyHook(n)
   ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
   ## to its children through `len` materializes the deferred routine body in place.
   ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
