@@ -29,7 +29,7 @@ import "../dist/nimony/src/lib" / [bitabs, lineinfos,
 # `pool(c: Cursor)` accessor would shadow nifstreams' global `pool` var the writer
 # uses; the reader reaches pools via `symName(c)`/`strVal(c)` etc.
 import "../dist/nimony/src/lib/nifcore" except pool
-from "../dist/nimony/src/lib" / bif import load, BifModule, IndexVis, ivHidden
+from "../dist/nimony/src/lib" / bif import load, BifModule, IndexVis, ivHidden, IndexEntry
 import icmodnames
 import "../dist/nimony/src/models" / nifindex_tags
 import typekeys
@@ -2448,6 +2448,21 @@ proc loadBool(n: var Cursor): bool =
     raiseAssert "(true)/(false) expected"
 
 type
+  NifIndex = object
+    ## A module's name -> declaration-position index, as the `.bif` carries it:
+    ## `bif.IndexEntry` is (pool `SymId`, token position, visibility), twelve
+    ## bytes, and the NAME is the file's own symbol pool's business. Looking a
+    ## name up means asking that pool for its id (`getKeyId`, a hash probe into
+    ## strings the pool already holds) and taking the entry `bySym` maps it to.
+    ##
+    ## This replaced a `Table[string, NifIndexEntry]`, which copied every
+    ## indexed name out of the pool a second time and hashed it into a table of
+    ## its own: 46MB of a whole-program `cg`'s 152MB heap, 10MB of the average
+    ## per-module one's 40MB (`-d:icBNodeProf`, `PosIndexdKB`), for names the
+    ## pool was holding anyway.
+    entries: seq[IndexEntry]  ## in file order, which is source order
+    bySym: seq[int32]         ## `SymId.int` -> position in `entries`, or -1
+
   NifModule = ref object
     buf: TokenBuf      # the WHOLE module, parsed eagerly (Step 2: replaces the
                        # lazy byte-offset stream entirely — symbol/type loading
@@ -2455,15 +2470,14 @@ type
     symCounter: int32  # seeded from the file's `(unusedid)` so backend syms
                        # start above every frontend/lowered id (no collision)
     typeCounter: int32 # ditto for backend TYPES (closure envs etc.)
-    index: Table[string, NifIndexEntry]  # name -> entry; `offset` is a TOKEN
-                                         # position in `buf` (was a byte offset)
+    index: NifIndex    # name -> entry; `offset` is a TOKEN position in `buf`
     suffix: string
     loweredPrimary: bool   # `buf` is the lowered `.t.bif` (cg/emit stage). The lower
                            # stage never changes type DEFINITIONS, so they are NOT
                            # carried in `.t.bif`; a type def not in `index` is read
                            # from the `.s.bif` companion below (loaded on demand).
     semBuf: TokenBuf       # the `.s.bif` (semchecked) buffer — TYPE-def fallback
-    semIndex: Table[string, NifIndexEntry]
+    semIndex: NifIndex
     semTried: bool         # `semBuf`/`semIndex` load attempted (idempotent)
 
   PendingBody = object
@@ -2655,7 +2669,7 @@ proc rescanPosIndex(buf: var TokenBuf; suffix: string): Table[string, NifIndexEn
     else:
       inc c
 
-proc indexFromBif(m: BifModule): Table[string, NifIndexEntry] =
+proc indexFromBif(m: var BifModule): NifIndex =
   ## The module's name -> token-position index, taken from the index the `.bif`
   ## ALREADY CARRIES rather than recomputed.
   ##
@@ -2673,21 +2687,64 @@ proc indexFromBif(m: BifModule): Table[string, NifIndexEntry] =
   ## the reader would have formed — so the two filters select the same symbols,
   ## and the `vis` rule (a `DotToken` marker after the def means hidden) is the
   ## same test on the same token.
-  result = initTable[string, NifIndexEntry](m.index.len)
-  for e in m.index:
-    result[poolSym(m.buf.pool, e.sym)] =
-      NifIndexEntry(offset: int(e.pos), info: NoLineInfo,
-                    vis: (if e.vis == ivHidden: Hidden else: Exported))
+  # A pool filled by `addOrdered` has no reverse index until something asks
+  # for one; every name lookup below does, so build it once, here.
+  ensureIndexed(m.buf.pool.syms)
+  result = NifIndex(entries: move m.index)
+  var maxId = -1
+  for e in result.entries: maxId = max(maxId, e.sym.int)
+  result.bySym = newSeq[int32](maxId + 1)
+  for i in 0 ..< result.bySym.len: result.bySym[i] = -1'i32
+  for i, e in result.entries: result.bySym[e.sym.int] = int32 i
 
-proc indexFromBif(m: var BifModule; suffix: string): Table[string, NifIndexEntry] =
+proc toNifIndexEntry(e: IndexEntry): NifIndexEntry {.inline.} =
+  NifIndexEntry(offset: int(e.pos), info: NoLineInfo,
+                vis: (if e.vis == ivHidden: Hidden else: Exported))
+
+proc find(ix: NifIndex; buf: TokenBuf; name: string): int =
+  ## Position in `ix.entries` of the declaration named `name`, or -1.
+  let id = getKeyId(buf.pool.syms, name)
+  if id.int == 0: return -1
+  let i = id.int
+  result = if i < ix.bySym.len: int(ix.bySym[i]) else: -1
+
+proc entry(ix: NifIndex; buf: TokenBuf; name: string): NifIndexEntry =
+  ## The entry for `name`, or one with `offset == 0` when there is none — the
+  ## same "absent" the `Table.getOrDefault` it replaced answered.
+  let i = ix.find(buf, name)
+  result = if i < 0: default(NifIndexEntry) else: toNifIndexEntry(ix.entries[i])
+
+iterator pairs(ix: NifIndex; buf: TokenBuf): (string, NifIndexEntry) =
+  ## Every indexed declaration, in file order, with its name materialised.
+  ## Loading a symbol inside the loop may register new modules — `c.mods` is a
+  ## table of refs, so the `NifModule` this iterates through stays put and no
+  ## move-out/move-back dance is needed.
+  ##
+  ## A name can be indexed TWICE — a forward declaration and its definition
+  ## are both `(sd)`s (50 of system's 11270 entries) — and the definition, the
+  ## later one, is the entry `find` answers. Only that one is yielded: yielding
+  ## both handed the declaration's position to whoever created the stub first,
+  ## and `loadSym` then found a header record where it expected the `(sd)`.
+  for i, e in ix.entries:
+    if ix.bySym[e.sym.int] == int32(i):
+      yield (poolSym(buf.pool, e.sym), toNifIndexEntry(e))
+
+proc indexEntry(m: NifModule; name: string): NifIndexEntry {.inline.} =
+  m.index.entry(m.buf, name)
+proc semIndexEntry(m: NifModule; name: string): NifIndexEntry {.inline.} =
+  m.semIndex.entry(m.semBuf, name)
+proc hasIndexEntry(m: NifModule; name: string): bool {.inline.} =
+  m.index.find(m.buf, name) >= 0
+
+proc indexFromBif(m: var BifModule; suffix: string): NifIndex =
   result = indexFromBif(m)
   when defined(icIndexCheck):
     let want = rescanPosIndex(m.buf, suffix)
-    doAssert result.len == want.len,
-      "index size differs for " & suffix & ": carried " & $result.len &
+    doAssert result.entries.len == want.len,
+      "index size differs for " & suffix & ": carried " & $result.entries.len &
       " rescanned " & $want.len
     for k, v in want:
-      let got = result.getOrDefault(k)
+      let got = result.entry(m.buf, k)
       doAssert got.offset == v.offset and got.vis == v.vis,
         "index entry differs for " & k & " in " & suffix
 
@@ -2756,8 +2813,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
                                loweredPrimary: lowered)
 
 proc getOffset(c: var DecodeContext; module: FileIndex; nifName: string): NifIndexEntry =
-  let ii = addr c.mods[module].index
-  result = ii[].getOrDefault(nifName)
+  result = c.mods[module].indexEntry(nifName)
   if result.offset == 0:
     raiseAssert "symbol has no offset: " & nifName
 
@@ -2779,22 +2835,22 @@ proc hasTypeOffset(c: var DecodeContext; module: FileIndex; nifName: string): bo
   ## (lowered primary) the `.s.bif` companion?
   result = false
   let m = c.mods[module]
-  if m.index.getOrDefault(nifName).offset != 0: return true
+  if m.indexEntry(nifName).offset != 0: return true
   if m.loweredPrimary:
     ensureSemBuf(c, module)
-    result = m.semIndex.getOrDefault(nifName).offset != 0
+    result = m.semIndexEntry(nifName).offset != 0
 
 proc typeCursor(c: var DecodeContext; module: FileIndex; nifName: string): Cursor =
   ## A cursor at a TYPE's `(td …)` def: the primary buffer if present (an `@bk`
   ## closure-env type minted by the lower stage, or any `.s.bif`-primary module),
   ## else the `.s.bif` companion (frontend type defs are NOT carried in `.t.bif`).
   let m = c.mods[module]
-  let e = m.index.getOrDefault(nifName)
+  let e = m.indexEntry(nifName)
   if e.offset != 0:
     return cursorAt(m.buf, e.offset)
   if m.loweredPrimary:
     ensureSemBuf(c, module)
-    let se = m.semIndex.getOrDefault(nifName)
+    let se = m.semIndexEntry(nifName)
     if se.offset != 0:
       return cursorAt(m.semBuf, se.offset)
   raiseAssert "symbol has no offset: " & nifName
@@ -2885,7 +2941,7 @@ proc tryCreateTypeStub(c: var DecodeContext; name: string): PType =
     result = PType(itemId: id, bindingId: id, kind: TTypeKind(k), state: Partial)
     # `loadType` re-resolves the buffer via `typeCursor`, so the cached entry is a
     # don't-care for types — store the primary one if any (else a 0-offset stub).
-    c.types[name] = (result, c.mods[modFi].index.getOrDefault(name))
+    c.types[name] = (result, c.mods[modFi].indexEntry(name))
 
 proc createTypeStub(c: var DecodeContext; name: string): PType =
   ## As `tryCreateTypeStub`, but a missing index offset is a hard error (the
@@ -3012,7 +3068,7 @@ proc loadSymStub(c: var DecodeContext; symAsStr: string; thisModule: string;
     # `…<thisModuleSuffix>@bk`: `mintSymId` homes it to that module with a
     # backendItemId so it stays disjoint from the loader's real id space.
     let (module, id) = c.mintSymId(sn.module)
-    let offs = c.mods[module].index.getOrDefault(symAsStr)
+    let offs = c.mods[module].indexEntry(symAsStr)
     if offs.offset == 0:
       # Only module/package self-syms are never written as `(sd)` entries, so a
       # missing index offset means this is such a sym — typically the OWNER of an
@@ -3268,7 +3324,10 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
 
   expect n, TagLit
   if not tagIs(n, symDefTagName):
-    raiseAssert "(sd) expected"
+    raiseAssert "(sd) expected for " & nifname & " in " & c.mods[symsModule].suffix &
+      " at offset " & $c.syms[nifname][1].offset & ", found " &
+      n.tags.tagName(cursorTagId(n)) & "; index says " &
+      $c.mods[symsModule].indexEntry(nifname).offset
 
   # Pre-scan the ENTIRE symbol definition to extract ALL local symbols upfront.
   # This ensures local symbols are registered before any references to them,
@@ -3433,7 +3492,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           # dereferences a nil field type. Detect the unindexed case and FILL
           # the sym from the inline def instead.
           let m = moduleId(c, sn.module)
-          let indexed = c.mods[m].index.hasKey(symName)
+          let indexed = c.mods[m].hasIndexEntry(symName)
           if indexed:
             sym = c.loadSymStub(symName, thisModule, localSyms)
             skip n  # skip the entire sdef for indexed symbols
@@ -3694,16 +3753,14 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
   ## Populates interface tables from the NIF index structure.
   ## Uses the simple embedded index for offsets, exports passed from processTopLevel.
 
-  # Move the index table out to avoid iterator invalidation
-  # (moduleId can add to c.mods which would invalidate Table iterators)
-  var indexTab = move c.mods[module].index
+  let m = c.mods[module]
 
   # Only the EXPORTED half; `buildHiddenInterface` below does the rest, on
   # demand. Exported symbols go into both tables, which costs little and leaves
   # `interfHidden` a coherent view of a module with no hidden symbols rather
   # than an empty one.
   prof pIfaceModules
-  for nifName, entry in indexTab:
+  for nifName, entry in m.index.pairs(m.buf):
     if entry.vis == Exported:
       prof pIfaceExported
       let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
@@ -3711,8 +3768,6 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
         strTableAdd(interf, sym)
         strTableAdd(interfHidden, sym)
 
-  # Move index table back
-  c.mods[module].index = move indexTab
 
 proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
                            interfHidden: var TStrTable): bool {.discardable.} =
@@ -3741,15 +3796,14 @@ proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
     return false
   let module = moduleId(c, suffix, {})
   if not c.mods.hasKey(module): return false
-  var indexTab = move c.mods[module].index
-  for nifName, entry in indexTab:
+  let m = c.mods[module]
+  for nifName, entry in m.index.pairs(m.buf):
     if entry.vis != Exported and not nifName.startsWith("`t"):
       prof pIfaceHidden
       # do not load types, they are not part of an interface but an implementation detail!
       let sym = loadSymFromIndexEntry(c, module, nifName, entry, suffix)
       if sym != nil:
         strTableAdd(interfHidden, sym)
-  c.mods[module].index = move indexTab
   result = true
 
 proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
@@ -3773,17 +3827,16 @@ proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
   ## out shuffled) and it makes the backend's minted ids depend on the hash seed.
   result = @[]
   if not c.mods.hasKey(module): return
-  var indexTab = move c.mods[module].index
-  let thisModule = c.mods[module].suffix
+  let m = c.mods[module]
+  let thisModule = m.suffix
   var entries: seq[(int, string)] = @[]
-  for nifName, entry in indexTab:
+  for nifName, entry in m.index.pairs(m.buf):
     if nifName.startsWith("`t"): continue  # types are not routines
     entries.add (entry.offset, nifName)
   sort entries
   for (_, nifName) in entries:
-    let sym = loadSymFromIndexEntry(c, module, nifName, indexTab[nifName], thisModule)
+    let sym = loadSymFromIndexEntry(c, module, nifName, m.indexEntry(nifName), thisModule)
     if sym != nil: result.add sym
-  c.mods[module].index = move indexTab
 
 proc loadedModuleTypes*(c: var DecodeContext; module: FileIndex): seq[PType] =
   ## Stubs for every TYPE this module owns — but, unlike before, WITHOUT force-
@@ -3799,7 +3852,8 @@ proc loadedModuleTypes*(c: var DecodeContext; module: FileIndex): seq[PType] =
   result = @[]
   if not c.mods.hasKey(module): return
   var names: seq[string] = @[]
-  for nifName in c.mods[module].index.keys:
+  let m = c.mods[module]
+  for nifName, _ in m.index.pairs(m.buf):
     if nifName.startsWith("`t"): names.add nifName
   for nm in names:
     let t = createTypeStub(c, nm)
@@ -3831,11 +3885,11 @@ proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: boo
   # Look up the symbol in the module's index
   # Try both formats: with module suffix (e.g., "foo.0.modulename") and without (e.g., "foo.0.")
   # NIF spec allows local symbols to be stored without module suffix
-  var offs = c.mods[module].index.getOrDefault(symAsStr)
+  var offs = c.mods[module].indexEntry(symAsStr)
   if offs.offset == 0:
     # Try the format without module suffix
     let localKey = sn.name & "." & $sn.count & "."
-    offs = c.mods[module].index.getOrDefault(localKey)
+    offs = c.mods[module].indexEntry(localKey)
   if offs.offset == 0:
     return nil
   if not alsoConsiderPrivate and offs.vis == Hidden:
@@ -3862,7 +3916,8 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
   let module = moduleId(c, suffix)
   let prefix = name & "."
   var candidates: seq[int] = @[]
-  for key in c.mods[module].index.keys:
+  let m = c.mods[module]
+  for key, _ in m.index.pairs(m.buf):
     if key.len > prefix.len and key.startsWith(prefix):
       let sn = parseSymName(key)
       if sn.name == name:
