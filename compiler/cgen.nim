@@ -2352,7 +2352,18 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # loader (see `ast2nif.releaseLazyBody`). Only for a LOADED body — one this
   # process re-derived is not the loader's to re-defer, and in a non-IC build
   # the cache is what a second `transformBody` returns.
-  if wasLoaded: releaseLazyBody(procBody)
+  if wasLoaded:
+    releaseLazyBody(procBody)
+  elif m.config.cmd == cmdNifC:
+    # RE-DERIVED here — a demanded generic instance whose `.t.bif` slot is
+    # empty, so `transformBody` lowered it from the pristine body and cached
+    # the result on the symbol. Neither is needed again: drop the lowered
+    # body and hand the pristine one back to the loader. On Nimbus's
+    # `res1slopv1` cg that cache was 324MB of a 684MB heap (`TransformdKB`).
+    backendEnsureMutable prc
+    prc.transformedBody = nil
+    if prc.ast != nil and prc.ast.safeLen > bodyPos:
+      releaseLazyBody(son(prc.ast, bodyPos))
 
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
