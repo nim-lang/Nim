@@ -409,6 +409,8 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   nifcBackendActive = true
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
   let batch = backendBatch(g.config, mainSuffix)
+  when defined(icBNodeProf):
+    profTag = (if batch.isMain: mainSuffix else: batch.members.join(","))
   var modules: seq[PrecompiledModule]
   var precompSys: PrecompiledModule
   var targets: seq[PrecompiledModule]
@@ -583,6 +585,8 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   nifcBackendActive = true
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
   let batch = backendBatch(g.config, mainSuffix)
+  when defined(icBNodeProf):
+    profTag = (if batch.isMain: mainSuffix else: batch.members.join(","))
   var modules: seq[PrecompiledModule]
   var precompSys: PrecompiledModule
   var targets: seq[PrecompiledModule]

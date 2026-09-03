@@ -67,6 +67,9 @@ when defined(icBNodeProf):
     ## derived as `Process - Stage`.
 
   var profStageName* = "frontend"
+  var profTag* = ""
+    ## What this process worked on — the batch members for a backend stage —
+    ## so a line in a parallel build's profile can be traced to its modules.
     ## Which invocation this is: the backend stage name, or "frontend" for a
     ## `nim m` process, which arms the profiler through ast2nif but never enters
     ## a backend stage. Without it the `Process - Stage` startup figure is
@@ -85,6 +88,7 @@ when defined(icBNodeProf):
 
   proc profDump() =
     var line = "BNODEPROF stage=" & profStageName
+    if profTag.len > 0: line.add " tag=" & profTag
     for s in ProfSlot: line.add " " & ($s)[1..^1] & "=" & $profCounts[s]
     for s in TimeSlot: line.add " " & ($s)[1..^1] & "ms=" & $(profNanos[s] div 1_000_000)
     for s in TimeSlot: line.add " " & ($s)[1..^1] & "dKB=" & $(profMemDelta[s] div 1024)
