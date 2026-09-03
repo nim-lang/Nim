@@ -2352,7 +2352,20 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # loader (see `ast2nif.releaseLazyBody`). Only for a LOADED body — one this
   # process re-derived is not the loader's to re-defer, and in a non-IC build
   # the cache is what a second `transformBody` returns.
-  if wasLoaded: releaseLazyBody(procBody)
+  if wasLoaded:
+    releaseLazyBody(procBody)
+  elif m.config.cmd == cmdNifC:
+    # RE-DERIVED here — a demanded generic instance whose `.t.bif` slot is
+    # empty, so `transformBody` lowered it from the pristine body. The
+    # pristine body is handed back to the loader; the LOWERED one stays
+    # cached on the symbol. It was dropped too, until Nimbus showed why it
+    # must not be: an inline routine, or an instance two batch members
+    # demand, is generated once per member in the same process, and a second
+    # `transformBody` runs lambda lifting again over nested procs the first
+    # lift already rewrote — `readField` inside `makeFieldReadersTable` then
+    # reports its captured `var` parameter as an illegal capture.
+    if prc.ast != nil and prc.ast.safeLen > bodyPos:
+      releaseLazyBody(son(prc.ast, bodyPos))
 
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and

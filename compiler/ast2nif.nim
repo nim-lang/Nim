@@ -3659,13 +3659,21 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       # and none of them route through `[]`. Nor does the restriction cost much:
       # `nkStmtList` is 82.5% of the 278_604 bodies a `nim ic` of the compiler
       # defers, and 13.1% of the rest are one-line `nkAsgn` bodies.
+      #
+      # Deferring bodies of OTHER kinds under a placeholder `nkStmtList` was
+      # tried for the backend stages (813k of Nimbus's `res1slopv1` cg's 2.87M
+      # decoded nodes are one-line routine bodies) and taken out again: a
+      # routine the cg re-derives then meets nested procs whose bodies arrive
+      # as `(stmts x)`, and its lambda lift reports a captured `var` parameter
+      # as illegal (`readField` in `makeFieldReadersTable`). Whatever in the
+      # lift is sensitive to that shape has to be found before this can go in.
       c.withNode n, result, kind:
         var idx = 0
         while n.hasMore:
           if idx == bodyPos and n.kind == TagLit and
              n.nodeKind == nkStmtList:
             let info = c.infos.oldLineInfo(n.info, cursorPool(n))
-            let ph = newNodeI(n.nodeKind, info)
+            let ph = newNodeI(nkStmtList, info)
             ph.flags.incl nfLazyBody
             c.pendingBodies[cast[int](ph)] =
               PendingBody(cursor: n, thisModule: thisModule, localSyms: localSyms)
