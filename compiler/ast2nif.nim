@@ -2724,9 +2724,6 @@ proc indexFromBif(m: var BifModule): NifIndex =
   ## the reader would have formed — so the two filters select the same symbols,
   ## and the `vis` rule (a `DotToken` marker after the def means hidden) is the
   ## same test on the same token.
-  # A pool filled by `addOrdered` has no reverse index until something asks
-  # for one; every name lookup below does, so build it once, here.
-  ensureIndexed(m.buf.pool.syms)
   result = NifIndex(entries: move m.index)
   var maxId = -1
   for e in result.entries: maxId = max(maxId, e.sym.int)
@@ -2740,6 +2737,11 @@ proc toNifIndexEntry(e: IndexEntry): NifIndexEntry {.inline.} =
 
 proc find(ix: NifIndex; buf: TokenBuf; name: string): int =
   ## Position in `ix.entries` of the declaration named `name`, or -1.
+  # A pool filled by `addOrdered`/`addLazy` has no reverse index until
+  # something asks for one; the first lookup into THIS file builds it, so a
+  # file nobody looks a name up in never pays for one. (`pool` is a ref, so
+  # the table is mutable through a non-`var` buffer.)
+  ensureIndexed(buf.pool.syms)
   let id = getKeyId(buf.pool.syms, name)
   if id.int == 0: return -1
   let i = id.int
@@ -2750,6 +2752,15 @@ proc entry(ix: NifIndex; buf: TokenBuf; name: string): NifIndexEntry =
   ## same "absent" the `Table.getOrDefault` it replaced answered.
   let i = ix.find(buf, name)
   result = if i < 0: default(NifIndexEntry) else: toNifIndexEntry(ix.entries[i])
+
+iterator exportedPairs(ix: NifIndex; buf: TokenBuf): (string, NifIndexEntry) =
+  ## `pairs`, for the EXPORTED declarations only — and the visibility is read
+  ## off the twelve-byte entry BEFORE the name is materialised, which is the
+  ## point: this runs for every module in a backend process's closure, and
+  ## hidden declarations outnumber exported ones about six to one.
+  for i, e in ix.entries:
+    if e.vis != ivHidden and ix.bySym[e.sym.int] == int32(i):
+      yield (poolSym(buf.pool, e.sym), toNifIndexEntry(e))
 
 iterator pairs(ix: NifIndex; buf: TokenBuf): (string, NifIndexEntry) =
   ## Every indexed declaration, in file order, with its name materialised.
@@ -2836,7 +2847,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
         ". This can happen when loading a module from NIF that references another module " &
         "whose NIF file hasn't been written yet."
     icProfStart(tBifLoad)
-    var m = bif.load(modFile)
+    var m = bif.load(modFile, lazyPools = not defined(icEagerPools))
     prof pBifLoads
     icProfStop(tBifLoad)
     icProfStart(tPosIndex)
@@ -2864,7 +2875,7 @@ proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
   m.semTried = true
   let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
   if not fileExists(semFile): return
-  var sm = bif.load(semFile)
+  var sm = bif.load(semFile, lazyPools = not defined(icEagerPools))
   prof pBifLoads
   prof pSemBufLoads
   m.semIndex = indexFromBif(sm, m.suffix)
@@ -3183,13 +3194,13 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
   if not tagIs(n, typeDefTagName):
     raiseAssert "(td) expected"
 
-  var scanCursor = n  # copy cursor at start of type
   var typesModule = parseSymName(symName(n.firstSon)).module
   if typesModule.endsWith(BackendLocalMarker):
     # A backend-minted (`@bk`) type's name carries the marker in its module part;
     # strip it so the nested-local pre-scan resolves the real module, not a
     # nonexistent `<suffix>@bk.nif`.
     typesModule = typesModule[0 ..< typesModule.len - BackendLocalMarker.len]
+  var scanCursor = n  # copy cursor at start of type
   extractLocalSymsFromTree(c, scanCursor, typesModule, localSyms)
 
   n.into:  # enter (td, body consumes all children, closing ) is consumed by `into`
@@ -3399,6 +3410,12 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   # all of them are empty. At the default size that was 40MB of a 536MB heap
   # (`--mm:refc -d:nimTypeNames`); sized like this the tables leave the census.
   var localSyms = initTable[string, PSym](4)
+  # The pre-scan walks the whole definition, deferred body included, reading
+  # every nested symbol's name, and on the compiler it registers nothing
+  # (`bodynav`'s measurement). It is NOT dead: on nimbus-eth2 it does register
+  # suffix-less locals, and without it a nested closure's use of its owner's
+  # parameter resolved to a second symbol and was reported as an illegal
+  # capture (`config` in `makeFieldReadersTable`'s `readField`).
   var scanCursor = n
   extractLocalSymsFromTree(c, scanCursor, c.mods[symsModule].suffix, localSyms)
 
@@ -3873,7 +3890,7 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
   # `interfHidden` a coherent view of a module with no hidden symbols rather
   # than an empty one.
   prof pIfaceModules
-  for nifName, entry in m.index.pairs(m.buf):
+  for nifName, entry in m.index.exportedPairs(m.buf):
     if entry.vis == Exported:
       prof pIfaceExported
       let sym = loadSymFromIndexEntry(c, module, nifName, entry, thisModule)
