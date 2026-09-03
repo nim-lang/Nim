@@ -2502,6 +2502,17 @@ type
     cursor: Cursor
     thisModule: string
     localSyms: Table[string, PSym]
+    node: PNode
+      ## The placeholder itself. The tables below are keyed by its ADDRESS, and
+      ## an address is only a name for a node while the node is alive: holding
+      ## the ref here is what guarantees that, so a key can never come to mean
+      ## some later node that happened to be allocated in the same place. Both
+      ## readers also check it, so a stale key is an assertion, not a graft of
+      ## the wrong body. That did happen — a re-derived routine's pristine body
+      ## was handed back under the address of a placeholder long freed, an
+      ## unrelated node was re-deferred onto a foreign body, and Nimbus failed
+      ## in one cg with an illegal capture that only Nim's own allocator (which
+      ## reuses freed cells promptly; not malloc, not ASan) could produce.
     when defined(icReleaseStrict):
       released: bool
 
@@ -3354,7 +3365,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
         let ph = newNodeI(nkStmtList, info)
         ph.flags.incl nfLazyBody
         c.pendingBodies[cast[int](ph)] =
-          PendingBody(cursor: n, thisModule: thisModule, localSyms: localSyms)
+          PendingBody(cursor: n, thisModule: thisModule, localSyms: localSyms, node: ph)
         s.transformedBodyImpl = ph
         skip n
       else:
@@ -3676,7 +3687,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             let ph = newNodeI(nkStmtList, info)
             ph.flags.incl nfLazyBody
             c.pendingBodies[cast[int](ph)] =
-              PendingBody(cursor: n, thisModule: thisModule, localSyms: localSyms)
+              PendingBody(cursor: n, thisModule: thisModule, localSyms: localSyms, node: ph)
             result.sons.add ph
             skip n
           else:
@@ -3698,6 +3709,7 @@ proc materializeLazyBody*(c: var DecodeContext; node: PNode) =
   let key = cast[int](node)
   var pb = PendingBody()
   if not c.pendingBodies.pop(key, pb): return
+  doAssert pb.node == node, "lazy body: a placeholder's address names another node"
   when defined(icReleaseStrict):
     if pb.released: raiseAssert "lazy body re-materialised after release"
   var cur = pb.cursor
@@ -3725,6 +3737,12 @@ proc releaseLazyBody*(c: var DecodeContext; node: PNode) =
   let key = cast[int](node)
   var pb = PendingBody()
   if not c.consumedBodies.pop(key, pb): return
+  if pb.node != node:
+    # Not this node's entry — see `PendingBody.node`. Cannot happen while the
+    # entry holds the node, but the check is what turns the failure mode
+    # into a diagnosis should that invariant ever be broken.
+    c.consumedBodies[key] = pb
+    return
   node.sons = @[]
   node.flags.incl nfLazyBody
   when defined(icReleaseStrict): pb.released = true
@@ -3761,6 +3779,7 @@ proc lazyBodyCursor*(c: var DecodeContext; node: PNode; scope: var BodyScope;
   let key = cast[int](node)
   if not c.pendingBodies.hasKey(key): return false
   let pb = c.pendingBodies[key]
+  if pb.node != node: return false
   body = pb.cursor
   scope = BodyScope(thisModule: pb.thisModule, localSyms: pb.localSyms)
   result = true
