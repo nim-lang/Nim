@@ -2438,18 +2438,6 @@ proc nodeKind(n: Cursor): TNodeKind {.inline.} =
   assert n.kind == TagLit
   parse(TNodeKind, cursorTag(n))
 
-proc isDeferrableBodyTag(n: Cursor): bool =
-  ## Whether a backend stage may defer this body under an `nkStmtList`
-  ## placeholder. A sym-node body is NOT one: it arrives as a `(nflags ...)`
-  ## or `(ht ...)` wrapper around a `Symbol`, and `transf.getBody` reads its
-  ## KIND to resolve a `{.borrow.}` — `body.kind == nkSym` — before anything
-  ## would materialise a placeholder. Nor is an empty body worth deferring.
-  let tag = cursorTag(n)
-  if tag == symNodeFlagsTagName or tag == hiddenTypeTagName or
-     tag == symDefTagName: return false
-  let k = n.nodeKind
-  result = k notin {nkNone, nkEmpty, nkSym}
-
 proc expect(n: Cursor; k: set[nifcore.NifKind]) =
   if n.kind notin k:
     when defined(debug):
@@ -3672,22 +3660,18 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       # `nkStmtList` is 82.5% of the 278_604 bodies a `nim ic` of the compiler
       # defers, and 13.1% of the rest are one-line `nkAsgn` bodies.
       #
-      # A BACKEND stage defers EVERY body kind, wrapped: the placeholder is
-      # still an `nkStmtList`, and `materializeLazyBody` puts a body of another
-      # kind under it as its one child. `(stmts x)` and `x` are the same
-      # statement to `transformBody` and the generator, which are the only
-      # readers of a pristine body under `nifc` — sem and macros, for which
-      # the wrapper would be observable, never run there. What it buys: on
-      # Nimbus's `res1slopv1` cg, 813k of 2.87M decoded nodes were routine
-      # ASTs (`NIM_IC_LOADSTATS`, `skFunc=579667 skProc=233329`), almost all
-      # of them one-line bodies loaded eagerly for routines never generated.
-      let deferAnyBody = c.infos.config.cmd == cmdNifC
+      # Deferring bodies of OTHER kinds under a placeholder `nkStmtList` was
+      # tried for the backend stages (813k of Nimbus's `res1slopv1` cg's 2.87M
+      # decoded nodes are one-line routine bodies) and taken out again: a
+      # routine the cg re-derives then meets nested procs whose bodies arrive
+      # as `(stmts x)`, and its lambda lift reports a captured `var` parameter
+      # as illegal (`readField` in `makeFieldReadersTable`). Whatever in the
+      # lift is sensitive to that shape has to be found before this can go in.
       c.withNode n, result, kind:
         var idx = 0
         while n.hasMore:
           if idx == bodyPos and n.kind == TagLit and
-             (n.nodeKind == nkStmtList or
-              (deferAnyBody and isDeferrableBodyTag(n))):
+             n.nodeKind == nkStmtList:
             let info = c.infos.oldLineInfo(n.info, cursorPool(n))
             let ph = newNodeI(nkStmtList, info)
             ph.flags.incl nfLazyBody
@@ -3718,15 +3702,11 @@ proc materializeLazyBody*(c: var DecodeContext; node: PNode) =
     if pb.released: raiseAssert "lazy body re-materialised after release"
   var cur = pb.cursor
   let real = c.loadNode(cur, pb.thisModule, pb.localSyms)
-  if real.kind == node.kind:
-    # Graft the decoded content onto the node the callers hold.
-    node.sons = real.sons
-    node.typField = real.typField
-    node.flags = real.flags
-  else:
-    # A body of another kind, deferred under a backend stage: the placeholder
-    # stays the `nkStmtList` it was and the body becomes its one statement.
-    node.sons = @[real]
+  # `real` has the same kind as the placeholder (peeked at defer time); graft its
+  # decoded content onto the node the callers hold.
+  node.sons = real.sons
+  node.typField = real.typField
+  node.flags = real.flags
   c.consumedBodies[key] = pb
 
 proc releaseLazyBody*(c: var DecodeContext; node: PNode) =
