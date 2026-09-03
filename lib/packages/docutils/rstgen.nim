@@ -333,7 +333,7 @@ proc setIndexTerm*(d: var RstGenerator; k: IndexEntryKind, htmlFile, id, term: s
   ## The `id` will be appended with a hash character only if its length is not
   ## zero, otherwise no specific anchor will be generated. In general you
   ## should only pass an empty `id` value for the title of standalone rst
-  ## documents (they are special for the `mergeIndexes() <#mergeIndexes,string>`_
+  ## documents (they are special for the `mergeIndexes() <#mergeIndexes,string,bool,bool>`_
   ## proc, see `Index (idx) file format <docgen.html#index-idx-file-format>`_
   ## for more information). Unlike other index terms, title entries are
   ## inserted at the beginning of the accumulated buffer to maintain a logical
@@ -574,9 +574,13 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   result.add(chunks.join(", ") & ".<br/>")
 
-proc readIndexDir*(dir: string):
+proc readIndexDir*(dir: string, exclCode = false, inclHeaders = false):
     tuple[modules: seq[string], symbols: seq[IndexEntry], docs: IndexedDocs] =
   ## Walks `dir` reading ``.idx`` files converting them in IndexEntry items.
+  ##
+  ## If  `exclCode` is  `true`, skip  `.idx ` files for Nim modules.
+  ##
+  ## If  `inclHeaders` is  `true`, index markup headers.
   ##
   ## Returns the list of found module names, the list of free symbol entries
   ## and the different documentation indexes. The list of modules is sorted.
@@ -593,6 +597,8 @@ proc readIndexDir*(dir: string):
       # Depending on type add this to the list of symbols or table of APIs.
 
       if title.kind == ieNimTitle:
+        if exclCode:
+          continue
         for i in 0 ..< fileEntries.len:
           if fileEntries[i].kind != ieNim:
             continue
@@ -613,15 +619,20 @@ proc readIndexDir*(dir: string):
         title.aux = "doc_toc_" & $result.docs.len
         result.docs[title] = fileEntries
 
+      var indexedRoles = {ieIdxRole}
+
+      if inclHeaders:
+        indexedRoles.incl(ieHeading)
+
       for i in 0 ..< fileEntries.len:
-        if fileEntries[i].kind != ieIdxRole:
+        if fileEntries[i].kind notin indexedRoles:
           continue
 
         setLen(result.symbols, L + 1)
         result.symbols[L] = fileEntries[i]
         inc L
 
-proc mergeIndexes*(dir: string): string =
+proc mergeIndexes*(dir: string, exclCode = false, inclHeaders = false): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
   ## This proc will first scan `dir` for index files with the ``.idx``
@@ -649,7 +660,7 @@ proc mergeIndexes*(dir: string): string =
   ##
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
-  var (modules, symbols, docs) = readIndexDir(dir)
+  var (modules, symbols, docs) = readIndexDir(dir, exclCode, inclHeaders)
   sort(modules, system.cmp)
 
   result = ""

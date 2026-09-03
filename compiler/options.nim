@@ -197,6 +197,7 @@ type
     cmdNimscript # evaluate nimscript
     cmdDoc0
     cmdDoc      # convert .nim doc comments to HTML
+    cmdBook # generate documentation site from a directory with Markdown files
     cmdDoc2tex  # convert .nim doc comments to LaTeX
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
