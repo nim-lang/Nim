@@ -108,6 +108,10 @@ when defined(icBNodeProf):
       h.close()
     else:
       stderr.writeLine line
+    when defined(nimTypeNames) and not defined(gcOrc) and not defined(gcArc):
+      # A per-type heap census (refc builds only: `--mm:refc -d:nimTypeNames`),
+      # for when the slots above say WHEN memory grew but not WHAT it is.
+      dumpNumberOfInstances()
 
   template armProf() =
     if not profArmed:
