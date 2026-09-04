@@ -36,8 +36,10 @@ import "../dist/nimony/src/lib" / nifpools
 # `tagId` is excluded for a different reason: nifpools decodes the 9-bit field
 # of a real `TagLit`, but this surface hands out `ParLe` tokens whose tag id
 # fills the whole 28-bit payload (see `next`), so the decode below is the only
-# correct one here.
-export nifpools except info, NoLineInfo, tagId
+# correct one here. The name accessors are excluded because a `.bif`-loaded
+# buffer's pool keeps its names in the mapped file until they are read, which
+# nifcore's accessors do not know; `icbif` provides them under the same names.
+export nifpools except info, NoLineInfo, tagId, symName, strVal, poolSym, poolStr, lineInfoFile
 import "../dist/nimony/src/lib" / lineinfos
 export lineinfos
 

@@ -922,6 +922,17 @@ const
 
 
 var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
+var releaseLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
+  ## The inverse: hand a materialised body back to the loader so it becomes
+  ## the `nfLazyBody` placeholder again (see `ast2nif.releaseLazyBody`).
+
+proc releaseLazyBody*(n: PNode) =
+  ## Drop a routine body's materialised children after the one reader that
+  ## needed them is done. Nothing is lost: the placeholder goes back to
+  ## pending and the next `len` on it loads the body from the `.bif` again.
+  ## A no-op for a node the loader never deferred.
+  if n != nil and releaseLazyBodyHook != nil:
+    releaseLazyBodyHook(n)
   ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
   ## to its children through `len` materializes the deferred routine body in place.
   ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
@@ -960,7 +971,7 @@ iterator sons*(n: PNode): PNode =
   ## as it does not rely on random indexed access, and over `for x in n.sons`,
   ## which reads the raw FIELD and so skips the `len` hook that materialises a
   ## deferred `nfLazyBody` body — over such a body that loop silently visits
-  ## nothing.
+  ## nothing. See `compiler/bnode.nim` for the backend vocabulary this feeds.
   for i in 0..<n.safeLen: yield n[i]
 
 iterator isons*(n: PNode; start = 0): tuple[i: int, n: PNode] =
@@ -996,15 +1007,6 @@ iterator isonsButLast*(n: PNode; count = 1): tuple[i: int, n: PNode] =
   ## Like `sonsButLast` but also yields the child index — for a tuple field
   ## position, a parallel index into the tuple's `PType`, and so on.
   for i in 0 ..< n.safeLen - count: yield (i, n[i])
-
-template son*(n: PNode; i: int): PNode =
-  ## Named indexed access to child `i`, for the small constant positions that
-  ## `firstSon`/`secondSon`/`lastSon` do not cover.
-  n[i]
-
-template hasSons*(n: PNode): bool =
-  ## Emptiness test; goes through `safeLen` so a deferred body is materialised.
-  n.safeLen > 0
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
