@@ -2681,8 +2681,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # allowed, everything else, including a nullary generic is an error.
         pushProcCon(c, s)
         addResult(c, n, s.typ.returnType, skProc)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ.returnType))
-        trackProc(c, s, s.ast[bodyPos])
+        timedOutermost(tSemBody):
+          s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ.returnType))
+          trackProc(c, s, s.ast[bodyPos])
         popProcCon(c)
       elif efOperand notin flags:
         localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -2703,17 +2704,22 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # semantic checking also needed with importc in case used in VM
 
         let isInlineIterator = isInlineIterator(s.typ)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
-        # unfortunately we cannot skip this step when in 'system.compiles'
-        # context as it may even be evaluated in 'system.compiles':
+        # doc/parallel_compiler.md's unit of work, exactly: sem of one routine
+        # body plus the `trackProc` that follows it, with everything the body
+        # drags in (nested routines, generic instances, lifted hooks) folded
+        # into it by `timedOutermost` rather than counted again. §1's whole
+        # case is the share this is of `tSemModule`.
+        timedOutermost(tSemBody):
+          s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
+          # unfortunately we cannot skip this step when in 'system.compiles'
+          # context as it may even be evaluated in 'system.compiles':
 
-        if isInlineIterator and s.typ.callConv == ccClosure:
-          # iterators without explicit callconvs are lifted to closure,
-          # we need to add a result symbol for them
-          maybeAddResult(c, s, n)
+          if isInlineIterator and s.typ.callConv == ccClosure:
+            # iterators without explicit callconvs are lifted to closure,
+            # we need to add a result symbol for them
+            maybeAddResult(c, s, n)
 
-
-        trackProc(c, s, s.ast[bodyPos])
+          trackProc(c, s, s.ast[bodyPos])
       else:
         if (s.typ.returnType != nil and s.kind != skIterator):
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), c.idgen, s, n.info))

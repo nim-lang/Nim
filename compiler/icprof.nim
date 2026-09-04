@@ -52,6 +52,15 @@ when defined(icBNodeProf):
       # `nim m` (the frontend): the sem pass as a whole, and writing the module's
       # `.s.bif`. `Stage - WriteNif - <the loading slots>` is then sem proper.
       tWriteNif,
+      # doc/parallel_compiler.md §1: the unit of parallelism it proposes is one
+      # top-level routine body, so its whole case rests on what share of a
+      # module those bodies are. Both are `timedOutermost` regions — a body
+      # re-enters `semProcAux` for every nested routine, instance and lambda it
+      # drags in, and those belong to their top-level owner, not to a count of
+      # their own. Read `SemBodyms / SemModulems` for the share, `SemBodyn` for
+      # how many units a module has and `SemBodymaxus` for the critical path
+      # inside one.
+      tSemBody, tSemModule,
       # `processTopLevel`'s branches: which part of a module HEADER costs what.
       tTopReplay, tTopLogOps, tTopOffers, tTopStmts
     MemSlot* = enum
@@ -78,6 +87,13 @@ when defined(icBNodeProf):
   var profCounts: array[ProfSlot, int]
   var profMem: array[MemSlot, int]
   var profNanos: array[TimeSlot, int64]
+  var profMaxNanos: array[TimeSlot, int64]
+    ## The largest SINGLE activation of a `timedOutermost` slot. A sum says
+    ## what parallelism could remove; the max says what it cannot — it is the
+    ## critical path of the region.
+  var profRuns: array[TimeSlot, int]
+    ## Outermost activations of a `timedOutermost` slot.
+  var profDepth: array[TimeSlot, int]
   var profStart: array[TimeSlot, MonoTime]
   var profMemDelta: array[TimeSlot, int64]
     ## Net change of the occupied heap across each timed region, so a slot
@@ -92,6 +108,12 @@ when defined(icBNodeProf):
     for s in ProfSlot: line.add " " & ($s)[1..^1] & "=" & $profCounts[s]
     for s in TimeSlot: line.add " " & ($s)[1..^1] & "ms=" & $(profNanos[s] div 1_000_000)
     for s in TimeSlot: line.add " " & ($s)[1..^1] & "dKB=" & $(profMemDelta[s] div 1024)
+    # Only the re-entrant slots have these, and only when they ran; every other
+    # slot would add two zero fields to every line of every profile.
+    for s in TimeSlot:
+      if profRuns[s] > 0:
+        line.add " " & ($s)[1..^1] & "n=" & $profRuns[s]
+        line.add " " & ($s)[1..^1] & "maxus=" & $(profMaxNanos[s] div 1000)
     line.add " Processms=" & $((getMonoTime() - procStart).inNanoseconds div 1_000_000)
     profMem[mAtExit] = getOccupiedMem() div (1024*1024)
     for s in MemSlot: line.add " " & ($s)[1..^1] & "MB=" & $profMem[s]
@@ -146,9 +168,36 @@ when defined(icBNodeProf):
     body
     profNanos[s] += (getMonoTime() - t0).inNanoseconds
     profMemDelta[s] += getOccupiedMem() - m0
+
+  template timedOutermost*(s: TimeSlot; body: untyped) =
+    ## Times the OUTERMOST activation of a re-entrant region and nothing else,
+    ## so a nested activation is attributed to its outermost owner instead of
+    ## being counted a second time into the same total. That is what makes the
+    ## sum comparable to the process's wall time — plain `timed` on
+    ## `semProcAux` would report several times the time that actually passed.
+    ##
+    ## Also records the activation count and the largest single activation,
+    ## which is the pair doc/parallel_compiler.md §1 reads as "how many units
+    ## are there" and "how long is the longest one".
+    armProf()
+    let outer = profDepth[s] == 0
+    inc profDepth[s]
+    let t0 = if outer: getMonoTime() else: default(MonoTime)
+    let m0 = if outer: getOccupiedMem() else: 0
+    try:
+      body
+    finally:
+      dec profDepth[s]
+      if outer:
+        let d = (getMonoTime() - t0).inNanoseconds
+        profNanos[s] += d
+        if d > profMaxNanos[s]: profMaxNanos[s] = d
+        profMemDelta[s] += getOccupiedMem() - m0
+        inc profRuns[s]
 else:
   template prof*(s: untyped; n = 1) = discard
   template icProfStart*(s: untyped) = discard
   template icProfMem*(s: untyped) = discard
   template icProfStop*(s: untyped) = discard
   template timed*(s: untyped; body: untyped) = body
+  template timedOutermost*(s: untyped; body: untyped) = body

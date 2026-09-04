@@ -26,6 +26,23 @@ export nodekinds
 import astdef
 export astdef
 
+# Stage 3+ of `doc/parallel_compiler.md`: once two workers sem bodies at once,
+# `incl`/`excl` on a shared symbol's or type's flags is a read-modify-write of
+# one machine word from two threads and one update is simply lost (§4.4 —
+# `sfUsed` lost is a spurious hint, `tfHasAsgn` lost is wrong code). The
+# accessors below are the chokepoint for that, so the atomic form is switched in
+# here rather than at the 145 call sites that touch `flagsImpl` directly.
+#
+# Off by default: a locked read-modify-write on every flag set is not something
+# to pay for while the compiler is still single-threaded, and `-d:nimParallelSem`
+# keeps the wiring compiled and reviewable until it is.
+#
+# `TSymFlags` is 63 of the 64 flags a one-word set holds. One more and it becomes
+# 16 bytes, which no machine has a fetch-or for; that is a constraint on the
+# plan, not just on this import.
+when defined(nimParallelSem):
+  import concurrency
+
 when not defined(nimKochBootstrap):
   import ast2nif
 
@@ -308,12 +325,14 @@ proc setSnippet*(s: PSym; val: sink string) {.inline.} =
 proc incl*(s: PSym; flag: TSymFlag) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.flagsImpl.incl(flag)
+  when defined(nimParallelSem): atomicIncl(s.flagsImpl, flag)
+  else: s.flagsImpl.incl(flag)
 
 proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.flagsImpl.incl(flags)
+  when defined(nimParallelSem): atomicIncl(s.flagsImpl, flags)
+  else: s.flagsImpl.incl(flags)
 
 proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
   #assert s.state != Sealed
@@ -324,7 +343,8 @@ proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
 proc excl*(s: PSym; flag: TSymFlag) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.flagsImpl.excl(flag)
+  when defined(nimParallelSem): atomicExcl(s.flagsImpl, flag)
+  else: s.flagsImpl.excl(flag)
 
 when defined(nimsuggest):
   proc allUsages*(s: PSym): var seq[TLineInfo] {.inline.} =
@@ -442,22 +462,26 @@ proc `typeInst=`*(t: PType, val: PType) {.inline.} =
 proc incl*(t: PType; flag: TTypeFlag) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
-  t.flagsImpl.incl(flag)
+  when defined(nimParallelSem): atomicIncl(t.flagsImpl, flag)
+  else: t.flagsImpl.incl(flag)
 
 proc incl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
-  t.flagsImpl.incl(flags)
+  when defined(nimParallelSem): atomicIncl(t.flagsImpl, flags)
+  else: t.flagsImpl.incl(flags)
 
 proc excl*(t: PType; flag: TTypeFlag) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
-  t.flagsImpl.excl(flag)
+  when defined(nimParallelSem): atomicExcl(t.flagsImpl, flag)
+  else: t.flagsImpl.excl(flag)
 
 proc excl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
-  t.flagsImpl.excl(flags)
+  when defined(nimParallelSem): atomicExcl(t.flagsImpl, flags)
+  else: t.flagsImpl.excl(flags)
 
 proc inclDerived*(t: PType; flags: TTypeFlags) {.inline.} =
   ## Add DERIVED bookkeeping flags (see `derivedTypeFlags`). Unlike `incl` this

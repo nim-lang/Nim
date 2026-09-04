@@ -21,6 +21,7 @@ import
   extccomp, layeredtable
 
 import vtables
+import icprof
 import std/[strtabs, math, tables, intsets, strutils, packedsets]
 
 when not defined(leanCompiler):
