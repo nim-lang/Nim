@@ -148,7 +148,7 @@ const
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
       props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}),
-     (name: "iOS", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+     (name: "iOS", parDir: "..", dllFrmt: "lib$1.dylib", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
       props: {ospNeedsPIC, ospPosix}),
