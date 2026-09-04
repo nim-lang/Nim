@@ -773,6 +773,12 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
     result = nil
     assert(false)
 
+  if willProduceStmt:
+    # The value is now produced by statements in the branches. Keeping the
+    # control-flow node's expression type would make code generators allocate
+    # a second, unused destination for it.
+    result.typ = nil
+
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
   if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
     if n[0].kind in nkCallKinds:
