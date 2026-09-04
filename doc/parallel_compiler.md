@@ -434,7 +434,7 @@ write onto symbols/types they do not own:
 |---|---|---|
 | callee effect list `typ.n[0]`: `rawInitEffects` does `newSeq(effects.sons, effectListLen)` (`sempass2.nim:1877`), then `effects[exceptionEffects] = …` (`:1967-1994`); callers iterate that seq (`trackCall` `:1234-1270`, `mergeRaises` `:567`) and the "already computed?" test is `effects.len == effectListLen` (`:1917`) | a **direct data race** between caller and callee | the callee builds the effect list in a fresh node and publishes it with one pointer store after `Done`; callers never touch `typ.n[0]` of a unit that is not `Done` — they use the §2.3 rule (`Done` + smaller key ⇒ read; else pessimistic). The in-tree hook bail-out at `:1256-1266` ("has no effect list yet") is the same hazard papered over today |
 | inferred flags on the routine/type at the end of `trackProc`: `sfNeverRaises` (`:1935`), `tfGcSafe`/`tfNoSideEffect` (`:2019-2021`), `sfInjectDestructors` accumulated *mid-walk* on `tracked.owner` (`:153,1453`), `gcUnsafetyReason` | callers read `tfNoSideEffect notin op.flags` (`:1131`, `:767`) | same publish-after-`Done` rule; and the inference is order-dependent *in strength* today (a caller analysed before its callee is silently marked side-effecting) — the key rule makes the strength deterministic |
-| `set` flags are read-modify-write on a 64-bit word: `incl(s.flagsImpl, sfUsed)` (`suggest.nim:709`), `sfAddrTaken` (`semdata.nim:744-757`), `tfHasAsgn`/`tfCheckedForDestructor`/`tfGenericHasDestructor` (`liftdestructors.nim:1466-1517`), `tfVarIsPtr` (`semexprs.nim:2207`) | a lost update between two workers drops a flag — `sfUsed` lost is a spurious hint, `tfHasAsgn` lost is wrong code | `atomicIncl`/`atomicExcl` templates (fetch-or/and) for `flags` of `PSym`/`PType`/`PNode`; a grep-driven pass over `incl(.*flagsImpl` (145 sites outside `ast.nim`). Landed in stage 0 behind `-d:nimParallelSem`. Note the headroom: `TSymFlags` is 63 of 64 bits, and a 65th symbol flag would make the set two words and the fetch-or impossible |
+| `set` flags are read-modify-write on a 64-bit word: `incl(s.flagsImpl, sfUsed)` (`suggest.nim:709`), `sfAddrTaken` (`semdata.nim:744-757`), `tfHasAsgn`/`tfCheckedForDestructor`/`tfGenericHasDestructor` (`liftdestructors.nim:1466-1517`), `tfVarIsPtr` (`semexprs.nim:2207`) | a lost update between two workers drops a flag — `sfUsed` lost is a spurious hint, `tfHasAsgn` lost is wrong code | `atomicIncl`/`atomicExcl` templates (fetch-or/and) for `flags` of `PSym`/`PType`/`PNode`; a grep-driven pass over `incl(.*flagsImpl` (145 sites outside `ast.nim`). Landed in stage 0 behind `-d:nimParallelSem`. Note the headroom: `TSymFlags` is 63 of 64 bits — one spare — and the 65th symbol flag would make the set a 9-byte array and the fetch-or impossible; `astdef.nim` asserts the width |
 | forward-declaration reconciliation rewrites the *proto* symbol: `proto.flags`, `.info`, `.options`, `.ast = n` and splices proto's param/pragma nodes into `n` (`semstmts.nim:2593-2648`) | the proto is exactly what other bodies resolve calls against | header-pass only (bodies never declare top-level routines); in stage 4 (overlap) the reconciliation is done under the write lock and `proto.ast` is published last |
 | `auto` return type resolved *inside* `semProcBody` by writing the owner's `PType` (`semexprs.nim:2184-2202`, iterators `:2246`); method dispatchers patched (`semstmts.nim:2814-2820`) | a caller matching against `auto` observes a torn signature | no cross-unit exposure: `auto` is forbidden in forward declarations (`semstmts.nim:2736`) and a routine must be declared before use, so only the routine's own body (same unit) can see its unresolved `auto`. Inferred lambdas (`semInferredLambda`, `:2076`, called from `sigmatch.nim:2541`) live inside the caller's unit. Dispatcher patching is header-pass |
 | lambdalifting rewrites the routine's calling convention (`lambdalifting.nim:326`, `propagateClosure` `:889`), appends the hidden `:envP` param to `typ.n` (`:174-183`), grows env object types with new fields (`:520`, `closureiters.nim:208`), flips `Sealed → Complete` (`unsealForTransform`), and sets `sfInjectDestructors` on foreign syms (`:227`) | signature grows while another unit's cgen reads `typ.n` | all of these concern *nested* routines and env types, which are owned by the enclosing unit — except `propagateClosure` up an owner chain that crosses units (a nested proc capturing from its top-level owner is still the same unit; top-level procs are never closures, `semstmts.nim:2752`). Asserted, not locked |
@@ -640,10 +640,13 @@ What landed, and the two things it settled:
   behind `-d:nimParallelSem`, off by default — the chokepoint is real, but a
   locked read-modify-write on every flag set is not worth paying for while the
   compiler is single-threaded. Both builds produce byte-identical C.
-  **Constraint found: `TSymFlags` is 63 of the 64 flags that fit in a
-  one-word set** (`TTypeFlags` 48, `TNodeFlags` 29). One more symbol flag and
-  the set becomes 16 bytes, for which there is no fetch-or — §4.4's plan needs
-  a spare bit, so adding a `TSymFlag` is now a decision with a cost.
+  **Constraint found: `TSymFlags` holds 63 of the 64 flags that fit in a
+  one-word set** (`TTypeFlags` 48, `TNodeFlags` 29), i.e. exactly one spare
+  slot. Measured, not assumed: `set` of a 64-value enum is 8 bytes, of a
+  65-value enum 9 — a byte array, which has no fetch-or. `astdef.nim` now
+  asserts `sizeof(TSymFlags) <= 8` with that reason, so the 65th flag is a
+  compile error naming the design it breaks instead of an
+  `{.error: "flag set wider than a machine word".}` from inside a template.
 * `threads:on` costs nothing observable: `koch boot -d:release` reaches its
   fixed point, and the C output of the whole compiler (217 files) is identical
   whether the host compiler was built `threads:off`, `threads:on`, or
@@ -657,14 +660,65 @@ What landed, and the two things it settled:
   63% / 72 ms on a different day, so the premise holds and the numbers are now
   reproducible from a committed build rather than a scratch patch.
 
-**Stage 1 — deferred bodies, one worker.** `semProcAux` enqueues; the queue is
-drained *inline in key order* at module close, before `closePContext`. The
+**Stage 1 — deferred bodies, one worker. LANDED behind `--deferBodies:on`
+(2026-09-04), not yet green.** `semProcAux` enqueues; the queue is drained
+*inline in key order* at module close, before `closePContext`. The
 `visibleUpTo` filter (§2.4) goes in here and must keep every declare-before-use
 test failing as before. Instances, hooks and inferred lambdas keep running
 inline (their keys are recorded but not yet enforced). This stage flushes out
 every order dependency of §4.10 with zero threads: the diff against today's
 compiler on `koch bootic` + the external packages is the review artifact.
 Expected: nearly empty.
+
+Landed so far: the `BodyTask` record of §2.2, the enqueue/drain, and the
+on-demand path. `--deferBodies:on` is off by default and the default build is
+byte-identical, so this is a reviewable A/B rather than a change of behaviour.
+`visibleUpTo` is NOT in yet — a deferred body currently sees the whole
+top-level scope, which is §4.10.3's rule applied to every unit rather than only
+to instantiation, and is one source of the diff below.
+
+Status: `koch boot -d:release --deferBodies:on` reaches its fixed point, and a
+compiler *built* that way emits C byte-identical to a normally built one over
+all 217 modules — so the order change does not change what the compiler
+computes, only what it names things. `tests/compiler` and `tests/template`
+compiled with the switch match the default. `tests/async` does not (below).
+
+The diff, measured on `compiler/nim.nim`: 106 of 217 `.c` differ, 37 of them
+after normalising the `_u<n>__` suffix away. So two thirds of the diff is
+`disamb` renaming — §4.2 exactly, and what stage 2 exists to make canonical.
+The residue is type-bound hooks and inline procs materialising in a different
+module, which is §4.5's "instance emission order is C output order".
+
+Three order dependencies found, each fixed here:
+
+1. **An importee needs the importer's units.** `system` imports `std/syncio`
+   from its own last statements and syncio's routines call system's, so
+   draining only at module close left syncio inferring `RootEffect` for every
+   call into system. Fixed by draining before a statement that starts another
+   module's pass; in practice imports sit at the top and this drains nothing.
+2. **An on-demand unit must not overtake smaller keys.** `asyncdispatch`'s
+   `{.async.}` machinery transforms `runOnce` (declared at the bottom) during
+   the header pass; running that unit alone tracked it before
+   `processCallbacksAndTimers` 1100 lines above, which then had no effect list,
+   so `runOnce` was inferred GC-unsafe against its own `{.gcsafe.}` forward
+   declaration. A demand now runs every smaller key first — which is what §2.3
+   says a unit may block on, and what a body semmed at its declaration point
+   sees today.
+3. **The VM must never meet a pending unit** (§4.6 step 2). `vmgen` reaches
+   `transformBody` from inside a session, so answering a demand there runs sem
+   and a nested VM session on the graph's single `PCtx`: `tests/compiler` dies
+   with a `TFullReg` `FieldDefect`. Draining at `vm.setupGlobalCtx` does not
+   work — it is reached from inside generic instantiations and template
+   expansions, where running a unit corrupts the instantiation. What does work
+   is flushing at a top-level STATEMENT boundary: a run of declarations defers
+   as a batch and a `const`, `static:`, `var` initialiser or plain expression
+   ends one. Modules are long runs of routine definitions, so little is lost,
+   and this is the restriction §4.6 allows in place of VM handoff.
+
+Open, and the reason this is not the default: `tests/async` still fails with
+`'runOnce' is not GC-safe as it calls 'processCallbacksAndTimers'`, and with it
+`tests/ic/tmeta_async`. Finding (2) fixed the demand path but not this, so the
+remaining cause is elsewhere in the same file — the next thing to chase.
 
 **Stage 2 — canonical identity.** Unit arenas for `IdGenerator`, `disambTable`
 and `templInstCounter`; unit-relative names for body-local nominal types and

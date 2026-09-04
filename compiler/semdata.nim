@@ -102,6 +102,43 @@ type
       exceptSet*: IntSet         # of PIdent.id
 
   PContext* = ref TContext
+  BodyTaskState* = enum
+    btPending,   ## enqueued by the header pass, not started
+    btRunning,   ## being semmed right now (recursion guard, §2.3)
+    btDone
+
+  BodyTask* = object
+    ## One deferred routine body — doc/parallel_compiler.md's unit of work
+    ## (§2.2), and later the unit of parallelism. Stage 1 runs these on one
+    ## thread, so what the record carries is not "state to ship to a worker"
+    ## but state the header pass is about to move past: everything a body sem
+    ## reads from `PContext` that is POSITIONAL. That is the same list
+    ## `tryExpr` snapshots (`semexprs`), plus the option stack.
+    ##
+    ## `scope` and `procCon` are the interesting ones. A routine's parameters
+    ## live in a scope opened by `semProcAux` and its `result` in a `PProcCon`;
+    ## deferring the body means detaching both from `PContext`'s stacks rather
+    ## than closing them, and re-attaching them at drain. The scope object
+    ## survives because this record holds it, and its `parent` chain still ends
+    ## at the module's top-level scope, which does not move.
+    key*: uint64                ## §2.3: `(module, ordinal)`, ordinal = the
+                                ## declaration's position in the header pass.
+                                ## Dispatch order is key order, which is what
+                                ## makes the output scheduling-independent.
+    state*: BodyTaskState
+    owner*: PSym                ## the routine
+    def*: PNode                 ## its definition; `owner.ast`, except that
+                                ## forward-decl reconciliation can rebind
+                                ## `owner`, so keep the node explicitly
+    resultType*: PType
+    isInlineIterator*: bool
+    scope*: PScope
+    procCon*: PProcCon
+    optionStack*: seq[POptionEntry]
+    options*: TOptions
+    notes*, warningAsErrors*: TNoteKinds
+    features*: set[Feature]
+
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
@@ -207,6 +244,22 @@ type
     hasSymRedefs*: bool
       # set once a redefinition mapping has been installed; makes `getGenSym`
       # consult the proc-con mapping for non-gensym symbols too.
+
+    bodyTasks*: seq[BodyTask]
+      # `--deferBodies:on` (doc/parallel_compiler.md stage 1): top-level routine
+      # bodies whose sem was postponed to the end of this module's header pass.
+      # Append-only, and already in key order because the header pass declares
+      # in source order — so stage 1 drains it front to back and needs no queue.
+      # `concurrency.TaskQueue` is what stage 4 replaces this with, once there
+      # is more than one worker to order.
+    bodyTaskIndex*: Table[ItemId, int]
+      # routine -> its entry in `bodyTasks`, for the on-demand path: a `const`
+      # or `static:` in the header pass can need a body that has not run yet
+      # (§4.6 step 2), and `transformBody` asks for it through
+      # `graph.demandRoutineBody`.
+    prevDemandRoutineBody*: proc (prc: PSym) {.closure.}
+      # the enclosing module's hook, restored by `closePContext`: an import is
+      # compiled from inside the importer's pass, so these nest.
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch

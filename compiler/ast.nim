@@ -37,9 +37,10 @@ export astdef
 # to pay for while the compiler is still single-threaded, and `-d:nimParallelSem`
 # keeps the wiring compiled and reviewable until it is.
 #
-# `TSymFlags` is 63 of the 64 flags a one-word set holds. One more and it becomes
-# 16 bytes, which no machine has a fetch-or for; that is a constraint on the
-# plan, not just on this import.
+# `TSymFlags` holds 63 of the 64 flags that fit in a one-word set, so there is
+# exactly one spare slot: the 65th `TSymFlag` makes the set a 9-byte array, for
+# which there is no fetch-or. `astdef` asserts the width so that lands as a
+# sentence rather than as a template instantiation error.
 when defined(nimParallelSem):
   import concurrency
 

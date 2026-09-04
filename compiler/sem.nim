@@ -824,6 +824,15 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semAsgnOpr = semAsgnOpr
   result.templInstCounter = new int
 
+  # `--deferBodies:on`: a top-level `const`/`static:` can reach a body that the
+  # body pass has not run yet, and `transformBody` asks for it here. Modules
+  # nest (an import is compiled from inside the importer's pass), so keep the
+  # enclosing module's hook and put it back in `closePContext`.
+  if optDeferBodies in graph.config.globalOptions:
+    result.prevDemandRoutineBody = graph.demandRoutineBody
+    let ctx = result
+    graph.demandRoutineBody = proc (prc: PSym) = demandRoutineBody(ctx, prc)
+
   pushProcCon(result, module)
   pushOwner(result, result.module)
 
@@ -881,6 +890,14 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   else:
     result = n
   result = semStmt(c, result, {})
+  # The body pass (doc/parallel_compiler.md §2.1, stage 1): the module's header
+  # is complete, so every unit's declare-before-use view is now the whole
+  # top-level scope. It runs BEFORE `hloStmt`/`trackStmt` so the module's own
+  # top-level statements still see their callees' inferred effects — deferring
+  # past that point would make every top-level call pessimistic, which is a
+  # bigger change than this stage is trying to make.
+  if optDeferBodies in c.config.globalOptions:
+    drainBodyTasks(c)
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
     # steps are not required anymore and actually harmful for the upcoming
@@ -942,6 +959,13 @@ proc reportUnusedModules(c: PContext) =
       message(c.config, info, warnUnusedImportX, s.name.s)
 
 proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
+  # Belt and braces: `semStmtAndGenerateGenerics` has already drained, but a
+  # module whose sem was cut short (an error, `ESuggestDone`) can still hold
+  # units, and their scopes are detached from `PContext` — nothing else would
+  # ever close them.
+  if optDeferBodies in c.config.globalOptions:
+    drainBodyTasks(c)
+    graph.demandRoutineBody = c.prevDemandRoutineBody
   if c.config.ideActive and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope

@@ -1389,6 +1389,15 @@ template liftDefer(c, root) =
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: TransformFlags): PNode =
   assert prc.kind in routineKinds
 
+  # `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6 step 2): under the
+  # stage-1 body pass a routine of the module being compiled may not have been
+  # semmed yet, and this is the single gate every consumer of a semmed body
+  # passes through — the VM compiling a `const`'s callee included. Asking here
+  # rather than at sem's compile-time-evaluation entries means a missed case is
+  # impossible instead of a miscompile. Nil, hence free, in every other build.
+  if g.demandRoutineBody != nil:
+    g.demandRoutineBody(prc)
+
   if prc.transformedBody != nil:
     result = prc.transformedBody
   elif nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:

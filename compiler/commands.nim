@@ -833,6 +833,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.globalOptions.incl optCompress
   of "genbif":
     processOnOffSwitchG(conf, {optGenBif}, arg, pass, info)
+  of "deferbodies":
+    processOnOffSwitchG(conf, {optDeferBodies}, arg, pass, info)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir

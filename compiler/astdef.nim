@@ -50,7 +50,8 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 63 flags!
+  TSymFlag* = enum    # 63 flags! 64 is a HARD ceiling -- see the
+                      # `static:` block after `TSymKinds` for why.
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -349,7 +350,8 @@ type
                 # carry an array type), so it must survive copies + serialization.
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 48);
+                      # 64 is a hard ceiling, see the `static:` block below
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -457,6 +459,35 @@ type
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
   TSymKinds* = set[TSymKind]
+
+static:
+  # These three sets are read-modify-written from several passes at once as
+  # soon as routine bodies run in parallel (doc/parallel_compiler.md §4.4), and
+  # the only way to do that without losing an update is one fetch-or on one
+  # machine word — `concurrency.atomicIncl`, wired into `ast`'s `incl`/`excl`
+  # under `-d:nimParallelSem`. Nim packs a set of at most 64 elements into a
+  # word and widens it to a byte array beyond that, and there is no atomic
+  # read-modify-write of a byte array.
+  #
+  # So the width is an invariant of the design, not an accident of how many
+  # flags happen to exist, and it is checked here rather than discovered as an
+  # `{.error: "flag set wider than a machine word".}` from inside a template
+  # instantiation. `TSymFlag` is the one with headroom left over: 63 of 64, so
+  # exactly one more flag fits and the one after that does not (a 65-value
+  # enum's set is 9 bytes, measured, not assumed).
+  #
+  # If this fires, do not widen the set — take a flag away (several are
+  # aliases: `sfNoInit`, `sfNoForward`, ...), or put the new one in a side
+  # table.
+  doAssert sizeof(TSymFlags) <= 8,
+    "TSymFlag has outgrown a machine word (" & $(sizeof(TSymFlags) * 8) &
+    " bits): the atomic flag ops of doc/parallel_compiler.md §4.4 cannot work"
+  doAssert sizeof(TTypeFlags) <= 8,
+    "TTypeFlag has outgrown a machine word (" & $(sizeof(TTypeFlags) * 8) &
+    " bits): the atomic flag ops of doc/parallel_compiler.md §4.4 cannot work"
+  doAssert sizeof(TNodeFlags) <= 8,
+    "TNodeFlag has outgrown a machine word (" & $(sizeof(TNodeFlags) * 8) &
+    " bits): the atomic flag ops of doc/parallel_compiler.md §4.4 cannot work"
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
