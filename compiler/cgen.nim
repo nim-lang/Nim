@@ -16,7 +16,7 @@ import
   rodutils, renderer, cgendata, aliases,
   lowerings, lineinfos, pathutils, transf,
   injectdestructors, astmsgs, modulepaths, pushpoppragmas,
-  mangleutils, cbuilderbase, modulegraphs
+  mangleutils, cbuilderbase, modulegraphs, icprof
 
 from expanddefaults import caseObjDefaultBranch
 from ast2nif import globalName, toNifFilename, icNifTypeName
@@ -67,28 +67,51 @@ proc addForwardedProc(m: BModule, prc: PSym) =
 proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef; idgen: IdGenerator): BModule
 proc getCFile*(m: BModule): AbsoluteFile
 
+proc ownerModule(m: BModule; s: PSym): BModule =
+  ## The BModule of `s`'s own module, created on demand. A NIF backend loads
+  ## modules lazily, so the owner may have no BModule yet even though the symbol
+  ## resolved.
+  var ms = getModule(s)
+  registerModule m.g.graph, ms
+  if ms.position >= m.g.mods.len:
+    result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
+  else:
+    result = m.g.mods[ms.position]
+    if result == nil:
+      result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
+
 proc findPendingModule(m: BModule, s: PSym): BModule =
-  # TODO fixme
   if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
-    # Per-module backend codegen: only module M (`m`) is emitted in this
-    # process, so every demanded definition — whether a normal proc owned by
-    # another (here unwritten) module or a minted instance/hook — is emitted
-    # into M's TU. Definitions owned elsewhere are emitted again by their own
-    # module's cg process; the merge stage keeps one per C name and turns the
-    # rest into prototypes (which already live in the unmarked protos section).
+    # Per-module backend codegen. `m.g.icEmitted` is the set of modules THIS
+    # process writes a TU for, so it — not the identity of whichever TU happened
+    # to demand `s` — decides where the definition goes:
+    #
+    # * owner in `icEmitted`: this process is writing that module's TU, so the
+    #   definition belongs in it and nowhere else. That is the ordinary
+    #   whole-program routing below, and honouring it is what lets one process
+    #   emit SEVERAL modules without their definitions collapsing into the first
+    #   TU to ask for them. With the set at its current size of one, the owner
+    #   IS `m` and this returns exactly what the old unconditional `return m`
+    #   did — the point of the branch is that it stops being a special case.
+    #
+    # * owner elsewhere: the module is not written in this process, so the
+    #   definition has nowhere else to go and is emitted here as well
+    #   (emit-everywhere). The process that owns it emits it too; `merge` keeps
+    #   one per C name and turns the rest into prototypes, which already live in
+    #   the unmarked protos section.
+    #
+    # `getModule` walks the owner chain and yields nil if it never reaches a
+    # module (backend-minted symbols can be parented outside one), which is a
+    # definition with no owning TU: emit it here.
+    let ms = getModule(s)
+    if ms != nil and ms.kind == skModule and m.g.icEmitted.contains(ms.position):
+      return ownerModule(m, s)
     return m
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
     result = m.g.mods[ms]
   elif m.config.cmd in {cmdNifC, cmdM}:
-    var ms = getModule(s)
-    registerModule m.g.graph, ms
-    if ms.position >= m.g.mods.len:
-      result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
-    else:
-      result = m.g.mods[ms.position]
-      if result == nil:
-        result = newModule(m.g, ms, m.config, idGeneratorForBackend(ms))
+    result = ownerModule(m, s)
   else:
     var ms = getModule(s)
     result = m.g.mods[ms.position]
@@ -113,57 +136,151 @@ proc icNifName(m: BModule; t: PType): string =
     result = ""
 
 
+proc signatureHasMetaType*(t: PType; depth: int = 0): bool =
+  ## Whether a routine signature mentions a compile-time/meta element type
+  ## (`typed`/`untyped` — e.g. `echo`'s `varargs[typed]` — typedesc, static,
+  ## generic param). Such routines are expanded at their call sites and never
+  ## emitted standalone, so the per-module owned-routine seeding must skip them
+  ## (`getTypeDescAux(tyTyped)` otherwise). `tfHasMeta` alone misses the varargs
+  ## element case, hence the explicit scan.
+  result = false
+  if t == nil or depth > 8: return false
+  if t.kind == tyGenericBody:
+    # The uninstantiated template carried as a `tyGenericInst`'s first child
+    # always mentions its `tyGenericParam` placeholders, but the instance
+    # itself is fully concrete (e.g. `var CountTable[SigHash]`). Descending
+    # here would wrongly flag every routine with a generic-instance parameter
+    # as meta and drop it from the owned-routine seeding -> undefined symbols
+    # at link (its only definer never emits it).
+    return false
+  if t.kind == tyStatic:
+    # A RESOLVED static value (the `256` in `MDigest[256]`, the `N` in
+    # `HashList[T, N]`, …) is carried as a `tyStatic` node inside the otherwise
+    # fully-concrete `tyGenericInst`, but it is NOT meta: the routine is a normal
+    # runtime routine the owner must emit. Only an UNRESOLVED `static T` parameter
+    # (no bound value, `t.n == nil`) is meta. Without this, every routine whose
+    # signature touches a `static`-parameterized generic instance (the bulk of
+    # the SSZ/`MDigest` API) is dropped from the owned-routine seeding and ends up
+    # an undefined reference at link (mirrors the tyGenericBody case above).
+    return t.n == nil
+  if t.kind in {tyTyped, tyUntyped, tyTypeDesc, tyGenericParam,
+                tyAnything, tyFromExpr, tyError}:
+    return true
+  for k in t.kids:
+    if signatureHasMetaType(k, depth + 1): return true
+
+proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
+  ## A concrete, non-generic, runtime routine with a real body, OWNED by the
+  ## module at `modPos`. Shared by the `cg` stage's owned-routine seeding (so a
+  ## routine called only from other modules is still emitted by somebody) and
+  ## the `lower` stage's owned-routine enumeration, so both stages see exactly
+  ## the same set. The exclusions:
+  ## - nested/closure procs (owner is a proc, not a module): emitted via their
+  ##   enclosing routine's lambda-lifting, never standalone;
+  ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
+  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
+  ##   not real codegen targets.
+  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
+  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
+  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
+  ##   method's body sub-tree (incl. its closure iterator); transforming it here
+  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
+  ##   identity, baking a conflicting `up` field → "up references do not agree"
+  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
+  ##   at lift time). So a dispatcher is never an owned runtime routine.
+  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
+  ## iterator, which is expanded at each call site) and must be emitted by its
+  ## owner — else a cross-module `for` over it links to nothing.
+  ##
+  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine — not
+  ## in `cg` and not in the `lower` stage. They are demanded by the backend's
+  ## emit-everywhere path and deduped by `merge` (content C name); the frontend
+  ## materialises them through the `(offer)` mechanism. The `lower` stage must
+  ## not transform an instance: a not-fully-concrete instance (a closure factory
+  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
+  ## its further-specialised use sites) still carries unresolved overload choices
+  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
+  s.itemId.module == modPos and
+  (s.kind in {skProc, skFunc, skConverter, skMethod} or
+   (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
+  s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
+  s.magic == mNone and
+  sfFromGeneric notin s.flags and
+  sfDispatcher notin s.flags and
+  {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+  s.typ != nil and not signatureHasMetaType(s.typ) and
+  s.ast != nil and s.ast.safeLen > bodyPos and
+  son(s.ast, genericParamsPos).kind == nkEmpty
+  # NOTE: an `nkEmpty` body is NOT a disqualifier. A concrete, owned, non-
+  # forward/-importc/-magic routine whose body folds to nothing is still a real
+  # definition the owner must emit (`void f(void){}`), exactly as whole-program
+  # cgen does — else a cross-module caller links to nothing. This bites e.g.
+  # Nimbus' `extras.incInternalErrors`, a plain `proc` whose sole statement is a
+  # metrics-counter `.inc()` that the `metrics` library expands to a no-op when
+  # the importing tool (ncli) builds with `-u:metrics`; the body is then a bare
+  # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
+  # (the other empty-body case) carry `sfForward` and are excluded above.
+
+proc bodyIsSeededByItsOwner(prc: PSym): bool =
+  ## Whether SOME module's `cg` is guaranteed to emit `prc`'s body on its own,
+  ## without this TU asking for it. There are exactly two seeders in the
+  ## per-module backend, and this enumerates them:
+  ##
+  ##   * `nifbackend.generateCodeForModule` walks its module's index and
+  ##     `requestProcDef`s every `ownsRuntimeRoutine` — the SAME predicate the
+  ##     `lower` stage uses to decide what it transforms into that module's
+  ##     `.t.bif`. So asking it about `prc`'s OWN defining module answers
+  ##     "will that module's cg seed this?".
+  ##   * `nifbackend.emitMethodDispatchers` synthesizes every method dispatcher
+  ##     into the MAIN TU. A dispatcher is a `copySym` clone that no module's
+  ##     index enumerates, so the first rule cannot see it.
+  ##
+  ## Anything else — a generic instance, a synthesized hook, a nested routine
+  ## (emitted as part of its enclosing routine's lambda-lifted body), an inline
+  ## iterator (expanded at each call site) — is seeded by nobody. Those are
+  ## emitted by EVERY demander and `merge` keeps one per content-addressed C
+  ## name. That is the single default, and it is the safe direction: emitting a
+  ## body twice costs a merge dedup, while emitting it nowhere is a link error.
+  ##
+  ## A BACKEND-MINTED routine (a hook or nested proc that lambda-lifting /
+  ## `injectDestructorCalls` created during `lower`) exists in no module's semmed
+  ## NIF: it is written into the `.t.bif` of every module that references it,
+  ## re-homed there with `@bk`. Its `itemId.module` therefore names whichever
+  ## `.t.bif` it was read from rather than a module that seeds it, so it must not
+  ## be routed through the ownership question at all.
+  if isBackendMinted(prc.itemId): return false
+  result = sfDispatcher in prc.flags or
+           ownsRuntimeRoutine(prc, prc.itemId.module)
+
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
-  ## Per-module backend codegen is concerned with ONE module: it emits the
-  ## bodies of the routines that module OWNS (its own top-level defs) and only
-  ## *prototypes* a routine owned by another module — that routine's body is
-  ## emitted by its own module's `cg` process, and the merge stage's DCE prunes
-  ## whatever ends up globally dead. The funnel where the main module re-emitted
-  ## its entire transitive closure (≈1.8 GB, a 56 MB `.c.nif`) is exactly this
-  ## rule being absent.
+  ## Whether the translation unit `m` emits `prc`'s BODY, as opposed to only a
+  ## prototype for a body some other `cg` process emits. The funnel where the
+  ## main module re-emitted its entire transitive closure (~1.8 GB, a 56 MB
+  ## `.c.nif`) is exactly this rule being absent.
   ##
-  ## Generic instances and synthesized hooks (`=destroy`, `$`, …) have no single
-  ## owning-module top-level — they are minted on demand — so each demander emits
-  ## them and the merge stage deduplicates by their content-addressed C name.
+  ## `m` is the TU the body would go INTO — `findPendingModule`'s answer — not
+  ## the one that demanded it. The two were the same module for as long as a `cg`
+  ## process wrote exactly one TU, and asking with the demander was harmless.
+  ## With a batch they differ, and asking with the demander is the bug: a
+  ## definition routed to its owner inside the batch was marked declared there
+  ## and then emitted by nobody, since the demander is not the owner and the
+  ## owner never gets asked again (18 undefined symbols at link, batch size 4).
   ##
-  ## A NESTED routine is not emitted on its own: it is lambda-lifted and emitted
-  ## as part of its ENCLOSING routine's body, into the same TU. So the decision
-  ## must follow the OUTERMOST enclosing routine (the one directly under the
-  ## module — `skipGenericOwner` stops at a generic *instance*, not its
-  ## originating generic), never the nested symbol's own identity. Otherwise a
-  ## nested proc whose enclosing is a generic instance (content-addressed,
-  ## emitted by every demander) — e.g. nim-serialization's per-field `readField`
-  ## inside the `makeFieldReadersTable[R,W]` instance, whose address fills the
-  ## returned table — is gated out (its own `itemId.module` is the minting module
-  ## and its disamb is a plain counter), so the enclosing's lift degrades it to a
-  ## prototype and its body lands in no TU → undefined at link.
+  ## The decision is a lookup against `bodyIsSeededByItsOwner`, i.e. against the
+  ## very predicates that drive the seeding, rather than a re-derivation from
+  ## symbol ancestry. Re-derivation is what made this function a five-clause
+  ## tower and the source of a run of "emitted by nobody" / "two hooks on one C
+  ## name" bugs: the walk answered a question about who WILL emit by inspecting
+  ## who DECLARED, and the two drifted apart for every symbol the backend mints.
   if not (m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"):
     return true
-  # The symbol may ITSELF be content-addressed (a synthesized hook or a generic
-  # instance carries `Hook/InstanceDisambBit` on its OWN `disamb`): then it has no
-  # single owning module and every demander emits it (merge dedups by C name),
-  # regardless of what it is nested under. This must be checked on `prc` directly,
-  # not on `top`: a `=destroy`/`=sink` lifted while compiling some enclosing proc
-  # (e.g. system's `isZeroMemory` destroying a `ptr array`) has that PROC as its
-  # `skipGenericOwner`, so `top` walks up to a plain routine whose own disamb has
-  # no bit — gating the hook to that routine's owner module, which mints it
-  # on demand and emits it nowhere → undefined at link.
-  if (prc.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32:
-    return true
-  var top = prc
-  while top.skipGenericOwner != nil and top.skipGenericOwner.kind != skModule:
-    top = top.skipGenericOwner
-  result = top.itemId.module == m.module.position or
-           (top.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32 or
-           # An INLINE iterator has no standalone body — it is expanded at each
-           # call site — so it is materialized in every module that iterates over
-           # it, never in its owner. A proc nested in one (e.g. std/uri's
-           # `parseData` inside `iterator decodeQuery`) is lambda-lifted into each
-           # of those consumer TUs and must be emitted there (its stable
-           # owner-suffixed name + `'u'` flag let the merge stage keep one); gating
-           # it to the iterator's owner module leaves it in no TU → undefined.
-           (top.kind == skIterator and top.typ != nil and
-            top.typ.callConv != ccClosure)
+  if not bodyIsSeededByItsOwner(prc):
+    # Seeded by nobody: every demander emits it, merge keeps one.
+    result = true
+  elif sfDispatcher in prc.flags:
+    result = sfMainModule in m.module.flags
+  else:
+    result = prc.itemId.module == m.module.position
 
 proc initLoc(k: TLocKind, lode: PNode, s: TStorageLoc, flags: TLocFlags = {}): TLoc =
   result = TLoc(k: k, storage: s, lode: lode,
@@ -418,7 +535,7 @@ proc genCLineDir(r: var Builder, p: BProc, info: TLineInfo; conf: ConfigRef) =
     if freshLineInfo(p, info):
       genCLineDir(r, info.fileIndex, info.safeLineNm, p, info, lastFileIndex)
 
-proc genLineDir(p: BProc, t: PNode) =
+proc genLineDir(p: BProc; t: PNode) =
   if p == p.module.preInitProc: return
   let line = t.info.safeLineNm
 
@@ -538,8 +655,8 @@ type
     needAssignCall
   TAssignmentFlags = set[TAssignmentFlag]
 
-proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
-proc rawConstExpr(p: BProc, n: PNode; d: var TLoc)
+proc genObjConstr(p: BProc; e: PNode, d: var TLoc)
+proc rawConstExpr(p: BProc; n: PNode; d: var TLoc)
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 type
@@ -558,9 +675,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     if mode == constructRefObj: r = cDeref(r)
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s[0] != nil:
+      while s.kind == tyObject and s.baseClass != nil:
         r = dotField(r, "Sup")
-        s = skipTypes(s[0], skipPtrs)
+        s = skipTypes(s.baseClass, skipPtrs)
     if optTinyRtti in p.config.globalOptions:
       p.s(section).addFieldAssignment(r, "m_type", genTypeInfoV2(p.module, t, a.lode.info))
     else:
@@ -593,9 +710,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     if mode == constructRefObj: r = cDeref(r)
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s[0] != nil and s.sym.magic != mException:
+      while s.kind == tyObject and s.baseClass != nil and s.sym.magic != mException:
         r = dotField(r, "Sup")
-        s = skipTypes(s[0], skipPtrs)
+        s = skipTypes(s.baseClass, skipPtrs)
     p.s(section).addFieldAssignment(r, "name", makeCString(t.skipTypes(abstractInst).sym.name.s))
 
 proc genRefAssign(p: BProc, dest, src: TLoc)
@@ -767,6 +884,16 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
     backendEnsureMutable s
     fillLoc(s.locImpl, locLocalVar, n, OnStack)
     if s.kind == skLet: incl(s, lfNoDeepCopy)
+  else:
+    # Already named by an EARLIER emission of this same routine — an inline proc
+    # regenerated per user, or (under a batched `cg`) a definition emitted into
+    # two of this process's TUs. `fillLocalName` caches the C name on the PSym
+    # but takes the uniquifying counter from the BProc, and this BProc is a new
+    # one whose `sigConflicts` never saw that name. Claim it, or the next local
+    # of the same base name minted HERE starts from `_1` again and redeclares
+    # it: gcc "redeclaration of 'i_1' with no linkage", 64 of Atlas's 204 `.c`
+    # at batch size 4.
+    p.sigConflicts.inc(s.name.s.mangle)
 
   genCLineDir(res, p, n.info, p.config)
 
@@ -776,7 +903,7 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
     initializer = initializer,
     initializerKind = initializerKind)
 
-proc assignLocalVar(p: BProc, n: PNode) =
+proc assignLocalVar(p: BProc; n: PNode) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
@@ -800,7 +927,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
-proc genGlobalVarDecl(res: var Builder, p: BProc, n: PNode; td: Snippet;
+proc genGlobalVarDecl(res: var Builder, p: BProc; n: PNode; td: Snippet;
                       initializer: Snippet = "",
                       initializerKind: VarInitializerKind = Assignment,
                       allowConst = true) =
@@ -841,7 +968,7 @@ proc genGlobalVarDecl(res: var Builder, p: BProc, n: PNode; td: Snippet;
       initializer = initializer,
       initializerKind = initializerKind)
 
-proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
+proc assignGlobalVar(p: BProc; n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
     fillBackendName(p.module, s)
@@ -905,7 +1032,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     backendEnsureMutable s
     resetLoc(p, s.locImpl)
 
-proc callGlobalVarCppCtor(p: BProc; v: PSym; vn, value: PNode; didGenTemp: var bool) =
+proc callGlobalVarCppCtor(p: BProc; v: PSym; vn: PNode; value: PNode; didGenTemp: var bool) =
   let s = vn.sym
   fillBackendName(p.module, s)
   backendEnsureMutable s
@@ -944,16 +1071,15 @@ proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
 
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
-proc genLiteral(p: BProc, n: PNode; result: var Builder)
+proc genLiteral(p: BProc; n: PNode; result: var Builder)
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder; argBuilder: var CallBuilder)
 proc raiseExit(p: BProc)
-proc raiseExitCleanup(p: BProc, destroy: string)
 
-proc initLocExpr(p: BProc, e: PNode, flags: TLocFlags = {}): TLoc =
+proc initLocExpr(p: BProc; e: PNode, flags: TLocFlags = {}): TLoc =
   result = initLoc(locNone, e, OnUnknown, flags)
   expr(p, e, result)
 
-proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
+proc initLocExprSingleUse(p: BProc; e: PNode): TLoc =
   result = initLoc(locNone, e, OnUnknown)
   if e.kind in nkCallKinds and (e.firstSon.kind != nkSym or e.firstSon.sym.magic == mNone):
     # We cannot check for tfNoSideEffect here because of mutable parameters.
@@ -965,6 +1091,22 @@ proc initLocExprSingleUse(p: BProc, e: PNode): TLoc =
   else:
     result.flags.incl lfSingleUse
   expr(p, e, result)
+
+when defined(icCanRaiseLog):
+  import std / syncio
+
+  proc logCanRaise(s: PSym; verdict: bool) =
+    ## One line per verdict, keyed by name + disamb + OWNING MODULE, and carrying
+    ## the magic that usually decides the answer.
+    ##
+    ## The module is not decoration: `disamb` is a per-module counter, so `len.0`
+    ## names a different routine in every module that has one, and a key without
+    ## the module reports a collision as a disagreement. NOT the itemId — that is
+    ## a per-build counter and would make every line differ for no reason.
+    let m = getModule(s)
+    stderr.writeLine "CANRAISE " & s.name.s & "." & $s.disamb & "." &
+      (if m == nil: "?" else: m.name.s) & "|" & $verdict & "|" & $s.magic &
+      "|b" & $canRaiseBranch
 
 include ccgcalls, "ccgstmts.nim"
 
@@ -1107,8 +1249,11 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     var a: TLoc = initLocExpr(m.initProc, n.firstSon)
     let callee = rdLoc(a)
     var params: seq[Snippet] = @[]
-    for i in 1..<n.len-1:
-      a = initLocExpr(m.initProc, n[i])
+    var remaining = n.len - 2   # children 1 ..< len-1
+    for it in sonsFrom(n, 1):
+      if remaining <= 0: break
+      dec remaining
+      a = initLocExpr(m.initProc, it)
       params.add(rdLoc(a))
     params.add(makeCString($extname))
     template load(builder: var Builder) =
@@ -1117,7 +1262,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
         cCast(getTypeDesc(m, sym.typ, dkVar),
           cCall(callee, params)))
     var last = lastSon(n)
-    if last.kind == nkHiddenStdConv: last = last[1]
+    if last.kind == nkHiddenStdConv: last = last.secondSon
     internalAssert(m.config, last.kind == nkStrLit)
     let idx = last.strVal
     if idx.len == 0:
@@ -1222,14 +1367,14 @@ proc closeNamespaceNim(result: var Builder) =
 
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
-  # prc.ast[paramsPos].last contains the type we're after — BUT a closure loaded
+  # The `paramsPos` child of `prc.ast` has the type we're after — BUT a closure loaded
   # from a `.t.bif` (a lambda-lifted nested proc / generic instance the `lower`
   # stage transformed) can arrive with an EMPTY AST param node: the lifted hidden
   # `:env` param lives in `typ.n`, the authoritative signature (`genProc` already
   # reads `typ.n`, not the AST). The two param nodes diverge across the NIF
   # boundary; fall back to `typ.n` so the env param resolves instead of indexing
   # an empty container.
-  var params = prc.ast[paramsPos]
+  var params = son(prc.ast, paramsPos)
   if params.safeLen == 0 and prc.typ.n != nil and prc.typ.n.kind == nkFormalParams:
     params = prc.typ.n
   var ls = lastSon(params)
@@ -1260,14 +1405,14 @@ proc containsResult(n: PNode): bool =
   of succ(nkEmpty)..pred(nkSym), succ(nkSym)..nkNilLit, harmless:
     discard
   of nkReturnStmt:
-    for ni in n.sons:
+    for ni in sons(n):
       if containsResult(ni): return true
-    result = n.len > 0 and n.firstSon.kind == nkEmpty
+    result = n.hasSons and n.firstSon.kind == nkEmpty
   of nkSym:
     if n.sym.kind == skResult:
       result = true
   else:
-    for ni in n.sons:
+    for ni in sons(n):
       if containsResult(ni): return true
 
 proc easyResultAsgn(n: PNode): PNode =
@@ -1278,11 +1423,11 @@ proc easyResultAsgn(n: PNode): PNode =
     while i < n.len and n[i].kind in harmless: inc i
     if i < n.len: result = easyResultAsgn(n[i])
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
-    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult and not containsResult(n[1]):
+    if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult and not containsResult(n.secondSon):
       incl n.flags, nfPreventCg
-      return n[1]
+      return n.secondSon
   of nkReturnStmt:
-    if n.len > 0:
+    if n.hasSons:
       result = easyResultAsgn(n.firstSon)
       if result != nil: incl n.flags, nfPreventCg
   else: discard
@@ -1316,13 +1461,13 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   result = Unknown
   case n.kind
   of nkStmtList, nkStmtListExpr:
-    for it in n:
+    for it in sons(n):
       result = allPathsAsgnResult(p, it)
       if result != Unknown: return result
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     if n.firstSon.kind == nkSym and n.firstSon.sym.kind == skResult:
-      if not containsResult(n[1]):
-        if allPathsAsgnResult(p, n[1]) == InitRequired:
+      if not containsResult(n.secondSon):
+        if allPathsAsgnResult(p, n.secondSon) == InitRequired:
           result = InitRequired
         else:
           result = InitSkippable
@@ -1330,9 +1475,9 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     elif containsResult(n):
       result = InitRequired
     else:
-      result = allPathsAsgnResult(p, n[1])
+      result = allPathsAsgnResult(p, n.secondSon)
   of nkReturnStmt:
-    if n.len > 0:
+    if n.hasSons:
       if n.firstSon.kind == nkEmpty and result != InitSkippable:
         # This is a bare `return` statement, if `result` was not initialized
         # anywhere else (or if we're not sure about this) let's require it to be
@@ -1343,7 +1488,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   of nkIfStmt, nkIfExpr:
     var exhaustive = false
     result = InitSkippable
-    for it in n:
+    for it in sons(n):
       # Every condition must not use 'result':
       if it.len == 2 and containsResult(it.firstSon):
         return InitRequired
@@ -1357,8 +1502,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     result = InitSkippable
     var exhaustive = skipTypes(n.firstSon.typ,
         abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString, tyCstring}
-    for i in 1..<n.len:
-      let it = n[i]
+    for it in sonsFrom(n, 1):
       allPathsInBranch(it.lastSon)
       if it.kind == nkElse: exhaustive = true
     if not exhaustive: result = Unknown
@@ -1367,7 +1511,7 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # condition and that would be fine. Everything else isn't:
     result = allPathsAsgnResult(p, n.firstSon)
     if result == Unknown:
-      result = allPathsAsgnResult(p, n[1])
+      result = allPathsAsgnResult(p, n.secondSon)
       # we cannot assume that the 'while' loop is really executed at least once:
       if result == InitSkippable: result = Unknown
   of harmless:
@@ -1390,11 +1534,11 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # is 'finally: result = x'
     result = InitSkippable
     allPathsInBranch(n.firstSon)
-    for i in 1..<n.len:
-      if n[i].kind == nkFinally:
-        result = allPathsAsgnResult(p, n[i].lastSon)
+    for it in sonsFrom(n, 1):
+      if it.kind == nkFinally:
+        result = allPathsAsgnResult(p, it.lastSon)
       else:
-        allPathsInBranch(n[i].lastSon)
+        allPathsInBranch(it.lastSon)
   of nkCallKinds:
     if canRaiseDisp(p, n.firstSon) or
         (n.firstSon.kind == nkSym and sfNoReturn in n.firstSon.sym.flags):
@@ -1406,8 +1550,8 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
       # arithmetic operations may raise exceptions
       result = InitRequired
     else:
-      for i in 0..<n.safeLen:
-        allPathsInBranch(n[i])
+      for it in sons(n):
+        allPathsInBranch(it)
   of nkRaiseStmt:
     result = InitRequired
   of nkChckRangeF, nkChckRange64, nkChckRange:
@@ -1415,8 +1559,8 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
     # bug #22852
     result = InitRequired
   else:
-    for i in 0..<n.safeLen:
-      allPathsInBranch(n[i])
+    for it in sons(n):
+      allPathsInBranch(it)
 
 proc getProcTypeCast(m: BModule, prc: PSym): Rope =
   result = getTypeDesc(m, prc.loc.t)
@@ -1490,9 +1634,11 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # it there would WRONGLY skip destructor injection and miscompile (orc
   # decref-on-freed). The `.t.bif`-loaded-body concept exists only under cmdNifC.
   let wasLoaded = m.config.cmd == cmdNifC and prc.transformedBody != nil
+  icProfStart(tTransform)
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:
     procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  icProfStop(tTransform)
 
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
@@ -1500,7 +1646,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
-    let resNode = prc.ast[resultPos]
+    let resNode = son(prc.ast, resultPos)
     let res = resNode.sym # get result symbol
     if not isInvalidReturnType(m.config, prc.typ) and sfConstructor notin prc.flags:
       if sfNoInit in prc.flags: incl(res, sfNoInit)
@@ -1512,8 +1658,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.snippet != "")
+        let paths = allPathsAsgnResult(p, procBody)
         if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and
-            allPathsAsgnResult(p, procBody) == InitSkippable:
+            paths == InitSkippable:
           # In an ideal world the codegen could rely on injectdestructors doing its job properly
           # and then the analysis step would not be required.
           discard "result init optimized out"
@@ -1548,8 +1695,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         backendEnsureMutable res
         res.locImpl.storage = OnUnknown
 
-  for i in 1..<prc.typ.n.len:
-    let param = prc.typ.n[i].sym
+  for paramNode in sonsFrom(prc.typ.n, 1):
+    let param = paramNode.sym
     if param.typ.isCompileTimeOnly: continue
     if prc.typ.callConv == ccClosure and param.name.s == ":envP":
       # The hidden closure-env param is materialised by `closureSetup`, never a
@@ -1564,7 +1711,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       continue
     assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
+  icProfStart(tGenBody)
   genProcBody(p, procBody)
+  icProfStop(tGenBody)
 
   # IC: spurious write, seems fine for now:
   prc.infoImpl = tmpInfo
@@ -1635,8 +1784,17 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # `extern`/`rtl` pragma at sem time), so its uses are invisible to the
       # artifact's liveness walk — conservatively keep the definition.
       defFlags.add 'x'
-    m.s[cfsProcs].add(cnifDefDirective(stripCnifMarks(prc.loc.snippet), defFlags,
-                                       icNifName(m, prc)))
+    # A C++ member's `loc.snippet` is a CALL PATTERN (`#->salute(@)`), not a
+    # linker name — and every member of that name, in every class, mints the
+    # same one. Ownership is assigned per name, so `Loo::salute` and `Foo::salute`
+    # collided: the merge stage handed both to one artifact and the other TU's
+    # definition was dropped (undefined vtable at link). Key member definitions by
+    # their NIF name instead, which is unique by construction. Dots cannot occur
+    # in a mangled C name, so the two namespaces stay disjoint.
+    let defName =
+      if sfCppMember * prc.flags != {}: icNifName(m, prc)
+      else: stripCnifMarks(prc.loc.snippet)
+    m.s[cfsProcs].add(cnifDefDirective(defName, defFlags, icNifName(m, prc)))
     m.s[cfsProcs].add(extract(generatedProc))
     m.s[cfsProcs].add(cnifEndDefs())
   else:
@@ -1661,15 +1819,38 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.flags or sfCppMember * sym.flags != {}: return
+  if lfNoDecl in sym.loc.flags: return
+  if sfCppMember * sym.flags != {}:
+    # A C++ member is declared INSIDE its class, never as a free prototype — but
+    # this TU still needs its CALL-SITE name (`x->salute(@)`), and only
+    # `genMemberProcHeader` derives that (from the pragma's declaration pattern).
+    # Whole-program cgen got it for free: the module defining the member was code
+    # generated in the same process, ahead of any caller. The per-module backend
+    # emits that body in ANOTHER process, so the caller was left with the mangled
+    # Nim name `fillBackendName` minted and C++ rejected
+    # `loo->salute_u0__vireouyks1()` ("struct Loo has no member named ...").
+    if m.compileToCpp:
+      var scratch = newBuilder("")
+      genMemberProcHeader(m, sym, scratch, false, true)
+    return
   if lfDynamicLib in sym.loc.flags:
-    if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
-      # Under IC per-module cg every demander emits the dynlib proc's DEFINITION
-      # locally (findPendingModule returns `m`, so symInDynamicLib follows this
-      # call and the merge stage keeps one def per C name). Emitting the
-      # cross-module `extern` proto here would register `sym.id` in
-      # `m.declaredThings` and thereby make that `symInDynamicLib` skip, leaving
-      # the `Dl_*` symbol declared-but-never-defined -> undefined at link.
+    # Does THIS TU emit the dynlib proc's definition? Under IC cg it does
+    # whenever `findPendingModule` routes the symbol here — which it does unless
+    # the owner is another member of this process's batch. Mirrored rather than
+    # called, because `findPendingModule` creates a `BModule` on demand and a
+    # prototype has no business doing that.
+    let owner = getModule(sym)
+    let emittedByABatchSibling =
+      owner != nil and owner.kind == skModule and
+      owner.position != m.module.position and
+      m.g.icEmitted.contains(owner.position)
+    if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg" and
+        not emittedByABatchSibling:
+      # This TU emits the DEFINITION itself: `symInDynamicLib` follows this call
+      # and the merge stage keeps one def per C name. Emitting the cross-module
+      # `extern` proto here would register `sym.id` in `m.declaredThings` and
+      # thereby make that `symInDynamicLib` skip, leaving the `Dl_*` symbol
+      # declared-but-never-defined -> undefined at link.
       discard "definition emitted by symInDynamicLib"
     elif sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):
@@ -1718,17 +1899,17 @@ include inliner
 
 proc genProcLvl2(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
     useHeader(m, prc)
     # dependency to a compilerproc:
     cgsym(m, prc.name.s)
     return
   if lfNoDecl in prc.loc.flags:
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
     genProcPrototype(m, prc)
   elif lfDynamicLib in prc.loc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
+    fillProcLoc(q, son(prc.ast, namePos))
     genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       symInDynamicLib(q, prc)
@@ -1755,13 +1936,13 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       # not on the first module that uses it
       if m.module.itemId.module != prc.itemId.module and optCompress in m.config.globalOptions:
         let prcCopy = prc # copyInlineProc(prc, m.idgen)
-        fillProcLoc(m, prcCopy.ast[namePos])
+        fillProcLoc(m, son(prcCopy.ast, namePos))
         genProcPrototype(m, prcCopy)
         genProcLvl3(m, prcCopy)
       else:
         let m2 = if m.config.symbolFiles != disabledSf: m
                 else: findPendingModule(m, prc)
-        fillProcLoc(m2, prc.ast[namePos])
+        fillProcLoc(m2, son(prc.ast, namePos))
         #elif {sfExportc, sfImportc} * prc.flags == {}:
         #  # reset name to restore consistency in case of hashing collisions:
         #  #echo "resetting ", prc.id, " by ", m.module.name.s
@@ -1771,7 +1952,7 @@ proc genProcLvl2(m: BModule, prc: PSym) =
         genProcLvl3(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
+    fillProcLoc(q, son(prc.ast, namePos))
     # generate a getProc call to initialize the pointer for this
     # externally-to-the-current-module defined proc, also important
     # to do the declaredProtos check before the call to genProcPrototype
@@ -1789,10 +1970,11 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       # which will actually become a function pointer
       if isReloadable(m, prc):
         genProcPrototype(q, prc)
-      if emitsBodyInThisModule(m, prc):
+      # Ask about `q`, the TU the body goes into. Outside a batch `q` IS `m`.
+      if emitsBodyInThisModule(q, prc):
         genProcLvl3(q, prc)
   else:
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
     useHeader(m, prc)
     if sfInfixCall notin prc.flags: genProcPrototype(m, prc)
 
@@ -1814,7 +1996,7 @@ proc genProc(m: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc): return
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(m, son(prc.ast, namePos))
   else:
     genProcLvl2(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
@@ -1854,10 +2036,16 @@ proc genVarPrototype(m: BModule, n: PNode) =
         typ = ptrType(typ)
       if lfDynamicLib in sym.loc.flags:
         typ = ptrType(typ)
-      m.s[cfsVars].addVar(m, sym,
-        name = sym.loc.snippet,
-        typ = typ,
-        visibility = vis)
+      if sfCodegenDecl in sym.flags:
+        m.s[cfsVars].addDeclWithVisibility(vis):
+          m.s[cfsVars].addVar(m, sym,
+            name = sym.loc.snippet,
+            typ = typ)
+      else:
+        m.s[cfsVars].addVar(m, sym,
+          name = sym.loc.snippet,
+          typ = typ,
+          visibility = vis)
       if m.hcrOn:
         m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,
@@ -1882,22 +2070,33 @@ proc headerTop(): Rope =
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   result = headerTop()
   if optCompileOnly notin conf.globalOptions:
-    result.add ("/* Compiled for: $1, $2, $3 */$N" &
-        "/* Command for C compiler:$n   $4 */$N") %
+    result.add ("/* Compiled for: $1, $2, $3 */$N") %
         [rope(platform.OS[conf.target.targetOS].name),
         rope(platform.CPU[conf.target.targetCPU].name),
-        rope(extccomp.CC[conf.cCompiler].name),
-        rope(getCompileCFileCmd(conf, cfile))]
+        rope(extccomp.CC[conf.cCompiler].name)]
+    # The per-module IC backend cannot write this line truthfully. A global
+    # `{.passC.}` (system's `-pthread`, say) reaches `conf.compileOptions` only
+    # in a process that compiled the module declaring it, and a `cg` process
+    # sees one module's import closure — so the command it would print is a
+    # partial snapshot, and WHICH part depends on how modules were grouped into
+    # processes. Measured on a 67-module program: 2 of 67 `.c` carried
+    # `-pthread` at batch size 1, 4 at size 4, 5 at size 8, against 16 of 16 for
+    # a whole-program `nim c`. The real command is assembled by the `link`
+    # stage, which applies every module's recorded directives first
+    # (`replayer.applyBackendActions`) — so the object files were always
+    # correct; only this comment was wrong, and non-deterministically so.
+    if conf.cmd == cmdNifC and conf.icBackendStage.len > 0:
+      result.add "/* Command for C compiler: assembled by the link stage\L" &
+                 "   from every module's recorded C directives. */\L"
+    else:
+      result.add ("/* Command for C compiler:$n   $1 */$N") %
+          [rope(getCompileCFileCmd(conf, cfile))]
 
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   var res = newBuilder(getCopyright(conf, cfile))
   if conf.hcrOn: res.add("#define NIM_HOT_CODE_RELOADING\L")
   addNimDefines(res, conf)
   result = extract(res)
-
-proc getSomeNameForModule(conf: ConfigRef, filename: AbsoluteFile): Rope =
-  ## Returns a mangled module name.
-  result = mangleModuleName(conf, filename).mangle
 
 proc getSomeNameForModule*(m: BModule): Rope =
   ## Returns a mangled module name.
@@ -2352,9 +2551,8 @@ proc genDatInitCode(m: BModule) =
 proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, getProcFunc: string) =
   let prc = magicsys.getCompilerProc(m.g.graph, sym)
   assert prc != nil
-  fillProcLoc(m, prc.ast[namePos])
+  fillProcLoc(m, son(prc.ast, namePos))
 
-  var extname = prefix & sym
   var tmp = mangleDynLibProc(prc)
   backendEnsureMutable prc
   prc.locImpl.snippet = tmp
@@ -2610,6 +2808,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
                       m.icDataDefs,
                       semmedNif = toNifFilename(m.config, FileIndex m.module.position),
                       moduleBase = getSomeNameForModule(m),
+                      globalDtor = m.icGlobalDtorName,
                       implDeps = implDeps)
     m.g.graph.icCnifFiles.add artifact
   # NB: under cmdNifC the returned text still carries the cnif marks; the
@@ -2709,7 +2908,7 @@ proc getCFile*(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
       elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
-      else: ".nim.c"
+      else: icCFileExt(m.config)
   result = changeFileExt(completeCfilePath(m.config, mangleModuleName(m.config, m.cfilename).AbsoluteFile), ext)
 
 when false:
@@ -2719,9 +2918,9 @@ when false:
     readMergeInfo(getCFile(m), m)
     result = m
 
-proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool, init: var IfBuilder) =
+proc addHcrInitGuards(p: BProc; n: PNode, inInitGuard: var bool, init: var IfBuilder) =
   if n.kind == nkStmtList:
-    for child in n:
+    for child in sons(n):
       addHcrInitGuards(p, child, inInitGuard, init)
   else:
     let stmtShouldExecute = n.kind in {nkVarSection, nkLetSection} or
@@ -2818,6 +3017,23 @@ proc genModuleCode(m: BModule; cf: var Cfile): string =
 proc registerModuleCode(m: BModule; cf: var Cfile; code: string) =
   ## Second half of `writeModule`: writes the .c file if it changed and
   ## registers it for compilation.
+  ##
+  ## NOT under the per-module backend's `cg` stage. There the `.c` belongs to
+  ## `emit`, which renders it from the `.c.nif` using the GLOBAL merge decision;
+  ## `cg` can only filter by the liveness its own process can see, so writing
+  ## here puts a second, differently-filtered `.c` at the very path `emit`
+  ## declares as its nifmake output. Two stages then claim one output, and the
+  ## `.c` ends up newer than `emit`'s own `.c.nif` input — so any build in which
+  ## `emit` is not forced to run anyway keeps `cg`'s unfiltered text and hands it
+  ## to the linker ("multiple definition of eqdup__…").
+  ##
+  ## Today nothing surfaces this: `merge` rewrites the decision file on every
+  ## run and every `emit` lists it as an input, so all of them re-fire and
+  ## overwrite the stray file. That makes the fire-all load-bearing rather than
+  ## the "insurance" it is documented as, and it silently blocks making the
+  ## decision content-stable. `cg`'s product is the `.c.nif`; the compile
+  ## registration is likewise the `link` stage's job.
+  if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg": return
   if code != "" or m.config.symbolFiles != disabledSf:
     when hasTinyCBackend:
       if m.config.cmd == cmdTcc:
@@ -2836,20 +3052,11 @@ proc writeModule(m: BModule) =
     code = stripCnifMarks(code)
   registerModuleCode(m, cf, code)
 
-proc updateCachedModule(m: BModule) =
-  let cfile = getCFile(m)
-  var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                 obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-  if sfMainModule notin m.module.flags:
-    genMainProc(m)
-  cf.flags = {CfileFlag.Cached}
-  addFileToCompile(m.config, cf)
-
 proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; isDynlib: bool): PSym =
   let prefixedName = m.config.nimMainPrefix & "NimDestroyGlobals"
   let procname = getIdent(graph.cache, prefixedName)
   result = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
-  result.typ = newProcType(m.module.info, m.idgen, m.module.owner)
+  result.typ = newProcType(m.module.info, m.idgen, result)
   result.typ.callConv = ccCDecl
   backendEnsureMutable result
   incl result.flagsImpl, sfExportc
@@ -2862,6 +3069,42 @@ proc generateLibraryDestroyGlobals(graph: ModuleGraph; m: BModule; body: PNode; 
   theProc[namePos] = newSymNode(result)
   theProc[bodyPos] = body
   result.ast = theProc
+
+proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
+  ## Per-module backend (`cg` stage), non-main module: wrap this module's
+  ## accumulated top-level global destructors in a nullary exported proc and
+  ## return its C name ("" when there are none).
+  ##
+  ## `graph.globalDestructors` is filled while a module's own `cg` process
+  ## injects destructors into its top level, but the teardown code is emitted
+  ## by the MAIN module's `cg` — a different process, whose `graph` only ever
+  ## sees its own entries. So each module emits its own teardown here and
+  ## records the name in its `.c.nif` meta head; the main module's `cg` reads
+  ## the heads (like it already does for init/datInit) and calls them.
+  result = ""
+  if graph.globalDestructors.len == 0: return
+  var body = newNodeI(nkStmtList, m.module.info)
+  for i in countdown(high(graph.globalDestructors), 0):
+    body.add graph.globalDestructors[i]
+  body.flags.incl nfTransf # should not be further transformed
+  graph.globalDestructors.setLen 0
+
+  result = m.config.nimMainPrefix & "NimDestroyGlobals__" & $getSomeNameForModule(m)
+  let procname = getIdent(graph.cache, result)
+  var dtor = newSym(skProc, procname, m.idgen, m.module.owner, m.module.info)
+  dtor.typ = newProcType(m.module.info, m.idgen, dtor)
+  dtor.typ.callConv = ccNimCall
+  backendEnsureMutable dtor
+  incl dtor.flagsImpl, sfExportc # a root for the merge stage's DCE: nothing
+                                 # inside this TU calls it, only main does
+  dtor.locImpl.snippet = result
+
+  let theProc = newNodeI(nkProcDef, m.module.info, bodyPos+1)
+  for i in 0..<theProc.len: theProc[i] = newNodeI(nkEmpty, m.module.info)
+  theProc[namePos] = newSymNode(dtor)
+  theProc[bodyPos] = body
+  dtor.ast = theProc
+  genProcLvl3(m, dtor)
 
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
@@ -2889,6 +3132,22 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   if n != nil:
     m.initProc.options = initProcOptions(m)
     genProcBody(m.initProc, n)
+
+  if graph.icModuleDtors.len > 0 and sfMainModule in m.module.flags and
+      {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
+    # Per-module backend: the other modules' top-level global destructors were
+    # emitted into their own TUs (`genIcModuleDestroyGlobals`); call them from
+    # the end of the main module's init proc — which IS the program body — right
+    # after main's own destructors, in the order `generateCgStage` computed
+    # (reverse dependency order, mirroring whole-program cgen's single reversed
+    # `globalDestructors` list). The lib/noMain flavour — where the whole-program
+    # backend collects the destructors into an exported `NimDestroyGlobals`
+    # instead — is not reachable: `nim ic` only builds executables.
+    for dn in graph.icModuleDtors:
+      m.g.mainModProcs.addDeclWithVisibility(Private):
+        m.g.mainModProcs.addProcHeader(ccNimCall, dn, CVoid, cProcParams())
+        m.g.mainModProcs.finishProcHeaderAsProto()
+      m.initProc.s(cpsStmts).addCallStmt(markCName(dn))
 
   if m.hcrOn:
     # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)

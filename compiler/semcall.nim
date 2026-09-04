@@ -77,7 +77,7 @@ proc isAttachableRoutineTo(prc: PSym, arg: PType): bool =
       # has default value, parameter is not considered in type attachment
       continue
     let t = nominalRoot(prc.typ[i])
-    if t != nil and t.itemId == arg.itemId:
+    if t != nil and t.bindingId == arg.bindingId:
       # parameter `i` is a nominal type in this module
       # attachable if the nominal root `t` has the same id as `arg`
       return true
@@ -689,7 +689,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
-  var r = resolveOverloads(c, n, n, filter, flags, errors, true)
+  discard resolveOverloads(c, n, n, filter, flags, errors, true)
   if errors.len == 0:
     localError(c.config, n.info, "could not resolve: " & $n)
   else:
@@ -735,10 +735,10 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   when defined(icDbg):
     if result == nil and f != nil and a != nil and f.kind == tyEnum:
       echo "INDEXMISMATCH f=", typeToString(f), " itemId=", f.itemId,
-        " uniqueId=", f.uniqueId, " mod=", toFullPath(c.config, f.itemId.module.FileIndex),
+        " bindingId=", f.bindingId, " mod=", toFullPath(c.config, f.itemId.module.FileIndex),
         " sym=", (if f.sym != nil: $f.sym.itemId else: "nil"), " state=", f.state
       let a2 = a.skipTypes({tyRange})
-      echo "  a=", typeToString(a), " itemId=", a2.itemId, " uniqueId=", a2.uniqueId,
+      echo "  a=", typeToString(a), " itemId=", a2.itemId, " bindingId=", a2.bindingId,
         " mod=", toFullPath(c.config, a2.itemId.module.FileIndex),
         " sym=", (if a2.sym != nil: $a2.sym.itemId else: "nil"), " state=", a2.state
 
@@ -925,15 +925,6 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
-
-proc canDeref(n: PNode): bool {.inline.} =
-  result = n.len >= 2 and (let t = n[1].typ;
-    t != nil and t.skipTypes({tyGenericInst, tyAlias, tySink}).kind in {tyPtr, tyRef})
-
-proc tryDeref(n: PNode): PNode =
-  result = newNodeI(nkHiddenDeref, n.info)
-  result.typ = n.typ.skipTypes(abstractInst)[0]
-  result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags;

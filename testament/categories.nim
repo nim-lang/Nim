@@ -516,7 +516,15 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 # accumulated file set is materialised before each `#!STEP`. A `#!STEP`'s
 # attributes are `;`-separated, each either `key: value` or a bare flag:
 #   expect: <stdout>   noop   body-edit   iface-edit   modules: <n>   clean
+#   fails: <substring>   no-oracle
 # The last step always also runs the clean==incremental check.
+#
+# Every successful step is ALSO compiled with `nim c` and run, and the two
+# outputs must agree (`no-oracle` opts out). This is the only check in the suite
+# that is not IC-against-IC; without it a consistently wrong IC passes
+# everything. `#!DELETE <file>` removes a module, `#!FLAGS <switches>` changes
+# the compiler switches from that point on, and `fails: <text>` asserts that
+# BOTH compilers reject the program with that text.
 
 type MetamorphicError = object of CatchableError
   resultKind: TResultEnum
@@ -597,16 +605,34 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
   let buildDir = (file.changeFileExt("") & "_mm").absolutePath
   let nc = buildDir / "nc"
   let bin = buildDir / "prog".addFileExt(ExeExt)
+  # The ORACLE: the same sources compiled by the classic backend. Every
+  # invariant this runner checked before was IC-against-IC (clean == incremental,
+  # no-op changes nothing, ...), which a *consistently* wrong IC satisfies
+  # perfectly — that is how a whole class of silent miscompilations (top-level
+  # destructors never injected; `nfFirstWrite`/`nfLastRead` dropped by the
+  # serializer, so every first assignment to a destructor-bearing local became
+  # `=sink` over zeroed memory) stayed invisible. `nim c` is the reference the
+  # suite was missing.
+  let ncRef = buildDir / "ncref"
+  let binRef = buildDir / "progref".addFileExt(ExeExt)
   removeDir(buildDir)
   createDir(buildDir)
 
+  # Extra switches for both compilers, settable per step via `#!FLAGS`.
+  var extraFlags: seq[string] = @[]
+
   template compileIc(): untyped =
-    execCmdEx2(compilerPrefix, ["ic", "--hint:Conf:off", "--warnings:off",
-      "--nimcache:" & nc, "--out:" & bin, "main.nim"],
+    execCmdEx2(compilerPrefix, @["ic", "--hint:Conf:off", "--warnings:off",
+      "--nimcache:" & nc, "--out:" & bin] & extraFlags & @["main.nim"],
+      workingDir = buildDir)
+
+  template compileRef(): untyped =
+    execCmdEx2(compilerPrefix, @["c", "--hint:Conf:off", "--warnings:off",
+      "--nimcache:" & ncRef, "--out:" & binRef] & extraFlags & @["main.nim"],
       workingDir = buildDir)
 
   # Parse the source into a flat op list: ("file", name, content) | ("step", attrs, "").
-  type OpKind = enum opFile, opStep
+  type OpKind = enum opFile, opStep, opDelete, opFlags
   type Op = object
     kind: OpKind
     a, b: string
@@ -622,6 +648,18 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
       if s.startsWith("#!FILE"):
         flushFile()
         curName = s["#!FILE".len .. ^1].strip
+      elif s.startsWith("#!DELETE"):
+        # Remove a module from the virtual file system AND from disk. Deleting a
+        # still-imported file moves no mtime, so nothing in an mtime-keyed build
+        # re-fires: `nim ic` used to relink a stale binary where `nim c` reports
+        # `cannot open file`. Untestable until the format could express it.
+        flushFile()
+        ops.add Op(kind: opDelete, a: s["#!DELETE".len .. ^1].strip)
+      elif s.startsWith("#!FLAGS"):
+        # Change the compiler switches for the following steps. Config changes
+        # are not files, so an mtime-keyed build cannot see them either.
+        flushFile()
+        ops.add Op(kind: opFlags, a: s["#!FLAGS".len .. ^1].strip)
       elif s.startsWith("#!STEP"):
         flushFile()
         ops.add Op(kind: opStep, a: s["#!STEP".len .. ^1].strip)
@@ -637,11 +675,21 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
   var prevSnap = initTable[string, string]()
   var prevBin = ""
   var stepIdx = 0
+  var deleted: seq[string] = @[]
   try:
     for o in ops:
-      if o.kind == opFile:
+      case o.kind
+      of opFile:
         vfs[o.a] = o.b
         continue
+      of opDelete:
+        vfs.del o.a
+        deleted.add o.a
+        continue
+      of opFlags:
+        extraFlags = o.a.splitWhitespace()
+        continue
+      of opStep: discard
       inc stepIdx
       let where = "step " & $stepIdx
       # Parse step attributes.
@@ -653,8 +701,36 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         if c >= 0: attrs[p[0 ..< c].strip] = p[c+1 .. ^1].strip
         else: attrs[p] = ""
 
+      for fn in deleted:
+        removeFile(buildDir / fn)
+      deleted.setLen 0
       for fn, content in vfs: writeFile(buildDir / fn, content)
       let (_, cout, ccode) = compileIc()
+
+      # `fails: <substring>` — the build MUST fail, with that text in its output.
+      # Without this every step had to succeed, so the whole error path was
+      # untested: a `nim m` that errored still wrote its `.s.bif`, nifmake then
+      # saw the rule satisfied, and the NEXT run reported success for a program
+      # that does not compile.
+      if "fails" in attrs:
+        if ccode == 0:
+          mmRaise(reBuildFailed, "a failed build", where & ": `nim ic` unexpectedly succeeded")
+        let want = attrs["fails"]
+        if want.len > 0 and want notin cout:
+          mmRaise(reOutputsDiffer, want, where & ": error text did not contain it:\n" & cout)
+        # The oracle must reject it too, else the test is asserting an IC-only
+        # error rather than a real one.
+        let (_, refOut, refCode) = compileRef()
+        if refCode == 0:
+          mmRaise(reBuildFailed, "`nim c` to fail too",
+            where & ": `nim ic` failed but `nim c` accepted the program:\n" & cout)
+        if want.len > 0 and want notin refOut:
+          mmRaise(reOutputsDiffer, want,
+            where & ": `nim c` failed differently:\n" & refOut)
+        prevSnap = snapshotDir(nc)
+        prevBin = ""
+        continue
+
       if ccode != 0:
         mmRaise(reBuildFailed, "", where & ": `nim ic` failed:\n" & cout)
       let (_, rout, rcode) = execCmdEx2(bin.absolutePath, [], workingDir = buildDir)
@@ -664,6 +740,22 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         let want = attrs["expect"].replace("\\n", "\n")
         if rout.strip == want.strip: discard
         else: mmRaise(reOutputsDiffer, want, where & " output:\n" & rout.strip)
+
+      # ORACLE: same sources through the classic backend, same observable
+      # behaviour. Unlike `expect:` this needs no foresight from the test author —
+      # it compares everything the program does, not only what someone thought to
+      # print, which is exactly what a silently-skipped destructor evades.
+      block oracle:
+        if "no-oracle" in attrs: break oracle
+        let (_, refCout, refCcode) = compileRef()
+        if refCcode != 0:
+          mmRaise(reBuildFailed, "", where & ": `nim c` (oracle) failed:\n" & refCout)
+        let (_, refRout, refRcode) = execCmdEx2(binRef.absolutePath, [],
+                                                workingDir = buildDir)
+        if refRout.strip != rout.strip or refRcode != rcode:
+          mmRaise(reOutputsDiffer, "`nim c` output:\n" & refRout.strip,
+            where & ": `nim ic` disagrees with `nim c`\n  ic  (exit " & $rcode &
+            "):\n" & rout.strip & "\n  c   (exit " & $refRcode & "):\n" & refRout.strip)
 
       let snap = snapshotDir(nc)
       let binBytes = stableBinary(bin)
@@ -762,6 +854,12 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
     let target = if cat.string.normalize == "js": targetJS else: targetC
     targets = {target}
   doAssert fileExists(test), test & " test does not exist"
+  # `testament r <file>` must dispatch metamorphic IC tests the same way
+  # `testament cat ic` does, otherwise a single-test run tries to parse the
+  # header as an ordinary spec and rejects it.
+  if isMetamorphicIcTest(readFile(test)):
+    runMetamorphicIcTest(r, test, cat, options)
+    return
   testSpec r, makeTest(test, options, cat), targets
 
 proc isJoinableSpec(spec: TSpec): bool =

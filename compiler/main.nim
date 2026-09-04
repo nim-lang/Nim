@@ -29,7 +29,8 @@ when defined(nimPreviewSlimSystem):
 import ../dist/checksums/src/checksums/sha1
 
 import pipelines
-from icconfig import produceIcConfig
+import icprof
+from icconfig import produceIcConfig, ensureIcConfig
 
 when not defined(nimKochBootstrap):
   import nifbackend
@@ -209,22 +210,6 @@ proc commandInteractive(graph: ModuleGraph) =
     let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
     discard processPipelineModule(graph, m, idgen, s)
 
-proc commandScan(cache: IdentCache, config: ConfigRef) =
-  var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
-  var stream = llStreamOpen(f, fmRead)
-  if stream != nil:
-    var
-      L: Lexer = default(Lexer)
-      tok: Token = default(Token)
-    openLexer(L, f, stream, cache, config)
-    while true:
-      rawGetTok(L, tok)
-      printTok(config, tok)
-      if tok.tokType == tkEof: break
-    closeLexer(L)
-  else:
-    rawMessage(config, errGenerated, "cannot open file: " & f.string)
-
 const
   PrintRopeCacheStats = false
 
@@ -285,6 +270,28 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
+    if isIcDriver(conf):
+      # `nim c --ic:on` / `nim cpp --ic:on`: same driver as `nim ic`, entered
+      # through the ordinary compile command so every backend switch the user
+      # already knows keeps working (`nim cpp`, `--exceptions:`, `-d:`, ...).
+      # `customizeForBackend` above has already defined the backend symbol and
+      # picked the exception model, which is exactly what the per-module
+      # children must inherit — `computeForwardedArgs` forwards both.
+      setUseIc(true)
+      wantMainModule(conf)
+      setOutFile(conf)
+      when not defined(nimKochBootstrap):
+        if conf.icPreparsedConfig.len == 0:
+          # `--ic:on` came from a `nim.cfg`/`config.nims` rather than the command
+          # line, so `nim.nim` could not see it before config loading and the
+          # precompiled config the children replay does not exist yet. Produce it
+          # now. (The driver then keeps the config IT parsed instead of replaying
+          # the artifact; both come from the same files.)
+          ensureIcConfig(conf)
+        commandIc(conf)
+      else:
+        rawMessage(conf, errGenerated, "--ic:on not available in bootstrap build")
+      return
     setOutFile(conf)
     case conf.backend
     of backendC: commandCompileToC(graph)
@@ -306,6 +313,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   ## command prepass
   if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
+  if conf.cmd == cmdBook: conf.globalOptions.incl {optGenIndex}
   if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
   if conf.outDir.isEmpty:
     # doc like commands can generate a lot of files (especially with --project)
@@ -314,7 +322,7 @@ proc mainCommand*(graph: ModuleGraph) =
               else: conf.projectPath
     if not ret.string.isAbsolute: # `AbsoluteDir` is not a real guarantee
       rawMessage(conf, errCannotOpenFile, ret.string & "/")
-    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex}:
+    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex, cmdMd2html, cmdMd2tex, cmdBook}:
       ret = ret / htmldocsDir
     conf.outDir = ret
 
@@ -341,6 +349,11 @@ proc mainCommand*(graph: ModuleGraph) =
       commandDoc2(graph, HtmlExt)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
+  of cmdBook:
+    loadConfigs(DocConfig, cache, conf, graph.idgen)
+    conf.setNoteDefaults(warnCannotOpenFile, true)
+    commandBook(cache, conf)
+    commandBuildIndex(conf, $conf.outDir, exclCode = true, inclHeaders = true)
   of cmdRst2html, cmdMd2html:
     # XXX: why are warnings disabled by default for rst2html and rst2tex?
     for warn in rstWarnings:
@@ -439,7 +452,9 @@ proc mainCommand*(graph: ModuleGraph) =
     # per-module compilation model cannot provide (yet); methods dispatch
     # through the classic if-chain dispatchers instead
     excl conf.features, Feature.vtables
-    commandCheck(graph)
+    # `tStage` for a `nim m` process, so `Process - Stage` is its real startup
+    # (exec, runtime init, config replay) rather than its whole runtime.
+    timed tStage: commandCheck(graph)
   of cmdNifC:
     setUseIc(true)
     excl conf.features, Feature.vtables

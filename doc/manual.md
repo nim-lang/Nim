@@ -712,8 +712,8 @@ Unicode Operators
 
 These Unicode operators are also parsed as operators:
 
-    ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+    ∙ ∘ × ★ ☆ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ⟑ ⟇ ⩓ ⩔ ■ □   # same priority as * (multiplication)
+    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔                           # same priority as + (addition)
 
 
 Unicode operators can be combined with non-Unicode operator
