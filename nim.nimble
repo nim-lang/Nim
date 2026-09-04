@@ -5,7 +5,7 @@ description = "Nim package providing the compiler binary"
 license = "MIT"
 
 bin = @["compiler/nim", "nimsuggest/nimsuggest"]
-skipFiles = @["azure-pipelines.yml" , "build_all.bat" , "build_all.sh" , "build_nimble.bat" , "build_nimble.sh" , "changelog.md" , "koch.nim.cfg" , "nimblemeta.json" , "readme.md" , "security.md" ]
+skipFiles = @["build_all.bat" , "build_all.sh" , "build_nimble.bat" , "build_nimble.sh" , "changelog.md" , "koch.nim.cfg" , "nimblemeta.json" , "readme.md" , "security.md" ]
 skipDirs = @["build" , "changelogs" , "ci" , "csources_v3" , "drnim" , "nimdoc", "testament"]
 
 before install:
