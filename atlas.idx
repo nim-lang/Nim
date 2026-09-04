@@ -1,0 +1,32 @@
+markupTitle	atlas.md	atlas.html	atlas.md		0
+heading	Atlas Package Cloner	atlas.html#atlas-package-cloner	 Atlas Package Cloner		0
+heading	Concepts	atlas.html#concepts	  Concepts		0
+heading	Projects	atlas.html#projects	   Projects		0
+heading	Dependencies	atlas.html#dependencies	   Dependencies		0
+heading	No magic	atlas.html#no-magic	  No magic		0
+heading	How it works	atlas.html#how-it-works	  How it works		0
+heading	Commands	atlas.html#commands	  Commands		0
+heading	Use <url> / <package name> / <forge alias>	atlas.html#use-lturlgt-slash-ltpackage-namegt-slash-ltforge-aliasgt	   Use &lt;url&gt; / &lt;package name&gt; / &lt;forge alias&gt;		0
+heading	Link <path>	atlas.html#link-ltpathgt	   Link &lt;path&gt;		0
+heading	Unlink <package>	atlas.html#unlink-ltpackagegt	   Unlink &lt;package&gt;		0
+heading	Use / Update <url>/<package name>	atlas.html#use-slash-update-lturlgtslashltpackage-namegt	   Use / Update &lt;url&gt;/&lt;package name&gt;		0
+heading	When Statements	atlas.html#when-statements	  When Statements		0
+heading	Feature Statements	atlas.html#feature-statements	   Feature Statements		0
+heading	Search <term term2 term3 ...>	atlas.html#search-ltterm-term2-term3-dotdotdotgt	   Search &lt;term term2 term3 ...&gt;		0
+heading	Install	atlas.html#install	   Install		0
+heading	Run Nimble tasks	atlas.html#run-nimble-tasks	   Run Nimble tasks		0
+heading	Update filterfilter	atlas.html#update-filterfilter	   Update <a class="reference internal" href="#filter">filter</a>		0
+heading	Others	atlas.html#others	   Others		0
+heading	Usage With CI	atlas.html#usage-with-ci	   Usage With CI		0
+heading	Package Overrides	atlas.html#package-overrides	  Package Overrides		0
+heading	Overrides	atlas.html#overrides	  Overrides		0
+heading	Virtual Nim environments	atlas.html#virtual-nim-environments	  Virtual Nim environments		0
+heading	Dependency resolution	atlas.html#dependency-resolution	  Dependency resolution		0
+heading	MaxVer	atlas.html#maxver	   MaxVer		0
+heading	SemVer	atlas.html#semver	   SemVer		0
+heading	MinVer	atlas.html#minver	   MinVer		0
+heading	Reproducible builds / lockfiles	atlas.html#reproducible-builds-slash-lockfiles	  Reproducible builds / lockfiles		0
+heading	pin atlas.lockatlas.lock	atlas.html#pin-atlasdotlockatlasdotlock	   pin <a class="reference internal" href="#atlas.lock">atlas.lock</a>		0
+heading	rep atlas.lockatlas.lock	atlas.html#rep-atlasdotlockatlasdotlock	   rep <a class="reference internal" href="#atlas.lock">atlas.lock</a>		0
+heading	Plugins	atlas.html#plugins	  Plugins		0
+heading	Builders	atlas.html#builders	   Builders		0

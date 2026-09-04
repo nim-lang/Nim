@@ -1,0 +1,44 @@
+nimTitle	renderer	renderer.html	module renderer		0
+nim	renderNone	renderer.html#renderNone	TRenderFlag.renderNone		25
+nim	renderNoBody	renderer.html#renderNoBody	TRenderFlag.renderNoBody		25
+nim	renderNoComments	renderer.html#renderNoComments	TRenderFlag.renderNoComments		25
+nim	renderDocComments	renderer.html#renderDocComments	TRenderFlag.renderDocComments		25
+nim	renderNoPragmas	renderer.html#renderNoPragmas	TRenderFlag.renderNoPragmas		25
+nim	renderIds	renderer.html#renderIds	TRenderFlag.renderIds		25
+nim	renderNoProcDefs	renderer.html#renderNoProcDefs	TRenderFlag.renderNoProcDefs		25
+nim	renderSyms	renderer.html#renderSyms	TRenderFlag.renderSyms		25
+nim	renderRunnableExamples	renderer.html#renderRunnableExamples	TRenderFlag.renderRunnableExamples		25
+nim	renderIr	renderer.html#renderIr	TRenderFlag.renderIr		25
+nim	renderNonExportedFields	renderer.html#renderNonExportedFields	TRenderFlag.renderNonExportedFields		25
+nim	renderExpandUsing	renderer.html#renderExpandUsing	TRenderFlag.renderExpandUsing		25
+nim	renderNoPostfix	renderer.html#renderNoPostfix	TRenderFlag.renderNoPostfix		25
+nim	TRenderFlag	renderer.html#TRenderFlag	enum TRenderFlag		25
+nim	TRenderFlags	renderer.html#TRenderFlags	type TRenderFlags		30
+nim	TRenderTok	renderer.html#TRenderTok	object TRenderTok		31
+nim	TRenderTokSeq	renderer.html#TRenderTokSeq	type TRenderTokSeq		40
+nim	TSrcGen	renderer.html#TSrcGen	object TSrcGen		41
+nim	renderTree	renderer.html#renderTree,PNode,TRenderFlags	proc renderTree(n: PNode; renderFlags: TRenderFlags = {}): string		63
+nim	preferName	renderer.html#preferName	TPreferedDesc.preferName		70
+nim	preferDesc	renderer.html#preferDesc	TPreferedDesc.preferDesc		70
+nim	preferExported	renderer.html#preferExported	TPreferedDesc.preferExported		70
+nim	preferModuleInfo	renderer.html#preferModuleInfo	TPreferedDesc.preferModuleInfo		70
+nim	preferGenericArg	renderer.html#preferGenericArg	TPreferedDesc.preferGenericArg		70
+nim	preferTypeName	renderer.html#preferTypeName	TPreferedDesc.preferTypeName		70
+nim	preferResolved	renderer.html#preferResolved	TPreferedDesc.preferResolved		70
+nim	preferMixed	renderer.html#preferMixed	TPreferedDesc.preferMixed		70
+nim	preferInlayHint	renderer.html#preferInlayHint	TPreferedDesc.preferInlayHint		70
+nim	preferInferredEffects	renderer.html#preferInferredEffects	TPreferedDesc.preferInferredEffects		70
+nim	TPreferedDesc	renderer.html#TPreferedDesc	enum TPreferedDesc		70
+nim	typeToString	renderer.html#typeToString,PType,TPreferedDesc	proc typeToString(typ: PType; prefer: TPreferedDesc = preferName): string		84
+nim	`$`	renderer.html#$.t,PType	template `$`(typ: PType): string		85
+nim	isIntLit	renderer.html#isIntLit,PType	proc isIntLit(t: PType): bool		127
+nim	isFloatLit	renderer.html#isFloatLit,PType	proc isFloatLit(t: PType): bool		130
+nim	isResolvedUserTypeClass	renderer.html#isResolvedUserTypeClass.t,PType	template isResolvedUserTypeClass(t: PType): bool		139
+nim	isKeyword	renderer.html#isKeyword,PIdent	proc isKeyword(i: PIdent): bool		430
+nim	renderDefinitionName	renderer.html#renderDefinitionName,PSym	proc renderDefinitionName(s: PSym; noQuotes = false): string		447
+nim	bracketKind	renderer.html#bracketKind,TSrcGen,PNode	proc bracketKind(g: TSrcGen; n: PNode): BracketKind		1361
+nim	`$`	renderer.html#$,PNode	proc `$`(n: PNode): string		2205
+nim	renderModule	renderer.html#renderModule,PNode,string,TRenderFlags,ConfigRef	proc renderModule(n: PNode; outfile: string; renderFlags: TRenderFlags = {};\n             fid = FileIndex(-1); conf: ConfigRef = nil)		2207
+nim	initTokRender	renderer.html#initTokRender,PNode,TRenderFlags	proc initTokRender(n: PNode; renderFlags: TRenderFlags = {}): TSrcGen		2229
+nim	getNextTok	renderer.html#getNextTok,TSrcGen,TokType,string	proc getNextTok(r: var TSrcGen; kind: var TokType; literal: var string)		2233
+nim	getTokSym	renderer.html#getTokSym,TSrcGen	proc getTokSym(r: TSrcGen): PSym		2243

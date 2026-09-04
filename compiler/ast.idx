@@ -1,0 +1,317 @@
+nimTitle	ast	ast.html	module ast		0
+nim	program	ast.html#program	var program		33
+nim	setupProgram	ast.html#setupProgram,ConfigRef,IdentCache	proc setupProgram(config: ConfigRef; cache: IdentCache)		35
+nim	setIcMainModule	ast.html#setIcMainModule,FileIndex	proc setIcMainModule(fileIdx: FileIndex)		39
+nim	loadSymCallback	ast.html#loadSymCallback,PSym	proc loadSymCallback(s: PSym)		56
+nim	loadTypeCallback	ast.html#loadTypeCallback,PType	proc loadTypeCallback(t: PType)		59
+nim	ensureMutable	ast.html#ensureMutable,PSym	proc ensureMutable(s: PSym)		62
+nim	ensureMutable	ast.html#ensureMutable,PType	proc ensureMutable(t: PType)		66
+nim	backendEnsureMutable	ast.html#backendEnsureMutable,PSym	proc backendEnsureMutable(s: PSym)		70
+nim	backendEnsureMutable	ast.html#backendEnsureMutable,PType	proc backendEnsureMutable(t: PType)		75
+nim	unsealForTransform	ast.html#unsealForTransform,PType	proc unsealForTransform(t: PType)		80
+nim	owner	ast.html#owner,PSym	proc owner(s: PSym): lent PSym		90
+nim	owner	ast.html#owner,PType	proc owner(s: PType): lent PSym		94
+nim	setOwner	ast.html#setOwner,PSym,PSym	proc setOwner(s: PSym; owner: PSym)		98
+nim	setOwner	ast.html#setOwner,PType,PSym	proc setOwner(s: PType; owner: PSym)		103
+nim	kind	ast.html#kind,PSym	proc kind(s: PSym): TSymKind		108
+nim	kind=	ast.html#kind=,PSym,TSymKind	proc kind=(s: PSym; val: TSymKind)		112
+nim	gcUnsafetyReason	ast.html#gcUnsafetyReason,PSym	proc gcUnsafetyReason(s: PSym): lent PSym		117
+nim	gcUnsafetyReason=	ast.html#gcUnsafetyReason=,PSym,PSym	proc gcUnsafetyReason=(s: PSym; val: PSym)		121
+nim	transformedBody	ast.html#transformedBody,PSym	proc transformedBody(s: PSym): lent PNode		126
+nim	transformedBody=	ast.html#transformedBody=,PSym,PNode	proc transformedBody=(s: PSym; val: PNode)		130
+nim	guard	ast.html#guard,PSym	proc guard(s: PSym): lent PSym		136
+nim	guard=	ast.html#guard=,PSym,PSym	proc guard=(s: PSym; val: PSym)		140
+nim	bitsize	ast.html#bitsize,PSym	proc bitsize(s: PSym): int		145
+nim	bitsize=	ast.html#bitsize=,PSym,int	proc bitsize=(s: PSym; val: int)		149
+nim	alignment	ast.html#alignment,PSym	proc alignment(s: PSym): int		154
+nim	alignment=	ast.html#alignment=,PSym,int	proc alignment=(s: PSym; val: int)		158
+nim	magic	ast.html#magic,PSym	proc magic(s: PSym): TMagic		163
+nim	magic=	ast.html#magic=,PSym,TMagic	proc magic=(s: PSym; val: TMagic)		167
+nim	typ	ast.html#typ,PSym	proc typ(s: PSym): lent PType		172
+nim	typ=	ast.html#typ=,PSym,PType	proc typ=(s: PSym; val: PType)		176
+nim	info	ast.html#info,PSym	proc info(s: PSym): TLineInfo		181
+nim	info=	ast.html#info=,PSym,TLineInfo	proc info=(s: PSym; val: TLineInfo)		185
+nim	flags	ast.html#flags,PSym	proc flags(s: PSym): TSymFlags		209
+nim	flags=	ast.html#flags=,PSym,TSymFlags	proc flags=(s: PSym; val: TSymFlags)		213
+nim	ast	ast.html#ast,PSym	proc ast(s: PSym): lent PNode		218
+nim	ast=	ast.html#ast=,PSym,PNode	proc ast=(s: PSym; val: PNode)		222
+nim	options	ast.html#options,PSym	proc options(s: PSym): TOptions		227
+nim	options=	ast.html#options=,PSym,TOptions	proc options=(s: PSym; val: TOptions)		231
+nim	position	ast.html#position,PSym	proc position(s: PSym): int		236
+nim	position=	ast.html#position=,PSym,int	proc position=(s: PSym; val: int)		240
+nim	offset	ast.html#offset,PSym	proc offset(s: PSym): int32		248
+nim	offset=	ast.html#offset=,PSym,int32	proc offset=(s: PSym; val: int32)		252
+nim	loc	ast.html#loc,PSym	proc loc(s: PSym): TLoc		257
+nim	loc=	ast.html#loc=,PSym,TLoc	proc loc=(s: PSym; val: TLoc)		261
+nim	annex	ast.html#annex,PSym	proc annex(s: PSym): lent PLib		266
+nim	annex=	ast.html#annex=,PSym,PLib	proc annex=(s: PSym; val: PLib)		270
+nim	constraint	ast.html#constraint,PSym	proc constraint(s: PSym): lent PNode		285
+nim	constraint=	ast.html#constraint=,PSym,PNode	proc constraint=(s: PSym; val: PNode)		289
+nim	instantiatedFrom	ast.html#instantiatedFrom,PSym	proc instantiatedFrom(s: PSym): lent PSym		294
+nim	instantiatedFrom=	ast.html#instantiatedFrom=,PSym,PSym	proc instantiatedFrom=(s: PSym; val: PSym)		298
+nim	setSnippet	ast.html#setSnippet,PSym,sinkstring	proc setSnippet(s: PSym; val: sink string)		303
+nim	incl	ast.html#incl,PSym,TSymFlag	proc incl(s: PSym; flag: TSymFlag)		308
+nim	incl	ast.html#incl,PSym,set[TSymFlag]	proc incl(s: PSym; flags: set[TSymFlag])		313
+nim	incl	ast.html#incl,PSym,TLocFlag	proc incl(s: PSym; flag: TLocFlag)		318
+nim	excl	ast.html#excl,PSym,TSymFlag	proc excl(s: PSym; flag: TSymFlag)		324
+nim	callConv	ast.html#callConv,PType	proc callConv(t: PType): TCallingConvention		343
+nim	callConv=	ast.html#callConv=,PType,TCallingConvention	proc callConv=(t: PType; val: TCallingConvention)		347
+nim	flags	ast.html#flags,PType	proc flags(t: PType): TTypeFlags		352
+nim	flags=	ast.html#flags=,PType,TTypeFlags	proc flags=(t: PType; val: TTypeFlags)		356
+nim	sons	ast.html#sons,PType	proc sons(t: PType): var TTypeSeq		361
+nim	sons=	ast.html#sons=,PType,sinkTTypeSeq	proc sons=(t: PType; val: sink TTypeSeq)		377
+nim	n	ast.html#n,PType	proc n(t: PType): lent PNode		382
+nim	n=	ast.html#n=,PType,PNode	proc n=(t: PType; val: PNode)		386
+nim	sym	ast.html#sym,PType	proc sym(t: PType): lent PSym		391
+nim	sym=	ast.html#sym=,PType,PSym	proc sym=(t: PType; val: PSym)		395
+nim	size	ast.html#size,PType	proc size(t: PType): BiggestInt		400
+nim	size=	ast.html#size=,PType,BiggestInt	proc size=(t: PType; val: BiggestInt)		404
+nim	align	ast.html#align,PType	proc align(t: PType): int16		408
+nim	align=	ast.html#align=,PType,int16	proc align=(t: PType; val: int16)		412
+nim	paddingAtEnd	ast.html#paddingAtEnd,PType	proc paddingAtEnd(t: PType): int16		416
+nim	paddingAtEnd=	ast.html#paddingAtEnd=,PType,int16	proc paddingAtEnd=(t: PType; val: int16)		420
+nim	loc	ast.html#loc,PType	proc loc(t: PType): TLoc		424
+nim	loc=	ast.html#loc=,PType,TLoc	proc loc=(t: PType; val: TLoc)		428
+nim	typeInst	ast.html#typeInst,PType	proc typeInst(t: PType): lent PType		433
+nim	typeInst=	ast.html#typeInst=,PType,PType	proc typeInst=(t: PType; val: PType)		437
+nim	incl	ast.html#incl,PType,TTypeFlag	proc incl(t: PType; flag: TTypeFlag)		442
+nim	incl	ast.html#incl,PType,set[TTypeFlag]	proc incl(t: PType; flags: set[TTypeFlag])		447
+nim	excl	ast.html#excl,PType,TTypeFlag	proc excl(t: PType; flag: TTypeFlag)		452
+nim	excl	ast.html#excl,PType,set[TTypeFlag]	proc excl(t: PType; flags: set[TTypeFlag])		457
+nim	typ	ast.html#typ,PNode	proc typ(n: PNode): lent PType		462
+nim	typ=	ast.html#typ=,PNode,sinkPType	proc typ=(n: PNode; val: sink PType)		467
+nim	setUseIc	ast.html#setUseIc,bool	proc setUseIc(useIc: bool)		480
+nim	comment	ast.html#comment,PNode	proc comment(n: PNode): string		482
+nim	comment=	ast.html#comment=,PNode,string	proc comment=(n: PNode; a: string)		495
+nim	getPIdent	ast.html#getPIdent,PNode	proc getPIdent(a: PNode): PIdent		516
+nim	id	ast.html#id.t,PSym	template id(a: PSym): int		524
+nim	id	ast.html#id.t,PType	template id(a: PType): int		525
+nim	IdGenerator	ast.html#IdGenerator	type IdGenerator		528
+nim	idGeneratorFromModule	ast.html#idGeneratorFromModule,PSym	proc idGeneratorFromModule(m: PSym): IdGenerator		536
+nim	idGeneratorForBackend	ast.html#idGeneratorForBackend,PSym	proc idGeneratorForBackend(m: PSym): IdGenerator		541
+nim	idGeneratorForPackage	ast.html#idGeneratorForPackage,int32	proc idGeneratorForPackage(nextIdWillBe: int32): IdGenerator		557
+nim	nextTypeId	ast.html#nextTypeId,IdGenerator	proc nextTypeId(x: IdGenerator): ItemId		574
+nim	ggDebug	ast.html#ggDebug	var ggDebug		603
+nim	isCallExpr	ast.html#isCallExpr,PNode	proc isCallExpr(n: PNode): bool		605
+nim	discardSons	ast.html#discardSons,PNode	proc discardSons(father: PNode)		608
+nim	safeArrLen	ast.html#safeArrLen,PNode	proc safeArrLen(n: PNode): int		610
+nim	add	ast.html#add,PNode,PNode	proc add(father, son: PNode)		616
+nim	addAllowNil	ast.html#addAllowNil,PNode,PNode	proc addAllowNil(father, son: PNode)		620
+nim	add	ast.html#add,PType,PType	proc add(father, son: PType)		623
+nim	addAllowNil	ast.html#addAllowNil,PType,PType	proc addAllowNil(father, son: PType)		629
+nim	`[]`	ast.html#[],PType,int	proc `[]`(n: PType; i: int): PType		634
+nim	`[]=`	ast.html#[]=,PType,int,PType	proc `[]=`(n: PType; i: int; x: PType)		642
+nim	`[]`	ast.html#[],PType,BackwardsIndex	proc `[]`(n: PType; i: BackwardsIndex): PType		650
+nim	`[]=`	ast.html#[]=,PType,BackwardsIndex,PType	proc `[]=`(n: PType; i: BackwardsIndex; x: PType)		654
+nim	getDeclPragma	ast.html#getDeclPragma,PNode	proc getDeclPragma(n: PNode): PNode		658
+nim	extractPragma	ast.html#extractPragma,PSym	proc extractPragma(s: PSym): PNode		692
+nim	skipPragmaExpr	ast.html#skipPragmaExpr,PNode	proc skipPragmaExpr(n: PNode): PNode		714
+nim	setInfoRecursive	ast.html#setInfoRecursive,PNode,TLineInfo	proc setInfoRecursive(n: PNode; info: TLineInfo)		722
+nim	newAtom	ast.html#newAtom,PIdent,TLineInfo	proc newAtom(ident: PIdent; info: TLineInfo): PNode		728
+nim	newAtom	ast.html#newAtom,TNodeKind,BiggestInt,TLineInfo	proc newAtom(kind: TNodeKind; intVal: BiggestInt; info: TLineInfo): PNode		732
+nim	newAtom	ast.html#newAtom,TNodeKind,BiggestFloat,TLineInfo	proc newAtom(kind: TNodeKind; floatVal: BiggestFloat; info: TLineInfo): PNode		736
+nim	newAtom	ast.html#newAtom,TNodeKind,sinkstring,TLineInfo	proc newAtom(kind: TNodeKind; strVal: sink string; info: TLineInfo): PNode		740
+nim	newTree	ast.html#newTree,TNodeKind,TLineInfo,varargs[PNode]	proc newTree(kind: TNodeKind; info: TLineInfo; children: varargs[PNode]): PNode		744
+nim	newTree	ast.html#newTree,TNodeKind,varargs[PNode]	proc newTree(kind: TNodeKind; children: varargs[PNode]): PNode		750
+nim	newTreeI	ast.html#newTreeI,TNodeKind,TLineInfo,varargs[PNode]	proc newTreeI(kind: TNodeKind; info: TLineInfo; children: varargs[PNode]): PNode		756
+nim	newTreeIT	ast.html#newTreeIT,TNodeKind,TLineInfo,PType,varargs[PNode]	proc newTreeIT(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[PNode]): PNode		762
+nim	previouslyInferred	ast.html#previouslyInferred.t,PType	template previouslyInferred(t: PType): PType		768
+nim	newSym	ast.html#newSym,TSymKind,PIdent,IdGenerator,PSym,TLineInfo,TOptions	proc newSym(symKind: TSymKind; name: PIdent; idgen: IdGenerator; owner: PSym;\n       info: TLineInfo; options: TOptions = {}): PSym		786
+nim	astdef	ast.html#astdef,PSym	proc astdef(s: PSym): PNode		813
+nim	isMetaType	ast.html#isMetaType,PType	proc isMetaType(t: PType): bool		821
+nim	isUnresolvedStatic	ast.html#isUnresolvedStatic,PType	proc isUnresolvedStatic(t: PType): bool		826
+nim	linkTo	ast.html#linkTo,PType,PSym	proc linkTo(t: PType; s: PSym): PType		829
+nim	linkTo	ast.html#linkTo,PSym,PType	proc linkTo(s: PSym; t: PType): PSym		834
+nim	fileIdx	ast.html#fileIdx.t,PSym	template fileIdx(c: PSym): FileIndex		839
+nim	filename	ast.html#filename.t,PSym	template filename(c: PSym): string		843
+nim	appendToModule	ast.html#appendToModule,PSym,PNode	proc appendToModule(m: PSym; n: PNode)		847
+nim	copyStrTable	ast.html#copyStrTable,TStrTable,TStrTable	proc copyStrTable(dest: var TStrTable; src: TStrTable)		856
+nim	copyIdTable	ast.html#copyIdTable,TIdTable[T],TIdTable[T]	proc copyIdTable[T](dest: var TIdTable[T]; src: TIdTable[T])		861
+nim	copyObjectSet	ast.html#copyObjectSet,TObjectSet,TObjectSet	proc copyObjectSet(dest: var TObjectSet; src: TObjectSet)		866
+nim	withInfo	ast.html#withInfo,PNode,TLineInfo	proc withInfo(n: PNode; info: TLineInfo): PNode		874
+nim	newSymNode	ast.html#newSymNode,PSym	proc newSymNode(sym: PSym): PNode		879
+nim	newOpenSym	ast.html#newOpenSym,PNode	proc newOpenSym(n: PNode): PNode		889
+nim	newIntNode	ast.html#newIntNode,TNodeKind,BiggestInt	proc newIntNode(kind: TNodeKind; intVal: BiggestInt): PNode		892
+nim	newIntNode	ast.html#newIntNode,TNodeKind,Int128	proc newIntNode(kind: TNodeKind; intVal: Int128): PNode		896
+nim	lastSon	ast.html#lastSon,PNode	proc lastSon(n: PNode): lent PNode		900
+nim	setLastSon	ast.html#setLastSon.t,PNode,PNode	template setLastSon(n: PNode; s: PNode)		901
+nim	firstSon	ast.html#firstSon.t,PNode	template firstSon(n: PNode): PNode		903
+nim	secondSon	ast.html#secondSon.t,PNode	template secondSon(n: PNode): PNode		904
+nim	hasSon	ast.html#hasSon.t,PNode	template hasSon(n: PNode): bool		906
+nim	has2Sons	ast.html#has2Sons.t,PNode	template has2Sons(n: PNode): bool		907
+nim	replaceFirstSon	ast.html#replaceFirstSon,PNode,PNode	proc replaceFirstSon(n, newson: PNode)		909
+nim	replaceSon	ast.html#replaceSon,PNode,int,PNode	proc replaceSon(n: PNode; i: int; newson: PNode)		912
+nim	last	ast.html#last,PType	proc last(n: PType): PType		915
+nim	elementType	ast.html#elementType,PType	proc elementType(n: PType): lent PType		922
+nim	skipModifier	ast.html#skipModifier,PType	proc skipModifier(n: PType): lent PType		926
+nim	indexType	ast.html#indexType,PType	proc indexType(n: PType): lent PType		930
+nim	baseClass	ast.html#baseClass,PType	proc baseClass(n: PType): lent PType		934
+nim	base	ast.html#base,PType	proc base(t: PType): lent PType		938
+nim	returnType	ast.html#returnType,PType	proc returnType(n: PType): lent PType		942
+nim	setReturnType	ast.html#setReturnType,PType,PType	proc setReturnType(n, r: PType)		946
+nim	setIndexType	ast.html#setIndexType,PType,PType	proc setIndexType(n, idx: PType)		950
+nim	firstParamType	ast.html#firstParamType,PType	proc firstParamType(n: PType): PType		954
+nim	firstGenericParam	ast.html#firstGenericParam,PType	proc firstGenericParam(n: PType): lent PType		961
+nim	typeBodyImpl	ast.html#typeBodyImpl,PType	proc typeBodyImpl(n: PType): lent PType		965
+nim	genericHead	ast.html#genericHead,PType	proc genericHead(n: PType): lent PType		969
+nim	skipTypes	ast.html#skipTypes,PType,TTypeKinds	proc skipTypes(t: PType; kinds: TTypeKinds): PType		973
+nim	newIntTypeNode	ast.html#newIntTypeNode,BiggestInt,PType	proc newIntTypeNode(intVal: BiggestInt; typ: PType): PNode		981
+nim	newIntTypeNode	ast.html#newIntTypeNode,Int128,PType	proc newIntTypeNode(intVal: Int128; typ: PType): PNode		1004
+nim	newFloatNode	ast.html#newFloatNode,TNodeKind,BiggestFloat	proc newFloatNode(kind: TNodeKind; floatVal: BiggestFloat): PNode		1008
+nim	newProcNode	ast.html#newProcNode,TNodeKind,TLineInfo,PNode,PNode,PNode,PNode,PNode,PNode,PNode	proc newProcNode(kind: TNodeKind; info: TLineInfo; body: PNode;\n            params, name, pattern, genericParams, pragmas, exceptions: PNode): PNode		1012
+nim	AttachedOpToStr	ast.html#AttachedOpToStr	const AttachedOpToStr		1021
+nim	`$`	ast.html#$,PSym	proc `$`(s: PSym): string		1024
+nim	len	ast.html#len,PType	proc len(n: PType): int		1030
+nim	sameTupleLengths	ast.html#sameTupleLengths,PType,PType	proc sameTupleLengths(a, b: PType): bool		1037
+nim	tupleTypePairs	ast.html#tupleTypePairs.i,PType,PType	iterator tupleTypePairs(a, b: PType): (int, PType, PType)		1040
+nim	underspecifiedPairs	ast.html#underspecifiedPairs.i,PType,PType,int,int	iterator underspecifiedPairs(a, b: PType; start = 0; without = 0): (PType, PType)		1044
+nim	signatureLen	ast.html#signatureLen,PType	proc signatureLen(t: PType): int		1049
+nim	paramsLen	ast.html#paramsLen,PType	proc paramsLen(t: PType): int		1052
+nim	genericParamsLen	ast.html#genericParamsLen,PType	proc genericParamsLen(t: PType): int		1055
+nim	genericInvocationParamsLen	ast.html#genericInvocationParamsLen,PType	proc genericInvocationParamsLen(t: PType): int		1059
+nim	kidsLen	ast.html#kidsLen,PType	proc kidsLen(t: PType): int		1063
+nim	genericParamHasConstraints	ast.html#genericParamHasConstraints,PType	proc genericParamHasConstraints(t: PType): bool		1066
+nim	hasElementType	ast.html#hasElementType,PType	proc hasElementType(t: PType): bool		1068
+nim	isEmptyTupleType	ast.html#isEmptyTupleType,PType	proc isEmptyTupleType(t: PType): bool		1069
+nim	isSingletonTupleType	ast.html#isSingletonTupleType,PType	proc isSingletonTupleType(t: PType): bool		1070
+nim	genericConstraint	ast.html#genericConstraint,PType	proc genericConstraint(t: PType): PType		1072
+nim	genericInstParams	ast.html#genericInstParams.i,PType	iterator genericInstParams(t: PType): (bool, PType)		1074
+nim	genericInstParamPairs	ast.html#genericInstParamPairs.i,PType,PType	iterator genericInstParamPairs(a, b: PType): (int, PType, PType)		1078
+nim	genericInvocationParams	ast.html#genericInvocationParams.i,PType	iterator genericInvocationParams(t: PType): (bool, PType)		1082
+nim	genericInvocationAndBodyElements	ast.html#genericInvocationAndBodyElements.i,PType,PType	iterator genericInvocationAndBodyElements(a, b: PType): (PType, PType)		1086
+nim	genericInvocationParamPairs	ast.html#genericInvocationParamPairs.i,PType,PType	iterator genericInvocationParamPairs(a, b: PType): (bool, PType, PType)		1090
+nim	genericBodyParams	ast.html#genericBodyParams.i,PType	iterator genericBodyParams(t: PType): (int, PType)		1097
+nim	userTypeClassInstParams	ast.html#userTypeClassInstParams.i,PType	iterator userTypeClassInstParams(t: PType): (bool, PType)		1101
+nim	ikids	ast.html#ikids.i,PType	iterator ikids(t: PType): (int, PType)		1105
+nim	FirstParamAt	ast.html#FirstParamAt	const FirstParamAt		1109
+nim	FirstGenericParamAt	ast.html#FirstGenericParamAt	const FirstGenericParamAt		1110
+nim	paramTypes	ast.html#paramTypes.i,PType	iterator paramTypes(t: PType): (int, PType)		1112
+nim	paramTypePairs	ast.html#paramTypePairs.i,PType,PType	iterator paramTypePairs(a, b: PType): (PType, PType)		1115
+nim	paramTypeToNodeIndex	ast.html#paramTypeToNodeIndex.t,int	template paramTypeToNodeIndex(x: int): int		1118
+nim	kids	ast.html#kids.i,PType	iterator kids(t: PType): PType		1120
+nim	signature	ast.html#signature.i,PType	iterator signature(t: PType): PType		1123
+nim	newType	ast.html#newType,TTypeKind,IdGenerator,PSym,sinkPType	proc newType(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType = nil): PType		1127
+nim	setSons	ast.html#setSons,PType,sinkseq[PType]	proc setSons(dest: PType; sons: sink seq[PType])		1145
+nim	setSon	ast.html#setSon,PType,sinkPType	proc setSon(dest: PType; son: sink PType)		1148
+nim	setSonsLen	ast.html#setSonsLen,PType,int	proc setSonsLen(dest: PType; len: int)		1150
+nim	newSons	ast.html#newSons,PNode,int	proc newSons(father: PNode; length: int)		1161
+nim	newSons	ast.html#newSons,PType,int	proc newSons(father: PType; length: int)		1164
+nim	truncateInferredTypeCandidates	ast.html#truncateInferredTypeCandidates,PType	proc truncateInferredTypeCandidates(t: PType)		1168
+nim	assignType	ast.html#assignType,PType,PType	proc assignType(dest, src: PType)		1173
+nim	copyType	ast.html#copyType,PType,IdGenerator,PSym	proc copyType(t: PType; idgen: IdGenerator; owner: PSym): PType		1201
+nim	exactReplica	ast.html#exactReplica,PType,IdGenerator	proc exactReplica(t: PType; idgen: IdGenerator): PType		1206
+nim	copySym	ast.html#copySym,PSym,IdGenerator	proc copySym(s: PSym; idgen: IdGenerator): PSym		1227
+nim	createModuleAlias	ast.html#createModuleAlias,PSym,IdGenerator,PIdent,TLineInfo,TOptions	proc createModuleAlias(s: PSym; idgen: IdGenerator; newIdent: PIdent;\n                  info: TLineInfo; options: TOptions): PSym		1243
+nim	initStrTable	ast.html#initStrTable	proc initStrTable(): TStrTable		1255
+nim	initIdTable	ast.html#initIdTable	proc initIdTable[T](): TIdTable[T]		1259
+nim	resetIdTable	ast.html#resetIdTable,TIdTable[T]	proc resetIdTable[T](x: var TIdTable[T])		1263
+nim	initObjectSet	ast.html#initObjectSet	proc initObjectSet(): TObjectSet		1269
+nim	initNodeTable	ast.html#initNodeTable	proc initNodeTable(ignoreTypes = false): TNodeTable		1273
+nim	skipTypes	ast.html#skipTypes,PType,TTypeKinds,int	proc skipTypes(t: PType; kinds: TTypeKinds; maxIters: int): PType		1277
+nim	skipTypesOrNil	ast.html#skipTypesOrNil,PType,TTypeKinds	proc skipTypesOrNil(t: PType; kinds: TTypeKinds): PType		1285
+nim	isGCedMem	ast.html#isGCedMem,PType	proc isGCedMem(t: PType): bool		1293
+nim	propagateToOwner	ast.html#propagateToOwner,PType,PType	proc propagateToOwner(owner, elem: PType; propagateHasAsgn = true)		1297
+nim	rawAddSon	ast.html#rawAddSon,PType,PType	proc rawAddSon(father, son: PType; propagateHasAsgn = true)		1327
+nim	addSonNilAllowed	ast.html#addSonNilAllowed,PNode,PNode	proc addSonNilAllowed(father, son: PNode)		1333
+nim	delSon	ast.html#delSon,PNode,int	proc delSon(father: PNode; idx: int)		1336
+nim	copyNode	ast.html#copyNode,PNode	proc copyNode(src: PNode): PNode		1341
+nim	transitionSonsKind	ast.html#transitionSonsKind,PNode,range[]	proc transitionSonsKind(n: PNode; kind: range[nkComesFrom .. nkTupleConstr])		1370
+nim	transitionIntKind	ast.html#transitionIntKind,PNode,range[]	proc transitionIntKind(n: PNode; kind: range[nkCharLit .. nkUInt64Lit])		1374
+nim	transitionIntToFloatKind	ast.html#transitionIntToFloatKind,PNode,range[]	proc transitionIntToFloatKind(n: PNode; kind: range[nkFloatLit .. nkFloat128Lit])		1378
+nim	transitionNoneToSym	ast.html#transitionNoneToSym,PNode	proc transitionNoneToSym(n: PNode)		1382
+nim	transitionSymKindCommon	ast.html#transitionSymKindCommon.t,TSymKind	template transitionSymKindCommon(k: TSymKind)		1385
+nim	transitionGenericParamToType	ast.html#transitionGenericParamToType,PSym	proc transitionGenericParamToType(s: PSym)		1400
+nim	transitionRoutineSymKind	ast.html#transitionRoutineSymKind,PSym,range[]	proc transitionRoutineSymKind(s: PSym; kind: range[skProc .. skTemplate])		1403
+nim	transitionToLet	ast.html#transitionToLet,PSym	proc transitionToLet(s: PSym)		1408
+nim	shallowCopy	ast.html#shallowCopy,PNode	proc shallowCopy(src: PNode): PNode		1434
+nim	copyTree	ast.html#copyTree,PNode	proc copyTree(src: PNode): PNode		1439
+nim	copyTreeWithoutNode	ast.html#copyTreeWithoutNode,PNode,PNode	proc copyTreeWithoutNode(src, skippedNode: PNode): PNode		1446
+nim	hasSonWith	ast.html#hasSonWith,PNode,TNodeKind	proc hasSonWith(n: PNode; kind: TNodeKind): bool		1453
+nim	hasNilSon	ast.html#hasNilSon,PNode	proc hasNilSon(n: PNode): bool		1459
+nim	containsNode	ast.html#containsNode,PNode,TNodeKinds	proc containsNode(n: PNode; kinds: TNodeKinds): bool		1467
+nim	hasSubnodeWith	ast.html#hasSubnodeWith,PNode,TNodeKind	proc hasSubnodeWith(n: PNode; kind: TNodeKind): bool		1476
+nim	getInt	ast.html#getInt,PNode	proc getInt(a: PNode): Int128		1485
+nim	getInt64	ast.html#getInt64,PNode	proc getInt64(a: PNode): int64		1498
+nim	getFloat	ast.html#getFloat,PNode	proc getFloat(a: PNode): BiggestFloat		1505
+nim	getStr	ast.html#getStr,PNode	proc getStr(a: PNode): string		1516
+nim	getStrOrChar	ast.html#getStrOrChar,PNode	proc getStrOrChar(a: PNode): string		1528
+nim	isGenericParams	ast.html#isGenericParams,PNode	proc isGenericParams(n: PNode): bool		1538
+nim	isGenericRoutine	ast.html#isGenericRoutine,PNode	proc isGenericRoutine(n: PNode): bool		1542
+nim	isGenericRoutineStrict	ast.html#isGenericRoutineStrict,PSym	proc isGenericRoutineStrict(s: PSym): bool		1545
+nim	isGenericRoutine	ast.html#isGenericRoutine,PSym	proc isGenericRoutine(s: PSym): bool		1551
+nim	skipGenericOwner	ast.html#skipGenericOwner,PSym	proc skipGenericOwner(s: PSym): PSym		1565
+nim	originatingModule	ast.html#originatingModule,PSym	proc originatingModule(s: PSym): PSym		1576
+nim	isRoutine	ast.html#isRoutine,PSym	proc isRoutine(s: PSym): bool		1580
+nim	isCompileTimeProc	ast.html#isCompileTimeProc,PSym	proc isCompileTimeProc(s: PSym): bool		1583
+nim	hasPattern	ast.html#hasPattern,PSym	proc hasPattern(s: PSym): bool		1587
+nim	pairs	ast.html#pairs.i,PNode	iterator pairs(n: PNode): tuple[i: int, n: PNode]		1590
+nim	isAtom	ast.html#isAtom,PNode	proc isAtom(n: PNode): bool		1593
+nim	isEmptyType	ast.html#isEmptyType,PType	proc isEmptyType(t: PType): bool		1596
+nim	makeStmtList	ast.html#makeStmtList,PNode	proc makeStmtList(n: PNode): PNode		1600
+nim	skipStmtList	ast.html#skipStmtList,PNode	proc skipStmtList(n: PNode): PNode		1607
+nim	toVar	ast.html#toVar,PType,TTypeKind,IdGenerator	proc toVar(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType		1615
+nim	toRef	ast.html#toRef,PType,IdGenerator	proc toRef(typ: PType; idgen: IdGenerator): PType		1622
+nim	toObject	ast.html#toObject,PType	proc toObject(typ: PType): PType		1629
+nim	toObjectFromRefPtrGeneric	ast.html#toObjectFromRefPtrGeneric,PType	proc toObjectFromRefPtrGeneric(typ: PType): PType		1637
+nim	isImportedException	ast.html#isImportedException,PType,ConfigRef	proc isImportedException(t: PType; conf: ConfigRef): bool		1657
+nim	isInfixAs	ast.html#isInfixAs,PNode	proc isInfixAs(n: PNode): bool		1666
+nim	skipColon	ast.html#skipColon,PNode	proc skipColon(n: PNode): PNode		1669
+nim	findUnresolvedStatic	ast.html#findUnresolvedStatic,PNode	proc findUnresolvedStatic(n: PNode): PNode		1674
+nim	hasDestructor	ast.html#hasDestructor.t,PType	template hasDestructor(t: PType): bool		1695
+nim	incompleteType	ast.html#incompleteType.t,PType	template incompleteType(t: PType): bool		1697
+nim	typeCompleted	ast.html#typeCompleted.t,PSym	template typeCompleted(s: PSym)		1700
+nim	detailedInfo	ast.html#detailedInfo.t,PSym	template detailedInfo(sym: PSym): string		1703
+nim	isInlineIterator	ast.html#isInlineIterator,PType	proc isInlineIterator(typ: PType): bool		1706
+nim	isIterator	ast.html#isIterator,PType	proc isIterator(typ: PType): bool		1709
+nim	isClosureIterator	ast.html#isClosureIterator,PType	proc isClosureIterator(typ: PType): bool		1712
+nim	isClosure	ast.html#isClosure,PType	proc isClosure(typ: PType): bool		1715
+nim	isNimcall	ast.html#isNimcall,PSym	proc isNimcall(s: PSym): bool		1718
+nim	isExplicitCallConv	ast.html#isExplicitCallConv,PSym	proc isExplicitCallConv(s: PSym): bool		1721
+nim	isSinkParam	ast.html#isSinkParam,PSym	proc isSinkParam(s: PSym): bool		1724
+nim	isSinkType	ast.html#isSinkType,PType	proc isSinkType(t: PType): bool		1727
+nim	newProcType	ast.html#newProcType,TLineInfo,IdGenerator,PSym	proc newProcType(info: TLineInfo; idgen: IdGenerator; owner: PSym): PType		1730
+nim	addParam	ast.html#addParam,PType,PSym	proc addParam(procType: PType; param: PSym)		1739
+nim	markCanRaiseBranch	ast.html#markCanRaiseBranch.t,int	template markCanRaiseBranch(n: int)		1763
+nim	canRaiseConservative	ast.html#canRaiseConservative,PNode	proc canRaiseConservative(fn: PNode): bool		1766
+nim	effectsOf	ast.html#effectsOf,PType	proc effectsOf(t: PType): PNode		1770
+nim	raisesNothing	ast.html#raisesNothing,PNode	proc raisesNothing(effects: PNode): bool		1784
+nim	canRaise	ast.html#canRaise,PNode	proc canRaise(fn: PNode): bool		1799
+nim	toHumanStr	ast.html#toHumanStr,TSymKind	proc toHumanStr(kind: TSymKind): string		1831
+nim	toHumanStr	ast.html#toHumanStr,TTypeKind	proc toHumanStr(kind: TTypeKind): string		1835
+nim	skipHiddenAddr	ast.html#skipHiddenAddr,PNode	proc skipHiddenAddr(n: PNode): PNode		1839
+nim	isNewStyleConcept	ast.html#isNewStyleConcept,PNode	proc isNewStyleConcept(n: PNode): bool		1842
+nim	isOutParam	ast.html#isOutParam,PType	proc isOutParam(t: PType): bool		1846
+nim	nodesToIgnoreSet	ast.html#nodesToIgnoreSet	const nodesToIgnoreSet		1849
+nim	isTrue	ast.html#isTrue,PNode	proc isTrue(n: PNode): bool		1856
+nim	TypeMapping	ast.html#TypeMapping	type TypeMapping		1861
+nim	SymMapping	ast.html#SymMapping	type SymMapping		1862
+nim	initSymMapping	ast.html#initSymMapping.t	template initSymMapping(): SymMapping		1864
+nim	initTypeMapping	ast.html#initTypeMapping.t	template initTypeMapping(): TypeMapping		1865
+nim	sameModules	ast.html#sameModules,PSym,PSym	proc sameModules(a, b: PSym): bool		1867
+nim	sameOwners	ast.html#sameOwners,PSym,PSym	proc sameOwners(a, b: PSym): bool		1871
+nimgrp	addallownil	ast.html#addAllowNil-procs-all	proc		620
+nimgrp	isgenericroutine	ast.html#isGenericRoutine-procs-all	proc		1542
+nimgrp	newintnode	ast.html#newIntNode-procs-all	proc		892
+nimgrp	newinttypenode	ast.html#newIntTypeNode-procs-all	proc		981
+nimgrp	loc	ast.html#loc-procs-all	proc		257
+nimgrp	newtree	ast.html#newTree-procs-all	proc		744
+nimgrp	[]=	ast.html#[]=-procs-all	proc		642
+nimgrp	add	ast.html#add-procs-all	proc		616
+nimgrp	tohumanstr	ast.html#toHumanStr-procs-all	proc		1831
+nimgrp	linkto	ast.html#linkTo-procs-all	proc		829
+nimgrp	newatom	ast.html#newAtom-procs-all	proc		728
+nimgrp	[]	ast.html#[]-procs-all	proc		634
+nimgrp	newsons	ast.html#newSons-procs-all	proc		1161
+nimgrp	owner	ast.html#owner-procs-all	proc		90
+nimgrp	skiptypes	ast.html#skipTypes-procs-all	proc		973
+nimgrp	setowner	ast.html#setOwner-procs-all	proc		98
+nimgrp	ensuremutable	ast.html#ensureMutable-procs-all	proc		62
+nimgrp	excl	ast.html#excl-procs-all	proc		324
+nimgrp	loc=	ast.html#loc=-procs-all	proc		261
+nimgrp	backendensuremutable	ast.html#backendEnsureMutable-procs-all	proc		70
+nimgrp	flags=	ast.html#flags=-procs-all	proc		213
+nimgrp	typ	ast.html#typ-procs-all	proc		172
+nimgrp	incl	ast.html#incl-procs-all	proc		308
+nimgrp	flags	ast.html#flags-procs-all	proc		209
+nimgrp	typ=	ast.html#typ=-procs-all	proc		176
+nimgrp	id	ast.html#id-templates-all	template		524

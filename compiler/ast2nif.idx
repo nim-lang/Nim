@@ -1,0 +1,55 @@
+nimTitle	ast2nif	ast2nif.html	module ast2nif		0
+nim	SysModuleSuffix	ast2nif.html#SysModuleSuffix	const SysModuleSuffix		40
+nim	BackendLocalMarker	ast2nif.html#BackendLocalMarker	const BackendLocalMarker		41
+nim	icNifTypeName	ast2nif.html#icNifTypeName,PType,ConfigRef	proc icNifTypeName(typ: PType; config: ConfigRef): string		70
+nim	toHookIndexEntry	ast2nif.html#toHookIndexEntry,ConfigRef,ItemId,PSym	proc toHookIndexEntry(config: ConfigRef; typeId: ItemId; hookSym: PSym): HookIndexEntry		80
+nim	toConverterIndexEntry	ast2nif.html#toConverterIndexEntry,ConfigRef,PSym	proc toConverterIndexEntry(config: ConfigRef; converterSym: PSym): (nifstreams.SymId,\n    nifstreams.SymId)		91
+nim	toMethodIndexEntry	ast2nif.html#toMethodIndexEntry,ConfigRef,PSym,string	proc toMethodIndexEntry(config: ConfigRef; methodSym: PSym; signature: string): (\n    nifstreams.SymId, nifstreams.StrId)		106
+nim	toClassSymId	ast2nif.html#toClassSymId,ConfigRef,ItemId	proc toClassSymId(config: ConfigRef; typeId: ItemId): nifstreams.SymId		114
+nim	hiddenTypeTagName	ast2nif.html#hiddenTypeTagName	const hiddenTypeTagName		234
+nim	symDefTagName	ast2nif.html#symDefTagName	const symDefTagName		235
+nim	typeDefTagName	ast2nif.html#typeDefTagName	const typeDefTagName		236
+nim	bridgeSymTagName	ast2nif.html#bridgeSymTagName	const bridgeSymTagName		239
+nim	bridgeTypeTagName	ast2nif.html#bridgeTypeTagName	const bridgeTypeTagName		248
+nim	globalName	ast2nif.html#globalName,PSym,ConfigRef	proc globalName(sym: PSym; config: ConfigRef): string		383
+nim	ParsedSymName	ast2nif.html#ParsedSymName	object ParsedSymName		399
+nim	parseSymName	ast2nif.html#parseSymName,string	proc parseSymName(s: string): ParsedSymName		404
+nim	isFieldNifName	ast2nif.html#isFieldNifName,string	proc isFieldNifName(name: string): bool		438
+nim	ModFlagInjectDestructors	ast2nif.html#ModFlagInjectDestructors	const ModFlagInjectDestructors		1399
+nim	symNodeFlagsTagName	ast2nif.html#symNodeFlagsTagName	const symNodeFlagsTagName		1412
+nim	registerNifAstTags	ast2nif.html#registerNifAstTags	proc registerNifAstTags()		1416
+nim	writeSemDeps	ast2nif.html#writeSemDeps,ConfigRef,int32,seq[string]	proc writeSemDeps(config: ConfigRef; thisModule: int32; importPaths: seq[string])		2161
+nim	writeNifModule	ast2nif.html#writeNifModule,ConfigRef,int32,PNode,seq[LogEntry],seq[PNode],seq[int],seq[],seq[tuple[PSym,PSym,seq[PType],int]],seq[tuple[PSym,PType]],seq[FileIndex],int32,seq[],int32,seq[ItemId]	proc writeNifModule(config: ConfigRef; thisModule: int32; n: PNode;\n               opsLog: seq[LogEntry]; replayActions: seq[PNode] = @[];\n               implDeps: seq[int] = @[];\n               reexportedModules: seq[(string, string)] = @[]; genericOffers: seq[tuple[\n    generic, inst: PSym, concreteTypes: seq[PType], genericParamsCount: int]] = @[];\n               typeOffers: seq[tuple[generic: PSym, inst: PType]] = @[];\n               resolvedImportDeps: seq[FileIndex] = @[];\n               firstUnusedId: int32 = 0;\n               expansions: seq[(PSym, TLineInfo)] = @[]; moduleFlags: int32 = 0;\n               extraExports: seq[ItemId] = @[])		2174
+nim	firstSon	ast2nif.html#firstSon,Cursor	proc firstSon(n: Cursor): Cursor		2423
+nim	DecodeContext	ast2nif.html#DecodeContext	object DecodeContext		2465
+nim	createDecodeContext	ast2nif.html#createDecodeContext,ConfigRef,IdentCache	proc createDecodeContext(config: ConfigRef; cache: IdentCache): DecodeContext		2483
+nim	nextBackendSymItem	ast2nif.html#nextBackendSymItem,DecodeContext,int32	proc nextBackendSymItem(c: var DecodeContext; module: int32): int32		2531
+nim	nextBackendTypeItem	ast2nif.html#nextBackendTypeItem,DecodeContext,int32	proc nextBackendTypeItem(c: var DecodeContext; module: int32): int32		2552
+nim	setMainModule	ast2nif.html#setMainModule,DecodeContext,FileIndex	proc setMainModule(c: var DecodeContext; fileIdx: FileIndex)		2565
+nim	getMainModuleSuffix	ast2nif.html#getMainModuleSuffix,DecodeContext	proc getMainModuleSuffix(c: DecodeContext): string		2570
+nim	LoadFullAst	ast2nif.html#LoadFullAst	LoadFlag.LoadFullAst		2594
+nim	AlwaysLoadInterface	ast2nif.html#AlwaysLoadInterface	LoadFlag.AlwaysLoadInterface		2594
+nim	SkipInterfaceTables	ast2nif.html#SkipInterfaceTables	LoadFlag.SkipInterfaceTables		2594
+nim	LoadFlag	ast2nif.html#LoadFlag	enum LoadFlag		2594
+nim	isStub	ast2nif.html#isStub,PType	proc isStub(t: PType): bool		3028
+nim	isStub	ast2nif.html#isStub,PSym	proc isStub(s: PSym): bool		3029
+nim	loadType	ast2nif.html#loadType,DecodeContext,PType	proc loadType(c: var DecodeContext; t: PType)		3117
+nim	loadSym	ast2nif.html#loadSym,DecodeContext,PSym	proc loadSym(c: var DecodeContext; s: PSym)		3243
+nim	sealLoadedRoutines	ast2nif.html#sealLoadedRoutines,DecodeContext	proc sealLoadedRoutines(c: var DecodeContext)		3274
+nim	resolveHookSym	ast2nif.html#resolveHookSym,DecodeContext,string	proc resolveHookSym(c: var DecodeContext; name: string): PSym		3288
+nim	materializeLazyBody	ast2nif.html#materializeLazyBody,DecodeContext,PNode	proc materializeLazyBody(c: var DecodeContext; node: PNode)		3551
+nim	buildHiddenInterface	ast2nif.html#buildHiddenInterface,DecodeContext,string,TStrTable	proc buildHiddenInterface(c: var DecodeContext; suffix: string;\n                     interfHidden: var TStrTable): bool		3624
+nim	moduleSymbolStubs	ast2nif.html#moduleSymbolStubs,DecodeContext,FileIndex	proc moduleSymbolStubs(c: var DecodeContext; module: FileIndex): seq[PSym]		3662
+nim	loadedModuleTypes	ast2nif.html#loadedModuleTypes,DecodeContext,FileIndex	proc loadedModuleTypes(c: var DecodeContext; module: FileIndex): seq[PType]		3695
+nim	toNifFilename	ast2nif.html#toNifFilename,ConfigRef,FileIndex	proc toNifFilename(conf: ConfigRef; f: FileIndex): string		3715
+nim	tryResolveCompilerProc	ast2nif.html#tryResolveCompilerProc,DecodeContext,string,FileIndex	proc tryResolveCompilerProc(c: var DecodeContext; name: string;\n                       moduleFileIdx: FileIndex): PSym		3760
+nim	ModuleSuffix	ast2nif.html#ModuleSuffix	type ModuleSuffix		3801
+nim	PrecompiledModule	ast2nif.html#PrecompiledModule	object PrecompiledModule		3802
+nim	scanIncludeGraph	ast2nif.html#scanIncludeGraph,ConfigRef	proc scanIncludeGraph(config: ConfigRef): seq[\n    tuple[includer: string, includes: seq[string]]]		3844
+nim	nifModuleHasIncludes	ast2nif.html#nifModuleHasIncludes,ConfigRef,FileIndex	proc nifModuleHasIncludes(config: ConfigRef; fileIdx: FileIndex): bool		3890
+nim	registerModuleSelfSym	ast2nif.html#registerModuleSelfSym,DecodeContext,string,PSym	proc registerModuleSelfSym(c: var DecodeContext; suffix: string; m: PSym)		4274
+nim	loadNifModule	ast2nif.html#loadNifModule,DecodeContext,ModuleSuffix,TStrTable,TStrTable,set[LoadFlag]	proc loadNifModule(c: var DecodeContext; suffix: ModuleSuffix;\n              interf, interfHidden: var TStrTable; flags: set[LoadFlag] = {}): PrecompiledModule		4291
+nim	loadNifModule	ast2nif.html#loadNifModule,DecodeContext,FileIndex,TStrTable,TStrTable,set[LoadFlag]	proc loadNifModule(c: var DecodeContext; f: FileIndex;\n              interf, interfHidden: var TStrTable; flags: set[LoadFlag] = {}): PrecompiledModule		4320
+nim	writeLoweredModule	ast2nif.html#writeLoweredModule,DecodeContext,ConfigRef,PrecompiledModule,openArray[LogEntry],string	proc writeLoweredModule(c: var DecodeContext; config: ConfigRef;\n                   precomp: PrecompiledModule; hooks: openArray[LogEntry];\n                   outfile: string)		4325
+nimgrp	isstub	ast2nif.html#isStub-procs-all	proc		3028
+nimgrp	loadnifmodule	ast2nif.html#loadNifModule-procs-all	proc		4291

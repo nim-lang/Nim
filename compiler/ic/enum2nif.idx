@@ -1,0 +1,30 @@
+nimTitle	enum2nif	ic/enum2nif.html	module ic/enum2nif		0
+nim	toNifTag	ic/enum2nif.html#toNifTag,TNodeKind	proc toNifTag(s: TNodeKind): string		5
+nim	parse	ic/enum2nif.html#parse,typedesc[TNodeKind],string	proc parse(t: typedesc[TNodeKind]; s: string): TNodeKind		175
+nim	toNifTag	ic/enum2nif.html#toNifTag,TSymKind	proc toNifTag(s: TSymKind): string		346
+nim	parse	ic/enum2nif.html#parse,typedesc[TSymKind],string	proc parse(t: typedesc[TSymKind]; s: string): TSymKind		375
+nim	toNifTag	ic/enum2nif.html#toNifTag,TTypeKind	proc toNifTag(s: TTypeKind): string		405
+nim	parse	ic/enum2nif.html#parse,typedesc[TTypeKind],string	proc parse(t: typedesc[TTypeKind]; s: string): TTypeKind		474
+nim	toNifTag	ic/enum2nif.html#toNifTag,TLocKind	proc toNifTag(s: TLocKind): string		544
+nim	parse	ic/enum2nif.html#parse,typedesc[TLocKind],string	proc parse(t: typedesc[TLocKind]; s: string): TLocKind		559
+nim	toNifTag	ic/enum2nif.html#toNifTag,TCallingConvention	proc toNifTag(s: TCallingConvention): string		575
+nim	parse	ic/enum2nif.html#parse,typedesc[TCallingConvention],string	proc parse(t: typedesc[TCallingConvention]; s: string): TCallingConvention		591
+nim	toNifTag	ic/enum2nif.html#toNifTag,TMagic	proc toNifTag(s: TMagic): string		608
+nim	parse	ic/enum2nif.html#parse,typedesc[TMagic],string	proc parse(t: typedesc[TMagic]; s: string): TMagic		890
+nim	toNifTag	ic/enum2nif.html#toNifTag,TStorageLoc	proc toNifTag(s: TStorageLoc): string		1173
+nim	parse	ic/enum2nif.html#parse,typedesc[TStorageLoc],string	proc parse(t: typedesc[TStorageLoc]; s: string): TStorageLoc		1181
+nim	toNifTag	ic/enum2nif.html#toNifTag,TLibKind	proc toNifTag(s: TLibKind): string		1190
+nim	parse	ic/enum2nif.html#parse,typedesc[TLibKind],string	proc parse(t: typedesc[TLibKind]; s: string): TLibKind		1196
+nim	genFlags	ic/enum2nif.html#genFlags,set[TSymFlag],string	proc genFlags(s: set[TSymFlag]; dest: var string)		1203
+nim	parse	ic/enum2nif.html#parse,typedesc[TSymFlag],string	proc parse(t: typedesc[TSymFlag]; s: string): set[TSymFlag]		1271
+nim	genFlags	ic/enum2nif.html#genFlags,set[TNodeFlag],string	proc genFlags(s: set[TNodeFlag]; dest: var string)		1446
+nim	parse	ic/enum2nif.html#parse,typedesc[TNodeFlag],string	proc parse(t: typedesc[TNodeFlag]; s: string): set[TNodeFlag]		1480
+nim	genFlags	ic/enum2nif.html#genFlags,set[TTypeFlag],string	proc genFlags(s: set[TTypeFlag]; dest: var string)		1543
+nim	parse	ic/enum2nif.html#parse,typedesc[TTypeFlag],string	proc parse(t: typedesc[TTypeFlag]; s: string): set[TTypeFlag]		1596
+nim	genFlags	ic/enum2nif.html#genFlags,set[TLocFlag],string	proc genFlags(s: set[TLocFlag]; dest: var string)		1724
+nim	parse	ic/enum2nif.html#parse,typedesc[TLocFlag],string	proc parse(t: typedesc[TLocFlag]; s: string): set[TLocFlag]		1739
+nim	genFlags	ic/enum2nif.html#genFlags,set[TOption],string	proc genFlags(s: set[TOption]; dest: var string)		1760
+nim	parse	ic/enum2nif.html#parse,typedesc[TOption],string	proc parse(t: typedesc[TOption]; s: string): set[TOption]		1794
+nimgrp	parse	ic/enum2nif.html#parse-procs-all	proc		175
+nimgrp	genflags	ic/enum2nif.html#genFlags-procs-all	proc		1203
+nimgrp	toniftag	ic/enum2nif.html#toNifTag-procs-all	proc		5

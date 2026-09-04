@@ -1,0 +1,6 @@
+nimTitle	replayer	ic/replayer.html	module ic/replayer		0
+nim	BackendActionsExt	ic/replayer.html#BackendActionsExt	const BackendActionsExt		22
+nim	writeBackendActions	ic/replayer.html#writeBackendActions,ModuleGraph,PSym,PNode,string	proc writeBackendActions(g: ModuleGraph; module: PSym; list: PNode; outfile: string)		27
+nim	applyBackendActions	ic/replayer.html#applyBackendActions,ModuleGraph,string	proc applyBackendActions(g: ModuleGraph; infile: string)		61
+nim	replayStateChanges	ic/replayer.html#replayStateChanges,PSym,ModuleGraph,PNode	proc replayStateChanges(module: PSym; g: ModuleGraph; list: PNode)		88
+nim	replayBackendActions	ic/replayer.html#replayBackendActions,ModuleGraph,PSym,PNode	proc replayBackendActions(g: ModuleGraph; module: PSym; list: PNode)		160

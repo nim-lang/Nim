@@ -1,0 +1,7 @@
+nimTitle	icconfig	icconfig.html	module icconfig		0
+nim	IcConfigVersion	icconfig.html#IcConfigVersion	const IcConfigVersion		39
+nim	writeIcConfig	icconfig.html#writeIcConfig,ConfigRef,string	proc writeIcConfig(conf: ConfigRef; outfile: string)		44
+nim	applyIcConfig	icconfig.html#applyIcConfig,ConfigRef,string	proc applyIcConfig(conf: ConfigRef; infile: string): bool		91
+nim	sourcesChanged	icconfig.html#sourcesChanged,string	proc sourcesChanged(configFile: string): bool		184
+nim	produceIcConfig	icconfig.html#produceIcConfig,ConfigRef	proc produceIcConfig(conf: ConfigRef)		227
+nim	ensureIcConfig	icconfig.html#ensureIcConfig,ConfigRef	proc ensureIcConfig(conf: ConfigRef)		238

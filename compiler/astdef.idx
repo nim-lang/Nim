@@ -1,0 +1,739 @@
+nimTitle	astdef	astdef.html	module astdef		0
+nim	nifcBackendActive	astdef.html#nifcBackendActive	var nifcBackendActive		20
+nim	ccNimCall	astdef.html#ccNimCall	TCallingConvention.ccNimCall		36
+nim	ccStdCall	astdef.html#ccStdCall	TCallingConvention.ccStdCall		36
+nim	ccCDecl	astdef.html#ccCDecl	TCallingConvention.ccCDecl		36
+nim	ccSafeCall	astdef.html#ccSafeCall	TCallingConvention.ccSafeCall		36
+nim	ccSysCall	astdef.html#ccSysCall	TCallingConvention.ccSysCall		36
+nim	ccInline	astdef.html#ccInline	TCallingConvention.ccInline		36
+nim	ccNoInline	astdef.html#ccNoInline	TCallingConvention.ccNoInline		36
+nim	ccFastCall	astdef.html#ccFastCall	TCallingConvention.ccFastCall		36
+nim	ccThisCall	astdef.html#ccThisCall	TCallingConvention.ccThisCall		36
+nim	ccClosure	astdef.html#ccClosure	TCallingConvention.ccClosure		36
+nim	ccNoConvention	astdef.html#ccNoConvention	TCallingConvention.ccNoConvention		36
+nim	ccMember	astdef.html#ccMember	TCallingConvention.ccMember		36
+nim	TCallingConvention	astdef.html#TCallingConvention	enum TCallingConvention		36
+nim	TNodeKinds	astdef.html#TNodeKinds	type TNodeKinds		50
+nim	sfUsed	astdef.html#sfUsed	TSymFlag.sfUsed		53
+nim	sfExported	astdef.html#sfExported	TSymFlag.sfExported		53
+nim	sfFromGeneric	astdef.html#sfFromGeneric	TSymFlag.sfFromGeneric		53
+nim	sfGlobal	astdef.html#sfGlobal	TSymFlag.sfGlobal		53
+nim	sfForward	astdef.html#sfForward	TSymFlag.sfForward		53
+nim	sfWasForwarded	astdef.html#sfWasForwarded	TSymFlag.sfWasForwarded		53
+nim	sfImportc	astdef.html#sfImportc	TSymFlag.sfImportc		53
+nim	sfExportc	astdef.html#sfExportc	TSymFlag.sfExportc		53
+nim	sfMangleCpp	astdef.html#sfMangleCpp	TSymFlag.sfMangleCpp		53
+nim	sfVolatile	astdef.html#sfVolatile	TSymFlag.sfVolatile		53
+nim	sfRegister	astdef.html#sfRegister	TSymFlag.sfRegister		53
+nim	sfPure	astdef.html#sfPure	TSymFlag.sfPure		53
+nim	sfNoSideEffect	astdef.html#sfNoSideEffect	TSymFlag.sfNoSideEffect		53
+nim	sfSideEffect	astdef.html#sfSideEffect	TSymFlag.sfSideEffect		53
+nim	sfMainModule	astdef.html#sfMainModule	TSymFlag.sfMainModule		53
+nim	sfSystemModule	astdef.html#sfSystemModule	TSymFlag.sfSystemModule		53
+nim	sfNoReturn	astdef.html#sfNoReturn	TSymFlag.sfNoReturn		53
+nim	sfAddrTaken	astdef.html#sfAddrTaken	TSymFlag.sfAddrTaken		53
+nim	sfCompilerProc	astdef.html#sfCompilerProc	TSymFlag.sfCompilerProc		53
+nim	sfEscapes	astdef.html#sfEscapes	TSymFlag.sfEscapes		53
+nim	sfDiscriminant	astdef.html#sfDiscriminant	TSymFlag.sfDiscriminant		53
+nim	sfRequiresInit	astdef.html#sfRequiresInit	TSymFlag.sfRequiresInit		53
+nim	sfDeprecated	astdef.html#sfDeprecated	TSymFlag.sfDeprecated		53
+nim	sfExplain	astdef.html#sfExplain	TSymFlag.sfExplain		53
+nim	sfError	astdef.html#sfError	TSymFlag.sfError		53
+nim	sfShadowed	astdef.html#sfShadowed	TSymFlag.sfShadowed		53
+nim	sfThread	astdef.html#sfThread	TSymFlag.sfThread		53
+nim	sfCppNonPod	astdef.html#sfCppNonPod	TSymFlag.sfCppNonPod		53
+nim	sfCompileTime	astdef.html#sfCompileTime	TSymFlag.sfCompileTime		53
+nim	sfConstructor	astdef.html#sfConstructor	TSymFlag.sfConstructor		53
+nim	sfDispatcher	astdef.html#sfDispatcher	TSymFlag.sfDispatcher		53
+nim	sfBorrow	astdef.html#sfBorrow	TSymFlag.sfBorrow		53
+nim	sfInfixCall	astdef.html#sfInfixCall	TSymFlag.sfInfixCall		53
+nim	sfNamedParamCall	astdef.html#sfNamedParamCall	TSymFlag.sfNamedParamCall		53
+nim	sfDiscardable	astdef.html#sfDiscardable	TSymFlag.sfDiscardable		53
+nim	sfOverridden	astdef.html#sfOverridden	TSymFlag.sfOverridden		53
+nim	sfCallsite	astdef.html#sfCallsite	TSymFlag.sfCallsite		53
+nim	sfGenSym	astdef.html#sfGenSym	TSymFlag.sfGenSym		53
+nim	sfNonReloadable	astdef.html#sfNonReloadable	TSymFlag.sfNonReloadable		53
+nim	sfGeneratedOp	astdef.html#sfGeneratedOp	TSymFlag.sfGeneratedOp		53
+nim	sfTemplateParam	astdef.html#sfTemplateParam	TSymFlag.sfTemplateParam		53
+nim	sfCursor	astdef.html#sfCursor	TSymFlag.sfCursor		53
+nim	sfInjectDestructors	astdef.html#sfInjectDestructors	TSymFlag.sfInjectDestructors		53
+nim	sfNeverRaises	astdef.html#sfNeverRaises	TSymFlag.sfNeverRaises		53
+nim	sfSystemRaisesDefect	astdef.html#sfSystemRaisesDefect	TSymFlag.sfSystemRaisesDefect		53
+nim	sfUsedInFinallyOrExcept	astdef.html#sfUsedInFinallyOrExcept	TSymFlag.sfUsedInFinallyOrExcept		53
+nim	sfSingleUsedTemp	astdef.html#sfSingleUsedTemp	TSymFlag.sfSingleUsedTemp		53
+nim	sfNoalias	astdef.html#sfNoalias	TSymFlag.sfNoalias		53
+nim	sfEffectsDelayed	astdef.html#sfEffectsDelayed	TSymFlag.sfEffectsDelayed		53
+nim	sfGeneratedType	astdef.html#sfGeneratedType	TSymFlag.sfGeneratedType		53
+nim	sfVirtual	astdef.html#sfVirtual	TSymFlag.sfVirtual		53
+nim	sfByCopy	astdef.html#sfByCopy	TSymFlag.sfByCopy		53
+nim	sfMember	astdef.html#sfMember	TSymFlag.sfMember		53
+nim	sfCodegenDecl	astdef.html#sfCodegenDecl	TSymFlag.sfCodegenDecl		53
+nim	sfWasGenSym	astdef.html#sfWasGenSym	TSymFlag.sfWasGenSym		53
+nim	sfForceLift	astdef.html#sfForceLift	TSymFlag.sfForceLift		53
+nim	sfDirty	astdef.html#sfDirty	TSymFlag.sfDirty		53
+nim	sfCustomPragma	astdef.html#sfCustomPragma	TSymFlag.sfCustomPragma		53
+nim	sfBase	astdef.html#sfBase	TSymFlag.sfBase		53
+nim	sfGoto	astdef.html#sfGoto	TSymFlag.sfGoto		53
+nim	sfAnon	astdef.html#sfAnon	TSymFlag.sfAnon		53
+nim	sfAllUntyped	astdef.html#sfAllUntyped	TSymFlag.sfAllUntyped		53
+nim	sfTemplateRedefinition	astdef.html#sfTemplateRedefinition	TSymFlag.sfTemplateRedefinition		53
+nim	TSymFlag	astdef.html#TSymFlag	enum TSymFlag		53
+nim	TSymFlags	astdef.html#TSymFlags	type TSymFlags		152
+nim	sfNoInit	astdef.html#sfNoInit	const sfNoInit		155
+nim	sfNoForward	astdef.html#sfNoForward	const sfNoForward		157
+nim	sfReorder	astdef.html#sfReorder	const sfReorder		159
+nim	sfCompileToCpp	astdef.html#sfCompileToCpp	const sfCompileToCpp		162
+nim	sfCompileToObjc	astdef.html#sfCompileToObjc	const sfCompileToObjc		163
+nim	sfExperimental	astdef.html#sfExperimental	const sfExperimental		164
+nim	sfWrittenTo	astdef.html#sfWrittenTo	const sfWrittenTo		165
+nim	sfCppMember	astdef.html#sfCppMember	const sfCppMember		167
+nim	nkWhen	astdef.html#nkWhen	const nkWhen		171
+nim	nkWhenExpr	astdef.html#nkWhenExpr	const nkWhenExpr		172
+nim	nkEffectList	astdef.html#nkEffectList	const nkEffectList		173
+nim	exceptionEffects	astdef.html#exceptionEffects	const exceptionEffects		175
+nim	requiresEffects	astdef.html#requiresEffects	const requiresEffects		176
+nim	ensuresEffects	astdef.html#ensuresEffects	const ensuresEffects		177
+nim	tagEffects	astdef.html#tagEffects	const tagEffects		178
+nim	pragmasEffects	astdef.html#pragmasEffects	const pragmasEffects		179
+nim	forbiddenEffects	astdef.html#forbiddenEffects	const forbiddenEffects		180
+nim	effectListLen	astdef.html#effectListLen	const effectListLen		181
+nim	nkLastBlockStmts	astdef.html#nkLastBlockStmts	const nkLastBlockStmts		182
+nim	tyNone	astdef.html#tyNone	TTypeKind.tyNone		186
+nim	tyBool	astdef.html#tyBool	TTypeKind.tyBool		186
+nim	tyChar	astdef.html#tyChar	TTypeKind.tyChar		186
+nim	tyEmpty	astdef.html#tyEmpty	TTypeKind.tyEmpty		186
+nim	tyAlias	astdef.html#tyAlias	TTypeKind.tyAlias		186
+nim	tyNil	astdef.html#tyNil	TTypeKind.tyNil		186
+nim	tyUntyped	astdef.html#tyUntyped	TTypeKind.tyUntyped		186
+nim	tyTyped	astdef.html#tyTyped	TTypeKind.tyTyped		186
+nim	tyTypeDesc	astdef.html#tyTypeDesc	TTypeKind.tyTypeDesc		186
+nim	tyGenericInvocation	astdef.html#tyGenericInvocation	TTypeKind.tyGenericInvocation		186
+nim	tyGenericBody	astdef.html#tyGenericBody	TTypeKind.tyGenericBody		186
+nim	tyGenericInst	astdef.html#tyGenericInst	TTypeKind.tyGenericInst		186
+nim	tyGenericParam	astdef.html#tyGenericParam	TTypeKind.tyGenericParam		186
+nim	tyDistinct	astdef.html#tyDistinct	TTypeKind.tyDistinct		186
+nim	tyEnum	astdef.html#tyEnum	TTypeKind.tyEnum		186
+nim	tyOrdinal	astdef.html#tyOrdinal	TTypeKind.tyOrdinal		186
+nim	tyArray	astdef.html#tyArray	TTypeKind.tyArray		186
+nim	tyObject	astdef.html#tyObject	TTypeKind.tyObject		186
+nim	tyTuple	astdef.html#tyTuple	TTypeKind.tyTuple		186
+nim	tySet	astdef.html#tySet	TTypeKind.tySet		186
+nim	tyRange	astdef.html#tyRange	TTypeKind.tyRange		186
+nim	tyPtr	astdef.html#tyPtr	TTypeKind.tyPtr		186
+nim	tyRef	astdef.html#tyRef	TTypeKind.tyRef		186
+nim	tyVar	astdef.html#tyVar	TTypeKind.tyVar		186
+nim	tySequence	astdef.html#tySequence	TTypeKind.tySequence		186
+nim	tyProc	astdef.html#tyProc	TTypeKind.tyProc		186
+nim	tyPointer	astdef.html#tyPointer	TTypeKind.tyPointer		186
+nim	tyOpenArray	astdef.html#tyOpenArray	TTypeKind.tyOpenArray		186
+nim	tyString	astdef.html#tyString	TTypeKind.tyString		186
+nim	tyCstring	astdef.html#tyCstring	TTypeKind.tyCstring		186
+nim	tyForward	astdef.html#tyForward	TTypeKind.tyForward		186
+nim	tyInt	astdef.html#tyInt	TTypeKind.tyInt		186
+nim	tyInt8	astdef.html#tyInt8	TTypeKind.tyInt8		186
+nim	tyInt16	astdef.html#tyInt16	TTypeKind.tyInt16		186
+nim	tyInt32	astdef.html#tyInt32	TTypeKind.tyInt32		186
+nim	tyInt64	astdef.html#tyInt64	TTypeKind.tyInt64		186
+nim	tyFloat	astdef.html#tyFloat	TTypeKind.tyFloat		186
+nim	tyFloat32	astdef.html#tyFloat32	TTypeKind.tyFloat32		186
+nim	tyFloat64	astdef.html#tyFloat64	TTypeKind.tyFloat64		186
+nim	tyFloat128	astdef.html#tyFloat128	TTypeKind.tyFloat128		186
+nim	tyUInt	astdef.html#tyUInt	TTypeKind.tyUInt		186
+nim	tyUInt8	astdef.html#tyUInt8	TTypeKind.tyUInt8		186
+nim	tyUInt16	astdef.html#tyUInt16	TTypeKind.tyUInt16		186
+nim	tyUInt32	astdef.html#tyUInt32	TTypeKind.tyUInt32		186
+nim	tyUInt64	astdef.html#tyUInt64	TTypeKind.tyUInt64		186
+nim	tyOwned	astdef.html#tyOwned	TTypeKind.tyOwned		186
+nim	tySink	astdef.html#tySink	TTypeKind.tySink		186
+nim	tyLent	astdef.html#tyLent	TTypeKind.tyLent		186
+nim	tyVarargs	astdef.html#tyVarargs	TTypeKind.tyVarargs		186
+nim	tyUncheckedArray	astdef.html#tyUncheckedArray	TTypeKind.tyUncheckedArray		186
+nim	tyError	astdef.html#tyError	TTypeKind.tyError		186
+nim	tyBuiltInTypeClass	astdef.html#tyBuiltInTypeClass	TTypeKind.tyBuiltInTypeClass		186
+nim	tyUserTypeClass	astdef.html#tyUserTypeClass	TTypeKind.tyUserTypeClass		186
+nim	tyUserTypeClassInst	astdef.html#tyUserTypeClassInst	TTypeKind.tyUserTypeClassInst		186
+nim	tyCompositeTypeClass	astdef.html#tyCompositeTypeClass	TTypeKind.tyCompositeTypeClass		186
+nim	tyInferred	astdef.html#tyInferred	TTypeKind.tyInferred		186
+nim	tyAnd	astdef.html#tyAnd	TTypeKind.tyAnd		186
+nim	tyOr	astdef.html#tyOr	TTypeKind.tyOr		186
+nim	tyNot	astdef.html#tyNot	TTypeKind.tyNot		186
+nim	tyAnything	astdef.html#tyAnything	TTypeKind.tyAnything		186
+nim	tyStatic	astdef.html#tyStatic	TTypeKind.tyStatic		186
+nim	tyFromExpr	astdef.html#tyFromExpr	TTypeKind.tyFromExpr		186
+nim	tyConcept	astdef.html#tyConcept	TTypeKind.tyConcept		186
+nim	tyVoid	astdef.html#tyVoid	TTypeKind.tyVoid		186
+nim	tyIterable	astdef.html#tyIterable	TTypeKind.tyIterable		186
+nim	TTypeKind	astdef.html#TTypeKind	enum TTypeKind		186
+nim	tyPureObject	astdef.html#tyPureObject	const tyPureObject		291
+nim	GcTypeKinds	astdef.html#GcTypeKinds	const GcTypeKinds		292
+nim	tyTypeClasses	astdef.html#tyTypeClasses	const tyTypeClasses		294
+nim	tyMetaTypes	astdef.html#tyMetaTypes	const tyMetaTypes		298
+nim	tyUserTypeClasses	astdef.html#tyUserTypeClasses	const tyUserTypeClasses		299
+nim	abstractVarRange	astdef.html#abstractVarRange	const abstractVarRange		301
+nim	abstractInst	astdef.html#abstractInst	const abstractInst		303
+nim	TTypeKinds	astdef.html#TTypeKinds	type TTypeKinds		307
+nim	nfNone	astdef.html#nfNone	TNodeFlag.nfNone		309
+nim	nfBase2	astdef.html#nfBase2	TNodeFlag.nfBase2		309
+nim	nfBase8	astdef.html#nfBase8	TNodeFlag.nfBase8		309
+nim	nfBase16	astdef.html#nfBase16	TNodeFlag.nfBase16		309
+nim	nfAllConst	astdef.html#nfAllConst	TNodeFlag.nfAllConst		309
+nim	nfTransf	astdef.html#nfTransf	TNodeFlag.nfTransf		309
+nim	nfNoRewrite	astdef.html#nfNoRewrite	TNodeFlag.nfNoRewrite		309
+nim	nfSem	astdef.html#nfSem	TNodeFlag.nfSem		309
+nim	nfLL	astdef.html#nfLL	TNodeFlag.nfLL		309
+nim	nfDotField	astdef.html#nfDotField	TNodeFlag.nfDotField		309
+nim	nfDotSetter	astdef.html#nfDotSetter	TNodeFlag.nfDotSetter		309
+nim	nfExplicitCall	astdef.html#nfExplicitCall	TNodeFlag.nfExplicitCall		309
+nim	nfExprCall	astdef.html#nfExprCall	TNodeFlag.nfExprCall		309
+nim	nfIsRef	astdef.html#nfIsRef	TNodeFlag.nfIsRef		309
+nim	nfIsPtr	astdef.html#nfIsPtr	TNodeFlag.nfIsPtr		309
+nim	nfPreventCg	astdef.html#nfPreventCg	TNodeFlag.nfPreventCg		309
+nim	nfBlockArg	astdef.html#nfBlockArg	TNodeFlag.nfBlockArg		309
+nim	nfFromTemplate	astdef.html#nfFromTemplate	TNodeFlag.nfFromTemplate		309
+nim	nfDefaultParam	astdef.html#nfDefaultParam	TNodeFlag.nfDefaultParam		309
+nim	nfDefaultRefsParam	astdef.html#nfDefaultRefsParam	TNodeFlag.nfDefaultRefsParam		309
+nim	nfExecuteOnReload	astdef.html#nfExecuteOnReload	TNodeFlag.nfExecuteOnReload		309
+nim	nfLastRead	astdef.html#nfLastRead	TNodeFlag.nfLastRead		309
+nim	nfFirstWrite	astdef.html#nfFirstWrite	TNodeFlag.nfFirstWrite		309
+nim	nfHasComment	astdef.html#nfHasComment	TNodeFlag.nfHasComment		309
+nim	nfSkipFieldChecking	astdef.html#nfSkipFieldChecking	TNodeFlag.nfSkipFieldChecking		309
+nim	nfDisabledOpenSym	astdef.html#nfDisabledOpenSym	TNodeFlag.nfDisabledOpenSym		309
+nim	nfLazyType	astdef.html#nfLazyType	TNodeFlag.nfLazyType		309
+nim	nfLazyBody	astdef.html#nfLazyBody	TNodeFlag.nfLazyBody		309
+nim	nfBroadcast	astdef.html#nfBroadcast	TNodeFlag.nfBroadcast		309
+nim	TNodeFlag	astdef.html#TNodeFlag	enum TNodeFlag		309
+nim	TNodeFlags	astdef.html#TNodeFlags	type TNodeFlags		351
+nim	tfVarargs	astdef.html#tfVarargs	TTypeFlag.tfVarargs		352
+nim	tfNoSideEffect	astdef.html#tfNoSideEffect	TTypeFlag.tfNoSideEffect		352
+nim	tfFinal	astdef.html#tfFinal	TTypeFlag.tfFinal		352
+nim	tfInheritable	astdef.html#tfInheritable	TTypeFlag.tfInheritable		352
+nim	tfHasOwned	astdef.html#tfHasOwned	TTypeFlag.tfHasOwned		352
+nim	tfEnumHasHoles	astdef.html#tfEnumHasHoles	TTypeFlag.tfEnumHasHoles		352
+nim	tfShallow	astdef.html#tfShallow	TTypeFlag.tfShallow		352
+nim	tfThread	astdef.html#tfThread	TTypeFlag.tfThread		352
+nim	tfFromGeneric	astdef.html#tfFromGeneric	TTypeFlag.tfFromGeneric		352
+nim	tfUnresolved	astdef.html#tfUnresolved	TTypeFlag.tfUnresolved		352
+nim	tfResolved	astdef.html#tfResolved	TTypeFlag.tfResolved		352
+nim	tfRetType	astdef.html#tfRetType	TTypeFlag.tfRetType		352
+nim	tfCapturesEnv	astdef.html#tfCapturesEnv	TTypeFlag.tfCapturesEnv		352
+nim	tfByCopy	astdef.html#tfByCopy	TTypeFlag.tfByCopy		352
+nim	tfByRef	astdef.html#tfByRef	TTypeFlag.tfByRef		352
+nim	tfIterator	astdef.html#tfIterator	TTypeFlag.tfIterator		352
+nim	tfPartial	astdef.html#tfPartial	TTypeFlag.tfPartial		352
+nim	tfNotNil	astdef.html#tfNotNil	TTypeFlag.tfNotNil		352
+nim	tfRequiresInit	astdef.html#tfRequiresInit	TTypeFlag.tfRequiresInit		352
+nim	tfNeedsFullInit	astdef.html#tfNeedsFullInit	TTypeFlag.tfNeedsFullInit		352
+nim	tfVarIsPtr	astdef.html#tfVarIsPtr	TTypeFlag.tfVarIsPtr		352
+nim	tfHasMeta	astdef.html#tfHasMeta	TTypeFlag.tfHasMeta		352
+nim	tfHasGCedMem	astdef.html#tfHasGCedMem	TTypeFlag.tfHasGCedMem		352
+nim	tfPacked	astdef.html#tfPacked	TTypeFlag.tfPacked		352
+nim	tfHasStatic	astdef.html#tfHasStatic	TTypeFlag.tfHasStatic		352
+nim	tfGenericTypeParam	astdef.html#tfGenericTypeParam	TTypeFlag.tfGenericTypeParam		352
+nim	tfImplicitTypeParam	astdef.html#tfImplicitTypeParam	TTypeFlag.tfImplicitTypeParam		352
+nim	tfInferrableStatic	astdef.html#tfInferrableStatic	TTypeFlag.tfInferrableStatic		352
+nim	tfConceptMatchedTypeSym	astdef.html#tfConceptMatchedTypeSym	TTypeFlag.tfConceptMatchedTypeSym		352
+nim	tfExplicit	astdef.html#tfExplicit	TTypeFlag.tfExplicit		352
+nim	tfWildcard	astdef.html#tfWildcard	TTypeFlag.tfWildcard		352
+nim	tfHasAsgn	astdef.html#tfHasAsgn	TTypeFlag.tfHasAsgn		352
+nim	tfBorrowDot	astdef.html#tfBorrowDot	TTypeFlag.tfBorrowDot		352
+nim	tfTriggersCompileTime	astdef.html#tfTriggersCompileTime	TTypeFlag.tfTriggersCompileTime		352
+nim	tfRefsAnonObj	astdef.html#tfRefsAnonObj	TTypeFlag.tfRefsAnonObj		352
+nim	tfCovariant	astdef.html#tfCovariant	TTypeFlag.tfCovariant		352
+nim	tfWeakCovariant	astdef.html#tfWeakCovariant	TTypeFlag.tfWeakCovariant		352
+nim	tfContravariant	astdef.html#tfContravariant	TTypeFlag.tfContravariant		352
+nim	tfCheckedForDestructor	astdef.html#tfCheckedForDestructor	TTypeFlag.tfCheckedForDestructor		352
+nim	tfAcyclic	astdef.html#tfAcyclic	TTypeFlag.tfAcyclic		352
+nim	tfIncompleteStruct	astdef.html#tfIncompleteStruct	TTypeFlag.tfIncompleteStruct		352
+nim	tfCompleteStruct	astdef.html#tfCompleteStruct	TTypeFlag.tfCompleteStruct		352
+nim	tfExplicitCallConv	astdef.html#tfExplicitCallConv	TTypeFlag.tfExplicitCallConv		352
+nim	tfIsConstructor	astdef.html#tfIsConstructor	TTypeFlag.tfIsConstructor		352
+nim	tfEffectSystemWorkaround	astdef.html#tfEffectSystemWorkaround	TTypeFlag.tfEffectSystemWorkaround		352
+nim	tfIsOutParam	astdef.html#tfIsOutParam	TTypeFlag.tfIsOutParam		352
+nim	tfSendable	astdef.html#tfSendable	TTypeFlag.tfSendable		352
+nim	tfImplicitStatic	astdef.html#tfImplicitStatic	TTypeFlag.tfImplicitStatic		352
+nim	TTypeFlag	astdef.html#TTypeFlag	enum TTypeFlag		352
+nim	TTypeFlags	astdef.html#TTypeFlags	type TTypeFlags		425
+nim	skUnknown	astdef.html#skUnknown	TSymKind.skUnknown		427
+nim	skConditional	astdef.html#skConditional	TSymKind.skConditional		427
+nim	skDynLib	astdef.html#skDynLib	TSymKind.skDynLib		427
+nim	skParam	astdef.html#skParam	TSymKind.skParam		427
+nim	skGenericParam	astdef.html#skGenericParam	TSymKind.skGenericParam		427
+nim	skTemp	astdef.html#skTemp	TSymKind.skTemp		427
+nim	skModule	astdef.html#skModule	TSymKind.skModule		427
+nim	skType	astdef.html#skType	TSymKind.skType		427
+nim	skVar	astdef.html#skVar	TSymKind.skVar		427
+nim	skLet	astdef.html#skLet	TSymKind.skLet		427
+nim	skConst	astdef.html#skConst	TSymKind.skConst		427
+nim	skResult	astdef.html#skResult	TSymKind.skResult		427
+nim	skProc	astdef.html#skProc	TSymKind.skProc		427
+nim	skFunc	astdef.html#skFunc	TSymKind.skFunc		427
+nim	skMethod	astdef.html#skMethod	TSymKind.skMethod		427
+nim	skIterator	astdef.html#skIterator	TSymKind.skIterator		427
+nim	skConverter	astdef.html#skConverter	TSymKind.skConverter		427
+nim	skMacro	astdef.html#skMacro	TSymKind.skMacro		427
+nim	skTemplate	astdef.html#skTemplate	TSymKind.skTemplate		427
+nim	skField	astdef.html#skField	TSymKind.skField		427
+nim	skEnumField	astdef.html#skEnumField	TSymKind.skEnumField		427
+nim	skForVar	astdef.html#skForVar	TSymKind.skForVar		427
+nim	skLabel	astdef.html#skLabel	TSymKind.skLabel		427
+nim	skStub	astdef.html#skStub	TSymKind.skStub		427
+nim	skPackage	astdef.html#skPackage	TSymKind.skPackage		427
+nim	TSymKind	astdef.html#TSymKind	enum TSymKind		427
+nim	TSymKinds	astdef.html#TSymKinds	type TSymKinds		459
+nim	routineKinds	astdef.html#routineKinds	const routineKinds		462
+nim	ExportableSymKinds	astdef.html#ExportableSymKinds	const ExportableSymKinds		464
+nim	tfUnion	astdef.html#tfUnion	const tfUnion		466
+nim	tfGcSafe	astdef.html#tfGcSafe	const tfGcSafe		467
+nim	tfObjHasKids	astdef.html#tfObjHasKids	const tfObjHasKids		468
+nim	tfReturnsNew	astdef.html#tfReturnsNew	const tfReturnsNew		469
+nim	tfNonConstExpr	astdef.html#tfNonConstExpr	const tfNonConstExpr		470
+nim	tfGenericHasDestructor	astdef.html#tfGenericHasDestructor	const tfGenericHasDestructor		472
+nim	skError	astdef.html#skError	const skError		474
+nim	eqTypeFlags	astdef.html#eqTypeFlags	var eqTypeFlags		477
+nim	mNone	astdef.html#mNone	TMagic.mNone		483
+nim	mDefined	astdef.html#mDefined	TMagic.mDefined		483
+nim	mDeclared	astdef.html#mDeclared	TMagic.mDeclared		483
+nim	mDeclaredInScope	astdef.html#mDeclaredInScope	TMagic.mDeclaredInScope		483
+nim	mCompiles	astdef.html#mCompiles	TMagic.mCompiles		483
+nim	mArrGet	astdef.html#mArrGet	TMagic.mArrGet		483
+nim	mArrPut	astdef.html#mArrPut	TMagic.mArrPut		483
+nim	mAsgn	astdef.html#mAsgn	TMagic.mAsgn		483
+nim	mLow	astdef.html#mLow	TMagic.mLow		483
+nim	mHigh	astdef.html#mHigh	TMagic.mHigh		483
+nim	mSizeOf	astdef.html#mSizeOf	TMagic.mSizeOf		483
+nim	mAlignOf	astdef.html#mAlignOf	TMagic.mAlignOf		483
+nim	mOffsetOf	astdef.html#mOffsetOf	TMagic.mOffsetOf		483
+nim	mTypeTrait	astdef.html#mTypeTrait	TMagic.mTypeTrait		483
+nim	mIs	astdef.html#mIs	TMagic.mIs		483
+nim	mOf	astdef.html#mOf	TMagic.mOf		483
+nim	mAddr	astdef.html#mAddr	TMagic.mAddr		483
+nim	mType	astdef.html#mType	TMagic.mType		483
+nim	mTypeOf	astdef.html#mTypeOf	TMagic.mTypeOf		483
+nim	mPlugin	astdef.html#mPlugin	TMagic.mPlugin		483
+nim	mEcho	astdef.html#mEcho	TMagic.mEcho		483
+nim	mShallowCopy	astdef.html#mShallowCopy	TMagic.mShallowCopy		483
+nim	mSlurp	astdef.html#mSlurp	TMagic.mSlurp		483
+nim	mStaticExec	astdef.html#mStaticExec	TMagic.mStaticExec		483
+nim	mStatic	astdef.html#mStatic	TMagic.mStatic		483
+nim	mParseExprToAst	astdef.html#mParseExprToAst	TMagic.mParseExprToAst		483
+nim	mParseStmtToAst	astdef.html#mParseStmtToAst	TMagic.mParseStmtToAst		483
+nim	mExpandToAst	astdef.html#mExpandToAst	TMagic.mExpandToAst		483
+nim	mQuoteAst	astdef.html#mQuoteAst	TMagic.mQuoteAst		483
+nim	mInc	astdef.html#mInc	TMagic.mInc		483
+nim	mDec	astdef.html#mDec	TMagic.mDec		483
+nim	mOrd	astdef.html#mOrd	TMagic.mOrd		483
+nim	mNew	astdef.html#mNew	TMagic.mNew		483
+nim	mNewFinalize	astdef.html#mNewFinalize	TMagic.mNewFinalize		483
+nim	mNewSeq	astdef.html#mNewSeq	TMagic.mNewSeq		483
+nim	mNewSeqOfCap	astdef.html#mNewSeqOfCap	TMagic.mNewSeqOfCap		483
+nim	mLengthOpenArray	astdef.html#mLengthOpenArray	TMagic.mLengthOpenArray		483
+nim	mLengthStr	astdef.html#mLengthStr	TMagic.mLengthStr		483
+nim	mLengthArray	astdef.html#mLengthArray	TMagic.mLengthArray		483
+nim	mLengthSeq	astdef.html#mLengthSeq	TMagic.mLengthSeq		483
+nim	mIncl	astdef.html#mIncl	TMagic.mIncl		483
+nim	mExcl	astdef.html#mExcl	TMagic.mExcl		483
+nim	mCard	astdef.html#mCard	TMagic.mCard		483
+nim	mChr	astdef.html#mChr	TMagic.mChr		483
+nim	mGCref	astdef.html#mGCref	TMagic.mGCref		483
+nim	mGCunref	astdef.html#mGCunref	TMagic.mGCunref		483
+nim	mAddI	astdef.html#mAddI	TMagic.mAddI		483
+nim	mSubI	astdef.html#mSubI	TMagic.mSubI		483
+nim	mMulI	astdef.html#mMulI	TMagic.mMulI		483
+nim	mDivI	astdef.html#mDivI	TMagic.mDivI		483
+nim	mModI	astdef.html#mModI	TMagic.mModI		483
+nim	mSucc	astdef.html#mSucc	TMagic.mSucc		483
+nim	mPred	astdef.html#mPred	TMagic.mPred		483
+nim	mAddF64	astdef.html#mAddF64	TMagic.mAddF64		483
+nim	mSubF64	astdef.html#mSubF64	TMagic.mSubF64		483
+nim	mMulF64	astdef.html#mMulF64	TMagic.mMulF64		483
+nim	mDivF64	astdef.html#mDivF64	TMagic.mDivF64		483
+nim	mShrI	astdef.html#mShrI	TMagic.mShrI		483
+nim	mShlI	astdef.html#mShlI	TMagic.mShlI		483
+nim	mAshrI	astdef.html#mAshrI	TMagic.mAshrI		483
+nim	mBitandI	astdef.html#mBitandI	TMagic.mBitandI		483
+nim	mBitorI	astdef.html#mBitorI	TMagic.mBitorI		483
+nim	mBitxorI	astdef.html#mBitxorI	TMagic.mBitxorI		483
+nim	mMinI	astdef.html#mMinI	TMagic.mMinI		483
+nim	mMaxI	astdef.html#mMaxI	TMagic.mMaxI		483
+nim	mAddU	astdef.html#mAddU	TMagic.mAddU		483
+nim	mSubU	astdef.html#mSubU	TMagic.mSubU		483
+nim	mMulU	astdef.html#mMulU	TMagic.mMulU		483
+nim	mDivU	astdef.html#mDivU	TMagic.mDivU		483
+nim	mModU	astdef.html#mModU	TMagic.mModU		483
+nim	mEqI	astdef.html#mEqI	TMagic.mEqI		483
+nim	mLeI	astdef.html#mLeI	TMagic.mLeI		483
+nim	mLtI	astdef.html#mLtI	TMagic.mLtI		483
+nim	mEqF64	astdef.html#mEqF64	TMagic.mEqF64		483
+nim	mLeF64	astdef.html#mLeF64	TMagic.mLeF64		483
+nim	mLtF64	astdef.html#mLtF64	TMagic.mLtF64		483
+nim	mLeU	astdef.html#mLeU	TMagic.mLeU		483
+nim	mLtU	astdef.html#mLtU	TMagic.mLtU		483
+nim	mEqEnum	astdef.html#mEqEnum	TMagic.mEqEnum		483
+nim	mLeEnum	astdef.html#mLeEnum	TMagic.mLeEnum		483
+nim	mLtEnum	astdef.html#mLtEnum	TMagic.mLtEnum		483
+nim	mEqCh	astdef.html#mEqCh	TMagic.mEqCh		483
+nim	mLeCh	astdef.html#mLeCh	TMagic.mLeCh		483
+nim	mLtCh	astdef.html#mLtCh	TMagic.mLtCh		483
+nim	mEqB	astdef.html#mEqB	TMagic.mEqB		483
+nim	mLeB	astdef.html#mLeB	TMagic.mLeB		483
+nim	mLtB	astdef.html#mLtB	TMagic.mLtB		483
+nim	mEqRef	astdef.html#mEqRef	TMagic.mEqRef		483
+nim	mLePtr	astdef.html#mLePtr	TMagic.mLePtr		483
+nim	mLtPtr	astdef.html#mLtPtr	TMagic.mLtPtr		483
+nim	mXor	astdef.html#mXor	TMagic.mXor		483
+nim	mEqCString	astdef.html#mEqCString	TMagic.mEqCString		483
+nim	mEqProc	astdef.html#mEqProc	TMagic.mEqProc		483
+nim	mUnaryMinusI	astdef.html#mUnaryMinusI	TMagic.mUnaryMinusI		483
+nim	mUnaryMinusI64	astdef.html#mUnaryMinusI64	TMagic.mUnaryMinusI64		483
+nim	mAbsI	astdef.html#mAbsI	TMagic.mAbsI		483
+nim	mNot	astdef.html#mNot	TMagic.mNot		483
+nim	mUnaryPlusI	astdef.html#mUnaryPlusI	TMagic.mUnaryPlusI		483
+nim	mBitnotI	astdef.html#mBitnotI	TMagic.mBitnotI		483
+nim	mUnaryPlusF64	astdef.html#mUnaryPlusF64	TMagic.mUnaryPlusF64		483
+nim	mUnaryMinusF64	astdef.html#mUnaryMinusF64	TMagic.mUnaryMinusF64		483
+nim	mCharToStr	astdef.html#mCharToStr	TMagic.mCharToStr		483
+nim	mBoolToStr	astdef.html#mBoolToStr	TMagic.mBoolToStr		483
+nim	mCStrToStr	astdef.html#mCStrToStr	TMagic.mCStrToStr		483
+nim	mStrToStr	astdef.html#mStrToStr	TMagic.mStrToStr		483
+nim	mEnumToStr	astdef.html#mEnumToStr	TMagic.mEnumToStr		483
+nim	mAnd	astdef.html#mAnd	TMagic.mAnd		483
+nim	mOr	astdef.html#mOr	TMagic.mOr		483
+nim	mImplies	astdef.html#mImplies	TMagic.mImplies		483
+nim	mIff	astdef.html#mIff	TMagic.mIff		483
+nim	mExists	astdef.html#mExists	TMagic.mExists		483
+nim	mForall	astdef.html#mForall	TMagic.mForall		483
+nim	mOld	astdef.html#mOld	TMagic.mOld		483
+nim	mEqStr	astdef.html#mEqStr	TMagic.mEqStr		483
+nim	mLeStr	astdef.html#mLeStr	TMagic.mLeStr		483
+nim	mLtStr	astdef.html#mLtStr	TMagic.mLtStr		483
+nim	mEqSet	astdef.html#mEqSet	TMagic.mEqSet		483
+nim	mLeSet	astdef.html#mLeSet	TMagic.mLeSet		483
+nim	mLtSet	astdef.html#mLtSet	TMagic.mLtSet		483
+nim	mMulSet	astdef.html#mMulSet	TMagic.mMulSet		483
+nim	mPlusSet	astdef.html#mPlusSet	TMagic.mPlusSet		483
+nim	mMinusSet	astdef.html#mMinusSet	TMagic.mMinusSet		483
+nim	mXorSet	astdef.html#mXorSet	TMagic.mXorSet		483
+nim	mConStrStr	astdef.html#mConStrStr	TMagic.mConStrStr		483
+nim	mSlice	astdef.html#mSlice	TMagic.mSlice		483
+nim	mDotDot	astdef.html#mDotDot	TMagic.mDotDot		483
+nim	mFields	astdef.html#mFields	TMagic.mFields		483
+nim	mFieldPairs	astdef.html#mFieldPairs	TMagic.mFieldPairs		483
+nim	mOmpParFor	astdef.html#mOmpParFor	TMagic.mOmpParFor		483
+nim	mAppendStrCh	astdef.html#mAppendStrCh	TMagic.mAppendStrCh		483
+nim	mAppendStrStr	astdef.html#mAppendStrStr	TMagic.mAppendStrStr		483
+nim	mAppendSeqElem	astdef.html#mAppendSeqElem	TMagic.mAppendSeqElem		483
+nim	mInSet	astdef.html#mInSet	TMagic.mInSet		483
+nim	mRepr	astdef.html#mRepr	TMagic.mRepr		483
+nim	mExit	astdef.html#mExit	TMagic.mExit		483
+nim	mSetLengthStr	astdef.html#mSetLengthStr	TMagic.mSetLengthStr		483
+nim	mSetLengthSeq	astdef.html#mSetLengthSeq	TMagic.mSetLengthSeq		483
+nim	mSetLengthSeqUninit	astdef.html#mSetLengthSeqUninit	TMagic.mSetLengthSeqUninit		483
+nim	mIsPartOf	astdef.html#mIsPartOf	TMagic.mIsPartOf		483
+nim	mAstToStr	astdef.html#mAstToStr	TMagic.mAstToStr		483
+nim	mParallel	astdef.html#mParallel	TMagic.mParallel		483
+nim	mSwap	astdef.html#mSwap	TMagic.mSwap		483
+nim	mIsNil	astdef.html#mIsNil	TMagic.mIsNil		483
+nim	mArrToSeq	astdef.html#mArrToSeq	TMagic.mArrToSeq		483
+nim	mOpenArrayToSeq	astdef.html#mOpenArrayToSeq	TMagic.mOpenArrayToSeq		483
+nim	mNewString	astdef.html#mNewString	TMagic.mNewString		483
+nim	mNewStringOfCap	astdef.html#mNewStringOfCap	TMagic.mNewStringOfCap		483
+nim	mParseBiggestFloat	astdef.html#mParseBiggestFloat	TMagic.mParseBiggestFloat		483
+nim	mMove	astdef.html#mMove	TMagic.mMove		483
+nim	mEnsureMove	astdef.html#mEnsureMove	TMagic.mEnsureMove		483
+nim	mWasMoved	astdef.html#mWasMoved	TMagic.mWasMoved		483
+nim	mDup	astdef.html#mDup	TMagic.mDup		483
+nim	mDestroy	astdef.html#mDestroy	TMagic.mDestroy		483
+nim	mTrace	astdef.html#mTrace	TMagic.mTrace		483
+nim	mDefault	astdef.html#mDefault	TMagic.mDefault		483
+nim	mUnown	astdef.html#mUnown	TMagic.mUnown		483
+nim	mFinished	astdef.html#mFinished	TMagic.mFinished		483
+nim	mIsolate	astdef.html#mIsolate	TMagic.mIsolate		483
+nim	mAccessEnv	astdef.html#mAccessEnv	TMagic.mAccessEnv		483
+nim	mAccessTypeField	astdef.html#mAccessTypeField	TMagic.mAccessTypeField		483
+nim	mArray	astdef.html#mArray	TMagic.mArray		483
+nim	mOpenArray	astdef.html#mOpenArray	TMagic.mOpenArray		483
+nim	mRange	astdef.html#mRange	TMagic.mRange		483
+nim	mSet	astdef.html#mSet	TMagic.mSet		483
+nim	mSeq	astdef.html#mSeq	TMagic.mSeq		483
+nim	mVarargs	astdef.html#mVarargs	TMagic.mVarargs		483
+nim	mRef	astdef.html#mRef	TMagic.mRef		483
+nim	mPtr	astdef.html#mPtr	TMagic.mPtr		483
+nim	mVar	astdef.html#mVar	TMagic.mVar		483
+nim	mDistinct	astdef.html#mDistinct	TMagic.mDistinct		483
+nim	mVoid	astdef.html#mVoid	TMagic.mVoid		483
+nim	mTuple	astdef.html#mTuple	TMagic.mTuple		483
+nim	mOrdinal	astdef.html#mOrdinal	TMagic.mOrdinal		483
+nim	mIterableType	astdef.html#mIterableType	TMagic.mIterableType		483
+nim	mInt	astdef.html#mInt	TMagic.mInt		483
+nim	mInt8	astdef.html#mInt8	TMagic.mInt8		483
+nim	mInt16	astdef.html#mInt16	TMagic.mInt16		483
+nim	mInt32	astdef.html#mInt32	TMagic.mInt32		483
+nim	mInt64	astdef.html#mInt64	TMagic.mInt64		483
+nim	mUInt	astdef.html#mUInt	TMagic.mUInt		483
+nim	mUInt8	astdef.html#mUInt8	TMagic.mUInt8		483
+nim	mUInt16	astdef.html#mUInt16	TMagic.mUInt16		483
+nim	mUInt32	astdef.html#mUInt32	TMagic.mUInt32		483
+nim	mUInt64	astdef.html#mUInt64	TMagic.mUInt64		483
+nim	mFloat	astdef.html#mFloat	TMagic.mFloat		483
+nim	mFloat32	astdef.html#mFloat32	TMagic.mFloat32		483
+nim	mFloat64	astdef.html#mFloat64	TMagic.mFloat64		483
+nim	mFloat128	astdef.html#mFloat128	TMagic.mFloat128		483
+nim	mBool	astdef.html#mBool	TMagic.mBool		483
+nim	mChar	astdef.html#mChar	TMagic.mChar		483
+nim	mString	astdef.html#mString	TMagic.mString		483
+nim	mCstring	astdef.html#mCstring	TMagic.mCstring		483
+nim	mPointer	astdef.html#mPointer	TMagic.mPointer		483
+nim	mNil	astdef.html#mNil	TMagic.mNil		483
+nim	mExpr	astdef.html#mExpr	TMagic.mExpr		483
+nim	mStmt	astdef.html#mStmt	TMagic.mStmt		483
+nim	mTypeDesc	astdef.html#mTypeDesc	TMagic.mTypeDesc		483
+nim	mVoidType	astdef.html#mVoidType	TMagic.mVoidType		483
+nim	mPNimrodNode	astdef.html#mPNimrodNode	TMagic.mPNimrodNode		483
+nim	mSpawn	astdef.html#mSpawn	TMagic.mSpawn		483
+nim	mDeepCopy	astdef.html#mDeepCopy	TMagic.mDeepCopy		483
+nim	mIsMainModule	astdef.html#mIsMainModule	TMagic.mIsMainModule		483
+nim	mCompileDate	astdef.html#mCompileDate	TMagic.mCompileDate		483
+nim	mCompileTime	astdef.html#mCompileTime	TMagic.mCompileTime		483
+nim	mProcCall	astdef.html#mProcCall	TMagic.mProcCall		483
+nim	mCpuEndian	astdef.html#mCpuEndian	TMagic.mCpuEndian		483
+nim	mHostOS	astdef.html#mHostOS	TMagic.mHostOS		483
+nim	mHostCPU	astdef.html#mHostCPU	TMagic.mHostCPU		483
+nim	mBuildOS	astdef.html#mBuildOS	TMagic.mBuildOS		483
+nim	mBuildCPU	astdef.html#mBuildCPU	TMagic.mBuildCPU		483
+nim	mAppType	astdef.html#mAppType	TMagic.mAppType		483
+nim	mCompileOption	astdef.html#mCompileOption	TMagic.mCompileOption		483
+nim	mCompileOptionArg	astdef.html#mCompileOptionArg	TMagic.mCompileOptionArg		483
+nim	mNLen	astdef.html#mNLen	TMagic.mNLen		483
+nim	mNChild	astdef.html#mNChild	TMagic.mNChild		483
+nim	mNSetChild	astdef.html#mNSetChild	TMagic.mNSetChild		483
+nim	mNAdd	astdef.html#mNAdd	TMagic.mNAdd		483
+nim	mNAddMultiple	astdef.html#mNAddMultiple	TMagic.mNAddMultiple		483
+nim	mNDel	astdef.html#mNDel	TMagic.mNDel		483
+nim	mNKind	astdef.html#mNKind	TMagic.mNKind		483
+nim	mNSymKind	astdef.html#mNSymKind	TMagic.mNSymKind		483
+nim	mNccValue	astdef.html#mNccValue	TMagic.mNccValue		483
+nim	mNccInc	astdef.html#mNccInc	TMagic.mNccInc		483
+nim	mNcsAdd	astdef.html#mNcsAdd	TMagic.mNcsAdd		483
+nim	mNcsIncl	astdef.html#mNcsIncl	TMagic.mNcsIncl		483
+nim	mNcsLen	astdef.html#mNcsLen	TMagic.mNcsLen		483
+nim	mNcsAt	astdef.html#mNcsAt	TMagic.mNcsAt		483
+nim	mNctPut	astdef.html#mNctPut	TMagic.mNctPut		483
+nim	mNctLen	astdef.html#mNctLen	TMagic.mNctLen		483
+nim	mNctGet	astdef.html#mNctGet	TMagic.mNctGet		483
+nim	mNctHasNext	astdef.html#mNctHasNext	TMagic.mNctHasNext		483
+nim	mNctNext	astdef.html#mNctNext	TMagic.mNctNext		483
+nim	mNIntVal	astdef.html#mNIntVal	TMagic.mNIntVal		483
+nim	mNFloatVal	astdef.html#mNFloatVal	TMagic.mNFloatVal		483
+nim	mNSymbol	astdef.html#mNSymbol	TMagic.mNSymbol		483
+nim	mNIdent	astdef.html#mNIdent	TMagic.mNIdent		483
+nim	mNGetType	astdef.html#mNGetType	TMagic.mNGetType		483
+nim	mNStrVal	astdef.html#mNStrVal	TMagic.mNStrVal		483
+nim	mNSetIntVal	astdef.html#mNSetIntVal	TMagic.mNSetIntVal		483
+nim	mNSetFloatVal	astdef.html#mNSetFloatVal	TMagic.mNSetFloatVal		483
+nim	mNSetSymbol	astdef.html#mNSetSymbol	TMagic.mNSetSymbol		483
+nim	mNSetIdent	astdef.html#mNSetIdent	TMagic.mNSetIdent		483
+nim	mNSetStrVal	astdef.html#mNSetStrVal	TMagic.mNSetStrVal		483
+nim	mNLineInfo	astdef.html#mNLineInfo	TMagic.mNLineInfo		483
+nim	mNNewNimNode	astdef.html#mNNewNimNode	TMagic.mNNewNimNode		483
+nim	mNCopyNimNode	astdef.html#mNCopyNimNode	TMagic.mNCopyNimNode		483
+nim	mNCopyNimTree	astdef.html#mNCopyNimTree	TMagic.mNCopyNimTree		483
+nim	mStrToIdent	astdef.html#mStrToIdent	TMagic.mStrToIdent		483
+nim	mNSigHash	astdef.html#mNSigHash	TMagic.mNSigHash		483
+nim	mNSizeOf	astdef.html#mNSizeOf	TMagic.mNSizeOf		483
+nim	mNBindSym	astdef.html#mNBindSym	TMagic.mNBindSym		483
+nim	mNCallSite	astdef.html#mNCallSite	TMagic.mNCallSite		483
+nim	mEqIdent	astdef.html#mEqIdent	TMagic.mEqIdent		483
+nim	mEqNimrodNode	astdef.html#mEqNimrodNode	TMagic.mEqNimrodNode		483
+nim	mSameNodeType	astdef.html#mSameNodeType	TMagic.mSameNodeType		483
+nim	mGetImpl	astdef.html#mGetImpl	TMagic.mGetImpl		483
+nim	mNGenSym	astdef.html#mNGenSym	TMagic.mNGenSym		483
+nim	mNHint	astdef.html#mNHint	TMagic.mNHint		483
+nim	mNWarning	astdef.html#mNWarning	TMagic.mNWarning		483
+nim	mNError	astdef.html#mNError	TMagic.mNError		483
+nim	mInstantiationInfo	astdef.html#mInstantiationInfo	TMagic.mInstantiationInfo		483
+nim	mGetTypeInfo	astdef.html#mGetTypeInfo	TMagic.mGetTypeInfo		483
+nim	mGetTypeInfoV2	astdef.html#mGetTypeInfoV2	TMagic.mGetTypeInfoV2		483
+nim	mNimvm	astdef.html#mNimvm	TMagic.mNimvm		483
+nim	mIntDefine	astdef.html#mIntDefine	TMagic.mIntDefine		483
+nim	mStrDefine	astdef.html#mStrDefine	TMagic.mStrDefine		483
+nim	mBoolDefine	astdef.html#mBoolDefine	TMagic.mBoolDefine		483
+nim	mGenericDefine	astdef.html#mGenericDefine	TMagic.mGenericDefine		483
+nim	mRunnableExamples	astdef.html#mRunnableExamples	TMagic.mRunnableExamples		483
+nim	mException	astdef.html#mException	TMagic.mException		483
+nim	mBuiltinType	astdef.html#mBuiltinType	TMagic.mBuiltinType		483
+nim	mSymOwner	astdef.html#mSymOwner	TMagic.mSymOwner		483
+nim	mUncheckedArray	astdef.html#mUncheckedArray	TMagic.mUncheckedArray		483
+nim	mGetImplTransf	astdef.html#mGetImplTransf	TMagic.mGetImplTransf		483
+nim	mSymIsInstantiationOf	astdef.html#mSymIsInstantiationOf	TMagic.mSymIsInstantiationOf		483
+nim	mNodeId	astdef.html#mNodeId	TMagic.mNodeId		483
+nim	mPrivateAccess	astdef.html#mPrivateAccess	TMagic.mPrivateAccess		483
+nim	mZeroDefault	astdef.html#mZeroDefault	TMagic.mZeroDefault		483
+nim	TMagic	astdef.html#TMagic	enum TMagic		483
+nim	ctfeWhitelist	astdef.html#ctfeWhitelist	const ctfeWhitelist		563
+nim	generatedMagics	astdef.html#generatedMagics	const generatedMagics		591
+nim	PNode	astdef.html#PNode	type PNode		595
+nim	TNodeSeq	astdef.html#TNodeSeq	type TNodeSeq		596
+nim	PType	astdef.html#PType	type PType		597
+nim	PSym	astdef.html#PSym	type PSym		598
+nim	TNode	astdef.html#TNode	object TNode		599
+nim	TStrTable	astdef.html#TStrTable	object TStrTable		621
+nim	locNone	astdef.html#locNone	TLocKind.locNone		626
+nim	locTemp	astdef.html#locTemp	TLocKind.locTemp		626
+nim	locLocalVar	astdef.html#locLocalVar	TLocKind.locLocalVar		626
+nim	locGlobalVar	astdef.html#locGlobalVar	TLocKind.locGlobalVar		626
+nim	locParam	astdef.html#locParam	TLocKind.locParam		626
+nim	locField	astdef.html#locField	TLocKind.locField		626
+nim	locExpr	astdef.html#locExpr	TLocKind.locExpr		626
+nim	locProc	astdef.html#locProc	TLocKind.locProc		626
+nim	locData	astdef.html#locData	TLocKind.locData		626
+nim	locCall	astdef.html#locCall	TLocKind.locCall		626
+nim	locOther	astdef.html#locOther	TLocKind.locOther		626
+nim	TLocKind	astdef.html#TLocKind	enum TLocKind		626
+nim	lfIndirect	astdef.html#lfIndirect	TLocFlag.lfIndirect		638
+nim	lfNoDeepCopy	astdef.html#lfNoDeepCopy	TLocFlag.lfNoDeepCopy		638
+nim	lfNoDecl	astdef.html#lfNoDecl	TLocFlag.lfNoDecl		638
+nim	lfDynamicLib	astdef.html#lfDynamicLib	TLocFlag.lfDynamicLib		638
+nim	lfExportLib	astdef.html#lfExportLib	TLocFlag.lfExportLib		638
+nim	lfHeader	astdef.html#lfHeader	TLocFlag.lfHeader		638
+nim	lfImportCompilerProc	astdef.html#lfImportCompilerProc	TLocFlag.lfImportCompilerProc		638
+nim	lfSingleUse	astdef.html#lfSingleUse	TLocFlag.lfSingleUse		638
+nim	lfEnforceDeref	astdef.html#lfEnforceDeref	TLocFlag.lfEnforceDeref		638
+nim	lfPrepareForMutation	astdef.html#lfPrepareForMutation	TLocFlag.lfPrepareForMutation		638
+nim	TLocFlag	astdef.html#TLocFlag	enum TLocFlag		638
+nim	OnUnknown	astdef.html#OnUnknown	TStorageLoc.OnUnknown		651
+nim	OnStatic	astdef.html#OnStatic	TStorageLoc.OnStatic		651
+nim	OnStack	astdef.html#OnStack	TStorageLoc.OnStack		651
+nim	OnHeap	astdef.html#OnHeap	TStorageLoc.OnHeap		651
+nim	TStorageLoc	astdef.html#TStorageLoc	enum TStorageLoc		651
+nim	TLocFlags	astdef.html#TLocFlags	type TLocFlags		657
+nim	TLoc	astdef.html#TLoc	object TLoc		658
+nim	libHeader	astdef.html#libHeader	TLibKind.libHeader		667
+nim	libDynamic	astdef.html#libDynamic	TLibKind.libDynamic		667
+nim	TLibKind	astdef.html#TLibKind	enum TLibKind		667
+nim	TLib	astdef.html#TLib	object TLib		670
+nim	CompilesId	astdef.html#CompilesId	type CompilesId		679
+nim	TInstantiation	astdef.html#TInstantiation	object TInstantiation		681
+nim	PInstantiation	astdef.html#PInstantiation	type PInstantiation		693
+nim	TScope	astdef.html#TScope	object TScope		695
+nim	PScope	astdef.html#PScope	type PScope		702
+nim	Complete	astdef.html#Complete	ItemState.Complete		704
+nim	Partial	astdef.html#Partial	ItemState.Partial		704
+nim	Sealed	astdef.html#Sealed	ItemState.Sealed		704
+nim	ItemState	astdef.html#ItemState	enum ItemState		704
+nim	PLib	astdef.html#PLib	type PLib		709
+nim	TSym	astdef.html#TSym	object TSym		710
+nim	TTypeSeq	astdef.html#TTypeSeq	type TTypeSeq		771
+nim	attachedWasMoved	astdef.html#attachedWasMoved	TTypeAttachedOp.attachedWasMoved		773
+nim	attachedDestructor	astdef.html#attachedDestructor	TTypeAttachedOp.attachedDestructor		773
+nim	attachedAsgn	astdef.html#attachedAsgn	TTypeAttachedOp.attachedAsgn		773
+nim	attachedDup	astdef.html#attachedDup	TTypeAttachedOp.attachedDup		773
+nim	attachedSink	astdef.html#attachedSink	TTypeAttachedOp.attachedSink		773
+nim	attachedTrace	astdef.html#attachedTrace	TTypeAttachedOp.attachedTrace		773
+nim	attachedDeepCopy	astdef.html#attachedDeepCopy	TTypeAttachedOp.attachedDeepCopy		773
+nim	TTypeAttachedOp	astdef.html#TTypeAttachedOp	enum TTypeAttachedOp		773
+nim	TType	astdef.html#TType	object TType		782
+nim	TPair	astdef.html#TPair	object TPair		820
+nim	TPairSeq	astdef.html#TPairSeq	type TPairSeq		823
+nim	TIdPair	astdef.html#TIdPair	object TIdPair		825
+nim	TIdPairSeq	astdef.html#TIdPairSeq	type TIdPairSeq		829
+nim	TIdTable	astdef.html#TIdTable	object TIdTable		830
+nim	TNodePair	astdef.html#TNodePair	object TNodePair		834
+nim	TNodePairSeq	astdef.html#TNodePairSeq	type TNodePairSeq		839
+nim	TNodeTable	astdef.html#TNodeTable	object TNodeTable		840
+nim	TObjectSeq	astdef.html#TObjectSeq	type TObjectSeq		846
+nim	TObjectSet	astdef.html#TObjectSet	object TObjectSet		847
+nim	impUnknown	astdef.html#impUnknown	TImplication.impUnknown		851
+nim	impNo	astdef.html#impNo	TImplication.impNo		851
+nim	impYes	astdef.html#impYes	TImplication.impYes		851
+nim	TImplication	astdef.html#TImplication	enum TImplication		851
+nim	OverloadableSyms	astdef.html#OverloadableSyms	const OverloadableSyms		856
+nim	GenericTypes	astdef.html#GenericTypes	const GenericTypes		859
+nim	StructuralEquivTypes	astdef.html#StructuralEquivTypes	const StructuralEquivTypes		862
+nim	ConcreteTypes	astdef.html#ConcreteTypes	const ConcreteTypes		866
+nim	IntegralTypes	astdef.html#IntegralTypes	const IntegralTypes		873
+nim	ConstantDataTypes	astdef.html#ConstantDataTypes	const ConstantDataTypes		875
+nim	NilableTypes	astdef.html#NilableTypes	const NilableTypes		877
+nim	PtrLikeKinds	astdef.html#PtrLikeKinds	const PtrLikeKinds		879
+nim	PersistentNodeFlags	astdef.html#PersistentNodeFlags	const PersistentNodeFlags		880
+nim	namePos	astdef.html#namePos	const namePos		888
+nim	patternPos	astdef.html#patternPos	const patternPos		889
+nim	genericParamsPos	astdef.html#genericParamsPos	const genericParamsPos		890
+nim	paramsPos	astdef.html#paramsPos	const paramsPos		891
+nim	pragmasPos	astdef.html#pragmasPos	const pragmasPos		892
+nim	miscPos	astdef.html#miscPos	const miscPos		893
+nim	bodyPos	astdef.html#bodyPos	const bodyPos		894
+nim	resultPos	astdef.html#resultPos	const resultPos		895
+nim	dispatcherPos	astdef.html#dispatcherPos	const dispatcherPos		896
+nim	nfAllFieldsSet	astdef.html#nfAllFieldsSet	const nfAllFieldsSet		898
+nim	nkIdentKinds	astdef.html#nkIdentKinds	const nkIdentKinds		900
+nim	nkPragmaCallKinds	astdef.html#nkPragmaCallKinds	const nkPragmaCallKinds		903
+nim	nkLiterals	astdef.html#nkLiterals	const nkLiterals		904
+nim	nkFloatLiterals	astdef.html#nkFloatLiterals	const nkFloatLiterals		905
+nim	nkLambdaKinds	astdef.html#nkLambdaKinds	const nkLambdaKinds		906
+nim	declarativeDefs	astdef.html#declarativeDefs	const declarativeDefs		907
+nim	routineDefs	astdef.html#routineDefs	const routineDefs		908
+nim	procDefs	astdef.html#procDefs	const procDefs		909
+nim	callableDefs	astdef.html#callableDefs	const callableDefs		910
+nim	nkSymChoices	astdef.html#nkSymChoices	const nkSymChoices		912
+nim	nkStrKinds	astdef.html#nkStrKinds	const nkStrKinds		913
+nim	skLocalVars	astdef.html#skLocalVars	const skLocalVars		915
+nim	skProcKinds	astdef.html#skProcKinds	const skProcKinds		916
+nim	defaultSize	astdef.html#defaultSize	const defaultSize		919
+nim	defaultAlignment	astdef.html#defaultAlignment	const defaultAlignment		920
+nim	defaultOffset	astdef.html#defaultOffset	const defaultOffset		921
+nim	forceLazyBodyHook	astdef.html#forceLazyBodyHook	var forceLazyBodyHook		924
+nim	len	astdef.html#len,PNode	proc len(n: PNode): int		939
+nim	safeLen	astdef.html#safeLen,PNode	proc safeLen(n: PNode): int		944
+nim	`[]`	astdef.html#[].t,PNode,int	template `[]`(n: PNode; i: int): PNode		949
+nim	`[]=`	astdef.html#[]=.t,PNode,int,PNode	template `[]=`(n: PNode; i: int; x: PNode)		950
+nim	`[]`	astdef.html#[].t,PNode,BackwardsIndex	template `[]`(n: PNode; i: BackwardsIndex): PNode		952
+nim	`[]=`	astdef.html#[]=.t,PNode,BackwardsIndex,PNode	template `[]=`(n: PNode; i: BackwardsIndex; x: PNode)		953
+nim	items	astdef.html#items.i,PNode	iterator items(n: PNode): PNode		955
+nim	sons	astdef.html#sons.i,PNode	iterator sons(n: PNode): PNode		958
+nim	isons	astdef.html#isons.i,PNode,int	iterator isons(n: PNode; start = 0): tuple[i: int, n: PNode]		966
+nim	sonsFrom	astdef.html#sonsFrom.i,PNode,int	iterator sonsFrom(n: PNode; start: int): PNode		976
+nim	sonsButLast	astdef.html#sonsButLast.i,PNode,int	iterator sonsButLast(n: PNode; count = 1): PNode		983
+nim	isonsButLast	astdef.html#isonsButLast.i,PNode,int	iterator isonsButLast(n: PNode; count = 1): tuple[i: int, n: PNode]		995
+nim	son	astdef.html#son.t,PNode,int	template son(n: PNode; i: int): PNode		1000
+nim	hasSons	astdef.html#hasSons.t,PNode	template hasSons(n: PNode): bool		1005
+nim	newNode	astdef.html#newNode,TNodeKind	proc newNode(kind: TNodeKind): PNode		1031
+nim	newNodeI	astdef.html#newNodeI,TNodeKind,TLineInfo	proc newNodeI(kind: TNodeKind; info: TLineInfo): PNode		1036
+nim	newNodeI	astdef.html#newNodeI,TNodeKind,TLineInfo,int	proc newNodeI(kind: TNodeKind; info: TLineInfo; children: int): PNode		1041
+nim	newNodeIT	astdef.html#newNodeIT,TNodeKind,TLineInfo,PType	proc newNodeIT(kind: TNodeKind; info: TLineInfo; typ: PType): PNode		1048
+nim	newNode	astdef.html#newNode,TNodeKind,TLineInfo	proc newNode(kind: TNodeKind; info: TLineInfo): PNode		1054
+nim	newIdentNode	astdef.html#newIdentNode,PIdent,TLineInfo	proc newIdentNode(ident: PIdent; info: TLineInfo): PNode		1059
+nim	newSymNode	astdef.html#newSymNode,PSym,TLineInfo	proc newSymNode(sym: PSym; info: TLineInfo): PNode		1064
+nim	newStrNode	astdef.html#newStrNode,TNodeKind,string	proc newStrNode(kind: TNodeKind; strVal: string): PNode		1078
+nim	newStrNode	astdef.html#newStrNode,string,TLineInfo	proc newStrNode(strVal: string; info: TLineInfo): PNode		1082
+nim	InstanceDisambBit	astdef.html#InstanceDisambBit	const InstanceDisambBit		1091
+nim	HookDisambBit	astdef.html#HookDisambBit	const HookDisambBit		1096
+nim	backendMintedDisamb	astdef.html#backendMintedDisamb,PSym	proc backendMintedDisamb(s: PSym): int32		1104
+nim	HookEntry	astdef.html#HookEntry	LogEntryKind.HookEntry		1137
+nim	ConverterEntry	astdef.html#ConverterEntry	LogEntryKind.ConverterEntry		1137
+nim	MethodEntry	astdef.html#MethodEntry	LogEntryKind.MethodEntry		1137
+nim	EnumToStrEntry	astdef.html#EnumToStrEntry	LogEntryKind.EnumToStrEntry		1137
+nim	GenericInstEntry	astdef.html#GenericInstEntry	LogEntryKind.GenericInstEntry		1137
+nim	PureEnumEntry	astdef.html#PureEnumEntry	LogEntryKind.PureEnumEntry		1137
+nim	CppMemberEntry	astdef.html#CppMemberEntry	LogEntryKind.CppMemberEntry		1137
+nim	LogEntryKind	astdef.html#LogEntryKind	enum LogEntryKind		1137
+nim	LogEntry	astdef.html#LogEntry	object LogEntry		1140
+nim	forcePartial	astdef.html#forcePartial,PSym	proc forcePartial(s: PSym)		1149
+nim	forcePartial	astdef.html#forcePartial,PType	proc forcePartial(t: PType)		1183
+nim	GrowthFactor	astdef.html#GrowthFactor	const GrowthFactor		1201
+nim	StartSize	astdef.html#StartSize	const StartSize		1202
+nim	nextTry	astdef.html#nextTry,Hash,Hash	proc nextTry(h, maxHash: Hash): Hash		1205
+nim	mustRehash	astdef.html#mustRehash,int,int	proc mustRehash(length, counter: int): bool		1213
+nim	strTableContains	astdef.html#strTableContains,TStrTable,PSym	proc strTableContains(t: TStrTable; n: PSym): bool		1217
+nim	symTabReplace	astdef.html#symTabReplace,TStrTable,PSym,PSym	proc symTabReplace(t: var TStrTable; prevSym: PSym; newSym: PSym)		1246
+nim	strTableAdd	astdef.html#strTableAdd,TStrTable,PSym	proc strTableAdd(t: var TStrTable; n: PSym)		1256
+nim	strTableInclReportConflict	astdef.html#strTableInclReportConflict,TStrTable,PSym	proc strTableInclReportConflict(t: var TStrTable; n: PSym; onConflictKeepOld = false): PSym		1261
+nim	strTableIncl	astdef.html#strTableIncl,TStrTable,PSym	proc strTableIncl(t: var TStrTable; n: PSym; onConflictKeepOld = false): bool		1294
+nim	strTableGet	astdef.html#strTableGet,TStrTable,PIdent	proc strTableGet(t: TStrTable; name: PIdent): PSym		1298
+nim	nodeCommentReader	astdef.html#nodeCommentReader	var nodeCommentReader		1311
+nim	nodeCommentWriter	astdef.html#nodeCommentWriter	var nodeCommentWriter		1312
+nimgrp	newnodei	astdef.html#newNodeI-procs-all	proc		1036
+nimgrp	newstrnode	astdef.html#newStrNode-procs-all	proc		1078
+nimgrp	newnode	astdef.html#newNode-procs-all	proc		1031
+nimgrp	forcepartial	astdef.html#forcePartial-procs-all	proc		1149
+nimgrp	[]=	astdef.html#[]=-templates-all	template		950
+nimgrp	[]	astdef.html#[]-templates-all	template		949

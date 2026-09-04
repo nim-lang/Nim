@@ -1,0 +1,32 @@
+nimTitle	repr_v2	repr_v2.html	module system/repr_v2		0
+nim	repr	repr_v2.html#repr,NimNode	proc repr(x: NimNode): string		15
+nim	repr	repr_v2.html#repr,int	proc repr(x`gensym0: int): string		23
+nim	repr	repr_v2.html#repr,int8	proc repr(x`gensym1: int8): string		24
+nim	repr	repr_v2.html#repr,int16	proc repr(x`gensym2: int16): string		25
+nim	repr	repr_v2.html#repr,int32	proc repr(x`gensym3: int32): string		26
+nim	repr	repr_v2.html#repr,int64	proc repr(x`gensym4: int64): string		27
+nim	repr	repr_v2.html#repr,uint	proc repr(x`gensym5: uint): string		29
+nim	repr	repr_v2.html#repr,uint8	proc repr(x`gensym6: uint8): string		30
+nim	repr	repr_v2.html#repr,uint16	proc repr(x`gensym7: uint16): string		31
+nim	repr	repr_v2.html#repr,uint32	proc repr(x`gensym8: uint32): string		32
+nim	repr	repr_v2.html#repr,uint64	proc repr(x`gensym9: uint64): string		33
+nim	repr	repr_v2.html#repr,float	proc repr(x`gensym10: float): string		35
+nim	repr	repr_v2.html#repr,float32	proc repr(x`gensym11: float32): string		36
+nim	repr	repr_v2.html#repr,bool	proc repr(x: bool): string		38
+nim	repr	repr_v2.html#repr,char	proc repr(x: char): string		42
+nim	repr	repr_v2.html#repr	proc repr(x: string | cstring): string		59
+nim	repr	repr_v2.html#repr,Enum	proc repr[Enum: enum](x: Enum): string		75
+nim	reprDiscriminant	repr_v2.html#reprDiscriminant,int	proc reprDiscriminant(e: int): string		82
+nim	repr	repr_v2.html#repr,pointer	proc repr(p: pointer): string		87
+nim	repr	repr_v2.html#repr_2	proc repr(p: proc | iterator {.closure.}): string		103
+nim	repr	repr_v2.html#repr.t,T	template repr[T: distinct | (range and not enum)](x: T): string		107
+nim	repr	repr_v2.html#repr.t,typedesc	template repr(t: typedesc): string		115
+nim	repr	repr_v2.html#repr,T	proc repr[T: tuple | object](x: T): string		138
+nim	repr	repr_v2.html#repr_3	proc repr[T](x: ref T | ptr T): string		152
+nim	repr	repr_v2.html#repr,set[T]	proc repr[T](x: set[T]): string		172
+nim	repr	repr_v2.html#repr,seq[T]	proc repr[T](x: seq[T]): string		180
+nim	repr	repr_v2.html#repr,array[IDX,T]	proc repr[T, IDX](x: array[IDX, T]): string		188
+nim	repr	repr_v2.html#repr,openArray[T]	proc repr[T](x: openArray[T]): string		192
+nim	repr	repr_v2.html#repr,UncheckedArray[T]	proc repr[T](x: UncheckedArray[T]): string		200
+nimgrp	repr	repr_v2.html#repr-procs-all	proc		15
+nimgrp	repr	repr_v2.html#repr-templates-all	template		107

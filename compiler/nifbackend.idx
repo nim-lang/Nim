@@ -1,0 +1,2 @@
+nimTitle	nifbackend	nifbackend.html	module nifbackend		0
+nim	generateCode	nifbackend.html#generateCode,ModuleGraph,FileIndex	proc generateCode(g: ModuleGraph; mainFileIdx: FileIndex)		956

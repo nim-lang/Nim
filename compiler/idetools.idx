@@ -1,0 +1,2 @@
+nimTitle	idetools	idetools.html	module idetools		0
+nim	runIdeQuery	idetools.html#runIdeQuery,ConfigRef	proc runIdeQuery(conf: ConfigRef)		220

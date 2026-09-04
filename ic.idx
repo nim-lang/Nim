@@ -1,0 +1,20 @@
+markupTitle	Incremental Compilation (IC)	ic.html	Incremental Compilation (IC)		0
+heading	Overview	ic.html#overview	 Overview		0
+heading	Artifacts (the NIF zoo)	ic.html#artifacts-the-nif-zoo	 Artifacts (the NIF zoo)		0
+heading	Semantic BIF from regular builds	ic.html#semantic-bif-from-regular-builds	  Semantic BIF from regular builds		0
+heading	NIF symbols and ownership	ic.html#nif-symbols-and-ownership	 NIF symbols and ownership		0
+heading	The driver: graph construction (commandIc)	ic.html#the-drivercolon-graph-construction-commandic	 The driver: graph construction (<tt class="docutils literal"><span class="pre">commandIc</span></tt>)		0
+heading	Invalidation: the cookie system	ic.html#invalidationcolon-the-cookie-system	 Invalidation: the cookie system		0
+heading	Discovery of macro-generated imports	ic.html#discovery-of-macrominusgenerated-imports	 Discovery of macro-generated imports		0
+heading	The backend: per-module nifc stages	ic.html#the-backendcolon-perminusmodule-nifc-stages	 The backend: per-module <tt class="docutils literal"><span class="pre">nifc</span></tt> stages		0
+heading	Edge cases (and why the machinery exists)	ic.html#edge-cases-and-why-the-machinery-exists	 Edge cases (and why the machinery exists)		0
+heading	Resolved by the rewrite	ic.html#resolved-by-the-rewrite	  Resolved by the rewrite		0
+heading	Known residual hack	ic.html#known-residual-hack	  Known residual hack		0
+heading	Status and performance	ic.html#status-and-performance	 Status and performance		0
+heading	Design notes and open decisions	ic.html#design-notes-and-open-decisions	 Design notes and open decisions		0
+heading	Further possible improvements	ic.html#further-possible-improvements	 Further possible improvements		0
+heading	Where a cold build's time is (measured)	ic.html#where-a-cold-build-s-time-is-measured	  Where a cold build's time is (measured)		0
+heading	Code, logic & debugging	ic.html#code-logic-amp-debugging	 Code, logic &amp; debugging		0
+heading	See also	ic.html#see-also	 See also		0
+heading	Testing IC	ic.html#testing-ic	 Testing IC		0
+heading	The C++ backend	ic.html#the-cplusplus-backend	 The C++ backend		0

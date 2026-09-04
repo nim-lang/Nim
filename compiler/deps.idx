@@ -1,0 +1,3 @@
+nimTitle	deps	deps.html	module deps		0
+nim	includerSbifs	deps.html#includerSbifs,ConfigRef,AbsoluteFile	proc includerSbifs(conf: ConfigRef; targetFile: AbsoluteFile): seq[string]		690
+nim	commandIc	deps.html#commandIc,ConfigRef	proc commandIc(conf: ConfigRef; frontendOnly = false)		1715

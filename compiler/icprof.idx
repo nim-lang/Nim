@@ -1,0 +1,5 @@
+nimTitle	icprof	icprof.html	module icprof		0
+nim	prof	icprof.html#prof.t,untyped,int	template prof(s: untyped; n = 1)		108
+nim	icProfStart	icprof.html#icProfStart.t,untyped	template icProfStart(s: untyped)		109
+nim	icProfStop	icprof.html#icProfStop.t,untyped	template icProfStop(s: untyped)		110
+nim	timed	icprof.html#timed.t,untyped,untyped	template timed(s: untyped; body: untyped)		111
