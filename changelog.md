@@ -164,6 +164,9 @@ parameter and result types, not just their source-level shape. Use
   arrays slice via a `{base, off, len}` view. This also covers seq/non-numeric-array
   write-through, pass-through, re-slicing and `@` (openArray-to-seq) of such views.
 
+- On `--os:ios`, the default file name for `--app:lib` is now `libfoo.dylib`
+  instead of `libfoo.so`, matching `--os:macosx` and the Darwin convention.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.
