@@ -589,9 +589,16 @@ proc changedModuleCount(changed: seq[string]): int =
 
 proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options: string) =
   var test = TTest(cat: cat, name: file, options: options,
-                   spec: initSpec(file), startTime: epochTime())
+                   spec: parseSpec(file), startTime: epochTime())
   test.spec.targets = {targetC}
   inc r.total
+
+  # Metamorphic tests bypass `testSpec`, so honour Testament's batch selection
+  # here before creating their build directory or invoking `nim ic`.
+  if not test.spec.inCurrentBatch:
+    finishTest(r, test, targetC, "", "", "", reDisabled)
+    inc r.skipped
+    return
 
   # Absolute paths: `nim ic` runs with `workingDir = buildDir`, so a relative
   # `--nimcache` would resolve against the build dir, not where we read it back.
