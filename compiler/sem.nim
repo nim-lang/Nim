@@ -603,7 +603,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
   result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
-  if efNoSemCheck notin flags:
+  if efNoSemCheck notin flags and not (efTypeSectionMacro in flags and
+      result.kind in {nkTypeDef, nkTypeSection}):
     result = semAfterMacroCall(c, n, result, sym, flags, expectedType)
   if c.config.macrosToExpand.hasKey(sym.name.s):
     message(c.config, nOrig.info, hintExpandMacro, renderTree(result, {

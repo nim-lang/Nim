@@ -41,7 +41,8 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   pushInfoContext(c.config, n.info, s.detailedInfo)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache,
                         c.templInstCounter, c.idgen, efFromHlo in flags)
-  if efNoSemCheck notin flags:
+  if efNoSemCheck notin flags and not (efTypeSectionMacro in flags and
+      result.kind in {nkTypeDef, nkTypeSection}):
     result = semAfterMacroCall(c, n, result, s, flags, expectedType)
   popInfoContext(c.config)
 
