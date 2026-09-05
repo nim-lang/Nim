@@ -747,7 +747,7 @@ proc hasCppCtor(m: BModule; typ: PType): bool =
       if sfConstructor in prc.flags:
         return true
 
-proc genCppParamsForCtor(p: BProc; call: PNode; didGenTemp: var bool): string
+proc genCppParamsForCtor(p: BProc; call: AnyNode; didGenTemp: var bool): string
 
 proc genCppInitializer(m: BModule, prc: BProc; typ: PType; didGenTemp: var bool): string =
   #To avoid creating a BProc per test when called inside a struct nil BProc is allowed

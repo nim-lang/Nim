@@ -10,7 +10,7 @@
 # tree helper routines
 
 import
-  ast, wordrecg, idents
+  ast, wordrecg, idents, bnode
 
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   result = false
@@ -83,8 +83,8 @@ proc sameTree*(a, b: PNode): bool =
           if not sameTree(a[i], b[i]): return
         result = true
 
-proc getMagic*(op: PNode): TMagic =
-  if op == nil: return mNone
+proc getMagic*(op: AnyNode): TMagic =
+  if op.isNilNode: return mNone
   case op.kind
   of nkCallKinds:
     let callee = op.firstSon
@@ -93,7 +93,7 @@ proc getMagic*(op: PNode): TMagic =
     else: result = mNone
   else: result = mNone
 
-proc isConstExpr*(n: PNode): bool =
+proc isConstExpr*(n: AnyNode): bool =
   const atomKinds = {nkCharLit..nkNilLit} # Char, Int, UInt, Str, Float and Nil literals
   n.kind in atomKinds or nfAllConst in n.flags
 
@@ -103,7 +103,7 @@ proc isCaseObj*(n: PNode): bool =
   for i in 0..<n.safeLen:
     if n[i].isCaseObj: return true
 
-proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
+proc isDeepConstExpr*(n: AnyNode; preventInheritance = false): bool =
   case n.kind
   of nkCharLit..nkNilLit:
     result = true
@@ -141,7 +141,7 @@ proc isRange*(n: PNode): bool {.inline.} =
   else:
     result = false
 
-proc whichPragma*(n: PNode): TSpecialWord =
+proc whichPragma*(n: AnyNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.hasSons: n.firstSon else: n
   case key.kind
   of nkIdent: result = whichKeyword(key.ident)
@@ -207,7 +207,7 @@ proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
   result = newNodeI(k, n.info, b-a+1)
   for i in 0..b-a: result[i] = n[i+a]
 
-proc getRoot*(n: PNode): PSym =
+proc getRoot*(n: AnyNode): PSym =
   ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
   ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
   ## determined as the owner; ``obj`` in the example.
@@ -254,7 +254,7 @@ proc isRunnableExamples*(n: PNode): bool =
   result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
     n.kind == nkIdent and n.ident.id == ord(wRunnableExamples)
 
-proc skipAddr*(n: PNode): PNode {.inline.} =
+proc skipAddr*[T: AnyNode](n: T): T {.inline.} =
   result = if n.kind in {nkAddr, nkHiddenAddr}: n.firstSon else: n
 
 proc getPotentialWrites*(n: PNode; mutate: bool; result: var seq[PNode]) =

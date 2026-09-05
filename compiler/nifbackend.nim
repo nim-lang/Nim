@@ -409,6 +409,8 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   nifcBackendActive = true
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
   let batch = backendBatch(g.config, mainSuffix)
+  when defined(icBNodeProf):
+    profTag = (if batch.isMain: mainSuffix else: batch.members.join(","))
   var modules: seq[PrecompiledModule]
   var precompSys: PrecompiledModule
   var targets: seq[PrecompiledModule]
@@ -583,6 +585,8 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   nifcBackendActive = true
   let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
   let batch = backendBatch(g.config, mainSuffix)
+  when defined(icBNodeProf):
+    profTag = (if batch.isMain: mainSuffix else: batch.members.join(","))
   var modules: seq[PrecompiledModule]
   var precompSys: PrecompiledModule
   var targets: seq[PrecompiledModule]
@@ -606,6 +610,7 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       let r = loadDepClosure(g, batch.members)
       icProfStop(tLoadClosure)
       r
+  icProfMem(mAfterClosure)
   for i, target in targets:
     if target.module == nil:
       rawMessage(g.config, errGenerated,
@@ -631,9 +636,11 @@ proc generateCgStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   timed tCgGen:
     for target in targets:
       cgGenerateModule(g, target)
+  icProfMem(mAfterGen)
   timed tCgFinish:
     for target in targets:
       cgFinishModule(g, target, modules, precompSys)
+  icProfMem(mAfterFinish)
 
   # Writes each batch member's `.c.nif` (every other loaded module's TU is empty,
   # so `cgenWriteModules` emits no artifact for it). cc/link are NOT run here.
