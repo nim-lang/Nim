@@ -775,10 +775,7 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
     else:
       result = nil
   of tyRange:
-    if c.graph.config.isDefined("nimPreviewRangeDefault"):
-      result = firstRange(c.config, aTypSkip)
-    else:
-      result = nil
+    result = firstRange(c.config, aTypSkip)
   else:
     result = nil
 
