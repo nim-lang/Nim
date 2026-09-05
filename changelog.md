@@ -3,6 +3,8 @@
 
 ## Changes affecting backward compatibility
 
+- `-d:nimPreviewJsonutilsHoleyEnum` becomes the default, `jsonutils` now can serialize/deserialize
+  holey enums as regular enums (via `ord`) instead of as strings.
 - `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
 floating point numbers that are minimal in size and possess round-trip and correct
 rounding guarantees (via the
