@@ -2715,9 +2715,13 @@ proc semNimvmBranch(c: PContext, n: PNode, flags: TExprFlags): PNode =
     oldNotes = c.config.notes
     oldWarningAsErrors = c.config.warningAsErrors
     oldFeatures = c.features
+ 
+  # Both branches are checked, but their declarations cannot affect later code.
+  c.openShadowScope()
   try:
     result = semExpr(c, n, flags)
   finally:
+    c.closeScope()
     c.optionStack = oldOptionStack
     c.config.options = oldOptions
     c.config.notes = oldNotes
