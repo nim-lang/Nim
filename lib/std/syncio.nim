@@ -15,13 +15,12 @@ import std/formatfloat
 when defined(windows):
   import std/widestrs
 
-from system/ansi_c import c_memchr
+from system/ansi_c import c_memchr, CFilePtr
 
 # ----------------- IO Part ------------------------------------------------
+
 type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
-  File* = ptr CFile ## The type representing a file handle.
+  File* = CFilePtr ## The type representing a file handle.
 
   FileMode* = enum       ## The file mode when opening a file.
     fmRead,              ## Open the file for read access only.
@@ -297,13 +296,7 @@ when SupportIoctlInheritCtl:
   proc c_ioctl(fd: cint, request: cint): cint {.
     importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
 elif defined(posix) and not defined(lwip) and not defined(nimscript):
-  var
-    F_GETFD {.importc, header: "<fcntl.h>".}: cint
-    F_SETFD {.importc, header: "<fcntl.h>".}: cint
-    FD_CLOEXEC {.importc, header: "<fcntl.h>".}: cint
-
-  proc c_fcntl(fd: cint, cmd: cint): cint {.
-    importc: "fcntl", header: "<fcntl.h>", varargs.}
+  from posix import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl, Stat, S_ISDIR, fstat
 elif defined(windows):
   type
     WinDWORD = culong
@@ -383,11 +376,11 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     elif defined(freertos) or defined(zephyr):
       result = true
     elif defined(posix):
-      var flags = c_fcntl(f, F_GETFD)
+      var flags = fcntl(f, F_GETFD)
       if flags == -1:
         return false
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
-      result = c_fcntl(f, F_SETFD, flags) != -1
+      result = fcntl(f, F_SETFD, flags) != -1
     else:
       result = setHandleInformation(f, HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
@@ -684,37 +677,6 @@ const
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
 
-when defined(posix) and not defined(nimscript):
-  when defined(linux) and defined(amd64):
-    type
-      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
-
-      # fillers ensure correct size & offsets
-      Stat {.importc: "struct stat",
-              header: "<sys/stat.h>", final, pure.} = object ## struct stat
-        filler_1: array[24, char]
-        st_mode: Mode ## Mode of file
-        filler_2: array[144 - 24 - 4, char]
-
-    proc modeIsDir(m: Mode): bool =
-      ## Test for a directory.
-      (m and 0o170000) == 0o40000
-
-  else:
-    type
-      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
-
-      Stat {.importc: "struct stat",
-               header: "<sys/stat.h>", final, pure.} = object ## struct stat
-        st_mode: Mode ## Mode of file
-
-    proc modeIsDir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
-      ## Test for a directory.
-
-  proc c_fstat(a1: cint, a2: var Stat): cint {.
-    importc: "fstat", header: "<sys/stat.h>".}
-
-
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
           bufSize: int = -1): bool {.tags: [], raises: [], gcsafe.} =
@@ -727,12 +689,12 @@ proc open*(f: var File, filename: string,
   var p = fopen(filename.cstring, FormatOpen[mode])
   if p != nil:
     var f2 = cast[File](p)
-    when defined(posix) and not defined(nimscript):
+    when declared(Stat) and declared(fstat) and declared S_ISDIR:
       # How `fopen` handles opening a directory is not specified in ISO C and
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
       var res {.noinit.}: Stat
-      if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
+      if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
         closeIgnoreError(f2)
         return false
     when not defined(nimInheritHandles) and declared(setInheritable) and

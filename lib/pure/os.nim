@@ -619,8 +619,8 @@ when not (defined(windows) or defined(macosx) or weirdTarget) and supportedSyste
 
 when defined(macosx):
   type
-    cuint32* {.importc: "unsigned int", nodecl.} = int
-    ## This is the same as the type ``uint32_t`` in *C*.
+    cuint32 {.importc: "uint32_t", nodecl.} = uint32
+    # This is the same as the type ``uint32_t`` in *C*.
 
   # a really hacky solution: since we like to include 2 headers we have to
   # define two procs which in reality are the same
