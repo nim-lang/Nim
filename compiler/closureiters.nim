@@ -1186,7 +1186,7 @@ proc transformStateAssignments(ctx: var Ctx, n: PNode): PNode =
       if n[0][0].kind != nkEmpty:
         var a = newNodeI(nkAsgn, n[0][0].info)
         var retVal = n[0][0] #liftCapturedVars(n[0], owner, d, c)
-        a.add newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen))
+        a.add newSymNode(getClosureIterResult(ctx.g, ctx.fn, ctx.idgen), n.info)
         a.add retVal
         retStmt.add(a)
       else:
