@@ -277,6 +277,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     addDecl(c, param)
 
   result = replaceTypeVarsT(cl, header)
+  assert cl.nodeUpdates.len == 0
   closeScope(c)
 
 proc referencesAnotherParam(n: PNode, p: PSym): bool =
@@ -330,6 +331,9 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
         resulti = copyType(resulti, c.idgen, resulti.owner)
       resulti.incl tfNonConstExpr
     var paramType = replaceTypeVarsT(cl, resulti)
+    assert cl.nodeUpdates.len == 0
+    postInstantiation(c, paramType)
+
     if needsStaticSkipping:
       paramType = paramType.skipTypes({tyStatic})
     if needsTypeDescSkipping:
@@ -397,6 +401,8 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   resetIdTable(cl.localCache)
   cl.isReturnType = true
   result.setReturnType replaceTypeVarsT(cl, result.returnType)
+  assert cl.nodeUpdates.len == 0
+  postInstantiation(c, result.returnType)
   cl.isReturnType = false
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
