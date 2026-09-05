@@ -958,7 +958,20 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     withoutShallowFlags:
       for ff, aa in underspecifiedPairs(rhs, lhs, 1, -1):
         if not sameTypeAux(ff, aa, c): return false
-    return true
+    if lhs.base.last.kind == tyOr:
+      # issue #25346
+      # In following code, both types of parameters of instanciated `foo` are `Foo[char]`,
+      # but they are different types.
+      #
+      # type
+      #   Foo[T] = seq[T] or set[T]
+      #
+      # proc foo[T](x: Foo[T]) = discard
+      # foo(@['1', '2'])
+      # foo({'1', '2'})
+      return sameTypeAux(lhs.skipModifier, rhs.skipModifier, c)
+    else:
+      return true
 
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
