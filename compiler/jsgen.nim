@@ -2323,11 +2323,12 @@ proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   let t = skipTypes(n[2].typ,
                     abstractVarRange+{tyRef, tyPtr, tyLent, tyTypeDesc, tyOwned})
   gen(p, n[1], x)
+  let (a, tmp) = maybeMakeTemp(p, n[1], x)
   if tfFinal in t.flags:
-    r.res = "($1.m_type == $2)" % [x.res, genTypeInfo(p, t)]
+    r.res = "(($1) != null && $2.m_type == $3)" % [a, tmp, genTypeInfo(p, t)]
   else:
     useMagic(p, "isObj")
-    r.res = "isObj($1.m_type, $2)" % [x.res, genTypeInfo(p, t)]
+    r.res = "(($1) != null && isObj($2.m_type, $3))" % [a, tmp, genTypeInfo(p, t)]
   r.kind = resExpr
 
 proc genDefault(p: PProc, n: PNode; r: var TCompRes) =
