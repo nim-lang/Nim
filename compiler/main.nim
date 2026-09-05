@@ -156,6 +156,20 @@ proc commandCompileToC(graph: ModuleGraph) =
         graph.config.notes = graph.config.mainPackageNotes
         return
 
+  # Spawn a separate nim process for code generation to reclaim memory
+  # before C compilation. The subprocess runs with --compileOnly, generates the
+  # C code and a JSON build script then executes the build script to build the
+  # final output.
+  # optHotCodeReloading is mostly broken in general
+  # optUseNimcache requires changes to how command lines are hashed to avoid rebuild detection errors
+  # optGenStaticLib isn't supported by the JSON build script machinery
+  if {
+    optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache,
+    optGenStaticLib,
+  } * conf.globalOptions == {optSpawnCodegen}:
+    extccomp.spawnCodegenSubprocess(conf)
+    return # Subprocess handled everything; skip in-process compilation
+
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
