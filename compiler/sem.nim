@@ -915,6 +915,11 @@ proc recoverContext(c: PContext) =
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
 proc semWithPContext*(c: PContext, n: PNode): PNode =
+  var n = n
+  if sfMainModule in c.module.flags:
+    n = newTree(nkStmtList, n,
+                newTree(nkCall,
+                        newIdentNode(getIdent(c.cache, "nimAtCompileTimeExit"), n.info)))
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
