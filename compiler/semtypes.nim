@@ -1760,6 +1760,64 @@ proc containsGenericInvocationWithForward(n: PNode): bool =
           return true
   return false
 
+proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType
+
+proc tryGenericBodyDefaultInvocation(c: PContext, n: PNode, s: PSym,
+                                     prev: PType): PType =
+  ## Issue #4086 sub-case: `Foo[]` (empty brackets) instantiates `Foo` using
+  ## the default of every generic param, e.g. `type Foo[T = int]; var f: Foo[]`
+  ## means `var f: Foo[int]`. Synthesize a `Foo[default1, default2, ...]`
+  ## bracket node and dispatch to the existing `semGeneric` so the
+  ## default-substitution machinery (added for issues #4086 / #9355) handles
+  ## cascading and parameter-referencing defaults uniformly. Returns nil when
+  ## not every generic param has a default (the caller then reports an error).
+  result = nil
+  if s.typ == nil: return
+  let body = s.typ.skipTypes({tyAlias})
+  if body.kind != tyGenericBody or body.len < 2: return
+  for i in 0..<body.len-1:
+    let p = body[i]
+    if p.kind != tyGenericParam or p.sym == nil or p.sym.ast == nil:
+      return
+  var bracket = newNodeI(nkBracketExpr, n.info)
+  if n.kind == nkSym:
+    bracket.add n
+  else:
+    bracket.add newSymNode(s, n.info)
+  # Provide only the first param's default explicitly (it cannot reference an
+  # earlier param, so it needs no substitution). The matcher's default-completion
+  # path then fills the remaining params from their defaults and flags them
+  # `nfDefaultParam`, so `semGeneric` substitutes references to earlier params
+  # (e.g. `U = seq[T]` -> `seq[int]`, cascading left-to-right). Synthesizing every
+  # default as an explicit arg would instead treat them as user-supplied args and
+  # bypass that substitution.
+  bracket.add copyTree(body[0].sym.ast)
+  result = semGeneric(c, bracket, s, prev)
+
+proc semGenericOrEmptyBracket(c: PContext, n: PNode, s: PSym, prev: PType): PType =
+  ## `Foo[]` (empty brackets, i.e. an `nkBracketExpr` whose only child is the
+  ## type head) is an explicit-defaults instantiation: it means `Foo[d1, d2, ...]`
+  ## where every generic param falls back to its default (issues #4086 / #9355).
+  ## Handling it here in the shared type-resolution path means it works in every
+  ## type position — var/let/const, proc params, return types, fields — unlike a
+  ## bare `Foo`, which stays a type class (implicit generic) in parameter position
+  ## and must keep that meaning. Non-empty brackets take the normal path.
+  if n.len == 1:
+    let body = if s.typ != nil: s.typ.skipTypes({tyAlias}) else: nil
+    if body != nil and body.kind == tyGenericBody:
+      # `Foo[]` on a generic type instantiates it using every param's default.
+      result = tryGenericBodyDefaultInvocation(c, n[0], s, prev)
+      if result == nil:
+        localError(c.config, n.info,
+          "cannot instantiate '$1' with '[]': every generic parameter must have a default" %
+            s.name.s)
+        result = newOrPrevType(tyError, prev, c)
+    else:
+      # not a generic type: let semGeneric report the proper error.
+      result = semGeneric(c, n, s, prev)
+  else:
+    result = semGeneric(c, n, s, prev)
+
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
@@ -1815,8 +1873,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     let rType = m.call[0].typ
     let mIndex = if rType != nil: rType.len - 1 else: -1
     var hasForwardTypeParam = false
+
     for i in 1..<m.call.len:
       var typ = m.call[i].typ
+
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
       # unstripped.
       if m.call[i].kind == nkSym and m.call[i].sym.kind == skParam and
@@ -1825,7 +1885,12 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         addToResult(typ, true)
       else:
         typ = typ.skipTypes({tyTypeDesc})
-        if containsGenericType(typ): isConcrete = false
+        # #4086: a param filled from its default (nfDefaultParam) may still
+        # mention earlier type params (e.g. `U = seq[T]`). Those are resolved
+        # during instantiation against the already-bound earlier params, so
+        # they must not make the invocation non-concrete here.
+        if containsGenericType(typ) and nfDefaultParam notin m.call[i].flags:
+          isConcrete = false
         var skip = true
         if mIndex >= i - 1 and tfImplicitStatic in rType[i - 1].flags and isIntLit(typ):
           skip = false
@@ -2436,8 +2501,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       of "lent": result = semAnyRef(c, n, tyLent, prev)
       of "sink": result = semAnyRef(c, n, tySink, prev)
       of "owned": result = semAnyRef(c, n, tyOwned, prev)
-      else: result = semGeneric(c, n, s, prev)
-    else: result = semGeneric(c, n, s, prev)
+      else: result = semGenericOrEmptyBracket(c, n, s, prev)
+    else: result = semGenericOrEmptyBracket(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)
     if typeExpr.typ.isNil:
