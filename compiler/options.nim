@@ -301,6 +301,9 @@ type
     procParamTypeBackendAliases
       ## Keep the old proc type compatibility rules that ignore backend
       ## c type aliases.
+    typedescFieldAccess
+      ## Allow typedesc field access on object/tuple types outside of
+      ## typeof context.
     injectedSymbolRedefinition
       ## Allow a template to inject a symbol *definition* that is then emitted
       ## more than once (e.g. a `typed` argument captured by a `{.dirty.}`
