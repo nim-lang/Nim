@@ -2106,7 +2106,12 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     let rhs = semExprWithType(c, n[1], {efTypeAllowed}, le)
     if lhs.kind == nkSym and lhs.sym.kind == skResult:
       n.typ = c.enforceVoidContext
-      if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
+      # Only infer the return type for the current proc's own 'result' sym.
+      # When 'result' refers to an outer proc's result (captured via closure
+      # from within a nested void proc), the inner proc has no resultSym and
+      # the inference below would crash on the internalAssert. Issue #18556.
+      if lhs.sym.owner == c.p.owner and
+         c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         var rhsTyp = rhs.typ
         if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
           rhsTyp = rhsTyp.last
