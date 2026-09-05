@@ -1790,7 +1790,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             inc c.inheritancePenalty, depth + int(c.inheritancePenalty < 0)
           result = isGeneric
   of tyGenericInvocation:
-    var x = a.skipGenericAlias
+    var x = a
+    while x != nil:
+      if x.kind == tyAlias:
+        x = x.last
+      elif x.isGenericAlias:
+        if f[0] == x[0]:
+          break
+        else:
+          x = x.last
+      else:
+        break
     if x.kind == tyGenericParam and x.len > 0:
       x = x.last
     let concpt = f.reduceToBase
@@ -1799,7 +1809,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       preventHack = true
       x = x.last
     # XXX: This is very hacky. It should be moved back into liftTypeParam
-    if x.kind in {tyGenericInst, tyArray} and
+    if x.kind in {tyArray} and
       c.calleeSym != nil and
       c.calleeSym.kind in {skProc, skFunc} and c.call != nil and not preventHack:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
@@ -1855,10 +1865,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           else:
             let key = f[i]
             let old = lookup(c.bindings, key)
-            if old == nil:
+            if typeRel(c, key, x, flags) == isNone:
+              result = isNone
+            elif old == nil or typeRel(c, old, x, flags + {trDontBind}) > isNone:
               put(c, key, x)
-            elif typeRel(c, old, x, flags + {trDontBind}) == isNone:
-              return isNone
+            else:
+              result = isNone
       var depth = -1
       if fobj != nil and aobj != nil and askip == fskip:
         depth = isObjectSubtype(c, aobj, fobj, f)
@@ -1939,6 +1951,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             return isNone
         if doBind: put(c, f, a)
         return isGeneric
+      elif effectiveArgType.kind == tyOr:
+        for kid in effectiveArgType.kids:
+          if typeRel(c, f, kid, flags) >= isSubtype:
+            result = isGeneric
+            break
       else:
         return isNone
   of tyUserTypeClassInst, tyUserTypeClass:
