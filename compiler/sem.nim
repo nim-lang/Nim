@@ -18,7 +18,7 @@ import
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs,
-  extccomp, layeredtable
+  extccomp, layeredtable, semderefs
 
 import vtables
 import std/[strtabs, math, tables, intsets, strutils, packedsets]
@@ -880,6 +880,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   else:
     result = n
   result = semStmt(c, result, {})
+  result = injectDerefs(c.config, result)
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
     # steps are not required anymore and actually harmful for the upcoming
