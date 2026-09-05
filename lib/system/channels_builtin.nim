@@ -347,9 +347,11 @@ template lockChannel(q, action): untyped =
   releaseSys(q.lock)
 
 proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool =
-  if q.mask == ChannelDeadMask:
-    sysFatal(DeadThreadDefect, "cannot send message; thread died")
   acquireSys(q.lock)
+  # Check mask inside the lock to avoid data race
+  if q.mask == ChannelDeadMask:
+    releaseSys(q.lock)
+    sysFatal(DeadThreadDefect, "cannot send message; thread died")
   if q.maxItems > 0:
     # Wait until count is less than maxItems
     if noBlock and q.count >= q.maxItems:
@@ -428,12 +430,12 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
   ## returns `(true, msg)`.
   result = default(tuple[dataAvailable: bool, msg: TMsg])
   var q = cast[PRawChannel](addr(c))
-  if q.mask != ChannelDeadMask:
-    if tryAcquireSys(q.lock):
-      if q.count > 0:
-        llRecv(q, addr(result.msg), cast[PNimType](getTypeInfo(result.msg)))
-        result.dataAvailable = true
-      releaseSys(q.lock)
+  if tryAcquireSys(q.lock):
+    # Check mask inside the lock to avoid data race
+    if q.mask != ChannelDeadMask and q.count > 0:
+      llRecv(q, addr(result.msg), cast[PNimType](getTypeInfo(result.msg)))
+      result.dataAvailable = true
+    releaseSys(q.lock)
 
 proc peek*[TMsg](c: var Channel[TMsg]): int =
   ## Returns the current number of messages in the channel `c`.
