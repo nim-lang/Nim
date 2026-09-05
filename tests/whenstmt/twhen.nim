@@ -45,3 +45,12 @@ elif compiles(nonexistent):
 else:
   output("whenElse")
 
+
+template test(): typedesc =
+  when true:
+    int
+  else:
+    bool
+
+const c = default(test())
+echo c

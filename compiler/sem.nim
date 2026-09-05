@@ -496,6 +496,26 @@ proc resetSemFlag(n: PNode) =
     for i in 0..<n.safeLen:
       resetSemFlag(n[i])
 
+proc normalizeTypedescMacroResult(c: PContext, n: PNode): PNode =
+  result = n
+  if result.kind == nkStmtList:
+    result.transitionSonsKind(nkStmtListType)
+
+  const maxTypedescMacroNormalizationPasses = 32
+  # Resolve surviving compile-time branches so later passes don't walk
+  # unevaluated type AST for a typedesc expression.
+  for _ in 0..<maxTypedescMacroNormalizationPasses:
+    if result.kind == nkWhenStmt:
+      result = semWhen(c, result, false)
+      if result.kind == nkStmtList:
+        result.transitionSonsKind(nkStmtListType)
+    elif result.kind == nkStmtListType and result.len > 0 and result[^1].kind == nkWhenStmt:
+      result[^1] = semWhen(c, result[^1], false)
+      if result[^1].kind == nkStmtList:
+        result[^1].transitionSonsKind(nkStmtListType)
+    else:
+      break
+
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode =
   ## Semantically check the output of a macro.
@@ -526,7 +546,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # More restrictive version.
       result = semExprWithType(c, result, flags, expectedType)
     of tyTypeDesc:
-      if result.kind == nkStmtList: result.transitionSonsKind(nkStmtListType)
+      result = normalizeTypedescMacroResult(c, result)
       var typ = semTypeNode(c, result, nil)
       if typ == nil:
         localError(c.config, result.info, "expression has no type: " &
@@ -534,7 +554,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         result = newSymNode(errorSym(c, result))
       else:
         result.typ = makeTypeDesc(c, typ)
-      #result = symNodeFromType(c, typ, n.info)
+        #result = symNodeFromType(c, typ, n.info)
     else:
       if s.ast[genericParamsPos] != nil and retType.isMetaType:
         # The return type may depend on the Macro arguments
