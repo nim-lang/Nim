@@ -105,3 +105,36 @@ block:
 block: # fixes about #23481
   doAssertRaises EncodingError:
     discard open(destEncoding="this is a invalid enc")
+
+block: # bug #26173 - stateful encodings must survive output buffer growth
+  # ISO-2022-JP is stateful: `ESC $ B` switches to two byte JIS X 0208 mode and
+  # `ESC ( B` switches back to ASCII. `convert` sized its output buffer from the
+  # input length, so any input whose UTF-8 form is longer hit `E2BIG` and resumed
+  # the conversion after a short write. The shift state does not necessarily
+  # survive that, so the tail of the text came out as raw bytes and the result was
+  # silently wrong - and longer than the input.
+  proc repeatedA(n: int): string =
+    result = "\x1B\x24\x42"
+    for _ in 0 ..< n: result.add "\x24\x22" # あ
+    result.add "\x1B\x28\x42"
+
+  var expected = ""
+  for n in 1 .. 64:
+    expected.add "あ"
+    doAssert convert(repeatedA(n), "UTF-8", "ISO-2022-JP") == expected
+
+  # mixed ASCII and JIS runs, i.e. several state switches in one string
+  const mixed = "\x1B\x24\x42\x21\x5A\x3F\x37\x35\x2C\x21\x5B\x39\x41\x36\x68" &
+                "\x46\x6E\x40\x44\x3B\x33\x1B\x28\x42\x20\x1B\x24\x42\x43\x66" &
+                "\x38\x45\x38\x4D\x37\x7A\x24\x4E\x24\x34\x3E\x52\x32\x70\x1B\x28\x42"
+  doAssert convert(mixed, "UTF-8", "ISO-2022-JP") ==
+    "【新規】港区南青山 " &
+    "中古戸建のご紹介"
+
+block: # stateless encodings keep working when the output buffer grows
+  var euc = ""
+  var expected = ""
+  for _ in 0 ..< 2000:
+    euc.add "\xA4\xA2"
+    expected.add "あ"
+  doAssert convert(euc, "UTF-8", "EUC-JP") == expected

@@ -469,19 +469,26 @@ else:
       iconvres = iconv(c, addr src, addr inLen, addr dst, addr outLen)
       if iconvres == high(csize_t):
         var lerr = errno
-        if lerr == EILSEQ or lerr == EINVAL:
+        if (lerr == EILSEQ or lerr == EINVAL) and outLen > 0:
           # unknown char, skip
           dst[0] = src[0]
           src = cast[cstring](cast[int](src) + 1)
           dst = cast[cstring](cast[int](dst) + 1)
           dec(inLen)
           dec(outLen)
-        elif lerr == E2BIG:
-          var offset = cast[int](dst) - cast[int](cstring(result))
-          setLen(result, len(result) + inLen.int * 2 + 5)
-          # 5 is minimally one utf-8 char
-          dst = cast[cstring](cast[int](cstring(result)) + offset)
-          outLen = csize_t(len(result) - offset)
+        elif lerr == E2BIG or lerr == EILSEQ or lerr == EINVAL:
+          # Either the output buffer is too small, or it is full and an unknown
+          # char cannot be copied over. Do not resume the conversion where it
+          # stopped: stateful encodings (ISO-2022-JP/KR/CN) can lose their shift
+          # state across a short write, which silently corrupts the tail of the
+          # output. Reset the converter and redo the whole conversion into a
+          # larger buffer instead.
+          discard iconv(c, nil, nil, nil, nil)
+          result = newString(len(result) * 2 + 16)
+          inLen = csize_t len(s)
+          outLen = csize_t len(result)
+          src = cstring(s)
+          dst = cstring(result)
         else:
           raiseOSError(lerr.OSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is
