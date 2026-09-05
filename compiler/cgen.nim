@@ -863,10 +863,14 @@ proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
+  let isVarRet = p.module.compileToCpp and
+                 t.skipTypes(abstractInst).kind == tyVar
+  let tmpTyp = if isVarRet: getTypeDesc(p.module, t, dkVar) else: "auto"
+  let initVal = if isVarRet and tfVarIsPtr in t.flags: cAddr(value) else: value
   p.s(cpsStmts).addVar(kind = Local,
     name = result.snippet,
-    typ = "auto",
-    initializer = value)
+    typ = tmpTyp,
+    initializer = initVal)
 
 proc getIntTemp(p: BProc): TLoc =
   inc(p.labels)
@@ -1667,7 +1671,18 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         else:
           initLocalVar(p, res, immediateAsgn=false)
       var returnBuilder = newBuilder("\t")
-      let rres = rdLoc(res.loc)
+      var rres = rdLoc(res.loc)
+      # Match genProcParams: it checks prc.typ.returnType.flags (not res.typ.flags)
+      # because markResultVarIsPtr sets tfVarIsPtr on the result sym's type, which
+      # can be a different object than prc.typ.returnType for generic instances.
+      # For tyVar of tyArray, genProcParams forces '*' (ctPtrToArray path in
+      # getTypeDescAux overwrites '&' with '*'), so the signature is T* and we
+      # must return 'result' (the pointer), not '*result' (the element).
+      let rt = prc.typ.returnType
+      if m.compileToCpp and rt.skipTypes(abstractInst).kind == tyVar and
+          tfVarIsPtr in rt.flags and
+          mapType(m.config, rt, false) != ctPtrToArray:
+        rres = cDeref(rres)
       returnBuilder.addReturn(rres)
       returnStmt = extract(returnBuilder)
     elif sfConstructor in prc.flags:
