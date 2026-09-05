@@ -572,6 +572,7 @@ type
     expandPosition*: TLineInfo
 
     currentConfigDir*: string # used for passPP only; absolute dir
+    skipParentDetectionMode*: bool # true while probing configs for skipParentCfg
     clientProcessId*: int
 
 
