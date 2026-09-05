@@ -83,6 +83,27 @@ parameter and result types, not just their source-level shape. Use
   POSIX-like single-hop `readlink` semantics.
 - `std/nre2` is added to replace deprecated NRE.
 
+- `std/dec64` adds Douglas Crockford's
+  [Dec64](https://www.crockford.com/dec64.html) 64-bit decimal floating-point
+  type: a packed `int64` with a 56-bit signed coefficient and an 8-bit signed
+  exponent. Provides arithmetic, comparison, hashing, parsing, and `$`,
+  plus a `'dec` custom literal (`1.25'dec`) and mixed `(Dec64, int)`
+  operator overloads so expressions like `price * 2 + 1` work without
+  wrapping every integer. Decimal-native rounding (`floor`, `ceil`,
+  `trunc`, `round`), `abs`, `sign`, and integer-exponent `pow` stay in
+  pure decimal throughout.
+- `std/dec64math` adds elementary mathematical functions for `Dec64`:
+  `sqrt`, `exp`, `ln`/`log`, `log2`, `log10`, `sin`, `cos`, `tan`,
+  `arcsin`, `arccos`, `arctan`, `arctan2`, `sinh`, `cosh`, `tanh`,
+  `pow(Dec64, Dec64)`, `nthRoot`, and exact-integer `factorial`.
+  Transcendentals are evaluated by round-tripping through `float64` and
+  delegating to `std/math`, which trades ~1 ulp at the 16th decimal
+  digit (Dec64's last) for a pure-Nim implementation that wraps the
+  battle-tested `libm` rather than reimplementing polynomials. For
+  computations that must stay decimal end-to-end (typically money), use
+  the operators in `std/dec64` directly; the transcendentals here are
+  for scientific or measurement-style work where the last ulp is noise.
+
 - `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
 
 [//]: # "Changes:"
