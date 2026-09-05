@@ -469,15 +469,16 @@ else:
       iconvres = iconv(c, addr src, addr inLen, addr dst, addr outLen)
       if iconvres == high(csize_t):
         var lerr = errno
-        if lerr == EILSEQ or lerr == EINVAL:
+        if (lerr == EILSEQ or lerr == EINVAL) and outLen > 0:
           # unknown char, skip
           dst[0] = src[0]
           src = cast[cstring](cast[int](src) + 1)
           dst = cast[cstring](cast[int](dst) + 1)
           dec(inLen)
           dec(outLen)
-        elif lerr == E2BIG:
-          # The output buffer is too small. Do not resume the conversion where it
+        elif lerr == E2BIG or lerr == EILSEQ or lerr == EINVAL:
+          # Either the output buffer is too small, or it is full and an unknown
+          # char cannot be copied over. Do not resume the conversion where it
           # stopped: stateful encodings (ISO-2022-JP/KR/CN) can lose their shift
           # state across a short write, which silently corrupts the tail of the
           # output. Reset the converter and redo the whole conversion into a
