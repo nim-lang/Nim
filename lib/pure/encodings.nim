@@ -477,11 +477,17 @@ else:
           dec(inLen)
           dec(outLen)
         elif lerr == E2BIG:
-          var offset = cast[int](dst) - cast[int](cstring(result))
-          setLen(result, len(result) + inLen.int * 2 + 5)
-          # 5 is minimally one utf-8 char
-          dst = cast[cstring](cast[int](cstring(result)) + offset)
-          outLen = csize_t(len(result) - offset)
+          # The output buffer is too small. Do not resume the conversion where it
+          # stopped: stateful encodings (ISO-2022-JP/KR/CN) can lose their shift
+          # state across a short write, which silently corrupts the tail of the
+          # output. Reset the converter and redo the whole conversion into a
+          # larger buffer instead.
+          discard iconv(c, nil, nil, nil, nil)
+          result = newString(len(result) * 2 + 16)
+          inLen = csize_t len(s)
+          outLen = csize_t len(result)
+          src = cstring(s)
+          dst = cstring(result)
         else:
           raiseOSError(lerr.OSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is
