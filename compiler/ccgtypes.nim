@@ -1774,12 +1774,20 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
 
 proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
-proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
+proc generateRttiHook(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator; theProc: PSym): PSym =
   # the wrapper is roughly like:
   # proc rttiDestroy(x: pointer) =
   #   `=destroy`(cast[ptr T](x)[])
-  let procname = getIdent(g.cache, "rttiDestroy")
+  # and for the =trace hook:
+  # proc rttiTrace(x, env: pointer) =
+  #   `=trace`(cast[ptr T](x)[], env)
+  # The wrapper exists so that the RTTI slot is filled with a proc whose C
+  # signature really is `void (*)(void*)` / `void (*)(void*, void*)`. Calling
+  # the hook itself through such a pointer is UB and -fsanitize=function
+  # rightfully complains about it.
+  let hookName = if kind == attachedTrace: "rttiTrace" else: "rttiDestroy"
+  let procname = getIdent(g.cache, hookName)
   result = newSym(skProc, procname, idgen, owner, info)
   let dest = newSym(skParam, getIdent(g.cache, "dest"), idgen, result, info)
 
@@ -1788,27 +1796,32 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   result.typ = newProcType(info, idgen, result)
   result.typ.addParam dest
 
+  var env: PSym = nil
+  if kind == attachedTrace:
+    env = newSym(skParam, getIdent(g.cache, "env"), idgen, result, info)
+    env.typ = getSysType(g, info, tyPointer)
+    result.typ.addParam env
+
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
   n[namePos] = newSymNode(result)
   n[paramsPos] = result.typ.n
   let body = newNodeI(nkStmtList, info)
   let castType = makePtrType(typ, idgen)
+  let deref = newDeref(newTreeIT(
+    nkCast, info, castType, newNodeIT(nkType, info, castType),
+    newSymNode(dest)
+  ))
+  var arg: PNode
   if theProc.typ.firstParamType.kind != tyVar:
-    body.add newTreeI(nkCall, info, newSymNode(theProc), newDeref(newTreeIT(
-      nkCast, info, castType, newNodeIT(nkType, info, castType),
-      newSymNode(dest)
-    ))
-    )
+    arg = deref
   else:
-    let addrOf = newNodeIT(nkHiddenAddr, info, theProc.typ.firstParamType)
-    addrOf.add newDeref(newTreeIT(
-      nkCast, info, castType, newNodeIT(nkType, info, castType),
-      newSymNode(dest)
-    ))
-    body.add newTreeI(nkCall, info, newSymNode(theProc),
-      addrOf
-    )
+    arg = newNodeIT(nkHiddenAddr, info, theProc.typ.firstParamType)
+    arg.add deref
+  let call = newTreeI(nkCall, info, newSymNode(theProc), arg)
+  if env != nil:
+    call.add newSymNode(env)
+  body.add call
   n[bodyPos] = body
   result.ast = n
 
@@ -1822,8 +1835,9 @@ proc generateRttiDestructor(g: ModuleGraph; typ: PType; owner: PSym; kind: TType
   # (stable across processes) + `HookDisambBit`, exactly like `symPrototype` does
   # for the hook itself: same `typ` ⇒ same C name everywhere, and the bit makes
   # `emitsBodyInThisModule` emit the body in every demander (merge dedups). The
-  # `"rttiDestroy"` op-name keeps its key disjoint from the real `=destroy` hook's.
-  setHookDisamb(g, result, "rttiDestroy", typ)
+  # `"rttiDestroy"`/`"rttiTrace"` op-name keeps its key disjoint from the real
+  # `=destroy`/`=trace` hook's.
+  setHookDisamb(g, result, hookName, typ)
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result: var Builder) =
   let theProc = getAttachedOp(m.g.graph, t, op)
@@ -1835,8 +1849,8 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp; result:
       localError(m.config, info,
         theProc.name.s & " needs to have the 'nimcall' calling convention")
 
-    if op == attachedDestructor:
-      let wrapper = generateRttiDestructor(m.g.graph, t, theProc.owner, attachedDestructor,
+    if op in {attachedDestructor, attachedTrace}:
+      let wrapper = generateRttiHook(m.g.graph, t, theProc.owner, op,
                 theProc.info, m.idgen, theProc)
       genProc(m, wrapper)
       result.add wrapper.loc.snippet
