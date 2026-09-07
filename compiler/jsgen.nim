@@ -1232,7 +1232,7 @@ proc generateHeader(p: PProc, prc: PSym): Rope =
   result = ""
   let typ = prc.typ
   if jsNoLambdaLifting notin p.config.legacyFeatures:
-    if typ.callConv == ccClosure:
+    if typ.callConv == ccClosure and tfCapturesEnv in typ.flags:
       # we treat Env as the `this` parameter of the function
       # to keep it simple
       let env = prc.ast[paramsPos].lastSon
