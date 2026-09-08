@@ -80,11 +80,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
   when not defined(osx):
-    # the nimhcr runtime segfaults on macOS, disable the test until it is fixed:
+    # the nimhcr runtime segfaults on macOS:
     testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
-  if "boehm" notin options:
+  # the nimhcr runtime segfaults on macOS, so no hcr test runs there:
+  if "boehm" notin options and not defined(osx):
     # hcr tests
 
     var basicHcrTest = makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
