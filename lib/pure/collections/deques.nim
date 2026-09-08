@@ -129,7 +129,7 @@ template needsReset(T: type): bool =
   # Types that need reset also might have side effects in their `=destroy`.
   (not supportsCopyMem(T)) or (defined(gcRefc) and T is (pointer|ptr))
 
-template drain(src: untyped): untyped =
+template moveOrCopy(src: untyped): untyped =
   # `move` that omits resetting the source when it is safe to do so
   when needsReset(typeof(src)):
     move(src)
@@ -299,18 +299,16 @@ proc bulkCopy[T](tgt: var seq[T], src: openArray[T], to, so, n: int) =
     for i in 0..<n:
       tgt[i + to] = src[i + so]
   else:
-    when not (supportsCopyMem(T) and declared(copyMem)):
+    when supportsCopyMem(T) and declared(copyMem):
+      copyMem(addr tgt[to], addr src[so], n * sizeof(T))
+    else:
       for i in 0..<n:
         tgt[i + to] = src[i + so]
-    else:
-      copyMem(addr tgt[to], addr src[so], n * sizeof(T))
 
-proc bulkDrain[T](tgt, src: var seq[T], to, so, n: int) =
+proc bulkMoveOrCopy[T](tgt, src: var seq[T], to, so, n: int) =
   when needsReset(T):
     for i in 0..<n:
       let iso = i + so
-      when T is int:
-        debugEcho tgt
       tgt[i + to] = move src[iso]
   else:
     bulkCopy(tgt, src, to, so, n)
@@ -326,9 +324,9 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
       toCap = cap - head
 
     var n = newData(T, max(cap * 2, defaultInitialSize))
-    bulkDrain(n, deq.data, 0, head, toCap)
+    bulkMoveOrCopy(n, deq.data, 0, head, toCap)
     if head > 0:
-      bulkDrain(n, deq.data, toCap, 0, head)
+      bulkMoveOrCopy(n, deq.data, toCap, 0, head)
 
     deq.data = move n
     deq.tail = cap.uint
@@ -388,7 +386,7 @@ when not declared(js):
       assert len(a) == 3
       assert $a == "[7, 8, 9]"
     result = initDeque[T](x.len)
-    bulkDrain(result.data, x, 0, 0, x.len)
+    bulkMoveOrCopy(result.data, x, 0, 0, x.len)
     result.tail = uint x.len
 
 func peekFirst*[T](deq: Deque[T]): lent T {.inline.} =
@@ -464,7 +462,7 @@ proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
     assert $a == "[20, 30, 40, 50]"
 
   emptyCheck(deq)
-  result = drain deq.data[deq.head and deq.mask]
+  result = moveOrCopy deq.data[deq.head and deq.mask]
   inc deq.head
 
 proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
@@ -481,7 +479,7 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
 
   emptyCheck(deq)
   dec deq.tail
-  result = drain deq.data[deq.tail and deq.mask]
+  result = moveOrCopy deq.data[deq.tail and deq.mask]
 
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty without releasing its buffer.
