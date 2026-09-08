@@ -222,6 +222,11 @@ else:
     proc interlockedCompareExchange(location: pointer; desired, expected: int32): int32 {.importc: "_InterlockedCompareExchange".}
     proc interlockedCompareExchange(location: pointer; desired, expected: int64): int64 {.importc: "_InterlockedCompareExchange64".}
 
+    proc interlockedExchangeAdd(location: pointer; value: int8): int8 {.importc: "_InterlockedExchangeAdd8".}
+    proc interlockedExchangeAdd(location: pointer; value: int16): int16 {.importc: "_InterlockedExchangeAdd16".}
+    proc interlockedExchangeAdd(location: pointer; value: int32): int32 {.importc: "_InterlockedExchangeAdd".}
+    proc interlockedExchangeAdd(location: pointer; value: int64): int64 {.importc: "_InterlockedExchangeAdd64".}
+
     proc interlockedAnd(location: pointer; value: int8): int8 {.importc: "_InterlockedAnd8".}
     proc interlockedAnd(location: pointer; value: int16): int16 {.importc: "_InterlockedAnd16".}
     proc interlockedAnd(location: pointer; value: int32): int32 {.importc: "_InterlockedAnd".}
@@ -253,17 +258,30 @@ else:
       discard interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired))
 
     proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedExchange(addr(location.value), cast[int64](desired)))
+      cast[T](interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired)))
     proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-      cast[T](interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
+      # `_InterlockedCompareExchange` returns the initial value of `location`,
+      # so the exchange happened exactly when that equals `expected`. Comparing
+      # the integer representations rather than the `T` values keeps float and
+      # enum payloads bit-exact.
+      let expectedValue = cast[nonAtomicType(T)](expected)
+      let previousValue = interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), expectedValue)
+      result = previousValue == expectedValue
+      if not result:
+        # On failure the observed value is reported back through `expected`.
+        expected = cast[T](previousValue)
     proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       compareExchange(location, expected, desired, success, failure)
 
     proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      var currentValue = location.load()
-      while not compareExchangeWeak(location, currentValue, currentValue + value): discard
+      cast[T](interlockedExchangeAdd(addr(location.value), cast[nonAtomicType(T)](value)))
+    # MSVC has no interlocked subtract, so subtracting is adding the two's
+    # complement. Overflow checks are disabled so that negating `low(T)` wraps,
+    # matching the modular semantics of C11 `atomic_fetch_sub_explicit`.
+    {.push overflowChecks: off.}
     proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      fetchAdd(location, -value, order)
+      cast[T](interlockedExchangeAdd(addr(location.value), -cast[nonAtomicType(T)](value)))
+    {.pop.}
     proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedAnd(addr(location.value), cast[nonAtomicType(T)](value)))
     proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
