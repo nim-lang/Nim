@@ -25,6 +25,7 @@ exported symbols (`*`), including procedures, types, and variables.
 command               output format
 ===================   ==============
 `nim doc`:cmd:        ``.html`` HTML
+`nim book`:cmd:       ``.html`` HTML
 `nim doc2tex`:cmd:    ``.tex`` LaTeX
 `nim jsondoc`:cmd:    ``.json`` JSON
 ===================   ==============
@@ -35,6 +36,8 @@ standalone documents like user's guides and technical specifications.
 See [Nim-flavored Markdown and reStructuredText] document for the description
 of this feature and particularly section [Command line usage] for the full
 list of supported commands.
+
+You can also generate a full documentation site from a directory with [Nim-flavored Markdown and reStructuredText] files and `SUMMARY.md` using `nim book`:cmd:, similarly to how [mdBook](https://rust-lang.github.io/mdBook/) and other doc generators work.
 
 Quick start
 -----------
@@ -60,6 +63,12 @@ Generate HTML documentation for a whole project:
   # and likewise without `--project`.
   # Adding `-r` will open in a browser directly.
   # Use `--showNonExports` to show non-exported fields of an exported type.
+  ```
+
+Generate a site from a directory of Markdown files and `SUMMARY.md`:
+
+  ```cmd
+  nim book <srcDir>
   ```
 
 Documentation Comments
@@ -177,6 +186,98 @@ Index (``.idx``) files are used for 2 different purposes:
    files described in [Nim external referencing]
 2. creating a whole-project index for searching of symbols and keywords,
    see [Buildindex command].
+
+
+Book Generator
+==============
+
+Nim ships with a complete book generator that lets you build sites from Markdown/reST files organized in folders.
+
+Powered by `nim doc`:cmd:, `nim book`:cmd: has all its features like built-in admonitions, code inclusion syntax, and checked Nim code references, but also offers `SUMMARY.md`-based source collection and navigation generation that should be familiar to [mdBook](https://rust-lang.github.io/mdBook/) users and simplify migration.
+
+Quickstart
+----------
+
+1. Create a directory for the book source, e.g `bookSrc`.
+2. Put a Markdown file in this directory, e.g. `welcome.md`:
+
+  ```markdown
+  # Welcome to Nim Book
+
+  This is the first paragraph.
+  ```
+
+3. Put a file called `SUMMARY.md` in the same directory. The file lists all your pages (one so far):
+
+  ```markdown
+  - [Welcome](./welcome.md)
+  ```
+
+4. Run `nim book`:cmd: with the book source directory:
+
+  ```cmd
+  $ nim book boorSrc
+  ```
+
+The docs will be generated in `htmldocs`, which is the default for `nim docs`:cmd:. You can customize the location with `--outDir:OUTDIR`:option:, just like for `nim doc`:cmd:.
+
+To see your book in the browser, serve `htmldocs` with any static server (e.g. `python3 -m http.server -d htmldocs/` ) and open the localhost location that it provides (e.g. http://localhost:8000). This way you'll have search working.
+
+To set the title for the page, use ``.. title::``:
+
+  ```markdown
+  .. title:: Welcome to Nim Book
+
+  # Part 1
+
+  This is the first paragraph.
+  ```
+
+To customize the way your page is listed in the sidebar navigation, set its link title in `SUMMARY.md`:
+
+  ```markdown
+  - [Intro](./welcome.md)
+  ```
+
+As your `SUMMARY.md` grows, you'll want to group the pages into sections. You can do that using nested bullet lists and headers:
+
+  ```markdown
+  - [Intro](./welcome.md)
+  - [Guides](./guides.md)                      <!-- This is page that is also a section header   -->
+    - [Dev Guide](./guides/dev.md)             <!-- These pages are rendered in a folded section -->
+    - [User Guide](./guides/user.md)
+
+  # References                                 <!-- Headers serve as visual separators           -->
+
+  - accounts                                   <!-- Section headers can be plain text            -->
+    - [Intro](./ref/accounts/intro.md)
+    - [Glossary](./ref/accounts/glossary.md)
+  - billing
+    - [Intro](./ref/billing/intro.md)
+    - [Glossary](./ref/billing/glossary.md)
+  ```
+
+Migrating from mdBook
+---------------------
+
+The easiest way to migrate to `nim book`:cmd: from mdBook is to feed the pre-cooked prompt to an LLM of your choice.
+
+.. note::
+  :title: Migrate from mdBook prompt
+  :collapsible: closed
+
+  .. include:: ./mdbookmigration.prompt
+    :literal:
+
+Or use the same prompt as a checklist to do the migration manually.
+
+Notes
+-----
+
+- if your docs won't build because an ``.idx`` file cannot be found, pre-build the indexes with `nim book --index:only bookSrc`:cmd: and then run `nim book bookSrc`:cmd: again
+- `nim book`:cmd: doesn't automatically copy assets from the source directory to the destination directory. The recommended pattern to work with images and other assets is to place them in a specialized directory (i.e. `bookSrc/img`) and copy it into `htmldocs/img` after build
+- for your readers' convenience, you can make a certain page your welcome page, i.e. opened by default when the reader opens your book; to do that, simply copy the desired page to ``index.html`` after build: `cp htmldocs/welcome.html htmldocs/index.html`
+- to add links to page source reading and editing, use the standard `--git.url`:option: and `--git.commit`:option: options: `nim book --git.url:https://github.com/owner/repo --git.commit:master bookSrc`:cmd:
 
 
 Document Types
@@ -845,7 +946,7 @@ rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string)
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
 The purpose of `idx` files is to hold the interesting symbols and their HTML
 references so they can be later concatenated into a big index file with
-[mergeIndexes()](rstgen.html#mergeIndexes,string).  This section documents
+[mergeIndexes()](rstgen.html#mergeIndexes,string,bool,bool).  This section documents
 the file format in detail.
 
 Index files are line-oriented and tab-separated (newline and tab characters

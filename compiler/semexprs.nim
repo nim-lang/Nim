@@ -2187,7 +2187,7 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       echo "[icMetaRet] meta result type for ", c.p.owner.name.s, ": ",
         typeToString(c.p.resultSym.typ), " kind=", c.p.resultSym.typ.kind,
         " flags=", c.p.resultSym.typ.flags,
-        " uid=", c.p.resultSym.typ.uniqueId.module, ".", c.p.resultSym.typ.uniqueId.item,
+        " itemId=", c.p.resultSym.typ.itemId.module, ".", c.p.resultSym.typ.itemId.item,
         " state=", c.p.resultSym.typ.state
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:

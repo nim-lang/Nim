@@ -675,6 +675,17 @@ proc rawClosureCreation(owner: PSym;
     if up != nil and upField.typ.skipTypes({tyOwned, tyRef, tyPtr}) == up.typ.skipTypes({tyOwned, tyRef, tyPtr}):
       result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  up, env.info))
+      # That assignment stores a real `ref`, so `injectDestructorCalls` has to
+      # find the up-field type's ops — otherwise it stays a raw pointer store,
+      # the enclosing env's refcount is one too low, and at teardown the two
+      # envs' mutually recursive `=destroy`s each believe they hold the last
+      # reference and recurse until the stack is gone. Whole-program cgen never
+      # noticed: some LATER lifting pass creates this very ref type's ops, and it
+      # runs before any routine's destructor injection. The per-module backend
+      # injects a routine right after lifting it (the `lower` stage), long before
+      # the module's top level is transformed at all (that is `cg`).
+      if up.typ != nil and up.typ.kind == tyRef and up.typ.elementType != nil:
+        createTypeBoundOpsLL(d.graph, up.typ, env.info, d.idgen, owner)
     #elif oldenv != nil and oldenv.typ == upField.typ:
     #  result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
     #             oldenv, env.info))
@@ -732,6 +743,10 @@ proc closureCreationForIter(owner: PSym, iter: PNode;
     if u != nil and u.typ.skipTypes({tyOwned, tyRef, tyPtr}) == expectedUpTyp:
       result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
                  u, iter.info))
+      # See the identical call in `rawClosureCreation`: the up-field's ops must
+      # exist by the time this assignment is destructor-injected.
+      if u.typ != nil and u.typ.kind == tyRef and u.typ.elementType != nil:
+        createTypeBoundOpsLL(d.graph, u.typ, iter.info, d.idgen, owner)
     else:
       localError(d.graph.config, iter.info, "internal error: cannot create up reference for iter")
   result.add makeClosure(d.graph, d.idgen, iter.sym, vnode, iter.info)
