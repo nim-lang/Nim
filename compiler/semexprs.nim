@@ -1131,6 +1131,8 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags; expectedTy
     # don't fold calls in concepts and typeof
     result = evalAtCompileTime(c, result)
 
+proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags; expectedType: PType = nil): PNode
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = nil
   checkMinSonsLen(n, 1, c.config)
@@ -1144,7 +1146,13 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
-      return semExpr(c, result, flags, expectedType)
+      # `astToStr` is syntax preserving: type checking its argument first
+      # would reject typedescs passed through an untyped template parameter.
+      let callee = qualifiedLookUp(c, result[0], {})
+      if callee != nil and callee.magic == mAstToStr:
+        return semMagic(c, result, callee, flags, expectedType)
+      else:
+        return semExpr(c, result, flags, expectedType)
     elif n0.typ.kind == tyFromExpr and c.inGenericContext > 0:
       # don't make assumptions, entire expression needs to be tyFromExpr
       result = semGenericStmt(c, n)
