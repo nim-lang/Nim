@@ -31,19 +31,18 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
   if n == nil: return
   case n.kind
   of nkRecList:
-    for i in 0..<n.len:
-      genTraverseProc(c, accessor, n[i], typ)
+    for it in sons(n):
+      genTraverseProc(c, accessor, it, typ)
   of nkRecCase:
-    if (n[0].kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
+    if (n.firstSon.kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
     var p = c.p
-    let disc = n[0].sym
+    let disc = n.firstSon.sym
     if disc.loc.snippet == "": fillObjectFields(c.p.module, typ)
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     let discField = dotField(accessor, disc.loc.snippet)
     p.s(cpsStmts).addSwitchStmt(discField):
-      for i in 1..<n.len:
-        let branch = n[i]
+      for branch in sonsFrom(n, 1):
         assert branch.kind in {nkOfBranch, nkElse}
         var caseBuilder: SwitchCaseBuilder
         p.s(cpsStmts).addSwitchCase(caseBuilder):

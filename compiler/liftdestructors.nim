@@ -718,7 +718,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     when defined(icDbg):
       if t.destructor == nil:
         echo "MISSING destructor: ", typeToString(t), " kind=", t.kind,
-          " itemId=", t.itemId, " uniqueId=", t.uniqueId, " state=", t.state,
+          " itemId=", t.itemId, " bindingId=", t.bindingId, " state=", t.state,
           " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
@@ -1233,7 +1233,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   res.typ = typ
   src.typ = typ
 
-  result.typ = newType(tyProc, idgen, owner)
+  result.typ = newType(tyProc, idgen, result)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)
@@ -1279,7 +1279,8 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   else:
     src.typ = typ
 
-  result.typ = newProcType(info, idgen, owner)
+  # the hook OWNS its signature, like any routine sem'd from source
+  result.typ = newProcType(info, idgen, result)
   result.typ.addParam dest
   if kind notin {attachedDestructor, attachedWasMoved}:
     result.typ.addParam src

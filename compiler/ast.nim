@@ -359,6 +359,18 @@ proc `flags=`*(t: PType, val: TTypeFlags) {.inline.} =
   t.flagsImpl = val
 
 proc sons*(t: PType): var TTypeSeq {.inline.} =
+  ## The RAW child seq. Despite the name this is NOT the counterpart of the
+  ## `sons` ITERATOR over a `PNode`, and it is not the way to walk a type's
+  ## children — use `kids` / `ikids` / `paramTypes` / `signature`, or the named
+  ## accessors (`returnType`, `baseClass`, `elementType`, `indexType`,
+  ## `genericHead`, ...), which say WHICH child they mean.
+  ##
+  ## The difference is not cosmetic. A `tyProc` keeps its parameter types in
+  ## `n`, not here — `setSons` asserts `sonsImpl.len <= 1` for one — so `[]`,
+  ## `len` and every iterator built on them route parameters through
+  ## `n[i].sym.typ`, while this seq holds only the return type. `for x in
+  ## t.sons` therefore compiles, looks like the `PNode` idiom, and silently
+  ## visits a different set of types.
   if t.state == Partial: loadType(t)
   result = t.sonsImpl
 
@@ -509,7 +521,8 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
-template id*(a: PType | PSym): int = toId(a.itemId)
+template id*(a: PSym): int = toId(a.itemId)
+template id*(a: PType): int = toId(a.bindingId)
 
 type
   IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
@@ -764,10 +777,28 @@ when false:
       echo k
       echo v
 
+when defined(icSymCount):
+  import std / [syncio, exitprocs, tables as symCountTables]
+  var symMints*: symCountTables.CountTable[string]
+  var symMintTotal*: int
+  var symCountHooked = false
+
 proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   assert not name.isNil
+  when defined(icSymCount):
+    # Counting symbol MINTS, not their names in the output: a gensym's number is
+    # its item id, so one extra symbol anywhere shifts every later name. A count
+    # is therefore far more sensitive than diffing generated C, and it localises
+    # the extra mint by kind instead of by whatever file happened to show it.
+    inc symMintTotal
+    symMints.inc $symKind
+    if not symCountHooked:
+      symCountHooked = true
+      addExitProc proc () =
+        stderr.writeLine "SYMMINT total=" & $symMintTotal
+        for k, v in symMints: stderr.writeLine "SYMMINT " & k & "=" & $v
   let id = nextSymId idgen
   result = PSym(name: name, kindImpl: symKind, flagsImpl: {}, infoImpl: info, itemId: id,
                 optionsImpl: options, ownerFieldImpl: owner, offsetImpl: defaultOffset,
@@ -1097,7 +1128,7 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
   let id = nextTypeId idgen
   result = PType(kind: kind, ownerFieldImpl: owner, sizeImpl: defaultSize,
                  alignImpl: defaultAlignment, itemId: id,
-                 uniqueId: id, sonsImpl: @[])
+                 bindingId: id, sonsImpl: @[])
   if son != nil:
     assert kind != tyProc
     result.sonsImpl.add son
@@ -1173,18 +1204,23 @@ proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result.symImpl = t.sym          # backend-info should not be copied
 
 proc exactReplica*(t: PType; idgen: IdGenerator): PType =
-  ## Replica that KEEPS `itemId` — the generic-param binding tables
-  ## (`LayeredIdTable`) key on it, so the copy must keep matching its
-  ## original — but mints a FRESH `uniqueId`: uniqueId is the SERIALIZATION
-  ## identity (NIF type names key on it) and must be unique per instance.
-  ## Replicas sharing the original's uniqueId serialized as duplicate defs
-  ## under one NIF name; the loader collapsed them into a single type,
+  ## Copy that INHERITS `bindingId` — the generic-param binding tables
+  ## (`LayeredIdTable`) key on it, so the copy must keep matching its original
+  ## there — while getting its own `itemId`, like every other type. The two
+  ## remaining callers are `semtypinst.instCopyType` (a partially instantiated
+  ## meta type must still bind in the next instantiation round) and the
+  ## `tfUnresolved` typedesc replica in `semtypes.semTypeIdent`; everything
+  ## else that used to come through here is a plain `copyType`.
+  ##
+  ## Do not "simplify" this to share `itemId` as well: `itemId` is the
+  ## serialization identity, and replicas sharing it serialized as duplicate
+  ## defs under one NIF name, which the loader collapsed into a single type —
   ## losing their flag differences (use-site `tfUnresolved` typedescs) or
   ## their structure (meta instance bodies shadowing a generic's canonical
   ## body).
   result = PType(kind: t.kind, ownerFieldImpl: t.owner, sizeImpl: defaultSize,
-                 alignImpl: defaultAlignment, itemId: t.itemId,
-                 uniqueId: nextTypeId(idgen))
+                 alignImpl: defaultAlignment, itemId: nextTypeId(idgen),
+                 bindingId: t.bindingId)
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 
@@ -1628,7 +1664,7 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
   result = base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}
 
 proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == ord(wAs)
+  return n.kind == nkInfix and n.firstSon.kind == nkIdent and n.firstSon.ident.id == ord(wAs)
 
 proc skipColon*(n: PNode): PNode =
   result = n
@@ -1708,32 +1744,83 @@ proc addParam*(procType: PType; param: PSym) =
 const magicsThatCanRaise = {
   mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst, mEcho}
 
+# `canRaise` reaches the effect list through `effectsOf` / `raisesNothing`
+# rather than by subscripting `fn.typ.n`, so the layout is written down in one
+# place. Under `--ic:on` that list came back from a `.bif`, and whether it came
+# back intact is checked separately: `-d:icCanRaiseLog` logs every verdict, and
+# the same program built with and without `--ic:on` must produce the same ones.
+
+when defined(icCanRaiseLog):
+  var canRaiseBranch* = 0
+    ## Which branch decided the last answer: 1 = the symbol's magic/flags,
+    ## 2 = `mEcho`, 3 = the EFFECT LIST reached through `effectsOf`, 4 = the
+    ## conservative predicate, 5 = short-circuited in `canRaiseDisp` before
+    ## either predicate ran, 0 = fell through. Only branch 3 reads anything
+    ## that had to survive a `.bif` round trip, so a differential in which no
+    ## callee reaches it would prove nothing about the writer — which is the
+    ## whole point of running the differential. See `-d:icCanRaiseLog`.
+
+template markCanRaiseBranch*(n: int) =
+  when defined(icCanRaiseLog): canRaiseBranch = n
+
 proc canRaiseConservative*(fn: PNode): bool =
-  if fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise:
-    result = false
-  else:
-    result = true
+  markCanRaiseBranch 4
+  result = not (fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise)
+
+proc effectsOf*(t: PType): PNode {.inline.} =
+  ## The `nkEffectList` a proc type carries as child 0 of its formal-params
+  ## node, with the parameters following from index 1 (`newProcType` builds it
+  ## that way; `cgen` reads the params back with `sonsFrom(prc.typ.n, 1)`).
+  ##
+  ## Named rather than subscripted so that the layout is written down in ONE
+  ## place. `.n` here is a TYPE's node, never a routine body, so it is always
+  ## fully materialised and `firstSon` is safe — the `nfLazyBody` hazard that
+  ## makes raw child access dangerous elsewhere (see `astdef.sons`) cannot reach
+  ## it. A proc type always has this child; `t.n` with no children is not a
+  ## shape the writer or sem produces, and this deliberately does not paper over
+  ## one appearing.
+  result = if t.n == nil: nil else: t.n.firstSon
+
+proc raisesNothing*(effects: PNode): bool =
+  ## Whether an effect list says DEFINITIVELY that nothing is raised: it is long
+  ## enough to have a raises slot at all, the slot is present, and it is empty.
+  ##
+  ## Every other shape — a list too short to carry the slot, an absent slot, a
+  ## non-empty one — means the effects are unspecified or non-empty, and a
+  ## caller must assume a raise. Stating it as the NEGATIVE is the point: the
+  ## safe default has to be "can raise", so the one narrow case that licenses
+  ## dropping an exception check is the one spelled out here, and a shape nobody
+  ## anticipated falls on the conservative side by construction rather than by
+  ## luck.
+  result = effects != nil and effects.len >= effectListLen and
+           effects[exceptionEffects] != nil and
+           effects[exceptionEffects].safeLen == 0
 
 proc canRaise*(fn: PNode): bool =
   if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
       {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
       sfGeneratedOp in fn.sym.flags):
+    markCanRaiseBranch 1
     result = false
   elif fn.kind == nkSym and fn.sym.magic == mEcho:
+    markCanRaiseBranch 2
     result = true
   elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
-    # TODO check for n having sons? or just return false for now if not
-    if fn.typ.n[0].kind == nkSym:
+    markCanRaiseBranch 3
+    let effects = effectsOf(fn.typ)
+    if effects.kind == nkSym:
+      # The historical shape: slot 0 used to be an `nkType` before the effects
+      # moved in (see `newProcType`). Nothing to read, so nothing licenses a
+      # raise.
       result = false
     else:
       # A proc-typed value with no explicit raises slot still has
       # unspecified effects, which sempass2 treats conservatively.
       # Codegen needs to do the same in order to keep goto-exception
       # checks after indirect/closure calls.
-      result = ((fn.typ.n[0].len < effectListLen) or
-        fn.typ.n[0][exceptionEffects] == nil or
-        fn.typ.n[0][exceptionEffects].safeLen > 0)
+      result = not raisesNothing(effects)
   else:
+    markCanRaiseBranch 0
     result = false
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
@@ -1750,7 +1837,7 @@ proc toHumanStr*(kind: TTypeKind): string =
   result = toHumanStrImpl(kind, 2)
 
 proc skipHiddenAddr*(n: PNode): PNode {.inline.} =
-  (if n.kind == nkHiddenAddr: n[0] else: n)
+  (if n.kind == nkHiddenAddr: n.firstSon else: n)
 
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy
