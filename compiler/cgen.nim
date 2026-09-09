@@ -982,7 +982,7 @@ proc assignGlobalVar(p: BProc; n: PNode; value: Rope) =
       varInDynamicLib(q, s)
     else:
       backendEnsureMutable s
-      s.locImpl.snippet = mangleDynLibProc(s)
+      s.locImpl.snippet = mangleDynLibProc(p.module, s)
     if value != "":
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
@@ -1225,12 +1225,24 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
 
   if lib.name == "": internalError(m.config, "loadDynamicLib")
 
-proc mangleDynLibProc(sym: PSym): Rope =
+proc isDeferredDynlib(sym: PSym): bool =
+  result = false
+  if sym.annex != nil and isGetProcAddr(sym.annex):
+    var index = sym.annex.path.lastSon
+    if index.kind == nkHiddenStdConv: index = index.secondSon
+    result = index.kind == nkStrLit and index.strVal.len == 1 and
+      index.strVal[0] in {'0'..'9'}
+
+proc mangleDynLibProc(m: BModule; sym: PSym): Rope =
   # we have to build this as a single rope in order not to trip the
   # optimization in genInfixCall, see test tests/cpp/t8241.nim
   if sfCompilerProc in sym.flags:
     # NOTE: sym.loc.snippet is the external name!
     result = rope(sym.name.s)
+  elif m.config.cmd == cmdNifC and isDeferredDynlib(sym):
+    # Process-local symbol IDs can alias unrelated imports in another TU.
+    # Deferred pointers need stable names and liveness marks just like procs.
+    result = markCName("Dl_" & sym.name.s.mangle & mangleProcNameExt(m.g.graph, sym))
   else:
     result = rope(strutils.`%`("Dl_$1_", $sym.id))
 
@@ -1263,7 +1275,8 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   let isCall = isGetProcAddr(lib)
   var extname = sym.loc.snippet
   if not isCall: loadDynamicLib(m, lib)
-  var tmp = mangleDynLibProc(sym)
+  var tmp = mangleDynLibProc(m, sym)
+  let deferredIc = m.config.cmd == cmdNifC and isDeferredDynlib(sym)
   backendEnsureMutable sym
   sym.locImpl.snippet = tmp             # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
@@ -1281,10 +1294,16 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
       params.add(rdLoc(a))
     params.add(makeCString($extname))
     template load(builder: var Builder) =
+      if deferredIc:
+        # A seeded but dead wrapper must not cause an unavailable extension to
+        # be resolved. The pointer and its assignment share liveness/ownership.
+        builder.add(cnifDefDirective(stripCnifMarks(tmp), "u", icNifName(m, sym)))
       builder.add('\t')
       builder.addAssignment(tmp,
         cCast(getTypeDesc(m, sym.typ, dkVar),
           cCall(callee, params)))
+      if deferredIc:
+        builder.add(cnifEndDefs())
     var last = lastSon(n)
     if last.kind == nkHiddenStdConv: last = last.secondSon
     internalAssert(m.config, last.kind == nkStrLit)
@@ -1304,14 +1323,23 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
         cCall(fn,
           lib.name,
           makeCString($extname))))
-  addDynLibVar(m, sym, getTypeDesc(m, sym.loc.t, dkVar))
+  let typ = getTypeDesc(m, sym.loc.t, dkVar)
+  if deferredIc:
+    let name = stripCnifMarks(tmp)
+    m.s[cfsVars].addDeclWithVisibility(Extern):
+      m.s[cfsVars].addVar(kind = Local, name = name, typ = typ)
+    m.s[cfsVars].add(cnifDefDirective(name, "u", icNifName(m, sym)))
+    m.s[cfsVars].addVar(name = tmp, typ = typ)
+    m.s[cfsVars].add(cnifEndDefs())
+  else:
+    addDynLibVar(m, sym, typ)
 
 proc varInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   var extname = sym.loc.snippet
   loadDynamicLib(m, lib)
   incl(sym, lfIndirect)
-  var tmp = mangleDynLibProc(sym)
+  var tmp = mangleDynLibProc(m, sym)
   backendEnsureMutable sym
   sym.locImpl.snippet = tmp             # from now on we only need the internal name
   inc(m.labels, 2)
@@ -1327,7 +1355,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
   backendEnsureMutable sym
-  sym.locImpl.snippet = mangleDynLibProc(sym)
+  sym.locImpl.snippet = mangleDynLibProc(m, sym)
   sym.typ.sym = nil           # generate a new name
 
 proc cgsymImpl(m: BModule; sym: PSym) {.inline.} =
@@ -1879,7 +1907,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     elif sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):
       let vis = if isReloadable(m, sym): StaticProc else: Extern
-      let name = mangleDynLibProc(sym)
+      let name = stripCnifMarks(mangleDynLibProc(m, sym))
       let t = getTypeDesc(m, sym.loc.t)
       m.s[cfsVars].addDeclWithVisibility(vis):
         m.s[cfsVars].addVar(kind = Local,
@@ -2577,7 +2605,7 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
   assert prc != nil
   fillProcLoc(m, son(prc.ast, namePos))
 
-  var tmp = mangleDynLibProc(prc)
+  var tmp = mangleDynLibProc(m, prc)
   backendEnsureMutable prc
   prc.locImpl.snippet = tmp
   prc.typ.sym = nil
@@ -2717,10 +2745,32 @@ proc genInitCode(m: BModule) =
   for i, el in pairs(m.extensionLoaders):
     if el.buf.len != 0:
       moduleInitRequired = true
+      var name = "nimLoadProcs" & $(i.ord - '0'.ord)
+      if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
+        # Each IC translation unit has its own demanded dynlib pointers. Keep
+        # their deferred initializers separate; main provides the public entry
+        # point and calls every module's fragment, including cached modules.
+        name.add "__" & getSomeNameForModule(m)
+        if sfMainModule in m.module.flags:
+          m.g.icExtensionLoaders[i].add name
       procs.addDeclWithVisibility(ExternC):
-        procs.addProcHeader(ccNimCall, "nimLoadProcs" & $(i.ord - '0'.ord), CVoid, cProcParams())
+        procs.addProcHeader(ccNimCall, name, CVoid, cProcParams())
         procs.finishProcHeaderWithBody():
           procs.add(extract(el))
+
+  if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg" and
+      sfMainModule in m.module.flags:
+    for i, names in pairs(m.g.icExtensionLoaders):
+      if names.len > 0:
+        for name in names:
+          procs.addDeclWithVisibility(ExternC):
+            procs.addProcHeader(ccNimCall, name, CVoid, cProcParams())
+            procs.finishProcHeaderAsProto()
+        procs.addDeclWithVisibility(ExternC):
+          procs.addProcHeader(ccNimCall, "nimLoadProcs" & $i, CVoid, cProcParams())
+          procs.finishProcHeaderWithBody():
+            for name in names:
+              procs.addCallStmt(name)
 
   if moduleInitRequired or sfMainModule in m.module.flags:
     m.s[cfsInitProc].add(extract(procs))
@@ -2828,12 +2878,16 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
       if pos != m.module.position:
         implDeps.add modname(pos, m.config)
     sort implDeps
+    var extensionLoaders = ""
+    for i, el in pairs(m.extensionLoaders):
+      if el.buf.len > 0: extensionLoaders.add i
     writeCnifArtifact(result, artifact, initRequired, datInitRequired,
                       m.icDataDefs,
                       semmedNif = toNifFilename(m.config, FileIndex m.module.position),
                       moduleBase = getSomeNameForModule(m),
                       globalDtor = m.icGlobalDtorName,
-                      implDeps = implDeps)
+                      implDeps = implDeps,
+                      extensionLoaders = extensionLoaders)
     m.g.graph.icCnifFiles.add artifact
   # NB: under cmdNifC the returned text still carries the cnif marks; the
   # caller renders it (dropping dead definitions) or strips it.

@@ -29,7 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "39"
+  icFormatVersion* = "40"
+    ## v40: per-module deferred dynlib loaders and loader indices in C artifacts.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`

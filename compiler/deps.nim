@@ -1025,7 +1025,12 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
     "icbackendstage", "icbackendmodule", "ismainmodule",
     "help", "h", "fullhelp", "version", "v", "advanced"]
+  var positionalArgs = 0
   for a in commandLineParams():
+    if a.len > 0 and a[0] != '-':
+      inc positionalArgs
+      if positionalArgs == 2 and c.config.cmd != cmdTrack:
+        break # program arguments must not become compiler switches in children
     if a.len < 2 or a[0] != '-': continue
     var i = 1
     if i < a.len and a[i] == '-': inc i

@@ -3105,7 +3105,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       cgsym(p.module, $opr.loc.snippet)
       # make sure we have pointer-initialising code for hot code reloading
       if not wasDeclared and p.hcrOn:
-        let name = mangleDynLibProc(prc)
+        let name = mangleDynLibProc(p.module, prc)
         let rt = getTypeDesc(p.module, prc.loc.t)
         p.module.s[cfsDynLibInit].add('\t')
         p.module.s[cfsDynLibInit].addAssignmentWithValue(name):
