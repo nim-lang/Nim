@@ -300,6 +300,24 @@ proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvSt
 const
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
+proc floatFitsOrdinal(conf: ConfigRef; f: BiggestFloat; t: PType): bool =
+  ## Whether `f`, truncated towards zero, lies within `t`'s ordinal range.
+  ## `f.int64` must not be used for this: converting a float that doesn't fit
+  ## is undefined behaviour, x86 produces `low(int64)` whereas arm64 saturates
+  ## to `high(int64)`, which made this compile time check target dependent.
+  if classify(f) in {fcNan, fcInf, fcNegInf}: return false
+  let v = trunc(f)
+  # `uint64` is the widest ordinal type there is:
+  if abs(v) >= 18446744073709551616.0: return false
+  # `v` is integral and its magnitude is below 2^64, so splitting it into two
+  # 32 bit halves is exact:
+  let a = abs(v)
+  let hi = uint32(a / 4294967296.0)
+  let lo = uint32(a - float64(hi) * 4294967296.0)
+  var i = (toInt128(hi) shl 32) + toInt128(lo)
+  if v < 0: i = -i
+  result = firstOrd(conf, t) <= i and i <= lastOrd(conf, t)
+
 proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
   let srcTyp = src.typ.skipTypes({tyStatic})
   result = convOK
@@ -347,8 +365,7 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
           targetTyp.kind notin {tyUInt..tyUInt64}:
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
-          (classify(src.floatVal) in {fcNan, fcNegInf, fcInf} or
-            src.floatVal.int64 notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp)):
+          not floatFitsOrdinal(c.config, src.floatVal, targetTyp):
         result = convNotInRange
     elif targetBaseTyp.kind in tyFloat..tyFloat64:
       if src.kind in nkFloatLit..nkFloat64Lit and
