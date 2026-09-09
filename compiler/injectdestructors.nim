@@ -173,7 +173,6 @@ template hasDestructorOrAsgn(c: var Con, typ: PType): bool =
 proc isLastRead(n: PNode; c: var Con; s: var Scope): bool =
   if not hasDestructorOrAsgn(c, n.typ): return true
 
-  let m = skipConvDfa(n)
   result = isLastReadImpl(n, c, s)
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
@@ -424,6 +423,20 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
   result.typ = t
 
+proc stabilizeBracketIndex(n: PNode; c: var Con; body: var PNode): PNode =
+  ## Evaluate a side-effecting index once and return the stable access.
+  doAssert n.kind == nkBracketExpr and not isAtom(n[1])
+  let temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), c.idgen,
+                    c.owner, n[1].info)
+  temp.typ = n[1].typ
+  let tempAsNode = newSymNode(temp)
+  body.add newTree(nkLetSection, n[1].info,
+                   newTree(nkIdentDefs, tempAsNode,
+                           newNodeI(nkEmpty, tempAsNode.info), n[1]))
+  result = copyNode(n)
+  result.add n[0]
+  result.add tempAsNode
+
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   if (not hasDestructor(c, n.typ)) and c.inEnsureMove == 0:
@@ -434,6 +447,10 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
     result = copyTree(n)
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+
+    var n = n
+    if n.kind == nkBracketExpr and not isAtom(n[1]):
+      n = stabilizeBracketIndex(n, c, result)
 
     var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.idgen, c.owner, n.info)
     temp.typ = n.typ
@@ -527,7 +544,8 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
-proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
+proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope;
+                       consume = false): PNode =
   # it can happen that we need to destroy expression contructors
   # like [], (), closures explicitly in order to not leak them.
   if arg.typ != nil and hasDestructor(c, arg.typ):
@@ -536,7 +554,9 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = c.getTemp(s, arg.typ, arg.info, true)
     result.add c.genSink(s, tmp, arg, {IsDecl})
-    result.add tmp
+    # In consumed mode, the destination takes ownership of the data.
+    # Clear the temporary after moving from it to prevent double destruction.
+    result.add if consume: destructiveMoveVar(tmp, c, s) else: tmp
     s.final.add c.genDestroy(tmp)
   else:
     result = arg
@@ -767,6 +787,12 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
     result = nil
     assert(false)
 
+  if willProduceStmt:
+    # The value is now produced by statements in the branches. Keeping the
+    # control-flow node's expression type would make code generators allocate
+    # a second, unused destination for it.
+    result.typ = nil
+
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
   if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
     if n[0].kind in nkCallKinds:
@@ -953,11 +979,13 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       else:
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
-      if mode == normal:
+      # A raising call needs owned storage even when its value is consumed: the
+      # callee can partially initialize the result before control unwinds.
+      if mode == normal or (canRaise(n[0]) and inSpawn == 0):
         if result.typ != nil and result.typ.kind notin {tyOpenArray, tyVarargs}:
           # Returns of openarray types shouldn't be destroyed
           # bug #19435; # bug #23247
-          result = ensureDestruction(result, n, c, s)
+          result = ensureDestruction(result, n, c, s, consume = mode != normal)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
@@ -1120,6 +1148,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
       result = n
+    of nkReplayAction:
+      # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded
+      # module's TOP-LEVEL statements (the loader prepends the `(replay ...)`
+      # entries there); cgen discards it, so pass it through untouched.
+      result = n
     else:
       result = nil
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
@@ -1151,24 +1184,11 @@ proc sameLocation*(a, b: PNode): bool =
     else: false
 
 proc genFieldAccessSideEffects(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFlag] = {}): PNode =
-  # with side effects
-  var temp = newSym(skLet, getIdent(c.graph.cache, "bracketTmp"), c.idgen, c.owner, ri[1].info)
-  temp.typ = ri[1].typ
-  var v = newNodeI(nkLetSection, ri[1].info)
-  let tempAsNode = newSymNode(temp)
-
-  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
-  vpart[0] = tempAsNode
-  vpart[1] = newNodeI(nkEmpty, tempAsNode.info)
-  vpart[2] = ri[1]
-  v.add(vpart)
-
-  var newAccess = copyNode(ri)
-  newAccess.add ri[0]
-  newAccess.add tempAsNode
-
-  var snk = c.genSink(s, dest, newAccess, flags)
-  result = newTree(nkStmtList, v, snk, c.genWasMoved(newAccess))
+  result = newNodeI(nkStmtList, ri.info)
+  let newAccess = stabilizeBracketIndex(ri, c, result)
+  let snk = c.genSink(s, dest, newAccess, flags)
+  result.add snk
+  result.add c.genWasMoved(newAccess)
 
 proc ownsData(c: var Con; s: var Scope; orig: PNode; flags: set[MoveOrCopyFlag]): PNode =
   var n = orig

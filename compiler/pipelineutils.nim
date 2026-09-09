@@ -1,4 +1,3 @@
-import std/intsets
 import ast, options, lineinfos, pathutils, msgs, modulegraphs, packages
 
 proc skipCodegen*(config: ConfigRef; n: PNode): bool {.inline.} =

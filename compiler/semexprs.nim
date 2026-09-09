@@ -22,7 +22,6 @@ const
   errNamedExprExpected = "named expression expected"
   errNamedExprNotAllowed = "named expression not allowed here"
   errFieldInitTwice = "field initialized twice: '$1'"
-  errUndeclaredFieldX = "undeclared field: '$1'"
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}; expectedType: PType = nil): PNode =
@@ -301,6 +300,24 @@ proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvSt
 const
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
+proc floatFitsOrdinal(conf: ConfigRef; f: BiggestFloat; t: PType): bool =
+  ## Whether `f`, truncated towards zero, lies within `t`'s ordinal range.
+  ## `f.int64` must not be used for this: converting a float that doesn't fit
+  ## is undefined behaviour, x86 produces `low(int64)` whereas arm64 saturates
+  ## to `high(int64)`, which made this compile time check target dependent.
+  if classify(f) in {fcNan, fcInf, fcNegInf}: return false
+  let v = trunc(f)
+  # `uint64` is the widest ordinal type there is:
+  if abs(v) >= 18446744073709551616.0: return false
+  # `v` is integral and its magnitude is below 2^64, so splitting it into two
+  # 32 bit halves is exact:
+  let a = abs(v)
+  let hi = uint32(a / 4294967296.0)
+  let lo = uint32(a - float64(hi) * 4294967296.0)
+  var i = (toInt128(hi) shl 32) + toInt128(lo)
+  if v < 0: i = -i
+  result = firstOrd(conf, t) <= i and i <= lastOrd(conf, t)
+
 proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
   let srcTyp = src.typ.skipTypes({tyStatic})
   result = convOK
@@ -348,8 +365,7 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
           targetTyp.kind notin {tyUInt..tyUInt64}:
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
-          (classify(src.floatVal) in {fcNan, fcNegInf, fcInf} or
-            src.floatVal.int64 notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp)):
+          not floatFitsOrdinal(c.config, src.floatVal, targetTyp):
         result = convNotInRange
     elif targetBaseTyp.kind in tyFloat..tyFloat64:
       if src.kind in nkFloatLit..nkFloat64Lit and
@@ -769,17 +785,6 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
   else: discard
 
   n.typ = newType
-
-proc arrayConstrType(c: PContext, n: PNode): PType =
-  var typ = newTypeS(tyArray, c)
-  rawAddSon(typ, nil)     # index type
-  if n.len == 0:
-    rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
-  else:
-    var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-    addSonSkipIntLit(typ, t, c.idgen)
-  typ.setIndexType makeRangeType(c, 0, n.len - 1, n.info)
-  result = typ
 
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = newNodeI(nkBracket, n.info)
@@ -1339,7 +1344,6 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
   else: illFormedAst(n, c.config)
 
 const
-  tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
   tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
 proc readTypeParameter(c: PContext, typ: PType,
@@ -1944,7 +1948,7 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
     PathKinds0 = {nkDotExpr, nkCheckedFieldExpr,
                   nkBracketExpr, nkAddr, nkHiddenAddr,
                   nkObjDownConv, nkObjUpConv}
-    PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv}
+    PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv, nkCast}
 
   proc getRoot(n: PNode; followDeref: bool): PNode =
     result = n
@@ -2200,7 +2204,7 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       echo "[icMetaRet] meta result type for ", c.p.owner.name.s, ": ",
         typeToString(c.p.resultSym.typ), " kind=", c.p.resultSym.typ.kind,
         " flags=", c.p.resultSym.typ.flags,
-        " uid=", c.p.resultSym.typ.uniqueId.module, ".", c.p.resultSym.typ.uniqueId.item,
+        " itemId=", c.p.resultSym.typ.itemId.module, ".", c.p.resultSym.typ.itemId.item,
         " state=", c.p.resultSym.typ.state
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:
@@ -2326,24 +2330,6 @@ proc semDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
-proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
-  ## The argument to the proc should be nkCall(...) or similar
-  ## Returns the macro/template symbol
-  if isCallExpr(n):
-    var expandedSym = qualifiedLookUp(c, n[0], {checkUndeclared})
-    if expandedSym == nil:
-      errorUndeclaredIdentifier(c, n.info, n[0].renderTree)
-      return errorSym(c, n[0])
-
-    if expandedSym.kind notin {skMacro, skTemplate}:
-      localError(c.config, n.info, "'$1' is not a macro or template" % expandedSym.name.s)
-      return errorSym(c, n[0])
-
-    result = expandedSym
-  else:
-    localError(c.config, n.info, "'$1' is not a macro or template" % n.renderTree)
-    result = errorSym(c, n)
-
 proc expectString(c: PContext, n: PNode): string =
   var n = semConstExpr(c, n)
   if n.kind in nkStrKinds:
@@ -2357,14 +2343,6 @@ proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
-
-  when false:
-    let expandedSym = expectMacroOrTemplateCall(c, macroCall)
-    if expandedSym.kind == skError: return n
-
-    macroCall[0] = newSymNode(expandedSym, macroCall.info)
-    markUsed(c, n.info, expandedSym)
-    onUse(n.info, expandedSym)
 
   if isCallExpr(macroCall):
     for i in 1..<macroCall.len:
@@ -2537,7 +2515,6 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldInStaticContext = c.inStaticContext
   let oldProcCon = c.p
   c.generics = @[]
-  var err: string
   try:
     result = semExpr(c, n, flags)
     if result != nil and efNoSem2Check notin flags:

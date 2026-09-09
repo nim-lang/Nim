@@ -478,6 +478,15 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # proc signature:
   result.typ = newProcType(result.info, c.idgen, result)
   result.typ.addParam newParam
+  # `transform` only rewrites the PARAMETER, so the copied AST still names `orig`
+  # at `namePos`. Make the definition name itself, the invariant every other
+  # routine AST keeps: the NIF writer re-derives a routine's serialized AST from
+  # `ast[namePos].sym.ast` (ast2nif's `nkProcDef` branch), so a stale name node
+  # made this proc serialize `orig`'s body — whose parameter belongs to `orig`.
+  # Lambda lifting then saw the body's parameter as a variable captured from
+  # another proc and aborted with "internal error: environment misses: x".
+  if result.ast != nil and result.ast.safeLen > namePos:
+    result.ast[namePos] = newSymNode(result, result.info)
 
 proc semQuantifier(c: PContext; n: PNode): PNode =
   checkSonsLen(n, 2, c.config)

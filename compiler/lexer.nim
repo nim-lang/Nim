@@ -735,17 +735,11 @@ proc getEscapedChar(L: var Lexer, tok: var Token) =
   else: lexMessage(L, errGenerated, "invalid character constant")
 
 proc handleCRLF(L: var Lexer, pos: int): int =
-  template registerLine =
-    let col = L.getColNumber(pos)
-
-  case L.buf[pos]
-  of CR:
-    registerLine()
-    result = nimlexbase.handleCR(L, pos)
-  of LF:
-    registerLine()
-    result = nimlexbase.handleLF(L, pos)
-  else: result = pos
+  result =
+    case L.buf[pos]
+    of CR: nimlexbase.handleCR(L, pos)
+    of LF: nimlexbase.handleLF(L, pos)
+    else: pos
 
 type
   StringMode = enum

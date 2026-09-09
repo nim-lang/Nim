@@ -197,10 +197,10 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
   # stores the id and the position
-  if s.typ.firstParamType.skipTypes(skipPtrs).itemId notin g.bucketTable:
-    g.bucketTable[s.typ.firstParamType.skipTypes(skipPtrs).itemId] = 1
+  if s.typ.firstParamType.skipTypes(skipPtrs).bindingId notin g.bucketTable:
+    g.bucketTable[s.typ.firstParamType.skipTypes(skipPtrs).bindingId] = 1
   else:
-    g.bucketTable.inc(s.typ.firstParamType.skipTypes(skipPtrs).itemId)
+    g.bucketTable.inc(s.typ.firstParamType.skipTypes(skipPtrs).bindingId)
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   logMethodDef(g, s)
   #echo "adding ", s.info
