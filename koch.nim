@@ -751,6 +751,7 @@ proc runCI(cmd: string) =
 
     execFold("Run nimdoc tests", "nim r nimdoc/tester")
     execFold("Run rst2html tests", "nim r nimdoc/rsttester")
+    execFold("Run nimbook tests", "nim r nimdoc/booktester")
     execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
       # refs #18385, build with -d:release instead of -d:danger for testing

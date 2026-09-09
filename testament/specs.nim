@@ -24,6 +24,7 @@ var compilerPrefix* = findExe("nim")
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
 let isAzure* = existsEnv("TF_BUILD")
+let isGithubActions* = existsEnv("GITHUB_ACTIONS")
 
 var skips*: seq[string]
 
@@ -434,8 +435,10 @@ proc parseSpec*(filename: string): TSpec =
           if isTravis: result.err = reDisabled
         of "appveyor": # deprecated
           if isAppVeyor: result.err = reDisabled
-        of "azure":
+        of "azure": # deprecated
           if isAzure: result.err = reDisabled
+        of "github":
+          if isGithubActions: result.err = reDisabled
         else:
           # Check whether the value exists as an OS or CPU that is
           # defined in `compiler/platform`.
