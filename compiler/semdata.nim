@@ -486,7 +486,7 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
-  incl typedesc.flagsImpl, tfCheckedForDestructor
+  typedesc.inclDerived {tfCheckedForDestructor}
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
@@ -565,7 +565,7 @@ template rangeHasUnresolvedStatic*(t: PType): bool =
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
   result = newTypeS(tyError, c)
-  result.flagsImpl.incl tfCheckedForDestructor
+  result.inclDerived {tfCheckedForDestructor}
 
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
