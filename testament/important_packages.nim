@@ -30,7 +30,9 @@ proc pkg(name: string; cmd = "nimble test -l"; url = "", useHead = true) =
 
 pkg "alea"
 pkg "argparse"
-pkg "arraymancer", "nimble install -y; nimble uninstall -i -y nimcuda; nimble install nimcuda@0.2.1; nim c tests/tests_cpu.nim"
+pkg "arraymancer", "nimble install -y; nimble uninstall -i -y nimcuda; nimble install nimcuda@0.2.1; nim c tests/tests_cpu.nim",
+  # remove when https://github.com/mratsim/Arraymancer/pull/674 is merged
+  url = "https://github.com/metagn/Arraymancer"
 pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
 pkg "asyncftpclient", "nimble compileExample"
 when not defined(arm64):
