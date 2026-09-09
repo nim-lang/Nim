@@ -1165,11 +1165,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
       for i in 1..<n.len: result.add n[i]
       # `astToStr` is syntax preserving: type checking its argument first
       # would reject typedescs passed through an untyped template parameter.
-      let callee = qualifiedLookUp(c, result[0], {})
-      if callee != nil and callee.magic == mAstToStr:
+      let ident = result[0].getPIdent
+      if ident != nil and ident.s == "astToStr":
+        let callee = getSysMagic(c.graph, result[0].info, ident.s, mAstToStr)
         return semMagic(c, result, callee, flags, expectedType)
-      else:
-        return semExpr(c, result, flags, expectedType)
+      return semExpr(c, result, flags, expectedType)
     elif n0.typ.kind == tyFromExpr and c.inGenericContext > 0:
       # don't make assumptions, entire expression needs to be tyFromExpr
       result = semGenericStmt(c, n)
