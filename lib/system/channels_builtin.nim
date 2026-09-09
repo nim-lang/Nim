@@ -156,7 +156,7 @@ type
   LoadStoreMode = enum mStore, mLoad
   Channel*[TMsg] {.gcsafe.} = RawChannel ## a channel for thread communication
 
-proc `=copy`[TMsg](a: var Channel[TMsg], b: Channel[TMsg]) {.error.}
+proc `=copy`(a: var RawChannel, b: RawChannel) {.error.}
 
 const ChannelDeadMask = -2
 
