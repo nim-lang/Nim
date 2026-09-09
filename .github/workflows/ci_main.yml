@@ -1,0 +1,153 @@
+name: Nim CI
+# The main test suite (`koch runCI`). Previously `azure-pipelines.yml`; moved
+# here because the GitHub-hosted runners are 4-core (3-core on macOS arm64)
+# whereas the Microsoft-hosted Azure agents are 2-core, which measured ~2.3x
+# faster on an identical `koch boot -d:release`.
+
+on:
+  push:
+    branches:
+      - 'devel'
+      - 'version-*'
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux_amd64
+            os: ubuntu-24.04
+            cpu: amd64
+          # regularly breaks, refs bug #17325
+          # - name: Linux_i386
+          #   os: ubuntu-24.04
+          #   cpu: i386
+          - name: OSX_arm64
+            os: macos-15
+            cpu: arm64
+          - name: OSX_arm64_cpp
+            os: macos-15
+            cpu: arm64
+            cpp: 'true'
+          # see also: `NIM_TEST_PACKAGES`
+          - name: Windows_amd64_batch0_3
+            os: windows-2025
+            cpu: amd64
+            batch: '0_3'
+          - name: Windows_amd64_batch1_3
+            os: windows-2025
+            cpu: amd64
+            batch: '1_3'
+          - name: Windows_amd64_batch2_3
+            os: windows-2025
+            cpu: amd64
+            batch: '2_3'
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90 # `60` led to lots of cancelled jobs
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      # `_` is testament's "no batching" value, see `isCurrentBatch`.
+      NIM_TESTAMENT_BATCH: ${{ matrix.batch || '_' }}
+      NIM_COMPILE_TO_CPP: ${{ matrix.cpp || 'false' }}
+
+    steps:
+      - name: 'Disable auto conversion to CRLF by git (Windows-only)'
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
+
+      - name: 'Checkout'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2 # see D20210329T004830
+
+      - name: 'Install node.js 20.x'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: 'Install dependencies (amd64 Linux)'
+        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+        run: |
+          set -e
+          . ci/funs.sh
+          echo_run sudo add-apt-repository universe
+          echo_run sudo apt-get update -qq
+          DEBIAN_FRONTEND='noninteractive' \
+            echo_run sudo apt-get install --no-install-recommends -yq \
+              gcc-14 g++-14 libpcre3 liblapack-dev libpcre3 liblapack-dev libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
+          echo_run sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 60 --slave /usr/bin/g++ g++ /usr/bin/g++-14
+
+      - name: 'Install dependencies (i386 Linux)'
+        if: runner.os == 'Linux' && matrix.cpu == 'i386'
+        run: |
+          set -e
+          . ci/funs.sh
+          echo_run sudo dpkg --add-architecture i386
+          # Downgrade llvm:
+          # - llvm has to be downgraded to have 32bit version installed for sfml.
+
+          cat << EOF | sudo tee /etc/apt/preferences.d/pin-to-rel
+          Package: libllvm6.0
+          Pin: origin "azure.archive.ubuntu.com"
+          Pin-Priority: 1001
+          EOF
+
+          echo_run sudo apt-get update -qq || echo "failed, see bug #17343"
+          # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
+          # `could not load: libffi.so` during dynamic loading.
+          DEBIAN_FRONTEND='noninteractive' \
+            echo_run sudo apt-get install --no-install-recommends --allow-downgrades -yq \
+              g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
+              libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
+
+          cat << EOF > bin/gcc
+          #!/bin/bash
+
+          exec $(which gcc) -m32 "\$@"
+          EOF
+
+          cat << EOF > bin/g++
+          #!/bin/bash
+
+          exec $(which g++) -m32 "\$@"
+          EOF
+
+          echo_run chmod 755 bin/gcc
+          echo_run chmod 755 bin/g++
+
+      - name: 'Install dependencies (OSX)'
+        if: runner.os == 'macOS'
+        run: brew install boehmgc make sfml
+        # XXX can't find boehm on macos 13
+
+      - name: 'Install dependencies (Windows)'
+        if: runner.os == 'Windows'
+        run: |
+          set -e
+          . ci/funs.sh
+          nimInternalInstallDepsWindows
+          echo_run echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
+
+      - name: 'Add build binaries to PATH'
+        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
+
+      - name: 'System information'
+        run: . ci/funs.sh && nimCiSystemInfo
+
+      - name: 'Build csourcesAny'
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
+
+      - name: 'koch, Run CI'
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI
