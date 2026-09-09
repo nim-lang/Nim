@@ -691,8 +691,11 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
   # we want to generate the hash file unconditionally
   let extFileChanged = externalFileChanged(conf, c)
+  # A matching source hash does not prove that the object belongs to it. A
+  # classic build can overwrite IC's main object without updating its SHA1;
+  # after emit restores the IC source, that object is older than the source.
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
-      not extFileChanged:
+      not extFileChanged and os.fileNewer(c.obj.string, c.cname.string):
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns
