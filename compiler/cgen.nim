@@ -1685,7 +1685,10 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   # CT-evaluated or earlier-referenced routine), NOT a `.t.bif` load — gating on
   # it there would WRONGLY skip destructor injection and miscompile (orc
   # decref-on-freed). The `.t.bif`-loaded-body concept exists only under cmdNifC.
-  let wasLoaded = m.config.cmd == cmdNifC and prc.transformedBody != nil
+  # Lambda lifting can also populate this cache during IC codegen, especially
+  # for nested routines in generic instances. Those bodies still need ownership
+  # lowering; only the artifact loader can certify that it already happened.
+  let wasLoaded = m.config.cmd == cmdNifC and prc.nifBodyLoaded
   icProfStart(tTransform)
   var procBody = transformBody(m.g.graph, m.idgen, prc, {})
   if sfInjectDestructors in prc.flags and not wasLoaded:

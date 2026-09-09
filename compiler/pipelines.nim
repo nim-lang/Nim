@@ -342,7 +342,8 @@ proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenera
                        replayActions, implDeps, reexportedModuleSyms(graph, module),
                        genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
                        expansions, moduleFlags,
-                       reexportedLocalSyms(graph, module))
+                       reexportedLocalSyms(graph, module),
+                       exportedOverloads(graph, module))
       # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]

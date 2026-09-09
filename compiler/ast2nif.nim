@@ -1403,6 +1403,7 @@ var offerTag = registerTag("offer")
 var typeOfferTag = registerTag("toffer")
 var modulesrcTag = registerTag("modulesrc")
 var expansionTag = registerTag("expansion")
+var overloadsTag = registerTag("overloads")
 # `(sig <symUse @src>)*` — signature occurrences (parameter names and the symbols
 # in their type expressions). A semchecked routine's params are dropped from the
 # serialized AST (`skipParams`) and reconstructed from `s.typ`, which holds the
@@ -1480,6 +1481,7 @@ proc registerNifAstTags*() =
   typeOfferTag = registerTag("toffer")
   modulesrcTag = registerTag("modulesrc")
   expansionTag = registerTag("expansion")
+  overloadsTag = registerTag("overloads")
   sigTag = registerTag("sig")
 
 proc emitSigOccurrences(w: var Writer; n: PNode) =
@@ -2071,7 +2073,8 @@ proc scanStmtsForCookie(s: var Sha1State; c: var CookieCtx; flat: seq[CookieTok]
            tg == "repwasmoved" or tg == "repcopy" or tg == "repsink" or
            tg == "repdup" or tg == "reptrace" or tg == "repdeepcopy" or
            tg == "repenumtostr" or tg == "repmethod" or
-           tg == exportName or tg == exportExceptName or tg == "include":
+           tg == exportName or tg == exportExceptName or tg == "include" or
+           tg == "overloads":
         let e = nextTree(flat, i)
         hashRegion(s, c, flat, i, e)
         i = e
@@ -2214,7 +2217,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
                      firstUnusedId: int32 = 0;
                      expansions: seq[(PSym, TLineInfo)] = @[];
                      moduleFlags: int32 = 0;
-                     extraExports: seq[ItemId] = @[]) =
+                     extraExports: seq[ItemId] = @[];
+                     exportedOverloads: seq[seq[PSym]] = @[]) =
   var w = Writer(infos: newLineInfoWriter(config), currentModule: thisModule)
   for id in extraExports: w.extraExports.incl id
   w.deps = newIcBuilder(64)
@@ -2265,6 +2269,16 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
     w.deps.addParLe reexpModTag, NoLineInfo
     w.deps.addStrLit mname
     w.deps.addStrLit msuffix
+    w.deps.addParRi
+
+  # Generic alias lookup observes the first overload, including a template
+  # with default arguments used without a call. Preserve the actual interface
+  # order: neither index hash order nor symbol mint order reproduces it after
+  # the frontend's symbol table has grown and rehashed.
+  for overloads in exportedOverloads:
+    w.deps.addParLe overloadsTag, NoLineInfo
+    for candidate in overloads:
+      w.deps.addStrLit w.toNifSymName(candidate)
     w.deps.addParRi
 
   # Generic-instance OFFERS: every generic instance this module created
@@ -3383,6 +3397,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
         let before = nodesDecoded
         s.transformedBodyImpl = loadNode(c, n, thisModule, localSyms)
         if loadStatsInit == 1: bodyNodes += nodesDecoded - before
+      s.nifBodyLoadedImpl = s.transformedBodyImpl != nil and
+        conf.icBackendStage in ["cg", "emit"]
     else:
       skip n
 
@@ -4087,6 +4103,7 @@ type
       ## `typeInstCache` from them so a consumer reuses the baked instance
       ## (e.g. a `mixin`/`compiles()`-dependent array bound) instead of
       ## re-instantiating it with a different bound in its own scope.
+    overloads*: seq[seq[string]] ## exported symbols in frontend lookup order
     moduleFlags*: int32 ## the module SYMBOL's backend-relevant flags; see
                         ## `(modflags)` / `ModFlagInjectDestructors`.
     includes*: seq[string] # resolved full paths of files this module `include`s;
@@ -4274,7 +4291,7 @@ type
     ttRepConverter, ttRepDestroy, ttRepWasMoved, ttRepCopy, ttRepSink, ttRepDup,
     ttRepTrace, ttRepDeepCopy, ttRepEnumToStr, ttRepMethod, ttRepPureEnum,
     ttRepCppMember, ttExport, ttInclude, ttImport, ttReexpMod, ttOffer, ttTOffer,
-    ttModuleSrc, ttExpansion, ttSig, ttImplementation,
+    ttModuleSrc, ttExpansion, ttOverloads, ttSig, ttImplementation,
     ttLetSection, ttVarSection, ttPragma
 
 const
@@ -4307,6 +4324,7 @@ proc classifyTopTag(name: string): TopTag =
   of "toffer": ttTOffer
   of "modulesrc": ttModuleSrc
   of "expansion": ttExpansion
+  of "overloads": ttOverloads
   of "sig": ttSig
   of "implementation": ttImplementation
   else:
@@ -4377,6 +4395,16 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
             result.moduleFlags = int32 intVal(cur)
             skip cur
           while cur.hasMore: skip cur
+      of ttOverloads:
+        if SkipInterfaceTables in flags:
+          skip cur
+        else:
+          var names: seq[string] = @[]
+          cur.into:
+            while cur.hasMore:
+              names.add strVal(cur)
+              skip cur
+          result.overloads.add move names
       of ttRepConverter:
         timed tTopLogOps:
           loadLogOp(c, result.logOps, cur, ConverterEntry, attachedTrace, module)
@@ -4578,6 +4606,27 @@ proc registerModuleSelfSym*(c: var DecodeContext; suffix: string; m: PSym) =
   if not c.syms.hasKey(key):
     c.syms[key] = (m, NifIndexEntry())
 
+proc restoreOverloadOrder(c: var DecodeContext; interf: var TStrTable;
+                          overloads: seq[seq[string]]) =
+  # Swap only slots with the same identifier, preserving the table's probe
+  # chains and all symbols added by export/enum handling.
+  for names in overloads:
+    var syms: seq[PSym] = @[]
+    for name in names:
+      if c.mainModuleSuffix.len > 0 and
+          parseSymName(name).module == c.mainModuleSuffix:
+        continue
+      let sym = resolveSym(c, name, false)
+      if sym != nil and strTableContains(interf, sym): syms.add sym
+    if syms.len < 2: continue
+    var h = syms[0].name.h and high(interf.data)
+    var i = 0
+    while interf.data[h] != nil:
+      if interf.data[h] in syms:
+        interf.data[h] = syms[i]
+        inc i
+      h = nextTry(h, high(interf.data))
+
 proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {}): PrecompiledModule =
   # Ensure module index is loaded - moduleId returns the FileIndex for this suffix
@@ -4605,6 +4654,8 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
   if SkipInterfaceTables notin flags:
     icProfStart(tInterfTables)
     populateInterfaceTablesFromIndex(c, module, interf, interfHidden, string(suffix))
+    restoreOverloadOrder(c, interf, result.overloads)
+    restoreOverloadOrder(c, interfHidden, result.overloads)
     icProfStop(tInterfTables)
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;

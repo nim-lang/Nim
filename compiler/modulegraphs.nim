@@ -341,6 +341,20 @@ iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
     if s != nil:
       yield s
 
+proc exportedOverloads*(g: ModuleGraph; m: PSym): seq[seq[PSym]] =
+  ## Preserve lookup order for overloaded names across IC serialization.
+  result = @[]
+  var seen = initHashSet[int]()
+  for sym in items(semtab(g, m)):
+    if seen.containsOrIncl(sym.name.id): continue
+    var overloads: seq[PSym] = @[]
+    var it = default(TIdentIter)
+    var candidate = initIdentIter(it, semtab(g, m), sym.name)
+    while candidate != nil:
+      overloads.add candidate
+      candidate = nextIdentIter(it, semtab(g, m))
+    if overloads.len > 1: result.add move overloads
+
 proc reexportedModuleSyms*(g: ModuleGraph; m: PSym): seq[(string, string)] =
   ## (name, NIF module suffix) of MODULE syms in `m`'s interface — these are
   ## re-exports (`import x; export x`, added by `reexportSym`) acting as
