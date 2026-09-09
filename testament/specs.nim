@@ -313,7 +313,11 @@ proc initSpec*(filename: string): TSpec =
 
 proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
-    hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
+    let count = testamentData.testamentNumBatch
+    # String hashes can be negative. Normalize the remainder so every test maps
+    # to one of the non-negative batch indexes instead of silently mapping to
+    # no batch at all.
+    ((hash(filename) mod count) + count) mod count == testamentData.testamentBatch
   else:
     true
 
