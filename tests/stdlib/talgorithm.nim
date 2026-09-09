@@ -74,6 +74,12 @@ block:
   doAssert s5.rotateLeft(3 ..< 10, 11) == 6
   doAssert s5 == "xxxefgabcdxxx"
 
+  block:
+    var x: seq[int] = @[]
+    doAssert x.rotateLeft(1) == 0
+    doAssert x == @[]
+    doAssert x.rotatedLeft(1) == @[]
+
   block product:
     doAssert product(newSeq[seq[int]]()) == newSeq[seq[int]](), "empty input"
     doAssert product(@[newSeq[int](), @[], @[]]) == newSeq[seq[int]](), "bit more empty input"
