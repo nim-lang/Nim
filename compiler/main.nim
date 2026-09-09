@@ -350,10 +350,13 @@ proc mainCommand*(graph: ModuleGraph) =
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
   of cmdBook:
-    loadConfigs(DocConfig, cache, conf, graph.idgen)
-    conf.setNoteDefaults(warnCannotOpenFile, true)
-    commandBook(cache, conf)
-    commandBuildIndex(conf, $conf.outDir, exclCode = true, inclHeaders = true)
+    when defined(leanCompiler):
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
+    else:
+      loadConfigs(DocConfig, cache, conf, graph.idgen)
+      conf.setNoteDefaults(warnCannotOpenFile, true)
+      commandBook(cache, conf)
+      commandBuildIndex(conf, $conf.outDir, exclCode = true, inclHeaders = true)
   of cmdRst2html, cmdMd2html:
     # XXX: why are warnings disabled by default for rst2html and rst2tex?
     for warn in rstWarnings:
