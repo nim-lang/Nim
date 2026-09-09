@@ -386,8 +386,15 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if n.len == 2:
-    if isRange(n[1]):
-      result = semRangeAux(c, n[1], prev)
+    var rangeSpec = n[1]
+    if not isRange(rangeSpec):
+      # bug #560: the argument may only expand to a '..' expression during
+      # semantic analysis, for example through a template or macro call.
+      let ex = semExprWithType(c, rangeSpec, {efDetermineType})
+      if isRange(ex):
+        rangeSpec = ex
+    if isRange(rangeSpec):
+      result = semRangeAux(c, rangeSpec, prev)
       if not isDefined(c.config, "nimPreviewRangeDefault"):
         let n = result.n
         if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
@@ -401,7 +408,7 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
             n[1].floatVal < 0.0:
           incl(result.flags, tfRequiresInit)
     else:
-      if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
+      if rangeSpec.kind == nkInfix and considerQuotedIdent(c, rangeSpec[0]).s == "..<":
         localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")
       else:
         localError(c.config, n[0].info, "expected range")
