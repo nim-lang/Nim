@@ -139,7 +139,8 @@
 
 import
   ast, msgs, idents,
-  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos, trees
+  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos, trees,
+  types
 
 import std/tables
 
@@ -1422,20 +1423,82 @@ proc isClosureIterLocal(c: Ctx, s: PSym): bool =
   s.kind in {skResult, skVar, skLet, skForVar, skTemp} and
   sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym
 
+proc outlivesSuspension(c: Ctx, s: PSym): bool =
+  ## Is `s`'s lifetime observable after the iterator has suspended? Only if it
+  ## owns memory: there is a `=destroy` that belongs at the end of its scope,
+  ## and under refc a stack slot the collector has to keep seeing. Everything
+  ## else is unobservable once its last read is gone, which is what lets
+  ## #23787 keep it on the stack.
+  s.typ != nil and (hasDestructor(s.typ) or containsGarbageCollectedRef(s.typ))
+
+proc extendLifetimes(c: var Ctx, n: PNode, live: var seq[PSym]) =
+  ## We claim ARC/ORC destroy by scope, not by last usage. `detectCapturedVars`
+  ## can only see the *states*, so all it can offer is the last-usage criterion,
+  ## and the splitting transformation makes every state its own scope: a local
+  ## whose scope outlives the `yield` would be destroyed *at* the `yield`
+  ## (bug #26041). Scopes only exist before the split, so the promise has to be
+  ## kept here, on the unsplit body, by lifting whatever is still alive when a
+  ## `yield` is reached. The scopes below mirror the ones `injectdestructors`
+  ## opens, since that pass decides where the `=destroy` calls actually land.
+  template inNewScope(body: PNode) =
+    let oldLen = live.len
+    extendLifetimes(c, body, live)
+    live.setLen oldLen
+
+  case n.kind
+  of nkSkip:
+    discard
+  of nkYieldStmt:
+    for s in live:
+      if c.outlivesSuspension(s): c.captureVar(s)
+  of nkAddr, nkHiddenAddr:
+    # bug #25596; the very fact that the address is taken can make the local
+    # outlive its last read, and we cannot see where the pointer ends up.
+    let s = getRoot(n)
+    if s != nil and c.isClosureIterLocal(s): c.captureVar(s)
+    for i in 0..<n.safeLen:
+      extendLifetimes(c, n[i], live)
+  of nkVarSection, nkLetSection:
+    for it in n:
+      if it.kind in {nkIdentDefs, nkVarTuple}:
+        extendLifetimes(c, it[^1], live)
+        for i in 0 .. it.len - 3:
+          if it[i].kind == nkSym and c.isClosureIterLocal(it[i].sym):
+            live.add it[i].sym
+  of nkCaseStmt:
+    extendLifetimes(c, n[0], live)
+    for i in 1..<n.len:
+      inNewScope(n[i][^1])
+  of nkWhileStmt:
+    extendLifetimes(c, n[0], live)
+    inNewScope(n[1])
+  of nkParForStmt:
+    extendLifetimes(c, n[^2], live)
+    inNewScope(n[^1])
+  of nkBlockStmt, nkBlockExpr:
+    inNewScope(n[1])
+  of nkIfStmt, nkIfExpr:
+    for it in n:
+      if it.kind in {nkElifBranch, nkElifExpr}:
+        extendLifetimes(c, it[0], live)
+      inNewScope(it[^1])
+  of nkTryStmt:
+    inNewScope(n[0])
+    for i in 1..<n.len:
+      inNewScope(n[i][^1])
+  else:
+    for i in 0..<n.safeLen:
+      extendLifetimes(c, n[i], live)
+
+proc extendLifetimes(c: var Ctx, n: PNode) =
+  var live: seq[PSym] = @[]
+  extendLifetimes(c, n, live)
+
 proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
   case n.kind
   of nkSym:
     let s = n.sym
     detectCapturedSym(c, s, stateIdx)
-  of nkAddr, nkHiddenAddr:
-    let s = getRoot(n)
-    if s != nil and isClosureIterLocal(c, s):
-      detectCapturedSym(c, s, stateIdx)
-      # bug #25596; lifetime extension for `addr`-taken locals as
-      # we claim ARC/ORC do destruction based on scopes, not on last-usages.
-      c.captureVar(s)
-    for i in 0 ..< n.safeLen:
-      detectCapturedVars(c, n[i], stateIdx)
   of nkReturnStmt:
     if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
@@ -1519,6 +1582,11 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   if n.hasYieldsInExpressions():
     internalError(ctx.g.config, n.info, "yield in expr not lowered")
+
+  # Locals are lifted from two places: here, while the lexical scopes that decide
+  # where `injectdestructors` puts the `=destroy` calls still exist, and from
+  # `detectCapturedVars` below, which needs the states the split produces.
+  ctx.extendLifetimes(n)
 
   # Splitting transformation
   discard ctx.transformClosureIteratorBody(n, gotoOut)
