@@ -38,7 +38,8 @@
 ##   \4 \5                            end of the definitions section
 
 import std / [tables, sets, os, assertions, syncio, algorithm]
-import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
+import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse, stringviews]
+import "../dist/nimony/src/lib" / nifreader as rd
 
 const
   CnifSymStart* = '\2'
@@ -274,95 +275,125 @@ type
                              ## TU embeds (impl-cookie gated on reuse)
 
 proc readCnifHeads*(f: string): CnifHeads =
-  ## Reads `(meta ...)`, `(cdata ...)`, `(cref ...)` and the `(cdef ...)`
-  ## head names from an artifact. Artifacts written by an older compiler
-  ## (no meta head or a different format version) report `valid=false`.
+  ## Reads `(meta ...)`, `(cdata ...)`, `(cref ...)`, `(cdeps ...)` and the
+  ## `(cdef ...)` head names from an artifact. Artifacts written by an older
+  ## compiler (no meta head or a different format version) report
+  ## `valid=false`.
+  ##
+  ## STREAMED, not parsed: the four head groups are the first children, but
+  ## a `(cdef)` head sits in front of every definition's C text, so the whole
+  ## file has to be lexed either way — and lexing is all this needs. Parsing
+  ## the artifacts into token buffers with their own pools cost the main
+  ## module's `cg`, which reads every other module's head for NimMain's init
+  ## list, 86MB of heap for 266 artifacts totalling 99MB of C
+  ## (`-d:icBNodeProf`, `CgInitdKB`), all of it for a few strings per file.
   result = CnifHeads()
   if not fileExists(f): return
-  var pool = newPool()
-  var tags = newTagPool()
-  let stmtsTag = tags.registerTag("stmts")
-  let cdefTag = tags.registerTag("cdef")
-  let cdataTag = tags.registerTag("cdata")
-  let crefTag = tags.registerTag("cref")
-  let cdepsTag = tags.registerTag("cdeps")
-  let metaTag = tags.registerTag("meta")
-  var buf = parseFromFile(f, 1000, pool, tags)
-  var c = beginRead(buf)
-  if c.kind != TagLit or c.cursorTagId != stmtsTag:
-    endRead(c)
-    return
+  var r = rd.open(f)
+  defer: rd.close(r)   # the reader mmaps the file; a leak keeps it locked on Windows
+  discard rd.processDirectives(r)
+  var tok = default(rd.ExpandedToken)
+  rd.next(r, tok)
+  if tok.tk != ParLe or tok.data != "stmts": return
   var version = ""
   var sawMeta = false
-  c.loopInto:
-    if c.kind == TagLit:
-      if c.cursorTagId == metaTag:
+
+  template skipRest() =
+    ## Consume up to and including the `)` that closes the group whose `(`
+    ## has already been read, whatever is nested inside.
+    var depth = 1
+    while depth > 0:
+      rd.next(r, tok)
+      case tok.tk
+      of ParLe: inc depth
+      of ParRi: dec depth
+      of EofToken: return
+      else: discard
+
+  while true:
+    rd.next(r, tok)
+    case tok.tk
+    of EofToken, ParRi: break
+    of ParLe:
+      if tok.data == "meta":
         sawMeta = true
         var strIdx = 0
-        c.loopInto:
-          if c.kind == Ident:
-            for ch in strVal(c):
-              if ch == 'i': result.initRequired = true
-              elif ch == 'd': result.datInitRequired = true
-            inc c
-          elif c.kind == StrLit:
-            if strIdx == 0: result.semmedNif = strVal(c)
-            elif strIdx == 1: result.moduleBase = strVal(c)
-            elif strIdx == 2: version = strVal(c)
-            elif strIdx == 3: result.globalDtor = strVal(c)
-            inc strIdx
-            inc c
-          else:
-            skip c
-      elif c.cursorTagId == cdataTag:
-        c.loopInto:
-          if c.kind == SymbolDef:
-            result.cdata.add (symName(c), "")
-            inc c
-          elif c.kind == StrLit:
-            if result.cdata.len > 0:
-              result.cdata[^1].nifname = strVal(c)
-            inc c
-          else:
-            skip c
-      elif c.cursorTagId == crefTag:
-        c.loopInto:
-          if c.kind in {Ident, Symbol, SymbolDef}:
-            result.crefs.add symOrIdentName(c)
-            inc c
-          else:
-            skip c
-      elif c.cursorTagId == cdepsTag:
-        c.loopInto:
-          if c.kind in {Ident, Symbol, SymbolDef}:
-            result.cdeps.add symOrIdentName(c)
-            inc c
-          else:
-            skip c
-      elif c.cursorTagId == cdefTag:
+        var depth = 1
+        while depth > 0:
+          rd.next(r, tok)
+          case tok.tk
+          of ParLe: inc depth
+          of ParRi: dec depth
+          of EofToken: return
+          of Ident:
+            if depth == 1:
+              for ch in rd.decodeStr(r, tok):
+                if ch == 'i': result.initRequired = true
+                elif ch == 'd': result.datInitRequired = true
+          of StringLit:
+            if depth == 1:
+              let v = rd.decodeStr(r, tok)
+              if strIdx == 0: result.semmedNif = v
+              elif strIdx == 1: result.moduleBase = v
+              elif strIdx == 2: version = v
+              elif strIdx == 3: result.globalDtor = v
+              inc strIdx
+          else: discard
+      elif tok.data == "cdata":
+        var depth = 1
+        while depth > 0:
+          rd.next(r, tok)
+          case tok.tk
+          of ParLe: inc depth
+          of ParRi: dec depth
+          of EofToken: return
+          of SymbolDef:
+            if depth == 1: result.cdata.add (rd.decodeStr(r, tok), "")
+          of StringLit:
+            if depth == 1 and result.cdata.len > 0:
+              result.cdata[^1].nifname = rd.decodeStr(r, tok)
+          else: discard
+      elif tok.data == "cref" or tok.data == "cdeps":
+        let isRef = tok.data == "cref"
+        var depth = 1
+        while depth > 0:
+          rd.next(r, tok)
+          case tok.tk
+          of ParLe: inc depth
+          of ParRi: dec depth
+          of EofToken: return
+          of Ident, Symbol, SymbolDef:
+            if depth == 1:
+              if isRef: result.crefs.add rd.decodeStr(r, tok)
+              else: result.cdeps.add rd.decodeStr(r, tok)
+          else: discard
+      elif tok.data == "cdef":
         # fixed head: SymbolDef, flags (Ident or empty), NIF name StrLit;
         # everything after that is the definition's body text
         var state = 0
-        c.loopInto:
-          if c.kind == SymbolDef:
-            result.cdefs.add (symName(c), "")
-            state = 1
-            inc c
-          elif state == 1: # the flags field
-            state = 2
-            skip c
-          elif state == 2: # the NIF name
-            if c.kind == StrLit and result.cdefs.len > 0:
-              result.cdefs[^1].nifname = strVal(c)
-            state = 3
-            skip c
+        var depth = 1
+        while depth > 0:
+          rd.next(r, tok)
+          case tok.tk
+          of ParLe: inc depth
+          of ParRi: dec depth
+          of EofToken: return
           else:
-            skip c
+            if depth == 1:
+              if state == 0:
+                if tok.tk == SymbolDef:
+                  result.cdefs.add (rd.decodeStr(r, tok), "")
+                  state = 1
+              elif state == 1: # the flags field
+                state = 2
+              elif state == 2: # the NIF name
+                if tok.tk == StringLit and result.cdefs.len > 0:
+                  result.cdefs[^1].nifname = rd.decodeStr(r, tok)
+                state = 3
       else:
-        skip c
+        skipRest()
     else:
-      skip c
-  endRead(c)
+      discard
   result.valid = sawMeta and version == CnifVersion
 
 type

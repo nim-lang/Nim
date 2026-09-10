@@ -3672,6 +3672,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   of nkTemplateDef: result = semTemplateDef(c, n)
   of nkImportStmt:
     trySuggestModuleNames(c, n)
+    drainBeforeModulePass(c)
     # this particular way allows 'import' in a 'compiles' context so that
     # template canImport(x): bool =
     #   compiles:
@@ -3683,9 +3684,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     result = evalImport(c, n)
   of nkImportExceptStmt:
     if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "import")
+    drainBeforeModulePass(c)
     result = evalImportExcept(c, n)
   of nkFromStmt:
     if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "from")
+    drainBeforeModulePass(c)
     result = evalFrom(c, n)
   of nkIncludeStmt:
     #if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "include")

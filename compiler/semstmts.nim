@@ -2429,6 +2429,195 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
+# ---- doc/parallel_compiler.md stage 1: deferred routine bodies --------------
+#
+# `--deferBodies:on` moves the sem of a top-level routine's BODY out of the
+# statement that declares it and into a pass that runs when the module's header
+# is complete. One worker, drained in key order: no threads, no scheduling, only
+# the order change — which is the half of the plan that changes results and so
+# has to be reviewed on its own (§5, stage 1). The parallel version of §5 stage
+# 4 must stay byte-identical to this.
+#
+# What "top level" buys is that the unit needs nothing from the statement it was
+# declared in: everything positional is captured in the `BodyTask`, and the rest
+# of `PContext` is module-shared and does not move between declaration and drain.
+
+proc semRoutineBodyUnit(c: PContext; s: PSym; n: PNode; resultType: PType;
+                        isInlineIterator: bool) =
+  ## The unit of work, exactly: sem of one routine body plus the `trackProc`
+  ## that follows it, with everything the body drags in (nested routines,
+  ## generic instances, lifted hooks) inside it.
+  timedOutermost(tSemBody):
+    s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
+    # unfortunately we cannot skip this step when in 'system.compiles'
+    # context as it may even be evaluated in 'system.compiles':
+    if isInlineIterator and s.typ.callConv == ccClosure:
+      # iterators without explicit callconvs are lifted to closure,
+      # we need to add a result symbol for them
+      maybeAddResult(c, s, n)
+    trackProc(c, s, s.ast[bodyPos])
+
+proc deferrableBody(c: PContext; s: PSym): bool =
+  ## Which routines become units. §2.1: run-time routines of this module,
+  ## declared at its top level.
+  ##
+  ## Macros, templates, `{.compileTime.}` routines and converters keep their
+  ## bodies in the header pass — the VM needs them and they are part of what
+  ## importers see. Generic routines never reach here (they take
+  ## `semGenericStmt`, which is header work). A nested routine belongs to its
+  ## enclosing unit, and one declared inside `compiles()`, a generic
+  ## instantiation or a `static:` block belongs to whatever is driving that, so
+  ## none of them is a unit of its own.
+  result = optDeferBodies in c.config.globalOptions and
+    s.kind in {skProc, skFunc, skMethod, skIterator} and
+    s.magic == mNone and
+    sfCompileTime notin s.flags and
+    s.owner != nil and s.owner.kind == skModule and s.owner == c.module and
+    c.compilesContextId == 0 and
+    c.inGenericContext == 0 and c.inGenericInst == 0 and
+    c.inStaticContext == 0 and c.inUnrolledContext == 0 and
+    c.config.ideCmd == ideNone
+
+proc enqueueBodyTask(c: PContext; s: PSym; n: PNode; resultType: PType;
+                     isInlineIterator: bool): PScope =
+  ## Captures the unit and hands back the scope the caller must DETACH rather
+  ## than close: the parameters have to still be in it when the body runs.
+  result = c.currentScope
+  c.bodyTaskIndex[s.itemId] = c.bodyTasks.len
+  c.bodyTasks.add BodyTask(
+    key: uint64(c.bodyTasks.len), state: btPending,
+    owner: s, def: n, resultType: resultType,
+    isInlineIterator: isInlineIterator,
+    scope: result, procCon: c.p,
+    optionStack: c.optionStack,
+    options: c.config.options, notes: c.config.notes,
+    warningAsErrors: c.config.warningAsErrors, features: c.features)
+
+proc runBodyTask(c: PContext; idx: int) =
+  ## Re-attaches one unit's positional state, sems it, and detaches again.
+  ## Re-entrant: a unit's body can demand another unit (a nested `const`), and
+  ## the saved-and-restored locals here are what makes that nest correctly.
+  if c.bodyTasks[idx].state != btPending: return
+  c.bodyTasks[idx].state = btRunning
+  let
+    savedScope = c.currentScope
+    savedProcCon = c.p
+    savedOptionStack = c.optionStack
+    savedOptions = c.config.options
+    savedNotes = c.config.notes
+    savedWarningAsErrors = c.config.warningAsErrors
+    savedFeatures = c.features
+    savedOwnerLen = c.graph.owners.len
+  let t = c.bodyTasks[idx]
+  c.currentScope = t.scope
+  c.p = t.procCon
+  c.p.next = savedProcCon
+  c.optionStack = t.optionStack
+  c.config.options = t.options
+  c.config.notes = t.notes
+  c.config.warningAsErrors = t.warningAsErrors
+  c.features = t.features
+  pushOwner(c, t.owner)
+  try:
+    semRoutineBodyUnit(c, t.owner, t.def, t.resultType, t.isInlineIterator)
+    # The deferred half of the `closeScope` that `semProcAux` turned into a
+    # `rawCloseScope`: at declaration time every parameter still looks unused,
+    # so the unused-symbol check has to wait for the body that uses them. The
+    # scope is re-attached right now, so plain `closeScope` is that check.
+    closeScope(c)
+  finally:
+    c.bodyTasks[idx].state = btDone
+    setLen(c.graph.owners, savedOwnerLen)
+    c.currentScope = savedScope
+    c.p = savedProcCon
+    c.optionStack = savedOptionStack
+    c.config.options = savedOptions
+    c.config.notes = savedNotes
+    c.config.warningAsErrors = savedWarningAsErrors
+    c.features = savedFeatures
+
+proc demandRoutineBody(c: PContext; prc: PSym) =
+  ## §2.3's "run it inline": something needs a unit's body before the body pass
+  ## would have got to it. `btRunning` means genuine recursion on this thread
+  ## and is left alone — the caller then sees the partially semmed body, which
+  ## is what it sees today too.
+  ##
+  ## Chains outwards, because module passes nest: an import is compiled from
+  ## inside the importer's pass, so the routine asked about may belong to a
+  ## module further out whose own body pass has not run yet. Each link runs the
+  ## unit against ITS module's `PContext`, which is what the closure captured.
+  let idx = c.bodyTaskIndex.getOrDefault(prc.itemId, -1)
+  if idx >= 0:
+    # Every SMALLER key first, not just this one. §2.3 lets a unit block on
+    # units with a smaller key, and a body semmed today sees every routine
+    # declared above it already analysed; running the demanded unit alone would
+    # invert that. `asyncdispatch` is the case that found it: the `{.async.}`
+    # machinery transforms `runOnce` (declared at the bottom) during the header
+    # pass, and on its own that unit was tracked before
+    # `processCallbacksAndTimers` (declared 1100 lines above), which then had no
+    # effect list yet — so `runOnce` was inferred GC-unsafe and its `{.gcsafe.}`
+    # forward declaration rejected it.
+    for i in 0 .. idx: runBodyTask(c, i)
+  elif c.prevDemandRoutineBody != nil:
+    c.prevDemandRoutineBody(prc)
+
+proc drainBodyTasks*(c: PContext) =
+  ## The body pass. In key order, which for stage 1 is simply front to back:
+  ## the header pass appended in source order and the on-demand path only ever
+  ## marks entries done early, never reorders them.
+  var i = 0
+  while i < c.bodyTasks.len:
+    # not a `for`: a unit's body can enqueue nothing (nested routines are not
+    # units) but CAN mark later ones done through `demandRoutineBody`, and the
+    # length is re-read so a future stage that does enqueue still terminates.
+    runBodyTask(c, i)
+    inc i
+
+const
+  DeferrableNeighbours = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                          nkConverterDef, nkTemplateDef, nkMacroDef,
+                          nkTypeSection, nkCommentStmt, nkEmpty, nkPragma,
+                          nkWhenStmt, nkStmtList}
+    ## Top-level statements a pending unit may safely outlive. A run of
+    ## declarations defers as a batch; anything else flushes it first.
+
+proc flushBodiesBeforeTopLevelStmt*(c: PContext; stmt: PNode) =
+  ## Units live only until the next top-level statement that could OBSERVE one.
+  ##
+  ## Deferring a body all the way to the end of the module is what §2.1 asks
+  ## for, but it puts a pending unit in reach of the VM: a top-level `const x =
+  ## f()` makes `vmgen` compile `f`, `vmgen` goes through `transformBody`, and
+  ## answering the demand there means running sem — and a nested VM session —
+  ## while one is already executing on the graph's single `PCtx`. That is §4.6
+  ## step 2, "the hardest single item in this plan", and the doc allows it to be
+  ## deferred behind a restriction until it is done. This is that restriction,
+  ## and it is a cheap one: modules are long runs of routine definitions, so a
+  ## run defers as a batch and only a `const`, `static:`, `var` initialiser or
+  ## plain expression ends one.
+  ##
+  ## Flushing HERE and not at the VM's own entry matters: this is a statement
+  ## boundary at module scope, where the only live state is the module's, and
+  ## running a unit is safe. `vm.setupGlobalCtx` is reached from inside generic
+  ## instantiations and template expansions, where it is not.
+  if c.bodyTasks.len > 0 and stmt.kind notin DeferrableNeighbours and
+      c.currentScope.depthLevel <= 2:
+    drainBodyTasks(c)
+
+proc drainBeforeModulePass*(c: PContext) =
+  ## About to compile another module from inside this one's header pass.
+  ##
+  ## That module may reference anything declared here so far — `system` imports
+  ## `std/syncio` from its own last statements, and syncio's routines call
+  ## system's — and it will be compiled to completion before this statement
+  ## returns. So this module's units have to be complete first, or the importee
+  ## sees them as "not yet processed" and infers `RootEffect` for every call
+  ## into them. Draining here keeps the invariant an importer already relies on
+  ## today: everything declared above an `import` is fully semmed when it runs.
+  ##
+  ## Imports sit at the top of a module, so in practice this drains nothing.
+  if optDeferBodies in c.config.globalOptions:
+    drainBodyTasks(c)
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -2668,6 +2857,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfCppMember * s.flags != {} and sfWasForwarded notin s.flags:
     semCppMember(c, s, n)
 
+  # Set by `enqueueBodyTask` to the parameter scope that must be detached from
+  # `PContext` instead of closed, because the deferred body still needs it.
+  var deferredScope: PScope = nil
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
@@ -2681,8 +2873,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # allowed, everything else, including a nullary generic is an error.
         pushProcCon(c, s)
         addResult(c, n, s.typ.returnType, skProc)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ.returnType))
-        trackProc(c, s, s.ast[bodyPos])
+        # An anonymous routine is an expression inside some other unit, never a
+        # unit of its own (§2.3: "lambda / nested routine — inside its enclosing
+        # unit, no key of its own"), so this one is never deferred.
+        semRoutineBodyUnit(c, s, n, s.typ.returnType, isInlineIterator = false)
         popProcCon(c)
       elif efOperand notin flags:
         localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -2703,17 +2897,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # semantic checking also needed with importc in case used in VM
 
         let isInlineIterator = isInlineIterator(s.typ)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
-        # unfortunately we cannot skip this step when in 'system.compiles'
-        # context as it may even be evaluated in 'system.compiles':
-
-        if isInlineIterator and s.typ.callConv == ccClosure:
-          # iterators without explicit callconvs are lifted to closure,
-          # we need to add a result symbol for them
-          maybeAddResult(c, s, n)
-
-
-        trackProc(c, s, s.ast[bodyPos])
+        if deferrableBody(c, s):
+          deferredScope = enqueueBodyTask(c, s, n, resultType, isInlineIterator)
+        else:
+          semRoutineBodyUnit(c, s, n, resultType, isInlineIterator)
       else:
         if (s.typ.returnType != nil and s.kind != skIterator):
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), c.idgen, s, n.info))
@@ -2738,7 +2925,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
 
-  closeScope(c)           # close scope for parameters
+  if deferredScope != nil:
+    # Detach, do not close: the scope object stays alive in the `BodyTask` and
+    # is re-attached when the body runs. `closeScope`'s unused-symbol check goes
+    # with it — see `runBodyTask`.
+    rawCloseScope(c)
+  else:
+    closeScope(c)         # close scope for parameters
   # c.currentScope = oldScope
   popOwner(c)
   if n[patternPos].kind != nkEmpty:
@@ -3010,6 +3203,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
   #                                         nkNilLit, nkEmpty}:
   #  dec last
   for i in 0..<n.len:
+    flushBodiesBeforeTopLevelStmt(c, n[i])
     var x = semExpr(c, n[i], flags, if i == n.len - 1: expectedType else: nil)
     n[i] = x
     if c.matchedConcept != nil and x.typ != nil and

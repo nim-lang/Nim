@@ -21,19 +21,36 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 
-proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
+when defined(icDbgHashDump):
+  # `NIM_IC_DBGHASH=<substring>`: every byte fed into the hash of a type whose
+  # symbol name contains the substring is echoed to stderr, so two processes
+  # that disagree on a type's hash can be diffed on their INPUTS.
+  import std / [envvars, strutils, syncio]
+  var dumpOn = false
+  var dumpBuf = ""
+  proc upd(c: var MD5Context; p: cstring; n: int) =
+    md5Update(c, p, n)
+    if dumpOn:
+      for i in 0 ..< n:
+        let ch = p[i]
+        if ch in {' '..'~'}: dumpBuf.add ch
+        else: dumpBuf.add "\\x" & toHex(ord(ch), 2)
+else:
+  template upd(c: var MD5Context; p: cstring; n: int) = md5Update(c, p, n)
+
+proc `&=`(c: var MD5Context, s: string) = upd(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) =
   # XXX suspicious code here; relies on ch being zero terminated?
-  md5Update(c, cast[cstring](unsafeAddr ch), 1)
+  upd(c, cast[cstring](unsafeAddr ch), 1)
 
 proc `&=`(c: var MD5Context, i: BiggestInt) =
-  md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
+  upd(c, cast[cstring](unsafeAddr i), sizeof(i))
 proc `&=`(c: var MD5Context, f: BiggestFloat) =
-  md5Update(c, cast[cstring](unsafeAddr f), sizeof(f))
+  upd(c, cast[cstring](unsafeAddr f), sizeof(f))
 proc `&=`(c: var MD5Context, s: SigHash) =
-  md5Update(c, cast[cstring](unsafeAddr s), sizeof(s))
+  upd(c, cast[cstring](unsafeAddr s), sizeof(s))
 template lowlevel(v) =
-  md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
+  upd(c, cast[cstring](unsafeAddr(v)), sizeof(v))
 
 
 type
@@ -144,6 +161,17 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
   if t == nil:
     c &= "\254"
     return
+  if t.state == Partial:
+    # The `tyObject` branch below reads `typeInstImpl` RAW: it clears the slot
+    # to break the #8883 recursion, so it cannot go through the accessor that
+    # would load the type. On a generic instance that is still a stub the slot
+    # is nil, the instantiation is silently left out of the hash, and the
+    # C name of every type built on it (a closure env capturing a `Table`,
+    # say) comes out different from the one a process that happened to load
+    # the instance first computes. That went unnoticed for as long as the
+    # backend loaded every generic instance eagerly through the `(toffer)`
+    # records; it no longer does.
+    loadTypeCallback(t)
   when defined(icDbgHash):
     inc hashDepth
     inc hashCalls
@@ -392,8 +420,20 @@ proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): 
   result = default(SigHash)
   var c: MD5Context = default(MD5Context)
   md5Init c
+  when defined(icDbgHashDump):
+    var iOwnDump = false
+    let dumpName = (if t.sym != nil: t.sym.name.s
+                    elif t.owner != nil: t.owner.name.s else: "")
+    if not dumpOn and dumpName.len > 0:
+      let want = getEnv("NIM_IC_DBGHASH")
+      if want.len > 0 and dumpName.contains(want):
+        dumpOn = true; iOwnDump = true; dumpBuf.setLen 0
   hashType c, t, flags+{CoOwnerSig}, conf
   md5Final c, result.MD5Digest
+  when defined(icDbgHashDump):
+    if iOwnDump:
+      stderr.writeLine "HASHDUMP " & dumpName & " flags=" & $flags & " -> " & $result & " : " & dumpBuf
+      dumpOn = false
   when defined(debugSigHashes):
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
             typeToString(t), $result)

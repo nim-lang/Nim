@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "38"
+  icFormatVersion* = "39"
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -152,6 +152,12 @@ type                          # please make sure we have under 32 options
     optCompress               # turn on AST compression by converting it to NIF
     optGenBif                 # generate semantic BIF alongside ordinary code generation
     optWithinConfigSystem     # we still compile within the configuration system
+    optDeferBodies            # stage 1 of doc/parallel_compiler.md: sem a top-level
+                              # routine's BODY after the module's header pass rather
+                              # than where it is declared. One worker, drained in key
+                              # order -- no threads, no scheduling, only the order
+                              # change, which is the part that has to be reviewed
+                              # before any of it runs concurrently.
 
   TGlobalOptions* = set[TGlobalOption]
 

@@ -1234,6 +1234,30 @@ proc mangleDynLibProc(sym: PSym): Rope =
   else:
     result = rope(strutils.`%`("Dl_$1_", $sym.id))
 
+proc addDynLibVar(m: BModule; sym: PSym; typ: Snippet) =
+  ## Defines the `Dl_*` pointer the dynlib symbol is reached through.
+  ##
+  ## Under the per-module backend EVERY TU that demands the symbol emits this
+  ## definition: `findPendingModule` routes the symbol to the demanding module
+  ## whenever its owner sits outside this process's batch. The same file-scope
+  ## `Dl_486539272_` then lands in several `.c` — "multiple definition of
+  ## `Dl_486539272_'" at link, which is what broke `tests/ic/tmeta_async` on
+  ## Windows (two `os` modules calling the same `{.dynlib.}` import).
+  ## `genProcPrototype` already assumed "the merge stage keeps one def per C
+  ## name", but nothing ever marked the definition for it. Declare it `extern`
+  ## and wrap the definition as a droppable `'d'` unit — the shape
+  ## `genGlobalVarDecl` uses for a routine-local `{.global.}` — so `merge`
+  ## assigns one owner and every other TU is left with just the declaration.
+  if m.config.cmd == cmdNifC:
+    let cname = stripCnifMarks(sym.loc.snippet)
+    m.s[cfsVars].addDeclWithVisibility(Extern):
+      m.s[cfsVars].addVar(kind = Local, name = sym.loc.snippet, typ = typ)
+    m.s[cfsVars].add(cnifDefDirective(cname, "d", icNifName(m, sym)))
+    m.s[cfsVars].addVar(name = sym.loc.snippet, typ = typ)
+    m.s[cfsVars].add(cnifEndDefs())
+  else:
+    m.s[cfsVars].addVar(name = sym.loc.snippet, typ = typ)
+
 proc symInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   let isCall = isGetProcAddr(lib)
@@ -1280,7 +1304,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
         cCall(fn,
           lib.name,
           makeCString($extname))))
-  m.s[cfsVars].addVar(name = sym.loc.snippet, typ = getTypeDesc(m, sym.loc.t, dkVar))
+  addDynLibVar(m, sym, getTypeDesc(m, sym.loc.t, dkVar))
 
 proc varInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
@@ -1299,7 +1323,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
       cCall(fn,
         lib.name,
         makeCString($extname))))
-  m.s[cfsVars].addVar(name = sym.loc.snippet, typ = t)
+  addDynLibVar(m, sym, t)
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
   backendEnsureMutable sym

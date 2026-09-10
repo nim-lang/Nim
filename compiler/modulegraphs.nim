@@ -179,6 +179,19 @@ type
                                   # (`genIcModuleDestroyGlobals`), already in
                                   # call order; only the main module's `cg`
                                   # fills this, from the `.c.nif` meta heads
+    demandRoutineBody*: proc (prc: PSym) {.closure.}
+      ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
+      ## is needed NOW". A deferred unit's body is unsemmed until the module's
+      ## body pass runs, but the header pass can reach one before then — a
+      ## top-level `const x = f()` or `static:` block makes the VM compile `f`,
+      ## and `vmgen` goes through `transformBody`. That is the one place every
+      ## consumer of a semmed body passes through, so the demand is asked for
+      ## there rather than at each of sem's compile-time-evaluation entries,
+      ## where a missed one would be a miscompile.
+      ##
+      ## A closure, not the `{.nimcall.}` the hooks below are: running a unit
+      ## needs the module's `PContext`, and it nests, so `preparePContext` sets
+      ## it and `closePContext` puts the enclosing module's back.
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator

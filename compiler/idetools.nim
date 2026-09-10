@@ -36,8 +36,9 @@ import options, msgs, pathutils
 import lineinfos as astli
 import ast2nif   # toNifFilename
 from deps import includerSbifs   # deps-guided include-file lookup
-import "../dist/nimony/src/lib/nifcore"
-from "../dist/nimony/src/lib" / bif import load, BifModule, containsSym
+import "../dist/nimony/src/lib/nifcore" except symName, strVal, poolSym, poolStr, lineInfoFile
+from "../dist/nimony/src/lib" / bif import BifModule, containsSym
+import icbif
 
 proc identLen(name: string): int =
   ## Length of the displayed identifier: the run before the first `.` of a
@@ -260,7 +261,7 @@ proc runIdeQuery*(conf: ConfigRef) =
   #      built, no token block mapped) — so a query whose symbol lives in a few
   #      modules no longer pays to load the whole nimcache.
   #   2. For a module that does contain it, `bif.load` mints a fresh per-file pool,
-  #      so the name is resolved to THIS file's SymId once via `getKeyId`; the scan
+  #      so the name is resolved to THIS file's SymId once via `findSym`; the scan
   #      then compares integer ids per token instead of materializing a string for
   #      each (see `symMatches`).
   var seen = initHashSet[string]()
@@ -268,12 +269,12 @@ proc runIdeQuery*(conf: ConfigRef) =
     for f in walkFiles((getNimcacheDir(conf).string) / "*.s.bif"):
       if not containsSym(f, foundName): continue
       var m = load(f)
-      let tid = m.buf.pool.syms.getKeyId(foundName)
+      let tid = findSym(m.buf.pool, foundName)
       if tid != SymId(0):
         scanBuf(conf, m, section, tid, foundName, seen)
   else:
     # Local symbol: its mangled name is not unique across modules, so restrict
     # the scan to the module it lives in (the one that owns the queried position).
     var qm = load(ownerFile)
-    let tid = qm.buf.pool.syms.getKeyId(foundName)
+    let tid = findSym(qm.buf.pool, foundName)
     scanBuf(conf, qm, section, tid, foundName, seen)
