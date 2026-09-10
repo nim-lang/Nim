@@ -79,10 +79,13 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     defer: putEnv(libpathenv, libpath)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  when not defined(osx):
+    # the nimhcr runtime segfaults on macOS:
+    testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
-  if "boehm" notin options:
+  # the nimhcr runtime segfaults on macOS, so no hcr test runs there:
+  if "boehm" notin options and not defined(osx):
     # hcr tests
 
     var basicHcrTest = makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
@@ -589,9 +592,16 @@ proc changedModuleCount(changed: seq[string]): int =
 
 proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options: string) =
   var test = TTest(cat: cat, name: file, options: options,
-                   spec: initSpec(file), startTime: epochTime())
+                   spec: parseSpec(file), startTime: epochTime())
   test.spec.targets = {targetC}
   inc r.total
+
+  # Metamorphic tests bypass `testSpec`, so honour Testament's batch selection
+  # here before creating their build directory or invoking `nim ic`.
+  if not test.spec.inCurrentBatch:
+    finishTest(r, test, targetC, "", "", "", reDisabled)
+    inc r.skipped
+    return
 
   # Absolute paths: `nim ic` runs with `workingDir = buildDir`, so a relative
   # `--nimcache` would resolve against the build dir, not where we read it back.

@@ -3,7 +3,21 @@ discard """
   output: '''OK'''
 """
 
-import std/[syncio, assertions]
+import std/[syncio, assertions, widestrs]
+
+const
+  face = [Utf16Char(0xD83E), Utf16Char(0xDD2A)]
+  legacyHighSurrogate = -10178'i16
+
+static:
+  doAssert sizeof(Utf16Char) == sizeof(int16)
+  doAssert alignof(Utf16Char) == alignof(int16)
+  doAssert uint16(cast[Utf16Char](legacyHighSurrogate)) == uint16(face[0])
+
+proc testUtf16CodeUnits(chars: openArray[Utf16Char]) =
+  doAssert $chars == "🤪"
+
+testUtf16CodeUnits(face)
 
 #assume WideCharToMultiByte always produce correct result
 #windows only
@@ -11,7 +25,6 @@ import std/[syncio, assertions]
 when not defined(windows):
   echo "OK"
 else:
-  import std/widestrs
   {.push gcsafe.}
 
   const CP_UTF8 = 65001'i32

@@ -828,7 +828,7 @@ proc raiseExit(p: BProc) =
         p.s(cpsStmts).addGoto("LA" & $p.nestedTryStmts[^1].label & "_")
 
 proc finallyActions(p: BProc) =
-  if p.config.exc != excGoto:
+  if p.config.exc == excCpp:
     # Walk past compiler-injected `nkHiddenTryStmt` wrappers (e.g. ARC's
     # destructor try/finally that wraps `except T as e:` bodies) to reach
     # the user's actual try.  We must NOT walk past a real user try whose
@@ -848,6 +848,10 @@ proc finallyActions(p: BProc) =
         if finallyBlock != nil:
           genSimpleBlock(p, finallyBlock.firstSon)
       return
+  elif p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
+    let finallyBlock = p.nestedTryStmts[^1].fin
+    if finallyBlock != nil:
+      genSimpleBlock(p, finallyBlock.firstSon)
 
 proc raiseInstr(p: BProc; result: var Builder) =
   if p.config.exc == excGoto:

@@ -473,6 +473,26 @@ const
     ## tyGenericBody where an instance has a generated destructor
   skError* = skUnknown
 
+const
+  derivedTypeFlags* = {tfHasAsgn, tfHasOwned, tfHasGCedMem, tfCheckedForDestructor}
+    ## Codegen/lifting BOOKKEEPING bits, as opposed to the flags that make a
+    ## type what it is. They are *derived*: a fixpoint over the type's own kind,
+    ## the memory management config, its elements and the attached-op table --
+    ## never something the source said. They are in none of `eqTypeFlags`, the
+    ## `typekeys` content key or the NIF name, so changing one cannot rename a
+    ## type, move it in the cache, or alter `sameType`.
+    ##
+    ## Because they are derived rather than declared, a consumer module can
+    ## legitimately discover one *after* the defining module sealed the type
+    ## (the classic case: an alias carries `tfHasAsgn` into the NIF but the
+    ## object behind it only gets it at the first generic instantiation, which
+    ## happens in another module -- and, under IC, another process). Writing
+    ## one is therefore exempt from the `Sealed` assert: see `ast.inclDerived`.
+    ##
+    ## NOT in this set even though it looks like it belongs:
+    ## `tfGenericHasDestructor`, which is an ALIAS for `tfExplicitCallConv`.
+    ## Exempting it would exempt a real proc-type property from the seal.
+
 var
   eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
     ## type flags that are essential for type equality.

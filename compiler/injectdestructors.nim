@@ -242,7 +242,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     # closure-env identity resolves via `attachedOps[itemId]`/env-erased typeKey,
     # env objects load complete, and atomicRefOp's type-erased path covers any
     # still-incomplete env (so the lift never walks a nil field).
-    excl t.flagsImpl, tfCheckedForDestructor
+    t.exclDerived {tfCheckedForDestructor}
     createTypeBoundOps(c.graph, nil, t, dest.info, c.idgen)
     op = getAttachedOp(c.graph, t, kind)
   if op == nil:
@@ -786,6 +786,12 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
   else:
     result = nil
     assert(false)
+
+  if willProduceStmt:
+    # The value is now produced by statements in the branches. Keeping the
+    # control-flow node's expression type would make code generators allocate
+    # a second, unused destination for it.
+    result.typ = nil
 
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
   if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:

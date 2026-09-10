@@ -459,6 +459,29 @@ proc excl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   if t.state == Partial: loadType(t)
   t.flagsImpl.excl(flags)
 
+proc inclDerived*(t: PType; flags: TTypeFlags) {.inline.} =
+  ## Add DERIVED bookkeeping flags (see `derivedTypeFlags`). Unlike `incl` this
+  ## is allowed on a `Sealed` type: the bit is not part of the type's identity,
+  ## its NIF name or its content key, and a consumer never rewrites a foreign
+  ## type's def (`ast2nif.writeType` emits a `SymUse` for anything it does not
+  ## own), so the write cannot reach any NIF. It is process-local bookkeeping
+  ## that a consumer re-derives from data the producer already serialized.
+  assert flags <= derivedTypeFlags
+  if t.state == Partial: loadType(t)
+  when defined(icDerivedBarrier):
+    if t.state == Sealed and not (flags <= t.flagsImpl):
+      echo "[derived-barrier] +", flags - t.flagsImpl, " on sealed ", t.kind,
+        (if t.symImpl != nil: "/" & t.symImpl.name.s else: ""),
+        " @", t.itemId.module, ".", t.itemId.item
+  t.flagsImpl.incl(flags)
+
+proc exclDerived*(t: PType; flags: TTypeFlags) {.inline.} =
+  ## Counterpart of `inclDerived`. Same reasoning; `tfCheckedForDestructor` is
+  ## genuinely cleared again (`injectdestructors`), so this is not monotone.
+  assert flags <= derivedTypeFlags
+  if t.state == Partial: loadType(t)
+  t.flagsImpl.excl(flags)
+
 proc typ*(n: PNode): lent PType {.inline.} =
   result = n.typField
   if result == nil and nfLazyType in n.flags:
@@ -1312,13 +1335,15 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyString, tySet, tyDistinct}:
-      if o2.state == Sealed:
-        # During the original compilation, propagateToOwner set tfHasAsgn/tfHasOwned on the type before it was sealed
-        # On IC reload, the sealed type already has those flags
-        assert mask <= o2.flags, "IC bug: sealed type missing propagated flags"
-      else:
-        o2.incl mask
-      owner.incl mask
+      # `o2` may be `Sealed`: these are DERIVED flags, and a consumer can reach
+      # a foreign type here that the producer sealed without them. The classic
+      # case is a generic alias -- `Channel[TMsg] = RawChannel` -- where
+      # `normalizeTypeHook` leaves `tfHasAsgn` on the `tyAlias` and the object
+      # behind it only acquires it at the first instantiation, in another
+      # module and, under IC, another process. Adding the bit is sound (see
+      # `inclDerived`); asserting here just crashed on legal code.
+      o2.inclDerived mask
+      owner.inclDerived mask
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
@@ -1326,7 +1351,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.
-      owner.incl tfHasGCedMem
+      owner.inclDerived {tfHasGCedMem}
 
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   ensureMutable father
