@@ -110,8 +110,11 @@ Each semantic BIF carries two authoritative interface records:
 * ``(hiddeninterface <count> <symbol>...)`` lists the full interface used by
   ``import module {.all.}``, including both public and private symbols.
 
-Symbols with the same identifier appear in the frontend's lookup order. A module
-qualifier is represented by ``(reexpmod "alias" "moduleSuffix")`` in the sequence.
+Identifier groups are sorted by name; symbols with the same identifier appear in
+the frontend's lookup order. Whole-module exports (including ``export except``)
+use this same traversal, so re-export chains do not depend on whether a source or
+cached hash table supplies the symbols. A module qualifier is represented by
+``(reexpmod "alias" "moduleSuffix")`` in the sequence.
 The definition index supplies symbol offsets; its hash-table iteration order does
 not determine interface membership or overload precedence.
 

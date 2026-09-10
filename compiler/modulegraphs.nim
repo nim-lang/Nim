@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
+import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 
@@ -351,18 +351,26 @@ iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
       yield s
 
 proc orderedInterface*(g: ModuleGraph; m: PSym; hidden = false): seq[PSym] =
-  ## Each identifier's symbols appear in the frontend's lookup order.
+  ## Names are sorted; each identifier's symbols retain frontend lookup order.
+  ## Re-exporting must not depend on physical hash-table slots: a loaded table
+  ## can have a different layout while preserving every identifier's order.
   result = @[]
   if hidden: ensureHiddenIface(g, m.position)
   let tab = if hidden: addr semtabAll(g, m) else: addr semtab(g, m)
   var seen = initHashSet[int]()
+  var names: seq[PIdent] = @[]
   for sym in items(tab[]):
     if not seen.containsOrIncl(sym.name.id):
-      var it = default(TIdentIter)
-      var candidate = initIdentIter(it, tab[], sym.name)
-      while candidate != nil:
-        result.add candidate
-        candidate = nextIdentIter(it, tab[])
+      names.add sym.name
+  names.sort(proc(a, b: PIdent): int =
+    result = cmp(a.s[0], b.s[0])
+    if result == 0: result = cmpIgnoreStyle(a.s, b.s))
+  for name in names:
+    var it = default(TIdentIter)
+    var candidate = initIdentIter(it, tab[], name)
+    while candidate != nil:
+      result.add candidate
+      candidate = nextIdentIter(it, tab[])
 
 proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
   ## Symbols DEFINED in `m` that reached `m`'s interface through an explicit

@@ -2,7 +2,7 @@ discard """
   joinable: false
 """
 
-import std/[assertions, os, tempfiles]
+import std/[algorithm, assertions, os, strutils, tempfiles]
 import compiler/[ast, astalgo, ast2nif, idents, lineinfos, modulegraphs, msgs, options, pathutils, typekeys]
 
 # Compare the actual lookup sequence, not just successful overload resolution.
@@ -14,7 +14,10 @@ proc ids(tab: TStrTable; name: PIdent): seq[int32] =
     result.add sym.disamb
     sym = nextIdentIter(it, tab)
 
-proc run(count: int) =
+type Visibility = enum
+  allPublic, allPrivate, mixed
+
+proc run(count: int; visibility: Visibility) =
   let dir = createTempDir("nim_ic_interface_", "")
   try:
     let conf = newConfigRef()
@@ -32,45 +35,64 @@ proc run(count: int) =
       itemId: itemId(file.int32, 0), positionImpl: file.int, infoImpl: info)
     graph.registerModule(module)
     let idgen = idGeneratorFromModule(module)
-    let name = getIdent(cache, "choose")
+    let names = [getIdent(cache, "choose"), getIdent(cache, "anotherChoice"),
+      getIdent(cache, "anotherAlternative"),
+      getIdent(cache, "longOverloadedNameThatCannotBeStoredInline")]
     let body = newNodeI(nkStmtList, info)
     var publicTable = initStrTable()
     for i in 0 ..< count:
-      let sym = newSym(skProc, name, idgen, module, info)
-      # Interleave private and public overloads under the SAME identifier.
-      if i mod 3 == 0:
-        sym.incl sfExported
-        graph.strTableAdds(module, sym)
-        strTableAdd(publicTable, sym)
-      else:
-        strTableAdd(semtabAll(graph, module), sym)
-      body.add newSymNode(sym)
+      for name in names:
+        # Style-equivalent spellings share a lookup group too.
+        let spelling = if i mod 2 == 0: name else:
+          getIdent(cache, name.s[0] & "_" & name.s[1..^1].toUpperAscii)
+        let sym = newSym(skProc, spelling, idgen, module, info)
+        # Interleave private and public overloads under the SAME identifiers.
+        if visibility == allPublic or (visibility == mixed and i mod 3 == 0):
+          sym.incl sfExported
+          graph.strTableAdds(module, sym)
+          strTableAdd(publicTable, sym)
+        else:
+          strTableAdd(semtabAll(graph, module), sym)
+        body.add newSymNode(sym)
       # Unrelated names force hash collisions and table growth too.
       let other = newSym(skProc, getIdent(cache, "other" & $i), idgen, module, info)
-      other.incl sfExported
-      graph.strTableAdds(module, other)
-      strTableAdd(publicTable, other)
+      if visibility != allPrivate:
+        other.incl sfExported
+        graph.strTableAdds(module, other)
+        strTableAdd(publicTable, other)
+      else:
+        strTableAdd(semtabAll(graph, module), other)
       body.add newSymNode(other)
-    let expectedPublic = ids(publicTable, name)
-    let expectedHidden = ids(semtabAll(graph, module), name)
+    var expectedPublic, expectedHidden: seq[seq[int32]]
+    for name in names:
+      expectedPublic.add ids(publicTable, name)
+      expectedHidden.add ids(semtabAll(graph, module), name)
+    # Definition/index order must not become the source of interface order.
+    body.sons.reverse()
     let publicSyms = orderedInterface(graph, module)
     let hiddenSyms = orderedInterface(graph, module, hidden = true)
     writeNifModule(conf, file.int32, body, @[],
       publicInterface = publicSyms, hiddenInterface = hiddenSyms)
 
-    var decoder = createDecodeContext(conf, cache)
-    var exported = initStrTable()
-    var hidden = initStrTable()
-    discard loadNifModule(decoder, file, exported, hidden)
-    doAssert ids(exported, name) == expectedPublic
-    doAssert hidden.counter == 0 # hidden symbols are still lazy
-    doAssert buildHiddenInterface(decoder, cachedModuleSuffix(conf, file), hidden, nil)
-    doAssert ids(hidden, name) == expectedHidden
-    doAssert ids(exported, name) == expectedPublic # loading hidden changes no public order
-    doAssert exported.counter == publicSyms.len
-    doAssert hidden.counter == hiddenSyms.len
+    # Each independent decoder must reconstruct the same order from disk.
+    for _ in 0..1:
+      var decoder = createDecodeContext(conf, cache)
+      var exported = initStrTable()
+      var hidden = initStrTable()
+      discard loadNifModule(decoder, file, exported, hidden)
+      for i, name in names:
+        doAssert ids(exported, name) == expectedPublic[i], $visibility & ": " & $count
+      doAssert hidden.counter == 0 # hidden symbols are still lazy
+      doAssert buildHiddenInterface(decoder, cachedModuleSuffix(conf, file), hidden, nil)
+      for i, name in names:
+        doAssert ids(hidden, name) == expectedHidden[i], $visibility & ": " & $count
+        doAssert ids(exported, name) == expectedPublic[i]
+      doAssert exported.counter == publicSyms.len
+      doAssert hidden.counter == hiddenSyms.len
   finally:
     removeDir(dir)
 
-for count in [2, 8, 32, 128]:
-  run(count)
+# Include empty/singleton tables and both sides of table-growth boundaries.
+for count in [0, 1, 2, 7, 8, 9, 31, 32, 33, 127, 128, 129]:
+  for visibility in Visibility:
+    run(count, visibility)
