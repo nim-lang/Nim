@@ -137,6 +137,8 @@ type                          # please make sure we have under 32 options
                               # string/seq implementation based on destructors
     optTinyRtti               # active if we use the new "tiny RTTI"
                               # implementation
+    optSpawnCodegen           # spawn a separate nim process for codegen
+                              # to reclaim memory before C compilation
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optBenchmarkVM            # Enables cpuTime() in the VM
