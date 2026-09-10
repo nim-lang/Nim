@@ -65,3 +65,17 @@ method handleConn*(myParam: PubSub,
                   proto: string) {.base, async.} =
   myParam.peers.withValue(conn.peerInfo.peerId, peer):
     let peerB = peer[]
+
+
+
+block:
+  type M = object
+
+  proc `=dup`(_: M): M {.error.}
+  proc take(_: sink M) = discard
+
+  proc test() =
+    var value: M
+    take(value)
+
+  test()

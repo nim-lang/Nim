@@ -11,7 +11,8 @@
 ## for details. Note this is a first implementation and only the "Concept matching"
 ## section has been implemented.
 
-import ast, semdata, lookups, lineinfos, idents, msgs, renderer, types, layeredtable
+import ast, semdata, lookups, lineinfos, idents, msgs, renderer, types,
+  layeredtable, semtypinst
 
 import std/sets
 
@@ -71,7 +72,8 @@ proc semConceptDeclaration*(c: PContext; n: PNode): PNode =
 
 type
   MatchFlags* = enum
-    mfDontBind  # Do not bind generic parameters
+    mfDontBind  # Do not export bindings from the concept match
+    mfBindGenericParam  # Export inferred invocation parameters despite mfDontBind
     mfCheckGeneric  # formal <- formal comparison as opposed to formal <- operand
 
   ConceptTypePair = tuple[conceptId, typeId: ItemId]
@@ -205,7 +207,7 @@ proc matchConceptToImpl(c: PContext, f, potentialImpl: PType; m: var MatchCon): 
 
   # Cycle detection: track (concept, type) pairs to prevent infinite recursion.
   # Returns true on cycle (coinductive semantics) to support co-dependent concepts.
-  let pair: ConceptTypePair = (concpt.itemId, potentialImpl.itemId)
+  let pair: ConceptTypePair = (concpt.bindingId, potentialImpl.bindingId)
   if pair in m.marker:
     return true
   m.marker.incl pair
@@ -269,10 +271,8 @@ proc conceptsMatch(c: PContext, fc, ac: PType; m: var MatchCon): MatchKind =
   let
     fn = fc.conceptBody
     an = ac.conceptBody
-    sameLen = fc.len == ac.len
   var match = false
   for fdef in fn:
-    var cmpResult = false
     for ia, ndef in an:
       match = cmpConceptDefs(c, fdef, ndef, m)
       if match:
@@ -330,13 +330,10 @@ proc matchType(c: PContext; fo, ao: PType; m: var MatchCon): bool =
     result = matchType(c, f.skipModifier, a, m)
   of tyTypeDesc:
     if isSelf(f):
-      let ua = a.skipTypes(asymmetricConceptParamMods)
       if m.magic in {mArrPut, mArrGet}:
         if m.potentialImplementation.reduceToBase.kind in arrPutGetMagicApplies:
           bindParam(c, m, a, last m.potentialImplementation)
           result = true
-      #elif ua.isConcept:
-      #  result = matchType(c, m.concpt, ua, m)
       else:
         result = matchType(c, a.skipTypes(ignorableForArgType), m.potentialImplementation, m)
     else:
@@ -578,7 +575,17 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     # error was reported earlier.
     result = false
 
-proc fixBindings(bindings: var LayeredIdTable; concpt: PType; invocation: PType; m: var MatchCon) =
+proc resolvedBinding(c: PContext; t: PType; m: MatchCon): PType =
+  ## An inferred concept parameter can refer to an implementation-local
+  ## generic parameter, for example `Elem[Impl.T]`. Resolve it while the
+  ## matcher's private bindings (`Impl.T -> int`) are still available.
+  if t.containsUnresolvedType:
+    prepareMetatypeForSigmatch(c, m.bindings, m.concpt.sym.info, t)
+  else:
+    t
+
+proc fixBindings(c: PContext; bindings: var LayeredIdTable; concpt: PType;
+                 invocation: PType; m: var MatchCon) =
   # invocation != nil means we have a non-atomic concept:
   if invocation != nil and invocation.kind == tyGenericInvocation:
     assert concpt.sym.typ.kind == tyGenericBody
@@ -590,8 +597,9 @@ proc fixBindings(bindings: var LayeredIdTable; concpt: PType; invocation: PType;
         continue
       let found = m.bindings.lookup(thisSym)
       if found != nil:
-        when logBindings: echo "Invocation bind: ", thisSym, " ", found
-        bindings.put(thisSym, found)
+        let resolved = resolvedBinding(c, found, m)
+        when logBindings: echo "Invocation bind: ", thisSym, " ", resolved
+        bindings.put(thisSym, resolved)
     
     # bind even more generic parameters
     let genBody = invocation.base
@@ -607,6 +615,20 @@ proc fixBindings(bindings: var LayeredIdTable; concpt: PType; invocation: PType;
         bindings.put(invocation[i], boundV)
   bindings.put(concpt, m.potentialImplementation)
 
+proc fixConstraintBindings(c: PContext; bindings: var LayeredIdTable;
+                           invocation: PType; m: MatchCon) =
+  ## Propagates only the dependent parameters of a concept constraint. The
+  ## concept itself and its private matcher bindings must remain unbound so
+  ## that independent constraints using the same concept don't get coupled.
+  if invocation != nil and invocation.kind == tyGenericInvocation:
+    let genBody = invocation.base
+    assert genBody.kind == tyGenericBody
+    for i in FirstGenericParamAt ..< invocation.kidsLen:
+      if lookup(bindings, invocation[i]) == nil:
+        let boundValue = m.bindings.lookup(genBody[i - 1])
+        if boundValue != nil:
+          bindings.put(invocation[i], resolvedBinding(c, boundValue, m))
+
 proc processConcept(c: PContext; concpt, invocation: PType, bindings: var LayeredIdTable; m: var MatchCon): bool =
   m.bindings = m.bindings.newTypeMapLayer()
   if invocation != nil and invocation.kind == tyGenericInst:
@@ -616,8 +638,11 @@ proc processConcept(c: PContext; concpt, invocation: PType, bindings: var Layere
       if invocation[i].kind != tyVoid:
         bindParam(c, m, genericBody[i-1], invocation[i])
   result = conceptMatchNode(c, concpt.conceptBody, m)
-  if result and mfDontBind notin m.flags:
-    fixBindings(bindings, concpt, invocation, m)
+  if result:
+    if mfDontBind notin m.flags:
+      fixBindings(c, bindings, concpt, invocation, m)
+    elif mfBindGenericParam in m.flags:
+      fixConstraintBindings(c, bindings, invocation, m)
 
 proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var LayeredIdTable; invocation: PType, flags: set[MatchFlags] = {}): bool =
   ## Entry point from sigmatch. 'concpt' is the concept we try to match (here still a PType but

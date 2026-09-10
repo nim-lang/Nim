@@ -17,18 +17,14 @@ const
   errInvalidControlFlowX = "invalid control flow: $1"
   errSelectorMustBeOfCertainTypes = "selector must be of an ordinal type, float or string"
   errExprCannotBeRaised = "only a 'ref object' can be raised"
-  errBreakOnlyInLoop = "'break' only allowed in loop construct"
   errExceptionAlreadyHandled = "exception already handled"
   errYieldNotAllowedHere = "'yield' only allowed in an iterator"
-  errYieldNotAllowedInTryStmt = "'yield' cannot be used within 'try' in a non-inlined iterator"
-  errInvalidNumberOfYieldExpr = "invalid number of 'yield' expressions"
   errCannotReturnExpr = "current routine cannot return an expression"
   errGenericLambdaNotAllowed = "A nested proc can have generic parameters only when " &
     "it is used as an operand to another routine and the types " &
     "of the generic paramers can be inferred from the expected signature."
   errCannotInferTypeOfTheLiteral = "cannot infer the type of the $1"
   errCannotInferReturnType = "cannot infer the return type of '$1'"
-  errCannotInferStaticParam = "cannot infer the value of the static param '$1'"
   errProcHasNoConcreteType = "'$1' doesn't have a concrete type, due to unspecified generic parameters."
   errLetNeedsInit = "'let' symbol requires an initialization"
   errThreadvarCannotInit = "a thread var cannot be initialized explicitly; this would only run for the main thread"
@@ -545,7 +541,6 @@ proc semUsing(c: PContext; n: PNode): PNode =
         strTableIncl(c.signatures, v)
     else:
       localError(c.config, a.info, "'using' section must have a type")
-    var def: PNode
     if a[^1].kind != nkEmpty:
       localError(c.config, a.info, "'using' sections cannot contain assignments")
 
@@ -1824,7 +1819,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       var reified = semTypeNode(c, typeNode, nil)
       assert reified != nil
       assignType(typ, reified)
-      typ.itemId = reified.itemId  # same id
+      typ.bindingId = reified.bindingId  # same id
       if containsForwardType(typ):
         c.forwardTypeUpdates.add (owner, typ, typeNode)
       elif not remainingOwners.missingOrExcl(owner.id):
@@ -1837,6 +1832,24 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]
+
+  # a son that still was a `tyForward` could not propagate `tfHasAsgn` and
+  # friends to its owner back then, see `rememberFlagUpdate`. Now that every
+  # forward declaration has a body, redo those propagations. They are recorded
+  # in declaration order rather than dependency order and an owner can itself
+  # be the son of another pair, so repeat until nothing changes; this
+  # terminates because flags are only ever added.
+  if c.forwardFlagUpdates.len > 0:
+    let updates = move c.forwardFlagUpdates
+    c.staleTypeFlags = initIntSet()
+    var changed = true
+    while changed:
+      changed = false
+      for (owner, elem) in updates:
+        let before = owner.flags
+        propagateToOwner(owner, elem)
+        if owner.flags != before: changed = true
+
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -2147,14 +2160,42 @@ proc checkedForDestructor(t: PType): bool =
     return true
   result = false
 
-proc whereToBindTypeHook(c: PContext; t: PType): PType =
+proc normalizeTypeHook(t: PType; markAsgn = false): PType =
   result = t
   while true:
-    if result.kind in {tyGenericBody, tyGenericInst}: result = result.skipModifier
-    elif result.kind == tyGenericInvocation: result = result[0]
-    else: break
+    if markAsgn:
+      incl(result, tfHasAsgn)
+    if result.kind == tyCompositeTypeClass and result.base.kind == tyGenericBody:
+      result = result.base
+    elif result.kind in {tyGenericBody, tyGenericInst}:
+      result = result.skipModifier
+    elif result.kind == tyGenericInvocation:
+      result = result.genericHead
+    else:
+      break
+
+proc whereToBindTypeHook(c: PContext; t: PType): PType =
+  result = normalizeTypeHook(t)
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
     result = canonType(c, result)
+
+proc bindHookToType(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp;
+                    typeToBind: PType): bool =
+  var obj = typeToBind
+  if obj.kind notin {tyObject, tyDistinct, tySequence, tyString}:
+    return false
+  obj = canonType(c, obj)
+  let ao = getAttachedOp(c.graph, obj, op)
+  if ao == s:
+    discard "forward declared hook"
+  elif ao.isNil and not checkedForDestructor(obj):
+    setAttachedOp(c.graph, c.module.position, obj, op, s)
+  else:
+    prevDestructor(c, op, ao, obj, n.info)
+  if obj.owner.getModule != s.getModule:
+    localError(c.config, n.info, errGenerated,
+      "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+  result = true
 
 proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
@@ -2162,32 +2203,11 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let cond = t.len == 2 and t.returnType != nil
 
   if cond:
-    var obj = t.firstParamType
-    while true:
-      incl(obj, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
-      elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-      else: break
+    var obj = normalizeTypeHook(t.firstParamType, markAsgn = true)
+    let res = normalizeTypeHook(t.returnType)
 
-    var res = t.returnType
-    while true:
-      if res.kind in {tyGenericBody, tyGenericInst}: res = res.skipModifier
-      elif res.kind == tyGenericInvocation: res = res.genericHead
-      else: break
-
-    if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, res):
-      obj = canonType(c, obj)
-      let ao = getAttachedOp(c.graph, obj, op)
-      if ao == s:
-        discard "forward declared destructor"
-      elif ao.isNil and not checkedForDestructor(obj):
-        setAttachedOp(c.graph, c.module.position, obj, op, s)
-      else:
-        prevDestructor(c, op, ao, obj, n.info)
-      noError = true
-      if obj.owner.getModule != s.getModule:
-        localError(c.config, n.info, errGenerated,
-          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+    if sameType(obj, res):
+      noError = bindHookToType(c, s, n, op, obj)
 
   if not noError and sfSystemModule notin s.owner.flags:
     localError(c.config, n.info, errGenerated,
@@ -2217,25 +2237,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
                t.len >= 2 and t.returnType == nil
 
   if cond:
-    var obj = t.firstParamType.skipTypes({tyVar})
-    while true:
-      incl(obj, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
-      elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-      else: break
-    if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-      obj = canonType(c, obj)
-      let ao = getAttachedOp(c.graph, obj, op)
-      if ao == s:
-        discard "forward declared destructor"
-      elif ao.isNil and not checkedForDestructor(obj):
-        setAttachedOp(c.graph, c.module.position, obj, op, s)
-      else:
-        prevDestructor(c, op, ao, obj, n.info)
-      noError = true
-      if obj.owner.getModule != s.getModule:
-        localError(c.config, n.info, errGenerated,
-          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+    var obj = normalizeTypeHook(t.firstParamType.skipTypes({tyVar}), markAsgn = true)
+    noError = bindHookToType(c, s, n, op, obj)
   if not noError and sfSystemModule notin s.owner.flags:
     case op
     of attachedTrace:
@@ -2302,35 +2305,12 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       message(c.config, n.info, warnDeprecated, "Overriding `=` hook is deprecated; Override `=copy` hook instead")
     let t = s.typ
     if t.len == 3 and t.returnType == nil and t.firstParamType.kind == tyVar:
-      var obj = t.firstParamType.elementType
-      while true:
-        incl(obj, tfHasAsgn)
-        if obj.kind == tyGenericBody: obj = obj.skipModifier
-        elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-        else: break
-      var objB = t[2]
-      while true:
-        if objB.kind == tyGenericBody: objB = objB.skipModifier
-        elif objB.kind in {tyGenericInvocation, tyGenericInst}:
-          objB = objB.genericHead
-        else: break
-      if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
+      var obj = normalizeTypeHook(t.firstParamType.elementType, markAsgn = true)
+      let objB = normalizeTypeHook(t[2])
+      if sameType(obj, objB):
         # attach these ops to the canonical tySequence
-        obj = canonType(c, obj)
-        #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let k = if name == "=" or name == "=copy": attachedAsgn else: attachedSink
-        let ao = getAttachedOp(c.graph, obj, k)
-        if ao == s:
-          discard "forward declared op"
-        elif ao.isNil and not checkedForDestructor(obj):
-          setAttachedOp(c.graph, c.module.position, obj, k, s)
-        else:
-          prevDestructor(c, k, ao, obj, n.info)
-        if obj.owner.getModule != s.getModule:
-          localError(c.config, n.info, errGenerated,
-            "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
-
-        return
+        if bindHookToType(c, s, n, k, obj): return
     if sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
                 "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
@@ -2396,7 +2376,8 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
       if typ.kind != tyObject:
         localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
       if sameOwners(typ.owner, s.owner) and sameOwners(c.module, s.owner):
-        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+        c.graph.memberProcsPerType.mgetOrPut(typ.bindingId, @[]).add s
+        logCppMember(c.graph, s)
       else:
         localError(c.config, n.info,
           pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
@@ -2404,7 +2385,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
       localError(c.config, n.info, pragmaName & " procs are only supported in C++")
   else:
     var typ = s.typ.returnType
-    if typ != nil and typ.kind == tyObject and typ.itemId notin c.graph.initializersPerType:
+    if typ != nil and typ.kind == tyObject and typ.bindingId notin c.graph.initializersPerType:
       var initializerCall = newTree(nkCall, newSymNode(s))
       var isInitializer = n[paramsPos].len > 1
       for i in  1..<n[paramsPos].len:
@@ -2418,7 +2399,8 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
           initializerCall.add val
           inc j
       if isInitializer:
-        c.graph.initializersPerType[typ.itemId] = initializerCall
+        c.graph.initializersPerType[typ.bindingId] = initializerCall
+        logCppMember(c.graph, s)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if s.isGenericRoutine:

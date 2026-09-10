@@ -34,3 +34,24 @@ block: # Tests for reading the header row
 
   # Tidy up
   removeFile("temp.csv")
+
+block: # Reopening a parser resets its state
+  var p: CsvParser
+
+  var first = newStringStream("A,B\n1,2\n")
+  p.open(first, "first.csv")
+  p.readHeaderRow()
+  doAssert p.readRow()
+  doAssert p.processedRows() == 2
+  p.close()
+  first.close()
+
+  var second = newStringStream("")
+  p.open(second, "second.csv")
+  doAssert p.processedRows() == 0
+  doAssert p.row.len == 0
+  doAssert p.headers.len == 0
+  p.readHeaderRow()
+  doAssert p.headers.len == 0
+  p.close()
+  second.close()

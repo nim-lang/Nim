@@ -459,9 +459,18 @@ theorem cross_target_live (D : Obj → Prop) (claimedB : Obj → Prop)
   A concurrent capture holds raw `(slot, value)` snapshots (TraceEntry);
   the value pointer is dereferenced later (header read in claimCell). A
   capture that overlapped our validation may have snapshotted a slot
-  that USED to point into our dead set. commitDead therefore waits, for
-  every other slot that is in capture phase (gSlotPhase == 1), until
-  that capture ends — captures never wait on anyone, so this is bounded.
+  that USED to point into our dead set. The dead batch must therefore
+  outlive every other slot that was in capture phase (gSlotPhase == 1)
+  at commit time — captures never wait on anyone, so this is bounded.
+
+  commitDead no longer BLOCKS on that: it parks the batch
+  (`gPendingCells`) with a watch list of those captures and
+  `releasePending` frees it at the start of this thread's next
+  collection, off the commit path and outside the GC fence. The parking
+  collection's tag stays in `gActiveTags` so a foreign capture cannot
+  claim a parked cell. See yrc_opt_proof.lean §C for the model of the
+  deferral; the theorems below are the invariant it preserves, with the
+  free time merely moved later.
 
   Two obligations:
   (a) captures that started BEFORE our commit are waited out — temporal
@@ -498,9 +507,10 @@ structure CaptureWindow where
 
 /-- **Grace safety**: no capture dereferences a dead cell at or after
     its free time. `commitT` is when the dead set validated; `freeT` is
-    when commitDead's free loop runs. The premises are exactly the
-    protocol: (grace) commitDead's spin means any capture that started
-    before commit has finished before we free; (miss) §6(b) above. -/
+    when the free loop runs (in releasePending, one collection later).
+    The premises are exactly the protocol: (grace) the watch list means
+    any capture that started before commit has finished before we free;
+    (miss) §6(b) above. -/
 theorem grace_no_use_after_free
     (C : CaptureWindow) (D : Obj → Prop) (commitT freeT : Nat)
     (h_deref : ∀ x t, C.derefs x t → C.start ≤ t ∧ t ≤ C.finish ∧ C.snap x)
@@ -676,8 +686,8 @@ theorem no_deadlock_from_total_order {n : Nat}
       referenced across a partition boundary is never freed by its
       owner this round (soundness of claimCell's -1 + crossPend).
   §6  `post_commit_snap_misses_dead`, `grace_no_use_after_free` — with
-      commitDead's grace spin, no capture ever dereferences freed
-      memory.
+      the grace period (now enforced by the deferred batch's watch list,
+      yrc_opt_proof.lean §C), no capture ever dereferences freed memory.
   §7  `fence_mutual_exclusion` — the SEQ_CST Dekker pairing in
       seqs_v2.nim excludes seq structure mutation during collection.
   §8  `lockLevel_injective`, `mergeLock_level_min`,
@@ -714,7 +724,12 @@ theorem no_deadlock_from_total_order {n : Nat}
   Commit re-stamps proven-live cells with (epochBase|epoch, survivalAge)
   in the claim word; a capture treats a current-epoch stamp of age ≥
   YrcPromoteAge on a DESCENDANT as an opaque live external and does not
-  descend. Soundness needs no new lemmas: a pruned cell is simply an
+  descend. The age is the SCC's, not the cell's — every member is
+  stamped with the age of the SCC's YOUNGEST member, so promotion is
+  all-or-nothing and no INTERNAL edge is ever pruned; see
+  yrc_opt_proof.lean §A, which also shows the minimum can only delay a
+  promotion, so the float bound below is unaffected. Soundness needs no
+  new lemmas: a pruned cell is simply an
   uncaptured cell, so the captured set shrinks and every §3–§6 statement
   quantifies over a smaller S. Pruning can only ADD unexplained external
   refs to captured SCCs (a pruned predecessor's refs are never explained

@@ -103,7 +103,6 @@ when defined(windows):
   import std/os
 
   const
-    DUPLICATE_SAME_ACCESS = 2
     FOREGROUND_BLUE = 1
     FOREGROUND_GREEN = 2
     FOREGROUND_RED = 4
@@ -115,14 +114,7 @@ when defined(windows):
     FOREGROUND_RGB = FOREGROUND_RED or FOREGROUND_GREEN or FOREGROUND_BLUE
     BACKGROUND_RGB = BACKGROUND_RED or BACKGROUND_GREEN or BACKGROUND_BLUE
 
-    ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
-
   type
-    SHORT = int16
-    COORD = object
-      x: SHORT
-      y: SHORT
-
     SMALL_RECT = object
       left: SHORT
       top: SHORT
@@ -140,13 +132,6 @@ when defined(windows):
       dwSize: DWORD
       bVisible: WINBOOL
 
-  proc duplicateHandle(hSourceProcessHandle: Handle, hSourceHandle: Handle,
-                       hTargetProcessHandle: Handle, lpTargetHandle: ptr Handle,
-                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
-                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
-      importc: "DuplicateHandle".}
-  proc getCurrentProcess(): Handle{.stdcall, dynlib: "kernel32",
-                                     importc: "GetCurrentProcess".}
   proc getConsoleScreenBufferInfo(hConsoleOutput: Handle,
     lpConsoleScreenBufferInfo: ptr CONSOLE_SCREEN_BUFFER_INFO): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
@@ -190,30 +175,6 @@ when defined(windows):
                               getStdHandle(STD_ERROR_HANDLE)])
     if h > 0: return h
     return 0
-
-  proc setConsoleCursorPosition(hConsoleOutput: Handle,
-                                dwCursorPosition: COORD): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "SetConsoleCursorPosition".}
-
-  proc fillConsoleOutputCharacter(hConsoleOutput: Handle, cCharacter: char,
-                                  nLength: DWORD, dwWriteCoord: COORD,
-                                  lpNumberOfCharsWritten: ptr DWORD): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterA".}
-
-  proc fillConsoleOutputAttribute(hConsoleOutput: Handle, wAttribute: int16,
-                                  nLength: DWORD, dwWriteCoord: COORD,
-                                  lpNumberOfAttrsWritten: ptr DWORD): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "FillConsoleOutputAttribute".}
-
-  proc setConsoleTextAttribute(hConsoleOutput: Handle,
-                               wAttributes: int16): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
-
-  proc getConsoleMode(hConsoleHandle: Handle, dwMode: ptr DWORD): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "GetConsoleMode".}
-
-  proc setConsoleMode(hConsoleHandle: Handle, dwMode: DWORD): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "SetConsoleMode".}
 
   proc getCursorPos(h: Handle): tuple [x, y: int] =
     var c: CONSOLE_SCREEN_BUFFER_INFO
@@ -915,9 +876,6 @@ when defined(windows):
     var mode = DWORD 0
     discard getConsoleMode(hi, addr mode)
     let origMode = mode
-    const
-      ENABLE_PROCESSED_INPUT = 1
-      ENABLE_ECHO_INPUT = 4
     mode = (mode or ENABLE_PROCESSED_INPUT) and not ENABLE_ECHO_INPUT
 
     discard setConsoleMode(hi, mode)

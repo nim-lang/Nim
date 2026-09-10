@@ -451,7 +451,13 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
   elif tok.indent >= 0:
     var newlineKind = ltCrucialNewline
     if em.keepIndents > 0:
-      em.indentLevel = tok.indent
+      # Apply the requested --indent width to "don't touch" regions (if/block
+      # expressions) too: keep the relative offset from the enclosing block
+      # baseline, but rebase it onto indWidth. Otherwise a non-default
+      # --indent would leave these lines at the original column and inject
+      # invalid indentation (see #20078).
+      em.indentLevel = em.indentStack.high * em.indWidth +
+                       (tok.indent - em.indentStack[^1])
     elif (em.lastTok in (splitters + oprSet) and
         tok.tokType notin (closedPars - {tkBracketDotRi})):
       if tok.tokType in openPars and tok.indent > em.indentStack[^1]:

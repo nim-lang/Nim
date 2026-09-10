@@ -4,6 +4,7 @@ discard """
   exitcode: 0
 """
 import asyncdispatch, asyncnet
+import std/strutils
 
 when defined(windows):
   from winlean import ERROR_NETNAME_DELETED
@@ -14,6 +15,7 @@ else:
 # even when the socket is closed.
 const
   timeout = 2000
+  messagePaddingSize = 64 * 1024
 var port = Port(0)
 
 var sent = 0
@@ -31,10 +33,12 @@ proc isExpectedDisconnectionError(errCode: int32): bool =
     errCode == EBADF or errCode == ECONNRESET or errCode == EPIPE
 
 proc keepSendingTo(c: AsyncSocket) {.async.} =
+  let messagePadding = repeat('x', messagePaddingSize)
   while true:
-    # This write will eventually get stuck because the client is not reading
-    # its messages.
-    let sendFut = c.send("Foobar" & $sent & "\n", flags = {})
+    # Larger writes reach socket backpressure quickly even on slow CI machines.
+    # This write will eventually get stuck because the client is not reading.
+    # Keep the padding after the newline so recvLine does not drain it.
+    let sendFut = c.send("Foobar" & $sent & "\n" & messagePadding, flags = {})
     var sendTimedOut = false
     try:
       # On some platforms (notably macOS ARM64), the kernel may return

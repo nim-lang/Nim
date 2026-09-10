@@ -93,6 +93,37 @@ proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
+proc sameBindingSnapshot(pt: LayeredIdTable; inst: PInstantiation): bool =
+  if inst.bindings.len == 0:
+    return false
+  const flags = {ExactTypeDescValues, ExactGcSafety, PickyCAliases}
+  for binding in inst.bindings:
+    let value = lookupById(pt, binding.key)
+    if value == nil or
+        (value != binding.value and
+         not compareTypes(value, binding.value, flags = flags)):
+      return false
+  # Reject a binding that wasn't visible in the saved mapping. Duplicate keys
+  # in parent layers are harmless because lookupById resolves the top layer.
+  for key, _ in pt.pairs:
+    var found = false
+    for binding in inst.bindings:
+      if key == binding.key:
+        found = true
+        break
+    if not found: return false
+  result = true
+
+proc genericCacheGetFromBindings(g: ModuleGraph; genericSym: PSym,
+                                 pt: LayeredIdTable; id: CompilesId;
+                                 module: PSym): PSym =
+  result = nil
+  for inst in procInstCacheItems(g, genericSym):
+    if inst.sym != nil and inst.sym.itemId.module == module.position and
+        (inst.compilesId == 0 or inst.compilesId == id) and
+        sameBindingSnapshot(pt, inst):
+      return inst.sym
+
 when false:
   proc `$`(x: PSym): string =
     result = x.name.s & " " & " id " & $x.id
@@ -318,7 +349,7 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
     when defined(icDbgRefc):
       echo "[icInst] ", prc.name.s, " param ", oldParam.name.s,
         ": ", typeToString(resulti), " (kind=", resulti.kind,
-        " uid=", resulti.uniqueId.module, ".", resulti.uniqueId.item,
+        " itemId=", resulti.itemId.module, ".", resulti.itemId.item,
         " flags=", resulti.flags, ") -> ", typeToString(paramType),
         " (kind=", paramType.kind, ")"
 
@@ -376,6 +407,10 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
   eraseVoidParams(result)
   skipIntLiteralParams(result, c.idgen)
 
+  # The signature belongs to the INSTANCE, not to the generic it was copied
+  # from: `instCopyType` above kept the generic's owner, and every parameter has
+  # already been re-owned with `setOwner(param, prc)`.
+  setOwner(result, prc)
   prc.typ = result
   popInfoContext(c.config)
 
@@ -427,6 +462,13 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   # hashes only signatures now, so a generic body edit moves only the impl
   # cookie, and just the modules that instantiated it re-sem.
   recordIcImplDep(c.graph, fn)
+  let canUseBindingCache = c.inGenericContext == 0 and c.matchedConcept == nil
+  if canUseBindingCache:
+    result = genericCacheGetFromBindings(c.graph, fn, pt, c.compilesContextId,
+                                         c.module)
+    if result != nil:
+      if result.kind == skMethod: finishMethod(c, result)
+      return
   # generates an instantiated proc
   if c.instCounter > 50:
     globalError(c.config, info, "generic instantiation too nested")
@@ -436,8 +478,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   defer:
     dec c.instCounter
     c.inTypeofContext = currentTypeofContext
-  # careful! we copy the whole AST including the possibly nil body!
-  var n = copyTree(fn.ast)
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   let producer = getModule(fn)
@@ -456,7 +496,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     setOwner(result, c.module)
   else:
     setOwner(result, fn)
-  result.ast = n
   pushOwner(c, result)
 
   # mixin scope:
@@ -464,11 +503,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   fillMixinScope(c)
 
   openScope(c)
-  let gp = n[genericParamsPos]
+  let gp = fn.ast[genericParamsPos]
   if gp.kind != nkGenericParams:
     # bug #22137
     globalError(c.config, info, "generic instantiation too nested")
-  n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
   entry.sym = result
@@ -484,6 +522,15 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     entry.concreteTypes[i] = s.typ
     inc i
   entry.genericParamsCount = i
+  if canUseBindingCache:
+    for key, _ in pt.pairs:
+      var seen = false
+      for binding in entry.bindings:
+        if binding.key == key:
+          seen = true
+          break
+      if not seen:
+        entry.bindings.add (key, lookupById(pt, key))
   c.matchedConcept = nil
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
@@ -493,9 +540,14 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   #echo "INSTAN ", fn.name.s, " ", typeToString(result.typ), " ", entry.concreteTypes.len
   if tfTriggersCompileTime in result.typ.flags:
     incl(result, sfCompileTime)
-  n[genericParamsPos] = c.graph.emptyNode
   var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
   if oldPrc == nil:
+    # The signature has to be instantiated before the cache can be queried,
+    # but cache hits don't need a private copy of the generic's full AST.
+    var n = copyTree(fn.ast)
+    result.ast = n
+    n[namePos] = newSymNode(result)
+    n[genericParamsPos] = c.graph.emptyNode
     # we MUST not add potentially wrong instantiations to the caching mechanism.
     # This means recursive instantiations behave differently when in
     # a ``compiles`` context but this is the lesser evil. See

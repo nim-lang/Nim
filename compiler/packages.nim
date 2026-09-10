@@ -27,7 +27,6 @@ proc getPackage*(conf: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
   ## * `modulegraphs.getPackage`
   let
     filename = AbsoluteFile toFullPath(conf, fileIdx)
-    name = getIdent(cache, splitFile(filename).name)
     info = newLineInfo(fileIdx, 1, 1)
     pkgName = getPackageName(conf, filename.string)
     pkgIdent = getIdent(cache, pkgName)

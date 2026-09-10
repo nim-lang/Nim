@@ -203,7 +203,7 @@ Example "template" **to edit** and write a Testament unittest:
     disabled: "win"
     disabled: "32bit" # ...or architectures
     disabled: "i386"
-    disabled: "azure" # ...or pipeline runners
+    disabled: "github" # ...or pipeline runners
     disabled: true    # ...or can disable the test entirely
 
   """
@@ -218,7 +218,7 @@ Example "template" **to edit** and write a Testament unittest:
   see parseSpec()](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L317).
 * Nim itself uses Testament, so [there are plenty of test examples](
   https://github.com/nim-lang/Nim/tree/devel/tests).
-* Has some built-in CI compatibility, like Azure Pipelines, etc.
+* Has some built-in CI compatibility, like GitHub Actions, etc.
 
 
 Inline hints, warnings and errors (notes)

@@ -158,23 +158,6 @@ proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: b
   of tyFloat64: fun(floatVal, float64, rkFloat)
   else: return false
 
-proc createStrKeepNode(x: var TFullReg; keepNode=true) =
-  if x.node.isNil or not keepNode:
-    x.node = newNode(nkStrLit)
-  elif x.node.kind == nkNilLit and keepNode:
-    when defined(useNodeIds):
-      let id = x.node.id
-    x.node[] = TNode(kind: nkStrLit)
-    when defined(useNodeIds):
-      x.node.id = id
-  elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
-      nfAllConst in x.node.flags:
-    # XXX this is hacky; tests/txmlgen triggers it:
-    x.node = newNode(nkStrLit)
-    # It not only hackey, it is also wrong for tgentemplate. The primary
-    # cause of bugs like these is that the VM does not properly distinguish
-    # between variable definitions (var foo = e) and variable updates (foo = e).
-
 include vmhooks
 
 template createStr(x) =
@@ -1758,7 +1741,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       stackTrace(c, tos, pc, msg2)
     of opcSetLenStr:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.setLen(regs[rb].intVal.int)
     of opcOf:
       decodeBC(rkInt)
@@ -2203,7 +2185,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       inc pc
       let desttyp = c.types[c.code[pc].regBx - wordExcess]
       inc pc
-      let srctyp = c.types[c.code[pc].regBx - wordExcess]
 
       when hasFFI:
         let dest = fficast(c.config, regs[rb].node, desttyp)

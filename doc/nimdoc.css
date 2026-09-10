@@ -553,6 +553,11 @@ ul.nested-toc-section {
 ul.nested-toc-section > li {
   margin-left: 1.25em; }
 
+ul.simple-toc-section a.current,
+ul.nested-toc-section a.current {
+  font-weight: bold;
+  color: var(--anchor-focus);
+}
 
 ol.arabic {
   list-style: decimal; }
@@ -1139,3 +1144,7 @@ span.pragmawrap {
 span.attachedType {
   display: none;
   visibility: hidden; }
+
+summary {
+  cursor: pointer;
+}

@@ -269,6 +269,23 @@ proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
     cb()
     didSomeWork = true
 
+proc processTimersBeforePoll(
+  p: PDispatcherBase, didSomeWork: var bool
+): Option[int] {.inline.} =
+  # Do not let an expired timeout overtake completion callbacks which are
+  # already pending. `adjustTimeout` makes the I/O poll non-blocking when the
+  # callback queue is non-empty.
+  if p.callbacks.len == 0:
+    result = processTimers(p, didSomeWork)
+
+proc processCallbacksAndTimers(p: PDispatcherBase; didSomeWork: var bool) =
+  # A completed operation can take multiple queued callbacks to propagate
+  # through its public future. Process the whole chain before expired timers.
+  processPendingCallbacks(p, didSomeWork)
+  discard processTimers(p, didSomeWork)
+  # Timer futures must still propagate within this dispatcher iteration.
+  processPendingCallbacks(p, didSomeWork)
+
 proc adjustTimeout(
   p: PDispatcherBase, pollTimeout: int, nextTimer: Option[int]
 ): int {.inline.} =
@@ -399,7 +416,7 @@ when defined(windows) or defined(nimdoc):
         "No handles or timers registered in dispatcher.")
 
     result = false
-    let nextTimer = processTimers(p, result)
+    let nextTimer = processTimersBeforePoll(p, result)
     let at = adjustTimeout(p, timeout, nextTimer)
     var llTimeout =
       if at == -1: winlean.INFINITE
@@ -450,10 +467,7 @@ when defined(windows) or defined(nimdoc):
           result = false
         else: raiseOSError(errCode)
 
-    # Timer processing.
-    discard processTimers(p, result)
-    # Callback queue processing
-    processPendingCallbacks(p, result)
+    processCallbacksAndTimers(p, result)
 
 
   var acceptEx: WSAPROC_ACCEPTEX
@@ -1404,7 +1418,7 @@ else:
 
     result = false
     var keys: array[64, ReadyKey]
-    let nextTimer = processTimers(p, result)
+    let nextTimer = processTimersBeforePoll(p, result)
     var count =
       p.selector.selectInto(adjustTimeout(p, timeout, nextTimer), keys)
     for i in 0..<count:
@@ -1447,10 +1461,7 @@ else:
         if writeCbListCount > 0: incl(newEvents, Event.Write)
         p.selector.updateHandle(SocketHandle(fd), newEvents)
 
-    # Timer processing.
-    discard processTimers(p, result)
-    # Callback queue processing
-    processPendingCallbacks(p, result)
+    processCallbacksAndTimers(p, result)
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): owned(Future[string]) =

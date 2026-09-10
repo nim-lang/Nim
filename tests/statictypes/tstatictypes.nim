@@ -457,3 +457,20 @@ block: # bug #22600
 
   var x: c[2]
   x.init()
+
+block:
+  # bug #25938
+
+  proc p(h: static set[bool] = {}) =
+    discard false in h
+
+  p()
+  p({})
+
+block:
+  # bug #25942
+
+  proc p(h: static set[bool]) = discard len(h)
+  p({})
+
+

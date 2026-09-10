@@ -27,7 +27,7 @@ proc hashTree*(n: PNode): Hash =
   of nkCharLit..nkUInt64Lit: result = result !& hash(n.intVal)
   of nkFloatLit..nkFloat64Lit: result = result !& hash(cast[uint64](n.floatVal))
   of nkStrLit..nkTripleStrLit: result = result !& hash(n.strVal)
-  of nkType, nkNilLit: result = result !& hash(n.typ.itemId)
+  of nkType, nkNilLit: result = result !& hash(n.typ.bindingId)
   else:
     for i in 0..<n.len:
       result = result !& hashTree(n[i])

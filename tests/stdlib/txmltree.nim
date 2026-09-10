@@ -118,3 +118,14 @@ block: #21541
   doAssert temp.text == "Hello!"
   temp.text = "Hola!"
   doAssert temp.text == "Hola!"
+
+block: #26039
+  let tree = <>rss(
+    "xmlns:atom" = "http://www.w3.org/2005/Atom",
+    <>"atom:link"(
+      `data-dummy` = "test",
+    ),
+  )
+  doAssert $tree == """<rss xmlns:atom="http://www.w3.org/2005/Atom">
+  <atom:link data-dummy="test" />
+</rss>"""

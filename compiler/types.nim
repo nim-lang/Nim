@@ -11,12 +11,12 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs, wordrecg
+  lineinfos, int128, modulegraphs, astmsgs
 
 import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, formatfloat]
+  import std/[assertions]
 
 export isResolvedUserTypeClass, TPreferedDesc, typeToString
 
@@ -119,7 +119,7 @@ proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   of nkNilLit:
     int128.Zero
   of nkHiddenStdConv:
-    getOrdValueAux(n[1], err)
+    getOrdValueAux(n.secondSon, err)
   else:
     err = true
     int128.Zero
@@ -869,11 +869,6 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
   else:
     result = false
 
-proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
-  if not sameTypeOrNilAux(a.baseClass, b.baseClass, c): return false
-  if not sameObjectTree(a.n, b.n, c): return false
-  result = true
-
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
   if not sameTupleLengths(a, b): return false
   # XXX This is not tuple specific.
@@ -1403,11 +1398,11 @@ proc skipConv*(n: PNode): PNode =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     # only skip the conversion if it doesn't lose too important information
     # (see bug #1334)
-    if n[0].typ.classify == n.typ.classify:
-      result = n[0]
+    if n.firstSon.typ.classify == n.typ.classify:
+      result = n.firstSon
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if n[1].typ.classify == n.typ.classify:
-      result = n[1]
+    if n.secondSon.typ.classify == n.typ.classify:
+      result = n.secondSon
   else: discard
 
 proc skipHidden*(n: PNode): PNode =

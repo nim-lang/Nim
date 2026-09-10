@@ -529,8 +529,11 @@ proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
 type
   TIdentIter* = object # iterator over all syms with same identifier
     h*: Hash           # current hash
-    name*: PIdent
+    name* {.cursor.}: PIdent
 
+# String tables are always initialized with non-empty, power-of-two storage,
+# and every probe is masked by `high(tab.data)`.
+{.push boundChecks: off.}
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   # hot spots
   var h = ti.h and high(tab.data)
@@ -548,6 +551,7 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   else:
     result = nil
   ti.h = nextTry(h, high(tab.data))
+{.pop.}
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   ti.h = s.h
@@ -635,8 +639,13 @@ proc getOrDefault*[T](t: TIdTable[T], key: ItemId): T =
   if index >= 0: result = t.data[index].val
   else: result = default(T)
 
-template idTableGet*[T](t: TIdTable[T], key: PType | PSym): T =
+template idTableGet*[T](t: TIdTable[T], key: PSym): T =
   getOrDefault(t, key.itemId)
+
+template idTableGet*[T](t: TIdTable[T], key: PType): T =
+  ## Type-keyed tables are BINDING tables: an `exactReplica` must find what its
+  ## original bound, hence `bindingId` and not the type's own identity.
+  getOrDefault(t, key.bindingId)
 
 proc idTableRawInsert[T](data: var TIdPairSeq[T], key: ItemId, val: T) =
   var h: Hash
@@ -668,8 +677,11 @@ proc `[]=`*[T](t: var TIdTable[T], key: ItemId, val: T) =
     idTableRawInsert(t.data, key, val)
     inc(t.counter)
 
-template idTablePut*[T](t: var TIdTable[T], key: PType | PSym, val: T) =
+template idTablePut*[T](t: var TIdTable[T], key: PSym, val: T) =
   t[key.itemId] = val
+
+template idTablePut*[T](t: var TIdTable[T], key: PType, val: T) =
+  t[key.bindingId] = val
 
 iterator idTablePairs*[T](t: TIdTable[T]): tuple[key: ItemId, val: T] =
   for i in 0..high(t.data):
@@ -729,6 +741,6 @@ proc listSymbolNames*(symbols: openArray[PSym]): string =
     result.add sym.name.s
 
 proc isDiscriminantField*(n: PNode): bool =
-  if n.kind == nkCheckedFieldExpr: sfDiscriminant in n[0][1].sym.flags
-  elif n.kind == nkDotExpr: sfDiscriminant in n[1].sym.flags
+  if n.kind == nkCheckedFieldExpr: sfDiscriminant in n.firstSon.secondSon.sym.flags
+  elif n.kind == nkDotExpr: sfDiscriminant in n.secondSon.sym.flags
   else: false

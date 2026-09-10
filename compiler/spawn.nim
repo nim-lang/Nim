@@ -11,7 +11,6 @@
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
   lowerings, liftdestructors, renderer, trees
-from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)

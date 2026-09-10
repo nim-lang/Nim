@@ -61,6 +61,17 @@ iterator pairs*(pt: LayeredIdTable): (ItemId, PType) =
       break
     tm.setToPreviousLayer
 
+proc lookupById*(typeMap: LayeredIdTable, key: ItemId): PType =
+  ## Looks up an ItemId directly, observing the same layer shadowing rules as
+  ## `lookup`. This form is useful when a binding key was previously captured.
+  result = nil
+  var tm = typeMap
+  while true:
+    result = getOrDefault(tm.topLayer, key)
+    if result != nil or tm.nextLayer == nil:
+      return
+    tm.setToPreviousLayer
+
 proc lookup(typeMap: ref LayeredIdTableObj, key: ItemId): PType =
   result = nil
   var tm = typeMap
@@ -71,7 +82,7 @@ proc lookup(typeMap: ref LayeredIdTableObj, key: ItemId): PType =
 
 template lookup*(typeMap: ref LayeredIdTableObj, key: PType): PType =
   ## recursively looks up binding of `key` in all parent layers
-  lookup(typeMap, key.itemId)
+  lookup(typeMap, key.bindingId)
 
 when not useRef:
   proc lookup(typeMap: LayeredIdTableObj, key: ItemId): PType {.inline.} =
@@ -80,11 +91,11 @@ when not useRef:
       result = lookup(typeMap.nextLayer, key)
 
   template lookup*(typeMap: LayeredIdTableObj, key: PType): PType =
-    lookup(typeMap, key.itemId)
+    lookup(typeMap, key.bindingId)
 
 proc put(typeMap: var LayeredIdTable, key: ItemId, value: PType) {.inline.} =
   typeMap.topLayer[key] = value
 
 template put*(typeMap: var LayeredIdTable, key, value: PType) =
   ## binds `key` to `value` only in current layer
-  put(typeMap, key.itemId, value)
+  put(typeMap, key.bindingId, value)
