@@ -29,6 +29,11 @@
 ## loaded pool — a loaded buffer is read-only — and nothing may: nifcore's
 ## `getOrIncl` would build its reverse index over the empty entries.
 ##
+## The symbol pool is the one that cannot be filled entry-for-entry: nifcore
+## stores a symbol TAKEN APART (`NifSymbol`, three `StrId`s into `p.strings`),
+## and re-interning those components would hash a pool that is still all
+## placeholders. `fillSym` puts the spelling back whole instead — see there.
+##
 ## `-d:icEagerPools` makes `load` the plain `bif.load`, for an A/B; the
 ## accessors work on an eager pool as they do on any other.
 
@@ -70,15 +75,37 @@ proc bytes(L: LazyNames; idx: int): (int, int) =
                                   off, min(off + maxVarIntLen, L.size) - 1), n)
   result = (off + used, int n)
 
-proc fill[Id](t: var BiTable[Id, string]; L: LazyNames; id: Id) =
-  ## Copy `id`'s name out of the mapping into `t`.
-  let idx = int(uint32(id)) - 1
+proc name(L: LazyNames; idx: int): string =
+  ## The `idx`'th name, copied out of the mapping. "" when there is none.
+  result = ""
   if idx < L.offs.len:
     let (start, n) = bytes(L, idx)
     if n > 0:
-      var s = newString(n)
-      copyMem(addr s[0], addr L.base[start], n)
-      t[id] = s
+      result = newString(n)
+      copyMem(addr result[0], addr L.base[start], n)
+
+proc fill[Id](t: var BiTable[Id, string]; L: LazyNames; id: Id) =
+  ## Copy `id`'s name out of the mapping into `t`.
+  let s = name(L, int(uint32(id)) - 1)
+  if s.len > 0: t[id] = s
+
+proc fillSym(p: Pool; L: LazyNames; id: SymId) =
+  ## Copy `id`'s SPELLING out of the mapping into `p`'s symbol pool.
+  ##
+  ## The pool stores a symbol taken apart (`NifSymbol`: three `StrId`s into
+  ## `p.strings` plus the disambiguator), and putting one together again means
+  ## interning its components — which is the one thing a lazily filled pool
+  ## cannot do: `getOrIncl` would `ensureIndexed` over `p.strings`, whose
+  ## entries are all still the empty placeholder `rNames` left, hashing every
+  ## one of them to the same bucket. So the spelling goes in whole, under an
+  ## `addOrdered` id (appended, never hashed) with `NoDisamb` and no
+  ## dedup/module suffix: `symString` then yields exactly the mapped bytes,
+  ## which is what the file said in the first place. The taken-apart FIELDS of
+  ## such a record are not meaningful — nothing asks a loaded pool for them,
+  ## and `findSym` answers the one lookup-by-value question off the mapping.
+  let s = name(L, int(uint32(id)) - 1)
+  if s.len > 0:
+    p.symbols[id] = NifSymbol(name: p.strings.addOrdered(s), disamb: NoDisamb)
 
 proc index(L: var LazyNames) =
   ## Build `keys`: open addressing, at most half full.
@@ -114,12 +141,16 @@ proc find(L: var LazyNames; name: string): uint32 =
 
 proc poolSym*(p: Pool; id: SymId): string =
   ## `nifcore.poolSym`, for a pool whose names may still be in the file.
-  result = p.syms[id]
-  if result.len == 0:
-    let L = lazyOf(p)
-    if L != nil:
-      fill(p.syms, L.syms, id)
-      result = p.syms[id]
+  let L = lazyOf(p)
+  if L != nil:
+    # `StrId(0)` is the placeholder record: no name read yet. It cannot be a
+    # filled one -- `addOrdered` never hands out 0 -- and it must not reach
+    # `symString`, which would index `p.strings` at 0.
+    if p.symbols[id].name == StrId(0): fillSym(p, L.syms, id)
+    let s = p.symbols[id]
+    result = if s.name == StrId(0): "" else: symString(p, s)
+  else:
+    result = symString(p, id)
 
 proc poolStr*(p: Pool; id: StrId): string =
   ## `nifcore.poolStr`, for a pool whose names may still be in the file.
@@ -170,7 +201,6 @@ proc findSym*(p: Pool; name: string): SymId =
   if L != nil:
     result = SymId find(L.syms, name)
   else:
-    ensureIndexed(p.syms)
     result = getKeyId(p.syms, name)
 
 # ── loading ───────────────────────────────────────────────────────────────
@@ -204,16 +234,17 @@ proc rStr(r: var Reader): string =
   if n > 0: copyMem(addr result[0], addr r.base[r.pos], n)
   r.pos += n
 
-proc rNames[Id](r: var Reader; t: var BiTable[Id, string]; n: int): LazyNames =
+proc rNames[Id, T](r: var Reader; t: var BiTable[Id, T]; n: int; empty: T): LazyNames =
   ## Give `t` an empty entry for each of the next `n` names, and record where
-  ## each name is.
+  ## each name is. `empty` is what "not read yet" looks like in `t`: "" for a
+  ## string pool, the all-zero record for the symbol pool.
   result = LazyNames(base: r.base, size: r.size, offs: newSeqOfCap[uint32](n))
   for _ in 1 .. n:
     result.offs.add uint32(r.pos)
     let len = int rVarint(r)
     assert r.pos + len <= r.size, "bif: truncated string"
     r.pos += len
-    discard t.addOrdered("")
+    discard t.addOrdered(empty)
 
 proc load*(filename: string): BifModule =
   ## `bif.load`, with the string, symbol and filename pools left in the
@@ -244,9 +275,9 @@ proc load*(filename: string): BifModule =
     r.pos += tokenBytes
     for _ in 1 .. nTags: discard result.buf.tags.tags.addOrdered(rStr(r))
     let lazy = LazyPool()
-    lazy.strings = rNames(r, result.buf.pool.strings, nStrings)
-    lazy.syms = rNames(r, result.buf.pool.syms, nSyms)
-    lazy.filenames = rNames(r, result.buf.pool.filenames, nFiles)
+    lazy.strings = rNames(r, result.buf.pool.strings, nStrings, "")
+    lazy.syms = rNames(r, result.buf.pool.symbols, nSyms, NifSymbol())
+    lazy.filenames = rNames(r, result.buf.pool.filenames, nFiles, "")
     lazyPools[result.buf.pool] = lazy
     let nIndex = int rVarint(r)
     result.index = newSeq[IndexEntry](nIndex)
