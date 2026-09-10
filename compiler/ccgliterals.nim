@@ -53,11 +53,11 @@ proc genStringLiteralDataOnlyV1(m: BModule, s: string; result: var Rope) =
         res.add(makeCString(s))
   m.s[cfsStrData].add(extract(res))
 
-proc genStringLiteralV1(m: BModule; n: AnyNode; result: var Builder) =
+proc genStringLiteralV1(m: BModule; n: PNode; result: var Builder) =
   if s.isNil:
     result.add(cCast(ptrType(cgsymValue(m, "NimStringDesc")), NimNil))
   else:
-    let id = nodeTableTestOrSet(m.dataCache, origin(n), m.labels)
+    let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
     var name: string = ""
     if id == m.labels:
       # string literal not found in the cache:
@@ -85,8 +85,8 @@ proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bo
         res.add(makeCString(s))
   m.s[cfsStrData].add(extract(res))
 
-proc genStringLiteralV2(m: BModule; n: AnyNode; isConst: bool; result: var Builder) =
-  let id = nodeTableTestOrSet(m.dataCache, origin(n), m.labels)
+proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool; result: var Builder) =
+  let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   var litName: string
   if id == m.labels:
     cgsym(m, "NimStrPayload")
@@ -111,8 +111,8 @@ proc genStringLiteralV2(m: BModule; n: AnyNode; isConst: bool; result: var Build
         res.add(cCast(ptrType("NimStrPayload"), cAddr(litName)))
   m.s[cfsStrData].add(extract(res))
 
-proc genStringLiteralV2Const(m: BModule; n: AnyNode; isConst: bool; result: var Builder) =
-  let id = nodeTableTestOrSet(m.dataCache, origin(n), m.labels)
+proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool; result: var Builder) =
+  let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   var pureLit: Rope
   if id == m.labels:
     pureLit = getTempName(m)
@@ -164,7 +164,7 @@ proc ssoMoreLit(m: BModule; s: string): string =
       val = val or (ch shl (uint(ptrSize - 1 - i) * 8))
   result = cCast(ptrType("LongString"), "(uintptr_t)" & $val)
 
-proc genStringLiteralV3Const(m: BModule; n: AnyNode; isConst: bool; result: var Builder) =
+proc genStringLiteralV3Const(m: BModule; n: PNode; isConst: bool; result: var Builder) =
   # Inline SmallString struct initializer for use inside const aggregate types.
   # Layout: {bytes: NimUint, more: ptr LongString}
   # bytes = slen (low byte) | char[0]<<8 | char[1]<<16 | ... | char[6]<<56
@@ -220,7 +220,7 @@ proc genStringLiteralV3Const(m: BModule; n: AnyNode; isConst: bool; result: var 
 
 # ------ Version 3: SmallString (SSO) strings --------------------------------
 
-proc genStringLiteralV3(m: BModule; n: AnyNode; isConst: bool; result: var Builder) =
+proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder) =
   # SmallString literal. Always generate a fresh SmallString variable (like v2
   # always generates a fresh outer NimStringV2). For long strings, cache the
   # LongString payload to avoid duplicates within a module.
@@ -259,7 +259,7 @@ proc genStringLiteralV3(m: BModule; n: AnyNode; isConst: bool; result: var Build
   else:
     # Long: cache the LongString block to emit it only once per module per string.
     # Always generate a fresh SmallString pointing at the (possibly cached) block.
-    let id = nodeTableTestOrSet(m.dataCache, origin(n), m.labels)
+    let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
     var dataName: string
     if id == m.labels:
       dataName = getTempName(m)
@@ -301,7 +301,7 @@ proc genStringLiteralV3(m: BModule; n: AnyNode; isConst: bool; result: var Build
 proc genNilStringLiteral(m: BModule; info: TLineInfo; result: var Builder) =
   result.add(cCast(ptrType(cgsymValue(m, "NimStringDesc")), NimNil))
 
-proc genStringLiteral(m: BModule; n: AnyNode; result: var Builder) =
+proc genStringLiteral(m: BModule; n: PNode; result: var Builder) =
   case detectStrVersion(m)
   of 0, 1: genStringLiteralV1(m, n, result)
   of 2: genStringLiteralV2(m, n, isConst = true, result)

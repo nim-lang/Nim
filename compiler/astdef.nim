@@ -50,8 +50,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 63 flags! 64 is a HARD ceiling -- see the
-                      # `static:` block after `TSymKinds` for why.
+  TSymFlag* = enum    # 63 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -350,8 +349,7 @@ type
                 # carry an array type), so it must survive copies + serialization.
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 48);
-                      # 64 is a hard ceiling, see the `static:` block below
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 47)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -459,35 +457,6 @@ type
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
   TSymKinds* = set[TSymKind]
-
-static:
-  # These three sets are read-modify-written from several passes at once as
-  # soon as routine bodies run in parallel (doc/parallel_compiler.md §4.4), and
-  # the only way to do that without losing an update is one fetch-or on one
-  # machine word — `concurrency.atomicIncl`, wired into `ast`'s `incl`/`excl`
-  # under `-d:nimParallelSem`. Nim packs a set of at most 64 elements into a
-  # word and widens it to a byte array beyond that, and there is no atomic
-  # read-modify-write of a byte array.
-  #
-  # So the width is an invariant of the design, not an accident of how many
-  # flags happen to exist, and it is checked here rather than discovered as an
-  # `{.error: "flag set wider than a machine word".}` from inside a template
-  # instantiation. `TSymFlag` is the one with headroom left over: 63 of 64, so
-  # exactly one more flag fits and the one after that does not (a 65-value
-  # enum's set is 9 bytes, measured, not assumed).
-  #
-  # If this fires, do not widen the set — take a flag away (several are
-  # aliases: `sfNoInit`, `sfNoForward`, ...), or put the new one in a side
-  # table.
-  doAssert sizeof(TSymFlags) <= 8,
-    "TSymFlag has outgrown a machine word (" & $(sizeof(TSymFlags) * 8) &
-    " bits): the atomic flag ops of doc/parallel_compiler.md §4.4 cannot work"
-  doAssert sizeof(TTypeFlags) <= 8,
-    "TTypeFlag has outgrown a machine word (" & $(sizeof(TTypeFlags) * 8) &
-    " bits): the atomic flag ops of doc/parallel_compiler.md §4.4 cannot work"
-  doAssert sizeof(TNodeFlags) <= 8,
-    "TNodeFlag has outgrown a machine word (" & $(sizeof(TNodeFlags) * 8) &
-    " bits): the atomic flag ops of doc/parallel_compiler.md §4.4 cannot work"
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
@@ -973,17 +942,6 @@ const
 
 
 var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
-var releaseLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.}
-  ## The inverse: hand a materialised body back to the loader so it becomes
-  ## the `nfLazyBody` placeholder again (see `ast2nif.releaseLazyBody`).
-
-proc releaseLazyBody*(n: PNode) =
-  ## Drop a routine body's materialised children after the one reader that
-  ## needed them is done. Nothing is lost: the placeholder goes back to
-  ## pending and the next `len` on it loads the body from the `.bif` again.
-  ## A no-op for a node the loader never deferred.
-  if n != nil and releaseLazyBodyHook != nil:
-    releaseLazyBodyHook(n)
   ## Set by the IC loader (ast2nif). When a node carries `nfLazyBody`, any access
   ## to its children through `len` materializes the deferred routine body in place.
   ## `safeLen` delegates to `len`, so it is covered transitively; a lazy body is
@@ -1022,7 +980,7 @@ iterator sons*(n: PNode): PNode =
   ## as it does not rely on random indexed access, and over `for x in n.sons`,
   ## which reads the raw FIELD and so skips the `len` hook that materialises a
   ## deferred `nfLazyBody` body — over such a body that loop silently visits
-  ## nothing. See `compiler/bnode.nim` for the backend vocabulary this feeds.
+  ## nothing.
   for i in 0..<n.safeLen: yield n[i]
 
 iterator isons*(n: PNode; start = 0): tuple[i: int, n: PNode] =
@@ -1058,6 +1016,15 @@ iterator isonsButLast*(n: PNode; count = 1): tuple[i: int, n: PNode] =
   ## Like `sonsButLast` but also yields the child index — for a tuple field
   ## position, a parallel index into the tuple's `PType`, and so on.
   for i in 0 ..< n.safeLen - count: yield (i, n[i])
+
+template son*(n: PNode; i: int): PNode =
+  ## Named indexed access to child `i`, for the small constant positions that
+  ## `firstSon`/`secondSon`/`lastSon` do not cover.
+  n[i]
+
+template hasSons*(n: PNode): bool =
+  ## Emptiness test; goes through `safeLen` so a deferred body is materialised.
+  n.safeLen > 0
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968

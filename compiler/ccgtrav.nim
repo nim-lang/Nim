@@ -18,7 +18,7 @@ type
 
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
-proc genCaseRange(p: BProc, branch: AnyNode, info: var SwitchCaseBuilder)
+proc genCaseRange(p: BProc, branch: PNode, info: var SwitchCaseBuilder)
 proc getTemp(p: BProc, t: PType, needsInit=false): TLoc
 
 proc visit(p: BProc, data, visitor: Snippet) =

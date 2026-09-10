@@ -3840,13 +3840,6 @@ proc lineInfoFromCursor*(c: var DecodeContext; n: Cursor): TLineInfo =
   ## the `ConfigRef` the `LineInfoWriter` holds.
   result = c.infos.oldLineInfo(n.info, cursorPool(n))
 
-releaseLazyBodyHook = proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.} =
-  if loaderCtx != nil:
-    {.cast(raises: []).}:
-      {.cast(tags: []).}:
-        {.cast(gcsafe).}:
-          releaseLazyBody(loaderCtx[], n)
-
 forceLazyBodyHook = proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.} =
   # `len` (the sole caller path) MUST stay effect-free, so this hook is typed
   # `raises: []`. The underlying `loadNode` chain infers `raises: [KeyError]`
