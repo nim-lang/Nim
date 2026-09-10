@@ -258,7 +258,7 @@ proc load*(filename: string): BifModule =
     for i in 0 ..< Magic.len:
       if r.base[i] != Magic[i]:
         quit "bif: bad magic / incompatible format: " & filename
-    assert r.size <= int(high(uint32)), "bif: file too large: " & filename
+    assert uint64(r.size) <= uint64(high(uint32)), "bif: file too large: " & filename
     r.pos = Magic.len
     discard rU64(r)                       # indexOffset; a full load reaches it linearly
     let tokenCount = int rVarint(r)
