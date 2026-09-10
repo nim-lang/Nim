@@ -1163,6 +1163,55 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
+proc spawnCodegenSubprocess*(conf: ConfigRef) =
+  ## Spawns a separate nim process with --compileOnly to perform
+  ## Nim-to-C code generation, then runs the C compile/link steps from the
+  ## generated JSON build instructions. This reclaims the Nim compiler's memory
+  ## before proceeding with C compilation.
+
+  # The subprocess args consist of the existing args and options up to the
+  # project file with `--compileOnly` injected first - anything after the project
+  # file is meant for running the project (`-r`) so we should have exactly two
+  # non-option arguments.
+  # We also disable the conf hint since it would otherwise show twice as the
+  # config files get parsed by both processes.
+  var subArgs = @["--compileOnly", "--hint[Conf]:off"]
+  var projectFileAdded = false
+  var commandAdded = false
+  for a in os.commandLineParams():
+    if a.len == 0:
+      continue
+
+    if a notin ["-r", "--run"]:
+      subArgs.add a
+
+    if a[0] != '-':
+      if commandAdded:
+        projectFileAdded = true
+        break
+      else:
+        commandAdded = true
+
+  doAssert projectFileAdded, "Could not find project file in command line, bug?"
+
+  # Spawn subprocess - the subprocess generates C files + JSON build instructions
+  let nimExe = getAppFilename()
+  try:
+    let p = startProcess(nimExe, args = subArgs, options = {poParentStreams})
+    let exitCode = p.waitForExit()
+    p.close()
+    if exitCode != 0:
+      # We assume the internal compiler has printed its own messages - the test
+      # suite depends on nothing being printed here
+      inc conf.errorCounter
+      return
+  except CatchableError as e:
+    rawMessage(conf, errGenerated, "execution of codegen failed: '$1'" %
+      [e.msg])
+    return
+
+  runJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile)
+
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   result = ""
   for it in list:

@@ -185,3 +185,4 @@ Advanced options:
                             the JavaScript backend (default: on)
   --nimBasePattern:nimbase.h
                             allows to specify a custom pattern for `nimbase.h`
+  --spawncodegen:on|off     spawn a separate process for the codegen phase
