@@ -214,11 +214,10 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
   var count = 0
   for scope in allScopes(c.currentScope):
     echo "scope ", i
-    for h in 0..high(scope.symbols.data):
-      if scope.symbols.data[h] != nil:
-        if count >= max: return
-        echo count, ": ", scope.symbols.data[h].name.s
-        count.inc
+    for sym in scope.symbols:
+      if count >= max: return
+      echo count, ": ", sym.name.s
+      count.inc
     if i == limit: return
     inc i
 
