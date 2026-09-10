@@ -29,8 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "41"
-    ## v41: preserve exported overload order and regenerate ownership lowering.
+  icFormatVersion* = "42"
+    ## v42: authoritative ordered public and hidden interfaces.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`

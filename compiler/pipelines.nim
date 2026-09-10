@@ -339,11 +339,12 @@ proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenera
         if sfInjectDestructors in module.flags: ModFlagInjectDestructors else: 0'i32
       timed tWriteNif:
         writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
-                       replayActions, implDeps, reexportedModuleSyms(graph, module),
+                       replayActions, implDeps,
                        genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
                        expansions, moduleFlags,
                        reexportedLocalSyms(graph, module),
-                       exportedOverloads(graph, module))
+                       orderedInterface(graph, module),
+                       orderedInterface(graph, module, hidden = true))
       # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]

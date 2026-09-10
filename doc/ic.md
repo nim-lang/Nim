@@ -101,6 +101,32 @@ backend:
   picks the single artifact allowed to embed each body (smallest claimant), which
   is the cross-process replacement for the old in-process single-writer machinery.
 
+Ordered module interfaces
+=========================
+
+Each semantic BIF carries two authoritative interface records:
+
+* ``(interface <count> <symbol>...)`` lists public symbols, including re-exports.
+* ``(hiddeninterface <count> <symbol>...)`` lists the full interface used by
+  ``import module {.all.}``, including both public and private symbols.
+
+Symbols with the same identifier appear in the frontend's lookup order. A module
+qualifier is represented by ``(reexpmod "alias" "moduleSuffix")`` in the sequence.
+The definition index supplies symbol offsets; its hash-table iteration order does
+not determine interface membership or overload precedence.
+
+The loader reserves space for the complete record before inserting its symbols,
+so table growth cannot scramble the recorded order. It builds the public table
+on import and the full table independently on first hidden lookup. Module aliases
+are resolved during insertion, with no later appends or slot-reordering pass.
+Lowered BIFs carry these records forward without eagerly loading declarations.
+
+The public record contributes to the interface fingerprint, so changing overload
+order invalidates importers. The full record contributes to the implementation
+fingerprint, and hidden lookups record an implementation dependency so private
+edits invalidate their consumers too. These records expose candidate order to
+tooling; they are not a trace of call-site overload resolution.
+
 The driver: graph construction (`commandIc`)
 ============================================
 
