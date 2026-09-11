@@ -34,7 +34,6 @@ hint("Processing", off)
 # preview APIs are expected to be the new default in upcoming versions
 #switch("define", "nimPreviewDotLikeOps") # deprecated?
 switch("define", "nimPreviewJsonutilsHoleyEnum")
-switch("define", "nimPreviewHashRef")
 switch("define", "nimPreviewRangeDefault")
 switch("define", "nimPreviewNonVarDestructor")
 switch("define", "nimPreviewCheckedClose")

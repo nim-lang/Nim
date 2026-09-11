@@ -3,6 +3,8 @@
 
 ## Changes affecting backward compatibility
 
+- `-d:nimPreviewHashRef` becomes the default. `hashes.hash` can now support `object` and `ref` (can be overloaded in user code).
+
 - `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
 floating point numbers that are minimal in size and possess round-trip and correct
 rounding guarantees (via the
