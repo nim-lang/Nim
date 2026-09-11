@@ -203,21 +203,34 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
           ambiguous = true
           break outer
 
+proc standsAlone(s: PSym): bool {.inline.} =
+  ## Can `s` be an expression all by itself? A routine that takes parameters
+  ## cannot be, and that is what tells the two readings of `x.f(a)` apart when
+  ## a scope holds both a module and a declaration named `x`.
+  result = s.kind notin routineKinds or s.typ == nil or s.typ.len <= 1
+
 proc pickFromScope(scope: PScope; s: PIdent; filter: TSymKinds): PSym =
   ## the symbol of name `s` that `scope` declares, or nil. One scope can hold a
   ## module name *and* a declaration of that name: `import mem` and a later
   ## `template mem` both end up in the module's top level scope and, `skModule`
-  ## being an "overloadable" kind, neither is a redefinition of the other. The
-  ## declaration wins -- the module name is merely what the import happened to
-  ## be called -- so `mem.read16(x)` is `read16(mem, x)` and not a qualified
-  ## call. `symChoice` and `errorUseQualifier` let modules lose the same way.
+  ## being an "overloadable" kind, neither is a redefinition of the other.
+  ##
+  ## A module name loses to such a declaration, but only to one that could be
+  ## an expression on its own. `template mem: CPUMemory` can be, so
+  ## `mem.read16(x)` is `read16(mem, x)`; `template re(data: string)` cannot,
+  ## so in `re.re(x)` the `re` on the left is the imported module and the call
+  ## is qualified. `symChoice` and `errorUseQualifier` let modules lose too.
   var ti: TIdentIter = default(TIdentIter)
   var candidate = initIdentIter(ti, scope.symbols, s)
   result = nil
   while candidate != nil:
     if candidate.kind in filter:
-      if candidate.kind != skModule: return candidate
-      if result == nil: result = candidate
+      if result == nil:
+        result = candidate
+        # anything but a module name is simply the first declaration and wins
+        if result.kind != skModule: return result
+      elif candidate.kind != skModule and standsAlone(candidate):
+        return candidate
     candidate = nextIdentIter(ti, scope.symbols)
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
