@@ -1833,3 +1833,16 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
         result.add ni
       else: break
     else: break
+
+var compileTimeExitProcs {.compileTime.}: seq[proc(): NimNode]
+proc addCompileTimeExitProc*(cb: proc(): NimNode) {.compileTime.} =
+  ## Schedules `cb` to be executed as if it was a macro call
+  ## at the end of main module. Appends result of `cb` at the
+  ## end of main module.
+  if compileTimeExitProcs.len == 0:
+    nimSetCompileTimeExit(proc(): NimNode =
+      result = newNimNode(nnkStmtList)
+      for cb in compileTimeExitProcs:
+        result.add(cb()))
+  compileTimeExitProcs.add(cb)
+
