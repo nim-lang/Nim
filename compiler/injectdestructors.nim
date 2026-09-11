@@ -224,6 +224,7 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
     addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
     addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
+  result.info = unknownLineInfo
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = getAttachedOp(c.graph, t, kind)
