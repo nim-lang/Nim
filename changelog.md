@@ -39,6 +39,9 @@ errors.
 parameter and result types, not just their source-level shape. Use
 `--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
+- `std/cmdline.commandLineParams()` for NimScript now consistently returns only the script arguments (excluding the `nim` executable and its flags), fixing inconsistency between `std/cmdline` and `std/parseopt`.
+
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
