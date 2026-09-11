@@ -3521,6 +3521,45 @@ expanded into a list of its elements:
     else: echo "other"
   ```
 
+When the selector has type `ref object` or `ptr object`, the `case`
+statement also supports runtime subtype selection:
+
+  ```nim
+  type
+    Base {.inheritable.} = ref object
+    Sub1 = ref object of Base
+      a: int
+    Sub2 = ref object of Base
+      b: string
+
+  proc classify(x: Base): string =
+    case x
+    of Sub1 as s1:
+      $s1.a
+    of Sub2 as s2:
+      s2.b
+    else:
+      "fallback"
+  ```
+
+In this form, each `of` branch names one or more object types and is matched
+using the same runtime subtype check as the `of` operator. `nil` does not match
+any object branch.
+
+The optional `as` form introduces a branch-local alias with the matched subtype:
+
+  ```nim
+  of Sub1 as s1:
+    echo s1.a
+  ```
+
+`as` can only be used with a single type in a branch. The alias is treated as
+the selector value converted to the branch type after the branch condition has
+already established that the conversion is valid.
+
+Object-selector case statements are not checked for exhaustiveness.
+The same selector form is also available in `case` expressions.
+
 The `case` statement doesn't produce an l-value, so the following example
 won't work:
 
