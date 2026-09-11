@@ -649,8 +649,13 @@ type
     data*: seq[PSym]          # the symbols, in insertion order, no holes
     next*: seq[int32]         # parallel to `data`: 1 + index of the next
                               # symbol with the same name, 0 = end of chain
-    heads: seq[int32]         # hash slots: 1 + index of the first symbol of
-                              # a name, 0 = free slot; always a power of two
+    heads: seq[StrTableSlot]  # hash slots, a power of two of them
+
+  StrTableSlot = object       # one hash slot of a `TStrTable`
+    name: int32               # `PIdent.id` of the name this chain is for. It
+                              # is in the slot so that probing for a name never
+                              # has to dereference a symbol to read its name.
+    first: int32              # 1 + index of that name's first symbol, 0 = free
 
   # -------------- backend information -------------------------------
   TLocKind* = enum
@@ -1249,12 +1254,19 @@ proc strTableFirstOfName*(t: TStrTable, name: PIdent): int32 =
   ## rest of them follow through `t.next`, still in insertion order. Every
   ## index in a `TStrTable` is stored biased by one so that a zeroed `newSeq`
   ## means "empty" and no fill-with-minus-one pass is needed.
-  if t.names == 0: return 0
+  ##
+  ## The probe reads `heads` and nothing else: a slot carries the name it
+  ## stands for, so a wrong slot is rejected without following its index into
+  ## `data` and from there into a `PSym` and a `PIdent`. Only the slot that
+  ## matches is ever dereferenced, by the caller, for the symbol it wanted.
+  result = 0
+  if t.names == 0: return
+  let id = int32(name.id)
   var h: Hash = name.h and high(t.heads)
   while true:
-    result = t.heads[h]
-    if result == 0: return 0
-    if t.data[result-1].name.id == name.id: return result
+    let slot = t.heads[h]
+    if slot.first == 0: return
+    if slot.name == id: return slot.first
     h = nextTry(h, high(t.heads))
 
 proc strTableContains*(t: TStrTable, n: PSym): bool =
@@ -1264,11 +1276,6 @@ proc strTableContains*(t: TStrTable, n: PSym): bool =
     it = t.next[it-1]
   result = false
 
-proc strTableLastOfName(t: TStrTable, name: PIdent): int32 =
-  ## 1 + the index of the *last* symbol named `name`, 0 if there is none.
-  result = strTableFirstOfName(t, name)
-  while result != 0 and t.next[result-1] != 0: result = t.next[result-1]
-
 proc strTableRawInsert(t: var TStrTable, n: PSym) =
   ## Appends `n` to `data` and links it in at the END of the chain of the
   ## symbols that share its name: that is what makes the chain order the
@@ -1277,15 +1284,16 @@ proc strTableRawInsert(t: var TStrTable, n: PSym) =
   ## more than one route.
   let pos = int32(t.data.len)
   let name = n.name
+  let id = int32(name.id)
   var h: Hash = name.h and high(t.heads)
   while true:
-    let head = t.heads[h]
-    if head == 0:
-      t.heads[h] = pos+1
+    let slot = t.heads[h]
+    if slot.first == 0:
+      t.heads[h] = StrTableSlot(name: id, first: pos+1)
       inc t.names
       break
-    if t.data[head-1].name.id == name.id:
-      var i = head-1
+    if slot.name == id:
+      var i = slot.first-1
       while true:
         if t.data[i] == n: return
         if t.next[i] == 0: break
@@ -1297,32 +1305,30 @@ proc strTableRawInsert(t: var TStrTable, n: PSym) =
   t.next.add 0
   inc t.counter
 
-proc strTableRelink(t: var TStrTable, pos: int32) =
-  ## `strTableRawInsert`'s hash half alone, for `strTableEnlarge`: the symbol
-  ## is in `data` already and cannot be a duplicate.
-  let name = t.data[pos].name
-  var h: Hash = name.h and high(t.heads)
-  while true:
-    let head = t.heads[h]
-    if head == 0:
-      t.heads[h] = pos+1
-      inc t.names
-      return
-    if t.data[head-1].name.id == name.id:
-      var i = head-1
-      while t.next[i] != 0: i = t.next[i]-1
-      t.next[i] = pos+1
-      return
-    h = nextTry(h, high(t.heads))
-
 proc strTableEnlarge(t: var TStrTable) =
-  ## Rebuilds the hash slots and the chains. Rebuilding walks `data` in
-  ## insertion order, so growing the table cannot permute anything.
-  t.heads = newSeq[int32](if t.heads.len == 0: StartSize
-                          else: t.heads.len * GrowthFactor)
+  ## Rebuilds the hash slots and the chains. Walking `data` BACKWARDS and
+  ## prepending puts every chain back in insertion order in a single pass and
+  ## never walks a chain to its tail, so growing the table can neither permute
+  ## anything nor cost more than the symbols it moves.
+  t.heads = newSeq[StrTableSlot](if t.heads.len == 0: StartSize
+                                 else: t.heads.len * GrowthFactor)
   t.names = 0
-  for i in 0..high(t.next): t.next[i] = 0
-  for i in 0'i32..int32(high(t.data)): strTableRelink(t, i)
+  for i in countdown(int32(high(t.data)), 0'i32):
+    let name = t.data[i].name
+    let id = int32(name.id)
+    var h: Hash = name.h and high(t.heads)
+    while true:
+      let slot = t.heads[h]
+      if slot.first == 0:
+        t.next[i] = 0
+        t.heads[h] = StrTableSlot(name: id, first: i+1)
+        inc t.names
+        break
+      if slot.name == id:
+        t.next[i] = slot.first
+        t.heads[h].first = i+1
+        break
+      h = nextTry(h, high(t.heads))
 
 template strTableMakeRoom(t: var TStrTable) =
   # only distinct names take up a hash slot, so `names` is what has to fit
@@ -1348,16 +1354,20 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
   # otherwise return `nil`. Incl `n` to `t` unless `onConflictKeepOld = true`
   # and a conflict was found.
   assert n.name != nil
-  let conflict = strTableLastOfName(t, n.name)
-  if conflict != 0:
-    # Semantic checking can happen multiple times thanks to templates
-    # and overloading: (var x=@[]; x).mapIt(it).
-    # So it is possible the very same sym is added multiple
-    # times to the symbol table which we allow here with the 'it == n' check.
-    if strTableContains(t, n): return nil
-    result = t.data[conflict-1] # found it, the newest symbol of that name
+  var last = strTableFirstOfName(t, n.name)
+  if last != 0:
+    # One walk to the end of the chain answers both questions: whether `n` is
+    # in it already -- semantic checking can happen more than once thanks to
+    # templates and overloading, `(var x=@[]; x).mapIt(it)` -- and which
+    # symbol of that name is the newest.
+    while true:
+      if t.data[last-1] == n: return nil
+      let nxt = t.next[last-1]
+      if nxt == 0: break
+      last = nxt
+    result = t.data[last-1] # found it, the newest symbol of that name
     if not onConflictKeepOld:
-      t.data[conflict-1] = n # overwrite it with newer definition!
+      t.data[last-1] = n # overwrite it with newer definition!
   else:
     strTableMakeRoom(t)
     strTableRawInsert(t, n)
