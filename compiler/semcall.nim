@@ -924,6 +924,11 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
+    # Remember that this body contains a self-call still sharing its unresolved
+    # `auto` placeholder; a later concrete return must resolve that placeholder.
+    if c.p != nil and result.typ != nil and finalCallee == c.p.owner and
+        isAutoReturnType(result.typ):
+      c.p.hasUnresolvedAutoCall = true
   updateDefaultParams(c, result)
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
