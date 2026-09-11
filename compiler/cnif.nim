@@ -74,14 +74,15 @@ proc stripCnifMarks*(s: string): string =
       inc i
 
 const
-  CnifVersion* = "5"
+  CnifVersion* = "6"
     ## Artifact format version, stored in the meta head. Artifacts written
     ## by an older compiler lack the NIF names and the cref group the
     ## def-retention check needs (v2), the cdeps group the fine-grained
     ## reuse gate needs (v3), the type NIF names and cnif-marked extern
     ## RTTI references the typeinfo flavor of the def-retention check
     ## needs (v4), or the global-destructor name the main module's `cg`
-    ## calls at teardown (v5); `readCnifHeads` reports them as invalid so
+    ## calls at teardown (v5), or deferred dynlib loader indices (v6);
+    ## `readCnifHeads` reports them as invalid so
     ## their TUs simply regenerate once.
 
 proc cnifDefDirective*(name, flags, nifName: string): string =
@@ -94,11 +95,12 @@ proc writeCnifArtifact*(code: string; outfile: string;
                         initRequired = false; datInitRequired = false;
                         dataDefs: openArray[tuple[cname, nifname: string]] = [];
                         semmedNif = ""; moduleBase = ""; globalDtor = "";
-                        implDeps: openArray[string] = []) =
+                        implDeps: openArray[string] = [];
+                        extensionLoaders = "") =
   ## Splits the marked module text into the `.c.nif` artifact.
   ## The artifact starts with a `(meta <flags> "semmedNif" "moduleBase"
-  ## "version" "globalDtor")` head — whether the module has an init/datInit
-  ## proc ('i'/'d'), which semmed NIF it was generated from, the module's
+  ## "version" "globalDtor" "extensionLoaders")` head — whether the module has
+  ## an init/datInit proc ('i'/'d'), which semmed NIF it was generated from, the module's
   ## mangled base name (what `registerModuleToMain` and the reuse decision
   ## need when the TU is reused in a later run, possibly without the module
   ## ever being loaded again) and the C name of the module's global-destructor
@@ -158,6 +160,7 @@ proc writeCnifArtifact*(code: string; outfile: string;
       b.addStrLit moduleBase
       b.addStrLit CnifVersion
       b.addStrLit globalDtor
+      b.addStrLit extensionLoaders
     b.withTree "cdata":
       for d in dataDefs:
         b.addSymbolDef d.cname
@@ -268,6 +271,7 @@ type
     moduleBase*: string      ## the module's mangled base name
     globalDtor*: string      ## C name of the module's global-destructor proc
                              ## ("" when the module has no global destructors)
+    extensionLoaders*: string ## deferred dynlib loader indices ('0'..'9')
     cdefs*: seq[tuple[cname, nifname: string]] ## the proc definitions
     cdata*: seq[tuple[cname, nifname: string]] ## the data definitions
     crefs*: seq[string]      ## C names referenced but not defined here
@@ -337,6 +341,7 @@ proc readCnifHeads*(f: string): CnifHeads =
               elif strIdx == 1: result.moduleBase = v
               elif strIdx == 2: version = v
               elif strIdx == 3: result.globalDtor = v
+              elif strIdx == 4: result.extensionLoaders = v
               inc strIdx
           else: discard
       elif tok.data == "cdata":

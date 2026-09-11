@@ -737,6 +737,7 @@ type
       #procInstCache*: seq[PInstantiation]
       gcUnsafetyReasonImpl*: PSym  # for better error messages regarding gcsafe
       transformedBodyImpl*: PNode  # cached body after transf pass
+      nifBodyLoadedImpl*: bool # body loaded from the fully lowered IC artifact
     of skLet, skVar, skField, skForVar:
       guardImpl*: PSym
       bitsizeImpl*: int
@@ -1175,6 +1176,7 @@ proc forcePartial*(s: PSym) =
   of routineKinds:
     s.gcUnsafetyReasonImpl = nil
     s.transformedBodyImpl = nil
+    s.nifBodyLoadedImpl = false
   of skLet, skVar, skField, skForVar:
     s.guardImpl = nil
     s.bitsizeImpl = 0
