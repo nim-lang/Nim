@@ -87,6 +87,7 @@ type
     efWantNoDefaults
     efIgnoreDefaults # var statements without initialization
     efAllowSymChoice # symchoice node should not be resolved
+    efTypeSectionMacro # allow `nkTypeDef` and selectively resem for type section macros
 
   TExprFlags* = set[TExprFlag]
 
