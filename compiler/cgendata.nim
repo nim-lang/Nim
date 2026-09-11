@@ -101,6 +101,13 @@ type
     withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
     inUncheckedAssignSection*: int
+    preparedStrs*: seq[tuple[s: PSym, payload: Rope]]
+                              # local strings whose payload a hoisted
+                              # `nimPrepareStrMutationV2` in front of an
+                              # enclosing loop already made unique; `payload`
+                              # is the C temporary caching `s.p` for the whole
+                              # loop, so the body neither repeats the call nor
+                              # reloads the pointer
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]

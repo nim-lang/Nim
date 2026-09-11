@@ -642,6 +642,15 @@ proc byRefLoc(p: BProc; a: TLoc): Rope =
   else:
     result = a.snippet
 
+proc preparedStrPayload(p: BProc; x: PNode): Rope =
+  ## The C temporary caching `x.p` if `x` is a local string that a hoisted
+  ## `nimPrepareStrMutationV2` in front of an enclosing loop already prepared;
+  ## "" otherwise. See `hoistStrPrepare`.
+  result = ""
+  if x.kind == nkSym:
+    for it in p.preparedStrs:
+      if it.s == x.sym: return it.payload
+
 proc rdCharLoc(a: TLoc): Rope =
   # read a location that may need a char-cast:
   result = rdLoc(a)
