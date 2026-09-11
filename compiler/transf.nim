@@ -1348,25 +1348,108 @@ proc flattenStmts(n: PNode) =
         goOn = true
       inc i
 
+proc isEmptyStmt(n: PNode): bool =
+  case n.kind
+  of nkEmpty:
+    result = true
+  of nkStmtList, nkStmtListExpr:
+    result = n.len == 0
+  of nkWhen:
+    result = true
+    for branch in n:
+      if not isEmptyStmt(branch[^1]):
+        return false
+  else:
+    result = false
+
+proc copyBranchWithBody(n, body: PNode; typ: PType): PNode =
+  result = shallowCopy(n)
+  result.typ = typ
+  for i in 0..<n.len-1:
+    result[i] = copyTree(n[i])
+  result[^1] = body
+
+type DeferSplit = object
+  before, deferred, after: PNode
+  found: bool
+
+proc splitAtDefer(n: PNode): DeferSplit =
+  ## Splits same-scope control flow around its first `defer`. `when nimvm`
+  ## doesn't introduce a lexical scope, so the deferred action is kept
+  ## conditional while the surrounding continuation stays shared.
+  result = default(DeferSplit)
+  case n.kind
+  of nkDefer:
+    result.before = newNodeI(nkStmtList, n.info)
+    result.deferred = n[0]
+    result.after = newNodeI(nkStmtList, n.info)
+    result.found = true
+  of nkStmtList, nkStmtListExpr:
+    flattenStmts(n)
+    for i in 0..<n.len:
+      let child = splitAtDefer(n[i])
+      if child.found:
+        result.before = newNodeI(nkStmtList, n.info)
+        for j in 0..<i:
+          result.before.add n[j]
+        if not isEmptyStmt(child.before):
+          result.before.add child.before
+
+        result.deferred = child.deferred
+        result.after = newNodeIT(n.kind, n.info, n.typ)
+        if not isEmptyStmt(child.after):
+          result.after.add child.after
+        for j in i+1..<n.len:
+          result.after.add n[j]
+        result.found = true
+        return
+  of nkWhen:
+    var branches = newSeq[DeferSplit](n.len)
+    for i in 0..<n.len:
+      branches[i] = splitAtDefer(n[i][^1])
+      result.found = result.found or branches[i].found
+
+    if result.found:
+      result.before = shallowCopy(n)
+      result.before.typ = nil
+      result.deferred = shallowCopy(n)
+      result.deferred.typ = nil
+      result.after = shallowCopy(n)
+      for i in 0..<n.len:
+        if not branches[i].found:
+          branches[i].before = n[i][^1]
+          branches[i].deferred = newNodeI(nkStmtList, n[i].info)
+          branches[i].after = newNodeI(nkStmtList, n[i].info)
+        result.before[i] = copyBranchWithBody(n[i], branches[i].before, nil)
+        result.deferred[i] = copyBranchWithBody(n[i], branches[i].deferred, nil)
+        result.after[i] = copyBranchWithBody(n[i], branches[i].after, n[i].typ)
+  else:
+    discard
+
 proc liftDeferAux(n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
     flattenStmts(n)
     var goOn = true
     while goOn:
       goOn = false
-      let last = n.len-1
-      for i in 0..last:
-        if n[i].kind == nkDefer:
-          let deferPart = newNodeI(nkFinally, n[i].info)
-          deferPart.add n[i][0]
-          var tryStmt = newNodeIT(nkTryStmt, n[i].info, n.typ)
-          var body = newNodeIT(n.kind, n[i].info, n.typ)
-          if i < last:
-            body.sons = n.sons[(i+1)..last]
+      for i in 0..<n.len:
+        let split = splitAtDefer(n[i])
+        if split.found:
+          let info = n[i].info
+          let deferPart = newNodeI(nkFinally, info)
+          deferPart.add split.deferred
+          var tryStmt = newNodeIT(nkTryStmt, info, n.typ)
+          var body = newNodeIT(n.kind, info, n.typ)
+          if not isEmptyStmt(split.after):
+            body.add split.after
+          for j in i+1..<n.len:
+            body.add n[j]
           tryStmt.add body
           tryStmt.add deferPart
-          n[i] = tryStmt
-          n.sons.setLen(i+1)
+          n.sons.setLen(i)
+          if not isEmptyStmt(split.before):
+            n.add split.before
+          n.add tryStmt
           n.typ = tryStmt.typ
           goOn = true
           break
