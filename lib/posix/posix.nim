@@ -1073,6 +1073,14 @@ else:
   proc gethostbyaddr*(a1: cstring, a2: cint, a3: cint): ptr Hostent {.
                       importc, header: "<netdb.h>".}
 proc gethostbyname*(a1: cstring): ptr Hostent {.importc, header: "<netdb.h>".}
+when defined(linux):
+  proc gethostbyaddr_r*(a1: pointer, a2: SockLen, a3: cint,
+      ret: ptr Hostent, buf: cstring, buflen: csize_t,
+      res: ptr ptr Hostent, h_errnop: ptr cint): cint {.
+      importc, header: "<netdb.h>".}
+  proc gethostbyname_r*(name: cstring, ret: ptr Hostent,
+      buf: cstring, buflen: csize_t, res: ptr ptr Hostent,
+      h_errnop: ptr cint): cint {.importc, header: "<netdb.h>".}
 proc gethostent*(): ptr Hostent {.importc, header: "<netdb.h>".}
 
 proc getnameinfo*(a1: ptr SockAddr, a2: SockLen,
@@ -1090,6 +1098,13 @@ proc getprotoent*(): ptr Protoent {.importc, header: "<netdb.h>".}
 proc getservbyname*(a1, a2: cstring): ptr Servent {.importc, header: "<netdb.h>".}
 proc getservbyport*(a1: cint, a2: cstring): ptr Servent {.
   importc, header: "<netdb.h>".}
+when defined(linux) and not defined(android):
+  proc getservbyname_r*(name, proto: cstring, resultBuf: ptr Servent,
+      buf: cstring, buflen: csize_t, res: ptr ptr Servent): cint {.
+      importc, header: "<netdb.h>".}
+  proc getservbyport_r*(port: cint, proto: cstring, resultBuf: ptr Servent,
+      buf: cstring, buflen: csize_t, res: ptr ptr Servent): cint {.
+      importc, header: "<netdb.h>".}
 proc getservent*(): ptr Servent {.importc, header: "<netdb.h>".}
 
 proc sethostent*(a1: cint) {.importc, header: "<netdb.h>".}

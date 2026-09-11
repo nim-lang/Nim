@@ -43,6 +43,8 @@ parameter and result types, not just their source-level shape. Use
 
 [//]: # "Additions:"
 
+- Standard posix calls on Linux and Windows are not all thread safe, switch to
+  ugly but thread-safe extensions where affected in `nativesockets` and `times`.
 - Added `system.readRawDataStable`, a companion to `readRawData` that returns a
   raw `ptr UncheckedArray[char]` into a string's character data which stays valid
   across moves and copies of the string value. It is available under every string
