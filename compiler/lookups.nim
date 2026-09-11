@@ -203,9 +203,26 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
           ambiguous = true
           break outer
 
+proc pickFromScope(scope: PScope; s: PIdent; filter: TSymKinds): PSym =
+  ## the symbol of name `s` that `scope` declares, or nil. One scope can hold a
+  ## module name *and* a declaration of that name: `import mem` and a later
+  ## `template mem` both end up in the module's top level scope and, `skModule`
+  ## being an "overloadable" kind, neither is a redefinition of the other. The
+  ## declaration wins -- the module name is merely what the import happened to
+  ## be called -- so `mem.read16(x)` is `read16(mem, x)` and not a qualified
+  ## call. `symChoice` and `errorUseQualifier` let modules lose the same way.
+  var ti: TIdentIter = default(TIdentIter)
+  var candidate = initIdentIter(ti, scope.symbols, s)
+  result = nil
+  while candidate != nil:
+    if candidate.kind in filter:
+      if candidate.kind != skModule: return candidate
+      if result == nil: result = candidate
+    candidate = nextIdentIter(ti, scope.symbols)
+
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
   for scope in allScopes(c.currentScope):
-    result = strTableGet(scope.symbols, s)
+    result = pickFromScope(scope, s, {low(TSymKind)..high(TSymKind)})
     if result != nil: return result
   result = someSymFromImportTable(c, s, ambiguous)
 
@@ -245,16 +262,12 @@ proc searchScopesAll*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
 
 proc selectFromScopesElseAll*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
-  block outer:
-    for scope in allScopes(c.currentScope):
-      var ti: TIdentIter = default(TIdentIter)
-      var candidate = initIdentIter(ti, scope.symbols, s)
-      while candidate != nil:
-        if candidate.kind in filter:
-          result.add candidate
-          # Break here, because further symbols encountered would be shadowed
-          break outer
-        candidate = nextIdentIter(ti, scope.symbols)
+  for scope in allScopes(c.currentScope):
+    let candidate = pickFromScope(scope, s, filter)
+    if candidate != nil:
+      result.add candidate
+      # Stop here, because further symbols encountered would be shadowed
+      break
 
   if result.len == 0:
     searchImportsAll(c, s, filter, result)
