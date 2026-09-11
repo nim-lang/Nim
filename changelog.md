@@ -100,6 +100,10 @@ parameter and result types, not just their source-level shape. Use
 - `std/uri`: The `?` operator now appends query parameters to an existing query
   string instead of replacing it. Fixes [#19782](https://github.com/nim-lang/Nim/issues/19782).
 - `std/jsonutils`: `fromJson` now throws an exception when converting to `array`/`seq` if the JSON isn't an array instead of silently failing
+- `std/strutils`: `rsplit` with a string separator that can overlap itself
+  (e.g. `".."`, `"aa"`) no longer matches bytes already consumed by the
+  separator to its right, so `"a...b".rsplit("..")` is `@["a.", "b"]` instead of
+  `@["a", "", "b"]`. Fixes [#24949](https://github.com/nim-lang/Nim/issues/24949).
 - `std/pegs` no longer crashes on some patterns: repetition of an expression
   that can match the empty input (e.g. ``('a'?)*``) is now valid (the matcher
   terminates on zero-length matches) instead of aborting with

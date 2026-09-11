@@ -264,10 +264,10 @@ proc ensureIcConfig*(conf: ConfigRef) =
     # and the explicit output path. Every switch must land BEFORE the project
     # file, because anything after the project is swallowed into
     # `config.arguments` by `cmdLineRest` (and a non-empty `arguments` without
-    # `--run` is a hard error). Callers may legitimately put switches after the
-    # project — `nim track PROJ --def:...` — so we re-order rather than replay
-    # verbatim: all `-`-prefixed switches first (in encounter order), then the
-    # non-switch project token(s). The producer re-reads `nim.cfg` itself.
+    # `--run` is a hard error). Program arguments must not reach the config
+    # producer, even when they look like compiler switches. Only `nim track`
+    # accepts compiler switches after the project; move those before it.
+    # The producer re-reads `nim.cfg` itself.
     var pargs = @["icconfig", "--icConfigOut:" & outPath]
     # The command token is dropped below, so `nim cpp --ic:on` would hand the
     # producer a C-backend config: name the backend explicitly. (`nim ic
@@ -293,7 +293,8 @@ proc ensureIcConfig*(conf: ConfigRef) =
       elif not droppedCmd:
         droppedCmd = true  # drop the original command token (`ic`/`track`)
       else:
-        rest.add a  # project file (and any further non-switch tokens) go last
+        rest.add a
+        if conf.cmd != cmdTrack: break # everything after the project is a program argument
     for a in rest: pargs.add a
     let p = startProcess(getAppFilename(), args = pargs,
                          options = {poStdErrToStdOut})

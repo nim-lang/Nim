@@ -145,11 +145,16 @@ proc transformedBody*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.transformedBodyImpl
 
+proc nifBodyLoaded*(s: PSym): bool {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.nifBodyLoadedImpl
+
 proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
   #assert s.state != Sealed
   # Make an exception here for this misfeature...
   if s.state == Partial: loadSym(s)
   s.transformedBodyImpl = val
+  s.nifBodyLoadedImpl = false
 
 proc guard*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
@@ -1456,6 +1461,7 @@ proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
   transitionSymKindCommon(kind)
   s.gcUnsafetyReasonImpl = obj.gcUnsafetyReasonImpl
   s.transformedBodyImpl = obj.transformedBodyImpl
+  s.nifBodyLoadedImpl = obj.nifBodyLoadedImpl
 
 proc transitionToLet*(s: PSym) =
   transitionSymKindCommon(skLet)

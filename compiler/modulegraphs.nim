@@ -278,6 +278,12 @@ proc ensureHiddenIface(g: ModuleGraph; pos: int) =
   ## Materialise a loaded module's hidden-only interface the first time anything
   ## asks for it. Every READ of `interfHidden` goes through `interfSelect`, so
   ## guarding those sites is complete.
+  if g.config.cmd == cmdM:
+    # A private declaration is outside the public fingerprint, so every consumer
+    # of the hidden half is recorded -- including one that reuses a table built
+    # earlier in this process. One impl-dep too many costs a warm rebuild; one
+    # too few is a stale artifact.
+    g.icImplDeps.incl pos
   if g.ifaces[pos].hiddenPending:
     when not defined(nimKochBootstrap):
       # By SUFFIX: `c.mods` and `g.ifaces` use different FileIndexes for the
@@ -346,11 +352,17 @@ proc reexportedModuleSyms*(g: ModuleGraph; m: PSym): seq[(string, string)] =
   ## re-exports (`import x; export x`, added by `reexportSym`) acting as
   ## qualifiers (`m.x.sym`). Consumed by the NIF writer; semExport does not
   ## put them into the nkExportStmt children, so the AST walk cannot see them.
+  ##
+  ## Keyed by the NAME, not the module: `import definitions as renamed` and
+  ## `import definitions as second` put two module syms with the same position
+  ## and different names into the interface, and an importer must see both
+  ## qualifiers. `interf.data` is insertion ordered, so the sequence written
+  ## here is the order the aliases were declared in.
   result = @[]
   var seen = initIntSet()
   for s in g.ifaces[m.position].interf.data:
     if s != nil and s.kind == skModule and s.position != m.position and
-        not seen.containsOrIncl(s.position):
+        not seen.containsOrIncl(s.name.id):
       result.add (s.name.s, cachedModuleSuffix(g.config, FileIndex s.position))
 
 proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
@@ -1205,9 +1217,14 @@ when not defined(nimKochBootstrap):
     if g.config.cmd == cmdNifC:
       registerModuleSelfSym(ast.program, cachedModuleSuffix(g.config, fileIdx), m)
 
-    result = loadNifModule(ast.program, fileIdx,
-                           g.ifaces[fileIdx.int].interf,
-                           g.ifaces[fileIdx.int].interfHidden, flags)
+    # Into LOCAL tables: loading can register modules and grow `g.ifaces`, and a
+    # `var` argument aliasing into it would then point at the freed buffer --
+    # the same hazard `ensureHiddenIface` documents.
+    var interf = initStrTable()
+    var interfHidden = initStrTable()
+    result = loadNifModule(ast.program, fileIdx, interf, interfHidden, flags)
+    g.ifaces[fileIdx.int].interf = move interf
+    g.ifaces[fileIdx.int].interfHidden = move interfHidden
     # The hidden-only half was not built; `ensureHiddenIface` will, if asked.
     g.ifaces[fileIdx.int].hiddenPending = true
     result.module = m

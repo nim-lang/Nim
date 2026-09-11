@@ -3383,6 +3383,8 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
         let before = nodesDecoded
         s.transformedBodyImpl = loadNode(c, n, thisModule, localSyms)
         if loadStatsInit == 1: bodyNodes += nodesDecoded - before
+      s.nifBodyLoadedImpl = s.transformedBodyImpl != nil and
+        conf.icBackendStage in ["cg", "emit"]
     else:
       skip n
 
@@ -3892,6 +3894,9 @@ proc populateInterfaceTablesFromIndex(c: var DecodeContext; module: FileIndex;
         strTableAdd(interfHidden, sym)
 
 
+proc peekSymKind(c: var DecodeContext; module: FileIndex;
+                 entry: NifIndexEntry): TSymKind
+
 proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
                            interfHidden: var TStrTable): bool {.discardable.} =
   ## The hidden-only half of a loaded module's interface, materialised on
@@ -3920,13 +3925,25 @@ proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
   let module = moduleId(c, suffix, {})
   if not c.mods.hasKey(module): return false
   let m = c.mods[module]
+  # Rebuilt from scratch over the WHOLE index, rather than appending the private
+  # half to the exported one already in `interfHidden`. Appending would order a
+  # name's symbols "every public one, then every private one", where the
+  # frontend has them interleaved in declaration order -- and an
+  # `import x {.all.}` resolves overloads against this table, so the two must
+  # agree. The index is in declaration order, so one pass over it is that order.
+  var tab = default(TStrTable)
   for nifName, entry in m.index.pairs(m.buf):
-    if entry.vis != Exported and not nifName.startsWith("`t"):
-      prof pIfaceHidden
+    # The module's OWN symbol is in its index but was never in its interface:
+    # the frontend puts it in `moduleScope`, not in `semtabAll`. The kind comes
+    # off the `(sd)` header, so this costs no decode.
+    if not nifName.startsWith("`t") and
+        peekSymKind(c, module, entry) != skModule:
+      if entry.vis != Exported: prof pIfaceHidden
       # do not load types, they are not part of an interface but an implementation detail!
       let sym = loadSymFromIndexEntry(c, module, nifName, entry, suffix)
       if sym != nil:
-        strTableAdd(interfHidden, sym)
+        strTableAdd(tab, sym)
+  interfHidden = tab
   result = true
 
 proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
