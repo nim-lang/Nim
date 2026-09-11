@@ -315,6 +315,8 @@ type
       ## more than once (e.g. a `typed` argument captured by a `{.dirty.}`
       ## template and re-emitted). This is a redefinition and rejected by
       ## default; enabling this restores the old, unsound behavior. See #25693.
+    importcNoSideEffect
+      ## Treat `.importc` routines as side-effect free.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest

@@ -3,6 +3,8 @@
 
 ## Changes affecting backward compatibility
 
+- `.importc` routines are now assumed to have side effects unless explicitly marked `{.noSideEffect.}`. Use `--legacy:importcNoSideEffect` to restore the previous behavior.
+
 - `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
 floating point numbers that are minimal in size and possess round-trip and correct
 rounding guarantees (via the

@@ -2017,7 +2017,12 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
         localError(g.config, s.info, "") # simple error for `system.compiles` context
   if not t.gcUnsafe:
     s.typ.incl tfGcSafe
-  if not t.hasSideEffect and sfSideEffect notin s.flags:
+  # Imported routines have no Nim body whose effects can be analyzed. Assume
+  # they may have side effects unless the declaration explicitly says
+  # otherwise with `.noSideEffect.`.
+  if not t.hasSideEffect and sfSideEffect notin s.flags and
+      (sfImportc notin s.flags or sfNoSideEffect in s.flags or
+       importcNoSideEffect in g.config.legacyFeatures):
     s.typ.incl tfNoSideEffect
   when defined(drnim):
     if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, s, body)
