@@ -291,6 +291,14 @@ Math libraries
 * [complex](complex.html)
   Complex numbers and relevant mathematical operations.
 
+* [dec64](dec64.html)
+  Crockford's DEC64 64-bit decimal floating-point type: exact decimal
+  arithmetic with a 56-bit coefficient and 8-bit exponent.
+
+* [dec64math](dec64math.html)
+  Elementary mathematical functions (sqrt, exp, log, trig, factorial)
+  for the `Dec64` type.
+
 * [fenv](fenv.html)
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-divide, etc.).
