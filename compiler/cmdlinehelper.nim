@@ -33,14 +33,14 @@ type
   NimProg* = ref object
     suggestMode*: bool
     supportsStdinFile*: bool
-    processCmdLine*: proc(pass: TCmdLinePass, cmd: string; config: ConfigRef)
+    processCmdLine*: proc(pass: TCmdLinePass; config: ConfigRef)
 
 proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
   condsyms.initDefines(conf.symbols)
   defineSymbol conf.symbols, name
 
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
-  self.processCmdLine(passCmd1, "", conf)
+  self.processCmdLine(passCmd1, conf)
   if conf.projectIsCmd and conf.projectName in ["-", ""]:
     handleCmdInput(conf)
   elif self.supportsStdinFile and conf.projectName == "-":
@@ -74,7 +74,7 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
   # command line can overwrite the config file's settings
   if conf.backend != backendJs: # bug #19059
     extccomp.initVars(conf)
-  self.processCmdLine(passCmd2, "", conf)
+  self.processCmdLine(passCmd2, conf)
   if conf.cmd == cmdNone:
     rawMessage(conf, errGenerated, "command missing")
 
