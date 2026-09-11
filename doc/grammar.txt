@@ -30,8 +30,8 @@ symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
 symbolOrKeyword = symbol | KEYW
 exprColonEqExpr = expr ((':'|'=') expr
                        / doBlock extraPostExprBlock*)?
-exprEqExpr = expr ('=' expr
-                  / doBlock extraPostExprBlock*)?
+exprEqExpr = commandParam ('=' expr
+                          / doBlock extraPostExprBlock*)?
 exprList = expr ^+ comma
 optionalExprList = expr ^* comma
 exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
@@ -61,6 +61,7 @@ identOrLiteral = generalizedLit | symbol | literal
                | castExpr
 tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
 arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
+commandParam = (symbol '*' &(':' | '=')) / expr
 primarySuffix = '(' (exprColonEqExpr comma?)* ')'
       | '.' optInd symbolOrKeyword ('[:' exprList ']' ( '(' exprColonEqExpr ')' )?)? generalizedLit?
       | DOTLIKEOP optInd symbolOrKeyword generalizedLit?
@@ -97,7 +98,7 @@ expr = (blockExpr
 simplePrimary = SIGILLIKEOP? identOrLiteral primarySuffix*
 commandStart = &('`'|IDENT|literal|'cast'|'addr'|'type'|'var'|'out'|
                  'static'|'enum'|'tuple'|'object'|'proc')
-primary = simplePrimary (commandStart expr (doBlock extraPostExprBlock*)?)?
+primary = simplePrimary (commandStart commandParam (doBlock extraPostExprBlock*)?)?
         / operatorB primary
         / routineExpr
         / rawTypeDesc
