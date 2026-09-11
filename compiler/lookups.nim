@@ -611,6 +611,13 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
       err.add "; if declared in a template, this identifier may be inconsistently marked inject or gensym"
     if extra.len != 0:
       err.add extra
+    # Show import chain for better error messages
+    if c.graph.importStack.len > 1:
+      err.add "\nimported from "
+      for i in 0..<c.graph.importStack.len-1:
+        if i > 0: err.add "\n  which imports "
+        err.add toFilename(c.config, c.graph.importStack[i])
+      err.add "\n  at " & toFilename(c.config, info) & "(" & $info.line & ", " & $info.col & ")"
     if c.recursiveDep.len > 0:
       err.add "\nThis might be caused by a recursive module dependency:\n"
       err.add c.recursiveDep

@@ -1797,8 +1797,12 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
       while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
       for (s, info) in unknownRaises.items:
         message(g.config, info, hintUnknownRaises, s.name.s)
-      message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
-              renderTree(rr) & " " & msg & typeToString(r.typ))
+      var effectMsg = renderTree(rr) & " " & msg & typeToString(r.typ)
+      # Show effect origin location for forbids violations
+      if isForbids and r.info != spec.info:
+        effectMsg.add "\n  effect origin: " & toFilename(g.config, r.info) &
+                      "(" & $r.info.line & ", " & $r.info.col & ")"
+      message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated, effectMsg)
       popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
