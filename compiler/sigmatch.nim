@@ -1453,13 +1453,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if a.kind == tyArray:
       var fRange = f.indexType
       var aRange = a.indexType
+      # Keep index matching separate so array[N, T] stays generic when only the
+      # index matched through a generic parameter.
+      var indexRel = isEqual
       if fRange.kind in {tyGenericParam, tyAnything}:
         var prev = lookup(c.bindings, fRange)
         if prev == nil:
-          if typeRel(c, fRange, aRange) == isNone:
+          indexRel = typeRel(c, fRange, aRange)
+          if indexRel == isNone:
             return isNone
           put(c, fRange, a.indexType)
-          fRange = a
+          fRange = aRange
         else:
           fRange = prev
       let ff = f[1].skipTypes({tyTypeDesc})
@@ -1470,6 +1474,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isGeneric
       else:
         result = typeRel(c, ff, aa, flags)
+      if indexRel == isGeneric and result > isGeneric:
+        result = isGeneric
       if result < isGeneric:
         if nimEnableCovariance and
            trNoCovariance notin flags and
@@ -1480,13 +1486,25 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           return isNone
 
       if fRange.rangeHasUnresolvedStatic:
+        # During reverse generic checks, a plain generic array index must not be
+        # treated as specific enough to infer a static range overload.
+        if trCheckGeneric in flags and aOrig.kind == tyArray and
+            aOrig.indexType.kind == tyGenericParam:
+          return isNone
         if (aRange.kind in {tyGenericParam} and aRange.reduceToBase() == aRange) or
             (aRange.kind == tyRange and aRange.rangeHasUnresolvedStatic):
-          return
+          return isNone
         return inferStaticsInRange(c, fRange, a)
       elif c.c.matchedConcept != nil and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
       elif result == isGeneric and concreteType(c, aa, ff) == nil:
+        # If the element type is still unresolved, only keep the match alive
+        # when the array index already established the generic relationship.
+        if indexRel != isGeneric:
+          return isNone
+      elif trCheckGeneric in flags and aRange.kind == tyGenericParam:
+        # Reverse generic disambiguation should stop before exact length
+        # comparison if the actual array index is still generic.
         return isNone
       else:
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
