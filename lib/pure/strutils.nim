@@ -547,6 +547,9 @@ template rsplitCommon(s, sep, maxsplit, sepLen) =
     startPos = 0
   # go to -1 in order to get separators at the beginning
   while first >= -1:
+    # a separator must fit entirely in `s[0 .. last]`; starting the scan any
+    # later would match bytes that the previous separator already consumed
+    first = max(last - sepLen + 1, -1)
     while first >= 0 and not stringHasSep(s, first, sep):
       dec(first)
     if splits == 0:
