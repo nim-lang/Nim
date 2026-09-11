@@ -1247,6 +1247,7 @@ proc genFlags*(s: set[TSymFlag]; dest: var string) =
     of sfCursor: dest.add "c4"
     of sfInjectDestructors: dest.add "i1"
     of sfNeverRaises: dest.add "n3"
+    of sfRaisesDefect: dest.add "n5"
     of sfSystemRaisesDefect: dest.add "s2"
     of sfUsedInFinallyOrExcept: dest.add "u0"
     of sfSingleUsedTemp: dest.add "s3"
@@ -1394,6 +1395,9 @@ proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
         inc i
       elif i+1 < s.len and s[i+1] == '4':
         result.incl sfNoalias
+        inc i
+      elif i+1 < s.len and s[i+1] == '5':
+        result.incl sfRaisesDefect
         inc i
       else: result.incl sfNoSideEffect
     of 'o': result.incl sfOverridden
@@ -1863,4 +1867,3 @@ proc parse*(t: typedesc[TOption]; s: string): set[TOption] =
     of 'w': result.incl optWarns
     else: discard
     inc i
-
