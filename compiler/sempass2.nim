@@ -1216,6 +1216,19 @@ proc trackCall(tracked: PEffects; n: PNode) =
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
+  if tracked.c.matchedConcept == nil and a.kind == nkSym:
+    if a.sym.isGenericRoutineStrict() and a.sym.magic notin {mSizeOf, mZeroDefault, mTypeOf}:
+      # this error is likely a compiler bug
+
+      # it is not instantiated if there is an error
+      var hasErrorType = false
+      for i in 1..<n.len:
+        let nt = n[i].typ
+        if nt.kind == tyError:
+          hasErrorType = true
+          break
+      if not hasErrorType:
+        localError(tracked.config, a.info, "calling generic procedure without instantiation: $1" % a.sym.name.s)
 
   when defined(nimsuggest):
     var actualLoc = a.info
