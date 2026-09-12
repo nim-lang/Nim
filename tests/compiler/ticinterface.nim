@@ -2,7 +2,7 @@ discard """
   joinable: false
 """
 
-import std/[assertions, os, strutils, tempfiles]
+import std/[algorithm, assertions, os, strutils, tempfiles]
 import compiler/[ast, astalgo, ast2nif, idents, lineinfos, modulegraphs, msgs, options, pathutils, typekeys]
 
 # Compare the actual lookup sequence, not just successful overload resolution.
@@ -67,7 +67,12 @@ proc run(count: int; visibility: Visibility) =
     for name in names:
       expectedPublic.add ids(publicTable, name)
       expectedHidden.add ids(semtabAll(graph, module), name)
-    writeNifModule(conf, file.int32, body, @[])
+    # Definition/index order must not become the source of interface order.
+    body.sons.reverse()
+    let publicSyms = orderedInterface(graph, module)
+    let hiddenSyms = orderedInterface(graph, module, hidden = true)
+    writeNifModule(conf, file.int32, body, @[],
+      publicInterface = publicSyms, hiddenInterface = hiddenSyms)
 
     # Each independent decoder must reconstruct the same order from disk.
     for _ in 0..1:
@@ -77,15 +82,13 @@ proc run(count: int; visibility: Visibility) =
       discard loadNifModule(decoder, file, exported, hidden)
       for i, name in names:
         doAssert ids(exported, name) == expectedPublic[i], $visibility & ": " & $count
-      # The private half is lazy: until it is asked for, `interfHidden` holds
-      # the exported symbols alone.
-      doAssert hidden.counter == exported.counter
-      doAssert buildHiddenInterface(decoder, cachedModuleSuffix(conf, file), hidden)
+      doAssert hidden.counter == 0 # hidden symbols are still lazy
+      doAssert buildHiddenInterface(decoder, cachedModuleSuffix(conf, file), hidden, nil)
       for i, name in names:
         doAssert ids(hidden, name) == expectedHidden[i], $visibility & ": " & $count
         doAssert ids(exported, name) == expectedPublic[i]
-      doAssert exported.counter == publicTable.counter
-      doAssert hidden.counter == semtabAll(graph, module).counter
+      doAssert exported.counter == publicSyms.len
+      doAssert hidden.counter == hiddenSyms.len
   finally:
     removeDir(dir)
 

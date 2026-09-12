@@ -29,12 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "44"
-    ## v44: the `(interface)`/`(hiddeninterface)` records are gone again. They
-    ## recorded each name's overload order because a loaded `TStrTable` grew
-    ## differently from the one the frontend filled; insertion ordered tables
-    ## make that order a property of the table, so the records were paying
-    ## `.bif` bytes and a cookie region for a guarantee already held.
+  icFormatVersion* = "43"
+    ## v43: deterministic re-export traversal for ordered interfaces.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
