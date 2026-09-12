@@ -911,9 +911,7 @@ proc appendToModule*(m: PSym, n: PNode) =
   m.astImpl.add(n)
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
-  dest.counter = src.counter
-  setLen(dest.data, src.data.len)
-  for i in 0..high(src.data): dest.data[i] = src.data[i]
+  dest = src
 
 proc copyIdTable*[T](dest: var TIdTable[T], src: TIdTable[T]) =
   dest.counter = src.counter
@@ -1310,8 +1308,8 @@ proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLi
   result.annexImpl = s.annex
 
 proc initStrTable*(): TStrTable =
+  # the storage is allocated on the first `strTableAdd`; most scopes stay empty
   result = TStrTable(counter: 0)
-  newSeq(result.data, StartSize)
 
 proc initIdTable*[T](): TIdTable[T] =
   result = TIdTable[T](counter: 0)

@@ -14,6 +14,7 @@ import std / [os, tables, sets, times, osproc, algorithm, strtabs, strutils, syn
 from std/sha1 import secureHash, `$`
 import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
+import ast, idents, syntaxes
 
 import nifstreams
 import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
@@ -36,7 +37,8 @@ type
                           # exist on disk (empty when all resolved)
     missingHardImport: string ## ditto but NOT under any undecidable `when`: the
                               ## real compile would reach this `import`, so it is
-                              ## a genuine "cannot open file" error
+                              ## a "cannot open file" error unless it turns out
+                              ## to be a `compiles` probe (see isCompilesProbe)
     id: int
 
   DepContext = object
@@ -748,6 +750,114 @@ proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
     return
   readDepsFile(c, pair, current)
 
+proc importPathsOf(n: PNode; res: var seq[string]) =
+  ## Render the module paths an `import` path expression names, the same way
+  ## `parseImportPath` does for the NIF side: a plain ident, a string literal,
+  ## an `a/b` infix (`as` contributes only its left side), a `../x` prefix and
+  ## an `a/[b, c]` group.
+  if n == nil: return
+  case n.kind
+  of nkIdent: res.add n.ident.s
+  of nkSym: res.add n.sym.name.s
+  of nkStrLit..nkTripleStrLit: res.add n.strVal
+  of nkImportAs:
+    if n.len > 0: importPathsOf(n[0], res)
+  of nkInfix:
+    if n.len == 3:
+      let op = if n[0].kind == nkIdent: n[0].ident.s else: ""
+      if op == "as":
+        importPathsOf(n[1], res)
+      else:
+        var left: seq[string] = @[]
+        importPathsOf(n[1], left)
+        var right: seq[string] = @[]
+        importPathsOf(n[2], right)
+        let prefix = if left.len == 1: left[0] else: ""
+        for r in right:
+          if prefix.len > 0: res.add prefix & "/" & r
+          else: res.add r
+  of nkPrefix:
+    if n.len == 2:
+      let op = if n[0].kind == nkIdent: n[0].ident.s else: ""
+      var operand: seq[string] = @[]
+      importPathsOf(n[1], operand)
+      for o in operand: res.add op & o
+  of nkBracket:
+    for i in 0 ..< n.len: importPathsOf(n[i], res)
+  else: discard
+
+proc containsCompiles(n: PNode): bool =
+  ## Does this `when` condition ask `compiles(...)` anywhere?
+  if n == nil: return false
+  if n.kind in nkCallKinds and n.len > 0 and n[0].kind == nkIdent and
+     n[0].ident.s == "compiles":
+    return true
+  for i in 0 ..< n.safeLen:
+    if containsCompiles(n[i]): return true
+  result = false
+
+proc collectRealImports(n: PNode; inCompiles: bool; res: var seq[string]) =
+  ## Collect every module path the file `import`s for real, i.e. neither from
+  ## inside a `compiles(...)` -- which only asks whether the module exists --
+  ## nor from a `when` branch that a `compiles(...)` selects, whose import is
+  ## exactly as conditional as the probe that guards it.
+  if n == nil: return
+  case n.kind
+  of nkImportStmt:
+    if not inCompiles:
+      for i in 0 ..< n.len: importPathsOf(n[i], res)
+  of nkFromStmt, nkImportExceptStmt:
+    # only the first child is a module path; the rest is the symbol list
+    if not inCompiles and n.len > 0: importPathsOf(n[0], res)
+  of nkCallKinds:
+    let isCompiles = inCompiles or
+      (n.len > 0 and n[0].kind == nkIdent and n[0].ident.s == "compiles")
+    for i in 0 ..< n.len: collectRealImports(n[i], isCompiles, res)
+  of nkWhenStmt, nkRecWhen:
+    # An `else` inherits the negation of every prior condition, so a single
+    # `compiles` among them covers it too.
+    var probed = inCompiles
+    for i in 0 ..< n.len:
+      let branch = n[i]
+      if branch.kind in {nkElifBranch, nkElifExpr} and branch.len == 2:
+        collectRealImports(branch[0], inCompiles, res)
+        probed = probed or containsCompiles(branch[0])
+        collectRealImports(branch[1], probed, res)
+      else:
+        for j in 0 ..< branch.safeLen:
+          collectRealImports(branch[j], probed, res)
+  else:
+    for i in 0 ..< n.safeLen: collectRealImports(n[i], inCompiles, res)
+
+proc isCompilesProbe(c: DepContext; node: Node; importPath: string): bool =
+  ## `importPath` is named by an `import` of `node` that is not on disk. Before
+  ## calling that a user error, rule out the `tryImport` idiom:
+  ##
+  ##   template tryImport*(v: untyped): bool =
+  ##     when compiles((; import v)):
+  ##       import v
+  ##       true
+  ##     else: false
+  ##
+  ## nifler's deps file records an `import` written inside a `when` CONDITION
+  ## with no `(when ...)` marker at all -- the marker is built from the branch
+  ## conditions covering the traversal point, and a condition is not covered by
+  ## itself. The probe therefore arrives here indistinguishable from a real
+  ## unguarded top-level import, and `import v` (the template's untyped
+  ## parameter, never a module) killed the whole build.
+  ##
+  ## The deps file cannot answer this, so ask the real parser: when EVERY
+  ## `import importPath` in the module sits inside a `compiles(...)`, the module
+  ## only probes for the module and its absence is not an error. This runs on
+  ## the abort path only, so the extra parse costs nothing in a normal build.
+  var real: seq[string] = @[]
+  var cache = newIdentCache()
+  for f in node.files:
+    if not fileExists(f.nimFile): continue
+    let fileIdx = fileInfoIdx(c.config, AbsoluteFile f.nimFile)
+    collectRealImports(parseFile(fileIdx, cache, c.config), false, real)
+  result = importPath notin real
+
 proc pruneDeadSpeculative(c: var DepContext) =
   ## Drop modules that are reachable only through a `when` guard the scanner
   ## cannot evaluate AND that cannot possibly compile because they import a
@@ -797,7 +907,8 @@ proc pruneDeadSpeculative(c: var DepContext) =
   # import paths at all.
   var reported = false
   for i in 0 ..< n:
-    if hard[i] and c.nodes[i].missingHardImport.len > 0:
+    if hard[i] and c.nodes[i].missingHardImport.len > 0 and
+       not isCompilesProbe(c, c.nodes[i], c.nodes[i].missingHardImport):
       rawMessage(c.config, errGenerated,
         c.nodes[i].files[0].nimFile & ": cannot open file: " &
         c.nodes[i].missingHardImport)

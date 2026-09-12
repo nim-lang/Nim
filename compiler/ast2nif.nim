@@ -3882,14 +3882,12 @@ proc loadInterface(c: var DecodeContext; module: FileIndex; hidden: bool;
   if not hidden: prof pIfaceModules
   cur.into:
     expect cur, IntLit
-    let count = intVal(cur).int
-    skip cur
-    # Reserve before insertion. Rehashing enumerates physical slots and can
-    # change the lookup order of symbols sharing an identifier.
-    var capacity = StartSize
-    while capacity <= count or mustRehash(capacity, count):
-      capacity *= GrowthFactor
-    result = TStrTable(data: newSeq[PSym](capacity))
+    skip cur  # the symbol count, which no longer has a use here: a `TStrTable`
+              # is insertion ordered, so the order of the symbols sharing an
+              # identifier is a property of the table and no growth can permute
+              # it. Presizing to keep a rehash from doing so is what the count
+              # was read for. Still consumed, to stay in step with the record.
+    result = default(TStrTable)  # storage grows on the first `strTableAdd`
     while cur.hasMore:
       var sym: PSym = nil
       if cur.kind == Symbol:
@@ -4497,7 +4495,7 @@ proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHi
     icProfStart(tInterfTables)
     interf = loadInterface(c, module, false, resolveModule)
     # The full interface is independent and stays lazy until an import {.all.}.
-    interfHidden = TStrTable(data: newSeq[PSym](StartSize))
+    interfHidden = default(TStrTable)
     icProfStop(tInterfTables)
 
 proc loadNifModule*(c: var DecodeContext; f: FileIndex; interf, interfHidden: var TStrTable;
