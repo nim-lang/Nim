@@ -33,6 +33,10 @@ func zeroDefault*[T](_: typedesc[T]): T {.magic: "ZeroDefault".} =
 
 include "system/compilation"
 
+when defined(solaris) and defined(amd64):
+  {.passC: "-m64".}
+  {.passL: "-m64".}
+
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 # {.push hints: off.}
 
