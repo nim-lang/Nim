@@ -1,0 +1,29 @@
+markupTitle	parallel_compiler.md	parallel_compiler.html	parallel_compiler.md		0
+heading	A concurrent compiler: routine bodies as the unit of parallelism	parallel_compiler.html#a-concurrent-compilercolon-routine-bodies-as-the-unit-of-parallelism	 A concurrent compiler: routine bodies as the unit of parallelism		0
+heading	0. Goal, and the constraints that shape it	parallel_compiler.html#Z0dot-goal-and-the-constraints-that-shape-it	  0. Goal, and the constraints that shape it		0
+heading	1. What the numbers say	parallel_compiler.html#Z1dot-what-the-numbers-say	  1. What the numbers say		0
+heading	1.1 Classic whole-program build of the compiler (nim c --compileOnly compiler/nim.nim, 244 modules)	parallel_compiler.html#Z1dot1-classic-wholeminusprogram-build-of-the-compiler-nim-c-minusminuscompileonly-compilerslashnimdotnim-244-modules	   1.1 Classic whole-program build of the compiler (<tt class="docutils literal"><span class="pre">nim c --compileOnly compiler/nim.nim</span></tt>, 244 modules)		0
+heading	1.2 Per-module, under IC (nim m processes, --ic:on)	parallel_compiler.html#Z1dot2-perminusmodule-under-ic-nim-m-processes-minusminusiccolonon	   1.2 Per-module, under IC (<tt class="docutils literal"><span class="pre">nim m</span></tt> processes, <tt class="docutils literal"><span class="pre">--ic:on</span></tt>)		0
+heading	1.3 Where the real win is: decoupling headers from bodies across modules	parallel_compiler.html#Z1dot3-where-the-real-win-iscolon-decoupling-headers-from-bodies-across-modules	   1.3 Where the real win is: decoupling headers from bodies across modules		0
+heading	1.4 --mm:atomicArc is affordable	parallel_compiler.html#Z1dot4-minusminusmmcolonatomicarc-is-affordable	   1.4 <tt class="docutils literal"><span class="pre">--mm:atomicArc</span></tt> is affordable		0
+heading	2. Architecture	parallel_compiler.html#Z2dot-architecture	  2. Architecture		0
+heading	2.1 Two passes per module	parallel_compiler.html#Z2dot1-two-passes-per-module	   2.1 Two passes per module		0
+heading	2.2 The task record	parallel_compiler.html#Z2dot2-the-task-record	   2.2 The task record		0
+heading	2.3 Units, canonical keys, and the one rule that keeps it deadlock-free	parallel_compiler.html#Z2dot3-units-canonical-keys-and-the-one-rule-that-keeps-it-deadlockminusfree	   2.3 Units, canonical keys, and the one rule that keeps it deadlock-free		0
+heading	2.4 Declare-before-use on a scope that is complete	parallel_compiler.html#Z2dot4-declareminusbeforeminususe-on-a-scope-that-is-complete	   2.4 Declare-before-use on a scope that is complete		0
+heading	2.5 The per-body pipeline and its outputs	parallel_compiler.html#Z2dot5-the-perminusbody-pipeline-and-its-outputs	   2.5 The per-body pipeline and its outputs		0
+heading	2.6 Determinism rules, collected	parallel_compiler.html#Z2dot6-determinism-rules-collected	   2.6 Determinism rules, collected		0
+heading	3. The PContext split and the reader/writer lock	parallel_compiler.html#Z3dot-the-pcontext-split-and-the-readerslashwriter-lock	  3. The <tt class="docutils literal"><span class="pre">PContext</span></tt> split and the reader/writer lock		0
+heading	4. Gotchas found in the code, and what the design does with each	parallel_compiler.html#Z4dot-gotchas-found-in-the-code-and-what-the-design-does-with-each	  4. Gotchas found in the code, and what the design does with each		0
+heading	4.1 Stacks on shared objects (save/restore-around-a-region idioms)	parallel_compiler.html#Z4dot1-stacks-on-shared-objects-saveslashrestoreminusaroundminusaminusregion-idioms	   4.1 Stacks on shared objects (save/restore-around-a-region idioms)		0
+heading	4.2 Counters: identity that must not depend on scheduling	parallel_compiler.html#Z4dot2-counterscolon-identity-that-must-not-depend-on-scheduling	   4.2 Counters: identity that must not depend on scheduling		0
+heading	4.3 Reads that mutate (lazy initialisation on the read path)	parallel_compiler.html#Z4dot3-reads-that-mutate-lazy-initialisation-on-the-read-path	   4.3 Reads that mutate (lazy initialisation on the read path)		0
+heading	4.4 Writes to other units' symbols and types	parallel_compiler.html#Z4dot4-writes-to-other-units-symbols-and-types	   4.4 Writes to <em>other</em> units' symbols and types		0
+heading	4.5 Shared containers appended to from bodies	parallel_compiler.html#Z4dot5-shared-containers-appended-to-from-bodies	   4.5 Shared containers appended to from bodies		0
+heading	4.6 The VM singleton	parallel_compiler.html#Z4dot6-the-vm-singleton	   4.6 The VM singleton		0
+heading	4.7 The remaining process globals	parallel_compiler.html#Z4dot7-the-remaining-process-globals	   4.7 The remaining process globals		0
+heading	4.8 Messages and I/O	parallel_compiler.html#Z4dot8-messages-and-islasho	   4.8 Messages and I/O		0
+heading	4.9 The memory model, concretely	parallel_compiler.html#Z4dot9-the-memory-model-concretely	   4.9 The memory model, concretely		0
+heading	4.10 Order dependencies that are semantics, and what changes	parallel_compiler.html#Z4dot10-order-dependencies-that-are-semantics-and-what-changes	   4.10 Order dependencies that are <em>semantics</em>, and what changes		0
+heading	5. Roadmap and validation gates	parallel_compiler.html#Z5dot-roadmap-and-validation-gates	  5. Roadmap and validation gates		0
+heading	6. Open questions	parallel_compiler.html#Z6dot-open-questions	  6. Open questions		0

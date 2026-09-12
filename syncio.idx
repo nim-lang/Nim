@@ -1,0 +1,66 @@
+nimTitle	syncio	syncio.html	module std/syncio		0
+nim	File	syncio.html#File	type File		24
+nim	fmRead	syncio.html#fmRead	FileMode.fmRead		26
+nim	fmWrite	syncio.html#fmWrite	FileMode.fmWrite		26
+nim	fmReadWrite	syncio.html#fmReadWrite	FileMode.fmReadWrite		26
+nim	fmReadWriteExisting	syncio.html#fmReadWriteExisting	FileMode.fmReadWriteExisting		26
+nim	fmAppend	syncio.html#fmAppend	FileMode.fmAppend		26
+nim	FileMode	syncio.html#FileMode	enum FileMode		26
+nim	fspSet	syncio.html#fspSet	FileSeekPos.fspSet		43
+nim	fspCur	syncio.html#fspCur	FileSeekPos.fspCur		43
+nim	fspEnd	syncio.html#fspEnd	FileSeekPos.fspEnd		43
+nim	FileSeekPos	syncio.html#FileSeekPos	enum FileSeekPos		43
+nim	FileHandle	syncio.html#FileHandle	type FileHandle		54
+nim	stdin	syncio.html#stdin	var stdin		67
+nim	stdout	syncio.html#stdout	var stdout		69
+nim	stderr	syncio.html#stderr	var stderr		71
+nim	stdmsg	syncio.html#stdmsg.t	template stdmsg(): File		77
+nim	readBuffer	syncio.html#readBuffer,File,pointer,Natural	proc readBuffer(f: File; buffer: pointer; len: Natural): int		184
+nim	readBytes	syncio.html#readBytes,File,openArray[],Natural,Natural	proc readBytes(f: File; a: var openArray[int8 | uint8]; start, len: Natural): int		192
+nim	readChars	syncio.html#readChars,File,openArray[char]	proc readChars(f: File; a: var openArray[char]): int		200
+nim	readChars	syncio.html#readChars,File,openArray[char],Natural,Natural	proc readChars(f: File; a: var openArray[char]; start, len: Natural): int		206
+nim	write	syncio.html#write,File,cstring	proc write(f: File; c: cstring)		216
+nim	writeBuffer	syncio.html#writeBuffer,File,pointer,Natural	proc writeBuffer(f: File; buffer: pointer; len: Natural): int		221
+nim	writeBytes	syncio.html#writeBytes,File,openArray[],Natural,Natural	proc writeBytes(f: File; a: openArray[int8 | uint8]; start, len: Natural): int		229
+nim	writeChars	syncio.html#writeChars,File,openArray[char],Natural,Natural	proc writeChars(f: File; a: openArray[char]; start, len: Natural): int		237
+nim	write	syncio.html#write,File,string	proc write(f: File; s: string)		267
+nim	close	syncio.html#close,File	proc close(f: File)		340
+nim	readChar	syncio.html#readChar,File	proc readChar(f: File): char		344
+nim	flushFile	syncio.html#flushFile,File	proc flushFile(f: File)		353
+nim	getFileHandle	syncio.html#getFileHandle,File	proc getFileHandle(f: File): FileHandle		357
+nim	getOsFileHandle	syncio.html#getOsFileHandle,File	proc getOsFileHandle(f: File): FileHandle		365
+nim	setInheritable	syncio.html#setInheritable,FileHandle,bool	proc setInheritable(f: FileHandle; inheritable: bool): bool		374
+nim	readLine	syncio.html#readLine,File,string	proc readLine(f: File; line: var string): bool		395
+nim	readLine	syncio.html#readLine,File	proc readLine(f: File): string		524
+nim	write	syncio.html#write,File,int	proc write(f: File; i: int)		531
+nim	write	syncio.html#write,File,BiggestInt	proc write(f: File; i: BiggestInt)		537
+nim	write	syncio.html#write,File,bool	proc write(f: File; b: bool)		543
+nim	write	syncio.html#write,File,float32	proc write(f: File; r: float32)		547
+nim	write	syncio.html#write,File,BiggestFloat	proc write(f: File; r: BiggestFloat)		552
+nim	write	syncio.html#write,File,char	proc write(f: File; c: char)		557
+nim	write	syncio.html#write,File,varargs[string,]	proc write(f: File; a: varargs[string, `$`])		560
+nim	endOfFile	syncio.html#endOfFile,File	proc endOfFile(f: File): bool		585
+nim	readAll	syncio.html#readAll,File	proc readAll(file: File): string		610
+nim	writeLine	syncio.html#writeLine,File,varargs[Ty,]	proc writeLine[Ty](f: File; x: varargs[Ty, `$`])		627
+nim	open	syncio.html#open,File,string,FileMode,int	proc open(f: var File; filename: string; mode: FileMode = fmRead; bufSize: int = -1): bool		718
+nim	reopen	syncio.html#reopen,File,string,FileMode	proc reopen(f: File; filename: string; mode: FileMode = fmRead): bool		753
+nim	open	syncio.html#open,File,FileHandle,FileMode	proc open(f: var File; filehandle: FileHandle; mode: FileMode = fmRead): bool		772
+nim	open	syncio.html#open,string,FileMode,int	proc open(filename: string; mode: FileMode = fmRead; bufSize: int = -1): File		787
+nim	setFilePos	syncio.html#setFilePos,File,int64,FileSeekPos	proc setFilePos(f: File; pos: int64; relativeTo: FileSeekPos = fspSet)		799
+nim	getFilePos	syncio.html#getFilePos,File	proc getFilePos(f: File): int64		805
+nim	getFileSize	syncio.html#getFileSize,File	proc getFileSize(f: File): int64		811
+nim	setStdIoUnbuffered	syncio.html#setStdIoUnbuffered	proc setStdIoUnbuffered()		818
+nim	readFile	syncio.html#readFile,string	proc readFile(filename: string): string		872
+nim	writeFile	syncio.html#writeFile,string,string	proc writeFile(filename, content: string)		887
+nim	writeFile	syncio.html#writeFile,string,openArray[byte]	proc writeFile(filename: string; content: openArray[byte])		900
+nim	readLines	syncio.html#readLines,string,Natural	proc readLines(filename: string; n: Natural): seq[string]		913
+nim	readLines	syncio.html#readLines.t,string	template readLines(filename: string): seq[string]		930
+nim	lines	syncio.html#lines.i,string	iterator lines(filename: string): string		934
+nim	lines	syncio.html#lines.i,File	iterator lines(f: File): string		955
+nim	`&=`	syncio.html#&=.t,File,typed	template `&=`(f: File; x: typed)		970
+nimgrp	writefile	syncio.html#writeFile-procs-all	proc		887
+nimgrp	write	syncio.html#write-procs-all	proc		216
+nimgrp	readline	syncio.html#readLine-procs-all	proc		395
+nimgrp	readchars	syncio.html#readChars-procs-all	proc		200
+nimgrp	open	syncio.html#open-procs-all	proc		718
+nimgrp	lines	syncio.html#lines-iterators-all	iterator		934

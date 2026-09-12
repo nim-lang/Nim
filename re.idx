@@ -1,0 +1,60 @@
+nimTitle	re	re.html	module std/re		0
+nim	MaxSubpatterns	re.html#MaxSubpatterns	const MaxSubpatterns		49
+nim	reIgnoreCase	re.html#reIgnoreCase	RegexFlag.reIgnoreCase		54
+nim	reMultiLine	re.html#reMultiLine	RegexFlag.reMultiLine		54
+nim	reDotAll	re.html#reDotAll	RegexFlag.reDotAll		54
+nim	reExtended	re.html#reExtended	RegexFlag.reExtended		54
+nim	reStudy	re.html#reStudy	RegexFlag.reStudy		54
+nim	RegexFlag	re.html#RegexFlag	enum RegexFlag		54
+nim	Regex	re.html#Regex	type Regex		66
+nim	RegexError	re.html#RegexError	object RegexError		68
+nim	re	re.html#re,string	proc re(s: string; flags = {reStudy}): Regex		105
+nim	rex	re.html#rex,string	proc rex(s: string; flags = {reStudy, reExtended}): Regex		130
+nim	MaxReBufSize	re.html#MaxReBufSize	const MaxReBufSize		161
+nim	findBounds	re.html#findBounds,cstring,Regex,openArray[string],int,int	proc findBounds(buf: cstring; pattern: Regex; matches: var openArray[string];\n           start = 0; bufSize: int): tuple[first, last: int]		165
+nim	findBounds	re.html#findBounds,string,Regex,openArray[string],int	proc findBounds(s: string; pattern: Regex; matches: var openArray[string]; start = 0): tuple[\n    first, last: int]		188
+nim	findBounds	re.html#findBounds,cstring,Regex,openArray[tuple[int,int]],int,int	proc findBounds(buf: cstring; pattern: Regex;\n           matches: var openArray[tuple[first, last: int]]; start = 0;\n           bufSize: int): tuple[first, last: int]		205
+nim	findBounds	re.html#findBounds,string,Regex,openArray[tuple[int,int]],int	proc findBounds(s: string; pattern: Regex;\n           matches: var openArray[tuple[first, last: int]]; start = 0): tuple[\n    first, last: int]		228
+nim	findBounds	re.html#findBounds,cstring,Regex,int,int	proc findBounds(buf: cstring; pattern: Regex; start = 0; bufSize: int): tuple[\n    first, last: int]		258
+nim	findBounds	re.html#findBounds,string,Regex,int	proc findBounds(s: string; pattern: Regex; start = 0): tuple[first, last: int]		271
+nim	matchLen	re.html#matchLen,string,Regex,openArray[string],int	proc matchLen(s: string; pattern: Regex; matches: var openArray[string]; start = 0): int		291
+nim	matchLen	re.html#matchLen,cstring,Regex,openArray[string],int,int	proc matchLen(buf: cstring; pattern: Regex; matches: var openArray[string];\n         start = 0; bufSize: int): int		300
+nim	matchLen	re.html#matchLen,string,Regex,int	proc matchLen(s: string; pattern: Regex; start = 0): int		309
+nim	matchLen	re.html#matchLen,cstring,Regex,int,int	proc matchLen(buf: cstring; pattern: Regex; start = 0; bufSize: int): int		320
+nim	match	re.html#match,string,Regex,int	proc match(s: string; pattern: Regex; start = 0): bool		326
+nim	match	re.html#match,string,Regex,openArray[string],int	proc match(s: string; pattern: Regex; matches: var openArray[string]; start = 0): bool		330
+nim	match	re.html#match,cstring,Regex,openArray[string],int,int	proc match(buf: cstring; pattern: Regex; matches: var openArray[string]; start = 0;\n      bufSize: int): bool		345
+nim	find	re.html#find,cstring,Regex,openArray[string],int,int	proc find(buf: cstring; pattern: Regex; matches: var openArray[string]; start = 0;\n     bufSize: int): int		356
+nim	find	re.html#find,string,Regex,openArray[string],int	proc find(s: string; pattern: Regex; matches: var openArray[string]; start = 0): int		377
+nim	find	re.html#find,cstring,Regex,int,int	proc find(buf: cstring; pattern: Regex; start = 0; bufSize: int): int		386
+nim	find	re.html#find,string,Regex,int	proc find(s: string; pattern: Regex; start = 0): int		398
+nim	findAll	re.html#findAll.i,string,Regex,int	iterator findAll(s: string; pattern: Regex; start = 0): string		411
+nim	findAll	re.html#findAll.i,cstring,Regex,int,int	iterator findAll(buf: cstring; pattern: Regex; start = 0; bufSize: int): string		430
+nim	findAll	re.html#findAll,string,Regex,int	proc findAll(s: string; pattern: Regex; start = 0): seq[string]		451
+nim	`=~`	re.html#=~.t,string,Regex	template `=~`(s: string; pattern: Regex): untyped		457
+nim	contains	re.html#contains,string,Regex,int	proc contains(s: string; pattern: Regex; start = 0): bool		478
+nim	contains	re.html#contains,string,Regex,openArray[string],int	proc contains(s: string; pattern: Regex; matches: var openArray[string]; start = 0): bool		482
+nim	startsWith	re.html#startsWith,string,Regex	proc startsWith(s: string; prefix: Regex): bool		489
+nim	endsWith	re.html#endsWith,string,Regex	proc endsWith(s: string; suffix: Regex): bool		493
+nim	replace	re.html#replace,string,Regex,string	proc replace(s: string; sub: Regex; by = ""): string		498
+nim	replacef	re.html#replacef,string,Regex,string	proc replacef(s: string; sub: Regex; by: string): string		519
+nim	multiReplace	re.html#multiReplace,string,openArray[tuple[Regex,string]]	proc multiReplace(s: string; subs: openArray[tuple[pattern: Regex, repl: string]]): string		537
+nim	transformFile	re.html#transformFile,string,string,openArray[tuple[Regex,string]]	proc transformFile(infile, outfile: string;\n              subs: openArray[tuple[pattern: Regex, repl: string]])		557
+nim	split	re.html#split.i,string,Regex,int	iterator split(s: string; sep: Regex; maxsplit = -1): string		565
+nim	split	re.html#split,string,Regex,int	proc split(s: string; sep: Regex; maxsplit = -1): seq[string]		598
+nim	escapeRe	re.html#escapeRe,string	proc escapeRe(s: string): string		605
+heading	Licence of the PCRE library	re.html#licence-of-the-pcre-library	 Licence of the PCRE library		0
+heading	Regular expression syntax and semantics	re.html#regular-expression-syntax-and-semantics	 Regular expression syntax and semantics		0
+heading	Backslash	re.html#regular-expression-syntax-and-semantics-backslash	  Backslash		0
+idx	backslash	re.html#backslash_1	Backslash		0
+heading	Non-printing characters	re.html#regular-expression-syntax-and-semantics-nonminusprinting-characters	  Non-printing characters		0
+heading	Generic character types	re.html#regular-expression-syntax-and-semantics-generic-character-types	  Generic character types		0
+idx	generic character types	re.html#generic-character-types_1	Generic character types		0
+heading	Simple assertions	re.html#regular-expression-syntax-and-semantics-simple-assertions	  Simple assertions		0
+idx	simple assertions	re.html#simple-assertions_1	Simple assertions		0
+nimgrp	findbounds	re.html#findBounds-procs-all	proc		165
+nimgrp	contains	re.html#contains-procs-all	proc		478
+nimgrp	match	re.html#match-procs-all	proc		326
+nimgrp	find	re.html#find-procs-all	proc		356
+nimgrp	matchlen	re.html#matchLen-procs-all	proc		291
+nimgrp	findall	re.html#findAll-iterators-all	iterator		411

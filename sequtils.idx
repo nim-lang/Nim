@@ -1,0 +1,53 @@
+nimTitle	sequtils	sequtils.html	module std/sequtils		0
+nim	concat	sequtils.html#concat,varargs[seq[T]]	proc concat[T](seqs: varargs[seq[T]]): seq[T]		131
+nim	addUnique	sequtils.html#addUnique,seq[T],sinkT	proc addUnique[T](s: var seq[T]; x: sink T)		156
+nim	count	sequtils.html#count,openArray[T],T	proc count[T](s: openArray[T]; x: T): int		172
+nim	cycle	sequtils.html#cycle,openArray[T],Natural	proc cycle[T](s: openArray[T]; n: Natural): seq[T]		187
+nim	repeat	sequtils.html#repeat,T,Natural	proc repeat[T](x: T; n: Natural): seq[T]		205
+nim	deduplicate	sequtils.html#deduplicate,openArray[T],bool	proc deduplicate[T](s: openArray[T]; isSorted: bool = false): seq[T]		218
+nim	min	sequtils.html#min,openArray[T],proc(T,T)	proc min[T](x: openArray[T]; cmp: proc (a, b: T): int): T		246
+nim	max	sequtils.html#max,openArray[T],proc(T,T)	proc max[T](x: openArray[T]; cmp: proc (a, b: T): int): T		252
+nim	minIndex	sequtils.html#minIndex,openArray[T]	proc minIndex[T](s: openArray[T]): int		258
+nim	minIndex	sequtils.html#minIndex,openArray[T],proc(T,T)	proc minIndex[T](s: openArray[T]; cmp: proc (a, b: T): int): int		275
+nim	maxIndex	sequtils.html#maxIndex,openArray[T]	proc maxIndex[T](s: openArray[T]): int		289
+nim	maxIndex	sequtils.html#maxIndex,openArray[T],proc(T,T)	proc maxIndex[T](s: openArray[T]; cmp: proc (a, b: T): int): int		306
+nim	minmax	sequtils.html#minmax,openArray[T]	proc minmax[T](x: openArray[T]): (T, T)		319
+nim	minmax	sequtils.html#minmax,openArray[T],proc(T,T)	proc minmax[T](x: openArray[T]; cmp: proc (a, b: T): int): (T, T)		328
+nim	findIt	sequtils.html#findIt.t,untyped,untyped	template findIt(s, predicate: untyped): int		336
+nim	zip	sequtils.html#zip,,	proc zip[S, T](s1: openArray[S]; s2: openArray[T]): seq[(S, T)]		398
+nim	unzip	sequtils.html#unzip,openArray[]	proc unzip[S, T](s: openArray[(S, T)]): (seq[S], seq[T])		400
+nim	distribute	sequtils.html#distribute,seq[T],Positive	proc distribute[T](s: seq[T]; num: Positive; spread = true): seq[seq[T]]		414
+nim	map	sequtils.html#map,openArray[T],proc(T)	proc map[T, S](s: openArray[T]; op: proc (x: T): S {.closure.}): seq[S]		470
+nim	apply	sequtils.html#apply,openArray[T],proc(T)	proc apply[T](s: var openArray[T]; op: proc (x: var T) {.closure.})		496
+nim	apply	sequtils.html#apply,openArray[T],proc(T)_2	proc apply[T](s: var openArray[T]; op: proc (x: T): T {.closure.})		515
+nim	apply	sequtils.html#apply,openArray[T],proc(T)_3	proc apply[T](s: openArray[T]; op: proc (x: T) {.closure.})		535
+nim	filter	sequtils.html#filter.i,openArray[T],proc(T)	iterator filter[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): T		544
+nim	filter	sequtils.html#filter,openArray[T],proc(T)	proc filter[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): seq[T]		567
+nim	keepIf	sequtils.html#keepIf,seq[T],proc(T)	proc keepIf[T](s: var seq[T]; pred: proc (x: T): bool {.closure.})		594
+nim	delete	sequtils.html#delete,seq[T],Slice[int]	proc delete[T](s: var seq[T]; slice: Slice[int])		624
+nim	delete	sequtils.html#delete,seq[T],Natural,Natural	proc delete[T](s: var seq[T]; first, last: Natural)		664
+nim	insert	sequtils.html#insert,seq[T],openArray[T],int	proc insert[T](dest: var seq[T]; src: openArray[T]; pos = 0)		688
+nim	filterIt	sequtils.html#filterIt.t,untyped,untyped	template filterIt(s, pred: untyped): untyped		722
+nim	keepItIf	sequtils.html#keepItIf.t,seq,untyped	template keepItIf(varSeq: seq; pred: untyped)		752
+nim	countIt	sequtils.html#countIt.t,untyped,untyped	template countIt(s, pred: untyped): int		782
+nim	all	sequtils.html#all,openArray[T],proc(T)	proc all[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): bool		800
+nim	allIt	sequtils.html#allIt.t,untyped,untyped	template allIt(s, pred: untyped): bool		818
+nim	any	sequtils.html#any,openArray[T],proc(T)	proc any[T](s: openArray[T]; pred: proc (x: T): bool {.closure.}): bool		842
+nim	anyIt	sequtils.html#anyIt.t,untyped,untyped	template anyIt(s, pred: untyped): bool		860
+nim	toSeq	sequtils.html#toSeq.t,untyped	template toSeq(iter: untyped): untyped		920
+nim	foldl	sequtils.html#foldl.t,untyped,untyped	template foldl(sequence, operation: untyped): untyped		958
+nim	foldl	sequtils.html#foldl.t,,,	template foldl(sequence, operation, first): untyped		1007
+nim	foldr	sequtils.html#foldr.t,untyped,untyped	template foldr(sequence, operation: untyped): untyped		1034
+nim	mapIt	sequtils.html#mapIt.t,typed,untyped	template mapIt(s: typed; op: untyped): untyped		1076
+nim	applyIt	sequtils.html#applyIt.t,untyped,untyped	template applyIt(varSeq, op: untyped)		1141
+nim	newSeqWith	sequtils.html#newSeqWith.t,int,untyped	template newSeqWith(len: int; init: untyped): untyped		1162
+nim	mapLiterals	sequtils.html#mapLiterals.m,untyped,untyped	macro mapLiterals(constructor, op: untyped; nested = true): untyped		1200
+nim	items	sequtils.html#items.i	iterator items[T](xs: iterator (): T): T		1226
+idx	seq	sequtils.html#seq_1	Module sequtils		0
+heading	See also	sequtils.html#see-also	 See also		0
+nimgrp	minmax	sequtils.html#minmax-procs-all	proc		319
+nimgrp	apply	sequtils.html#apply-procs-all	proc		496
+nimgrp	delete	sequtils.html#delete-procs-all	proc		624
+nimgrp	minindex	sequtils.html#minIndex-procs-all	proc		258
+nimgrp	maxindex	sequtils.html#maxIndex-procs-all	proc		289
+nimgrp	foldl	sequtils.html#foldl-templates-all	template		958
