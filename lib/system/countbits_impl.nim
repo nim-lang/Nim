@@ -37,8 +37,8 @@ template countBitsImpl(n: uint64): int =
 
 when useGCC_builtins:
   # Returns the number of set 1-bits in value.
-  proc builtin_popcount(x: cuint): cint {.importc: "__builtin_popcount", cdecl.}
-  proc builtin_popcountll(x: culonglong): cint {.
+  func builtin_popcount(x: cuint): cint {.importc: "__builtin_popcount", cdecl.}
+  func builtin_popcountll(x: culonglong): cint {.
       importc: "__builtin_popcountll", cdecl.}
 
 elif useVCC_builtins:

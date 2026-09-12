@@ -1128,7 +1128,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
       if not (a.kind == nkSym and a.sym == tracked.owner):
         if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
         markGcUnsafe(tracked, a)
-    if tfNoSideEffect notin op.flags and not importedFromC(a):
+    if tfNoSideEffect notin op.flags and
+        not (importcNoSideEffect in tracked.config.legacyFeatures and importedFromC(a)):
       # and it's not a recursive call:
       if not (a.kind == nkSym and a.sym == tracked.owner):
         markSideEffect(tracked, a, n.info)

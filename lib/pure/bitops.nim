@@ -434,20 +434,20 @@ template parityImpl[T](value: T): int =
 
 when useGCC_builtins:
   # Returns the bit parity in value
-  proc builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
-  proc builtin_parityll(x: culonglong): cint {.importc: "__builtin_parityll", cdecl.}
+  func builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
+  func builtin_parityll(x: culonglong): cint {.importc: "__builtin_parityll", cdecl.}
 
   # Returns one plus the index of the least significant 1-bit of x, or if x is zero, returns zero.
-  proc builtin_ffs(x: cint): cint {.importc: "__builtin_ffs", cdecl.}
-  proc builtin_ffsll(x: clonglong): cint {.importc: "__builtin_ffsll", cdecl.}
+  func builtin_ffs(x: cint): cint {.importc: "__builtin_ffs", cdecl.}
+  func builtin_ffsll(x: clonglong): cint {.importc: "__builtin_ffsll", cdecl.}
 
   # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  proc builtin_clz(x: cuint): cint {.importc: "__builtin_clz", cdecl.}
-  proc builtin_clzll(x: culonglong): cint {.importc: "__builtin_clzll", cdecl.}
+  func builtin_clz(x: cuint): cint {.importc: "__builtin_clz", cdecl.}
+  func builtin_clzll(x: culonglong): cint {.importc: "__builtin_clzll", cdecl.}
 
   # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
-  proc builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
-  proc builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
+  func builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
+  func builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
 
 elif useVCC_builtins:
   # Search the mask data from most significant bit (MSB) to least significant bit (LSB) for a set bit (1).

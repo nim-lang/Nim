@@ -5616,7 +5616,12 @@ To override the compiler's side effect analysis a `{.noSideEffect.}`
 analogous to the inference for exception tracking.**
 
 When the compiler cannot infer side effects, as is the case for imported
-functions, one can annotate them with the `sideEffect` pragma.
+functions, it assumes they have side effects. Imported functions that are known
+to be free of side effects can be annotated with `noSideEffect` or declared
+with `func`.
+The `--legacy:importcNoSideEffect` switch restores the previous behavior of
+assuming imported calls have no side effects unless explicitly annotated with
+`sideEffect`.
 
 GC safety effect
 ----------------
