@@ -65,13 +65,13 @@ when defined(nimPreviewSlimSystem):
 
 
 when not defined(js) and not defined(nimscript): # C
-  proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
+  func c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
-  proc c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
-  proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
+  func c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
+  func c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
 
-  proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
+  func c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
   # don't export `c_frexp` in the future and remove `c_frexp2`.
   func c_frexp2(x: cfloat, exponent: var cint): cfloat {.
