@@ -464,7 +464,20 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
          not graph.config.isDefined("nimscript") and
          (graph.config.icGroup.len == 0 or
           toFullPath(graph.config, fileIdx) notin graph.config.icGroup):
-        let precomp = moduleFromNifFile(graph, fileIdx)
+        # The import's own NIF can be there and still leave the load short: an
+        # interface names symbols of modules the scanner never scheduled either
+        # (`compiles((; import x))` hides one from it as thoroughly as a
+        # macro-generated import does), and the loader has no artifact for them.
+        # That is the same situation as a missing direct import, one level in,
+        # so it takes the same recovery — the only thing it used to do
+        # differently was die on a `raiseAssert`, printing `Error: unhandled
+        # exception` in the middle of a build the discovery rerun then finished.
+        var precomp = PrecompiledModule(module: nil)
+        var missingRef = ""
+        try:
+          precomp = moduleFromNifFile(graph, fileIdx)
+        except MissingNifModuleError as e:
+          missingRef = e.suffix & " (expected: " & e.modFile & ")"
         if precomp.module == nil:
           if graph.config.ideActive:
             # nimsuggest bootstrap: this import has no precompiled NIF yet (cold
@@ -488,8 +501,12 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
               for f in deps: paths.add toFullPath(graph.config, f)
               writeSemDeps(graph.config, importer.int32, paths)
             globalError(graph.config, unknownLineInfo,
-              "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
-              " (expected: " & nifPath & ")")
+              if missingRef.len > 0:
+                "nim m requires precompiled NIF for a module " &
+                  toFullPath(graph.config, fileIdx) & " references: " & missingRef
+              else:
+                "nim m requires precompiled NIF for import: " &
+                  toFullPath(graph.config, fileIdx) & " (expected: " & nifPath & ")")
             return nil  # Don't fall through to compile from source
         else:
           # Module successfully loaded from NIF file - use it and skip processing

@@ -119,6 +119,19 @@ proc toClassSymId*(config: ConfigRef; typeId: ItemId): nifstreams.SymId =
   let typeSymName = "`t" & $typeId.item & "." & cachedModuleSuffix(config, typeId.module.FileIndex)
   result = pool.syms.getOrIncl(typeSymName)
 
+type
+  MissingNifModuleError* = object of CatchableError
+    ## The loader needs a module's `.bif` and the build graph has not produced
+    ## one. Recoverable, not an internal error: under `nim ic` the frontend is
+    ## run to a discovery fixpoint, so the importing process flushes its
+    ## `.s.deps` sidecars and errors, the driver re-derives the graph with the
+    ## missing node, and the rerun finds the artifact. Raised rather than
+    ## asserted so `compilePipelineModule` can do exactly that -- a `raiseAssert`
+    ## here printed `Error: unhandled exception` in the middle of a build that
+    ## then went on to succeed.
+    suffix*: string   ## the module suffix whose artifact is missing
+    modFile*: string  ## the artifact the loader looked for
+
 # ---------------- Line info handling -----------------------------------------
 
 type
@@ -2843,9 +2856,10 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     if not lowered:
       modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string
     if not fileExists(modFile):
-      raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
-        ". This can happen when loading a module from NIF that references another module " &
-        "whose NIF file hasn't been written yet."
+      raise (ref MissingNifModuleError)(suffix: suffix, modFile: modFile,
+        msg: "NIF file not found for module suffix '" & suffix & "': " & modFile &
+          ". This can happen when loading a module from NIF that references another module " &
+          "whose NIF file hasn't been written yet.")
     icProfStart(tBifLoad)
     var m = icbif.load(modFile)
     prof pBifLoads
