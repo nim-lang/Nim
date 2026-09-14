@@ -919,6 +919,27 @@ proc findSymDataInRange(graph: ModuleGraph, file: AbsoluteFile; startLine, start
     endPos = newLineInfo(fileIdx, endLine, endCol)
   result = findSymDataInRange(graph, startPos, endPos, isGenericInstance)
 
+proc symbolEqual(left, right: PSym): bool
+
+proc findSymDataAll(graph: ModuleGraph, trackPos: TLineInfo): seq[SymInfoPair] =
+  ## The symbol `findSymData` picks at `trackPos`, followed by every *other*
+  ## routine overload of the same name recorded at that exact position: a call
+  ## inside a generic body is resolved once per instantiation and different
+  ## instantiations may pick different overloads, each of which is a correct
+  ## definition. Anything else keeps the single-result behaviour.
+  result = @[]
+  let primary = graph.findSymData(trackPos)
+  if primary.isNil: return
+  result.add primary[]
+  if primary.sym.kind notin routineKinds: return
+  let db = graph.fileSymbols(trackPos.fileIndex)
+  for i in db.lineInfo.low..db.lineInfo.high:
+    let s = db.getSymInfoPair(i)
+    if s.sym.kind in routineKinds and not s.isGenericInstance and
+        s.info.exactEquals(primary.info) and s.sym.name.id == primary.sym.name.id and
+        not result.anyIt(it.sym.symbolEqual(s.sym)):
+      result.add s
+
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
   if graph.config.m.fileInfos[originalFileIdx.int32].hash != sha or graph.config.ideCmd in {ideSug, ideCon}:
@@ -1156,12 +1177,13 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   case cmd
   of ideDef:
-    let s = graph.findSymData(file, line, col)
-    if not s.isNil:
+    # Several results are possible and correct: see `findSymDataAll`.
+    for s in graph.findSymDataAll(newLineInfo(fileIndex, line, col)):
       graph.suggestResult(s.sym, s.sym.info)
   of ideType:
-    let s = graph.findSymData(file, line, col)
-    if not s.isNil and s.sym.typ != nil:
+    let symbols = graph.findSymDataAll(newLineInfo(fileIndex, line, col))
+    if symbols.len > 0 and symbols[0].sym.typ != nil:
+      let s = symbols[0]
       let typeSym = s.sym.typ.sym
       if typeSym != nil:
         graph.suggestResult(typeSym, typeSym.info, ideType)
@@ -1170,11 +1192,11 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         if genericType != nil:
           graph.suggestResult(genericType, genericType.info, ideType)
   of ideUse, ideDus:
-    let symbol = graph.findSymData(file, line, col)
-    if not symbol.isNil:
+    let symbols = graph.findSymDataAll(newLineInfo(fileIndex, line, col))
+    if symbols.len > 0:
       var res: seq[SymInfoPair] = @[]
       for s in graph.suggestSymbolsIter:
-        if s.sym.symbolEqual(symbol.sym):
+        if symbols.anyIt(s.sym.symbolEqual(it.sym)):
           res.add(s)
       for s in res.deduplicateSymInfoPair():
         graph.suggestResult(s.sym, s.info)
@@ -1253,8 +1275,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         graph.suggestResult(s.sym, s.info)
 
   of ideDeclaration:
-    let s = graph.findSymData(file, line, col)
-    if not s.isNil:
+    for s in graph.findSymDataAll(newLineInfo(fileIndex, line, col)):
       # find first mention of the symbol in the file containing the definition.
       # It is either the definition or the declaration.
       var first: SymInfoPair = default(SymInfoPair)
