@@ -940,6 +940,64 @@ proc findSymDataAll(graph: ModuleGraph, trackPos: TLineInfo): seq[SymInfoPair] =
         not result.anyIt(it.sym.symbolEqual(s.sym)):
       result.add s
 
+proc identInRoutineBody(n: PNode, trackPos: TLineInfo, inRoutine = false): bool =
+  ## Is there an identifier at `trackPos` inside the body of a routine
+  ## (parsed tree)? Only routine bodies can be generic (explicitly or via
+  ## typeclass params), and only those are skipped by the regular analysis.
+  if n.isNil: return false
+  case n.kind
+  of nkIdent:
+    inRoutine and isTracked(n.info, trackPos, n.ident.s.len)
+  of routineDefs:
+    n.info.line <= trackPos.line and trackPos.line <= n.endInfo.line and
+      identInRoutineBody(n[bodyPos], trackPos, inRoutine = true)
+  else:
+    for i in 0 ..< safeLen(n):
+      if identInRoutineBody(n[i], trackPos, inRoutine): return true
+    false
+
+proc findSymDataWithFallback(graph: ModuleGraph, fileIndex, moduleToCompile: FileIndex,
+                             line, col: int): seq[SymInfoPair] =
+  ## Cheap first: the symbol database of the regular compilation, which covers
+  ## everything the project instantiates. Inside a generic body that the
+  ## project never instantiates it records nothing (the pre-pass leaves calls
+  ## as symbol choices), so fall back to the speculative check in
+  ## `semIdeForTemplateOrGeneric`: re-sem the module with the cursor in
+  ## `trackPos`. It resolves what the parameter constraints allow and stays
+  ## silent otherwise, so it cannot produce a wrong answer, only none.
+  let conf = graph.config
+  let trackPos = newLineInfo(fileIndex, line, col)
+  result = graph.findSymDataAll(trackPos)
+  if result.len > 0 or graph.getModule(moduleToCompile) == nil or
+      not identInRoutineBody(parseFile(fileIndex, graph.cache, conf), trackPos):
+    return
+  myLog fmt "Symbol lookup at {conf $ trackPos} failed; recompiling with the cursor tracked"
+  # The recompile drops symbol databases (`markDirty` on this file, and on the
+  # direct importers via the dirty-module path) that only the dependents could
+  # regenerate, and records the speculative check's errors as diagnostics.
+  # Snapshot both and put them back, keeping only the results at the cursor.
+  let savedSymbols = graph.suggestSymbols
+  let savedErrors = graph.suggestErrors
+  # With `trackPos` set, `suggestSym` would also run the v2 machinery for the
+  # current `ideCmd` and emit results straight from the compilation; compile
+  # like the initial pass does.
+  let savedIdeCmd = conf.ideCmd
+  conf.ideCmd = ideNone
+  conf.m.trackPos = trackPos
+  conf.m.trackPosAttached = false
+  try:
+    graph.markDirty moduleToCompile
+    graph.recompilePartially(moduleToCompile)
+    result = graph.findSymDataAll(trackPos)
+  finally:
+    conf.ideCmd = savedIdeCmd
+    conf.m.trackPos = default(TLineInfo)
+    graph.suggestErrors = savedErrors
+    graph.suggestSymbols = savedSymbols
+  for s in result:
+    graph.suggestSymbols.add(s, optIdeExceptionInlayHints in conf.globalOptions)
+  myLog fmt "Speculative recompile found {result.len} symbol(s)"
+
 proc markDirtyIfNeeded(graph: ModuleGraph, file: string, originalFileIdx: FileIndex) =
   let sha = $sha1.secureHashFile(file)
   if graph.config.m.fileInfos[originalFileIdx.int32].hash != sha or graph.config.ideCmd in {ideSug, ideCon}:
@@ -1178,10 +1236,10 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   case cmd
   of ideDef:
     # Several results are possible and correct: see `findSymDataAll`.
-    for s in graph.findSymDataAll(newLineInfo(fileIndex, line, col)):
+    for s in graph.findSymDataWithFallback(fileIndex, moduleToCompile, line, col):
       graph.suggestResult(s.sym, s.sym.info)
   of ideType:
-    let symbols = graph.findSymDataAll(newLineInfo(fileIndex, line, col))
+    let symbols = graph.findSymDataWithFallback(fileIndex, moduleToCompile, line, col)
     if symbols.len > 0 and symbols[0].sym.typ != nil:
       let s = symbols[0]
       let typeSym = s.sym.typ.sym
@@ -1192,7 +1250,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         if genericType != nil:
           graph.suggestResult(genericType, genericType.info, ideType)
   of ideUse, ideDus:
-    let symbols = graph.findSymDataAll(newLineInfo(fileIndex, line, col))
+    let symbols = graph.findSymDataWithFallback(fileIndex, moduleToCompile, line, col)
     if symbols.len > 0:
       var res: seq[SymInfoPair] = @[]
       for s in graph.suggestSymbolsIter:
@@ -1275,7 +1333,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         graph.suggestResult(s.sym, s.info)
 
   of ideDeclaration:
-    for s in graph.findSymDataAll(newLineInfo(fileIndex, line, col)):
+    for s in graph.findSymDataWithFallback(fileIndex, moduleToCompile, line, col):
       # find first mention of the symbol in the file containing the definition.
       # It is either the definition or the declaration.
       var first: SymInfoPair = default(SymInfoPair)
