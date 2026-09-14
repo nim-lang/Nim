@@ -80,7 +80,15 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
     if c.config.ideActive and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
-      discard safeSemExpr(c, n)
+      # Speculatively sem a *copy* of the body in its own scope: `semExpr`
+      # rewrites the tree in place, and whatever does not resolve with the
+      # generic parameters unbound would turn into error nodes in the stored
+      # body that instantiations and `m.ast` lookups (v2 `use`) rely on.
+      openScope(c)
+      # `ESuggestDone` may escape here; `recoverContext` then resets the
+      # scopes and proc-cons, so no `finally` is needed.
+      discard safeSemExpr(c, copyTree(n))
+      closeScope(c)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
