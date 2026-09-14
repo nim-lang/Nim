@@ -91,7 +91,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       # side (where the cursor usually is) is never analysed.
       let owner = if c.p != nil: c.p.owner else: nil
       let resultType =
-        if owner == nil or owner.kind notin skProcKinds:
+        if owner == nil or owner.kind notin routineKinds:
           nil
         elif owner.kind == skMacro:
           sysTypeFromName(c.graph, n.info, "NimNode")
