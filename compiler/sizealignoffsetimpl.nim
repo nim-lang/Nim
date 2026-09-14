@@ -272,7 +272,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szUnknownSize
       typ.align = szUnknownSize
     else:
-      typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
+      # the C backend emits `array[0, T]` as `T[1]` (C has no zero-length
+      # arrays), so reserve one element here as well (bug #26220):
+      let n = if len == Zero: One else: len
+      typ.size = toInt64Checked(n * int32(elemSize), szTooBigSize)
       typ.align = typ.elementType.align
 
   of tyUncheckedArray:
