@@ -859,7 +859,7 @@ proc fillObjectFields*(m: BModule; typ: PType) =
   if typ.baseClass != nil:
     fillObjectFields(m, typ.baseClass.skipTypes(skipPtrs))
 
-proc mangleDynLibProc(sym: PSym): Rope
+proc mangleDynLibProc(m: BModule; sym: PSym): Rope
 
 proc getRecordDesc(m: BModule; typ: PType, name: Rope,
                    check: var IntSet): Rope =

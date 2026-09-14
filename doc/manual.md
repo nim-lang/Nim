@@ -189,6 +189,37 @@ of the stack; `IND{=}` an indentation that has the same number of spaces. `DED`
 is another pseudo terminal that describes the *action* of popping a value
 from the stack, `IND{>}` then implies to push onto the stack.
 
+A token that is not the first token on its line carries no indentation at all,
+and the grammar distinguishes that case too: an *optional* indentation
+pseudo-terminal means "this indentation, or none". `IND{>}?` accepts a token
+that is indented further than the top of the stack *or* that continues the
+current line; `IND{=}?` accepts a token at the current indentation or on the
+same line; `(IND{>} | IND{=})?` accepts anything but a dedent.
+
+The same rule applies to comments. The terminal `COMMENT` (a documentation
+comment; ordinary `#` comments never reach the parser) without an
+indentation pseudo-terminal in front of it denotes a comment **on the same
+line** as the preceding token, so `COMMENT?` reads "an optional trailing
+comment". A comment that starts a line of its own is never matched by a bare
+`COMMENT?`: it is either a statement of its own (`commentStmt`) or the grammar
+spells its position explicitly, as in `IND{>} COMMENT` or `IND{>}? COMMENT`.
+For example `optInd = COMMENT? IND{>}?` allows a trailing
+comment and then requires the next token to be on the same line or indented
+further. And in `routine`, `'=' COMMENT? stmt` makes the difference between
+
+  ```nim
+  proc p() = ## a trailing comment: documents `p`
+    discard
+  ```
+
+and
+
+  ```nim
+  proc p() =
+    ## a comment on its own line: the first statement of the body
+    discard
+  ```
+
 With this notation we can now easily define the core of the grammar: A block of
 statements (simplified example):
 

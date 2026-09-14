@@ -1463,7 +1463,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
   # IC: review this solution again later
-  incl orig.flagsImpl, tfCheckedForDestructor
+  orig.inclDerived {tfCheckedForDestructor}
   # for user defined generic destructors:
   let origRoot = genericRoot(orig)
   if origRoot != nil:
@@ -1513,6 +1513,8 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrivial(orig.assignment) or
     # not isTrivial(orig.sink):
-    # IC: review this solution again later
-    orig.flagsImpl.incl tfHasAsgn
-    # ^ XXX Breaks IC!
+    # A hook was lifted for `orig` in THIS module, which may be a module that
+    # merely uses the type. `inclDerived` is the sanctioned way to record that
+    # on a possibly-`Sealed` foreign type (it used to write `flagsImpl` behind
+    # the accessor's back precisely to dodge the seal assert).
+    orig.inclDerived {tfHasAsgn}

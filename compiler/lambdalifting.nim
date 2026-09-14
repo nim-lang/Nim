@@ -293,6 +293,13 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   let s = n.sym
   let isEnv = s.name.id == getIdent(g.cache, ":env").id
   if illegalCapture(s):
+    when defined(icCaptureTrace):
+      # Under IC this fires from a backend process, and WHICH routine's lift
+      # got here is the whole question: a routine lowered twice in one
+      # process reports captures the first lift already rewrote.
+      writeStackTrace()
+      echo "CAPTURE owner=" & owner.name.s & " ownerOwner=" &
+        (if owner.owner != nil: owner.owner.name.s else: "nil")
     localError(g.config, n.info,
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
        " safety, declared here: $3; using '-d:nimNoLentIterators' helps in some cases." &
