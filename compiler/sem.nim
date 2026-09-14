@@ -85,9 +85,24 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       # generic parameters unbound would turn into error nodes in the stored
       # body that instantiations and `m.ast` lookups (v2 `use`) rely on.
       openScope(c)
+      # The pre-pass declares `result` as `skUnknown` so that it stays an
+      # identifier in the generic body; give it its real type here, otherwise
+      # every `result = f(...)` fails on the left-hand side and the right-hand
+      # side (where the cursor usually is) is never analysed.
+      let owner = if c.p != nil: c.p.owner else: nil
+      let typedResult = owner != nil and owner.kind in {skProc, skFunc, skMethod, skConverter} and
+        owner.typ != nil and owner.typ.returnType != nil
+      let savedResultSym = if typedResult: c.p.resultSym else: nil
+      if typedResult:
+        var res = newSym(skResult, getIdent(c.cache, "result"), c.idgen, owner, n.info)
+        res.typ = owner.typ.returnType
+        incl(res.flagsImpl, sfUsed)
+        c.p.resultSym = res
+        addDecl(c, res)
       # `ESuggestDone` may escape here; `recoverContext` then resets the
       # scopes and proc-cons, so no `finally` is needed.
       discard safeSemExpr(c, copyTree(n))
+      if typedResult: c.p.resultSym = savedResultSym
       closeScope(c)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
