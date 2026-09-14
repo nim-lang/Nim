@@ -90,19 +90,27 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       # every `result = f(...)` fails on the left-hand side and the right-hand
       # side (where the cursor usually is) is never analysed.
       let owner = if c.p != nil: c.p.owner else: nil
-      let typedResult = owner != nil and owner.kind in {skProc, skFunc, skMethod, skConverter} and
-        owner.typ != nil and owner.typ.returnType != nil
-      let savedResultSym = if typedResult: c.p.resultSym else: nil
-      if typedResult:
+      let resultType =
+        if owner == nil or owner.kind notin skProcKinds:
+          nil
+        elif owner.kind == skMacro:
+          sysTypeFromName(c.graph, n.info, "NimNode")
+        elif owner.typ != nil and owner.typ.returnType != nil and
+             not isInlineIterator(owner.typ):
+          owner.typ.returnType
+        else:
+          nil
+      let savedResultSym = if resultType != nil: c.p.resultSym else: nil
+      if resultType != nil:
         var res = newSym(skResult, getIdent(c.cache, "result"), c.idgen, owner, n.info)
-        res.typ = owner.typ.returnType
+        res.typ = resultType
         incl(res.flagsImpl, sfUsed)
         c.p.resultSym = res
         addDecl(c, res)
       # `ESuggestDone` may escape here; `recoverContext` then resets the
       # scopes and proc-cons, so no `finally` is needed.
       discard safeSemExpr(c, copyTree(n))
-      if typedResult: c.p.resultSym = savedResultSym
+      if resultType != nil: c.p.resultSym = savedResultSym
       closeScope(c)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
