@@ -58,3 +58,9 @@ block: # bug #21273
   var s = newString(80)
   while f.readLine(s):
     doAssert s.toHex == hex
+
+block: # opening a directory as a file fails
+  when defined(posix):
+    createDir(buildDir)
+    var f: File
+    doAssert not open(f, buildDir)
