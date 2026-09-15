@@ -434,11 +434,28 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   for i in FirstGenericParamAt..<t.kidsLen:
     var x = t[i]
     if x.kind in {tyGenericParam}:
-      x = lookupTypeVar(cl, x)
-      if x != nil:
-        if header == t: header = instCopyType(cl, t)
-        header[i] = x
-        propagateToOwner(header, x)
+      var ownParam = false
+      for j in 0 ..< body.len - 1:
+        if body[j] == x:
+          ownParam = true
+          break
+      if ownParam:
+        # default referring to an earlier param of this same body (e.g. `U = T`):
+        # use a non-erroring lookup. If already bound, substitute it (this keeps
+        # recursive instantiations working); if not yet bound (a top-level
+        # invocation where it is filled by an earlier arg), leave it for the main
+        # left-to-right pass below instead of erroring.
+        let bound = cl.typeMap.lookup(x)
+        if bound != nil:
+          if header == t: header = instCopyType(cl, t)
+          header[i] = bound
+          propagateToOwner(header, bound)
+      else:
+        x = lookupTypeVar(cl, x)
+        if x != nil:
+          if header == t: header = instCopyType(cl, t)
+          header[i] = x
+          propagateToOwner(header, x)
     else:
       # Under IC `t` may be a loaded dep type (Sealed/immutable); mutating it
       # would assert, so propagate into a copy. For non-Sealed types keep
