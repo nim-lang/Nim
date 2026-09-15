@@ -43,7 +43,7 @@ proc trailingZeros2Digits*(digits: uint32): int {.inline, enforceNoRaises.} =
   trailingZeros100[digits]
 
 when defined(js):
-  proc numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}
+  func numToString(a: SomeInteger): cstring {.importjs: "((#) + \"\")".}
 
 func addChars[T](result: var string, x: T, start: int, n: int) {.inline, enforceNoRaises.} =
   let old = result.len

@@ -14,15 +14,15 @@
 {.push hints:off, stack_trace: off, profiler: off, raises: [].}
 
 proc c_memchr*(s: pointer, c: cint, n: csize_t): pointer {.
-  importc: "memchr", header: "<string.h>".}
+  importc: "memchr", header: "<string.h>", noSideEffect.}
 proc c_memcmp*(a, b: pointer, size: csize_t): cint {.
   importc: "memcmp", header: "<string.h>", noSideEffect.}
 proc c_memcpy*(a, b: pointer, size: csize_t): pointer {.
-  importc: "memcpy", header: "<string.h>", discardable.}
+  importc: "memcpy", header: "<string.h>", discardable, noSideEffect.}
 proc c_memmove*(a, b: pointer, size: csize_t): pointer {.
-  importc: "memmove", header: "<string.h>",discardable.}
+  importc: "memmove", header: "<string.h>", discardable, noSideEffect.}
 proc c_memset*(p: pointer, value: cint, size: csize_t): pointer {.
-  importc: "memset", header: "<string.h>", discardable.}
+  importc: "memset", header: "<string.h>", discardable, noSideEffect.}
 proc c_strcmp*(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
 proc c_strlen*(a: cstring): csize_t {.

@@ -299,6 +299,8 @@ type
       ## are not anymore.
     laxEffects
       ## Lax effects system prior to Nim 2.0.
+    importcNoSideEffect
+      ## Assume imported calls have no side effects unless explicitly annotated.
     verboseTypeMismatch
     emitGenerics
       ## generics are emitted in the module that contains them.
