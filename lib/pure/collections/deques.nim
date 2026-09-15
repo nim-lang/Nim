@@ -300,7 +300,8 @@ proc bulkCopy[T](tgt: var seq[T], src: openArray[T], to, so, n: int) =
       tgt[i + to] = src[i + so]
   else:
     when supportsCopyMem(T) and declared(copyMem):
-      copyMem(addr tgt[to], addr src[so], n * sizeof(T))
+      if n > 0:
+        copyMem(addr tgt[to], addr src[so], n * sizeof(T))
     else:
       for i in 0..<n:
         tgt[i + to] = src[i + so]
@@ -325,8 +326,7 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
 
     var n = newData(T, max(cap * 2, defaultInitialSize))
     bulkMoveOrCopy(n, deq.data, 0, head, toCap)
-    if head > 0:
-      bulkMoveOrCopy(n, deq.data, toCap, 0, head)
+    bulkMoveOrCopy(n, deq.data, toCap, 0, head)
 
     deq.data = move n
     deq.tail = cap.uint
