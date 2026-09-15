@@ -978,7 +978,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
           result = newTree(nkStmtList, destroyOld, result)
       else:
         result[0] = p(n[0], c, s, normal)
-      if canRaise(n[0]): s.needsTry = true
+      if canRaise(n[0]) or canRaiseDefect(n[0]): s.needsTry = true
       # A raising call needs owned storage even when its value is consumed: the
       # callee can partially initialize the result before control unwinds.
       if mode == normal or (canRaise(n[0]) and inSpawn == 0):
