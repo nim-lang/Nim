@@ -81,7 +81,38 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
     if c.config.ideActive and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
-      discard safeSemExpr(c, n)
+      # Speculatively sem a *copy* of the body in its own scope: `semExpr`
+      # rewrites the tree in place, and whatever does not resolve with the
+      # generic parameters unbound would turn into error nodes in the stored
+      # body that instantiations and `m.ast` lookups (v2 `use`) rely on.
+      openScope(c)
+      # The pre-pass declares `result` as `skUnknown` so that it stays an
+      # identifier in the generic body; give it its real type here, otherwise
+      # every `result = f(...)` fails on the left-hand side and the right-hand
+      # side (where the cursor usually is) is never analysed.
+      let owner = if c.p != nil: c.p.owner else: nil
+      let resultType =
+        if owner == nil or owner.kind notin routineKinds:
+          nil
+        elif owner.kind == skMacro:
+          sysTypeFromName(c.graph, n.info, "NimNode")
+        elif owner.typ != nil and owner.typ.returnType != nil and
+             not isInlineIterator(owner.typ):
+          owner.typ.returnType
+        else:
+          nil
+      let savedResultSym = if resultType != nil: c.p.resultSym else: nil
+      if resultType != nil:
+        var res = newSym(skResult, getIdent(c.cache, "result"), c.idgen, owner, n.info)
+        res.typ = resultType
+        incl(res.flagsImpl, sfUsed)
+        c.p.resultSym = res
+        addDecl(c, res)
+      # `ESuggestDone` may escape here; `recoverContext` then resets the
+      # scopes and proc-cons, so no `finally` is needed.
+      discard safeSemExpr(c, copyTree(n))
+      if resultType != nil: c.p.resultSym = savedResultSym
+      closeScope(c)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   let x = arg.skipConv
