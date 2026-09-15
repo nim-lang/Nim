@@ -692,6 +692,88 @@ proc genComputedGoto(p: BProc; n: PNode) =
     genStmts(p, it)
 
 
+proc localStrBase(n: PNode): PSym =
+  ## The `s` of `s[i]`, if `s` is a plain local `string` variable.
+  result = nil
+  if n.kind == nkBracketExpr and n.len == 2 and n.firstSon.kind == nkSym:
+    let s = n.firstSon.sym
+    if s.kind in {skVar, skLet, skResult, skTemp, skForVar} and
+        sfGlobal notin s.flags and s.typ != nil and
+        s.typ.skipTypes(abstractInst).kind == tyString:
+      result = s
+
+proc scanStrMutations(n: PNode; mutated, disabled: var seq[PSym]) =
+  ## Collects the local strings that a loop mutates as `s[i] = v` and disables
+  ## every local string that turns up in *any* other position. Only when `s`
+  ## occurs exclusively as `s[...]` is it impossible for the loop to put a
+  ## string literal back into `s`, which is what makes hoisting the
+  ## `nimPrepareStrMutationV2` call out of the loop sound: whole assignments,
+  ## `addr s` and `var`/`sink` arguments all show up as a bare `nkSym` here.
+  if n == nil: return
+  if n.kind == nkSym:
+    if n.sym notin disabled: disabled.add n.sym
+    return
+  if n.safeLen == 0: return
+  case n.kind
+  of nkAsgn, nkFastAsgn, nkSinkAsgn:
+    let le = n.firstSon
+    let s = localStrBase(le)
+    if s != nil:
+      if s notin mutated: mutated.add s
+      scanStrMutations(le.secondSon, mutated, disabled)
+    else:
+      scanStrMutations(le, mutated, disabled)
+    scanStrMutations(n.secondSon, mutated, disabled)
+  of nkBracketExpr:
+    # a read of `s[i]` neither mutates nor disables `s`
+    if localStrBase(n) != nil:
+      scanStrMutations(n.secondSon, mutated, disabled)
+    else:
+      for it in n: scanStrMutations(it, mutated, disabled)
+  else:
+    for it in n: scanStrMutations(it, mutated, disabled)
+
+proc hoistStrPrepare(p: BProc; t: PNode): int =
+  ## Emits `nimPrepareStrMutationV2` in front of a `while` loop for every local
+  ## string the loop only ever touches as `s[i]`, and records it in
+  ## `p.preparedStrs` so that the per-element calls inside the body are dropped.
+  ## The call is a plain (non-vectorizable) call that GCC cannot hoist itself --
+  ## it writes `s.p`, so no `pure`/`const` attribute can describe it -- and one
+  ## such call in the body is enough to stop the loop from being vectorized.
+  ## See https://github.com/nim-lang/Nim/issues/26118.
+  result = 0
+  if optSeqDestructors notin p.config.globalOptions: return
+  if p.config.usesSso(): return
+  if p.prc == nil: return
+  # a closure iterator's loop can span a `yield`; the cached payload is a plain
+  # C local and would not survive the suspension
+  if p.prc.kind == skIterator and p.prc.typ != nil and
+      p.prc.typ.callConv == ccClosure: return
+  var mutated: seq[PSym] = @[]
+  var disabled: seq[PSym] = @[]
+  # the loop condition is re-evaluated on every iteration, so it counts too
+  scanStrMutations(t.firstSon, mutated, disabled)
+  scanStrMutations(t.secondSon, mutated, disabled)
+  for s in mutated:
+    if s in disabled or preparedStrPayload(p, newSymNode(s)).len > 0: continue
+    # the variable has to be one of *this* C function's locals and already
+    # materialized, otherwise there is nothing to prepare in front of the loop
+    if s.owner != p.prc or s.loc.k == locNone: continue
+    var a = initLocExpr(p, newSymNode(s))
+    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
+      byRefLoc(p, a))
+    # cache `s.p` for the whole loop: the stores go through `&s`, which escaped
+    # into the call above, so without this the C compiler has to reload the
+    # payload pointer on every iteration and gives up on vectorizing
+    cgsym(p.module, "NimStrPayload")
+    inc(p.labels)
+    let payload = "T" & rope(p.labels) & "_"
+    p.s(cpsLocals).addVar(kind = Local, name = payload,
+                          typ = ptrType("NimStrPayload"))
+    p.s(cpsStmts).addAssignment(payload, dataFieldAccessor(p, rdLoc(a)))
+    p.preparedStrs.add (s, payload)
+    inc result
+
 proc genWhileStmt(p: BProc, t: PNode) =
   # we don't generate labels here as for example GCC would produce
   # significantly worse code
@@ -710,6 +792,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
         loopBody = loopBody.secondSon
       genComputedGoto(p, loopBody)
     else:
+      let hoisted = hoistStrPrepare(p, t)
       var stmt: WhileBuilder
       p.breakIdx = startBlockWith(p):
         stmt = initWhileStmt(p.s(cpsStmts), cIntValue(1))
@@ -728,6 +811,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimProfile"))
       endBlockWith(p):
         finishWhileStmt(p.s(cpsStmts), stmt)
+      p.preparedStrs.setLen(p.preparedStrs.len - hoisted)
 
   dec(p.withinLoop)
 
