@@ -243,3 +243,33 @@ block: # bug #17768
 
   doAssert s1.runeSubStr(0, -1) == "abcde"
   doAssert s2.runeSubStr(0, -1) == "abcdé"
+
+block: # bug #19333
+  # valid sequences must return -1
+  doAssert validateUtf8("") == -1 # empty string
+  doAssert validateUtf8("ascii") == -1
+  doAssert validateUtf8("\xc2\x80") == -1 # U+0080
+  doAssert validateUtf8("\xdf\xbf") == -1 # U+07FF
+  doAssert validateUtf8("\xe0\xa0\x80") == -1 # U+0800 (overlong boundary)
+  doAssert validateUtf8("\xed\x9f\xbf") == -1 # U+D7FF (before surrogate range)
+  doAssert validateUtf8("\xee\x80\x80") == -1 # U+E000 (after surrogate range)
+  doAssert validateUtf8("\xef\xbf\xbf") == -1 # U+FFFF
+  doAssert validateUtf8("\xf0\x90\x80\x80") == -1 # U+10000 (overlong boundary)
+  doAssert validateUtf8("\xf4\x8f\xbf\xbf") == -1 # U+10FFFF (max)
+
+  # overlong sequences must be rejected
+  doAssert validateUtf8("\xc0\xaf") >= 0 # overlong 2-byte (encodes U+002F)
+  doAssert validateUtf8("\xc1\xbf") >= 0 # overlong 2-byte (encodes U+007F)
+  doAssert validateUtf8("\xe0\x9f\xbf") >= 0 # overlong 3-byte
+  doAssert validateUtf8("\xf0\x8f\xbf\xbf") >= 0 # overlong 4-byte
+
+  # surrogate range U+D800-DFFF must be rejected
+  doAssert validateUtf8("\xed\xa0\x80") >= 0 # U+D800
+  doAssert validateUtf8("\xed\xaf\xbf") >= 0 # U+DBFF
+  doAssert validateUtf8("\xed\xb0\x80") >= 0 # U+DC00
+  doAssert validateUtf8("\xed\xbf\xbf") >= 0 # U+DFFF
+
+  # code points beyond U+10FFFF must be rejected
+  doAssert validateUtf8("\xf4\x90\x80\x80") >= 0 # U+110000
+  doAssert validateUtf8("\xf5\x80\x80\x80") >= 0 # U+140000
+  doAssert validateUtf8("\xf7\xbf\xbf\xbf") >= 0 # U+1FFFFF
