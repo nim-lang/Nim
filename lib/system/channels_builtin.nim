@@ -149,8 +149,9 @@ type
     rd, wr, count, mask, maxItems: int
     data: pbytes
     lock: SysLock
-    cond: SysCond
-    ready: bool
+    notEmpty: SysCond ## receivers wait here
+    notFull: SysCond  ## senders wait here (only used if `maxItems > 0`)
+    waitingReceivers: int
     when not usesDestructors:
       region: MemRegion
   LoadStoreMode = enum mStore, mLoad
@@ -161,8 +162,12 @@ proc `=copy`(a: var RawChannel, b: RawChannel) {.error.}
 const ChannelDeadMask = -2
 
 proc initRawChannel(c: var RawChannel, maxItems: int) =
+  # `close` frees `data` (and `region`) but leaves the stale fields behind;
+  # reset everything so that a channel can be opened again after `close`.
+  zeroMem(addr c, sizeof(c))
   initSysLock(c.lock)
-  initSysCond(c.cond)
+  initSysCond(c.notEmpty)
+  initSysCond(c.notFull)
   c.mask = -1
   c.maxItems = maxItems
 
@@ -175,7 +180,8 @@ proc deinitRawChannel(c: var RawChannel) =
   else:
     if c.data != nil: deallocShared(c.data)
   deinitSys(c.lock)
-  deinitSysCond(c.cond)
+  deinitSysCond(c.notEmpty)
+  deinitSysCond(c.notFull)
 
 when not usesDestructors:
   proc storeAux(dest, src: pointer, mt: PNimType, t: var RawChannel,
@@ -355,10 +361,10 @@ proc sendImpl(q: var RawChannel, typ: PNimType, msg: pointer, noBlock: bool): bo
       return
 
     while q.count >= q.maxItems:
-      waitSysCond(q.cond, q.lock)
+      waitSysCond(q.notFull, q.lock)
 
   rawSend(q, msg, typ)
-  signalSysCond(q.cond)
+  signalSysCond(q.notEmpty)
   releaseSys(q.lock)
   result = true
 
@@ -393,14 +399,14 @@ else:
     result = sendImpl(c, cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
 
 proc llRecv(q: var RawChannel, res: pointer, typ: PNimType) =
-  q.ready = true
+  inc q.waitingReceivers
   while q.count <= 0:
-    waitSysCond(q.cond, q.lock)
-  q.ready = false
+    waitSysCond(q.notEmpty, q.lock)
+  dec q.waitingReceivers
   rawRecv(q, res, typ)
-  if q.maxItems > 0 and q.count == q.maxItems - 1:
-    # Parent thread is awaiting in send. Wake it up.
-    signalSysCond(q.cond)
+  if q.maxItems > 0:
+    # A slot became free; wake up one sender that might be blocked in `send`.
+    signalSysCond(q.notFull)
 
 proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
   ## Receives a message from the channel `c`.
@@ -455,6 +461,6 @@ proc close*[TMsg](c: var Channel[TMsg]) =
 proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## Returns true if some thread is waiting on the channel `c` for
   ## new messages.
-  c.ready
+  c.waitingReceivers > 0
 
 {.pop.}
