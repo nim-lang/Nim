@@ -1,0 +1,7 @@
+nimTitle	assertions	assertions.html	module std/assertions		0
+nim	raiseAssert	assertions.html#raiseAssert,string	proc raiseAssert(msg: string)		35
+nim	failedAssertImpl	assertions.html#failedAssertImpl,string	proc failedAssertImpl(msg: string)		42
+nim	assert	assertions.html#assert.t,untyped,string	template assert(cond: untyped; msg = "")		58
+nim	doAssert	assertions.html#doAssert.t,untyped,string	template doAssert(cond: untyped; msg = "")		72
+nim	onFailedAssert	assertions.html#onFailedAssert.t,untyped,untyped	template onFailedAssert(msg, code: untyped): untyped		78
+nim	doAssertRaises	assertions.html#doAssertRaises.t,typedesc,untyped	template doAssertRaises(exception: typedesc; code: untyped)		95

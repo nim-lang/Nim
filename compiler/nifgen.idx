@@ -1,0 +1,9 @@
+nimTitle	nifgen	nifgen.html	module nifgen		0
+nim	NifModule	nifgen.html#NifModule	type NifModule		42
+nim	addIntLit	nifgen.html#addIntLit,Builder,BiggestInt,string	proc addIntLit(b: var Builder; u: BiggestInt; suffix: string)		171
+nim	addUIntLit	nifgen.html#addUIntLit,Builder,BiggestUInt,string	proc addUIntLit(b: var Builder; u: BiggestUInt; suffix: string)		177
+nim	addFloatLit	nifgen.html#addFloatLit,Builder,BiggestFloat,string	proc addFloatLit(b: var Builder; u: BiggestFloat; suffix: string)		183
+nim	close	nifgen.html#close,TranslationContext	proc close(c: var TranslationContext)		1633
+nim	closeNif	nifgen.html#closeNif,ModuleGraph,PPassContext,PNode	proc closeNif(graph: ModuleGraph; bModule: PPassContext; finalNode: PNode)		1647
+nim	setupNifgen	nifgen.html#setupNifgen,ModuleGraph,PSym,IdGenerator	proc setupNifgen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext		1656
+nim	genTopLevelNif	nifgen.html#genTopLevelNif,PPassContext,PNode	proc genTopLevelNif(bModule: PPassContext; n: PNode)		1688
