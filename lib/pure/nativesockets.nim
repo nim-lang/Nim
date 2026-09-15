@@ -25,6 +25,8 @@ when hostOS == "solaris":
 const useWinVersion = defined(windows) or defined(nimdoc)
 const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
     defined(nuttx)
+const smallBufInitSize = when defined(testReentrantBufs): 1 else: 1024
+const largeBufInitSize = when defined(testReentrantBufs): 1 else: 4096
 
 when useWinVersion:
   import std/winlean
@@ -215,6 +217,23 @@ proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
   ## Returns a protocol code from the database that matches the protocol `name`.
   when useWinVersion:
     let protoent = winlean.getprotobyname(name.cstring)
+  elif defined(linux) and not defined(android):
+    var protoent: ptr posix.Protoent
+    {.emit: ";\n#ifdef __GLIBC__".}
+    proc getprotobyname_r(name: cstring, resultBuf: ptr posix.Protoent,
+                          buf: cstring, buflen: csize_t,
+                          res: ptr ptr posix.Protoent): cint
+      {.importc, header: "<netdb.h>".}
+    var pe: posix.Protoent
+    var buf = newString(smallBufInitSize)
+    while true:
+      let ret = getprotobyname_r(name.cstring, addr pe,
+          buf.cstring, csize_t(buf.len), addr protoent)
+      if ret != ERANGE: break
+      buf.setLen(buf.len * 2)
+    {.emit: ";\n#else".}
+    protoent = posix.getprotobyname(name.cstring)
+    {.emit: ";\n#endif".}
   else:
     let protoent = posix.getprotobyname(name.cstring)
 
@@ -371,6 +390,15 @@ when not useNimNetLite:
     ## On posix this will search through the `/etc/services` file.
     when useWinVersion:
       var s = winlean.getservbyname(name, proto)
+    elif defined(linux) and not defined(android):
+      var se: posix.Servent
+      var s: ptr posix.Servent
+      var buf = newString(smallBufInitSize)
+      while true:
+        let ret = getservbyname_r(name.cstring, proto.cstring, addr se,
+            buf.cstring, csize_t(buf.len), addr s)
+        if ret != ERANGE: break
+        buf.setLen(buf.len * 2)
     else:
       var s = posix.getservbyname(name, proto)
     if s == nil: raiseOSError(osLastError(), "Service not found.")
@@ -389,6 +417,15 @@ when not useNimNetLite:
     ## On posix this will search through the `/etc/services` file.
     when useWinVersion:
       var s = winlean.getservbyport(uint16(port).cint, proto)
+    elif defined(linux) and not defined(android):
+      var se: posix.Servent
+      var s: ptr posix.Servent
+      var buf = newString(smallBufInitSize)
+      while true:
+        let ret = getservbyport_r(uint16(port).cint, proto.cstring, addr se,
+            buf.cstring, csize_t(buf.len), addr s)
+        if ret != ERANGE: break
+        buf.setLen(buf.len * 2)
     else:
       var s = posix.getservbyport(uint16(port).cint, proto)
     if s == nil: raiseOSError(osLastError(), "Service not found.")
@@ -424,14 +461,29 @@ when not useNimNetLite:
       var s = winlean.gethostbyaddr(cast[ptr InAddr](myAddr), addrLen.cuint,
                                     cint(family))
       if s == nil: raiseOSError(osLastError())
-    else:
-      var s =
+    elif defined(linux):
+      var he: posix.Hostent
+      var h_errnop: cint
+      var s: ptr posix.Hostent
+      var buf = newString(largeBufInitSize)
+      while true:
         when defined(android4):
-          posix.gethostbyaddr(cast[cstring](myAddr), addrLen.cint,
-                              cint(family))
+          let ret = gethostbyaddr_r(cast[cstring](myAddr), addrLen.SockLen,
+                                  cint(family), addr he,
+                                  buf.cstring, csize_t(buf.len),
+                                  addr s, addr h_errnop)
         else:
-          posix.gethostbyaddr(myAddr, addrLen.SockLen,
-                              cint(family))
+          let ret = gethostbyaddr_r(myAddr, addrLen.SockLen,
+                                  cint(family), addr he,
+                                  buf.cstring, csize_t(buf.len),
+                                  addr s, addr h_errnop)
+        if ret != ERANGE: break
+        buf.setLen(buf.len * 2)
+      if s == nil:
+        raiseOSError(osLastError(), $hstrerror(h_errnop))
+    else:
+      # macOS: gethostbyaddr is thread-safe via TLS
+      var s = posix.gethostbyaddr(myAddr, addrLen.SockLen, cint(family))
       if s == nil:
         raiseOSError(osLastError(), $hstrerror(h_errno))
 
@@ -476,8 +528,23 @@ when not useNimNetLite:
     ## This function will lookup the IP address of a hostname.
     when useWinVersion:
       var s = winlean.gethostbyname(name)
+    elif defined(linux):
+      var he: posix.Hostent
+      var h_errnop: cint
+      var s: ptr posix.Hostent
+      var buf = newString(largeBufInitSize)
+      while true:
+        let ret = gethostbyname_r(name.cstring, addr he,
+            buf.cstring, csize_t(buf.len),
+            addr s, addr h_errnop)
+        if ret != ERANGE: break
+        buf.setLen(buf.len * 2)
+      if s == nil:
+        raiseOSError(osLastError(), $hstrerror(h_errnop))
     else:
       var s = posix.gethostbyname(name)
+      if s == nil:
+        raiseOSError(osLastError(), $hstrerror(h_errno))
     if s == nil: raiseOSError(osLastError())
     result = Hostent(
       name: $s.h_name,
