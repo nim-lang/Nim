@@ -43,6 +43,14 @@ parameter and result types, not just their source-level shape. Use
 
 [//]: # "Additions:"
 
+- `std/asyncdispatch`: dispatchers can now release their operating system
+  resources. Added `close(disp: PDispatcher)` and `closeGlobalDispatcher()`;
+  previously the dispatcher's epoll/kqueue file descriptor (or IO completion
+  port handle on Windows) could never be closed and leaked whenever a
+  dispatcher was dropped. Dispatchers are also closed automatically when
+  garbage collected and when a thread that used async terminates, so
+  thread-pool workers no longer leak one file descriptor per thread.
+
 - Added `system.readRawDataStable`, a companion to `readRawData` that returns a
   raw `ptr UncheckedArray[char]` into a string's character data which stays valid
   across moves and copies of the string value. It is available under every string
