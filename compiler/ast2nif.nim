@@ -555,10 +555,11 @@ proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
 const
   BifGenericTypeKinds = {tyArray, tySequence, tySet, tyOpenArray, tyVarargs,
                          tyUncheckedArray}
-    ## The type arguments of these structural types need roles and arity when
-    ## consumed outside the compiler. In particular, an array's first son is
-    ## its index type and its last son is its element type; a raw tail of type
-    ## symbols does not say that reliably once nested definitions are present.
+    ## The `genericargs` section preserves `sonsImpl` order. Its roles and arity
+    ## are inferred from the enclosing type kind; for `tyArray`, the first son
+    ## is the index type and the second son is the element type. The section is
+    ## omitted when there are no sons. This makes the contract explicit for
+    ## consumers without adding per-argument role tags or a second traversal.
 
   CanonTypeKinds = {tyVar, tyLent, tySink, tyTuple, tyRef, tyPtr, tySequence,
                     tyOpenArray, tyVarargs, tySet, tyUncheckedArray, tyArray,
@@ -1015,11 +1016,11 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
     # Write TLoc structure
     writeLoc w, dest, typ.locImpl
     # Keep the structural generic arguments together under a named section.
-    # This costs one tag per such type definition, but lets consumers recover
-    # both arity and roles (notably array[index, element]) without guessing
-    # from unrelated trailing symbols or nested type definitions. The legacy
-    # positional form remains for every other type kind and is still accepted
-    # by the loader below.
+    # The section preserves `sonsImpl` order, so consumers recover both arity
+    # and roles (notably array[index, element]) without guessing from unrelated
+    # trailing symbols or nested type definitions. The legacy positional form
+    # remains for every other type kind and is still accepted by the loader
+    # below for artifacts from before format 44.
     if typ.kind in BifGenericTypeKinds and typ.sonsImpl.len > 0:
       dest.buildTree genericArgsTagName:
         for ch in typ.sonsImpl:
@@ -3254,9 +3255,9 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
           while n.hasMore:
             t.sonsImpl.add loadTypeStub(c, n, localSyms)
       else:
-        # BIFs written before the generic-argument section used raw trailing
-        # type symbols. Keep reading that representation for cache and
-        # cross-version compatibility.
+        # BIFs written before format 44 used raw trailing type symbols. Keep
+        # reading that representation for the previous on-disk layout; the
+        # ic format stamp prevents an older compiler from opening a new cache.
         t.sonsImpl.add loadTypeStub(c, n, localSyms)
 
 proc loadType*(c: var DecodeContext; t: PType) =
