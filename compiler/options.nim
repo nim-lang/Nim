@@ -29,8 +29,10 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "44"
+  icFormatVersion* = "45"
+    ## v45: localPassC backend actions are keyed by their generated C file.
     ## v44: CacheCounter values live in the shared, file-locked `ic.counters`.
+    ## v43: deterministic re-export traversal for ordered interfaces.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
