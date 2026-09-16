@@ -1275,6 +1275,7 @@ else:
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a `SOBool` into its Socket Option cint representation.
+  ## Raises `ValueError` for `OptReusePort` when `hasSO_REUSEPORT` is false.
   case opt
   of OptAcceptConn: SO_ACCEPTCONN
   of OptBroadcast: SO_BROADCAST
@@ -1283,7 +1284,11 @@ proc toCInt*(opt: SOBool): cint =
   of OptKeepAlive: SO_KEEPALIVE
   of OptOOBInline: SO_OOBINLINE
   of OptReuseAddr: SO_REUSEADDR
-  of OptReusePort: SO_REUSEPORT
+  of OptReusePort:
+    when hasSO_REUSEPORT:
+      SO_REUSEPORT
+    else:
+      raise newException(ValueError, "SO_REUSEPORT is not available on this platform")
   of OptNoDelay: TCP_NODELAY
 
 proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
