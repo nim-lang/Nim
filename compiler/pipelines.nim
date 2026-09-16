@@ -113,7 +113,7 @@ proc prePass*(c: PContext; n: PNode) =
         else:
           discard
 
-proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
+proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
   if graph.stopCompile(): return true
   var
@@ -339,10 +339,12 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
         if sfInjectDestructors in module.flags: ModFlagInjectDestructors else: 0'i32
       timed tWriteNif:
         writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
-                       replayActions, implDeps, reexportedModuleSyms(graph, module),
+                       replayActions, implDeps,
                        genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
                        expansions, moduleFlags,
-                       reexportedLocalSyms(graph, module))
+                       reexportedLocalSyms(graph, module),
+                       orderedInterface(graph, module),
+                       orderedInterface(graph, module, hidden = true))
       # The module's REAL direct imports (incl. macro-generated) for `nim ic`'s
       # graph re-derivation; see ast2nif.writeSemDeps / semdata.addImportFileDep.
       var semDepPaths: seq[string] = @[]
@@ -351,6 +353,21 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
       writeSemDeps(graph.config, module.position.int32, semDepPaths)
 
   result = true
+
+proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
+                    stream: PLLStream): bool =
+  ## `tSemModule` (doc/parallel_compiler.md §1) is a whole module pass: parse,
+  ## header sem, bodies, codegen. `SemBodyms / SemModulems` is then the share of
+  ## a module that the plan proposes to move off the critical path, and
+  ## `Modulems - SemBodyms` is what stays sequential.
+  ##
+  ## Outermost-only because this proc is re-entrant: under a classic build an
+  ## import compiles its module from inside the importer's pass, so the
+  ## outermost activation is the whole frontend and nested modules are folded
+  ## into it. Under `--ic:on` each `nim m` process compiles one module and the
+  ## outermost activation is that module — which is the row §1.2 tabulates.
+  timedOutermost(tSemModule):
+    result = processPipelineModuleImpl(graph, module, idgen, stream)
 
 proc loadedDefSym(defs: PNode): PSym =
   ## The defined symbol of a let/var entry as it loads back from a NIF: the

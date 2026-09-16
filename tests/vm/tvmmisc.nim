@@ -1,6 +1,31 @@
 import macros
 import os
 
+block: # bug #26213
+  type
+    DistinctPointer = distinct pointer
+    NestedPointer = distinct DistinctPointer
+    DistinctPtr = distinct ptr int
+  const
+    x0 = cast[pointer](1'u)
+    x1 = cast[pointer](1)
+    v0 = cast[distinct pointer](1'u)
+    v1 = cast[distinct pointer](1)
+    named = cast[DistinctPointer](1'u)
+    nested = cast[NestedPointer](1)
+    typed = cast[DistinctPtr](1'u)
+  static:
+    doAssert named is DistinctPointer
+    doAssert nested is NestedPointer
+    doAssert typed is DistinctPtr
+  doAssert cast[int](x0) == 1
+  doAssert cast[int](x1) == 1
+  doAssert cast[int](v0) == 1
+  doAssert cast[int](v1) == 1
+  doAssert cast[int](named) == 1
+  doAssert cast[int](nested) == 1
+  doAssert cast[int](typed) == 1
+
 # bug #4462
 block:
   proc foo(t: typedesc) {.compileTime.} =
