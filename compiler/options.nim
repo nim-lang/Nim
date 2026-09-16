@@ -403,6 +403,10 @@ type
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
+  MsgFormat* = enum ## format of the location prefix in compiler messages
+    mfmStd ## standard Nim style: `file(line, col)`
+    mfmGcc ## GCC/Emacs style: `file:line:col:`
+
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -416,6 +420,7 @@ type
     arcToExpand*: StringTableRef
     m*: MsgConfig
     filenameOption*: FilenameOption # how to render paths in compiler messages
+    msgFormat*: MsgFormat # format of the location prefix in compiler messages
     unitSep*: string
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -685,6 +690,7 @@ proc initConfigRefCommon(conf: ConfigRef) =
   conf.options = DefaultOptions
   conf.globalOptions = DefaultGlobalOptions
   conf.filenameOption = foAbs
+  conf.msgFormat = mfmStd
   conf.foreignPackageNotes = foreignPackageNotesDefault
   conf.notes = NotesVerbosity[1]
   conf.mainPackageNotes = NotesVerbosity[1]
