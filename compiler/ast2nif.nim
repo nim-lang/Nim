@@ -236,6 +236,7 @@ const
   symDefTagName* = "sd"
   typeDefTagName* = "td"
   bindingIdTagName = "bid"
+  genericArgsTagName = "genericargs"
 
   bridgeSymTagName* = "bsym"
     ## `(bsym <intlit>)` — a symbol reference in the IN-PROCESS bridge format
@@ -552,6 +553,13 @@ proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
   dest.addStrLit loc.snippet
 
 const
+  BifGenericTypeKinds = {tyArray, tySequence, tySet, tyOpenArray, tyVarargs,
+                         tyUncheckedArray}
+    ## The type arguments of these structural types need roles and arity when
+    ## consumed outside the compiler. In particular, an array's first son is
+    ## its index type and its last son is its element type; a raw tail of type
+    ## symbols does not say that reliably once nested definitions are present.
+
   CanonTypeKinds = {tyVar, tyLent, tySink, tyTuple, tyRef, tyPtr, tySequence,
                     tyOpenArray, tyVarargs, tySet, tyUncheckedArray, tyArray,
                     tyRange, tyProc}
@@ -1006,10 +1014,19 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
 
     # Write TLoc structure
     writeLoc w, dest, typ.locImpl
-    # we store the type's elements here at the end so that
-    # it is not ambiguous and saves space:
-    for ch in typ.sonsImpl:
-      writeType(w, dest, ch)
+    # Keep the structural generic arguments together under a named section.
+    # This costs one tag per such type definition, but lets consumers recover
+    # both arity and roles (notably array[index, element]) without guessing
+    # from unrelated trailing symbols or nested type definitions. The legacy
+    # positional form remains for every other type kind and is still accepted
+    # by the loader below.
+    if typ.kind in BifGenericTypeKinds and typ.sonsImpl.len > 0:
+      dest.buildTree genericArgsTagName:
+        for ch in typ.sonsImpl:
+          writeType(w, dest, ch)
+    else:
+      for ch in typ.sonsImpl:
+        writeType(w, dest, ch)
 
 
 proc writeType(w: var Writer; dest: var IcBuilder; typ: PType) =
@@ -3232,7 +3249,15 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
     loadLoc c, n, t.locImpl
 
     while n.hasMore:
-      t.sonsImpl.add loadTypeStub(c, n, localSyms)
+      if n.kind == TagLit and tagIs(n, genericArgsTagName):
+        n.into:
+          while n.hasMore:
+            t.sonsImpl.add loadTypeStub(c, n, localSyms)
+      else:
+        # BIFs written before the generic-argument section used raw trailing
+        # type symbols. Keep reading that representation for cache and
+        # cross-version compatibility.
+        t.sonsImpl.add loadTypeStub(c, n, localSyms)
 
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.state != Partial: return
