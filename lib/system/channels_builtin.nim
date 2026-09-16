@@ -167,9 +167,6 @@ const
   ChannelDead = uint.high()
   Unbounded = uint.high()
 
-template typeInfo(msg: typed): PNimType =
-  cast[PNimType](getTypeInfo(msg))
-
 proc initRawChannel(c: var RawChannel, maxItems: int) =
   # `close` frees `data` (and `region`) but leaves the stale fields behind;
   # reset everything so that a channel can be opened again after `close`.
@@ -185,11 +182,11 @@ proc initRawChannel(c: var RawChannel, maxItems: int) =
     c.maxItems = maxItems.uint
 
 proc deinitRawChannel(c: var RawChannel) =
+  c.cap = ChannelDead
   when not usesDestructors:
     deallocOsPages(c.region)
   else:
     if c.data != nil: deallocShared(c.data)
-  c.cap = ChannelDead
 
   deinitSys(c.lock)
   deinitSysCond(c.notEmpty)
@@ -318,6 +315,10 @@ template count(q: RawChannel): uint =
   q.tail - q.head
 template mask(q: RawChannel): uint =
   q.cap - 1
+template typeInfo(msg: typed): PNimType =
+  cast[PNimType](getTypeInfo(msg))
+template bytes(pos: uint, typSize: int): int =
+  cast[int](pos) *% typSize
 
 proc grow(q: var RawChannel, typSize: int) =
   # See also deques.expandIfNeeded
@@ -325,7 +326,7 @@ proc grow(q: var RawChannel, typSize: int) =
   let
     cap = q.cap
     newCap = max(1'u, cap)*2
-    newSize = cast[int](newCap)*%typSize
+    newSize = newCap.bytes(typSize)
 
   when not usesDestructors:
     let n = cast[pbytes](alloc(q.region, newSize))
@@ -337,9 +338,9 @@ proc grow(q: var RawChannel, typSize: int) =
       mask = cap - 1
       head = q.head and mask
       toCap = cap - head
-    copyMem(addr n[0], addr q.data[cast[int](head) *% typSize], cast[int](toCap) *% typSize)
+    copyMem(addr n[0], addr q.data[head.bytes(typSize)], toCap.bytes(typSize))
     if head > 0:
-      copyMem(addr n[cast[int](toCap) *% typSize], addr q.data[0], cast[int](head) *% typSize)
+      copyMem(addr n[toCap.bytes(typSize)], addr q.data[0], head.bytes(typSize))
 
     when not usesDestructors:
       dealloc(q.region, q.data)
@@ -355,20 +356,20 @@ proc rawSend(q: var RawChannel, data: pointer, typ: PNimType) =
   if q.count >= q.cap:
     q.grow(typ.size)
 
-  let tail = cast[int](q.tail and q.mask)
+  let tail = q.tail and q.mask
   when not usesDestructors:
-    storeAux(addr(q.data[tail *% typ.size]), data, typ, q, mStore)
+    storeAux(addr q.data[tail.bytes(typ.size)], data, typ, q, mStore)
   else:
-    copyMem(addr(q.data[tail *% typ.size]), data, typ.size)
+    copyMem(addr q.data[tail.bytes(typ.size)], data, typ.size)
   inc q.tail
 
 proc rawRecv(q: var RawChannel, data: pointer, typ: PNimType) =
   # Reads and removes an hitem from the beginning of the queue
-  let head = cast[int](q.head and q.mask)
+  let head = q.head and q.mask
   when not usesDestructors:
-    storeAux(data, addr(q.data[head *% typ.size]), typ, q, mLoad)
+    storeAux(data, addr q.data[head.bytes(typ.size)], typ, q, mLoad)
   else:
-    copyMem(data, addr(q.data[head *% typ.size]), typ.size)
+    copyMem(data, addr q.data[head.bytes(typ.size)], typ.size)
   inc q.head
 
 proc sendImpl(q: var RawChannel, typ: PNimType, msg: pointer, noBlock: static bool): bool =
@@ -442,7 +443,7 @@ proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
   ## This blocks until a message has arrived!
   ## You may use `tryRecv proc <#tryRecv,Channel[TMsg]>`_ to avoid the blocking.
   result = default(TMsg)
-  discard recvImpl(c, addr(result), typeInfo(result), false)
+  discard recvImpl(c, addr result, typeInfo(result), false)
 
 proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
                                                   msg: TMsg] =
@@ -451,7 +452,7 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
   ## If the queue is empty, `(false, default(msg))` is returned, otherwise
   ## `(true, msg)`.
   result = default(tuple[dataAvailable: bool, msg: TMsg])
-  result.dataAvailable = recvImpl(c, addr(result.msg), typeInfo(result.msg), true)
+  result.dataAvailable = recvImpl(c, addr result.msg, typeInfo(result.msg), true)
 
 proc peek*[TMsg](c: var Channel[TMsg]): int =
   ## Returns the number of messages in the channel `c` at the time of the call.
