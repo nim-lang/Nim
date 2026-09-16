@@ -747,6 +747,8 @@ proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
       let heads = readCnifHeads(getCFile(m).string & ".nif")
       registerReusedModuleToMain(bl, m, heads.initRequired, heads.datInitRequired)
       if heads.globalDtor.len > 0: g.icModuleDtors.add heads.globalDtor
+      for i in heads.extensionLoaders:
+        bl.icExtensionLoaders[i].add "nimLoadProcs" & $i & "__" & heads.moduleBase
     # `ordered` is dependency (post-order) init order; teardown runs in reverse,
     # so an importer's globals are destroyed before the ones it may still point
     # at. This mirrors whole-program cgen, which walks its single accumulated

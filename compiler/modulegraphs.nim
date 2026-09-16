@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
+import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 
@@ -36,10 +36,8 @@ type
     pureEnums*: seq[PSym]
     interf: TStrTable
     interfHidden: TStrTable
-    hiddenPending: bool ## `interfHidden` holds only the exported half so far;
-                        ## `ensureHiddenIface` materialises the hidden-only
-                        ## symbols on first use. See
-                        ## `ast2nif.buildHiddenInterface`.
+    hiddenPending: bool ## The full interface is built from its ordered BIF
+                        ## record on first use by `ensureHiddenIface`.
     uniqueName*: Rope
 
   Operators* = object
@@ -274,10 +272,21 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
+when not defined(nimKochBootstrap):
+  proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym
+
+  proc moduleResolver(g: ModuleGraph): ModuleResolver =
+    result = proc(name, suffix: string): PSym =
+      materializeReexportedModule(g, name, suffix)
+
 proc ensureHiddenIface(g: ModuleGraph; pos: int) =
-  ## Materialise a loaded module's hidden-only interface the first time anything
+  ## Materialise a loaded module's full interface the first time anything
   ## asks for it. Every READ of `interfHidden` goes through `interfSelect`, so
   ## guarding those sites is complete.
+  if g.config.cmd == cmdM:
+    # Private declarations and their order are outside the public fingerprint.
+    # Record every consumer, including those reusing an already-built table.
+    g.icImplDeps.incl pos
   if g.ifaces[pos].hiddenPending:
     when not defined(nimKochBootstrap):
       # By SUFFIX: `c.mods` and `g.ifaces` use different FileIndexes for the
@@ -287,7 +296,7 @@ proc ensureHiddenIface(g: ModuleGraph; pos: int) =
       # `.s.bif` does not exist yet is retried rather than written off.
       var tab = g.ifaces[pos].interfHidden
       if buildHiddenInterface(ast.program,
-                              cachedModuleSuffix(g.config, FileIndex pos), tab):
+                              cachedModuleSuffix(g.config, FileIndex pos), tab, moduleResolver(g)):
         g.ifaces[pos].interfHidden = tab
         g.ifaces[pos].hiddenPending = false
     else:
@@ -341,17 +350,27 @@ iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
     if s != nil:
       yield s
 
-proc reexportedModuleSyms*(g: ModuleGraph; m: PSym): seq[(string, string)] =
-  ## (name, NIF module suffix) of MODULE syms in `m`'s interface — these are
-  ## re-exports (`import x; export x`, added by `reexportSym`) acting as
-  ## qualifiers (`m.x.sym`). Consumed by the NIF writer; semExport does not
-  ## put them into the nkExportStmt children, so the AST walk cannot see them.
+proc orderedInterface*(g: ModuleGraph; m: PSym; hidden = false): seq[PSym] =
+  ## Names are sorted; each identifier's symbols retain frontend lookup order.
+  ## Re-exporting must not depend on physical hash-table slots: a loaded table
+  ## can have a different layout while preserving every identifier's order.
   result = @[]
-  var seen = initIntSet()
-  for s in g.ifaces[m.position].interf.data:
-    if s != nil and s.kind == skModule and s.position != m.position and
-        not seen.containsOrIncl(s.position):
-      result.add (s.name.s, cachedModuleSuffix(g.config, FileIndex s.position))
+  if hidden: ensureHiddenIface(g, m.position)
+  let tab = if hidden: addr semtabAll(g, m) else: addr semtab(g, m)
+  var seen = initHashSet[int]()
+  var names: seq[PIdent] = @[]
+  for sym in items(tab[]):
+    if not seen.containsOrIncl(sym.name.id):
+      names.add sym.name
+  names.sort(proc(a, b: PIdent): int =
+    result = cmp(a.s[0], b.s[0])
+    if result == 0: result = cmpIgnoreStyle(a.s, b.s))
+  for name in names:
+    var it = default(TIdentIter)
+    var candidate = initIdentIter(it, tab[], name)
+    while candidate != nil:
+      result.add candidate
+      candidate = nextIdentIter(it, tab[])
 
 proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
   ## Symbols DEFINED in `m` that reached `m`'s interface through an explicit
@@ -1153,13 +1172,8 @@ when not defined(nimKochBootstrap):
         not g.icQualIfaces.containsOrIncl(fIdx.int):
       var interf = initStrTable()
       var interfHidden = initStrTable()
-      let precomp = loadNifModule(ast.program, ModuleSuffix(msuffix),
-                                  interf, interfHidden, {})
-      # chains: the re-exported module may itself re-export modules
-      for (n2, s2) in precomp.reexportedModules:
-        let inner = materializeReexportedModule(g, n2, s2)
-        if inner != nil:
-          strTableAdd(interf, inner)
+      discard loadNifModule(ast.program, ModuleSuffix(msuffix),
+                            interf, interfHidden, {}, moduleResolver(g))
       g.ifaces[fIdx.int].interf = interf
       g.ifaces[fIdx.int].interfHidden = interfHidden
       g.ifaces[fIdx.int].hiddenPending = true
@@ -1205,20 +1219,20 @@ when not defined(nimKochBootstrap):
     if g.config.cmd == cmdNifC:
       registerModuleSelfSym(ast.program, cachedModuleSuffix(g.config, fileIdx), m)
 
-    result = loadNifModule(ast.program, fileIdx,
-                           g.ifaces[fileIdx.int].interf,
-                           g.ifaces[fileIdx.int].interfHidden, flags)
-    # The hidden-only half was not built; `ensureHiddenIface` will, if asked.
+    # Resolving module aliases can grow g.ifaces. Keep the tables local until
+    # loading finishes so no var argument points into a reallocated sequence.
+    var interf = initStrTable()
+    var interfHidden = initStrTable()
+    result = loadNifModule(ast.program, fileIdx, interf, interfHidden, flags, moduleResolver(g))
+    g.ifaces[fileIdx.int].interf = move interf
+    g.ifaces[fileIdx.int].interfHidden = move interfHidden
+    # The full interface stays lazy until `ensureHiddenIface` is asked for it.
     g.ifaces[fileIdx.int].hiddenPending = true
     result.module = m
     # Restore the module symbol's persisted flags (see ast2nif `(modflags)`);
     # `cgen.genTopLevelStmt` gates the destructor pass on `sfInjectDestructors`.
     if (result.moduleFlags and ModFlagInjectDestructors) != 0:
       m.incl sfInjectDestructors
-    for (mname, msuffix) in result.reexportedModules:
-      let ms = materializeReexportedModule(g, mname, msuffix)
-      if ms != nil:
-        strTableAdd(g.ifaces[fileIdx.int].interf, ms)
     # Re-establish include->module mapping so nimsuggest's `parentModule` can map
     # a query in an included file back to this (NIF-loaded) module and recompile
     # it, exactly as it does for a from-source module. Without this the include

@@ -152,7 +152,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if optRun in conf.globalOptions:
     let output = conf.absOutFile
     case conf.cmd
-    of cmdBackends, cmdTcc:
+    of cmdBackends, cmdTcc, cmdIc:
       let nimRunExe = getNimRunExe(conf)
       var cmdPrefix = ""
       if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell

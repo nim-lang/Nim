@@ -16,14 +16,15 @@ const
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "fb534fd22b942d1dde89356259c74c84acbb17fc" # unversioned \
+  NimonyStableCommit = "284a62029611d9c95585aed9a8d30faefc5c2db4" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-09-10 -- the pool stores a symbol TAKEN APART
-    # (`nifcore.NifSymbol`: three `StrId`s plus a disambiguator) and `Pool.syms`
-    # is a view over it, so `icbif` can no longer fill a symbol entry the way it
-    # fills a string one; see `icbif.fillSym`.
+    # Commit from 2026-09-11 -- nifmake names the command that failed. Its
+    # parallel path marked every child `Finished` whatever the exit code was,
+    # so a build that fanned out left the crash in the log and the command that
+    # produced it nowhere: a Windows CI `nim ic` run reported a bare SIGSEGV
+    # with no way to tell whether the child was `nifler` or `nim m`.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"

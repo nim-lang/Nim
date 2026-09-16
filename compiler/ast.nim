@@ -145,11 +145,16 @@ proc transformedBody*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.transformedBodyImpl
 
+proc nifBodyLoaded*(s: PSym): bool {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.nifBodyLoadedImpl
+
 proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
   #assert s.state != Sealed
   # Make an exception here for this misfeature...
   if s.state == Partial: loadSym(s)
   s.transformedBodyImpl = val
+  s.nifBodyLoadedImpl = false
 
 proc guard*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
@@ -906,9 +911,7 @@ proc appendToModule*(m: PSym, n: PNode) =
   m.astImpl.add(n)
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
-  dest.counter = src.counter
-  setLen(dest.data, src.data.len)
-  for i in 0..high(src.data): dest.data[i] = src.data[i]
+  dest = src
 
 proc copyIdTable*[T](dest: var TIdTable[T], src: TIdTable[T]) =
   dest.counter = src.counter
@@ -1305,8 +1308,8 @@ proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLi
   result.annexImpl = s.annex
 
 proc initStrTable*(): TStrTable =
+  # the storage is allocated on the first `strTableAdd`; most scopes stay empty
   result = TStrTable(counter: 0)
-  newSeq(result.data, StartSize)
 
 proc initIdTable*[T](): TIdTable[T] =
   result = TIdTable[T](counter: 0)
@@ -1458,6 +1461,7 @@ proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
   transitionSymKindCommon(kind)
   s.gcUnsafetyReasonImpl = obj.gcUnsafetyReasonImpl
   s.transformedBodyImpl = obj.transformedBodyImpl
+  s.nifBodyLoadedImpl = obj.nifBodyLoadedImpl
 
 proc transitionToLet*(s: PSym) =
   transitionSymKindCommon(skLet)
