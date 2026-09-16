@@ -2012,13 +2012,13 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
       return i
 
 when defined(linux):
-  proc memmem(haystack: pointer, haystacklen: csize_t,
+  func memmem(haystack: pointer, haystacklen: csize_t,
               needle: pointer, needlelen: csize_t): pointer {.importc, header: """#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 #include <string.h>""".}
 elif defined(bsd) or (defined(macosx) and not defined(ios)):
-  proc memmem(haystack: pointer, haystacklen: csize_t,
+  func memmem(haystack: pointer, haystacklen: csize_t,
               needle: pointer, needlelen: csize_t): pointer {.importc, header: "#include <string.h>".}
 
 func find*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
