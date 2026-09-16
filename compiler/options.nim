@@ -29,7 +29,10 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "43"
+  icFormatVersion* = "44"
+    ## v44: localPassC backend actions are keyed by their generated C file.
+    ## Older sidecars used the source path, which does not identify an IC
+    ## module's C file after NIF loading gives it a synthetic filename.
     ## v43: deterministic re-export traversal for ordered interfaces.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
