@@ -120,8 +120,6 @@ __unix__
 #  else
 #    define NIM_THREADVAR __thread
 #  endif
-#elif defined(__cplusplus)
-#  define NIM_THREADVAR thread_local
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
@@ -142,6 +140,7 @@ __unix__
 
 #if defined(__cplusplus)
   #define NIM_THREAD_LOCAL thread_local
+  #define _Thread_local thread_local
 #endif
 
 /* --------------- how int64 constants should be declared: ----------- */
