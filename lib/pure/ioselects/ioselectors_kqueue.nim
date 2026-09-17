@@ -65,6 +65,16 @@ else:
       sock: cint
     Selector*[T] = ref SelectorImpl[T]
 
+proc `=destroy`*[T](s: var SelectorImpl[T]) =
+  ## Releases the kqueue fd and its helper socket when the selector becomes
+  ## unreachable. Best effort: a destructor must not raise.
+  if s.kqFD >= 0:
+    discard posix.close(s.kqFD)
+    s.kqFD = -1
+  if s.sock >= 0:
+    discard posix.close(s.sock)
+    s.sock = -1
+
 type
   SelectEventImpl = object
     rfd: cint
@@ -79,16 +89,6 @@ proc getUnique[T](s: Selector[T]): int {.inline.} =
   result = posix.fcntl(s.sock, F_DUPFD_CLOEXEC, s.sock)
   if result == -1:
     raiseIOSelectorsError(osLastError())
-
-proc selectorFinalizer[T](s: Selector[T]) {.nimcall.} =
-  ## Releases the kqueue fd and its helper socket when the selector becomes
-  ## unreachable. Best effort: a destructor must not raise.
-  if s.kqFD >= 0:
-    discard posix.close(s.kqFD)
-    s.kqFD = -1
-  if s.sock >= 0:
-    discard posix.close(s.sock)
-    s.sock = -1
 
 proc newSelector*[T](): owned(Selector[T]) =
   var maxFD = 0.cint
@@ -120,9 +120,7 @@ proc newSelector*[T](): owned(Selector[T]) =
     result.changesSize = MAX_KQUEUE_EVENTS
     initLock(result.changesLock)
   else:
-    new result, selectorFinalizer
-    result.sock = -1
-    result.kqFD = -1
+    result = Selector[T]()
     result.fds = newSeq[SelectorKey[T]](maxFD)
     result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
 

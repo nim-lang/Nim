@@ -66,17 +66,17 @@ else:
       fds: seq[SelectorKey[T]]
       count*: int
     Selector*[T] = ref SelectorImpl[T]
-type
-  SelectEventImpl = object
-    efd: cint
-  SelectEvent* = ptr SelectEventImpl
 
-proc selectorFinalizer[T](s: Selector[T]) {.nimcall.} =
+proc `=destroy`*[T](s: var SelectorImpl[T]) =
   ## Releases the epoll fd when the selector becomes unreachable.
   ## Best effort: a destructor must not raise.
   if s.epollFD >= 0:
     discard posix.close(s.epollFD)
     s.epollFD = -1
+type
+  SelectEventImpl = object
+    efd: cint
+  SelectEvent* = ptr SelectEventImpl
 
 proc newSelector*[T](): Selector[T] =
   proc initialNumFD(): int {.inline.} =
@@ -101,8 +101,7 @@ proc newSelector*[T](): Selector[T] =
     result.numFD = numFD
     result.fds = allocSharedArray[SelectorKey[T]](numFD)
   else:
-    new result, selectorFinalizer
-    result.epollFD = -1
+    result = Selector[T]()
     result.epollFD = epollFD
     result.maxFD = maxFD
     result.numFD = numFD
