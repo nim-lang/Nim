@@ -73,6 +73,8 @@ template semIdeForTemplateOrGenericCheck(conf, n, requiresCheck) =
       requiresCheck = true
 
 proc declareResult(c: PContext, n: PNode): tuple[resultDeclared: bool, savedResultSym: PSym] =
+  result = (false, nil)
+
   let owner = if not c.p.isNil: c.p.owner else: nil
   let resultType =
     if owner.isNil or owner.kind notin routineKinds:
@@ -87,7 +89,7 @@ proc declareResult(c: PContext, n: PNode): tuple[resultDeclared: bool, savedResu
       nil
 
   if resultType.isNil:
-    return (false, nil)
+    return
 
   result.savedResultSym = c.p.resultSym
 
