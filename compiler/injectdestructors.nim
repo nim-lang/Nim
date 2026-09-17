@@ -778,6 +778,11 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
     # control-flow node's expression type would make code generators allocate
     # a second, unused destination for it.
     result.typ = nil
+    if result.kind == nkIfExpr:
+      # The branches now assign to the destination directly, so the node no
+      # longer produces a value: keep the kind/typ invariant that an nkIfExpr
+      # always has a type (bug #26218)
+      result.transitionSonsKind(nkIfStmt)
 
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
   if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
