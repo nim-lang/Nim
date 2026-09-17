@@ -2732,9 +2732,11 @@ proc semNimvmBranch(c: PContext, n: PNode, flags: TExprFlags): PNode =
     oldNotes = c.config.notes
     oldWarningAsErrors = c.config.warningAsErrors
     oldFeatures = c.features
+  openScope(c)
   try:
     result = semExpr(c, n, flags)
   finally:
+    closeScope(c)
     c.optionStack = oldOptionStack
     c.config.options = oldOptions
     c.config.notes = oldNotes
