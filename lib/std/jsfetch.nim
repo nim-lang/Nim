@@ -101,6 +101,7 @@ func newfetchOptions*(metod = HttpGet; body: cstring = nil;
       of HttpPut:    "PUT".cstring
       of HttpDelete: "DELETE".cstring
       of HttpPatch:  "PATCH".cstring
+      of HttpQuery:  "QUERY".cstring
       else:          "GET".cstring
     )
   )
