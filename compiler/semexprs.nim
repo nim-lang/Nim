@@ -2777,7 +2777,13 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 2, c.config)
       if whenNimvm:
         if semCheck:
+          # The nimvm branch only exists for VM compilation, its declarations
+          # must not be visible to code compiled for both targets. The else
+          # branch (if any) keeps sharing the enclosing scope like a regular
+          # `when` statement does.
+          openScope(c)
           it[1] = semNimvmBranch(c, it[1], flags)
+          closeScope(c)
           typ = commonType(c, typ, it[1].typ)
         result = n # when nimvm is not elimited until codegen
       elif c.inGenericContext > 0:
