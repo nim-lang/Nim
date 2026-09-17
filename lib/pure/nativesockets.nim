@@ -22,10 +22,6 @@ when defined(nimPreviewSlimSystem):
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
-const hasSO_REUSEPORT* {.booldefine.} = not defined(solaris)
-  ## Whether the platform supports `SO_REUSEPORT`. Override with
-  ## `-d:hasSO_REUSEPORT=false` on platforms where it is unavailable.
-
 const useWinVersion = defined(windows) or defined(nimdoc)
 const useNimNetLite = defined(nimNetLite) or defined(freertos) or defined(zephyr) or
     defined(nuttx)
@@ -54,11 +50,8 @@ export
   SOL_SOCKET,
   SOMAXCONN,
   SO_ACCEPTCONN, SO_BROADCAST, SO_DEBUG, SO_DONTROUTE,
-  SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR,
+  SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR, SO_REUSEPORT,
   MSG_PEEK
-
-when hasSO_REUSEPORT:
-  export SO_REUSEPORT
 
 when defined(macosx) and not defined(nimdoc):
   export SO_NOSIGPIPE
