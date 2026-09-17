@@ -1829,7 +1829,9 @@ This can be used to initialize complex data structures for example.
 
 Each module has a special magic constant `isMainModule` that is true if the
 module is compiled as the main file. This is very useful to embed tests within
-the module as shown by the above example.
+the module as shown by the above example. When compiling a module as a library,
+`isMainModule` is also true and `appType` is `"lib"`. To avoid running embedded
+tests when the library is loaded, use `when isMainModule and appType != "lib"`.
 
 A symbol of a module *can* be *qualified* with the `module.symbol` syntax. And if
 a symbol is ambiguous, it *must* be qualified. A symbol is ambiguous
