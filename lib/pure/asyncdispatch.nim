@@ -382,6 +382,13 @@ when defined(windows) or defined(nimdoc):
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
+  proc closeDispatcher*(disp: PDispatcher) =
+    ## Closes the dispatcher and releases its underlying OS resource (the
+    ## epoll/kqueue/select fd). The dispatcher cannot be used afterwards.
+    if disp.selector != nil:
+      disp.selector.close()
+      disp.selector = nil
+
   proc threadDispatcherCleanup() {.gcsafe, raises: [].} =
     # a thread that touched async keeps its dispatcher alive in a threadvar;
     # without this the OS resource leaks at thread exit
@@ -1233,20 +1240,6 @@ else:
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
 
-  proc closeDispatcher*(disp: PDispatcher) =
-    ## Closes the dispatcher and releases its underlying OS resource (the
-    ## epoll/kqueue/select fd). The dispatcher cannot be used afterwards.
-    if disp.selector != nil:
-      disp.selector.close()
-      disp.selector = nil
-
-  proc dispatcherFinalizer(d: PDispatcher) {.nimcall.} =
-    # best effort: a destructor must not raise
-    try:
-      closeDispatcher(d)
-    except CatchableError:
-      discard
-
   template newAsyncData(): AsyncData =
     AsyncData(
       readList: newSeqOfCap[Callback](InitCallbackListSize),
@@ -1254,7 +1247,7 @@ else:
     )
 
   proc newDispatcher*(): owned(PDispatcher) =
-    new result, dispatcherFinalizer
+    new result
     result.selector = newSelector[AsyncData]()
     result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](InitDelayedCallbackListSize)
@@ -1264,6 +1257,13 @@ else:
         discard runOnce(0)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
+
+  proc closeDispatcher*(disp: PDispatcher) =
+    ## Closes the dispatcher and releases its underlying OS resource (the
+    ## epoll/kqueue/select fd). The dispatcher cannot be used afterwards.
+    if disp.selector != nil:
+      disp.selector.close()
+      disp.selector = nil
 
   proc threadDispatcherCleanup() {.gcsafe, raises: [].} =
     # a thread that touched async keeps its thread-local dispatcher alive in

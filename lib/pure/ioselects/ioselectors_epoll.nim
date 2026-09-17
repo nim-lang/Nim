@@ -71,6 +71,13 @@ type
     efd: cint
   SelectEvent* = ptr SelectEventImpl
 
+proc selectorFinalizer[T](s: Selector[T]) {.nimcall.} =
+  ## Releases the epoll fd when the selector becomes unreachable.
+  ## Best effort: a destructor must not raise.
+  if s.epollFD >= 0:
+    discard posix.close(s.epollFD)
+    s.epollFD = -1
+
 proc newSelector*[T](): Selector[T] =
   proc initialNumFD(): int {.inline.} =
     when defined(nuttx):
@@ -94,7 +101,8 @@ proc newSelector*[T](): Selector[T] =
     result.numFD = numFD
     result.fds = allocSharedArray[SelectorKey[T]](numFD)
   else:
-    result = Selector[T]()
+    new result, selectorFinalizer
+    result.epollFD = -1
     result.epollFD = epollFD
     result.maxFD = maxFD
     result.numFD = numFD
@@ -105,6 +113,7 @@ proc newSelector*[T](): Selector[T] =
 
 proc close*[T](s: Selector[T]) =
   let res = posix.close(s.epollFD)
+  s.epollFD = -1
   when hasThreadSupport:
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
