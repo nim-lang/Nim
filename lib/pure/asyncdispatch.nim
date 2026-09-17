@@ -382,13 +382,6 @@ when defined(windows) or defined(nimdoc):
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
-  proc closeDispatcher*(disp: PDispatcher) =
-    ## Closes the dispatcher and releases its underlying OS resource (the
-    ## epoll/kqueue/select fd). The dispatcher cannot be used afterwards.
-    if disp.selector != nil:
-      disp.selector.close()
-      disp.selector = nil
-
   proc threadDispatcherCleanup() {.gcsafe, raises: [].} =
     # a thread that touched async keeps its dispatcher alive in a threadvar;
     # without this the OS resource leaks at thread exit
