@@ -302,8 +302,7 @@ proc isInternal(entry: StackTraceEntry): bool =
   # --excessiveStackTrace:off
   const internals = [
     "asyncdispatch.nim",
-    "asyncfutures.nim",
-    "threadimpl.nim",  # XXX ?
+    "asyncfutures.nim"
   ]
   let (filename, procname) = getFilenameProcname(entry)
   for line in internals:
