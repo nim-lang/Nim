@@ -1062,6 +1062,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "canonical": conf.filenameOption = foCanonical
     of "legacyrelproj": conf.filenameOption = foLegacyRelProj
     else: localError(conf, info, "expected: abs|canonical|legacyRelProj, got: $1" % arg)
+  of "msgformat":
+    case arg.normalize
+    of "std": conf.msgFormat = mfmStd
+    of "gcc": conf.msgFormat = mfmGcc
+    else: localError(conf, info, "expected: std|gcc, got: $1" % arg)
   of "processing":
     incl(conf.notes, hintProcessing)
     incl(conf.mainPackageNotes, hintProcessing)
