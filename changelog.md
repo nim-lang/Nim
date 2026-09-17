@@ -12,6 +12,10 @@ rounding guarantees (via the
   avoid conflicts with `system.default`, so named argument usage for this
   parameter like `getOrDefault(..., default = ...)` will have to be changed.
 
+- Typedesc field access on object/tuple types (e.g. `Foo[int].val`) is now
+  restricted to `typeof` context. Use `--legacy:typedescFieldAccess` to restore
+  the previous behavior of allowing it outside `typeof`.
+
 - With `-d:nimPreviewCheckedClose`, the `close` function in the `std/syncio` module now raises an IO exception in case of an error.
 
 - Unknown warnings and hints now gives warnings `warnUnknownNotes` instead of
