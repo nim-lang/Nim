@@ -72,6 +72,32 @@ template semIdeForTemplateOrGenericCheck(conf, n, requiresCheck) =
     if n.info.fileIndex == conf.m.trackPos.fileIndex and n.info.line == conf.m.trackPos.line:
       requiresCheck = true
 
+proc declareResult(c: PContext, n: PNode): tuple[resultDeclared: bool, savedResultSym: PSym] =
+  let owner = if not c.p.isNil: c.p.owner else: nil
+  let resultType =
+    if owner.isNil or owner.kind notin routineKinds:
+      nil
+    elif owner.kind == skMacro:
+      sysTypeFromName(c.graph, n.info, "NimNode")
+    elif not owner.typ.isNil and
+        not owner.typ.returnType.isNil and
+        not owner.typ.isInlineIterator:
+      owner.typ.returnType
+    else:
+      nil
+
+  if resultType.isNil:
+    return (false, nil)
+
+  result.savedResultSym = c.p.resultSym
+
+  var res = newSym(skResult, getIdent(c.cache, "result"), c.idgen, owner, n.info)
+  res.typ = resultType
+  incl(res.flagsImpl, sfUsed)
+  c.p.resultSym = res
+  addDecl(c, res)
+  result.resultDeclared = true
+
 template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
                                     requiresCheck: bool) =
   # use only for idetools support; this is pretty slow so generics and
@@ -90,28 +116,11 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       # identifier in the generic body; give it its real type here, otherwise
       # every `result = f(...)` fails on the left-hand side and the right-hand
       # side (where the cursor usually is) is never analysed.
-      let owner = if c.p != nil: c.p.owner else: nil
-      let resultType =
-        if owner == nil or owner.kind notin routineKinds:
-          nil
-        elif owner.kind == skMacro:
-          sysTypeFromName(c.graph, n.info, "NimNode")
-        elif owner.typ != nil and owner.typ.returnType != nil and
-             not isInlineIterator(owner.typ):
-          owner.typ.returnType
-        else:
-          nil
-      let savedResultSym = if resultType != nil: c.p.resultSym else: nil
-      if resultType != nil:
-        var res = newSym(skResult, getIdent(c.cache, "result"), c.idgen, owner, n.info)
-        res.typ = resultType
-        incl(res.flagsImpl, sfUsed)
-        c.p.resultSym = res
-        addDecl(c, res)
+      let (resultDeclared, savedResultSym) = declareResult(c, n)
       # `ESuggestDone` may escape here; `recoverContext` then resets the
       # scopes and proc-cons, so no `finally` is needed.
       discard safeSemExpr(c, copyTree(n))
-      if resultType != nil: c.p.resultSym = savedResultSym
+      if resultDeclared: c.p.resultSym = savedResultSym
       closeScope(c)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
