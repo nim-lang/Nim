@@ -8,19 +8,21 @@ var
   splat
   :tmp
   :tmp_1
-splat = splitDrive do:
-  let blitTmp = path
-  blitTmp
-:tmp = splat.drive
-`=wasMoved`(splat.drive)
-:tmp_1 = splat.path_1
-`=wasMoved`(splat.path_1)
-result = (
-  let blitTmp_1 = :tmp
-  blitTmp_1,
-  let blitTmp_2 = :tmp_1
-  blitTmp_2)
-`=destroy`(splat)
+try:
+  splat = splitDrive do:
+    let blitTmp = path
+    blitTmp
+  :tmp = splat.drive
+  `=wasMoved`(splat.drive)
+  :tmp_1 = splat.path_1
+  `=wasMoved`(splat.path_1)
+  result = (
+    let blitTmp_1 = :tmp
+    blitTmp_1,
+    let blitTmp_2 = :tmp_1
+    blitTmp_2)
+finally:
+  `=destroy`(splat)
 -- end of expandArc ------------------------
 --expandArc: delete
 
@@ -103,51 +105,57 @@ finally:
 --expandArc: mergeShadowScope
 
 var shadowScope
-`=copy`(shadowScope, c.currentScope)
-rawCloseScope(c)
-block :tmp:
-  var sym
-  var i = 0
-  let L = len(shadowScope.symbols)
-  block :tmp_1:
-    while i < L:
-      var :tmpD
-      sym = shadowScope.symbols[i]
-      addInterfaceDecl(c):
-        :tmpD = `=dup`(sym)
-        :tmpD
-      {.push, overflowChecks: false.}
-      inc(i, 1)
-      {.pop.}
-`=destroy`(shadowScope)
+try:
+  `=copy`(shadowScope, c.currentScope)
+  rawCloseScope(c)
+  block :tmp:
+    var sym
+    var i = 0
+    let L = len(shadowScope.symbols)
+    block :tmp_1:
+      while i < L:
+        var :tmpD
+        sym = shadowScope.symbols[i]
+        addInterfaceDecl(c):
+          :tmpD = `=dup`(sym)
+          :tmpD
+        {.push, overflowChecks: false.}
+        inc(i, 1)
+        {.pop.}
+finally:
+  `=destroy`(shadowScope)
 -- end of expandArc ------------------------
 --expandArc: check
 
 var par
-this.isValid = fileExists(this.value)
-if dirExists(this.value):
-  var :tmpD
-  par = (dir:
-    :tmpD = `=dup`(this.value)
-    :tmpD, front: "")
-else:
-  var
-    :tmpD_1
-    :tmpD_2
-    :tmpD_3
-  par = (dir_1: parentDir(this.value), front_1:
-    :tmpD_1 = `=dup`(
-      :tmpD_3 = splitDrive do:
-        :tmpD_2 = `=dup`(this.value)
-        :tmpD_2
-      :tmpD_3.path)
-    :tmpD_1)
-  `=destroy`(:tmpD_3)
-if dirExists(par.dir):
-  `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
-else:
-  `=sink`(this.matchDirs, [])
-`=destroy`(par)
+try:
+  this.isValid = fileExists(this.value)
+  if dirExists(this.value):
+    var :tmpD
+    par = (dir:
+      :tmpD = `=dup`(this.value)
+      :tmpD, front: "")
+  else:
+    var
+      :tmpD_1
+      :tmpD_2
+      :tmpD_3
+    try:
+      par = (dir_1: parentDir(this.value), front_1:
+        :tmpD_1 = `=dup`(
+          :tmpD_3 = splitDrive do:
+            :tmpD_2 = `=dup`(this.value)
+            :tmpD_2
+          :tmpD_3.path)
+        :tmpD_1)
+    finally:
+      `=destroy`(:tmpD_3)
+  if dirExists(par.dir):
+    `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
+  else:
+    `=sink`(this.matchDirs, [])
+finally:
+  `=destroy`(par)
 -- end of expandArc ------------------------
 --expandArc: check
 
