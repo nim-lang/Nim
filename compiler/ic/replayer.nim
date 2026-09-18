@@ -38,8 +38,14 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
   ## declared nifmake output of the `cg` rule, and a missing output re-fires the
   ## rule for ever.
   ##
-  ## `localpassc` needs the module's own source path, which only the writer can
-  ## resolve, so it is baked in here as a third field.
+  ## `localpassc` is associated with the generated C file, whose path is the
+  ## sidecar's path with `.cflags` removed. Store that path as the third field;
+  ## an IC-loaded module's synthetic NIF filename cannot be mapped back through
+  ## the source-file-based `addLocalCompileOption` API.
+  let cfile = if outfile.endsWith(BackendActionsExt):
+                outfile[0 ..< outfile.len - BackendActionsExt.len]
+              else:
+                outfile
   var content = ""
   if list != nil:
     for n in list:
@@ -54,7 +60,7 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
           content.add n[0].strVal & "\t" & n[1].strVal & "\n"
         of "localpassc":
           content.add "localpassc\t" & n[1].strVal & "\t" &
-                      toFullPathConsiderDirty(g.config, module.info.fileIndex).string & "\n"
+                      cfile & "\n"
         else: discard
   writeFile(outfile, content)
 
@@ -80,7 +86,8 @@ proc applyBackendActions*(g: ModuleGraph; infile: string) =
     of "passc":
       if f.len == 2: extccomp.addCompileOption(g.config, f[1])
     of "localpassc":
-      if f.len == 3: extccomp.addLocalCompileOption(g.config, f[1], AbsoluteFile f[2])
+      if f.len == 3:
+        extccomp.addLocalCompileOptionForCFile(g.config, f[1], AbsoluteFile f[2])
     of "cppdefine":
       if f.len == 2: options.cppDefine(g.config, f[1])
     else: discard
@@ -117,7 +124,8 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph; list: PNode) =
       of "passc":
         extccomp.addCompileOption(g.config, n[1].strVal)
       of "localpassc":
-        extccomp.addLocalCompileOption(g.config, n[1].strVal, toFullPathConsiderDirty(g.config, module.info.fileIndex))
+        extccomp.addLocalCompileOption(g.config, n[1].strVal,
+          toFullPathConsiderDirty(g.config, n.info.fileIndex))
       of "cppdefine":
         options.cppDefine(g.config, n[1].strVal)
       of "inc":
@@ -185,7 +193,7 @@ proc replayBackendActions*(g: ModuleGraph; module: PSym; list: PNode) =
         extccomp.addCompileOption(g.config, n[1].strVal)
       of "localpassc":
         extccomp.addLocalCompileOption(g.config, n[1].strVal,
-          toFullPathConsiderDirty(g.config, module.info.fileIndex))
+          toFullPathConsiderDirty(g.config, n.info.fileIndex))
       of "cppdefine":
         options.cppDefine(g.config, n[1].strVal)
       else:
