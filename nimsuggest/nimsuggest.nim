@@ -688,8 +688,8 @@ proc mainCommand(graph: ModuleGraph) =
   close(requests)
   close(results)
 
-proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
-  var p = parseopt.initOptParser(cmd)
+proc processCmdLine*(pass: TCmdLinePass; conf: ConfigRef) =
+  var p = parseopt.initOptParser()
   var findProject = false
   while true:
     parseopt.next(p)
@@ -1378,7 +1378,7 @@ else:
       compilePipelineProject(graph)
 
 
-    proc mockCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
+    proc mockCmdLine(pass: TCmdLinePass; conf: ConfigRef) =
       conf.suggestVersion = 0
       let a = unixToNativePath(project)
       if dirExists(a) and not fileExists(a.addFileExt("nim")):
