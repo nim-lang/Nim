@@ -1,0 +1,38 @@
+nimTitle	deques	deques.html	module std/deques		0
+nim	Deque	deques.html#Deque	object Deque		56
+nim	defaultInitialSize	deques.html#defaultInitialSize	const defaultInitialSize		71
+nim	len	deques.html#len,Deque	proc len(deq: Deque): int		74
+nim	low	deques.html#low,Deque	proc low(deq: Deque): int		78
+nim	high	deques.html#high,Deque	proc high(deq: Deque): int		82
+nim	initDeque	deques.html#initDeque,int	proc initDeque[T](initialSize: int = defaultInitialSize): Deque[T]		155
+nim	`[]`	deques.html#[],Deque[T],Natural	proc `[]`[T](deq: Deque[T]; i: Natural): lent T		168
+nim	`[]`	deques.html#[],Deque[T],Natural_2	proc `[]`[T](deq: var Deque[T]; i: Natural): var T		178
+nim	`[]=`	deques.html#[]=,Deque[T],Natural,sinkT	proc `[]=`[T](deq: var Deque[T]; i: Natural; val: sink T)		188
+nim	`[]`	deques.html#[],Deque[T],BackwardsIndex	proc `[]`[T](deq: Deque[T]; i: BackwardsIndex): lent T		198
+nim	`[]`	deques.html#[],Deque[T],BackwardsIndex_2	proc `[]`[T](deq: var Deque[T]; i: BackwardsIndex): var T		210
+nim	`[]=`	deques.html#[]=,Deque[T],BackwardsIndex,sinkT	proc `[]=`[T](deq: var Deque[T]; i: BackwardsIndex; x: sink T)		222
+nim	items	deques.html#items.i,Deque[T]	iterator items[T](deq: Deque[T]): lent T		234
+nim	mitems	deques.html#mitems.i,Deque[T]	iterator mitems[T](deq: var Deque[T]): var T		250
+nim	pairs	deques.html#pairs.i,Deque[T]	iterator pairs[T](deq: Deque[T]): tuple[key: int, val: T]		267
+nim	contains	deques.html#contains,Deque[T],T	proc contains[T](deq: Deque[T]; item: T): bool		280
+nim	addFirst	deques.html#addFirst,Deque[T],sinkT	proc addFirst[T](deq: var Deque[T]; item: sink T)		335
+nim	addLast	deques.html#addLast,Deque[T],sinkT	proc addLast[T](deq: var Deque[T]; item: sink T)		350
+nim	toDeque	deques.html#toDeque,openArray[T]	proc toDeque[T](x: openArray[T]): Deque[T]		365
+nim	toDequeSink	deques.html#toDequeSink,sinkseq[T]	proc toDequeSink[T](x: sink seq[T]): Deque[T]		379
+nim	peekFirst	deques.html#peekFirst,Deque[T]	proc peekFirst[T](deq: Deque[T]): lent T		392
+nim	peekLast	deques.html#peekLast,Deque[T]	proc peekLast[T](deq: Deque[T]): lent T		407
+nim	peekFirst	deques.html#peekFirst,Deque[T]_2	proc peekFirst[T](deq: var Deque[T]): var T		422
+nim	peekLast	deques.html#peekLast,Deque[T]_2	proc peekLast[T](deq: var Deque[T]): var T		437
+nim	popFirst	deques.html#popFirst,Deque[T]	proc popFirst[T](deq: var Deque[T]): T		452
+nim	popLast	deques.html#popLast,Deque[T]	proc popLast[T](deq: var Deque[T]): T		468
+nim	clear	deques.html#clear,Deque[T]	proc clear[T](deq: var Deque[T])		484
+nim	shrink	deques.html#shrink,Deque[T],int,int	proc shrink[T](deq: var Deque[T]; fromFirst = 0; fromLast = 0)		499
+nim	`$`	deques.html#$,Deque[T]	proc `$`[T](deq: Deque[T]): string		532
+nim	`==`	deques.html#==,Deque[T],Deque[T]	proc `==`[T](deq1, deq2: Deque[T]): bool		546
+nim	hash	deques.html#hash,Deque[T]	proc hash[T](deq: Deque[T]): Hash		566
+idx	deque	deques.html#deque_1	Module deques		0
+heading	See also	deques.html#see-also	 See also		0
+nimgrp	peekfirst	deques.html#peekFirst-procs-all	proc		392
+nimgrp	[]=	deques.html#[]=-procs-all	proc		188
+nimgrp	[]	deques.html#[]-procs-all	proc		168
+nimgrp	peeklast	deques.html#peekLast-procs-all	proc		407

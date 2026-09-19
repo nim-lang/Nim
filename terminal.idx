@@ -1,0 +1,107 @@
+nimTitle	terminal	terminal.html	module std/terminal		0
+nim	ansiResetCode	terminal.html#ansiResetCode	const ansiResetCode		98
+nim	getCursorPos	terminal.html#getCursorPos	proc getCursorPos(): tuple[x, y: int]		235
+nim	terminalWidthIoctl	terminal.html#terminalWidthIoctl,openArray[int]	proc terminalWidthIoctl(fds: openArray[int]): int		277
+nim	terminalHeightIoctl	terminal.html#terminalHeightIoctl,openArray[int]	proc terminalHeightIoctl(fds: openArray[int]): int		286
+nim	terminalWidth	terminal.html#terminalWidth	proc terminalWidth(): int		297
+nim	terminalHeight	terminal.html#terminalHeight	proc terminalHeight(): int		327
+nim	terminalSize	terminal.html#terminalSize	proc terminalSize(): tuple[w, h: int]		361
+nim	hideCursor	terminal.html#hideCursor,File	proc hideCursor(f: File)		376
+nim	showCursor	terminal.html#showCursor,File	proc showCursor(f: File)		383
+nim	setCursorPos	terminal.html#setCursorPos,File,int,int	proc setCursorPos(f: File; x, y: int)		390
+nim	setCursorXPos	terminal.html#setCursorXPos,File,int	proc setCursorXPos(f: File; x: int)		399
+nim	cursorUp	terminal.html#cursorUp,File,int	proc cursorUp(f: File; count = 1)		431
+nim	cursorDown	terminal.html#cursorDown,File,int	proc cursorDown(f: File; count = 1)		444
+nim	cursorForward	terminal.html#cursorForward,File,int	proc cursorForward(f: File; count = 1)		457
+nim	cursorBackward	terminal.html#cursorBackward,File,int	proc cursorBackward(f: File; count = 1)		470
+nim	eraseLine	terminal.html#eraseLine,File	proc eraseLine(f: File)		514
+nim	eraseScreen	terminal.html#eraseScreen,File	proc eraseScreen(f: File)		540
+nim	resetAttributes	terminal.html#resetAttributes,File	proc resetAttributes(f: File)		567
+nim	styleBright	terminal.html#styleBright	Style.styleBright		581
+nim	styleDim	terminal.html#styleDim	Style.styleDim		581
+nim	styleItalic	terminal.html#styleItalic	Style.styleItalic		581
+nim	styleUnderscore	terminal.html#styleUnderscore	Style.styleUnderscore		581
+nim	styleBlink	terminal.html#styleBlink	Style.styleBlink		581
+nim	styleBlinkRapid	terminal.html#styleBlinkRapid	Style.styleBlinkRapid		581
+nim	styleReverse	terminal.html#styleReverse	Style.styleReverse		581
+nim	styleHidden	terminal.html#styleHidden	Style.styleHidden		581
+nim	styleStrikethrough	terminal.html#styleStrikethrough	Style.styleStrikethrough		581
+nim	Style	terminal.html#Style	enum Style		581
+nim	ansiStyleCode	terminal.html#ansiStyleCode,int	proc ansiStyleCode(style: int): string		592
+nim	ansiStyleCode	terminal.html#ansiStyleCode.t,Style	template ansiStyleCode(style: Style): string		595
+nim	ansiStyleCode	terminal.html#ansiStyleCode.t,static[Style]	template ansiStyleCode(style: static[Style]): string		599
+nim	setStyle	terminal.html#setStyle,File,set[Style]	proc setStyle(f: File; style: set[Style])		602
+nim	writeStyled	terminal.html#writeStyled,string,set[Style]	proc writeStyled(txt: string; style: set[Style] = {styleBright})		617
+nim	fgBlack	terminal.html#fgBlack	ForegroundColor.fgBlack		635
+nim	fgRed	terminal.html#fgRed	ForegroundColor.fgRed		635
+nim	fgGreen	terminal.html#fgGreen	ForegroundColor.fgGreen		635
+nim	fgYellow	terminal.html#fgYellow	ForegroundColor.fgYellow		635
+nim	fgBlue	terminal.html#fgBlue	ForegroundColor.fgBlue		635
+nim	fgMagenta	terminal.html#fgMagenta	ForegroundColor.fgMagenta		635
+nim	fgCyan	terminal.html#fgCyan	ForegroundColor.fgCyan		635
+nim	fgWhite	terminal.html#fgWhite	ForegroundColor.fgWhite		635
+nim	fg8Bit	terminal.html#fg8Bit	ForegroundColor.fg8Bit		635
+nim	fgDefault	terminal.html#fgDefault	ForegroundColor.fgDefault		635
+nim	ForegroundColor	terminal.html#ForegroundColor	enum ForegroundColor		635
+nim	bgBlack	terminal.html#bgBlack	BackgroundColor.bgBlack		647
+nim	bgRed	terminal.html#bgRed	BackgroundColor.bgRed		647
+nim	bgGreen	terminal.html#bgGreen	BackgroundColor.bgGreen		647
+nim	bgYellow	terminal.html#bgYellow	BackgroundColor.bgYellow		647
+nim	bgBlue	terminal.html#bgBlue	BackgroundColor.bgBlue		647
+nim	bgMagenta	terminal.html#bgMagenta	BackgroundColor.bgMagenta		647
+nim	bgCyan	terminal.html#bgCyan	BackgroundColor.bgCyan		647
+nim	bgWhite	terminal.html#bgWhite	BackgroundColor.bgWhite		647
+nim	bg8Bit	terminal.html#bg8Bit	BackgroundColor.bg8Bit		647
+nim	bgDefault	terminal.html#bgDefault	BackgroundColor.bgDefault		647
+nim	BackgroundColor	terminal.html#BackgroundColor	enum BackgroundColor		647
+nim	setForegroundColor	terminal.html#setForegroundColor,File,ForegroundColor	proc setForegroundColor(f: File; fg: ForegroundColor; bright = false)		662
+nim	setBackgroundColor	terminal.html#setBackgroundColor,File,BackgroundColor	proc setBackgroundColor(f: File; bg: BackgroundColor; bright = false)		691
+nim	ansiForegroundColorCode	terminal.html#ansiForegroundColorCode,ForegroundColor	proc ansiForegroundColorCode(fg: ForegroundColor; bright = false): string		720
+nim	ansiForegroundColorCode	terminal.html#ansiForegroundColorCode.t,static[ForegroundColor],static[bool]	template ansiForegroundColorCode(fg: static[ForegroundColor];\n                        bright: static[bool] = false): string		725
+nim	ansiForegroundColorCode	terminal.html#ansiForegroundColorCode,Color	proc ansiForegroundColorCode(color: Color): string		729
+nim	ansiForegroundColorCode	terminal.html#ansiForegroundColorCode.t,static[Color]	template ansiForegroundColorCode(color: static[Color]): string		733
+nim	ansiBackgroundColorCode	terminal.html#ansiBackgroundColorCode,Color	proc ansiBackgroundColorCode(color: Color): string		738
+nim	ansiBackgroundColorCode	terminal.html#ansiBackgroundColorCode.t,static[Color]	template ansiBackgroundColorCode(color: static[Color]): string		742
+nim	setForegroundColor	terminal.html#setForegroundColor,File,Color	proc setForegroundColor(f: File; color: Color)		747
+nim	setBackgroundColor	terminal.html#setBackgroundColor,File,Color	proc setBackgroundColor(f: File; color: Color)		752
+nim	isatty	terminal.html#isatty,File	proc isatty(f: File): bool		764
+nim	resetStyle	terminal.html#resetStyle	TerminalCmd.resetStyle		780
+nim	fgColor	terminal.html#fgColor	TerminalCmd.fgColor		780
+nim	bgColor	terminal.html#bgColor	TerminalCmd.bgColor		780
+nim	TerminalCmd	terminal.html#TerminalCmd	enum TerminalCmd		780
+nim	styledWrite	terminal.html#styledWrite.m,File,varargs[typed]	macro styledWrite(f: File; m: varargs[typed]): untyped		801
+nim	styledWriteLine	terminal.html#styledWriteLine.t,File,varargs[untyped]	template styledWriteLine(f: File; args: varargs[untyped])		830
+nim	styledEcho	terminal.html#styledEcho.t,varargs[untyped]	template styledEcho(args: varargs[untyped])		839
+nim	getch	terminal.html#getch	proc getch(): char		843
+nim	readPasswordFromStdin	terminal.html#readPasswordFromStdin,string,string	proc readPasswordFromStdin(prompt: string; password: var string): bool		888
+nim	readPasswordFromStdin	terminal.html#readPasswordFromStdin,string	proc readPasswordFromStdin(prompt = "password: "): string		903
+nim	hideCursor	terminal.html#hideCursor.t	template hideCursor()		910
+nim	showCursor	terminal.html#showCursor.t	template showCursor()		911
+nim	setCursorPos	terminal.html#setCursorPos.t,int,int	template setCursorPos(x, y: int)		912
+nim	setCursorXPos	terminal.html#setCursorXPos.t,int	template setCursorXPos(x: int)		913
+nim	cursorUp	terminal.html#cursorUp.t,int	template cursorUp(count = 1)		916
+nim	cursorDown	terminal.html#cursorDown.t,int	template cursorDown(count = 1)		917
+nim	cursorForward	terminal.html#cursorForward.t,int	template cursorForward(count = 1)		918
+nim	cursorBackward	terminal.html#cursorBackward.t,int	template cursorBackward(count = 1)		919
+nim	eraseLine	terminal.html#eraseLine.t	template eraseLine()		920
+nim	eraseScreen	terminal.html#eraseScreen.t	template eraseScreen()		921
+nim	setStyle	terminal.html#setStyle.t,set[Style]	template setStyle(style: set[Style])		922
+nim	setForegroundColor	terminal.html#setForegroundColor.t,ForegroundColor	template setForegroundColor(fg: ForegroundColor; bright = false)		924
+nim	setBackgroundColor	terminal.html#setBackgroundColor.t,BackgroundColor	template setBackgroundColor(bg: BackgroundColor; bright = false)		926
+nim	setForegroundColor	terminal.html#setForegroundColor.t,Color	template setForegroundColor(color: Color)		928
+nim	setBackgroundColor	terminal.html#setBackgroundColor.t,Color	template setBackgroundColor(color: Color)		930
+nim	resetAttributes	terminal.html#resetAttributes	proc resetAttributes()		932
+nim	isTrueColorSupported	terminal.html#isTrueColorSupported	proc isTrueColorSupported(): bool		938
+nim	enableTrueColors	terminal.html#enableTrueColors	proc enableTrueColors()		942
+nim	disableTrueColors	terminal.html#disableTrueColors	proc disableTrueColors()		975
+heading	Progress bar	terminal.html#progress-bar	 Progress bar		0
+heading	Playing with colorful and styled text	terminal.html#progress-bar-playing-with-colorful-and-styled-text	  Playing with colorful and styled text		0
+nimgrp	readpasswordfromstdin	terminal.html#readPasswordFromStdin-procs-all	proc		888
+nimgrp	setforegroundcolor	terminal.html#setForegroundColor-procs-all	proc		662
+nimgrp	setbackgroundcolor	terminal.html#setBackgroundColor-procs-all	proc		691
+nimgrp	ansiforegroundcolorcode	terminal.html#ansiForegroundColorCode-procs-all	proc		720
+nimgrp	resetattributes	terminal.html#resetAttributes-procs-all	proc		567
+nimgrp	ansistylecode	terminal.html#ansiStyleCode-templates-all	template		595
+nimgrp	setforegroundcolor	terminal.html#setForegroundColor-templates-all	template		924
+nimgrp	setbackgroundcolor	terminal.html#setBackgroundColor-templates-all	template		926
+nimgrp	ansiforegroundcolorcode	terminal.html#ansiForegroundColorCode-templates-all	template		725

@@ -1,0 +1,56 @@
+nimTitle	nifstreams	nifstreams.html	module nifstreams		0
+nim	PackedToken	nifstreams.html#PackedToken	type PackedToken		51
+nim	tagId	nifstreams.html#tagId,NifToken	proc tagId(n: NifToken): TagId		60
+nim	litId	nifstreams.html#litId,NifToken	proc litId(n: NifToken): StrId		65
+nim	symId	nifstreams.html#symId,NifToken	proc symId(n: NifToken): SymId		66
+nim	litId	nifstreams.html#litId,Cursor	proc litId(c: Cursor): StrId		67
+nim	firstSon	nifstreams.html#firstSon,Cursor	proc firstSon(n: Cursor): Cursor		68
+nim	lineMan	nifstreams.html#lineMan	var lineMan		70
+nim	files	nifstreams.html#files.t,Pool	template files(p: Pool): untyped		75
+nim	tags	nifstreams.html#tags.t,Pool	template tags(p: Pool): untyped		76
+nim	man	nifstreams.html#man.t,Pool	template man(p: Pool): untyped		77
+nim	info	nifstreams.html#info,NifToken	proc info(n: NifToken): PackedLineInfo		79
+nim	info	nifstreams.html#info,Cursor	proc info(c: Cursor): PackedLineInfo		85
+nim	IntId	nifstreams.html#IntId	type IntId		93
+nim	UIntId	nifstreams.html#UIntId	type UIntId		94
+nim	IntegersProxy	nifstreams.html#IntegersProxy	object IntegersProxy		97
+nim	UIntegersProxy	nifstreams.html#UIntegersProxy	object UIntegersProxy		98
+nim	`==`	nifstreams.html#==,IntId,IntId	proc `==`(a, b: IntId): bool		100
+nim	`==`	nifstreams.html#==,UIntId,UIntId	proc `==`(a, b: UIntId): bool		101
+nim	integers	nifstreams.html#integers.t,Pool	template integers(p: Pool): IntegersProxy		103
+nim	uintegers	nifstreams.html#uintegers.t,Pool	template uintegers(p: Pool): UIntegersProxy		104
+nim	`[]`	nifstreams.html#[].t,IntegersProxy,IntId	template `[]`(x: IntegersProxy; id: IntId): int64		106
+nim	`[]`	nifstreams.html#[].t,UIntegersProxy,UIntId	template `[]`(x: UIntegersProxy; id: UIntId): uint64		107
+nim	getOrIncl	nifstreams.html#getOrIncl.t,IntegersProxy,int64	template getOrIncl(x: IntegersProxy; v: int64): IntId		110
+nim	getOrIncl	nifstreams.html#getOrIncl.t,UIntegersProxy,uint64	template getOrIncl(x: UIntegersProxy; v: uint64): UIntId		111
+nim	intId	nifstreams.html#intId,NifToken	proc intId(n: NifToken): IntId		113
+nim	uintId	nifstreams.html#uintId,NifToken	proc uintId(n: NifToken): UIntId		114
+nim	intId	nifstreams.html#intId,Cursor	proc intId(c: Cursor): IntId		115
+nim	uintId	nifstreams.html#uintId,Cursor	proc uintId(c: Cursor): UIntId		116
+nim	addIntLit	nifstreams.html#addIntLit,TokenBuf,IntId,PackedLineInfo	proc addIntLit(dest: var TokenBuf; id: IntId; info: PackedLineInfo)		118
+nim	strToken	nifstreams.html#strToken,StrId,PackedLineInfo	proc strToken(s: StrId; info: PackedLineInfo): NifToken		125
+nim	symToken	nifstreams.html#symToken,SymId,PackedLineInfo	proc symToken(id: SymId; info: PackedLineInfo): NifToken		126
+nim	identToken	nifstreams.html#identToken,StrId,PackedLineInfo	proc identToken(id: StrId; info: PackedLineInfo): NifToken		127
+nim	dotToken	nifstreams.html#dotToken,PackedLineInfo	proc dotToken(info: PackedLineInfo): NifToken		128
+nim	charToken	nifstreams.html#charToken,char,PackedLineInfo	proc charToken(ch: char; info: PackedLineInfo): NifToken		129
+nim	FloatId	nifstreams.html#FloatId	type FloatId		134
+nim	FloatPool	nifstreams.html#FloatPool	object FloatPool		135
+nim	`==`	nifstreams.html#==,FloatId,FloatId	proc `==`(a, b: FloatId): bool		139
+nim	globalFloats	nifstreams.html#globalFloats	var globalFloats		141
+nim	floats	nifstreams.html#floats.t,Pool	template floats(p: Pool): var FloatPool		143
+nim	getOrIncl	nifstreams.html#getOrIncl,FloatPool,float64	proc getOrIncl(fp: var FloatPool; v: float64): FloatId		145
+nim	`[]`	nifstreams.html#[],FloatPool,FloatId	proc `[]`(fp: FloatPool; id: FloatId): float64		156
+nim	floatToken	nifstreams.html#floatToken,FloatId,PackedLineInfo	proc floatToken(id: FloatId; info: PackedLineInfo): NifToken		159
+nim	floatId	nifstreams.html#floatId,NifToken	proc floatId(n: NifToken): FloatId		166
+nim	Stream	nifstreams.html#Stream	object Stream		171
+nim	parLeToken	nifstreams.html#parLeToken,TagId	proc parLeToken(t: TagId): NifToken		174
+nim	open	nifstreams.html#open,string	proc open(filename: string): Stream		180
+nim	close	nifstreams.html#close,Stream	proc close(s: var Stream)		183
+nim	next	nifstreams.html#next,Stream	proc next(s: var Stream): NifToken		186
+nimgrp	litid	nifstreams.html#litId-procs-all	proc		65
+nimgrp	==	nifstreams.html#==-procs-all	proc		100
+nimgrp	info	nifstreams.html#info-procs-all	proc		79
+nimgrp	uintid	nifstreams.html#uintId-procs-all	proc		114
+nimgrp	intid	nifstreams.html#intId-procs-all	proc		113
+nimgrp	[]	nifstreams.html#[]-templates-all	template		106
+nimgrp	getorincl	nifstreams.html#getOrIncl-templates-all	template		110

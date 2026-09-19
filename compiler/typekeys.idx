@@ -1,0 +1,8 @@
+nimTitle	typekeys	typekeys.html	module typekeys		0
+nim	cachedModuleSuffix	typekeys.html#cachedModuleSuffix,ConfigRef,FileIndex	proc cachedModuleSuffix(config: ConfigRef; fileIdx: FileIndex): string		23
+nim	modname	typekeys.html#modname,int,ConfigRef	proc modname(module: int; conf: ConfigRef): string		33
+nim	modname	typekeys.html#modname,PSym,ConfigRef	proc modname(module: PSym; conf: ConfigRef): string		36
+nim	TypeLoader	typekeys.html#TypeLoader	type TypeLoader		56
+nim	SymLoader	typekeys.html#SymLoader	type SymLoader		57
+nim	typeKey	typekeys.html#typeKey,PType,ConfigRef,TypeLoader,SymLoader	proc typeKey(t: PType; conf: ConfigRef; tl: TypeLoader; sl: SymLoader): string		436
+nimgrp	modname	typekeys.html#modname-procs-all	proc		33

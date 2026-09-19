@@ -1,0 +1,2 @@
+nimTitle	icmodnames	icmodnames.html	module icmodnames		0
+nim	moduleSuffix	icmodnames.html#moduleSuffix,string,openArray[string]	proc moduleSuffix(path: string; searchPaths: openArray[string]): string		35
