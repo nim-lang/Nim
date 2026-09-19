@@ -236,6 +236,7 @@ const
   symDefTagName* = "sd"
   typeDefTagName* = "td"
   bindingIdTagName = "bid"
+  genericArgsTagName = "genericargs"
 
   bridgeSymTagName* = "bsym"
     ## `(bsym <intlit>)` — a symbol reference in the IN-PROCESS bridge format
@@ -552,6 +553,14 @@ proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
   dest.addStrLit loc.snippet
 
 const
+  BifGenericTypeKinds = {tyArray, tySequence, tySet, tyOpenArray, tyVarargs,
+                         tyUncheckedArray}
+    ## The `genericargs` section preserves `sonsImpl` order. Its roles and arity
+    ## are inferred from the enclosing type kind; for `tyArray`, the first son
+    ## is the index type and the second son is the element type. The section is
+    ## omitted when there are no sons. This makes the contract explicit for
+    ## consumers without adding per-argument role tags or a second traversal.
+
   CanonTypeKinds = {tyVar, tyLent, tySink, tyTuple, tyRef, tyPtr, tySequence,
                     tyOpenArray, tyVarargs, tySet, tyUncheckedArray, tyArray,
                     tyRange, tyProc}
@@ -1006,10 +1015,19 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
 
     # Write TLoc structure
     writeLoc w, dest, typ.locImpl
-    # we store the type's elements here at the end so that
-    # it is not ambiguous and saves space:
-    for ch in typ.sonsImpl:
-      writeType(w, dest, ch)
+    # Keep the structural generic arguments together under a named section.
+    # The section preserves `sonsImpl` order, so consumers recover both arity
+    # and roles (notably array[index, element]) without guessing from unrelated
+    # trailing symbols or nested type definitions. The legacy positional form
+    # remains for every other type kind and is still accepted by the loader
+    # below for artifacts from before format 44.
+    if typ.kind in BifGenericTypeKinds and typ.sonsImpl.len > 0:
+      dest.buildTree genericArgsTagName:
+        for ch in typ.sonsImpl:
+          writeType(w, dest, ch)
+    else:
+      for ch in typ.sonsImpl:
+        writeType(w, dest, ch)
 
 
 proc writeType(w: var Writer; dest: var IcBuilder; typ: PType) =
@@ -3232,7 +3250,15 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
     loadLoc c, n, t.locImpl
 
     while n.hasMore:
-      t.sonsImpl.add loadTypeStub(c, n, localSyms)
+      if n.kind == TagLit and tagIs(n, genericArgsTagName):
+        n.into:
+          while n.hasMore:
+            t.sonsImpl.add loadTypeStub(c, n, localSyms)
+      else:
+        # BIFs written before format 44 used raw trailing type symbols. Keep
+        # reading that representation for the previous on-disk layout; the
+        # ic format stamp prevents an older compiler from opening a new cache.
+        t.sonsImpl.add loadTypeStub(c, n, localSyms)
 
 proc loadType*(c: var DecodeContext; t: PType) =
   if t.state != Partial: return

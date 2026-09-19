@@ -29,7 +29,10 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "43"
+  icFormatVersion* = "44"
+    ## v44: structural generic arguments in semantic BIF type definitions are
+    ## wrapped in a `genericargs` section. This changes the sem-NIF layout and
+    ## must invalidate caches before an older reader can see the new tag.
     ## v43: deterministic re-export traversal for ordered interfaces.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
