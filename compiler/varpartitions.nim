@@ -1007,6 +1007,17 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
       #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
 
+proc containsProcValue(t: PType): bool =
+  ## A container of proc values cannot be safely turned into a cursor:
+  ## calling a stored closure can mutate any variable it captured, and that
+  ## mutation is invisible to the analysis here (it happens in a different
+  ## proc, through the closure environment). A captured variable's last use
+  ## can then move its value into a callee while the cursor still aliases
+  ## it, so the copy must not be elided. See bug #25964.
+  proc hasProcValue(t: PType; closure: RootRef): bool {.nimcall.} =
+    result = t.kind == tyProc
+  result = iterOverType(t, hasProcValue, nil)
+
 proc jsDeepCopied(t: PType): bool =
   ## On the JS backend `nimCopy` deep-copies these type classes on every
   ## assignment, so eliding the copy for a safe alias is worthwhile even when
@@ -1025,7 +1036,8 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
         (hasDestructor(v.sym.typ) or (jsCursors and jsDeepCopied(v.sym.typ))) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned and
         not hasDisabledAsgn(g, v.sym.typ) and
-        not hasDisabledDup(g, v.sym.typ):
+        not hasDisabledDup(g, v.sym.typ) and
+        not containsProcValue(v.sym.typ):
       let rid = root(par, i)
       if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
         discard "cannot cursor into a graph that is mutated"
