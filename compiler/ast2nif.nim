@@ -313,27 +313,19 @@ const
     ## Appended to the ident of `skField` symbols in NIF names. Object fields are
     ## emitted as *local* symbols (NIF spec sense): `<ident>`f.<disamb>` with NO
     ## module suffix, so they get no index entry and are never registered in the
-    ## global `c.syms` name table. A field reference is a leaf — its C member name
-    ## is a deterministic function of `name.s` (`ccgtypes.mangleField`) and is
-    ## struct-scoped, and the field's type already rides on the `PNode` — so there
-    ## is nothing to resolve across modules: the use site just stubs a `skField`
-    ## from the local name. This removes the whole foreign-suffix pollution class
-    ## (a derived/captured env field minted under a foreign module suffix used to
-    ## corrupt the loader's name→buffer seek). The `` `f `` marker keeps the field's
-    ## local name in a namespace disjoint from proc-locals (backtick cannot appear
-    ## in a Nim identifier), so a field use can never be misrouted to a same-named
-    ## local var/param. Mirrors the `` `t `` (`typeToNifSym`) and `PkgMarker`
-    ## namespaces.
+    ## global `c.syms` name table. The owning type's reclist is self-contained and
+    ## materializes the field symbol once; a field use carries the same name so
+    ## the loader can resolve it back to that symbol after decoding the base type.
+    ## The `` `f `` marker keeps the field's local name in a namespace disjoint from
+    ## proc-locals (backtick cannot appear in a Nim identifier), so a field use can
+    ## never be misrouted to a same-named local var/param. Mirrors the `` `t ``
+    ## (`typeToNifSym`) and `PkgMarker` namespaces.
   CursorFieldMarker = "`fc"
     ## `FieldMarker` for a field declared `{.cursor.}`. A field USE serializes as
-    ## a bare `SymUse` — there is nowhere to put symbol flags — and the use-site
-    ## stub `loadFieldStub` mints carries none, so `trees.isCursor` (which reads
-    ## `sfCursor` off the field sym of an `nkDotExpr`) said "not a cursor" for
-    ## every loaded field. `lists.DoublyLinkedNode.prev` then became a COUNTED
-    ## reference: every node held its predecessor alive, no refcount ever hit
-    ## zero, and a doubly linked list leaked its whole contents. Both the reclist
-    ## def and every use derive their name from the same `PSym`, so marking the
-    ## name keeps them in lockstep.
+    ## a bare `SymUse` — there is nowhere to put symbol flags. The field definition
+    ## in the owning type's reclist carries `sfCursor`, and the loader resolves a
+    ## normal dot use to that same flagged PSym. The marker preserves the cursor
+    ## bit for fallback stubs in slots without a base type.
   PkgMarker = "`pkg"
     ## Appended to the ident of `skPackage` symbols in NIF names. A package sym
     ## has no module of its own: it is written once into every module NIF that
@@ -351,9 +343,8 @@ proc toNifSymName(w: var Writer; sym: PSym): string =
   if sym.kindImpl == skField:
     # Object fields are LOCAL symbols (no module suffix, no index entry, not in the
     # global `c.syms`). See `FieldMarker`. The same `toNifSymName` call produces this
-    # name at both the reclist def site and every use site (same `PSym`), so they
-    # agree by construction; the loader recovers `name.s` and `mangleField` produces
-    # the matching struct member name regardless of which module references it.
+    # name at both the reclist def site and every use site; the loader resolves a
+    # dot use against the owning type's reclist so both nodes hold the same PSym.
     result = sym.name.s
     result.add (if sfCursor in sym.flagsImpl: CursorFieldMarker else: FieldMarker)
     result.add '.'
@@ -2901,7 +2892,7 @@ proc typeCursor(c: var DecodeContext; module: FileIndex; nifName: string): Curso
   raiseAssert "symbol has no offset: " & nifName
 
 proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
-              localSyms: var Table[string, PSym]): PNode
+              localSyms: var Table[string, PSym]; fieldOwner: PType = nil): PNode
 
 proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule: string;
                        localSyms: var Table[string, PSym])
@@ -3065,15 +3056,9 @@ proc loadTypeStub(c: var DecodeContext; n: var Cursor; localSyms: var Table[stri
 
 proc loadFieldStub(c: var DecodeContext; symAsStr: string; thisModule: string;
                    localSyms: var Table[string, PSym]; typ: PType = nil): PSym =
-  ## A cross-context object-field reference (see `FieldMarker`): its def lives in
-  ## the owning type's reclist (a different seek, absent from this body's
-  ## `localSyms`), and it has no module suffix / index entry. There is nothing to
-  ## resolve — `cgen.genRecordField` re-navigates the object type's reclist by
-  ## `name` (`lookupFieldAgain`/`lookupInRecord`), so the use-site field need only
-  ## carry the clean field name (+ position for tuples, + type so a lower-stage
-  ## transform that builds a fresh node off this sym still re-serializes a type).
-  ## NOT shared across uses: each carries its own `typ`, and two distinct fields can
-  ## share a local name+position (cross-type), so a shared stub would mistype one.
+  ## Fallback for a cross-context object-field reference when no owning record type
+  ## is available. Normal dot expressions use `loadFieldUse`, which resolves the
+  ## field against the owning type's already materialized reclist instead.
   let sn = parseSymName(symAsStr)
   let (stubKind, stubName) = stubKindAndName(c.cache, sn.name)
   let module = moduleId(c, thisModule)
@@ -3426,6 +3411,86 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   if uint32(docId) != 0'u32 and s.astImpl != nil and nodeCommentWriter != nil:
     nodeCommentWriter(s.astImpl, docPool.strings[docId])
 
+proc findFieldInRecord(n: PNode; name: PIdent): PSym =
+  ## Find the field symbol materialized while loading one type's reclist.
+  result = nil
+  if n == nil: return
+  case n.kind
+  of nkRecList:
+    for child in n.sons:
+      result = findFieldInRecord(child, name)
+      if result != nil: return
+  of nkRecCase:
+    if n.sons.len > 0:
+      result = findFieldInRecord(n.sons[0], name)
+      if result != nil: return
+    for i in 1..<n.sons.len:
+      if n.sons[i].kind in {nkOfBranch, nkElse} and n.sons[i].sons.len > 0:
+        result = findFieldInRecord(n.sons[i].sons[^1], name)
+        if result != nil: return
+  of nkRecWhen, nkElifBranch, nkOfBranch, nkElse:
+    for child in n.sons:
+      result = findFieldInRecord(child, name)
+      if result != nil: return
+  of nkSym:
+    if n.sym != nil and n.sym.kindImpl == skField and n.sym.name.id == name.id:
+      result = n.sym
+  else:
+    discard
+
+proc recordType(c: var DecodeContext; t: PType): PType =
+  ## Resolve transparent wrappers around the base of a field access.
+  result = t
+  while result != nil:
+    if result.state == Partial:
+      c.loadType(result)
+    case result.kind
+    of tyVar, tyPtr, tyRef, tyGenericInst, tyGenericInvocation, tyGenericBody,
+       tyTypeDesc, tyAlias, tyInferred, tySink, tyLent, tyOwned,
+       tyDistinct, tyOrdinal:
+      if result.sonsImpl.len == 0:
+        return nil
+      result = result.sonsImpl[^1]
+    else:
+      break
+  if result != nil and result.kind notin {tyObject, tyTuple}:
+    result = nil
+
+proc baseRecordType(c: var DecodeContext; n: PNode): PType =
+  ## Return the record type for a loaded base expression.
+  if n == nil: return
+  result = n.typField
+  if result == nil and n.kind == nkSym and n.sym != nil:
+    if n.sym.state == Partial:
+      c.loadSym(n.sym)
+    result = n.sym.typImpl
+  result = c.recordType(result)
+
+proc fieldFromRecordType(c: var DecodeContext; owner: PType; name: PIdent): PSym =
+  ## Resolve a field use against the owning type's materialized reclist.
+  ## `loadType` caches the PType and `loadTypeFromCursor` materializes each
+  ## reclist's field definitions once, so this preserves PSym identity.
+  result = nil
+  var t = c.recordType(owner)
+  while t != nil:
+    result = findFieldInRecord(t.nImpl, name)
+    if result != nil: return
+    if t.kind != tyObject or t.sonsImpl.len == 0: return
+    t = c.recordType(t.sonsImpl[0])
+
+proc loadFieldUse(c: var DecodeContext; symAsStr: string; thisModule: string;
+                  localSyms: var Table[string, PSym]; owner: PType = nil;
+                  typ: PType = nil): PSym =
+  ## Resolve a field use to the canonical PSym from the owning type's `.bif`
+  ## definition. Only slots without an owner use the fallback stub.
+  if owner == nil:
+    return c.loadFieldStub(symAsStr, thisModule, localSyms, typ)
+  let sn = parseSymName(symAsStr)
+  let (_, fieldName) = stubKindAndName(c.cache, sn.name)
+  result = c.fieldFromRecordType(owner, fieldName)
+  if result == nil:
+    raiseAssert "field '" & symAsStr & "' not found in owning record type"
+
 proc sealLoadedRoutines*(c: var DecodeContext) =
   ## Before `writeLoweredModule` re-serializes the lowered module, seal ONLY the
   ## module's ROUTINE syms. A `.t.nif` written by `writeLoweredModule` is the
@@ -3451,7 +3516,7 @@ template withNode(c: var DecodeContext; n: var Cursor; result: PNode; kind: TNod
     body
 
 proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
-              localSyms: var Table[string, PSym]): PNode =
+              localSyms: var Table[string, PSym]; fieldOwner: PType = nil): PNode =
   if loadStatsInit == 1: inc nodesDecoded
   result = nil
   case n.kind
@@ -3464,11 +3529,13 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
       result = newSymNode(localSym, info)
       skip n
     elif isFieldNifName(symName):
-      # Cross-context object-field reference: stub a `skField` from the local name
-      # (see `loadFieldStub`). The field's type is recovered from the object type at
-      # codegen time, so this leaf carries no type of its own.
-      result = newSymNode(c.loadFieldStub(symName, thisModule, localSyms), info)
-      result.flags.incl nfLazyType
+      # Resolve a field use against the owning type's materialized reclist when
+      # this symbol is the RHS of a dot expression. Non-dot slots keep the
+      # fallback stub because no base type is available here.
+      let s = c.loadFieldUse(symName, thisModule, localSyms, fieldOwner)
+      result = newSymNode(s, info)
+      if s.typImpl == nil:
+        result.flags.incl nfLazyType
       skip n
     else:
       result = newSymNode(c.loadSymStub(n, thisModule, localSyms), info)
@@ -3495,7 +3562,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
             # the field, carrying the wrapper's type on BOTH the node and the sym so
             # a lower-stage transform that builds a fresh node off the sym still has a
             # type to re-serialize.
-            s = c.loadFieldStub(symName(n), thisModule, localSyms, typ)
+            s = c.loadFieldUse(symName(n), thisModule, localSyms, fieldOwner, typ)
             skip n
           else:
             s = c.loadSymStub(n, thisModule, localSyms)
@@ -3590,7 +3657,7 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
         # `(nflags <ident> <symuse>)`: node flags for the wrapped sym use.
         n.into:
           let flags = loadAtom(TNodeFlags, n)
-          result = loadNode(c, n, thisModule, localSyms)
+          result = loadNode(c, n, thisModule, localSyms, fieldOwner)
           if result != nil: result.flags = result.flags + flags
           while n.hasMore: skip n
       elif tagIs(n, typeDefTagName):
@@ -3706,6 +3773,18 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           else:
             result.sons.add c.loadNode(n, thisModule, localSyms)
           inc idx
+    of nkDotExpr:
+      # Decode the base before the field so the latter can resolve to the PSym
+      # materialized in the base type's `.bif` reclist. This keeps ordinary
+      # PSym equality valid for every field access.
+      c.withNode n, result, kind:
+        if n.hasMore:
+          result.sons.add c.loadNode(n, thisModule, localSyms)
+        if n.hasMore:
+          let owner = if result.sons.len > 0: c.baseRecordType(result.sons[0]) else: nil
+          result.sons.add c.loadNode(n, thisModule, localSyms, owner)
+        while n.hasMore:
+          result.sons.add c.loadNode(n, thisModule, localSyms)
     else:
       c.withNode n, result, kind:
         while n.hasMore:

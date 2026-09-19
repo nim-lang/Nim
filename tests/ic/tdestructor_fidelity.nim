@@ -64,5 +64,14 @@ proc copies(): string =
 discard moves()
 discard copies()
 
+# A field use loaded from NIF must resolve to the PSym materialized in the
+# owning type's reclist. Otherwise `r.tag` is moved here and the assertion
+# observes an empty field on the second read.
+proc copiesField() =
+  var r = mk("field")
+  let tag = r.tag
+  doAssert tag == r.tag
+copiesField()
+
 echo log
-#!STEP expect: @["d(proc)", "d(toplevel)", "d(loop0)", "d(loop1)", "d(via)", "d(direct)", "d(moved)", "c(kept)", "d(kept)", "d(kept)"]
+#!STEP expect: @["d(proc)", "d(toplevel)", "d(loop0)", "d(loop1)", "d(via)", "d(direct)", "d(moved)", "c(kept)", "d(kept)", "d(kept)", "d(field)"]
