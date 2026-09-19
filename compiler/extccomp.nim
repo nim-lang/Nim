@@ -471,8 +471,19 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
       {optGenScript, optGenMapping}
   result = conf.globalOptions * options != {}
 
+proc targetOptions(conf: ConfigRef): string =
+  # Solaris/illumos toolchains can default to 32-bit output on amd64.
+  # Inspect the target, not the host, so cross-compilation works too.
+  if conf.target.targetOS == osSolaris and
+      conf.target.targetCPU == cpuAmd64 and
+      conf.cCompiler in {ccGcc, ccCLang}:
+    result = "-m64"
+  else:
+    result = ""
+
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
-  result = conf.compileOptions
+  result = targetOptions(conf)
+  addOpt(result, conf.compileOptions)
 
   if (conf.cCompiler == ccGcc or conf.cCompiler == ccCLang) and
        conf.selectedGC == gcRefc:
@@ -520,7 +531,8 @@ proc vccplatform(conf: ConfigRef): string =
     result = ""
 
 proc getLinkOptions(conf: ConfigRef): string =
-  result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
+  result = targetOptions(conf)
+  addOpt(result, conf.linkOptions & " " & conf.linkOptionsCmd & " ")
   for linkedLib in items(conf.cLinkedLibs):
     result.add(CC[conf.cCompiler].linkLibCmd % linkedLib.quoteShell)
   for libDir in items(conf.cLibs):
