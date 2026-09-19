@@ -172,6 +172,11 @@ to override symbols during build time.
 Compile-time symbols are completely **case insensitive** and underscores are
 ignored too. `--define:FOO`:option: and `--define:foo`:option: are identical.
 
+The target OS also defines compile-time symbols. Solaris (`--os:solaris`) and
+illumos (`--os:illumos`) are distinct targets: each defines only its own OS name,
+while both define the `sunos` family symbol, as well as `posix` and `unix`.
+Use `when defined(sunos)` for code shared by Solaris and illumos.
+
 Compile-time symbols starting with the `nim` prefix are reserved for the
 implementation and should not be used elsewhere.
 

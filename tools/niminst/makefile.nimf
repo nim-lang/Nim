@@ -59,8 +59,16 @@ ifeq ($(uos),aix)
   myos = aix
   LDFLAGS += -dl -lm
 endif
-ifeq ($(uos),sunos)
-  myos = solaris
+ifneq ($(filter sunos solaris illumos,$(uos)),)
+  myos = $(uos)
+  ifeq ($(uos),sunos)
+    sunosname := $(shell sh -c 'uname -o 2>/dev/null | tr "[:upper:]" "[:lower:]"')
+    ifeq ($(sunosname),illumos)
+      myos = illumos
+    else
+      myos = solaris
+    endif
+  endif
   LDFLAGS += -ldl -lm -lsocket -lnsl
 endif
 ifeq ($(uos),haiku)
@@ -91,7 +99,7 @@ ifeq ($(ucpu),bepc)
 endif
 ifeq ($(ucpu),i86pc)
   mycpu = i386
-  ifeq ($(myos),solaris)
+  ifneq ($(filter solaris illumos,$(myos)),)
     bits := $(shell isainfo -b)
     ifeq ($(bits),64)
       mycpu = amd64

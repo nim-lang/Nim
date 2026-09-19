@@ -19,7 +19,7 @@ when defined(linux) and not defined(android):
   # timer_{create,delete,settime,gettime},
   # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
   {.passl: "-lrt".}
-when defined(solaris):
+when defined(sunos):
   # On Solaris hstrerror lives in libresolv
   {.passl: "-lresolv".}
 
@@ -555,7 +555,7 @@ when defined(macosx):
     MSG_NOSIGNAL* = 0'i32
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
-elif defined(solaris):
+elif defined(sunos):
   # Solaris doesn't have MSG_NOSIGNAL
   const
     MSG_NOSIGNAL* = 0'i32

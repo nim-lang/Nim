@@ -1732,7 +1732,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   when useWinVersion or defined(macosx):
     result = send(socket.fd, data, size.cint, 0'i32)
   else:
-    when defined(solaris):
+    when defined(sunos):
       const MSG_NOSIGNAL = 0
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 

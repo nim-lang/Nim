@@ -136,8 +136,17 @@ case $uos in
     myos="aix"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     ;;
-  *sunos* )
-    myos="solaris"
+  *sunos* | solaris | illumos )
+    case $uos in
+      solaris | illumos ) myos="$uos" ;;
+      *)
+        sunosname=`(uname -o 2>/dev/null || :) | tr "[:upper:]" "[:lower:]"`
+        case $sunosname in
+          illumos ) myos="illumos" ;;
+          *) myos="solaris" ;;
+        esac
+        ;;
+    esac
     LINK_FLAGS="$LINK_FLAGS -ldl -lm -lsocket -lnsl"
     ;;
   *haiku* )
@@ -161,7 +170,7 @@ esac
 case $ucpu in
   *i386* | *i486* | *i586* | *i686* | *bepc* | *i86pc* )
     mycpu="i386"
-    if [ "$myos" = "solaris" ] ; then
+    if [ "$myos" = "solaris" ] || [ "$myos" = "illumos" ] ; then
       bits=`isainfo -b`
       if [ "$bits" = "64" ] ; then
         mycpu="amd64"

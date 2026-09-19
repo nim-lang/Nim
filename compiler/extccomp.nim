@@ -474,7 +474,7 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
 proc targetOptions(conf: ConfigRef): string =
   # Solaris/illumos toolchains can default to 32-bit output on amd64.
   # Inspect the target, not the host, so cross-compilation works too.
-  if conf.target.targetOS == osSolaris and
+  if conf.target.targetOS in {osSolaris, osIllumos} and
       conf.target.targetCPU == cpuAmd64 and
       conf.cCompiler in {ccGcc, ccCLang}:
     result = "-m64"
