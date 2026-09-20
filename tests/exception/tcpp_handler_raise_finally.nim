@@ -10,6 +10,8 @@ finally-typeless
 outer-typeless: re-tl:orig
 no-catch-finally
 caught-propagated: prop
+finally-nested
+outer-nested: re
 '''
 """
 
@@ -59,3 +61,21 @@ block no_catch_finally:
       echo "no-catch-finally"
   except CatchableError as e:
     echo "caught-propagated: ", e.msg
+
+# The raise does not have to sit directly in the handler: a try statement
+# without except branches -- written by the user here, injected for the
+# destructor calls of a handler's locals elsewhere -- cannot catch the
+# exception either, so the enclosing finally must still run.
+block finally_behind_nested_try:
+  try:
+    try:
+      raise newException(CatchableError, "orig")
+    except CatchableError:
+      try:
+        raise newException(CatchableError, "re")
+      finally:
+        discard
+    finally:
+      echo "finally-nested"
+  except CatchableError as outer:
+    echo "outer-nested: ", outer.msg
