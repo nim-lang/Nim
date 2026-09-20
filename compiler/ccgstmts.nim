@@ -847,17 +847,20 @@ proc leavesExceptBlock(p: BProc): bool =
   result = i >= 0 and p.nestedTryStmts[i].inExcept
 
 proc finallyActions(p: BProc) =
-  # When the raise leaves an `except` branch, inline that try's finally body
-  # before the raise propagates. Without this it is silently dropped: the
-  # setjmp based unwinding never reaches it and the C++ sibling-catch rule
-  # bypasses the `catch (...)`/finally pair emitted for the user's try.
-  # `excGoto` doesn't need this, it runs the finally via its label chain.
-  if p.config.exc != excGoto:
+  # The setjmp based unwinding jumps straight to the enclosing safe point, so
+  # a finally that the raise escapes from would never run. Inline it here.
+  # `excGoto` runs it via its label chain and `excCpp` via the wrapper try
+  # `genTryCpp` emits, both in the right order relative to nested finallys.
+  if p.config.exc notin {excGoto, excCpp}:
     let i = innermostHandlingTry(p)
     if i >= 0 and p.nestedTryStmts[i].inExcept:
       let finallyBlock = p.nestedTryStmts[i].fin
       if finallyBlock != nil:
+        # detach the finally while we generate it, or a `raise` inside it
+        # would ask us to generate the very same block again (#26189):
+        p.nestedTryStmts[i].fin = nil
         genSimpleBlock(p, finallyBlock.firstSon)
+        p.nestedTryStmts[i].fin = finallyBlock
 
 proc raiseInstr(p: BProc; result: var Builder) =
   if p.config.exc == excGoto:
@@ -1203,6 +1206,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   let fin = if t.lastSon.kind == nkFinally: t.lastSon else: nil
   p.nestedTryStmts.add((fin, false, hasExceptBranches(t), 0.Natural))
 
+  if fin != nil:
+    # C++ does not let sibling catch clauses catch each other's throws, so an
+    # exception escaping a handler would bypass the `catch (...)` that feeds
+    # the finally below. Wrap the whole try/catch sequence in one more try to
+    # catch it -- including the case where it first travelled through a nested
+    # try's own finally, which must run before this one.
+    lineCg(p, cpsStmts, "try {$n", [])
+
   if t.kind == nkHiddenTryStmt:
     lineCg(p, cpsStmts, "try {$n", [])
     expr(p, t.firstSon, d)
@@ -1343,7 +1354,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   excl p.flags, noSafePoints
   discard pop(p.nestedTryStmts)
   # general finally block:
-  if t.hasSons and t.lastSon.kind == nkFinally:
+  if fin != nil:
     if not catchAllPresent:
       startBlockWith(p):
         p.s(cpsStmts).add("catch (...) {\n")
@@ -1351,6 +1362,12 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
       endBlockWith(p):
         p.s(cpsStmts).add("}\n")
+
+    # close the wrapper opened above:
+    lineCg(p, cpsStmts, "} catch (...) {$n", [])
+    genRestoreFrameAfterException(p)
+    linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
+    lineCg(p, cpsStmts, "}$n", [])
 
     var scope: ScopeBuilder
     startSimpleBlock(p, scope)
