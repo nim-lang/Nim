@@ -1740,10 +1740,19 @@ proc send*(socket: Socket, data: string,
            flags = {SocketFlag.SafeDisconn}, maxRetries = 100) {.tags: [WriteIOEffect].} =
   ## Sends data to a socket. Will try to send all the data by handling interrupts
   ## and incomplete writes up to `maxRetries`.
+  ##
+  ## If `flags` contains `SafeDisconn` and the peer disconnects, the send
+  ## stops and returns without raising, having written only what it could
+  ## (mirroring how `recv` + `SafeDisconn` returns 0); callers that must
+  ## detect a short send can use the pointer overload or omit `SafeDisconn`.
+  ##
+  ## Partial writes resume from the first unsent byte; they do not resend
+  ## the already-written prefix.
   var written = 0
   var attempts = 0
   while data.len - written > 0:
-    let sent = send(socket, cstring(data), data.len)
+    let sent = send(socket, cast[pointer](cast[uint](cstring(data)) + written.uint),
+                    data.len - written)
 
     if sent < 0:
       let lastError = osLastError()
@@ -1759,7 +1768,11 @@ proc send*(socket: Socket, data: string,
           lastError.int32 == EAGAIN
 
       if not isBlockingErr:
-        let lastError = osLastError()
+        if flags.isDisconnectionError(lastError):
+          # SafeDisconn asked for no exception, but retrying against a gone
+          # peer can never make progress: a blocking socket live-locks here
+          # at 100% CPU (#23455). Stop; the send is short by definition.
+          break
         socketError(socket, lastError = lastError, flags = flags)
       else:
         attempts.inc()

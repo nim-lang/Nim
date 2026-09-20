@@ -39,6 +39,14 @@ errors.
 
 [//]: # "Additions:"
 
+- `std/net.send` no longer live-locks when the peer disconnects while
+  `SafeDisconn` (the string overload's default) suppresses the exception:
+  the send now stops and returns, having written only what it could.
+  Partial writes also resume from the first unsent byte instead of
+  resending the already-written prefix.
+  ([issue #23455](https://github.com/nim-lang/Nim/issues/23455),
+  [issue #21154](https://github.com/nim-lang/Nim/issues/21154))
+
 - `setutils.symmetricDifference` along with its operator version
   `` setutils.`-+-` `` and in-place version `setutils.toggle` have been added
   to more efficiently calculate the symmetric difference of bitsets.
