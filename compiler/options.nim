@@ -662,7 +662,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "posix", "unix":
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
-                            osHaiku, osVxWorks, osSolaris, osNetbsd,
+                            osHaiku, osVxWorks, osSolaris, osIllumos, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
                             osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos, osZephyr, osNuttX}
     of "linux":
@@ -679,7 +679,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osMacos, osMacosx, osIos}
     of "osx", "macosx":
       result = conf.target.targetOS in {osMacosx, osIos}
-    of "sunos": result = conf.target.targetOS == osSolaris
+    of "sunos": result = conf.target.targetOS in {osSolaris, osIllumos}
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
     of "freertos", "lwip":
@@ -695,7 +695,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
     of "cpu64": result = CPU[conf.target.targetCPU].bit == 64
     of "nimrawsetjmp":
-      result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
+      result = conf.target.targetOS in {osSolaris, osIllumos, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: result = false
 

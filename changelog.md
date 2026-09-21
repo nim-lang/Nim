@@ -3,6 +3,16 @@
 
 ## Changes affecting backward compatibility
 
+- Solaris and illumos are now separate targets (`--os:solaris` and
+  `--os:illumos`). Both define `sunos`, `posix`, and `unix`; illumos no longer
+  defines `solaris`. Use `defined(sunos)` for code shared by both systems.
+  Native illumos compilers report `hostOS == "illumos"`, and NimScript exposes
+  `OsPlatform.illumos`. niminst distinguishes SunOS systems using `uname -o`,
+  falling back to Solaris when that query is unavailable or unrecognized.
+  `koch boot` handles the transition from bootstrap compilers that identify
+  illumos as Solaris; source distributions must regenerate their csources
+  with the updated compiler and niminst.
+
 - `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
 floating point numbers that are minimal in size and possess round-trip and correct
 rounding guarantees (via the

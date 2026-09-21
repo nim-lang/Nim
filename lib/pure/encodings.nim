@@ -306,7 +306,7 @@ else:
     const EILSEQ = 92.cint
   elif defined(bsd):
     const EILSEQ = 86.cint
-  elif defined(solaris):
+  elif defined(sunos):
     const EILSEQ = 88.cint
   elif defined(haiku):
     const EILSEQ = -2147454938.cint

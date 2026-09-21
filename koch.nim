@@ -352,6 +352,11 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     installDeps("libffi")
 
   let nimStart = findStartNim().quoteShell()
+  # Old bootstrap compilers identify illumos as Solaris and cannot accept
+  # --os:illumos. Switch targets only after building the first new compiler.
+  let bootIllumos = when defined(sunos):
+                      execCmdEx("uname -o 2>/dev/null").output.strip.toLowerAscii == "illumos"
+                    else: false
   let times = 2 - ord(skipIntegrityCheck)
   for i in 0..times:
     let defaultCommand = if useCpp: "cpp" else: "c"
@@ -373,6 +378,9 @@ proc boot(args: string, skipIntegrityCheck: bool) =
       let version = ret.output.splitLines[0]
       if version.startsWith "Nim Compiler Version 0.20.0":
         extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
+
+    if i > 0 and bootIllumos:
+      extraOption.add " --os:illumos"
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.

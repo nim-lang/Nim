@@ -22,7 +22,7 @@
 ## for Android).
 ##
 ## Partially supported OS: Windows (only sockets and user events),
-## Solaris (files, sockets, handles and user events).
+## Solaris and illumos (files, sockets, handles and user events).
 ## Android (files, sockets, handles and user events).
 ##
 ## By default, the implementation is chosen based on the target
@@ -330,11 +330,11 @@ else:
     doAssert(timeout >= -1, "Cannot select with a negative value, got: " & $timeout)
 
   when defined(linux) or defined(windows) or defined(macosx) or defined(bsd) or
-       defined(solaris) or defined(zephyr) or defined(freertos) or defined(nuttx) or defined(haiku):
+       defined(sunos) or defined(zephyr) or defined(freertos) or defined(nuttx) or defined(haiku):
     template maxDescriptors*(): int =
       ## Returns the maximum number of active file descriptors for the current
       ## process. This involves a system call. For now `maxDescriptors` is
-      ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris.
+      ## supported on the following OSes: Windows, Linux, OSX, BSD, Solaris, illumos.
       when defined(windows):
         16_700_000
       elif defined(zephyr) or defined(freertos):
@@ -365,7 +365,7 @@ else:
     include ioselects/ioselectors_kqueue
   elif defined(windows):
     include ioselects/ioselectors_select
-  elif defined(solaris):
+  elif defined(sunos):
     include ioselects/ioselectors_poll # need to replace it with event ports
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
