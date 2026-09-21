@@ -106,7 +106,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
-        if d.k == locNone: d = getTemp(p, typ.returnType, needsInit=true)
+        if d.k == locNone: d = getResultTemp(p, ri, typ.returnType)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           discard "resetLoc(p, d)"
@@ -117,7 +117,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(result))
       else:
-        var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
+        var tmp: TLoc = getResultTemp(p, ri, typ.returnType)
         let ratmp = addrLoc(p.config, tmp)
         result.addArgument(call):
           result.add(ratmp)
@@ -560,7 +560,7 @@ proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
       if d.k in {locTemp, locNone} or not preventNrvo(p, d.lode, le, ri):
         # Great, we can use 'd':
         if d.k == locNone:
-          d = getTemp(p, typ.returnType, needsInit=true)
+          d = getResultTemp(p, ri, typ.returnType)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           discard "resetLoc(p, d)"
@@ -569,7 +569,7 @@ proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
         genCallPattern()
         if canRaise: raiseExit(p)
       else:
-        var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
+        var tmp: TLoc = getResultTemp(p, ri, typ.returnType)
         params.addArgument(argBuilder):
           params.add(addrLoc(p.config, tmp))
         genCallPattern()
@@ -853,14 +853,14 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
-        if d.k == locNone: d = getTemp(p, typ.returnType, needsInit=true)
+        if d.k == locNone: d = getResultTemp(p, ri, typ.returnType)
         pl.add("Result: ")
         pl.add(addrLoc(p.config, d))
         pl.add("]")
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(pl))
       else:
-        var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
+        var tmp: TLoc = getResultTemp(p, ri, typ.returnType)
         pl.add(addrLoc(p.config, tmp))
         pl.add("]")
         p.s(cpsStmts).addStmt():
