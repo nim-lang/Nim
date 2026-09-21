@@ -49,6 +49,9 @@ proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   else:
     result = true
 
+proc hasExceptBranches(t: PNode): bool =
+  result = t.len > 1 and t.secondSon.kind == nkExceptBranch
+
 proc inExceptBlockLen(p: BProc): int =
   result = 0
   for x in p.nestedTryStmts:
@@ -231,7 +234,8 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int, isReturnStmt 
   # Called by return and break stmts.
   # Deals with issues faced when jumping out of try/except/finally stmts.
 
-  var stack = newSeq[tuple[fin: PNode, inExcept: bool, isHidden: bool, label: Natural]](0)
+  var stack = newSeq[tuple[fin: PNode, inExcept: bool, isHidden: bool,
+                           hasExcept: bool, label: Natural]](0)
 
   inc p.withinBlockLeaveActions
   for i in 1..howManyTrys:
@@ -823,6 +827,17 @@ proc raiseExit(p: BProc) =
       else:
         p.s(cpsStmts).addGoto("LA" & $p.nestedTryStmts[^1].label & "_")
 
+proc leavesExceptBlock(p: BProc): bool =
+  ## Tells whether a `raise` at this point leaves an `except` block, so that
+  ## the currently handled exception has to be popped. Try statements without
+  ## except branches -- the compiler-injected `nkHiddenTryStmt` wrappers for
+  ## ARC/ORC's destructors among them -- cannot handle the raise, so we have
+  ## to look past them (#25037).
+  result = false
+  for i in countdown(p.nestedTryStmts.high, 0):
+    if p.nestedTryStmts[i].inExcept or p.nestedTryStmts[i].hasExcept:
+      return p.nestedTryStmts[i].inExcept
+
 proc finallyActions(p: BProc) =
   if p.config.exc == excCpp:
     # Walk past compiler-injected `nkHiddenTryStmt` wrappers (e.g. ARC's
@@ -874,7 +889,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     of excGoto:
       blockLeaveActions(p, howManyTrys = 0,
-        howManyExcepts = (if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept: 1 else: 0))
+        howManyExcepts = (if leavesExceptBlock(p): 1 else: 0))
     else:
       discard
     genLineDir(p, t)
@@ -1191,7 +1206,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   lineCg(p, cpsLocals, "std::exception_ptr T$1_;$n", [etmp])
 
   let fin = if t.lastSon.kind == nkFinally: t.lastSon else: nil
-  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, 0.Natural))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, hasExceptBranches(t), 0.Natural))
 
   if t.kind == nkHiddenTryStmt:
     lineCg(p, cpsStmts, "try {$n", [])
@@ -1372,7 +1387,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let lab = p.labels
   let hasExcept = t.secondSon.kind == nkExceptBranch
   if hasExcept: inc p.withinTryWithExcept
-  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, Natural lab))
+  p.nestedTryStmts.add((fin, false, t.kind == nkHiddenTryStmt, hasExcept, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
 
@@ -1580,7 +1595,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
     initElifBranch(p.s(cpsStmts), nonQuirkyIf, removeSinglePar(
       cOp(Equal, dotField(safePoint, "status"), cIntValue(0))))
   let fin = if t.lastSon.kind == nkFinally: t.lastSon else: nil
-  p.nestedTryStmts.add((fin, quirkyExceptions, t.kind == nkHiddenTryStmt, 0.Natural))
+  p.nestedTryStmts.add((fin, quirkyExceptions, t.kind == nkHiddenTryStmt, hasExceptBranches(t), 0.Natural))
   expr(p, t.firstSon, d)
   var quirkyIf = default(IfBuilder)
   var quirkyScope = default(ScopeBuilder)
