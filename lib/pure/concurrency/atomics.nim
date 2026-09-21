@@ -200,6 +200,8 @@ else:
         moAcquireRelease
         moSequentiallyConsistent
 
+      OrderArg = static[MemoryOrder] | MemoryOrder
+
       Atomic*[T] = object
         when T is Trivial:
           value: T.nonAtomicType
@@ -290,6 +292,13 @@ else:
         moAcquireRelease
         moSequentiallyConsistent
 
+      OrderArg = static[MemoryOrder] | MemoryOrder
+        # The C compilers pick the memory order when they expand the atomic
+        # builtin: an order that is not a constant expression there degrades
+        # to `seq_cst` (GCC) or to a switch over the order (Clang). A wrapper
+        # that is not inlined sees only its parameter, so constant orders are
+        # passed as `static` and become literals in every instantiation.
+
     when defined(cpp):
       type
         # Atomic*[T] {.importcpp: "_Atomic('0)".} = object
@@ -346,28 +355,28 @@ else:
 
     {.pop.}
 
-    proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc load*[T: Trivial](location: var Atomic[T]; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_load_explicit[nonAtomicType(T), typeof(location.value)](addr(location.value), order))
-    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
+    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: OrderArg = moSequentiallyConsistent) {.inline.} =
       atomic_store_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order)
-    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_exchange_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order))
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success: OrderArg; failure: distinct OrderArg): bool {.inline.} =
       atomic_compare_exchange_strong_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
 
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success: OrderArg; failure: distinct OrderArg): bool {.inline.} =
       atomic_compare_exchange_weak_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
 
     # Numerical operations
-    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_add_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_sub_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_and_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_or_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
 
   func compareExchangeFailureOrder(order: MemoryOrder): MemoryOrder {.inline.} =
@@ -379,11 +388,15 @@ else:
     else:
       order
 
-  proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchange(location, expected, desired, order, compareExchangeFailureOrder(order))
+  template failureOrder(order: OrderArg): untyped =
+    when order is static: static(compareExchangeFailureOrder(order))
+    else: compareExchangeFailureOrder(order)
 
-  proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchangeWeak(location, expected, desired, order, compareExchangeFailureOrder(order))
+  proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: OrderArg = moSequentiallyConsistent): bool {.inline.} =
+    compareExchange(location, expected, desired, order, failureOrder(order))
+
+  proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: OrderArg = moSequentiallyConsistent): bool {.inline.} =
+    compareExchangeWeak(location, expected, desired, order, failureOrder(order))
 
   template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
     while testAndSet(location.guard, moAcquire): discard
