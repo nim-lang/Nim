@@ -1335,7 +1335,11 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   # the object graph!
   if sfCodegenDecl notin prc.flags:
     var isStaticVar = false
-    if lfExportLib in prc.loc.flags:
+    if lfImportLib in prc.loc.flags and sfImportc in prc.flags:
+      # bare ``{.dynlib.}`` + ``importc``: the symbol is imported from a
+      # dynamic library, so declare it ``N_LIB_IMPORT``.
+      visibility = ImportLib
+    elif lfExportLib in prc.loc.flags:
       if isHeaderFile in m.flags:
         visibility = ImportLib
       else:

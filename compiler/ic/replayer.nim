@@ -50,7 +50,7 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
           if n.len == 4 and n[2].kind == nkStrLit and n[3].kind == nkStrLit:
             content.add "compile\t" & n[1].strVal & "\t" & n[2].strVal & "\t" &
                         n[3].strVal & "\n"
-        of "link", "passl", "passc", "cppdefine":
+        of "link", "passl", "passc", "cppdefine", "clib":
           content.add n[0].strVal & "\t" & n[1].strVal & "\n"
         of "localpassc":
           content.add "localpassc\t" & n[1].strVal & "\t" &
@@ -77,6 +77,8 @@ proc applyBackendActions*(g: ModuleGraph; infile: string) =
       if f.len == 2: extccomp.addExternalFileToLink(g.config, AbsoluteFile f[1])
     of "passl":
       if f.len == 2: extccomp.addLinkOption(g.config, f[1])
+    of "clib":
+      if f.len == 2: g.config.cLinkedLibs.add f[1]
     of "passc":
       if f.len == 2: extccomp.addCompileOption(g.config, f[1])
     of "localpassc":
@@ -114,6 +116,8 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph; list: PNode) =
         extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)
       of "passl":
         extccomp.addLinkOption(g.config, n[1].strVal)
+      of "clib":
+        g.config.cLinkedLibs.add n[1].strVal
       of "passc":
         extccomp.addCompileOption(g.config, n[1].strVal)
       of "localpassc":
@@ -181,6 +185,8 @@ proc replayBackendActions*(g: ModuleGraph; module: PSym; list: PNode) =
         extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)
       of "passl":
         extccomp.addLinkOption(g.config, n[1].strVal)
+      of "clib":
+        g.config.cLinkedLibs.add n[1].strVal
       of "passc":
         extccomp.addCompileOption(g.config, n[1].strVal)
       of "localpassc":
