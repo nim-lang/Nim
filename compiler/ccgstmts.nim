@@ -49,6 +49,16 @@ proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   else:
     result = true
 
+proc initializedByCallee(p: BProc; v: PSym; n: PNode): bool =
+  # 'var v = f()' becomes 'f(addr v)' and 'f' initializes 'v' itself. But
+  # keep 'v' valid on its own if it is observable after 'f' raised, 'f' might
+  # not have touched it yet.
+  result = n.kind in nkCallKinds and n.firstSon.typ != nil and
+    n.firstSon.typ.skipTypes(abstractInst).kind == tyProc and
+    isInvalidReturnType(p.config, n.firstSon.typ, true) and
+    sfUsedInFinallyOrExcept notin v.flags and
+    calleeInitsResult(p, n, v.typ)
+
 proc hasExceptBranches(t: PNode): bool =
   result = t.len > 1 and t.secondSon.kind == nkExceptBranch
 
@@ -398,7 +408,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
           lineF(p, cpsStmts, "$# = $#;\n", [decl, tmp.rdLoc])
       return
     assignLocalVar(p, vn)
-    initLocalVar(p, v, imm)
+    initLocalVar(p, v, imm or initializedByCallee(p, v, value))
 
   let traverseProc = "NULL"
   # If the var is in a block (control flow like if/while or a block) in global scope just

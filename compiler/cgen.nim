@@ -486,7 +486,7 @@ include ccgreset
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
-  if isImportedCppType(typ): 
+  if isImportedCppType(typ):
     var didGenTemp = false
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(loc), genCppInitializer(p.module, p, typ, didGenTemp)])
     return
@@ -565,7 +565,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
+proc declTemp(p: BProc, t: PType): TLoc =
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -575,6 +575,9 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
       genCppInitializer(p.module, p, t, didGenTemp)])
   else:
     linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, dkVar), result.snippet])
+
+proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
+  result = declTemp(p, t)
   constructLoc(p, result, not needsInit)
   when false:
     # XXX Introduce a compiler switch in order to detect these easily.
@@ -584,6 +587,23 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
       else:
         echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
       writeStackTrace()
+
+proc calleeInitsResult(p: BProc; ri: PNode; t: PType): bool =
+  ## A result that does not fit into a C return value is passed as a hidden
+  ## 'Result' pointer. The callee initializes it (`genProcAux`), so the caller
+  ## must not zero it a second time (bug #23383). Exceptions: we cannot see
+  ## the callee's code (indirect or imported calls), the callee is `.noinit`,
+  ## or refc's reset of 'Result' reads GC refs from it.
+  let fn = ri.firstSon
+  result = fn.kind == nkSym and fn.sym.kind in routineKinds and
+    fn.sym.magic == mNone and {sfNoInit, sfImportc} * fn.sym.flags == {} and
+    (optSeqDestructors in p.config.globalOptions or not containsGarbageCollectedRef(t))
+
+proc getResultTemp(p: BProc; ri: PNode; t: PType): TLoc =
+  if calleeInitsResult(p, ri, t):
+    result = declTemp(p, t)
+  else:
+    result = getTemp(p, t, needsInit=true)
 
 proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
@@ -1247,8 +1267,14 @@ proc genProcAux*(m: BModule, prc: PSym) =
       # the 'unsureAsgn' is a nop. If it points to a global variable the
       # global is either 'nil' or points to valid memory and so the RC operation
       # succeeds without touching not-initialized memory.
+      # The callee initializes 'Result', the caller does not (see
+      # `calleeInitsResult`). With destructors that includes the case where
+      # every path assigns 'result': a call raising before the assignment
+      # still leaves 'Result' to be destroyed by the caller.
       if sfNoInit in prc.flags: discard
-      elif allPathsAsgnResult(p, procBody) == InitSkippable: discard
+      elif allPathsAsgnResult(p, procBody) == InitSkippable and
+          not (optSeqDestructors in p.config.globalOptions and hasDestructor(res.typ)):
+        discard
       else:
         resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
