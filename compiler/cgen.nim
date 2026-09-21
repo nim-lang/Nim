@@ -837,7 +837,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
       backendEnsureMutable v
       constructLoc(p, v.locImpl)
 
-proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
+proc declTemp(p: BProc, t: PType): TLoc =
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -849,6 +849,9 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
     p.s(cpsLocals).addVar(kind = Local,
       name = result.snippet,
       typ = getTypeDesc(p.module, t, dkVar))
+
+proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
+  result = declTemp(p, t)
   constructLoc(p, result, not needsInit)
   when false:
     # XXX Introduce a compiler switch in order to detect these easily.
@@ -858,6 +861,23 @@ proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
       else:
         echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
       writeStackTrace()
+
+proc calleeInitsResult(p: BProc; ri: PNode; t: PType): bool =
+  ## A result that does not fit into a C return value is passed as a hidden
+  ## 'Result' pointer. The callee initializes it (`genProcAux`), so the caller
+  ## must not zero it a second time (bug #23383). Exceptions: we cannot see
+  ## the callee's code (indirect or imported calls), the callee is `.noinit`,
+  ## or refc's reset of 'Result' reads GC refs from it.
+  let fn = ri.firstSon
+  result = fn.kind == nkSym and fn.sym.kind in routineKinds and
+    fn.sym.magic == mNone and {sfNoInit, sfImportc} * fn.sym.flags == {} and
+    (optSeqDestructors in p.config.globalOptions or not containsGarbageCollectedRef(t))
+
+proc getResultTemp(p: BProc; ri: PNode; t: PType): TLoc =
+  if calleeInitsResult(p, ri, t):
+    result = declTemp(p, t)
+  else:
+    result = getTemp(p, t, needsInit=true)
 
 proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
   inc(p.labels)
@@ -1740,8 +1760,14 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # the 'unsureAsgn' is a nop. If it points to a global variable the
       # global is either 'nil' or points to valid memory and so the RC operation
       # succeeds without touching not-initialized memory.
+      # The callee initializes 'Result', the caller does not (see
+      # `calleeInitsResult`). With destructors that includes the case where
+      # every path assigns 'result': a call raising before the assignment
+      # still leaves 'Result' to be destroyed by the caller.
       if sfNoInit in prc.flags: discard
-      elif allPathsAsgnResult(p, procBody) == InitSkippable: discard
+      elif allPathsAsgnResult(p, procBody) == InitSkippable and
+          not (optSeqDestructors in p.config.globalOptions and hasDestructor(res.typ)):
+        discard
       else:
         backendEnsureMutable res
         resetLoc(p, res.locImpl)
