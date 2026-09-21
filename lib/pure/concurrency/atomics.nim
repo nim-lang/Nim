@@ -98,73 +98,111 @@ when (defined(cpp) and defined(nimUseCppAtomics)) or defined(nimdoc):
     AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
       ## An atomic boolean state.
 
+  proc cppLoad[T](location: var Atomic[T]; order: MemoryOrder): T {.importcpp: "#.load(@)".}
+  proc cppStore[T](location: var Atomic[T]; desired: T; order: MemoryOrder) {.importcpp: "#.store(@)".}
+  proc cppExchange[T](location: var Atomic[T]; desired: T; order: MemoryOrder): T {.importcpp: "#.exchange(@)".}
+  proc cppCompareExchange[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder): bool {.importcpp: "#.compare_exchange_strong(@)".}
+  proc cppCompareExchange[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_strong(@)".}
+  proc cppCompareExchangeWeak[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder): bool {.importcpp: "#.compare_exchange_weak(@)".}
+  proc cppCompareExchangeWeak[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_weak(@)".}
+  proc cppFetchAdd[T](location: var Atomic[T]; value: T; order: MemoryOrder): T {.importcpp: "#.fetch_add(@)".}
+  proc cppFetchSub[T](location: var Atomic[T]; value: T; order: MemoryOrder): T {.importcpp: "#.fetch_sub(@)".}
+  proc cppFetchAnd[T](location: var Atomic[T]; value: T; order: MemoryOrder): T {.importcpp: "#.fetch_and(@)".}
+  proc cppFetchOr[T](location: var Atomic[T]; value: T; order: MemoryOrder): T {.importcpp: "#.fetch_or(@)".}
+  proc cppFetchXor[T](location: var Atomic[T]; value: T; order: MemoryOrder): T {.importcpp: "#.fetch_xor(@)".}
+  proc cppTestAndSet(location: var AtomicFlag; order: MemoryOrder): bool {.importcpp: "#.test_and_set(@)".}
+  proc cppClear(location: var AtomicFlag; order: MemoryOrder) {.importcpp: "#.clear(@)".}
+  proc cppFence(order: MemoryOrder) {.importcpp: "std::atomic_thread_fence(@)".}
+  proc cppSignalFence(order: MemoryOrder) {.importcpp: "std::atomic_signal_fence(@)".}
+
+  {.pop.}
+
+  # The memory order is `static` everywhere: C++ compilers pick it when they
+  # expand the atomic operation and an order that is not a constant
+  # expression there degrades to `seq_cst` or to a switch over the order.
+
   # Access operations
 
-  proc load*[T](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.load(@)".}
+  proc load*[T](location: var Atomic[T]; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically obtains the value of the atomic object.
+    cppLoad(location, order)
 
-  proc store*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.importcpp: "#.store(@)".}
+  proc store*[T](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent) {.inline.} =
     ## Atomically replaces the value of the atomic object with the `desired`
     ## value.
+    cppStore(location, desired, order)
 
-  proc exchange*[T](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.exchange(@)".}
+  proc exchange*[T](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically replaces the value of the atomic object with the `desired`
     ## value and returns the old value.
+    cppExchange(location, desired, order)
 
-  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.importcpp: "#.compare_exchange_strong(@)".}
+  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
     ## Atomically compares the value of the atomic object with the `expected`
     ## value and performs exchange with the `desired` one if equal or load if
     ## not. Returns true if the exchange was successful.
+    cppCompareExchange(location, expected, desired, order)
 
-  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_strong(@)".}
+  proc compareExchange*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
     ## Same as above, but allows for different memory orders for success and
     ## failure.
+    cppCompareExchange(location, expected, desired, success, failure)
 
-  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.importcpp: "#.compare_exchange_weak(@)".}
+  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
     ## Same as above, but is allowed to fail spuriously.
+    cppCompareExchangeWeak(location, expected, desired, order)
 
-  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.importcpp: "#.compare_exchange_weak(@)".}
+  proc compareExchangeWeak*[T](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
     ## Same as above, but allows for different memory orders for success and
     ## failure.
+    cppCompareExchangeWeak(location, expected, desired, success, failure)
 
   # Numerical operations
 
-  proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_add(@)".}
+  proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically adds a `value` to the atomic integer and returns the
     ## original value.
+    cppFetchAdd(location, value, order)
 
-  proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_sub(@)".}
+  proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically subtracts a `value` to the atomic integer and returns the
     ## original value.
+    cppFetchSub(location, value, order)
 
-  proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_and(@)".}
+  proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically replaces the atomic integer with it's bitwise AND
     ## with the specified `value` and returns the original value.
+    cppFetchAnd(location, value, order)
 
-  proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_or(@)".}
+  proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically replaces the atomic integer with it's bitwise OR
     ## with the specified `value` and returns the original value.
+    cppFetchOr(location, value, order)
 
-  proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importcpp: "#.fetch_xor(@)".}
+  proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     ## Atomically replaces the atomic integer with it's bitwise XOR
     ## with the specified `value` and returns the original value.
+    cppFetchXor(location, value, order)
 
   # Flag operations
 
-  proc testAndSet*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent): bool {.importcpp: "#.test_and_set(@)".}
+  proc testAndSet*(location: var AtomicFlag; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
     ## Atomically sets the atomic flag to true and returns the original value.
+    cppTestAndSet(location, order)
 
-  proc clear*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent) {.importcpp: "#.clear(@)".}
+  proc clear*(location: var AtomicFlag; order: static MemoryOrder = moSequentiallyConsistent) {.inline.} =
     ## Atomically sets the value of the atomic flag to false.
+    cppClear(location, order)
 
-  proc fence*(order: MemoryOrder) {.importcpp: "std::atomic_thread_fence(@)".}
+  proc fence*(order: static MemoryOrder) {.inline.} =
     ## Ensures memory ordering without using atomic operations.
+    cppFence(order)
 
-  proc signalFence*(order: MemoryOrder) {.importcpp: "std::atomic_signal_fence(@)".}
+  proc signalFence*(order: static MemoryOrder) {.inline.} =
     ## Prevents reordering of accesses by the compiler as would fence, but
     ## inserts no CPU instructions for memory ordering.
+    cppSignalFence(order)
 
-  {.pop.}
 
 else:
   # For the C backend, atomics map to C11 built-ins on GCC and Clang for
@@ -199,8 +237,6 @@ else:
         moRelease
         moAcquireRelease
         moSequentiallyConsistent
-
-      OrderArg = static[MemoryOrder] | MemoryOrder
 
       Atomic*[T] = object
         when T is Trivial:
@@ -244,33 +280,33 @@ else:
 
     {.pop.}
 
-    proc testAndSet*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent): bool =
+    proc testAndSet*(location: var AtomicFlag; order: static MemoryOrder = moSequentiallyConsistent): bool =
       interlockedOr(addr(location), 1'i8) == 1'i8
-    proc clear*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent) =
+    proc clear*(location: var AtomicFlag; order: static MemoryOrder = moSequentiallyConsistent) =
       discard interlockedAnd(addr(location), 0'i8)
 
-    proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc load*[T: Trivial](location: var Atomic[T]; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedOr(addr(location.value), (nonAtomicType(T))0))
-    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
+    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent) {.inline.} =
       discard interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired))
 
-    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedExchange(addr(location.value), cast[int64](desired)))
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
       cast[T](interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
       compareExchange(location, expected, desired, success, failure)
 
-    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       var currentValue = location.load()
       while not compareExchangeWeak(location, currentValue, currentValue + value): discard
-    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       fetchAdd(location, -value, order)
-    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedAnd(addr(location.value), cast[nonAtomicType(T)](value)))
-    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedOr(addr(location.value), cast[nonAtomicType(T)](value)))
-    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedXor(addr(location.value), cast[nonAtomicType(T)](value)))
 
   else:
@@ -291,13 +327,6 @@ else:
         moRelease
         moAcquireRelease
         moSequentiallyConsistent
-
-      OrderArg = static[MemoryOrder] | MemoryOrder
-        # The C compilers pick the memory order when they expand the atomic
-        # builtin: an order that is not a constant expression there degrades
-        # to `seq_cst` (GCC) or to a switch over the order (Clang). A wrapper
-        # that is not inlined sees only its parameter, so constant orders are
-        # passed as `static` and become literals in every instantiation.
 
     when defined(cpp):
       type
@@ -347,36 +376,51 @@ else:
     # Flag operations
     # var ATOMIC_FLAG_INIT {.importc, nodecl.}: AtomicFlag
     # proc init*(location: var AtomicFlag) {.inline.} = location = ATOMIC_FLAG_INIT
-    proc testAndSet*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent): bool {.importc: "atomic_flag_test_and_set_explicit".maybeWrapStd.}
-    proc clear*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent) {.importc: "atomic_flag_clear_explicit".maybeWrapStd.}
+    proc atomic_flag_test_and_set_explicit(location: var AtomicFlag; order: MemoryOrder): bool {.importc: "atomic_flag_test_and_set_explicit".maybeWrapStd.}
+    proc atomic_flag_clear_explicit(location: var AtomicFlag; order: MemoryOrder) {.importc: "atomic_flag_clear_explicit".maybeWrapStd.}
 
-    proc fence*(order: MemoryOrder) {.importc: "atomic_thread_fence".maybeWrapStd.}
-    proc signalFence*(order: MemoryOrder) {.importc: "atomic_signal_fence".maybeWrapStd.}
+    proc atomic_thread_fence(order: MemoryOrder) {.importc: "atomic_thread_fence".maybeWrapStd.}
+    proc atomic_signal_fence(order: MemoryOrder) {.importc: "atomic_signal_fence".maybeWrapStd.}
 
     {.pop.}
 
-    proc load*[T: Trivial](location: var Atomic[T]; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
+    # The memory order is `static` everywhere: C compilers pick it when they
+    # expand the atomic builtin and an order that is not a constant
+    # expression there degrades to `seq_cst` (GCC) or to a switch over the
+    # order (Clang).
+
+    proc testAndSet*(location: var AtomicFlag; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+      atomic_flag_test_and_set_explicit(location, order)
+    proc clear*(location: var AtomicFlag; order: static MemoryOrder = moSequentiallyConsistent) {.inline.} =
+      atomic_flag_clear_explicit(location, order)
+
+    proc fence*(order: static MemoryOrder) {.inline.} =
+      atomic_thread_fence(order)
+    proc signalFence*(order: static MemoryOrder) {.inline.} =
+      atomic_signal_fence(order)
+
+    proc load*[T: Trivial](location: var Atomic[T]; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_load_explicit[nonAtomicType(T), typeof(location.value)](addr(location.value), order))
-    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: OrderArg = moSequentiallyConsistent) {.inline.} =
+    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent) {.inline.} =
       atomic_store_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order)
-    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
+    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_exchange_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order))
-    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success: OrderArg; failure: distinct OrderArg): bool {.inline.} =
+    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
       atomic_compare_exchange_strong_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
 
-    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success: OrderArg; failure: distinct OrderArg): bool {.inline.} =
+    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
       atomic_compare_exchange_weak_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
 
     # Numerical operations
-    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_add_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
+    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_sub_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
+    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_and_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
+    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_or_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
-    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: OrderArg = moSequentiallyConsistent): T {.inline.} =
+    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_xor_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
 
   func compareExchangeFailureOrder(order: MemoryOrder): MemoryOrder {.inline.} =
@@ -388,15 +432,11 @@ else:
     else:
       order
 
-  template failureOrder(order: OrderArg): untyped =
-    when order is static: static(compareExchangeFailureOrder(order))
-    else: compareExchangeFailureOrder(order)
+  proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    compareExchange(location, expected, desired, order, static(compareExchangeFailureOrder(order)))
 
-  proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: OrderArg = moSequentiallyConsistent): bool {.inline.} =
-    compareExchange(location, expected, desired, order, failureOrder(order))
-
-  proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: OrderArg = moSequentiallyConsistent): bool {.inline.} =
-    compareExchangeWeak(location, expected, desired, order, failureOrder(order))
+  proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    compareExchangeWeak(location, expected, desired, order, static(compareExchangeFailureOrder(order)))
 
   template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
     while testAndSet(location.guard, moAcquire): discard
@@ -405,20 +445,20 @@ else:
     finally:
       clear(location.guard, moRelease)
 
-  proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+  proc load*[T: not Trivial](location: var Atomic[T]; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     withLock(location, order):
       result = location.nonAtomicValue
 
-  proc store*[T: not Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
+  proc store*[T: not Trivial](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent) {.inline.} =
     withLock(location, order):
       location.nonAtomicValue = desired
 
-  proc exchange*[T: not Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+  proc exchange*[T: not Trivial](location: var Atomic[T]; desired: T; order: static MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     withLock(location, order):
       result = location.nonAtomicValue
       location.nonAtomicValue = desired
 
-  proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+  proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
     withLock(location, success):
       if location.nonAtomicValue != expected:
         expected = location.nonAtomicValue
@@ -427,14 +467,14 @@ else:
       swap(location.nonAtomicValue, expected)
       return true
 
-  proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+  proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: static MemoryOrder): bool {.inline.} =
     compareExchange(location, expected, desired, success, failure)
 
-  proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchange(location, expected, desired, order, compareExchangeFailureOrder(order))
+  proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    compareExchange(location, expected, desired, order, static(compareExchangeFailureOrder(order)))
 
-  proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
-    compareExchangeWeak(location, expected, desired, order, compareExchangeFailureOrder(order))
+  proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: static MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    compareExchangeWeak(location, expected, desired, order, static(compareExchangeFailureOrder(order)))
 
 proc atomicInc*[T: SomeInteger](location: var Atomic[T]; value: T = 1) {.inline.} =
   ## Atomically increments the atomic integer by some `value`.
