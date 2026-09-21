@@ -134,7 +134,7 @@ you should familiarize yourself with the following repository structure:
 * ``compiler/`` - the compiler source code. Also includes plugins within ``compiler/plugins``.
 * ``nimsuggest`` - the nimsuggest tool that previously lived in the [``nim-lang/nimsuggest``][nimsuggest-repo] repository.
 * ``config/`` - the configuration for the compiler and documentation generator.
-* ``doc/`` - the documentation files in reStructuredText format.
+* ``doc/`` - the documentation files in Markdown format.
 * ``lib/`` - the standard library, including:
     * ``pure/`` - modules in the standard library written in pure Nim.
     * ``impure/`` - modules in the standard library written in pure Nim with
