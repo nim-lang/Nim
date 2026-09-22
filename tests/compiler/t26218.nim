@@ -20,8 +20,8 @@ proc main =
   let graph = newModuleGraph(cache, conf)
   let file = fileInfoIdx(conf, conf.projectFull)
   let info = newLineInfo(file, 1, 1)
-  let module = PSym(kindImpl: skModule, name: getIdent(cache, "t26218_sample"),
-    itemId: itemId(file.int32, 0), positionImpl: file.int, infoImpl: info)
+  let module = PSym(kind: skModule, name: getIdent(cache, "t26218_sample"),
+    itemId: ItemId(module: file.int32, item: 0), position: file.int, info: info)
   let idgen = idGeneratorFromModule(module)
 
   let intType = newType(tyInt, idgen, module)
@@ -30,16 +30,16 @@ proc main =
   # owner: a proc returning int, no parameters
   let owner = newSym(skProc, getIdent(cache, "fff"), idgen, module, info)
   let procTyp = newType(tyProc, idgen, module)
-  procTyp.sons = @[intType]
+  procTyp.add(intType)
   procTyp.n = newNodeI(nkFormalParams, info)
   procTyp.n.add newNodeI(nkType, info)
-  owner.typImpl = procTyp
+  owner.typ = procTyp
 
   let resultSym = newSym(skResult, getIdent(cache, "result"), idgen, owner, info)
-  resultSym.typImpl = intType
+  resultSym.typ = intType
 
   let condSym = newSym(skParam, getIdent(cache, "v"), idgen, owner, info)
-  condSym.typImpl = boolType
+  condSym.typ = boolType
 
   let ifNode = newNodeIT(nkIfExpr, info, intType)
   let branch = newNodeI(nkElifBranch, info)
