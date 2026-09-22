@@ -150,6 +150,8 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
     result = false
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
+  if n.isNil:
+    return false
   let n = skipHidden(n)
   if nfNoRewrite in n.flags:
     result = false
