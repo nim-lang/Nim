@@ -1211,6 +1211,7 @@ proc spawnCodegenSubprocess*(conf: ConfigRef) =
 
   # Spawn subprocess - the subprocess generates C files + JSON build instructions
   let nimExe = getAppFilename()
+  let errsBeforeJson = conf.errorCounter
   try:
     let p = startProcess(nimExe, args = subArgs, options = {poParentStreams})
     let exitCode = p.waitForExit()
@@ -1226,6 +1227,25 @@ proc spawnCodegenSubprocess*(conf: ConfigRef) =
     return
 
   runJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile)
+
+  # The JSON build instructions were written by the --compileOnly subprocess,
+  # so two fields describe the subprocess rather than this invocation:
+  # `cmdline` carries the injected CLI parameters and meta data. The next
+  # `-d:nimBetterRun` change check compares both against the outer invocation,
+  # so without normalising them here every build looks changed.
+  if conf.errorCounter == errsBeforeJson:
+    try:
+      let jsonPath = conf.jsonBuildInstructionsFile.string
+      var bcache: BuildCache = default(BuildCache)
+      bcache.fromJson(jsonPath.parseFile)
+      bcache.cmdline = conf.commandLine
+      if fileExists(bcache.outputFile):
+        bcache.outputLastModificationTime = $getLastModificationTime(bcache.outputFile)
+      else:
+        bcache.outputLastModificationTime = ""
+      jsonPath.writeFile(bcache.toJson.pretty)
+    except IOError, OSError, ValueError, KeyError, JsonKindError:
+      discard
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   result = ""
