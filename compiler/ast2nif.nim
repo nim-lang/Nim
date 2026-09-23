@@ -991,7 +991,12 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
     # global `c.syms`), so def'ing the same field in two reclists never collides.
     inc w.inTypeReclist
     let savedFieldSyms = move w.emittedFieldSyms
-    writeNode(w, dest, typ.nImpl)
+    # A concept's type node contains its required proc declarations. Serializing
+    # them as ordinary type-body statements turns each `nkProcDef` into just a
+    # symbol reference, which leaves the loaded `tyConcept` body without any
+    # matchable requirements. Preserve those declarations as AST so a consumer
+    # loading the concept from a NIF can perform concept matching.
+    writeNode(w, dest, typ.nImpl, forAst = typ.kind == tyConcept)
     w.emittedFieldSyms = savedFieldSyms
     dec w.inTypeReclist
     writeSym(w, dest, typ.ownerFieldImpl)
