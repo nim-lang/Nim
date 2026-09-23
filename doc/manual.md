@@ -6443,7 +6443,7 @@ The `inject` and `gensym` pragmas are second class annotations; they have
 no semantics outside a template definition and cannot be abstracted over:
 
   ```nim
-  {.pragma myInject: inject.}
+  {.pragma: myInject, inject.}
 
   template t() =
     var x {.myInject.}: int # does NOT work
