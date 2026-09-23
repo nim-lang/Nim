@@ -68,11 +68,14 @@ var i: Atomic[int]
 i.genericStore(12, moRelease)
 doAssert i.genericLoad(moAcquire) == 12
 
-type Big = object
-  a, b, c: int
-var y: Atomic[Big]
-y.genericStore(Big(a: 1, b: 2, c: 3), moRelease)
-doAssert y.genericLoad(moAcquire).c == 3
+when not (defined(cpp) and defined(nimUseCppAtomics)):
+  # `std::atomic<T>` for a T this size needs libatomic, and the lock based
+  # path this exercises only exists for the C11 and MSVC backends anyway:
+  type Big = object
+    a, b, c: int
+  var y: Atomic[Big]
+  y.genericStore(Big(a: 1, b: 2, c: 3), moRelease)
+  doAssert y.genericLoad(moAcquire).c == 3
 
 # an order that is not a constant expression is rejected, in a wrapper too:
 var runtimeOrder = moRelaxed
