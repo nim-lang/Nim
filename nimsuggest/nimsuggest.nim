@@ -1136,8 +1136,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   # these commands require partially compiled project
   elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon} or
-        isIncludeQuery or isUnknownFile):
+       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon} or isIncludeQuery or isUnknownFile):
     # for ideSug use v2 implementation
     if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
