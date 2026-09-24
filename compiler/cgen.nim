@@ -198,11 +198,17 @@ proc signatureHasMetaType*(t: PType; depth: int = 0): bool =
     if signatureHasMetaType(k, depth + 1): return true
 
 proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
-  ## A concrete, non-generic, runtime routine with a real body, OWNED by the
-  ## module at `modPos`. Shared by the `cg` stage's owned-routine seeding (so a
-  ## routine called only from other modules is still emitted by somebody) and
-  ## the `lower` stage's owned-routine enumeration, so both stages see exactly
-  ## the same set. The exclusions:
+  ## A used or exported, concrete, non-generic runtime routine with a body,
+  ## OWNED by the module at `modPos`. Shared by the `cg` stage's owned-routine
+  ## seeding (so a routine called only from other modules is still emitted by
+  ## its owner, next to the owner's emits and C options) and the `lower` stage's
+  ## owned-routine enumeration, so both stages see exactly the same set. An
+  ## unused private routine is left alone: classic codegen never visits it, and
+  ## transforming it can reject a valid program (for example, an unused helper
+  ## that captures its owner's `result`). Exported routines are kept even when
+  ## the module does not use them itself, because a use by an importer is only
+  ## recorded in the importer's process, never in this module's NIF. The other
+  ## exclusions:
   ## - nested/closure procs (owner is a proc, not a module): emitted via their
   ##   enclosing routine's lambda-lifting, never standalone;
   ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
@@ -235,6 +241,7 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
   s.magic == mNone and
   sfFromGeneric notin s.flags and
   sfDispatcher notin s.flags and
+  {sfUsed, sfExported} * s.flags != {} and
   {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
   s.typ != nil and not signatureHasMetaType(s.typ) and
   s.ast != nil and s.ast.safeLen > bodyPos and
