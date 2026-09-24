@@ -1146,7 +1146,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       # An include file's includer must be (re)compiled from source so the
       # include body is re-sem'd; force it dirty since the include file itself
       # is not a module the dirty machinery tracks.
-      if isIncludeQuery or not dataComplete:
+      if isIncludeQuery or (not dataComplete and not graph.needsCompilation(fileIndex)):
         graph.markDirty moduleToCompile
         graph.markClientsDirty moduleToCompile
       graph.recompilePartially(moduleToCompile)
