@@ -172,15 +172,57 @@ Usually some pointer field inside the object is set to `nil`:
     x.field = nil
   ```
 
+After `=wasMoved(x)`:
+
+- `=destroy(x)` must do nothing.
+- Every other hook must still work with `x`: `=copy`, `=sink` and `=dup`,
+  with `x` as the source or the destination, `=wasMoved` itself, and `=trace`.
+
+This is the complete contract that `=wasMoved` has with the language.
+The moved-from state does **not** have to be `default(T)`. The built-in
+`=wasMoved`, which the compiler uses when no custom hook is provided, resets
+the object to binary zero, but a custom hook can do less. A typical example is
+a fixed-capacity sequence, where a "watermark" protects the remaining bits so
+that they do not have to be zeroed:
+
+  ```nim
+  type
+    FixedSeq[N: static int; T] = object
+      len: int
+      data: array[N, T]
+
+  proc `=wasMoved`[N: static int; T](x: var FixedSeq[N, T]) =
+    x.len = 0 # data[0 ..< len] is all that `=destroy` and `=copy` look at
+  ```
+
+Requiring `default(T)` would also be impossible for types that have no default
+value, like `ref X not nil`.
+
+Which operations *other than the hooks* are valid on a moved-from object is
+part of the type's API, not of the language. This is the same question as
+"can I use `var x: Table; x[key] = val`", which depends on how `Table` is
+written. A moved-from object is not undefined behavior: its state is whatever
+the type's `=wasMoved` produced. To reuse it, generic code can always assign a
+new value (`x = initTable()`), because assignments are implemented by the
+hooks. Type authors should still give the moved-from object a reasonable
+state. For a deque, `=wasMoved` should set `len = 0` and `cap = 0`, not only
+`data = nil`, so that the moved-from object behaves like an empty deque.
+
+A cheaper `=wasMoved` pushes some complexity into the type itself. Because
+`FixedSeq`'s `=wasMoved` does not reset `data[len ..< N]`, the elements in
+that range are in an unspecified state: `FixedSeq`'s `add` must not call
+`=sink` or `=copy` for a slot beyond `len`. It has to store into the slot
+without running hooks, see [nodestroy pragma]. This is the type author's
+choice, so it is the type's implementation that has to deal with it.
+
 
 `=sink` hook
 ------------
 
 A `=sink` hook moves an object around, the resources are stolen from the source
 and passed to the destination. It is ensured that the source's destructor does
-not free the resources afterward by setting the object to its default value
-(the value the object's state started in). Setting an object `x` back to its
-default value is written as `wasMoved(x)`. When not provided the compiler
+not free the resources afterward by calling `=wasMoved` on the source; see
+[the `=wasMoved` hook](#lifetimeminustracking-hooks-nimeqwasmoved-hook) for the state this leaves the source in. When not provided the compiler
 is using a combination of `=destroy` and `copyMem` instead. This is efficient
 hence users rarely need to implement their own `=sink` operator, it is enough to
 provide `=destroy` and `=copy`, the compiler will take care of the rest.
@@ -800,6 +842,31 @@ used to specialize the object traversal in order to avoid deep recursions:
 
 As can be seen from the example, this solution is hardly sufficient and
 should eventually be replaced by a better solution.
+
+`.nodestroy` means "inject no hooks": inside such a routine, no `=destroy`,
+`=copy`, `=sink` or `=wasMoved` calls are injected, and assignments are
+bitwise copies. It is not a calling convention: call sites of a `.nodestroy`
+routine are processed as usual, so passing an argument to a `sink` parameter
+still moves it (including the `=wasMoved` of the source) or copies it.
+
+This makes `.nodestroy` the tool for moving values in and out of container
+slots without overhead:
+
+  ```nim
+  proc add[T](d: var Deque[T]; v: sink T) {.nodestroy.} =
+    d.data[d.tail] = v   # bitwise copy: no `=destroy` of the old slot contents
+    inc d.tail
+
+  proc popLast[T](d: var Deque[T]): T {.nodestroy.} =
+    dec d.tail
+    result = d.data[d.tail] # bitwise copy: the slot is now dead, no `=wasMoved`
+  ```
+
+This takes about as much care as calling `=wasMoved` lazily. It is still
+preferable to `=wasMoved(dest); =copy(dest, src)` when `dest` is a heap
+location that the compiler cannot reason about. A dedicated "raw copy"
+operation would express this more directly than `.nodestroy` does, and may be
+added in the future.
 
 
 Copy on write
