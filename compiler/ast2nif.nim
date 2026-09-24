@@ -3411,85 +3411,53 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   if uint32(docId) != 0'u32 and s.astImpl != nil and nodeCommentWriter != nil:
     nodeCommentWriter(s.astImpl, docPool.strings[docId])
 
-proc findFieldInRecord(n: PNode; name: PIdent): PSym =
-  ## Find the field symbol materialized while loading one type's reclist.
+proc lookupField(n: PNode; name: PIdent): PSym =
+  ## `astalgo.lookupInRecord`, which ast2nif cannot import.
   result = nil
   if n == nil: return
   case n.kind
-  of nkRecList:
+  of nkRecList, nkRecCase, nkOfBranch, nkElse:
     for child in n.sons:
-      result = findFieldInRecord(child, name)
-      if result != nil: return
-  of nkRecCase:
-    if n.sons.len > 0:
-      result = findFieldInRecord(n.sons[0], name)
-      if result != nil: return
-    for i in 1..<n.sons.len:
-      if n.sons[i].kind in {nkOfBranch, nkElse} and n.sons[i].sons.len > 0:
-        result = findFieldInRecord(n.sons[i].sons[^1], name)
-        if result != nil: return
-  of nkRecWhen, nkElifBranch, nkOfBranch, nkElse:
-    for child in n.sons:
-      result = findFieldInRecord(child, name)
+      result = lookupField(child, name)
       if result != nil: return
   of nkSym:
-    if n.sym != nil and n.sym.kindImpl == skField and n.sym.name.id == name.id:
-      result = n.sym
-  else:
-    discard
+    if n.sym.kindImpl == skField and n.sym.name.id == name.id: result = n.sym
+  else: discard
 
 proc recordType(c: var DecodeContext; t: PType): PType =
-  ## Resolve transparent wrappers around the base of a field access.
+  ## `t.skipTypes(skipPtrs)` if that is an object or tuple, else nil.
   result = t
   while result != nil:
-    if result.state == Partial:
-      c.loadType(result)
-    case result.kind
-    of tyVar, tyPtr, tyRef, tyGenericInst, tyGenericInvocation, tyGenericBody,
-       tyTypeDesc, tyAlias, tyInferred, tySink, tyLent, tyOwned,
-       tyDistinct, tyOrdinal:
-      if result.sonsImpl.len == 0:
-        return nil
-      result = result.sonsImpl[^1]
-    else:
-      break
-  if result != nil and result.kind notin {tyObject, tyTuple}:
-    result = nil
+    if result.state == Partial: c.loadType(result)
+    if result.kind in {tyObject, tyTuple}: return
+    if result.kind notin {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
+                          tyInferred, tySink, tyLent, tyOwned} or
+        result.sonsImpl.len == 0:
+      return nil
+    result = result.sonsImpl[^1]
 
-proc baseRecordType(c: var DecodeContext; n: PNode): PType =
-  ## Return the record type for a loaded base expression.
-  if n == nil: return
+proc nodeType(c: var DecodeContext; n: PNode): PType =
   result = n.typField
-  if result == nil and n.kind == nkSym and n.sym != nil:
-    if n.sym.state == Partial:
-      c.loadSym(n.sym)
+  if result == nil and n.kind == nkSym:
+    if n.sym.state == Partial: c.loadSym(n.sym)
     result = n.sym.typImpl
-  result = c.recordType(result)
-
-proc fieldFromRecordType(c: var DecodeContext; owner: PType; name: PIdent): PSym =
-  ## Resolve a field use against the owning type's materialized reclist.
-  ## `loadType` caches the PType and `loadTypeFromCursor` materializes each
-  ## reclist's field definitions once, so this preserves PSym identity.
-  result = nil
-  var t = c.recordType(owner)
-  while t != nil:
-    result = findFieldInRecord(t.nImpl, name)
-    if result != nil: return
-    if t.kind != tyObject or t.sonsImpl.len == 0: return
-    t = c.recordType(t.sonsImpl[0])
 
 proc loadFieldUse(c: var DecodeContext; symAsStr: string; thisModule: string;
-                  localSyms: var Table[string, PSym]; owner: PType = nil;
+                  localSyms: var Table[string, PSym]; owner: PType;
                   typ: PType = nil): PSym =
-  ## Resolve a field use to the canonical PSym from the owning type's `.bif`
-  ## definition. Only slots without an owner use the fallback stub.
-  if owner == nil:
-    return c.loadFieldStub(symAsStr, thisModule, localSyms, typ)
-  let sn = parseSymName(symAsStr)
-  let (_, fieldName) = stubKindAndName(c.cache, sn.name)
-  result = c.fieldFromRecordType(owner, fieldName)
-  if result == nil:
-    raiseAssert "field '" & symAsStr & "' not found in owning record type"
+  ## A field use resolves to the PSym that its owning type's reclist
+  ## materialized (`lookupFieldAgain`), so PSym identity holds for alias
+  ## analysis and `sfCursor` just like before serialization. Without a known
+  ## owner it falls back to a stub.
+  var t = c.recordType(owner)
+  if t != nil:
+    let name = stubKindAndName(c.cache, parseSymName(symAsStr).name)[1]
+    while t != nil:
+      result = lookupField(t.nImpl, name)
+      if result != nil: return
+      t = if t.kind == tyObject and t.sonsImpl.len > 0: c.recordType(t.sonsImpl[0])
+          else: nil
+  result = c.loadFieldStub(symAsStr, thisModule, localSyms, typ)
 
 proc sealLoadedRoutines*(c: var DecodeContext) =
   ## Before `writeLoweredModule` re-serializes the lowered module, seal ONLY the
@@ -3773,18 +3741,18 @@ proc loadNode(c: var DecodeContext; n: var Cursor; thisModule: string;
           else:
             result.sons.add c.loadNode(n, thisModule, localSyms)
           inc idx
-    of nkDotExpr:
-      # Decode the base before the field so the latter can resolve to the PSym
-      # materialized in the base type's `.bif` reclist. This keeps ordinary
-      # PSym equality valid for every field access.
+    of nkDotExpr, nkExprColonExpr, nkObjConstr, nkTupleConstr:
+      # A field use resolves against its owning type (see `loadFieldUse`): the
+      # field of `a.f` against the type of `a`, the field of a constructor's
+      # `f: v` against the type of the constructor.
       c.withNode n, result, kind:
-        if n.hasMore:
-          result.sons.add c.loadNode(n, thisModule, localSyms)
-        if n.hasMore:
-          let owner = if result.sons.len > 0: c.baseRecordType(result.sons[0]) else: nil
-          result.sons.add c.loadNode(n, thisModule, localSyms, owner)
         while n.hasMore:
-          result.sons.add c.loadNode(n, thisModule, localSyms)
+          let owner =
+            case kind
+            of nkDotExpr: (if result.sons.len == 1: c.nodeType(result.sons[0]) else: nil)
+            of nkExprColonExpr: (if result.sons.len == 0: fieldOwner else: nil)
+            else: result.typField
+          result.sons.add c.loadNode(n, thisModule, localSyms, owner)
     else:
       c.withNode n, result, kind:
         while n.hasMore:
