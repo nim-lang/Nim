@@ -255,6 +255,7 @@ var
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
   bindingIdTag = registerTag(bindingIdTagName)
+  genericArgsTag = registerTag(genericArgsTagName)
 
 type
   Writer = object
@@ -544,14 +545,6 @@ proc writeLoc(w: var Writer; dest: var IcBuilder; loc: TLoc) =
   dest.addStrLit loc.snippet
 
 const
-  BifGenericTypeKinds = {tyArray, tySequence, tySet, tyOpenArray, tyVarargs,
-                         tyUncheckedArray}
-    ## The `genericargs` section preserves `sonsImpl` order. Its roles and arity
-    ## are inferred from the enclosing type kind; for `tyArray`, the first son
-    ## is the index type and the second son is the element type. The section is
-    ## omitted when there are no sons. This makes the contract explicit for
-    ## consumers without adding per-argument role tags or a second traversal.
-
   CanonTypeKinds = {tyVar, tyLent, tySink, tyTuple, tyRef, tyPtr, tySequence,
                     tyOpenArray, tyVarargs, tySet, tyUncheckedArray, tyArray,
                     tyRange, tyProc}
@@ -1006,17 +999,11 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
 
     # Write TLoc structure
     writeLoc w, dest, typ.locImpl
-    # Keep the structural generic arguments together under a named section.
-    # The section preserves `sonsImpl` order, so consumers recover both arity
-    # and roles (notably array[index, element]) without guessing from unrelated
-    # trailing symbols or nested type definitions. The legacy positional form
-    # remains for every other type kind and is still accepted by the loader
-    # below for artifacts from before format 44.
-    if typ.kind in BifGenericTypeKinds and typ.sonsImpl.len > 0:
-      dest.buildTree genericArgsTagName:
-        for ch in typ.sonsImpl:
-          writeType(w, dest, ch)
-    else:
+    # The sons come last, wrapped in `(genericargs ...)` for EVERY type, even
+    # without sons: 4 bytes per type buy BIF consumers an unambiguous arity
+    # instead of a raw tail after the nested `td`s. Their roles follow from
+    # the type kind (for `tyArray`: index type, then element type).
+    dest.buildTree genericArgsTag:
       for ch in typ.sonsImpl:
         writeType(w, dest, ch)
 
@@ -1448,6 +1435,7 @@ proc registerNifAstTags*() =
   tdefTag = registerTag(typeDefTagName)
   hiddenTypeTag = registerTag(hiddenTypeTagName)
   bindingIdTag = registerTag(bindingIdTagName)
+  genericArgsTag = registerTag(genericArgsTagName)
   modFlagsTag = registerTag("modflags")
   symNodeFlagsTag = registerTag(symNodeFlagsTagName)
   replayTag = registerTag("replay")
@@ -3234,15 +3222,9 @@ proc loadTypeFromCursor(c: var DecodeContext; n: var Cursor; t: PType; localSyms
     t.symImpl = loadSymStub(c, n, typesModule, localSyms)
     loadLoc c, n, t.locImpl
 
-    while n.hasMore:
-      if n.kind == TagLit and tagIs(n, genericArgsTagName):
-        n.into:
-          while n.hasMore:
-            t.sonsImpl.add loadTypeStub(c, n, localSyms)
-      else:
-        # BIFs written before format 44 used raw trailing type symbols. Keep
-        # reading that representation for the previous on-disk layout; the
-        # ic format stamp prevents an older compiler from opening a new cache.
+    assert n.kind == TagLit and tagIs(n, genericArgsTagName)
+    n.into:
+      while n.hasMore:
         t.sonsImpl.add loadTypeStub(c, n, localSyms)
 
 proc loadType*(c: var DecodeContext; t: PType) =
