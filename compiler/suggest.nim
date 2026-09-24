@@ -629,7 +629,9 @@ proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; i
   let conf = g.config
   when defined(nimsuggest):
     if optIdeExceptionInlayHints in conf.globalOptions or not isGenericInstance:
-      g.suggestSymbols.add SymInfoPair(sym: s, info: info, isDecl: isDecl, isGenericInstance: isGenericInstance), optIdeExceptionInlayHints in g.config.globalOptions
+      g.suggestSymbols.add SymInfoPair(sym: s, info: info, isDecl: isDecl, isGenericInstance: isGenericInstance),
+        optIdeExceptionInlayHints in g.config.globalOptions,
+        conf.ideCmd notin {ideSug, ideCon}
 
     if not isGenericInstance:
       if conf.suggestVersion == 0:

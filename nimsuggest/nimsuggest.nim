@@ -1106,7 +1106,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   # cursor get re-checked. The query position stays in the include file.
   var moduleToCompile: FileIndex = default(FileIndex)
   var isIncludeQuery = false
-  var lacksSuggestData = false
+  var dataComplete = false
 
   if not (cmd in {ideRecompile, ideGlobalSymbols}):
     fileIndex = fileInfoIdx(conf, file)
@@ -1115,7 +1115,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     if conf.ideImportsFromNif and graph.needsIncludeScan(fileIndex):
       discard graph.registerIncluderFromNif(fileIndex)
     isIncludeQuery = graph.inclToMod.hasKey(fileIndex)
-    lacksSuggestData = not graph.suggestSymbols.hasKey(fileIndex)
+    dataComplete = graph.suggestDataComplete(fileIndex)
     moduleToCompile = if isIncludeQuery: graph.parentModule(fileIndex) else: fileIndex
     msgs.setDirtyFile(
       conf,
@@ -1137,7 +1137,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   # these commands require partially compiled project
   elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
        (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon} or isIncludeQuery or
-        lacksSuggestData):
+        not dataComplete):
     # for ideSug use v2 implementation
     if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
@@ -1147,7 +1147,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
       # An include file's includer must be (re)compiled from source so the
       # include body is re-sem'd; force it dirty since the include file itself
       # is not a module the dirty machinery tracks.
-      if isIncludeQuery or lacksSuggestData:
+      if isIncludeQuery or not dataComplete:
         graph.markDirty moduleToCompile
         graph.markClientsDirty moduleToCompile
       graph.recompilePartially(moduleToCompile)
@@ -1202,7 +1202,6 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     let m = graph.getModule moduleToCompile
     if m != nil:
       incl m, sfDirty
-    graph.suggestSymbols.del(fileIndex)
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))
