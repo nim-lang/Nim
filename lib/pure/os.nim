@@ -558,7 +558,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
     let realLen = len(cstring(result))
     setLen(result, realLen)
 
-when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
+when not weirdTarget and (defined(linux) or defined(sunos) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(maxSymlinkLen)
     var len = readlink(procPath, result.cstring, maxSymlinkLen)
@@ -690,7 +690,7 @@ when supportedSystem:
     else:
       when defined(linux) or defined(aix):
         result = getApplAux("/proc/self/exe")
-      elif defined(solaris):
+      elif defined(sunos):
         result = getApplAux("/proc/" & $getpid() & "/path/a.out")
       elif defined(genode):
         result = "" # Not supported

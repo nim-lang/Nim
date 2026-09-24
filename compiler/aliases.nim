@@ -164,6 +164,11 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
   ##  ```
   if a.isCompileTimeOnlyNode or b.isCompileTimeOnlyNode:
     return arNo
+  # Literals do not read a runtime location. In particular, the reverse
+  # constructor check must not mistake a literal for a read through a ref
+  # merely because its type occurs in the referenced object.
+  if a.kind in {nkCharLit..nkNilLit} or b.kind in {nkCharLit..nkNilLit}:
+    return arNo
 
   if a.kind == b.kind:
     case a.kind

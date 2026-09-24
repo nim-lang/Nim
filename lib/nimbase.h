@@ -120,8 +120,6 @@ __unix__
 #  else
 #    define NIM_THREADVAR __thread
 #  endif
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
-#  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
        defined __ICL || \
@@ -134,6 +132,8 @@ __unix__
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#  define NIM_THREADVAR _Thread_local
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif
@@ -270,10 +270,10 @@ __unix__
 // define NIM_STATIC_ASSERT
 // example use case: CT sizeof for importc types verification
 // where we have {.completeStruct.} (or lack of {.incompleteStruct.})
-#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
-#define NIM_STATIC_ASSERT(x, msg) _Static_assert((x), msg)
-#elif defined(__cplusplus)
+#if defined(__cplusplus)
 #define NIM_STATIC_ASSERT(x, msg) static_assert((x), msg)
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define NIM_STATIC_ASSERT(x, msg) _Static_assert((x), msg)
 #else
 #define _NIM_STATIC_ASSERT_FINAL(x, append_name) typedef int NIM_STATIC_ASSERT_AUX ## append_name[(x) ? 1 : -1];
 #define _NIM_STATIC_ASSERT_STAGE_3(x, line)      _NIM_STATIC_ASSERT_FINAL(x, _AT_LINE_##line)
@@ -619,5 +619,10 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
 
 #define NIM_NOALIAS __restrict
 /* __restrict is said to work for all the C(++) compilers out there that we support */
+
+#if defined(__sun) && defined(__cplusplus)
+#include <setjmp.h>
+using std::_setjmp;
+#endif
 
 #endif /* NIMBASE_H */

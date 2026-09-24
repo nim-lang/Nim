@@ -92,7 +92,7 @@ elif defined(macosx):
       threadId = int(syscall(SYS_thread_selfid))
     result = threadId
 
-elif defined(solaris):
+elif defined(sunos):
   type thread_t {.importc: "thread_t", header: "<thread.h>".} = distinct int
   proc thr_self(): thread_t {.importc, header: "<thread.h>".}
 

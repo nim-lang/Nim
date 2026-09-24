@@ -75,13 +75,17 @@ type
     flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, isHidden: bool, label: Natural]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, hasExcept: bool,
+                              label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # `inExcept` is true when we are in the except part of a try block.
-                              # `isHidden` is true for compiler-injected `nkHiddenTryStmt` wrappers
-                              # (e.g. ARC's destructor try/finally around `except T as e:` bodies);
-                              # finallyActions walks past such wrappers to reach the user's try.
+                              # `hasExcept` is true if the try statement has except branches; a
+                              # try without them cannot handle a raise from within its body, so
+                              # it is transparent to `raise` -- this holds for the `try/finally`
+                              # the user wrote and for the ones injected for destructor calls
+                              # alike, which is why no codegen logic here distinguishes
+                              # `nkHiddenTryStmt` from `nkTryStmt`.
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc

@@ -56,7 +56,7 @@ when defined(windows):
     SIGTERM = cint(15)
     SIG_DFL* = cast[CSighandlerT](0)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
-     defined(openbsd) or defined(netbsd) or defined(solaris) or
+     defined(openbsd) or defined(netbsd) or defined(sunos) or
      defined(dragonfly) or defined(nintendoswitch) or defined(genode) or
      defined(aix) or hostOS == "standalone":
   const
