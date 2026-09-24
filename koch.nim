@@ -16,12 +16,15 @@ const
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "1721aab3cad18663da92c2b85508b1f2ff73e3df" # unversioned \
+  NimonyStableCommit = "284a62029611d9c95585aed9a8d30faefc5c2db4" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-08-31 -- nifcore-based lib; `bif.load` fills pools with
-    # `addOrdered` instead of hashing every entry it just read back in order.
+    # Commit from 2026-09-11 -- nifmake names the command that failed. Its
+    # parallel path marked every child `Finished` whatever the exit code was,
+    # so a build that fanned out left the crash in the log and the command that
+    # produced it nowhere: a Windows CI `nim ic` run reported a bare SIGSEGV
+    # with no way to tell whether the child was `nifler` or `nim m`.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
@@ -395,6 +398,11 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     installDeps("libffi")
 
   let nimStart = findStartNim().quoteShell()
+  # Old bootstrap compilers identify illumos as Solaris and cannot accept
+  # --os:illumos. Switch targets only after building the first new compiler.
+  let bootIllumos = when defined(sunos):
+                      execCmdEx("uname -o 2>/dev/null").output.strip.toLowerAscii == "illumos"
+                    else: false
   let times = 2 - ord(skipIntegrityCheck)
   for i in 0..times:
     let defaultCommand = if useCpp: "cpp" else: "c"
@@ -416,6 +424,9 @@ proc boot(args: string, skipIntegrityCheck: bool) =
       let version = ret.output.splitLines[0]
       if version.startsWith "Nim Compiler Version 0.20.0":
         extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
+
+    if i > 0 and bootIllumos:
+      extraOption.add " --os:illumos"
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.

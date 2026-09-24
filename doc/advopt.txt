@@ -47,6 +47,9 @@ Advanced options:
   --filenames:abs|canonical|legacyRelProj
                             customize how filenames are rendered in compiler messages,
                             defaults to `abs` (absolute)
+  --msgFormat:std|gcc       format of the location prefix in compiler messages:
+                            `std` uses `file(line, col)`, `gcc` uses the
+                            GCC/Emacs style `file:line:col:`
   --processing:dots|filenames|off
                             show files as they're being processed by nim compiler
   --unitsep:on|off          use the ASCII unit separator (31) between error
@@ -185,3 +188,4 @@ Advanced options:
                             the JavaScript backend (default: on)
   --nimBasePattern:nimbase.h
                             allows to specify a custom pattern for `nimbase.h`
+  --spawncodegen:on|off     spawn a separate process for the codegen phase

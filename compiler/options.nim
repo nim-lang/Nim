@@ -29,7 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "38"
+  icFormatVersion* = "43"
+    ## v43: deterministic re-export traversal for ordered interfaces.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -137,6 +138,8 @@ type                          # please make sure we have under 32 options
                               # string/seq implementation based on destructors
     optTinyRtti               # active if we use the new "tiny RTTI"
                               # implementation
+    optSpawnCodegen           # spawn a separate nim process for codegen
+                              # to reclaim memory before C compilation
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optBenchmarkVM            # Enables cpuTime() in the VM
@@ -152,6 +155,12 @@ type                          # please make sure we have under 32 options
     optCompress               # turn on AST compression by converting it to NIF
     optGenBif                 # generate semantic BIF alongside ordinary code generation
     optWithinConfigSystem     # we still compile within the configuration system
+    optDeferBodies            # stage 1 of doc/parallel_compiler.md: sem a top-level
+                              # routine's BODY after the module's header pass rather
+                              # than where it is declared. One worker, drained in key
+                              # order -- no threads, no scheduling, only the order
+                              # change, which is the part that has to be reviewed
+                              # before any of it runs concurrently.
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -394,6 +403,10 @@ type
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
+  MsgFormat* = enum ## format of the location prefix in compiler messages
+    mfmStd ## standard Nim style: `file(line, col)`
+    mfmGcc ## GCC/Emacs style: `file:line:col:`
+
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -407,6 +420,7 @@ type
     arcToExpand*: StringTableRef
     m*: MsgConfig
     filenameOption*: FilenameOption # how to render paths in compiler messages
+    msgFormat*: MsgFormat # format of the location prefix in compiler messages
     unitSep*: string
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -676,6 +690,7 @@ proc initConfigRefCommon(conf: ConfigRef) =
   conf.options = DefaultOptions
   conf.globalOptions = DefaultGlobalOptions
   conf.filenameOption = foAbs
+  conf.msgFormat = mfmStd
   conf.foreignPackageNotes = foreignPackageNotesDefault
   conf.notes = NotesVerbosity[1]
   conf.mainPackageNotes = NotesVerbosity[1]
@@ -768,7 +783,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "posix", "unix":
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
-                            osHaiku, osVxWorks, osSolaris, osNetbsd,
+                            osHaiku, osVxWorks, osSolaris, osIllumos, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
                             osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos, osZephyr, osNuttX}
     of "linux":
@@ -785,7 +800,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osMacos, osMacosx, osIos}
     of "osx", "macosx":
       result = conf.target.targetOS in {osMacosx, osIos}
-    of "sunos": result = conf.target.targetOS == osSolaris
+    of "sunos": result = conf.target.targetOS in {osSolaris, osIllumos}
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
     of "freertos", "lwip":
@@ -801,7 +816,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
     of "cpu64": result = CPU[conf.target.targetCPU].bit == 64
     of "nimrawsetjmp":
-      result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
+      result = conf.target.targetOS in {osSolaris, osIllumos, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: result = false
 

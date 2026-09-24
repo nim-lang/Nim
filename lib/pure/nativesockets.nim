@@ -19,7 +19,7 @@ import std/strbasics
 when defined(nimPreviewSlimSystem):
   import std/[assertions, syncio]
 
-when hostOS == "solaris":
+when defined(sunos):
   {.passl: "-lsocket -lnsl".}
 
 const useWinVersion = defined(windows) or defined(nimdoc)

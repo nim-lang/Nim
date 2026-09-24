@@ -530,6 +530,13 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
     conf.globalOptions.incl optCompress
   else: discard
 
+  # Enable spawnCodegen by default for C/C++ compilation commands to reclaim
+  # memory before C compilation.
+  # In theory, `optCRun` would benefit from this treatment as well but this gets
+  # complex with its command line hashing
+  if cmd in {cmdCompileToC, cmdCompileToCpp}:
+    conf.globalOptions.incl optSpawnCodegen
+
 proc setCommandEarly*(conf: ConfigRef, command: string) =
   conf.command = command
   setCmd(conf, command.parseCommand)
@@ -833,6 +840,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.globalOptions.incl optCompress
   of "genbif":
     processOnOffSwitchG(conf, {optGenBif}, arg, pass, info)
+  of "deferbodies":
+    processOnOffSwitchG(conf, {optDeferBodies}, arg, pass, info)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir
@@ -1127,6 +1136,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if switch.normalize == "gendeps": deprecatedAlias(switch, "genscript")
     processOnOffSwitchG(conf, {optGenScript}, arg, pass, info)
     processOnOffSwitchG(conf, {optCompileOnly}, arg, pass, info)
+  of "spawncodegen":
+    processOnOffSwitchG(conf, {optSpawnCodegen}, arg, pass, info)
   of "gencdeps":
     processOnOffSwitchG(conf, {optGenCDeps}, arg, pass, info)
   of "colors": processOnOffSwitchG(conf, {optUseColors}, arg, pass, info)
@@ -1170,6 +1181,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "canonical": conf.filenameOption = foCanonical
     of "legacyrelproj": conf.filenameOption = foLegacyRelProj
     else: localError(conf, info, "expected: abs|canonical|legacyRelProj, got: $1" % arg)
+  of "msgformat":
+    case arg.normalize
+    of "std": conf.msgFormat = mfmStd
+    of "gcc": conf.msgFormat = mfmGcc
+    else: localError(conf, info, "expected: std|gcc, got: $1" % arg)
   of "processing":
     incl(conf.notes, hintProcessing)
     incl(conf.mainPackageNotes, hintProcessing)

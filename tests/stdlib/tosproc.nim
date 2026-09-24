@@ -102,9 +102,25 @@ else: # main driver
   # note: this should be exported in posix.nim
   proc c_system(cmd: cstring): cint {.importc: "system", header: "<stdlib.h>".}
 
+  # Every artifact built below used to be shared by all the matrix entries
+  # (`--mm:refc`/`--mm:orc`, `c`/`cpp`): one output path, and one *default*
+  # nimcache, since `-d:case_testfileX` does not affect the cache path either.
+  # Two testament processes running this test at once would then clobber each
+  # other mid-compile, and even run serially the entries thrash a single cache.
+  # Key both by the entry instead.
+  const variant =
+    (if defined(objc): "objc" elif defined(cpp): "cpp" else: "c") & "_" &
+    (if compileOption("mm", "orc"): "orc"
+     elif compileOption("mm", "arc"): "arc"
+     elif compileOption("mm", "atomicArc"): "atomicArc"
+     else: "refc")
+
   proc compileNimProg(opt: string, name: string): string =
-    result = buildDir / name.addFileExt(ExeExt)
-    let cmd = "$# c -o:$# --hints:off $# $#" % [nim.quoteShell, result.quoteShell, opt, sourcePath.quoteShell]
+    let prog = name & '_' & variant
+    result = buildDir / prog.addFileExt(ExeExt)
+    let cmd = "$# c -o:$# --nimcache:$# --hints:off $# $#" %
+      [nim.quoteShell, result.quoteShell, (buildDir / "nimcache" / prog).quoteShell,
+       opt, sourcePath.quoteShell]
     doAssert c_system(cmd) == 0, $cmd
     doAssert result.fileExists
 
@@ -284,9 +300,15 @@ else: # main driver
 
   import std/strtabs
   block execProcessTest:
-    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+    # `nim r -` always names the program `stdinfile` and puts both the objects
+    # and the linked binary in that one nimcache, so without `--nimcache:` every
+    # entry here — and any other `nim r -` running at the same time — compiles
+    # and links through the same paths.
+    let stdinCache = buildDir / "nimcache" / ("stdinfile_" & variant)
+    var result = execCmdEx("nim r --hints:off --nimcache:" & stdinCache.quoteShell &
+                           " -", options = {}, input = "echo 3*4")
     stripLineEnd(result[0])
-    doAssert result == ("12", 0)
+    doAssert result == ("12", 0), $result
     when not defined(windows):
       doAssert execCmdEx("ls --nonexistent").exitCode != 0
     when false:

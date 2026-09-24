@@ -156,6 +156,17 @@ proc commandCompileToC(graph: ModuleGraph) =
         graph.config.notes = graph.config.mainPackageNotes
         return
 
+  # Spawn a separate nim process for code generation to reclaim memory
+  # before C compilation. The subprocess runs with --compileOnly, generates the
+  # C code and a JSON build script then executes the build script to build the
+  # final output.
+  # optHotCodeReloading is mostly broken in general
+  # optUseNimcache requires changes to how command lines are hashed to avoid rebuild detection errors
+  # optGenStaticLib isn't supported by the JSON build script machinery
+  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache, optGenStaticLib} * conf.globalOptions == {optSpawnCodegen}:
+    extccomp.spawnCodegenSubprocess(conf)
+    return # Subprocess handled everything; skip in-process compilation
+
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
@@ -350,10 +361,13 @@ proc mainCommand*(graph: ModuleGraph) =
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
   of cmdBook:
-    loadConfigs(DocConfig, cache, conf, graph.idgen)
-    conf.setNoteDefaults(warnCannotOpenFile, true)
-    commandBook(cache, conf)
-    commandBuildIndex(conf, $conf.outDir, exclCode = true, inclHeaders = true)
+    when defined(leanCompiler):
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
+    else:
+      loadConfigs(DocConfig, cache, conf, graph.idgen)
+      conf.setNoteDefaults(warnCannotOpenFile, true)
+      commandBook(cache, conf)
+      commandBuildIndex(conf, $conf.outDir, exclCode = true, inclHeaders = true)
   of cmdRst2html, cmdMd2html:
     # XXX: why are warnings disabled by default for rst2html and rst2tex?
     for warn in rstWarnings:

@@ -9,7 +9,7 @@
 
 import
   std/[strutils, os, tables, terminal, macros, times],
-  std/private/miscdollars,
+  std/private/[miscdollars, digitsutils],
   options, lineinfos, pathutils
 
 import ropes except `%`
@@ -317,13 +317,29 @@ proc toLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
-proc toFileLineCol(info: InstantiationInfo): string {.inline.} =
+proc toMsgLocationImpl(result: var string; file: string; line: int; col: int; format: MsgFormat) =
+  ## renders a location prefix, mirroring lib/std/private/miscdollars.toLocation
+  case format
+  of mfmStd:
+    result.toLocation(file, line, col)
+  of mfmGcc:
+    result.add file
+    if line > 0:
+      result.add ':'
+      result.addInt line
+      if col > 0:
+        result.add ':'
+        result.addInt col
+    result.add ':'
+
+proc toFileLineCol(info: InstantiationInfo, format: MsgFormat): string {.inline.} =
   result = ""
-  result.toLocation(info.filename, info.line, info.column + ColOffset)
+  result.toMsgLocationImpl(info.filename, info.line, info.column + ColOffset, format)
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   result = ""
-  result.toLocation(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset)
+  result.toMsgLocationImpl(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset,
+                           conf.msgFormat)
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
@@ -610,7 +626,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                          resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
           # xxx needs a bit of refactoring to honor `conf.filenameOption`
-          styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
+          styledMsgWriteln(styleBright, toFileLineCol(info2, conf.msgFormat), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
             resetStyle, conf.unitSep)
@@ -672,7 +688,7 @@ template internalAssert*(conf: ConfigRef, e: bool) =
   # xxx merge with `globalAssert`
   if not e:
     const info2 = instLoc()
-    let arg = info2.toFileLineCol
+    let arg = info2.toFileLineCol(conf.msgFormat)
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
 template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraMsg = "") =
@@ -708,6 +724,9 @@ proc genSuccessX*(conf: ConfigRef) =
   var build = ""
   var flags = ""
   const debugModeHints = "none (DEBUG BUILD, `-d:release` generates faster code)"
+  if optCompileOnly in conf.globalOptions:
+    build = "codegen "
+
   if conf.cmd in cmdBackends:
     if conf.backend != backendJs:
       build.add "mm: $#; " % $conf.selectedGC
@@ -734,7 +753,7 @@ proc genSuccessX*(conf: ConfigRef) =
     # xxx honor conf.filenameOption more accurately
   var output: string
   if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
-    output = $conf.jsonBuildFile
+    output = $conf.getNimcacheDir()
   elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
     # for some cmd we expect a valid absOutFile
     output = "unknownOutput"

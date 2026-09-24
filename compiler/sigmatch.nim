@@ -1805,7 +1805,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
       return typeRel(c, inst, a, flags)
 
-    if x.kind == tyGenericInvocation:
+    if concpt.kind == tyConcept:
+      # Concept dispatch devaluates generic concepts,
+      # so it must precede the generic invocation case
+      result = enterConceptMatch(c, f, x, flags)
+    elif x.kind == tyGenericInvocation:
       if f[0] == x[0]:
         for i in 1..<f.len:
           # Handle when checking against a generic that isn't fully instantiated
@@ -1826,8 +1830,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # Workaround for regression #4589
           if f[i].kind != tyTypeDesc: return
       result = isGeneric
-    elif concpt.kind == tyConcept:
-      result = enterConceptMatch(c, f, x, flags)
     else:
       let genericBody = f[0]
       var askip = skippedNone

@@ -730,7 +730,11 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions: s
       let nimcache = nimcacheDir(test.name, test.options, target, extraOptions)
       var testClone = test
       let target = changeTarget(extraOptions, target)
-      testSpecHelper(r, testClone, expected, target, extraOptions, nimcache)
+      if target notin gTargets:
+        r.finishTest(test, target, extraOptions, "", "", reDisabled)
+        inc(r.skipped)
+      else:
+        testSpecHelper(r, testClone, expected, target, extraOptions, nimcache)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
@@ -802,6 +806,30 @@ else:
     disabledFiles = disabledFilesDefault
 
 include categories
+
+const slowCategoriesFirst = [
+  # `execProcesses` schedules commands in order. Starting the longest categories
+  # first avoids leaving a large category as the tail after the other workers
+  # have gone idle. This approximate order comes from representative CI timings;
+  # exact runtimes vary by platform and batch.
+  "stdlib", "ic", "gc", "async", "misc", "lib", "arc", "js", "system",
+  "errmsgs", "ccgbugs", "megatest", "destructor", "vm", "threads",
+  "parallel", "cpp", "generics", "compilerapi", "iter", "exception",
+  "macros", "niminaction", "compiler", "effects", "types", "views", "tools",
+  "dll", "parser", "yrc", "template", "pragmas"
+]
+
+proc categoryScheduleRank(category: string): int =
+  let normalized = category.normalize
+  result = slowCategoriesFirst.len
+  for i, candidate in slowCategoriesFirst:
+    if normalized == candidate:
+      return i
+
+proc cmpCategorySchedule(a, b: string): int =
+  result = cmp(categoryScheduleRank(a), categoryScheduleRank(b))
+  if result == 0:
+    result = cmp(a, b)
 
 proc loadSkipFrom(name: string): seq[string] =
   result = @[]
@@ -922,6 +950,7 @@ proc main() =
       for cat in AdditionalCategories:
         if cat notin cats: cats.add cat
     if useMegatest: cats.add MegaTestCat
+    cats.sort(cmpCategorySchedule)
 
     var cmds: seq[string] = @[]
     for cat in cats:
@@ -938,7 +967,9 @@ proc main() =
         processCategory(r, Category(cati), p.cmdLineRest, testsDir, runJoinableTests = false)
     else:
       addExitProc azure.finalize
-      quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
+      quit osproc.execProcesses(cmds,
+        {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
+        beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
