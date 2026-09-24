@@ -1150,7 +1150,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         graph.markDirty moduleToCompile
         graph.markClientsDirty moduleToCompile
       graph.recompilePartially(moduleToCompile)
-      if isUnknownFile:
+      if isUnknownFile and moduleToCompile.int32 < graph.ifaces.len:
         graph.ifaces[moduleToCompile.int32].module = nil
 
   case cmd
@@ -1200,6 +1200,8 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     if isIncludeQuery:
       graph.markClientsDirty fileIndex
     graph.recompilePartially(moduleToCompile)
+    if isUnknownFile and moduleToCompile.int32 < graph.ifaces.len:
+      graph.ifaces[moduleToCompile.int32].module = nil
     let m = graph.getModule moduleToCompile
     if m != nil:
       incl m, sfDirty
