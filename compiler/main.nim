@@ -31,6 +31,7 @@ import ../dist/checksums/src/checksums/sha1
 import pipelines
 import icprof
 from icconfig import produceIcConfig, ensureIcConfig
+from ic/sharedcounters import releaseSharedCounters
 
 when not defined(nimKochBootstrap):
   import nifbackend
@@ -469,6 +470,7 @@ proc mainCommand*(graph: ModuleGraph) =
     # `tStage` for a `nim m` process, so `Process - Stage` is its real startup
     # (exec, runtime init, config replay) rather than its whole runtime.
     timed tStage: commandCheck(graph)
+    releaseSharedCounters()
   of cmdNifC:
     setUseIc(true)
     excl conf.features, Feature.vtables

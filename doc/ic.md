@@ -130,6 +130,27 @@ fingerprint, and hidden lookups record an implementation dependency so private
 edits invalidate their consumers too. These records expose candidate order to
 tooling; they are not a trace of call-site overload resolution.
 
+Shared compile-time counters
+============================
+
+``CacheCounter`` state cannot live in the memory of a single ``nim m`` process:
+sibling modules are compiled by separate, possibly parallel processes and would
+allocate from the same initial state (#26201). Instead the counters are stored in
+``<nimcache>/ic.counters``, guarded by the OS file lock ``ic.counters.lock``.
+A process takes the lock on its first counter operation, loads the file, writes
+it through on every ``inc`` and keeps the lock until it is done with its module,
+so ``ids.inc; ids.value`` observes its own increment. No process waits on
+another one while holding the lock, so this cannot deadlock.
+
+The file survives across builds and records, per counter, the high-water mark
+and the numbers each module's process was handed. A re-semmed module is handed
+the same numbers again, so a no-op rebuild (e.g. a touched file) reproduces its
+artifacts; a module that needs more numbers than before gets fresh ones above
+the high-water mark and can never collide with a value that an unchanged, cached
+module already embeds. Values are therefore unique but, unlike under ``nim c``,
+neither dense nor ordered by import order, and a clean build need not reproduce
+the values of an incremental one.
+
 The driver: graph construction (`commandIc`)
 ============================================
 
