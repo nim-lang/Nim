@@ -1115,7 +1115,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     if conf.ideImportsFromNif and graph.needsIncludeScan(fileIndex):
       discard graph.registerIncluderFromNif(fileIndex)
     isIncludeQuery = graph.inclToMod.hasKey(fileIndex)
-    dataComplete = graph.suggestSymbols.getOrDefault(fileIndex).isComplete
+    dataComplete = graph.suggestDataComplete(fileIndex)
     moduleToCompile = if isIncludeQuery: graph.parentModule(fileIndex) else: fileIndex
     msgs.setDirtyFile(
       conf,
@@ -1136,8 +1136,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
 
   # these commands require partially compiled project
   elif cmd in {ideSug, ideCon, ideOutline, ideHighlight, ideDef, ideChkFile, ideType, ideDeclaration, ideExpand} and
-       (graph.needsCompilation(fileIndex) or cmd in {ideSug, ideCon} or isIncludeQuery or
-        not dataComplete):
+       (cmd in {ideSug, ideCon} or isIncludeQuery or not dataComplete or graph.needsCompilation(fileIndex)):
     # for ideSug use v2 implementation
     if cmd in {ideSug, ideCon}:
       conf.m.trackPos = newLineInfo(fileIndex, line, col)
