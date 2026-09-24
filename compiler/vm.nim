@@ -1346,7 +1346,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
               if t.n[i].kind == nkSym:
                 let p = t.n[i].sym
                 let def = newNodeI(nkIdentDefs, p.info)
-                def.add newIdentNode(p.name, p.info)
+                # the param SYMBOL, as in a from-source typed impl: macros
+                # query it (`getTypeInst`, `getType`) like any typed param
+                def.add newSymNode(p, p.info)
                 def.add opMapTypeInstToAst(c.cache, p.typ, p.info, c.idgen)
                 def.add newNodeI(nkEmpty, p.info)
                 fp.add def

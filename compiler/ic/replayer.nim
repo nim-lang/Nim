@@ -57,6 +57,27 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
         else: discard
   writeFile(cfile & BackendActionsExt, content)
 
+proc targetOptions*(passc: string): string =
+  ## The `#pragma GCC target` option list for the ISA switches (`-mavx2`,
+  ## `-march=native`, ...) of a `localPassC` string; other flags have no
+  ## per-function equivalent and are ignored.
+  result = ""
+  for flag in passc.splitWhitespace:
+    if flag.startsWith("-m") and flag.len > 2:
+      if result.len > 0: result.add ','
+      result.add flag.substr(2)
+
+proc localTargetOptions*(list: openArray[PNode]): string =
+  ## `targetOptions` of every `localpassc` replay action of a loaded module.
+  result = ""
+  for n in list:
+    if n.kind == nkReplayAction and n.len >= 2 and n[0].kind == nkStrLit and
+        n[0].strVal == "localpassc" and n[1].kind == nkStrLit:
+      let t = targetOptions(n[1].strVal)
+      if t.len > 0:
+        if result.len > 0: result.add ','
+        result.add t
+
 proc applyBackendActions*(g: ModuleGraph; cfile: string) =
   ## Apply the C directives recorded for the C file `cfile` (see
   ## `writeBackendActions`). The `link` stage's replacement for loading that

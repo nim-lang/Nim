@@ -153,6 +153,13 @@ type
       ## decide where a demanded definition goes — see the comment there. Empty
       ## outside that stage, which is why every other backend keeps the ordinary
       ## whole-program routing.
+    icTargets*: Table[int, string]
+      ## Under `--icBackendStage:cg`: module position -> the `target(...)`
+      ## option list derived from that module's `{.localPassC: "-m...".}`. A
+      ## definition owned by such a module but emitted into another TU (a
+      ## generic instance, or an emit-everywhere copy) is compiled under these
+      ## options via a pragma — see `cgen.icTargetPush`. Filled lazily, per
+      ## owner module, from its replay actions.
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file

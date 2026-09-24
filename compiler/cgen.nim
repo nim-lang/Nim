@@ -19,7 +19,8 @@ import
   mangleutils, cbuilderbase, modulegraphs, icprof
 
 from expanddefaults import caseObjDefaultBranch
-from ast2nif import globalName, toNifFilename, icNifTypeName
+from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions
+from ic/replayer import localTargetOptions
 from typekeys import modname
 from std/algorithm import sort
 import cnif
@@ -115,6 +116,33 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   else:
     var ms = getModule(s)
     result = m.g.mods[ms.position]
+
+proc icTargetPush(m: BModule; prc: PSym): bool =
+  ## A definition owned by a module with `{.localPassC: "-mavx2".}` can land in
+  ## another module's TU (a generic instance instantiated there, or an
+  ## emit-everywhere copy). That TU is not compiled with the owner's flags, so
+  ## compile the definition itself for the owner's target instead.
+  let owner = getModule(prc)
+  if owner == nil or owner.position == m.module.position: return false
+  if not m.g.icTargets.hasKey(owner.position):
+    m.g.icTargets[owner.position] =
+      localTargetOptions(loadedReplayActions(FileIndex owner.position))
+  let t = m.g.icTargets[owner.position]
+  if t.len == 0: return false
+  case m.config.cCompiler
+  of ccGcc:
+    m.s[cfsProcs].add("#pragma GCC push_options\n#pragma GCC target(\"" & t & "\")\n")
+  of ccCLang:
+    m.s[cfsProcs].add("#pragma clang attribute push (__attribute__((target(\"" &
+      t & "\"))), apply_to = function)\n")
+  else: return false
+  result = true
+
+proc icTargetPop(m: BModule) =
+  case m.config.cCompiler
+  of ccGcc: m.s[cfsProcs].add("#pragma GCC pop_options\n")
+  of ccCLang: m.s[cfsProcs].add("#pragma clang attribute pop\n")
+  else: discard
 
 proc icNifName(m: BModule; s: PSym): string =
   ## The serialized NIF name of `s`, recorded next to its C name in the cnif
@@ -1876,7 +1904,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       if sfCppMember * prc.flags != {}: icNifName(m, prc)
       else: stripCnifMarks(prc.loc.snippet)
     m.s[cfsProcs].add(cnifDefDirective(defName, defFlags, icNifName(m, prc)))
+    let pushed = icTargetPush(m, prc)
     m.s[cfsProcs].add(extract(generatedProc))
+    if pushed: icTargetPop(m)
     m.s[cfsProcs].add(cnifEndDefs())
   else:
     m.s[cfsProcs].add(extract(generatedProc))

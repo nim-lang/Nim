@@ -1643,7 +1643,9 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## of the generic itself (the module or the enclosing proc).
   result = if s.kind == skModule:
              s
-           elif s.kind in skProcKinds and sfFromGeneric in s.flags and s.owner.kind != skModule:
+           # a hook the backend lifted for an owner-less type has no owner:
+           elif s.kind in skProcKinds and sfFromGeneric in s.flags and
+               s.owner != nil and s.owner.kind != skModule:
              s.owner.owner
            else:
              s.owner

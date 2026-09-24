@@ -4524,6 +4524,32 @@ proc registerModuleSelfSym*(c: var DecodeContext; suffix: string; m: PSym) =
   if not c.syms.hasKey(key):
     c.syms[key] = (m, NifIndexEntry())
 
+proc loadedReplayActions*(module: FileIndex): seq[PNode] =
+  ## The replay actions of a module the live loader has already opened — also
+  ## one that was only reached lazily by a symbol lookup and so never went
+  ## through `processTopLevel`. A `.s.bif` groups them in a `(replay ...)`
+  ## header, a lowered `.t.bif` keeps them as plain top-level statements.
+  result = @[]
+  if loaderCtx == nil or not loaderCtx.mods.hasKey(module): return
+  let m = loaderCtx.mods[module]
+  var cur = beginRead(m.buf)
+  if cur.kind != TagLit or not tagIs(cur, toNifTag(nkStmtList)): return
+  inc cur  # enter (stmts
+  skip cur # flags dot
+  skip cur # type dot
+  var localSyms = initTable[string, PSym]()
+  while cur.hasMore and cur.kind == TagLit:
+    if topTagAt(cur) == ttReplay:
+      cur.into:
+        while cur.hasMore:
+          let n = loadNode(loaderCtx[], cur, m.suffix, localSyms)
+          if n != nil: result.add n
+    elif tagIs(cur, toNifTag(nkReplayAction)):
+      let n = loadNode(loaderCtx[], cur, m.suffix, localSyms)
+      if n != nil: result.add n
+    else:
+      skip cur
+
 proc loadNifModule*(c: var DecodeContext; suffix: ModuleSuffix; interf, interfHidden: var TStrTable;
                     flags: set[LoadFlag] = {};
                     resolveModule: ModuleResolver = nil): PrecompiledModule =
