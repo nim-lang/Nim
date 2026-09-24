@@ -1167,7 +1167,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         let s = expectStrLit(c, it)
         appendToModule(sym, n)
         extccomp.addLocalCompileOption(c.config, s, toFullPathConsiderDirty(c.config, sym.info.fileIndex))
-        recordPragma(c, it, "localpassl", s)
+        recordPragma(c, it, "localpassc", s)
       of wPush:
         processPush(c, n, i + 1)
         result = true

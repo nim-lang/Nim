@@ -11,6 +11,7 @@
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 import semmacrosanity
+import ic/sharedcounters
 import
   std/[strutils, tables, intsets, parseutils],
   msgs, vmdef, vmgen, nimsets, types,
@@ -1345,7 +1346,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
               if t.n[i].kind == nkSym:
                 let p = t.n[i].sym
                 let def = newNodeI(nkIdentDefs, p.info)
-                def.add newIdentNode(p.name, p.info)
+                # the param SYMBOL, as in a from-source typed impl: macros
+                # query it (`getTypeInst`, `getType`) like any typed param
+                def.add newSymNode(p, p.info)
                 def.add opMapTypeInstToAst(c.cache, p.typ, p.info, c.idgen)
                 def.add newNodeI(nkEmpty, p.info)
                 fp.add def
@@ -2281,14 +2284,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNccValue:
       decodeB(rkInt)
       let destKey {.cursor.} = regs[rb].node.strVal
-      regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
+      regs[ra].intVal =
+        if usesSharedCounters(c.config): sharedCounterValue(c.config, destKey)
+        else: getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
       let g = c.graph
       declBC()
       let destKey {.cursor.} = regs[rb].node.strVal
       let by = regs[rc].intVal
-      let v = getOrDefault(g.cacheCounters, destKey)
-      g.cacheCounters[destKey] = v+by
+      if usesSharedCounters(c.config):
+        sharedCounterInc(c.config, destKey, by)
+      else:
+        let v = getOrDefault(g.cacheCounters, destKey)
+        g.cacheCounters[destKey] = v+by
       recordInc(c, c.debug[pc], destKey, by)
     of opcNcsAdd:
       let g = c.graph

@@ -563,8 +563,10 @@ proc isProvenance(path: string): bool =
   ## Build-provenance sidecars that legitimately differ between a fresh build and
   ## an edit-accumulated one (they record build history, not codegen). Excluded
   ## only from the cross-build clean==incremental comparison — a *no-op* edit must
-  ## still leave even these untouched.
-  path.endsWith(".frontend.build.nif")
+  ## still leave even these untouched. The backend build file lists the
+  ## body dependencies the previous run discovered (`.bodydeps`), which a clean
+  ## build has not seen yet.
+  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether
