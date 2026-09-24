@@ -977,9 +977,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       conf.icGroup.incl(canonicalizePath(conf, AbsoluteFile arg).string)
   of "icproject":
-    # `nim m`/`nim nifc` only: the ORIGINAL project file (see options.icProject)
+    # `nim m`/`nim nifc` only: the ORIGINAL project file (see options.icProject).
+    # Read it in passCmd1 as well so the child can restore the real project path
+    # before config replay and module parsing; its own source file may be a
+    # standard-library module whose `$projectpath` references must still resolve
+    # against the user's project (for example `system.nim`'s standalone
+    # `panicoverride` include).
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}:
+    if pass in {passCmd1, passCmd2, passPP}:
       conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
   of "icpreparsedconfig":
     # `nim m`/`nim nifc` only: path of the precompiled-config artifact (see
