@@ -1150,6 +1150,8 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
         graph.markDirty moduleToCompile
         graph.markClientsDirty moduleToCompile
       graph.recompilePartially(moduleToCompile)
+      if isUnknownFile:
+        graph.ifaces[moduleToCompile.int32].module = nil
 
   case cmd
   of ideDef:
