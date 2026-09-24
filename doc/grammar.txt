@@ -124,6 +124,7 @@ typeDescExpr = simpleExpr ('not' primary)?
 typeDesc = rawTypeDesc / typeDescExpr
 typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
                  ('ref' | 'ptr' | 'distinct') (tupleDecl | objectDecl))
+               / whenExpr
                / (simpleExpr (comma exprEqExpr)* postExprBlocks?))
                ('not' primary)?
 extraPostExprBlock = ( IND{=} doBlock
