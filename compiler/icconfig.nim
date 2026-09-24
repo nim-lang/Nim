@@ -36,7 +36,7 @@ import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
 
 const
-  IcConfigVersion* = "3"
+  IcConfigVersion* = "4"
     ## Artifact format version. Bump on any layout change here so a child built
     ## by an older compiler rejects a stale artifact and falls back to normal
     ## config loading instead of replaying a format it cannot parse.

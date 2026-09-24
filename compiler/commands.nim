@@ -677,7 +677,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   # raw (often relative-to-config-dir) arguments here would misresolve.
   if pass == passPP and switch.normalize notin
       ["path", "p", "nimblepath", "lazypath", "excludepath",
-       "nonimblepath", "clearnimblepath", "nimcache"]:
+       "nonimblepath", "clearnimblepath", "nimcache", "import", "include"]:
     conf.icConfigSwitches.add (switch, arg)
   case switch.normalize
   of "eval":
@@ -1016,7 +1016,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       if m.len == 0:
         localError(conf, info, "Cannot resolve filename: " & arg)
       else:
-        conf.implicitImports.add(if arg.startsWith(stdPrefix): arg else: m)
+        let resolved = if arg.startsWith(stdPrefix): arg else: m
+        conf.implicitImports.add resolved
+        # A config file's `--import` is relative to that file; record the
+        # resolved module so IC children replay it from any directory.
+        if pass == passPP: conf.icConfigSwitches.add (switch, resolved)
   of "include":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
@@ -1025,6 +1029,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         localError(conf, info, "Cannot resolve filename: " & arg)
       else:
         conf.implicitIncludes.add m
+        if pass == passPP: conf.icConfigSwitches.add (switch, m)
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
   of "asm":
