@@ -2136,8 +2136,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           # Earlier self-calls retain the old placeholder pointer. Resolve it
           # in place as an alias before the routine switches to the concrete
           # type, so those already-typed calls see the inferred type too.
-          if c.p.hasUnresolvedAutoCall and not rhsTyp.isMetaType and
-              isAutoReturnType(lhs.sym.typ):
+          if c.p.hasUnresolvedAutoCall and isAutoReturnType(lhs.sym.typ):
             let resolved = newTypeS(tyAlias, c)
             rawAddSon(resolved, rhsTyp)
             assignType(lhs.sym.typ, resolved)
