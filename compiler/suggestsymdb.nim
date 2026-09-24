@@ -215,11 +215,8 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
     s.isGenericInstance.add(v.isGenericInstance)
   s.isSorted = false
 
-proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair; trackCaughtExceptions: bool;
-          isComplete: bool) =
-  s.mgetOrPut(v.info.fileIndex,
-    newSuggestFileSymbolDatabase(v.info.fileIndex, trackCaughtExceptions)).add(v)
-  s[v.info.fileIndex].isComplete = isComplete
+proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair; trackCaughtExceptions: bool) =
+  s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase(v.info.fileIndex, trackCaughtExceptions)).add(v)
 
 proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo; isGenericInstance: bool): int =
   # if trackCaughtExceptions is false, then all records in the database are not generic instances, so

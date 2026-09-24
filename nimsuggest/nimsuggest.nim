@@ -1115,7 +1115,7 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     if conf.ideImportsFromNif and graph.needsIncludeScan(fileIndex):
       discard graph.registerIncluderFromNif(fileIndex)
     isIncludeQuery = graph.inclToMod.hasKey(fileIndex)
-    dataComplete = graph.suggestDataComplete(fileIndex)
+    dataComplete = graph.suggestSymbols.getOrDefault(fileIndex).isComplete
     moduleToCompile = if isIncludeQuery: graph.parentModule(fileIndex) else: fileIndex
     msgs.setDirtyFile(
       conf,
