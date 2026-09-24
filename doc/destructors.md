@@ -229,6 +229,11 @@ The general pattern in `=copy` looks like:
       dest.field = duplicateResource(source.field)
   ```
 
+The check is needed even though the compiler removes simple self-assignments
+like `x = x` (see [Self assignments]): it cannot see all aliasing, for example
+`a[i] = a[j]` with `i == j` at runtime, or `var` parameters that refer to the
+same location.
+
 The `=copy` proc can be marked with the `{.error.}` pragma. Then any assignment
 that otherwise would lead to a copy is prevented at compile-time. This looks like:
 
@@ -441,6 +446,12 @@ Rewrite rules
 The current implementation follows strategy (2). This means that resources are
 destroyed at the scope exit.
 
+The rules are not independent: when more than one rule matches, the first one
+listed wins. In particular (self-assignment-removal) must take precedence
+over (move-optimization). An assignment overwrites its destination, so in
+`x = x` the right-hand side *is* `lastReadOf x`, and `=sink(x, x)` would
+destroy its own source.
+
 
     var x: T; stmts
     ---------------             (destroy-var)
@@ -461,7 +472,7 @@ destroyed at the scope exit.
     `=sink`(x, f(...))
 
 
-    x = lastReadOf z
+    x = lastReadOf z            # x and z are different locations
     ------------------          (move-optimization)
     `=sink`(x, z)
     `=wasMoved`(z)
@@ -494,6 +505,19 @@ destroyed at the scope exit.
     `=wasMoved`(y)
 
 
+    f_sink(lastReadOf y)        # as part of a larger expression
+    -----------------------     (move-to-sink-arg)
+    f_sink((let blitTmp = y;
+    `=wasMoved`(y);
+    blitTmp))
+
+(move-to-sink) is only valid when the call is a statement of its own. If the
+call is part of a larger expression, `=wasMoved(y)` must run *before* the
+call. Otherwise, in `x = select(cond, x, y)`, the `=sink(x, ...)` that follows
+the call would destroy the very resource `select` returned. The general form is
+(move-to-sink-arg); see [Self assignments] for a worked example.
+
+
 Object and array construction
 =============================
 
@@ -505,9 +529,15 @@ Destructor removal
 ==================
 
 `=wasMoved(x)` followed by a `=destroy(x)` operation cancel each other
-out. An implementation is encouraged to exploit this in order to improve
-efficiency and code sizes. The current implementation does perform this
-optimization.
+out, provided that `x` is not used afterward, which is the case at the end of
+`x`'s scope. An implementation is encouraged to exploit this in order to
+improve efficiency and code sizes. The current implementation does perform
+this optimization.
+
+The side condition matters: if the pair were removed in the middle of `x`'s
+scope, `x` would keep a stale reference to a resource that was moved
+elsewhere, and a later `=sink` or `=destroy` of `x` would free it a second
+time.
 
 
 Self assignments
