@@ -23,6 +23,9 @@ const BackendActionsExt* = ".cflags"
   ## Sidecar written by a module's `cg` stage next to its `.c`, carrying the C
   ## compile/link directives that module's `{.passL.}`/`{.compile.}`/… pragmas
   ## recorded. See `writeBackendActions`.
+const BodyDepsExt* = ".bodydeps"
+  ## Sidecar of a `lower`/`cg` stage output naming the modules whose routine
+  ## bodies the stage read. See `nifbackend.writeBodyDeps`.
 
 proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
                           cfile: string) =

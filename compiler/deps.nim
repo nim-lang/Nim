@@ -20,7 +20,7 @@ import nifstreams
 import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
 import icmodnames
 import icnifcore
-from ic/replayer import BackendActionsExt
+from ic/replayer import BackendActionsExt, BodyDepsExt
 
 type
   FilePair = object
@@ -1563,6 +1563,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       removeFile(cFiles[i])
       removeFile(cFiles[i] & ".stamp")
       removeFile(cFiles[i] & BackendActionsExt)
+      removeFile(cFiles[i] & BodyDepsExt)
   # The merge decision is a pure function of the set of `.c.nif`s present; if we
   # just removed an over-approximated module's artifacts, a decision computed
   # while they were present is stale — it can name a now-absent module as a
@@ -1612,6 +1613,22 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     b.addStrLit s
     b.endTree()
 
+  # Discovered body dependencies: a `lower`/`cg` run records in a `.bodydeps`
+  # sidecar the modules whose routine BODIES it read (an inlined iterator or
+  # inline proc, an embedded foreign definition). A body edit changes no
+  # importer's interface, so nothing else would re-run the stage for this
+  # module; listing the NIFs it read last time as inputs does, like a
+  # compiler's `-MD` depfile. The first build has no sidecar and runs anyway.
+  var nodeBySuffix = initTable[string, int]()
+  for i, node in c.nodes:
+    if live[i]: nodeBySuffix[node.files[0].modname] = i
+  proc bodyDeps(sidecar: string; batch: openArray[int]): seq[int] =
+    result = @[]
+    if not fileExists(sidecar): return
+    for line in lines(sidecar):
+      let j = nodeBySuffix.getOrDefault(line, -1)
+      if j >= 0 and j notin batch and j notin result: result.add j
+
   # lower: one rule per module. Transforms (eventually) the routines the module
   # OWNS once, in the owner's id space, into `<module>.t.nif`, so the `cg` stage
   # reads them instead of re-deriving (which makes a closure `:env`'s identity
@@ -1640,9 +1657,16 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       b.addStrLit "--icBackendModules:" & suffixList(batch)
     for idx in batch:
       inputStr c.semmedFile(c.nodes[idx].files[0])
+    var seen: seq[int] = @[]
+    for idx in batch:
+      for j in bodyDeps(tFiles[idx] & BodyDepsExt, batch):
+        if j notin seen:
+          seen.add j
+          inputStr c.semmedFile(c.nodes[j].files[0])
     inputStr argsFile
     for idx in batch:
       outputStr tFiles[idx]
+      outputStr tFiles[idx] & BodyDepsExt
     b.endTree()
   # The main module is its own rule in every stage: it loads the whole program.
   block:
@@ -1654,8 +1678,11 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
         b.addStrLit "--icBackendStage:lower"
         b.addStrLit "--icBackendModules:" & c.nodes[i].files[0].modname
       inputStr c.semmedFile(c.nodes[i].files[0])
+      for j in bodyDeps(tFiles[i] & BodyDepsExt, [i]):
+        inputStr c.semmedFile(c.nodes[j].files[0])
       inputStr argsFile
       outputStr tFiles[i]
+      outputStr tFiles[i] & BodyDepsExt
       b.endTree()
 
   # cg: one rule per module. Input is this module's OWN `.t.nif`. cg DOES read
@@ -1676,9 +1703,16 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       b.addStrLit "--icBackendModules:" & suffixList(batch)
     for idx in batch:
       inputStr tFiles[idx]
+    var seenCg: seq[int] = @[]
+    for idx in batch:
+      for j in bodyDeps(cFiles[idx] & BodyDepsExt, batch):
+        if j notin seenCg:
+          seenCg.add j
+          inputStr tFiles[j]
     inputStr argsFile
     for idx in batch:
       outputStr cnifFiles[idx]
+      outputStr cFiles[idx] & BodyDepsExt
       # The module's C compile/link directives (`{.passL.}` etc.), recorded so
       # the `link` stage recovers them without loading the module graph. See
       # `replayer.writeBackendActions`.
@@ -1693,11 +1727,14 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
         b.addStrLit "--icBackendStage:cg"
         b.addStrLit "--icBackendModules:" & c.nodes[i].files[0].modname
       inputStr tFiles[i]
+      for j in bodyDeps(cFiles[i] & BodyDepsExt, [i]):
+        inputStr tFiles[j]
       inputStr argsFile
       for j in 0 ..< c.nodes.len:
         if c.nodes[j].id != 0 and live[j]:
           inputStr cnifFiles[j]
       outputStr cnifFiles[i]
+      outputStr cFiles[i] & BodyDepsExt
       outputStr cFiles[i] & BackendActionsExt
       b.endTree()
 

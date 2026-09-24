@@ -1702,13 +1702,13 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       return
     if prc.itemId.module != m.module.position and
         not isBackendMinted(prc.itemId) and
-        (prc.typ == nil or prc.typ.callConv != ccInline) and
         sfDispatcher notin prc.flags:
       # this TU embeds a definition whose body lives in another module's
-      # NIF: record the impl dependency (the artifact's cdeps head) so the
-      # reuse gate re-checks that module's impl cookie. Inline bodies are
-      # already part of the iface cookie; dispatcher bodies are synthesized
-      # from the whole program and live in main, which never reuses.
+      # NIF (an inline proc, a shared instance, an emit-everywhere copy):
+      # record it (the artifact's cdeps head, and the `cg` rule's inputs via
+      # `nifbackend.writeBodyDeps`) so an edit of that body regenerates this
+      # TU. Dispatcher bodies are synthesized from the whole program and live
+      # in main, which is never reused.
       m.icImplMods.incl prc.itemId.module
   var p = newProc(prc, m)
   var header = newBuilder("")
