@@ -25,9 +25,9 @@ const BackendActionsExt* = ".cflags"
   ## recorded. See `writeBackendActions`.
 
 proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
-                          outfile: string) =
-  ## Serialize the backend-relevant replay actions of ONE module to `outfile`,
-  ## one tab-separated action per line.
+                          cfile: string) =
+  ## Serialize the backend-relevant replay actions of ONE module to the sidecar
+  ## of its C file `cfile`, one tab-separated action per line.
   ##
   ## The `link` stage used to recover these by loading the whole import closure
   ## as `PrecompiledModule`s and re-running `replayBackendActions` over each —
@@ -38,14 +38,8 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
   ## declared nifmake output of the `cg` rule, and a missing output re-fires the
   ## rule for ever.
   ##
-  ## `localpassc` is associated with the generated C file, whose path is the
-  ## sidecar's path with `.cflags` removed. Store that path as the third field;
-  ## an IC-loaded module's synthetic NIF filename cannot be mapped back through
-  ## the source-file-based `addLocalCompileOption` API.
-  let cfile = if outfile.endsWith(BackendActionsExt):
-                outfile[0 ..< outfile.len - BackendActionsExt.len]
-              else:
-                outfile
+  ## `localpassc` applies to the module's C file, which the sidecar belongs to,
+  ## so it needs no path of its own.
   var content = ""
   if list != nil:
     for n in list:
@@ -59,14 +53,15 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
         of "link", "passl", "passc", "cppdefine":
           content.add n[0].strVal & "\t" & n[1].strVal & "\n"
         of "localpassc":
-          content.add "localpassc\t" & n[1].strVal & "\t" &
-                      cfile & "\n"
+          content.add "localpassc\t" & n[1].strVal & "\n"
         else: discard
-  writeFile(outfile, content)
+  writeFile(cfile & BackendActionsExt, content)
 
-proc applyBackendActions*(g: ModuleGraph; infile: string) =
-  ## Apply one module's recorded C directives (see `writeBackendActions`). The
-  ## `link` stage's replacement for loading that module and replaying its AST.
+proc applyBackendActions*(g: ModuleGraph; cfile: string) =
+  ## Apply the C directives recorded for the C file `cfile` (see
+  ## `writeBackendActions`). The `link` stage's replacement for loading that
+  ## module and replaying its AST.
+  let infile = cfile & BackendActionsExt
   if not fileExists(infile): return
   for line in lines(infile):
     if line.len == 0: continue
@@ -86,8 +81,8 @@ proc applyBackendActions*(g: ModuleGraph; infile: string) =
     of "passc":
       if f.len == 2: extccomp.addCompileOption(g.config, f[1])
     of "localpassc":
-      if f.len == 3:
-        extccomp.addLocalCompileOptionForCFile(g.config, f[1], AbsoluteFile f[2])
+      if f.len == 2:
+        extccomp.addLocalCompileOptionForCFile(g.config, f[1], AbsoluteFile cfile)
     of "cppdefine":
       if f.len == 2: options.cppDefine(g.config, f[1])
     else: discard

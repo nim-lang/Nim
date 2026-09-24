@@ -762,8 +762,7 @@ proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
     # Record this module's C compile/link directives next to its `.c` so the
     # `link` stage can recover them without loading the module graph. See
     # `replayer.writeBackendActions`.
-    writeBackendActions(g, target.module, target.topLevel,
-                        getCFile(tb).string & BackendActionsExt)
+    writeBackendActions(g, target.module, target.topLevel, getCFile(tb).string)
 
 proc generateMergeStage(g: ModuleGraph) =
   ## Per-module backend merge (`--icBackendStage:merge`): a pure artifact
@@ -922,7 +921,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     addedCFiles.incl extractFilename(cpath)
     # The directives this module recorded (`{.passL: "-lm".}` etc.); without
     # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
-    applyBackendActions(g, cpath & BackendActionsExt)
+    applyBackendActions(g, cpath)
     let cfile = AbsoluteFile cpath
     var cf = Cfile(nimname: splitFile(cfile).name, cname: cfile,
                    obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
@@ -954,7 +953,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         if addedCFiles.containsOrIncl(cbase): continue
         let cfile = AbsoluteFile(nimcache / cbase)
         if not fileExists(cfile.string): continue
-        applyBackendActions(g, cfile.string & BackendActionsExt)
+        applyBackendActions(g, cfile.string)
         var cf = Cfile(nimname: cbase, cname: cfile,
                        obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                        flags: {})
