@@ -2264,7 +2264,9 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # skipped. Layout: (offer <genericSym> <instSym> <genericParamsCount> <type>...).
   for off in genericOffers:
     w.deps.addParLe offerTag, NoLineInfo
-    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.generic)), NoLineInfo
+    # Put the source generic before its generated instance for position lookup.
+    w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.generic)),
+      trLineInfo(w, off.generic.infoImpl)
     w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(off.inst)), NoLineInfo
     w.deps.addIntLit off.genericParamsCount
     for ct in off.concreteTypes:
@@ -2287,13 +2289,14 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   w.deps.addStrLit toFullPath(config, FileIndex(thisModule))
   w.deps.addParRi
 
-  # Template/macro expansions leave no trace in the sem'checked AST, so record
-  # each as `(expansion <symUse @call-site>)`: a `Symbol` use of the expanded
-  # routine carrying the ORIGINAL call-site line info. The loader skips the tag
-  # (processTopLevel), but `idetools` scans every `Symbol` token in the buffer,
-  # so this restores "find usages / goto-def" for templates and macros.
+  # Record source-level routine occurrences replaced by template/macro expansion
+  # or generic instantiation as `(expansion <symUse @call-site>)`. The loader
+  # skips the tag, but `idetools` scans its `Symbol` token for IDE queries.
+  var emittedExpansions = initHashSet[(ItemId, int32, uint16, int16)]()
   for (sym, info) in expansions:
     if sym == nil: continue
+    let key = (sym.itemId, info.fileIndex.int32, info.line, info.col)
+    if emittedExpansions.containsOrIncl(key): continue
     w.deps.addParLe expansionTag, NoLineInfo
     w.deps.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), trLineInfo(w, info)
     w.deps.addParRi
