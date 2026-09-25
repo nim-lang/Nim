@@ -186,7 +186,7 @@ type
   TableNonCopyable = object
     x: seq[(string, MySeqNonCopyable)]
 
-proc toTable(pairs: sink openArray[(string, MySeqNonCopyable)]): TableNonCopyable =
+proc toTable(pairs: openArray[(string, MySeqNonCopyable)]): TableNonCopyable =
   discard
 
 
