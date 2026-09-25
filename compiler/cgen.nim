@@ -197,7 +197,16 @@ proc signatureHasMetaType*(t: PType; depth: int = 0): bool =
   for k in t.kids:
     if signatureHasMetaType(k, depth + 1): return true
 
-proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
+proc seedsOnlyExportcRoutines*(conf: ConfigRef): bool =
+  ## Standalone builds without a GC leave parts of the runtime out. A routine
+  ## that sem marked used (because some unreachable routine refers to it) can
+  ## then need a compilerproc this configuration does not have ("system module
+  ## needs: appendString"). Classic codegen only generates reachable routines
+  ## and never notices, so the per-module backend seeds only the `{.exportc.}`
+  ## entry points there and leaves everything else to demand.
+  conf.target.targetOS == osStandalone and conf.selectedGC == gcNone
+
+proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
   ## A used or exported, concrete, non-generic runtime routine with a body,
   ## OWNED by the module at `modPos`. Shared by the `cg` stage's owned-routine
   ## seeding (so a routine called only from other modules is still emitted by
@@ -207,8 +216,9 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
   ## transforming it can reject a valid program (for example, an unused helper
   ## that captures its owner's `result`). Exported routines are kept even when
   ## the module does not use them itself, because a use by an importer is only
-  ## recorded in the importer's process, never in this module's NIF. The other
-  ## exclusions:
+  ## recorded in the importer's process, never in this module's NIF. With
+  ## `exportcOnly` (see `seedsOnlyExportcRoutines`) only `{.exportc.}` routines
+  ## qualify. The other exclusions:
   ## - nested/closure procs (owner is a proc, not a module): emitted via their
   ##   enclosing routine's lambda-lifting, never standalone;
   ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
@@ -241,7 +251,8 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
   s.magic == mNone and
   sfFromGeneric notin s.flags and
   sfDispatcher notin s.flags and
-  {sfUsed, sfExported} * s.flags != {} and
+  (if exportcOnly: {sfExportc, sfCompilerProc} * s.flags == {sfExportc}
+   else: {sfUsed, sfExported} * s.flags != {}) and
   {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
   s.typ != nil and not signatureHasMetaType(s.typ) and
   s.ast != nil and s.ast.safeLen > bodyPos and
@@ -256,7 +267,7 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int): bool =
   # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
   # (the other empty-body case) carry `sfForward` and are excluded above.
 
-proc bodyIsSeededByItsOwner(prc: PSym): bool =
+proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ## Whether SOME module's `cg` is guaranteed to emit `prc`'s body on its own,
   ## without this TU asking for it. There are exactly two seeders in the
   ## per-module backend, and this enumerates them:
@@ -285,7 +296,8 @@ proc bodyIsSeededByItsOwner(prc: PSym): bool =
   ## be routed through the ownership question at all.
   if isBackendMinted(prc.itemId): return false
   result = sfDispatcher in prc.flags or
-           ownsRuntimeRoutine(prc, prc.itemId.module)
+           ownsRuntimeRoutine(prc, prc.itemId.module,
+                              exportcOnly = seedsOnlyExportcRoutines(m.config))
 
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## Whether the translation unit `m` emits `prc`'s BODY, as opposed to only a
@@ -309,7 +321,7 @@ proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## who DECLARED, and the two drifted apart for every symbol the backend mints.
   if not (m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"):
     return true
-  if not bodyIsSeededByItsOwner(prc):
+  if not bodyIsSeededByItsOwner(m, prc):
     # Seeded by nobody: every demander emits it, merge keeps one.
     result = true
   elif sfDispatcher in prc.flags:

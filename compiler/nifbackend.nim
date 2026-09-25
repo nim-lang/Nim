@@ -159,8 +159,9 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   # The merge stage's DCE drops whatever turns out globally dead.
   if g.config.cmd == cmdNifC and g.config.icBackendStage == "cg":
     let modPos = precomp.module.position
+    let exportcOnly = seedsOnlyExportcRoutines(g.config)
     for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-      if ownsRuntimeRoutine(s, modPos):
+      if ownsRuntimeRoutine(s, modPos, exportcOnly):
         requestProcDef(bmod, s)
 
 proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
