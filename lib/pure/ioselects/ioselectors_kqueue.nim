@@ -65,6 +65,16 @@ else:
       sock: cint
     Selector*[T] = ref SelectorImpl[T]
 
+proc `=destroy`*[T](s: var SelectorImpl[T]) =
+  ## Releases the kqueue fd and its helper socket when the selector becomes
+  ## unreachable. Best effort: a destructor must not raise.
+  if s.kqFD >= 0:
+    discard posix.close(s.kqFD)
+    s.kqFD = -1
+  if s.sock >= 0:
+    discard posix.close(s.sock)
+    s.sock = -1
+
 type
   SelectEventImpl = object
     rfd: cint
@@ -124,6 +134,8 @@ proc newSelector*[T](): owned(Selector[T]) =
 proc close*[T](s: Selector[T]) =
   let res1 = posix.close(s.kqFD)
   let res2 = posix.close(s.sock)
+  s.kqFD = -1
+  s.sock = -1
   when hasThreadSupport:
     deinitLock(s.changesLock)
     deallocSharedArray(s.fds)
