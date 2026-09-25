@@ -393,6 +393,27 @@ proc reownFromTwin(n: PNode; twin, s: PSym) =
 proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
                     seenNested: var IntSet)
 
+proc writeBodyDeps(g: ModuleGraph; targets: openArray[PrecompiledModule];
+                   mods: IntSet; outfile: string) =
+  ## The `.bodydeps` sidecar next to a stage output: the suffixes of the modules
+  ## (other than this batch's members) whose routine BODIES the stage read — an
+  ## inlined iterator, an embedded inline proc or foreign definition. deps.nim
+  ## lists their NIFs as inputs of the stage's rule on the next run, so an edit
+  ## of such a body re-runs the stage although this module's own NIF did not
+  ## change (a body edit changes no importer's interface). Always written: it is
+  ## a declared output of the rule.
+  var own = initIntSet()
+  for t in targets:
+    if t.module != nil: own.incl t.module.position
+  var lines: seq[string] = @[]
+  for pos in mods.items:
+    if pos >= 0 and pos < g.config.m.fileInfos.len and pos notin own:
+      lines.add cachedModuleSuffix(g.config, FileIndex pos)
+  sort lines
+  var content = ""
+  for l in lines: content.add l & "\n"
+  writeFile(outfile, content)
+
 proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Backend lowering for this invocation's batch
   ## (`--icBackendStage:lower --icBackendModules:<a,b,c>`):
@@ -436,6 +457,12 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   var seenNested = initIntSet()
   for target in targets:
     lowerOneModule(g, target, seenNested)
+  for target in targets:
+    if target.module != nil:
+      writeBodyDeps(g, targets, g.icBodyDeps,
+        getNimcacheDir(g.config).string /
+          cachedModuleSuffix(g.config, FileIndex target.module.position) &
+          ".t.bif" & BodyDepsExt)
 
 proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
                     seenNested: var IntSet) =
@@ -762,8 +789,10 @@ proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
     # Record this module's C compile/link directives next to its `.c` so the
     # `link` stage can recover them without loading the module graph. See
     # `replayer.writeBackendActions`.
-    writeBackendActions(g, target.module, target.topLevel,
-                        getCFile(tb).string & BackendActionsExt)
+    writeBackendActions(g, target.module, target.topLevel, getCFile(tb).string)
+    var mods = g.icBodyDeps
+    for pos in tb.icImplMods.items: mods.incl pos
+    writeBodyDeps(g, [target], mods, getCFile(tb).string & BodyDepsExt)
 
 proc generateMergeStage(g: ModuleGraph) =
   ## Per-module backend merge (`--icBackendStage:merge`): a pure artifact
@@ -922,7 +951,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     addedCFiles.incl extractFilename(cpath)
     # The directives this module recorded (`{.passL: "-lm".}` etc.); without
     # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
-    applyBackendActions(g, cpath & BackendActionsExt)
+    applyBackendActions(g, cpath)
     let cfile = AbsoluteFile cpath
     var cf = Cfile(nimname: splitFile(cfile).name, cname: cfile,
                    obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
@@ -954,7 +983,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         if addedCFiles.containsOrIncl(cbase): continue
         let cfile = AbsoluteFile(nimcache / cbase)
         if not fileExists(cfile.string): continue
-        applyBackendActions(g, cfile.string & BackendActionsExt)
+        applyBackendActions(g, cfile.string)
         var cf = Cfile(nimname: cbase, cname: cfile,
                        obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                        flags: {})

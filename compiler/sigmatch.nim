@@ -2376,6 +2376,11 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       dest = generateTypeInstance(c, convMatch.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar}):
+      if dest.kind in {tyVar, tyLent} and tfVarIsPtr notin dest.flags:
+        # under IC the converter's return type can be loaded (Sealed) and
+        # shared; flag a private copy instead of mutating it
+        if dest.state == Sealed: dest = copyType(dest, c.idgen, dest.owner)
+        dest.incl tfVarIsPtr
       # can't fully mark used yet, may not be used in final call
       incl(c.converters[i].flagsImpl, sfUsed)
       markOwnerModuleAsUsed(c, c.converters[i])
@@ -2400,7 +2405,6 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.add param
 
       if dest.kind in {tyVar, tyLent}:
-        dest.incl tfVarIsPtr
         result = newDeref(result)
 
       inc(m.convMatches)

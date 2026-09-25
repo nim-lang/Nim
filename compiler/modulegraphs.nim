@@ -93,9 +93,14 @@ type
                                   # vmgen), expanded templates (semTemplateExpr)
                                   # and instantiated generics (generateInstance).
                                   # Inline iterators / `inline` procs are NOT
-                                  # tracked: they are inlined at codegen, where
-                                  # the nifc backend's NIF-mtime invalidation
-                                  # already re-codegens their users.
+                                  # tracked: they are inlined by the backend,
+                                  # whose `lower`/`cg` rules depend on the
+                                  # bodies they read (see `icBodyDeps`).
+    icBodyDeps*: IntSet           # backend `lower`/`cg` stages: module ids whose
+                                  # routine BODIES this process read (inlined
+                                  # iterators, embedded foreign definitions).
+                                  # Written to a sidecar so deps.nim can make
+                                  # the stage's rule depend on their NIFs.
     icQualIfaces*: IntSet         # module positions whose interface tables were
                                   # populated ONLY for qualified access through a
                                   # module re-export (`import x; export x`); the
@@ -1048,6 +1053,7 @@ proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
       return true
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
+  if g.config.cmd == cmdNifC: g.icBodyDeps.incl s.itemId.module
   result = s.ast[bodyPos]
   if result != nil and nfLazyBody in result.flags and forceLazyBodyHook != nil:
     # Sanctioned body-access gate (see astdef.bodyPos): materialize the deferred
