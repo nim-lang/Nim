@@ -451,6 +451,10 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
+    when defined(nimsuggest):
+      if graph.config.ideActive:
+        graph.setSuggestDataComplete(fileIdx, not (graph.config.ideCmd in {ideSug, ideCon} and
+          fileIdx == graph.config.m.trackPos.fileIndex))
   if result == nil:
     when not defined(nimKochBootstrap):
       # For cmdM: load imports from NIF files (but compile the main module from source)
