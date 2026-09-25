@@ -960,40 +960,14 @@ proc pruneDeadSpeculative(c: var DepContext) =
   # them is deferred as well. `hard` already is that closure.
   let alive = hard
 
-  # Drop the scan artifacts of a module that just left the graph, so an
-  # edit-accumulated cache does not differ from a clean one for no reason
-  # (`tests/ic/tdead_when_import` pins that). Re-running nifler if it ever comes
-  # back costs a single parse.
-  #
-  # But a FILE can belong to several nodes, and only the NODE is dead.
-  # `lib/system/inclrtl.nim` is `include`d by dozens of live stdlib modules and
-  # also sits in the file set of a dead-speculative one; a clean build therefore
-  # has its `.p.nif`, and deleting it here does not tidy the cache, it corrupts
-  # it. The consequences compound: the missing output re-fires that file's
-  # `nifler` rule, which rewrites the parsed file with a fresh mtime, which
-  # re-fires every `nim_m` rule listing it as an input — 16 full module re-sems
-  # (system, os, times, strutils, macros, unicode, ...) on every warm build, for
-  # ever, because the scanner is stateless and rediscovers the dead node each
-  # run. Measured on a 219-module program: an 11 s NO-OP build. So delete only
-  # what no live node claims.
-  var liveFiles = initHashSet[string]()
-  for i in 0 ..< n:
-    if alive[i]:
-      for f in c.nodes[i].files: liveFiles.incl f.nimFile
-
   var deferred = 0
   for i in 0 ..< n:
     let wasDeferred = c.nodes[i].deferred
     c.nodes[i].deferred = not alive[i]
     if alive[i] or wasDeferred: continue
-    for f in c.nodes[i].files:
-      if f.nimFile in liveFiles: continue
-      removeFile(c.parsedFile(f))
-      removeFile(c.depsFile(f))
-      removeFile(c.parsedDepsFile(f))
-    # A module selected by a previous configuration has been semmed already;
-    # its sem outputs go as well (its backend outputs are pruned with every
-    # other node the backend does not reach, see generateBackendBuildFile).
+    # A module selected by a previous configuration has been semmed already.
+    # Nothing may load that NIF: an importer that takes the guarded branch has
+    # to stop for discovery, so that the module is semmed again.
     let f = c.nodes[i].files[0]
     removeFile(c.semmedFile(f))
     removeFile(c.ifaceFile(f))
@@ -1002,13 +976,45 @@ proc pruneDeadSpeculative(c: var DepContext) =
     removeFile(c.semDepsFile(f))
     if c.nodes[i].missingImport.len > 0:
       rawMessage(c.config, hintSuccess,
-        "ic: skipping " & f.nimFile &
+        "ic: skipping " & c.nodes[i].files[0].nimFile &
         " (reached only under an undecidable `when`, and imports " &
         c.nodes[i].missingImport & ", which is not installed)")
     else: inc deferred
   if deferred > 0:
     rawMessage(c.config, hintSuccess,
       "ic: " & $deferred & " module(s) deferred behind undecidable when guards")
+
+proc removeDeferredScans(c: DepContext) =
+  ## Drop the scan artifacts of the modules that are still deferred once
+  ## discovery is done, so an edit-accumulated cache does not differ from a
+  ## clean one for no reason (`tests/ic/tdead_when_import` pins that). Not
+  ## earlier: a module that discovery brings back is not scanned again.
+  ## Re-running nifler if it ever comes back costs a single parse. (Its sem
+  ## outputs went when it was deferred; its backend outputs are pruned with
+  ## every other module the backend does not reach.)
+  ##
+  ## But a FILE can belong to several nodes, and only the NODE is deferred.
+  ## `lib/system/inclrtl.nim` is `include`d by dozens of live stdlib modules and
+  ## also sits in the file set of a deferred one; a clean build therefore has
+  ## its `.p.nif`, and deleting it here does not tidy the cache, it corrupts it.
+  ## The consequences compound: the missing output re-fires that file's
+  ## `nifler` rule, which rewrites the parsed file with a fresh mtime, which
+  ## re-fires every `nim_m` rule listing it as an input — 16 full module re-sems
+  ## (system, os, times, strutils, macros, unicode, ...) on every warm build, for
+  ## ever, because the scanner is stateless and rediscovers the deferred node
+  ## each run. Measured on a 219-module program: an 11 s NO-OP build. So delete
+  ## only what no live node claims.
+  var liveFiles = initHashSet[string]()
+  for node in c.nodes:
+    if not node.deferred:
+      for f in node.files: liveFiles.incl f.nimFile
+  for node in c.nodes:
+    if not node.deferred: continue
+    for f in node.files:
+      if f.nimFile in liveFiles: continue
+      removeFile(c.parsedFile(f))
+      removeFile(c.depsFile(f))
+      removeFile(c.parsedDepsFile(f))
 
 proc computeSCCs(c: DepContext): seq[seq[int]] =
   ## Tarjan's strongly-connected-components over the module dependency graph
@@ -1873,6 +1879,8 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
   result = false
   let n0 = c.nodes.len  # snapshot: new nodes are traversed as they're added
   for ni in 0 ..< n0:
+    # A deferred module was not semmed by the last round.
+    if c.nodes[ni].deferred: continue
     let confirmed = afterRound or semDepsAreCurrent(c, c.nodes[ni])
     for p in readSemDeps(c, c.nodes[ni].files[0]):
       let pair = c.toPair(p)
@@ -2108,6 +2116,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         # exit code is derived from `errorCounter`.
         inc conf.errorCounter
         break
+
+    removeDeferredScans(c)
 
     # Phase 2 — backend (whole-program `nim nifc`), run once over the now-final
     # graph. Kept a separate nifmake run so backend rebuilds are decided purely
