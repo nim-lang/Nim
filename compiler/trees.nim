@@ -12,6 +12,17 @@
 import
   ast, wordrecg, idents
 
+proc sameSymOrField*(a, b: PSym): bool =
+  ## Symbol identity, except that two `skField` symbols with the same name and
+  ## position count as the same field. The IC loader deliberately mints a fresh
+  ## `skField` stub for every cross-context field use (see
+  ## `ast2nif.loadFieldStub`), so pointer identity cannot tell whether two
+  ## accesses name the same field. Callers compare the accessed objects
+  ## separately; within one object a field name is unique.
+  result = a == b or
+    (a != nil and b != nil and a.kind == skField and b.kind == skField and
+     a.name.s == b.name.s and a.position == b.position)
+
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   result = false
   if n == nil: return

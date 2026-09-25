@@ -30,7 +30,7 @@ proc isCompileTimeOnlyNode(n: PNode): bool {.inline.} =
   ## do not read the runtime location that alias analysis is protecting.
   n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
 
-func sameLocation(a, b: PNode): bool =
+proc sameLocation(a, b: PNode): bool =
   template sameConstIndex(a, b: PNode): bool =
     a.kind in nkLiterals and b.kind in nkLiterals and a.intVal == b.intVal
   var a = a
@@ -39,10 +39,10 @@ func sameLocation(a, b: PNode): bool =
   while b.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}: b = b[1]
   if a.kind != b.kind: return false
   case a.kind
-  of nkSym: result = a.sym.id == b.sym.id
+  of nkSym: result = sameSymOrField(a.sym, b.sym)
   of nkDotExpr, nkCheckedFieldExpr:
     result = a[1].kind == nkSym and b[1].kind == nkSym and
-             sameLocation(a[0], b[0]) and a[1].sym.id == b[1].sym.id
+             sameLocation(a[0], b[0]) and sameSymOrField(a[1].sym, b[1].sym)
   of nkBracketExpr:
     result = sameLocation(a[0], b[0]) and sameConstIndex(a[1], b[1])
   of nkObjUpConv, nkObjDownConv, nkDerefExpr, nkHiddenDeref:
@@ -212,7 +212,7 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
       result = isPartOf(a[0], b[0], flags)
       if result != arNo:
         # if the fields are different, it's not the same location
-        if a[1].sym.id != b[1].sym.id:
+        if not sameSymOrField(a[1].sym, b[1].sym):
           if pfStructural in flags and isAccessorPrefixOf(a, b):
             result = arYes
           else:

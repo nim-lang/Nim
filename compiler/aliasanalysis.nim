@@ -1,5 +1,5 @@
 
-import ast
+import ast, trees
 
 import std / assertions
 
@@ -115,7 +115,7 @@ proc aliases*(obj, field: PNode): AliasKind =
     of nkSym:
       if currFieldPath.sym != currObjPath.sym: return no
     of nkDotExpr:
-      if currFieldPath[1].sym != currObjPath[1].sym: return no
+      if not sameSymOrField(currFieldPath[1].sym, currObjPath[1].sym): return no
     of nkDerefExpr, nkHiddenDeref:
       discard
     of nkBracketExpr:

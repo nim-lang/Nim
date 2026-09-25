@@ -24,7 +24,8 @@ import std/[strtabs, tables, strutils, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites
+from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites,
+  sameSymOrField
 
 type
   Con = object
@@ -1170,7 +1171,7 @@ proc sameLocation*(a, b: PNode): bool =
   if a.kind in nkEndPoint and b.kind in nkEndPoint:
     if a.kind == b.kind:
       case a.kind
-      of nkSym: a.sym == b.sym
+      of nkSym: sameSymOrField(a.sym, b.sym)
       of nkDotExpr, nkCheckedFieldExpr: sameLocation(a[0], b[0]) and sameLocation(a[1], b[1])
       of nkBracketExpr: sameLocation(a[0], b[0]) and sameConstant(a[1], b[1])
       else: false
