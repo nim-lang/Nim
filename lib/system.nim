@@ -2989,34 +2989,78 @@ template whenNotVmJsNims(normalBody, restrictedBody: untyped) =
     else:
       restrictedBody
 
-proc substr*(a: openArray[char]): string =
-  ## Returns a new string, copying contents of `a`.
+proc toOwned*[T: char|byte](a: openArray[T]): string =
+  ## Returns a new owned string, copying the whole contents of `a`.
   ##
-  ## .. warning:: As opposed to other `substr` overloads, no additional input
-  ##    validation and clamping is performed!
+  ## Use this when the `openArray` already denotes the exact data to copy,
+  ## for example after a `toOpenArray` call that has already selected the
+  ## desired range.
   ##
-  ## This proc does not prevent raising an `IndexDefect` when `a` is being
-  ## passed using a `toOpenArray` call with out-of-bounds indexes:
-  ## * `doAssertRaises(IndexDefect): discard "abc".toOpenArray(-9, 9).substr()`
-  ##
-  ## If clamping is required, consider using
-  ## `substr(s: string; first, last: int) <#substr,string,int,int>`_:
-  ## * `doAssert "abc".substr(-9, 9) == "abc"`
+  ## For `openArray[char]`, `a.toOwned` produces the same result as
+  ## `a.substr() <#substr,openArray[char]>`_ with default arguments.
+  ## The difference is that `toOwned` does not accept extra `first`/`last`
+  ## arguments and therefore does not perform an additional clamping step.
   runnableExamples:
-    let a = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    assert a.substr() == "abcdefgh"
-    assert a.toOpenArray(2, 5).substr() == "cdef"
-    assert a.toOpenArray(2, high(a)).substr() == "cdefgh"  # From index 2 to `high(a)`
-    doAssertRaises(IndexDefect): discard a.toOpenArray(5, 99).substr()
+    let chars = ['a', 'b', 'c', 'd']
+    doAssert chars.toOwned() == "abcd"
+
+    let bytes = [byte 'a', byte 'b', byte 'c']
+    doAssert bytes.toOwned() == "abc"
   result = newStringUninit(a.len)
   whenNotVmJsNims():
     if a.len > 0:
       {.cast(noSideEffect).}:
-        copyMem(beginStore(result, a.len), a[0].unsafeAddr, a.len)
+        copyMem(beginStore(result, a.len), a[0].addr, a.len)
         endStore(result)
   do:
     for i, ch in a:
-      result[i] = ch
+      result[i] = char ch
+
+proc substrImpl(a: string|openArray[char]; first, last: int): string {.noinit.} =
+  let
+    first = max(first, 0)
+    last = min(last, high(a))
+    L = max(last - first + 1, 0)
+  result = newStringUninit(L)
+  whenNotVmJsNims():
+    if L > 0:
+      when a is string:
+        copyMem(beginStore(result, L), readRawData(a, first), L)
+      else:
+        copyMem(beginStore(result, L), a[first].addr, L)
+      endStore(result)
+  do:
+    for i in 0..<L:
+      result[i] = a[i + first]
+
+proc substr*(a: openArray[char]; first = 0; last = int.high): string =
+  ## Returns a new string containing a substring (slice) of `a`,
+  ## copying characters from index `first` to index `last` inclusive.
+  ##
+  ## This proc adds range selection on top of an existing `openArray`.
+  ## Unlike `toOwned`_, it performs additional handling of its own arguments.
+  ##
+  ## Index values are validated and capped:
+  ## - Negative `first` is clamped to 0
+  ## - If `last >= a.len`, it is clamped to `high(a)`
+  ## - If `last < first`, returns an empty string
+  ##
+  ## Use `toOwned(a) <#toOwned,openArray[T]>`_ when `a` already represents
+  ## the exact slice to copy and no further range selection is intended.
+  ## Use `substr` when the caller still needs `first`/`last` handling,
+  ## including clamping.
+  ##
+  ## With the default arguments, `a.substr()` copies the whole input and
+  ## produces the same result as `toOwned(a)`.
+  runnableExamples:
+    let a = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    assert a.substr() == "abcdefgh"
+    assert a.substr(2, 5) == "cdef"       # Normal substring
+    assert a.substr(5, 99) == "fgh"       # From index 5 to `high(a)`
+    assert a.substr(42, 99) == ""         # `first` out of bounds
+    assert a.substr(100, 5) == ""         # `first > last`
+    assert a.substr(-1, 2) == "abc"       # Negative `first` clamped to 0
+  substrImpl(a, first, last)
 
 proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` requires this to exist this way
   ## Returns a new string containing a substring (slice) of `s`,
@@ -3028,11 +3072,6 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
   ## - If `last < first`, returns an empty string
   ## This means `substr` can also be used to `cut`:idx: or `limit`:idx:
   ## a string's length.
-  ##
-  ## .. note::
-  ##   If index values are ensured to be in-bounds, for performance
-  ##   critical cases consider using a non-clamping overload
-  ##   `substr(a: openArray[char]) <#substr,openArray[char]>`_
   runnableExamples:
     let a = "abcdefgh"
     assert a.substr(2, 5) == "cdef" # Normal substring
@@ -3041,18 +3080,7 @@ proc substr*(s: string; first, last: int): string = # A bug with `magic: Slice` 
     assert a.substr(42, 99) == ""   # `first` out of bounds
     assert a.substr(100, 5) == ""   # `first > last`
     assert a.substr(-1, 2) == "abc" # Negative `first` clamped to 0
-  let
-    first = max(first, 0)
-    last = min(last, high(s))
-    L = max(last - first + 1, 0)
-  result = newStringUninit(L)
-  whenNotVmJsNims():
-    if L > 0:
-      copyMem(beginStore(result, L), readRawData(s, first), L)
-      endStore(result)
-  do:
-    for i in 0..<L:
-      result[i] = s[i + first]
+  substrImpl(s, first, last)
 
 proc substr*(s: string, first = 0): string =
   ## Convenience `substr <#substr,string,int,int>`_ overload that returns
