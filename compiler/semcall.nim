@@ -727,11 +727,17 @@ proc markConvertersUsed*(c: PContext, n: PNode) =
     if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
       markUsed(c, a.info, a[0].sym)
 
+proc commitGenericExpansions(c: PContext, m: TCandidate) =
+  for expansion in m.pendingGenericExpansions:
+    rememberExpansion(c, expansion.info, expansion.sym)
+
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   var m = newCandidate(c, f)
   result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
+  if result != nil:
+    commitGenericExpansions(c, m)
   when defined(icDbg):
     if result == nil and f != nil and a != nil and f.kind == tyEnum:
       echo "INDEXMISMATCH f=", typeToString(f), " itemId=", f.itemId,
@@ -750,6 +756,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
   if result != nil:
+    commitGenericExpansions(c, m)
     # This almost exactly replicates the steps taken by the compiler during
     # param matching. It performs an embarrassing amount of back-and-forth
     # type jugling, but it's the price to pay for consistency and correctness
@@ -915,6 +922,8 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           x.call.add tn
         else:
           internalAssert c.config, false
+  if finalCallee.instantiatedFrom != nil:
+    rememberExpansion(c, info, finalCallee.instantiatedFrom)
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
@@ -925,6 +934,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
+  commitGenericExpansions(c, x)
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags;
@@ -1020,6 +1030,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool)
         result.typ = makeTypeFromExpr(c, result.copyTree)
       elif doError:
         notFoundError(c, n, errors)
+    else:
+      rememberExpansion(c, getCallLineInfo(n), s)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     result = newNodeI(a.kind, getCallLineInfo(n))
