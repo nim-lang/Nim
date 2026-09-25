@@ -431,6 +431,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     when defined(reportCacheHits):
       echo "Generic instantiation cached ", typeToString(result), " for ", typeToString(t)
     return
+  var substituted = false
   for i in FirstGenericParamAt..<t.kidsLen:
     var x = t[i]
     if x.kind in {tyGenericParam}:
@@ -439,6 +440,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         if header == t: header = instCopyType(cl, t)
         header[i] = x
         propagateToOwner(header, x)
+        substituted = true
     else:
       # Under IC `t` may be a loaded dep type (Sealed/immutable); mutating it
       # would assert, so propagate into a copy. For non-Sealed types keep
@@ -449,7 +451,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       if header == t and t.state == Sealed: header = instCopyType(cl, t)
       propagateToOwner(header, x)
 
-  if header != t:
+  if substituted:
     # search again after first pass:
     result = searchInstTypes(cl.c.graph, header)
     if result != nil and sameFlags(result, t):
@@ -457,8 +459,15 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         echo "Generic instantiation cached ", typeToString(result), " for ",
           typeToString(t), " header ", typeToString(header)
       return
-  else:
+  elif header == t:
     header = instCopyType(cl, t)
+  else:
+    # Only the Sealed copy above separates `header` from `t`. For a mutable
+    # `t` the arguments' flags are propagated into `t` and the clearing
+    # `instCopyType` above follows; do the same clearing here. Otherwise a
+    # concrete instance keeps `tfHasMeta` from its arguments, and outer generic
+    # matching then treats an already concrete proc value as a meta type.
+    header.excl tfInstClearedFlags
 
   # The instantiating module owns the instance (and announces it as an offer):
   # the generic body's module (`t.genericHead.owner`) has no business owning a
