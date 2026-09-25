@@ -145,9 +145,9 @@ proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
 proc raiseDefectWrapper(a: VmArgs) {.nimcall.} =
   discard
 
-proc staticWalkDirImpl(path: string, relative: bool): PNode =
+proc staticWalkDirImpl(path: string, relative, checkDir: bool): PNode =
   result = newNode(nkBracket)
-  for k, f in walkDir(path, relative):
+  for k, f in walkDir(path, relative, checkDir):
     result.add toLit((k, f))
 
 from std / compilesettings import SingleValueSetting, MultipleValueSetting
@@ -267,7 +267,7 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     systemop raiseDefect
     registerCallback c, "stdlib.staticos.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+      setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1), getBool(a, 2)))
     registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
       setResult(a, dirExists(getString(a, 0)))
     registerCallback c, "stdlib.staticos.staticFileExists", proc (a: VmArgs) {.nimcall.} =
