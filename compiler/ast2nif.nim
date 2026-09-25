@@ -991,7 +991,12 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
     # global `c.syms`), so def'ing the same field in two reclists never collides.
     inc w.inTypeReclist
     let savedFieldSyms = move w.emittedFieldSyms
-    writeNode(w, dest, typ.nImpl)
+    # A concept's type node contains its required proc declarations. Serializing
+    # them as ordinary type-body statements turns each `nkProcDef` into just a
+    # symbol reference, which leaves the loaded `tyConcept` body without any
+    # matchable requirements. Preserve those declarations as AST so a consumer
+    # loading the concept from a NIF can perform concept matching.
+    writeNode(w, dest, typ.nImpl, forAst = typ.kind == tyConcept)
     w.emittedFieldSyms = savedFieldSyms
     dec w.inTypeReclist
     writeSym(w, dest, typ.ownerFieldImpl)
@@ -1406,6 +1411,9 @@ var unusedIdTag = registerTag("unusedid")
 # h = openHandle()` leaked, silently and only under `nim ic`).
 const ModFlagInjectDestructors* = 1'i32
 var modFlagsTag = registerTag("modflags")
+# `(eagerproc <symuse>)` — an `{.exportc.}` routine's position among the
+# module's top-level statements; see `writeToplevelNode`.
+var eagerProcTag = registerTag("eagerproc")
 
 # `(nflags <ident> <symuse>)` — an `nkSym` NODE's own flags. A sym node is
 # normally emitted as a bare NIF `SymUse` token, which has nowhere to put them,
@@ -1437,6 +1445,7 @@ proc registerNifAstTags*() =
   bindingIdTag = registerTag(bindingIdTagName)
   genericArgsTag = registerTag(genericArgsTagName)
   modFlagsTag = registerTag("modflags")
+  eagerProcTag = registerTag("eagerproc")
   symNodeFlagsTag = registerTag(symNodeFlagsTagName)
   replayTag = registerTag("replay")
   repConverterTag = registerTag("repconverter")
@@ -1709,6 +1718,16 @@ proc writeToplevelNode(w: var Writer; dest, bottom: var IcBuilder; n: PNode) =
      nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef, nkTemplateDef:
     # We write purely declarative nodes at the bottom of the file
     writeNode(w, bottom, n)
+    if n.kind in {nkProcDef, nkFuncDef, nkConverterDef} and n[namePos].kind == nkSym and
+        n[genericParamsPos].kind == nkEmpty and
+        {sfExportc, sfCompilerProc} * n[namePos].sym.flagsImpl == {sfExportc}:
+      # Classic codegen generates an `{.exportc.}` routine at its declaration
+      # (`genStmts`), between the module-level emits around it: a later emit may
+      # call it by its C name, an earlier one may declare a type its signature
+      # uses. Keep that position in the header section, where the emits are.
+      dest.addParLe eagerProcTag, trLineInfo(w, n.info)
+      dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(n[namePos].sym)), NoLineInfo
+      dest.addParRi()
   of nkPragma:
     # Top-level pragmas — chiefly `{.emit.}`, plus the `{.push/pop.}` that guard
     # its neighbours — must survive the backend reload so the `cg` stage re-runs
@@ -4261,7 +4280,7 @@ type
     ttRepTrace, ttRepDeepCopy, ttRepEnumToStr, ttRepMethod, ttRepPureEnum,
     ttRepCppMember, ttExport, ttInclude, ttImport, ttOffer, ttTOffer,
     ttModuleSrc, ttExpansion, ttInterface, ttSig, ttImplementation,
-    ttLetSection, ttVarSection, ttPragma
+    ttLetSection, ttVarSection, ttPragma, ttEagerProc
 
 const
   letSectionTag = toNifTag(nkLetSection)
@@ -4273,6 +4292,7 @@ proc classifyTopTag(name: string): TopTag =
   of "replay": ttReplay
   of "unusedid": ttUnusedId
   of "modflags": ttModFlags
+  of "eagerproc": ttEagerProc
   of "repconverter": ttRepConverter
   of "repdestroy": ttRepDestroy
   of "repwasmoved": ttRepWasMoved
@@ -4502,6 +4522,19 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         if stmtNode != nil:
           result.topLevel.sons.add stmtNode
         icProfStop(tTopStmts)
+      of ttEagerProc:
+        # The routine definition itself; `genStmts` generates it here, in order
+        # with the module-level emits around it.
+        if LoadFullAst in flags:
+          cur.into:
+            if cur.kind == Symbol:
+              let s = resolveHookSym(c, symName(cur))
+              if s != nil:
+                if s.state == Partial: c.loadSym(s)
+                if s.astImpl != nil: result.topLevel.sons.add s.astImpl
+            while cur.hasMore: skip cur
+        else:
+          skip cur
       of ttOther:
         if LoadFullAst in flags:
           let stmtNode = loadNode(c, cur, suffix, localSyms)

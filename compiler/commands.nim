@@ -324,7 +324,11 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     result = false
     invalidCmdLineOption(conf, passCmd1, switch, info)
 
-proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
+proc compileOptionValue*(conf: ConfigRef; switch: string; known: var bool): bool =
+  ## The value `compileOption(switch)` has in `conf`, without diagnostics.
+  ## `known` is false for a name that is not a boolean compile option. Also used
+  ## by the IC dependency scanner to evaluate `when compileOption(...)` guards.
+  known = true
   case switch.normalize
   of "debuginfo": result = contains(conf.globalOptions, optCDebug)
   of "compileonly", "c": result = contains(conf.globalOptions, optCompileOnly)
@@ -349,9 +353,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "fieldchecks": result = contains(conf.options, optFieldCheck)
   of "rangechecks": result = contains(conf.options, optRangeCheck)
   of "boundchecks": result = contains(conf.options, optBoundsCheck)
-  of "refchecks":
-    warningDeprecated(conf, info, "refchecks is deprecated!")
-    result = contains(conf.options, optRefCheck)
+  of "refchecks": result = contains(conf.options, optRefCheck)
   of "overflowchecks": result = contains(conf.options, optOverflowCheck)
   of "staticboundchecks": result = contains(conf.options, optStaticBoundsCheck)
   of "stylechecks": result = contains(conf.options, optStyleCheck)
@@ -364,18 +366,25 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "threads": result = contains(conf.globalOptions, optThreads)
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
-  of "patterns", "trmacros":
-    if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
-    result = contains(conf.options, optTrMacros)
+  of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
-  of "nilseqs", "nilchecks", "taintmode":
-    warningOptionNoop(switch)
-    result = false
+  of "nilseqs", "nilchecks", "taintmode": result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
   of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
   of "mangle": result = contains(conf.globalOptions, optItaniumMangle)
   else:
     result = false
+    known = false
+
+proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
+  case switch.normalize
+  of "refchecks": warningDeprecated(conf, info, "refchecks is deprecated!")
+  of "patterns": deprecatedAlias(switch, "trmacros")
+  of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
+  else: discard
+  var known = false
+  result = compileOptionValue(conf, switch, known)
+  if not known:
     invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -677,7 +686,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   # raw (often relative-to-config-dir) arguments here would misresolve.
   if pass == passPP and switch.normalize notin
       ["path", "p", "nimblepath", "lazypath", "excludepath",
-       "nonimblepath", "clearnimblepath", "nimcache"]:
+       "nonimblepath", "clearnimblepath", "nimcache", "import", "include"]:
     conf.icConfigSwitches.add (switch, arg)
   case switch.normalize
   of "eval":
@@ -977,9 +986,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       conf.icGroup.incl(canonicalizePath(conf, AbsoluteFile arg).string)
   of "icproject":
-    # `nim m`/`nim nifc` only: the ORIGINAL project file (see options.icProject)
+    # `nim m`/`nim nifc` only: the ORIGINAL project file (see options.icProject).
+    # Read it in passCmd1 as well so the child can restore the real project path
+    # before config replay and module parsing; its own source file may be a
+    # standard-library module whose `$projectpath` references must still resolve
+    # against the user's project (for example `system.nim`'s standalone
+    # `panicoverride` include).
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}:
+    if pass in {passCmd1, passCmd2, passPP}:
       conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
   of "icpreparsedconfig":
     # `nim m`/`nim nifc` only: path of the precompiled-config artifact (see
@@ -1016,7 +1030,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       if m.len == 0:
         localError(conf, info, "Cannot resolve filename: " & arg)
       else:
-        conf.implicitImports.add(if arg.startsWith(stdPrefix): arg else: m)
+        let resolved = if arg.startsWith(stdPrefix): arg else: m
+        conf.implicitImports.add resolved
+        # A config file's `--import` is relative to that file; record the
+        # resolved module so IC children replay it from any directory.
+        if pass == passPP: conf.icConfigSwitches.add (switch, resolved)
   of "include":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
@@ -1025,6 +1043,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         localError(conf, info, "Cannot resolve filename: " & arg)
       else:
         conf.implicitIncludes.add m
+        if pass == passPP: conf.icConfigSwitches.add (switch, m)
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
   of "asm":

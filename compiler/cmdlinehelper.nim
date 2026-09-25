@@ -49,6 +49,13 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
     setFromProjectName(conf, conf.projectName)
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
+  if conf.cmd == cmdM and conf.icProject.len > 0:
+    # Each IC frontend child compiles one module as its project file, but
+    # project-wide substitutions such as `$projectpath` must keep referring to
+    # the original entry project. In particular, system.nim includes the user's
+    # `panicoverride.nim` for `--os:standalone`; without this reset the include
+    # points at `lib/panicoverride` while system.nim is compiled in its own child.
+    conf.projectPath = AbsoluteDir conf.icProject.splitFile.dir
 
 proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =

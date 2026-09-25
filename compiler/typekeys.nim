@@ -141,6 +141,10 @@ proc skipGenericAlias(t: PType): PType =
     result = result.skipModifierB.skipTypesB({tyAlias})
 
 proc maybeImported(c: var Context; s: PSym; conf: ConfigRef) {.inline.} =
+  # A lazy stub may not yet have its importc/exportc flags. Those flags are part
+  # of the backend identity for aliases, so load the symbol before testing them.
+  if s != nil and s.state == Partial and c.sl != nil:
+    c.sl(s)
   if s != nil and {sfImportc, sfExportc} * s.flagsImpl != {}:
     c.symKey(s, conf)
 
@@ -230,7 +234,16 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.typeKey t.sonsImpl[i], flags, conf
     else:
       c.typeKey t.skipModifierB, flags, conf
-  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
+  of tyAlias:
+    # A transparent Nim alias can still select a different concrete C type.
+    # In particular, `seq[ImportedAlias]` and `seq[Underlying]` receive
+    # distinct C wrapper structs, so their attached operations cannot share a
+    # hook entry keyed only by the underlying Nim type. Preserve imported or
+    # exported alias identity on hook/generic-instance keys before following
+    # the alias to its base type.
+    maybeImported(c, t.symImpl, conf)
+    c.typeKey t.skipModifierB, flags, conf
+  of tySink, tyUserTypeClasses, tyInferred:
     c.typeKey t.skipModifierB, flags, conf
   of tyOwned:
     if CoConsiderOwned in flags:
@@ -296,6 +309,9 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       # plain `float`, just like the `int literal(x)` case above.
       if CoPrecise in flags and t.nImpl != nil and t.nImpl.kind in {nkFloatLit..nkFloat64Lit}:
         c.m.addFloatLit t.nImpl.floatVal
+      maybeImported(c, t.symImpl, conf)
+  of tyFloat32, tyFloat64, tyFloat128:
+    withTree c.m, toNifTag(t.kind):
       maybeImported(c, t.symImpl, conf)
   of tyObject, tyEnum:
     if t.typeInstImpl != nil:
