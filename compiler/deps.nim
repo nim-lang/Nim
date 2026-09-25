@@ -21,6 +21,7 @@ import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
 import icmodnames
 import icnifcore
 from ic/replayer import BackendActionsExt, BodyDepsExt
+from commands import compileOptionValue
 
 type
   FilePair = object
@@ -411,11 +412,12 @@ proc readCond(c: DepContext; s: var Stream): CondVal =
 proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
   ## Evaluate the condition whose opening token `t` has ALREADY been read,
   ## consuming the rest of the expression so the caller stays in sync.
-  ## Recognises `defined(IDENT)`, `not`/`and`/`or`, `==`/`!=` and the literals
-  ## `true`/`false`; everything else (an arbitrary call such as `compiles` /
-  ## `tryImport`, an unknown const) is `cvUnknown`. Both negation-sensitive
-  ## (`not cvUnknown == cvUnknown`) and short-circuit-free: `and`/`or` always
-  ## read both operands so the stream stays in sync regardless of the result.
+  ## Recognises `defined(IDENT)`, `compileOption("NAME")`, `not`/`and`/`or`,
+  ## `==`/`!=` and the literals `true`/`false`; everything else (an arbitrary
+  ## call such as `compiles` / `tryImport`, an unknown const) is `cvUnknown`.
+  ## Both negation-sensitive (`not cvUnknown == cvUnknown`) and
+  ## short-circuit-free: `and`/`or` always read both operands so the stream
+  ## stays in sync regardless of the result.
   case t.kind
   of Ident:
     result = evalCondIdent(c, pool.strings[t.litId])
@@ -437,6 +439,16 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
       var sym = ""
       if arg.kind == Ident: sym = pool.strings[arg.litId]
       result = toCondVal(sym.len > 0 and isDefined(c.config, sym))
+    of "compileOption":
+      # Same table the compiler's `compileOption` magic uses, so e.g.
+      # `when compileOption("profiler"): import std/nimprof` is decided here
+      # instead of scheduling `nimprof`, which rejects a non-profiling build.
+      # An unknown option name stays unknown; sem reports it.
+      let arg = next(s)
+      var known = false
+      let value = arg.kind == StringLit and
+        compileOptionValue(c.config, pool.strings[arg.litId], known)
+      result = if known: toCondVal(value) else: cvUnknown
     of "not":
       result = condNot(readCond(c, s))
     of "and":

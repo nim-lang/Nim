@@ -324,7 +324,11 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     result = false
     invalidCmdLineOption(conf, passCmd1, switch, info)
 
-proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
+proc compileOptionValue*(conf: ConfigRef; switch: string; known: var bool): bool =
+  ## The value `compileOption(switch)` has in `conf`, without diagnostics.
+  ## `known` is false for a name that is not a boolean compile option. Also used
+  ## by the IC dependency scanner to evaluate `when compileOption(...)` guards.
+  known = true
   case switch.normalize
   of "debuginfo": result = contains(conf.globalOptions, optCDebug)
   of "compileonly", "c": result = contains(conf.globalOptions, optCompileOnly)
@@ -349,9 +353,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "fieldchecks": result = contains(conf.options, optFieldCheck)
   of "rangechecks": result = contains(conf.options, optRangeCheck)
   of "boundchecks": result = contains(conf.options, optBoundsCheck)
-  of "refchecks":
-    warningDeprecated(conf, info, "refchecks is deprecated!")
-    result = contains(conf.options, optRefCheck)
+  of "refchecks": result = contains(conf.options, optRefCheck)
   of "overflowchecks": result = contains(conf.options, optOverflowCheck)
   of "staticboundchecks": result = contains(conf.options, optStaticBoundsCheck)
   of "stylechecks": result = contains(conf.options, optStyleCheck)
@@ -364,18 +366,25 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "threads": result = contains(conf.globalOptions, optThreads)
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
-  of "patterns", "trmacros":
-    if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
-    result = contains(conf.options, optTrMacros)
+  of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
-  of "nilseqs", "nilchecks", "taintmode":
-    warningOptionNoop(switch)
-    result = false
+  of "nilseqs", "nilchecks", "taintmode": result = false
   of "panics": result = contains(conf.globalOptions, optPanics)
   of "jsbigint64": result = contains(conf.globalOptions, optJsBigInt64)
   of "mangle": result = contains(conf.globalOptions, optItaniumMangle)
   else:
     result = false
+    known = false
+
+proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
+  case switch.normalize
+  of "refchecks": warningDeprecated(conf, info, "refchecks is deprecated!")
+  of "patterns": deprecatedAlias(switch, "trmacros")
+  of "nilseqs", "nilchecks", "taintmode": warningOptionNoop(switch)
+  else: discard
+  var known = false
+  result = compileOptionValue(conf, switch, known)
+  if not known:
     invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
