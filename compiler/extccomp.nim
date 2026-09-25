@@ -693,10 +693,14 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     extccomp.CC[conf.cCompiler].name &
     getCompileCFileCmd(conf, cfile))
 
+proc cfileHashFile*(conf: ConfigRef; cfile: AbsoluteFile): AbsoluteFile =
+  ## Where the footprint of the last compile of `cfile` is kept.
+  toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
+
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
-  let hashFile = toGeneratedFile(conf, conf.mangleModuleName(cfile.cname).AbsoluteFile, "sha1")
+  let hashFile = cfileHashFile(conf, cfile.cname)
   let currentHash = footprint(conf, cfile)
   var f: File = default(File)
   if open(f, hashFile.string, fmRead):
