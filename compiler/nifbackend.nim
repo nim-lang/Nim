@@ -135,6 +135,32 @@ proc emitMethodDispatchers(g: ModuleGraph) =
     if not containsOrIncl(mainMod.declaredThings, disp.id):
       genProcLvl3(mainMod, disp)
 
+proc infoPrecedes(a, b: TLineInfo): bool =
+  a.fileIndex == b.fileIndex and (a.line < b.line or a.line == b.line and a.col < b.col)
+
+proc genTopLevelInSourceOrder(g: ModuleGraph; bmod: BModule; precomp: PrecompiledModule) =
+  ## Classic codegen generates an `{.exportc.}` routine where it is declared, so
+  ## its prototype precedes a later module-level `{.emit.}` that calls it by its
+  ## C name, while an earlier emit (a typedef its signature uses, say) still
+  ## precedes the prototype. A NIF keeps routine definitions and top-level
+  ## statements in separate sections, so interleave them again by source
+  ## position. A routine declared in another file (an include) cannot be placed
+  ## and is left to the owned-routine seeding below.
+  let modPos = precomp.module.position
+  var eager: seq[PSym] = @[]
+  for s in moduleSymbolStubs(ast.program, FileIndex modPos):
+    if sfExportc in s.flags and sfCompilerProc notin s.flags and
+        ownsRuntimeRoutine(s, modPos):
+      eager.add s
+  eager.sort(proc (a, b: PSym): int =
+    cmp((a.info.line, a.info.col), (b.info.line, b.info.col)))
+  var next = 0
+  for stmt in precomp.topLevel:
+    while next < eager.len and infoPrecedes(eager[next].info, stmt.info):
+      requestProcDef(bmod, eager[next])
+      inc next
+    cgen.genTopLevelStmt(bmod, stmt)
+
 proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
   ## Generate C code for a single module.
   let moduleId = precomp.module.position
@@ -148,7 +174,10 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
 
   # Generate code for the module's top-level statements
   if precomp.topLevel != nil:
-    cgen.genTopLevelStmt(bmod, precomp.topLevel)
+    if g.config.cmd == cmdNifC and g.config.icBackendStage == "cg":
+      genTopLevelInSourceOrder(g, bmod, precomp)
+    else:
+      cgen.genTopLevelStmt(bmod, precomp.topLevel)
 
   # Per-module backend: emit the bodies of the routines this module OWNS, not
   # only the ones its top-level happens to demand. Procs are serialized as lazy
