@@ -1717,6 +1717,14 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # TU. Dispatcher bodies are synthesized from the whole program and live
       # in main, which is never reused.
       m.icImplMods.incl prc.itemId.module
+    if sfFromGeneric in prc.flags and not isBackendMinted(prc.itemId):
+      # A generic instance belongs to the module that requested it, but its
+      # body comes from the module defining the generic: record that one too
+      # (its module-level emits are replayed here, see
+      # `nifbackend.replayForeignTopLevelEmits`).
+      let src = getModule(prc)
+      if src != nil and src.position != m.module.position:
+        m.icImplMods.incl src.position
   var p = newProc(prc, m)
   var header = newBuilder("")
   let isCppMember = m.config.backend == backendCpp and sfCppMember * prc.flags != {}
