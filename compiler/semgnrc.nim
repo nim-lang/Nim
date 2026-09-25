@@ -88,6 +88,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     result = n
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule, skEnumField:
     maybeDotChoice(c, n, s, fromDotExpr)
+    when defined(nimsuggest):
+      # The pre-pass cannot pick between overloads; that only happens per
+      # instantiation. When the cursor is on such a choice, record every
+      # member so idetools can offer them all as possible definitions.
+      if result.kind in nkSymChoices and result.len > 1 and c.config.ideActive and
+          isTracked(n.info, c.config.m.trackPos, s.name.s.len):
+        for child in result:
+          suggestSym(c.graph, n.info, child.sym, c.graph.usageSym, isDecl = false)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -362,6 +370,11 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
         result[0] = sc
         first = 1
+        when defined(nimsuggest):
+          if sc.kind in nkSymChoices and sc.len > 1 and c.config.ideActive and
+              isTracked(fn.info, c.config.m.trackPos, s.name.s.len):
+            for child in sc:
+              suggestSym(c.graph, fn.info, child.sym, c.graph.usageSym, isDecl = false)
         # We're not interested in the example code during this pass so let's
         # skip it
         if s.magic == mRunnableExamples:
