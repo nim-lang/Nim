@@ -661,7 +661,8 @@ const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
                  "tmodsymref", "tmethupref", "temit", "tlocalpassc", "ttraitparam",
                  "tnestasgn", "tconvvar", "tmacrocacheproc", "tlocalpasstarget",
                  "tgetimplparams", "tseqimportcfloatalias", "tseqimportcuintalias",
-                 "tsinkfieldlastread", "tnrvofieldalias", "temitprocorder"]
+                 "tsinkfieldlastread", "tnrvofieldalias", "temitprocorder",
+                 "tforeignemit"]
 
 proc icTest(args: string) =
   temp("")
