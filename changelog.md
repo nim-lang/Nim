@@ -97,6 +97,12 @@ parameter and result types, not just their source-level shape. Use
 
 [//]: # "Changes:"
 
+- `uri.decodeQuery` now honours a non-default `sep` when splitting keys. Previously
+  only the value was terminated by `sep`; the key was terminated by `'='` or a
+  hardcoded `'&'`, so `decodeQuery("a;b=2;c", ';')` yielded the key `"a;b"`. A
+  literal `'&'` in a query with a custom separator is now data rather than a
+  separator.
+
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
