@@ -139,6 +139,7 @@ const
     "con", #current NimSuggest supports the `con` commmand
     "exceptionInlayHints",
     "unknownFile", #current NimSuggest can handle unknown files
+    "maxMemory", #current NimSuggest supports memory cap guard
   ]
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
