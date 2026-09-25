@@ -2217,12 +2217,8 @@ proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
     # in a process that compiled the module declaring it, and a `cg` process
     # sees one module's import closure — so the command it would print is a
     # partial snapshot, and WHICH part depends on how modules were grouped into
-    # processes. Measured on a 67-module program: 2 of 67 `.c` carried
-    # `-pthread` at batch size 1, 4 at size 4, 5 at size 8, against 16 of 16 for
-    # a whole-program `nim c`. The real command is assembled by the `link`
-    # stage, which applies every module's recorded directives first
-    # (`replayer.applyBackendActions`) — so the object files were always
-    # correct; only this comment was wrong, and non-deterministically so.
+    # processes. The real command is assembled by the `link` stage, which
+    # applies every module's recorded directives first.
     if conf.cmd == cmdNifC and conf.icBackendStage.len > 0:
       result.add "/* Command for C compiler: assembled by the link stage\L" &
                  "   from every module's recorded C directives. */\L"
@@ -3139,26 +3135,24 @@ proc genTopLevelStmt*(m: BModule; n: PNode) =
   handleProcGlobals(m)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
-  if optForceFullMake notin m.config.globalOptions:
-    if not equalsFile(code, cfile.cname):
-      when false:
-        #m.config.symbolFiles == readOnlySf: #isDefined(m.config, "nimdiff"):
-        if fileExists(cfile.cname):
-          copyFile(cfile.cname.string, cfile.cname.string & ".backup")
-          echo "diff ", cfile.cname.string, ".backup ", cfile.cname.string
-        else:
-          echo "new file ", cfile.cname.string
-      if not writeRope(code, cfile.cname):
-        rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
-      result = true
-    elif fileExists(cfile.obj) and os.fileNewer(cfile.obj.string, cfile.cname.string):
-      result = false
-    else:
-      result = true
-  else:
-    if not writeRope(code, cfile.cname):
-      rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
-    result = true
+  let forceRecompile = optForceFullMake in m.config.globalOptions
+  let codeChanged = forceRecompile or not equalsFile(code, cfile.cname)
+  if codeChanged and not writeRope(code, cfile.cname):
+    rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
+    return true
+
+  # Generated C is intentionally reusable across targets (notably by csources),
+  # so it cannot also serve as the object-file cache key. Include the effective
+  # C compilation recipe in a separate fingerprint instead.
+  let recipeChanged = extccomp.compileFingerprintChanged(m.config, cfile)
+
+  if codeChanged or recipeChanged or forceRecompile:
+    # A failed compile must not leave an older object eligible for reuse.
+    discard tryRemoveFile(cfile.obj.string)
+    return true
+
+  result = not (fileExists(cfile.obj) and
+    os.fileNewer(cfile.obj.string, cfile.cname.string))
 
 proc genModuleCode(m: BModule; cf: var Cfile): string =
   ## First half of `writeModule`: finalizes the module and produces its code

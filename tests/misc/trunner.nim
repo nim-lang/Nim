@@ -401,6 +401,40 @@ running: v3
 running: v2
 """, ret
 
+  block: # generated C object cache includes compile options
+    let file = "misc/mbetterrun.nim"
+    let nimcache4 = buildDir / ("D20260925T123000_" & mode)
+    removeDir nimcache4
+    let opt = fmt"--nimcache:{nimcache4} --hint:CC:on"
+    let first = runNimCmdChk(file, fmt"{opt} --passC:-DNIM_CACHE_RECIPE=1")
+    let changedRecipe = runNimCmdChk(file, fmt"{opt} --passC:-DNIM_CACHE_RECIPE=2")
+    let unchangedRecipe = runNimCmdChk(file, fmt"{opt} --passC:-DNIM_CACHE_RECIPE=2")
+    doAssert "CC:" in first
+    doAssert "CC:" in changedRecipe
+    doAssert "CC:" notin unchangedRecipe
+
+  block: # cross-target object cache keeps generated C shareable
+    let file = "misc/mbetterrun.nim"
+    let nimcache5 = buildDir / ("D20260925T124000_" & mode)
+    removeDir nimcache5
+    discard runNimCmdChk(file, fmt"--nimcache:{nimcache5}")
+    let cExt = if mode == "cpp": ".cpp" else: ".c"
+    # digitsutils has target-neutral generated C; keep the host CPU and change
+    # only the OS so this test doesn't need a cross C compiler.
+    let cFile = nimcache5 / ("@pstd@sprivate@sdigitsutils.nim" & cExt)
+    let originalC = readFile(cFile)
+
+    discard runNimCmdChk(file,
+      fmt"--compileOnly --os:freebsd --nimcache:{nimcache5}")
+    doAssert readFile(cFile) == originalC
+
+    let instructions = parseFile(nimcache5 / "mbetterrun.json")
+    var objectNeedsTargetCompile = false
+    for entry in instructions["compile"]:
+      if entry[0].getStr == cFile:
+        objectNeedsTargetCompile = true
+    doAssert objectNeedsTargetCompile
+
   block: # nim dump
     let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
     let (ret, status) = execCmdEx(cmd)
