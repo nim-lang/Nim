@@ -624,6 +624,10 @@ proc setupEnvVar(owner: PSym; d: var DetectionPass;
       v.flags = {sfShadowed, sfGeneratedOp}
       v.typ = envVarType
       c.unownedEnvVars[owner.id] = newSymNode(v)
+  # Every use of the env var needs its own node: injectdestructors'
+  # `isLastRead` finds a use in the CFG by node identity, so a shared node
+  # makes all uses look like the first one (bug #26247).
+  result = newSymNode(result.sym, info)
 
 proc getUpViaParam(g: ModuleGraph; owner: PSym): PNode =
   let p = getHiddenParam(g, owner)

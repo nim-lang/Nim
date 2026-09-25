@@ -119,7 +119,7 @@ elif defined(posix) and not defined(StandaloneHeapSize):
   when defined(macosx) or defined(freebsd):
     const MAP_ANONYMOUS = 0x1000
     const MAP_PRIVATE = 0x02        # Changes are private
-  elif defined(solaris):
+  elif defined(sunos):
     const MAP_ANONYMOUS = 0x100
     const MAP_PRIVATE = 0x02        # Changes are private
   elif defined(linux) and defined(amd64):

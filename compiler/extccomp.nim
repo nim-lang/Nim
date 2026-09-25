@@ -409,12 +409,22 @@ proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
 
-proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
-  let key = completeCfilePath(conf, mangleModuleName(conf, nimfile).AbsoluteFile).string
+proc addCFileSpecificOption(conf: ConfigRef; option, key: string) =
   var value = conf.cfileSpecificOptions.getOrDefault(key)
   if strutils.find(value, option, 0) < 0:
     addOpt(value, option)
     conf.cfileSpecificOptions[key] = value
+
+proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
+  let key = completeCfilePath(conf, mangleModuleName(conf, nimfile).AbsoluteFile).string
+  addCFileSpecificOption(conf, option, key)
+
+proc addLocalCompileOptionForCFile*(conf: ConfigRef; option: string;
+                                   cfile: AbsoluteFile) =
+  ## Add an option for an already generated C file. IC's backend gives loaded
+  ## modules synthetic filenames, so the source-file-based key used by
+  ## `addLocalCompileOption` does not identify the C file emitted for them.
+  addCFileSpecificOption(conf, option, cfile.changeFileExt("").string)
 
 proc resetCompilationLists*(conf: ConfigRef) =
   conf.toCompile.setLen 0
@@ -474,7 +484,7 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
 proc targetOptions(conf: ConfigRef): string =
   # Solaris/illumos toolchains can default to 32-bit output on amd64.
   # Inspect the target, not the host, so cross-compilation works too.
-  if conf.target.targetOS == osSolaris and
+  if conf.target.targetOS in {osSolaris, osIllumos} and
       conf.target.targetCPU == cpuAmd64 and
       conf.cCompiler in {ccGcc, ccCLang}:
     result = "-m64"
@@ -683,10 +693,14 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     extccomp.CC[conf.cCompiler].name &
     getCompileCFileCmd(conf, cfile))
 
+proc cfileHashFile*(conf: ConfigRef; cfile: AbsoluteFile): AbsoluteFile =
+  ## Where the footprint of the last compile of `cfile` is kept.
+  toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
+
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
-  let hashFile = toGeneratedFile(conf, conf.mangleModuleName(cfile.cname).AbsoluteFile, "sha1")
+  let hashFile = cfileHashFile(conf, cfile.cname)
   let currentHash = footprint(conf, cfile)
   var f: File = default(File)
   if open(f, hashFile.string, fmRead):

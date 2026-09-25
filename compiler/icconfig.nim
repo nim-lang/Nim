@@ -36,7 +36,7 @@ import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
 
 const
-  IcConfigVersion* = "2"
+  IcConfigVersion* = "4"
     ## Artifact format version. Bump on any layout change here so a child built
     ## by an older compiler rejects a stale artifact and falls back to normal
     ## config loading instead of replaying a format it cannot parse.
@@ -80,6 +80,15 @@ proc writeIcConfig*(conf: ConfigRef; outfile: string) =
       # replay makes the overlap harmless.
       for p in conf.searchPaths:
         b.addStrLit p.string
+    b.withTree "lazypaths":
+      # Same for the nimble package directories (`nimblepath` in `nim.cfg`):
+      # `findModule` falls back to them after `searchPaths`, so without them the
+      # driver cannot resolve `import libcurl` from ~/.nimble/pkgs2.
+      for p in conf.lazyPaths:
+        b.addStrLit p.string
+    b.withTree "nimblepaths":
+      for p in conf.nimblePaths:
+        b.addStrLit p.string
     b.withTree "switches":
       for sw in conf.icConfigSwitches:
         b.addTree "sw"
@@ -103,6 +112,8 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
     nimcacheTag = tags.registerTag("nimcache")
     cppTag = tags.registerTag("cppdefines")
     pathsTag = tags.registerTag("searchpaths")
+    lazyTag = tags.registerTag("lazypaths")
+    nimbleTag = tags.registerTag("nimblepaths")
     switchesTag = tags.registerTag("switches")
     swTag = tags.registerTag("sw")
   var buf = parseFromFile(infile, 1000, pool, tags)
@@ -154,6 +165,17 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
             # path a child already received via a forwarded `--path` argument.
             let d = AbsoluteDir(strVal(c))
             if not conf.searchPaths.contains(d): conf.searchPaths.add d
+            inc c
+          else:
+            skip c
+      elif c.cursorTagId == lazyTag or c.cursorTagId == nimbleTag:
+        let isLazy = c.cursorTagId == lazyTag
+        c.loopInto:
+          if c.kind == StrLit:
+            let d = AbsoluteDir(strVal(c))
+            if isLazy:
+              if not conf.lazyPaths.contains(d): conf.lazyPaths.add d
+            elif not conf.nimblePaths.contains(d): conf.nimblePaths.add d
             inc c
           else:
             skip c

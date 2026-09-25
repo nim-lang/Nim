@@ -75,16 +75,17 @@ type
     flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, isHidden: bool,
-                              hasExcept: bool, label: Natural]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, hasExcept: bool,
+                              label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # `inExcept` is true when we are in the except part of a try block.
-                              # `isHidden` is true for compiler-injected `nkHiddenTryStmt` wrappers
-                              # (e.g. ARC's destructor try/finally around `except T as e:` bodies);
-                              # finallyActions walks past such wrappers to reach the user's try.
                               # `hasExcept` is true if the try statement has except branches; a
-                              # try without them cannot handle a raise from within its body.
+                              # try without them cannot handle a raise from within its body, so
+                              # it is transparent to `raise` -- this holds for the `try/finally`
+                              # the user wrote and for the ones injected for destructor calls
+                              # alike, which is why no codegen logic here distinguishes
+                              # `nkHiddenTryStmt` from `nkTryStmt`.
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
@@ -152,6 +153,13 @@ type
       ## decide where a demanded definition goes — see the comment there. Empty
       ## outside that stage, which is why every other backend keeps the ordinary
       ## whole-program routing.
+    icTargets*: Table[int, string]
+      ## Under `--icBackendStage:cg`: module position -> the `target(...)`
+      ## option list derived from that module's `{.localPassC: "-m...".}`. A
+      ## definition owned by such a module but emitted into another TU (a
+      ## generic instance, or an emit-everywhere copy) is compiled under these
+      ## options via a pragma — see `cgen.icTargetPush`. Filled lazily, per
+      ## owner module, from its replay actions.
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file

@@ -1171,8 +1171,9 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
   case n.kind
   of nkSym:
     result = transformSym(c, n)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom:
-    # nothing to be done for leaves:
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom, nkReplayAction:
+    # nothing to be done for leaves; a replay record's payload is untyped data
+    # (e.g. a macrocache value) and must not be treated as code:
     result = n
   of nkBracketExpr: result = transformArrayAccess(c, n)
   of procDefs:
