@@ -75,6 +75,8 @@ Options:
     --info:capabilities     return the capabilities supported by nimsuggest
   --refresh               perform automatic refreshes to keep the analysis precise
   --maxresults:N          limit the number of suggestions to N
+  --maxMemory:N           quit when resident memory exceeds N megabytes (0 = no cap);
+                          the default is 4000
   --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
   --find                  attempts to find the project file of the current project
@@ -104,6 +106,7 @@ var
   gLogging = defined(logging)
   gRefresh: bool
   gAutoBind = false
+  gMaxMemoryKb = 4000 * 1024 # resident memory cap, --maxMemory:N (MB)
 
   requests: Channel[string]
   results: Channel[Suggest]
@@ -664,6 +667,10 @@ proc mainCommand(graph: ModuleGraph) =
         line: toLinenumber(info), column: toColumn(info), doc: msg, forth: $sev)
       graph.suggestErrors.mgetOrPut(info.fileIndex, @[]).add suggest
 
+  # Started before the initial compilation so that a runaway compilation
+  # is also capped:
+  hookMemMonitor(gMaxMemoryKb)
+
   # compile the project before showing any input so that we already
   # can answer questions right away:
   benchmark "Initial compilation":
@@ -756,6 +763,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           gRefresh = true
       of "maxresults":
         conf.suggestMaxResults = parseInt(p.val)
+      of "maxmemory":
+        gMaxMemoryKb = parseInt(p.val) * 1024
       of "find":
         findProject = true
       of "clientprocessid":
