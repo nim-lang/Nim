@@ -1367,6 +1367,13 @@ proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   # no-op there.
   sym.getPackageSymbol.name.id == graph.systemModule.getPackageSymbol.name.id
 
+proc suggestDataComplete*(g: ModuleGraph; fileIdx: FileIndex): bool =
+  g.suggestSymbols.getOrDefault(fileIdx).isComplete
+
+proc setSuggestDataComplete*(g: ModuleGraph; fileIdx: FileIndex; complete: bool) =
+  g.suggestSymbols.mgetOrPut(fileIdx, newSuggestFileSymbolDatabase(fileIdx,
+    optIdeExceptionInlayHints in g.config.globalOptions)).isComplete = complete
+
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))
   doAssert(result.fileIndex == fileIdx)

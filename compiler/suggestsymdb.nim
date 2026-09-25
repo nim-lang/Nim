@@ -28,6 +28,7 @@ type
     fileIndex*: FileIndex
     trackCaughtExceptions*: bool
     isSorted*: bool
+    isComplete*: bool
 
   SuggestSymbolDatabase* = Table[FileIndex, SuggestFileSymbolDatabase]
 
@@ -110,7 +111,8 @@ proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex; aTrackCaughtExceptions
     isGenericInstance: newPackedBoolArray(),
     fileIndex: aFileIndex,
     trackCaughtExceptions: aTrackCaughtExceptions,
-    isSorted: true
+    isSorted: true,
+    isComplete: false
   )
 
 proc exactEquals*(a, b: TinyLineInfo): bool =
