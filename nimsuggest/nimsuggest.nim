@@ -195,11 +195,6 @@ proc findNode(n: PNode; trackPos: TLineInfo): PSym =
   result = nil
   if n.kind == nkSym:
     if isTracked(n.info, trackPos, n.sym.name.s.len): return n.sym
-  elif n.kind in {nkOpenSymChoice, nkClosedSymChoice} and n.len > 1:
-    # An overload set the generic pre-pass could not resolve (it is only
-    # resolved per instantiation). Its members all carry the position of the
-    # identifier, so descending here would report an arbitrary overload.
-    discard
   else:
     for i in 0 ..< safeLen(n):
       let res = findNode(n[i], trackPos)
