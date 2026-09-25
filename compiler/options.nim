@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "46"
+  icFormatVersion* = "47"
     ## v46: every type definition wraps its sons in `(genericargs ...)`.
     ## v45: localPassC backend actions are keyed by their generated C file.
     ## v44: CacheCounter values live in the shared, file-locked `ic.counters`.
