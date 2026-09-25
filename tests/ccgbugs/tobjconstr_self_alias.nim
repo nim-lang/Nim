@@ -5,7 +5,8 @@ discard """
 42
 42
 42
-42'''
+42
+1'''
 """
 
 # bug #25993 : an object constructor assigned to a location zeroed the
@@ -23,6 +24,9 @@ type
     h: Inner
     other: Inner
     m: Mid
+  Large = object
+    b: array[24576, byte]
+    d: int
 
 # --------------------------------------------------------------------------
 # bug demonstrations: each printed 0 before the fix
@@ -77,9 +81,20 @@ proc viaClosureCapture(v: int) =
   t.h = Inner(a: cl())
   echo t.h.a
 
+proc scalarConstructor() =
+  # A plain scalar field must not trigger the reverse alias check. The
+  # constructor can be written directly into `value` instead of using a
+  # large stack temporary.
+  proc assign(value: var Large, x: int) =
+    value = Large(d: x)
+  var value: Large
+  assign(value, 1)
+  echo value.d
+
 refDotField(42)
 nestedConstr(55)
 refDeepField(42)
 viaCall(42)
 viaClosureGlobal(42)
 viaClosureCapture(42)
+scalarConstructor()
