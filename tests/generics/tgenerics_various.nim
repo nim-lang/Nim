@@ -252,3 +252,9 @@ block: # issue #9381
 
   var x: GenericObj[int]
   static: doAssert evalCount == 1
+
+block: # bug #22861
+  proc fromHex[N](A: type array[N, int])      = discard
+  proc fromHex   (T: typedesc[array[1, int]]) = discard
+  fromHex(array[1, int])
+
