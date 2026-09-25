@@ -482,13 +482,26 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
             # built. The importer already recorded this import via
             # addImportFileDep, so flush every module's `.s.deps`: `nim ic` reads
             # it, re-derives the graph with the missing node + edge, and reruns
-            # the frontend. We still error — this process cannot finish sem
-            # without the import — but the discovery is structured data now, not
-            # a side-channel file.
+            # the frontend. The same happens for an import the scanner deferred
+            # because its `when` guard was undecidable before sem.
             for importer, deps in graph.importDeps.pairs:
               var paths: seq[string] = @[]
               for f in deps: paths.add toFullPath(graph.config, f)
               writeSemDeps(graph.config, importer.int32, paths)
+            if graph.config.icProject.len > 0:
+              # Run by the `nim ic` driver: this process cannot finish sem
+              # without the import, but the import is recorded now, so the
+              # driver schedules it and reruns this module. That is not a user
+              # error; stop quietly instead of printing an `Error:` (and the
+              # follow-up diagnostics of an aborted sem) on an ordinary cold
+              # build. Exiting 0 keeps nifmake from reporting a failed command
+              # and lets the rest of the round proceed; this module's stale NIF
+              # is removed so nothing loads it, and the marker tells the driver
+              # the round is incomplete. It fails the build itself if discovery
+              # cannot make progress.
+              removeFile(AbsoluteFile toNifFilename(graph.config, graph.config.projectMainIdx))
+              writeFile(icDiscoveryPendingFile(graph.config), "")
+              msgQuit(0)
             globalError(graph.config, unknownLineInfo,
               "nim m requires precompiled NIF for import: " & toFullPath(graph.config, fileIdx) &
               " (expected: " & nifPath & ")")

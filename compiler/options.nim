@@ -1003,6 +1003,13 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
       AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
         nimcacheSuffix(conf))
 
+proc icDiscoveryPendingFile*(conf: ConfigRef): string =
+  ## Marker a `nim ic` frontend child leaves in the nimcache when it stopped
+  ## because an import it needs was not scheduled yet (see
+  ## `pipelines.compilePipelineModule`); the driver then re-derives the graph
+  ## and runs another frontend round.
+  getNimcacheDir(conf).string / "ic_discovery_pending"
+
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
   result = unixToNativePath(p % [
