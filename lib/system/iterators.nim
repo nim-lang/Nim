@@ -143,7 +143,7 @@ iterator items*[T: Ordinal](s: Slice[T]): T =
   for x in s.a .. s.b:
     yield x
 
-iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
+iterator pairs*[T](a: openArray[T]): tuple[key: int, val: lent T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   var i = 0
   while i < len(a):
@@ -158,7 +158,7 @@ iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} 
     yield (i, a[i])
     unCheckedInc(i)
 
-iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
+iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: lent T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   when a.len > 0:
     var i = low(IX)
@@ -177,7 +177,7 @@ iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inlin
       if i >= high(IX): break
       unCheckedInc(i)
 
-iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
+iterator pairs*[T](a: seq[T]): tuple[key: int, val: lent T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   var i = 0
   let L = len(a)
