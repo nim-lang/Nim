@@ -13,7 +13,7 @@
 #  {.error: "You must not import this module explicitly".}
 
 type
-  Utf16Char* = distinct int16
+  Utf16Char* = distinct uint16
 
 when not (defined(cpu16) or defined(cpu8)):
   when defined(nimv2):
@@ -78,10 +78,10 @@ when not (defined(cpu16) or defined(cpu8)):
     ## returns the length of a widestring. This traverses the whole string to
     ## find the binary zero end marker!
     result = 0
-    while int16(w[result]) != 0'i16: inc result
+    while uint16(w[result]) != 0'u16: inc result
 
   const
-    UNI_REPLACEMENT_CHAR = Utf16Char(0xFFFD'i16)
+    UNI_REPLACEMENT_CHAR = Utf16Char(0xFFFD'u16)
     UNI_MAX_BMP = 0x0000FFFF
     UNI_MAX_UTF16 = 0x0010FFFF
     # UNI_MAX_UTF32 = 0x7FFFFFFF
@@ -188,12 +188,12 @@ when not (defined(cpu16) or defined(cpu8)):
   iterator decodeUtf16(w: WideCString; replacement: int): int =
     ## Looks for a terminating NUL for length
     var i = 0
-    while w[i].int16 != 0'i16:
+    while w[i].uint16 != 0'u16:
       var ch = ord(w[i])
       inc i
       if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
         # If the 16 bits following the high surrogate are NOT in the source...
-        if w[i].int16 == 0'i16:
+        if w[i].uint16 == 0'u16:
           ch = replacement #invalid UTF-16
         else:
           let ch2 = ord(w[i])

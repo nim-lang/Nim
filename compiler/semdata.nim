@@ -102,6 +102,43 @@ type
       exceptSet*: IntSet         # of PIdent.id
 
   PContext* = ref TContext
+  BodyTaskState* = enum
+    btPending,   ## enqueued by the header pass, not started
+    btRunning,   ## being semmed right now (recursion guard, §2.3)
+    btDone
+
+  BodyTask* = object
+    ## One deferred routine body — doc/parallel_compiler.md's unit of work
+    ## (§2.2), and later the unit of parallelism. Stage 1 runs these on one
+    ## thread, so what the record carries is not "state to ship to a worker"
+    ## but state the header pass is about to move past: everything a body sem
+    ## reads from `PContext` that is POSITIONAL. That is the same list
+    ## `tryExpr` snapshots (`semexprs`), plus the option stack.
+    ##
+    ## `scope` and `procCon` are the interesting ones. A routine's parameters
+    ## live in a scope opened by `semProcAux` and its `result` in a `PProcCon`;
+    ## deferring the body means detaching both from `PContext`'s stacks rather
+    ## than closing them, and re-attaching them at drain. The scope object
+    ## survives because this record holds it, and its `parent` chain still ends
+    ## at the module's top-level scope, which does not move.
+    key*: uint64                ## §2.3: `(module, ordinal)`, ordinal = the
+                                ## declaration's position in the header pass.
+                                ## Dispatch order is key order, which is what
+                                ## makes the output scheduling-independent.
+    state*: BodyTaskState
+    owner*: PSym                ## the routine
+    def*: PNode                 ## its definition; `owner.ast`, except that
+                                ## forward-decl reconciliation can rebind
+                                ## `owner`, so keep the node explicitly
+    resultType*: PType
+    isInlineIterator*: bool
+    scope*: PScope
+    procCon*: PProcCon
+    optionStack*: seq[POptionEntry]
+    options*: TOptions
+    notes*, warningAsErrors*: TNoteKinds
+    features*: set[Feature]
+
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
@@ -186,6 +223,12 @@ type
     forwardFieldUpdates*: seq[(PType, PNode, PType)]
       # object/tuple field definitions whose default values mention forward
       # types and need delayed const checking
+    forwardFlagUpdates*: seq[(PType, PType)]
+      # (owner, son) pairs whose `propagateToOwner` ran on a not yet reified
+      # forward type and has to be redone in the final pass
+    staleTypeFlags*: IntSet
+      # ids of the owners in `forwardFlagUpdates`; their flags are provisional
+      # too, so reading them makes the reader provisional in turn
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
@@ -201,6 +244,22 @@ type
     hasSymRedefs*: bool
       # set once a redefinition mapping has been installed; makes `getGenSym`
       # consult the proc-con mapping for non-gensym symbols too.
+
+    bodyTasks*: seq[BodyTask]
+      # `--deferBodies:on` (doc/parallel_compiler.md stage 1): top-level routine
+      # bodies whose sem was postponed to the end of this module's header pass.
+      # Append-only, and already in key order because the header pass declares
+      # in source order — so stage 1 drains it front to back and needs no queue.
+      # `concurrency.TaskQueue` is what stage 4 replaces this with, once there
+      # is more than one worker to order.
+    bodyTaskIndex*: Table[ItemId, int]
+      # routine -> its entry in `bodyTasks`, for the on-demand path: a `const`
+      # or `static:` in the header pass can need a body that has not run yet
+      # (§4.6 step 2), and `transformBody` asks for it through
+      # `graph.demandRoutineBody`.
+    prevDemandRoutineBody*: proc (prc: PSym) {.closure.}
+      # the enclosing module's hook, restored by `closePContext`: an import is
+      # compiled from inside the importer's pass, so these nest.
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
@@ -306,7 +365,7 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
     it = it.next
   result = s
 
-proc considerGenSyms*(c: PContext; n: PNode) =
+proc considerGenSymsAux(c: PContext; n: PNode) =
   if n == nil:
     discard "can happen for nkFormalParams/nkArgList"
   elif n.kind == nkSym:
@@ -315,7 +374,16 @@ proc considerGenSyms*(c: PContext; n: PNode) =
       n.sym = s
   else:
     for i in 0..<n.safeLen:
-      considerGenSyms(c, n[i])
+      considerGenSymsAux(c, n[i])
+
+proc considerGenSyms*(c: PContext; n: PNode) =
+  var it = c.p
+  while it != nil:
+    if it.mappingExists:
+      # Save a tree traversal when no mapping exists
+      considerGenSymsAux(c, n)
+      return
+    it = it.next
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result = POptionEntry(
@@ -360,6 +428,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     unknownIdents: initIntSet(),
     shadowDiscardedDefs: initIntSet(),
     realizedDefs: initIntSet(),
+    staleTypeFlags: initIntSet(),
     cache: graph.cache,
     graph: graph,
     signatures: initStrTable(),
@@ -382,8 +451,9 @@ proc addImportFileDep*(c: PContext; f: FileIndex) =
     if f notin deps[]: deps[].add f
 
 proc addPragmaComputation*(c: PContext; n: PNode) =
-  # Also store for NIF-based IC (cmdM mode or optCompress)
-  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
+  # Also store whenever the semchecked module is serialized to NIF/BIF.
+  if {optCompress, optGenBif} * c.config.globalOptions != {} or
+      c.config.cmd == cmdM:
     addNifReplayAction(c.graph, c.module.position.int32, n)
 
 proc inclSym(sq: var seq[PSym], s: PSym): bool =
@@ -469,7 +539,7 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
-  incl typedesc.flagsImpl, tfCheckedForDestructor
+  typedesc.inclDerived {tfCheckedForDestructor}
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
@@ -548,7 +618,7 @@ template rangeHasUnresolvedStatic*(t: PType): bool =
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
   result = newTypeS(tyError, c)
-  result.flagsImpl.incl tfCheckedForDestructor
+  result.inclDerived {tfCheckedForDestructor}
 
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
@@ -670,10 +740,12 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   ## expansions, saving the data for the "NIF" file mechanism to handle.
   ##
   ## We only bother when a NIF file is actually going to be written (IC / `nim m`,
-  ## `--compress`, or a running suggestion engine); a plain `nim c` throws the
-  ## record away, so recording it would be pure overhead.
+  ## `--compress`, semantic BIF output, or a running suggestion engine); a plain
+  ## `nim c` throws the record away, so recording it would be pure overhead.
   if info.fileIndex == InvalidFileIdx: return
-  if c.config.cmd == cmdM or optCompress in c.config.globalOptions or c.config.ideActive:
+  if c.config.cmd == cmdM or
+      {optCompress, optGenBif} * c.config.globalOptions != {} or
+      c.config.ideActive:
     c.graph.nifExpansions.mgetOrPut(c.module.position.int32, @[]).add (expandedSym, info)
 
 const

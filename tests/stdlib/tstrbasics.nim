@@ -90,7 +90,8 @@ proc main() =
     var a0 = "hi"
     var b0 = "foobar"
     when nimvm:
-      discard # pending bug #15952
+      a0.add b0.toOpenArray(1,3)
+      doAssert a0 == "hioob"
     else:
       a0.add b0.toOpenArray(1,3)
       doAssert a0 == "hioob"

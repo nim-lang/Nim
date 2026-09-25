@@ -3304,13 +3304,21 @@ proc dirInclude(p: var RstParser): PRstNode =
   ##     Only the content before the first occurrence of the specified
   ##     text (but after any after text) will be included. If text is
   ##     not found inclusion will happen until the end of the file.
-  #literal : flag (empty)
-  #    The entire included text is inserted into the document as a single
-  #    literal block (useful for program listings).
-  #encoding : name of text encoding
-  #    The text encoding of the external data file. Defaults to the document's
-  #    encoding (if specified).
-  #
+  ##
+  ## :literal: flag (empty)
+  ##
+  ##     The entire included text is inserted into the document as a single
+  ##     literal block (useful for program listings).
+  ##
+  ## :code: language (if empty, `nim` is assumed by default)
+  ##
+  ##     The argument and the included content are passed to the code directive
+  ##     (useful for program listings).
+  ##
+  ## :encoding: name of text encoding
+  ##
+  ##     The text encoding of the external data file. Defaults to the document's
+  ##     encoding (if specified).
   result = nil
   var n = parseDirective(p, rnDirective, {hasArg, argIsFile, hasOptions}, nil)
   var filename = strip(addNodes(n.sons[0]))
@@ -3319,31 +3327,44 @@ proc dirInclude(p: var RstParser): PRstNode =
     rstMessage(p, meCannotOpenFile, filename)
   else:
     # XXX: error handling; recursive file inclusion!
+    let inputString = readFile(path)
+    let startPosition =
+      block:
+        let searchFor = n.getFieldValue("start-after").strip()
+        if searchFor != "":
+          let pos = inputString.find(searchFor)
+          if pos != -1: pos + searchFor.len
+          else: 0
+        else:
+          0
+
+    let endPosition =
+      block:
+        let searchFor = n.getFieldValue("end-before").strip()
+        if searchFor != "":
+          let pos = inputString.find(searchFor, start = startPosition)
+          if pos != -1: pos - 1
+          else: 0
+        else:
+          inputString.len - 1
+
     if getFieldValue(n, "literal") != "":
       result = newRstNode(rnLiteralBlock)
-      result.add newLeaf(readFile(path))
+      result.add newLeaf(inputString[startPosition..endPosition])
+    elif getFieldValue(n, "code") != "":
+      result = newRstNode(rnCodeBlock)
+      result.sons.setLen(3)
+      let lang = getFieldValue(n, "code").strip()
+      if lang notin ["", "\x01\x01"]:
+        var codeArg = newRstNode(rnDirArg)
+        codeArg.add(newLeaf(lang))
+        result.sons[0] = codeArg
+      result.sons[1] = newRstNode(rnFieldList)
+      defaultCodeLangNim(p, result)
+      var litBlock = newRstNode(rnLiteralBlock)
+      litBlock.add newLeaf(inputString[startPosition..endPosition])
+      result.sons[2] = litBlock
     else:
-      let inputString = readFile(path)
-      let startPosition =
-        block:
-          let searchFor = n.getFieldValue("start-after").strip()
-          if searchFor != "":
-            let pos = inputString.find(searchFor)
-            if pos != -1: pos + searchFor.len
-            else: 0
-          else:
-            0
-
-      let endPosition =
-        block:
-          let searchFor = n.getFieldValue("end-before").strip()
-          if searchFor != "":
-            let pos = inputString.find(searchFor, start = startPosition)
-            if pos != -1: pos - 1
-            else: 0
-          else:
-            inputString.len - 1
-
       var q: RstParser
       initParser(q, p.s)
       let saveFileIdx = p.s.currFileIdx
@@ -3404,8 +3425,13 @@ proc dirIndex(p: var RstParser): PRstNode =
   result = parseDirective(p, rnIndex, {}, parseSectionWrapper)
 
 proc dirAdmonition(p: var RstParser, d: string): PRstNode =
-  result = parseDirective(p, rnAdmonition, {}, parseSectionWrapper)
+  result = parseDirective(p, rnAdmonition, {hasOptions}, parseSectionWrapper)
   result.adType = d
+  result.title = result.getFieldValue("title").strip()
+  result.collapsible = result.getFieldValue("collapsible") != ""
+  result.closed = result.collapsible and
+    result.getFieldValue("collapsible").strip() == "closed"
+  result.sons[1] = nil
 
 proc dirDefaultRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDefaultRole, {hasArg}, nil)

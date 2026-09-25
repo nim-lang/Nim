@@ -865,6 +865,8 @@ proc rotateLeft*[T](arg: var openArray[T]; dist: int): int {.discardable.} =
     a.rotateLeft(-6)
     assert a == [1, 2, 3, 4, 5]
   let argLen = arg.len
+  if argLen == 0:
+    return 0
   let distLeft = ((dist mod argLen) + argLen) mod argLen
   arg.rotateInternal(0, distLeft, argLen)
 
@@ -914,5 +916,7 @@ proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
     a = rotatedLeft(a, -6)
     assert a == @[1, 2, 3, 4, 5]
   let argLen = arg.len
+  if argLen == 0:
+    return newSeq[T]()
   let distLeft = ((dist mod argLen) + argLen) mod argLen
   arg.rotatedInternal(0, distLeft, argLen)

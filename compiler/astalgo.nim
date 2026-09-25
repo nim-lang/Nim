@@ -528,59 +528,48 @@ proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
 
 type
   TIdentIter* = object # iterator over all syms with same identifier
-    h*: Hash           # current hash
-    name*: PIdent
+    next*: int32       # 1 + index of the symbol to yield next, 0 = exhausted
+    name* {.cursor.}: PIdent
 
+# The symbols of one name form a chain through `tab.next` that is in insertion
+# order, so iterating is a chain walk with no name comparison and no dependency
+# on the hash values.
+{.push boundChecks: off.}
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   # hot spots
-  var h = ti.h and high(tab.data)
-  var start = h
-  var p {.cursor.} = tab.data[h]
-  while p != nil:
-    if p.name.id == ti.name.id: break
-    h = nextTry(h, high(tab.data))
-    if h == start:
-      p = nil
-      break
-    p = tab.data[h]
-  if p != nil:
-    result = p # increase the count
-  else:
+  if ti.next == 0:
     result = nil
-  ti.h = nextTry(h, high(tab.data))
+  else:
+    let i = ti.next-1
+    result = tab.data[i]
+    ti.next = tab.next[i]
+{.pop.}
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
-  ti.h = s.h
   ti.name = s
-  if tab.counter == 0: result = nil
-  else: result = nextIdentIter(ti, tab)
+  ti.next = strTableFirstOfName(tab, s)
+  result = nextIdentIter(ti, tab)
 
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
                          excluding: IntSet): PSym =
-  var h: Hash = ti.h and high(tab.data)
-  var start = h
-  result = tab.data[h]
-  while result != nil:
-    if result.name.id == ti.name.id and not contains(excluding, result.id):
+  result = nil
+  while ti.next != 0:
+    let i = ti.next-1
+    let s = tab.data[i]
+    ti.next = tab.next[i]
+    if not contains(excluding, s.id):
+      result = s
       break
-    h = nextTry(h, high(tab.data))
-    if h == start:
-      result = nil
-      break
-    result = tab.data[h]
-  ti.h = nextTry(h, high(tab.data))
-  if result != nil and contains(excluding, result.id): result = nil
 
 proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
                           excluding: IntSet): PSym =
-  ti.h = s.h
   ti.name = s
-  if tab.counter == 0: result = nil
-  else: result = nextIdentExcluding(ti, tab, excluding)
+  ti.next = strTableFirstOfName(tab, s)
+  result = nextIdentExcluding(ti, tab, excluding)
 
 type
   TTabIter* = object
-    h: Hash
+    pos: int
 
 proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym =
   # usage:
@@ -592,25 +581,19 @@ proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym =
   #   ...
   #   s = NextIter(i, table)
   #
-  result = nil
-  while (ti.h <= high(tab.data)):
-    result = tab.data[ti.h]
-    inc(ti.h)                 # ... and increment by one always
-    if result != nil: break
+  if ti.pos < tab.data.len:
+    result = tab.data[ti.pos]
+    inc ti.pos
+  else:
+    result = nil
 
 proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym =
-  ti.h = 0
-  if tab.counter == 0:
-    result = nil
-  else:
-    result = nextIter(ti, tab)
+  ti.pos = 0
+  result = nextIter(ti, tab)
 
 iterator items*(tab: TStrTable): PSym =
-  var it: TTabIter = default(TTabIter)
-  var s = initTabIter(it, tab)
-  while s != nil:
-    yield s
-    s = nextIter(it, tab)
+  ## in insertion order
+  for s in tab.data: yield s
 
 proc isNil(x: ItemId): bool {.inline.} =
   x.module == 0 and x.item == 0
@@ -635,8 +618,13 @@ proc getOrDefault*[T](t: TIdTable[T], key: ItemId): T =
   if index >= 0: result = t.data[index].val
   else: result = default(T)
 
-template idTableGet*[T](t: TIdTable[T], key: PType | PSym): T =
+template idTableGet*[T](t: TIdTable[T], key: PSym): T =
   getOrDefault(t, key.itemId)
+
+template idTableGet*[T](t: TIdTable[T], key: PType): T =
+  ## Type-keyed tables are BINDING tables: an `exactReplica` must find what its
+  ## original bound, hence `bindingId` and not the type's own identity.
+  getOrDefault(t, key.bindingId)
 
 proc idTableRawInsert[T](data: var TIdPairSeq[T], key: ItemId, val: T) =
   var h: Hash
@@ -668,8 +656,11 @@ proc `[]=`*[T](t: var TIdTable[T], key: ItemId, val: T) =
     idTableRawInsert(t.data, key, val)
     inc(t.counter)
 
-template idTablePut*[T](t: var TIdTable[T], key: PType | PSym, val: T) =
+template idTablePut*[T](t: var TIdTable[T], key: PSym, val: T) =
   t[key.itemId] = val
+
+template idTablePut*[T](t: var TIdTable[T], key: PType, val: T) =
+  t[key.bindingId] = val
 
 iterator idTablePairs*[T](t: TIdTable[T]): tuple[key: ItemId, val: T] =
   for i in 0..high(t.data):
@@ -729,6 +720,6 @@ proc listSymbolNames*(symbols: openArray[PSym]): string =
     result.add sym.name.s
 
 proc isDiscriminantField*(n: PNode): bool =
-  if n.kind == nkCheckedFieldExpr: sfDiscriminant in n[0][1].sym.flags
-  elif n.kind == nkDotExpr: sfDiscriminant in n[1].sym.flags
+  if n.kind == nkCheckedFieldExpr: sfDiscriminant in n.firstSon.secondSon.sym.flags
+  elif n.kind == nkDotExpr: sfDiscriminant in n.secondSon.sym.flags
   else: false

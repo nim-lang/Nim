@@ -35,7 +35,7 @@ proc isDocumentationTitle*(hyperlink: string): bool =
   ## Returns true if the hyperlink is actually a documentation title.
   ##
   ## Documentation titles lack the hash. See `mergeIndexes()
-  ## <#mergeIndexes,string>`_ for a more detailed explanation.
+  ## <#mergeIndexes,string,bool,bool>`_ for a more detailed explanation.
   result = hyperlink.find('#') < 0
 
 proc `$`*(e: IndexEntry): string =

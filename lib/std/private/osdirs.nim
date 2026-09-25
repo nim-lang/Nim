@@ -361,7 +361,7 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
   #
   # This is a thin wrapper over mkDir (or alternatives on other systems),
   # so in case of a pre-existing path we don't check that it is a directory.
-  when defined(solaris):
+  when defined(sunos):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
       result = true

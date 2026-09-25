@@ -56,11 +56,14 @@ proc mustRehash[T](t: T): bool {.inline.} =
   assert length > t.counter
   result = (length * 2 < t.counter * 3) or (length - t.counter < 4)
 
+{.push overflowChecks: off.}
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
   const PERTURB_SHIFT = 5
   var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
   perturb = cast[Hash](perturb2)
+  # Overflow is intentional: only the low bits selected by maxHash are used.
   result = ((5 * h) + 1 + perturb) and maxHash
+{.pop.}
 
 proc packedSetGet[A](t: PackedSet[A], key: int): Trunk =
   var h = key and t.max

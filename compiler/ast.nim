@@ -26,6 +26,24 @@ export nodekinds
 import astdef
 export astdef
 
+# Stage 3+ of `doc/parallel_compiler.md`: once two workers sem bodies at once,
+# `incl`/`excl` on a shared symbol's or type's flags is a read-modify-write of
+# one machine word from two threads and one update is simply lost (§4.4 —
+# `sfUsed` lost is a spurious hint, `tfHasAsgn` lost is wrong code). The
+# accessors below are the chokepoint for that, so the atomic form is switched in
+# here rather than at the 145 call sites that touch `flagsImpl` directly.
+#
+# Off by default: a locked read-modify-write on every flag set is not something
+# to pay for while the compiler is still single-threaded, and `-d:nimParallelSem`
+# keeps the wiring compiled and reviewable until it is.
+#
+# `TSymFlags` holds 63 of the 64 flags that fit in a one-word set, so there is
+# exactly one spare slot: the 65th `TSymFlag` makes the set a 9-byte array, for
+# which there is no fetch-or. `astdef` asserts the width so that lands as a
+# sentence rather than as a template instantiation error.
+when defined(nimParallelSem):
+  import concurrency
+
 when not defined(nimKochBootstrap):
   import ast2nif
 
@@ -87,11 +105,11 @@ proc unsealForTransform*(t: PType) {.inline.} =
   if t.state == Partial: loadType(t)
   if t.state == Sealed: t.state = Complete
 
-proc owner*(s: PSym): PSym {.inline.} =
+proc owner*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.ownerFieldImpl
 
-proc owner*(s: PType): PSym {.inline.} =
+proc owner*(s: PType): lent PSym {.inline.} =
   if s.state == Partial: loadType(s)
   result = s.ownerFieldImpl
 
@@ -114,7 +132,7 @@ proc `kind=`*(s: PSym, val: TSymKind) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.kindImpl = val
 
-proc gcUnsafetyReason*(s: PSym): PSym {.inline.} =
+proc gcUnsafetyReason*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.gcUnsafetyReasonImpl
 
@@ -123,17 +141,22 @@ proc `gcUnsafetyReason=`*(s: PSym, val: PSym) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.gcUnsafetyReasonImpl = val
 
-proc transformedBody*(s: PSym): PNode {.inline.} =
+proc transformedBody*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.transformedBodyImpl
+
+proc nifBodyLoaded*(s: PSym): bool {.inline.} =
+  if s.state == Partial: loadSym(s)
+  result = s.nifBodyLoadedImpl
 
 proc `transformedBody=`*(s: PSym, val: PNode) {.inline.} =
   #assert s.state != Sealed
   # Make an exception here for this misfeature...
   if s.state == Partial: loadSym(s)
   s.transformedBodyImpl = val
+  s.nifBodyLoadedImpl = false
 
-proc guard*(s: PSym): PSym {.inline.} =
+proc guard*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.guardImpl
 
@@ -169,7 +192,7 @@ proc `magic=`*(s: PSym, val: TMagic) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.magicImpl = val
 
-proc typ*(s: PSym): PType {.inline.} =
+proc typ*(s: PSym): lent PType {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.typImpl
 
@@ -215,7 +238,7 @@ proc `flags=`*(s: PSym, val: TSymFlags) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.flagsImpl = val
 
-proc ast*(s: PSym): PNode {.inline.} =
+proc ast*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.astImpl
 
@@ -263,7 +286,7 @@ proc `loc=`*(s: PSym, val: TLoc) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.locImpl = val
 
-proc annex*(s: PSym): PLib {.inline.} =
+proc annex*(s: PSym): lent PLib {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.annexImpl
 
@@ -282,7 +305,7 @@ when hasFFI:
     if s.state == Partial: loadSym(s)
     s.cnameImpl = val
 
-proc constraint*(s: PSym): PNode {.inline.} =
+proc constraint*(s: PSym): lent PNode {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.constraintImpl
 
@@ -291,7 +314,7 @@ proc `constraint=`*(s: PSym, val: PNode) {.inline.} =
   if s.state == Partial: loadSym(s)
   s.constraintImpl = val
 
-proc instantiatedFrom*(s: PSym): PSym {.inline.} =
+proc instantiatedFrom*(s: PSym): lent PSym {.inline.} =
   if s.state == Partial: loadSym(s)
   result = s.instantiatedFromImpl
 
@@ -308,12 +331,14 @@ proc setSnippet*(s: PSym; val: sink string) {.inline.} =
 proc incl*(s: PSym; flag: TSymFlag) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.flagsImpl.incl(flag)
+  when defined(nimParallelSem): atomicIncl(s.flagsImpl, flag)
+  else: s.flagsImpl.incl(flag)
 
 proc incl*(s: PSym; flags: set[TSymFlag]) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.flagsImpl.incl(flags)
+  when defined(nimParallelSem): atomicIncl(s.flagsImpl, flags)
+  else: s.flagsImpl.incl(flags)
 
 proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
   #assert s.state != Sealed
@@ -324,7 +349,8 @@ proc incl*(s: PSym; flag: TLocFlag) {.inline.} =
 proc excl*(s: PSym; flag: TSymFlag) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.flagsImpl.excl(flag)
+  when defined(nimParallelSem): atomicExcl(s.flagsImpl, flag)
+  else: s.flagsImpl.excl(flag)
 
 when defined(nimsuggest):
   proc allUsages*(s: PSym): var seq[TLineInfo] {.inline.} =
@@ -359,6 +385,18 @@ proc `flags=`*(t: PType, val: TTypeFlags) {.inline.} =
   t.flagsImpl = val
 
 proc sons*(t: PType): var TTypeSeq {.inline.} =
+  ## The RAW child seq. Despite the name this is NOT the counterpart of the
+  ## `sons` ITERATOR over a `PNode`, and it is not the way to walk a type's
+  ## children — use `kids` / `ikids` / `paramTypes` / `signature`, or the named
+  ## accessors (`returnType`, `baseClass`, `elementType`, `indexType`,
+  ## `genericHead`, ...), which say WHICH child they mean.
+  ##
+  ## The difference is not cosmetic. A `tyProc` keeps its parameter types in
+  ## `n`, not here — `setSons` asserts `sonsImpl.len <= 1` for one — so `[]`,
+  ## `len` and every iterator built on them route parameters through
+  ## `n[i].sym.typ`, while this seq holds only the return type. `for x in
+  ## t.sons` therefore compiles, looks like the `PNode` idiom, and silently
+  ## visits a different set of types.
   if t.state == Partial: loadType(t)
   result = t.sonsImpl
 
@@ -367,7 +405,7 @@ proc `sons=`*(t: PType, val: sink TTypeSeq) {.inline.} =
   if t.state == Partial: loadType(t)
   t.sonsImpl = val
 
-proc n*(t: PType): PNode {.inline.} =
+proc n*(t: PType): lent PNode {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.nImpl
 
@@ -376,7 +414,7 @@ proc `n=`*(t: PType, val: PNode) {.inline.} =
   if t.state == Partial: loadType(t)
   t.nImpl = val
 
-proc sym*(t: PType): PSym {.inline.} =
+proc sym*(t: PType): lent PSym {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.symImpl
 
@@ -418,7 +456,7 @@ proc `loc=`*(t: PType, val: TLoc) {.inline.} =
   if t.state == Partial: loadType(t)
   t.locImpl = val
 
-proc typeInst*(t: PType): PType {.inline.} =
+proc typeInst*(t: PType): lent PType {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.typeInstImpl
 
@@ -430,24 +468,51 @@ proc `typeInst=`*(t: PType, val: PType) {.inline.} =
 proc incl*(t: PType; flag: TTypeFlag) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
-  t.flagsImpl.incl(flag)
+  when defined(nimParallelSem): atomicIncl(t.flagsImpl, flag)
+  else: t.flagsImpl.incl(flag)
 
 proc incl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
-  t.flagsImpl.incl(flags)
+  when defined(nimParallelSem): atomicIncl(t.flagsImpl, flags)
+  else: t.flagsImpl.incl(flags)
 
 proc excl*(t: PType; flag: TTypeFlag) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
-  t.flagsImpl.excl(flag)
+  when defined(nimParallelSem): atomicExcl(t.flagsImpl, flag)
+  else: t.flagsImpl.excl(flag)
 
 proc excl*(t: PType; flags: set[TTypeFlag]) {.inline.} =
   assert t.state != Sealed
   if t.state == Partial: loadType(t)
+  when defined(nimParallelSem): atomicExcl(t.flagsImpl, flags)
+  else: t.flagsImpl.excl(flags)
+
+proc inclDerived*(t: PType; flags: TTypeFlags) {.inline.} =
+  ## Add DERIVED bookkeeping flags (see `derivedTypeFlags`). Unlike `incl` this
+  ## is allowed on a `Sealed` type: the bit is not part of the type's identity,
+  ## its NIF name or its content key, and a consumer never rewrites a foreign
+  ## type's def (`ast2nif.writeType` emits a `SymUse` for anything it does not
+  ## own), so the write cannot reach any NIF. It is process-local bookkeeping
+  ## that a consumer re-derives from data the producer already serialized.
+  assert flags <= derivedTypeFlags
+  if t.state == Partial: loadType(t)
+  when defined(icDerivedBarrier):
+    if t.state == Sealed and not (flags <= t.flagsImpl):
+      echo "[derived-barrier] +", flags - t.flagsImpl, " on sealed ", t.kind,
+        (if t.symImpl != nil: "/" & t.symImpl.name.s else: ""),
+        " @", t.itemId.module, ".", t.itemId.item
+  t.flagsImpl.incl(flags)
+
+proc exclDerived*(t: PType; flags: TTypeFlags) {.inline.} =
+  ## Counterpart of `inclDerived`. Same reasoning; `tfCheckedForDestructor` is
+  ## genuinely cleared again (`injectdestructors`), so this is not monotone.
+  assert flags <= derivedTypeFlags
+  if t.state == Partial: loadType(t)
   t.flagsImpl.excl(flags)
 
-proc typ*(n: PNode): PType {.inline.} =
+proc typ*(n: PNode): lent PType {.inline.} =
   result = n.typField
   if result == nil and nfLazyType in n.flags:
     result = n.sym.typ
@@ -509,7 +574,8 @@ proc getPIdent*(a: PNode): PIdent {.inline.} =
   of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: a.sons[0].sym.name
   else: nil
 
-template id*(a: PType | PSym): int = toId(a.itemId)
+template id*(a: PSym): int = toId(a.itemId)
+template id*(a: PType): int = toId(a.bindingId)
 
 type
   IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
@@ -701,6 +767,10 @@ proc extractPragma*(s: PSym): PNode =
 proc skipPragmaExpr*(n: PNode): PNode =
   ## if pragma expr, give the node the pragmas are applied to,
   ## otherwise give node itself
+  ##
+  ## `bnode` carries the `BNode` spelling. It is a separate one-liner rather
+  ## than a shared template because this sits above the point in this module
+  ## where `firstSon` for a `PNode` exists.
   if n.kind == nkPragmaExpr:
     result = n[0]
   else:
@@ -764,10 +834,28 @@ when false:
       echo k
       echo v
 
+when defined(icSymCount):
+  import std / [syncio, exitprocs, tables as symCountTables]
+  var symMints*: symCountTables.CountTable[string]
+  var symMintTotal*: int
+  var symCountHooked = false
+
 proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   assert not name.isNil
+  when defined(icSymCount):
+    # Counting symbol MINTS, not their names in the output: a gensym's number is
+    # its item id, so one extra symbol anywhere shifts every later name. A count
+    # is therefore far more sensitive than diffing generated C, and it localises
+    # the extra mint by kind instead of by whatever file happened to show it.
+    inc symMintTotal
+    symMints.inc $symKind
+    if not symCountHooked:
+      symCountHooked = true
+      addExitProc proc () =
+        stderr.writeLine "SYMMINT total=" & $symMintTotal
+        for k, v in symMints: stderr.writeLine "SYMMINT " & k & "=" & $v
   let id = nextSymId idgen
   result = PSym(name: name, kindImpl: symKind, flagsImpl: {}, infoImpl: info, itemId: id,
                 optionsImpl: options, ownerFieldImpl: owner, offsetImpl: defaultOffset,
@@ -823,9 +911,7 @@ proc appendToModule*(m: PSym, n: PNode) =
   m.astImpl.add(n)
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
-  dest.counter = src.counter
-  setLen(dest.data, src.data.len)
-  for i in 0..high(src.data): dest.data[i] = src.data[i]
+  dest = src
 
 proc copyIdTable*[T](dest: var TIdTable[T], src: TIdTable[T]) =
   dest.counter = src.counter
@@ -866,7 +952,7 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: PNode): PNode {.inline.} = n.sons[^1]
+proc lastSon*(n: PNode): lent PNode {.inline.} = n.sons[^1]
 template setLastSon*(n: PNode, s: PNode) = n.sons[^1] = s
 
 template firstSon*(n: PNode): PNode = n.sons[0]
@@ -888,29 +974,29 @@ proc last*(n: PType): PType {.inline.} =
   else:
     n.sonsImpl[^1]
 
-proc elementType*(n: PType): PType {.inline.} =
+proc elementType*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[^1]
+  result = n.sonsImpl[^1]
 
-proc skipModifier*(n: PType): PType {.inline.} =
+proc skipModifier*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[^1]
+  result = n.sonsImpl[^1]
 
-proc indexType*(n: PType): PType {.inline.} =
+proc indexType*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
-proc baseClass*(n: PType): PType {.inline.} =
+proc baseClass*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
-proc base*(t: PType): PType {.inline.} =
+proc base*(t: PType): lent PType {.inline.} =
   if t.state == Partial: loadType(t)
   result = t.sonsImpl[0]
 
-proc returnType*(n: PType): PType {.inline.} =
+proc returnType*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
 proc setReturnType*(n, r: PType) {.inline.} =
   if n.state == Partial: loadType(n)
@@ -927,17 +1013,17 @@ proc firstParamType*(n: PType): PType {.inline.} =
   else:
     n.sonsImpl[1]
 
-proc firstGenericParam*(n: PType): PType {.inline.} =
+proc firstGenericParam*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[1]
+  result = n.sonsImpl[1]
 
-proc typeBodyImpl*(n: PType): PType {.inline.} =
+proc typeBodyImpl*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[^1]
+  result = n.sonsImpl[^1]
 
-proc genericHead*(n: PType): PType {.inline.} =
+proc genericHead*(n: PType): lent PType {.inline.} =
   if n.state == Partial: loadType(n)
-  n.sonsImpl[0]
+  result = n.sonsImpl[0]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1097,7 +1183,7 @@ proc newType*(kind: TTypeKind; idgen: IdGenerator; owner: PSym; son: sink PType 
   let id = nextTypeId idgen
   result = PType(kind: kind, ownerFieldImpl: owner, sizeImpl: defaultSize,
                  alignImpl: defaultAlignment, itemId: id,
-                 uniqueId: id, sonsImpl: @[])
+                 bindingId: id, sonsImpl: @[])
   if son != nil:
     assert kind != tyProc
     result.sonsImpl.add son
@@ -1173,18 +1259,23 @@ proc copyType*(t: PType, idgen: IdGenerator, owner: PSym): PType =
   result.symImpl = t.sym          # backend-info should not be copied
 
 proc exactReplica*(t: PType; idgen: IdGenerator): PType =
-  ## Replica that KEEPS `itemId` — the generic-param binding tables
-  ## (`LayeredIdTable`) key on it, so the copy must keep matching its
-  ## original — but mints a FRESH `uniqueId`: uniqueId is the SERIALIZATION
-  ## identity (NIF type names key on it) and must be unique per instance.
-  ## Replicas sharing the original's uniqueId serialized as duplicate defs
-  ## under one NIF name; the loader collapsed them into a single type,
+  ## Copy that INHERITS `bindingId` — the generic-param binding tables
+  ## (`LayeredIdTable`) key on it, so the copy must keep matching its original
+  ## there — while getting its own `itemId`, like every other type. The two
+  ## remaining callers are `semtypinst.instCopyType` (a partially instantiated
+  ## meta type must still bind in the next instantiation round) and the
+  ## `tfUnresolved` typedesc replica in `semtypes.semTypeIdent`; everything
+  ## else that used to come through here is a plain `copyType`.
+  ##
+  ## Do not "simplify" this to share `itemId` as well: `itemId` is the
+  ## serialization identity, and replicas sharing it serialized as duplicate
+  ## defs under one NIF name, which the loader collapsed into a single type —
   ## losing their flag differences (use-site `tfUnresolved` typedescs) or
   ## their structure (meta instance bodies shadowing a generic's canonical
   ## body).
   result = PType(kind: t.kind, ownerFieldImpl: t.owner, sizeImpl: defaultSize,
-                 alignImpl: defaultAlignment, itemId: t.itemId,
-                 uniqueId: nextTypeId(idgen))
+                 alignImpl: defaultAlignment, itemId: nextTypeId(idgen),
+                 bindingId: t.bindingId)
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 
@@ -1217,8 +1308,8 @@ proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLi
   result.annexImpl = s.annex
 
 proc initStrTable*(): TStrTable =
+  # the storage is allocated on the first `strTableAdd`; most scopes stay empty
   result = TStrTable(counter: 0)
-  newSeq(result.data, StartSize)
 
 proc initIdTable*[T](): TIdTable[T] =
   result = TIdTable[T](counter: 0)
@@ -1272,13 +1363,15 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyString, tySet, tyDistinct}:
-      if o2.state == Sealed:
-        # During the original compilation, propagateToOwner set tfHasAsgn/tfHasOwned on the type before it was sealed
-        # On IC reload, the sealed type already has those flags
-        assert mask <= o2.flags, "IC bug: sealed type missing propagated flags"
-      else:
-        o2.incl mask
-      owner.incl mask
+      # `o2` may be `Sealed`: these are DERIVED flags, and a consumer can reach
+      # a foreign type here that the producer sealed without them. The classic
+      # case is a generic alias -- `Channel[TMsg] = RawChannel` -- where
+      # `normalizeTypeHook` leaves `tfHasAsgn` on the `tyAlias` and the object
+      # behind it only acquires it at the first instantiation, in another
+      # module and, under IC, another process. Adding the bit is sound (see
+      # `inclDerived`); asserting here just crashed on legal code.
+      o2.inclDerived mask
+      owner.inclDerived mask
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
@@ -1286,7 +1379,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.
-      owner.incl tfHasGCedMem
+      owner.inclDerived {tfHasGCedMem}
 
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   ensureMutable father
@@ -1368,6 +1461,7 @@ proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
   transitionSymKindCommon(kind)
   s.gcUnsafetyReasonImpl = obj.gcUnsafetyReasonImpl
   s.transformedBodyImpl = obj.transformedBodyImpl
+  s.nifBodyLoadedImpl = obj.nifBodyLoadedImpl
 
 proc transitionToLet*(s: PSym) =
   transitionSymKindCommon(skLet)
@@ -1446,18 +1540,28 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc getInt*(a: PNode): Int128 =
-  case a.kind
-  of nkCharLit, nkUIntLit..nkUInt64Lit:
-    result = toInt128(cast[uint64](a.intVal))
-  of nkInt8Lit..nkInt64Lit:
-    result = toInt128(a.intVal)
-  of nkIntLit:
-    # XXX: enable this assert
-    # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
-    result = toInt128(a.intVal)
-  else:
-    raiseRecoverableError("cannot extract number from invalid AST node")
+template getIntImpl*(aArg: typed): Int128 =
+  ## The body of `getInt`, in a form `bnode.nim` can instantiate for a `BNode`
+  ## too — same reason as `canRaiseImpl`: `BNode` is defined there and that
+  ## module imports this one, so the shared logic has to live in a template
+  ## rather than an `AnyNode` proc. There is no second copy.
+  block:
+    let a = aArg
+    var res: Int128
+    case a.kind
+    of nkCharLit, nkUIntLit..nkUInt64Lit:
+      res = toInt128(cast[uint64](a.intVal))
+    of nkInt8Lit..nkInt64Lit:
+      res = toInt128(a.intVal)
+    of nkIntLit:
+      # XXX: enable this assert
+      # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
+      res = toInt128(a.intVal)
+    else:
+      raiseRecoverableError("cannot extract number from invalid AST node")
+    res
+
+proc getInt*(a: PNode): Int128 = getIntImpl(a)
 
 proc getInt64*(a: PNode): int64 {.deprecated: "use getInt".} =
   case a.kind
@@ -1477,14 +1581,21 @@ proc getFloat*(a: PNode): BiggestFloat =
     #internalError(a.info, "getFloat")
     #result = 0.0
 
-proc getStr*(a: PNode): string =
-  case a.kind
-  of nkStrLit..nkTripleStrLit: result = a.strVal
-  of nkNilLit:
-    # let's hope this fixes more problems than it creates:
-    result = ""
-  else:
-    raiseRecoverableError("cannot extract string from invalid AST node")
+template getStrImpl*(aArg: typed): string =
+  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
+  block:
+    let gs = aArg
+    var res = ""
+    case gs.kind
+    of nkStrLit..nkTripleStrLit: res = gs.strVal
+    of nkNilLit:
+      # let's hope this fixes more problems than it creates:
+      res = ""
+    else:
+      raiseRecoverableError("cannot extract string from invalid AST node")
+    res
+
+proc getStr*(a: PNode): string = getStrImpl(a)
     #doAssert false, "getStr"
     #internalError(a.info, "getStr")
     #result = ""
@@ -1532,7 +1643,9 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## of the generic itself (the module or the enclosing proc).
   result = if s.kind == skModule:
              s
-           elif s.kind in skProcKinds and sfFromGeneric in s.flags and s.owner.kind != skModule:
+           # a hook the backend lifted for an owner-less type has no owner:
+           elif s.kind in skProcKinds and sfFromGeneric in s.flags and
+               s.owner != nil and s.owner.kind != skModule:
              s.owner.owner
            else:
              s.owner
@@ -1627,8 +1740,14 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
   result = base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}
 
-proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == ord(wAs)
+template isInfixAsImpl*(nArg: typed): bool =
+  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
+  block:
+    let ia = nArg
+    ia.kind == nkInfix and ia.firstSon.kind == nkIdent and
+      ia.firstSon.ident.id == ord(wAs)
+
+proc isInfixAs*(n: PNode): bool = isInfixAsImpl(n)
 
 proc skipColon*(n: PNode): PNode =
   result = n
@@ -1705,36 +1824,110 @@ proc addParam*(procType: PType; param: PSym) =
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
-const magicsThatCanRaise = {
+const magicsThatCanRaise* = {
   mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst, mEcho}
 
-proc canRaiseConservative*(fn: PNode): bool =
-  if fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise:
-    result = false
-  else:
-    result = true
+# `canRaise` and `canRaiseConservative` are asked by the C backend, which is
+# migrating to reading routine bodies straight off a `.bif` `Cursor` rather than
+# off a materialised `PNode` tree (see `compiler/bnode.nim`). Both predicates
+# only ever look at a node's `kind`, `sym` and `typ`, so ONE body serves either
+# spelling -- but `BNode` is defined in `bnode.nim`, which imports this module,
+# so the `BNode` overloads cannot live here. The bodies therefore live in
+# templates and `bnode.nim` instantiates them for its own node type: one source
+# of truth, no import cycle, and no second copy to keep in sync.
+#
+# The effect list is reached through `effectsOf` / `raisesNothing` rather than
+# by subscripting `fn.typ.n`, so the templates below contain no knowledge of the
+# layout and the `BNode` instantiation inherits none. `fn.typ` stays a `PType`
+# in both spellings -- there is deliberately no `BType` (see `bnode.nim`) -- so
+# what "works on a `.bif`" means for these two is that the type the decoder
+# materialises must carry the same effect list the from-source one did. That is
+# a claim about the WRITER, not about the vocabulary, and it is checked
+# separately: `-d:icCanRaiseLog` logs every answer, and the same program built
+# with and without `--ic:on` must produce the same verdicts.
 
-proc canRaise*(fn: PNode): bool =
-  if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
-      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
-      sfGeneratedOp in fn.sym.flags):
-    result = false
-  elif fn.kind == nkSym and fn.sym.magic == mEcho:
-    result = true
-  elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
-    # TODO check for n having sons? or just return false for now if not
-    if fn.typ.n[0].kind == nkSym:
-      result = false
+when defined(icCanRaiseLog):
+  var canRaiseBranch* = 0
+    ## Which branch decided the last answer: 1 = the symbol's magic/flags,
+    ## 2 = `mEcho`, 3 = the EFFECT LIST reached through `effectsOf`, 4 = the
+    ## conservative predicate, 5 = short-circuited in `canRaiseDisp` before
+    ## either predicate ran, 0 = fell through. Only branch 3 reads anything
+    ## that had to survive a `.bif` round trip, so a differential in which no
+    ## callee reaches it would prove nothing about the writer — which is the
+    ## whole point of running the differential. See `-d:icCanRaiseLog`.
+
+template markCanRaiseBranch*(n: int) =
+  when defined(icCanRaiseLog): canRaiseBranch = n
+
+template canRaiseConservativeImpl*(fnArg: typed): bool =
+  block:
+    let fn = fnArg
+    markCanRaiseBranch 4
+    not (fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise)
+
+proc effectsOf*(t: PType): PNode {.inline.} =
+  ## The `nkEffectList` a proc type carries as child 0 of its formal-params
+  ## node, with the parameters following from index 1 (`newProcType` builds it
+  ## that way; `cgen` reads the params back with `sonsFrom(prc.typ.n, 1)`).
+  ##
+  ## Named rather than subscripted so that the layout is written down in ONE
+  ## place. `.n` here is a TYPE's node, never a routine body, so it is always
+  ## fully materialised and `firstSon` is safe — the `nfLazyBody` hazard that
+  ## makes raw child access dangerous elsewhere (see `astdef.sons`) cannot reach
+  ## it. A proc type always has this child; `t.n` with no children is not a
+  ## shape the writer or sem produces, and this deliberately does not paper over
+  ## one appearing.
+  result = if t.n == nil: nil else: t.n.firstSon
+
+proc raisesNothing*(effects: PNode): bool =
+  ## Whether an effect list says DEFINITIVELY that nothing is raised: it is long
+  ## enough to have a raises slot at all, the slot is present, and it is empty.
+  ##
+  ## Every other shape — a list too short to carry the slot, an absent slot, a
+  ## non-empty one — means the effects are unspecified or non-empty, and a
+  ## caller must assume a raise. Stating it as the NEGATIVE is the point: the
+  ## safe default has to be "can raise", so the one narrow case that licenses
+  ## dropping an exception check is the one spelled out here, and a shape nobody
+  ## anticipated falls on the conservative side by construction rather than by
+  ## luck.
+  result = effects != nil and effects.len >= effectListLen and
+           effects[exceptionEffects] != nil and
+           effects[exceptionEffects].safeLen == 0
+
+template canRaiseImpl*(fnArg: typed): bool =
+  block:
+    let fn = fnArg
+    var res: bool
+    if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
+        {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
+        sfGeneratedOp in fn.sym.flags):
+      markCanRaiseBranch 1
+      res = false
+    elif fn.kind == nkSym and fn.sym.magic == mEcho:
+      markCanRaiseBranch 2
+      res = true
+    elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
+      markCanRaiseBranch 3
+      let effects = effectsOf(fn.typ)
+      if effects.kind == nkSym:
+        # The historical shape: slot 0 used to be an `nkType` before the effects
+        # moved in (see `newProcType`). Nothing to read, so nothing licenses a
+        # raise.
+        res = false
+      else:
+        # A proc-typed value with no explicit raises slot still has
+        # unspecified effects, which sempass2 treats conservatively.
+        # Codegen needs to do the same in order to keep goto-exception
+        # checks after indirect/closure calls.
+        res = not raisesNothing(effects)
     else:
-      # A proc-typed value with no explicit raises slot still has
-      # unspecified effects, which sempass2 treats conservatively.
-      # Codegen needs to do the same in order to keep goto-exception
-      # checks after indirect/closure calls.
-      result = ((fn.typ.n[0].len < effectListLen) or
-        fn.typ.n[0][exceptionEffects] == nil or
-        fn.typ.n[0][exceptionEffects].safeLen > 0)
-  else:
-    result = false
+      markCanRaiseBranch 0
+      res = false
+    res
+
+proc canRaiseConservative*(fn: PNode): bool = canRaiseConservativeImpl(fn)
+
+proc canRaise*(fn: PNode): bool = canRaiseImpl(fn)
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind
@@ -1749,8 +1942,13 @@ proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
 
-proc skipHiddenAddr*(n: PNode): PNode {.inline.} =
-  (if n.kind == nkHiddenAddr: n[0] else: n)
+template skipHiddenAddrImpl*(nArg: typed): untyped =
+  ## Body shared with `bnode`'s `BNode` spelling — see `canRaiseImpl`.
+  block:
+    let sha = nArg
+    (if sha.kind == nkHiddenAddr: sha.firstSon else: sha)
+
+proc skipHiddenAddr*(n: PNode): PNode {.inline.} = skipHiddenAddrImpl(n)
 
 proc isNewStyleConcept*(n: PNode): bool {.inline.} =
   assert n.kind == nkTypeClassTy

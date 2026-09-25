@@ -16,7 +16,6 @@ proc dispatch(x: Base, params: ...) =
   var disp = newNodeI(nkIfStmt, base.info)
 
   let nimGetVTableSym = getCompilerProc(g, "nimGetVTable")
-  let ptrPNimType = nimGetVTableSym.typ.n[1].sym.typ
 
   var nTyp = base.typ.n[1].sym.typ
   var dispatchObject = newSymNode(base.typ.n[1].sym)
@@ -91,30 +90,30 @@ proc collectVTableDispatchers*(g: ModuleGraph) =
     sortBucket(g.methods[bucket].methods, relevantCols)
     let base = g.methods[bucket].methods[^1]
     let baseType = base.typ.firstParamType.skipTypes(skipPtrs-{tyTypeDesc})
-    if baseType.itemId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.itemId]):
-      let methodIndexLen = g.bucketTable[baseType.itemId]
-      if baseType.itemId notin itemTable: # once is enough
+    if baseType.bindingId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.bindingId]):
+      let methodIndexLen = g.bucketTable[baseType.bindingId]
+      if baseType.bindingId notin itemTable: # once is enough
         rootTypeSeq.add baseType
-        itemTable[baseType.itemId] = newSeq[PSym](methodIndexLen)
+        itemTable[baseType.bindingId] = newSeq[PSym](methodIndexLen)
 
-        sort(g.objectTree[baseType.itemId], cmp = proc (x, y: tuple[depth: int, value: PType]): int =
+        sort(g.objectTree[baseType.bindingId], cmp = proc (x, y: tuple[depth: int, value: PType]): int =
           if x.depth >= y.depth: 1
           else: -1
           )
 
-        for item in g.objectTree[baseType.itemId]:
-          if item.value.itemId notin itemTable:
-            itemTable[item.value.itemId] = newSeq[PSym](methodIndexLen)
+        for item in g.objectTree[baseType.bindingId]:
+          if item.value.bindingId notin itemTable:
+            itemTable[item.value.bindingId] = newSeq[PSym](methodIndexLen)
 
       var mIndex = 0 # here is the correpsonding index
-      if baseType.itemId notin rootItemIdCount:
-        rootItemIdCount[baseType.itemId] = 1
+      if baseType.bindingId notin rootItemIdCount:
+        rootItemIdCount[baseType.bindingId] = 1
       else:
-        mIndex = rootItemIdCount[baseType.itemId]
-        rootItemIdCount.inc(baseType.itemId)
+        mIndex = rootItemIdCount[baseType.bindingId]
+        rootItemIdCount.inc(baseType.bindingId)
       for idx in 0..<g.methods[bucket].methods.len:
         let obj = g.methods[bucket].methods[idx].typ.firstParamType.skipTypes(skipPtrs)
-        itemTable[obj.itemId][mIndex] = g.methods[bucket].methods[idx]
+        itemTable[obj.bindingId][mIndex] = g.methods[bucket].methods[idx]
       g.addDispatchers genVTableDispatcher(g, g.methods[bucket].methods, mIndex)
     else: # if the base object doesn't have this method
       g.addDispatchers genIfDispatcher(g, g.methods[bucket].methods, relevantCols, g.idgen)
@@ -129,40 +128,40 @@ proc sortVTableDispatchers*(g: ModuleGraph) =
     sortBucket(g.methods[bucket].methods, relevantCols)
     let base = g.methods[bucket].methods[^1]
     let baseType = base.typ.firstParamType.skipTypes(skipPtrs-{tyTypeDesc})
-    if baseType.itemId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.itemId]):
-      let methodIndexLen = g.bucketTable[baseType.itemId]
-      if baseType.itemId notin itemTable: # once is enough
-        rootTypeSeq.add baseType.itemId
-        itemTable[baseType.itemId] = newSeq[PSym](methodIndexLen)
+    if baseType.bindingId in g.objectTree and not containGenerics(baseType, g.objectTree[baseType.bindingId]):
+      let methodIndexLen = g.bucketTable[baseType.bindingId]
+      if baseType.bindingId notin itemTable: # once is enough
+        rootTypeSeq.add baseType.bindingId
+        itemTable[baseType.bindingId] = newSeq[PSym](methodIndexLen)
 
-        sort(g.objectTree[baseType.itemId], cmp = proc (x, y: tuple[depth: int, value: PType]): int =
+        sort(g.objectTree[baseType.bindingId], cmp = proc (x, y: tuple[depth: int, value: PType]): int =
           if x.depth >= y.depth: 1
           else: -1
           )
 
-        for item in g.objectTree[baseType.itemId]:
-          if item.value.itemId notin itemTable:
-            itemTable[item.value.itemId] = newSeq[PSym](methodIndexLen)
+        for item in g.objectTree[baseType.bindingId]:
+          if item.value.bindingId notin itemTable:
+            itemTable[item.value.bindingId] = newSeq[PSym](methodIndexLen)
 
       var mIndex = 0 # here is the correpsonding index
-      if baseType.itemId notin rootItemIdCount:
-        rootItemIdCount[baseType.itemId] = 1
+      if baseType.bindingId notin rootItemIdCount:
+        rootItemIdCount[baseType.bindingId] = 1
       else:
-        mIndex = rootItemIdCount[baseType.itemId]
-        rootItemIdCount.inc(baseType.itemId)
+        mIndex = rootItemIdCount[baseType.bindingId]
+        rootItemIdCount.inc(baseType.bindingId)
       for idx in 0..<g.methods[bucket].methods.len:
         let obj = g.methods[bucket].methods[idx].typ.firstParamType.skipTypes(skipPtrs)
-        if obj.itemId notin itemTable:
-          itemTable[obj.itemId] = newSeq[PSym](methodIndexLen)
-        itemTable[obj.itemId][mIndex] = g.methods[bucket].methods[idx]
+        if obj.bindingId notin itemTable:
+          itemTable[obj.bindingId] = newSeq[PSym](methodIndexLen)
+        itemTable[obj.bindingId][mIndex] = g.methods[bucket].methods[idx]
 
   for baseType in rootTypeSeq:
     g.setMethodsPerType(baseType, itemTable[baseType])
     for item in g.objectTree[baseType]:
       let typ = item.value.skipTypes(skipPtrs)
-      let idx = typ.itemId
+      let idx = typ.bindingId
       for mIndex in 0..<itemTable[idx].len:
         if itemTable[idx][mIndex] == nil:
-          let parentIndex = typ.baseClass.skipTypes(skipPtrs).itemId
+          let parentIndex = typ.baseClass.skipTypes(skipPtrs).bindingId
           itemTable[idx][mIndex] = itemTable[parentIndex][mIndex]
       g.setMethodsPerType(idx, itemTable[idx])

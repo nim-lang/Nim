@@ -132,6 +132,9 @@ proc open*(self: var CsvParser, input: Stream, filename: string,
     strm.close()
 
   lexbase.open(self, input)
+  self.row.setLen(0)
+  self.headers.setLen(0)
+  self.currRow = 0
   self.filename = filename
   self.sep = separator
   self.quote = quote

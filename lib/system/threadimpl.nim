@@ -19,6 +19,13 @@ when not defined(useNimRtl):
 
       threadType = ThreadType.NimThread
 
+when hasThreadLocalAllocator and not emulatedThreadVars:
+  proc setupForeignThreadGc*() {.gcsafe, raises: [].} =
+    initThreadAllocator()
+
+  proc tearDownForeignThreadGc*() {.gcsafe, raises: [].} =
+    releaseThreadAllocator()
+
 when defined(gcDestructors):
   proc deallocThreadStorage(p: pointer) = c_free(p)
 else:
@@ -27,6 +34,10 @@ else:
 template afterThreadRuns() =
   for i in countdown(nimThreadDestructionHandlers.len-1, 0):
     nimThreadDestructionHandlers[i]()
+  when declared(nimYrcThreadTeardown):
+    # YRC: spill this thread's candidate roots so its garbage remains
+    # collectible after the thread is gone
+    nimYrcThreadTeardown()
 
 proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
@@ -79,6 +90,8 @@ else:
         deallocThreadStorage(thrd.rawStack)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
+  when hasThreadLocalAllocator:
+    initThreadAllocator()
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
   elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
@@ -93,6 +106,8 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
+    when hasThreadLocalAllocator:
+      releaseThreadAllocator()
 
 template nimThreadProcWrapperBody*(closure: untyped): untyped =
   var thrd = cast[ptr Thread[TArg]](closure)

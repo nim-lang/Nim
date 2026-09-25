@@ -34,14 +34,6 @@ when defined(windows) and defined(bcc):
   #endif
   """.}
 
-proc c_snprintf(s: cstring; n: uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
-
-
-when not declared(signbit):
-  proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
-  proc signbit*(x: SomeFloat): bool {.inline.} =
-    result = c_signbit(x) != 0
-
 import std/formatfloat
 
 proc toStrMaxPrecision*(f: BiggestFloat | float32): string =

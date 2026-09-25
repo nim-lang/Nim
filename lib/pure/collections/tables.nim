@@ -636,7 +636,7 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
     body
 
 template withValue*[A, B](t: var Table[A, B], key: A,
-                          value, body1, body2: untyped) =
+                          value, body1, body2: untyped): untyped =
   ## Retrieves the value at `t[key]`.
   ##
   ## `value` can be modified in the scope of the `withValue` call.
@@ -677,7 +677,7 @@ template withValue*[A, B](t: var Table[A, B], key: A,
     body2
 
 template withValue*[A, B](t: Table[A, B], key: A,
-                          value, body1, body2: untyped) =
+                          value, body1, body2: untyped): untyped =
   ## Retrieves the value at `t[key]` if it exists, assigns
   ## it to the variable `value` and executes `body`
   runnableExamples:

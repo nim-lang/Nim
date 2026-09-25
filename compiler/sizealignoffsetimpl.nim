@@ -52,7 +52,10 @@ proc align*(arg: var OffsetAccum; value: int32) =
   if value == szUnknownSize or arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
     arg.maxAlign = szUnknownSize
     arg.offset = szUnknownSize
-  else:
+  elif value > 0:
+    # an alignment of 0 means "no alignment requirement": only ``void``
+    # fields have it and they occupy no storage, so they must leave the
+    # offset untouched -- ``align(offset, 0)`` would zero it (#26225)
     arg.maxAlign = max(value, arg.maxAlign)
     arg.offset = align(arg.offset, value)
 
@@ -272,7 +275,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szUnknownSize
       typ.align = szUnknownSize
     else:
-      typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
+      # the C backend emits `array[0, T]` as `T[1]` (C has no zero-length
+      # arrays), so reserve one element here as well (bug #26220):
+      let n = if len == Zero: One else: len
+      typ.size = toInt64Checked(n * int32(elemSize), szTooBigSize)
       typ.align = typ.elementType.align
 
   of tyUncheckedArray:
@@ -382,7 +388,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         else:
           computeUnionObjectOffsetsFoldFunction(conf, typ.n, tfPacked in typ.flags, accum)
       elif tfPacked in typ.flags:
-        accum.maxAlign = 1
+        # A packed C++ derived object still has the alignment requirement of
+        # its base subobject. Its fields remain packed, but the complete
+        # object must be rounded to the base alignment.
+        if conf.backend != backendCpp or typ.baseClass == nil:
+          accum.maxAlign = 1
         computeObjectOffsetsFoldFunction(conf, typ.n, true, accum)
       else:
         if typ.baseClass == nil and lacksMTypeField(typ) and typ.n.len == 1 and

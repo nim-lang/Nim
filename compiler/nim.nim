@@ -120,7 +120,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   # so `loadConfigs` replays it instead of re-parsing the `nim.cfg` chain — the
   # driver runs on the exact same config its children will. See icconfig.nim.
   when not defined(nimKochBootstrap):
-    if conf.cmd in {cmdIc, cmdTrack}:
+    if conf.cmd in {cmdIc, cmdTrack} or isIcDriver(conf):
       ensureIcConfig(conf)
 
   var graph = newModuleGraph(cache, conf)
@@ -152,7 +152,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if optRun in conf.globalOptions:
     let output = conf.absOutFile
     case conf.cmd
-    of cmdBackends, cmdTcc:
+    of cmdBackends, cmdTcc, cmdIc:
       let nimRunExe = getNimRunExe(conf)
       var cmdPrefix = ""
       if nimRunExe.len > 0: cmdPrefix.add nimRunExe.quoteShell

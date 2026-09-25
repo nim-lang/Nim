@@ -25,7 +25,15 @@ type
                   ## or not is unspecified!
   Cond* = SysCond ## Nim condition variable
 
-{.push stackTrace: off.}
+# `enforceNoRaises`: these are thin wrappers over the OS primitives and
+# cannot raise. Without the flag `canRaiseDisp` falls into its conservative
+# branch (they are not in the system module), so the codegen emits an
+# `if (*nimErr_) goto BeforeRet_` right after every `acquire` -- which sits
+# BETWEEN the acquire and the `try` that `withLock` generates, so the
+# `finally` cannot cover it. A caller entered with the error flag already
+# set then acquires the lock and jumps straight past the `release`,
+# leaking it. See lib/system/yrc.nim's drainStripe.
+{.push stackTrace: off, enforceNoRaises.}
 
 
 proc `$`*(lock: Lock): string =

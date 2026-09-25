@@ -11,6 +11,7 @@
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 import semmacrosanity
+import ic/sharedcounters
 import
   std/[strutils, tables, intsets, parseutils],
   msgs, vmdef, vmgen, nimsets, types,
@@ -157,23 +158,6 @@ proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: b
   of tyFloat32: fun(floatVal, float32, rkFloat)
   of tyFloat64: fun(floatVal, float64, rkFloat)
   else: return false
-
-proc createStrKeepNode(x: var TFullReg; keepNode=true) =
-  if x.node.isNil or not keepNode:
-    x.node = newNode(nkStrLit)
-  elif x.node.kind == nkNilLit and keepNode:
-    when defined(useNodeIds):
-      let id = x.node.id
-    x.node[] = TNode(kind: nkStrLit)
-    when defined(useNodeIds):
-      x.node.id = id
-  elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
-      nfAllConst in x.node.flags:
-    # XXX this is hacky; tests/txmlgen triggers it:
-    x.node = newNode(nkStrLit)
-    # It not only hackey, it is also wrong for tgentemplate. The primary
-    # cause of bugs like these is that the VM does not properly distinguish
-    # between variable definitions (var foo = e) and variable updates (foo = e).
 
 include vmhooks
 
@@ -1362,7 +1346,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
               if t.n[i].kind == nkSym:
                 let p = t.n[i].sym
                 let def = newNodeI(nkIdentDefs, p.info)
-                def.add newIdentNode(p.name, p.info)
+                # the param SYMBOL, as in a from-source typed impl: macros
+                # query it (`getTypeInst`, `getType`) like any typed param
+                def.add newSymNode(p, p.info)
                 def.add opMapTypeInstToAst(c.cache, p.typ, p.info, c.idgen)
                 def.add newNodeI(nkEmpty, p.info)
                 fp.add def
@@ -1758,7 +1744,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       stackTrace(c, tos, pc, msg2)
     of opcSetLenStr:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.setLen(regs[rb].intVal.int)
     of opcOf:
       decodeBC(rkInt)
@@ -2203,7 +2188,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       inc pc
       let desttyp = c.types[c.code[pc].regBx - wordExcess]
       inc pc
-      let srctyp = c.types[c.code[pc].regBx - wordExcess]
 
       when hasFFI:
         let dest = fficast(c.config, regs[rb].node, desttyp)
@@ -2300,14 +2284,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNccValue:
       decodeB(rkInt)
       let destKey {.cursor.} = regs[rb].node.strVal
-      regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
+      regs[ra].intVal =
+        if usesSharedCounters(c.config): sharedCounterValue(c.config, destKey)
+        else: getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
       let g = c.graph
       declBC()
       let destKey {.cursor.} = regs[rb].node.strVal
       let by = regs[rc].intVal
-      let v = getOrDefault(g.cacheCounters, destKey)
-      g.cacheCounters[destKey] = v+by
+      if usesSharedCounters(c.config):
+        sharedCounterInc(c.config, destKey, by)
+      else:
+        let v = getOrDefault(g.cacheCounters, destKey)
+        g.cacheCounters[destKey] = v+by
       recordInc(c, c.debug[pc], destKey, by)
     of opcNcsAdd:
       let g = c.graph

@@ -11,16 +11,20 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "0d2504644fee2b2881a7b1f0c54ba0cb08c22978"    # 0.24.0
+  NimbleStableCommit = "a399f502dec7ffcd905c1cf54b13274ad990bada"    # 0.24.1
   AtlasStableCommit = "aa6fb162006f3015aa84c4305e15cb4d230f5ad6"     # 0.14.7
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "f831b953d7c21d9a4b11d0042039e7f84d7c8dc9" # unversioned \
+  NimonyStableCommit = "284a62029611d9c95585aed9a8d30faefc5c2db4" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-07-10 -- stable .bif file format
+    # Commit from 2026-09-11 -- nifmake names the command that failed. Its
+    # parallel path marked every child `Finished` whatever the exit code was,
+    # so a build that fanned out left the crash in the log and the command that
+    # produced it nowhere: a Windows CI `nim ic` run reported a bare SIGSEGV
+    # with no way to tell whether the child was `nifler` or `nim m`.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
@@ -76,7 +80,7 @@ Options:
   --skipIntegrityCheck     skips integrity check when booting the compiler
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  bootic [options]         bootstraps via the incremental compiler (`nim ic`)
+  bootic [options]         bootstraps via the incremental compiler (`--ic:on`)
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
   toolsNoExternal          builds Nim related tools (except external tools,
@@ -190,10 +194,37 @@ proc bundleChecksums(latest: bool) =
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
   cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
-  if not fileExists("bin/nifler".exe):
-    nimCompileFold("Compile nifler", "dist/nimony/src/nifler/nifler.nim", options = "-d:release")
-  if not fileExists("bin/nifmake".exe):
-    nimCompileFold("Compile nifmake", "dist/nimony/src/nifmake/nifmake.nim", options = "-d:release")
+  # These are host tools: their build must not be affected by whatever
+  # `nim.cfg`/`config.nims` happens to live above the Nim checkout. Projects that
+  # vendor Nim (nimbus-eth1/eth2, nimbos) do pass `--skipUserCfg --skipParentCfg`
+  # to `koch boot`, but `nimCompileFold` spawns a fresh `nim c` that would
+  # otherwise inherit the ambient configuration.
+  const nifOptions = "-d:release --noNimblePath --skipUserCfg --skipParentCfg"
+
+  # Rebuilding these only when the binary is ABSENT silently keeps the tools of
+  # the PREVIOUS pin: bump `NimonyStableCommit` in a checkout that already has
+  # `bin/nifler`, and the compiler links the new `dist/nimony/src/lib` while
+  # `nifler`/`nifmake` still speak the old one. A fresh CI checkout has no
+  # `bin/`, so it builds them and looks green — only the working tree that
+  # already has them breaks, which is the worst way round to find out. So stamp
+  # each tool with the nimony commit it came from and rebuild on a mismatch.
+  # If the commit cannot be determined (a bundled `dist` with no `.git`), fall
+  # back to the old build-if-absent rule rather than rebuilding every time.
+  let nimonyHead = block:
+    let (outp, status) = osproc.execCmdEx(
+      "git -C " & quoteShell(distDir / "nimony") & " rev-parse HEAD")
+    if status == 0: outp.strip else: ""
+
+  proc bundleNifTool(name, src: string) =
+    let stamp = "bin" / ("." & name & ".nimony-commit")
+    let builtFrom = if fileExists(stamp): readFile(stamp).strip else: ""
+    if not fileExists(("bin" / name).exe) or
+       (nimonyHead.len > 0 and builtFrom != nimonyHead):
+      nimCompileFold("Compile " & name, src, options = nifOptions)
+      if nimonyHead.len > 0: writeFile(stamp, nimonyHead)
+
+  bundleNifTool("nifler", "dist/nimony/src/nifler/nifler.nim")
+  bundleNifTool("nifmake", "dist/nimony/src/nifmake/nifmake.nim")
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
@@ -367,6 +398,11 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     installDeps("libffi")
 
   let nimStart = findStartNim().quoteShell()
+  # Old bootstrap compilers identify illumos as Solaris and cannot accept
+  # --os:illumos. Switch targets only after building the first new compiler.
+  let bootIllumos = when defined(sunos):
+                      execCmdEx("uname -o 2>/dev/null").output.strip.toLowerAscii == "illumos"
+                    else: false
   let times = 2 - ord(skipIntegrityCheck)
   for i in 0..times:
     let defaultCommand = if useCpp: "cpp" else: "c"
@@ -388,6 +424,9 @@ proc boot(args: string, skipIntegrityCheck: bool) =
       let version = ret.output.splitLines[0]
       if version.startsWith "Nim Compiler Version 0.20.0":
         extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
+
+    if i > 0 and bootIllumos:
+      extraOption.add " --os:illumos"
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
@@ -444,7 +483,7 @@ proc bootic(args: string, skipIntegrityCheck: bool) =
     # everything.
     if i > 0: removeDir smartNimcache
     let nimi = if i == 0: nimStart else: i.thVersion
-    exec "$# ic --nimcache:$# $# compiler" / "nim.nim" %
+    exec "$# c --ic:on --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
@@ -609,7 +648,7 @@ proc runIcTestFile(inp: string) =
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
-    var cmd = nimExe & " ic --hint:Conf:off --warnings:off "
+    var cmd = nimExe & " c --ic:on --hint:Conf:off --warnings:off "
     cmd.add quoteShell(file)
     exec(cmd)
 
@@ -619,7 +658,8 @@ proc runIcTestFile(inp: string) =
 const icSuite = ["thallo", "tconverter", "timp", "tmiscs", "tparseutils",
                  "tcompiletimeglobal", "tsighashstable", "tpureenum", "tgenericoffer",
                  "tconverterreexport", "ttypeoffer", "ttransitiveoffer",
-                 "tmodsymref", "tmethupref", "temit", "ttraitparam"]
+                 "tmodsymref", "tmethupref", "temit", "tlocalpassc", "ttraitparam", "tnestasgn",
+                 "tconvvar", "tmacrocacheproc", "tlocalpasstarget", "tgetimplparams"]
 
 proc icTest(args: string) =
   temp("")
@@ -723,6 +763,7 @@ proc runCI(cmd: string) =
 
     execFold("Run nimdoc tests", "nim r nimdoc/tester")
     execFold("Run rst2html tests", "nim r nimdoc/rsttester")
+    execFold("Run nimbook tests", "nim r nimdoc/booktester")
     execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
       # refs #18385, build with -d:release instead of -d:danger for testing

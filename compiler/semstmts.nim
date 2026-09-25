@@ -17,18 +17,14 @@ const
   errInvalidControlFlowX = "invalid control flow: $1"
   errSelectorMustBeOfCertainTypes = "selector must be of an ordinal type, float or string"
   errExprCannotBeRaised = "only a 'ref object' can be raised"
-  errBreakOnlyInLoop = "'break' only allowed in loop construct"
   errExceptionAlreadyHandled = "exception already handled"
   errYieldNotAllowedHere = "'yield' only allowed in an iterator"
-  errYieldNotAllowedInTryStmt = "'yield' cannot be used within 'try' in a non-inlined iterator"
-  errInvalidNumberOfYieldExpr = "invalid number of 'yield' expressions"
   errCannotReturnExpr = "current routine cannot return an expression"
   errGenericLambdaNotAllowed = "A nested proc can have generic parameters only when " &
     "it is used as an operand to another routine and the types " &
     "of the generic paramers can be inferred from the expected signature."
   errCannotInferTypeOfTheLiteral = "cannot infer the type of the $1"
   errCannotInferReturnType = "cannot infer the return type of '$1'"
-  errCannotInferStaticParam = "cannot infer the value of the static param '$1'"
   errProcHasNoConcreteType = "'$1' doesn't have a concrete type, due to unspecified generic parameters."
   errLetNeedsInit = "'let' symbol requires an initialization"
   errThreadvarCannotInit = "a thread var cannot be initialized explicitly; this would only run for the main thread"
@@ -545,7 +541,6 @@ proc semUsing(c: PContext; n: PNode): PNode =
         strTableIncl(c.signatures, v)
     else:
       localError(c.config, a.info, "'using' section must have a type")
-    var def: PNode
     if a[^1].kind != nkEmpty:
       localError(c.config, a.info, "'using' sections cannot contain assignments")
 
@@ -1824,7 +1819,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       var reified = semTypeNode(c, typeNode, nil)
       assert reified != nil
       assignType(typ, reified)
-      typ.itemId = reified.itemId  # same id
+      typ.bindingId = reified.bindingId  # same id
       if containsForwardType(typ):
         c.forwardTypeUpdates.add (owner, typ, typeNode)
       elif not remainingOwners.missingOrExcl(owner.id):
@@ -1837,6 +1832,24 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   for (owner, field, expectedType) in c.forwardFieldUpdates:
     semDelayedFieldDefault(c, owner, expectedType, field)
   c.forwardFieldUpdates = @[]
+
+  # a son that still was a `tyForward` could not propagate `tfHasAsgn` and
+  # friends to its owner back then, see `rememberFlagUpdate`. Now that every
+  # forward declaration has a body, redo those propagations. They are recorded
+  # in declaration order rather than dependency order and an owner can itself
+  # be the son of another pair, so repeat until nothing changes; this
+  # terminates because flags are only ever added.
+  if c.forwardFlagUpdates.len > 0:
+    let updates = move c.forwardFlagUpdates
+    c.staleTypeFlags = initIntSet()
+    var changed = true
+    while changed:
+      changed = false
+      for (owner, elem) in updates:
+        let before = owner.flags
+        propagateToOwner(owner, elem)
+        if owner.flags != before: changed = true
+
   for i in 0..<n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
@@ -2147,14 +2160,42 @@ proc checkedForDestructor(t: PType): bool =
     return true
   result = false
 
-proc whereToBindTypeHook(c: PContext; t: PType): PType =
+proc normalizeTypeHook(t: PType; markAsgn = false): PType =
   result = t
   while true:
-    if result.kind in {tyGenericBody, tyGenericInst}: result = result.skipModifier
-    elif result.kind == tyGenericInvocation: result = result[0]
-    else: break
+    if markAsgn:
+      incl(result, tfHasAsgn)
+    if result.kind == tyCompositeTypeClass and result.base.kind == tyGenericBody:
+      result = result.base
+    elif result.kind in {tyGenericBody, tyGenericInst}:
+      result = result.skipModifier
+    elif result.kind == tyGenericInvocation:
+      result = result.genericHead
+    else:
+      break
+
+proc whereToBindTypeHook(c: PContext; t: PType): PType =
+  result = normalizeTypeHook(t)
   if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
     result = canonType(c, result)
+
+proc bindHookToType(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp;
+                    typeToBind: PType): bool =
+  var obj = typeToBind
+  if obj.kind notin {tyObject, tyDistinct, tySequence, tyString}:
+    return false
+  obj = canonType(c, obj)
+  let ao = getAttachedOp(c.graph, obj, op)
+  if ao == s:
+    discard "forward declared hook"
+  elif ao.isNil and not checkedForDestructor(obj):
+    setAttachedOp(c.graph, c.module.position, obj, op, s)
+  else:
+    prevDestructor(c, op, ao, obj, n.info)
+  if obj.owner.getModule != s.getModule:
+    localError(c.config, n.info, errGenerated,
+      "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+  result = true
 
 proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
@@ -2162,32 +2203,11 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let cond = t.len == 2 and t.returnType != nil
 
   if cond:
-    var obj = t.firstParamType
-    while true:
-      incl(obj, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
-      elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-      else: break
+    var obj = normalizeTypeHook(t.firstParamType, markAsgn = true)
+    let res = normalizeTypeHook(t.returnType)
 
-    var res = t.returnType
-    while true:
-      if res.kind in {tyGenericBody, tyGenericInst}: res = res.skipModifier
-      elif res.kind == tyGenericInvocation: res = res.genericHead
-      else: break
-
-    if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, res):
-      obj = canonType(c, obj)
-      let ao = getAttachedOp(c.graph, obj, op)
-      if ao == s:
-        discard "forward declared destructor"
-      elif ao.isNil and not checkedForDestructor(obj):
-        setAttachedOp(c.graph, c.module.position, obj, op, s)
-      else:
-        prevDestructor(c, op, ao, obj, n.info)
-      noError = true
-      if obj.owner.getModule != s.getModule:
-        localError(c.config, n.info, errGenerated,
-          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+    if sameType(obj, res):
+      noError = bindHookToType(c, s, n, op, obj)
 
   if not noError and sfSystemModule notin s.owner.flags:
     localError(c.config, n.info, errGenerated,
@@ -2217,25 +2237,8 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
                t.len >= 2 and t.returnType == nil
 
   if cond:
-    var obj = t.firstParamType.skipTypes({tyVar})
-    while true:
-      incl(obj, tfHasAsgn)
-      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.skipModifier
-      elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-      else: break
-    if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-      obj = canonType(c, obj)
-      let ao = getAttachedOp(c.graph, obj, op)
-      if ao == s:
-        discard "forward declared destructor"
-      elif ao.isNil and not checkedForDestructor(obj):
-        setAttachedOp(c.graph, c.module.position, obj, op, s)
-      else:
-        prevDestructor(c, op, ao, obj, n.info)
-      noError = true
-      if obj.owner.getModule != s.getModule:
-        localError(c.config, n.info, errGenerated,
-          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+    var obj = normalizeTypeHook(t.firstParamType.skipTypes({tyVar}), markAsgn = true)
+    noError = bindHookToType(c, s, n, op, obj)
   if not noError and sfSystemModule notin s.owner.flags:
     case op
     of attachedTrace:
@@ -2302,35 +2305,12 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       message(c.config, n.info, warnDeprecated, "Overriding `=` hook is deprecated; Override `=copy` hook instead")
     let t = s.typ
     if t.len == 3 and t.returnType == nil and t.firstParamType.kind == tyVar:
-      var obj = t.firstParamType.elementType
-      while true:
-        incl(obj, tfHasAsgn)
-        if obj.kind == tyGenericBody: obj = obj.skipModifier
-        elif obj.kind == tyGenericInvocation: obj = obj.genericHead
-        else: break
-      var objB = t[2]
-      while true:
-        if objB.kind == tyGenericBody: objB = objB.skipModifier
-        elif objB.kind in {tyGenericInvocation, tyGenericInst}:
-          objB = objB.genericHead
-        else: break
-      if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
+      var obj = normalizeTypeHook(t.firstParamType.elementType, markAsgn = true)
+      let objB = normalizeTypeHook(t[2])
+      if sameType(obj, objB):
         # attach these ops to the canonical tySequence
-        obj = canonType(c, obj)
-        #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let k = if name == "=" or name == "=copy": attachedAsgn else: attachedSink
-        let ao = getAttachedOp(c.graph, obj, k)
-        if ao == s:
-          discard "forward declared op"
-        elif ao.isNil and not checkedForDestructor(obj):
-          setAttachedOp(c.graph, c.module.position, obj, k, s)
-        else:
-          prevDestructor(c, k, ao, obj, n.info)
-        if obj.owner.getModule != s.getModule:
-          localError(c.config, n.info, errGenerated,
-            "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
-
-        return
+        if bindHookToType(c, s, n, k, obj): return
     if sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
                 "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
@@ -2396,7 +2376,8 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
       if typ.kind != tyObject:
         localError(c.config, n.info, pragmaName & " must be either ptr to object or object type.")
       if sameOwners(typ.owner, s.owner) and sameOwners(c.module, s.owner):
-        c.graph.memberProcsPerType.mgetOrPut(typ.itemId, @[]).add s
+        c.graph.memberProcsPerType.mgetOrPut(typ.bindingId, @[]).add s
+        logCppMember(c.graph, s)
       else:
         localError(c.config, n.info,
           pragmaName & " procs must be defined in the same scope as the type they are virtual for and it must be a top level scope")
@@ -2404,7 +2385,7 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
       localError(c.config, n.info, pragmaName & " procs are only supported in C++")
   else:
     var typ = s.typ.returnType
-    if typ != nil and typ.kind == tyObject and typ.itemId notin c.graph.initializersPerType:
+    if typ != nil and typ.kind == tyObject and typ.bindingId notin c.graph.initializersPerType:
       var initializerCall = newTree(nkCall, newSymNode(s))
       var isInitializer = n[paramsPos].len > 1
       for i in  1..<n[paramsPos].len:
@@ -2418,7 +2399,8 @@ proc semCppMember(c: PContext; s: PSym; n: PNode) =
           initializerCall.add val
           inc j
       if isInitializer:
-        c.graph.initializersPerType[typ.itemId] = initializerCall
+        c.graph.initializersPerType[typ.bindingId] = initializerCall
+        logCppMember(c.graph, s)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if s.isGenericRoutine:
@@ -2446,6 +2428,195 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
       methodDef(c.graph, c.idgen, s)
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
+
+# ---- doc/parallel_compiler.md stage 1: deferred routine bodies --------------
+#
+# `--deferBodies:on` moves the sem of a top-level routine's BODY out of the
+# statement that declares it and into a pass that runs when the module's header
+# is complete. One worker, drained in key order: no threads, no scheduling, only
+# the order change — which is the half of the plan that changes results and so
+# has to be reviewed on its own (§5, stage 1). The parallel version of §5 stage
+# 4 must stay byte-identical to this.
+#
+# What "top level" buys is that the unit needs nothing from the statement it was
+# declared in: everything positional is captured in the `BodyTask`, and the rest
+# of `PContext` is module-shared and does not move between declaration and drain.
+
+proc semRoutineBodyUnit(c: PContext; s: PSym; n: PNode; resultType: PType;
+                        isInlineIterator: bool) =
+  ## The unit of work, exactly: sem of one routine body plus the `trackProc`
+  ## that follows it, with everything the body drags in (nested routines,
+  ## generic instances, lifted hooks) inside it.
+  timedOutermost(tSemBody):
+    s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
+    # unfortunately we cannot skip this step when in 'system.compiles'
+    # context as it may even be evaluated in 'system.compiles':
+    if isInlineIterator and s.typ.callConv == ccClosure:
+      # iterators without explicit callconvs are lifted to closure,
+      # we need to add a result symbol for them
+      maybeAddResult(c, s, n)
+    trackProc(c, s, s.ast[bodyPos])
+
+proc deferrableBody(c: PContext; s: PSym): bool =
+  ## Which routines become units. §2.1: run-time routines of this module,
+  ## declared at its top level.
+  ##
+  ## Macros, templates, `{.compileTime.}` routines and converters keep their
+  ## bodies in the header pass — the VM needs them and they are part of what
+  ## importers see. Generic routines never reach here (they take
+  ## `semGenericStmt`, which is header work). A nested routine belongs to its
+  ## enclosing unit, and one declared inside `compiles()`, a generic
+  ## instantiation or a `static:` block belongs to whatever is driving that, so
+  ## none of them is a unit of its own.
+  result = optDeferBodies in c.config.globalOptions and
+    s.kind in {skProc, skFunc, skMethod, skIterator} and
+    s.magic == mNone and
+    sfCompileTime notin s.flags and
+    s.owner != nil and s.owner.kind == skModule and s.owner == c.module and
+    c.compilesContextId == 0 and
+    c.inGenericContext == 0 and c.inGenericInst == 0 and
+    c.inStaticContext == 0 and c.inUnrolledContext == 0 and
+    c.config.ideCmd == ideNone
+
+proc enqueueBodyTask(c: PContext; s: PSym; n: PNode; resultType: PType;
+                     isInlineIterator: bool): PScope =
+  ## Captures the unit and hands back the scope the caller must DETACH rather
+  ## than close: the parameters have to still be in it when the body runs.
+  result = c.currentScope
+  c.bodyTaskIndex[s.itemId] = c.bodyTasks.len
+  c.bodyTasks.add BodyTask(
+    key: uint64(c.bodyTasks.len), state: btPending,
+    owner: s, def: n, resultType: resultType,
+    isInlineIterator: isInlineIterator,
+    scope: result, procCon: c.p,
+    optionStack: c.optionStack,
+    options: c.config.options, notes: c.config.notes,
+    warningAsErrors: c.config.warningAsErrors, features: c.features)
+
+proc runBodyTask(c: PContext; idx: int) =
+  ## Re-attaches one unit's positional state, sems it, and detaches again.
+  ## Re-entrant: a unit's body can demand another unit (a nested `const`), and
+  ## the saved-and-restored locals here are what makes that nest correctly.
+  if c.bodyTasks[idx].state != btPending: return
+  c.bodyTasks[idx].state = btRunning
+  let
+    savedScope = c.currentScope
+    savedProcCon = c.p
+    savedOptionStack = c.optionStack
+    savedOptions = c.config.options
+    savedNotes = c.config.notes
+    savedWarningAsErrors = c.config.warningAsErrors
+    savedFeatures = c.features
+    savedOwnerLen = c.graph.owners.len
+  let t = c.bodyTasks[idx]
+  c.currentScope = t.scope
+  c.p = t.procCon
+  c.p.next = savedProcCon
+  c.optionStack = t.optionStack
+  c.config.options = t.options
+  c.config.notes = t.notes
+  c.config.warningAsErrors = t.warningAsErrors
+  c.features = t.features
+  pushOwner(c, t.owner)
+  try:
+    semRoutineBodyUnit(c, t.owner, t.def, t.resultType, t.isInlineIterator)
+    # The deferred half of the `closeScope` that `semProcAux` turned into a
+    # `rawCloseScope`: at declaration time every parameter still looks unused,
+    # so the unused-symbol check has to wait for the body that uses them. The
+    # scope is re-attached right now, so plain `closeScope` is that check.
+    closeScope(c)
+  finally:
+    c.bodyTasks[idx].state = btDone
+    setLen(c.graph.owners, savedOwnerLen)
+    c.currentScope = savedScope
+    c.p = savedProcCon
+    c.optionStack = savedOptionStack
+    c.config.options = savedOptions
+    c.config.notes = savedNotes
+    c.config.warningAsErrors = savedWarningAsErrors
+    c.features = savedFeatures
+
+proc demandRoutineBody(c: PContext; prc: PSym) =
+  ## §2.3's "run it inline": something needs a unit's body before the body pass
+  ## would have got to it. `btRunning` means genuine recursion on this thread
+  ## and is left alone — the caller then sees the partially semmed body, which
+  ## is what it sees today too.
+  ##
+  ## Chains outwards, because module passes nest: an import is compiled from
+  ## inside the importer's pass, so the routine asked about may belong to a
+  ## module further out whose own body pass has not run yet. Each link runs the
+  ## unit against ITS module's `PContext`, which is what the closure captured.
+  let idx = c.bodyTaskIndex.getOrDefault(prc.itemId, -1)
+  if idx >= 0:
+    # Every SMALLER key first, not just this one. §2.3 lets a unit block on
+    # units with a smaller key, and a body semmed today sees every routine
+    # declared above it already analysed; running the demanded unit alone would
+    # invert that. `asyncdispatch` is the case that found it: the `{.async.}`
+    # machinery transforms `runOnce` (declared at the bottom) during the header
+    # pass, and on its own that unit was tracked before
+    # `processCallbacksAndTimers` (declared 1100 lines above), which then had no
+    # effect list yet — so `runOnce` was inferred GC-unsafe and its `{.gcsafe.}`
+    # forward declaration rejected it.
+    for i in 0 .. idx: runBodyTask(c, i)
+  elif c.prevDemandRoutineBody != nil:
+    c.prevDemandRoutineBody(prc)
+
+proc drainBodyTasks*(c: PContext) =
+  ## The body pass. In key order, which for stage 1 is simply front to back:
+  ## the header pass appended in source order and the on-demand path only ever
+  ## marks entries done early, never reorders them.
+  var i = 0
+  while i < c.bodyTasks.len:
+    # not a `for`: a unit's body can enqueue nothing (nested routines are not
+    # units) but CAN mark later ones done through `demandRoutineBody`, and the
+    # length is re-read so a future stage that does enqueue still terminates.
+    runBodyTask(c, i)
+    inc i
+
+const
+  DeferrableNeighbours = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                          nkConverterDef, nkTemplateDef, nkMacroDef,
+                          nkTypeSection, nkCommentStmt, nkEmpty, nkPragma,
+                          nkWhenStmt, nkStmtList}
+    ## Top-level statements a pending unit may safely outlive. A run of
+    ## declarations defers as a batch; anything else flushes it first.
+
+proc flushBodiesBeforeTopLevelStmt*(c: PContext; stmt: PNode) =
+  ## Units live only until the next top-level statement that could OBSERVE one.
+  ##
+  ## Deferring a body all the way to the end of the module is what §2.1 asks
+  ## for, but it puts a pending unit in reach of the VM: a top-level `const x =
+  ## f()` makes `vmgen` compile `f`, `vmgen` goes through `transformBody`, and
+  ## answering the demand there means running sem — and a nested VM session —
+  ## while one is already executing on the graph's single `PCtx`. That is §4.6
+  ## step 2, "the hardest single item in this plan", and the doc allows it to be
+  ## deferred behind a restriction until it is done. This is that restriction,
+  ## and it is a cheap one: modules are long runs of routine definitions, so a
+  ## run defers as a batch and only a `const`, `static:`, `var` initialiser or
+  ## plain expression ends one.
+  ##
+  ## Flushing HERE and not at the VM's own entry matters: this is a statement
+  ## boundary at module scope, where the only live state is the module's, and
+  ## running a unit is safe. `vm.setupGlobalCtx` is reached from inside generic
+  ## instantiations and template expansions, where it is not.
+  if c.bodyTasks.len > 0 and stmt.kind notin DeferrableNeighbours and
+      c.currentScope.depthLevel <= 2:
+    drainBodyTasks(c)
+
+proc drainBeforeModulePass*(c: PContext) =
+  ## About to compile another module from inside this one's header pass.
+  ##
+  ## That module may reference anything declared here so far — `system` imports
+  ## `std/syncio` from its own last statements, and syncio's routines call
+  ## system's — and it will be compiled to completion before this statement
+  ## returns. So this module's units have to be complete first, or the importee
+  ## sees them as "not yet processed" and infers `RootEffect` for every call
+  ## into them. Draining here keeps the invariant an importer already relies on
+  ## today: everything declared above an `import` is fully semmed when it runs.
+  ##
+  ## Imports sit at the top of a module, so in practice this drains nothing.
+  if optDeferBodies in c.config.globalOptions:
+    drainBodyTasks(c)
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
@@ -2686,6 +2857,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfCppMember * s.flags != {} and sfWasForwarded notin s.flags:
     semCppMember(c, s, n)
 
+  # Set by `enqueueBodyTask` to the parameter scope that must be detached from
+  # `PContext` instead of closed, because the deferred body still needs it.
+  var deferredScope: PScope = nil
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
@@ -2699,8 +2873,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # allowed, everything else, including a nullary generic is an error.
         pushProcCon(c, s)
         addResult(c, n, s.typ.returnType, skProc)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], s.typ.returnType))
-        trackProc(c, s, s.ast[bodyPos])
+        # An anonymous routine is an expression inside some other unit, never a
+        # unit of its own (§2.3: "lambda / nested routine — inside its enclosing
+        # unit, no key of its own"), so this one is never deferred.
+        semRoutineBodyUnit(c, s, n, s.typ.returnType, isInlineIterator = false)
         popProcCon(c)
       elif efOperand notin flags:
         localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -2721,17 +2897,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # semantic checking also needed with importc in case used in VM
 
         let isInlineIterator = isInlineIterator(s.typ)
-        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos], resultType))
-        # unfortunately we cannot skip this step when in 'system.compiles'
-        # context as it may even be evaluated in 'system.compiles':
-
-        if isInlineIterator and s.typ.callConv == ccClosure:
-          # iterators without explicit callconvs are lifted to closure,
-          # we need to add a result symbol for them
-          maybeAddResult(c, s, n)
-
-
-        trackProc(c, s, s.ast[bodyPos])
+        if deferrableBody(c, s):
+          deferredScope = enqueueBodyTask(c, s, n, resultType, isInlineIterator)
+        else:
+          semRoutineBodyUnit(c, s, n, resultType, isInlineIterator)
       else:
         if (s.typ.returnType != nil and s.kind != skIterator):
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), c.idgen, s, n.info))
@@ -2756,7 +2925,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
 
-  closeScope(c)           # close scope for parameters
+  if deferredScope != nil:
+    # Detach, do not close: the scope object stays alive in the `BodyTask` and
+    # is re-attached when the body runs. `closeScope`'s unused-symbol check goes
+    # with it — see `runBodyTask`.
+    rawCloseScope(c)
+  else:
+    closeScope(c)         # close scope for parameters
   # c.currentScope = oldScope
   popOwner(c)
   if n[patternPos].kind != nkEmpty:
@@ -2892,7 +3067,8 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult, resolvedIncStmt
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   var resolvedIncStmt: PNode = nil
-  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
+  if {optCompress, optGenBif} * c.config.globalOptions != {} or
+      c.config.cmd == cmdM:
     # New resolve the include filenames to string literals that contain absolute paths,
     # nicer for IC:
     resolvedIncStmt = newNodeI(nkIncludeStmt, n.info)
@@ -3027,6 +3203,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags, expectedType: PType =
   #                                         nkNilLit, nkEmpty}:
   #  dec last
   for i in 0..<n.len:
+    flushBodiesBeforeTopLevelStmt(c, n[i])
     var x = semExpr(c, n[i], flags, if i == n.len - 1: expectedType else: nil)
     n[i] = x
     if c.matchedConcept != nil and x.typ != nil and

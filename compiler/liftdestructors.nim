@@ -94,11 +94,21 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc genAddr(c: var TLiftCtx; x: PNode): PNode =
-  if x.kind == nkHiddenDeref:
+  # These synthesized addresses are always passed to codegen procs that expect a
+  # genuine pointer (nimAsgnYrc, nimSinkYrc, destructors, ...). `addr(deref x)`
+  # collapses to `x` only when `x` is a real pointer; on the C++ backend a `var`
+  # parameter is a C++ reference, so we must keep the `nkHiddenAddr` to actually
+  # take its address (`&dest`) instead of passing the reference's value. Likewise
+  # `tfVarIsPtr` keeps the C++ backend from lowering the synthesized address back
+  # to a reference and dropping the `&` (e.g. a closure's `tyPointer` env). See
+  # #26026 CI (yrc + cpp).
+  if x.kind == nkHiddenDeref and c.g.config.backend != backendCpp:
     checkSonsLen(x, 1, c.g.config)
     result = x[0]
   else:
-    result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ, c.idgen))
+    let addrTyp = makeVarType(x.typ.owner, x.typ, c.idgen)
+    addrTyp.incl tfVarIsPtr
+    result = newNodeIT(nkHiddenAddr, x.info, addrTyp)
     result.add x
 
 proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
@@ -586,12 +596,6 @@ proc newSeqCall(c: var TLiftCtx; x, y: PNode): PNode =
   lenCall.typ = getSysType(c.g, x.info, tyInt)
   result.add lenCall
 
-proc setLenStrCall(c: var TLiftCtx; x, y: PNode): PNode =
-  let lenCall = genBuiltin(c, mLengthStr, "len", y)
-  lenCall.typ = getSysType(c.g, x.info, tyInt)
-  result = genBuiltin(c, mSetLengthStr, "setLen", x) # genAddr(g, x))
-  result.add lenCall
-
 proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode; noinit = false): PNode =
   let lenCall = genBuiltin(c, mLengthSeq, "len", y)
   lenCall.typ = getSysType(c.g, x.info, tyInt)
@@ -714,7 +718,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     when defined(icDbg):
       if t.destructor == nil:
         echo "MISSING destructor: ", typeToString(t), " kind=", t.kind,
-          " itemId=", t.itemId, " uniqueId=", t.uniqueId, " state=", t.state,
+          " itemId=", t.itemId, " bindingId=", t.bindingId, " state=", t.state,
           " owner=", (if t.owner != nil: t.owner.name.s else: "nil")
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
@@ -796,8 +800,22 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   createTypeBoundOps(c.g, c.c, elemType, c.info, c.idgen)
 
-  # YRC uses dedicated runtime procs for the entire write barrier:
-  if c.g.config.selectedGC == gcYrc:
+  # YRC uses dedicated runtime procs for the entire write barrier -- but ONLY
+  # for refs that can actually form cycles. Routing an acyclic ref through
+  # `nimAsgnYrc` defeats the entire purpose of `.acyclic`: the barrier defers
+  # the dec into a stripe queue, `drainStripe` then hands the cell to
+  # `registerLocal`, and it enters the collector as a capture ROOT -- so a
+  # type annotated precisely to stay out of the cycle collector gets traced
+  # by it anyway. (The collector never reaches such a cell by TRAVERSAL: the
+  # attachedTrace hook below only emits `nimTraceRef` when `isCyclic`. The
+  # queued dec was the only way in.)
+  #
+  # Falling through instead gives acyclic refs the same prompt arc-style
+  # reclamation they get under --mm:arc/orc, which is also what lets a thread
+  # that avoids cycles at compile time avoid the collector entirely at run
+  # time. `canFormAcycle` is the same predicate ccgtypes.nim:1903 uses to set
+  # the descriptor's acyclic flag, so codegen and runtime cannot disagree.
+  if c.g.config.selectedGC == gcYrc and types.canFormAcycle(c.g, elemType):
     let desc =
       if isFinal(elemType):
         let ti = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
@@ -1215,7 +1233,7 @@ proc symDupPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttache
   res.typ = typ
   src.typ = typ
 
-  result.typ = newType(tyProc, idgen, owner)
+  result.typ = newType(tyProc, idgen, result)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)
@@ -1261,7 +1279,8 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   else:
     src.typ = typ
 
-  result.typ = newProcType(info, idgen, owner)
+  # the hook OWNS its signature, like any routine sem'd from source
+  result.typ = newProcType(info, idgen, result)
   result.typ.addParam dest
   if kind notin {attachedDestructor, attachedWasMoved}:
     result.typ.addParam src
@@ -1444,7 +1463,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
   # IC: review this solution again later
-  incl orig.flagsImpl, tfCheckedForDestructor
+  orig.inclDerived {tfCheckedForDestructor}
   # for user defined generic destructors:
   let origRoot = genericRoot(orig)
   if origRoot != nil:
@@ -1494,6 +1513,8 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrivial(orig.assignment) or
     # not isTrivial(orig.sink):
-    # IC: review this solution again later
-    orig.flagsImpl.incl tfHasAsgn
-    # ^ XXX Breaks IC!
+    # A hook was lifted for `orig` in THIS module, which may be a module that
+    # merely uses the type. `inclDerived` is the sanctioned way to record that
+    # on a possibly-`Sealed` foreign type (it used to write `flagsImpl` behind
+    # the accessor's back precisely to dodge the seal assert).
+    orig.inclDerived {tfHasAsgn}

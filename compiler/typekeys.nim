@@ -172,9 +172,9 @@ proc backendTypeName(t: PType; conf: ConfigRef): string =
   result = "`t"
   result.addInt ord(t.kind)
   result.add '.'
-  result.addInt t.uniqueId.item
+  result.addInt t.itemId.item
   result.add '.'
-  result.add modname(t.uniqueId.module, conf)
+  result.add modname(t.itemId.module, conf)
   result.add "@bk"
 
 proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
@@ -186,7 +186,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     assert c.tl != nil
     c.tl(t)
 
-  if t.uniqueId.isBackendMinted:
+  if t.itemId.isBackendMinted:
     # Backend-minted (lower-stage) closure-env types key by their stable NIF name,
     # never by structure (which diverges across the NIF boundary). An env `ref`
     # that is itself NOT backend-minted still keys stably: it recurses here and
@@ -335,9 +335,9 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
           # mutation that an assertion deeper in `treeKey` left unrestored would
           # corrupt the type. `symKey` above already emitted the type's identity,
           # so on a back-reference we simply stop.
-          if not containsOrIncl(c.visited, t.itemId):
+          if not containsOrIncl(c.visited, t.bindingId):
             c.treeKey(t.nImpl, flags + {CoHashTypeInsideNode}, conf)
-            c.visited.excl t.itemId
+            c.visited.excl t.bindingId
         else:
           c.m.addIdent "´empty"
       # Object inheritance is part of identity: key the base class too.

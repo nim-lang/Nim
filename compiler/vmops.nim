@@ -48,9 +48,6 @@ import vmconv, vmmarshal
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
-template osop(op) {.dirty.} =
-  registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
-
 template oscommonop(op) {.dirty.} =
   registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)
 

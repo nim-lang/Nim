@@ -12,7 +12,6 @@ proc GC_disable() = discard
 proc GC_enable() = discard
 proc go_gc() {.importc: "go_gc", dynlib: goLib.}
 proc GC_fullCollect() = go_gc()
-proc GC_setStrategy(strategy: GC_Strategy) = discard
 proc GC_enableMarkAndSweep() = discard
 proc GC_disableMarkAndSweep() = discard
 

@@ -29,7 +29,11 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "30"
+  icFormatVersion* = "46"
+    ## v46: every type definition wraps its sons in `(genericargs ...)`.
+    ## v45: localPassC backend actions are keyed by their generated C file.
+    ## v44: CacheCounter values live in the shared, file-locked `ic.counters`.
+    ## v43: deterministic re-export traversal for ordered interfaces.
     ## Version of the IC cache format (the sem-NIF module layout written by
     ## ast2nif.nim plus the iface/impl/edges side files). Bump it whenever
     ## that layout changes: `commandIc` wipes a nimcache whose `ic.version`
@@ -54,6 +58,16 @@ const
     ## id, so its hash is stable across the NIF boundary (was breaking
     ## nim-serialization's auto-serialization lookup under IC). The sem-NIF
     ## macrocache entries and baked generic-instance bodies hold the old hashes.
+    ## v7 (=31): anonymous wrapper types (`var T`, `lent T`, `sink T`, tuples)
+    ## are named by their CONTENT instead of `itemId.item`, the module-wide
+    ## type-mint counter (see ast2nif.CanonTypeKinds). Old caches name the same
+    ## type differently, so every `.s.bif` reference would dangle.
+    ## v8 (=32): the same for `tyProc`, except that a proc type which is a
+    ## routine's SIGNATURE is named after that routine rather than by content
+    ## (see ast2nif.sigRoutineOf). Renames types, so old caches dangle again.
+    ## v9 (=33): and for the per-module `int`/`float` LITERAL COPIES (see
+    ## ast2nif.CanonLitCopyKinds), the last mover that broke a build outright
+    ## (`symbol has no offset` out of a cached `.t.bif`). Renames types again.
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -127,6 +141,8 @@ type                          # please make sure we have under 32 options
                               # string/seq implementation based on destructors
     optTinyRtti               # active if we use the new "tiny RTTI"
                               # implementation
+    optSpawnCodegen           # spawn a separate nim process for codegen
+                              # to reclaim memory before C compilation
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optBenchmarkVM            # Enables cpuTime() in the VM
@@ -140,7 +156,14 @@ type                          # please make sure we have under 32 options
     optDocRaw                 # for documentation: Don't render markdown for JSON output
     optItaniumMangle          # mangling follows the Itanium spec
     optCompress               # turn on AST compression by converting it to NIF
+    optGenBif                 # generate semantic BIF alongside ordinary code generation
     optWithinConfigSystem     # we still compile within the configuration system
+    optDeferBodies            # stage 1 of doc/parallel_compiler.md: sem a top-level
+                              # routine's BODY after the module's header pass rather
+                              # than where it is declared. One worker, drained in key
+                              # order -- no threads, no scheduling, only the order
+                              # change, which is the part that has to be reviewed
+                              # before any of it runs concurrently.
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -186,6 +209,7 @@ type
     cmdNimscript # evaluate nimscript
     cmdDoc0
     cmdDoc      # convert .nim doc comments to HTML
+    cmdBook # generate documentation site from a directory with Markdown files
     cmdDoc2tex  # convert .nim doc comments to LaTeX
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
@@ -382,6 +406,10 @@ type
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
+  MsgFormat* = enum ## format of the location prefix in compiler messages
+    mfmStd ## standard Nim style: `file(line, col)`
+    mfmGcc ## GCC/Emacs style: `file:line:col:`
+
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -395,6 +423,7 @@ type
     arcToExpand*: StringTableRef
     m*: MsgConfig
     filenameOption*: FilenameOption # how to render paths in compiler messages
+    msgFormat*: MsgFormat # format of the location prefix in compiler messages
     unitSep*: string
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -457,10 +486,16 @@ type
                               # codegen+DCE+cc+link in one process). The stages
                               # are wired as nifmake rules by `deps.nim`'s backend
                               # build file. See `compiler/nifbackend.nim`.
-    icBackendModule*: string  # under `nim nifc` with icBackendStage in {cg,emit}:
-                              # the NIF module suffix this invocation codegens or
-                              # emits. The other modules are loaded only so types
-                              # resolve; their definitions are referenced extern.
+    icBackendModules*: seq[string]
+                              # under `nim nifc` with icBackendStage in
+                              # {lower,cg,emit}: the NIF module suffixes this
+                              # invocation processes — its BATCH. One entry is
+                              # the per-module fan-out; several share one process
+                              # and therefore ONE dependency-closure load between
+                              # them, which is the whole point (see
+                              # `nifbackend.loadDepClosure`). Every other module
+                              # is loaded only so types resolve; its definitions
+                              # are referenced extern. Empty = the main module.
     spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
@@ -658,6 +693,7 @@ proc initConfigRefCommon(conf: ConfigRef) =
   conf.options = DefaultOptions
   conf.globalOptions = DefaultGlobalOptions
   conf.filenameOption = foAbs
+  conf.msgFormat = mfmStd
   conf.foreignPackageNotes = foreignPackageNotesDefault
   conf.notes = NotesVerbosity[1]
   conf.mainPackageNotes = NotesVerbosity[1]
@@ -750,7 +786,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "posix", "unix":
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
-                            osHaiku, osVxWorks, osSolaris, osNetbsd,
+                            osHaiku, osVxWorks, osSolaris, osIllumos, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
                             osAndroid, osNintendoSwitch, osFreeRTOS, osCrossos, osZephyr, osNuttX}
     of "linux":
@@ -767,7 +803,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osMacos, osMacosx, osIos}
     of "osx", "macosx":
       result = conf.target.targetOS in {osMacosx, osIos}
-    of "sunos": result = conf.target.targetOS == osSolaris
+    of "sunos": result = conf.target.targetOS in {osSolaris, osIllumos}
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
     of "freertos", "lwip":
@@ -783,7 +819,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
     of "cpu64": result = CPU[conf.target.targetCPU].bit == 64
     of "nimrawsetjmp":
-      result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
+      result = conf.target.targetOS in {osSolaris, osIllumos, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: result = false
 
@@ -928,6 +964,24 @@ proc getOsCacheDir(): string =
     result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
   else:
     result = getHomeDir() / genSubDir.string
+
+proc isIcDriver*(conf: ConfigRef): bool =
+  ## True for `nim c --ic:on` / `nim cpp --ic:on`: this process is the `nim ic`
+  ## DRIVER (it builds the nifmake graph and spawns the per-module children),
+  ## not a compilation. `nim ic` itself keeps its own `cmdIc` branch.
+  conf.ic and conf.cmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}
+
+proc icCFileExt*(conf: ConfigRef): string =
+  ## The extension the per-module backend gives a module's translation unit.
+  ## Mirrors `cgen.getCFile` at BACKEND granularity, which is all the `nim ic`
+  ## driver can know: it DECLARES every module's `.c`/`.cpp` output to nifmake
+  ## without loading a single module, so a per-module `{.compile: cpp.}`
+  ## (`sfCompileToCpp`) is out of reach — and `nim cpp` selects the backend for
+  ## the whole program anyway.
+  case conf.backend
+  of backendCpp: ".nim.cpp"
+  of backendObjc: ".nim.m"
+  else: ".nim.c"
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   proc nimcacheSuffix(conf: ConfigRef): string =

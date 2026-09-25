@@ -32,11 +32,11 @@
 ## would misresolve.
 
 import options, commands, lineinfos, pathutils, msgs
-import std/[algorithm, os, sets, osproc, times, streams, syncio]
+import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
 
 const
-  IcConfigVersion* = "2"
+  IcConfigVersion* = "3"
     ## Artifact format version. Bump on any layout change here so a child built
     ## by an older compiler rejects a stale artifact and falls back to normal
     ## config loading instead of replaying a format it cannot parse.
@@ -80,6 +80,15 @@ proc writeIcConfig*(conf: ConfigRef; outfile: string) =
       # replay makes the overlap harmless.
       for p in conf.searchPaths:
         b.addStrLit p.string
+    b.withTree "lazypaths":
+      # Same for the nimble package directories (`nimblepath` in `nim.cfg`):
+      # `findModule` falls back to them after `searchPaths`, so without them the
+      # driver cannot resolve `import libcurl` from ~/.nimble/pkgs2.
+      for p in conf.lazyPaths:
+        b.addStrLit p.string
+    b.withTree "nimblepaths":
+      for p in conf.nimblePaths:
+        b.addStrLit p.string
     b.withTree "switches":
       for sw in conf.icConfigSwitches:
         b.addTree "sw"
@@ -103,6 +112,8 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
     nimcacheTag = tags.registerTag("nimcache")
     cppTag = tags.registerTag("cppdefines")
     pathsTag = tags.registerTag("searchpaths")
+    lazyTag = tags.registerTag("lazypaths")
+    nimbleTag = tags.registerTag("nimblepaths")
     switchesTag = tags.registerTag("switches")
     swTag = tags.registerTag("sw")
   var buf = parseFromFile(infile, 1000, pool, tags)
@@ -154,6 +165,17 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
             # path a child already received via a forwarded `--path` argument.
             let d = AbsoluteDir(strVal(c))
             if not conf.searchPaths.contains(d): conf.searchPaths.add d
+            inc c
+          else:
+            skip c
+      elif c.cursorTagId == lazyTag or c.cursorTagId == nimbleTag:
+        let isLazy = c.cursorTagId == lazyTag
+        c.loopInto:
+          if c.kind == StrLit:
+            let d = AbsoluteDir(strVal(c))
+            if isLazy:
+              if not conf.lazyPaths.contains(d): conf.lazyPaths.add d
+            elif not conf.nimblePaths.contains(d): conf.nimblePaths.add d
             inc c
           else:
             skip c
@@ -264,21 +286,37 @@ proc ensureIcConfig*(conf: ConfigRef) =
     # and the explicit output path. Every switch must land BEFORE the project
     # file, because anything after the project is swallowed into
     # `config.arguments` by `cmdLineRest` (and a non-empty `arguments` without
-    # `--run` is a hard error). Callers may legitimately put switches after the
-    # project — `nim track PROJ --def:...` — so we re-order rather than replay
-    # verbatim: all `-`-prefixed switches first (in encounter order), then the
-    # non-switch project token(s). The producer re-reads `nim.cfg` itself.
+    # `--run` is a hard error). Program arguments must not reach the config
+    # producer, even when they look like compiler switches. Only `nim track`
+    # accepts compiler switches after the project; move those before it.
+    # The producer re-reads `nim.cfg` itself.
     var pargs = @["icconfig", "--icConfigOut:" & outPath]
+    # The command token is dropped below, so `nim cpp --ic:on` would hand the
+    # producer a C-backend config: name the backend explicitly. (`nim ic
+    # --backend:cpp` already carries the switch; the duplicate is harmless.)
+    if conf.backend != backendInvalid:
+      pargs.add "--backend:" & $conf.backend
     var rest: seq[string] = @[]
     var droppedCmd = false
     for a in commandLineParams():
       if a.len == 0: continue
       if a[0] == '-':
+        # `--run`/`-r` must not reach the producer: it only serialises the
+        # resolved config, has no output binary, and `nim.nim`'s run step asserts
+        # on the empty `outFile` (`nim cpp --ic:on -r foo.nim`).
+        var name = ""
+        var i = 1
+        if i < a.len and a[i] == '-': inc i
+        while i < a.len and a[i] notin {':', '='}:
+          name.add a[i]
+          inc i
+        if normalize(name) in ["r", "run"]: continue
         pargs.add a
       elif not droppedCmd:
         droppedCmd = true  # drop the original command token (`ic`/`track`)
       else:
-        rest.add a  # project file (and any further non-switch tokens) go last
+        rest.add a
+        if conf.cmd != cmdTrack: break # everything after the project is a program argument
     for a in rest: pargs.add a
     let p = startProcess(getAppFilename(), args = pargs,
                          options = {poStdErrToStdOut})

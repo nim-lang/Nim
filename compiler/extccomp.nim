@@ -409,12 +409,22 @@ proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
 
-proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
-  let key = completeCfilePath(conf, mangleModuleName(conf, nimfile).AbsoluteFile).string
+proc addCFileSpecificOption(conf: ConfigRef; option, key: string) =
   var value = conf.cfileSpecificOptions.getOrDefault(key)
   if strutils.find(value, option, 0) < 0:
     addOpt(value, option)
     conf.cfileSpecificOptions[key] = value
+
+proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
+  let key = completeCfilePath(conf, mangleModuleName(conf, nimfile).AbsoluteFile).string
+  addCFileSpecificOption(conf, option, key)
+
+proc addLocalCompileOptionForCFile*(conf: ConfigRef; option: string;
+                                   cfile: AbsoluteFile) =
+  ## Add an option for an already generated C file. IC's backend gives loaded
+  ## modules synthetic filenames, so the source-file-based key used by
+  ## `addLocalCompileOption` does not identify the C file emitted for them.
+  addCFileSpecificOption(conf, option, cfile.changeFileExt("").string)
 
 proc resetCompilationLists*(conf: ConfigRef) =
   conf.toCompile.setLen 0
@@ -471,8 +481,19 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
       {optGenScript, optGenMapping}
   result = conf.globalOptions * options != {}
 
+proc targetOptions(conf: ConfigRef): string =
+  # Solaris/illumos toolchains can default to 32-bit output on amd64.
+  # Inspect the target, not the host, so cross-compilation works too.
+  if conf.target.targetOS in {osSolaris, osIllumos} and
+      conf.target.targetCPU == cpuAmd64 and
+      conf.cCompiler in {ccGcc, ccCLang}:
+    result = "-m64"
+  else:
+    result = ""
+
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
-  result = conf.compileOptions
+  result = targetOptions(conf)
+  addOpt(result, conf.compileOptions)
 
   if (conf.cCompiler == ccGcc or conf.cCompiler == ccCLang) and
        conf.selectedGC == gcRefc:
@@ -520,7 +541,8 @@ proc vccplatform(conf: ConfigRef): string =
     result = ""
 
 proc getLinkOptions(conf: ConfigRef): string =
-  result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
+  result = targetOptions(conf)
+  addOpt(result, conf.linkOptions & " " & conf.linkOptionsCmd & " ")
   for linkedLib in items(conf.cLinkedLibs):
     result.add(CC[conf.cCompiler].linkLibCmd % linkedLib.quoteShell)
   for libDir in items(conf.cLibs):
@@ -691,8 +713,11 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
   # we want to generate the hash file unconditionally
   let extFileChanged = externalFileChanged(conf, c)
+  # A matching source hash does not prove that the object belongs to it. A
+  # classic build can overwrite IC's main object without updating its SHA1;
+  # after emit restores the IC source, that object is older than the source.
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
-      not extFileChanged:
+      not extFileChanged and os.fileNewer(c.obj.string, c.cname.string):
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns
@@ -1162,6 +1187,55 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   execCmdsInParallel(conf, cmds, prettyCb)
   preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
   for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
+
+proc spawnCodegenSubprocess*(conf: ConfigRef) =
+  ## Spawns a separate nim process with --compileOnly to perform
+  ## Nim-to-C code generation, then runs the C compile/link steps from the
+  ## generated JSON build instructions. This reclaims the Nim compiler's memory
+  ## before proceeding with C compilation.
+
+  # The subprocess args consist of the existing args and options up to the
+  # project file with `--compileOnly` injected first - anything after the project
+  # file is meant for running the project (`-r`) so we should have exactly two
+  # non-option arguments.
+  # We also disable the conf hint since it would otherwise show twice as the
+  # config files get parsed by both processes.
+  var subArgs = @["--compileOnly", "--hint[Conf]:off"]
+  var projectFileAdded = false
+  var commandAdded = false
+  for a in os.commandLineParams():
+    if a.len == 0:
+      continue
+
+    if a notin ["-r", "--run"]:
+      subArgs.add a
+
+    if a[0] != '-':
+      if commandAdded:
+        projectFileAdded = true
+        break
+      else:
+        commandAdded = true
+
+  doAssert projectFileAdded, "Could not find project file in command line, bug?"
+
+  # Spawn subprocess - the subprocess generates C files + JSON build instructions
+  let nimExe = getAppFilename()
+  try:
+    let p = startProcess(nimExe, args = subArgs, options = {poParentStreams})
+    let exitCode = p.waitForExit()
+    p.close()
+    if exitCode != 0:
+      # We assume the internal compiler has printed its own messages - the test
+      # suite depends on nothing being printed here
+      inc conf.errorCounter
+      return
+  except CatchableError as e:
+    rawMessage(conf, errGenerated, "execution of codegen failed: '$1'" %
+      [e.msg])
+    return
+
+  runJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile)
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   result = ""

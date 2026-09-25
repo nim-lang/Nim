@@ -61,22 +61,12 @@ proc mangleProcNameExt*(graph: ModuleGraph, s: PSym): string =
     # starts with an EMPTY per-name disamb table, so its `disamb` restarts at 0
     # and collides with same-named sem-time symbols loaded from NIFs (two
     # `=destroy` hooks both mangling to `_u2` → "conflicting types for ..." in
-    # the generated C). Most such symbols never cross a process boundary (nifc
-    # lifts, emits and compiles them in one run), so the per-module-unique
-    # item id is a safe and deterministic discriminator; the `_c` marker keeps
-    # the namespace disjoint from `_u<disamb>`.
+    # the generated C). The `_c` marker keeps the namespace disjoint from
+    # `_u<disamb>`; `backendMintedDisamb` (astdef) is the ONE definition of which
+    # integer identifies such a symbol, shared with `ccgutils.makeUnique` and
+    # `ast2nif.toNifSymName` so the C name and the NIF name cannot drift apart.
     result = "_c"
-    if (s.disamb and HookDisambBit) != 0'i32:
-      # EXCEPTION: a backend-minted sym whose `disamb` is content-derived
-      # (setHookDisamb gave it HookDisambBit) — e.g. the `rttiDestroy` wrapper —
-      # DOES cross process boundaries: its C name is baked into the type's RTTI
-      # table, which is emit-everywhere and merge-deduped, so one process's
-      # `_c<item>` (a per-process backend counter) ends up referenced while the
-      # wrapper is defined with another's → undefined at link (`rttiDestroy_c23`).
-      # The content-derived disamb is stable across processes; use it.
-      result.addInt s.disamb
-    else:
-      result.addInt s.itemId.item
+    result.addInt backendMintedDisamb(s)
   else:
     result = "_u"
     # Use `disamb` rather than `itemId.item`: under incremental compilation a

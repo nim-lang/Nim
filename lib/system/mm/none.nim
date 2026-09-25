@@ -8,7 +8,6 @@ proc initGC() = discard
 proc GC_disable() = discard
 proc GC_enable() = discard
 proc GC_fullCollect() = discard
-proc GC_setStrategy(strategy: GC_Strategy) = discard
 proc GC_enableMarkAndSweep() = discard
 proc GC_disableMarkAndSweep() = discard
 proc GC_getStatistics(): string = return ""

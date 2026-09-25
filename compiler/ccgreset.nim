@@ -19,18 +19,17 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
   if n == nil: return
   case n.kind
   of nkRecList:
-    for i in 0..<n.len:
-      specializeResetN(p, accessor, n[i], typ)
+    for it in sons(n):
+      specializeResetN(p, accessor, it, typ)
   of nkRecCase:
-    if (n[0].kind != nkSym): internalError(p.config, n.info, "specializeResetN")
-    let disc = n[0].sym
+    if (n.firstSon.kind != nkSym): internalError(p.config, n.info, "specializeResetN")
+    let disc = n.firstSon.sym
     if disc.loc.snippet == "": fillObjectFields(p.module, typ)
     if disc.loc.t == nil:
       internalError(p.config, n.info, "specializeResetN()")
     let discField = dotField(accessor, disc.loc.snippet)
     p.s(cpsStmts).addSwitchStmt(discField):
-      for i in 1..<n.len:
-        let branch = n[i]
+      for branch in sonsFrom(n, 1):
         assert branch.kind in {nkOfBranch, nkElse}
         var caseBuilder: SwitchCaseBuilder
         p.s(cpsStmts).addSwitchCase(caseBuilder):
@@ -75,6 +74,23 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
           cSizeof(getTypeDesc(p.module, typ)))
       else:
         specializeResetN(p, accessor, typ.n, typ)
+        if isCaseObj(typ.n):
+          # The active branch was released above. Clear the complete object so
+          # stale bytes from overlapping branches cannot be traced by the GC.
+          # type
+          #   Foo = object
+          #     case kind: bool
+          #     of true:
+          #       a: ref Bar   # 8 bytes (pointer)
+          #     of false:
+          #       b: int       # 4 bytes
+          # specializeResetT for b emits accessor.b = 0 — writes 4 bytes
+          # But the union is 8 bytes wide (sized by the largest branch)
+          # The remaining 4 bytes where a used to live are untouched
+          # Those stale bytes could contain a heap pointer the GC traces → crash
+          p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimZeroMem"),
+            cCast(CPointer, cAddr(accessor)),
+            cSizeof(getTypeDesc(p.module, typ)))
   of tyTuple:
     let typ = getUniqueType(typ)
     for i, a in typ.ikids:

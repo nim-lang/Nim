@@ -19,12 +19,12 @@ import std/[strutils, math, strtabs]
 #from system/memory import nimCStrLen
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, formatfloat]
+  import std/[assertions]
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
   result = newType(tyError, g.idgen, g.owners[^1])
-  result.flagsImpl.incl tfCheckedForDestructor
+  result.inclDerived {tfCheckedForDestructor}
 
 proc getIntLitTypeG(g: ModuleGraph; literal: PNode; idgen: IdGenerator): PType =
   # we cache some common integer literal types for performance:
@@ -120,21 +120,6 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
         [typeToString(t)])
   else:
     result = $x
-
-proc isFloatRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t.elementType.kind in {tyFloat..tyFloat128}
-
-proc isIntRange(t: PType): bool {.inline.} =
-  result = t.kind == tyRange and t.elementType.kind in {
-      tyInt..tyInt64, tyUInt8..tyUInt32}
-
-proc pickIntRange(a, b: PType): PType =
-  if isIntRange(a): result = a
-  elif isIntRange(b): result = b
-  else: result = a
-
-proc isIntRangeOrLit(t: PType): bool =
-  result = isIntRange(t) or isIntLit(t)
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   # b and c may be nil
@@ -389,11 +374,6 @@ proc getAppType(n: PNode; g: ModuleGraph): PNode =
 
 proc rangeCheck(n: PNode, value: Int128; g: ModuleGraph) =
   if value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ):
-    localError(g.config, n.info, "cannot convert " & $value &
-                                    " to " & typeToString(n.typ))
-
-proc floatRangeCheck(n: PNode, value: BiggestFloat; g: ModuleGraph) =
-  if value < firstFloat(n.typ) or value > lastFloat(n.typ):
     localError(g.config, n.info, "cannot convert " & $value &
                                     " to " & typeToString(n.typ))
 
@@ -795,8 +775,10 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   of nkCast:
     var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
-    if n.typ != nil and n.typ.kind in NilableTypes and
-        not (n.typ.kind == tyProc and a.typ.kind == tyProc):
+    let destType = skipTypesOrNil(n.typ, abstractInst)
+    if destType != nil and destType.kind in NilableTypes and
+        not (destType.kind == tyProc and
+          a.typ.skipTypes(abstractInst).kind == tyProc):
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ

@@ -28,9 +28,6 @@ proc detectStrVersion(m: BModule): int =
   else:
     detectVersion(strVersion, "nimStrVersion")
 
-proc detectSeqVersion(m: BModule): int =
-  detectVersion(seqVersion, "nimSeqVersion")
-
 # ----- Version 1: GC'ed strings and seqs --------------------------------
 
 proc genStringLiteralDataOnlyV1(m: BModule, s: string; result: var Rope) =
@@ -131,25 +128,6 @@ proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool; result: var Bu
       result.addIntValue(n.strVal.len)
     result.addField(strInit, name = "p"):
       result.add(cCast(ptrType("NimStrPayload"), cAddr(pureLit)))
-
-proc ssoCharLit(ch: char): string =
-  ## Return a C char literal for ch, with proper escaping.
-  const hexDigits = "0123456789abcdef"
-  result = "'"
-  case ch
-  of '\'': result.add("\\'")
-  of '\\': result.add("\\\\")
-  of '\0': result.add("\\0")
-  of '\n': result.add("\\n")
-  of '\r': result.add("\\r")
-  of '\t': result.add("\\t")
-  elif ch.ord < 32 or ch.ord == 127:
-    result.add("\\x")
-    result.add(hexDigits[ch.ord shr 4])
-    result.add(hexDigits[ch.ord and 0xf])
-  else:
-    result.add(ch)
-  result.add('\'')
 
 proc ssoBytesLit(m: BModule; s: string; slen: int): string =
   ## Compute the `bytes` field value for the new SmallString layout.
@@ -319,19 +297,6 @@ proc genStringLiteralV3(m: BModule; n: PNode; isConst: bool; result: var Builder
   m.s[cfsStrData].add(extract(res))
 
 # ------ Version selector ---------------------------------------------------
-
-proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo;
-                              isConst: bool; result: var Rope) =
-  case detectStrVersion(m)
-  of 0, 1: genStringLiteralDataOnlyV1(m, s, result)
-  of 2:
-    let tmp = getTempName(m)
-    genStringLiteralDataOnlyV2(m, s, tmp, isConst)
-    result.add tmp
-  of 3:
-    localError(m.config, info, "genStringLiteralDataOnly not supported for SmallString (nimsso)")
-  else:
-    localError(m.config, info, "cannot determine how to produce code for string literal")
 
 proc genNilStringLiteral(m: BModule; info: TLineInfo; result: var Builder) =
   result.add(cCast(ptrType(cgsymValue(m, "NimStringDesc")), NimNil))

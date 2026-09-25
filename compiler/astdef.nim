@@ -473,6 +473,26 @@ const
     ## tyGenericBody where an instance has a generated destructor
   skError* = skUnknown
 
+const
+  derivedTypeFlags* = {tfHasAsgn, tfHasOwned, tfHasGCedMem, tfCheckedForDestructor}
+    ## Codegen/lifting BOOKKEEPING bits, as opposed to the flags that make a
+    ## type what it is. They are *derived*: a fixpoint over the type's own kind,
+    ## the memory management config, its elements and the attached-op table --
+    ## never something the source said. They are in none of `eqTypeFlags`, the
+    ## `typekeys` content key or the NIF name, so changing one cannot rename a
+    ## type, move it in the cache, or alter `sameType`.
+    ##
+    ## Because they are derived rather than declared, a consumer module can
+    ## legitimately discover one *after* the defining module sealed the type
+    ## (the classic case: an alias carries `tfHasAsgn` into the NIF but the
+    ## object behind it only gets it at the first generic instantiation, which
+    ## happens in another module -- and, under IC, another process). Writing
+    ## one is therefore exempt from the `Sealed` assert: see `ast.inclDerived`.
+    ##
+    ## NOT in this set even though it looks like it belongs:
+    ## `tfGenericHasDestructor`, which is an ALIAS for `tfExplicitCallConv`.
+    ## Exempting it would exempt a real proc-type property from the seal.
+
 var
   eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect, tfIsOutParam}
     ## type flags that are essential for type equality.
@@ -619,8 +639,23 @@ type
       endInfo*: TLineInfo
 
   TStrTable* = object         # a table[PIdent] of PSym
-    counter*: int
-    data*: seq[PSym]
+    ## Insertion ordered: `data` is the symbols in the order they were added
+    ## and the symbols that share a name form a chain through `next` that is
+    ## in insertion order too. Iteration is therefore independent of the hash
+    ## values and of the table's growth history -- overload resolution and
+    ## error messages must not depend on either.
+    counter*: int             # number of symbols in the table, `data.len`
+    names: int                # number of distinct names == used `heads` slots
+    data*: seq[PSym]          # the symbols, in insertion order, no holes
+    next*: seq[int32]         # parallel to `data`: 1 + index of the next
+                              # symbol with the same name, 0 = end of chain
+    heads: seq[StrTableSlot]  # hash slots, a power of two of them
+
+  StrTableSlot = object       # one hash slot of a `TStrTable`
+    name: int32               # `PIdent.id` of the name this chain is for. It
+                              # is in the slot so that probing for a name never
+                              # has to dereference a symbol to read its name.
+    first: int32              # 1 + index of that name's first symbol, 0 = free
 
   # -------------- backend information -------------------------------
   TLocKind* = enum
@@ -681,6 +716,10 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
+    bindings*: seq[tuple[key: ItemId, value: PType]]
+      ## An optional exact snapshot of the matcher bindings. In-process
+      ## instances use it for a fast cache probe; serialized instances fall
+      ## back to comparing the fully instantiated signature.
     genericParamsCount*: int   # for terrible reasons `concreteTypes` contains all the types,
                                # so we need to know how many generic params there were
                                # this is not serialized for IC and that is fine.
@@ -713,6 +752,7 @@ type
       #procInstCache*: seq[PInstantiation]
       gcUnsafetyReasonImpl*: PSym  # for better error messages regarding gcsafe
       transformedBodyImpl*: PNode  # cached body after transf pass
+      nifBodyLoadedImpl*: bool # body loaded from the fully lowered IC artifact
     of skLet, skVar, skField, skForVar:
       guardImpl*: PSym
       bitsizeImpl*: int
@@ -780,11 +820,16 @@ type
                               # same id; there may be multiple copies of a type
                               # in memory!
                               # Keep in sync with PackedType
-    itemId*: ItemId
+    itemId*: ItemId           # THE identity of this type: unique per instance, forever.
+                              # Names the type in the NIF cache and decides which
+                              # module owns its definition.
     kind*: TTypeKind          # kind of type
     state*: ItemState
-    uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
-                              # is required by the --incremental:on mode.
+    bindingId*: ItemId        # the id of the type this one is a REPLICA of (its own
+                              # `itemId` when it is not a replica). Only the generic
+                              # binding tables (`LayeredIdTable` & friends) key on it:
+                              # `exactReplica` produces a copy that must keep matching
+                              # its original in those tables. Never an identity.
     callConvImpl*: TCallingConvention # for procs
     flagsImpl*: TTypeFlags        # flags of the type
     sonsImpl*: TTypeSeq           # base types, etc.
@@ -946,6 +991,57 @@ template `[]=`*(n: PNode, i: BackwardsIndex; x: PNode) = n[n.len - i.int] = x
 iterator items*(n: PNode): PNode =
   for i in 0..<n.safeLen: yield n[i]
 
+iterator sons*(n: PNode): PNode =
+  ## Iterates over the children of `n`. Preferred over `for i in 0..<n.len: n[i]`
+  ## as it does not rely on random indexed access, and over `for x in n.sons`,
+  ## which reads the raw FIELD and so skips the `len` hook that materialises a
+  ## deferred `nfLazyBody` body — over such a body that loop silently visits
+  ## nothing.
+  for i in 0..<n.safeLen: yield n[i]
+
+iterator isons*(n: PNode; start = 0): tuple[i: int, n: PNode] =
+  ## Like `sons` but also yields the child index, and optionally skips the first
+  ## `start` children. Replaces `for i in start..<n.len: ... n[i] ...` when `i`
+  ## itself is still needed — for a parameter position, a `needTmp[i-1]` lookup,
+  ## a parallel index into the routine's `PType`, and so on. `start` is almost
+  ## always 1, to step over a call's callee or a case statement's selector.
+  ##
+  ## Use `sonsFrom` instead when the index is only ever used to subscript `n`.
+  for i in start..<n.safeLen: yield (i, n[i])
+
+iterator sonsFrom*(n: PNode; start: int): PNode =
+  ## `sons` skipping the first `start` children. Replaces
+  ## `for i in start..<n.len: ... n[i] ...`, which is by far the commonest
+  ## indexed shape in the code generator — `start` is almost always 1, to step
+  ## over a case/try statement's selector or a call's callee.
+  for i in start..<n.safeLen: yield n[i]
+
+iterator sonsButLast*(n: PNode; count = 1): PNode =
+  ## `sons` without the last `count` children. Replaces `for i in 0..<n.len-1:
+  ## ... n[i] ...`, which is what an `nkOfBranch`/`nkExceptBranch` walk looks
+  ## like: the last child is the branch BODY, the ones before it are the labels
+  ## it matches. `count = 2` is the `nkVarTuple`/`nkIdentDefs` shape, whose last
+  ## two children are the type and the value. A `Cursor` can serve this with a
+  ## single pass and `count` nodes of lookahead; the indexed form has to re-walk
+  ## the children for every label.
+  ##
+  ## Use `isonsButLast` instead when the index is still needed.
+  for i in 0 ..< n.safeLen - count: yield n[i]
+
+iterator isonsButLast*(n: PNode; count = 1): tuple[i: int, n: PNode] =
+  ## Like `sonsButLast` but also yields the child index — for a tuple field
+  ## position, a parallel index into the tuple's `PType`, and so on.
+  for i in 0 ..< n.safeLen - count: yield (i, n[i])
+
+template son*(n: PNode; i: int): PNode =
+  ## Named indexed access to child `i`, for the small constant positions that
+  ## `firstSon`/`secondSon`/`lastSon` do not cover.
+  n[i]
+
+template hasSons*(n: PNode): bool =
+  ## Emptiness test; goes through `safeLen` so a deferred body is materialised.
+  n.safeLen > 0
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
@@ -1027,10 +1123,56 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 # handling for IC, they end up in IC indexes etc. Thus we "log" them in the module graph
 # and to pass them around to the NIF writer. This is not very elegant but it works.
 
+const
+  InstanceDisambBit* = 0x4000_0000'i32
+    ## Set in the `disamb` of routine instances whose value is content-derived
+    ## (see `modulegraphs.setInstanceDisamb`); keeps them disjoint from the
+    ## small counter range ordinary symbols draw from, so the NIF name
+    ## `name.disamb.module` stays collision-free within a module.
+  HookDisambBit* = 0x2000_0000'i32
+    ## Set in the `disamb` of synthesized type-bound operators and `$enum`
+    ## procs whose value is content-derived (see `modulegraphs.setHookDisamb`);
+    ## disjoint from both the small counter range and `InstanceDisambBit`.
+    ##
+    ## Both live here rather than in `modulegraphs` because `ast2nif` — which
+    ## cannot import that module — names symbols by them.
+
+proc backendMintedDisamb*(s: PSym): int32 {.inline.} =
+  ## The integer that identifies a BACKEND-MINTED symbol (`isBackendMinted`) in
+  ## every name derived from it: its NIF name (`ast2nif.toNifSymName`) and its C
+  ## name (`mangleutils.mangleProcNameExt`, `ccgutils.makeUnique`).
+  ##
+  ## Two cases, and the whole point of having ONE function is that all three
+  ## sites take the same one:
+  ##
+  ## * A lifted HOOK's `disamb` is CONTENT-derived (`modulegraphs.setHookDisamb`),
+  ##   so it is identical in every process. Such a hook really does cross process
+  ##   boundaries — `lower` mints the env hooks of nested routines while `cg`
+  ##   mints those of the module's top level, and both land in the same
+  ##   translation unit — and its C name is also baked into emit-everywhere RTTI
+  ##   tables. `itemId.item` would differ per process, so two unrelated hooks
+  ##   collided on one `_c<item>` and the merge stage kept a single body for both
+  ##   (C accepted the mistyped call, C++ rejected it).
+  ## * Otherwise `itemId.item` — the writer's dedup identity, unique per `@bk`
+  ##   sym. `disamb` cannot serve here: a module's `:env` syms are minted from TWO
+  ##   id spaces (the backend `lower` stage's idgen and sem's `vmTransfIdgen`)
+  ##   whose `disambTable`s each start `:env` at the same low count, so a
+  ##   macro-lowered and a backend-lowered `:env` collide on `:env.2.<mod>@bk`.
+  ##
+  ## The loader copies the name's numeric component back into `disamb`, so after a
+  ## round trip `disamb` equals this value and `ast2nif.globalName` — which always
+  ## reads `disamb` — agrees with the name the writer produced.
+  ##
+  ## This rule used to be written out at each of the three sites. They drifted:
+  ## `toNifSymName` lacked the hook exception, so a content-derived value was
+  ## overwritten by the loader and two backend hooks merged into one C function.
+  if (s.disamb and HookDisambBit) != 0'i32: s.disamb
+  else: s.itemId.item
+
 type
   LogEntryKind* = enum
     HookEntry, ConverterEntry, MethodEntry, EnumToStrEntry, GenericInstEntry,
-    PureEnumEntry
+    PureEnumEntry, CppMemberEntry
   LogEntry* = object
     kind*: LogEntryKind
     op*: TTypeAttachedOp
@@ -1049,6 +1191,7 @@ proc forcePartial*(s: PSym) =
   of routineKinds:
     s.gcUnsafetyReasonImpl = nil
     s.transformedBodyImpl = nil
+    s.nifBodyLoadedImpl = false
   of skLet, skVar, skField, skForVar:
     s.guardImpl = nil
     s.bitsizeImpl = 0
@@ -1077,7 +1220,7 @@ proc forcePartial*(s: PSym) =
 proc forcePartial*(t: PType) =
   ## Resets all impl-fields to their default values and sets state to Partial.
   ## This is useful for creating a stub type that can be lazily loaded later.
-  ## The fields itemId, kind, uniqueId are preserved.
+  ## The fields itemId, kind, bindingId are preserved.
   t.state = Partial
   t.callConvImpl = ccNimCall
   t.flagsImpl = {}
@@ -1095,8 +1238,11 @@ const                         # for all kind of hash tables:
   GrowthFactor* = 2           # must be power of 2, > 0
   StartSize* = 8              # must be power of 2, > 0
 
+{.push overflowChecks: off.}
 proc nextTry*(h, maxHash: Hash): Hash {.inline.} =
+  # Overflow is intentional: only the low bits selected by maxHash are used.
   result = ((5 * h) + 1) and maxHash
+{.pop.}
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
@@ -1105,49 +1251,104 @@ proc mustRehash*(length, counter: int): bool =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
+proc strTableFirstOfName*(t: TStrTable, name: PIdent): int32 =
+  ## 1 + the index of the FIRST symbol named `name`, 0 if there is none. The
+  ## rest of them follow through `t.next`, still in insertion order. Every
+  ## index in a `TStrTable` is stored biased by one so that a zeroed `newSeq`
+  ## means "empty" and no fill-with-minus-one pass is needed.
+  ##
+  ## The probe reads `heads` and nothing else: a slot carries the name it
+  ## stands for, so a wrong slot is rejected without following its index into
+  ## `data` and from there into a `PSym` and a `PIdent`. Only the slot that
+  ## matches is ever dereferenced, by the caller, for the symbol it wanted.
+  result = 0
+  if t.names == 0: return
+  let id = int32(name.id)
+  var h: Hash = name.h and high(t.heads)
+  while true:
+    let slot = t.heads[h]
+    if slot.first == 0: return
+    if slot.name == id: return slot.first
+    h = nextTry(h, high(t.heads))
+
 proc strTableContains*(t: TStrTable, n: PSym): bool =
-  var h: Hash = n.name.h and high(t.data) # start with real hash value
-  while t.data[h] != nil:
-    if (t.data[h] == n):
-      return true
-    h = nextTry(h, high(t.data))
+  var it = strTableFirstOfName(t, n.name)
+  while it != 0:
+    if t.data[it-1] == n: return true
+    it = t.next[it-1]
   result = false
 
-proc strTableRawInsert(data: var seq[PSym], n: PSym) =
-  var h: Hash = n.name.h and high(data)
-  while data[h] != nil:
-    if data[h] == n:
-      # allowed for 'export' feature:
-      #InternalError(n.info, "StrTableRawInsert: " & n.name.s)
-      return
-    h = nextTry(h, high(data))
-  assert(data[h] == nil)
-  data[h] = n
-
-proc symTabReplaceRaw(data: var seq[PSym], prevSym: PSym, newSym: PSym) =
-  assert prevSym.name.h == newSym.name.h
-  var h: Hash = prevSym.name.h and high(data)
-  while data[h] != nil:
-    if data[h] == prevSym:
-      data[h] = newSym
-      return
-    h = nextTry(h, high(data))
-  assert false
-
-proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
-  symTabReplaceRaw(t.data, prevSym, newSym)
+proc strTableRawInsert(t: var TStrTable, n: PSym) =
+  ## Appends `n` to `data` and links it in at the END of the chain of the
+  ## symbols that share its name: that is what makes the chain order the
+  ## insertion order. Adding the very same symbol twice is a no-op -- the
+  ## `export` feature relies on it, a symbol can reach an interface through
+  ## more than one route.
+  let pos = int32(t.data.len)
+  let name = n.name
+  let id = int32(name.id)
+  var h: Hash = name.h and high(t.heads)
+  while true:
+    let slot = t.heads[h]
+    if slot.first == 0:
+      t.heads[h] = StrTableSlot(name: id, first: pos+1)
+      inc t.names
+      break
+    if slot.name == id:
+      var i = slot.first-1
+      while true:
+        if t.data[i] == n: return
+        if t.next[i] == 0: break
+        i = t.next[i]-1
+      t.next[i] = pos+1
+      break
+    h = nextTry(h, high(t.heads))
+  t.data.add n
+  t.next.add 0
+  inc t.counter
 
 proc strTableEnlarge(t: var TStrTable) =
-  var n: seq[PSym]
-  newSeq(n, t.data.len * GrowthFactor)
-  for i in 0..high(t.data):
-    if t.data[i] != nil: strTableRawInsert(n, t.data[i])
-  swap(t.data, n)
+  ## Rebuilds the hash slots and the chains. Walking `data` BACKWARDS and
+  ## prepending puts every chain back in insertion order in a single pass and
+  ## never walks a chain to its tail, so growing the table can neither permute
+  ## anything nor cost more than the symbols it moves.
+  t.heads = newSeq[StrTableSlot](if t.heads.len == 0: StartSize
+                                 else: t.heads.len * GrowthFactor)
+  t.names = 0
+  for i in countdown(int32(high(t.data)), 0'i32):
+    let name = t.data[i].name
+    let id = int32(name.id)
+    var h: Hash = name.h and high(t.heads)
+    while true:
+      let slot = t.heads[h]
+      if slot.first == 0:
+        t.next[i] = 0
+        t.heads[h] = StrTableSlot(name: id, first: i+1)
+        inc t.names
+        break
+      if slot.name == id:
+        t.next[i] = slot.first
+        t.heads[h].first = i+1
+        break
+      h = nextTry(h, high(t.heads))
+
+template strTableMakeRoom(t: var TStrTable) =
+  # only distinct names take up a hash slot, so `names` is what has to fit
+  if t.heads.len == 0 or mustRehash(t.heads.len, t.names): strTableEnlarge(t)
+
+proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
+  assert prevSym.name.id == newSym.name.id
+  var it = strTableFirstOfName(t, prevSym.name)
+  while it != 0:
+    if t.data[it-1] == prevSym:
+      t.data[it-1] = newSym
+      return
+    it = t.next[it-1]
+  assert false
 
 proc strTableAdd*(t: var TStrTable, n: PSym) =
-  if mustRehash(t.data.len, t.counter): strTableEnlarge(t)
-  strTableRawInsert(t.data, n)
-  inc(t.counter)
+  strTableMakeRoom(t)
+  strTableRawInsert(t, n)
 
 proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
                                  onConflictKeepOld = false): PSym =
@@ -1155,44 +1356,33 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
   # otherwise return `nil`. Incl `n` to `t` unless `onConflictKeepOld = true`
   # and a conflict was found.
   assert n.name != nil
-  var h: Hash = n.name.h and high(t.data)
-  var replaceSlot = -1
-  while true:
-    var it = t.data[h]
-    if it == nil: break
-    # Semantic checking can happen multiple times thanks to templates
-    # and overloading: (var x=@[]; x).mapIt(it).
-    # So it is possible the very same sym is added multiple
-    # times to the symbol table which we allow here with the 'it == n' check.
-    if it.name.id == n.name.id:
-      if it == n: return nil
-      replaceSlot = h
-    h = nextTry(h, high(t.data))
-  if replaceSlot >= 0:
-    result = t.data[replaceSlot] # found it
+  var last = strTableFirstOfName(t, n.name)
+  if last != 0:
+    # One walk to the end of the chain answers both questions: whether `n` is
+    # in it already -- semantic checking can happen more than once thanks to
+    # templates and overloading, `(var x=@[]; x).mapIt(it)` -- and which
+    # symbol of that name is the newest.
+    while true:
+      if t.data[last-1] == n: return nil
+      let nxt = t.next[last-1]
+      if nxt == 0: break
+      last = nxt
+    result = t.data[last-1] # found it, the newest symbol of that name
     if not onConflictKeepOld:
-      t.data[replaceSlot] = n # overwrite it with newer definition!
-    return result # but return the old one
-  elif mustRehash(t.data.len, t.counter):
-    strTableEnlarge(t)
-    strTableRawInsert(t.data, n)
+      t.data[last-1] = n # overwrite it with newer definition!
   else:
-    assert(t.data[h] == nil)
-    t.data[h] = n
-  inc(t.counter)
-  result = nil
+    strTableMakeRoom(t)
+    strTableRawInsert(t, n)
+    result = nil
 
 proc strTableIncl*(t: var TStrTable, n: PSym;
                    onConflictKeepOld = false): bool {.discardable.} =
   result = strTableInclReportConflict(t, n, onConflictKeepOld) != nil
 
 proc strTableGet*(t: TStrTable, name: PIdent): PSym =
-  var h: Hash = name.h and high(t.data)
-  while true:
-    result = t.data[h]
-    if result == nil: break
-    if result.name.id == name.id: break
-    h = nextTry(h, high(t.data))
+  ## The *first* symbol declared under `name`, nil if there is none.
+  let it = strTableFirstOfName(t, name)
+  result = if it != 0: t.data[it-1] else: nil
 
 # --- doc-comment bridge for the NIF serializer -------------------------------
 # `ast2nif` (the NIF reader/writer) cannot import `ast` (where the comment

@@ -1,0 +1,2 @@
+nimTitle	code1	code1.html	module nimdoc/bookproject/code1		0
+nim	double	code1.html#double,int	proc double(x: int): int		1

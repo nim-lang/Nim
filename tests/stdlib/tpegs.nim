@@ -347,3 +347,45 @@ call()
   pegsTest()
   static:
     pegsTest()
+
+block: # pegs shouldn't crash for invalid inputs but raise EInvalidPeg
+  var captures: array[20, string]
+
+  # star of an expression that can match the empty input used to abort with
+  # AssertionDefect("unreachable") from `*`; the matcher breaks out of the
+  # repetition loop on a zero-length match, so these are valid and terminate:
+  doAssert "aaa".match(peg"(! '>' .)* * $")
+  doAssert "aaa".match(peg"'a'? * $")
+  doAssert "aaa".match(peg".* * $")
+  doAssert "aaa".match(peg"('a'*)* $")
+  doAssert "aaa".match(peg"{a*} * $")
+  doAssert "aaa".match(peg"'a'? + $")
+  doAssert "aaa".match(peg"'a'* * $")
+  doAssert "aaa".match(peg"[a-c]* * $")
+  # the zero-length break in the matcher's repetition loop is load-bearing
+  # here; pin the empty-input behavior and the not-matching path that
+  # forces the break (a regression to zero-width looping would hang these):
+  doAssert "".match(peg"'a'? * $")
+  doAssert "".match(peg".* * $")
+  var greedyCaps: array[8, string]
+  doAssert "aaa".match(peg"{a?} *", greedyCaps)
+  doAssert greedyCaps[0] == "a" and greedyCaps[1] == "a" and
+      greedyCaps[2] == "a"
+  doAssert not "b".match(peg"^('a'?)* $")
+  doAssert not "aab".match(peg"^('a'?)* $")
+  # the internal DSL `*` proc takes the same code path:
+  doAssert match("a", sequence(startAnchor(), *(?term("a")), endAnchor()))
+  # `$` representations remain parseable with identical meaning:
+  doAssert $peg"'a'? *" == "'a'?*"
+  doAssert $peg"('a' 'b')? *" == "('a' 'b')?*"
+
+  # an unknown builtin escape inside a character class doesn't crash with
+  # IndexDefect in getCharSet
+  doAssertRaises(EInvalidPeg): discard peg"[^\n]"
+  doAssertRaises(EInvalidPeg): discard peg"[z-\n]"
+
+  # an empty capture with no previous capture doesn't underflow c.matches
+  doAssert "abc".match(peg"^{}")
+  # documented behavior (deleting the last capture) still works:
+  doAssert "ab".match(peg"{[a-z]} {}", captures)
+  doAssert captures[0] == ""
