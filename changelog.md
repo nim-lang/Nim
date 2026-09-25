@@ -49,6 +49,26 @@ errors.
 parameter and result types, not just their source-level shape. Use
 `--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
+- In `std/atomics` the memory order is a constant expression now: `MemoryOrder`
+  is `static[MemoryOrderKind]`, where `MemoryOrderKind` is the enum that
+  `MemoryOrder` used to be. The C and C++ compilers pick the order when they
+  expand the atomic operation, so an order that is not constant there silently
+  degrades to `seq_cst` (GCC) or to a switch over the order (Clang). A wrapper
+  that declares its own parameter as `MemoryOrder` forwards the constant
+  through it and needs no change:
+
+  ```nim
+  proc load(futex: var Futex; order: MemoryOrder): uint32 {.inline.} =
+    futex.value.load(order)
+  ```
+
+  A type class may only be used once per signature, so the two orders of
+  `compareExchange` are `success: MemoryOrder; failure: FailureOrder`; a wrapper
+  that passes both on has to do the same. Use `MemoryOrderKind` where a concrete
+  type is required - a variable, an object field, a `seq` of orders, a return
+  type or iteration over the orders - and write the `case` over the order
+  yourself where it really has to be computed at run time.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
