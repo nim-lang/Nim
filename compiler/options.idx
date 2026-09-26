@@ -1,0 +1,359 @@
+nimTitle	options	options.html	module options		0
+nim	hasTinyCBackend	options.html#hasTinyCBackend	const hasTinyCBackend		24
+nim	useEffectSystem	options.html#useEffectSystem	const useEffectSystem		25
+nim	useWriteTracking	options.html#useWriteTracking	const useWriteTracking		26
+nim	hasFFI	options.html#hasFFI	const hasFFI		27
+nim	copyrightYear	options.html#copyrightYear	const copyrightYear		28
+nim	nimEnableCovariance	options.html#nimEnableCovariance	const nimEnableCovariance		30
+nim	icFormatVersion	options.html#icFormatVersion	const icFormatVersion		32
+nim	optNone	options.html#optNone	TOption.optNone		74
+nim	optObjCheck	options.html#optObjCheck	TOption.optObjCheck		74
+nim	optFieldCheck	options.html#optFieldCheck	TOption.optFieldCheck		74
+nim	optRangeCheck	options.html#optRangeCheck	TOption.optRangeCheck		74
+nim	optBoundsCheck	options.html#optBoundsCheck	TOption.optBoundsCheck		74
+nim	optOverflowCheck	options.html#optOverflowCheck	TOption.optOverflowCheck		74
+nim	optRefCheck	options.html#optRefCheck	TOption.optRefCheck		74
+nim	optNaNCheck	options.html#optNaNCheck	TOption.optNaNCheck		74
+nim	optInfCheck	options.html#optInfCheck	TOption.optInfCheck		74
+nim	optStaticBoundsCheck	options.html#optStaticBoundsCheck	TOption.optStaticBoundsCheck		74
+nim	optStyleCheck	options.html#optStyleCheck	TOption.optStyleCheck		74
+nim	optAssert	options.html#optAssert	TOption.optAssert		74
+nim	optLineDir	options.html#optLineDir	TOption.optLineDir		74
+nim	optWarns	options.html#optWarns	TOption.optWarns		74
+nim	optHints	options.html#optHints	TOption.optHints		74
+nim	optOptimizeSpeed	options.html#optOptimizeSpeed	TOption.optOptimizeSpeed		74
+nim	optOptimizeSize	options.html#optOptimizeSize	TOption.optOptimizeSize		74
+nim	optStackTrace	options.html#optStackTrace	TOption.optStackTrace		74
+nim	optStackTraceMsgs	options.html#optStackTraceMsgs	TOption.optStackTraceMsgs		74
+nim	optLineTrace	options.html#optLineTrace	TOption.optLineTrace		74
+nim	optByRef	options.html#optByRef	TOption.optByRef		74
+nim	optProfiler	options.html#optProfiler	TOption.optProfiler		74
+nim	optImplicitStatic	options.html#optImplicitStatic	TOption.optImplicitStatic		74
+nim	optTrMacros	options.html#optTrMacros	TOption.optTrMacros		74
+nim	optMemTracker	options.html#optMemTracker	TOption.optMemTracker		74
+nim	optSinkInference	options.html#optSinkInference	TOption.optSinkInference		74
+nim	optCursorInference	options.html#optCursorInference	TOption.optCursorInference		74
+nim	optImportHidden	options.html#optImportHidden	TOption.optImportHidden		74
+nim	optQuirky	options.html#optQuirky	TOption.optQuirky		74
+nim	TOption	options.html#TOption	enum TOption		74
+nim	TOptions	options.html#TOptions	type TOptions		95
+nim	gloptNone	options.html#gloptNone	TGlobalOption.gloptNone		96
+nim	optForceFullMake	options.html#optForceFullMake	TGlobalOption.optForceFullMake		96
+nim	optWasNimscript	options.html#optWasNimscript	TGlobalOption.optWasNimscript		96
+nim	optListCmd	options.html#optListCmd	TGlobalOption.optListCmd		96
+nim	optCompileOnly	options.html#optCompileOnly	TGlobalOption.optCompileOnly		96
+nim	optNoLinking	options.html#optNoLinking	TGlobalOption.optNoLinking		96
+nim	optCDebug	options.html#optCDebug	TGlobalOption.optCDebug		96
+nim	optGenDynLib	options.html#optGenDynLib	TGlobalOption.optGenDynLib		96
+nim	optGenStaticLib	options.html#optGenStaticLib	TGlobalOption.optGenStaticLib		96
+nim	optGenGuiApp	options.html#optGenGuiApp	TGlobalOption.optGenGuiApp		96
+nim	optGenScript	options.html#optGenScript	TGlobalOption.optGenScript		96
+nim	optGenCDeps	options.html#optGenCDeps	TGlobalOption.optGenCDeps		96
+nim	optGenMapping	options.html#optGenMapping	TGlobalOption.optGenMapping		96
+nim	optRun	options.html#optRun	TGlobalOption.optRun		96
+nim	optUseNimcache	options.html#optUseNimcache	TGlobalOption.optUseNimcache		96
+nim	optStyleHint	options.html#optStyleHint	TGlobalOption.optStyleHint		96
+nim	optStyleError	options.html#optStyleError	TGlobalOption.optStyleError		96
+nim	optStyleWarning	options.html#optStyleWarning	TGlobalOption.optStyleWarning		96
+nim	optStyleUsages	options.html#optStyleUsages	TGlobalOption.optStyleUsages		96
+nim	optSkipSystemConfigFile	options.html#optSkipSystemConfigFile	TGlobalOption.optSkipSystemConfigFile		96
+nim	optSkipProjConfigFile	options.html#optSkipProjConfigFile	TGlobalOption.optSkipProjConfigFile		96
+nim	optSkipUserConfigFile	options.html#optSkipUserConfigFile	TGlobalOption.optSkipUserConfigFile		96
+nim	optSkipParentConfigFiles	options.html#optSkipParentConfigFiles	TGlobalOption.optSkipParentConfigFiles		96
+nim	optNoMain	options.html#optNoMain	TGlobalOption.optNoMain		96
+nim	optUseColors	options.html#optUseColors	TGlobalOption.optUseColors		96
+nim	optThreads	options.html#optThreads	TGlobalOption.optThreads		96
+nim	optStdout	options.html#optStdout	TGlobalOption.optStdout		96
+nim	optThreadAnalysis	options.html#optThreadAnalysis	TGlobalOption.optThreadAnalysis		96
+nim	optTlsEmulation	options.html#optTlsEmulation	TGlobalOption.optTlsEmulation		96
+nim	optGenIndex	options.html#optGenIndex	TGlobalOption.optGenIndex		96
+nim	optGenIndexOnly	options.html#optGenIndexOnly	TGlobalOption.optGenIndexOnly		96
+nim	optNoImportdoc	options.html#optNoImportdoc	TGlobalOption.optNoImportdoc		96
+nim	optEmbedOrigSrc	options.html#optEmbedOrigSrc	TGlobalOption.optEmbedOrigSrc		96
+nim	optIdeDebug	options.html#optIdeDebug	TGlobalOption.optIdeDebug		96
+nim	optIdeTerse	options.html#optIdeTerse	TGlobalOption.optIdeTerse		96
+nim	optIdeExceptionInlayHints	options.html#optIdeExceptionInlayHints	TGlobalOption.optIdeExceptionInlayHints		96
+nim	optExcessiveStackTrace	options.html#optExcessiveStackTrace	TGlobalOption.optExcessiveStackTrace		96
+nim	optShowAllMismatches	options.html#optShowAllMismatches	TGlobalOption.optShowAllMismatches		96
+nim	optWholeProject	options.html#optWholeProject	TGlobalOption.optWholeProject		96
+nim	optDocInternal	options.html#optDocInternal	TGlobalOption.optDocInternal		96
+nim	optMixedMode	options.html#optMixedMode	TGlobalOption.optMixedMode		96
+nim	optDeclaredLocs	options.html#optDeclaredLocs	TGlobalOption.optDeclaredLocs		96
+nim	optNoNimblePath	options.html#optNoNimblePath	TGlobalOption.optNoNimblePath		96
+nim	optHotCodeReloading	options.html#optHotCodeReloading	TGlobalOption.optHotCodeReloading		96
+nim	optDynlibOverrideAll	options.html#optDynlibOverrideAll	TGlobalOption.optDynlibOverrideAll		96
+nim	optSeqDestructors	options.html#optSeqDestructors	TGlobalOption.optSeqDestructors		96
+nim	optTinyRtti	options.html#optTinyRtti	TGlobalOption.optTinyRtti		96
+nim	optSpawnCodegen	options.html#optSpawnCodegen	TGlobalOption.optSpawnCodegen		96
+nim	optOwnedRefs	options.html#optOwnedRefs	TGlobalOption.optOwnedRefs		96
+nim	optMultiMethods	options.html#optMultiMethods	TGlobalOption.optMultiMethods		96
+nim	optBenchmarkVM	options.html#optBenchmarkVM	TGlobalOption.optBenchmarkVM		96
+nim	optProduceAsm	options.html#optProduceAsm	TGlobalOption.optProduceAsm		96
+nim	optPanics	options.html#optPanics	TGlobalOption.optPanics		96
+nim	optSourcemap	options.html#optSourcemap	TGlobalOption.optSourcemap		96
+nim	optProfileVM	options.html#optProfileVM	TGlobalOption.optProfileVM		96
+nim	optEnableDeepCopy	options.html#optEnableDeepCopy	TGlobalOption.optEnableDeepCopy		96
+nim	optShowNonExportedFields	options.html#optShowNonExportedFields	TGlobalOption.optShowNonExportedFields		96
+nim	optJsBigInt64	options.html#optJsBigInt64	TGlobalOption.optJsBigInt64		96
+nim	optDocRaw	options.html#optDocRaw	TGlobalOption.optDocRaw		96
+nim	optItaniumMangle	options.html#optItaniumMangle	TGlobalOption.optItaniumMangle		96
+nim	optCompress	options.html#optCompress	TGlobalOption.optCompress		96
+nim	optGenBif	options.html#optGenBif	TGlobalOption.optGenBif		96
+nim	optWithinConfigSystem	options.html#optWithinConfigSystem	TGlobalOption.optWithinConfigSystem		96
+nim	optDeferBodies	options.html#optDeferBodies	TGlobalOption.optDeferBodies		96
+nim	TGlobalOption	options.html#TGlobalOption	enum TGlobalOption		96
+nim	TGlobalOptions	options.html#TGlobalOptions	type TGlobalOptions		168
+nim	harmlessOptions	options.html#harmlessOptions	const harmlessOptions		171
+nim	genSubDir	options.html#genSubDir	const genSubDir		172
+nim	NimExt	options.html#NimExt	const NimExt		173
+nim	RodExt	options.html#RodExt	const RodExt		174
+nim	HtmlExt	options.html#HtmlExt	const HtmlExt		175
+nim	JsonExt	options.html#JsonExt	const JsonExt		176
+nim	TagsExt	options.html#TagsExt	const TagsExt		177
+nim	TexExt	options.html#TexExt	const TexExt		178
+nim	IniExt	options.html#IniExt	const IniExt		179
+nim	DefaultConfig	options.html#DefaultConfig	const DefaultConfig		180
+nim	DefaultConfigNims	options.html#DefaultConfigNims	const DefaultConfigNims		181
+nim	DocConfig	options.html#DocConfig	const DocConfig		182
+nim	DocTexConfig	options.html#DocTexConfig	const DocTexConfig		183
+nim	htmldocsDir	options.html#htmldocsDir	const htmldocsDir		184
+nim	docRootDefault	options.html#docRootDefault	const docRootDefault		185
+nim	oKeepVariableNames	options.html#oKeepVariableNames	const oKeepVariableNames		186
+nim	spellSuggestSecretSauce	options.html#spellSuggestSecretSauce	const spellSuggestSecretSauce		187
+nim	backendInvalid	options.html#backendInvalid	TBackend.backendInvalid		190
+nim	backendC	options.html#backendC	TBackend.backendC		190
+nim	backendCpp	options.html#backendCpp	TBackend.backendCpp		190
+nim	backendJs	options.html#backendJs	TBackend.backendJs		190
+nim	backendObjc	options.html#backendObjc	TBackend.backendObjc		190
+nim	backendNif	options.html#backendNif	TBackend.backendNif		190
+nim	TBackend	options.html#TBackend	enum TBackend		190
+nim	cmdNone	options.html#cmdNone	Command.cmdNone		200
+nim	cmdUnknown	options.html#cmdUnknown	Command.cmdUnknown		200
+nim	cmdCompileToC	options.html#cmdCompileToC	Command.cmdCompileToC		200
+nim	cmdCompileToCpp	options.html#cmdCompileToCpp	Command.cmdCompileToCpp		200
+nim	cmdCompileToOC	options.html#cmdCompileToOC	Command.cmdCompileToOC		200
+nim	cmdCompileToJS	options.html#cmdCompileToJS	Command.cmdCompileToJS		200
+nim	cmdCrun	options.html#cmdCrun	Command.cmdCrun		200
+nim	cmdTcc	options.html#cmdTcc	Command.cmdTcc		200
+nim	cmdCheck	options.html#cmdCheck	Command.cmdCheck		200
+nim	cmdM	options.html#cmdM	Command.cmdM		200
+nim	cmdParse	options.html#cmdParse	Command.cmdParse		200
+nim	cmdNimscript	options.html#cmdNimscript	Command.cmdNimscript		200
+nim	cmdDoc0	options.html#cmdDoc0	Command.cmdDoc0		200
+nim	cmdDoc	options.html#cmdDoc	Command.cmdDoc		200
+nim	cmdBook	options.html#cmdBook	Command.cmdBook		200
+nim	cmdDoc2tex	options.html#cmdDoc2tex	Command.cmdDoc2tex		200
+nim	cmdRst2html	options.html#cmdRst2html	Command.cmdRst2html		200
+nim	cmdRst2tex	options.html#cmdRst2tex	Command.cmdRst2tex		200
+nim	cmdMd2html	options.html#cmdMd2html	Command.cmdMd2html		200
+nim	cmdMd2tex	options.html#cmdMd2tex	Command.cmdMd2tex		200
+nim	cmdJsondoc0	options.html#cmdJsondoc0	Command.cmdJsondoc0		200
+nim	cmdJsondoc	options.html#cmdJsondoc	Command.cmdJsondoc		200
+nim	cmdCtags	options.html#cmdCtags	Command.cmdCtags		200
+nim	cmdBuildindex	options.html#cmdBuildindex	Command.cmdBuildindex		200
+nim	cmdGendepend	options.html#cmdGendepend	Command.cmdGendepend		200
+nim	cmdDump	options.html#cmdDump	Command.cmdDump		200
+nim	cmdInteractive	options.html#cmdInteractive	Command.cmdInteractive		200
+nim	cmdNop	options.html#cmdNop	Command.cmdNop		200
+nim	cmdJsonscript	options.html#cmdJsonscript	Command.cmdJsonscript		200
+nim	cmdCompileToNif	options.html#cmdCompileToNif	Command.cmdCompileToNif		200
+nim	cmdNifC	options.html#cmdNifC	Command.cmdNifC		200
+nim	cmdIc	options.html#cmdIc	Command.cmdIc		200
+nim	cmdIcConfig	options.html#cmdIcConfig	Command.cmdIcConfig		200
+nim	cmdTrack	options.html#cmdTrack	Command.cmdTrack		200
+nim	Command	options.html#Command	enum Command		200
+nim	cmdBackends	options.html#cmdBackends	const cmdBackends		235
+nim	cmdDocLike	options.html#cmdDocLike	const cmdDocLike		237
+nim	TStringSeq	options.html#TStringSeq	type TStringSeq		241
+nim	gcUnselected	options.html#gcUnselected	TGCMode.gcUnselected		242
+nim	gcNone	options.html#gcNone	TGCMode.gcNone		242
+nim	gcBoehm	options.html#gcBoehm	TGCMode.gcBoehm		242
+nim	gcRegions	options.html#gcRegions	TGCMode.gcRegions		242
+nim	gcArc	options.html#gcArc	TGCMode.gcArc		242
+nim	gcOrc	options.html#gcOrc	TGCMode.gcOrc		242
+nim	gcYrc	options.html#gcYrc	TGCMode.gcYrc		242
+nim	gcAtomicArc	options.html#gcAtomicArc	TGCMode.gcAtomicArc		242
+nim	gcMarkAndSweep	options.html#gcMarkAndSweep	TGCMode.gcMarkAndSweep		242
+nim	gcHooks	options.html#gcHooks	TGCMode.gcHooks		242
+nim	gcRefc	options.html#gcRefc	TGCMode.gcRefc		242
+nim	gcGo	options.html#gcGo	TGCMode.gcGo		242
+nim	TGCMode	options.html#TGCMode	enum TGCMode		242
+nim	ideNone	options.html#ideNone	IdeCmd.ideNone		258
+nim	ideSug	options.html#ideSug	IdeCmd.ideSug		258
+nim	ideCon	options.html#ideCon	IdeCmd.ideCon		258
+nim	ideDef	options.html#ideDef	IdeCmd.ideDef		258
+nim	ideUse	options.html#ideUse	IdeCmd.ideUse		258
+nim	ideDus	options.html#ideDus	IdeCmd.ideDus		258
+nim	ideChk	options.html#ideChk	IdeCmd.ideChk		258
+nim	ideChkFile	options.html#ideChkFile	IdeCmd.ideChkFile		258
+nim	ideMod	options.html#ideMod	IdeCmd.ideMod		258
+nim	ideHighlight	options.html#ideHighlight	IdeCmd.ideHighlight		258
+nim	ideOutline	options.html#ideOutline	IdeCmd.ideOutline		258
+nim	ideKnown	options.html#ideKnown	IdeCmd.ideKnown		258
+nim	ideMsg	options.html#ideMsg	IdeCmd.ideMsg		258
+nim	ideProject	options.html#ideProject	IdeCmd.ideProject		258
+nim	ideGlobalSymbols	options.html#ideGlobalSymbols	IdeCmd.ideGlobalSymbols		258
+nim	ideRecompile	options.html#ideRecompile	IdeCmd.ideRecompile		258
+nim	ideChanged	options.html#ideChanged	IdeCmd.ideChanged		258
+nim	ideType	options.html#ideType	IdeCmd.ideType		258
+nim	ideDeclaration	options.html#ideDeclaration	IdeCmd.ideDeclaration		258
+nim	ideExpand	options.html#ideExpand	IdeCmd.ideExpand		258
+nim	ideInlayHints	options.html#ideInlayHints	IdeCmd.ideInlayHints		258
+nim	IdeCmd	options.html#IdeCmd	enum IdeCmd		258
+nim	dotOperators	options.html#dotOperators	Feature.dotOperators		263
+nim	callOperator	options.html#callOperator	Feature.callOperator		263
+nim	parallel	options.html#parallel	Feature.parallel		263
+nim	destructor	options.html#destructor	Feature.destructor		263
+nim	notnil	options.html#notnil	Feature.notnil		263
+nim	dynamicBindSym	options.html#dynamicBindSym	Feature.dynamicBindSym		263
+nim	forLoopMacros	options.html#forLoopMacros	Feature.forLoopMacros		263
+nim	caseStmtMacros	options.html#caseStmtMacros	Feature.caseStmtMacros		263
+nim	codeReordering	options.html#codeReordering	Feature.codeReordering		263
+nim	compiletimeFFI	options.html#compiletimeFFI	Feature.compiletimeFFI		263
+nim	vmopsDanger	options.html#vmopsDanger	Feature.vmopsDanger		263
+nim	strictFuncs	options.html#strictFuncs	Feature.strictFuncs		263
+nim	views	options.html#views	Feature.views		263
+nim	strictNotNil	options.html#strictNotNil	Feature.strictNotNil		263
+nim	overloadableEnums	options.html#overloadableEnums	Feature.overloadableEnums		263
+nim	strictEffects	options.html#strictEffects	Feature.strictEffects		263
+nim	unicodeOperators	options.html#unicodeOperators	Feature.unicodeOperators		263
+nim	flexibleOptionalParams	options.html#flexibleOptionalParams	Feature.flexibleOptionalParams		263
+nim	strictDefs	options.html#strictDefs	Feature.strictDefs		263
+nim	strictCaseObjects	options.html#strictCaseObjects	Feature.strictCaseObjects		263
+nim	inferGenericTypes	options.html#inferGenericTypes	Feature.inferGenericTypes		263
+nim	openSym	options.html#openSym	Feature.openSym		263
+nim	genericsOpenSym	options.html#genericsOpenSym	Feature.genericsOpenSym		263
+nim	vtables	options.html#vtables	Feature.vtables		263
+nim	typeBoundOps	options.html#typeBoundOps	Feature.typeBoundOps		263
+nim	Feature	options.html#Feature	enum Feature		263
+nim	allowSemcheckedAstModification	options.html#allowSemcheckedAstModification	LegacyFeature.allowSemcheckedAstModification		294
+nim	checkUnsignedConversions	options.html#checkUnsignedConversions	LegacyFeature.checkUnsignedConversions		294
+nim	laxEffects	options.html#laxEffects	LegacyFeature.laxEffects		294
+nim	verboseTypeMismatch	options.html#verboseTypeMismatch	LegacyFeature.verboseTypeMismatch		294
+nim	emitGenerics	options.html#emitGenerics	LegacyFeature.emitGenerics		294
+nim	jsNoLambdaLifting	options.html#jsNoLambdaLifting	LegacyFeature.jsNoLambdaLifting		294
+nim	noPanicOnExcept	options.html#noPanicOnExcept	LegacyFeature.noPanicOnExcept		294
+nim	procParamTypeBackendAliases	options.html#procParamTypeBackendAliases	LegacyFeature.procParamTypeBackendAliases		294
+nim	injectedSymbolRedefinition	options.html#injectedSymbolRedefinition	LegacyFeature.injectedSymbolRedefinition		294
+nim	LegacyFeature	options.html#LegacyFeature	enum LegacyFeature		294
+nim	disabledSf	options.html#disabledSf	SymbolFilesOption.disabledSf		322
+nim	writeOnlySf	options.html#writeOnlySf	SymbolFilesOption.writeOnlySf		322
+nim	readOnlySf	options.html#readOnlySf	SymbolFilesOption.readOnlySf		322
+nim	v2Sf	options.html#v2Sf	SymbolFilesOption.v2Sf		322
+nim	stressTest	options.html#stressTest	SymbolFilesOption.stressTest		322
+nim	SymbolFilesOption	options.html#SymbolFilesOption	enum SymbolFilesOption		322
+nim	ccNone	options.html#ccNone	TSystemCC.ccNone		325
+nim	ccGcc	options.html#ccGcc	TSystemCC.ccGcc		325
+nim	ccNintendoSwitch	options.html#ccNintendoSwitch	TSystemCC.ccNintendoSwitch		325
+nim	ccLLVM_Gcc	options.html#ccLLVM_Gcc	TSystemCC.ccLLVM_Gcc		325
+nim	ccCLang	options.html#ccCLang	TSystemCC.ccCLang		325
+nim	ccBcc	options.html#ccBcc	TSystemCC.ccBcc		325
+nim	ccVcc	options.html#ccVcc	TSystemCC.ccVcc		325
+nim	ccTcc	options.html#ccTcc	TSystemCC.ccTcc		325
+nim	ccEnv	options.html#ccEnv	TSystemCC.ccEnv		325
+nim	ccIcl	options.html#ccIcl	TSystemCC.ccIcl		325
+nim	ccIcc	options.html#ccIcc	TSystemCC.ccIcc		325
+nim	ccClangCl	options.html#ccClangCl	TSystemCC.ccClangCl		325
+nim	ccHipcc	options.html#ccHipcc	TSystemCC.ccHipcc		325
+nim	ccNvcc	options.html#ccNvcc	TSystemCC.ccNvcc		325
+nim	TSystemCC	options.html#TSystemCC	enum TSystemCC		325
+nim	stringDefault	options.html#stringDefault	StringsMode.stringDefault		329
+nim	stringSso	options.html#stringSso	StringsMode.stringSso		329
+nim	StringsMode	options.html#StringsMode	enum StringsMode		329
+nim	excNone	options.html#excNone	ExceptionSystem.excNone		333
+nim	excSetjmp	options.html#excSetjmp	ExceptionSystem.excSetjmp		333
+nim	excCpp	options.html#excCpp	ExceptionSystem.excCpp		333
+nim	excGoto	options.html#excGoto	ExceptionSystem.excGoto		333
+nim	excQuirky	options.html#excQuirky	ExceptionSystem.excQuirky		333
+nim	ExceptionSystem	options.html#ExceptionSystem	enum ExceptionSystem		333
+nim	CfileFlag	options.html#CfileFlag	enum CfileFlag		340
+nim	Cfile	options.html#Cfile	object Cfile		344
+nim	CfileList	options.html#CfileList	type CfileList		349
+nim	Suggest	options.html#Suggest	type Suggest		351
+nim	Suggestions	options.html#Suggestions	type Suggestions		373
+nim	sihkType	options.html#sihkType	SuggestInlayHintKind.sihkType		375
+nim	sihkParameter	options.html#sihkParameter	SuggestInlayHintKind.sihkParameter		375
+nim	sihkException	options.html#sihkException	SuggestInlayHintKind.sihkException		375
+nim	SuggestInlayHintKind	options.html#SuggestInlayHintKind	enum SuggestInlayHintKind		375
+nim	SuggestInlayHint	options.html#SuggestInlayHint	type SuggestInlayHint		380
+nim	ProfileInfo	options.html#ProfileInfo	object ProfileInfo		390
+nim	ProfileData	options.html#ProfileData	type ProfileData		394
+nim	stdOrrStdout	options.html#stdOrrStdout	StdOrrKind.stdOrrStdout		397
+nim	stdOrrStderr	options.html#stdOrrStderr	StdOrrKind.stdOrrStderr		397
+nim	StdOrrKind	options.html#StdOrrKind	enum StdOrrKind		397
+nim	foAbs	options.html#foAbs	FilenameOption.foAbs		401
+nim	foRelProject	options.html#foRelProject	FilenameOption.foRelProject		401
+nim	foCanonical	options.html#foCanonical	FilenameOption.foCanonical		401
+nim	foLegacyRelProj	options.html#foLegacyRelProj	FilenameOption.foLegacyRelProj		401
+nim	foName	options.html#foName	FilenameOption.foName		401
+nim	foStacktrace	options.html#foStacktrace	FilenameOption.foStacktrace		401
+nim	FilenameOption	options.html#FilenameOption	enum FilenameOption		401
+nim	mfmStd	options.html#mfmStd	MsgFormat.mfmStd		409
+nim	mfmGcc	options.html#mfmGcc	MsgFormat.mfmGcc		409
+nim	MsgFormat	options.html#MsgFormat	enum MsgFormat		409
+nim	ConfigRef	options.html#ConfigRef	type ConfigRef		413
+nim	assignIfDefault	options.html#assignIfDefault,T,T,typeof(default(T))	proc assignIfDefault[T](result: var T; val: T; def = default(T))		596
+nim	setErrorMaxHighMaybe	options.html#setErrorMaxHighMaybe.t,ConfigRef	template setErrorMaxHighMaybe(conf: ConfigRef)		600
+nim	setNoteDefaults	options.html#setNoteDefaults,ConfigRef,TNoteKind	proc setNoteDefaults(conf: ConfigRef; note: TNoteKind; enabled = true)		604
+nim	setNote	options.html#setNote,ConfigRef,TNoteKind	proc setNote(conf: ConfigRef; note: TNoteKind; enabled = true)		611
+nim	hasHint	options.html#hasHint,ConfigRef,TNoteKind	proc hasHint(conf: ConfigRef; note: TNoteKind): bool		616
+nim	hasWarn	options.html#hasWarn,ConfigRef,TNoteKind	proc hasWarn(conf: ConfigRef; note: TNoteKind): bool		625
+nim	hcrOn	options.html#hcrOn,ConfigRef	proc hcrOn(conf: ConfigRef): bool		628
+nim	oldExperimentalFeatures	options.html#oldExperimentalFeatures	const oldExperimentalFeatures		637
+nim	ChecksOptions	options.html#ChecksOptions	const ChecksOptions		640
+nim	DefaultOptions	options.html#DefaultOptions	const DefaultOptions		644
+nim	DefaultGlobalOptions	options.html#DefaultGlobalOptions	const DefaultGlobalOptions		648
+nim	getDateStr	options.html#getDateStr	proc getDateStr(): string		663
+nim	getClockStr	options.html#getClockStr	proc getClockStr(): string		666
+nim	newPackageCache	options.html#newPackageCache.t	template newPackageCache(): untyped		669
+nim	foreignPackageNotesDefault	options.html#foreignPackageNotesDefault	const foreignPackageNotesDefault		678
+nim	isDefined	options.html#isDefined,ConfigRef,string	proc isDefined(conf: ConfigRef; symbol: string): bool		681
+nim	newConfigRef	options.html#newConfigRef	proc newConfigRef(): ConfigRef		701
+nim	newPartialConfigRef	options.html#newPartialConfigRef	proc newPartialConfigRef(): ConfigRef		762
+nim	cppDefine	options.html#cppDefine,ConfigRef,string	proc cppDefine(c: ConfigRef; define: string)		770
+nim	quitOrRaise	options.html#quitOrRaise.t,ConfigRef,string	template quitOrRaise(conf: ConfigRef; msg = "")		826
+nim	icReuseSemLowering	options.html#icReuseSemLowering,ConfigRef	proc icReuseSemLowering(conf: ConfigRef): bool		833
+nim	importantComments	options.html#importantComments,ConfigRef	proc importantComments(conf: ConfigRef): bool		844
+nim	usesWriteBarrier	options.html#usesWriteBarrier,ConfigRef	proc usesWriteBarrier(conf: ConfigRef): bool		845
+nim	usesSso	options.html#usesSso,ConfigRef	proc usesSso(conf: ConfigRef): bool		846
+nim	compilationCachePresent	options.html#compilationCachePresent.t,ConfigRef	template compilationCachePresent(conf: ConfigRef): untyped		848
+nim	optPreserveOrigSource	options.html#optPreserveOrigSource.t,ConfigRef	template optPreserveOrigSource(conf: ConfigRef): untyped		852
+nim	mainCommandArg	options.html#mainCommandArg,ConfigRef	proc mainCommandArg(conf: ConfigRef): string		855
+nim	existsConfigVar	options.html#existsConfigVar,ConfigRef,string	proc existsConfigVar(conf: ConfigRef; key: string): bool		864
+nim	getConfigVar	options.html#getConfigVar,ConfigRef,string,string	proc getConfigVar(conf: ConfigRef; key: string; default = ""): string		867
+nim	setConfigVar	options.html#setConfigVar,ConfigRef,string,string	proc setConfigVar(conf: ConfigRef; key, val: string)		870
+nim	getOutFile	options.html#getOutFile,ConfigRef,RelativeFile,string	proc getOutFile(conf: ConfigRef; filename: RelativeFile; ext: string): AbsoluteFile		873
+nim	absOutFile	options.html#absOutFile,ConfigRef	proc absOutFile(conf: ConfigRef): AbsoluteFile		880
+nim	prepareToWriteOutput	options.html#prepareToWriteOutput,ConfigRef	proc prepareToWriteOutput(conf: ConfigRef): AbsoluteFile		887
+nim	getPrefixDir	options.html#getPrefixDir,ConfigRef	proc getPrefixDir(conf: ConfigRef): AbsoluteDir		892
+nim	setDefaultLibpath	options.html#setDefaultLibpath,ConfigRef	proc setDefaultLibpath(conf: ConfigRef)		913
+nim	canonicalizePath	options.html#canonicalizePath,ConfigRef,AbsoluteFile	proc canonicalizePath(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile		929
+nim	setFromProjectName	options.html#setFromProjectName,ConfigRef,string	proc setFromProjectName(conf: ConfigRef; projectName: string)		932
+nim	removeTrailingDirSep	options.html#removeTrailingDirSep,string	proc removeTrailingDirSep(path: string): string		945
+nim	disableNimblePath	options.html#disableNimblePath,ConfigRef	proc disableNimblePath(conf: ConfigRef)		951
+nim	clearNimblePath	options.html#clearNimblePath,ConfigRef	proc clearNimblePath(conf: ConfigRef)		956
+nim	getNimbleFile	options.html#getNimbleFile,ConfigRef,string	proc getNimbleFile(conf: ConfigRef; path: string): string		18
+nim	getPackageName	options.html#getPackageName,ConfigRef,string	proc getPackageName(conf: ConfigRef; path: string): string		38
+nim	isIcDriver	options.html#isIcDriver,ConfigRef	proc isIcDriver(conf: ConfigRef): bool		968
+nim	icCFileExt	options.html#icCFileExt,ConfigRef	proc icCFileExt(conf: ConfigRef): string		975
+nim	getNimcacheDir	options.html#getNimcacheDir,ConfigRef	proc getNimcacheDir(conf: ConfigRef): AbsoluteDir		987
+nim	pathSubs	options.html#pathSubs,ConfigRef,string,string	proc pathSubs(conf: ConfigRef; p, config: string): string		1007
+nim	nimbleSubs	options.html#nimbleSubs.i,ConfigRef,string	iterator nimbleSubs(conf: ConfigRef; p: string): string		1019
+nim	toGeneratedFile	options.html#toGeneratedFile,ConfigRef,AbsoluteFile,string	proc toGeneratedFile(conf: ConfigRef; path: AbsoluteFile; ext: string): AbsoluteFile		1028
+nim	completeGeneratedFilePath	options.html#completeGeneratedFilePath,ConfigRef,AbsoluteFile,bool	proc completeGeneratedFilePath(conf: ConfigRef; f: AbsoluteFile;\n                          createSubDir: bool = true): AbsoluteFile		1033
+nim	stdlibDirs	options.html#stdlibDirs	const stdlibDirs		1072
+nim	stdPrefix	options.html#stdPrefix	const stdPrefix		1083
+nim	getRelativePathFromConfigPath	options.html#getRelativePathFromConfigPath,ConfigRef,AbsoluteFile	proc getRelativePathFromConfigPath(conf: ConfigRef; f: AbsoluteFile; isTitle = false): RelativeFile		1085
+nim	findFile	options.html#findFile,ConfigRef,string	proc findFile(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile		1101
+nim	findModule	options.html#findModule,ConfigRef,string,string	proc findModule(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile		1114
+nim	findProjectNimFile	options.html#findProjectNimFile,ConfigRef,string	proc findProjectNimFile(conf: ConfigRef; pkg: string): string		1140
+nim	canonicalImportAux	options.html#canonicalImportAux,ConfigRef,AbsoluteFile	proc canonicalImportAux(conf: ConfigRef; file: AbsoluteFile): string		1180
+nim	canonicalImport	options.html#canonicalImport,ConfigRef,AbsoluteFile	proc canonicalImport(conf: ConfigRef; file: AbsoluteFile): string		1195
+nim	inclDynlibOverride	options.html#inclDynlibOverride,ConfigRef,string	proc inclDynlibOverride(conf: ConfigRef; lib: string)		1207
+nim	isDynlibOverride	options.html#isDynlibOverride,ConfigRef,string	proc isDynlibOverride(conf: ConfigRef; lib: string): bool		1210
+nim	showNonExportedFields	options.html#showNonExportedFields,ConfigRef	proc showNonExportedFields(conf: ConfigRef)		1214
+nim	docRawOutput	options.html#docRawOutput,ConfigRef	proc docRawOutput(conf: ConfigRef)		1217
+nim	expandDone	options.html#expandDone,ConfigRef	proc expandDone(conf: ConfigRef): bool		1220
+nim	parseIdeCmd	options.html#parseIdeCmd,string	proc parseIdeCmd(s: string): IdeCmd		1223
+nim	`$`	options.html#$,IdeCmd	proc `$`(c: IdeCmd): string		1244
+nim	floatInt64Align	options.html#floatInt64Align,ConfigRef	proc floatInt64Align(conf: ConfigRef): int16		1268
