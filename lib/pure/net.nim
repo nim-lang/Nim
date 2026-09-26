@@ -1743,7 +1743,7 @@ proc send*(socket: Socket, data: string,
   var written = 0
   var attempts = 0
   while data.len - written > 0:
-    let sent = send(socket, cstring(data), data.len)
+    let sent = send(socket, addr data[written], data.len - written)
 
     if sent < 0:
       let lastError = osLastError()
