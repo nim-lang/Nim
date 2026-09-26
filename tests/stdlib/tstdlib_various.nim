@@ -27,7 +27,7 @@ Hi Andreas! How do you feel, Rumpf?
 [2, 3, 4, 5]
 [2, 3, 4, 5, 6]
 [1, 2, 3, 4, 5, 6]
-<h1><a href="http://force7.de/nim">Nim</a></h1>
+<h1><a href="http://force7.de/nim" aria-label="Test">Nim</a></h1>
 '''
 """
 
@@ -219,7 +219,7 @@ block tsqlparser:
 
 block txmlgen:
   var nim = "Nim"
-  echo h1(a(href="http://force7.de/nim", nim))
+  echo h1(a(href="http://force7.de/nim", `aria-label`="Test", nim))
 
 
 
