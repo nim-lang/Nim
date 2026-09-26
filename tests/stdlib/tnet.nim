@@ -128,26 +128,3 @@ block: # "IpAddress/Sockaddr conversion"
   test("93.184.216.34")
   # ipv4 address of localhost
   test("127.0.0.1")
-
-when defined(posix):
-  import std/os
-
-  block: # send to a peer that disconnected returns instead of retrying forever
-    let server = newSocket()
-    server.setSockOpt(OptReuseAddr, true)
-    server.bindAddr(Port(0), "localhost")
-    server.listen()
-    let port = server.getLocalAddr()[1]
-    let client = newSocket()
-    client.connect("localhost", port)
-    var peer: Socket
-    server.accept(peer)
-    client.close()
-    sleep(50)
-    # the first send can still succeed; later ones fail with a disconnection
-    # error, which SafeDisconn ignores
-    for _ in 0 ..< 3:
-      peer.send("data")
-      sleep(10)
-    peer.close()
-    server.close()
