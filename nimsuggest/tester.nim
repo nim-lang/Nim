@@ -6,7 +6,7 @@
 # `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
 import os, osproc, strutils, streams, sexp, net
-from sequtils import toSeq
+from sequtils import toSeq, filterIt
 
 type
   Test = object
@@ -392,7 +392,10 @@ proc main() =
     # run only stdio when running single test
     failures += runTest(xx)
   else:
-    let files = toSeq(walkFiles(tpath / "t*.nim"))
+    # a .nims is a test of its own (a NimScript project) unless it's the config of the
+    # .nim test beside it
+    let files = toSeq(walkFiles(tpath / "t*.nim")) &
+      toSeq(walkFiles(tpath / "t*.nims")).filterIt(not fileExists(it.changeFileExt("nim")))
     for i, x in files:
       echo "$#/$# test: $#" % [$i, $files.len, x]
       when defined(i386):

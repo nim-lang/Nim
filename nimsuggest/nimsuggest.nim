@@ -798,8 +798,10 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   var graph = newModuleGraph(cache, conf)
   if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
 
+    # not for a NimScript project, as `nim check foo.nims` doesn't: its system module,
+    # compiled for the VM, breaks with ORC's defines (nimSeqsV2)
     if conf.selectedGC == gcUnselected and
-          conf.backend != backendJs:
+          conf.backend != backendJs and optWasNimscript notin conf.globalOptions:
       initOrcDefines(conf)
     mainCommand(graph)
 
