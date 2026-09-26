@@ -106,7 +106,11 @@ var
   gLogging = defined(logging)
   gRefresh: bool
   gAutoBind = false
-  gMaxMemoryKb = 4000 * 1024 # resident memory cap, --maxMemory:N (MB)
+  gMaxMemoryKb = # resident memory cap, --maxMemory:N (MB)
+    when sizeof(int) == 8: # 64 bit CPU
+      4000 * 1024
+    else: # 32 bit CPU
+      2000 * 1024
 
   requests: Channel[string]
   results: Channel[Suggest]
