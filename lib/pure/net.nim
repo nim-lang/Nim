@@ -1761,6 +1761,7 @@ proc send*(socket: Socket, data: string,
       if not isBlockingErr:
         let lastError = osLastError()
         socketError(socket, lastError = lastError, flags = flags)
+        return
       else:
         attempts.inc()
         if attempts > maxRetries:
