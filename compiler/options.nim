@@ -966,10 +966,11 @@ proc getOsCacheDir(): string =
     result = getHomeDir() / genSubDir.string
 
 proc isIcDriver*(conf: ConfigRef): bool =
-  ## True for `nim c --ic:on` / `nim cpp --ic:on`: this process is the `nim ic`
-  ## DRIVER (it builds the nifmake graph and spawns the per-module children),
-  ## not a compilation. `nim ic` itself keeps its own `cmdIc` branch.
-  conf.ic and conf.cmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}
+  ## True for `nim c --ic:on` / `nim cpp --ic:on` / `nim r --ic:on`: this
+  ## process is the `nim ic` DRIVER (it builds the nifmake graph and spawns the
+  ## per-module children), not a compilation. `nim ic` itself keeps its own
+  ## `cmdIc` branch.
+  conf.ic and conf.cmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCrun}
 
 proc icCFileExt*(conf: ConfigRef): string =
   ## The extension the per-module backend gives a module's translation unit.
