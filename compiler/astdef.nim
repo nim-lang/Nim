@@ -676,6 +676,8 @@ type
     lfNoDecl,                 # do not declare it in C
     lfDynamicLib,             # link symbol to dynamic library
     lfExportLib,              # export symbol for dynamic library generation
+    lfImportLib,              # import symbol from a dynamic library (bare
+                              # ``{.dynlib.}`` + ``importc`` → ``N_LIB_IMPORT``)
     lfHeader,                 # include header file for symbol
     lfImportCompilerProc,     # ``importc`` of a compilerproc
     lfSingleUse               # no location yet and will only be used once
