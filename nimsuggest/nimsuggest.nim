@@ -139,12 +139,16 @@ const
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
   #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
-  Capabilities = [
-    "con", #current NimSuggest supports the `con` commmand
-    "exceptionInlayHints",
-    "unknownFile", #current NimSuggest can handle unknown files
-    "maxMemory", #current NimSuggest supports memory cap guard
-  ]
+  Capabilities =
+    @[
+      "con", #current NimSuggest supports the `con` commmand
+      "exceptionInlayHints",
+      "unknownFile", #current NimSuggest can handle unknown files
+    ] &
+    # the memory cap is only enforced where the resident size is readable
+    # (Linux /proc, macOS libproc, Windows working set)
+    (when defined(linux) or defined(macosx) or defined(windows):
+      @["maxMemory"] else: @[])
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start

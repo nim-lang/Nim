@@ -427,7 +427,9 @@ proc main() =
         # XXX Windows IO redirection seems bonkers:
         failures += runTest(xx)
       failures += runEpcTest(xx)
-    failures += runMemCapTest()
+    when defined(linux) or defined(macosx) or defined(windows):
+      # only where the watchdog can read the resident size
+      failures += runMemCapTest()
   if failures > 0:
     quit 1
 

@@ -40,24 +40,55 @@ when defined(windows):
             maxKb, " kB cap, quitting")
           quit(1)
 
+when defined(macosx):
+  # /proc does not exist on macOS: read the resident size via libproc instead.
+  type
+    ProcTaskInfo {.pure.} = object
+      pti_virtual_size, pti_resident_size: uint64
+      pti_total_user, pti_total_system: uint64
+      pti_threads_user, pti_threads_system: uint64
+      pti_policy, pti_faults, pti_pageins, pti_cow_faults: int32
+      pti_messages_sent, pti_messages_received: int32
+      pti_syscalls_mach, pti_syscalls_unix, pti_csw: int32
+      pti_threadnum, pti_numrunning, pti_priority: int32
+
+  const PROC_PIDTASKINFO = 4
+
+  proc proc_pidinfo(pid: cint, flavor: cint, arg: uint64,
+                    buffer: pointer, buffersize: cint): cint {.
+    importc, header: "libproc.h"
+  .}
+
 when defined(posix):
-  proc monitorMemoryThreadProc(maxKb: int) {.thread.} =
-    # Resident memory watchdog: quit before taking the whole machine down.
-    # ORC frees to the allocator, so a GC-level cap like nimMaxHeap (refc
-    # only) is not available; polling /proc/self/statm works with any GC.
-    while true:
-      sleep(2000)
+  proc residentMemoryKb(): int =
+    ## The resident set size of the current process in kB, or -1 when it
+    ## cannot be read on this platform.
+    result = -1
+    when defined(linux):
       try:
         let statm = readFile("/proc/self/statm").split()
         if statm.len > 1:
-          let rssKb = parseInt(statm[1]) * 4
-          if rssKb > maxKb:
-            stderr.writeLine(
-              "nimsuggest: resident memory ", rssKb, " kB exceeded the ",
-              maxKb, " kB cap, quitting")
-            quit(1)
+          result = parseInt(statm[1]) * 4
       except:
         discard
+    elif defined(macosx):
+      var info: ProcTaskInfo
+      if proc_pidinfo(getpid(), PROC_PIDTASKINFO, 0, addr info,
+                      cint sizeof(info)) == cint sizeof(info):
+        result = int(info.pti_resident_size div 1024)
+
+  proc monitorMemoryThreadProc(maxKb: int) {.thread.} =
+    # Resident memory watchdog: quit before taking the whole machine down.
+    # ORC frees to the allocator, so a GC-level cap like nimMaxHeap (refc
+    # only) is not available; polling the resident size works with any GC.
+    while true:
+      sleep(2000)
+      let rssKb = residentMemoryKb()
+      if rssKb > maxKb: # -1 (unreadable) never triggers: maxKb > 0
+        stderr.writeLine(
+          "nimsuggest: resident memory ", rssKb, " kB exceeded the ",
+          maxKb, " kB cap, quitting")
+        quit(1)
 
 when defined(posix):
   proc monitorClientProcessIdThreadProc(pid: int) {.thread.} =
