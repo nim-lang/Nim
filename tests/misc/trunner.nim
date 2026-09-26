@@ -401,6 +401,23 @@ running: v3
 running: v2
 """, ret
 
+  block: # nimBetterRun with spawned codegen
+    let file = "misc/mbetterrun.nim"
+    let nimcache3 = buildDir / ("D20260925T120000_" & mode)
+    removeDir nimcache3
+    let opt = fmt"-r -d:nimBetterRun --nimcache:{nimcache3}"
+    var ret = ""
+    for a in @["v1", "v1", "v2", "v2"]:
+      ret.add runNimCmdChk(file, fmt"{opt} -d:mbetterrunVal:{a}")
+    doAssert ret == """
+compiling: v1
+running: v1
+running: v1
+compiling: v2
+running: v2
+running: v2
+""", ret
+
   block: # nim dump
     let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
     let (ret, status) = execCmdEx(cmd)
