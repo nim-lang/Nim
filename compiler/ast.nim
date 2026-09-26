@@ -1929,6 +1929,13 @@ proc canRaiseConservative*(fn: PNode): bool = canRaiseConservativeImpl(fn)
 
 proc canRaise*(fn: PNode): bool = canRaiseImpl(fn)
 
+proc canRaiseDefect*(fn: PNode): bool =
+  ## Defects are not represented in a routine's regular raises effect list.
+  ## Sempass2 records this separate fact on the callee so ownership lowering
+  ## can install `finally` sections for defect unwinding without treating every
+  ## routine with an empty raises list as potentially raising.
+  result = fn.kind != nkSym or sfRaisesDefect in fn.sym.flags
+
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind
   result = result[num..^1]

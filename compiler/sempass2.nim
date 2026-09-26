@@ -97,6 +97,10 @@ type
     inNimvmBranch: int
   PEffects = var TEffects
 
+proc markRaisesDefect(tracked: PEffects) {.inline.} =
+  tracked.canRaiseDefect = true
+  tracked.owner.incl sfRaisesDefect
+
 const
   errXCannotBeAssignedTo = "'$1' cannot be assigned to"
   errLetNeedsInit = "'let' symbol requires an initialization"
@@ -519,7 +523,7 @@ proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
 
   if e.typ != nil:
     if isDefectException(e.typ):
-      a.canRaiseDefect = true
+      markRaisesDefect(a)
     else:
       throws(a.exc, e, comesFrom)
 
@@ -1136,30 +1140,32 @@ proc trackCall(tracked: PEffects; n: PNode) =
   var a = n[0]
   if a.kind == nkSym:
     let s = a.sym
+    if sfRaisesDefect in s.flags:
+      markRaisesDefect(tracked)
     case s.magic
     of mNone:
       if {sfNeverRaises, sfImportc, sfCompilerProc} * s.flags == {} and
           (sfSystemModule notin getModule(s).flags or
            sfSystemRaisesDefect in s.flags):
-        tracked.canRaiseDefect = true
+        markRaisesDefect(tracked)
     of mUnaryMinusI..mAbsI, mAddI..mPred:
       if optOverflowCheck in tracked.currOptions:
-        tracked.canRaiseDefect = true
+        markRaisesDefect(tracked)
     of mInc, mDec:
       let typ = n[1].typ.skipTypes({tyGenericInst, tyAlias, tySink,
                                     tyVar, tyLent, tyRange, tyDistinct})
       if optOverflowCheck in tracked.currOptions and
           typ.kind notin {tyUInt..tyUInt64}:
-        tracked.canRaiseDefect = true
+        markRaisesDefect(tracked)
     of mDivU, mModU:
-      tracked.canRaiseDefect = true
+      markRaisesDefect(tracked)
     of mAddF64..mDivF64:
       if {optNaNCheck, optInfCheck} * tracked.currOptions != {}:
-        tracked.canRaiseDefect = true
+        markRaisesDefect(tracked)
     else:
       discard
   else:
-    tracked.canRaiseDefect = true
+    markRaisesDefect(tracked)
   #if canRaise(a):
   #  echo "this can raise ", tracked.config $ n.info
   let op = a.typ
@@ -1460,7 +1466,7 @@ proc track(tracked: PEffects, n: PNode) =
     else:
       track(tracked, n[0])
   of nkRaiseStmt:
-    tracked.canRaiseDefect = true
+    markRaisesDefect(tracked)
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
@@ -1490,7 +1496,7 @@ proc track(tracked: PEffects, n: PNode) =
     tracked.leftPartOfAsgn = oldLeftPartOfAsgn
   of nkCheckedFieldExpr:
     if optFieldCheck in tracked.currOptions:
-      tracked.canRaiseDefect = true
+      markRaisesDefect(tracked)
     track(tracked, n[0])
     if tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features:
       checkFieldAccess(tracked.guards, n, tracked.config, strictCaseObjects in tracked.c.features)
@@ -1691,7 +1697,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     if optRangeCheck in tracked.currOptions and
         conversionCanRaiseDefect(tracked.config, n.typ, n[1].typ):
-      tracked.canRaiseDefect = true
+      markRaisesDefect(tracked)
     if n.kind in {nkHiddenStdConv, nkHiddenSubConv} and
         n.typ.skipTypes(abstractInst).kind == tyCstring and
         not allowCStringConv(n[1]):
@@ -1731,9 +1737,9 @@ proc track(tracked: PEffects, n: PNode) =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.kind in {nkObjUpConv, nkObjDownConv}:
       if optObjCheck in tracked.currOptions:
-        tracked.canRaiseDefect = true
+        markRaisesDefect(tracked)
     elif optRangeCheck in tracked.currOptions:
-      tracked.canRaiseDefect = true
+      markRaisesDefect(tracked)
     if n.len == 1:
       track(tracked, n[0])
       if tracked.owner.kind != skMacro:
@@ -1749,7 +1755,7 @@ proc track(tracked: PEffects, n: PNode) =
       createTypeBoundOps(tracked, n.typ, n.info)
   of nkBracketExpr:
     if optBoundsCheck in tracked.currOptions:
-      tracked.canRaiseDefect = true
+      markRaisesDefect(tracked)
     if optStaticBoundsCheck in tracked.currOptions and n.len == 2:
       if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
         checkBounds(tracked, n[0], n[1])
