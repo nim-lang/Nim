@@ -350,9 +350,8 @@ func removeDotSegments(path: string): string =
 
   # Single allocation up front for the output path
   result = newStringOfCap(l)
-  
   var i = 0
-
+  
   while i < l:
     let remaining = l - i
 
