@@ -628,6 +628,14 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
     if d in result.live: inc result.liveDefs
 
 const MergeDecisionFile* = "ic.backend.merge.nif"
+const LoweredBarrierFile* = "ic.backend.lowered"
+  ## Output of the `lowered` barrier rule, an input of every `cg` rule. A `cg`
+  ## reads the `.t.bif` of its whole dependency closure, but declares only its
+  ## own (a dependency's lowering change must not re-fire every importer's cg).
+  ## nifmake schedules by dataflow, so without a declared edge a `cg` could run
+  ## while a dependency's `lower` is still writing. The file's content never
+  ## changes and it is written only if absent, so the edge orders without
+  ## invalidating: an order-only dependency.
 const LiveModulesFile* = "ic.backend.live.txt"
   ## One `.c.nif` path per line: exactly the artifacts of the modules the CURRENT
   ## build graph considers live. The `merge` stage reads this instead of globbing

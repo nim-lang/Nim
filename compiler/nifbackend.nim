@@ -1067,6 +1067,11 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   elif g.config.icBackendStage == "cg":
     timed tStage: generateCgStage(g, mainFileIdx)
     return
+  elif g.config.icBackendStage == "lowered":
+    # The ordering barrier between `lower` and `cg`; see `LoweredBarrierFile`.
+    let barrier = getNimcacheDir(g.config).string / LoweredBarrierFile
+    if not fileExists(barrier): writeFile(barrier, "")
+    return
   elif g.config.icBackendStage == "merge":
     timed tStage:
       timed tMergeStage:
@@ -1084,4 +1089,4 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
   else:
     rawMessage(g.config, errGenerated,
-      "the per-module NIF backend requires --icBackendStage:lower|cg|merge|emit|link")
+      "the per-module NIF backend requires --icBackendStage:lower|lowered|cg|merge|emit|link")

@@ -1717,11 +1717,23 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       outputStr tFiles[i] & BodyDepsExt
       b.endTree()
 
+  # lowered: the order-only barrier between the stages (see
+  # `cnif.LoweredBarrierFile`). Its output never changes, so it orders every
+  # `cg` after every `lower` without invalidating any of them.
+  let barrierFile = nimcache / LoweredBarrierFile
+  b.addTree "do"
+  b.addIdent "nim_nifc"
+  b.withTree "args":
+    b.addStrLit "--icBackendStage:lowered"
+  for i in 0 ..< c.nodes.len:
+    if live[i]: inputStr tFiles[i]
+  outputStr barrierFile
+  b.endTree()
+
   # cg: one rule per module. Input is this module's OWN `.t.nif`. cg DOES read
-  # its dependencies' `.t.nif`s at runtime (loadDepClosure), but ordering is
-  # guaranteed by nifmake's depth-barriered scheduler: every `lower` is depth 1
-  # (its `.s.nif` is a leaf) and every `cg` is depth 2, so all lowering finishes
-  # before any cg starts — no need to list the closure for ordering. For
+  # its dependencies' `.t.nif`s at runtime (loadDepClosure); nifmake schedules
+  # by dataflow, so the ordering comes from the `lowered` barrier, which every
+  # cg lists — no need to list the closure for ordering. For
   # invalidation, a dependency's change reaches this module through its own
   # `.t.nif` (own `.s.nif` re-sem -> own `lower`); a foreign body this module
   # emit-everywhere'd but does not own is dropped by `emit` regardless, so a
@@ -1742,6 +1754,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
           seenCg.add j
           inputStr tFiles[j]
     inputStr argsFile
+    inputStr barrierFile
     for idx in batch:
       outputStr cnifFiles[idx]
       outputStr cFiles[idx] & BodyDepsExt
@@ -1762,6 +1775,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       for j in bodyDeps(cFiles[i] & BodyDepsExt, [i]):
         inputStr tFiles[j]
       inputStr argsFile
+      inputStr barrierFile
       for j in 0 ..< c.nodes.len:
         if c.nodes[j].id != 0 and live[j]:
           inputStr cnifFiles[j]
