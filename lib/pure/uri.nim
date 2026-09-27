@@ -353,8 +353,8 @@ func removeDotSegments(path: string): string =
       if i+2 < path.len and path[i+1] == '.' and path[i+2] == '/':
         if collection.len > 0:
           discard collection.pop()
-          i.inc 3
-          continue
+        i.inc 3
+        continue
       elif i + 1 < path.len and path[i+1] == '/':
         i.inc 2
         continue
