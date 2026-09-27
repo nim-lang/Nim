@@ -216,6 +216,9 @@ type
                               # recorded in the cnif artifact so a later run
                               # can reuse the TU and re-demand definitions
                               # that cached TUs still reference
+    hasTopLevelEmit*: bool    # a top-level `{.emit.}` wrote user C text into
+                              # a file section: `emit` must not split the
+                              # module, its text may define anything
     g*: BModuleList
 
 template config*(m: BModule): ConfigRef = m.g.config

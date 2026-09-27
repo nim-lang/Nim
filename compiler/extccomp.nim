@@ -14,7 +14,7 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
 
-import std/[os, osproc, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils]
+import std/[os, osproc, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils, algorithm]
 
 import std / strutils except addf
 
@@ -1010,6 +1010,7 @@ proc callCCompiler*(conf: ConfigRef) =
   var prettyCmds: TStringSeq = default(TStringSeq)
   let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
 
+  var cmdSizes: seq[BiggestInt] = @[]
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
     if CfileFlag.Cached in it.flags: continue
@@ -1017,9 +1018,26 @@ proc callCCompiler*(conf: ConfigRef) =
     if optCompileOnly notin conf.globalOptions:
       cmds.add(compileCmd)
       prettyCmds.add displayProgressCC(conf, $it.cname, compileCmd)
+      cmdSizes.add(try: getFileSize(it.cname.string) except OSError: 0)
     if optGenScript in conf.globalOptions:
       script.add(compileCmd)
       script.add("\n")
+
+  if optCompileOnly notin conf.globalOptions and conf.numberOfProcessors != 1:
+    # Longest job first: the build ends when the slowest C file does, so
+    # starting it last (module order puts `sem.nim`'s near the end) leaves
+    # every other core idle while it finishes. File size is a good enough
+    # proxy for compile time.
+    var order = newSeq[int](cmds.len)
+    for i in 0 ..< order.len: order[i] = i
+    order.sort(proc (a, b: int): int = cmp(cmdSizes[b], cmdSizes[a]))
+    var sortedCmds = newSeq[string](cmds.len)
+    var sortedPretty = newSeq[string](cmds.len)
+    for i, j in order:
+      sortedCmds[i] = cmds[j]
+      sortedPretty[i] = prettyCmds[j]
+    cmds = sortedCmds
+    prettyCmds = sortedPretty
 
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
