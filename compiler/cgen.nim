@@ -2921,6 +2921,10 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     res.add(extract(m.s[cfsFrameDefines]))
 
   for i in cfsForwardTypes..cfsProcs:
+    if i == cfsProcs and m.config.cmd == cmdNifC and not m.hasTopLevelEmit:
+      # where the declarations end: see `cnif.renderCPartsFromArtifact`. A
+      # module without the marker is never split, which user C text needs.
+      res.add(cnifProcsSection())
     if m.s[i].buf.len > 0:
       moduleIsEmpty = false
       res.add(extract(m.s[i]))

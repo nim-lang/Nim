@@ -1590,6 +1590,15 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       removeFile(cnifFiles[i])
       removeFile(cFiles[i])
       removeFile(cFiles[i] & ".stamp")
+      if fileExists(cFiles[i] & CPartsExt): prunedStale = true
+      removeFile(cFiles[i] & CPartsExt)
+      var k = 1
+      while fileExists(cPartFile(cFiles[i], k)):
+        let pf = AbsoluteFile cPartFile(cFiles[i], k)
+        removeFile(pf.string)
+        removeFile(toObjFile(c.config, pf).string)
+        removeFile(cfileHashFile(c.config, pf).string)
+        inc k
       removeFile(cFiles[i] & BackendActionsExt)
       removeFile(cFiles[i] & BodyDepsExt)
       removeFile(toObjFile(c.config, AbsoluteFile cFiles[i]).string)
@@ -1842,6 +1851,9 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       # `.c` alone cannot serve: it is written OnlyIfChanged, so a rule that ran
       # and produced identical bytes looks exactly like a rule that never ran.
       outputStr cFiles[idx] & ".stamp"
+      # The extra C files of a split module, by name and content hash; see
+      # `cnif.CPartsExt`. Content-stable, so it moves only when a part does.
+      outputStr cFiles[idx] & CPartsExt
     b.endTree()
 
   # link: compile + link every emitted `.c` in one process.
@@ -1857,6 +1869,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   for i in 0 ..< c.nodes.len:
     if live[i]:
       inputStr cFiles[i]
+      inputStr cFiles[i] & CPartsExt
       inputStr cFiles[i] & BackendActionsExt
   inputStr argsFile
   outputStr exeFile
