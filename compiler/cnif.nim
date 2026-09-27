@@ -36,8 +36,11 @@
 ##                                    (empty for backend-minted symbols) so a
 ##                                    later run can re-demand the definition
 ##   \4 \5                            end of the definitions section
+##   \4 \31 P \5                      start of the procs section: what
+##                                    precedes it declares, what follows
+##                                    defines (see `renderCPartsFromArtifact`)
 
-import std / [tables, sets, os, assertions, syncio, algorithm]
+import std / [tables, sets, os, assertions, syncio, algorithm, hashes, strutils]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse, stringviews]
 import "../dist/nimony/src/lib" / nifreader as rd
 
@@ -74,14 +77,15 @@ proc stripCnifMarks*(s: string): string =
       inc i
 
 const
-  CnifVersion* = "6"
+  CnifVersion* = "7"
     ## Artifact format version, stored in the meta head. Artifacts written
     ## by an older compiler lack the NIF names and the cref group the
     ## def-retention check needs (v2), the cdeps group the fine-grained
     ## reuse gate needs (v3), the type NIF names and cnif-marked extern
     ## RTTI references the typeinfo flavor of the def-retention check
     ## needs (v4), or the global-destructor name the main module's `cg`
-    ## calls at teardown (v5), or deferred dynlib loader indices (v6);
+    ## calls at teardown (v5), or deferred dynlib loader indices (v6), or the
+    ## `(cprocs)` section marker that splitting a big module needs (v7);
     ## `readCnifHeads` reports them as invalid so
     ## their TUs simply regenerate once.
 
@@ -90,6 +94,12 @@ proc cnifDefDirective*(name, flags, nifName: string): string =
 
 proc cnifEndDefs*(): string =
   CnifDefStart & CnifDefEnd
+
+proc cnifProcsSection*(): string =
+  ## Marks where the module's procs section starts. Everything before it is
+  ## types, prototypes and data, so it can serve as the shared prologue of the
+  ## extra C files a big module is split into.
+  CnifDefStart & CnifDefSep & "P" & CnifDefEnd
 
 proc writeCnifArtifact*(code: string; outfile: string;
                         initRequired = false; datInitRequired = false;
@@ -200,7 +210,10 @@ proc writeCnifArtifact*(code: string; outfile: string;
         if inDef:
           b.endTree()
           inDef = false
-        if payload.len > 0:
+        if payload == CnifDefSep & "P":
+          b.addTree "cprocs"
+          b.endTree()
+        elif payload.len > 0:
           let sep = find(payload, CnifDefSep)
           let name = if sep >= 0: payload[0..<sep] else: payload
           var flags = if sep >= 0: payload[sep+1..^1] else: ""
@@ -246,7 +259,7 @@ proc renderMarkedC*(code: string; live: HashSet[string]; dropped: var int): stri
       if payload.len > 0:
         let sep = find(payload, CnifDefSep)
         let name = if sep >= 0: payload[0..<sep] else: payload
-        if name notin live:
+        if name.len > 0 and name notin live:
           inc dropped
           # drop the definition's text: everything up to its end directive
           while i < code.len and code[i] != CnifDefStart: inc i
@@ -628,6 +641,24 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
     if d in result.live: inc result.liveDefs
 
 const MergeDecisionFile* = "ic.backend.merge.nif"
+const LoweredBarrierFile* = "ic.backend.lowered"
+  ## Output of the `lowered` barrier rule, an input of every `cg` rule. A `cg`
+  ## reads the `.t.bif` of its whole dependency closure, but declares only its
+  ## own (a dependency's lowering change must not re-fire every importer's cg).
+  ## nifmake schedules by dataflow, so without a declared edge a `cg` could run
+  ## while a dependency's `lower` is still writing. The file's content never
+  ## changes and it is written only if absent, so the edge orders without
+  ## invalidating: an order-only dependency.
+const CPartsExt* = ".parts"
+  ## Beside a module's `.c`: the extra C files `emit` split it into, one per
+  ## line with a content hash (see `renderCPartsFromArtifact`). Empty for a
+  ## module that was not split; always written, as the `link` rule's input.
+
+proc cPartFile*(cfile: string; k: int): string =
+  ## The `k`th extra C file of a split module (`k >= 1`).
+  let (dir, name, ext) = splitFile(cfile)
+  result = dir / (name & "_p" & $k & ext)
+
 const LiveModulesFile* = "ic.backend.live.txt"
   ## One `.c.nif` path per line: exactly the artifacts of the modules the CURRENT
   ## build graph considers live. The `merge` stage reads this instead of globbing
@@ -704,9 +735,126 @@ proc readMergeDecision*(f: string): MergeDecision =
       skip c
   endRead(c)
 
-proc renderCFromArtifact*(artifact: string; d: MergeDecision; ownerId: string;
-                          dropped: var int): string =
-  ## The per-module backend's `emit` stage: render one module's final `.c` from
+type
+  CPiece = object
+    text: string
+    name: string        ## empty for raw text between definitions
+    isDef, keep, isData, isUnique, isMethod: bool
+    inProcs: bool       ## after the `(cprocs)` marker
+    inPragma: bool      ## inside a `#pragma … push`/`pop` region
+
+proc isMovableDef(p: CPiece): bool =
+  ## A definition that may live in any of the module's C files: a unique
+  ## (external linkage) proc body. Everything it refers to is declared before
+  ## the procs section, which every part repeats.
+  if not (p.isDef and p.keep and p.inProcs and p.isUnique) or
+      p.isMethod or p.inPragma:
+    return false
+  var a = 0
+  while a < p.text.len and p.text[a] in {' ', '\t', '\n', '\r'}: inc a
+  var b = p.text.len - 1
+  while b >= 0 and p.text[b] in {' ', '\t', '\n', '\r'}: dec b
+  # a proc definition, not a statement or variable carrying the 'u' flag
+  # (dynlib pointers and their loads do)
+  result = b > a and p.text[b] == '}' and
+    not p.text.continuesWith("static", a) and
+    p.text.find('(', a) < p.text.find('{', a)
+
+proc updatePragmaRegion(text: string; inPragma: var bool) =
+  var i = 0
+  while i < text.len:
+    let push = min(text.find("push_options", i).uint, text.find("attribute push", i).uint)
+    let pop = min(text.find("pop_options", i).uint, text.find("attribute pop", i).uint)
+    if push == high(uint) and pop == high(uint): break
+    if push < pop:
+      inPragma = true
+      i = int(push) + 1
+    else:
+      inPragma = false
+      i = int(pop) + 1
+
+proc readCPieces(artifact: string; d: MergeDecision; ownerId: string;
+                 dropped: var int): seq[CPiece] =
+  result = @[]
+  if not fileExists(artifact): return
+  var pool = newPool()
+  var tags = newTagPool()
+  let stmtsTag = tags.registerTag("stmts")
+  let cdefTag = tags.registerTag("cdef")
+  let cprocsTag = tags.registerTag("cprocs")
+  var buf = parseFromFile(artifact, 1000, pool, tags)
+  var c = beginRead(buf)
+  if c.kind != TagLit or c.cursorTagId != stmtsTag:
+    endRead(c)
+    return
+  var inProcs = false
+  var inPragma = false
+  var raw = ""
+  template flushRaw() =
+    if raw.len > 0:
+      if inProcs: updatePragmaRegion(raw, inPragma)
+      result.add CPiece(text: move raw, keep: true, inProcs: inProcs,
+                        inPragma: inPragma)
+      raw = ""
+  c.loopInto:
+    case c.kind
+    of StrLit:
+      raw.add strVal(c)
+      inc c
+    of Symbol, Ident:
+      raw.add symOrIdentName(c)
+      inc c
+    of TagLit:
+      if c.cursorTagId == cdefTag:
+        flushRaw()
+        # fixed head: SymbolDef, flags (Ident or empty), nifname StrLit; the
+        # rest is the definition's body text. `state` counts past the head.
+        var p = CPiece(isDef: true, keep: true, inProcs: inProcs,
+                       inPragma: inPragma)
+        var state = 0
+        c.loopInto:
+          if state == 0 and c.kind == SymbolDef:
+            p.name = symName(c)
+            state = 1
+            inc c
+          elif state == 1: # the flags field (one token: Ident/Symbol or empty)
+            if c.kind in {Ident, Symbol}:
+              for ch in symOrIdentName(c):
+                if ch == 'u': p.isUnique = true
+                elif ch == 'd': p.isData = true
+                elif ch == 'm': p.isMethod = true
+            state = 2
+            inc c
+          elif state == 2: # the NIF name (one StrLit) — decide keep here
+            let owned = d.owners.getOrDefault(p.name, ownerId) == ownerId
+            p.keep =
+              if p.isData: owned                      # data: kept by its owner only
+              elif p.isUnique: (p.name in d.live) and owned
+              else: p.name in d.live                  # inline/dispatcher: per-TU
+            if not p.keep: inc dropped
+            state = 3
+            inc c
+          else: # body tokens
+            if p.keep:
+              if c.kind == StrLit: p.text.add strVal(c)
+              elif c.kind in {Symbol, Ident}: p.text.add symOrIdentName(c)
+            inc c
+        if p.keep: result.add p
+      elif c.cursorTagId == cprocsTag:
+        flushRaw()
+        inProcs = true
+        skip c
+      else:
+        # head groups (meta/cdata/cref/cdeps) carry no C text
+        skip c
+    else:
+      inc c
+  flushRaw()
+  endRead(c)
+
+proc renderCPartsFromArtifact*(artifact: string; d: MergeDecision; ownerId: string;
+                               dropped: var int; partBytes = 0): seq[string] =
+  ## The per-module backend's `emit` stage: render one module's final C from
   ## its `.c.nif` and the merge decision. String literals are emitted verbatim,
   ## symbols by name; a `(cdef ...)` body is dropped when the name is dead, or
   ## when it is a `'u'` unique definition this module does not own. The body's
@@ -714,63 +862,48 @@ proc renderCFromArtifact*(artifact: string; d: MergeDecision; ownerId: string;
   ## declaration for every *used* proc, independent of where the body lands), so
   ## a dropped body still leaves a valid declaration — no synthesis needed. The
   ## head groups (meta/cdata/cref/cdeps) carry no C text.
-  result = ""
-  if not fileExists(artifact): return
-  var pool = newPool()
-  var tags = newTagPool()
-  let stmtsTag = tags.registerTag("stmts")
-  let cdefTag = tags.registerTag("cdef")
-  var buf = parseFromFile(artifact, 1000, pool, tags)
-  var c = beginRead(buf)
-  if c.kind != TagLit or c.cursorTagId != stmtsTag:
-    endRead(c)
-    return
-  c.loopInto:
-    case c.kind
-    of StrLit:
-      result.add strVal(c)
-      inc c
-    of Symbol, Ident:
-      result.add symOrIdentName(c)
-      inc c
-    of TagLit:
-      if c.cursorTagId == cdefTag:
-        # fixed head: SymbolDef, flags (Ident or empty), nifname StrLit; the
-        # rest is the definition's body text. `state` counts past the head.
-        var name = ""
-        var isUnique = false
-        var isData = false
-        var keep = true
-        var state = 0
-        c.loopInto:
-          if state == 0 and c.kind == SymbolDef:
-            name = symName(c)
-            state = 1
-            inc c
-          elif state == 1: # the flags field (one token: Ident/Symbol or empty)
-            if c.kind in {Ident, Symbol}:
-              for ch in symOrIdentName(c):
-                if ch == 'u': isUnique = true
-                elif ch == 'd': isData = true
-            state = 2
-            inc c
-          elif state == 2: # the NIF name (one StrLit) — decide keep here
-            let owned = d.owners.getOrDefault(name, ownerId) == ownerId
-            keep =
-              if isData: owned                      # data: kept by its owner only
-              elif isUnique: (name in d.live) and owned
-              else: name in d.live                  # inline/dispatcher: per-TU
-            if not keep: inc dropped
-            state = 3
-            inc c
-          else: # body tokens
-            if keep:
-              if c.kind == StrLit: result.add strVal(c)
-              elif c.kind in {Symbol, Ident}: result.add symOrIdentName(c)
-            inc c
-      else:
-        # head groups (meta/cdata/cref/cdeps) carry no C text
-        skip c
-    else:
-      inc c
-  endRead(c)
+  ##
+  ## `partBytes > 0` splits a big module over several C files, because the C
+  ## compiler's time on the module's single biggest file is otherwise the C
+  ## phase's critical path (`sem.nim`'s: 19s at -O3, 5s in four parts). Result
+  ## `[0]` is the module's `.c` minus the proc bodies moved out; every further
+  ## entry repeats the declarations — everything before `(cprocs)`, rendered
+  ## as a module that owns none of the data definitions, whose `extern`
+  ## declarations precede them anyway — plus the kept inline procs, plus its
+  ## share of the unique proc bodies. A body's part is a hash of its name, so
+  ## an edit that changes one body recompiles one part.
+  let pieces = readCPieces(artifact, d, ownerId, dropped)
+  var movableBytes = 0
+  var movableCount = 0
+  for p in pieces:
+    if isMovableDef(p):
+      inc movableBytes, p.text.len
+      inc movableCount
+  let n = if partBytes <= 0 or movableBytes < partBytes + partBytes div 2: 1
+          else: min((movableBytes + partBytes - 1) div partBytes, movableCount)
+  result = newSeq[string](n)
+  for p in pieces:
+    let part = if n > 1 and isMovableDef(p): int(hash(p.name).uint mod n.uint)
+               else: 0
+    result[part].add p.text
+  if n > 1:
+    var prologue = ""
+    for p in pieces:
+      if isMovableDef(p): continue
+      if not p.inProcs:
+        if not p.isDef or not (p.isData or p.isUnique): prologue.add p.text
+      elif p.isDef and not (p.isData or p.isUnique or p.isMethod):
+        # an inline proc: `static` in C, `inline` in C++, so any file may
+        # define it
+        prologue.add p.text
+    for k in 1 ..< n:
+      var body = ""
+      for p in pieces:
+        if isMovableDef(p) and int(hash(p.name).uint mod n.uint) == k:
+          body.add p.text
+      result[k] = prologue & body
+
+proc renderCFromArtifact*(artifact: string; d: MergeDecision; ownerId: string;
+                          dropped: var int): string =
+  ## `renderCPartsFromArtifact` without splitting.
+  renderCPartsFromArtifact(artifact, d, ownerId, dropped)[0]

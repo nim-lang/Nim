@@ -17,7 +17,7 @@
 ##   1. Compile modules to NIF: nim m mymodule.nim
 ##   2. Generate C from NIF: nim nifc myproject.nim
 
-import std/[intsets, tables, sets, os, algorithm, syncio, times, strutils]
+import std/[intsets, tables, sets, os, algorithm, syncio, times, strutils, hashes, strtabs]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -898,6 +898,37 @@ proc generateMergeStage(g: ModuleGraph) =
 proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
                    isMain: bool; decision: MergeDecision)
 
+proc addCFileWithParts(g: ModuleGraph; cpath, nimname: string) =
+  ## Hands a module's `.c` to the C compiler, and the extra C files `emit`
+  ## split it into, as listed by its `CPartsExt` manifest.
+  var files = @[cpath]
+  let manifest = cpath & CPartsExt
+  if fileExists(manifest):
+    for line in lines(manifest):
+      let sp = line.rfind(' ')
+      if sp > 0: files.add line[0 ..< sp]
+  for f in files:
+    let cfile = AbsoluteFile f
+    var cf = Cfile(nimname: nimname, cname: cfile,
+                   obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
+                   flags: {})
+    addExternalFileToCompile(g.config, cf)
+
+proc cPartBytes(conf: ConfigRef): int =
+  ## Target size of the proc bodies per C file when `emit` splits a big module;
+  ## 0 disables splitting. `-d:icCPartBytes:N` overrides. Measured on a cold
+  ## `-d:release` IC build of the compiler, 32 cores: unsplit 35.9s, 1 MB parts
+  ## 30.6s (2 modules split), 500 KB 27.9s, 300 KB 25.1s (18 modules, 70 extra
+  ## files), 200 KB 25.0s.
+  result = 300_000
+  if isDefined(conf, "icCPartBytes"):
+    try: result = parseInt(conf.symbols["icCPartBytes"])
+    except ValueError: discard
+  if conf.cppCustomNamespace.len > 0:
+    # the namespace opened in the declarations closes after the init procs,
+    # which only the first file has
+    result = 0
+
 proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Backend emit for this invocation's batch
   ## (`--icBackendStage:emit --icBackendModules:<a,b,c>`):
@@ -953,7 +984,9 @@ proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
       "per-module emit: missing .c.nif artifact for suffix: " & member)
     return
   var dropped = 0
-  let code = renderCFromArtifact(artifact, decision, extractFilename(artifact), dropped)
+  let parts = renderCPartsFromArtifact(artifact, decision, extractFilename(artifact),
+                                       dropped, cPartBytes(g.config))
+  let code = parts[0]
   # Write the `.c` content-stably. `merge` re-runs on any edit and bumps the
   # decision file's mtime, so nifmake re-fires every `emit` (the filter is cheap);
   # but the FILTERED output is usually byte-identical for modules unaffected by
@@ -974,6 +1007,26 @@ proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
   # The stamp is written unconditionally and is the rule's freshness proof; the
   # `.c` keeps its content-stable mtime so `callCCompiler` still reuses the `.o`.
   writeFile(cfile & ".stamp", $code.len & " " & $dropped & "\n")
+  # The extra C files of a split module, content-stable like the `.c`. The
+  # manifest names them for the link stage, with a hash of each so it changes
+  # (and re-fires `link`, which declares it) exactly when a part does; the `.c`
+  # alone would not, as a body edit can leave part 0 byte-identical.
+  var manifest = ""
+  for k in 1 ..< parts.len:
+    let pf = cPartFile(cfile, k)
+    if not fileExists(pf) or readFile(pf) != parts[k]:
+      writeFile(pf, parts[k])
+    manifest.add pf & " " & $hash(parts[k]) & "\n"
+  var k = parts.len
+  while fileExists(cPartFile(cfile, k)):  # left over from a bigger split
+    let pf = AbsoluteFile cPartFile(cfile, k)
+    removeFile(pf.string)
+    removeFile(toObjFile(g.config, pf).string)
+    removeFile(cfileHashFile(g.config, pf).string)
+    inc k
+  let manifestFile = cfile & CPartsExt
+  if not fileExists(manifestFile) or readFile(manifestFile) != manifest:
+    writeFile(manifestFile, manifest)
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icEmit] " & extractFilename(cfile) & " dropped " &
       $dropped & " bodies (" & $code.len & " bytes)"
@@ -1018,16 +1071,12 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     # The directives this module recorded (`{.passL: "-lm".}` etc.); without
     # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
     applyBackendActions(g, cpath)
-    let cfile = AbsoluteFile cpath
-    var cf = Cfile(nimname: splitFile(cfile).name, cname: cfile,
-                   obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
-                   flags: {})
     # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
     # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
     # `callCCompiler` skips its compile but still links the existing object. This
     # is what makes a localized edit recompile only the handful of `.c`s the
     # `emit` stage actually rewrote, instead of every object every time.
-    addExternalFileToCompile(g.config, cf)
+    addCFileWithParts(g, cpath, splitFile(cpath).name)
 
   # deps.nim's static scanner can keep a CONDITIONALLY-imported module as a build
   # node (e.g. `net`'s `when defineSsl: import openssl`) that the manifest above
@@ -1050,10 +1099,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         let cfile = AbsoluteFile(nimcache / cbase)
         if not fileExists(cfile.string): continue
         applyBackendActions(g, cfile.string)
-        var cf = Cfile(nimname: cbase, cname: cfile,
-                       obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
-                       flags: {})
-        addExternalFileToCompile(g.config, cf)
+        addCFileWithParts(g, cfile.string, cbase)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)
 
@@ -1066,6 +1112,11 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
   elif g.config.icBackendStage == "cg":
     timed tStage: generateCgStage(g, mainFileIdx)
+    return
+  elif g.config.icBackendStage == "lowered":
+    # The ordering barrier between `lower` and `cg`; see `LoweredBarrierFile`.
+    let barrier = getNimcacheDir(g.config).string / LoweredBarrierFile
+    if not fileExists(barrier): writeFile(barrier, "")
     return
   elif g.config.icBackendStage == "merge":
     timed tStage:
@@ -1084,4 +1135,4 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     return
   else:
     rawMessage(g.config, errGenerated,
-      "the per-module NIF backend requires --icBackendStage:lower|cg|merge|emit|link")
+      "the per-module NIF backend requires --icBackendStage:lower|lowered|cg|merge|emit|link")

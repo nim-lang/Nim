@@ -1829,6 +1829,7 @@ proc genEmit(p: BProc, t: PNode) =
   if p.prc == nil:
     # top level emit pragma?
     let section = determineSection(t.secondSon)
+    p.module.hasTopLevelEmit = true
     genCLineDir(p.module.s[section], t.info, p.config)
     p.module.s[section].add(s)
   else:
