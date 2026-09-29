@@ -52,6 +52,7 @@ const
   targetOS* = when defined(windows): OsPlatform.windows
               elif defined(dos): OsPlatform.dos
               elif defined(os2): OsPlatform.os2
+              elif defined(android): OsPlatform.android
               elif defined(linux): OsPlatform.linux
               elif defined(morphos): OsPlatform.morphos
               elif defined(skyos): OsPlatform.skyos
@@ -70,7 +71,6 @@ const
               elif defined(macosx): OsPlatform.macosx
               elif defined(macos): OsPlatform.macos
               elif defined(haiku): OsPlatform.haiku
-              elif defined(android): OsPlatform.android
               elif defined(js): OsPlatform.js
               elif defined(standalone): OsPlatform.standalone
               elif defined(nintendoswitch): OsPlatform.nintendoswitch

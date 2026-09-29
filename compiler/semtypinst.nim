@@ -769,6 +769,11 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       result[i] = replaceTypeVarsT(cl, result[i])
     propagateToOwner(result, result.last)
 
+    let body {.cursor.} = result.last
+    if not cl.allowMetaTypes and body != t.last and
+        body.typeInst == nil and body.state != Sealed:
+      body.typeInst = result
+
   else:
     if containsGenericType(t) or
         # nominal types as direct generic instantiation values
