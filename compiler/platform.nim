@@ -14,7 +14,7 @@
 # Feel free to test for your excentric platform!
 
 import
-  std/strutils
+  std/[envvars, strutils]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -299,6 +299,9 @@ proc listCPUnames*(): seq[string] =
     result.add CPU[i].name
 
 proc setTargetFromSystem*(t: var Target) =
-  t.hostOS = nameToOS(system.hostOS)
+  # Nim's compile-time hostOS reports Linux on Android. Detect the Android
+  # runtime before choosing the compiler's default target, so `android` is set
+  # while the Linux compatibility alias remains available.
+  t.hostOS = if getEnv("ANDROID_ROOT").len > 0: osAndroid else: nameToOS(system.hostOS)
   t.hostCPU = nameToCPU(system.hostCPU)
   t.setTarget(t.hostOS, t.hostCPU)
