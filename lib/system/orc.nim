@@ -389,7 +389,8 @@ proc partialCollect(lowMark: int) =
   when logOrc:
     cfprintf(cstderr, "[partialCollect] end; freed %ld touched: %ld work: %ld\n", j.freed, j.touched,
       roots.len - lowMark)
-  roots.len = lowMark
+  # collectCyclesBacon already emptied `roots`; whatever is in it now was
+  # registered by destructors during the free loop and must stay
   deinit j.traceStack
   when defined(nimOrcStats):
     inc freedCyclicObjects, j.freed
