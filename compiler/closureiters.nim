@@ -480,6 +480,16 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   of nkSkip:
     discard
 
+  of nkStmtList:
+    # This parent tells us its children are statements. A typed child can
+    # therefore be lowered without preserving its final value.
+    for i in 0..<n.len:
+      n[i] = ctx.lowerStmtListExprs(n[i], needsSplit)
+      if n[i].kind == nkStmtListExpr and n[i].hasYields:
+        let (st, res) = exprToStmtList(n[i])
+        st.add(res)
+        n[i] = st
+
   of nkYieldStmt:
     var ns = false
     for i in 0..<n.len:
@@ -545,6 +555,11 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             let newBranch = newTree(nkElse, branchBody)
             curS.add(newBranch)
           else:
+            if n.kind == nkIfStmt and branch[0].kind == nkStmtListExpr:
+              # A statement if can still have a typed branch whose value is unused.
+              let (st, res) = exprToStmtList(branch[0])
+              st.add(res)
+              branch[0] = st
             curS.add(branch)
 
         of nkElifExpr, nkElifBranch:
@@ -565,6 +580,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
               curS.add(elseBody)
             curS = newIf
           else:
+            if n.kind == nkIfStmt and branch[1].kind == nkStmtListExpr:
+              let (st, res) = exprToStmtList(branch[1])
+              st.add(res)
+              branch[1] = st
             newBranch = branch
             if curS.kind == nkIfStmt:
               curS.add(newBranch)
