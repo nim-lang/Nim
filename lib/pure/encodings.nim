@@ -313,7 +313,7 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
-  when defined(bsd):
+  when defined(bsd) or defined(linux):
     {.pragma: importIconv, cdecl, header: "<iconv.h>".}
     when defined(openbsd):
       {.passL: "-liconv".}
