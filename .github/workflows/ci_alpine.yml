@@ -34,7 +34,8 @@ jobs:
             alpine:3.23 sh -ec '
               apk add --no-cache bash build-base clang git nodejs tzdata \
                 pcre lapack-dev curl-dev gc-dev sdl12-compat-dev \
-                sfml-dev valgrind libffi-dev openssl-dev
+                sfml-dev valgrind libffi-dev openssl-dev libucontext-dev
+              echo --passl:-lucontext > tests/coroutines/nim.cfg
               export PATH="$PWD/bin:$PATH"
               exec bash -ec "
                 . ci/funs.sh
