@@ -1,0 +1,44 @@
+name: Alpine Linux 64-bit
+
+on:
+  push:
+    branches: [devel, 'version-*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Alpine 64-bit (${{ matrix.cpu }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            cpu: amd64
+          - runner: ubuntu-24.04-arm
+            cpu: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Bootstrap and run CI on musl
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace \
+            alpine:3.23 sh -ec '
+              apk add --no-cache bash build-base clang git nodejs tzdata \
+                pcre lapack-dev curl-dev gc-dev sdl12-compat-dev \
+                sfml-dev valgrind libffi-dev openssl-dev
+              export PATH="$PWD/bin:$PATH"
+              exec bash -ec "
+                . ci/funs.sh
+                nimBuildCsourcesIfNeeded CC=gcc ucpu=${{ matrix.cpu }}
+                nimInternalBuildKochAndRunCI
+              "
+            '
