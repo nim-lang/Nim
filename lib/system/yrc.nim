@@ -1537,7 +1537,12 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
       break
 
 proc finishCollection() =
-  if atomicAddFetch(addr gCollectionCounter, 1, ATOMIC_RELAXED) mod YrcEpochLen == 0:
+  # The epoch bounds how many of a HEAP's own collections a stale stamp can
+  # defer a rescan for. The counter is global, so with N collectors in play
+  # it ticks N times per heap-collection; scale the period to match, or each
+  # thread re-traces its whole old generation every YrcEpochLen/N collections.
+  if atomicAddFetch(addr gCollectionCounter, 1, ATOMIC_RELAXED) mod
+      (YrcEpochLen * slotsInPlay()) == 0:
     discard atomicAddFetch(addr gEpoch, 1, ATOMIC_RELAXED)
   if gPendingActive:
     # A batch is parked under this collection's tag. Clear only the PHASE —
