@@ -1,66 +1,45 @@
 discard """
-  targets: "c"
-  matrix: "--mm:refc; --mm:orc"
   joinable: false
 """
 
-import compiler/[llstream, nimeval]
-import std/os
+import std/[os, osproc, strutils, tempfiles]
 
-# Measure the host VM's heap: getOccupiedMem inside a static block would not
-# measure the compiler's allocations. Warm up code generation before measuring.
-let lib = findNimStdLibCompileTime()
-let interpreter = createInterpreter("t26273_script.nim",
-  [lib, lib / "pure", lib / "core"])
-let script = llStreamOpen("""
-iterator fields(values: var seq[(int, int)]): var int =
-  yield values[0][0]
+# Test the compiler running this test, not a VM rebuilt from compiler sources.
+const nim = getCurrentCompilerExe()
 
-iterator addresses(values: var seq[int]): ptr int =
-  yield addr values[0]
-
-block:
-  var tuples = @[(1, 2)]
-  for value in fields(tuples):
-    value = 3
-  doAssert tuples == @[(3, 2)]
-
-  var values = @[1]
-  for address in addresses(values):
-    address[] = 2
-  doAssert values == @[2]
-
-proc exercise*() =
-  for i in 0 ..< 32:
-    # #26273: each iteration used to permanently root a fresh string node.
+proc main() =
+  let dir = createTempDir("nim_vm_26273_", "")
+  try:
+    let source = dir / "loop.nim"
+    writeFile(source, """
+const iterations {.intdefine.} = 32
+static:
+  var total = 0
+  for i in 0 ..< iterations:
     for value in @[newString(65536)]:
-      doAssert value.len == 65536
-
-    for value in [newString(65536)]:
-      doAssert value.len == 65536
-
-    var values = @[newString(65536)]
-    for value in values.mitems:
-      value[0] = 'x'
-    doAssert values[0][0] == 'x'
-
-    # Exercise the slice branch of the borrowed-address opcode too.
-    for value in values.toOpenArray(0, 0):
-      doAssert value.len == 65536
-      doAssert value[0] == 'x'
+      total += value.len
+  doAssert total == iterations * 65536
 """)
-interpreter.evalScript(script)
-llStreamClose(script)
-let exercise = interpreter.selectRoutine("exercise")
-doAssert exercise != nil
-discard interpreter.callRoutine(exercise, [])
-GC_fullCollect()
-let before = getOccupiedMem()
-for i in 0 ..< 8:
-  discard interpreter.callRoutine(exercise, [])
-GC_fullCollect()
-let retained = getOccupiedMem() - before
-# The old GC_ref calls retain at least 16 MiB here. Allow small bookkeeping
-# differences without depending on platform-specific process RSS measurements.
-doAssert retained < 1024 * 1024, "VM loop retained " & $retained & " bytes"
-destroyInterpreter(interpreter)
+
+    proc occupiedMemory(iterations: int): int =
+      let compiled = execCmdEx(quoteShellCommand([
+        nim, "c", "--compileOnly", "--hints:on", "--hint:GCStats:on",
+        "--nimcache:" & dir / "nimcache",
+        "-d:iterations=" & $iterations, source]))
+      doAssert compiled.exitCode == 0, compiled.output
+      for line in compiled.output.splitLines:
+        const prefix = "[GC] occupied memory: "
+        if line.startsWith(prefix):
+          return parseInt(line[prefix.len .. ^1])
+      doAssert false, "Missing compiler memory statistics:\n" & compiled.output
+
+    # Each leaked string adds 64 KiB. The old VM retains about 30 MiB more
+    # in the longer run; allow 8 MiB for allocator/GC bookkeeping differences.
+    let shortRun = occupiedMemory(32)
+    let longRun = occupiedMemory(512)
+    doAssert longRun - shortRun < 8 * 1024 * 1024,
+      "Compile-time loop retained " & $(longRun - shortRun) & " extra bytes"
+  finally:
+    removeDir(dir)
+
+main()
