@@ -1990,7 +1990,9 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
     genArrAccessOpcode(c, n, dest, opc, flags)
   of tyTuple:
-    c.genObjAccessAux(n, c.genx(n[0], flags), int n[1].intVal, dest, flags)
+    # Tuple fields are not loop-element borrows; do not mark their base either.
+    c.genObjAccessAux(n, c.genx(n[0], flags - {gfLoopBorrow}),
+                     int n[1].intVal, dest, flags)
   of tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
