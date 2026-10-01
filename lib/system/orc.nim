@@ -143,6 +143,51 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inl.} =
 var
   roots {.threadvar.}: CellSeq[Cell]
 
+const
+  orcGenerational = not defined(nimOrcNoGen)
+  OrcEpochLen {.intdefine.} = 64   # collections per epoch
+  OrcPromoteAge {.intdefine.} = 3  # trial deletions a cell must survive
+                                   # before later collections stop tracing it
+
+when orcGenerational:
+  # Generational pruning, ported from YRC. `rootIdx > 0` is a root's index;
+  # `rootIdx < 0` is an epoch stamp: the id of the last collection the cell
+  # survived a trial deletion in, and how many it has survived. Within an
+  # epoch, markGray does not descend into a cell that has survived
+  # OrcPromoteAge collections (it is treated as a live external reference).
+  # That is conservative only: a pruned cell's rc is never decremented, so
+  # nothing it points to can turn white and it is never freed by the cycle
+  # collector. Garbage cycles that run through pruned cells float until the
+  # next epoch, which re-traces everything once; `GC_fullCollect` starts a
+  # new epoch so it stays exhaustive.
+  var
+    collId {.threadvar.}: int      # id of the current/last collection
+    epochStart {.threadvar.}: int  # collId the current epoch began with
+
+  template stampColl(w: int): int = (-w -% 1) shr 8
+  template stampAge(w: int): int = (-w -% 1) and 255
+
+  template pruned(t: Cell): bool =
+    ## Must evaluate identically in markGray, scanBlack and collectColor of
+    ## one collection: only black cells stamped by an EARLIER collection of
+    ## this epoch qualify; cells blackened in this collection carry `collId`.
+    t.rootIdx < 0 and t.color == colBlack and
+      stampAge(t.rootIdx) >= OrcPromoteAge and
+      stampColl(t.rootIdx) != collId and stampColl(t.rootIdx) >= epochStart
+
+  template stampSurvivor(t: Cell) =
+    if t.rootIdx <= 0:
+      let age = if t.rootIdx < 0: min(stampAge(t.rootIdx) +% 1, 255) else: 1
+      t.rootIdx = -((collId shl 8) or age) -% 1
+
+  proc beginCollection() {.inline.} =
+    collId = (collId +% 1) and (high(int) shr 9)
+    if collId < epochStart or collId -% epochStart >= OrcEpochLen:
+      epochStart = collId
+else:
+  template pruned(t: Cell): bool = false
+  template stampSurvivor(t: Cell) = discard
+
 proc unregisterCycle(s: Cell) =
   # swap with the last element. O(1)
   let
@@ -168,15 +213,18 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         scanBlack(t)
   ]#
   s.setColor colBlack
+  stampSurvivor(s)
   let until = j.traceStack.len
   trace(s, desc, j)
   when logOrc: writeCell("root still alive", s, desc)
   while j.traceStack.len > until:
     let (entry, desc) = j.traceStack.pop()
     let t = head entry[]
+    if pruned(t): continue
     t.rc = t.rc +% rcIncrement
     if t.color != colBlack:
       t.setColor colBlack
+      stampSurvivor(t)
       trace(t, desc, j)
       when logOrc: writeCell("child still alive", t, desc)
 
@@ -200,6 +248,7 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
+      if pruned(t): continue
       t.rc = t.rc -% rcIncrement
       j.edges = j.edges +% 1
       when useJumpStack:
@@ -293,7 +342,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
         collectWhite(t)
       free(s) # watch out, a bug here!
   ]#
-  if s.color == col and s.rootIdx == 0:
+  if s.color == col and s.rootIdx <= 0:
     orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
 
     s.setColor(colBlack)
@@ -302,8 +351,11 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
+      # a pruned target's rc was never decremented for this edge: keep it so
+      # the destructor's decRef accounts for it
+      if pruned(t): continue
       entry[] = nil # ensure that the destructor does touch moribund objects!
-      if t.color == col and t.rootIdx == 0:
+      if t.color == col and t.rootIdx <= 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
         trace(t, desc, j)
@@ -331,6 +383,7 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
       collectWhite(s)
   ]#
   let last = roots.len -% 1
+  when orcGenerational: beginCollection()
 
   when logOrc:
     for i in countdown(last, lowMark):
@@ -485,6 +538,8 @@ proc GC_partialCollect*(limit: int) =
 proc GC_fullCollect* =
   ## Forces a full garbage collection pass. With `--mm:orc` triggers the cycle
   ## collector. This is an alias for `GC_runOrc`.
+  when orcGenerational:
+    epochStart = high(int) # the next collection starts a new epoch
   collectCycles()
 
 proc GC_enableMarkAndSweep*() =
@@ -512,7 +567,7 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
   else:
     # do not call 'rememberCycle' again unless this cell
     # got an 'incRef' event:
-    if s.rootIdx == 0 and markedAsCyclic(s, desc):
+    if s.rootIdx <= 0 and markedAsCyclic(s, desc):
       s.setColor colBlack
       registerCycle(s, desc)
 
