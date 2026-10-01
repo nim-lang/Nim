@@ -8,7 +8,7 @@
 # yrc_tarjan_proof.lean for soundness AND completeness of the SCC
 # deadness algorithm, and yrc_opt_proof.lean for the three optimizations
 # that changed those invariants: SCC-uniform epoch ages, the demand-grown
-# `gParSlots` pool, and deferred reclamation (gPendingCells).
+# `gParSlots` pool, and deferred reclamation (`gPending`).
 #
 # ## Synchronization at a Glance
 #
@@ -402,6 +402,7 @@ type
     slot: int
     epochStamp: int64   ## this collection's epoch, as a stamp word
     amSolo: bool
+    parked: bool        ## this collection parked its batch (keeps its tag)
     genSuspects: CellSeq[Cell]
       ## Stamped cells that received a young→old commit dec this epoch
       ## without an RC death blow. Not roots (so minor collects keep
@@ -482,7 +483,7 @@ const
 # `(hi shl 32) or lo`. The claim word (a cell's `rootIdx`, see above) is either
 #   hi = owning collection's tag,   lo = the cell's dense capture index
 #   hi = epochBase|epoch (a stamp), lo = the cell's survival age
-# and a `gPendingWatch` entry is hi = slot, lo = tag. The high half is read
+# and a `PendingBatch.watch` entry is hi = slot, lo = tag. The high half is read
 # with a plain `shr 32` — every value stored there is below 2^31, so the shift
 # keeps it positive and needs no mask. The low half is the one that needs
 # masking: `shl 32` left the high half sitting above it, and `and 0xFFFFFFFF`
@@ -573,6 +574,23 @@ type
     ## Invoked lock-free before this thread would start a collection;
     ## must not call back into YRC.
 
+const
+  YrcMaxPending {.intdefine.} = 4
+    ## Parked batches per thread. With one, a collection whose predecessor's
+    ## watched captures are still running must BLOCK until they end; at 16
+    ## threads that wait was ~15% of collection time. With more, it only
+    ## blocks once every entry is still waiting.
+
+type
+  PendingBatch = object
+    cells: CellSeq[Cell]
+    watch: RawSeq[int64]
+      ## The captures the batch must outlive, packed as (slot shl 32) or tag.
+    slot: int
+      ## The parking collection's slot: its tag stays in `gActiveTags` until
+      ## release, so a capture that reaches a parked cell through a stale
+      ## snapshot sees it owned by an active collection and cannot claim it.
+
 var
   roots: CellSeq[Cell]  # ORPHANED candidates only: spilled by exiting
                         # threads, adopted by the next collection on any
@@ -582,16 +600,13 @@ var
     ## draining this thread's stripe queue registers candidates here, and
     ## this thread's collections steal it as their slice — no lock, and
     ## collections keep the cache locality of thread-local data.
-  gPendingCells {.threadvar.}: CellSeq[Cell]
-    ## Cells this thread committed dead — slots nil'ed, references already
+  gPending {.threadvar.}: array[YrcMaxPending, PendingBatch]
+    ## Batches this thread committed dead — slots nil'ed, references already
     ## decremented — but has not handed back to the allocator yet, because a
     ## capture that was in flight at commit time may still hold a stale
-    ## (slot, value) snapshot pointing at them. Released at the start of this
-    ## thread's next collection; see `releasePending`.
-  gPendingWatch {.threadvar.}: RawSeq[int64]
-    ## The captures that batch must outlive, packed as (slot shl 32) or tag.
-  gPendingSlot {.threadvar.}: int
-  gPendingActive {.threadvar.}: bool
+    ## (slot, value) snapshot pointing at them. Entries `0 ..< gPendingLen`
+    ## are parked, oldest first; see `releasePending`.
+  gPendingLen {.threadvar.}: int
   gSpareRoots {.threadvar.}: CellSeq[Cell]
     ## The buffer a finished collection hands back, so that stealing
     ## `gLocalRoots` costs no allocation in steady state.
@@ -831,13 +846,13 @@ template orcAssert(cond, msg) =
       cfprintf(cstderr, "[Bug!] %s\n", msg)
       rawQuit 1
 
-proc graceSatisfied(): bool =
-  ## Has every capture recorded in `gPendingWatch` finished? A capture that
+proc graceSatisfied(b: ptr PendingBatch): bool =
+  ## Has every capture recorded in `b.watch` finished? A capture that
   ## started later cannot hold a stale snapshot of the batch: it reads every
   ## slot fresh, and the batch's cells are unreachable by then.
   result = true
-  for i in 0 ..< gPendingWatch.len:
-    let w = gPendingWatch.d[i]
+  for i in 0 ..< b.watch.len:
+    let w = b.watch.d[i]
     let s = int(w shr 32)
     let tg = loWord(w)
     if atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) == tg and
@@ -845,47 +860,69 @@ proc graceSatisfied(): bool =
       return false
 
 proc buildPendingWatch(): bool =
-  ## Record the collections that are in their CAPTURE phase right now: they
-  ## are the only ones that can hold a stale (slot, value) snapshot of the
-  ## cells we are about to release. `false` (nothing capturing) is the common
-  ## case below a handful of threads, and means the batch can be freed on the
-  ## spot with no deferral and no destructor-timing change at all.
-  if gPendingWatch.d == nil: init gPendingWatch
-  gPendingWatch.len = 0
+  ## Record, in the next free `gPending` entry, the collections that are in
+  ## their CAPTURE phase right now: they are the only ones that can hold a
+  ## stale (slot, value) snapshot of the cells we are about to release.
+  ## `false` (nothing capturing) is the common case below a handful of
+  ## threads, and means the batch can be freed on the spot with no deferral
+  ## and no destructor-timing change at all. `startCollection` guarantees a
+  ## free entry.
+  let b = addr gPending[gPendingLen]
+  if b.watch.d == nil: init b.watch
+  b.watch.len = 0
   for s in 0 ..< slotsInPlay():
     if s != gCtx.slot:
       let tg = atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE)
       if tg != 0 and atomicLoadN(addr gSlotPhase[s], ATOMIC_ACQUIRE) == 1:
-        gPendingWatch.add((int64(s) shl 32) or tg)
-  result = gPendingWatch.len > 0
+        b.watch.add((int64(s) shl 32) or tg)
+  result = b.watch.len > 0
 
-proc releasePending() =
-  ## Hand this thread's parked batch back to the allocator and give its slot
-  ## up. Called at the start of every collection, so by the time it runs the
-  ## watched captures have had a whole collection's worth of time to finish
-  ## and the wait below is virtually always already satisfied — that is the
-  ## whole point: the wait moved off the commit path, where it blocked BOTH
-  ## the committing collector and (because commit runs inside the GC fence)
-  ## every mutator doing a seq operation.
-  if not gPendingActive: return
-  parkUntil(graceSatisfied())
+proc parkPending() {.inline.} =
+  ## The batch in `gPending[gPendingLen]` is filled: park it under this
+  ## collection's slot.
+  gPending[gPendingLen].slot = gCtx.slot
+  inc gPendingLen
+  gCtx.parked = true
+
+proc freeBatch(b: ptr PendingBatch) =
   # Give the slot up FIRST: the batch is unreachable and no capture can hold
   # a snapshot of it any more, so the tag has nothing left to protect.
-  gPendingActive = false
-  gPendingWatch.len = 0
-  atomicStoreN(addr gActiveTags[gPendingSlot], 0, ATOMIC_SEQ_CST)
+  b.watch.len = 0
+  atomicStoreN(addr gActiveTags[b.slot], 0, ATOMIC_SEQ_CST)
   collectorEvent()
   # Destructors run here. `Collecting` is the existing re-entrancy guard: a
   # destructor-driven dec that overflows a stripe must drain it, not start a
   # nested collection that would write into the batch we are walking.
   let prev = lockState
   lockState = Collecting
-  for i in 0 ..< gPendingCells.len:
+  for i in 0 ..< b.cells.len:
     when orcLeakDetector:
-      writeCell("CYCLIC OBJECT FREED", gPendingCells.d[i][0], gPendingCells.d[i][1])
-    free(gPendingCells.d[i][0], gPendingCells.d[i][1])
-  gPendingCells.len = 0
+      writeCell("CYCLIC OBJECT FREED", b.cells.d[i][0], b.cells.d[i][1])
+    free(b.cells.d[i][0], b.cells.d[i][1])
+  b.cells.len = 0
   lockState = prev
+
+proc releasePending(all = false) =
+  ## Hand every parked batch whose watched captures have all finished back
+  ## to the allocator, and give its slot up. Never waits while a free entry
+  ## remains; with `all` (exhaustive collect, thread exit) or when every
+  ## entry is taken, it waits for the oldest. That wait used to happen on
+  ## EVERY collection whose predecessor parked, because there was a single
+  ## entry — the commit path's old blocking grace wait, merely moved.
+  var i = 0
+  while i < gPendingLen:
+    let b = addr gPending[i]
+    if graceSatisfied(b) or (i == 0 and (all or gPendingLen == YrcMaxPending)):
+      if not graceSatisfied(b): parkUntil(graceSatisfied(b))
+      freeBatch(b)
+      # keep the entries in park order; rotate the emptied buffers to the end
+      let done = gPending[i]
+      for k in i ..< gPendingLen - 1:
+        gPending[k] = gPending[k + 1]
+      gPending[gPendingLen - 1] = done
+      dec gPendingLen
+    else:
+      inc i
 
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
   let p = cast[ptr pointer](q)
@@ -1340,18 +1377,19 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   # every such capture ended, which serialized each committing collector
   # against every capturing one — and did so while holding the GC fence, so
   # mutators doing seq operations spun for the duration too. Instead the
-  # batch is parked (`gPendingCells`) together with the set of captures it
-  # must outlive, and `releasePending` frees it at the start of this
-  # thread's next collection. Our tag stays in `gActiveTags` until then, so
-  # a capture that reaches a parked cell through a stale snapshot still sees
-  # it as owned by an active collection and cannot claim — and free — it.
+  # batch is parked (an entry of `gPending`) together with the set of
+  # captures it must outlive, and `releasePending` frees it at the start of
+  # a later collection of this thread, once those captures have ended. Our
+  # tag stays in `gActiveTags` until then, so a capture that reaches a
+  # parked cell through a stale snapshot still sees it as owned by an
+  # active collection and cannot claim — and free — it.
   # The batch's destructors therefore run one collection later than they
   # used to; nothing else observes the delay, since the cells are
   # unreachable, their slots are nil and their references already dropped.
   template parkBatch(): bool = (if cap.recs.len == 0: false else: buildPendingWatch())
   template holdOrFree(c: Cell; d: PNimTypeV2; deferred: bool) =
     if deferred:
-      gPendingCells.add(c, d)
+      gPending[gPendingLen].cells.add(c, d)
     else:
       when orcLeakDetector:
         writeCell("CYCLIC OBJECT FREED", c, d)
@@ -1371,15 +1409,14 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
     # dead set, foreign captures never traverse our tagged cells, and a
     # parked batch is not touched until its watch list is clear).
     let deferred = parkBatch()
-    if deferred and gPendingCells.d == nil: init gPendingCells
+    if deferred and gPending[gPendingLen].cells.d == nil:
+      init gPending[gPendingLen].cells
     for i in 0 ..< cap.slots.len:
       cap.slots.d[i][] = nil
     for m in 0 ..< cap.recs.len:
       holdOrFree(cap.recs.d[m].cell, cap.recs.d[m].desc, deferred)
     j.freed = cap.recs.len
-    if deferred:
-      gPendingSlot = ctx.slot
-      gPendingActive = true
+    if deferred: parkPending()
   else:
     if gFreeBuf.d == nil: init gFreeBuf
     gFreeBuf.len = 0
@@ -1449,12 +1486,11 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
     if j.toFree.len > 0 and buildPendingWatch():
       # park the whole batch by swapping buffers: the collection keeps the
       # (now empty) buffer the previous batch used, so neither side allocates
-      let spare = gPendingCells
-      gPendingCells = j.toFree
+      let spare = gPending[gPendingLen].cells
+      gPending[gPendingLen].cells = j.toFree
       j.toFree = spare
       j.toFree.len = 0
-      gPendingSlot = ctx.slot
-      gPendingActive = true
+      parkPending()
     else:
       for i in 0 ..< j.toFree.len:
         when orcLeakDetector:
@@ -1537,9 +1573,14 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
       break
 
 proc finishCollection() =
-  if atomicAddFetch(addr gCollectionCounter, 1, ATOMIC_RELAXED) mod YrcEpochLen == 0:
+  # The epoch bounds how many of a HEAP's own collections a stale stamp can
+  # defer a rescan for. The counter is global, so with N collectors in play
+  # it ticks N times per heap-collection; scale the period to match, or each
+  # thread re-traces its whole old generation every YrcEpochLen/N collections.
+  if atomicAddFetch(addr gCollectionCounter, 1, ATOMIC_RELAXED) mod
+      (YrcEpochLen * slotsInPlay()) == 0:
     discard atomicAddFetch(addr gEpoch, 1, ATOMIC_RELAXED)
-  if gPendingActive:
+  if gCtx.parked:
     # A batch is parked under this collection's tag. Clear only the PHASE —
     # so nobody's grace check waits on us — and leave the tag in
     # `gActiveTags`: it is what stops a foreign capture from claiming, and
@@ -1551,6 +1592,7 @@ proc finishCollection() =
     atomicStoreN(addr gSlotPhase[gCtx.slot], 0, ATOMIC_RELEASE)
   gCtx.tag = 0
   gCtx.amSolo = false
+  gCtx.parked = false
   collectorEvent()   # wake backpressure and grace waiters
 
 proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
@@ -1681,8 +1723,9 @@ proc releaseCollectorScratch() =
   deinit(gSpareRoots)
   deinit(gTraceBuf)
   deinit(gFreeBuf)
-  deinit(gPendingCells)
-  deinit(gPendingWatch)
+  for i in gPendingLen ..< YrcMaxPending:  # only the empty entries
+    deinit(gPending[i].cells)
+    deinit(gPending[i].watch)
   deinit(gCap.recs)
   deinit(gCap.sccIdx)
   deinit(gCap.tstack)
@@ -1714,7 +1757,7 @@ proc GC_runOrc* =
     when defined(nimOrcStats):
       # collectCycles updates this; GC_runOrc must too (tests/benches read it)
       inc freedCyclicObjects, j.freed
-  releasePending()   # GC_fullCollect must not leave a batch parked
+  releasePending(all = true)   # GC_fullCollect must not leave a batch parked
   # A single large capture (e.g. reclaiming an 80k-node stamped web after
   # epoch advance) otherwise leaves tens of MB of TLS RawSeq capacity
   # resident for the rest of the process. Partial collects keep the
@@ -1754,7 +1797,7 @@ proc nimYrcThreadTeardown() =
   ## of ours is stranded in a queue no other thread hashes to, then spill
   ## our candidate buffer to the global orphan buffer, where the next
   ## collection on any thread adopts it.
-  releasePending()   # nobody else can release this thread's parked batch
+  releasePending(all = true)   # nobody else can release this thread's parked batches
   drainStripe(getStripeIdx())
   # Suspects → roots before the orphan spill, otherwise young→old dec
   # targets on this thread would die with the TLS list.
@@ -1845,28 +1888,35 @@ proc yrcDec(tmp: pointer; desc: PNimTypeV2) {.inline.} =
   else:
     discard nimDecRefIsLastCyclicDyn(tmp)
 
+template yrcSwapSlot(dest: ptr pointer; src: pointer; desc: PNimTypeV2) =
+  when hasThreadSupport:
+    let tmp = atomicLoadN(dest, ATOMIC_RELAXED)
+    atomicStoreN(dest, src, ATOMIC_RELEASE)
+  else:
+    let tmp = dest[]
+    dest[] = src
+  if tmp != nil: yrcDec(tmp, desc)
+
 proc nimAsgnYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref copy assignment. LOCK-FREE: the deferred dec
   ## of the old value doubles as the snapshot-at-the-beginning log (the
   ## collector peeks the toDec queues at commit time), and the direct atomic
   ## incRef of the new value is exactly the rc mutation the collector's
   ## commit-time rc validation observes.
+  ##
+  ## The slot is read and written with a plain load and a release store, not
+  ## an atomic exchange: the collector only ever writes slots of cells it
+  ## has proven dead (unreachable, so no mutator can store into them), and
+  ## two mutators storing into the same slot without synchronization is a
+  ## data race in the program, not something the barrier has to arbitrate.
+  ## The release orders the incRef of `src` before its publication, so a
+  ## capture that reads `src` from the slot also sees its rc.
   if src != nil: increment head(src)
-  when hasThreadSupport:
-    let tmp = atomicExchangeN(dest, src, ATOMIC_ACQ_REL)
-  else:
-    let tmp = dest[]
-    dest[] = src
-  if tmp != nil: yrcDec(tmp, desc)
+  yrcSwapSlot(dest, src, desc)
 
 proc nimSinkYrc(dest: ptr pointer; src: pointer; desc: PNimTypeV2) {.compilerRtl.} =
   ## YRC write barrier for ref sink (move). No incRef on source.
-  when hasThreadSupport:
-    let tmp = atomicExchangeN(dest, src, ATOMIC_ACQ_REL)
-  else:
-    let tmp = dest[]
-    dest[] = src
-  if tmp != nil: yrcDec(tmp, desc)
+  yrcSwapSlot(dest, src, desc)
 
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
   when optimizedOrc:
