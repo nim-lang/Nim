@@ -75,6 +75,8 @@ Options:
     --info:capabilities     return the capabilities supported by nimsuggest
   --refresh               perform automatic refreshes to keep the analysis precise
   --maxresults:N          limit the number of suggestions to N
+  --maxMemory:N           quit when resident memory exceeds N megabytes (0 = no cap);
+                          the default is 4000
   --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
   --find                  attempts to find the project file of the current project
@@ -104,6 +106,11 @@ var
   gLogging = defined(logging)
   gRefresh: bool
   gAutoBind = false
+  gMaxMemoryKb = # resident memory cap, --maxMemory:N (MB)
+    when sizeof(int) == 8: # 64 bit CPU
+      4000 * 1024
+    else: # 32 bit CPU
+      2000 * 1024
 
   requests: Channel[string]
   results: Channel[Suggest]
@@ -132,11 +139,16 @@ const
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
   #List of currently supported capabilities. So lang servers/ides can iterate over and check for what's enabled
-  Capabilities = [
-    "con", #current NimSuggest supports the `con` commmand
-    "exceptionInlayHints",
-    "unknownFile", #current NimSuggest can handle unknown files
-  ]
+  Capabilities =
+    @[
+      "con", #current NimSuggest supports the `con` commmand
+      "exceptionInlayHints",
+      "unknownFile", #current NimSuggest can handle unknown files
+    ] &
+    # the memory cap is only enforced where the resident size is readable
+    # (Linux /proc, macOS libproc, Windows working set)
+    (when defined(linux) or defined(macosx) or defined(windows):
+      @["maxMemory"] else: @[])
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
@@ -664,6 +676,10 @@ proc mainCommand(graph: ModuleGraph) =
         line: toLinenumber(info), column: toColumn(info), doc: msg, forth: $sev)
       graph.suggestErrors.mgetOrPut(info.fileIndex, @[]).add suggest
 
+  # Started before the initial compilation so that a runaway compilation
+  # is also capped:
+  hookMemMonitor(gMaxMemoryKb)
+
   # compile the project before showing any input so that we already
   # can answer questions right away:
   benchmark "Initial compilation":
@@ -756,6 +772,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           gRefresh = true
       of "maxresults":
         conf.suggestMaxResults = parseInt(p.val)
+      of "maxmemory":
+        gMaxMemoryKb = parseInt(p.val) * 1024
       of "find":
         findProject = true
       of "clientprocessid":
