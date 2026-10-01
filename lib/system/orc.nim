@@ -32,8 +32,8 @@ type
   TraceProc = proc (p, env: pointer) {.nimcall, gcsafe, raises: [].}
   DisposeProc = proc (p: pointer) {.nimcall, gcsafe, raises: [].}
 
-template color(c): untyped = c.rc and colorMask
-template setColor(c, col) =
+template color(c: Cell): int = c.rc and colorMask
+template setColor(c: Cell; col: int) =
   when col == colBlack:
     c.rc = c.rc and not colorMask
   else:
@@ -76,12 +76,20 @@ type
     freed, touched, edges, rcSum: int
     keepThreshold: bool
 
-proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
-  if desc.traceImpl != nil:
-    var p = s +! sizeof(RefHeader)
-    cast[TraceProc](desc.traceImpl)(p, addr(j))
+when defined(nimony):
+  # Nimony's type descriptor is a single compiler-generated "cell operation":
+  # `desc(cell, env)` traces the payload into `env`, `desc(cell, nil)` destroys
+  # the payload and frees the cell.
+  proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
+    desc(s, addr(j))
+else:
+  proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
+    if desc.traceImpl != nil:
+      var p = s +! sizeof(RefHeader)
+      cast[TraceProc](desc.traceImpl)(p, addr(j))
 
-include threadids
+when logOrc or orcLeakDetector:
+  include threadids
 
 when logOrc or orcLeakDetector:
   proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
@@ -92,29 +100,33 @@ when logOrc or orcLeakDetector:
       cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld; thread: %ld\n",
         msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color, getThreadId())
 
-proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
-  when traceCollector:
-    cprintf("[From ] %p rc %ld color %ld\n", s, s.rc shr rcShift, s.color)
-  let p = s +! sizeof(RefHeader)
+when defined(nimony):
+  proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
+    desc(s, nil)
+else:
+  proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
+    when traceCollector:
+      cprintf("[From ] %p rc %ld color %ld\n", s, s.rc shr rcShift, s.color)
+    let p = s +! sizeof(RefHeader)
 
-  when logOrc: writeCell("free", s, desc)
+    when logOrc: writeCell("free", s, desc)
 
-  if desc.destructor != nil:
-    cast[DestructorProc](desc.destructor)(p)
+    if desc.destructor != nil:
+      cast[DestructorProc](desc.destructor)(p)
 
-  when false:
-    cstderr.rawWrite desc.name
-    cstderr.rawWrite " "
-    if desc.destructor == nil:
-      cstderr.rawWrite "lacks dispose"
-      if desc.traceImpl != nil:
-        cstderr.rawWrite ", but has trace\n"
+    when false:
+      cstderr.rawWrite desc.name
+      cstderr.rawWrite " "
+      if desc.destructor == nil:
+        cstderr.rawWrite "lacks dispose"
+        if desc.traceImpl != nil:
+          cstderr.rawWrite ", but has trace\n"
+        else:
+          cstderr.rawWrite ", and lacks trace\n"
       else:
-        cstderr.rawWrite ", and lacks trace\n"
-    else:
-      cstderr.rawWrite "has dispose!\n"
+        cstderr.rawWrite "has dispose!\n"
 
-  nimRawDispose(p, desc.align)
+    nimRawDispose(p, desc.align)
 
 template orcAssert(cond, msg) =
   when logOrc:
@@ -126,6 +138,7 @@ when logOrc:
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
+  when defined(nimony): {.enableTrace.} # tells nimony to lift `=trace` hooks
   let p = cast[ptr pointer](q)
   if p[] != nil:
 
@@ -436,7 +449,7 @@ proc partialCollect(lowMark: int) =
     if roots.len < 10 + lowMark: return
   when logOrc:
     cfprintf(cstderr, "[partialCollect] begin\n")
-  var j: GcEnv
+  var j = GcEnv()
   init j.traceStack
   collectCyclesBacon(j, lowMark)
   when logOrc:
@@ -453,7 +466,7 @@ proc collectCycles() =
   when logOrc:
     cfprintf(cstderr, "[collectCycles] begin\n")
 
-  var j: GcEnv
+  var j = GcEnv()
   init j.traceStack
   when useJumpStack:
     init j.jumpStack
@@ -556,6 +569,9 @@ const
 when optimizedOrc:
   template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
     (desc.flags and acyclicFlag) == 0 and (s.rc and maybeCycle) != 0
+elif defined(nimony):
+  template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
+    desc != nil # nimony passes nil for a type that cannot form a cycle
 else:
   template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
     (desc.flags and acyclicFlag) == 0

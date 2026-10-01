@@ -151,7 +151,8 @@
 
 include cellseqs_v2
 
-import std/locks
+when not defined(nimony): # nimony's system brings a spinning Lock/Cond
+  import std/locks
 
 const
   NumStripes = 64
@@ -180,13 +181,13 @@ const useIncQueue = defined(nimYrcIncQueue) and not defined(nimYrcDirectIncs)
 const useAtomicRc = not useIncQueue or hasThreadSupport
 
 when useAtomicRc:
-  template color(c): untyped = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE) and colorMask
-  template loadRc(c): int = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE)
-  template trialDec(c) =
+  template color(c: Cell): int = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE) and colorMask
+  template loadRc(c: Cell): int = atomicLoadN(addr c.rc, ATOMIC_ACQUIRE)
+  template trialDec(c: Cell) =
     discard atomicFetchAdd(addr c.rc, -rcIncrement, ATOMIC_ACQ_REL)
-  template trialInc(c) =
+  template trialInc(c: Cell) =
     discard atomicFetchAdd(addr c.rc, rcIncrement, ATOMIC_ACQ_REL)
-  template rcClearFlag(c, flag) =
+  template rcClearFlag(c: Cell; flag: int) =
     block:
       var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
       while true:
@@ -194,7 +195,7 @@ when useAtomicRc:
         if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
                                    ATOMIC_ACQ_REL, ATOMIC_RELAXED):
           break
-  template rcTestSetFlag(c, flag): bool =
+  template rcTestSetFlag(c: Cell; flag: int): bool =
     ## Atomically set `flag`; evaluates to true iff THIS call set it (it
     ## was clear). Candidate registration must win this race so that a
     ## cell sits in at most one candidate buffer.
@@ -208,12 +209,12 @@ when useAtomicRc:
           break
       won
 else:
-  template color(c): untyped = c.rc and colorMask
-  template loadRc(c): int = c.rc
-  template trialDec(c) = c.rc = c.rc -% rcIncrement
-  template trialInc(c) = c.rc = c.rc +% rcIncrement
-  template rcClearFlag(c, flag) = c.rc = c.rc and not flag
-  template rcTestSetFlag(c, flag): bool =
+  template color(c: Cell): int = c.rc and colorMask
+  template loadRc(c: Cell): int = c.rc
+  template trialDec(c: Cell) = c.rc = c.rc -% rcIncrement
+  template trialInc(c: Cell) = c.rc = c.rc +% rcIncrement
+  template rcClearFlag(c: Cell; flag: int) = c.rc = c.rc and not flag
+  template rcTestSetFlag(c: Cell; flag: int): bool =
     block:
       let won = (c.rc and flag) == 0
       if won: c.rc = c.rc or flag
@@ -363,10 +364,17 @@ const
   flagPruned = 8'u8  # an out-edge was pruned via an epoch stamp: a "live"
                      # verdict may lean on stale stamps, keep it examinable
 
-proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
-  if desc.traceImpl != nil:
-    var p = s +! sizeof(RefHeader)
-    cast[TraceProc](desc.traceImpl)(p, addr(j))
+when defined(nimony):
+  # Nimony's type descriptor is a single compiler-generated "cell operation":
+  # `desc(cell, env)` traces the payload into `env`, `desc(cell, nil)` destroys
+  # the payload and frees the cell.
+  proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
+    desc(s, addr(j))
+else:
+  proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
+    if desc.traceImpl != nil:
+      var p = s +! sizeof(RefHeader)
+      cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 # The spare rootIdx header word (unused by YRC's root registration, which
 # relies on inRootsFlag) doubles as the capture claim: it packs the owning
@@ -516,13 +524,14 @@ proc collectorEvent() {.inline.} =
   broadcast gWaitCond
   release gWaitLock
 
-proc slotsInPlay(): int {.inline.} =
+proc slotsInPlay(): int {.inline, ensures: (0 <= result and result <= MaxPar).} =
   ## Must be loaded AFTER whatever claim word the caller is validating: a
   ## slot is put in play before the collection owning it can tag any cell,
   ## so a load ordered after reading a tagged word is guaranteed to cover
   ## the slot that wrote the tag. `gParSlots` only ever grows, so a scan
   ## over this prefix can never shrink under a reader.
-  atomicLoadN(addr gParSlots, ATOMIC_ACQUIRE)
+  result = atomicLoadN(addr gParSlots, ATOMIC_ACQUIRE)
+  {.assume: 0 <= result and result <= MaxPar.} # raised only under gMergeLock, capped there
 
 proc anySlotFree(): bool {.inline.} =
   result = false
@@ -652,7 +661,7 @@ proc mayRunCycleCollect(): bool {.inline.} =
   if gPreventThreadFromCollectProc == nil: true
   else: not gPreventThreadFromCollectProc()
 
-proc getStripeIdx(): int {.inline.} =
+proc getStripeIdx(): int {.inline, ensures: (0 <= result and result < NumStripes).} =
   getThreadId() and (NumStripes - 1)
 
 proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
@@ -741,7 +750,7 @@ proc flushGenSuspects(ctx: ptr CollCtx) {.inline.} =
   ctx.seenEpoch = e
   spillGenSuspects(ctx)
 
-proc drainStripe(i: int) =
+proc drainStripe(i: int) {.requires: (0 <= i and i < NumStripes).} =
   ## Apply the pending RC operations of one stripe queue; freshly
   ## dead-looking cells become THIS thread's candidates. rc mutations are
   ## atomic, so no global lock is needed: a running collection observes
@@ -780,6 +789,7 @@ proc drainStripe(i: int) =
     while true:
       let reserved = atomicLoadN(addr stripes[i].toDecLen, ATOMIC_ACQUIRE)
       let n = min(reserved, QueueSize)
+      {.assume: 0 <= consumed and n <= QueueSize.} # `consumed` only grows from 0
       for j in consumed ..< n:
         var desc = atomicLoadN(addr stripes[i].toDec[j][1], ATOMIC_ACQUIRE)
         while desc == nil:
@@ -787,7 +797,7 @@ proc drainStripe(i: int) =
         let c = stripes[i].toDec[j][0]
         trialDec(c)
         registerLocal(c, desc)
-        atomicStoreN(addr stripes[i].toDec[j][1], cast[PNimTypeV2](nil),
+        atomicStoreN(addr stripes[i].toDec[j][1], PNimTypeV2(nil),
                      ATOMIC_RELAXED)
       consumed = n
       if reserved >= QueueSize:
@@ -834,11 +844,14 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
     cprintf("[From ] %p rc %ld color %ld\n", s, loadRc(s) shr rcShift, s.color)
   if (loadRc(s) and inRootsFlag) == 0:
-    let p = s +! sizeof(RefHeader)
     when logOrc: writeCell("free", s, desc)
-    if desc.destructor != nil:
-      cast[DestructorProc](desc.destructor)(p)
-    nimRawDispose(p, desc.align)
+    when defined(nimony):
+      desc(s, nil)
+    else:
+      let p = s +! sizeof(RefHeader)
+      if desc.destructor != nil:
+        cast[DestructorProc](desc.destructor)(p)
+      nimRawDispose(p, desc.align)
 
 template orcAssert(cond, msg) =
   when logOrc:
@@ -854,6 +867,7 @@ proc graceSatisfied(b: ptr PendingBatch): bool =
   for i in 0 ..< b.watch.len:
     let w = b.watch.d[i]
     let s = int(w shr 32)
+    {.assume: 0 <= s and s < MaxPar.} # packed from a slot in play
     let tg = loWord(w)
     if atomicLoadN(addr gActiveTags[s], ATOMIC_ACQUIRE) == tg and
        atomicLoadN(addr gSlotPhase[s], ATOMIC_ACQUIRE) == 1:
@@ -867,6 +881,7 @@ proc buildPendingWatch(): bool =
   ## threads, and means the batch can be freed on the spot with no deferral
   ## and no destructor-timing change at all. `startCollection` guarantees a
   ## free entry.
+  {.assume: 0 <= gPendingLen and gPendingLen < YrcMaxPending.}
   let b = addr gPending[gPendingLen]
   if b.watch.d == nil: init b.watch
   b.watch.len = 0
@@ -880,6 +895,7 @@ proc buildPendingWatch(): bool =
 proc parkPending() {.inline.} =
   ## The batch in `gPending[gPendingLen]` is filled: park it under this
   ## collection's slot.
+  {.assume: 0 <= gPendingLen and gPendingLen < YrcMaxPending.} # see buildPendingWatch
   gPending[gPendingLen].slot = gCtx.slot
   inc gPendingLen
   gCtx.parked = true
@@ -888,7 +904,9 @@ proc freeBatch(b: ptr PendingBatch) =
   # Give the slot up FIRST: the batch is unreachable and no capture can hold
   # a snapshot of it any more, so the tag has nothing left to protect.
   b.watch.len = 0
-  atomicStoreN(addr gActiveTags[b.slot], 0, ATOMIC_SEQ_CST)
+  let slot = b.slot
+  {.assume: 0 <= slot and slot < MaxPar.} # parked under a claimed slot
+  atomicStoreN(addr gActiveTags[slot], 0, ATOMIC_SEQ_CST)
   collectorEvent()
   # Destructors run here. `Collecting` is the existing re-entrancy guard: a
   # destructor-driven dec that overflows a stripe must drain it, not start a
@@ -911,10 +929,12 @@ proc releasePending(all = false) =
   ## entry — the commit path's old blocking grace wait, merely moved.
   var i = 0
   while i < gPendingLen:
+    {.assume: gPendingLen <= YrcMaxPending.}
     let b = addr gPending[i]
     if graceSatisfied(b) or (i == 0 and (all or gPendingLen == YrcMaxPending)):
       if not graceSatisfied(b): parkUntil(graceSatisfied(b))
       freeBatch(b)
+      {.assume: i < gPendingLen and gPendingLen <= YrcMaxPending.} # freeBatch leaves gPending alone
       # keep the entries in park order; rotate the emptied buffers to the end
       let done = gPending[i]
       for k in i ..< gPendingLen - 1:
@@ -925,6 +945,7 @@ proc releasePending(all = false) =
       inc i
 
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inl.} =
+  when defined(nimony): {.enableTrace.} # tells nimony to lift `=trace` hooks
   let p = cast[ptr pointer](q)
   # read the slot exactly once: mutators may exchange it concurrently.
   # Aligned pointer loads do not tear on supported targets.
@@ -1389,6 +1410,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   template parkBatch(): bool = (if cap.recs.len == 0: false else: buildPendingWatch())
   template holdOrFree(c: Cell; d: PNimTypeV2; deferred: bool) =
     if deferred:
+      {.assume: 0 <= gPendingLen and gPendingLen < YrcMaxPending.} # buildPendingWatch's entry
       gPending[gPendingLen].cells.add(c, d)
     else:
       when orcLeakDetector:
@@ -1409,6 +1431,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
     # dead set, foreign captures never traverse our tagged cells, and a
     # parked batch is not touched until its watch list is clear).
     let deferred = parkBatch()
+    {.assume: 0 <= gPendingLen and gPendingLen < YrcMaxPending.} # buildPendingWatch's entry
     if deferred and gPending[gPendingLen].cells.d == nil:
       init gPending[gPendingLen].cells
     for i in 0 ..< cap.slots.len:
@@ -1486,6 +1509,7 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
     if j.toFree.len > 0 and buildPendingWatch():
       # park the whole batch by swapping buffers: the collection keeps the
       # (now empty) buffer the previous batch used, so neither side allocates
+      {.assume: 0 <= gPendingLen and gPendingLen < YrcMaxPending.} # buildPendingWatch's entry
       let spare = gPending[gPendingLen].cells
       gPending[gPendingLen].cells = j.toFree
       j.toFree = spare
@@ -1520,6 +1544,7 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
     acquire gMergeLock
     var slot = -1
     let inPlay = gParSlots
+    {.assume: 0 <= inPlay and inPlay <= ParSlots.} # only raised here, capped
     for sl in 0 ..< inPlay:
       if atomicLoadN(addr gActiveTags[sl], ATOMIC_RELAXED) == 0:
         slot = sl
@@ -1540,6 +1565,7 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
       drainStripe(getStripeIdx())   # the world moved while we waited
       adoptOrphans()
     else:
+      {.assume: slot < ParSlots and gParSlots <= ParSlots.} # a free slot in play, or the new one
       gTagCounter = (gTagCounter +% 1) and int64(epochBase - 1)  # tags below the stamp namespace
       if gTagCounter == 0: gTagCounter = 1
       gCtx.tag = gTagCounter
@@ -1580,6 +1606,7 @@ proc finishCollection() =
   if atomicAddFetch(addr gCollectionCounter, 1, ATOMIC_RELAXED) mod
       (YrcEpochLen * slotsInPlay()) == 0:
     discard atomicAddFetch(addr gEpoch, 1, ATOMIC_RELAXED)
+  {.assume: 0 <= gCtx.slot and gCtx.slot < MaxPar.} # claimed in startCollection
   if gCtx.parked:
     # A batch is parked under this collection's tag. Clear only the PHASE —
     # so nobody's grace check waits on us — and leave the tag in
@@ -1614,6 +1641,7 @@ proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
   for i in countdown(last, 0):
     capture(slice.d[i][0], slice.d[i][1], j, cap)
   j.touched = cap.recs.len
+  {.assume: 0 <= gCtx.slot and gCtx.slot < MaxPar.} # claimed in startCollection
   atomicStoreN(addr gSlotPhase[gCtx.slot], 2, ATOMIC_RELEASE)  # capture done
   if gCtx.amSolo:
     atomicStoreN(addr gSoloCapture, 0, ATOMIC_RELEASE)
@@ -1668,10 +1696,10 @@ proc collectCycles() =
     # context triggers the actual collection.
     drainStripe(getStripeIdx())
     return
-  var slice: CellSeq[Cell]
+  var slice = default(CellSeq[Cell])
   if startCollection(rootsThreshold, 0, slice, wait = true):
     let nRoots = slice.len
-    var j: GcEnv
+    var j = GcEnv()
     runCollection(j, slice)
     block:
       when not defined(nimStressOrc):
@@ -1723,6 +1751,7 @@ proc releaseCollectorScratch() =
   deinit(gSpareRoots)
   deinit(gTraceBuf)
   deinit(gFreeBuf)
+  {.assume: 0 <= gPendingLen.}
   for i in gPendingLen ..< YrcMaxPending:  # only the empty entries
     deinit(gPending[i].cells)
     deinit(gPending[i].watch)
@@ -1747,12 +1776,12 @@ proc GC_runOrc* =
   # one round may `rememberGenSuspect` further cells (e.g. a dying bridge
   # dropping its last edge into a stamped web), so loop until quiet.
   discard atomicAddFetch(addr gEpoch, 1, ATOMIC_RELAXED)
-  var slice: CellSeq[Cell]
+  var slice = default(CellSeq[Cell])
   while true:
     spillGenSuspects(addr gCtx)
     if not startCollection(1, 0, slice, wait = true, drainAll = true):
       break
-    var j: GcEnv
+    var j = GcEnv()
     runCollection(j, slice)
     when defined(nimOrcStats):
       # collectCycles updates this; GC_runOrc must too (tests/benches read it)
@@ -1784,9 +1813,9 @@ proc GC_prepareOrc*(): int {.inline.} =
 
 proc GC_partialCollect*(limit: int) =
   if lockState == Collecting: return
-  var slice: CellSeq[Cell]
+  var slice = default(CellSeq[Cell])
   if startCollection(limit + 1, limit, slice, wait = true):
-    var j: GcEnv
+    var j = GcEnv()
     runCollection(j, slice)
 
 proc GC_fullCollect* =
@@ -1822,6 +1851,9 @@ const acyclicFlag = 1
 when optimizedOrc:
   template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
     (desc.flags and acyclicFlag) == 0 and (s.rc and maybeCycle) != 0
+elif defined(nimony):
+  template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
+    desc != nil # nimony passes nil for a type that cannot form a cycle
 else:
   template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
     (desc.flags and acyclicFlag) == 0
@@ -1837,6 +1869,7 @@ proc enqueueDec(cell: Cell; desc: PNimTypeV2) {.inline.} =
   let idx = getStripeIdx()
   while true:
     let slot = atomicFetchAdd(addr stripes[idx].toDecLen, 1, ATOMIC_ACQ_REL)
+    {.assume: 0 <= slot.} # a reservation counter, reset to 0 only
     if slot < QueueSize:
       stripes[idx].toDec[slot][0] = cell
       atomicStoreN(addr stripes[idx].toDec[slot][1], desc, ATOMIC_RELEASE)
