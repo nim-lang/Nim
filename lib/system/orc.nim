@@ -88,7 +88,7 @@ else:
       var p = s +! sizeof(RefHeader)
       cast[TraceProc](desc.traceImpl)(p, addr(j))
 
-when logOrc or orcLeakDetector:
+when not defined(nimony): # also exports `getThreadId` to user code
   include threadids
 
 when logOrc or orcLeakDetector:
