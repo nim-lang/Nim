@@ -495,7 +495,7 @@ template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
-  return s.fds[fd.int].ident != InvalidIdent
+  return fd.int < s.numFD and s.fds[fd.int].ident != InvalidIdent
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)
