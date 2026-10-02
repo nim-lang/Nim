@@ -616,7 +616,7 @@ type
   TNodeSeq* = seq[PNode]
   PType* = ref TType
   PSym* = ref TSym
-  TNode*{.final, acyclic.} = object # on a 32bit machine, this takes 32 bytes
+  TNode*{.final.} = object # on a 32bit machine, this takes 32 bytes
     when defined(useNodeIds):
       id*: int
     typField*: PType
@@ -742,7 +742,7 @@ type
     Sealed   # complete in memory, already written to NIF file, so further mutations are not allowed
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object # Keep in sync with ast2nif.nim
+  TSym* = object # Keep in sync with ast2nif.nim
                              # Check `transitionSymKindCommon` in ast.nim when add a new field.
     itemId*: ItemId
     # proc and type instantiations are cached in the generic symbol
@@ -815,7 +815,7 @@ type
     attachedTrace,
     attachedDeepCopy
 
-  TType* {.acyclic.} = object # \
+  TType* = object # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
