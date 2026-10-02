@@ -210,6 +210,14 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       if t.sym != nil: c.hashSym(t.sym)
       if t.sym == nil or tfFromGeneric in t.flags:
         c.hashType t.elementType, flags, conf
+    elif CoType in flags and t.sym != nil and
+        {sfImportc, sfExportc} * t.sym.flags != {}:
+      # An external distinct type keeps its own backend spelling.
+      c &= char(t.kind)
+      if t.sym.loc.snippet != "":
+        c &= t.sym.loc.snippet
+      else:
+        c.hashSym(t.sym)
     elif CoType in flags or t.sym == nil:
       c.hashType t.elementType, flags, conf
     else:
