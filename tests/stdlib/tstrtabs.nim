@@ -115,3 +115,13 @@ block:
   x.clear(modeCaseInsensitive)
   x["11"] = "22"
   doAssert x["11"] == "22"
+
+block: # clear releases the strings held by the emptied slots
+  var t = newStringTable()
+  t["foo"] = newString(4_000_000)
+  GC_fullCollect()
+  let occupied = getOccupiedMem()
+  t.clear()
+  doAssert t.len == 0
+  GC_fullCollect()
+  doAssert occupied - getOccupiedMem() > 1_000_000
