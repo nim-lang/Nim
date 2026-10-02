@@ -2505,6 +2505,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   openScope(c)
   let oldOwnerLen = c.graph.owners.len
   let oldGenerics = c.generics
+  let oldCache = c.graph.procInstCache
   let oldErrorOutputs = c.config.m.errorOutputs
   if efExplain notin flags: c.config.m.errorOutputs = {}
   let oldContextLen = msgs.getInfoContextLen(c.config)
@@ -2526,6 +2527,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # undo symbol table changes (as far as it's possible):
   c.compilesContextId = oldCompilesId
   c.generics = oldGenerics
+  c.graph.procInstCache = oldCache
   c.inGenericContext = oldInGenericContext
   c.inUnrolledContext = oldInUnrolledContext
   c.inGenericInst = oldInGenericInst
