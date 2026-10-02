@@ -235,7 +235,7 @@ when defined(createNimHcr):
 
   {.pragma: nimhcr, compilerproc, exportc, dynlib.}
 
-  # XXX these types are CPU specific and need ARM etc support
+  const Arm64Jumps = defined(musl) and hostCPU == "arm64"
   type
     ShortJumpInstruction {.packed.} = object
       opcode: byte
@@ -245,9 +245,26 @@ when defined(createNimHcr):
       opcode1: byte
       opcode2: byte
       offset: int32
+      when Arm64Jumps:
+        padding: uint16
       absoluteAddr: pointer
 
   proc writeJump(jumpTableEntry: ptr LongJumpInstruction, targetFn: pointer) =
+    ## Writes a jump to the current procedure implementation.
+    when Arm64Jumps:
+      proc clearCache(first, last: pointer) {.
+        importc: "__builtin___clear_cache", nodecl, raises: [].}
+        ## Flushes the instruction cache after writing a jump.
+
+      # Load the target address at offset eight, then branch to it in X16.
+      let instructions = cast[ptr array[2, uint32]](jumpTableEntry)
+      instructions[][0] = 0x58000050'u32
+      instructions[][1] = 0xd61f0200'u32
+      jumpTableEntry.absoluteAddr = targetFn
+      let first = cast[pointer](jumpTableEntry)
+      clearCache(first, first.shift(sizeof(LongJumpInstruction)))
+      return
+
     let
       jumpFrom = jumpTableEntry.shift(sizeof(ShortJumpInstruction))
       jumpDistance = distance(jumpFrom, targetFn)
@@ -428,7 +445,11 @@ when defined(createNimHcr):
     else:
       modules[name] = newModuleDesc()
 
-    let copiedName = name & ".copy." & dllExt
+    let copiedName =
+      when defined(musl):
+        name & ".copy." & $generation & "." & dllExt
+      else:
+        name & ".copy." & dllExt
     copyFileWithPermissions(name, copiedName)
 
     let lib = loadLib(copiedName)

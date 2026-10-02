@@ -43,7 +43,10 @@ import std/os
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-when not defined(windows):
+when defined(musl):
+  type EncodingConverter* {.importc: "iconv_t", header: "<iconv.h>".} = pointer
+    ## Can convert between two character sets.
+elif not defined(windows):
   type
     ConverterObj = object
     EncodingConverter* = ptr ConverterObj ## Can convert between two character sets.
@@ -313,7 +316,7 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
-  when defined(bsd):
+  when defined(bsd) or defined(musl):
     {.pragma: importIconv, cdecl, header: "<iconv.h>".}
     when defined(openbsd):
       {.passL: "-liconv".}
