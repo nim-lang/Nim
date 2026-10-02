@@ -2484,6 +2484,15 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
      newTreeI(nkCall, n.info, quotes))
   result = semExpandToAst(c, result)
 
+proc clearCompilesInstantiationCache(c: PContext) =
+  for instPair in c.generics.items:
+    let symInsts = addr c.graph.procInstCache[instPair.genericSym.itemId]
+    for i, symInst in symInsts[]:
+      if symInst == instPair.inst:
+        assert symInst.compilesId == c.compilesContextId
+        delete(symInsts[], i)
+        break
+
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
   when defined(nimsuggest):
@@ -2505,7 +2514,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   openScope(c)
   let oldOwnerLen = c.graph.owners.len
   let oldGenerics = c.generics
-  let oldCache = c.graph.procInstCache
+  #let oldCache = c.graph.procInstCache
   let oldErrorOutputs = c.config.m.errorOutputs
   if efExplain notin flags: c.config.m.errorOutputs = {}
   let oldContextLen = msgs.getInfoContextLen(c.config)
@@ -2525,9 +2534,10 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   except ERecoverableError:
     result = nil
   # undo symbol table changes (as far as it's possible):
+  clearCompilesInstantiationCache(c)
   c.compilesContextId = oldCompilesId
   c.generics = oldGenerics
-  c.graph.procInstCache = oldCache
+  #c.graph.procInstCache = oldCache
   c.inGenericContext = oldInGenericContext
   c.inUnrolledContext = oldInUnrolledContext
   c.inGenericInst = oldInGenericInst
