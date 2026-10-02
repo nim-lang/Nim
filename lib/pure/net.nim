@@ -984,6 +984,9 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
               errStr.add "in the BIO layer"
             else:
               let errStr = $ERR_error_string(sslErr, nil)
+              when defined(musl):
+                if osErr != 0.OSErrorCode:
+                  raiseOSError(osErr, errStr)
               raiseSSLError(errStr & ": " & errStr)
             raiseOSError(osErr, errStr)
         of SSL_ERROR_SSL:
