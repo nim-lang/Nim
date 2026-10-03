@@ -1460,6 +1460,7 @@ proc parseTypeDesc(p: var Parser, fullExpr = false): PNode =
 proc parseTypeDefValue(p: var Parser): PNode =
   #| typeDefValue = ((tupleDecl | enumDecl | objectDecl | conceptDecl |
   #|                  ('ref' | 'ptr' | 'distinct') (tupleDecl | objectDecl))
+  #|                / whenExpr
   #|                / (simpleExpr (exprEqExpr ^+ comma postExprBlocks?)?))
   #|                ('not' primary)?
   case p.tok.tokType
@@ -1475,6 +1476,8 @@ proc parseTypeDefValue(p: var Parser): PNode =
       result = parseObject(p)
   of tkConcept:
     result = parseTypeClass(p)
+  of tkWhen:
+    result = parseExpr(p)
   else:
     result = simpleExpr(p, pmTypeDef)
     if p.tok.tokType != tkNot:
