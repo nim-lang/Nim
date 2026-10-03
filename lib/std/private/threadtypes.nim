@@ -166,9 +166,9 @@ type
     core*: PGcThread
     sys*: SysThread
     when TArg is void:
-      dataFn*: proc () {.nimcall, gcsafe.}
+      dataFn*: proc () {.thread, nimcall, gcsafe.}
     else:
-      dataFn*: proc (m: TArg) {.nimcall, gcsafe.}
+      dataFn*: proc (m: TArg) {.thread, nimcall, gcsafe.}
       data*: TArg
     when hasAllocStack:
       rawStack*: pointer
