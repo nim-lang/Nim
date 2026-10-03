@@ -330,43 +330,86 @@ func parseUri*(uri: string): Uri =
   result = initUri()
   parseUri(uri, result)
 
-func removeDotSegments(path: string): string =
-  ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
-  ## Caution: this is buggy.
-  runnableExamples:
-    assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7/"
-    assert removeDotSegments("http://www.ai.") == "http://www.ai."
-  # xxx adapt or reuse `pathnorm.normalizePath(path, '/')` to make this more reliable, but
-  # taking into account url specificities such as not collapsing leading `//` in scheme
-  # `https://`. see `turi` for failing tests.
-  if path.len == 0: return ""
-  var collection: seq[string] = @[]
-  let endsWithSlash = path.endsWith '/'
-  var i = 0
-  var currentSegment = ""
-  while i < path.len:
-    case path[i]
-    of '/':
-      collection.add(currentSegment)
-      currentSegment = ""
-    of '.':
-      if i+2 < path.len and path[i+1] == '.' and path[i+2] == '/':
-        if collection.len > 0:
-          discard collection.pop()
-        i.inc 3
-        continue
-      elif i + 1 < path.len and path[i+1] == '/':
-        i.inc 2
-        continue
-      currentSegment.add path[i]
-    else:
-      currentSegment.add path[i]
-    i.inc
-  if currentSegment != "":
-    collection.add currentSegment
 
-  result = collection.join("/")
-  if endsWithSlash: result.add '/'
+  
+func removeDotSegments(path: string): string =
+  ## Collapses `..` and `.` in `path` according to http://tools.ietf.org/html/rfc3986#section-5.2.4
+  ## NOTE: Operates on paths, not URLs.
+
+  runnableExamples:
+    assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7//"
+    assert removeDotSegments("a/../../.././b") == "/b"
+    assert removeDotSegments("a/b.../c") == "a/b.../c"
+    assert removeDotSegments("a/b../c") == "a/b../c"
+    assert removeDotSegments("a/.../c") == "a/.../c"
+    assert removeDotSegments("a//../b") == "a/b"
+    assert removeDotSegments("a/b/c//") == "a/b/c//"
+    
+  let l = path.len
+  if l == 0: return ""
+
+  # Single allocation up front for the output path
+  result = newStringOfCap(l)
+  var i = 0
+  
+  while i < l:
+    let remaining = l - i
+
+    # 1A & 1D. Handle prefix/isolated "../", "./", "..", "."
+    if path[i] == '.':
+      if remaining >= 3 and path[i+1] == '.' and path[i+2] == '/':
+        i += 3
+        continue
+      if remaining >= 2 and path[i+1] == '/':
+        i += 2
+        continue
+      if remaining == 1:
+        break
+      if remaining == 2 and path[i+1] == '.':
+        break
+
+    # 1B & 1C. Handle prefix/isolated "/./", "/.", "/../", "/.."
+    if path[i] == '/':
+      # Check for variations of '.' after the slash
+      if remaining >= 2 and path[i+1] == '.':
+        # Path segment is exactly "/." or prefix "/./"
+        if remaining == 2:
+          if result.len == 0 or result[^1] != '/': result.add('/')
+          break
+        if path[i+2] == '/':
+          i += 2 # Skip the '/.' but preserve the trailing '/'
+          continue
+        
+        # Path segment is exactly "/.." or prefix "/../"
+        if path[i+2] == '.':
+          if remaining == 3:
+            # Pop last segment from output buffer
+            let lastSlash = result.rfind('/')
+            if lastSlash != -1: result.setLen(lastSlash)
+            else: result.setLen(0)
+            if result.len == 0 or result[^1] != '/': result.add('/')
+            break
+          if path[i+3] == '/':
+            let lastSlash = result.rfind('/')
+            if lastSlash != -1: result.setLen(lastSlash)
+            else: result.setLen(0)
+            i += 3 # Skip the '/..' but preserve the trailing '/'
+            continue
+
+    # 1E. Move the first path segment from input to output using optimized bulk copies
+    var endIdx = i
+    if path[endIdx] == '/':
+      inc(endIdx)
+      
+    let nextSlash = path.find('/', endIdx)
+    if nextSlash != -1:
+      endIdx = nextSlash
+    else:
+      endIdx = l    
+    
+    # Fast bulk slice copy rather than single-character looping
+    result.add(path[i ..< endIdx])
+    i = endIdx
 
 func merge(base, reference: Uri): string =
   # http://tools.ietf.org/html/rfc3986#section-5.2.3
