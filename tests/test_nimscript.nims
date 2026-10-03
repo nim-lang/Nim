@@ -134,8 +134,16 @@ block:  # cpDir, cpFile, dirExists, fileExists, mkDir, mvDir, mvFile, rmDir, rmF
   rmDir(dname)
 
 block:
-  # check parseopt can get command line:
-  discard initOptParser()
+  # parsing live input tested in misc/trunner
+  let cmdParams = commandLineParams()
+  doAssert cmdParams.len == 0, "commandLineParams should strip compiler args"
+  var parsed: seq[string]
+  var p = initOptParser()
+  for _, key, val  in p.getopt():
+    parsed.add key
+    parsed.add val
+  doAssert parsed.len == 0, "initOptParser should strip compiler args"
+  doAssert parsed == cmdParams, "initOptParser.getopt != commandLineParams"
 
 # issue #24780:
 
