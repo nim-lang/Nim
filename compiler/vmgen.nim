@@ -1834,6 +1834,13 @@ proc genArgInto(c: PCtx; arg: PNode; pt: PType; slot: TRegister; isMacro: bool) 
     let v = c.genx(arg)
     c.gABCW(arg, opcToNode, slot, v, 0, uint64(typeHandle(c, arg.typ)))
     c.freeTemp(v)
+  elif isMacro and pt.kind != tyTypeDesc and mk(c, pt) != mkNode and
+      arg.typ != nil and isNimNodeType(arg.typ.skipTypes(abstractInst)):
+    # `getAst(m(x))` with an AST `x` for a `static` parameter of `m`: the
+    # literal becomes a value
+    let v = c.genx(arg)
+    c.gABCW(arg, opcFromNode, slot, v, 0, uint64(typeHandle(c, pt)))
+    c.freeTemp(v)
   else:
     gen(c, arg, slot)
 
@@ -2824,7 +2831,19 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
       genUnaryABC(c, n, dest, opcSetCard)
   of mInSet:
     let setType = n[1].typ.skipTypes(abstractVar)
+    var elem = n[2]
+    while elem.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and elem.len == 2: elem = elem[1]
+    if elem.kind in nkCallKinds and elem[0].kind == nkSym and
+        elem[0].sym.magic == mNGetType and elem[0].sym.name.s == "typeKind" and
+        n[1].kind == nkCurly and n[1].len > 0:
+      # the old VM left the result register of `typeKind` untouched for an
+      # untyped node and it happened to hold the set's element, so
+      # `n.typeKind in {...}` was true. Macros like unittest2's `check` rely
+      # on this.
+      let first = if n[1][0].kind == nkRange: n[1][0][0] else: n[1][0]
+      c.typeKindDefault = toInt(getOrdValue(first)) + 1
     let e = genSetElem(c, n[2], setType)
+    c.typeKindDefault = 0
     if dest < 0: dest = c.getIntTemp()
     if isBigSet(c, setType):
       var loc = genValueAddr(c, n[1])
@@ -3267,7 +3286,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
       of "getTypeInst": 2
       of "getTypeImpl": 3  # "getTypeImpl"
       else: 4 # getTypeInstSkipAlias
-    c.gABC(n, opcNGetType, dest, tmp, TRegister(rc))
+    c.gABC(n, opcNGetType, dest, tmp, TRegister(rc),
+           x = (if rc == 1: c.typeKindDefault else: 0))
     c.freeTemp(tmp)
   of mNSizeOf:
     let imm = case n[0].sym.name.s:

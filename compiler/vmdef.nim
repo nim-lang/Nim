@@ -205,6 +205,7 @@ type
     # NimNode and typedesc handles; strings are passed by address:
     opcNLen,        # regs[A] = len(node regs[B])
     opcToNode,      # regs[A] = the value in register(s) B of type W as a literal NimNode
+    opcFromNode,    # register(s) A = the NimNode in register B as a value of type W
     opcNAdd,
     opcNAddMultiple,
     opcNKind,
@@ -347,6 +348,7 @@ type
   TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
     lastEof*: int ## position of the last `opcEof`; -1 if there is none
+    typeKindDefault*: int # 1 + the result of `typeKind` for an untyped node; 0 for `ntyNone`
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation
     mem*: VmMemory          # all memory of the VM
@@ -447,7 +449,7 @@ const
     opcBSetUnion, opcBSetInter, opcBSetDiff, opcBSetXor,
     opcBSetEq, opcBSetLe, opcBSetLt,
     opcSeqNew, opcSeqSetLen, opcSeqGrowOne, opcSeqData, opcSeqCopyPayload,
-    opcNewRef, opcInitObj, opcOf, opcIs, opcRepr, opcSlice, opcNDynBindSym, opcToNode,
+    opcNewRef, opcInitObj, opcOf, opcIs, opcRepr, opcSlice, opcNDynBindSym, opcToNode, opcFromNode,
     opcUnshare,
     opcNctNext
     }
