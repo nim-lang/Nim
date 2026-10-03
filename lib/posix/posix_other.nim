@@ -176,6 +176,8 @@ type
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = PosixUInt
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
+  # The headers supply the native pthread layouts, so these opaque objects
+  # cannot promise a completeStruct layout.
   Pthread_attr* {.importc: "pthread_attr_t",
     header: "<pthread.h>", pure, final.} = object
   Pthread_barrier* {.importc: "pthread_barrier_t",

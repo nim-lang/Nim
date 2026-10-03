@@ -1,7 +1,7 @@
 discard """
   disabled: "windows"
   targets: "c cpp"
-  matrix: "--mm:orc; --mm:refc"
+  matrix: "--mm:orc; --mm:refc; --mm:orc -d:checkAbi"
 """
 
 when defined(linux) and sizeof(int) == 8:
@@ -12,17 +12,24 @@ when defined(linux) and sizeof(int) == 8:
     ## Reads the size of the header-defined C type.
 
   template check(typ: typedesc) =
-    ## Compares Nim's runtime size with the C header.
+    ## Checks modeled layouts at compile time and opaque layouts at runtime.
     block:
-      var value: typ
-      echo $typ, ": ", sizeof(typ), " / ", nativeSize(value)
-      doAssert sizeof(typ) == int(nativeSize(value))
+      var value {.volatile.}: typ
+      when defined(checkAbi) and compiles(static(sizeof(typ))):
+        discard addr value
+      else:
+        echo $typ, ": ", sizeof(typ), " / ", nativeSize(value)
+        doAssert sizeof(typ) == int(nativeSize(value))
 
-  check(Off)
-  check(posix.Time)
-  check(SockLen)
-  check(Stat)
-  check(Sigset)
+  when not defined(checkAbi):
+    # Keep the additional compiler ABI checks focused on pthread layouts.
+    check(Off)
+    check(posix.Time)
+    check(SockLen)
+    check(Stat)
+    check(Sigset)
+    check(Sockaddr_in)
+    check(Sockaddr_in6)
   check(Pthread_attr)
   check(Pthread_barrierattr)
   check(Pthread_condattr)
@@ -32,8 +39,6 @@ when defined(linux) and sizeof(int) == 8:
   check(Pthread_cond)
   check(Pthread_rwlock)
   check(Pthread_barrier)
-  check(Sockaddr_in)
-  check(Sockaddr_in6)
 
   block:
     type Guarded = object
