@@ -1063,7 +1063,8 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode): Loc =
   c.genLit(strLit, msgReg)
   let ma = c.getIntTemp()
   c.gABC(n, opcAddrSlot, ma, msgReg)
-  c.gABC(n, opcInvalidField, ma, discVal)
+  # the discriminant's type renders its value, `k3` instead of `3`:
+  c.gABCW(n, opcInvalidField, ma, discVal, 0, uint64(typeHandle(c, disc.sym.typ)))
   c.freeTemp(ma)
   c.freeTemp(discVal)
   c.freeTemp(msgReg)

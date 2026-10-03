@@ -451,7 +451,7 @@ const
     opcSeqNew, opcSeqSetLen, opcSeqGrowOne, opcSeqData, opcSeqCopyPayload,
     opcNewRef, opcInitObj, opcOf, opcIs, opcRepr, opcSlice, opcNDynBindSym, opcToNode, opcFromNode,
     opcUnshare,
-    opcNctNext
+    opcNctNext, opcInvalidField
     }
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
