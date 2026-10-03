@@ -13,7 +13,7 @@
 import
   ast, modules, idents, condsyms,
   options, llstream, vm, vmdef, commands,
-  wordrecg, modulegraphs,
+  wordrecg, modulegraphs, lineinfos,
   pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
@@ -221,8 +221,13 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   graph.vm = vm
 
   graph.setPipeLinePass(EvalPass)
-  graph.compilePipelineSystemModule()
-  discard graph.processPipelineModule(m, vm.idgen, stream)
+  try:
+    graph.compilePipelineSystemModule()
+    discard graph.processPipelineModule(m, vm.idgen, stream)
+  except ERecoverableError:
+    # IDE tooling must still start with an invalid config script. Continue with
+    # the settings evaluated so far, restoring the non-script state below.
+    if not conf.ideActive: raise
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
