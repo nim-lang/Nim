@@ -976,7 +976,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if sfCompileTime in v.flags:
           var x = newNodeI(result.kind, v.info)
           x.add result[i]
-          vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
+          vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x, c)
         if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
           message(c.config, v.info, hintGlobalVar)
         if {sfGlobal, sfPure} <= v.flags:
@@ -1036,6 +1036,8 @@ proc semConst(c: PContext, n: PNode): PNode =
         typFlags.incl taConcept
       typeAllowedCheck(c, a.info, typ, skConst, typFlags)
     closeScope(c)
+    when defined(nimVmRoundtripCheck):
+      vmvalue.vmRoundtripCheck(c.config, def, typ)
 
     if a.kind == nkVarTuple:
       # generate new section from tuple unpacking and embed it into this one
@@ -3157,7 +3159,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   dec c.inStaticContext
   n[0] = a
   if c.config.errorCounter == oldErrorCount:
-    evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner)
+    evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner, c)
   when false:
     # for incremental replays, keep the AST as required for replays:
     result = n

@@ -1118,7 +1118,11 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
+    if t.sym != nil and t.sym.magic == mPNimrodNode:
+      # NimNodes only exist at compile time; the VM represents them as
+      # handles, there is nothing to count:
+      defaultOp(c, t, body, x, y)
+    elif c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       atomicRefOp(c, t, body, x, y)
     elif (optOwnedRefs in c.g.config.globalOptions and
         optRefCheck in c.g.config.options):
@@ -1462,6 +1466,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+
   # IC: review this solution again later
   orig.inclDerived {tfCheckedForDestructor}
   # for user defined generic destructors:
