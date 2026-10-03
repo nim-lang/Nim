@@ -1010,14 +1010,14 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #echo "NOW evaluating at compile time: ", call.renderTree
     if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
       if sfCompileTime in callee.flags:
-        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner)
+        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner, c)
         if result.isNil:
           localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
         else:
           var producedClosure = false
           result = fixupTypeAfterEval(c, result, n, producedClosure)
       else:
-        result = evalConstExpr(c.module, c.idgen, c.graph, call)
+        result = evalConstExpr(c.module, c.idgen, c.graph, call, c)
         if result.isNil: result = n
         else:
           var producedClosure = false
@@ -1037,7 +1037,7 @@ proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if a.findUnresolvedStatic != nil or
       c.config.errorCounter != oldErrorCount:
     return a
-  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner, c)
   if result.isNil:
     localError(c.config, n.info, errCannotInterpretNodeX % renderTree(n))
     result = c.graph.emptyNode

@@ -233,6 +233,22 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
+  if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
+    # The VM does not lift hooks: that could conflict with hooks that are
+    # declared later. It implements these magics with value semantics instead:
+    const fallbacks: array[TTypeAttachedOp, (TMagic, string)] = [
+      attachedWasMoved: (mWasMoved, "=wasMoved"),
+      attachedDestructor: (mDestroy, "=destroy"),
+      attachedAsgn: (mAsgn, "=copy"),
+      attachedDup: (mDup, "=dup"),
+      attachedSink: (mAsgn, "=sink"),
+      attachedTrace: (mTrace, "=trace"),
+      attachedDeepCopy: (mAsgn, "=deepcopy")]
+    let (m, name) = fallbacks[kind]
+    var addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+    addrExp.add(dest)
+    return newTree(nkCall, newSymNode(createMagic(c.graph, c.idgen, name, m)),
+                   if kind == attachedDup: dest else: addrExp)
   if op == nil or op.ast.isGenericRoutine:
     # IC: injectDestructorCalls is demand-driven and runs HERE (cg), not in the
     # `lower` stage, so a structural, env-agnostic op the lower stage never had
@@ -1152,6 +1168,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 1..<n.len:
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
+      result = n
+    of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym:
+      # only in code that runs in the VM: `bindSym` arguments
       result = n
     of nkReplayAction:
       # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded
