@@ -64,6 +64,14 @@ proc isAccessorPrefixOf(a, b: PNode): bool =
     else: discard
   result = sameLocation(cur, a)
 
+proc isPlainLocation(n: PNode): bool =
+  ## A plain symbol value cannot read through the destination. Any alias with
+  ## the destination itself is handled by the forward check.
+  var n = n
+  while n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}:
+    n = n[1]
+  n.kind == nkSym
+
 proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult
 
 proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
@@ -276,7 +284,7 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
         if res != arNo:
           result = res
           if res == arYes: break
-        if pfBidirectional in flags:
+        if pfBidirectional in flags and not isPlainLocation(b[i][1]):
           let res2 = isPartOf(b[i][1], a, {pfStructural})
           if res2 != arNo:
             result = res2
