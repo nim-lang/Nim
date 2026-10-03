@@ -1843,6 +1843,11 @@ proc genArgInto(c: PCtx; arg: PNode; pt: PType; slot: TRegister; isMacro: bool) 
     let v = c.genx(arg)
     c.gABCW(arg, opcFromNode, slot, v, 0, uint64(typeHandle(c, pt)))
     c.freeTemp(v)
+  elif arg.kind == nkCurly and arg.len == 0 and ptk.kind == tySet:
+    # `{}` can still have the type `set[empty]`; it gets the parameter's:
+    let a = copyNode(arg)
+    a.typ = ptk
+    gen(c, a, slot)
   else:
     gen(c, arg, slot)
 
@@ -2777,6 +2782,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
       c.freeTemp(a)
       return
     let t = n[1].typ.skipTypes(abstractVarRange+{tyOwned}-{tyTypeDesc})
+    if t.kind == tyArray:
+      # an inlined iterator over a `varargs` that `transf` turned into an
+      # array temporary:
+      if dest < 0: dest = c.getIntTemp()
+      genLdImm(c, n, dest, toInt64(lengthOrd(c.config, t)))
+      return
     var loc = genLoc(c, n[1])
     loc.typ = n.typ
     loc.widened = false
@@ -3766,8 +3777,11 @@ proc vmInjectDestructors(c: PCtx; owner: PSym; n: PNode): PNode =
   let oldProcGlobals = c.graph.procGlobals.len
   let n = resolveNimvm(copyTree(n))
   # `injectDestructorCalls` drops the declarations of compile-time variables
-  # since the backend has no use for them. But the VM has:
+  # since the backend has no use for them. But the VM has.
+  # The locals of a `static` block inside a proc are owned by the proc but
+  # `injectDestructorCalls` only treats the locals of `owner` as locals:
   var ctVars: seq[PSym] = @[]
+  var reowned: seq[(PSym, PSym)] = @[]
   proc collectCtVars(n: PNode; res: var seq[PSym]) =
     case n.kind
     of nkVarSection, nkLetSection:
@@ -3776,6 +3790,12 @@ proc vmInjectDestructors(c: PCtx; owner: PSym; n: PNode): PNode =
           for j in 0..<it.len-2:
             let v = if it[j].kind == nkPragmaExpr: it[j][0] else: it[j]
             if v.kind == nkSym and sfCompileTime in v.sym.flags: res.add v.sym
+            if v.kind == nkSym and owner.kind == skModule and
+                v.sym.owner != nil and v.sym.owner != owner and
+                v.sym.owner.kind != skModule and not v.sym.isGlobal:
+              reowned.add (v.sym, v.sym.owner)
+              v.sym.setOwner owner
+          collectCtVars(it[^1], res)
     of nkNone..nkNilLit, nkLambdaKinds, nkTypeSection, nkConstSection,
        nkTemplateDef, nkMacroDef, nkMethodDef, nkProcDef, nkFuncDef,
        nkConverterDef, nkIteratorDef:
@@ -3786,6 +3806,7 @@ proc vmInjectDestructors(c: PCtx; owner: PSym; n: PNode): PNode =
   for v in ctVars: v.flagsImpl.excl sfCompileTime
   defer:
     for v in ctVars: v.flagsImpl.incl sfCompileTime
+    for (v, o) in reowned: v.setOwner o
   let oldInjecting = c.graph.vmInjecting
   c.graph.vmInjecting = true
   result = injectDestructorCalls(c.graph, c.idgen, owner, n)
@@ -3928,6 +3949,14 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
       let info = p.locals[ps.itemId]
       if info.inMemory:
         c.gABC(body, opcStSlot, info.slot, 0, info.slot, ord(mk(c, L.paramTypes[i-1])))
+    # `result` starts with valid type headers (like in the C backend), also
+    # when it is only assigned field by field:
+    if ret != nil and s.ast != nil and s.ast.len > resultPos and
+        s.ast[resultPos].kind == nkSym and needsInitObj(c, ret):
+      var loc = symLoc(c, s.ast[resultPos])
+      let a = addrOfLoc(c, body, loc)
+      c.gABCW(body, opcInitObj, a, 0, 0, uint64(typeHandle(c, ret)))
+      c.freeLoc(loc)
     gen(c, body)
     # generate final 'return' statement:
     genRet(c, body)

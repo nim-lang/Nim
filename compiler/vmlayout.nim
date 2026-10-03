@@ -112,6 +112,7 @@ proc setSize*(conf: ConfigRef; t: PType): int =
   ## Size of a set type in bytes. Sets of up to 64 elements are stored as an
   ## integer of the smallest fitting size, larger sets as a byte array.
   ## Invalid set types (with too many elements) have the size 0.
+  if t.elementType.kind == tyEmpty: return 1 # the type of `{}`
   let length = toInt64(lengthOrd(conf, t.elementType))
   if length < 0 or length > MaxSetElements: return 0
   if length <= 8: result = 1

@@ -321,16 +321,20 @@ type
     vc: ValueConv
     info: TLineInfo
     onPath: IntSet  # ref cells currently being loaded; detects cycles
-    zeros: seq[byte]
+    zeros: seq[seq[byte]] # zeroed host memory for inactive branches; one
+                          # buffer per use so that addresses stay valid
+    inZeros: int          # > 0 while loading from `zeros`
 
 proc loadValue(L: var Loader; src: Address; t: PType): PNode
 
 proc zeroArea(L: var Loader; size: int): Address =
-  if L.zeros.len < size: L.zeros.setLen size
-  result = if size == 0: Address(0) else: toAddr(addr L.zeros[0])
+  if size == 0: return Address(0)
+  L.zeros.add newSeq[byte](size)
+  result = toAddr(addr L.zeros[^1][0])
 
 proc checkRead(L: var Loader; a: Address; size: int) =
-  if not canRead(L.vc.mem[], a, size):
+  # zeroed host memory is not VM memory, but it is readable:
+  if L.inZeros == 0 and not canRead(L.vc.mem[], a, size):
     valueError(L.vc, L.info, "VM produced a value that refers to invalid memory")
 
 proc loadFields(L: var Loader; src: Address; objType: PType; n: PNode;
@@ -356,7 +360,10 @@ proc loadFields(L: var Loader; src: Address; objType: PType; n: PNode;
       else:
         # fields of inactive branches overlap with the active ones: their
         # bits are meaningless, so produce the default value instead.
-        loadValue(L, zeroArea(L, vmSizeOf(L.vc.layouts[], L.vc.conf, f.typ)), f.typ)
+        inc L.inZeros
+        let v = loadValue(L, zeroArea(L, vmSizeOf(L.vc.layouts[], L.vc.conf, f.typ)), f.typ)
+        dec L.inZeros
+        v
     value.flags.incl nfSkipFieldChecking
     var colon = newNodeI(nkExprColonExpr, L.info)
     colon.add newSymNode(f, L.info)

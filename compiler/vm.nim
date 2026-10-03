@@ -556,7 +556,10 @@ proc enumToStr(t: PType; x: BiggestInt): string =
     result = t.sym.name.s & " " & $x
 
 proc toStr(c: PCtx; v: int64; t: PType): string =
-  let t = t.skipTypes(abstractRange)
+  var t = t.skipTypes(abstractRange)
+  # `$Name` for a `Name: static Algebra` generic parameter of a macro:
+  while t.kind in {tyStatic, tyGenericParam} and t.hasElementType:
+    t = t.last.skipTypes(abstractRange)
   case t.kind
   of tyEnum: enumToStr(t, v)
   of tyInt..tyInt64: $v
@@ -2284,6 +2287,15 @@ proc setupMacroParam(c: PCtx; x: PNode; typ: PType; dest: Address) =
     n.typ = x.typ
     st[int64](dest, nodeHandle(c.mem, n))
 
+proc unshareTree(n: PNode; seen: var IntSet): PNode =
+  ## The old VM copied a NimNode from the macro's input whenever it was
+  ## assigned and macros rely on it: a node that a macro uses twice must
+  ## become two trees, since sem transforms them in place.
+  if seen.containsOrIncl(cast[int](n)): return copyTree(n)
+  result = n
+  for i in 0..<n.safeLen:
+    if n[i] != nil: n[i] = unshareTree(n[i], seen)
+
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym; semCtx: PPassContext = nil): PNode =
   #if g.config.errorCounter > 0: return errorNode(idgen, module, n)
@@ -2350,6 +2362,8 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
       result = newNodeI(nkEmpty, n.info)
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")
+  var seen = initIntSet()
+  result = unshareTree(result, seen)
   dec(g.config.evalMacroCounter)
   c.callsite = nil
   c.mode = oldMode
