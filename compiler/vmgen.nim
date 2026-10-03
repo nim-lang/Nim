@@ -1449,7 +1449,7 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
 proc leaveTries(c: PCtx; n: PNode; tryDepth: int) =
   ## `break` leaves `try` statements: their safepoints are popped and their
   ## `finally` sections run, innermost first.
-  let tries = c.prc.tries
+  var tries = c.prc.tries # `var`: `let` would alias the seq under `--mm:refc`
   for j in countdown(tries.high, tryDepth):
     if tries[j].hasSafePoint:
       c.gABx(n, opcFinally, 0, 0)
