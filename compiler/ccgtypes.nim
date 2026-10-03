@@ -341,7 +341,7 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   result = tab.getOrDefault(sig)
 
 proc addAbiCheck(m: BModule; t: PType, name: Rope) =
-  if isDefined(m.config, "checkAbi") and (let size = getSize(m.config, t); size != szUnknownSize) and
+  if not isDefined(m.config, "noCheckAbi") and (let size = getSize(m.config, t); size != szUnknownSize) and
     not (t.kind == tyObject and searchTypeFor(t, proc (t: PType): bool {.nimcall.} = t.kind == tyUncheckedArray)):
     # `UncheckedArray`, not `ptr UncheckedArray` type field in object types is a flexible array.
     # `sizeof` in C and Nim doesn't always return the same value for object types containing it.
