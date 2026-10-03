@@ -3838,6 +3838,8 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
     c.gABC(n, opcEof, TRegister(slot), x = ord(boxed))
     return
   let n = if requiresValue: n else: prepareTopLevel(c, n)
+  # locals whose address is taken must live in memory:
+  if requiresValue: collectAddrTaken(c, n, c.prc.addrTaken)
   var d: TDest = -1
   c.gen(n, d)
   if d < 0:
