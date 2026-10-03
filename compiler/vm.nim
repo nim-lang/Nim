@@ -288,6 +288,7 @@ proc seqSetLen(c: PCtx; s: Address; newLen, esize, ealign: int): bool =
 
 proc initObj(c: PCtx; a: Address; t: PType) =
   let t = skipForLayout(t)
+  if isNimNodeType(t): return
   case t.kind
   of tyObject:
     var root = t

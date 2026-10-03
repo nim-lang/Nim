@@ -260,6 +260,7 @@ proc packAddr(w1, w2: int): uint64 = uint64(w1) or (uint64(w2) shl 32)
 proc needsInitObj(c: PCtx; t: PType; marker: var IntSet): bool =
   ## does a zeroed value of type `t` need type headers to be set?
   let t = skipForLayout(t)
+  if isNimNodeType(t): return false
   case t.kind
   of tyObject:
     var root = t

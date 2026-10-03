@@ -73,10 +73,6 @@ const
 proc alignTo*(address, alignment: int): int {.inline.} =
   result = (address + alignment - 1) and not (alignment - 1)
 
-proc isNimNodeType*(t: PType): bool {.inline.} =
-  ## `NimNode` is a `ref` type in system.nim but the VM stores it as a handle.
-  t.kind == tyRef and t.sym != nil and t.sym.magic == mPNimrodNode
-
 proc skipForLayout*(t: PType): PType =
   result = t
   while true:
@@ -127,6 +123,7 @@ proc setSize*(conf: ConfigRef; t: PType): int =
 proc memKind*(conf: ConfigRef; t: PType): MemKind =
   ## How a value of type `t` is loaded from/stored to memory.
   let t = skipForLayout(t)
+  if isNimNodeType(t): return mkNode
   case t.kind
   of tyBool, tyChar, tyUInt8: result = mkU8
   of tyInt8: result = mkI8
@@ -155,7 +152,7 @@ proc memKind*(conf: ConfigRef; t: PType): MemKind =
     of 8: result = mkU64
     else: result = mkBlock
   of tyRef:
-    result = if isNimNodeType(t): mkNode else: mkPtr
+    result = mkPtr
   of tyTypeDesc, tyUntyped, tyTyped:
     result = mkNode
   of tyPtr, tyPointer, tyCstring, tyNil, tyVar, tyLent:
@@ -284,6 +281,9 @@ proc computeLayout(c: var LayoutCache; conf: ConfigRef; t: PType): VmLayout =
   template scalar(s: int) =
     result = VmLayout(size: s, align: s)
 
+  if isNimNodeType(t):
+    scalar VmPtrSize
+    return
   case t.kind
   of tyBool, tyChar, tyInt8, tyUInt8: scalar 1
   of tyInt16, tyUInt16: scalar 2

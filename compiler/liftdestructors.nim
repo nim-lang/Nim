@@ -1103,6 +1103,11 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  if isNimNodeType(t):
+    # NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
+    # time; the VM represents them as handles, there is nothing to count:
+    defaultOp(c, t, body, x, y)
+    return
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyUncheckedArray:
@@ -1118,11 +1123,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if t.sym != nil and t.sym.magic == mPNimrodNode:
-      # NimNodes only exist at compile time; the VM represents them as
-      # handles, there is nothing to count:
-      defaultOp(c, t, body, x, y)
-    elif c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
+    if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
       atomicRefOp(c, t, body, x, y)
     elif (optOwnedRefs in c.g.config.globalOptions and
         optRefCheck in c.g.config.options):
