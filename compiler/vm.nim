@@ -24,7 +24,7 @@ when defined(nimPreviewSlimSystem):
 import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
-from magicsys import getSysType, sysTypeFromName
+from magicsys import getSysType, getSysSym, sysTypeFromName
 from astalgo import lookupInRecord
 from liftdestructors import isTrivial
 
@@ -1484,6 +1484,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       when defined(nimVmListing):
         echo "TONODE ", typeToString(t), " ", t.kind, " value ", rInt(instr.regB), " -> ", v.kind
       rInt(ra) = int64(nodeHandle(c.mem, v))
+    of opcFromNode:
+      let t = getType(c.mem, int64(wImm()))
+      nodeToReg(c, nodeNN(instr.regB), t, slotAddr(ra))
     of opcNLen:
       rInt(ra) = nodeNN(instr.regB).safeLen
     of opcGetImpl:
@@ -1686,7 +1689,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         setNode(ra, opMapTypeToAst(c.cache, t, c.debug[pc], c.idgen))
       of 1:
         # typeKind opcode:
-        rInt(ra) = if t == nil: 0 else: ord(t.kind)
+        rInt(ra) = if t == nil: max(instr.regX - 1, 0) else: ord(t.kind)
       of 2:
         # getTypeInst opcode:
         if t == nil: stackTrace(c, tos, pc, "node has no type")
@@ -2318,7 +2321,12 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
   let a = rawExecute(c, start.pc, tos)
   result = if a != 0: getNode(c.mem, ld[int64](a)) else: nil
   c.mem.popFrames(tos.mark)
-  if result == nil: result = newNodeI(nkEmpty, n.info)
+  if result == nil:
+    if a != 0:
+      # like the old VM: a `nil` NimNode is a `nil` literal of type NimNode
+      result = newNodeIT(nkNilLit, n.info, getSysSym(g, n.info, "NimNode").typ)
+    else:
+      result = newNodeI(nkEmpty, n.info)
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")
   dec(g.config.evalMacroCounter)
