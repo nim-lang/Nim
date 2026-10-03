@@ -1369,6 +1369,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         let info = compile(c, prc)
         pushCall(prc, slotAddr(rb + 2 + info.resultSlots), slotAddr(rb + 2),
                  rInt(rb+1))
+    of opcFfiCall:
+      when hasFFI:
+        let site = int(wImm())
+        let area = slotAddr(instr.regB)
+        callForeign(c.config, c.ffiSites[site], area, area, c.debug[pc])
+      else:
+        globalError(c.config, c.debug[pc], "VM is not allowed to 'importc' without --experimental:compiletimeFFI")
     of opcEcho:
       let count = int(instr.regB)
       var outp = ""

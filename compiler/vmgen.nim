@@ -808,6 +808,14 @@ proc globalAddress(c: PCtx; n: PNode; s: PSym): Address =
   result = c.globalAddrs.getOrDefault(s.itemId, 0)
   if result == 0:
     if importcCondVar(s):
+      when hasFFI:
+        if compiletimeFFI in c.config.features:
+          # the VM uses host pointers: the variable is accessed in place
+          let p = importcSymbol(c.config, s)
+          registerForeign(c.mem, p, vmSize(c, s.typ))
+          result = toAddr(p)
+          c.globalAddrs[s.itemId] = result
+          return
       localError(c.config, n.info,
                  "cannot 'importc' variable at compile time; " & s.name.s)
     result = allocGlobal(c.mem, vmSize(c, s.typ), vmAlign(c, s.typ))
@@ -1945,6 +1953,38 @@ proc genBuiltin(c: PCtx; n: PNode; b: VmBuiltin; dest: var TDest) =
   of vbNone:
     discard
 
+when hasFFI:
+  proc isFfiCall(c: PCtx; s: PSym): bool =
+    s.kind in routineKinds and compiletimeFFI in c.config.features and
+      importcCond(c, s) and not procIsCallback(c, s)
+
+  proc genFfiCall(c: PCtx; n: PNode; dest: var TDest) =
+    ## a call of an imported proc: the arguments are laid out one after
+    ## another, C varargs use the types of the arguments.
+    let s = n[0].sym
+    let fntyp = s.typ.skipTypes(abstractInst)
+    let fixed = fntyp.signatureLen - FirstParamAt
+    var args: seq[FfiArg] = @[]
+    var types: seq[PType] = @[]
+    var off = 1 # slot 0 is the result
+    for i in 1..<n.len:
+      let pt = if i-1 < fixed: fntyp[i-1+FirstParamAt] else: n[i].typ
+      var a = ffiArgKind(c.config, pt, n[i].info)
+      a.offset = off * SlotSize
+      args.add a
+      types.add pt
+      off += slotsOf(c, pt)
+    let site = c.ffiSites.len
+    c.ffiSites.add initFfiSite(c.config, s, args, min(fixed, n.len-1), n.info)
+    let area = c.getTempN(off)
+    for i in 1..<n.len:
+      genArgInto(c, n[i], types[i-1], TRegister(area + args[i-1].offset div SlotSize), false)
+    c.gABCW(n, opcFfiCall, 0, area, 0, uint64(site))
+    if n.typ != nil and not isEmptyType(n.typ):
+      if dest < 0: dest = c.getTemp(n.typ)
+      c.gABC(n, opcMov, dest, area)
+    c.freeTemp(area)
+
 proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # bug #10901: do not produce code for wrong call expressions:
   if n.len == 0 or n[0].typ.isNil: return
@@ -1953,6 +1993,10 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
     if b != vbNone:
       genBuiltin(c, n, b, dest)
       return
+    when hasFFI:
+      if isFfiCall(c, n[0].sym):
+        genFfiCall(c, n, dest)
+        return
   # for a direct call the callee's own signature determines the layout of
   # its frame (`n[0].typ` can be less precise for generic instances):
   let fntyp = if n[0].kind == nkSym and n[0].sym.kind in routineKinds and n[0].sym.typ != nil:

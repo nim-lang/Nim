@@ -30,6 +30,10 @@ import ast, idents, options, modulegraphs, lineinfos, vmlayout, vmmem
 
 export vmlayout, vmmem
 
+when hasFFI:
+  import vmffi
+  export vmffi
+
 type TInstrType* = uint64
 
 const
@@ -255,6 +259,8 @@ type
 
     opcEcho,        # echo the C strings that start at register A
     opcIndCall,     # call; B is the start of the call area, C its size in slots
+    opcFfiCall,     # call of an imported proc (compiletimeFFI); B is the
+                    # start of the call area, W indexes `ffiSites`
 
     opcRaise,
 
@@ -383,6 +389,8 @@ type
     vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
     procToCodePos*: Table[int, VmProcInfo]
     cannotEval*: bool
+    when hasFFI:
+      ffiSites*: seq[FfiSite] # for opcFfiCall
     locals*: IntSet
 
   PStackFrame* = ref TStackFrame
@@ -451,7 +459,7 @@ const
     opcSeqNew, opcSeqSetLen, opcSeqGrowOne, opcSeqData, opcSeqCopyPayload,
     opcNewRef, opcInitObj, opcOf, opcIs, opcRepr, opcSlice, opcNDynBindSym, opcToNode, opcFromNode,
     opcUnshare,
-    opcNctNext, opcInvalidField
+    opcNctNext, opcInvalidField, opcFfiCall
     }
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
