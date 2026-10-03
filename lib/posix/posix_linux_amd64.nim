@@ -149,35 +149,40 @@ type
   Off* {.importc: "off_t", header: "<sys/types.h>".} = clong
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = cint
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>",
-                  pure, final.} = object
+                  pure, final, completeStruct.} = object
     abi: array[56 div sizeof(clong), clong]
 
   Pthread_barrier* {.importc: "pthread_barrier_t",
-                      header: "<sys/types.h>", pure, final.} = object
+                      header: "<sys/types.h>", pure, final,
+                      completeStruct.} = object
     abi: array[32 div sizeof(clong), clong]
   Pthread_barrierattr* {.importc: "pthread_barrierattr_t",
-                          header: "<sys/types.h>", pure, final.} = object
+                          header: "<sys/types.h>", pure, final,
+                          completeStruct.} = object
     abi: array[4 div sizeof(cint), cint]
 
   Pthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>",
-                  pure, final.} = object
+                  pure, final, completeStruct.} = object
     abi: array[48 div sizeof(clonglong), clonglong]
   Pthread_condattr* {.importc: "pthread_condattr_t",
-                       header: "<sys/types.h>", pure, final.} = object
+                       header: "<sys/types.h>", pure, final,
+                       completeStruct.} = object
     abi: array[4 div sizeof(cint), cint]
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>",
-                   pure, final.} = object
+                   pure, final, completeStruct.} = object
     abi: array[40 div sizeof(clong), clong]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
-                        header: "<sys/types.h>", pure, final.} = object
+                        header: "<sys/types.h>", pure, final,
+                        completeStruct.} = object
     abi: array[4 div sizeof(cint), cint]
   Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = cint
   Pthread_rwlock* {.importc: "pthread_rwlock_t",
-                     header: "<sys/types.h>", pure, final.} = object
+                     header: "<sys/types.h>", pure, final,
+                     completeStruct.} = object
     abi: array[56 div sizeof(clong), clong]
   Pthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
-                         header: "<sys/types.h>".} = object
+                         header: "<sys/types.h>", completeStruct.} = object
     abi: array[8 div sizeof(clong), clong]
   Pthread_spinlock* {.importc: "pthread_spinlock_t",
                        header: "<sys/types.h>".} = cint
