@@ -338,3 +338,63 @@ proc diffText*(textA, textB: string): seq[Item] =
   optimize(dataA)
   optimize(dataB)
   result = createDiffs(dataA, dataB)
+
+proc renderDiff*(a, b: string; res: seq[Item]): string =
+  ## Renders a diff between two strings as a human-readable unified diff format.
+  ##
+  ## `a` the original text
+  ## `b` the modified text
+  ## `res` the sequence of Items from `diffText(a, b)`
+  ##
+  ## Returns a string with the diff output where:
+  ## - Lines prefixed with `-` are deletions from `a`
+  ## - Lines prefixed with `+` are insertions in `b`
+  ## - Lines prefixed with ` ` are context (unchanged)
+  runnableExamples:
+    let a = "line1\nline2\nline3"
+    let b = "line1\nmodified\nline3"
+    let diff = diffText(a, b)
+    let rendered = renderDiff(a, b, diff)
+    assert "-line2" in rendered
+    assert "+modified" in rendered
+
+  let linesA = a.splitLines
+  let linesB = b.splitLines
+
+  var posA = 0
+  var posB = 0
+
+  for item in res:
+    # Add context lines before this change
+    while posA < item.startA and posB < item.startB:
+      result.add ' '
+      result.add linesA[posA]
+      result.add '\n'
+      inc posA
+      inc posB
+
+    # Add deleted lines from A
+    for i in 0 ..< item.deletedA:
+      result.add '-'
+      result.add linesA[item.startA + i]
+      result.add '\n'
+
+    # Add inserted lines from B
+    for i in 0 ..< item.insertedB:
+      result.add '+'
+      result.add linesB[item.startB + i]
+      result.add '\n'
+
+    posA = item.startA + item.deletedA
+    posB = item.startB + item.insertedB
+
+  # Add remaining context lines after the last change
+  while posA < linesA.len and posB < linesB.len:
+    result.add ' '
+    result.add linesA[posA]
+    result.add '\n'
+    inc posA
+    inc posB
+
+proc diffOutput*(a, b: string): string =
+  renderDiff(a, b, diffText(a, b))
