@@ -66,6 +66,7 @@ __unix__
 #  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
 #  pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 #  pragma GCC diagnostic ignored "-Wconstant-conversion"
+#  pragma GCC diagnostic ignored "-Wpsabi"
 #endif
 
 #if defined(_MSC_VER)
