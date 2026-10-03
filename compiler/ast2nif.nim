@@ -265,6 +265,7 @@ type
     decodedFileIndices: HashSet[FileIndex]
     locals: HashSet[ItemId]  # track proc-local symbols
     inProc: int
+    inReplayAction: int  # >0 while writing `(replay ...)` actions  # >0 while writing a `(replay ...)` action
     writtenTypes: seq[PType]  # types sealed during a non-owning emit
     writtenSyms: seq[PSym]    # reset afterwards so their owner can keep using them
     writtenPackages: HashSet[string]
@@ -1657,7 +1658,7 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
           writeNode(w, dest, ast[i], forAst)
       dec w.inProc
     of nkImportStmt:
-      if w.inProc > 0:
+      if w.inProc > 0 or w.inReplayAction > 0:
         # An `import` inside a template/macro/proc body — e.g. stew/importops'
         # `tryImport`: `when compiles((; import v)): import v`. It is part of the
         # body AST and must be serialized as a real node so the template
@@ -1667,6 +1668,7 @@ proc writeNode(w: var Writer; dest: var IcBuilder; n: PNode; forAst = false) =
         # dropped it entirely: its child is the unexpanded template parameter
         # `v`, not a module sym, so `trImport` wrote nothing and the body
         # round-tripped EMPTY — a NIF-loaded `tryImport` then imported nothing.
+        # The same holds inside a `(replay ...)` action
         w.withNode dest, n:
           for i in 0 ..< n.len:
             writeNode(w, dest, n[i], forAst)
@@ -2242,8 +2244,10 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # Write replay actions first, wrapped in a (replay ...) node
   if replayActions.len > 0:
     content.addParLe replayTag, rootInfo
+    inc w.inReplayAction
     for action in replayActions:
       writeNode(w, content, action)
+    dec w.inReplayAction
     content.addParRi()
   # Only write ops that belong to this module
   for op in opsLog:
