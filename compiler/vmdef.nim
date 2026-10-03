@@ -70,6 +70,7 @@ type
 
     opcLdArr,  # a = b[c]
     opcLdArrAddr, # a = addr(b[c])
+    opcLdArrAddrBorrow, # a = addr(b[c]); loop collection keeps the element alive
     opcWrArr,  # a[b] = c
     opcLdObj,  # a = b.c
     opcLdObjAddr, # a = addr(b.c)
