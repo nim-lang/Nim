@@ -693,26 +693,38 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     extccomp.CC[conf.cCompiler].name &
     getCompileCFileCmd(conf, cfile))
 
+proc compileFingerprint*(conf: ConfigRef; cfile: Cfile): string =
+  ## Fingerprint of the generated C input and the effective C compile recipe.
+  ## The C text can be shared across targets, but the resulting object cannot.
+  result = $footprint(conf, cfile)
+
 proc cfileHashFile*(conf: ConfigRef; cfile: AbsoluteFile): AbsoluteFile =
   ## Where the footprint of the last compile of `cfile` is kept.
-  toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
+  result = toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
+
+proc compileFingerprintChanged*(conf: ConfigRef; cfile: Cfile): bool =
+  let hashFile = cfileHashFile(conf, cfile.cname)
+  let currentHash = compileFingerprint(conf, cfile)
+  var f: File = default(File)
+  var oldHash = ""
+  if open(f, hashFile.string, fmRead):
+    try:
+      oldHash = f.readLine()
+    except IOError, OSError:
+      discard
+    close(f)
+  result = oldHash != currentHash
+  if result:
+    if open(f, hashFile.string, fmWrite):
+      try:
+        f.writeLine(currentHash)
+      except IOError, OSError:
+        discard
+      close(f)
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
-
-  let hashFile = cfileHashFile(conf, cfile.cname)
-  let currentHash = footprint(conf, cfile)
-  var f: File = default(File)
-  if open(f, hashFile.string, fmRead):
-    let oldHash = parseSecureHash(f.readLine())
-    close(f)
-    result = oldHash != currentHash
-  else:
-    result = true
-  if result:
-    if open(f, hashFile.string, fmWrite):
-      f.writeLine($currentHash)
-      close(f)
+  result = compileFingerprintChanged(conf, cfile)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
   # we want to generate the hash file unconditionally
