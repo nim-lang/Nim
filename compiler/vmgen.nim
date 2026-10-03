@@ -158,6 +158,7 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode;
                            (b.TInstrType shl regBShift) or
                            (c.TInstrType shl regCShift) or
                            (x.TInstrType shl regXShift)).TInstr
+  if opc == opcEof: ctx.lastEof = ctx.code.len
   ctx.code.add(ins)
   ctx.debug.add(n.info)
 
@@ -3675,8 +3676,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
 # ------------------------- top level, procs ----------------------------------
 
 proc removeLastEof(c: PCtx) =
+  # the last word is not necessarily an instruction (after an aborted
+  # code generation it can be the extra word of a large instruction):
   let last = c.code.len-1
-  if last >= 0 and c.code[last].opcode == opcEof:
+  if last >= 0 and c.lastEof == last:
     # overwrite last EOF:
     assert c.code.len == c.debug.len
     c.code.setLen(last)
@@ -3684,8 +3687,16 @@ proc removeLastEof(c: PCtx) =
 
 proc resolveNimvm(n: PNode): PNode =
   ## replaces `when nimvm` by its VM branch. `injectDestructorCalls` only
-  ## processes the runtime branch.
+  ## processes the runtime branch. Also removes `runnableExamples` (which
+  ## `nim doc` keeps, unchecked) since injection cannot deal with them.
   case n.kind
+  of nkCallKinds:
+    if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples:
+      result = newNodeI(nkEmpty, n.info)
+    else:
+      result = n
+      for i in 0..<n.len:
+        result[i] = resolveNimvm(n[i])
   of nkWhenStmt:
     # This is "when nimvm" node. Chose the first branch.
     result = resolveNimvm(n[0][1])
@@ -3795,7 +3806,7 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     recordIcImplDep(c.graph, s)
     let last = c.code.len-1
     var eofInstr = default(TInstr)
-    if last >= 0 and c.code[last].opcode == opcEof:
+    if last >= 0 and c.lastEof == last:
       eofInstr = c.code[last]
       c.code.setLen(last)
       c.debug.setLen(last)
@@ -3867,7 +3878,7 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     # generate final 'return' statement:
     genRet(c, body)
     c.patch(procStart)
-    c.gABC(body, opcEof, eofInstr.regA)
+    c.gABC(body, opcEof, eofInstr.regA, x = eofInstr.regX)
     result.frameSlots = c.prc.regInfo.len.int32
     result.resultSlots = L.resultSlots.int32
     result.paramSlots = L.paramSlots.int32
