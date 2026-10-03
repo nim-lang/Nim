@@ -66,6 +66,13 @@ else:
       fds: seq[SelectorKey[T]]
       count*: int
     Selector*[T] = ref SelectorImpl[T]
+
+proc `=destroy`*[T](s: var SelectorImpl[T]) =
+  ## Releases the epoll fd when the selector becomes unreachable.
+  ## Best effort: a destructor must not raise.
+  if s.epollFD >= 0:
+    discard posix.close(s.epollFD)
+    s.epollFD = -1
 type
   SelectEventImpl = object
     efd: cint
@@ -105,6 +112,7 @@ proc newSelector*[T](): Selector[T] =
 
 proc close*[T](s: Selector[T]) =
   let res = posix.close(s.epollFD)
+  s.epollFD = -1
   when hasThreadSupport:
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
