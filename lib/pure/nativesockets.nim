@@ -290,8 +290,14 @@ proc getAddrInfo*(address: string, port: Port, hints: AddrInfo): ptr AddrInfo =
   ##
   ## .. warning:: The resulting `ptr AddrInfo` must be freed using `freeAddrInfo`!
   result = nil
-  let socketPort = if hints.ai_socktype == toInt(SOCK_RAW): "" else: $port
-  var gaiResult = getaddrinfo(address, socketPort.cstring, addr(hints), result)
+  let
+    socketPort = if hints.ai_socktype == toInt(SOCK_RAW): "" else: $port
+    service =
+      if defined(musl) and hints.ai_socktype == toInt(SOCK_RAW):
+        nil
+      else:
+        socketPort.cstring
+  var gaiResult = getaddrinfo(address, service, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion or defined(freertos) or defined(nuttx):
       raiseOSError(osLastError())

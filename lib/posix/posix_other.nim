@@ -28,6 +28,15 @@ when defined(sunos):
   # On Solaris hstrerror lives in libresolv
   {.passl: "-lresolv".}
 
+when defined(linux) and defined(arm64):
+  type
+    PosixInt = cint
+    PosixUInt = cuint
+else:
+  type
+    PosixInt = int
+    PosixUInt = int
+
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
@@ -149,14 +158,14 @@ type
   Blksize* {.importc: "blksize_t", header: "<sys/types.h>".} = int
     ## used for block sizes
   Clock* {.importc: "clock_t", header: "<sys/types.h>".} = int
-  ClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = int
+  ClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = PosixInt
   Dev* {.importc: "dev_t", header: "<sys/types.h>".} = int
   Fsblkcnt* {.importc: "fsblkcnt_t", header: "<sys/types.h>".} = int
   Fsfilcnt* {.importc: "fsfilcnt_t", header: "<sys/types.h>".} = int
-  Gid* {.importc: "gid_t", header: "<sys/types.h>".} = int
-  Id* {.importc: "id_t", header: "<sys/types.h>".} = int
+  Gid* {.importc: "gid_t", header: "<sys/types.h>".} = PosixUInt
+  Id* {.importc: "id_t", header: "<sys/types.h>".} = PosixUInt
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
-  Key* {.importc: "key_t", header: "<sys/types.h>".} = int
+  Key* {.importc: "key_t", header: "<sys/types.h>".} = PosixInt
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
     when defined(android) or defined(macos) or defined(macosx) or
         (defined(bsd) and not defined(openbsd) and not defined(netbsd)):
@@ -164,7 +173,7 @@ type
     else:
       uint32
   )
-  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
+  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = PosixUInt
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
@@ -175,17 +184,17 @@ type
   Pthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>".} = int
   Pthread_condattr* {.importc: "pthread_condattr_t",
                        header: "<sys/types.h>".} = int
-  Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = int
+  Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = PosixUInt
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>".} = int
-  Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = int
+  Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = PosixInt
   Pthread_rwlock* {.importc: "pthread_rwlock_t",
                      header: "<sys/types.h>".} = int
   Pthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
                          header: "<sys/types.h>".} = int
   Pthread_spinlock* {.importc: "pthread_spinlock_t",
-                       header: "<sys/types.h>".} = int
+                       header: "<sys/types.h>".} = PosixInt
   Pthread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
   Suseconds* {.importc: "suseconds_t", header: "<sys/types.h>".} = int
   #Ttime* {.importc: "time_t", header: "<sys/types.h>".} = int
@@ -196,8 +205,8 @@ type
   Trace_event_set* {.importc: "trace_event_set_t",
                       header: "<sys/types.h>".} = int
   Trace_id* {.importc: "trace_id_t", header: "<sys/types.h>".} = int
-  Uid* {.importc: "uid_t", header: "<sys/types.h>".} = int
-  Useconds* {.importc: "useconds_t", header: "<sys/types.h>".} = int
+  Uid* {.importc: "uid_t", header: "<sys/types.h>".} = PosixUInt
+  Useconds* {.importc: "useconds_t", header: "<sys/types.h>".} = PosixUInt
 
   Utsname* {.importc: "struct utsname",
               header: "<sys/utsname.h>",

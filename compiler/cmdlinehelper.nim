@@ -62,9 +62,18 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
   if self.suggestMode:
     conf.setCmd cmdCheck
     conf.ideActive = true
+    # what a config's `getCommand()` returns: left empty, a config's tasks take the
+    # IDE for `nim help` (they print themselves and change the command to "help")
+    if conf.command.len == 0: conf.command = "check"
   if conf.cmd == cmdNimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
+  if self.suggestMode and conf.projectFull.string.splitFile.ext == ".nims":
+    # a NimScript project, checked the way `nim check foo.nims` checks it: its
+    # system module has the NimScript API (see `commandCheck`)
+    incl(conf.globalOptions, optWasNimscript)
+    defineSymbol(conf.symbols, "nimscript")
+    defineSymbol(conf.symbols, "nimconfig")
   # restores `conf.notes` after loading config files
   # because it has overwrites the notes when compiling the system module which
   # is a foreign module compared to the project

@@ -15,6 +15,8 @@ from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 from std/private/globs import nativeToUnixPath
 from strutils import startsWith, strip, removePrefix
+when defined(musl):
+  from strutils import count, replace
 from std/sugar import dup
 import "$lib/../compiler/nimpaths"
 
@@ -71,9 +73,15 @@ when defined(nimTrunnerFfi):
 hello world stderr
 hi stderr
 """
-      let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --warnings:off --experimental:compiletimeFFI")
+      var output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --warnings:off --experimental:compiletimeFFI")
+      when defined(musl):
+        # Check each stream without assuming their buffering order.
+        if prefix.len > 0:
+          doAssert output.count(prefix) == 1, output
+          output = output.replace(prefix, "")
+      let stderrPrefix = when defined(musl): "" else: prefix
       doAssert output == fmt"""
-{prefix}foo
+{stderrPrefix}foo
 foo:100
 foo:101
 foo:102:103

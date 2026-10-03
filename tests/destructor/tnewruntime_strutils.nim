@@ -40,17 +40,24 @@ bug12899()
 
 
 proc nonStaticTests =
-  doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-  doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
-  doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
-  doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
-                                                    ["1,0e-11", "1,0e-011"]
+  when defined(musl) and defined(amd64):
+    # Valgrind cannot emulate musl's amd64 long-double formatting accurately.
+    let checkFloatFormatting = "vgpreload" notin getEnv("LD_PRELOAD")
+  else:
+    let checkFloatFormatting = true
+
+  if checkFloatFormatting:
+    doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
+    doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
+    doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
+    doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
+    doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
+                                                      ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
 
-  block: # formatSize tests
+  if checkFloatFormatting: # formatSize tests
     when not defined(js):
       doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"   # <=== bug #8231
     doAssert formatSize((2.234*1024*1024).int) == "2.233MiB"
@@ -59,7 +66,7 @@ proc nonStaticTests =
     doAssert formatSize(4096, includeSpace=true) == "4 KiB"
     doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,129MB"
 
-  block: # formatEng tests
+  if checkFloatFormatting: # formatEng tests
     doAssert formatEng(0, 2, trim=false) == "0.00"
     doAssert formatEng(0, 2) == "0"
     doAssert formatEng(53, 2, trim=false) == "53.00"
