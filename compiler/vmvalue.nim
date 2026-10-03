@@ -177,6 +177,10 @@ proc storeValue*(vc: ValueConv; dest: Address; n: PNode; t: PType; inConst: bool
   let n = skipConvs(n)
   let t = skipForLayout(t)
   let conf = vc.conf
+  if isNimNodeType(t):
+    # a `nil` NimNode is the handle 0:
+    if n.kind != nkNilLit: st[int64](dest, nodeHandle(vc.mem[], n))
+    return
   case t.kind
   of tyBool, tyChar, tyEnum, tyInt..tyInt64, tyUInt..tyUInt64:
     storeInt(dest, ordValue(n), memKind(conf, t))
@@ -268,10 +272,7 @@ proc storeValue*(vc: ValueConv; dest: Address; n: PNode; t: PType; inConst: bool
     elif n.kind notin {nkEmpty, nkNilLit}:
       valueError(vc, n.info, "VM: cannot store set from " & $n.kind)
   of tyRef:
-    if isNimNodeType(t):
-      # a `nil` NimNode is the handle 0:
-      if n.kind != nkNilLit: st[int64](dest, nodeHandle(vc.mem[], n))
-    elif n.kind == nkNilLit:
+    if n.kind == nkNilLit:
       discard
     elif n.kind == nkObjConstr:
       let dyn = if n.typ != nil: n.typ.skipTypes(abstractPtrs) else: nil
@@ -395,6 +396,10 @@ proc loadElems(L: var Loader; data: Address; count: int; elemType: PType; res: P
 proc loadValue(L: var Loader; src: Address; t: PType): PNode =
   let conf = L.vc.conf
   let s = skipForLayout(t)
+  if isNimNodeType(s):
+    result = getNode(L.vc.mem[], ld[int64](src))
+    if result == nil: result = newNodeIT(nkNilLit, L.info, t)
+    return
   case s.kind
   of tyBool, tyChar, tyEnum, tyInt..tyInt64, tyUInt..tyUInt64:
     result = newIntTypeNode(loadInt(src, memKind(conf, s)), t)
@@ -469,10 +474,7 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
     result.typ = t
   of tyRef:
     let p = ld[Address](src)
-    if isNimNodeType(s):
-      result = getNode(L.vc.mem[], ld[int64](src))
-      if result == nil: result = newNodeIT(nkNilLit, L.info, t)
-    elif p == 0:
+    if p == 0:
       result = newNodeIT(nkNilLit, L.info, t)
     else:
       let objType = s.elementType.skipTypes(abstractInst)
