@@ -394,7 +394,11 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.formatfloat.addFloatRoundtrip", proc(a: VmArgs) =
     var s = a.getVarString(0)
     let x = a.getFloat(1)
-    addFloatRoundtrip(s, x)
+    # the VM holds float32 values exactly; they must be printed as such:
+    if a.shape.paramTypes[1].skipTypes(abstractRange).kind == tyFloat32:
+      addFloatRoundtrip(s, x.float32)
+    else:
+      addFloatRoundtrip(s, x)
     a.setVarString(0, s)
 
   registerCallback c, "stdlib.formatfloat.addFloatSprintf", proc(a: VmArgs) =

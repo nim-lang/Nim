@@ -800,6 +800,7 @@ proc importcCond*(c: PCtx; s: PSym): bool =
       return isEmptyBody(getBody(c.graph, s))
 
 proc genStoreValue(c: PCtx; loc: var Loc; value: PNode)
+proc genOpenArrayConv(c: PCtx; n, arg: PNode; dest: var TDest)
 
 proc globalAddress(c: PCtx; n: PNode; s: PSym): Address =
   ## the address of the global `s`; allocates and initializes it lazily.
@@ -1306,6 +1307,14 @@ proc genStoreValue(c: PCtx; loc: var Loc; value: PNode) =
     c.freeTemp(tmp)
     c.freeLoc(keep)
     c.freeLoc(loc)
+  elif loc.typ != nil and loc.typ.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs} and
+      value.typ != nil and
+      value.typ.skipTypes(abstractInst+{tySink}).kind notin {tyOpenArray, tyVarargs}:
+    # e.g. an `openArray` field of an object constructor:
+    var tmp: TDest = -1
+    genOpenArrayConv(c, value, value, tmp)
+    storeLoc(c, value, loc, TRegister(tmp))
+    c.freeTemp(TRegister(tmp))
   elif loc.kind == lkFrame and loc.widened:
     gen(c, value, loc.reg)
     c.freeLoc(loc)
@@ -1794,8 +1803,6 @@ proc builtinOf(c: PCtx; s: PSym): VmBuiltin =
     for (name, b) in builtinNames:
       if s.name.s == name: return b
 
-proc genOpenArrayConv(c: PCtx; n, arg: PNode; dest: var TDest)
-
 proc genVarOpenArrayArg(c: PCtx; n, x: PNode; dest: var TDest)
 
 proc genArgInto(c: PCtx; arg: PNode; pt: PType; slot: TRegister; isMacro: bool) =
@@ -2197,6 +2204,16 @@ proc log2Bits(bits: int): int =
 
 proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+  if t.kind in {tyEnum, tyRange}:
+    # `succ`, `pred`, `inc`, `dec` must stay within the type's range:
+    let first = c.getIntTemp()
+    let last = c.getIntTemp()
+    genLdImm(c, n, first, toInt64(firstOrd(c.config, t)))
+    genLdImm(c, n, last, toInt64(lastOrd(c.config, t)))
+    c.gABC(n, opcRangeChck, dest, first, last, x = 2)
+    c.freeTemp(last)
+    c.freeTemp(first)
+    return
   let bits = intBits(c, t)
   if bits >= 64: return
   if t.skipTypes(abstractRange).kind in {tyUInt..tyUInt64, tyChar, tyBool}:
@@ -2218,11 +2235,19 @@ proc genOpenArrayConv(c: PCtx; n, arg: PNode; dest: var TDest) =
   of tyOpenArray, tyVarargs:
     gen(c, arg, dest)
   of tyArray:
-    var loc = genLoc(c, arg)
-    let a = addrOfLoc(c, arg, loc)
-    c.gABC(n, opcMov, dest, a)
-    genLdImm(c, n, TRegister(dest+1), toInt64(lengthOrd(c.config, st)))
-    c.freeLoc(loc)
+    let len = toInt64(lengthOrd(c.config, st))
+    if arg.kind == nkBracket and isDeepConstExpr(arg):
+      # the view must outlive the evaluation, so a literal lives in constant
+      # memory:
+      genLdImmAddr(c, n, TRegister(dest), constAddress(c, arg, arg.typ))
+    else:
+      var loc = genLoc(c, arg)
+      let a = addrOfLoc(c, arg, loc)
+      c.gABC(n, opcMov, dest, a)
+      # an rvalue array lives in a temporary that the view refers to:
+      if loc.kind == lkFrame and loc.isTemp: c.pinTemp(loc.reg)
+      c.freeLoc(loc)
+    genLdImm(c, n, TRegister(dest+1), len)
   of tyString, tySequence:
     var loc = genLoc(c, arg)
     let a = addrOfLoc(c, arg, loc)
@@ -2349,7 +2374,8 @@ proc genCast(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getIntTemp()
     c.gABC(n, opcMov, dest, v)
     c.freeTemp(v)
-    let bits = memKindSize(dk) * 8
+    # integers follow the target (`int` is 32 bits for the JS backend):
+    let bits = if dk in {mkPtr, mkNode}: 64 else: min(memKindSize(dk) * 8, intBits(c, dt))
     if bits < 64:
       if dk in SignedMemKinds: c.gABC(n, opcSignExtend, dest, TRegister(bits))
       else: c.gABC(n, opcNarrowU, dest, TRegister(bits))
@@ -3772,6 +3798,9 @@ proc genStmt*(c: PCtx; n: PNode): int =
   c.gABC(n, opcEof)
 
 proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
+  if n.typ != nil and n.typ.kind == tyError:
+    # (the old VM's message, `nim check` tests rely on it)
+    globalError(c.config, n.info, "VM problem: dest register is not set")
   c.removeLastEof
   c.resetTopLevel
   result = c.code.len

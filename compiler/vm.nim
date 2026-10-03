@@ -436,7 +436,9 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
   f.safePoints.add(pc)
 
 proc popSafePoint(f: PStackFrame) =
-  discard f.safePoints.pop()
+  # an unhandled exception pops all safepoints; with `nim check` execution
+  # continues nevertheless:
+  if f.safePoints.len > 0: discard f.safePoints.pop()
 
 type
   ExceptionGoto = enum
@@ -598,6 +600,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame = nil
+  var reraising = false # `opcRaise` is executed again after a `finally`
 
   template slotAddr(i: untyped): Address = fp +! (int(i) * SlotSize)
   template rInt(i: untyped): untyped = cast[ptr int64](slotAddr(i))[]
@@ -687,6 +690,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       else:
         savedPC = pc
         savedFrame = tos
+        reraising = false
         # The -1 is needed because at the end of the loop we increment `pc`
         pc = newPc - 1
     of opcYldYoid: assert false
@@ -951,6 +955,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         if not (rFlt(rb) <= rFlt(ra) and rFlt(ra) <= rFlt(rc)):
           stackTrace(c, tos, pc, errIllegalConvFromXtoY % [
             $rFlt(ra), "[" & $rFlt(rb) & ".." & $rFlt(rc) & "]"])
+      elif instr.regX == 2:
+        if not (rInt(rb) <= rInt(ra) and rInt(ra) <= rInt(rc)):
+          stackTrace(c, tos, pc, "unhandled exception: value out of range")
       elif not (rInt(rb) <= rInt(ra) and rInt(ra) <= rInt(rc)):
         stackTrace(c, tos, pc, errIllegalConvFromXtoY % [
           $rInt(ra), "[" & $rInt(rb) & ".." & $rInt(rc) & "]"])
@@ -1405,9 +1412,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
           switchFrame(savedFrame)
     of opcRaise:
       let raised =
+        # after a `finally` section the register may have been reused:
+        if reraising: c.currentExceptionA
         # Empty `raise` statement - reraise current exception
-        if rInt(ra) == 0: c.currentExceptionA
+        elif rInt(ra) == 0: c.currentExceptionA
         else: rAdr(ra)
+      reraising = false
       if raised == 0:
         stackTrace(c, tos, pc, "no exception to reraise")
       if raised != c.currentExceptionA:
@@ -1436,11 +1446,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         # traversal of the exception chain
         savedPC = pc
         savedFrame = tos
+        reraising = true
         pc = jumpTo.where - 1
         if tos != frame:
           switchFrame(frame)
       of ExceptionGotoUnhandled:
-        # Nobody handled this exception, error out.
+        # Nobody handled this exception, error out. (With `nim check`
+        # execution continues after the `raise`, like it always did.)
         bailOut(c, tos)
     of opcTypeLit:
       setNode(ra, newNodeIT(nkType, c.debug[pc], getType(c.mem, instr.regBx - wordExcess)))
