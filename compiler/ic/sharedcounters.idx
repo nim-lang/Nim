@@ -1,0 +1,5 @@
+nimTitle	sharedcounters	ic/sharedcounters.html	module ic/sharedcounters		0
+nim	usesSharedCounters	ic/sharedcounters.html#usesSharedCounters,ConfigRef	proc usesSharedCounters(conf: ConfigRef): bool		117
+nim	sharedCounterValue	ic/sharedcounters.html#sharedCounterValue,ConfigRef,string	proc sharedCounterValue(conf: ConfigRef; key: string): BiggestInt		145
+nim	sharedCounterInc	ic/sharedcounters.html#sharedCounterInc,ConfigRef,string,BiggestInt	proc sharedCounterInc(conf: ConfigRef; key: string; by: BiggestInt)		152
+nim	releaseSharedCounters	ic/sharedcounters.html#releaseSharedCounters	proc releaseSharedCounters()		184
