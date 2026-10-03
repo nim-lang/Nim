@@ -573,6 +573,18 @@ proc compile(c: PCtx, s: PSym): VmProcInfo =
   when debugEchoCode: c.echoCode result.pc
 
 
+proc discToString(v: int64; t: PType): string =
+  ## renders the value of a discriminant for a FieldDefect message
+  let t = t.skipTypes(abstractRange)
+  case t.kind
+  of tyEnum:
+    result = $v
+    for f in t.n:
+      if f.kind == nkSym and f.sym.position == v: return f.sym.name.s
+  of tyBool: result = $(v != 0)
+  of tyChar: result = $chr(v and 0xff)
+  else: result = $v
+
 template handleJmpBack() {.dirty.} =
   if c.loopIterations <= 0:
     if allowInfiniteLoops in c.features:
@@ -1302,8 +1314,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         return 0
     of opcInvalidField:
       let msg = str(ra)
-      let disc = rInt(instr.regB)
-      let msg2 = formatFieldDefect(msg, $disc)
+      let disc = discToString(rInt(instr.regB), getType(c.mem, int64(wImm())))
+      let msg2 = formatFieldDefect(msg, disc)
       stackTrace(c, tos, pc, msg2)
 
     # ----------------------------- calls
