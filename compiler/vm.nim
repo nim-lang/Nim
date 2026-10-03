@@ -1470,9 +1470,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       var v: PNode
       case memKind(c.config, t)
       of SignedMemKinds, UnsignedMemKinds:
-        # like the old VM: an untyped integer literal (also for bools, chars
-        # and enums)
-        v = newIntNode(nkIntLit, rInt(instr.regB))
+        if t.skipTypes(abstractInst+{tyStatic}).kind == tySet:
+          # a small set is stored like an integer
+          v = regToNode(c, slotAddr(instr.regB), t, c.debug[pc])
+        else:
+          # like the old VM: an untyped integer literal (also for bools, chars
+          # and enums)
+          v = newIntNode(nkIntLit, rInt(instr.regB))
       of FloatMemKinds:
         v = newFloatNode(nkFloatLit, rFlt(instr.regB))
       else:
