@@ -13,7 +13,7 @@
 ## memory is managed by `vmmem`.
 ##
 ## Registers are 8 byte *slots* of the current stack frame; register `i`
-## lives at the frame pointer + 8*i. A scalar (integer, float, pointer,
+## lives at the frame pointer + `8*i`. A scalar (integer, float, pointer,
 ## handle) that is held in a register is always widened to 64 bits; an
 ## aggregate value (object, tuple, array, string, seq, closure, ...) that is
 ## held in registers occupies `ceil(size/8)` consecutive slots and uses the
@@ -346,6 +346,7 @@ type
 
   TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
+    lastEof*: int ## position of the last `opcEof`; -1 if there is none
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation
     mem*: VmMemory          # all memory of the VM
@@ -409,7 +410,7 @@ const
   NoVmProcInfo* = VmProcInfo(pc: 0'i32, frameSlots: -1'i32)
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
-  PCtx(code: @[], debug: @[],
+  PCtx(code: @[], lastEof: -1, debug: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     callDepth: g.config.maxCallDepthVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], callbackIndex: initTable[string, int](), errorFlag: "",
