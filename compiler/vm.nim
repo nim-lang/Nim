@@ -637,8 +637,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
   template pushCall(callee: PSym; argArea: Address; resDest: Address; envVal: int64) =
     let procInfo = compile(c, callee)
     # tricky: a recursion is also a jump back, so we use the same
-    # logic as for loops:
-    if procInfo.pc < pc: handleJmpBack()
+    # logic as for loops. Hooks like `=destroy` are called by injected
+    # code, they are not loops the program contains (endless recursion
+    # is still caught by `callDepth`):
+    if procInfo.pc < pc and not callee.name.s.startsWith('='): handleJmpBack()
     if c.callDepth <= 0:
       if allowInfiniteRecursion in c.features:
         c.callDepth = c.config.maxCallDepthVM

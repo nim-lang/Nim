@@ -2542,7 +2542,8 @@ proc genSetLength(c: PCtx; n: PNode; isSeq: bool) =
               packAddr(vmSize(c, elemType), payloadDataOffset(vmAlign(c, elemType))))
       genHookCall(c, n, op, ea, elemType)
       c.gABI(n, opcAddImmInt, i, i, 1)
-      c.jmpBack(n, lab1)
+      # not a loop of the program: it must not count as an iteration
+      c.gABx(n, opcJmp, 0, lab1.int - c.code.len)
       c.patch(lab2)
       c.freeTemp(ea)
       c.freeTemp(cond)
