@@ -1634,7 +1634,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
-        for i in 0..<len: u.add(getNode(c.mem, ld[int64](data +! i*8)))
+        for i in 0..<len:
+          let h = ld[int64](data +! i*8)
+          u.add(if h == 0: newNodeI(nkNilLit, c.debug[pc]) else: getNode(c.mem, h))
       setNode(ra, u)
     of opcNKind:
       let n = node(instr.regB)
