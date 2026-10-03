@@ -1175,7 +1175,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
     if not newHeaders.hasKey("Content-Length"):
       if body.len != 0:
         newHeaders["Content-Length"] = $body.len
-      elif httpMethod notin {HttpGet, HttpHead}:
+      elif httpMethod notin {HttpGet, HttpHead, HttpQuery}:
         newHeaders["Content-Length"] = "0"
 
   if not newHeaders.hasKey("user-agent") and client.userAgent.len > 0:
@@ -1255,6 +1255,8 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
         HttpConnect
       of "PATCH":
         HttpPatch
+      of "QUERY":
+        HttpQuery
       else:
         raise newException(ValueError, "Invalid HTTP method name: " & httpMethod)
 
@@ -1274,18 +1276,23 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
     case statusCode
     of Http301, Http302, Http303:
-      # The method is changed to GET unless it is GET or HEAD (RFC2616)
-      if httpMethod notin {HttpGet, HttpHead}:
-        redirectMethod = HttpGet
-      else:
+      if statusCode in {Http301, Http302} and httpMethod == HttpQuery:
+        # RFC 10008: QUERY must not be changed to GET on 301 or 302
         redirectMethod = httpMethod
-      # The body is stripped away
-      redirectBody = ""
-      # Delete any header value associated with the body
-      if not headers.isNil():
-        headers.del("Content-Length")
-        headers.del("Content-Type")
-        headers.del("Transfer-Encoding")
+        redirectBody = body
+      else:
+        # The method is changed to GET unless it is GET or HEAD (RFC2616)
+        if httpMethod notin {HttpGet, HttpHead}:
+          redirectMethod = HttpGet
+        else:
+          redirectMethod = httpMethod
+        # The body is stripped away
+        redirectBody = ""
+        # Delete any header value associated with the body
+        if not headers.isNil():
+          headers.del("Content-Length")
+          headers.del("Content-Type")
+          headers.del("Transfer-Encoding")
     of Http307, Http308:
       # The method and the body are unchanged
       redirectMethod = httpMethod
@@ -1390,6 +1397,20 @@ proc patchContent*(client: HttpClient | AsyncHttpClient, url: Uri | string, body
                   {.multisync.} =
   ## Connects to the hostname specified by the URL and returns the content of a PATCH request.
   let resp = await patch(client, url, body, multipart)
+  return await responseContent(resp)
+
+proc query*(client: HttpClient | AsyncHttpClient, url: Uri | string, body = "",
+            multipart: MultipartData = nil): Future[Response | AsyncResponse]
+            {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a QUERY request.
+  ## This procedure uses httpClient values such as `client.maxRedirects`.
+  result = await client.request(url, HttpQuery, body, multipart=multipart)
+
+proc queryContent*(client: HttpClient | AsyncHttpClient, url: Uri | string, body = "",
+                   multipart: MultipartData = nil): Future[string]
+                  {.multisync.} =
+  ## Connects to the hostname specified by the URL and returns the content of a QUERY request.
+  let resp = await query(client, url, body, multipart)
   return await responseContent(resp)
 
 proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
