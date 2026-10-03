@@ -78,7 +78,7 @@ type
     wSafecode = "safecode", wPackage = "package", wNoForward = "noforward", wReorder = "reorder",
     wNoRewrite = "norewrite", wNoDestroy = "nodestroy", wPragma = "pragma",
     wCompileTime = "compileTime", wNoInit = "noinit", wPassc = "passc", wPassl = "passl",
-    wLocalPassc = "localPassC", wBorrow = "borrow", wDiscardable = "discardable",
+    wLocalPassc = "localPassC", wClib = "clib", wBorrow = "borrow", wDiscardable = "discardable",
     wFieldChecks = "fieldChecks", wSubsChar = "subschar", wAcyclic = "acyclic",
     wShallow = "shallow", wUnroll = "unroll", wLinearScanEnd = "linearScanEnd",
     wComputedGoto = "computedGoto", wExperimental = "experimental", wDoctype = "doctype",

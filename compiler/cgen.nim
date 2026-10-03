@@ -1001,6 +1001,7 @@ proc genGlobalVarDecl(res: var Builder, p: BProc; n: PNode; td: Snippet;
   let s = n.sym
   let vis =
     if p.hcrOn: StaticProc
+    elif sfImportc in s.flags and lfImportLib in s.loc.flags: ImportLib
     elif sfImportc in s.flags: Extern
     elif lfExportLib in s.loc.flags: ExportLibVar
     else: Private

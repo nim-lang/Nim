@@ -30,7 +30,7 @@ const
     wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
-    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
+    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wClib, wHeader,
     wCompilerProc, wNonReloadable, wCore, wProcVar, wVarargs, wCompileTime,
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
@@ -52,7 +52,7 @@ const
   stmtPragmas* = {
     wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
-    wPassl, wPassc, wLocalPassc,
+    wPassl, wPassc, wLocalPassc, wClib,
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
     wPragma, wEmit, wUnroll,
@@ -65,7 +65,7 @@ const
     wLineDir, wStackTrace, wLineTrace, wOptimization,
     wFloatChecks, wInfChecks, wNanChecks}
   lambdaPragmas* = {FirstCallConv..LastCallConv,
-    wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
+    wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wClib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wForbids, wRequires, wEnsures, wEffectsOf,
     wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
@@ -78,7 +78,7 @@ const
   fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
     wRequiresInit, wNoalias, wAlign, wNoInit} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
-    wMagic, wHeader, wCompilerProc, wCore, wDynlib,
+    wMagic, wHeader, wCompilerProc, wCore, wDynlib, wClib,
     wNoInit, wCompileTime, wGlobal, wLiftLocals,
     wGensym, wInject, wCodegenDecl,
     wGuard, wGoto, wCursor, wNoalias, wAlign}
@@ -345,6 +345,18 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
       localError(c.config, n.info, errStringLiteralExpected)
       result = newEmptyStrNode(c, n)
 
+proc processCLib(c: PContext, n: PNode, sym: PSym) =
+  ## ``{.clib: "lib".}``: like ``{.dynlib: "lib".}`` but the library is linked
+  ## directly with ``-llib`` instead of dlopen'd. No ``lfDynamicLib`` is set
+  ## here: the symbols stay plain ``importc`` (resolved by the linker via
+  ## ``-llib``).
+  let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
+  let name = lib.path.strVal
+  # Link the library directly with -l<name>.
+  if name notin c.config.cLinkedLibs:
+    c.config.cLinkedLibs.add name
+  recordPragma(c, n, "clib", name)
+
 proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
     let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
@@ -357,7 +369,12 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
         addToLib(lib, sym)
         sym.incl(lfDynamicLib)
     else:
+      # Bare ``{.dynlib.}`` (no library name): the symbol belongs to a
+      # dynamic library. Combined with ``importc`` it is declared
+      # ``N_LIB_IMPORT`` in the generated C (see ``genProcHeader``);
+      # combined with ``exportc`` it is exported (``N_LIB_EXPORT``).
       sym.incl(lfExportLib)
+      sym.incl(lfImportLib)
     # since we'll be loading the dynlib symbols dynamically, we must use
     # a calling convention that doesn't introduce custom name mangling
     # cdecl is the default - the user can override this explicitly
@@ -456,6 +473,7 @@ proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
       case sw
       of wCallconv: processCallConv(c, n)
       of wDynlib: processDynLib(c, n, nil)
+      of wClib: processCLib(c, n, nil)
       of wOptimization:
         if n[1].kind != nkIdent:
           invalidPragma(c, n)
@@ -1151,6 +1169,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(m.flagsImpl, sfUsed)
         processCompile(c, it)
       of wLink: processLink(c, it)
+      of wClib:
+        let m = sym.getModule()
+        incl(m.flagsImpl, sfUsed)
+        processCLib(c, it, sym)
       of wPassl:
         let m = sym.getModule()
         incl(m.flagsImpl, sfUsed)
@@ -1380,8 +1402,9 @@ proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
         if sym.kind in routineKinds and sym.ast != nil:
           mergeValidPragmas(sym.ast, o, validPragmas)
 
-    if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
-      localError(c.config, info, ".dynlib requires .exportc")
+    if lfExportLib in sym.loc.flags and
+        {sfExportc, sfImportc} * sym.flags == {}:
+      localError(c.config, info, ".dynlib requires .exportc or .importc")
     var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
