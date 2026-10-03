@@ -137,6 +137,13 @@ proc regToNode(c: PCtx; a: Address; t: PType; info: TLineInfo): PNode =
     var buf = default(array[8, byte])
     storeInt(toAddr(addr buf[0]), k, ld[int64](a))
     result = loadValue(vc, toAddr(addr buf[0]), t, info)
+    if result.kind in {nkCharLit..nkUInt64Lit} and result.kind != nkIntLit:
+      # like the old VM: integral values are `nkIntLit`s; this matters as
+      # the literal kind is part of type hashes (`range[T(0)..T(1)]`)
+      let x = newIntNode(nkIntLit, result.intVal)
+      x.typ = result.typ
+      x.info = result.info
+      result = x
   else:
     result = loadValue(vc, a, t, info)
 
