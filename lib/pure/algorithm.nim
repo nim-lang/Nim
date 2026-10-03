@@ -401,6 +401,7 @@ func sort*[T](a: var openArray[T],
   ## * `sort proc<#sort,openArray[T]>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
+  ## * `sortedBy proc<#sortedBy,openArray[T],proc(T)>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
     var d = ["boo", "fo", "barr", "qux"]
@@ -427,6 +428,7 @@ proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a,
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
+  ## * `sortedBy proc<#sortedBy,openArray[T],proc(T)>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
 
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
@@ -436,6 +438,7 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sort proc<#sort,openArray[T]>`_
+  ## * `sortedBy proc<#sortedBy,openArray[T],proc(T)>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
     let
@@ -457,6 +460,7 @@ proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sort proc<#sort,openArray[T]>`_
+  ## * `sortedBy proc<#sortedBy,openArray[T],proc(T)>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
     let
@@ -468,6 +472,51 @@ proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
     assert c == @[5, 4, 3, 2, 1]
     assert d == @["adam", "brian", "cat", "dande"]
   sorted[T](a, system.cmp[T], order)
+
+proc sortedBy*[T, C](
+  a: openArray[T],
+  comparable: proc(x: T): C {.closure.},
+  order = SortOrder.Ascending
+): seq[T] {.effectsOf: comparable.} =
+  ## Convenience proc around `sorted`. The closure `comparable`
+  ## should produce a single comparable value for each element,
+  ## which will then be used to sort with `system.cmp` by `order`.
+  ##
+  ## **See also:**
+  ## * `sort func<#sort,openArray[T],proc(T,T)>`_
+  ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by `cmp` in the specified order
+  ## * `sorted proc<#sorted,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
+  runnableExamples:
+    import std/math
+    import std/sugar
+    import std/sequtils
+
+    type Country = tuple[name: string, gdp: float, area: float]
+
+    let countries: seq[Country] = @[
+      (name: "USA",     gdp: 30.617, area: 9.148),
+      (name: "China",   gdp: 19.399, area: 9.326),
+      (name: "Germany", gdp: 5.015,  area: 0.349),
+      (name: "Japan",   gdp: 4.281,  area: 0.364),
+      (name: "India",   gdp: 4.028,  area: 2.973)
+    ]
+
+    assert countries.sortedBy(c => c.gdp, Descending).map(c => c.name) == @["USA",
+      "China", "Germany", "Japan", "India"]
+    assert countries.sortedBy(c => c.area, Descending).map(c => c.name) == @["China",
+      "USA", "India", "Japan", "Germany"]
+    assert countries.sortedBy(c => c.area.pow(2.0), Descending).map(c => c.name) == @["China",
+      "USA", "India", "Japan", "Germany"]
+    assert countries.sortedBy(c => c.name).map(c => c.name) == @["China",
+      "Germany", "India", "Japan", "USA"]
+    assert countries.sortedBy(c => c.name[^1]).map(c => c.name) == @["USA",
+      "China", "India", "Japan", "Germany"]
+  sorted[T](
+    a,
+    proc(x, y: T): int = system.cmp[C](comparable(x), comparable(y)),
+    order
+  )
 
 template sortedByIt*(seq1, op: untyped): untyped =
   ## Convenience template around the `sorted` proc to reduce typing.
@@ -483,6 +532,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
   ## * `sort proc<#sort,openArray[T]>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by `cmp` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
+  ## * `sortedBy proc<#sortedBy,openArray[T],proc(T)>`_
   runnableExamples:
     type Person = tuple[name: string, age: int]
     var
