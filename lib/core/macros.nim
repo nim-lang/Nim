@@ -134,13 +134,13 @@ const
   nnkSharedTy* {.deprecated.} = nnkSinkAsgn
 
 type
-  NimIdent* {.deprecated.} = object of RootObj
+  NimIdent* {.deprecated, magic: "PNimrodNode".} = object of RootObj
     ## Represents a Nim identifier in the AST. **Note**: This is only
     ## rarely useful, for identifier construction from a string
     ## use `ident"abc"`.
 
   NimSymObj = object # hidden
-  NimSym* {.deprecated.} = ref NimSymObj
+  NimSym* {.deprecated, magic: "PNimrodNode".} = ref NimSymObj
     ## Represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
 
