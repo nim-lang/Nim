@@ -646,6 +646,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       stackTrace(c, tos, pc, formatErrorIndexBound(idx, len-1))
   template ensure(cond: bool) =
     if not cond: stackTrace(c, tos, pc, errInvalidAccess)
+  template loadOp(T: typedesc) =
+    let a = rAdr(instr.regB) +! int(instr.regC)
+    checkRead(a, sizeof(T))
+    rInt(ra) = int64(ld[T](a))
+  template storeOp(T: typedesc) =
+    let a = rAdr(ra) +! int(instr.regB)
+    checkWrite(a, sizeof(T))
+    st[T](a, cast[T](rInt(instr.regC)))
   template switchFrame(f: PStackFrame) =
     tos = f
     fp = tos.fp
@@ -695,7 +703,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       echo "$# [$#] $#" % [c.config$info, $instr.opcode, c.config.sourceLine(info)]
     c.profiler.enter(c, tos)
     case instr.opcode
-    of opcEof: return (if instr.regX == 1: rAdr(ra) else: slotAddr(ra))
+    of opcEof: return slotAddr(ra)
+    of opcEofBoxed: return rAdr(ra)
     of opcRet:
       let newPc = c.cleanUpOnReturn(tos)
       # Perform any cleanup action before returning
@@ -740,21 +749,44 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       rAdr(ra) = rAdr(instr.regB) +! int(instr.regC)
     of opcAddrOffW:
       rAdr(ra) = rAdr(instr.regB) + Address(wImm())
-    of opcLd:
-      let k = MemKind(instr.regX)
+    of opcLdI8: loadOp(int8)
+    of opcLdI16: loadOp(int16)
+    of opcLdI32: loadOp(int32)
+    of opcLdU8: loadOp(uint8)
+    of opcLdU16: loadOp(uint16)
+    of opcLdU32: loadOp(uint32)
+    of opcLdF32:
       let a = rAdr(instr.regB) +! int(instr.regC)
-      checkRead(a, memKindSize(k))
-      rInt(ra) = vmvalue.loadInt(a, k)
-    of opcSt:
-      let k = MemKind(instr.regX)
+      checkRead(a, 4)
+      rFlt(ra) = float64(ld[float32](a))
+    of opcLd64: loadOp(int64)
+    of opcSt8: storeOp(uint8)
+    of opcSt16: storeOp(uint16)
+    of opcSt32: storeOp(uint32)
+    of opcStF32:
       let a = rAdr(ra) +! int(instr.regB)
-      checkWrite(a, memKindSize(k))
-      storeInt(a, k, rInt(instr.regC))
-    of opcLdSlot:
-      rInt(ra) = vmvalue.loadInt(slotAddr(instr.regB), MemKind(instr.regX))
-    of opcStSlot:
+      checkWrite(a, 4)
+      st[float32](a, float32(rFlt(instr.regC)))
+    of opcSt64: storeOp(int64)
+    of opcLdSlotI8: rInt(ra) = int64(ld[int8](slotAddr(instr.regB)))
+    of opcLdSlotI16: rInt(ra) = int64(ld[int16](slotAddr(instr.regB)))
+    of opcLdSlotI32: rInt(ra) = int64(ld[int32](slotAddr(instr.regB)))
+    of opcLdSlotU8: rInt(ra) = int64(ld[uint8](slotAddr(instr.regB)))
+    of opcLdSlotU16: rInt(ra) = int64(ld[uint16](slotAddr(instr.regB)))
+    of opcLdSlotU32: rInt(ra) = int64(ld[uint32](slotAddr(instr.regB)))
+    of opcLdSlotF32: rFlt(ra) = float64(ld[float32](slotAddr(instr.regB)))
+    of opcStSlot8:
       let v = rInt(instr.regC)
-      storeInt(slotAddr(ra), MemKind(instr.regX), v)
+      st[uint8](slotAddr(ra), cast[uint8](v))
+    of opcStSlot16:
+      let v = rInt(instr.regC)
+      st[uint16](slotAddr(ra), cast[uint16](v))
+    of opcStSlot32:
+      let v = rInt(instr.regC)
+      st[uint32](slotAddr(ra), cast[uint32](v))
+    of opcStSlotF32:
+      let v = rFlt(instr.regC)
+      st[float32](slotAddr(ra), float32(v))
     of opcCopyMem:
       let size = int(wImm())
       let d = rAdr(ra)
@@ -976,16 +1008,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
     of opcRangeChck:
       let rb = instr.regB
       let rc = instr.regC
-      if instr.regX == 1:
-        if not (rFlt(rb) <= rFlt(ra) and rFlt(ra) <= rFlt(rc)):
-          stackTrace(c, tos, pc, errIllegalConvFromXtoY % [
-            $rFlt(ra), "[" & $rFlt(rb) & ".." & $rFlt(rc) & "]"])
-      elif instr.regX == 2:
-        if not (rInt(rb) <= rInt(ra) and rInt(ra) <= rInt(rc)):
-          stackTrace(c, tos, pc, "unhandled exception: value out of range")
-      elif not (rInt(rb) <= rInt(ra) and rInt(ra) <= rInt(rc)):
+      if not (rInt(rb) <= rInt(ra) and rInt(ra) <= rInt(rc)):
         stackTrace(c, tos, pc, errIllegalConvFromXtoY % [
           $rInt(ra), "[" & $rInt(rb) & ".." & $rInt(rc) & "]"])
+    of opcRangeChckF:
+      let rb = instr.regB
+      let rc = instr.regC
+      if not (rFlt(rb) <= rFlt(ra) and rFlt(ra) <= rFlt(rc)):
+        stackTrace(c, tos, pc, errIllegalConvFromXtoY % [
+          $rFlt(ra), "[" & $rFlt(rb) & ".." & $rFlt(rc) & "]"])
+    of opcRangeChckSucc:
+      if not (rInt(instr.regB) <= rInt(ra) and rInt(ra) <= rInt(instr.regC)):
+        stackTrace(c, tos, pc, "unhandled exception: value out of range")
     of opcToStr:
       let t = getType(c.mem, int64(wImm()))
       putStr(ra, toStr(c, rInt(instr.regB), t))
@@ -1707,32 +1741,26 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         rInt(ra) = nodeNN(instr.regB).id
       else:
         rInt(ra) = -1
-    of opcNGetType:
+    of opcNGetType, opcNTypeKind, opcNGetTypeInst, opcNGetTypeImpl,
+        opcNGetTypeInstSkipAlias:
       let n = node(instr.regB)
       let t = if n == nil: nil
               elif n.typ != nil: n.typ
               elif n.kind == nkSym: n.sym.typ
               else: nil
-      case instr.regC
-      of 0:
-        # getType opcode:
-        if t == nil: stackTrace(c, tos, pc, "node has no type")
-        setNode(ra, opMapTypeToAst(c.cache, t, c.debug[pc], c.idgen))
-      of 1:
-        # typeKind opcode:
-        rInt(ra) = if t == nil: max(instr.regX - 1, 0) else: ord(t.kind)
-      of 2:
-        # getTypeInst opcode:
-        if t == nil: stackTrace(c, tos, pc, "node has no type")
-        setNode(ra, opMapTypeInstToAst(c.cache, t, c.debug[pc], c.idgen))
-      of 3:
-        # getTypeImpl opcode:
-        if t == nil: stackTrace(c, tos, pc, "node has no type")
-        setNode(ra, opMapTypeImplToAst(c.cache, t, c.debug[pc], c.idgen))
+      if instr.opcode == opcNTypeKind:
+        rInt(ra) = if t == nil: max(int(instr.regC) - 1, 0) else: ord(t.kind)
       else:
-        # getTypeInstSkipAlias opcode:
         if t == nil: stackTrace(c, tos, pc, "node has no type")
-        setNode(ra, opMapTypeInstToAst(c.cache, t, c.debug[pc], c.idgen, skipAlias = true))
+        case instr.opcode
+        of opcNGetType:
+          setNode(ra, opMapTypeToAst(c.cache, t, c.debug[pc], c.idgen))
+        of opcNGetTypeInst:
+          setNode(ra, opMapTypeInstToAst(c.cache, t, c.debug[pc], c.idgen))
+        of opcNGetTypeImpl:
+          setNode(ra, opMapTypeImplToAst(c.cache, t, c.debug[pc], c.idgen))
+        else:
+          setNode(ra, opMapTypeInstToAst(c.cache, t, c.debug[pc], c.idgen, skipAlias = true))
     of opcNGetSize:
       let n = node(instr.regB)
       let imm = int(instr.regC) - byteExcess
@@ -1812,9 +1840,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         message(c.config, info, warnUser, msg)
       elif instr.opcode == opcNHint:
         message(c.config, info, hintUser, msg)
-    of opcParseExprToAst:
+    of opcParseExprToAst, opcParseExprToAstFile:
       var error: string = ""
-      let filename = if instr.regX == 1: str(instr.regC) else: ""
+      let filename = if instr.opcode == opcParseExprToAstFile: str(instr.regC) else: ""
       let ast = parseString(str(instr.regB), c.cache, c.config,
                             filename, 0,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
@@ -1828,9 +1856,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
           "expected expression, but got multiple statements")
       else:
         setNode(ra, ast[0])
-    of opcParseStmtToAst:
+    of opcParseStmtToAst, opcParseStmtToAstFile:
       var error: string = ""
-      let filename = if instr.regX == 1: str(instr.regC) else: ""
+      let filename = if instr.opcode == opcParseStmtToAstFile: str(instr.regC) else: ""
       let ast = parseString(str(instr.regB), c.cache, c.config,
                             filename, 0,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
@@ -1869,7 +1897,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
     of opcNSetLineInfoFile:
       nodeNN(ra).info.fileIndex =
         fileInfoIdx(c.config, RelativeFile str(instr.regB))
-    of opcEqIdent:
+    of opcEqIdent, opcEqIdentSN, opcEqIdentNS, opcEqIdentSS:
       # the arguments are either NimNodes or strings:
       proc identStr(c: PCtx; n: PNode): string =
         var n = n
@@ -1887,7 +1915,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         of nkSym: n.sym.name.s
         of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym: n[0].sym.name.s
         else: ""
-      let x = instr.regX
+      let x = ord(instr.opcode) - ord(opcEqIdent)
       let a = if (x and 1) != 0: str(instr.regB) else: identStr(c, node(instr.regB))
       let b = if (x and 2) != 0: str(instr.regC) else: identStr(c, node(instr.regC))
       rInt(ra) =
@@ -2159,7 +2187,7 @@ proc evalStmt*(c: PCtx, n: PNode) =
     return
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
-  if c.code[start].opcode != opcEof:
+  if c.code[start].opcode notin {opcEof, opcEofBoxed}:
     discard execute(c, start, nil, n.info)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
@@ -2171,7 +2199,7 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   let start = genExpr(c, n)
   if c.cannotEval:
     return errorNode(c.idgen, c.module, n)
-  assert c.code[start].opcode != opcEof
+  assert c.code[start].opcode notin {opcEof, opcEofBoxed}
   result = execute(c, start, n.typ, n.info)
 
 proc getGlobalValue*(c: PCtx; s: PSym): PNode =
@@ -2238,8 +2266,8 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   c.locals = oldLocals
   if c.cannotEval:
     return errorNode(idgen, prc, n)
-  if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
-  assert c.code[start].opcode != opcEof
+  if c.code[start].opcode in {opcEof, opcEofBoxed}: return newNodeI(nkEmpty, n.info)
+  assert c.code[start].opcode notin {opcEof, opcEofBoxed}
   when debugEchoCode or defined(nimVmListing): c.echoCode start
   let tos = newFrame(c, prc, max(c.prc.regInfo.len, 1), 0, nil)
   let a = rawExecute(c, start, tos)

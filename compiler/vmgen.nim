@@ -130,7 +130,6 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     else:
       result.addf("\t$#\tr$#, r$#, r$#", opc.toStr, x.regA,
                   x.regB, x.regC)
-      if x.regX != 0: result.addf(", x$#", x.regX)
     if opc in largeInstrs:
       inc i
       result.addf(", w$#", c.code[i].TInstrType)
@@ -149,27 +148,37 @@ proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =
 # ------------------------- emitting instructions -----------------------------
 
 proc gABC(ctx: PCtx; n: PNode; opc: TOpcode;
-          a: TRegister = 0, b: TRegister = 0, c: TRegister = 0; x = 0) =
+          a: TRegister = 0, b: TRegister = 0, c: TRegister = 0) =
   ## Takes the registers `b` and `c`, applies the operation `opc` to them, and
   ## stores the result into register `a`
   ## The node is needed for debug information
-  assert opc.ord < 255
   let ins = (opc.TInstrType or (a.TInstrType shl regAShift) or
                            (b.TInstrType shl regBShift) or
-                           (c.TInstrType shl regCShift) or
-                           (x.TInstrType shl regXShift)).TInstr
-  if opc == opcEof: ctx.lastEof = ctx.code.len
+                           (c.TInstrType shl regCShift)).TInstr
+  if opc in {opcEof, opcEofBoxed}: ctx.lastEof = ctx.code.len
   ctx.code.add(ins)
   ctx.debug.add(n.info)
+
+proc genLdSlot(c: PCtx; n: PNode; dest, slot: TRegister; k: MemKind) =
+  ## widens the scalar of kind `k` that is stored in `slot`
+  let opc = ldSlotOpc(k)
+  if opc != opcMov: c.gABC(n, opc, dest, slot)
+  elif dest != slot: c.gABC(n, opcMov, dest, slot)
+
+proc genStSlot(c: PCtx; n: PNode; slot, src: TRegister; k: MemKind) =
+  ## narrows `src` to the memory format `k` and stores it in `slot`
+  let opc = stSlotOpc(k)
+  if opc != opcMov: c.gABC(n, opc, slot, 0, src)
+  elif slot != src: c.gABC(n, opcMov, slot, src)
 
 proc gW(ctx: PCtx; n: PNode; w: uint64) =
   ## the extra word of an instruction in `largeInstrs`
   ctx.code.add(TInstr(w))
   ctx.debug.add(n.info)
 
-proc gABCW(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister; w: uint64; x = 0) =
+proc gABCW(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister; w: uint64) =
   assert opc in largeInstrs
-  gABC(ctx, n, opc, a, b, c, x)
+  gABC(ctx, n, opc, a, b, c)
   gW(ctx, n, w)
 
 proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
@@ -571,18 +580,18 @@ proc loadLoc(c: PCtx; n: PNode; loc: var Loc; dest: var TDest) =
           c.gABC(n, opcMov, dest, loc.reg)
       elif loc.off mod SlotSize == 0:
         if dest < 0: dest = c.getIntTemp()
-        c.gABC(n, opcLdSlot, dest, TRegister(loc.reg + loc.off div SlotSize), 0, ord(k))
+        c.genLdSlot(n, dest, TRegister(loc.reg + loc.off div SlotSize), k)
       else:
         let a = addrOfLoc(c, n, loc)
         if dest < 0: dest = c.getIntTemp()
-        c.gABC(n, opcLd, dest, a, 0, ord(k))
+        c.gABC(n, ldOpc(k), dest, a, 0)
     of lkMem:
       if dest < 0: dest = c.getIntTemp()
       if loc.off <= int(regCMask):
-        c.gABC(n, opcLd, dest, loc.reg, TRegister(loc.off), ord(k))
+        c.gABC(n, ldOpc(k), dest, loc.reg, TRegister(loc.off))
       else:
         let a = addrOfLoc(c, n, loc)
-        c.gABC(n, opcLd, dest, a, 0, ord(k))
+        c.gABC(n, ldOpc(k), dest, a, 0)
   else:
     let size = vmSize(c, t)
     let k = slotsOf(c, t)
@@ -614,16 +623,16 @@ proc storeLoc(c: PCtx; n: PNode; loc: var Loc; src: TRegister) =
       if loc.widened:
         if src != loc.reg: c.gABC(n, opcMov, loc.reg, src)
       elif loc.off mod SlotSize == 0:
-        c.gABC(n, opcStSlot, TRegister(loc.reg + loc.off div SlotSize), 0, src, ord(k))
+        c.genStSlot(n, TRegister(loc.reg + loc.off div SlotSize), src, k)
       else:
         let a = addrOfLoc(c, n, loc)
-        c.gABC(n, opcSt, a, 0, src, ord(k))
+        c.gABC(n, stOpc(k), a, 0, src)
     of lkMem:
       if loc.off <= int(regBMask):
-        c.gABC(n, opcSt, loc.reg, TRegister(loc.off), src, ord(k))
+        c.gABC(n, stOpc(k), loc.reg, TRegister(loc.off), src)
       else:
         let a = addrOfLoc(c, n, loc)
-        c.gABC(n, opcSt, a, 0, src, ord(k))
+        c.gABC(n, stOpc(k), a, 0, src)
   else:
     let size = vmSize(c, t)
     if loc.kind == lkFrame and loc.off mod SlotSize == 0 and
@@ -833,10 +842,10 @@ proc globalAddress(c: PCtx; n: PNode; s: PSym): Address =
       let t = c.getIntTemp()
       let f = c.getIntTemp()
       genLdImmAddr(c, n, t, flag)
-      c.gABC(n, opcLd, f, t, 0, ord(mkI64))
+      c.gABC(n, opcLd64, f, t, 0)
       let skip = c.xjmp(n, opcTJmp, f)
       c.gABx(n, opcLdImmInt, f, 1)
-      c.gABC(n, opcSt, t, 0, f, ord(mkI64))
+      c.gABC(n, opcSt64, t, 0, f)
       var loc = memLoc(c.getIntTemp(), 0, s.typ, true)
       genLdImmAddr(c, n, loc.reg, result)
       genStoreValue(c, loc, s.astdef)
@@ -1007,7 +1016,7 @@ proc genValueAddr(c: PCtx; n: PNode): Loc =
   if loc.kind == lkFrame and loc.widened:
     # bring the scalar into memory format:
     let t = c.getIntTemp()
-    c.gABC(n, opcStSlot, t, 0, loc.reg, ord(mk(c, loc.typ)))
+    c.genStSlot(n, t, loc.reg, mk(c, loc.typ))
     c.freeLoc(loc)
     loc = frameLoc(t, n.typ, false, true, true)
   discard addrOfLoc(c, n, loc)
@@ -1386,10 +1395,10 @@ proc genVarSection(c: PCtx; n: PNode) =
             let t = c.getIntTemp()
             let f = c.getIntTemp()
             genLdImmAddr(c, a, t, flag)
-            c.gABC(a, opcLd, f, t, 0, ord(mkI64))
+            c.gABC(a, opcLd64, f, t, 0)
             let skip = c.xjmp(a, opcTJmp, f)
             c.gABx(a, opcLdImmInt, f, 1)
-            c.gABC(a, opcSt, t, 0, f, ord(mkI64))
+            c.gABC(a, opcSt64, t, 0, f)
             var loc = memLoc(c.getIntTemp(), 0, s.typ, true)
             genLdImmAddr(c, a, loc.reg, c.globalAddrs[s.itemId])
             genStoreValue(c, loc, init)
@@ -1724,7 +1733,7 @@ proc genRet(c: PCtx; n: PNode) =
   if c.prc.hasResult and c.prc.resultInfo.inMemory:
     # the caller expects a widened scalar:
     let k = mk(c, c.prc.sym.typ.returnType)
-    c.gABC(n, opcLdSlot, c.prc.resultInfo.slot, c.prc.resultInfo.slot, 0, ord(k))
+    c.genLdSlot(n, c.prc.resultInfo.slot, c.prc.resultInfo.slot, k)
   c.gABC(n, opcRet)
 
 proc genReturn(c: PCtx; n: PNode) =
@@ -2268,7 +2277,7 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
     let last = c.getIntTemp()
     genLdImm(c, n, first, toInt64(firstOrd(c.config, t)))
     genLdImm(c, n, last, toInt64(lastOrd(c.config, t)))
-    c.gABC(n, opcRangeChck, dest, first, last, x = 2)
+    c.gABC(n, opcRangeChckSucc, dest, first, last)
     c.freeTemp(last)
     c.freeTemp(first)
     return
@@ -2311,7 +2320,7 @@ proc genOpenArrayConv(c: PCtx; n, arg: PNode; dest: var TDest) =
     let a = addrOfLoc(c, arg, loc)
     let et = if st.kind == tyString: getSysType(c.graph, n.info, tyChar) else: st.elementType
     c.gABCW(n, opcSeqData, dest, a, 0, uint64(payloadDataOffset(vmAlign(c, et))))
-    c.gABC(n, opcLd, TRegister(dest+1), a, 0, ord(mkI64))
+    c.gABC(n, opcLd64, TRegister(dest+1), a, 0)
     c.freeLoc(loc)
   of tyCstring:
     let p = c.genx(arg)
@@ -2585,7 +2594,7 @@ proc genSetLength(c: PCtx; n: PNode; isSeq: bool) =
       let cond = c.getIntTemp()
       let ea = c.getIntTemp()
       c.gABC(n, opcMov, i, newLen)
-      c.gABC(n, opcLd, L, a, 0, ord(mkI64))
+      c.gABC(n, opcLd64, L, a, 0)
       let lab1 = c.genLabel
       c.gABC(n, opcLtInt, cond, i, L)
       let lab2 = c.xjmp(n, opcFJmp, cond)
@@ -3225,8 +3234,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     let a = genStrArg(c, n[1])
     let b = if n.len > 2: genStrArg(c, n[2]) else: TRegister(0)
     if dest < 0: dest = c.getIntTemp()
-    c.gABC(n, if m == mParseExprToAst: opcParseExprToAst else: opcParseStmtToAst,
-           dest, a, b, x = ord(n.len > 2))
+    let opc = if m == mParseExprToAst: opcParseExprToAst else: opcParseStmtToAst
+    c.gABC(n, if n.len > 2: succ(opc) else: opc, dest, a, b)
     c.freeTemp(b)
     c.freeTemp(a)
   of mTypeTrait:
@@ -3338,14 +3347,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mNGetType:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n.typ)
-    let rc = case n[0].sym.name.s:
-      of "getType": 0
-      of "typeKind": 1
-      of "getTypeInst": 2
-      of "getTypeImpl": 3  # "getTypeImpl"
-      else: 4 # getTypeInstSkipAlias
-    c.gABC(n, opcNGetType, dest, tmp, TRegister(rc),
-           x = (if rc == 1: c.typeKindDefault else: 0))
+    case n[0].sym.name.s
+    of "getType": c.gABC(n, opcNGetType, dest, tmp)
+    of "typeKind": c.gABC(n, opcNTypeKind, dest, tmp, TRegister(c.typeKindDefault))
+    of "getTypeInst": c.gABC(n, opcNGetTypeInst, dest, tmp)
+    of "getTypeImpl": c.gABC(n, opcNGetTypeImpl, dest, tmp)
+    else: c.gABC(n, opcNGetTypeInstSkipAlias, dest, tmp)
     c.freeTemp(tmp)
   of mNSizeOf:
     let imm = case n[0].sym.name.s:
@@ -3394,7 +3401,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     let a = genEqIdentArg(c, n[1], aIsStr)
     let b = genEqIdentArg(c, n[2], bIsStr)
     if dest < 0: dest = c.getIntTemp()
-    c.gABC(n, opcEqIdent, dest, a, b, x = ord(aIsStr) or (ord(bIsStr) shl 1))
+    let opc = TOpcode(ord(opcEqIdent) + ord(aIsStr) + 2*ord(bIsStr))
+    c.gABC(n, opc, dest, a, b)
     c.freeTemp(b)
     c.freeTemp(a)
   of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimNode)
@@ -3629,7 +3637,7 @@ proc genRangeChck(c: PCtx; n: PNode; dest: var TDest) =
     let tmp0 = c.genx(n[0])
     let tmp1 = c.genx(n[1])
     let tmp2 = c.genx(n[2])
-    c.gABC(n, opcRangeChck, tmp0, tmp1, tmp2, x = ord(n.kind == nkChckRangeF))
+    c.gABC(n, if n.kind == nkChckRangeF: opcRangeChckF else: opcRangeChck, tmp0, tmp1, tmp2)
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     if dest >= 0:
@@ -3902,7 +3910,7 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
     let boxed = c.prc.locals[res.itemId].boxed
     let body = prepareTopLevel(c, newTreeI(nkAsgn, n.info, newSymNode(res), n))
     c.gen(body)
-    c.gABC(n, opcEof, TRegister(slot), x = ord(boxed))
+    c.gABC(n, if boxed: opcEofBoxed else: opcEof, TRegister(slot))
     return
   let n = if requiresValue: n else: prepareTopLevel(c, n)
   # locals whose address is taken must live in memory:
@@ -3992,7 +4000,7 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
       let ps = params[i].sym
       let info = p.locals[ps.itemId]
       if info.inMemory:
-        c.gABC(body, opcStSlot, info.slot, 0, info.slot, ord(mk(c, L.paramTypes[i-1])))
+        c.genStSlot(body, info.slot, info.slot, mk(c, L.paramTypes[i-1]))
     # `result` starts with valid type headers (like in the C backend), also
     # when it is only assigned field by field:
     if ret != nil and s.ast != nil and s.ast.len > resultPos and
@@ -4005,7 +4013,7 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     # generate final 'return' statement:
     genRet(c, body)
     c.patch(procStart)
-    c.gABC(body, opcEof, eofInstr.regA, x = eofInstr.regX)
+    c.gABC(body, eofInstr.opcode, eofInstr.regA)
     result.frameSlots = c.prc.regInfo.len.int32
     result.resultSlots = L.resultSlots.int32
     result.paramSlots = L.paramSlots.int32

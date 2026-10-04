@@ -20,15 +20,20 @@
 ## packed memory layout. Memory outside of registers is always packed and is
 ## accessed via typed loads and stores that narrow and widen scalars.
 ##
-## An instruction is a 64 bit word: opcode (8 bits), A, B, C (16 bits each)
-## and X (8 bits). X usually holds a `MemKind`. Some instructions are followed
-## by an extra 64 bit word `W` that holds an immediate value.
+## An instruction is a 64 bit word: opcode, A, B, C (16 bits each). Operand
+## sizes and kinds are encoded in the opcode (one opcode per `MemKind` for
+## loads and stores) so that the interpreter does not dispatch on them at
+## runtime. Some instructions are followed by an extra 64
+## bit word `W` that holds an immediate value.
 
 import std/[tables, strutils, intsets]
 
 import ast, idents, options, modulegraphs, lineinfos, vmlayout, vmmem
 
 export vmlayout, vmmem
+
+when defined(nimPreviewSlimSystem):
+  import std/assertions
 
 when hasFFI:
   import vmffi
@@ -37,11 +42,10 @@ when hasFFI:
 type TInstrType* = uint64
 
 const
-  regOBits = 8 # Opcode
+  regOBits = 16 # Opcode
   regABits = 16
   regBBits = 16
   regCBits = 16
-  regXBits = 8
   regBxBits = 24
 
   byteExcess* = 128 # we use excess-K for immediates
@@ -53,14 +57,12 @@ const
   regAShift* = (regOShift + regOBits)
   regBShift* = (regAShift + regABits)
   regCShift* = (regBShift + regBBits)
-  regXShift* = (regCShift + regCBits)
   regBxShift* = (regAShift + regABits)
 
   regOMask*  = ((1.TInstrType shl regOBits) - 1)
   regAMask*  = ((1.TInstrType shl regABits) - 1)
   regBMask*  = ((1.TInstrType shl regBBits) - 1)
   regCMask*  = ((1.TInstrType shl regCBits) - 1)
-  regXMask*  = ((1.TInstrType shl regXBits) - 1)
   regBxMask* = ((1.TInstrType shl regBxBits) - 1)
 
   wordExcess* = 1 shl (regBxBits-1)
@@ -79,9 +81,10 @@ type
     # Notation: A, B, C are registers (slot indexes), `regs[A]` is the 64 bit
     # value in slot A, `@A` is the address of slot A, `mem[p]` is memory at
     # address `p`, `W` is the 64 bit word that follows the instruction and
-    # X is the 8 bit X field. Unless stated otherwise strings, seqs, openArrays
+    # Unless stated otherwise strings, seqs, openArrays
     # and big sets are passed by address: `regs[A]` is the address of the value.
     opcEof,         # end of code; the result is in register A
+    opcEofBoxed,    # end of code; register A holds the address of the result
     opcRet,         # return
     opcYldYoid,     # yield with no value
     opcYldVal,      # yield with a value
@@ -97,10 +100,16 @@ type
     opcAddrSlot,    # regs[A] = @B
     opcAddrOff,     # regs[A] = regs[B] + C
     opcAddrOffW,    # regs[A] = regs[B] + W
-    opcLd,          # regs[A] = widen(X, mem[regs[B] + C])
-    opcSt,          # mem[regs[A] + B] = narrow(X, regs[C])
-    opcLdSlot,      # regs[A] = widen(X, @B)  (for locals whose address is taken)
-    opcStSlot,      # @A = narrow(X, regs[C])
+    # regs[A] = widen(mem[regs[B] + C]); one opcode per memory format:
+    opcLdI8, opcLdI16, opcLdI32, opcLdU8, opcLdU16, opcLdU32, opcLdF32, opcLd64,
+    # mem[regs[A] + B] = narrow(regs[C]):
+    opcSt8, opcSt16, opcSt32, opcStF32, opcSt64,
+    # regs[A] = widen(@B) (for locals whose address is taken); the 64 bit
+    # variants are plain `opcMov`s:
+    opcLdSlotI8, opcLdSlotI16, opcLdSlotI32, opcLdSlotU8, opcLdSlotU16,
+    opcLdSlotU32, opcLdSlotF32,
+    # @A = narrow(regs[C]):
+    opcStSlot8, opcStSlot16, opcStSlot32, opcStSlotF32,
     opcCopyMem,     # copy W bytes from regs[B] to regs[A]
     opcZeroMem,     # zero W bytes at regs[A]
     opcIdxArr,      # regs[A] = regs[B] + regs[C]*elemSize; W = elemSize | len shl 32; checks 0 <= regs[C] < len
@@ -138,6 +147,8 @@ type
     opcNarrowS, opcNarrowU,  # narrow regs[A] to B bits; range checked
     opcSignExtend,  # sign extend regs[A] from B bits
     opcRangeChck,   # check regs[B] <= regs[A] <= regs[C]
+    opcRangeChckF,  # like opcRangeChck for floats
+    opcRangeChckSucc, # like opcRangeChck for `succ`, `pred`, `inc` and `dec`
     opcToStr,       # string at regs[A] = $regs[B] where regs[B] is of type W (a type handle)
     opcParseFloat,  # regs[A] = parseBiggestFloat(string at regs[B], mem[regs[C]])
 
@@ -219,6 +230,8 @@ type
     opcNSymbol,
     opcNIdent,
     opcNGetType,
+    opcNTypeKind,   # regs[A] = typeKind(node regs[B]); C - 1 for an untyped node
+    opcNGetTypeInst, opcNGetTypeImpl, opcNGetTypeInstSkipAlias,
     opcNStrVal,
     opcNSigHash,
     opcNGetSize,
@@ -234,15 +247,20 @@ type
 
     opcSlurp,
     opcGorge,
-    opcParseExprToAst,
+    opcParseExprToAst, # node regs[A] = parseExpr(string at regs[B])
+    opcParseExprToAstFile, # like opcParseExprToAst; the filename is the string at regs[C]
     opcParseStmtToAst,
+    opcParseStmtToAstFile,
     opcQueryErrorFlag,
     opcNError,
     opcNWarning,
     opcNHint,
     opcNGetLineInfo, opcNCopyLineInfo, opcNSetLineInfoLine,
     opcNSetLineInfoColumn, opcNSetLineInfoFile
-    opcEqIdent,     # X: bit 0 set if B is a string, bit 1 set if C is a string
+    opcEqIdent,     # regs[A] = eqIdent(node regs[B], node regs[C])
+    opcEqIdentSN,   # like opcEqIdent; B is a string
+    opcEqIdentNS,   # like opcEqIdent; C is a string
+    opcEqIdentSS,   # like opcEqIdent; B and C are strings
     opcStrToIdent,
     opcGetImpl,
     opcGetImplTransf
@@ -304,7 +322,7 @@ type
     slot*: int32    # -1 if not allocated
     boxed*: bool    # a big value that lives on the heap; the slot holds its address
     inMemory*: bool ## a scalar whose address is taken is stored packed in
-                    ## its slot and must be accessed via opcLdSlot/opcStSlot
+                    ## its slot and must be accessed via the opcLdSlot*/opcStSlot* instructions
 
   TryInfo* = object
     fin*: PNode             # the `finally` section or nil
@@ -463,11 +481,56 @@ const
     }
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
+proc ldOpc*(k: MemKind): TOpcode =
+  ## the load instruction for a scalar stored as `k`
+  case k
+  of mkI8: opcLdI8
+  of mkI16: opcLdI16
+  of mkI32: opcLdI32
+  of mkU8: opcLdU8
+  of mkU16: opcLdU16
+  of mkU32: opcLdU32
+  of mkF32: opcLdF32
+  of mkI64, mkU64, mkF64, mkPtr, mkNode: opcLd64
+  of mkBlock: raiseAssert "ldOpc: not a scalar"
+
+proc stOpc*(k: MemKind): TOpcode =
+  ## the store instruction for a scalar stored as `k`
+  case k
+  of mkI8, mkU8: opcSt8
+  of mkI16, mkU16: opcSt16
+  of mkI32, mkU32: opcSt32
+  of mkF32: opcStF32
+  of mkI64, mkU64, mkF64, mkPtr, mkNode: opcSt64
+  of mkBlock: raiseAssert "stOpc: not a scalar"
+
+proc ldSlotOpc*(k: MemKind): TOpcode =
+  ## like `ldOpc` for a slot; `opcMov` if no widening is required
+  case k
+  of mkI8: opcLdSlotI8
+  of mkI16: opcLdSlotI16
+  of mkI32: opcLdSlotI32
+  of mkU8: opcLdSlotU8
+  of mkU16: opcLdSlotU16
+  of mkU32: opcLdSlotU32
+  of mkF32: opcLdSlotF32
+  of mkI64, mkU64, mkF64, mkPtr, mkNode: opcMov
+  of mkBlock: raiseAssert "ldSlotOpc: not a scalar"
+
+proc stSlotOpc*(k: MemKind): TOpcode =
+  ## like `stOpc` for a slot; `opcMov` if no narrowing is required
+  case k
+  of mkI8, mkU8: opcStSlot8
+  of mkI16, mkU16: opcStSlot16
+  of mkI32, mkU32: opcStSlot32
+  of mkF32: opcStSlotF32
+  of mkI64, mkU64, mkF64, mkPtr, mkNode: opcMov
+  of mkBlock: raiseAssert "stSlotOpc: not a scalar"
+
 template opcode*(x: TInstr): TOpcode = TOpcode(x.TInstrType shr regOShift and regOMask)
 template regA*(x: TInstr): TRegister = TRegister(x.TInstrType shr regAShift and regAMask)
 template regB*(x: TInstr): TRegister = TRegister(x.TInstrType shr regBShift and regBMask)
 template regC*(x: TInstr): TRegister = TRegister(x.TInstrType shr regCShift and regCMask)
-template regX*(x: TInstr): int = int(x.TInstrType shr regXShift and regXMask)
 template regBx*(x: TInstr): int = (x.TInstrType shr regBxShift and regBxMask).int
 
 template jmpDiff*(x: TInstr): int = regBx(x) - wordExcess
