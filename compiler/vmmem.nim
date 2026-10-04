@@ -55,6 +55,7 @@ type
   StackMark* = object
     ## position of the stack pointer; restore it to pop frames.
     seg*, used*: int
+    boxes*: int                # number of live boxes, see `allocBox`
 
   BumpArea = object
     ## a never-freed area that grows by adding chunks: used for globals
@@ -71,6 +72,7 @@ type
     heapLeft: int
     stack: seq[StackSegment]
     sp: StackMark
+    boxes: seq[Address]        # heap blocks owned by the frames on the stack
     globals: BumpArea
     consts: BumpArea
     bytesInUse*: int           # heap bytes handed out (excluding headers)
@@ -329,10 +331,23 @@ proc pushFrame*(m: var VmMemory; size: int): Address =
       m.stack.add StackSegment(base: b, cap: StackSegmentSize)
   result = m.stack[seg].base +! used
   zeroMem(toPtr(result), size)
-  m.sp = StackMark(seg: seg, used: used + size)
+  m.sp = StackMark(seg: seg, used: used + size, boxes: m.boxes.len)
+
+proc freeBoxes(m: var VmMemory; n: int) =
+  for i in n..<m.boxes.len: discard heapDealloc(m, m.boxes[i])
+  m.boxes.setLen n
 
 proc popFrames*(m: var VmMemory; mark: StackMark) {.inline.} =
+  ## pops the frames pushed after `mark` was taken and frees their boxes
+  if m.boxes.len > mark.boxes: freeBoxes(m, mark.boxes)
   m.sp = mark
+
+proc allocBox*(m: var VmMemory; size: int): Address =
+  ## a zeroed heap block for a big value that the current frame owns: it is
+  ## freed when the frame is popped.
+  result = heapAlloc(m, max(size, 1))
+  m.boxes.add result
+  m.sp.boxes = m.boxes.len
 
 # ------------------------- strings and seqs ----------------------------------
 # A string or seq is `(len: int, p: ptr Payload)` and the payload is

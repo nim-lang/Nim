@@ -407,3 +407,13 @@ proc hasPayloads(t: PType; marker: var IntSet): bool =
 proc hasPayloads*(t: PType): bool =
   var marker = initIntSet()
   result = hasPayloads(t, marker)
+
+const
+  BoxThreshold* = 64 * 1024 ## a value bigger than this is held by its address
+                            ## in registers, see `isBig`
+
+proc isBig*(c: var LayoutCache; conf: ConfigRef; t: PType): bool =
+  ## a big value is not stored in registers: its register holds the address
+  ## of the value instead. Results and parameters are passed by address then.
+  t != nil and not isEmptyType(t) and memKind(conf, t) == mkBlock and
+    vmSizeOf(c, conf, t) > BoxThreshold

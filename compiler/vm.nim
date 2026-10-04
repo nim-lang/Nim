@@ -132,6 +132,9 @@ proc readCString(c: PCtx; p: Address): string =
 proc regToNode(c: PCtx; a: Address; t: PType; info: TLineInfo): PNode =
   ## turns a value in register format into an AST
   let vc = valueConv(c)
+  if isBig(c.layouts, c.config, t):
+    # the register holds the address of the value:
+    return loadValue(vc, ld[Address](a), t, info)
   let k = memKind(c.config, t)
   if k != mkBlock:
     var buf = default(array[8, byte])
@@ -150,6 +153,12 @@ proc regToNode(c: PCtx; a: Address; t: PType; info: TLineInfo): PNode =
 proc nodeToReg(c: PCtx; n: PNode; t: PType; dest: Address) =
   ## stores the AST `n` in register format at `dest`
   let vc = valueConv(c)
+  if isBig(c.layouts, c.config, t):
+    # the register holds the address of the value; the frame owns the block:
+    let box = allocBox(c.mem, vmSizeOf(c.layouts, c.config, t))
+    storeValue(vc, box, n, t, inConst = false)
+    st[Address](dest, box)
+    return
   let k = memKind(c.config, t)
   if k != mkBlock:
     var buf = default(array[8, byte])
@@ -384,7 +393,10 @@ proc unshare(c: PCtx; a: Address; t: PType): bool =
     if not canWrite(c.mem, a, 16): return false
     let p = ld[Address](a +! StrPayloadOffset)
     let L = ld[int](a)
-    if p != 0 and L > 0 and not isLiteralPayload(p):
+    if p != 0 and L <= 0 and not isLiteralPayload(p):
+      # an empty copy does not need a payload (`setLen(s, 0)` keeps it):
+      st[Address](a +! StrPayloadOffset, 0)
+    elif p != 0 and L > 0 and not isLiteralPayload(p):
       if not canRead(c.mem, p, PayloadDataOffset + L): return false
       let q = newPayload(c.mem, L, 1, 1, true)
       copyMem(toPtr(q +! PayloadDataOffset), toPtr(p +! PayloadDataOffset), L)
@@ -393,7 +405,9 @@ proc unshare(c: PCtx; a: Address; t: PType): bool =
     if not canWrite(c.mem, a, 16): return false
     let p = ld[Address](a +! StrPayloadOffset)
     let L = ld[int](a)
-    if p != 0 and L > 0:
+    if p != 0 and L <= 0 and not isLiteralPayload(p):
+      st[Address](a +! StrPayloadOffset, 0)
+    elif p != 0 and L > 0:
       let et = t.elementType
       let esize = vmSizeOf(c.layouts, c.config, et)
       let ealign = vmAlignOf(c.layouts, c.config, et)
@@ -711,6 +725,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
   template switchFrame(f: PStackFrame) =
     tos = f
     fp = tos.fp
+  template unwindTo(f: PStackFrame) =
+    # pops the frames above `f`; `f`'s own boxes stay alive:
+    var above = tos
+    while above.next != f: above = above.next
+    c.mem.popFrames(above.mark)
+    switchFrame(f)
 
   template pushCall(callee: PSym; argArea: Address; resDest: Address; envVal: int64) =
     let procInfo = compile(c, callee)
@@ -735,6 +755,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
     if procInfo.envSlot >= 0:
       st[int64](nf.fp +! procInfo.envSlot*SlotSize, envVal)
     nf.resultDest = resDest
+    if procInfo.bigResult:
+      # the callee writes its result to the caller's memory:
+      st[Address](nf.fp, ld[Address](resDest))
     nf.resultSize = procInfo.resultSlots * SlotSize
     if callee.kind == skMacro:
       st[int64](nf.fp, int64(nodeHandle(c.mem, newNodeI(nkEmpty, c.debug[pc]))))
@@ -758,7 +781,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
     c.profiler.enter(c, tos)
     case instr.opcode
     of opcEof: return slotAddr(ra)
-    of opcEofBoxed: return rAdr(ra)
     of opcRet:
       let newPc = c.cleanUpOnReturn(tos)
       # Perform any cleanup action before returning
@@ -1376,6 +1398,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       rAdr(ra) = heapAlloc(c.mem, int(size))
     of opcDealloc:
       if not heapDealloc(c.mem, rAdr(ra)): stackTrace(c, tos, pc, errInvalidFree)
+    of opcAllocTemp:
+      let size = int(wImm())
+      var b = rAdr(instr.regC)
+      if b == 0:
+        b = allocBox(c.mem, size)
+        rAdr(instr.regC) = b
+      else:
+        zeroMem(toPtr(b), size)
+      rAdr(ra) = b
     of opcRealloc:
       let p = rAdr(instr.regB)
       if p != 0 and not isHeapBlock(c.mem, p): stackTrace(c, tos, pc, errInvalidFree)
@@ -1535,7 +1566,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         pc = savedPC - 1
         savedPC = -1
         if tos != savedFrame:
-          c.mem.popFrames(savedFrame.top)
+          # back to the frame that raised (it is above `tos`) to continue
+          # raising; no box is freed here:
+          var m = savedFrame.top
+          m.boxes = c.mem.stackMark.boxes
+          c.mem.popFrames(m)
           switchFrame(savedFrame)
     of opcRaise:
       let raised =
@@ -1566,8 +1601,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         savedPC = -1
         pc = jumpTo.where - 1
         if tos != frame:
-          c.mem.popFrames(frame.top)
-          switchFrame(frame)
+          unwindTo(frame)
       of ExceptionGotoFinally:
         # Jump to the `finally` block first then re-jump here to continue the
         # traversal of the exception chain
@@ -2219,6 +2253,8 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       let start = genProc(c, sym)
       let shape = callShapeOf(c, sym)
       let tos = newFrame(c, sym, start.frameSlots, 0, nil)
+      if start.bigResult:
+        st[Address](tos.fp, allocBox(c.mem, vmSizeOf(c.layouts, c.config, sym.typ.returnType)))
       let firstParam = tos.fp +! max(start.resultSlots, 1) * SlotSize
       # XXX We could perform some type checking here.
       for i in 0..<sym.typ.paramsLen:
@@ -2248,7 +2284,7 @@ proc evalStmt*(c: PCtx, n: PNode) =
     return
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
-  if c.code[start].opcode notin {opcEof, opcEofBoxed}:
+  if c.code[start].opcode != opcEof:
     discard execute(c, start, nil, n.info)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
@@ -2260,7 +2296,7 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   let start = genExpr(c, n)
   if c.cannotEval:
     return errorNode(c.idgen, c.module, n)
-  assert c.code[start].opcode notin {opcEof, opcEofBoxed}
+  assert c.code[start].opcode != opcEof
   result = execute(c, start, n.typ, n.info)
 
 proc getGlobalValue*(c: PCtx; s: PSym): PNode =
@@ -2327,8 +2363,8 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   c.locals = oldLocals
   if c.cannotEval:
     return errorNode(idgen, prc, n)
-  if c.code[start].opcode in {opcEof, opcEofBoxed}: return newNodeI(nkEmpty, n.info)
-  assert c.code[start].opcode notin {opcEof, opcEofBoxed}
+  if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
+  assert c.code[start].opcode != opcEof
   when debugEchoCode or defined(nimVmListing): c.echoCode start
   let tos = newFrame(c, prc, max(c.prc.regInfo.len, 1), 0, nil)
   let a = rawExecute(c, start, tos)

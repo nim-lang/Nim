@@ -155,7 +155,7 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode;
   let ins = (opc.TInstrType or (a.TInstrType shl regAShift) or
                            (b.TInstrType shl regBShift) or
                            (c.TInstrType shl regCShift)).TInstr
-  if opc in {opcEof, opcEofBoxed}: ctx.lastEof = ctx.code.len
+  if opc == opcEof: ctx.lastEof = ctx.code.len
   ctx.code.add(ins)
   ctx.debug.add(n.info)
 
@@ -248,8 +248,12 @@ proc mk(c: PCtx; t: PType): MemKind = memKind(c.config, t)
 proc isScalar(c: PCtx; t: PType): bool =
   t != nil and mk(c, t) != mkBlock
 
+proc isBig(c: PCtx; t: PType): bool =
+  ## a big value is held by its address, see `vmlayout.isBig`
+  isBig(c.layouts, c.config, t)
+
 proc slotsOf(c: PCtx; t: PType): int =
-  if t == nil or isEmptyType(t) or isScalar(c, t): 1
+  if t == nil or isEmptyType(t) or isScalar(c, t) or isBig(c, t): 1
   else: slotsFor(vmSize(c, t))
 
 proc typeHandle(c: PCtx; t: PType): int32 = typeHandle(c.mem, t)
@@ -334,8 +338,42 @@ proc getFreeRange(cc: PCtx; n: int; isTemp: bool): TRegister =
   for j in start..<start+n: c.regInfo[j] = SlotUse(inUse: true, isTemp: isTemp)
   c.regInfo[start].rangeLen = int32(n)
 
+
+proc freshSlot(c: PCtx): TRegister =
+  ## a slot that no temporary used before: it is 0 when the frame starts
+  if c.prc.regInfo.len >= MaxFrameSlots:
+    globalError(c.config, c.bestEffort, "VM problem: stack frame too large")
+  result = TRegister(c.prc.regInfo.len)
+  c.prc.regInfo.add SlotUse(inUse: true, isTemp: false, rangeLen: 1)
+
+proc genAllocBox(c: PCtx; n: PNode; r: TRegister; t: PType; cache = TDest(-1)) =
+  ## register `r` gets a zeroed block for a big value of type `t`. Every
+  ## execution of this instruction gets the same block (the frame owns it):
+  ## its address is cached in a slot of its own.
+  let cache = if cache >= 0: TRegister(cache) else: freshSlot(c)
+  c.gABCW(n, opcAllocTemp, r, 0, cache, uint64(vmSize(c, t)))
+
+proc genValAddr(c: PCtx; n: PNode; dest, r: TRegister; t: PType) =
+  ## `dest` = the address of the value of type `t` in register(s) `r`
+  if isBig(c, t): c.gABC(n, opcMov, dest, r)
+  else: c.gABC(n, opcAddrSlot, dest, r)
+
+proc genCopyVal(c: PCtx; n: PNode; dest, src: TRegister; t: PType) =
+  ## copies the value of type `t` in register(s) `src` to `dest`
+  if isBig(c, t): c.gABCW(n, opcCopyMem, dest, src, 0, uint64(vmSize(c, t)))
+  else:
+    let k = slotsOf(c, t)
+    if k == 1: c.gABC(n, opcMov, dest, src)
+    else: c.gABC(n, opcMovN, dest, src, TRegister(k))
+
+proc genZeroVal(c: PCtx; n: PNode; r: TRegister; t: PType) =
+  if isBig(c, t): c.gABCW(n, opcZeroMem, r, 0, 0, uint64(vmSize(c, t)))
+  else: c.gABC(n, opcZeroN, r, TRegister(slotsOf(c, t)))
+
 proc getTemp(c: PCtx; t: PType): TRegister =
-  getFreeRange(c, slotsOf(c, t), true)
+  result = getFreeRange(c, slotsOf(c, t), true)
+  if isBig(c, t):
+    genAllocBox(c, newNodeI(nkEmpty, c.bestEffort), result, t)
 
 proc getTempN(c: PCtx; n: int): TRegister =
   getFreeRange(c, n, true)
@@ -446,9 +484,6 @@ proc addLocal(c: PCtx; s: PSym; slot: TRegister) =
   let inMem = isScalar(c, localType(s)) and s.id in c.prc.addrTaken
   c.prc.locals[s.itemId] = LocalInfo(slot: slot, inMemory: inMem)
 
-const
-  BoxThreshold = 64 * 1024 ## locals bigger than this live on the heap
-
 proc setSlot(c: PCtx; s: PSym; info: PNode = nil): TRegister =
   ## allocates the slots of a local variable
   let x = c.prc.locals.getOrDefault(s.itemId, LocalInfo(slot: -1))
@@ -457,18 +492,12 @@ proc setSlot(c: PCtx; s: PSym; info: PNode = nil): TRegister =
   # a symbol can be declared multiple times (templates duplicate their
   # bodies); a dead declaration gets fresh slots.
   let typ = localType(s)
-  if not isScalar(c, typ) and vmSize(c, typ) > BoxThreshold:
+  if isBig(c, typ):
     # a big value: we allocate it on the heap once and keep its address
-    result = getFreeRange(c, 1, false)
+    result = freshSlot(c)
     c.prc.locals[s.itemId] = LocalInfo(slot: result, boxed: true)
     let n = if info != nil: info else: newSymNode(s)
-    let t = getFreeRange(c, 1, true)
-    c.gABC(n, opcIsNil, t, result)
-    let skip = c.xjmp(n, opcFJmp, t)
-    genLdImm(c, n, t, vmSize(c, typ))
-    c.gABC(n, opcAlloc, result, t)
-    c.patch(skip)
-    c.prc.regInfo[t] = SlotUse()
+    genAllocBox(c, n, result, typ, cache = result)
   else:
     result = getFreeRange(c, slotsOf(c, typ), false)
     addLocal(c, s, result)
@@ -496,9 +525,7 @@ proc gen(c: PCtx; n: PNode; dest: TRegister; flags: TGenFlags = {}) =
   if d != dest:
     # the value ended up elsewhere (an alias of a local); copy it:
     if n.typ != nil and not isEmptyType(n.typ) and d >= 0:
-      let k = slotsOf(c, n.typ)
-      if k == 1: c.gABC(n, opcMov, dest, d)
-      else: c.gABC(n, opcMovN, dest, d, TRegister(k))
+      genCopyVal(c, n, dest, d, n.typ)
       c.freeTemp(d)
 
 proc gen(c: PCtx; n: PNode; flags: TGenFlags = {}) =
@@ -534,6 +561,11 @@ proc frameLoc(reg: TRegister; typ: PType; widened, whole, isTemp: bool): Loc =
 
 proc memLoc(reg: TRegister; off: int; typ: PType; isTemp: bool): Loc =
   Loc(kind: lkMem, reg: reg, off: off, typ: typ, isTemp: isTemp)
+
+proc valLoc(c: PCtx; reg: TRegister; typ: PType; isTemp: bool): Loc =
+  ## the location of the value of type `typ` in register(s) `reg`
+  if isBig(c, typ): memLoc(reg, 0, typ, isTemp)
+  else: frameLoc(reg, typ, isScalar(c, typ), true, isTemp)
 
 proc freeLoc(c: PCtx; loc: Loc) =
   if loc.isTemp: c.freeTemp(loc.reg)
@@ -608,7 +640,7 @@ proc loadLoc(c: PCtx; n: PNode; loc: var Loc; dest: var TDest) =
       let a = addrOfLoc(c, n, loc)
       if dest < 0: dest = c.getTemp(t)
       let d = c.getIntTemp()
-      c.gABC(n, opcAddrSlot, d, dest)
+      c.genValAddr(n, d, dest, t)
       if size > 0: c.gABCW(n, opcCopyMem, d, a, 0, uint64(size))
       c.freeTemp(d)
   c.freeLoc(loc)
@@ -642,7 +674,7 @@ proc storeLoc(c: PCtx; n: PNode; loc: var Loc; src: TRegister) =
     elif size > 0:
       let a = addrOfLoc(c, n, loc)
       let s = c.getIntTemp()
-      c.gABC(n, opcAddrSlot, s, src)
+      c.genValAddr(n, s, src, t)
       c.gABCW(n, opcCopyMem, a, s, 0, uint64(size))
       c.freeTemp(s)
   c.freeLoc(loc)
@@ -679,7 +711,7 @@ proc genTempLoc(c: PCtx; n: PNode): Loc =
   gen(c, n, d)
   if d < 0:
     d = c.getTemp(t)
-  result = frameLoc(d, t, isScalar(c, t), true, c.isTemp(d))
+  result = valLoc(c, d, t, c.isTemp(d))
 
 # ------------------------- literals and constants ----------------------------
 
@@ -763,7 +795,11 @@ proc checkProcSym(c: PCtx; n: PNode; s: PSym) =
       sfForward in s.flags:
     globalError(c.config, n.info, "cannot evaluate at compile time: " & n.renderTree)
   if importcCond(c, s) and s.offset >= -1 and
-      not c.callbackIndex.contains(s.name.s):
+      not c.callbackIndex.contains(s.name.s) and
+      not (c.prc.sym != nil and c.prc.sym.name.s.startsWith('=')):
+    # a hook like `=destroy` can use importc'ed procs on paths that compile
+    # time code never takes (`if p != nil: c_free(p)`); calling one is an
+    # error at runtime then
     localError(c.config, n.info,
                "cannot 'importc' variable at compile time; " & s.name.s)
 
@@ -1312,8 +1348,7 @@ proc genStoreValue(c: PCtx; loc: var Loc; value: PNode) =
   elif loc.kind == lkFrame and loc.widened:
     gen(c, value, loc.reg)
     c.freeLoc(loc)
-  elif not isScalar(c, loc.typ) and loc.kind == lkMem and isLocationExpr(value) and
-      vmSize(c, loc.typ) > BoxThreshold:
+  elif isBig(c, loc.typ) and loc.kind == lkMem and isLocationExpr(value):
     # big values are copied memory to memory:
     let size = vmSize(c, loc.typ)
     var src = genLoc(c, value)
@@ -1840,6 +1875,10 @@ proc genArgInto(c: PCtx; arg: PNode; pt: PType; slot: TRegister; isMacro: bool) 
     let a = copyNode(arg)
     a.typ = ptk
     gen(c, a, slot)
+  elif isBig(c, pt):
+    # passed by address: the callee gets a copy that the caller's frame owns
+    genAllocBox(c, arg, slot, pt)
+    gen(c, arg, slot)
   else:
     gen(c, arg, slot)
 
@@ -2010,6 +2049,10 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
       c.gABx(n[0], opcLdImmInt, TRegister(area+1), 0)
     c.freeTemp(f)
   let firstParam = area + 2 + L.resultSlots
+  let resultType = if isTemplate or isMacro: nil else: n.typ
+  if isBig(c, resultType):
+    # the callee writes a big result to the memory that we provide:
+    genAllocBox(c, n, TRegister(area+2), resultType)
   for i in 1..<n.len:
     if i-1 < L.paramOffsets.len:
       genArgInto(c, n[i], L.paramTypes[i-1],
@@ -2018,10 +2061,18 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
       globalError(c.config, n.info, "VM: cannot pass varargs to an importc'ed proc")
   c.gABC(n, opcIndCall, 0, area, TRegister(L.resultSlots + L.paramSlots))
   if L.resultSlots > 0 and ((n.typ != nil and not isEmptyType(n.typ)) or isTemplate or isMacro):
-    if dest < 0: dest = c.getTemp(n.typ)
-    let k = if isTemplate or isMacro: 1 else: slotsOf(c, n.typ)
-    if k == 1: c.gABC(n, opcMov, dest, TRegister(area+2))
-    else: c.gABC(n, opcMovN, dest, TRegister(area+2), TRegister(k))
+    if isBig(c, resultType):
+      if dest < 0:
+        # the result's block is owned by the frame; we keep its address:
+        dest = c.getIntTemp()
+        c.gABC(n, opcMov, dest, TRegister(area+2))
+      else:
+        genCopyVal(c, n, dest, TRegister(area+2), resultType)
+    else:
+      if dest < 0: dest = c.getTemp(n.typ)
+      let k = if isTemplate or isMacro: 1 else: slotsOf(c, n.typ)
+      if k == 1: c.gABC(n, opcMov, dest, TRegister(area+2))
+      else: c.gABC(n, opcMovN, dest, TRegister(area+2), TRegister(k))
   c.freeTemp(area)
 
 proc genHookCall(c: PCtx; n: PNode; op: PSym; objAddr: TRegister; objType: PType) =
@@ -2063,7 +2114,7 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   else:
     # construct into a fresh temporary so that `x = Obj(a: x.b)` works:
     let target = if c.isTemp(dest): TRegister(dest) else: c.getTemp(n.typ)
-    var whole = frameLoc(target, n.typ, false, true, false)
+    var whole = valLoc(c, target, n.typ, false)
     zeroLoc(c, n, whole)
     for i in 1..<n.len:
       let it = n[i]
@@ -2071,14 +2122,14 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
         # a field of an inactive branch
         discard
       elif it.kind == nkExprColonExpr and it[0].kind == nkSym:
-        var loc = fieldLoc(c, frameLoc(target, n.typ, false, true, false), t, it[0].sym)
+        var loc = fieldLoc(c, valLoc(c, target, n.typ, false), t, it[0].sym)
         genStoreValue(c, loc, it[1])
       else:
         globalError(c.config, n.info, "invalid object constructor")
     if dest < 0:
       dest = target
     elif dest != target:
-      c.gABC(n, opcMovN, dest, target, TRegister(slotsOf(c, n.typ)))
+      genCopyVal(c, n, dest, target, n.typ)
       c.freeTemp(target)
 
 proc genClosureConstr(c: PCtx, n: PNode, dest: var TDest) =
@@ -2105,16 +2156,16 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   let target = if c.isTemp(dest): TRegister(dest) else: c.getTemp(n.typ)
   if t.kind == tyObject:
     # an object constructor in tuple syntax (from a default value)
-    var whole = frameLoc(target, n.typ, false, true, false)
+    var whole = valLoc(c, target, n.typ, false)
     zeroLoc(c, n, whole)
   else:
-    c.gABC(n, opcZeroN, target, TRegister(slotsOf(c, n.typ)))
+    genZeroVal(c, n, target, n.typ)
   for i in 0..<n.len:
     let it = n[i]
     if nfPreventCg in it.flags: continue
     let (idx, value) = if it.kind == nkExprColonExpr: (it[0].sym.position, it[1])
                        else: (i, it)
-    var loc = frameLoc(target, n.typ, false, true, false)
+    var loc = valLoc(c, target, n.typ, false)
     loc.off = elemOffset(c.layouts, c.config, t, idx)
     loc.typ = t[idx]
     loc.whole = false
@@ -2122,7 +2173,7 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0:
     dest = target
   elif dest != target:
-    c.gABC(n, opcMovN, dest, target, TRegister(slotsOf(c, n.typ)))
+    genCopyVal(c, n, dest, target, n.typ)
     c.freeTemp(target)
 
 proc seqW(c: PCtx; elemType: PType): uint64 =
@@ -2156,10 +2207,13 @@ proc genSeqConstrFrom(c: PCtx; n: PNode; seqType: PType; dest: var TDest) =
 proc genArrayConstrInto(c: PCtx, n: PNode; arrType: PType; target: TRegister) =
   let elemType = arrType.skipTypes(abstractInst).elementType
   let esize = vmSize(c, elemType)
-  var whole = frameLoc(target, arrType, false, true, false)
+  var whole = valLoc(c, target, arrType, false)
   zeroLoc(c, n, whole)
   for i in 0..<n.len:
-    var loc = frameLoc(target, elemType, false, false, false)
+    var loc = valLoc(c, target, arrType, false)
+    loc.typ = elemType
+    loc.whole = false
+    loc.widened = false
     loc.off = i*esize
     genStoreValue(c, loc, n[i])
 
@@ -2193,7 +2247,7 @@ proc genArrayConstr(c: PCtx, n: PNode, dest: var TDest) =
     if dest < 0:
       dest = target
     elif dest != target:
-      c.gABC(n, opcMovN, dest, target, TRegister(slotsOf(c, n.typ)))
+      genCopyVal(c, n, dest, target, n.typ)
       c.freeTemp(target)
 
 proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
@@ -3173,7 +3227,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     c.freeTemp(s)
   of mDefault, mZeroDefault:
     if dest < 0: dest = c.getTemp(n.typ)
-    var loc = frameLoc(dest, n.typ, isScalar(c, n.typ), true, false)
+    var loc = valLoc(c, dest, n.typ, false)
     zeroLoc(c, n, loc)
   of mOf:
     let t = n[1].typ.skipTypes(abstractInst)
@@ -3513,9 +3567,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
       if keep.kind == lkFrame and dest == keep.reg:
         # loadLoc aliased the local; we need a real copy:
         let d = c.getTemp(arg.typ)
-        let k = slotsOf(c, arg.typ)
-        if k == 1: c.gABC(n, opcMov, d, dest)
-        else: c.gABC(n, opcMovN, d, dest, TRegister(k))
+        genCopyVal(c, n, d, dest, arg.typ)
         dest = d
       zeroLoc(c, n, loc)
   of mEnsureMove:
@@ -3524,7 +3576,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     # a type without hooks; we copy it with value semantics:
     let arg = n[1].skipAddr
     if dest < 0 or not c.isTemp(dest): dest = c.getTemp(arg.typ)
-    var loc = frameLoc(dest, arg.typ, isScalar(c, arg.typ), true, false)
+    var loc = valLoc(c, dest, arg.typ, false)
     genStoreValue(c, loc, arg)
   of mAsgn:
     # `=copy` and `=sink` of a type without hooks (see injectdestructors):
@@ -3905,7 +3957,8 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
     let boxed = c.prc.locals[res.itemId].boxed
     let body = prepareTopLevel(c, newTreeI(nkAsgn, n.info, newSymNode(res), n))
     c.gen(body)
-    c.gABC(n, if boxed: opcEofBoxed else: opcEof, TRegister(slot))
+    discard boxed # a big value's register holds its address, like a boxed local's
+    c.gABC(n, opcEof, TRegister(slot))
     return
   let n = if requiresValue: n else: prepareTopLevel(c, n)
   # locals whose address is taken must live in memory:
@@ -3953,13 +4006,15 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     let ret = s.typ.returnType
     let resultInMem = p.resultAddrTaken and L.resultSlots == 1 and ret != nil and
                       isScalar(c, ret.skipTypes({tyTypeDesc}))
+    # a big result is written to the memory that the caller provides:
+    let bigResult = not isMacro and isBig(c, ret)
     if s.ast != nil and s.ast.len > resultPos and s.ast[resultPos].kind == nkSym:
       let rs = s.ast[resultPos].sym
-      p.locals[rs.itemId] = LocalInfo(slot: 0, inMemory: resultInMem)
+      p.locals[rs.itemId] = LocalInfo(slot: 0, inMemory: resultInMem, boxed: bigResult)
       p.resultInfo = p.locals[rs.itemId]
       p.hasResult = true
     elif (ret != nil and not isEmptyType(ret)) or isMacro:
-      p.resultInfo = LocalInfo(slot: 0, inMemory: resultInMem)
+      p.resultInfo = LocalInfo(slot: 0, inMemory: resultInMem, boxed: bigResult)
       p.hasResult = true
     let firstParam = max(L.resultSlots, 1)
     if L.paramSlots > 0:
@@ -3971,7 +4026,8 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
       let slot = TRegister(firstParam + L.paramOffsets[i-1])
       let inMem = isScalar(c, L.paramTypes[i-1]) and
                   (ps.id in p.addrTaken or ps.position in p.paramAddrTaken)
-      let info = LocalInfo(slot: slot, inMemory: inMem)
+      let info = LocalInfo(slot: slot, inMemory: inMem,
+                           boxed: isBig(c, L.paramTypes[i-1]))
       p.locals[ps.itemId] = info
       if p.paramSlots.len <= ps.position: p.paramSlots.setLen(ps.position+1)
       p.paramSlots[ps.position] = info
@@ -4012,6 +4068,7 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     c.gABC(body, eofInstr.opcode, eofInstr.regA)
     result.frameSlots = c.prc.regInfo.len.int32
     result.resultSlots = L.resultSlots.int32
+    result.bigResult = bigResult
     result.paramSlots = L.paramSlots.int32
     result.envSlot = envSlot.int32
     c.procToCodePos[s.id] = result

@@ -84,7 +84,6 @@ type
     # Unless stated otherwise strings, seqs, openArrays
     # and big sets are passed by address: `regs[A]` is the address of the value.
     opcEof,         # end of code; the result is in register A
-    opcEofBoxed,    # end of code; register A holds the address of the result
     opcRet,         # return
     opcYldYoid,     # yield with no value
     opcYldVal,      # yield with a value
@@ -213,6 +212,9 @@ type
     opcAlloc,       # regs[A] = alloc0(regs[B])
     opcDealloc,     # dealloc(regs[A])
     opcRealloc,     # regs[A] = realloc0(regs[B], regs[C])
+    opcAllocTemp,   # regs[A] = a zeroed block of W bytes that the frame owns (see
+                    # `allocBox`); holds a big value. The block is cached in
+                    # regs[C]: every execution gets the same one
     opcMemMove,     # moveMem(regs[A], regs[B], regs[C])
     opcMemZero,     # zeroMem(regs[A], regs[B])
     opcMemCmp,      # regs[A] = cmpMem(regs[B], regs[B+1], regs[B+2])
@@ -372,6 +374,7 @@ type
     resultSlots*: int32     # slots of the result
     paramSlots*: int32      # slots of the parameters
     envSlot*: int32         # slot of the closure environment or -1
+    bigResult*: bool        # the caller passes the address of the result in slot 0
     genericParamSlots*: seq[int32] # macros: slots of the generic parameters
 
   TCtx* = object of TPassContext # code gen context
@@ -481,7 +484,7 @@ const
     opcBSetEq, opcBSetLe, opcBSetLt,
     opcSeqNew, opcSeqSetLen, opcSeqGrowOne, opcSeqData, opcSeqCopyPayload,
     opcNewRef, opcInitObj, opcOf, opcIs, opcRepr, opcSlice, opcNDynBindSym, opcToNode, opcFromNode,
-    opcUnshare, opcDestroyValue, opcCopyValue, opcSinkValue,
+    opcUnshare, opcAllocTemp, opcDestroyValue, opcCopyValue, opcSinkValue,
     opcNctNext, opcInvalidField, opcFfiCall
     }
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
