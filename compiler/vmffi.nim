@@ -106,17 +106,10 @@ proc importcSymbol*(conf: ConfigRef; sym: PSym): pointer =
   if result.isNil:
     globalError(conf, sym.info, "cannot import symbol: " & name & " from " & libPathMsg)
 
-when defined(arm64) and not defined(windows):
-  # the wrapper's `TABI` is that of x86-64: `UNIX64` is `FFI_WIN64` on
-  # aarch64, which passes C varargs differently. `FFI_SYSV` is 1 there.
-  const hostAbi = SYSV
-else:
-  const hostAbi = DEFAULT_ABI
-
 proc mapCallConv(conf: ConfigRef; cc: TCallingConvention; info: TLineInfo): TABI =
   case cc
-  of ccNimCall, ccCDecl: result = hostAbi
-  of ccStdCall: result = when defined(windows) and defined(x86): STDCALL else: hostAbi
+  of ccNimCall, ccCDecl: result = DEFAULT_ABI
+  of ccStdCall: result = when defined(windows) and defined(x86): STDCALL else: DEFAULT_ABI
   else:
     result = default(TABI)
     globalError(conf, info, "cannot map calling convention to FFI")
@@ -168,10 +161,7 @@ proc callForeign*(conf: ConfigRef; site: FfiSite; args, res: Address;
   ## result is written to the slot at `res`. Registers hold scalars widened
   ## to 64 bits, so on a little endian host the slot itself can be passed for
   ## every integral type.
-  # libffi's `ffi_cif` can have more fields than the wrapper's `TCif`
-  # (`FFI_EXTRA_CIF_FIELDS`, like `aarch64_nfixedargs` for varargs):
-  var cifBuf = default(tuple[cif: TCif, extra: array[4, uint64]])
-  template cif: untyped = cifBuf.cif
+  var cif = default(TCif)
   var sig = default(ParamList)
   var cargs = default(ArgList)
   # floats are widened to `float64` in registers and strings need their
