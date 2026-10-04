@@ -326,6 +326,55 @@ proc initObj(c: PCtx; a: Address; t: PType) =
   else:
     discard
 
+proc activeFields(c: PCtx; a: Address; obj: PType; n: PNode;
+                  res: var seq[(Address, PType)]) =
+  ## the fields of the object at `a` that exist for its discriminators
+  case n.kind
+  of nkSym:
+    res.add (a +! fieldOffset(c.layouts, c.config, obj, n.sym), n.sym.typ)
+  of nkRecList:
+    for ch in n: activeFields(c, a, obj, ch, res)
+  of nkRecCase:
+    activeFields(c, a, obj, n[0], res)
+    let disc = n[0].sym
+    let v = vmvalue.loadInt(a +! fieldOffset(c.layouts, c.config, obj, disc),
+                            memKind(c.config, disc.typ))
+    for i in 1..<n.len:
+      let b = n[i]
+      var matches = b.kind == nkElse
+      if not matches:
+        for j in 0..<b.len-1:
+          let lab = b[j]
+          if lab.kind == nkRange:
+            if v >= getOrdValue(lab[0]).toInt64 and v <= getOrdValue(lab[1]).toInt64: matches = true
+          elif lab.kind in {nkCharLit..nkUInt64Lit, nkSym}:
+            if getOrdValue(lab).toInt64 == v: matches = true
+      if matches:
+        activeFields(c, a, obj, b.lastSon, res)
+        return
+  else: discard
+
+proc payloadParts(c: PCtx; a: Address; t: PType): seq[(Address, PType)] =
+  ## the elements of the array, tuple or object `t` at `a` that can hold
+  ## strings or seqs
+  result = @[]
+  case t.kind
+  of tyArray:
+    let et = t.elementType
+    if skipForLayout(et).kind in {tyString, tySequence, tyArray, tyTuple, tyObject}:
+      let esize = vmSizeOf(c.layouts, c.config, et)
+      for i in 0..<toInt(lengthOrd(c.config, t)):
+        result.add (a +! i*esize, et)
+  of tyTuple:
+    for i, ch in t.ikids:
+      result.add (a +! elemOffset(c.layouts, c.config, t, i), ch)
+  of tyObject:
+    var b = t
+    while b != nil:
+      if b.n != nil: activeFields(c, a, t, b.n, result)
+      b = if b.baseClass != nil: b.baseClass.skipTypes(skipPtrs) else: nil
+  else: discard
+
 proc unshare(c: PCtx; a: Address; t: PType): bool =
   ## gives the strings and seqs of the value at `a` their own payloads.
   result = true
@@ -355,48 +404,53 @@ proc unshare(c: PCtx; a: Address; t: PType): bool =
       st[Address](a +! StrPayloadOffset, q)
       for i in 0..<L:
         if not unshare(c, q +! (off + i*esize), et): return false
-  of tyArray:
-    let et = t.elementType
-    let esize = vmSizeOf(c.layouts, c.config, et)
-    if skipForLayout(et).kind in {tyString, tySequence, tyArray, tyTuple, tyObject}:
-      for i in 0..<toInt(lengthOrd(c.config, t)):
-        if not unshare(c, a +! i*esize, et): return false
-  of tyTuple:
-    for i, ch in t.ikids:
-      if not unshare(c, a +! elemOffset(c.layouts, c.config, t, i), ch): return false
-  of tyObject:
-    proc fields(c: PCtx; a: Address; obj: PType; n: PNode): bool =
-      result = true
-      case n.kind
-      of nkSym:
-        result = unshare(c, a +! fieldOffset(c.layouts, c.config, obj, n.sym), n.sym.typ)
-      of nkRecList:
-        for ch in n:
-          if not fields(c, a, obj, ch): return false
-      of nkRecCase:
-        if not fields(c, a, obj, n[0]): return false
-        let disc = n[0].sym
-        let v = vmvalue.loadInt(a +! fieldOffset(c.layouts, c.config, obj, disc),
-                                memKind(c.config, disc.typ))
-        for i in 1..<n.len:
-          let b = n[i]
-          var matches = b.kind == nkElse
-          if not matches:
-            for j in 0..<b.len-1:
-              let lab = b[j]
-              if lab.kind == nkRange:
-                if v >= getOrdValue(lab[0]).toInt64 and v <= getOrdValue(lab[1]).toInt64: matches = true
-              elif lab.kind in {nkCharLit..nkUInt64Lit, nkSym}:
-                if getOrdValue(lab).toInt64 == v: matches = true
-          if matches:
-            return fields(c, a, obj, b.lastSon)
-      else: discard
-    var b = t
-    while b != nil:
-      if b.n != nil and not fields(c, a, t, b.n): return false
-      b = if b.baseClass != nil: b.baseClass.skipTypes(skipPtrs) else: nil
+  of tyArray, tyTuple, tyObject:
+    for (x, xt) in payloadParts(c, a, t):
+      if not unshare(c, x, xt): return false
   else:
     discard
+
+proc destroyValue(c: PCtx; a: Address; t: PType): bool =
+  ## `=destroy` for a value without hooks: frees the payloads of its
+  ## strings and seqs.
+  result = true
+  let t = skipForLayout(t)
+  case t.kind
+  of tyString:
+    result = freePayload(c, a)
+  of tySequence:
+    if not canRead(c.mem, a, 16): return false
+    let p = ld[Address](a +! StrPayloadOffset)
+    let et = t.elementType
+    if p != 0 and not isLiteralPayload(p) and hasPayloads(et):
+      let L = ld[int](a)
+      let esize = vmSizeOf(c.layouts, c.config, et)
+      let off = payloadDataOffset(vmAlignOf(c.layouts, c.config, et))
+      if L < 0 or not canRead(c.mem, p, off + L*esize): return false
+      for i in 0..<L:
+        if not destroyValue(c, p +! (off + i*esize), et): return false
+    result = freePayload(c, a)
+  of tyArray, tyTuple, tyObject:
+    for (x, xt) in payloadParts(c, a, t):
+      if not destroyValue(c, x, xt): return false
+  else:
+    discard
+
+proc asgnValue(c: PCtx; dest, src: Address; t: PType; isSink: bool): bool =
+  ## `=copy` (`=sink` if `isSink`) for a value without hooks
+  if dest == src: return true
+  let size = vmSizeOf(c.layouts, c.config, t)
+  if not canWrite(c.mem, dest, size) or not canRead(c.mem, src, size): return false
+  if isSink:
+    result = destroyValue(c, dest, t)
+    copyMem(toPtr(dest), toPtr(src), size)
+  else:
+    # copy first: `src` can be a part of `dest`
+    let tmp = heapAlloc(c.mem, size)
+    copyMem(toPtr(tmp), toPtr(src), size)
+    result = unshare(c, tmp, t) and destroyValue(c, dest, t)
+    copyMem(toPtr(dest), toPtr(tmp), size)
+    discard heapDealloc(c.mem, tmp)
 
 proc dynamicType(c: PCtx; objAddr: Address): PType =
   ## the type stored in the header of an inheritable object
@@ -1243,6 +1297,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
 
     of opcUnshare:
       ensure unshare(c, rAdr(ra), getType(c.mem, int64(wImm())))
+    of opcDestroyValue:
+      if not destroyValue(c, rAdr(ra), getType(c.mem, int64(wImm()))):
+        stackTrace(c, tos, pc, errInvalidFree)
+    of opcCopyValue, opcSinkValue:
+      if not asgnValue(c, rAdr(ra), rAdr(instr.regB), getType(c.mem, int64(wImm())),
+                       instr.opcode == opcSinkValue):
+        stackTrace(c, tos, pc, errInvalidFree)
     of opcMakeUnique:
       let s = rAdr(ra)
       checkWrite(s, 16)

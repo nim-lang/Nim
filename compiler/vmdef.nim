@@ -194,6 +194,10 @@ type
     opcMakeUnique,  # copy-on-write: the string at regs[A] gets its own payload if it shares a literal
     opcUnshare,     # the strings and seqs in the value at regs[A] of type W get their own
                     # payloads; value semantics for the old runtime (--mm:refc)
+    opcDestroyValue,# `=destroy` for the value at regs[A] of type W that has no hooks
+    opcCopyValue,   # `=copy` of the value at regs[B] to the value at regs[A] of type W
+                    # that has no hooks
+    opcSinkValue,   # like opcCopyValue for `=sink`
 
     # refs and objects:
     opcNewRef,      # regs[A] = a new zeroed ref cell; W = size | align shl 32
@@ -340,6 +344,7 @@ type
     paramSlots*: seq[LocalInfo] # by parameter position; macros copy their parameters
     resultInfo*: LocalInfo
     hasResult*: bool
+    injected*: bool         # the code went through injectdestructors
 
   CallShape* = object
     ## where the arguments of a call live, relative to the first argument slot
@@ -476,7 +481,7 @@ const
     opcBSetEq, opcBSetLe, opcBSetLt,
     opcSeqNew, opcSeqSetLen, opcSeqGrowOne, opcSeqData, opcSeqCopyPayload,
     opcNewRef, opcInitObj, opcOf, opcIs, opcRepr, opcSlice, opcNDynBindSym, opcToNode, opcFromNode,
-    opcUnshare,
+    opcUnshare, opcDestroyValue, opcCopyValue, opcSinkValue,
     opcNctNext, opcInvalidField, opcFfiCall
     }
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}

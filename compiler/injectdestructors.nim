@@ -24,6 +24,7 @@ import std/[strtabs, tables, strutils, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+from vmlayout import hasPayloads
 from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites
 
 type
@@ -67,6 +68,11 @@ template dbg(body) =
 
 proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
+  if not result and c.graph.vmInjecting and
+      optSeqDestructors notin c.graph.config.globalOptions:
+    # the VM manages strings and seqs like --mm:orc does, also for --mm:refc
+    # where they have no hooks:
+    result = hasPayloads(t)
   when toDebug.len > 0:
     # for more effective debugging
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
@@ -233,6 +239,12 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
+  if c.graph.vmInjecting and op != nil and sfGeneratedOp in op.flags and
+      optSeqDestructors notin c.graph.config.globalOptions and
+      tfHasAsgn notin t.flags:
+    # --mm:refc lifts hooks without memory management for types without user
+    # defined hooks; the VM manages their strings and seqs itself:
+    op = nil
   if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
     # The VM does not lift hooks: that could conflict with hooks that are
     # declared later. It implements these magics with value semantics instead:

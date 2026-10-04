@@ -1242,38 +1242,9 @@ proc genLoc(c: PCtx; n: PNode; write = false): Loc =
     result = genTempLoc(c, n)
 
 proc usesNewRuntime(c: PCtx): bool =
-  optSeqDestructors in c.config.globalOptions and not defined(nimVmNoInject)
-
-proc hasPayloads(t: PType; marker: var IntSet): bool =
-  ## does a value of type `t` contain strings or seqs (not behind a pointer)?
-  let t = skipForLayout(t)
-  case t.kind
-  of tyString, tySequence: true
-  of tyArray: hasPayloads(t.elementType, marker)
-  of tyTuple:
-    for _, ch in t.ikids:
-      if hasPayloads(ch, marker): return true
-    false
-  of tyObject:
-    if marker.containsOrIncl(t.id): return false
-    proc fields(n: PNode; marker: var IntSet): bool =
-      case n.kind
-      of nkSym: hasPayloads(n.sym.typ, marker)
-      of nkRecList, nkRecCase, nkOfBranch, nkElse:
-        for ch in n:
-          if fields(ch, marker): return true
-        false
-      else: false
-    var b = t
-    while b != nil:
-      if b.n != nil and fields(b.n, marker): return true
-      b = if b.baseClass != nil: b.baseClass.skipTypes(skipPtrs) else: nil
-    false
-  else: false
-
-proc hasPayloads(t: PType): bool =
-  var marker = initIntSet()
-  result = hasPayloads(t, marker)
+  ## the VM injects destructors also for --mm:refc: strings and seqs are
+  ## then managed like they are for --mm:orc, see `injectdestructors.hasDestructor`
+  not defined(nimVmNoInject)
 
 proc hasHooks(c: PCtx; t: PType): bool =
   ## mirrors `injectdestructors.genOp`: does the type have lifted hooks?
@@ -1293,9 +1264,13 @@ proc needsUnshare(c: PCtx; t: PType; value: PNode): bool =
   ## The same holds for types without lifted hooks (types that are only used
   ## at compile time): the VM does not lift hooks for them, as that could
   ## conflict with hooks that are declared later.
+  ## In code that went through injectdestructors a copy is a `=copy` call
+  ## and an assignment of a type that it manages is a move.
   t != nil and not isScalar(c, t) and
     (not usesNewRuntime(c) or not hasHooks(c, t)) and
-    isLocationExpr(value) and hasPayloads(t)
+    isLocationExpr(value) and hasPayloads(t) and
+    not (c.prc.injected and
+         (hasDestructor(t) or optSeqDestructors notin c.config.globalOptions))
 
 proc genStoreValue(c: PCtx; loc: var Loc; value: PNode) =
   ## evaluates `value` and stores it in `loc`. Frees `loc`.
@@ -3486,12 +3461,21 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     discard "just ignore any call to runnableExamples"
   of mTrace: discard "no cycle collector in the VM"
   of mDestroy:
+    # the builtin of liftdestructors frees the payload of a string or seq;
+    # injectdestructors' `=destroy` of a type without hooks frees all of its
+    # strings and seqs:
     let arg = n[1].skipAddr
     let t = arg.typ.skipTypes(abstractInst+{tyOwned, tyVar, tyLent, tySink})
-    if t.kind in {tyString, tySequence}:
+    let deep = n[0].kind == nkSym and n[0].sym.name.s == "=destroy"
+    if t.kind == tyString or (t.kind == tySequence and not (deep and hasPayloads(t.elementType))):
       var loc = genLoc(c, arg)
       let a = addrOfLoc(c, n, loc)
       c.gABC(n, opcPayloadFree, a)
+      c.freeLoc(loc)
+    elif deep and hasPayloads(t):
+      var loc = genLoc(c, arg)
+      let a = addrOfLoc(c, n, loc)
+      c.gABCW(n, opcDestroyValue, a, 0, 0, uint64(typeHandle(c, t)))
       c.freeLoc(loc)
   of mWasMoved:
     unused(c, n, dest)
@@ -3545,7 +3529,17 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mAsgn:
     # `=copy` and `=sink` of a type without hooks (see injectdestructors):
     unused(c, n, dest)
-    genAsgn(c, n[1].skipAddr, n[2])
+    let t = n[1].skipAddr.typ.skipTypes(abstractInst+{tyOwned, tyVar, tyLent, tySink})
+    if hasPayloads(t):
+      var x = genValueAddr(c, n[1].skipAddr)
+      var y = genValueAddr(c, n[2])
+      let opc = if n[0].kind == nkSym and n[0].sym.name.s == "=sink": opcSinkValue
+                else: opcCopyValue
+      c.gABCW(n, opc, x.reg, y.reg, 0, uint64(typeHandle(c, t)))
+      c.freeLoc(y)
+      c.freeLoc(x)
+    else:
+      genAsgn(c, n[1].skipAddr, n[2])
   of mAccessEnv:
     var loc = genLoc(c, n[1])
     loc.off += ClosureEnvOffset
@@ -3879,6 +3873,7 @@ proc prepareTopLevel(c: PCtx; n: PNode): PNode =
   result = n
   if usesNewRuntime(c):
     result = vmInjectDestructors(c, c.module, n)
+    c.prc.injected = true
   collectAddrTaken(c, result, c.prc.addrTaken)
 
 proc genStmt*(c: PCtx; n: PNode): int =
@@ -3942,11 +3937,12 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     # procs easily:
     inc c.graph.inVMTransform
     var body = transformBody(c.graph, c.idgen, s, if isCompileTimeProc(s): {} else: {useCache})
-    if usesNewRuntime(c) and sfInjectDestructors in s.flags:
+    let injected = usesNewRuntime(c) and sfInjectDestructors in s.flags
+    if injected:
       body = vmInjectDestructors(c, s, body)
     dec c.graph.inVMTransform
     let procStart = c.xjmp(body, opcJmp, 0)
-    var p = PProc(blocks: @[], sym: s)
+    var p = PProc(blocks: @[], sym: s, injected: injected)
     let oldPrc = c.prc
     c.prc = p
     collectAddrTaken(c, body, p.addrTaken)

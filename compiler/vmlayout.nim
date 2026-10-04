@@ -23,7 +23,7 @@
 ## - Zero length arrays occupy no storage.
 ## - Imported, incomplete structs are laid out from their declared fields.
 
-import std/tables
+import std/[tables, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 import ast, types, options, msgs, lineinfos, int128, nversion
@@ -376,3 +376,34 @@ proc elemSize*(c: var LayoutCache; conf: ConfigRef; t: PType): int =
     result = vmSizeOf(c, conf, t.elementType)
   else:
     layoutError(conf, t, "not an array type")
+
+proc hasPayloads(t: PType; marker: var IntSet): bool =
+  ## does a value of type `t` contain strings or seqs (not behind a pointer)?
+  let t = skipForLayout(t)
+  case t.kind
+  of tyString, tySequence: true
+  of tyArray: hasPayloads(t.elementType, marker)
+  of tyTuple:
+    for _, ch in t.ikids:
+      if hasPayloads(ch, marker): return true
+    false
+  of tyObject:
+    if marker.containsOrIncl(t.id): return false
+    proc fields(n: PNode; marker: var IntSet): bool =
+      case n.kind
+      of nkSym: hasPayloads(n.sym.typ, marker)
+      of nkRecList, nkRecCase, nkOfBranch, nkElse:
+        for ch in n:
+          if fields(ch, marker): return true
+        false
+      else: false
+    var b = t
+    while b != nil:
+      if b.n != nil and fields(b.n, marker): return true
+      b = if b.baseClass != nil: b.baseClass.skipTypes(skipPtrs) else: nil
+    false
+  else: false
+
+proc hasPayloads*(t: PType): bool =
+  var marker = initIntSet()
+  result = hasPayloads(t, marker)
