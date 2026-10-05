@@ -623,17 +623,30 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
   removeDir(buildDir)
   createDir(buildDir)
 
-  # Extra switches for both compilers, settable per step via `#!FLAGS`.
+  when defined(macosx):
+    # Mach-O debug maps contain object-file mtimes outside the header skipped
+    # by stableBinary. Make those timestamps (and their signature hashes)
+    # deterministic for the clean-vs-incremental comparison.
+    let hadZeroArDate = existsEnv("ZERO_AR_DATE")
+    let zeroArDate = getEnv("ZERO_AR_DATE")
+    putEnv("ZERO_AR_DATE", "1")
+    defer:
+      if hadZeroArDate: putEnv("ZERO_AR_DATE", zeroArDate)
+      else: delEnv("ZERO_AR_DATE")
+
+  # Command-line options apply to every step, including the classic oracle.
+  # `#!FLAGS` replaces only the per-step switches.
+  let compilerOptions = parseCmdLine(options)
   var extraFlags: seq[string] = @[]
 
   template compileIc(): untyped =
     execCmdEx2(compilerPrefix, @["ic", "--hint:Conf:off", "--warnings:off",
-      "--nimcache:" & nc, "--out:" & bin] & extraFlags & @["main.nim"],
+      "--nimcache:" & nc, "--out:" & bin] & compilerOptions & extraFlags & @["main.nim"],
       workingDir = buildDir)
 
   template compileRef(): untyped =
     execCmdEx2(compilerPrefix, @["c", "--hint:Conf:off", "--warnings:off",
-      "--nimcache:" & ncRef, "--out:" & binRef] & extraFlags & @["main.nim"],
+      "--nimcache:" & ncRef, "--out:" & binRef] & compilerOptions & extraFlags & @["main.nim"],
       workingDir = buildDir)
 
   # Parse the source into a flat op list: ("file", name, content) | ("step", attrs, "").
