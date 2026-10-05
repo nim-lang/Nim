@@ -12,17 +12,22 @@ let dir = createTempDir("nim_ic_project_config_", "")
 let cache = dir / "nc"
 let binary = dir / "prog".addFileExt(ExeExt)
 
-proc build(project, expected: string, reuseShared = false, rebuildShared = false) =
-  let args = [
-    nim,
-    "ic",
-    "--hints:off",
-    "--warnings:off",
-    "--skipUserCfg",
-    "--nimcache:" & cache,
-    "--out:" & binary,
-    dir / project,
-  ]
+proc build(
+    project, expected: string,
+    reuseShared = false,
+    rebuildShared = false,
+    extraArgs: seq[string] = @[],
+) =
+  let args =
+    @[
+      nim,
+      "ic",
+      "--hints:off",
+      "--warnings:off",
+      "--skipUserCfg",
+      "--nimcache:" & cache,
+      "--out:" & binary,
+    ] & extraArgs & @[dir / project]
   let compiled = execCmdEx(quoteShellCommand(args))
   doAssert compiled.exitCode == 0, project & ":\n" & compiled.output
   if reuseShared:
@@ -36,8 +41,9 @@ proc build(project, expected: string, reuseShared = false, rebuildShared = false
   doAssert executed.output.strip == expected, project & ":\n" & executed.output
 
 proc semanticCache(): Table[string, Time] =
-  for file in walkFiles(cache / "*.s.bif"):
-    result[file] = getLastModificationTime(file)
+  for file in walkDirRec(cache):
+    if file.endsWith(".s.bif"):
+      result[file] = getLastModificationTime(file)
 
 try:
   for subdir in ["src", "tests", "examples", "demos", "extra"]:
@@ -119,6 +125,37 @@ importShared()
 echo "generated ", value()
 """,
   )
+  writeFile(
+    dir / "src" / "orphan.nim",
+    """
+const sharedValue {.intdefine.} = 42
+const selectedValue = sharedValue
+when selectedValue == 42:
+  import legacy
+  proc orphanValue*(): int = legacyValue()
+else:
+  proc orphanValue*(): int = sharedValue
+""",
+  )
+  writeFile(
+    dir / "src" / "legacy.nim",
+    """
+const sharedValue {.intdefine.} = 42
+static: doAssert sharedValue == 42
+proc legacyValue*(): int = sharedValue
+""",
+  )
+  writeFile(dir / "examples" / "warm.nim", "import orphan\necho orphanValue()\n")
+  writeFile(
+    dir / "examples" / "later.nim",
+    """
+import std/macros
+macro importOrphan(): untyped = parseStmt("import orphan")
+importOrphan()
+echo orphanValue()
+""",
+  )
+  writeFile(dir / "examples" / "cached.nim", readFile(dir / "examples" / "later.nim"))
 
   # The first three entry points deliberately have the same basename.
   for project, expected in [
@@ -131,9 +168,9 @@ echo "generated ", value()
     build(project, expected, reuseShared = true)
 
   # Returning to a cached project must restore its own paths and defines.
-  build("src/main.nim", "app 42")
-  build("tests/main.nim", "tests 42")
-  build("examples/main.nim", "example 42")
+  build("src/main.nim", "app 42", reuseShared = true)
+  build("tests/main.nim", "tests 42", reuseShared = true)
+  build("examples/main.nim", "example 42", reuseShared = true)
 
   # Different config files with identical resolved settings must reuse the
   # existing semantic cache. Only the new entry point needs its own BIF.
@@ -146,6 +183,23 @@ echo "generated ", value()
     for file, modified in before:
       doAssert getLastModificationTime(file) == modified, file & " was rebuilt"
 
+  # Cache a module that is absent from the next entry point's initial graph.
+  let beforeWarm = semanticCache()
+  build("examples/warm.nim", "42", reuseShared = true)
+  # A new entry point can generate an import whose BIF already exists under
+  # these exact settings. Its cached imports still need discovery and build
+  # rules, including when a transitive dependency's body changed meanwhile.
+  let legacy = dir / "src" / "legacy.nim"
+  let legacySource = readFile(legacy)
+  writeFile(legacy, legacySource.replace("= sharedValue\n", "= sharedValue + 1\n"))
+  build("examples/cached.nim", "43", reuseShared = true)
+  writeFile(legacy, legacySource)
+  build("examples/warm.nim", "42", reuseShared = true)
+  var outsideGraph: Table[string, Time]
+  for file, modified in semanticCache():
+    if file notin beforeWarm:
+      outsideGraph[file] = modified
+  doAssert outsideGraph.len > 0
   # A real setting change still invalidates shared modules, even though their
   # own source files and the importing project's source are unchanged.
   let config = dir / "examples" / "config.nims"
@@ -154,6 +208,18 @@ echo "generated ", value()
   # must not let sem succeed before the module is discovered and rebuilt.
   build("examples/generated.nim", "generated 43")
   build("examples/main.nim", "example 43")
+  # Configuration changes must leave unrelated semantic artifacts on disk.
+  # Later, with the same configuration, a generated import must select its new
+  # namespace and discover the missing BIF rather than load the old value 42.
+  # Its old .s.deps must also be ignored: legacy is invalid under the new
+  # settings and belongs only to the orphan's previous conditional branch.
+  for file, modified in outsideGraph:
+    doAssert fileExists(file), file & " was deleted"
+    doAssert getLastModificationTime(file) == modified, file & " was rebuilt"
+  build("examples/later.nim", "43")
+  let beforeRerun = semanticCache()
+  build("examples/later.nim", "43")
+  doAssert semanticCache() == beforeRerun
   build("demos/main.nim", "example 42")
 
   # Distinct paths and their precedence still belong to the fingerprint.
@@ -164,5 +230,7 @@ echo "generated ", value()
   build("demos/main.nim", "example 42", rebuildShared = true)
   writeFile(demoConfig, "switch(\"path\", \"../extra\")\n" & originalConfig)
   build("demos/main.nim", "example 42", rebuildShared = true)
+  # Config validation must work even when interface cookies are disabled.
+  build("examples/later.nim", "43", extraArgs = @["-d:icNoIfaceGate"])
 finally:
   removeDir(dir)

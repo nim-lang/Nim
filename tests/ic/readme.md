@@ -2,6 +2,13 @@
 
     ./bin/testament --nim:<your compiler> cat ic
 
+Semantic BIFs and their dependency/interface sidecars live in
+`nimcache/ic_sem/<effective configuration hash>/`. Equivalent settings share
+that namespace; changing settings selects another one, preserving earlier
+configurations for reuse. Parsed files remain shared in the cache root. The
+metamorphic clean-cache comparison checks the active semantic namespace, while
+no-op checks cover every cached configuration.
+
 ## The metamorphic tests are expensive, and look hung when they are not
 
 16 of the tests carry `#? metamorphic`. Each has 3–4 `#!STEP` directives, and

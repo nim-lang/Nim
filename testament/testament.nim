@@ -283,14 +283,15 @@ proc prefillIcCache(warmup, nimcache: string) =
                   ".c.nif", ".cpp.nif"]
   try:
     createDir(nimcache)
-    for path in walkFiles(warmup / "*"):
+    for path in walkDirRec(warmup):
       let name = path.extractFilename
       var take = name == "ic.version" or name == "ic_build_args.txt"
       if not take:
         for ext in wanted:
           if name.endsWith(ext): take = true; break
       if not take: continue
-      let dst = nimcache / name
+      let dst = nimcache / path.relativePath(warmup)
+      createDir(dst.parentDir)
       copyFile(path, dst)
       try: setLastModificationTime(dst, getLastModificationTime(path))
       except OSError, IOError: discard

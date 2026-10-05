@@ -29,7 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "47"
+  icFormatVersion* = "48"
+    ## v48: semantic artifacts are stored under their effective configuration hash.
     ## v46: every type definition wraps its sons in `(genericargs ...)`.
     ## v45: localPassC backend actions are keyed by their generated C file.
     ## v44: CacheCounter values live in the shared, file-locked `ic.counters`.
@@ -460,6 +461,8 @@ type
                               # module's package the "main package" and unfilter
                               # foreign-package diagnostics; the real project
                               # restores whole-program filtering semantics.
+    icConfigHash*: string     # effective configuration fingerprint, forwarded by
+                              # `nim ic` to select the semantic cache namespace.
     icPreparsedConfig*: string # under the `nim ic` driver and its `nim m`/`nim nifc`
                               # children: path of the precompiled config artifact.
                               # When set, `loadConfigs` replays the recorded
@@ -1025,16 +1028,29 @@ iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   else:
     yield p
 
+proc getSemanticCacheDir*(conf: ConfigRef): AbsoluteDir =
+  ## Semantic modules and their sidecars share one effective-configuration key.
+  ## Standalone `nim m` and nimsuggest retain their ordinary cache layout.
+  result = getNimcacheDir(conf)
+  if conf.icConfigHash.len > 0:
+    result = result / RelativeDir("ic_sem") / RelativeDir(conf.icConfigHash)
+
+proc generatedFileDir(conf: ConfigRef; filename: string): AbsoluteDir =
+  for ext in [".s.bif", ".s.deps.bif", ".iface.bif", ".impl.bif", ".edges.bif"]:
+    if filename.endsWith(ext): return getSemanticCacheDir(conf)
+  result = getNimcacheDir(conf)
+
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
-  result = getNimcacheDir(conf) / RelativeFile path.string.splitPath.tail.changeFileExt(ext)
+  let filename = path.string.splitPath.tail.changeFileExt(ext)
+  result = generatedFileDir(conf, filename) / RelativeFile(filename)
 
 proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
                                 createSubDir: bool = true): AbsoluteFile =
   ## Return an absolute path of a generated intermediary file.
   ## Optionally creates the cache directory if `createSubDir` is `true`.
-  let subdir = getNimcacheDir(conf)
+  let subdir = generatedFileDir(conf, f.string)
   if createSubDir:
     try:
       createDir(subdir.string)

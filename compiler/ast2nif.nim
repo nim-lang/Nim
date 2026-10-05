@@ -2858,7 +2858,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     var modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".t.bif")).string
     let lowered = useLowered and fileExists(modFile)
     if not lowered:
-      modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string
+      modFile = (getSemanticCacheDir(conf) / RelativeFile(suffix & ".s.bif")).string
     if not fileExists(modFile):
       raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
         ". This can happen when loading a module from NIF that references another module " &
@@ -2890,7 +2890,7 @@ proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
   let m = c.mods[module]
   if m.semTried: return
   m.semTried = true
-  let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
+  let semFile = (getSemanticCacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
   if not fileExists(semFile): return
   var sm = icbif.load(semFile)
   prof pBifLoads
@@ -4007,7 +4007,7 @@ proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
   ## Build the full interface independently, on demand. Appending private
   ## symbols to the public table would lose the full interface's own order.
   let conf = c.infos.config
-  if fileExists((getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string):
+  if fileExists((getSemanticCacheDir(conf) / RelativeFile(suffix & ".s.bif")).string):
     let module = moduleId(c, suffix, {})
     if not c.mods.hasKey(module): return false
     interfHidden = loadInterface(c, module, true, resolveModule)
@@ -4208,7 +4208,7 @@ proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes:
   ## includes me?" without NIF-loading that module — so the includer can be
   ## *source*-compiled (modules that `include` files are never served from NIF).
   result = @[]
-  let dir = getNimcacheDir(config)
+  let dir = getSemanticCacheDir(config)
   if not dirExists(dir.string): return
   # The primary module artifacts are `<suffix>.s.bif` (the sidecars are
   # `.iface.nif`/`.impl.nif`/`.edges.nif`/`.s.deps.nif`, which this glob excludes).

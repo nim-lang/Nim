@@ -995,6 +995,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passCmd2, passPP}:
       conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
+  of "icconfighash":
+    expectArg(conf, switch, arg, pass, info)
+    conf.icConfigHash = arg
   of "icpreparsedconfig":
     # `nim m`/`nim nifc` only: path of the precompiled-config artifact (see
     # options.icPreparsedConfig). Read in `passCmd1`, before `loadConfigs`, so

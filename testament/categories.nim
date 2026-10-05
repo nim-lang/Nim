@@ -15,6 +15,7 @@
 import important_packages
 import std/[strformat, strutils, tables]
 from std/sequtils import filterIt
+from std/sha1 import secureHash, `$`
 
 const
   specialCategories = [
@@ -819,7 +820,12 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
           mmRaise(reOutputsDiffer, "clean binary == incremental binary",
             where & ": clean rebuild produced a different binary")
         var diff: seq[string] = @[]
+        # Earlier configurations deliberately remain cached. Compare the active
+        # namespace with the clean build; no-op checks still cover every file.
+        let semanticPrefix = "ic_sem" / $secureHash(snap["ic_build_args.txt"]) & DirSep
         for p in changedPaths(snap, cleanSnap):
+          if p.startsWith("ic_sem" & DirSep) and not p.startsWith(semanticPrefix):
+            continue
           if not isProvenance(p): diff.add p
         if diff.len != 0:
           mmRaise(reOutputsDiffer, "clean cache == incremental cache",
