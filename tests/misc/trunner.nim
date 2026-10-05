@@ -15,6 +15,8 @@ from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 from std/private/globs import nativeToUnixPath
 from strutils import startsWith, strip, removePrefix
+when defined(musl):
+  from strutils import count, replace
 from std/sugar import dup
 import "$lib/../compiler/nimpaths"
 
@@ -48,25 +50,38 @@ proc genShellCmd(filename: string): string =
   else: "sh " & filename
 
 when defined(nimTrunnerFfi):
-  block: # mevalffi
-    when defined(openbsd):
-      #[
-      openbsd defines `#define stderr (&__sF[2])` which makes it cumbersome
-      for dlopen'ing inside `importcSymbol`. Instead of adding special rules
-      inside `importcSymbol` to handle this, we disable just the part that's
-      not working and will provide a more general, clean fix in future PR.
-      ]#
-      var opt = "-d:nimEvalffiStderrWorkaround"
-      let prefix = ""
-    else:
-      var opt = ""
-      let prefix = """
+  #[
+  Disabled on macOS: the AArch64 Apple ABI passes variadic arguments on the
+  stack, which requires `ffi_prep_cif_var`; `evalffi` only ever calls
+  `ffi_prep_cif`, so every vararg arrives as 0 and `mevalffi` fails. Re-enable
+  once the compiler's libffi usage learns about variadic calls.
+  ]#
+  when not defined(osx):
+    block: # mevalffi
+      when defined(openbsd):
+        #[
+        openbsd defines `#define stderr (&__sF[2])` which makes it cumbersome
+        for dlopen'ing inside `importcSymbol`. Instead of adding special rules
+        inside `importcSymbol` to handle this, we disable just the part that's
+        not working and will provide a more general, clean fix in future PR.
+        ]#
+        var opt = "-d:nimEvalffiStderrWorkaround"
+        let prefix = ""
+      else:
+        var opt = ""
+        let prefix = """
 hello world stderr
 hi stderr
 """
-    let output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --warnings:off --experimental:compiletimeFFI")
-    doAssert output == fmt"""
-{prefix}foo
+      var output = runNimCmdChk("vm/mevalffi.nim", fmt"{opt} --warnings:off --experimental:compiletimeFFI")
+      when defined(musl):
+        # Check each stream without assuming their buffering order.
+        if prefix.len > 0:
+          doAssert output.count(prefix) == 1, output
+          output = output.replace(prefix, "")
+      let stderrPrefix = when defined(musl): "" else: prefix
+      doAssert output == fmt"""
+{stderrPrefix}foo
 foo:100
 foo:101
 foo:102:103

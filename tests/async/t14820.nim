@@ -13,7 +13,7 @@ import asyncdispatch, times
 
 var done = false
 proc somethingAsync() {.async.} =
-  yield sleepAsync 5000
+  yield sleepAsync 1000
   echo "async done"
   done = true
   
@@ -21,5 +21,5 @@ asyncCheck somethingAsync()
 var count = 0
 while not done:
   count += 1
-  drain 1000
+  drain 200
   echo "iteration: ", count 

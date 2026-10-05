@@ -40,21 +40,24 @@ type
     wasm32,                    ## WASM, 32-bit
     e2k,                       ## MCST Elbrus 2000
     loongarch64,               ## LoongArch 64-bit processor
-    s390x                      ## IBM Z
+    s390x,                     ## IBM Z
+    wasm64                     ## WASM, 64-bit
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
     irix, netbsd, freebsd, openbsd, aix, palmos, qnx, amiga,
-    atari, netware, macos, macosx, haiku, android, js, standalone, nintendoswitch
+    atari, netware, macos, macosx, haiku, android, js, standalone, nintendoswitch, illumos
 
 const
   targetOS* = when defined(windows): OsPlatform.windows
               elif defined(dos): OsPlatform.dos
               elif defined(os2): OsPlatform.os2
+              elif defined(android): OsPlatform.android
               elif defined(linux): OsPlatform.linux
               elif defined(morphos): OsPlatform.morphos
               elif defined(skyos): OsPlatform.skyos
               elif defined(solaris): OsPlatform.solaris
+              elif defined(illumos): OsPlatform.illumos
               elif defined(irix): OsPlatform.irix
               elif defined(netbsd): OsPlatform.netbsd
               elif defined(freebsd): OsPlatform.freebsd
@@ -68,7 +71,6 @@ const
               elif defined(macosx): OsPlatform.macosx
               elif defined(macos): OsPlatform.macos
               elif defined(haiku): OsPlatform.haiku
-              elif defined(android): OsPlatform.android
               elif defined(js): OsPlatform.js
               elif defined(standalone): OsPlatform.standalone
               elif defined(nintendoswitch): OsPlatform.nintendoswitch
@@ -101,5 +103,6 @@ const
                elif defined(e2k): CpuPlatform.e2k
                elif defined(loongarch64): CpuPlatform.loongarch64
                elif defined(s390x): CpuPlatform.s390x
+               elif defined(wasm64): CpuPlatform.wasm64
                else: CpuPlatform.none
     ## the CPU this program will run on.

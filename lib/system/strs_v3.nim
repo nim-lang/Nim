@@ -514,10 +514,25 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: bool) =
         s.more.fullLen = newLen
         s.more.data[newLen] = '\0'
       else:
-        # shared or static block: detach and go back to inline
+        # shared or static block: detach from the shared/static buffer.
         if newLen <= 0:
           nimDestroyStrV1(s)
           s.bytes = 0
+        elif newLen > PayloadSize:
+          # Still too long for inline: detach into a fresh unique heap block
+          # rather than overflowing the inline overlay.
+          let old = s.more
+          let p = cast[ptr LongString](alloc(LongStringDataOffset + newLen + 1))
+          p.rc = 1
+          p.fullLen = newLen
+          p.capImpl = newLen
+          copyMem(addr p.data[0], addr old.data[0], newLen)
+          p.data[newLen] = '\0'
+          if slen == HeapSlen and atomicSubFetch(old.rc, 1) == 0:
+            dealloc(old)
+          s.more = p
+          setSSLen(s, HeapSlen)
+          copyMem(inlinePtr(s), addr p.data[0], AlwaysAvail)  # sync hot prefix
         else:
           let old = s.more
           let inl = inlinePtr(s)
@@ -769,6 +784,33 @@ template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
   ## Returns a pointer to `s[start]` for read-only raw access.
   ## Template ensures no copy of `s` is made; ptr is valid while `s` is alive.
   rawDataImpl(cast[ptr SmallString](unsafeAddr s), start)
+
+proc readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] {.inline.} =
+  ## Like `readRawData`, but the returned pointer stays valid across moves and
+  ## copies of `s` (as long as `s` stays alive and is not reassigned). A
+  ## short/medium string keeps its chars *inline* in the string object, so a
+  ## plain `readRawData` pointer dangles the moment the object is moved; this
+  ## promotes `s` to its heap (long) representation first, whose payload address
+  ## is independent of where the string object itself lives. Use this whenever an
+  ## interior pointer must outlive the current scope of the owning string (e.g.
+  ## a cursor cached alongside the buffer it points into).
+  let ss = cast[ptr SmallString](addr s)
+  let slen = ssLen(ss[])
+  if slen > 0 and slen <= PayloadSize:
+    # Promote inline/medium to a long heap block so the payload lives at a
+    # stable address. Mirrors the short/medium -> long transition in `add`.
+    let newCap = max(slen, resize(slen))
+    let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+    p.rc = 1
+    p.fullLen = slen
+    p.capImpl = newCap
+    copyMem(addr p.data[0], inlinePtr(ss[]), slen)
+    p.data[slen] = '\0'
+    ss[].more = p
+    setSSLen(ss[], HeapSlen)
+    # Hot-prefix cache (bytes 1..AlwaysAvail) already mirrors data[0..AlwaysAvail-1]
+    # because setSSLen only rewrote byte 0; the inline chars are untouched.
+  rawDataImpl(ss, start)
 
 # These take `string` (tyString) so the codegen uses them directly, bypassing
 # strmantle.nim's versions which go through nimStrLen/nimStrAtMutV3 compilerproc calls.

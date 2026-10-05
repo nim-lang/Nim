@@ -3,14 +3,6 @@
 when not usesDestructors:
   {.pragma: nodestroy.}
 
-when hasAlloc:
-  type
-    GC_Strategy* = enum  ## The strategy the GC should use for the application.
-      gcThroughput,      ## optimize for throughput
-      gcResponsiveness,  ## optimize for responsiveness (default)
-      gcOptimizeTime,    ## optimize for speed
-      gcOptimizeSpace    ## optimize for memory footprint
-
 when hasAlloc and not defined(js) and not usesDestructors:
   proc GC_disable*() {.rtl, inl, gcsafe, raises: [].}
     ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
@@ -65,9 +57,6 @@ when hasAlloc and defined(js):
 
   template GC_fullCollect* =
     {.warning: "GC_fullCollect is a no-op in JavaScript".}
-
-  template GC_setStrategy* =
-    {.warning: "GC_setStrategy is a no-op in JavaScript".}
 
   template GC_enableMarkAndSweep* =
     {.warning: "GC_enableMarkAndSweep is a no-op in JavaScript".}

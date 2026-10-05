@@ -56,7 +56,7 @@ when defined(windows):
     SIGTERM = cint(15)
     SIG_DFL* = cast[CSighandlerT](0)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
-     defined(openbsd) or defined(netbsd) or defined(solaris) or
+     defined(openbsd) or defined(netbsd) or defined(sunos) or
      defined(dragonfly) or defined(nintendoswitch) or defined(genode) or
      defined(aix) or hostOS == "standalone":
   const
@@ -154,9 +154,13 @@ proc c_signal*(sign: cint, handler: CSighandlerT): CSighandlerT {.
   importc: "signal", header: "<signal.h>", discardable.}
 proc c_raise*(sign: cint): cint {.importc: "raise", header: "<signal.h>".}
 
+when defined(musl):
+  type CFile {.importc: "FILE", header: "<stdio.h>",
+    incompleteStruct, byref.} = object
+else:
+  type CFile {.importc: "FILE", header: "<stdio.h>",
+    incompleteStruct.} = object
 type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
 # duplicated between io and ansi_c

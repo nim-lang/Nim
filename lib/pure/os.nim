@@ -558,7 +558,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
     let realLen = len(cstring(result))
     setLen(result, realLen)
 
-when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
+when not weirdTarget and (defined(linux) or defined(sunos) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(maxSymlinkLen)
     var len = readlink(procPath, result.cstring, maxSymlinkLen)
@@ -619,8 +619,8 @@ when not (defined(windows) or defined(macosx) or weirdTarget) and supportedSyste
 
 when defined(macosx):
   type
-    cuint32* {.importc: "unsigned int", nodecl.} = int
-    ## This is the same as the type ``uint32_t`` in *C*.
+    cuint32 {.importc: "uint32_t", nodecl.} = uint32
+    # This is the same as the type ``uint32_t`` in *C*.
 
   # a really hacky solution: since we like to include 2 headers we have to
   # define two procs which in reality are the same
@@ -690,7 +690,7 @@ when supportedSystem:
     else:
       when defined(linux) or defined(aix):
         result = getApplAux("/proc/self/exe")
-      elif defined(solaris):
+      elif defined(sunos):
         result = getApplAux("/proc/" & $getpid() & "/path/a.out")
       elif defined(genode):
         result = "" # Not supported

@@ -17,6 +17,7 @@ __AVR__
 __arm__
 __riscv
 __EMSCRIPTEN__
+__unix__
 */
 
 
@@ -119,8 +120,6 @@ __EMSCRIPTEN__
 #  else
 #    define NIM_THREADVAR __thread
 #  endif
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
-#  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
        defined __ICL || \
@@ -133,6 +132,8 @@ __EMSCRIPTEN__
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#  define NIM_THREADVAR _Thread_local
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif
@@ -269,10 +270,10 @@ __EMSCRIPTEN__
 // define NIM_STATIC_ASSERT
 // example use case: CT sizeof for importc types verification
 // where we have {.completeStruct.} (or lack of {.incompleteStruct.})
-#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
-#define NIM_STATIC_ASSERT(x, msg) _Static_assert((x), msg)
-#elif defined(__cplusplus)
+#if defined(__cplusplus)
 #define NIM_STATIC_ASSERT(x, msg) static_assert((x), msg)
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define NIM_STATIC_ASSERT(x, msg) _Static_assert((x), msg)
 #else
 #define _NIM_STATIC_ASSERT_FINAL(x, append_name) typedef int NIM_STATIC_ASSERT_AUX ## append_name[(x) ? 1 : -1];
 #define _NIM_STATIC_ASSERT_STAGE_3(x, line)      _NIM_STATIC_ASSERT_FINAL(x, _AT_LINE_##line)
@@ -597,8 +598,9 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
   #define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
 
   #if NIM_INTBITS == 32
-    #if (defined(__arm__) || defined(__riscv)) && defined(__GNUC__)
-      /* arm-none-eabi-gcc and riscv32-unknown-elf-gcc targets define int32_t as long int */
+    #if ((defined(__arm__) && !defined(__unix__)) || defined(__riscv) || (defined(__xtensa__) && !defined(__unix__))) && defined(__GNUC__)
+      /* arm-none-eabi-gcc, riscv32-unknown-elf-gcc and xtensa-esp-elf-gcc targets
+         define int32_t as long int */
       #define nimAddInt(a, b, res) __builtin_saddl_overflow(a, b, res)
       #define nimSubInt(a, b, res) __builtin_ssubl_overflow(a, b, res)
       #define nimMulInt(a, b, res) __builtin_smull_overflow(a, b, res)
@@ -617,5 +619,10 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "P
 
 #define NIM_NOALIAS __restrict
 /* __restrict is said to work for all the C(++) compilers out there that we support */
+
+#if defined(__sun) && defined(__cplusplus)
+#include <setjmp.h>
+using std::_setjmp;
+#endif
 
 #endif /* NIMBASE_H */

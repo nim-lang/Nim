@@ -102,6 +102,43 @@ type
       exceptSet*: IntSet         # of PIdent.id
 
   PContext* = ref TContext
+  BodyTaskState* = enum
+    btPending,   ## enqueued by the header pass, not started
+    btRunning,   ## being semmed right now (recursion guard, §2.3)
+    btDone
+
+  BodyTask* = object
+    ## One deferred routine body — doc/parallel_compiler.md's unit of work
+    ## (§2.2), and later the unit of parallelism. Stage 1 runs these on one
+    ## thread, so what the record carries is not "state to ship to a worker"
+    ## but state the header pass is about to move past: everything a body sem
+    ## reads from `PContext` that is POSITIONAL. That is the same list
+    ## `tryExpr` snapshots (`semexprs`), plus the option stack.
+    ##
+    ## `scope` and `procCon` are the interesting ones. A routine's parameters
+    ## live in a scope opened by `semProcAux` and its `result` in a `PProcCon`;
+    ## deferring the body means detaching both from `PContext`'s stacks rather
+    ## than closing them, and re-attaching them at drain. The scope object
+    ## survives because this record holds it, and its `parent` chain still ends
+    ## at the module's top-level scope, which does not move.
+    key*: uint64                ## §2.3: `(module, ordinal)`, ordinal = the
+                                ## declaration's position in the header pass.
+                                ## Dispatch order is key order, which is what
+                                ## makes the output scheduling-independent.
+    state*: BodyTaskState
+    owner*: PSym                ## the routine
+    def*: PNode                 ## its definition; `owner.ast`, except that
+                                ## forward-decl reconciliation can rebind
+                                ## `owner`, so keep the node explicitly
+    resultType*: PType
+    isInlineIterator*: bool
+    scope*: PScope
+    procCon*: PProcCon
+    optionStack*: seq[POptionEntry]
+    options*: TOptions
+    notes*, warningAsErrors*: TNoteKinds
+    features*: set[Feature]
+
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
@@ -186,6 +223,12 @@ type
     forwardFieldUpdates*: seq[(PType, PNode, PType)]
       # object/tuple field definitions whose default values mention forward
       # types and need delayed const checking
+    forwardFlagUpdates*: seq[(PType, PType)]
+      # (owner, son) pairs whose `propagateToOwner` ran on a not yet reified
+      # forward type and has to be redone in the final pass
+    staleTypeFlags*: IntSet
+      # ids of the owners in `forwardFlagUpdates`; their flags are provisional
+      # too, so reading them makes the reader provisional in turn
     inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
@@ -201,6 +244,22 @@ type
     hasSymRedefs*: bool
       # set once a redefinition mapping has been installed; makes `getGenSym`
       # consult the proc-con mapping for non-gensym symbols too.
+
+    bodyTasks*: seq[BodyTask]
+      # `--deferBodies:on` (doc/parallel_compiler.md stage 1): top-level routine
+      # bodies whose sem was postponed to the end of this module's header pass.
+      # Append-only, and already in key order because the header pass declares
+      # in source order — so stage 1 drains it front to back and needs no queue.
+      # `concurrency.TaskQueue` is what stage 4 replaces this with, once there
+      # is more than one worker to order.
+    bodyTaskIndex*: Table[ItemId, int]
+      # routine -> its entry in `bodyTasks`, for the on-demand path: a `const`
+      # or `static:` in the header pass can need a body that has not run yet
+      # (§4.6 step 2), and `transformBody` asks for it through
+      # `graph.demandRoutineBody`.
+    prevDemandRoutineBody*: proc (prc: PSym) {.closure.}
+      # the enclosing module's hook, restored by `closePContext`: an import is
+      # compiled from inside the importer's pass, so these nest.
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
@@ -306,7 +365,7 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
     it = it.next
   result = s
 
-proc considerGenSyms*(c: PContext; n: PNode) =
+proc considerGenSymsAux(c: PContext; n: PNode) =
   if n == nil:
     discard "can happen for nkFormalParams/nkArgList"
   elif n.kind == nkSym:
@@ -315,7 +374,16 @@ proc considerGenSyms*(c: PContext; n: PNode) =
       n.sym = s
   else:
     for i in 0..<n.safeLen:
-      considerGenSyms(c, n[i])
+      considerGenSymsAux(c, n[i])
+
+proc considerGenSyms*(c: PContext; n: PNode) =
+  var it = c.p
+  while it != nil:
+    if it.mappingExists:
+      # Save a tree traversal when no mapping exists
+      considerGenSymsAux(c, n)
+      return
+    it = it.next
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result = POptionEntry(
@@ -360,6 +428,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     unknownIdents: initIntSet(),
     shadowDiscardedDefs: initIntSet(),
     realizedDefs: initIntSet(),
+    staleTypeFlags: initIntSet(),
     cache: graph.cache,
     graph: graph,
     signatures: initStrTable(),
@@ -370,11 +439,21 @@ proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   discard
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
-  discard
+  # Under `nim m` (the IC frontend) record the REAL direct imports of the
+  # current module as sem resolves them — including imports a macro generated
+  # (e.g. chronicles' `parseStmt("import chronicles/textlines")`), which the
+  # static dependency scanner never sees. `nim ic` writes this set as the
+  # module's `.s.deps` sidecar and re-derives the build graph from it, so the
+  # discovery is structured data instead of a build-failure side channel.
+  if c.config.cmd == cmdM:
+    let importer = c.module.position.FileIndex
+    var deps = addr c.graph.importDeps.mgetOrPut(importer, @[])
+    if f notin deps[]: deps[].add f
 
 proc addPragmaComputation*(c: PContext; n: PNode) =
-  # Also store for NIF-based IC (cmdM mode or optCompress)
-  if optCompress in c.config.globalOptions or c.config.cmd == cmdM:
+  # Also store whenever the semchecked module is serialized to NIF/BIF.
+  if {optCompress, optGenBif} * c.config.globalOptions != {} or
+      c.config.cmd == cmdM:
     addNifReplayAction(c.graph, c.module.position.int32, n)
 
 proc inclSym(sq: var seq[PSym], s: PSym): bool =
@@ -387,6 +466,18 @@ proc addConverter*(c: PContext, conv: PSym) =
   assert conv != nil
   if inclSym(c.converters, conv):
     add(c.graph.ifaces[c.module.position].converters, conv)
+    # Record for IC: the loader rebuilds Iface.converters from the NIF's
+    # (repconverter ...) entries (moduleFromNifFile). This must capture not only
+    # converters DEFINED in this module (addConverterDef) but also ones IMPORTED
+    # from another module here (importer.addUnnamedIt re-adds a re-exported
+    # module's converters via this proc). Otherwise a loaded module's
+    # re-exported converters were invisible to importers and implicit
+    # conversions silently stopped matching at a consumer that reaches the
+    # converter only through this module's re-export chain (e.g. faststreams'
+    # `InputStreamHandle -> InputStream` via ssz_serialization, breaking
+    # `SSZ.decode`/`encode`). `inclSym` guards against duplicate log entries.
+    c.graph.opsLog.add LogEntry(kind: ConverterEntry, module: c.module.position,
+                                key: "", sym: conv)
 
 proc addConverterDef*(c: PContext, conv: PSym) =
   addConverter(c, conv)
@@ -394,6 +485,13 @@ proc addConverterDef*(c: PContext, conv: PSym) =
 proc addPureEnum*(c: PContext, e: PSym) =
   assert e != nil
   add(c.graph.ifaces[c.module.position].pureEnums, e)
+  # record for IC: a NIF-loaded module rebuilds `Iface.pureEnums` from these log
+  # entries (moduleFromNifFile); without it a loaded module's pure enums were
+  # invisible to importers, so `importPureEnumFields` never offered their fields
+  # and unqualified pure-enum values stopped resolving. (Same pattern as
+  # `addConverterDef`.)
+  c.graph.opsLog.add LogEntry(kind: PureEnumEntry, module: c.module.position,
+                              key: "", sym: e)
 
 proc addPattern*(c: PContext, p: PSym) =
   assert p != nil
@@ -441,7 +539,7 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
-  incl typedesc.flagsImpl, tfCheckedForDestructor
+  typedesc.inclDerived {tfCheckedForDestructor}
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, c.idgen, getCurrOwner(c), info,
@@ -520,7 +618,7 @@ template rangeHasUnresolvedStatic*(t: PType): bool =
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
   result = newTypeS(tyError, c)
-  result.flagsImpl.incl tfCheckedForDestructor
+  result.inclDerived {tfCheckedForDestructor}
 
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
@@ -634,13 +732,21 @@ proc sealRodFile*(c: PContext) =
     c.idgen.sealed = true # no further additions are allowed
 
 proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
-  ## Templates and macros are very special in Nim; these have
-  ## inlining semantics so after semantic checking they leave no trace
-  ## in the sem'checked AST. This is very bad for IDE-like tooling
-  ## ("find all usages of this template" would not work). We need special
-  ## logic to remember macro/template expansions. This is done here and
-  ## delegated to the "NIF" file mechanism.
-  discard "XXX To implement"
+  ## Templates and macros are inlined and leave no trace in the
+  ## sem'checked AST, and generic procs do not leave enough information
+  ## referencing the generic definition for tools to use for definitions
+  ## and usages, since they are instantiated by the compiler.
+  ## This is pecial logic that helps remember macro/template/generic proc
+  ## expansions, saving the data for the "NIF" file mechanism to handle.
+  ##
+  ## We only bother when a NIF file is actually going to be written (IC / `nim m`,
+  ## `--compress`, semantic BIF output, or a running suggestion engine); a plain
+  ## `nim c` throws the record away, so recording it would be pure overhead.
+  if info.fileIndex == InvalidFileIdx: return
+  if c.config.cmd == cmdM or
+      {optCompress, optGenBif} * c.config.globalOptions != {} or
+      c.config.ideActive:
+    c.graph.nifExpansions.mgetOrPut(c.module.position.int32, @[]).add (expandedSym, info)
 
 const
   errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"

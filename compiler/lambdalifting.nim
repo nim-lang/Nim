@@ -126,11 +126,6 @@ const
   paramName* = ":envP"
   envName* = ":env"
 
-proc newCall(a: PSym, b: PNode): PNode =
-  result = newNodeI(nkCall, a.info)
-  result.add newSymNode(a)
-  result.add b
-
 proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PType =
   var n = newNodeI(nkRange, iter.info)
   n.add newIntNode(nkIntLit, -1)
@@ -164,9 +159,21 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
     incl(result.flagsImpl, sfUsed)
     iter.ast.add newSymNode(result)
 
-proc addHiddenParam(routine: PSym, param: PSym) =
+proc closureParams(routine: PSym): PNode =
+  ## The formal parameters node lambda lifting reads and extends. In a
+  ## from-source compilation `routine.ast[paramsPos]` and `routine.typ.n` are the
+  ## very same node (see the `typ.n.len` based position math below). Under IC the
+  ## loaded proc AST omits the parameters (they are kept only in `typ.n`), so
+  ## restore the shared node here.
+  result = routine.ast[paramsPos]
+  if (result == nil or result.kind == nkEmpty) and routine.typ != nil and
+      routine.typ.n != nil and routine.ast.len > paramsPos:
+    result = routine.typ.n
+    routine.ast[paramsPos] = result
+
+proc addHiddenParam*(routine: PSym, param: PSym) =
   assert param.kind == skParam
-  var params = routine.ast[paramsPos]
+  var params = closureParams(routine)
   # -1 is correct here as param.position is 0 based but we have at position 0
   # some nkEffect node:
   param.position = routine.typ.n.len-1
@@ -177,7 +184,8 @@ proc addHiddenParam(routine: PSym, param: PSym) =
 
 proc getEnvParam*(routine: PSym): PSym =
   if routine.ast.isNil: return nil
-  let params = routine.ast[paramsPos]
+  let params = closureParams(routine)
+  if params == nil or params.len == 0: return nil
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
     result = hidden.sym
@@ -275,7 +283,6 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
     addVar(v, env)
     result.add(v)
   # add 'new' statement:
-  #result.add newCall(getSysSym(g, n.info, "internalNew"), env)
   result.add genCreateEnv(env)
   createTypeBoundOpsLL(g, env.typ, n.info, idgen, owner)
   result.add makeClosure(g, idgen, iter, env, n.info)
@@ -286,6 +293,13 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   let s = n.sym
   let isEnv = s.name.id == getIdent(g.cache, ":env").id
   if illegalCapture(s):
+    when defined(icCaptureTrace):
+      # Under IC this fires from a backend process, and WHICH routine's lift
+      # got here is the whole question: a routine lowered twice in one
+      # process reports captures the first lift already rewrote.
+      writeStackTrace()
+      echo "CAPTURE owner=" & owner.name.s & " ownerOwner=" &
+        (if owner.owner != nil: owner.owner.name.s else: "nil")
     localError(g.config, n.info,
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
        " safety, declared here: $3; using '-d:nimNoLentIterators' helps in some cases." &
@@ -294,7 +308,27 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   elif not (owner.typ.isClosure or owner.isNimcall and not owner.isExplicitCallConv or isEnv):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, $owner.typ.callConv])
+  unsealForTransform(owner.typ)
   incl(owner.typ, tfCapturesEnv)
+  # A closure proc type that captures an env owns a REF to it: copying the closure
+  # value must incref the env and destroying it must decref. That is exactly what
+  # `tfHasAsgn` signals to `injectDestructorCalls` (so a closure assignment becomes
+  # `=copy`, not a raw field store).
+  #
+  # Set it HERE (closure-type creation) so the flag is DETERMINISTIC and serializes
+  # with the type — but ONLY under `nim ic`. The per-module `lower` stage is a
+  # separate process that lowers routines in index order; if a consumer (e.g.
+  # `workNimAsyncContinue`) was lowered before the closure type's ops were lifted,
+  # its env store emitted a RAW assign with no incref → freed env → async
+  # "yielded `nil`". A normal single-process `nim c` build does NOT need this —
+  # `createTypeBoundOps` sets the flag lazily, in lift order, before it matters
+  # (the old `liftdestructors ~1498` "XXX Breaks IC!" side effect) — and setting it
+  # eagerly there REGRESSES codegen: a `=destroy` hook gets generated against the
+  # bare `void(*)(void)` proc representation but is then called with closure structs
+  # (`eqdestroy__u2__stdZtypedthreads` type mismatch — broke megatest). So gate on
+  # `cmdNifC`; normal builds keep the lazy (devel) behavior.
+  if g.config.cmd == cmdNifC:
+    incl(owner.typ, tfHasAsgn)
   if not isEnv:
     owner.typ.callConv = ccClosure
 
@@ -590,6 +624,10 @@ proc setupEnvVar(owner: PSym; d: var DetectionPass;
       v.flags = {sfShadowed, sfGeneratedOp}
       v.typ = envVarType
       c.unownedEnvVars[owner.id] = newSymNode(v)
+  # Every use of the env var needs its own node: injectdestructors'
+  # `isLastRead` finds a use in the CFG by node identity, so a shared node
+  # makes all uses look like the first one (bug #26247).
+  result = newSymNode(result.sym, info)
 
 proc getUpViaParam(g: ModuleGraph; owner: PSym): PNode =
   let p = getHiddenParam(g, owner)
@@ -648,6 +686,17 @@ proc rawClosureCreation(owner: PSym;
     if up != nil and upField.typ.skipTypes({tyOwned, tyRef, tyPtr}) == up.typ.skipTypes({tyOwned, tyRef, tyPtr}):
       result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  up, env.info))
+      # That assignment stores a real `ref`, so `injectDestructorCalls` has to
+      # find the up-field type's ops — otherwise it stays a raw pointer store,
+      # the enclosing env's refcount is one too low, and at teardown the two
+      # envs' mutually recursive `=destroy`s each believe they hold the last
+      # reference and recurse until the stack is gone. Whole-program cgen never
+      # noticed: some LATER lifting pass creates this very ref type's ops, and it
+      # runs before any routine's destructor injection. The per-module backend
+      # injects a routine right after lifting it (the `lower` stage), long before
+      # the module's top level is transformed at all (that is `cg`).
+      if up.typ != nil and up.typ.kind == tyRef and up.typ.elementType != nil:
+        createTypeBoundOpsLL(d.graph, up.typ, env.info, d.idgen, owner)
     #elif oldenv != nil and oldenv.typ == upField.typ:
     #  result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
     #             oldenv, env.info))
@@ -705,6 +754,10 @@ proc closureCreationForIter(owner: PSym, iter: PNode;
     if u != nil and u.typ.skipTypes({tyOwned, tyRef, tyPtr}) == expectedUpTyp:
       result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
                  u, iter.info))
+      # See the identical call in `rawClosureCreation`: the up-field's ops must
+      # exist by the time this assignment is destructor-injected.
+      if u.typ != nil and u.typ.kind == tyRef and u.typ.elementType != nil:
+        createTypeBoundOpsLL(d.graph, u.typ, iter.info, d.idgen, owner)
     else:
       localError(d.graph.config, iter.info, "internal error: cannot create up reference for iter")
   result.add makeClosure(d.graph, d.idgen, iter.sym, vnode, iter.info)

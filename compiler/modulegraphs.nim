@@ -11,13 +11,14 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[intsets, tables, hashes, strtabs, os, strutils, parseutils]
+import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 
 when not defined(nimKochBootstrap):
   import ast2nif
-  import "../dist/nimony/src/lib" / [nifstreams, bitabs]
+  import nifstreams
+  import "../dist/nimony/src/lib" / bitabs
 
 import typekeys
 
@@ -35,6 +36,8 @@ type
     pureEnums*: seq[PSym]
     interf: TStrTable
     interfHidden: TStrTable
+    hiddenPending: bool ## The full interface is built from its ordered BIF
+                        ## record on first use by `ensureHiddenIface`.
     uniqueName*: Rope
 
   Operators* = object
@@ -68,6 +71,47 @@ type
     enumToStringProcs*: Table[ItemId, PSym]
     loadedEnumToStringProcs: Table[string, PSym]
     emittedTypeInfo*: Table[string, FileIndex]
+    instDisambs: Table[(int, int32), ItemId] # (name id, content disamb) ->
+                                  # instance, for collision probing in
+                                  # `setInstanceDisamb`
+    icCnifFiles*: seq[string]     # `.c.nif` artifacts written by this run
+    pendingMethodReplays*: seq[PSym] # method registrations loaded under
+                                  # `nim nifc`, bucketed only after every
+                                  # module is loaded (`flushMethodReplays`)
+    icImplDeps*: IntSet           # NeedsImpl edge tracking under `nim m`:
+                                  # module ids (FileIndex) whose routine BODIES
+                                  # this compilation consumed at compile time.
+                                  # Written to the `.edges` sidecar; deps.nim
+                                  # then gates the dependent on those modules'
+                                  # IMPL cookie instead of the iface cookie, so
+                                  # e.g. `const x = dep.foo()` re-sems when foo's
+                                  # body changes. Uniform across body-access
+                                  # kinds — the iface cookie hashes signatures
+                                  # ONLY (see ast2nif.cookieSd), so every body
+                                  # consumer records an edge here: VM-compiled /
+                                  # getImpl'ed bodies (recordIcImplDep from vm/
+                                  # vmgen), expanded templates (semTemplateExpr)
+                                  # and instantiated generics (generateInstance).
+                                  # Inline iterators / `inline` procs are NOT
+                                  # tracked: they are inlined by the backend,
+                                  # whose `lower`/`cg` rules depend on the
+                                  # bodies they read (see `icBodyDeps`).
+    icBodyDeps*: IntSet           # backend `lower`/`cg` stages: module ids whose
+                                  # routine BODIES this process read (inlined
+                                  # iterators, embedded foreign definitions).
+                                  # Written to a sidecar so deps.nim can make
+                                  # the stage's rule depend on their NIFs.
+    icQualIfaces*: IntSet         # module positions whose interface tables were
+                                  # populated ONLY for qualified access through a
+                                  # module re-export (`import x; export x`); the
+                                  # Iface.module stays nil so a later direct
+                                  # import still takes the full load path
+    inVMTransform*: int           # >0 while the VM compiles a routine body
+                                  # (vmgen.genProc's transformBody): hooks lifted
+                                  # there (e.g. for closure-env types of LOADED
+                                  # routines) are process-local VM artifacts —
+                                  # serializing them would embed references to
+                                  # derived env-field syms that no module defines
 
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -100,6 +144,10 @@ type
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
+    missingCompilerProcs*: HashSet[string]
+                                  # `nim nifc` only: compilerproc names no
+                                  # loaded module defines, so the whole-program
+                                  # index scan in `loadCompilerProc` runs once
     exposed*: TStrTable
     packageTypes*: TStrTable
     emptyNode*: PNode
@@ -110,22 +158,63 @@ type
     cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API; IC: implemented
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
+    pendingNifInit*: seq[tuple[module: PSym; topLevel: PNode]]
+      # EVERY module loaded from a NIF — whether a direct import (moduleFromNifFile)
+      # or only a dep-of-a-dep (loadTransitiveHooks) — is recorded here with its
+      # serialized top-level AST. The sem driver drains it once
+      # (pipelines.finalizeLoadedModules) and applies the module's VM-level load
+      # effects UNIFORMLY: macro-cache replay (std/macrocache put/inc/add/incl) and
+      # eager `{.compileTime.}` global init. This is the single place "what a loaded
+      # module does to global state" lives, so a transitively-reached module — which
+      # never passes through compilePipelineModule — gets the SAME treatment as a
+      # direct import instead of silently skipping it (its macrocache state would be
+      # lost; its CT globals would stay nil and a macro splicing one, e.g.
+      # chronicles' `chroniclesBlockName`, emits `break nil` / `nil == 0`). To add a
+      # new per-load VM effect, extend the drain — never a parallel buffer.
     passes*: seq[TPass]
     pipelinePass*: PipelinePass
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     globalDestructors*: seq[PNode]
+    icModuleDtors*: seq[string]   # per-module backend: the C names of the
+                                  # other modules' global-destructor procs
+                                  # (`genIcModuleDestroyGlobals`), already in
+                                  # call order; only the main module's `cg`
+                                  # fills this, from the `.c.nif` meta heads
+    demandRoutineBody*: proc (prc: PSym) {.closure.}
+      ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
+      ## is needed NOW". A deferred unit's body is unsemmed until the module's
+      ## body pass runs, but the header pass can reach one before then — a
+      ## top-level `const x = f()` or `static:` block makes the VM compile `f`,
+      ## and `vmgen` goes through `transformBody`. That is the one place every
+      ## consumer of a semmed body passes through, so the demand is asked for
+      ## there rather than at each of sem's compile-time-evaluation entries,
+      ## where a missed one would be a miscompile.
+      ##
+      ## A closure, not the `{.nimcall.}` the hooks below are: running a unit
+      ## needs the module's `PContext`, and it nests, so `preparePContext` sets
+      ## it and `closePContext` puts the enclosing module's back.
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
+    vmTransfIdgen*: IdGenerator   # process-local backend idgen for closure envs
+                                  # minted while the VM compiles a routine body
+                                  # (inVMTransform); see lambdalifting / ast2nif @bk
     operators*: Operators
 
     cachedFiles*: StringTableRef
 
     procGlobals*: seq[PNode]
     nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
+    nifExpansions*: Table[int32, seq[(PSym, TLineInfo)]]
+      # module position -> (template/macro/generic proc sym, call-site info) for every
+      # expansion in that module. Templates/macros leave no trace in the sem'checked AST
+      # (generic proc instantiations don't point to the original generic definition),
+      # so this side-channel (written into the `.bif`, see ast2nif) is what lets
+      # `nim track --usages`/`--def` find them. Populated by `rememberExpansion`.
     cachedMods: IntSet
+    hookClosure: IntSet # modules whose serialized hooks were already registered
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -189,6 +278,36 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
+when not defined(nimKochBootstrap):
+  proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym
+
+  proc moduleResolver(g: ModuleGraph): ModuleResolver =
+    result = proc(name, suffix: string): PSym =
+      materializeReexportedModule(g, name, suffix)
+
+proc ensureHiddenIface(g: ModuleGraph; pos: int) =
+  ## Materialise a loaded module's full interface the first time anything
+  ## asks for it. Every READ of `interfHidden` goes through `interfSelect`, so
+  ## guarding those sites is complete.
+  if g.config.cmd == cmdM:
+    # Private declarations and their order are outside the public fingerprint.
+    # Record every consumer, including those reusing an already-built table.
+    g.icImplDeps.incl pos
+  if g.ifaces[pos].hiddenPending:
+    when not defined(nimKochBootstrap):
+      # By SUFFIX: `c.mods` and `g.ifaces` use different FileIndexes for the
+      # same module (see `buildHiddenInterface`). Into a LOCAL table, because
+      # loading symbols can grow `g.ifaces` and a `var` alias into it would then
+      # point at the freed buffer. Cleared only on success, so an import whose
+      # `.s.bif` does not exist yet is retried rather than written off.
+      var tab = g.ifaces[pos].interfHidden
+      if buildHiddenInterface(ast.program,
+                              cachedModuleSuffix(g.config, FileIndex pos), tab, moduleResolver(g)):
+        g.ifaces[pos].interfHidden = tab
+        g.ifaces[pos].hiddenPending = false
+    else:
+      g.ifaces[pos].hiddenPending = false
+
 template interfSelect(iface: Iface, importHidden: bool): TStrTable =
   var ret = iface.interf.addr # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
   if importHidden: ret = iface.interfHidden.addr
@@ -224,6 +343,7 @@ proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent):
   assert m.kind == skModule
   mi.modIndex = m.position
   mi.importHidden = optImportHidden in m.options
+  if mi.importHidden: ensureHiddenIface(g, mi.modIndex)
   result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
@@ -231,16 +351,58 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   for s in g.ifaces[m.position].interfSelect(importHidden).data:
     if s != nil:
       yield s
 
+proc orderedInterface*(g: ModuleGraph; m: PSym; hidden = false): seq[PSym] =
+  ## Names are sorted; each identifier's symbols retain frontend lookup order.
+  ## Re-exporting must not depend on physical hash-table slots: a loaded table
+  ## can have a different layout while preserving every identifier's order.
+  result = @[]
+  if hidden: ensureHiddenIface(g, m.position)
+  let tab = if hidden: addr semtabAll(g, m) else: addr semtab(g, m)
+  var seen = initHashSet[int]()
+  var names: seq[PIdent] = @[]
+  for sym in items(tab[]):
+    if not seen.containsOrIncl(sym.name.id):
+      names.add sym.name
+  names.sort(proc(a, b: PIdent): int =
+    result = cmp(a.s[0], b.s[0])
+    if result == 0: result = cmpIgnoreStyle(a.s, b.s))
+  for name in names:
+    var it = default(TIdentIter)
+    var candidate = initIdentIter(it, tab[], name)
+    while candidate != nil:
+      result.add candidate
+      candidate = nextIdentIter(it, tab[])
+
+proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
+  ## Symbols DEFINED in `m` that reached `m`'s interface through an explicit
+  ## `export s` rather than through a `*` marker on their declaration.
+  ##
+  ## `semExport` re-exports by `reexportSym`, which adds to the interface table
+  ## and does NOT set `sfExported` — so a symbol can be importable while its
+  ## declaration says otherwise. The NIF writer decides importability from
+  ## `sfExported` alone and therefore missed exactly these. `std/random` does it
+  ## (`proc initRand(): Rand` private, then `since (1, 5, 1): export initRand`),
+  ## which is why `--ic:on` could not compile anything that reached
+  ## `std/tempfiles` — `initRand()` was undeclared in the importer.
+  result = @[]
+  for s in g.ifaces[m.position].interf.data:
+    if s != nil and s.kind != skModule and sfExported notin s.flags and
+        s.itemId.module == m.position:
+      result.add s.itemId
+
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
 
 proc someSymAmb*(g: ModuleGraph; m: PSym; name: PIdent; amb: var bool): PSym =
   let importHidden = optImportHidden in m.options
+  if importHidden: ensureHiddenIface(g, m.position)
   var ti: TIdentIter = default(TIdentIter)
   result = initIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden), name)
   if result != nil and nextIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden)) != nil:
@@ -273,29 +435,75 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
-  if g.attachedOps[op].contains(t.itemId):
-    result = g.attachedOps[op][t.itemId]
+  if g.attachedOps[op].contains(t.bindingId):
+    result = g.attachedOps[op][t.bindingId]
   elif g.config.cmd in {cmdNifC, cmdM}:
     # Fall back to key-based lookup for NIF-loaded hooks
     let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
     result = g.loadedOps[op].getOrDefault(key)
     #echo "fallback ", key, " ", op, " ", result
+    when defined(icDbgHash):
+      if result == nil and op == attachedDestructor:
+        echo "HOOK MISS key=", key, " table.len=", g.loadedOps[op].len,
+          " kind=", t.kind, " sym=", (if t.sym != nil: t.sym.name.s else: "NIL")
+        if key.len > 10:
+          let probe = key[3 ..< min(key.len, 18)]
+          for k in g.loadedOps[op].keys:
+            if probe in k: echo "  candidate: ", k
   else:
     result = nil
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  if not g.attachedOps[op].contains(t.itemId):
-    let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-    # Use key-based deduplication for opsLog because different type objects
-    # (e.g. canon vs orig) can have different itemIds but same structural key
-    if key notin g.loadedOps[op]:
-      # Hooks should be written to the module where the type is defined,
-      # not the module that triggered the registration
-      let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
-      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: ownerModule, key: key, sym: value)
+  # Key-based deduplication for opsLog: different type objects (e.g. canon vs
+  # orig) can have different itemIds but the same structural key.
+  let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  if g.inVMTransform > 0 and g.config.cmd == cmdM:
+    # hook lifted while the VM compiles a routine body (closure-env types of
+    # loaded routines): register it for in-process lookup but keep it out of
+    # the serialized log — it is a process-local artifact whose type graph
+    # references derived env-field syms that no module's NIF defines
+    if g.loadedOps[op].getOrDefault(key) == nil:
       g.loadedOps[op][key] = value
-  g.attachedOps[op][t.itemId] = value
+    g.attachedOps[op][t.bindingId] = value
+    return
+  let existing = g.loadedOps[op].getOrDefault(key)
+  if existing == nil:
+    # Stamp the entry with the module whose compilation produced the hook
+    # (`module`), NOT the type's def module: each `nim m` is a separate
+    # process, so a hook lifted while compiling a *downstream* module simply
+    # does not exist in the def module's process — stamping it with the def
+    # module produced a `LogEntry` that no module ever writes (the def
+    # module's writer ran in another process that never lifted it; this
+    # module's writer skips it because `op.module != thisModule`) and codegen
+    # failed with "'=destroy' operator not found" (e.g. astdef's `TStrTable`,
+    # whose destroy is first needed by modulegraphs). This holds for nominal
+    # types as much as for generic/structural instances. Duplicate
+    # registrations across lifting modules are reconciled deterministically
+    # at load time (see the HookEntry replay in `replayStateChanges`).
+    g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
+    g.loadedOps[op][key] = value
+  elif existing != value:
+    # Re-registration replacing an earlier sym for the same key. This happens
+    # legitimately: `createTypeBoundOps` first registers empty `symPrototype`
+    # placeholders, then `produceSym` replaces them — in particular
+    # `produceSymDistinctType` replaces a distinct type's placeholder with the
+    # BASE type's hook (a `distinct string` uses string's `=sink`). The log
+    # must follow the replacement, otherwise the NIF ships the dead,
+    # empty-bodied prototype and codegen in another process calls a no-op
+    # `=sink`/`=copy`, silently losing the value (e.g. `conf.projectPath`
+    # ended up empty: "cannot open '/'").
+    g.loadedOps[op][key] = value
+    var updated = false
+    for e in mitems(g.opsLog):
+      if e.kind == HookEntry and e.op == op and e.key == key:
+        e.sym = value
+        e.module = module
+        updated = true
+        break
+    if not updated:
+      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
+  g.attachedOps[op][t.bindingId] = value
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
   ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
@@ -303,7 +511,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttach
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.itemId] = value
+  g.attachedOps[op][t.bindingId] = value
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) {.inline.} =
   discard
@@ -316,10 +524,6 @@ proc addDispatchers*(g: ModuleGraph, value: PSym) =
   # TODO: add it for packed modules
   g.dispatchers.add value
 
-iterator resolveLazySymSeq(g: ModuleGraph, list: var seq[PSym]): PSym =
-  for it in list.mitems:
-    yield it
-
 proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[PSym]) =
   # TODO: add it for packed modules
   g.methodsPerType[id] = methods
@@ -329,33 +533,121 @@ proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
   g.nifReplayActions.mgetOrPut(module, @[]).add n
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
-  if g.methodsPerType.contains(t.itemId):
-    for it in mitems g.methodsPerType[t.itemId]:
+  if g.methodsPerType.contains(t.bindingId):
+    for it in mitems g.methodsPerType[t.bindingId]:
       yield it
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
-  result = g.enumToStringProcs.getOrDefault(t.itemId)
+  result = g.enumToStringProcs.getOrDefault(t.bindingId)
   if result == nil and g.config.cmd in {cmdNifC, cmdM}:
     let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
     result = g.loadedEnumToStringProcs.getOrDefault(key)
   assert result != nil
 
 proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
-  g.enumToStringProcs[t.itemId] = value
+  g.enumToStringProcs[t.bindingId] = value
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-  let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: value.itemId.module.int
-  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: ownerModule, key: key, sym: value)
+  # Stamp with the module that owns the generated proc, not the enum's def
+  # module: the def module's process may never have generated it (same
+  # "written by nobody" failure as hook entries, see setAttachedOp).
+  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: value.itemId.module.int, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
-  if g.methodsPerGenericType.contains(t.itemId):
-    for it in mitems g.methodsPerGenericType[t.itemId]:
+  if g.methodsPerGenericType.contains(t.bindingId):
+    for it in mitems g.methodsPerGenericType[t.bindingId]:
       yield (it[0], it[1])
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
-  g.methodsPerGenericType.mgetOrPut(t.itemId, @[]).add (col, m)
+  g.methodsPerGenericType.mgetOrPut(t.bindingId, @[]).add (col, m)
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
   let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
   g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
+
+proc logMethodDef*(g: ModuleGraph; s: PSym) =
+  ## Log a method registration (`cgmeth.methodDef`) so that importers and
+  ## the backend can rebuild the dispatch buckets (`g.methods`) from the
+  ## NIF replay log — the serialized method ast carries its dispatcher sym
+  ## at `dispatcherPos`, so replay reuses the original dispatcher that all
+  ## call sites reference by name (see `registerLoadedMethod`).
+  if g.config.cmd in {cmdNifC, cmdM}:
+    g.opsLog.add LogEntry(kind: MethodEntry, module: s.itemId.module.int,
+                          key: "", sym: s)
+
+proc logCppMember*(g: ModuleGraph; s: PSym) =
+  ## Log a C++ `{.member.}`/`{.virtual.}`/`{.constructor.}` registration (and the
+  ## `importcpp` default-initializer flavour) so the NIF backend can rebuild
+  ## `memberProcsPerType`/`initializersPerType`, which live only in the sem
+  ## process. Without them the per-module backend emitted the struct WITHOUT its
+  ## in-class member declarations and the out-of-class definitions did not match
+  ## ("no declaration matches 'void Doo::memberProc()'").
+  ##
+  ## No type key: `replayCppMember` re-derives the type from the routine's
+  ## signature exactly as `semCppMember` does, so nothing has to survive the
+  ## round trip except the routine itself.
+  if g.config.cmd in {cmdNifC, cmdM}:
+    g.opsLog.add LogEntry(kind: CppMemberEntry, module: s.itemId.module.int,
+                          key: "", sym: s)
+
+proc replayCppMember*(g: ModuleGraph; s: PSym) =
+  ## Inverse of `logCppMember`, mirroring `semstmts.semCppMember`'s derivation.
+  if s == nil or s.typ == nil: return
+  if sfImportc notin s.flags:
+    var typ = if sfConstructor in s.flags: s.typ.returnType else: s.typ.firstParamType
+    if typ != nil and typ.kind == tyPtr and sfConstructor notin s.flags:
+      typ = typ.elementType
+    if typ != nil and typ.kind == tyObject:
+      let procs = addr g.memberProcsPerType.mgetOrPut(typ.bindingId, @[])
+      for prc in procs[]:
+        if prc == s: return
+      procs[].add s
+  else:
+    let typ = s.typ.returnType
+    if typ != nil and typ.kind == tyObject and
+        typ.bindingId notin g.initializersPerType and s.typ.n != nil:
+      # The default values sem read off the `nkIdentDefs` live on the param syms.
+      var call = newTree(nkCall, newSymNode(s))
+      var isInitializer = s.typ.n.len > 1
+      for i in 1 ..< s.typ.n.len:
+        let p = s.typ.n[i]
+        if p.kind != nkSym or p.sym.ast == nil or p.sym.ast.kind == nkEmpty:
+          isInitializer = false
+          break
+        call.add p.sym.ast
+      if isInitializer:
+        g.initializersPerType[typ.bindingId] = call
+
+proc registerLoadedMethod*(g: ModuleGraph; m: PSym) =
+  ## Rebuild the dispatch buckets from a serialized method registration.
+  ## Buckets group the methods sharing a dispatcher; the dispatcher's BODY
+  ## does not exist in serialized form — `generateIfMethodDispatchers`
+  ## synthesizes it in the backend from the complete bucket.
+  template dbg(msg: string) =
+    when defined(icDbgMeth):
+      echo "[icMeth] replay ", (if m != nil: m.name.s else: "nil"), ": ", msg
+  if m == nil or sfDispatcher in m.flags: dbg "skip self/nil"; return
+  if m.ast == nil or dispatcherPos >= m.ast.len:
+    dbg "no dispatcherPos (len " & $(if m.ast != nil: m.ast.len else: -1) & ")"
+    return
+  let dn = m.ast[dispatcherPos]
+  if dn == nil or dn.kind != nkSym or dn.sym == nil: dbg "empty dispatcher slot"; return
+  let disp = dn.sym
+  if sfDispatcher notin disp.flags: dbg "slot sym not a dispatcher"; return
+  dbg "ok -> bucket of " & disp.name.s & "." & $disp.disamb
+  for i in 0..<g.methods.len:
+    if g.methods[i].dispatcher.itemId == disp.itemId:
+      for existing in g.methods[i].methods:
+        if existing.itemId == m.itemId: return
+      g.methods[i].methods.add m
+      return
+  g.methods.add (methods: @[m], dispatcher: disp)
+
+proc flushMethodReplays*(g: ModuleGraph) =
+  ## Builds the dispatch buckets from the method registrations collected
+  ## during module loading; called once every module of the program is
+  ## loaded (`nifbackend.generateCode`).
+  for s in g.pendingMethodReplays:
+    registerLoadedMethod(g, s)
+  g.pendingMethodReplays.setLen 0
 
 proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
   ## Log a generic instance so it gets written to the NIF file.
@@ -365,9 +657,83 @@ proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
     let ownerModule = inst.itemId.module.int
     g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
 
-proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
-  let op = getAttachedOp(g, t, attachedAsgn)
+
+proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
+                        concreteTypes: openArray[PType]) =
+  ## Under IC, replace a fresh routine instance's counter-based `disamb` with
+  ## a content-derived one: a hash of the generic's identity plus the
+  ## `typeKey` of every concrete type argument — exactly the identity the
+  ## instantiation cache compares. The instance's NIF name
+  ## `name.disamb.modsuffix` then differs only in the module suffix when the
+  ## same instantiation is made by different modules, which is the
+  ## prerequisite for cross-module generic-instance merging (and gives the
+  ## dce analysis its `offers` keys). The hash is computed once, here; it is
+  ## never recomputed — the value travels in the serialized `disamb` field.
+  if g.config.cmd notin {cmdNifC, cmdM}: return
+  if isDefined(g.config, "icNoInstKey"): return
+  var key = generic.name.s
+  key.add '.'
+  key.addInt generic.disamb
+  key.add '.'
+  key.add modname(generic.itemId.module, g.config)
+  for t in concreteTypes:
+    key.add '|'
+    key.add typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+  let d = toMD5(key)
+  var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
+           (int32(d[3] and 0x3F'u8) shl 24)) or InstanceDisambBit
+  # Same-name hash collisions inside this process get probed to the next
+  # free value; the loser stays correct (its name keeps the module suffix),
+  # it merely won't merge cross-module.
+  while true:
+    let probe = (inst.name.id, h)
+    if g.instDisambs.hasKey(probe):
+      if g.instDisambs[probe] == inst.itemId: break
+      h = if h == high(int32): InstanceDisambBit else: h + 1
+    else:
+      g.instDisambs[probe] = inst.itemId
+      break
+  inst.disamb = h
+
+proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
+  ## Under IC, replace a synthesized hook's counter-based `disamb` with a
+  ## content-derived one: a hash of the operation name plus the `typeKey` of
+  ## the type it is bound to. Counter disambs renumber whenever an *earlier*
+  ## hook appears in a re-semmed module, so cached translation units keep
+  ## calling the old `_u<disamb>` C name while the regenerated producer
+  ## defines a new one — the hook flavor of the backend def-migration hole.
+  ## With a content-derived value the hook's NIF name (and hence its C name)
+  ## is stable as long as the type itself is unchanged.
+  if g.config.cmd notin {cmdNifC, cmdM}: return
+  if isDefined(g.config, "icNoHookKey"): return
+  var key = opName
+  key.add '|'
+  key.add typeKey(typ, g.config, loadTypeCallback, loadSymCallback)
+  let d = toMD5(key)
+  var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
+           (int32(d[3] and 0x1F'u8) shl 24)) or HookDisambBit
+  # Same-name hash collisions inside this process get probed to the next
+  # free value (staying below InstanceDisambBit); the loser merely loses
+  # cross-run name stability.
+  while true:
+    let probe = (hook.name.id, h)
+    if g.instDisambs.hasKey(probe):
+      if g.instDisambs[probe] == hook.itemId: break
+      h = if h == InstanceDisambBit - 1'i32: HookDisambBit else: h + 1
+    else:
+      g.instDisambs[probe] = hook.itemId
+      break
+  hook.disamb = h
+
+proc hasDisabledOp(g: ModuleGraph; t: PType; kind: TTypeAttachedOp): bool =
+  let op = getAttachedOp(g, t, kind)
   result = op != nil and sfError in op.flags
+
+proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
+  result = hasDisabledOp(g, t, attachedAsgn)
+
+proc hasDisabledDup*(g: ModuleGraph; t: PType): bool =
+  result = hasDisabledOp(g, t, attachedDup)
 
 proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
   for k in low(TTypeAttachedOp)..high(TTypeAttachedOp):
@@ -382,14 +748,41 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
     when not defined(nimKochBootstrap):
       # Try to resolve from NIF for both cmdNifC and cmdM (which uses NIF files)
       if g.config.cmd in {cmdNifC, cmdM}:
-        # First try system module (most compilerprocs are there)
+        # First try system module (most compilerprocs are there).
+        # Only consult the NIF if it actually exists: under nimsuggest's cold
+        # cache (ideActive) system is compiled from source and has no NIF yet,
+        # in which case the proc is already registered in-memory and the caller
+        # found/falls back to it — so degrade to nil instead of asserting.
         let systemFileIdx = g.config.m.systemFileIdx
-        if systemFileIdx != InvalidFileIdx and not g.withinSystem:
-          # Only try to load from NIF if the file exists (it may not during initial ic build)
+        if systemFileIdx != InvalidFileIdx and not g.withinSystem and
+           fileExists(toNifFilename(g.config, systemFileIdx)):
           result = tryResolveCompilerProc(ast.program, name, systemFileIdx)
           if result != nil:
             strTableAdd(g.compilerprocs, result)
             return result
+
+        # `nim nifc`: a module loaded from a NIF is named by its mangled suffix
+        # (`thrkxstl4`), not by its source name, and its file index resolves to
+        # that suffix too — so the `"threadpool"` match below can never fire and
+        # `spawn`, expanded at codegen time, died on `system module needs:
+        # nimArgsPassingDone`. The backend loads the WHOLE program before
+        # codegen starts, so just consult every loaded module's index; a miss is
+        # final for the rest of the process (nothing more gets loaded) and is
+        # remembered, because `getCompilerProc` is also used as a mere presence
+        # probe and would otherwise rescan every index on every call.
+        if g.config.cmd == cmdNifC:
+          if name in g.missingCompilerProcs: return nil
+          for moduleIdx in 0..<g.ifaces.len:
+            let module = g.ifaces[moduleIdx].module
+            if module == nil or module.position.FileIndex == systemFileIdx: continue
+            if not fileExists(toNifFilename(g.config, module.position.FileIndex)):
+              continue
+            result = tryResolveCompilerProc(ast.program, name, module.position.FileIndex)
+            if result != nil:
+              strTableAdd(g.compilerprocs, result)
+              return result
+          g.missingCompilerProcs.incl name
+          return nil
 
         # Try threadpool module (some compilerprocs like FlowVar are there)
         # Find threadpool module by searching loaded modules
@@ -397,6 +790,7 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
           let module = g.ifaces[moduleIdx].module
           if module != nil and module.name.s == "threadpool":
             let threadpoolFileIdx = module.position.FileIndex
+            if not fileExists(toNifFilename(g.config, threadpoolFileIdx)): break
             result = tryResolveCompilerProc(ast.program, name, threadpoolFileIdx)
             if result != nil:
               strTableAdd(g.compilerprocs, result)
@@ -415,10 +809,6 @@ proc hash*(u: SigHash): Hash =
     result = (result shl 8) or u.MD5Digest[x].int
 
 proc hash*(x: FileIndex): Hash {.borrow.}
-
-template getPContext(): untyped =
-  when c is PContext: c
-  else: c.c
 
 when defined(nimsuggest):
   template onUse*(info: TLineInfo; s: PSym; isGenericInstance = false) = discard
@@ -543,6 +933,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.emittedTypeInfo = initTable[string, FileIndex]()
   result.cachedFiles = newStringTable()
   result.cachedMods = initIntSet()
+  result.hookClosure = initIntSet()
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
@@ -572,6 +963,15 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
 
 proc moduleOpenForCodegen*(g: ModuleGraph; m: FileIndex): bool {.inline.} =
   result = true
+
+proc recordIcImplDep*(g: ModuleGraph; s: PSym) =
+  ## NeedsImpl edge tracking, see `icImplDeps`. Called from the compile-time
+  ## body consumption sites (vmgen's proc compilation, the getImpl opcodes).
+  ## Own-module and group-member entries are filtered out when the `.edges`
+  ## sidecar is written.
+  if g.config.cmd == cmdM and s != nil and s.kind in routineKinds and
+     s.itemId.module >= 0 and not isBackendMinted(s.itemId):
+    g.icImplDeps.incl module(s.itemId).int
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
@@ -654,10 +1054,137 @@ proc needsCompilation*(g: ModuleGraph, fileIdx: FileIndex): bool =
       return true
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
+  if g.config.cmd == cmdNifC: g.icBodyDeps.incl s.itemId.module
   result = s.ast[bodyPos]
+  if result != nil and nfLazyBody in result.flags and forceLazyBodyHook != nil:
+    # Sanctioned body-access gate (see astdef.bodyPos): materialize the deferred
+    # IC body so callers may safely touch `.sons` directly, not only via `len`.
+    forceLazyBodyHook(result)
   assert result != nil
 
 when not defined(nimKochBootstrap):
+  proc registerLoadedHooks*(g: ModuleGraph; logOps: seq[LogEntry]) =
+    let mainSuffix = getMainModuleSuffix(ast.program)
+    for x in logOps:
+      # A dependency's NIF may carry hooks whose syms belong to the module we
+      # are compiling fresh (e.g. a stale NIF of that very module written by an
+      # earlier in-process compilation). Loading those would collide with the
+      # freshly semchecked hook declarations.
+      if mainSuffix.len > 0 and
+         cachedModuleSuffix(g.config, x.sym.itemId.module.FileIndex) == mainSuffix:
+        continue
+      case x.kind
+      of HookEntry:
+        # The same structural hook may be serialized by several instantiating
+        # modules (a generic/structural instance has no single def site, so each
+        # using module owns its copy). Pick one deterministic program-wide winner
+        # by the smaller owning-module name, so every lookup resolves to the same
+        # sym regardless of module load order.
+        let existing = g.loadedOps[x.op].getOrDefault(x.key)
+        if existing == nil or
+           cachedModuleSuffix(g.config, x.sym.itemId.module.FileIndex) <
+           cachedModuleSuffix(g.config, existing.itemId.module.FileIndex):
+          g.loadedOps[x.op][x.key] = x.sym
+      of EnumToStrEntry:
+        g.loadedEnumToStringProcs[x.key] = x.sym
+      of CppMemberEntry:
+        replayCppMember(g, x.sym)
+      of MethodEntry:
+        # only `methodDef` registrations (empty key) rebuild dispatch
+        # buckets; the `addMethodToGeneric` flavor (typeKey key) announces
+        # the uninstantiated generic method, which must never enter a
+        # bucket (methodsPerGenericType replay is still a todo).
+        # Under `nim nifc` the replay is deferred: building a bucket forces
+        # the method's body, and a body loaded mid `loadModuleDependencies`
+        # registers modules it references in a different path context than
+        # the lazy loads during codegen do (`flushMethodReplays`).
+        if x.key.len == 0:
+          if g.config.cmd == cmdNifC:
+            g.pendingMethodReplays.add x.sym
+          else:
+            registerLoadedMethod(g, x.sym)
+      else:
+        discard
+
+  proc loadTransitiveHooks(g: ModuleGraph; deps: seq[ModuleSuffix]) =
+    ## Registers the serialized hooks (and enum-to-string procs) of every module
+    ## in the import closure of `deps`. Deliberately does NOT use
+    ## `moduleFromNifFile`: that would register the dep as a fully loaded module
+    ## and a later direct import of it would then skip `replayStateChanges`.
+    var stack = deps
+    var interf = initStrTable()
+    var interfHidden = initStrTable()
+    while stack.len > 0:
+      let suffix = stack.pop()
+      var isKnownFile = false
+      let fileIdx = g.config.registerNifSuffix(string suffix, isKnownFile)
+      if not g.hookClosure.containsOrIncl(fileIdx.int):
+        # `SkipInterfaceTables`: `interf`/`interfHidden` here are scratch tables
+        # shared by every iteration and never read — this module is a
+        # dep-of-a-dep, so none of its symbols are visible to the module being
+        # semchecked. Building them called `loadSymFromIndexEntry` for every
+        # index entry of every closure member.
+        let precomp = loadNifModule(ast.program, suffix, interf, interfHidden,
+                                    {SkipInterfaceTables})
+        registerLoadedHooks(g, precomp.logOps)
+        # Record this transitively-loaded module so the sem driver applies its
+        # VM-level load effects (macro-cache replay + `{.compileTime.}` global init)
+        # exactly as for a direct import — see `pendingNifInit`. A throwaway module
+        # symbol (same shape as moduleFromNifFile's) gives the drain an idgen/info
+        # context; it is not registered, so a later direct import still loads fully.
+        if g.config.cmd == cmdM:
+          let m = PSym(kindImpl: skModule, itemId: itemId(int32(fileIdx), 0'i32),
+                       name: getIdent(g.cache, splitFile(toFullPath(g.config, fileIdx)).name),
+                       infoImpl: newLineInfo(fileIdx, 1, 1), positionImpl: int(fileIdx))
+          setOwner(m, getPackage(g.config, g.cache, fileIdx))
+          g.pendingNifInit.add (m, precomp.topLevel)
+        # Rebuild generic TYPE- and PROC-instance offers across the WHOLE closure,
+        # not just direct imports (`moduleFromNifFile`). An instance is frozen at
+        # the FIRST module to create it (in a scope where its body's symbols
+        # resolve unambiguously); a consumer many imports away must REUSE it rather
+        # than re-instantiate in its own scope, which may resolve a body symbol
+        # differently — a divergent `compiles()`-dependent array bound (SSZ
+        # `HashArray[8192, Gwei]`, type offer), or an ambiguous unqualified ident
+        # leaked from an unrelated import (`fromRaw` -> `SkRawPublicKeySize` from
+        # both `secp` and `secp256k1`, proc offer). Direct-only rebuild left the
+        # deep offer invisible when the clean instance lives a transitive hop away.
+        for off in precomp.typeOffers:
+          g.typeInstCache.mgetOrPut(off.generic.itemId, @[]).add off.inst
+        for off in precomp.genericOffers:
+          g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
+            sym: off.inst, concreteTypes: off.concreteTypes,
+            genericParamsCount: off.genericParamsCount, compilesId: 0)
+        for d in precomp.deps: stack.add d
+
+  proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym =
+    ## A re-exported MODULE (`import x; export x`) acts as a qualifier in the
+    ## re-exporting module's interface (`asmm.x86.nd`). Reconstruct a module
+    ## symbol for it and make its interface tables available for qualified
+    ## lookup (`someSym` reads `g.ifaces[position]`) — WITHOUT registering
+    ## the module: `Iface.module` stays nil so a later direct import still
+    ## takes the full load path (replayStateChanges etc.).
+    var isKnown = false
+    let fIdx = g.config.registerNifSuffix(msuffix, isKnown)
+    if fIdx.int >= g.ifaces.len: setLen(g.ifaces, fIdx.int + 1)
+    if g.ifaces[fIdx.int].module != nil and
+        g.ifaces[fIdx.int].module.name.s == mname:
+      # properly registered already (directly imported earlier): reuse it
+      return g.ifaces[fIdx.int].module
+    result = PSym(kindImpl: skModule, itemId: itemId(int32(fIdx), 0'i32),
+                  name: getIdent(g.cache, mname),
+                  infoImpl: newLineInfo(fIdx, 1, 1),
+                  positionImpl: int(fIdx))
+    setOwner(result, getPackage(g.config, g.cache, fIdx))
+    if g.ifaces[fIdx.int].module == nil and
+        not g.icQualIfaces.containsOrIncl(fIdx.int):
+      var interf = initStrTable()
+      var interfHidden = initStrTable()
+      discard loadNifModule(ast.program, ModuleSuffix(msuffix),
+                            interf, interfHidden, {}, moduleResolver(g))
+      g.ifaces[fIdx.int].interf = interf
+      g.ifaces[fIdx.int].interfHidden = interfHidden
+      g.ifaces[fIdx.int].hiddenPending = true
+
   proc moduleFromNifFile*(g: ModuleGraph; fileIdx: FileIndex;
                           flags: set[LoadFlag] = {}): PrecompiledModule =
     ## Returns 'nil' if the module needs to be recompiled.
@@ -666,42 +1193,141 @@ when not defined(nimKochBootstrap):
     if not fileExists(toNifFilename(g.config, fileIdx)):
       return PrecompiledModule(module: nil)
 
+    # NOTE: direction-(c) experiment (refuse to NIF-serve include-bearing modules
+    # under ideActive, forcing a source compile) is disabled — it reproduces the
+    # known sibling-resolution corruption (system.string -> excpt.nim:746). The
+    # cold-include *discovery* scan (scanIncludeGraph) stays; the round-trip
+    # fidelity of included symbols is the separate, still-open loader problem.
+    when false:
+      if g.config.ideActive and not g.withinSystem and
+         fileIdx != g.config.m.systemFileIdx and
+         nifModuleHasIncludes(g.config, fileIdx):
+        return PrecompiledModule(module: nil)
+
     # Create module symbol
     let filename = AbsoluteFile toFullPath(g.config, fileIdx)
 
     let m = PSym(
       kindImpl: skModule,
-      itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+      itemId: itemId(int32(fileIdx), 0'i32),
       name: getIdent(g.cache, splitFile(filename).name),
       infoImpl: newLineInfo(fileIdx, 1, 1),
       positionImpl: int(fileIdx))
     setOwner(m, getPackage(g.config, g.cache, fileIdx))
     # Register module in graph
     registerModule(g, m)
+    # ... and, in the BACKEND, bind its NIF name to THIS symbol before anything
+    # in the file is decoded, so the loader never mints a second `skModule` for
+    # it (see `registerModuleSelfSym`). Backend-only: under `nim m` a module is
+    # loaded for its INTERFACE, and re-pointing the owner slot of every loaded
+    # symbol at the freshly built module sym changes what sem sees for an
+    # imported routine — `times.toDateTimeByWeek` then lost its inferred
+    # `raises` and the importer failed with "can raise an unlisted exception".
+    if g.config.cmd == cmdNifC:
+      registerModuleSelfSym(ast.program, cachedModuleSuffix(g.config, fileIdx), m)
 
-    result = loadNifModule(ast.program, fileIdx,
-                           g.ifaces[fileIdx.int].interf,
-                           g.ifaces[fileIdx.int].interfHidden, flags)
+    # Resolving module aliases can grow g.ifaces. Keep the tables local until
+    # loading finishes so no var argument points into a reallocated sequence.
+    var interf = initStrTable()
+    var interfHidden = initStrTable()
+    result = loadNifModule(ast.program, fileIdx, interf, interfHidden, flags, moduleResolver(g))
+    g.ifaces[fileIdx.int].interf = move interf
+    g.ifaces[fileIdx.int].interfHidden = move interfHidden
+    # The full interface stays lazy until `ensureHiddenIface` is asked for it.
+    g.ifaces[fileIdx.int].hiddenPending = true
     result.module = m
+    # Restore the module symbol's persisted flags (see ast2nif `(modflags)`);
+    # `cgen.genTopLevelStmt` gates the destructor pass on `sfInjectDestructors`.
+    if (result.moduleFlags and ModFlagInjectDestructors) != 0:
+      m.incl sfInjectDestructors
+    # Re-establish include->module mapping so nimsuggest's `parentModule` can map
+    # a query in an included file back to this (NIF-loaded) module and recompile
+    # it, exactly as it does for a from-source module. Without this the include
+    # relationship is invisible for NIF-served modules.
+    for incPath in result.includes:
+      g.addIncludeDep(fileIdx, fileInfoIdx(g.config, AbsoluteFile incPath))
+
+    # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
+    # consumer's `genericCacheGet` finds the instance and SKIPS re-running
+    # `instantiateBody` in its own module scope (which lacks symbols visible only
+    # at the generic's definition site — see ast2nif's `(offer …)`).
+    for off in result.genericOffers:
+      g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
+        sym: off.inst, concreteTypes: off.concreteTypes,
+        genericParamsCount: off.genericParamsCount, compilesId: 0)
+
+    # Rebuild `typeInstCache` from this module's generic TYPE-instance OFFERS so a
+    # consumer's `searchInstTypes` reuses the baked instance (e.g. an SSZ
+    # `HashArray` whose array bound depends on import-scope-sensitive `compiles()`)
+    # rather than re-instantiating it with a divergent bound — see ast2nif's
+    # `(toffer …)`. Keyed by the generic body sym's itemId, as `searchInstTypes`.
+    for off in result.typeOffers:
+      g.typeInstCache.mgetOrPut(off.generic.itemId, @[]).add off.inst
 
     # Mark module as cached
     g.cachedMods.incl fileIdx.int
+    g.hookClosure.incl fileIdx.int
 
     # Register hooks from NIF index with the module graph
+    registerLoadedHooks(g, result.logOps)
     for x in result.logOps:
       case x.kind
-      of HookEntry:
-        g.loadedOps[x.op][x.key] = x.sym
       of ConverterEntry:
         g.ifaces[fileIdx.int].converters.add x.sym
+      of PureEnumEntry:
+        # rebuild the pure-enum list (source path: `addPureEnum`) so importers can
+        # offer this loaded `{.pure.}` enum's fields as the restricted pure-enum
+        # fallback (`importPureEnumFields`).
+        g.ifaces[fileIdx.int].pureEnums.add x.sym
       of MethodEntry:
-        discard "todo"
-      of EnumToStrEntry:
-        g.loadedEnumToStringProcs[x.key] = x.sym
+        discard "dispatch buckets already rebuilt by registerLoadedHooks"
       of GenericInstEntry:
         raiseAssert "GenericInstEntry should not be in the NIF index"
+      of HookEntry, EnumToStrEntry, CppMemberEntry:
+        discard "already done by registerLoadedHooks"
     # Register methods per type from NIF index
     discard "todo"
+    # `nim m` loads only its *direct* imports through this proc, but a hook for
+    # a structural type (e.g. `=destroy` for `seq[PNode]`) lives in the NIF of
+    # whichever module first lifted it — possibly a dependency of a dependency
+    # that the current module never imports directly. Walk the whole import
+    # closure so every serialized hook is visible. (Codegen, `nim nifc`, already
+    # walks the closure in nifbackend.loadModuleDependencies.)
+    if g.config.cmd == cmdM:
+      loadTransitiveHooks(g, result.deps)
+      # Record the directly-loaded module for the same VM-level load effects as its
+      # transitive deps (`pendingNifInit`). AFTER loadTransitiveHooks so the drain
+      # applies deps before the dependent (macro-cache order).
+      g.pendingNifInit.add (m, result.topLevel)
+
+  proc isModuleFile(g: ModuleGraph; fileIdx: FileIndex): bool =
+    let i = fileIdx.int32
+    i >= 0 and i < g.ifaces.len and g.ifaces[i].module != nil
+
+  proc registerIncluderFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
+    ## Targeted cold-include discovery for nimsuggest: scan the nimcache NIFs
+    ## (`scanIncludeGraph`) for a module whose include-set contains *this* file
+    ## and register only that single include->module edge in `inclToMod`, so a
+    ## query inside the include file resolves its includer via `parentModule`.
+    ##
+    ## Deliberately targeted: registering *every* include relationship (i.e. also
+    ## `system`'s own `include`s) eagerly assigns FileIndexes and pollutes
+    ## `inclToMod`, which perturbs the NIF line-info decode of unrelated modules
+    ## (`system.string` then resolves into `excpt.nim`). Touch nothing but the
+    ## one edge we need.
+    let target = toFullPath(g.config, fileIdx)
+    for (includer, includes) in scanIncludeGraph(g.config):
+      for incFile in includes:
+        if cmpPaths(incFile, target) == 0:
+          g.addIncludeDep(fileInfoIdx(g.config, AbsoluteFile includer), fileIdx)
+          return true
+    result = false
+
+  proc needsIncludeScan*(g: ModuleGraph; fileIdx: FileIndex): bool =
+    ## True when `fileIdx` is neither a known module of its own nor an
+    ## already-known include file — i.e. a cold-opened file whose includer we
+    ## must still discover via `registerIncluderFromNif`.
+    not g.isModuleFile(fileIdx) and not g.inclToMod.hasKey(fileIdx)
 
 proc configComplete*(g: ModuleGraph) =
   #rememberStartupConfig(g.startupPackedConfig, g.config)
@@ -730,7 +1356,23 @@ proc getPackage*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
 
 proc belongsToStdlib*(graph: ModuleGraph, sym: PSym): bool =
   ## Check if symbol belongs to the 'stdlib' package.
-  sym.getPackageSymbol.getPackageId == graph.systemModule.getPackageId
+  # Compare the package *name* (an interned ident), not the package symbol's
+  # `.id`. Under per-module IC (`nim m`) the system module is loaded from a NIF
+  # in a process that does not compile it from source, so its package symbol is
+  # reconstructed with a fresh `.id` that no longer matches the freshly-interned
+  # package of a stdlib module compiled standalone here — making the old id
+  # comparison wrongly report `false` and inject `--import`ed modules into the
+  # stdlib. Both are canonically named `stdlib` (lib/stdlib.nimble); in a normal
+  # `nim c` build (system compiled from source) the ids match too, so this is a
+  # no-op there.
+  sym.getPackageSymbol.name.id == graph.systemModule.getPackageSymbol.name.id
+
+proc suggestDataComplete*(g: ModuleGraph; fileIdx: FileIndex): bool =
+  g.suggestSymbols.getOrDefault(fileIdx).isComplete
+
+proc setSuggestDataComplete*(g: ModuleGraph; fileIdx: FileIndex; complete: bool) =
+  g.suggestSymbols.mgetOrPut(fileIdx, newSuggestFileSymbolDatabase(fileIdx,
+    optIdeExceptionInlayHints in g.config.globalOptions)).isComplete = complete
 
 proc fileSymbols*(graph: ModuleGraph, fileIdx: FileIndex): SuggestFileSymbolDatabase =
   result = graph.suggestSymbols.getOrDefault(fileIdx, newSuggestFileSymbolDatabase(fileIdx, optIdeExceptionInlayHints in graph.config.globalOptions))

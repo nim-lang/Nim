@@ -139,7 +139,8 @@
 
 import
   ast, msgs, idents,
-  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos, trees
+  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos, trees,
+  types
 
 import std/tables
 
@@ -166,6 +167,8 @@ type
     finallyPathSym: PSym
     curExcSym: PSym # Current exception
     externExcSym: PSym # Extern exception: what would getCurrentException() return outside of closure iter
+
+    enclosingPragmas: seq[PNode] # stack of pragma blocks wrapping stmtlist
 
     states: seq[State] # The resulting states. Label is int literal.
     finallyPathStack: seq[FinallyTarget] # Stack of split blocks, whiles and finallies
@@ -252,7 +255,8 @@ proc newCurExcAccess(ctx: var Ctx): PNode =
   ctx.newEnvVarAccess(ctx.curExcSym)
 
 proc newStateLabel(ctx: Ctx): PNode =
-  ctx.g.newIntLit(TLineInfo(), 0)
+  result = nkIntLit.newIntNode(0)
+  result.typ = getSysType(ctx.g, TLineInfo(), tyInt16)
 
 proc newState(ctx: var Ctx, n: PNode, inlinable: bool, label: PNode): PNode =
   # Creates a new state, adds it to the context
@@ -333,9 +337,14 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
         var cond: PNode = nil
         for i in 0..<c.len - 1:
           assert(c[i].kind == nkType)
+          # Use the :curExc env field (set by the wrapper before entering the
+          # except landing state) instead of calling getCurrentException():
+          # injectdestructors does not process the args of this raw generic
+          # `of` magic call, so an owning getCurrentException() temp would
+          # never be destroyed and the caught exception would leak (#23615).
           let nextCond = newTreeIT(nkCall, c.info, ctx.g.getSysType(c.info, tyBool),
             newSymNode(g.getSysMagic(c.info, "of", mOf)),
-            g.callCodegenProc("getCurrentException"),
+            ctx.newCurExcAccess(),
             c[i])
 
           cond = if cond.isNil: nextCond
@@ -471,6 +480,16 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   of nkSkip:
     discard
 
+  of nkStmtList:
+    # This parent tells us its children are statements. A typed child can
+    # therefore be lowered without preserving its final value.
+    for i in 0..<n.len:
+      n[i] = ctx.lowerStmtListExprs(n[i], needsSplit)
+      if n[i].kind == nkStmtListExpr and n[i].hasYields:
+        let (st, res) = exprToStmtList(n[i])
+        st.add(res)
+        n[i] = st
+
   of nkYieldStmt:
     var ns = false
     for i in 0..<n.len:
@@ -536,6 +555,11 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             let newBranch = newTree(nkElse, branchBody)
             curS.add(newBranch)
           else:
+            if n.kind == nkIfStmt and branch[0].kind == nkStmtListExpr:
+              # A statement if can still have a typed branch whose value is unused.
+              let (st, res) = exprToStmtList(branch[0])
+              st.add(res)
+              branch[0] = st
             curS.add(branch)
 
         of nkElifExpr, nkElifBranch:
@@ -556,6 +580,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
               curS.add(elseBody)
             curS = newIf
           else:
+            if n.kind == nkIfStmt and branch[1].kind == nkStmtListExpr:
+              let (st, res) = exprToStmtList(branch[1])
+              st.add(res)
+              branch[1] = st
             newBranch = branch
             if curS.kind == nkIfStmt:
               curS.add(newBranch)
@@ -592,10 +620,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let branch = n[i]
           case branch.kind
           of nkExceptBranch:
-            if branch[0].kind == nkType:
-              branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
-            else:
-              branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
+            branch[^1] = ctx.convertExprBodyToAsgn(branch[^1], tmp)
           of nkFinally:
             discard
           else:
@@ -985,9 +1010,14 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         for j in i + 1..<n.len:
           s.add(n[j])
 
+        var body = s
+        for pragma in ctx.enclosingPragmas:
+          body = newTreeI(nkPragmaBlock, n[i + 1].info,
+                          pragma[0].copyTree, body)
+
         n.sons.setLen(i + 1)
-        discard ctx.newState(s, true, label)
-        if ctx.transformClosureIteratorBody(s, gotoOut) != s:
+        discard ctx.newState(body, true, label)
+        if ctx.transformClosureIteratorBody(body, gotoOut) != body:
           internalError(ctx.g.config, "transformClosureIteratorBody != s")
         break
       else:
@@ -1124,6 +1154,14 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         let finallyExit = newTree(nkGotoState, ctx.newFinallyPathAccess(ctx.curFinallyLevel - 1, finallyBody.info))
         finallyBody = ctx.transformClosureIteratorBody(finallyBody, finallyExit)
         dec ctx.curFinallyLevel
+
+  of nkPragmaBlock:
+    # Propagate the pragma blocks so that blocks like {.cast(uncheckedAssign).}
+    # remain effective
+    ctx.enclosingPragmas.add(n)
+    n[1] = ctx.transformClosureIteratorBody(n[1], gotoOut)
+    discard ctx.enclosingPragmas.pop()
+    result = n
 
   of nkGotoState, nkForStmt:
     internalError(ctx.g.config, "closure iter " & $n.kind)
@@ -1404,20 +1442,82 @@ proc isClosureIterLocal(c: Ctx, s: PSym): bool =
   s.kind in {skResult, skVar, skLet, skForVar, skTemp} and
   sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym
 
+proc outlivesSuspension(c: Ctx, s: PSym): bool =
+  ## Is `s`'s lifetime observable after the iterator has suspended? Only if it
+  ## owns memory: there is a `=destroy` that belongs at the end of its scope,
+  ## and under refc a stack slot the collector has to keep seeing. Everything
+  ## else is unobservable once its last read is gone, which is what lets
+  ## #23787 keep it on the stack.
+  s.typ != nil and (hasDestructor(s.typ) or containsGarbageCollectedRef(s.typ))
+
+proc extendLifetimes(c: var Ctx, n: PNode, live: var seq[PSym]) =
+  ## We claim ARC/ORC destroy by scope, not by last usage. `detectCapturedVars`
+  ## can only see the *states*, so all it can offer is the last-usage criterion,
+  ## and the splitting transformation makes every state its own scope: a local
+  ## whose scope outlives the `yield` would be destroyed *at* the `yield`
+  ## (bug #26041). Scopes only exist before the split, so the promise has to be
+  ## kept here, on the unsplit body, by lifting whatever is still alive when a
+  ## `yield` is reached. The scopes below mirror the ones `injectdestructors`
+  ## opens, since that pass decides where the `=destroy` calls actually land.
+  template inNewScope(body: PNode) =
+    let oldLen = live.len
+    extendLifetimes(c, body, live)
+    live.setLen oldLen
+
+  case n.kind
+  of nkSkip:
+    discard
+  of nkYieldStmt:
+    for s in live:
+      if c.outlivesSuspension(s): c.captureVar(s)
+  of nkAddr, nkHiddenAddr:
+    # bug #25596; the very fact that the address is taken can make the local
+    # outlive its last read, and we cannot see where the pointer ends up.
+    let s = getRoot(n)
+    if s != nil and c.isClosureIterLocal(s): c.captureVar(s)
+    for i in 0..<n.safeLen:
+      extendLifetimes(c, n[i], live)
+  of nkVarSection, nkLetSection:
+    for it in n:
+      if it.kind in {nkIdentDefs, nkVarTuple}:
+        extendLifetimes(c, it[^1], live)
+        for i in 0 .. it.len - 3:
+          if it[i].kind == nkSym and c.isClosureIterLocal(it[i].sym):
+            live.add it[i].sym
+  of nkCaseStmt:
+    extendLifetimes(c, n[0], live)
+    for i in 1..<n.len:
+      inNewScope(n[i][^1])
+  of nkWhileStmt:
+    extendLifetimes(c, n[0], live)
+    inNewScope(n[1])
+  of nkParForStmt:
+    extendLifetimes(c, n[^2], live)
+    inNewScope(n[^1])
+  of nkBlockStmt, nkBlockExpr:
+    inNewScope(n[1])
+  of nkIfStmt, nkIfExpr:
+    for it in n:
+      if it.kind in {nkElifBranch, nkElifExpr}:
+        extendLifetimes(c, it[0], live)
+      inNewScope(it[^1])
+  of nkTryStmt:
+    inNewScope(n[0])
+    for i in 1..<n.len:
+      inNewScope(n[i][^1])
+  else:
+    for i in 0..<n.safeLen:
+      extendLifetimes(c, n[i], live)
+
+proc extendLifetimes(c: var Ctx, n: PNode) =
+  var live: seq[PSym] = @[]
+  extendLifetimes(c, n, live)
+
 proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
   case n.kind
   of nkSym:
     let s = n.sym
     detectCapturedSym(c, s, stateIdx)
-  of nkAddr, nkHiddenAddr:
-    let s = getRoot(n)
-    if s != nil and isClosureIterLocal(c, s):
-      detectCapturedSym(c, s, stateIdx)
-      # bug #25596; lifetime extension for `addr`-taken locals as
-      # we claim ARC/ORC do destruction based on scopes, not on last-usages.
-      c.captureVar(s)
-    for i in 0 ..< n.safeLen:
-      detectCapturedVars(c, n[i], stateIdx)
   of nkReturnStmt:
     if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
@@ -1501,6 +1601,11 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   if n.hasYieldsInExpressions():
     internalError(ctx.g.config, n.info, "yield in expr not lowered")
+
+  # Locals are lifted from two places: here, while the lexical scopes that decide
+  # where `injectdestructors` puts the `=destroy` calls still exist, and from
+  # `detectCapturedVars` below, which needs the states the split produces.
+  ctx.extendLifetimes(n)
 
   # Splitting transformation
   discard ctx.transformClosureIteratorBody(n, gotoOut)

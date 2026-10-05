@@ -132,6 +132,7 @@ type
     DragonFlyBSD
 
     Haiku
+    Illumos
 
 
 const
@@ -166,6 +167,8 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
   of Distribution.BSD: result = defined(bsd)
+  of Distribution.Solaris: result = defined(solaris)
+  of Distribution.Illumos: result = defined(illumos)
   else:
     when defined(bsd):
       case d
@@ -194,9 +197,6 @@ proc detectOsImpl(d: Distribution): bool =
         result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
       of Distribution.GoboLinux:
         result = "-Gobo " in uname()
-      of Distribution.Solaris:
-        let uname = toLowerAscii(uname())
-        result = ("sun" in uname) or ("solaris" in uname)
       of Distribution.Haiku:
         result = defined(haiku)
       else:
@@ -250,7 +250,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("netpkg install " & p, true)
     elif detectOs(NixOS):
       result = ("nix-env -i " & p, false)
-    elif detectOs(Solaris) or detectOs(FreeBSD):
+    elif detectOs(Solaris) or detectOs(Illumos) or detectOs(FreeBSD):
       result = ("pkg install " & p, true)
     elif detectOs(NetBSD) or detectOs(OpenBSD):
       result = ("pkg_add " & p, true)

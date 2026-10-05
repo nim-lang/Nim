@@ -735,17 +735,11 @@ proc getEscapedChar(L: var Lexer, tok: var Token) =
   else: lexMessage(L, errGenerated, "invalid character constant")
 
 proc handleCRLF(L: var Lexer, pos: int): int =
-  template registerLine =
-    let col = L.getColNumber(pos)
-
-  case L.buf[pos]
-  of CR:
-    registerLine()
-    result = nimlexbase.handleCR(L, pos)
-  of LF:
-    registerLine()
-    result = nimlexbase.handleLF(L, pos)
-  else: result = pos
+  result =
+    case L.buf[pos]
+    of CR: nimlexbase.handleCR(L, pos)
+    of LF: nimlexbase.handleLF(L, pos)
+    else: pos
 
 type
   StringMode = enum
@@ -845,8 +839,8 @@ proc getCharacter(L: var Lexer; tok: var Token) =
 
 const
   UnicodeOperatorStartChars = {'\226', '\194', '\195'}
-    # the allowed unicode characters ("∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔")
-    # all start with one of these.
+    # the allowed unicode characters ("∙ ∘ × ★ ☆ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ⟑ ⟇ ⩓ ⩔ ■ □
+    # ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔") all start with one of these.
 
 type
   UnicodeOprPred = enum
@@ -878,7 +872,18 @@ proc unicodeOprLen(buf: cstring; pos: int): (int8, UnicodeOprPred) =
       elif buf[pos+2] == '\159': result = 3.a # ⊟
       elif buf[pos+2] == '\160': result = 3.m # ⊠
       elif buf[pos+2] == '\161': result = 3.m # ⊡
-    elif buf[pos+1] == '\152' and buf[pos+2] == '\133': result = 3.m # ★
+    elif buf[pos+1] == '\150':
+      if buf[pos+2] == '\160': result = 3.m # ■
+      elif buf[pos+2] == '\161': result = 3.m # □
+    elif buf[pos+1] == '\152':
+      if buf[pos+2] == '\133': result = 3.m # ★
+      elif buf[pos+2] == '\134': result = 3.m # ☆
+    elif buf[pos+1] == '\159':
+      if buf[pos+2] == '\135': result = 3.m # ⟇
+      elif buf[pos+2] == '\145': result = 3.m # ⟑
+    elif buf[pos+1] == '\169':
+      if buf[pos+2] == '\147': result = 3.m # ⩓
+      elif buf[pos+2] == '\148': result = 3.m # ⩔
   of '\194':
     if buf[pos+1] == '\177': result = 2.a # ±
   of '\195':

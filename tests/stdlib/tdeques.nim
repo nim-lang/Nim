@@ -62,6 +62,8 @@ block:
   block:
     var d = initDeque[int](1)
     d.addLast 7
+    doAssert d.len == 1
+    doAssert d.high == 0
     d.addLast 8
     d.addLast 10
     d.addFirst 5
@@ -74,6 +76,7 @@ block:
     doAssert($d == "[5, 7]")
     d.shrink(2, 2)
     doAssert d.len == 0
+    doAssert d.high == -1
 
   for i in -2 .. 10:
     if i in deq:
@@ -107,6 +110,7 @@ block:
   proc foo(a, b: Positive) = # assume random positive values for `a` and `b`.
     var deq = initDeque[int]()
     doAssert deq.len == 0
+    doAssert deq.high == -1
     for i in 1 .. a: deq.addLast i
 
     if b < deq.len: # checking before indexed access.
@@ -238,6 +242,31 @@ proc main() =
       c.addLast(1)
       doAssert a == c
       doAssert a.hash == c.hash
+
+block:
+  when defined(nimAllowNonVarDestructor) and defined(gcDestructors):
+    type NoCopy = object
+
+    var destroys: int
+    # TODO `var` here causes:
+    # /tdeques_d/@psystem.nim.c:6175:46: error: incompatible type for argument 1 of ‘eqdestroy__u37__tdeques’
+    proc `=destroy`(a: NoCopy) = destroys += 1
+    proc `=copy`(a: var NoCopy, b: NoCopy) {.error.}
+
+    block:
+      var _ = initDeque[NoCopy](10)
+    when false: # TODO how to get rid of seq =destroy?
+      doAssert destroys == 0, "avoid spurious destroy calls for unused items"
+
+    block: # Add and pop should work with NoCopy types
+      var d = initDeque[NoCopy]()
+      d.addFirst(NoCopy())
+      discard d.popLast()
+
+    when not declared(js): # moves broken
+      block:
+        var d = @[NoCopy()].toDequeSink()
+        doAssert(d.len == 1)
 
 static: main()
 main()

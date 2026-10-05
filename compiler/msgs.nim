@@ -9,7 +9,7 @@
 
 import
   std/[strutils, os, tables, terminal, macros, times],
-  std/private/miscdollars,
+  std/private/[miscdollars, digitsutils],
   options, lineinfos, pathutils
 
 import ropes except `%`
@@ -23,10 +23,6 @@ template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
-
-proc toLowerAscii(a: var string) {.inline.} =
-  for c in mitems(a):
-    if isUpperAscii(c): c = char(uint8(c) xor 0b0010_0000'u8)
 
 proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
@@ -83,7 +79,8 @@ proc canonicalCase(path: var string) {.inline.} =
   ## the idea is to only use this for checking whether a path is already in
   ## the table but otherwise keep the original case
   when FileSystemCaseSensitive: discard
-  else: toLowerAscii(path)
+  else:
+    for c in mitems(path): c = toLowerAscii(c)
 
 proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   var
@@ -125,12 +122,25 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool = false
   result = fileInfoIdx(conf, filename, dummy)
 
+proc expandOrPseudo(filename: string): AbsoluteFile =
+  # `expandFilename` raises OSError when the path does not exist on disk. That is
+  # fine for a real source path, but a macro can legitimately set a node's
+  # line-info file to a name that has no file behind it — e.g. the `???` sentinel
+  # produced by `toFilename` for a NIF-loaded node whose `fileIndex` is unknown
+  # (FileIndex(-1)). Falling back to the raw name lets the `AbsoluteFile` overload
+  # register it as a pseudo-path (like `command line`/`stdin`) instead of crashing
+  # the whole `nim m` child with an unhandled OSError.
+  try:
+    result = AbsoluteFile expandFilename(filename)
+  except OSError:
+    result = AbsoluteFile filename
+
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
-  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), isKnownFile)
+  fileInfoIdx(conf, expandOrPseudo(filename.string), isKnownFile)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   var dummy: bool = false
-  fileInfoIdx(conf, AbsoluteFile expandFilename(filename.string), dummy)
+  fileInfoIdx(conf, expandOrPseudo(filename.string), dummy)
 
 proc registerNifSuffix*(conf: ConfigRef; suffix: string; isKnownFile: var bool): FileIndex =
   result = conf.m.filenameToIndexTbl.getOrDefault(suffix, InvalidFileIdx)
@@ -307,13 +317,29 @@ proc toLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
-proc toFileLineCol(info: InstantiationInfo): string {.inline.} =
+proc toMsgLocationImpl(result: var string; file: string; line: int; col: int; format: MsgFormat) =
+  ## renders a location prefix, mirroring lib/std/private/miscdollars.toLocation
+  case format
+  of mfmStd:
+    result.toLocation(file, line, col)
+  of mfmGcc:
+    result.add file
+    if line > 0:
+      result.add ':'
+      result.addInt line
+      if col > 0:
+        result.add ':'
+        result.addInt col
+    result.add ':'
+
+proc toFileLineCol(info: InstantiationInfo, format: MsgFormat): string {.inline.} =
   result = ""
-  result.toLocation(info.filename, info.line, info.column + ColOffset)
+  result.toMsgLocationImpl(info.filename, info.line, info.column + ColOffset, format)
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   result = ""
-  result.toLocation(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset)
+  result.toMsgLocationImpl(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset,
+                           conf.msgFormat)
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
@@ -338,7 +364,7 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
 
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
-  #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
+  #if conf.ideActive and optCDebug notin gGlobalOptions: return
   let sep = if msgNoUnitSep notin flags: conf.unitSep else: ""
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s & sep)
@@ -444,8 +470,8 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, ignoreMsg: bool) =
   if msg in fatalMsgs:
-    if conf.cmd == cmdIdeTools: log(s)
-    if conf.cmd != cmdIdeTools or msg != errFatal:
+    if conf.ideActive: log(s)
+    if not conf.ideActive or msg != errFatal:
       quit(conf, msg)
   if msg >= errMin and msg <= errMax or
       (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
@@ -459,7 +485,7 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, 
           raiseRecoverableError(s)
         else:
           quit(conf, msg)
-    elif eh == doAbort and conf.cmd != cmdIdeTools:
+    elif eh == doAbort and not conf.ideActive:
       quit(conf, msg)
     elif eh == doRaise:
       raiseRecoverableError(s)
@@ -490,7 +516,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
     info = context.info
 
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
-  msg >= errGenerated and conf.cmd == cmdIdeTools and optIdeDebug notin conf.globalOptions
+  msg >= errGenerated and conf.ideActive and optIdeDebug notin conf.globalOptions
 
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
@@ -511,6 +537,9 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
   ## 1-based index (matches editor line numbers); 1st line is for i.line = 1
   ## last valid line is `numLines` inclusive
   if i.fileIndex.int32 < 0: return ""
+  # line 0 means "unknown": nodes synthesized from an IC-loaded template or
+  # macro body carry no source position.
+  if i.line.int < 1: return ""
   let num = numLines(conf, i.fileIndex)
   # can happen if the error points to EOF:
   if i.line.int > num: return ""
@@ -597,7 +626,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                          resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
           # xxx needs a bit of refactoring to honor `conf.filenameOption`
-          styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
+          styledMsgWriteln(styleBright, toFileLineCol(info2, conf.msgFormat), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
             resetStyle, conf.unitSep)
@@ -645,7 +674,7 @@ proc warningDeprecated*(conf: ConfigRef, info: TLineInfo = gCmdLineInfo, msg = "
   message(conf, info, warnDeprecated, msg)
 
 proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: InstantiationInfo) =
-  if conf.cmd in {cmdIdeTools, cmdCheck} and conf.structuredErrorHook.isNil: return
+  if (conf.ideActive or conf.cmd == cmdCheck) and conf.structuredErrorHook.isNil: return
   writeContext(conf, info)
   liMessage(conf, info, errInternal, errMsg, doAbort, info2)
 
@@ -659,7 +688,7 @@ template internalAssert*(conf: ConfigRef, e: bool) =
   # xxx merge with `globalAssert`
   if not e:
     const info2 = instLoc()
-    let arg = info2.toFileLineCol
+    let arg = info2.toFileLineCol(conf.msgFormat)
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
 template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, extraMsg = "") =
@@ -695,6 +724,9 @@ proc genSuccessX*(conf: ConfigRef) =
   var build = ""
   var flags = ""
   const debugModeHints = "none (DEBUG BUILD, `-d:release` generates faster code)"
+  if optCompileOnly in conf.globalOptions:
+    build = "codegen "
+
   if conf.cmd in cmdBackends:
     if conf.backend != backendJs:
       build.add "mm: $#; " % $conf.selectedGC
@@ -721,7 +753,7 @@ proc genSuccessX*(conf: ConfigRef) =
     # xxx honor conf.filenameOption more accurately
   var output: string
   if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
-    output = $conf.jsonBuildFile
+    output = $conf.getNimcacheDir()
   elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
     # for some cmd we expect a valid absOutFile
     output = "unknownOutput"

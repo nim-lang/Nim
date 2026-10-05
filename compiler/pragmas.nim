@@ -815,7 +815,8 @@ proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
   trySuggestPragmas(c, callNode[0])
 
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
-  if r.isNil or sfCustomPragma notin r[0].sym.flags:
+  if r.isNil or r.len == 0 or r[0].kind != nkSym or
+      sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
     return n
 
@@ -1167,7 +1168,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         let s = expectStrLit(c, it)
         appendToModule(sym, n)
         extccomp.addLocalCompileOption(c.config, s, toFullPathConsiderDirty(c.config, sym.info.fileIndex))
-        recordPragma(c, it, "localpassl", s)
+        recordPragma(c, it, "localpassc", s)
       of wPush:
         processPush(c, n, i + 1)
         result = true

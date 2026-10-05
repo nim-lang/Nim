@@ -189,6 +189,37 @@ of the stack; `IND{=}` an indentation that has the same number of spaces. `DED`
 is another pseudo terminal that describes the *action* of popping a value
 from the stack, `IND{>}` then implies to push onto the stack.
 
+A token that is not the first token on its line carries no indentation at all,
+and the grammar distinguishes that case too: an *optional* indentation
+pseudo-terminal means "this indentation, or none". `IND{>}?` accepts a token
+that is indented further than the top of the stack *or* that continues the
+current line; `IND{=}?` accepts a token at the current indentation or on the
+same line; `(IND{>} | IND{=})?` accepts anything but a dedent.
+
+The same rule applies to comments. The terminal `COMMENT` (a documentation
+comment; ordinary `#` comments never reach the parser) without an
+indentation pseudo-terminal in front of it denotes a comment **on the same
+line** as the preceding token, so `COMMENT?` reads "an optional trailing
+comment". A comment that starts a line of its own is never matched by a bare
+`COMMENT?`: it is either a statement of its own (`commentStmt`) or the grammar
+spells its position explicitly, as in `IND{>} COMMENT` or `IND{>}? COMMENT`.
+For example `optInd = COMMENT? IND{>}?` allows a trailing
+comment and then requires the next token to be on the same line or indented
+further. And in `routine`, `'=' COMMENT? stmt` makes the difference between
+
+  ```nim
+  proc p() = ## a trailing comment: documents `p`
+    discard
+  ```
+
+and
+
+  ```nim
+  proc p() =
+    ## a comment on its own line: the first statement of the body
+    discard
+  ```
+
 With this notation we can now easily define the core of the grammar: A block of
 statements (simplified example):
 
@@ -712,8 +743,8 @@ Unicode Operators
 
 These Unicode operators are also parsed as operators:
 
-    ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+    ∙ ∘ × ★ ☆ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ⟑ ⟇ ⩓ ⩔ ■ □   # same priority as * (multiplication)
+    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔                           # same priority as + (addition)
 
 
 Unicode operators can be combined with non-Unicode operator
@@ -6123,40 +6154,48 @@ instantiations cross multiple different modules:
 
   ```nim
   # module A
+  type O* = object
+
   proc genericA*[T](x: T) =
     mixin init
     init(x)
   ```
 
+  ```nim
+  # module C
+  import A
+
+  proc init*(x: O) = discard
+  ```
 
   ```nim
-  import C
-
   # module B
+  import A, C
+
   proc genericB*[T](x: T) =
-    # Without the `bind init` statement C's init proc is
-    # not available when `genericB` is instantiated:
+    # Without the `bind init` statement, C's `init` proc is not
+    # available when `genericA` is instantiated through `genericB`
+    # from `module main`, which does not import C:
     bind init
     genericA(x)
   ```
 
   ```nim
-  # module C
-  type O = object
-  proc init*(x: var O) = discard
-  ```
-
-  ```nim
   # module main
-  import B, C
+  import A, B
 
-  genericB O()
+  genericB(O())
   ```
 
-In module B has an `init` proc from module C in its scope that is not
-taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx: these
-symbols by a `bind` statement inside `genericB`.
+Because `genericA` uses `mixin init`, `init` is an open symbol that is
+resolved when `genericA` is instantiated. Here `genericA` is instantiated
+through `genericB`, whose final instantiation happens in `module main`.
+Since `module main` does not import `module C`, `init` is not in scope at
+that point, and the instantiation fails with ``undeclared identifier: 'init'``.
+The `bind init` statement inside `genericB` forwards the `init` symbol that
+is visible in `module B` into the instantiation of `genericA`, which makes
+the example compile. This `bind`, which re-exposes a symbol to a nested
+generic instantiation, is a `delegating bind`:idx:.
 
 
 Templates
@@ -6435,7 +6474,7 @@ The `inject` and `gensym` pragmas are second class annotations; they have
 no semantics outside a template definition and cannot be abstracted over:
 
   ```nim
-  {.pragma myInject: inject.}
+  {.pragma: myInject, inject.}
 
   template t() =
     var x {.myInject.}: int # does NOT work
@@ -7995,6 +8034,9 @@ underlying C `struct`:c: in a `sizeof` expression:
     DIR* {.importc: "DIR", header: "<dirent.h>",
            pure, incompleteStruct.} = object
   ```
+
+Attempting to use `sizeof` on an `incompleteStruct` type at compile-time
+will error with "'sizeof' cannot be used with '.incompleteStruct' types".
 
 
 CompleteStruct pragma

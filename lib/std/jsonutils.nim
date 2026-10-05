@@ -238,6 +238,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       a = T()
       fromJson(a[], b, opt)
   elif T is array:
+    checkJson b.kind == JArray
     checkJson a.len == b.len, "Json array size doesn't match for " & $T
     var i = 0
     for ai in mitems(a):
@@ -248,6 +249,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     for val in b.getElems:
       incl a, jsonTo(val, E)
   elif T is seq:
+    checkJson b.kind == JArray
     a.setLen b.len
     for i, val in b.getElems:
       fromJson(a[i], val, opt)

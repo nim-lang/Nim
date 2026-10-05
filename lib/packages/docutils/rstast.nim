@@ -104,6 +104,12 @@ type
     of rnAdmonition:
       adType*: string         ## admonition type: "note", "caution", etc. This
                               ## text will set the style and also be displayed
+      title*: string          ## this text will be displayed (if given)
+                              ## instead of the admonition type
+      collapsible*: bool      ## if set, the admonition is rendered
+                              ## as a collapsible block in HTML
+      closed*: bool           ## if set, and ``collapsible`` is ``true``,
+                              ## render the collapsible block closed by default
     of rnOverline, rnHeadline, rnMarkdownHeadline:
       level*: int             ## level of headings starting from 1 (main
                               ## chapter) to larger ones (minor sub-sections)

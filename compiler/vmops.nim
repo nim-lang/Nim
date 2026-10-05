@@ -36,7 +36,9 @@ from std/osproc import nil
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
-else:
+when not defined(nimPreviewSlimSystem):
+  # explicit negated `when` rather than `else:` so nifler's dep scanner guards
+  # this import with its condition (it emits `else:` imports unconditionally).
   from std/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
@@ -45,9 +47,6 @@ import vmconv, vmmarshal
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
-
-template osop(op) {.dirty.} =
-  registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
 
 template oscommonop(op) {.dirty.} =
   registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)

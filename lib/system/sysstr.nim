@@ -223,8 +223,9 @@ proc addChar(s: NimString, c: char): NimString =
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
   ## Raw, does not prepare `dest` space for copying
   if src != nil:
-    copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
+    copyMem(addr(dest.data[dest.len]), addr(src.data), src.len)
     inc(dest.len, src.len)
+    dest.data[dest.len] = '\0'
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   ## Sets the `s` length to `newLen` zeroing memory on growth.

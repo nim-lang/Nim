@@ -1,13 +1,13 @@
 when notJSnotNims:
-  proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
-    tags: [], raises: [], enforceNoRaises.}
+  proc zeroMem*(p: pointer, size: Natural) {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Overwrites the contents of the memory at `p` with the value 0.
     ##
     ## Exactly `size` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is **unsafe**.
 
   proc copyMem*(dest, source: pointer, size: Natural) {.inline, gcsafe,
-    tags: [], raises: [], enforceNoRaises.}
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Copies the contents from the memory at `source` to the memory
     ## at `dest`.
     ## Exactly `size` bytes will be copied. The memory
@@ -15,7 +15,7 @@ when notJSnotNims:
     ## memory this is **unsafe**.
 
   proc moveMem*(dest, source: pointer, size: Natural) {.inline, gcsafe,
-    tags: [], raises: [], enforceNoRaises.}
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Copies the contents from the memory at `source` to the memory
     ## at `dest`.
     ##
@@ -24,8 +24,8 @@ when notJSnotNims:
     ## and is thus somewhat more safe than `copyMem`. Like any procedure
     ## dealing with raw memory this is still **unsafe**, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
-    tags: [], raises: [], enforceNoRaises.}
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
     ##
@@ -33,8 +33,8 @@ when notJSnotNims:
     ## otherwise. Like any procedure dealing with raw memory this is
     ## **unsafe**.
 
-  proc cmpMem*(a, b: pointer, size: Natural): int {.inline, noSideEffect,
-    tags: [], raises: [], enforceNoRaises.}
+  proc cmpMem*(a, b: pointer, size: Natural): int {.inline, gcsafe,
+    tags: [], raises: [], enforceNoRaises, noSideEffect.}
     ## Compares the memory blocks `a` and `b`. `size` bytes will
     ## be compared.
     ##

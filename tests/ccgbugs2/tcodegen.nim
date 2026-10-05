@@ -75,3 +75,15 @@ block: # importc type inheritance
   doAssert(cast[cint](b) == 123)
   var c = foo(b)
   doAssert(cast[cint](c) == 123)
+
+block: # bug #25945
+  var stateRefund = 0
+  let authCode =
+    if true:
+      if false:
+        stateRefund += 0
+      @[]
+    else:
+      @([1.byte])
+
+discard (if true: (discard; @[]) else: @[0])

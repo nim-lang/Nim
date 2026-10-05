@@ -1276,7 +1276,7 @@ else: # after 1.3 or JS not defined
         raise newException(Defect, "could not write to string stream, " &
           "did you use a non-string buffer pointer?", getCurrentException())
     elif not defined(nimscript):
-      copyMem(beginStore(s.data, s.pos + bufLen, s.pos), buffer, bufLen)
+      copyMem(beginStore(s.data, max(s.data.len, s.pos + bufLen), s.pos), buffer, bufLen)
       endStore(s.data)
     inc(s.pos, bufLen)
 

@@ -30,3 +30,13 @@ block:
 
   var x = M(x: 1)
   doAssert(x.x == 1)
+
+block: # bug #25931
+  type
+    N {.importc: "const void *".} = pointer
+    S = object
+        f: proc (_: N) {.cdecl.}
+    #var _: proc (_: pointer) {.cdecl.}
+  proc d(_: proc (_: pointer) {.cdecl.}) = discard
+  discard S()
+  d(proc (_: pointer) {.cdecl.} = discard)

@@ -1,7 +1,7 @@
 discard """
   targets: "c"
   matrix: "--debugger:native --mangle:nim"
-  ccodecheck: "'testFunc__titaniummangle95nim_u'"
+  ccodecheck: "'testFunc_u' \\d+ '__titaniummangle95nim'"
 """
 
 #When debugging this notice that if one check fails, it can be due to any of the above.

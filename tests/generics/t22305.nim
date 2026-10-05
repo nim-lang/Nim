@@ -14,12 +14,6 @@ type WorkProc[A, B] = proc(a: A): Option[B] {.nimcall.}
 proc worker[TArg](p: TArg) {.thread, nimcall.} =
   discard
 
-proc readFilesThread() =
-  type TArg[A, B] =
-    tuple[r: ptr Channel[Option[A]], w: ptr Channel[Option[B]], p: WorkProc[A, B]]
-
-  var readThread: Thread[TArg[int, SharedBuf]]
-
 proc readFilesAd() {.async.} =
   var readChan: Channel[Option[int]]
 
@@ -28,8 +22,6 @@ proc readFilesAd() {.async.} =
 
   var readThread: Thread[TArg[int, SharedBuf]]
   let test = await (addr readChan).recv()
-
-  joinThread(readThread)
 
 waitFor readFilesAd()
 

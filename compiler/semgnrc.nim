@@ -88,6 +88,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     result = n
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule, skEnumField:
     maybeDotChoice(c, n, s, fromDotExpr)
+    when defined(nimsuggest):
+      # The pre-pass cannot pick between overloads; that only happens per
+      # instantiation. When the cursor is on such a choice, record every
+      # member so idetools can offer them all as possible definitions.
+      if result.kind in nkSymChoices and result.len > 1 and c.config.ideActive and
+          isTracked(n.info, c.config.m.trackPos, s.name.s.len):
+        for child in result:
+          suggestSym(c.graph, n.info, child.sym, c.graph.usageSym, isDecl = false)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -129,7 +137,12 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result.typ = nil
     onUse(n.info, s)
   of skParam:
-    if s.owner == c.p.owner:
+    if s.typ != nil and s.typ.kind == tyStatic and s.typ.n != nil:
+      # The enclosing routine gives this static parameter a concrete value.
+      # Keep that value so the nested generic can fold it as a compile-time
+      # expression instead of generating a runtime parameter reference.
+      result = s.typ.n
+    elif s.owner == c.p.owner:
       # Parameters of the routine currently being semchecked stay as local
       # identifiers
       result = n
@@ -233,7 +246,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         if s.kind == skType: # don't put types in sym choice
           var ambig = false
           if candidates.len > 1:
-            let s2 = searchInScopes(c, ident, ambig)
+            discard searchInScopes(c, ident, ambig)
           result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags,
             isAmbiguous = ambig, fromDotExpr = true))
         else:
@@ -273,7 +286,7 @@ proc semGenericStmt(c: PContext, n: PNode,
   when defined(nimsuggest):
     if withinTypeDesc in flags: inc c.inTypeContext
 
-  #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
+  #if conf.ideActive: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   case n.kind
@@ -357,6 +370,11 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
         result[0] = sc
         first = 1
+        when defined(nimsuggest):
+          if sc.kind in nkSymChoices and sc.len > 1 and c.config.ideActive and
+              isTracked(fn.info, c.config.m.trackPos, s.name.s.len):
+            for child in sc:
+              suggestSym(c.graph, fn.info, child.sym, c.graph.usageSym, isDecl = false)
         # We're not interested in the example code during this pass so let's
         # skip it
         if s.magic == mRunnableExamples:
@@ -681,4 +699,3 @@ proc semConceptBody(c: PContext, n: PNode): PNode =
   )
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
-

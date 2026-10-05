@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim
 
-[![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=devel)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=devel)
+[![Build Status](https://github.com/nim-lang/Nim/actions/workflows/ci_main.yml/badge.svg?branch=devel)](https://github.com/nim-lang/Nim/actions/workflows/ci_main.yml?query=branch%3Adevel)
 
 This repository contains the Nim compiler, Nim's stdlib, tools, and documentation.
 For more information about Nim, including downloads and documentation for
@@ -134,7 +134,7 @@ you should familiarize yourself with the following repository structure:
 * ``compiler/`` - the compiler source code. Also includes plugins within ``compiler/plugins``.
 * ``nimsuggest`` - the nimsuggest tool that previously lived in the [``nim-lang/nimsuggest``][nimsuggest-repo] repository.
 * ``config/`` - the configuration for the compiler and documentation generator.
-* ``doc/`` - the documentation files in reStructuredText format.
+* ``doc/`` - the documentation files in Markdown format.
 * ``lib/`` - the standard library, including:
     * ``pure/`` - modules in the standard library written in pure Nim.
     * ``impure/`` - modules in the standard library written in pure Nim with

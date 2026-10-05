@@ -235,8 +235,6 @@ func `?`*(a: Peg): Peg {.rtl, extern: "npegsOptional".} =
 func `*`*(a: Peg): Peg {.rtl, extern: "npegsGreedyRep".} =
   ## constructs a "greedy repetition" for the PEG `a`
   case a.kind
-  of pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet, pkGreedyAny, pkOption:
-    raiseAssert "unreachable"  # produces endless loop!
   of pkChar:
     result = Peg(kind: pkGreedyRepChar, ch: a.ch)
   of pkCharChoice:
@@ -244,6 +242,9 @@ func `*`*(a: Peg): Peg {.rtl, extern: "npegsGreedyRep".} =
   of pkAny, pkAnyRune:
     result = Peg(kind: pkGreedyAny)
   else:
+    # Note that `a` may match the empty input (e.g. `?a`): the matcher
+    # breaks out of the repetition loop on a zero-length match, so this
+    # does not produce an endless loop.
     result = Peg(kind: pkGreedyRep, sons: @[a])
 
 func `!*`*(a: Peg): Peg {.rtl, extern: "npegsSearch".} =
@@ -835,9 +836,11 @@ template matchOrParse(mopProc: untyped) =
     of pkCapture:
       enter(pkCapture, s, p, start)
       if p.sons.len == 0 or p.sons[0].kind == pkEmpty:
-        # empty capture removes last match
-        dec(c.ml)
-        c.matches[c.ml] = (0, 0)
+        # empty capture removes last match; if there is no previous capture,
+        # treat it as a no-op instead of underflowing the matches array:
+        if c.ml > 0:
+          dec(c.ml)
+          c.matches[c.ml] = (0, 0)
         result = 0 # match of length 0
       else:
         var idx = c.ml # reserve a slot for the subpattern
@@ -1625,6 +1628,9 @@ func getCharSet(c: var PegLexer, tok: var Token) =
         c.bufpos = pos
         getEscapedChar(c, tok)
         pos = c.bufpos
+        if tok.kind == tkInvalid:
+          # unknown builtin or malformed escape: propagate the error
+          break
         ch = tok.literal[tok.literal.len-1]
       of '\C', '\L', '\0':
         tok.kind = tkInvalid
@@ -1648,6 +1654,9 @@ func getCharSet(c: var PegLexer, tok: var Token) =
             c.bufpos = pos
             getEscapedChar(c, tok)
             pos = c.bufpos
+            if tok.kind == tkInvalid:
+              # unknown builtin or malformed escape: propagate the error
+              break
             ch2 = tok.literal[tok.literal.len-1]
           of '\C', '\L', '\0':
             tok.kind = tkInvalid

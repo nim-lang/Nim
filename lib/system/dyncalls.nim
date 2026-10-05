@@ -73,11 +73,18 @@ when defined(posix):
   #
 
   # c stuff:
-  when defined(linux) or defined(macosx):
-    const RTLD_NOW = cint(2)
+  when defined(linux):
+    const
+      RTLD_NOW = cint(2)
+      RTLD_GLOBAL = cint(0x100)
+  elif defined(macosx):
+    const
+      RTLD_NOW = cint(2)
+      RTLD_GLOBAL = cint(0x8)
   else:
     var
       RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: cint
+      RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: cint
 
   proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
   proc dlopen(path: cstring, mode: cint): LibHandle {.

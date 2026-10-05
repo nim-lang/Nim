@@ -11,12 +11,12 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs, wordrecg
+  lineinfos, int128, modulegraphs, astmsgs
 
 import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, formatfloat]
+  import std/[assertions]
 
 export isResolvedUserTypeClass, TPreferedDesc, typeToString
 
@@ -119,7 +119,7 @@ proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   of nkNilLit:
     int128.Zero
   of nkHiddenStdConv:
-    getOrdValueAux(n[1], err)
+    getOrdValueAux(n.secondSon, err)
   else:
     err = true
     int128.Zero
@@ -633,6 +633,34 @@ proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
     let first = firstOrd(conf, t)
     result = last - first + One
 
+const broadcastArrayThreshold* = 32
+  ## `getNullValue` represents the default of an `array[N, T]` with `N` above this
+  ## as a single *broadcast* element — a one-son `nkBracket` standing for `N`
+  ## identical zero copies — instead of materialising `N` zero nodes. This keeps
+  ## huge zeroed arrays (e.g. SSZ byte buffers in nimbus) compact in the IC caches
+  ## (`.s.bif`/`.t.bif`), in the VM, and in the generated C (`{0}` zero-fills).
+
+proc isDefaultBroadcastArray*(n: PNode; conf: ConfigRef): bool =
+  ## True iff `n` is a broadcast default array: a single son standing for
+  ## `lengthOrd` identical zero copies. Identified by the explicit `nfBroadcast`
+  ## marker (set by `getNullValue`), NOT by `len == 1 < lengthOrd` — the latter
+  ## also matches an ordinary 1-element collection that happens to be an
+  ## `nkBracket` carrying an array type, e.g. a `@[a, b, c]` seq value shrunk to
+  ## length 1 by `setLen`/`delete` (its VM node keeps the array-literal type).
+  result = n != nil and n.kind == nkBracket and nfBroadcast in n.flags
+
+proc expandBroadcastArray*(n: PNode; conf: ConfigRef) =
+  ## Materialise a broadcast default array (see `isDefaultBroadcastArray`) into a
+  ## full `lengthOrd`-son `nkBracket`, each son a copy of the single default
+  ## element. Used by VM ops that index-address, mutate, or measure such a node;
+  ## the common read-only paths leave it compact. Clears `nfBroadcast` since the
+  ## node is now a fully materialised literal.
+  if isDefaultBroadcastArray(n, conf):
+    let total = toInt(lengthOrd(conf, n.typ.skipTypes(abstractInst)))
+    let elem = n[0]
+    for i in 1 ..< total: n.add copyTree(elem)
+    n.flags.excl nfBroadcast
+
 # -------------- type equality -----------------------------------------------
 
 type
@@ -840,11 +868,6 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
       result = false
   else:
     result = false
-
-proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
-  if not sameTypeOrNilAux(a.baseClass, b.baseClass, c): return false
-  if not sameObjectTree(a.n, b.n, c): return false
-  result = true
 
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
   if not sameTupleLengths(a, b): return false
@@ -1375,11 +1398,11 @@ proc skipConv*(n: PNode): PNode =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     # only skip the conversion if it doesn't lose too important information
     # (see bug #1334)
-    if n[0].typ.classify == n.typ.classify:
-      result = n[0]
+    if n.firstSon.typ.classify == n.typ.classify:
+      result = n.firstSon
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if n[1].typ.classify == n.typ.classify:
-      result = n[1]
+    if n.secondSon.typ.classify == n.typ.classify:
+      result = n.secondSon
   else: discard
 
 proc skipHidden*(n: PNode): PNode =

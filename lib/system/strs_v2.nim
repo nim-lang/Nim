@@ -261,4 +261,14 @@ template readRawData*(s: string; start = 0): ptr UncheckedArray[char] =
   ## Template ensures no copy of `s`; ptr is valid while `s` is alive.
   rawDataImpl(cast[ptr NimStringV2](unsafeAddr s), start)
 
+template readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] =
+  ## Like `readRawData`, but the returned pointer additionally survives moves and
+  ## copies of `s` (while `s` stays alive and is not reassigned). For this string
+  ## implementation the char data already lives in a heap payload at an address
+  ## independent of the `string` value itself, so no promotion is needed and this
+  ## is identical to `readRawData`. Takes `s` by `var` to match the `--strings:sso`
+  ## version (which promotes a small inline string to the heap), so code written
+  ## against `readRawDataStable` compiles unchanged under either implementation.
+  rawDataImpl(cast[ptr NimStringV2](addr s), start)
+
 {.pop.}

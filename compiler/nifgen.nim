@@ -16,7 +16,7 @@ import
 
 import "../dist/nimony/src/lib" / nifbuilder
 import "../dist/nimony/src/models" / nifler_tags
-import "../dist/nimony/src/gear2" / modnames
+import icmodnames
 
 ## This was copied from Nifler's bridge.nim. However, this code will evolve
 ## in a different direction as it needs to translate the semchecked AST which

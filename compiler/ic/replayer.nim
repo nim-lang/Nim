@@ -14,13 +14,108 @@
 import ".." / [ast, modulegraphs, trees, extccomp, btrees,
   msgs, lineinfos, pathutils, options, cgmeth]
 
-import std/tables
+import std/[tables, os, strutils, syncio]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
-proc replayStateChanges*(module: PSym; g: ModuleGraph) =
-  let list = module.ast
+const BackendActionsExt* = ".cflags"
+  ## Sidecar written by a module's `cg` stage next to its `.c`, carrying the C
+  ## compile/link directives that module's `{.passL.}`/`{.compile.}`/… pragmas
+  ## recorded. See `writeBackendActions`.
+const BodyDepsExt* = ".bodydeps"
+  ## Sidecar of a `lower`/`cg` stage output naming the modules whose routine
+  ## bodies the stage read. See `nifbackend.writeBodyDeps`.
+
+proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
+                          cfile: string) =
+  ## Serialize the backend-relevant replay actions of ONE module to the sidecar
+  ## of its C file `cfile`, one tab-separated action per line.
+  ##
+  ## The `link` stage used to recover these by loading the whole import closure
+  ## as `PrecompiledModule`s and re-running `replayBackendActions` over each —
+  ## a 3.7s whole-program graph load, per link, purely to recover a handful of
+  ## strings and the modules' `.c` paths. The producing `cg` process already has
+  ## them in hand, so it writes them down instead and `link` reads them back
+  ## (`applyBackendActions`). Written unconditionally, even when empty: it is a
+  ## declared nifmake output of the `cg` rule, and a missing output re-fires the
+  ## rule for ever.
+  ##
+  ## `localpassc` applies to the module's C file, which the sidecar belongs to,
+  ## so it needs no path of its own.
+  var content = ""
+  if list != nil:
+    for n in list:
+      if n.kind == nkReplayAction and n.len >= 2 and
+          n[0].kind == nkStrLit and n[1].kind == nkStrLit:
+        case n[0].strVal
+        of "compile":
+          if n.len == 4 and n[2].kind == nkStrLit and n[3].kind == nkStrLit:
+            content.add "compile\t" & n[1].strVal & "\t" & n[2].strVal & "\t" &
+                        n[3].strVal & "\n"
+        of "link", "passl", "passc", "cppdefine":
+          content.add n[0].strVal & "\t" & n[1].strVal & "\n"
+        of "localpassc":
+          content.add "localpassc\t" & n[1].strVal & "\n"
+        else: discard
+  writeFile(cfile & BackendActionsExt, content)
+
+proc targetOptions*(passc: string): string =
+  ## The `#pragma GCC target` option list for the ISA switches (`-mavx2`,
+  ## `-march=native`, ...) of a `localPassC` string; other flags have no
+  ## per-function equivalent and are ignored.
+  result = ""
+  for flag in passc.splitWhitespace:
+    if flag.startsWith("-m") and flag.len > 2:
+      if result.len > 0: result.add ','
+      result.add flag.substr(2)
+
+proc localTargetOptions*(list: openArray[PNode]): string =
+  ## `targetOptions` of every `localpassc` replay action of a loaded module.
+  result = ""
+  for n in list:
+    if n.kind == nkReplayAction and n.len >= 2 and n[0].kind == nkStrLit and
+        n[0].strVal == "localpassc" and n[1].kind == nkStrLit:
+      let t = targetOptions(n[1].strVal)
+      if t.len > 0:
+        if result.len > 0: result.add ','
+        result.add t
+
+proc applyBackendActions*(g: ModuleGraph; cfile: string) =
+  ## Apply the C directives recorded for the C file `cfile` (see
+  ## `writeBackendActions`). The `link` stage's replacement for loading that
+  ## module and replaying its AST.
+  let infile = cfile & BackendActionsExt
+  if not fileExists(infile): return
+  for line in lines(infile):
+    if line.len == 0: continue
+    let f = line.split('\t')
+    case f[0]
+    of "compile":
+      if f.len == 4:
+        let cname = AbsoluteFile f[1]
+        var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                       obj: AbsoluteFile f[2],
+                       flags: {CfileFlag.External}, customArgs: f[3])
+        extccomp.addExternalFileToCompile(g.config, cf)
+    of "link":
+      if f.len == 2: extccomp.addExternalFileToLink(g.config, AbsoluteFile f[1])
+    of "passl":
+      if f.len == 2: extccomp.addLinkOption(g.config, f[1])
+    of "passc":
+      if f.len == 2: extccomp.addCompileOption(g.config, f[1])
+    of "localpassc":
+      if f.len == 2:
+        extccomp.addLocalCompileOptionForCFile(g.config, f[1], AbsoluteFile cfile)
+    of "cppdefine":
+      if f.len == 2: options.cppDefine(g.config, f[1])
+    else: discard
+
+proc replayStateChanges*(module: PSym; g: ModuleGraph; list: PNode) =
+  ## `list` is an `nkStmtList` of `nkReplayAction` nodes (macro-cache puts/incs/
+  ## adds/incls and a few pragmas) recorded for `module`. Under the NIF backend a
+  ## loaded module's `ast` is never reconstructed, so the caller passes the replay
+  ## actions it parsed out of the module's NIF directly.
   assert list != nil
   assert list.kind == nkStmtList
   for n in list:
@@ -48,7 +143,8 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
       of "passc":
         extccomp.addCompileOption(g.config, n[1].strVal)
       of "localpassc":
-        extccomp.addLocalCompileOption(g.config, n[1].strVal, toFullPathConsiderDirty(g.config, module.info.fileIndex))
+        extccomp.addLocalCompileOption(g.config, n[1].strVal,
+          toFullPathConsiderDirty(g.config, n.info.fileIndex))
       of "cppdefine":
         options.cppDefine(g.config, n[1].strVal)
       of "inc":
@@ -64,8 +160,9 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
           g.cacheTables[destKey] = initBTree[string, PNode]()
         if not contains(g.cacheTables[destKey], key):
           g.cacheTables[destKey].add(key, val)
-        else:
-          internalError(g.config, n.info, "key already exists: " & key)
+        # else: the same key was already replayed. Under IC the import closure is
+        # replayed (direct module + transitive deps), so the same registration can
+        # legitimately be reached twice; re-applying it is a no-op, not an error.
       of "incl":
         let destKey = n[1].strVal
         let val = n[2]
@@ -86,3 +183,37 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
           g.cacheSeqs[destKey].add val
       else:
         internalAssert g.config, false
+
+proc replayBackendActions*(g: ModuleGraph; module: PSym; list: PNode) =
+  ## Applies the backend-relevant replay actions (C compile/link directives)
+  ## found in a NIF-loaded module's top-level statement list. The `nifc`
+  ## backend loads modules without going through sem's `replayStateChanges`,
+  ## so e.g. math's `{.passL: "-lm".}` was lost and the final link failed
+  ## with undefined references. VM cache actions are deliberately NOT
+  ## replayed here — codegen does not run macros.
+  if list == nil: return
+  for n in list:
+    if n.kind == nkReplayAction and n.len >= 2 and
+        n[0].kind == nkStrLit and n[1].kind == nkStrLit:
+      case n[0].strVal
+      of "compile":
+        if n.len == 4 and n[2].kind == nkStrLit:
+          let cname = AbsoluteFile n[1].strVal
+          var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                         obj: AbsoluteFile n[2].strVal,
+                         flags: {CfileFlag.External},
+                         customArgs: n[3].strVal)
+          extccomp.addExternalFileToCompile(g.config, cf)
+      of "link":
+        extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)
+      of "passl":
+        extccomp.addLinkOption(g.config, n[1].strVal)
+      of "passc":
+        extccomp.addCompileOption(g.config, n[1].strVal)
+      of "localpassc":
+        extccomp.addLocalCompileOption(g.config, n[1].strVal,
+          toFullPathConsiderDirty(g.config, n.info.fileIndex))
+      of "cppdefine":
+        options.cppDefine(g.config, n[1].strVal)
+      else:
+        discard

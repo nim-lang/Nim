@@ -71,7 +71,7 @@ type
     socket: AsyncSocket
     reuseAddr: bool
     reusePort: bool
-    maxBody: int ## The maximum content-length that will be read for the body.
+    maxBody: int ## The maximum number of bytes that will be read for the body.
     maxFDs: int
 
 proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
@@ -152,9 +152,11 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
     raise newException(ValueError, "Invalid request protocol. Got: " &
         protocol)
   result.orig = protocol
-  i.inc protocol.parseSaturatedNatural(result.major, i)
-  if i < protocol.len: inc i # Skip .
-  i.inc protocol.parseSaturatedNatural(result.minor, i)
+  var n = protocol.parseSaturatedNatural(result.major, i)
+  i.inc n
+  if i < protocol.len and protocol[i] == '.':
+    inc i
+    n = protocol.parseSaturatedNatural(result.minor, i)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
@@ -314,6 +316,10 @@ proc processRequest(
           await request.respond(Http411, ("Invalid chunked transfer encoding - " &
                                           "chunk data size must be hex encoded"))
           return true
+        if request.body.len > server.maxBody or bytesToRead < 0 or
+            bytesToRead > server.maxBody - request.body.len:
+          await request.respondError(Http413)
+          return false
       else:
         if bytesToRead == 0:
           # Done reading chunked data

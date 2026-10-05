@@ -91,7 +91,10 @@ else:
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"
-  else:
+  elif not (defined(nimV2) or usesDestructors):
+    # equivalent to a plain `else` here, but spelled out so that the IC
+    # dependency scanner (which sees `else` imports/includes unguarded)
+    # doesn't schedule system/gc's transitive imports under --mm:orc
     include "system/gc"
 
 when not declared(nimNewSeqOfCap) and not defined(nimSeqsV2):

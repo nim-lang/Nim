@@ -77,7 +77,7 @@ proc isAttachableRoutineTo(prc: PSym, arg: PType): bool =
       # has default value, parameter is not considered in type attachment
       continue
     let t = nominalRoot(prc.typ[i])
-    if t != nil and t.itemId == arg.itemId:
+    if t != nil and t.bindingId == arg.bindingId:
       # parameter `i` is a nominal type in this module
       # attachable if the nominal root `t` has the same id as `arg`
       return true
@@ -90,8 +90,14 @@ proc addTypeBoundSymbols(graph: ModuleGraph, arg: PType, name: PIdent,
     # argument must be typed first, meaning arguments always
     # matching `untyped` are ignored
     let t = nominalRoot(arg)
-    if t != nil and t.owner.kind == skModule:
-      # search module for routines attachable to `t`
+    if t != nil and t.owner.kind == skModule and
+        t.owner.position >= 0 and t.owner.position < graph.ifaces.len:
+      # search module for routines attachable to `t`.
+      # Under IC the nominal type may have been loaded from a NIF file, in which
+      # case its owner module is a stub whose `position` (a NIF-suffix file index)
+      # has no `ifaces` slot; such type-bound ops are reachable through normal
+      # imports instead, so skip the direct module scan to avoid an out-of-range
+      # access.
       let module = t.owner
       var iter = default(ModuleIter)
       var s = initModuleIter(iter, graph, module, name)
@@ -683,7 +689,7 @@ proc bracketNotFoundError(c: PContext; n: PNode; flags: TExprFlags) =
       baseFilter + {skIterator}
     else: baseFilter
   # this will add the errors:
-  var r = resolveOverloads(c, n, n, filter, flags, errors, true)
+  discard resolveOverloads(c, n, n, filter, flags, errors, true)
   if errors.len == 0:
     localError(c.config, n.info, "could not resolve: " & $n)
   else:
@@ -721,11 +727,26 @@ proc markConvertersUsed*(c: PContext, n: PNode) =
     if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
       markUsed(c, a.info, a[0].sym)
 
+proc commitGenericExpansions(c: PContext, m: TCandidate) =
+  for expansion in m.pendingGenericExpansions:
+    rememberExpansion(c, expansion.info, expansion.sym)
+
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
   var m = newCandidate(c, f)
   result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
+  if result != nil:
+    commitGenericExpansions(c, m)
+  when defined(icDbg):
+    if result == nil and f != nil and a != nil and f.kind == tyEnum:
+      echo "INDEXMISMATCH f=", typeToString(f), " itemId=", f.itemId,
+        " bindingId=", f.bindingId, " mod=", toFullPath(c.config, f.itemId.module.FileIndex),
+        " sym=", (if f.sym != nil: $f.sym.itemId else: "nil"), " state=", f.state
+      let a2 = a.skipTypes({tyRange})
+      echo "  a=", typeToString(a), " itemId=", a2.itemId, " bindingId=", a2.bindingId,
+        " mod=", toFullPath(c.config, a2.itemId.module.FileIndex),
+        " sym=", (if a2.sym != nil: $a2.sym.itemId else: "nil"), " state=", a2.state
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode =
@@ -735,6 +756,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
   if result != nil:
+    commitGenericExpansions(c, m)
     # This almost exactly replicates the steps taken by the compiler during
     # param matching. It performs an embarrassing amount of back-and-forth
     # type jugling, but it's the price to pay for consistency and correctness
@@ -900,6 +922,8 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
           x.call.add tn
         else:
           internalAssert c.config, false
+  if finalCallee.instantiatedFrom != nil:
+    rememberExpansion(c, info, finalCallee.instantiatedFrom)
   markUsed(c, info, finalCallee, isGenericInstance = true)
   onUse(info, finalCallee, isGenericInstance = true)
 
@@ -910,15 +934,7 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
   updateDefaultParams(c, result)
-
-proc canDeref(n: PNode): bool {.inline.} =
-  result = n.len >= 2 and (let t = n[1].typ;
-    t != nil and t.skipTypes({tyGenericInst, tyAlias, tySink}).kind in {tyPtr, tyRef})
-
-proc tryDeref(n: PNode): PNode =
-  result = newNodeI(nkHiddenDeref, n.info)
-  result.typ = n.typ.skipTypes(abstractInst)[0]
-  result.add n
+  commitGenericExpansions(c, x)
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags;
@@ -968,7 +984,12 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym, errors: var CandidateErr
         diagnostics: m.diagnostics))
     return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  newInst.typ.excl tfUnresolved
+  # `generateInstance` may return an instance REUSED from another module's NIF
+  # `(offer …)` — its type is Sealed (immutable). Such an instance is already
+  # fully resolved (`tfUnresolved` cleared at its original instantiation), so the
+  # `excl` is a no-op; skip it rather than assert on a Sealed-type mutation.
+  if newInst.typ.state != Sealed:
+    newInst.typ.excl tfUnresolved
   let info = getCallLineInfo(n)
   markUsed(c, info, s, isGenericInstance = false)
   onUse(info, s, isGenericInstance = false)
@@ -1009,6 +1030,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym, doError: bool)
         result.typ = makeTypeFromExpr(c, result.copyTree)
       elif doError:
         notFoundError(c, n, errors)
+    else:
+      rememberExpansion(c, getCallLineInfo(n), s)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     result = newNodeI(a.kind, getCallLineInfo(n))

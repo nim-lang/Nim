@@ -24,6 +24,10 @@ const
   isMainModule* {.magic: "IsMainModule".}: bool = false
     ## True only when accessed in the main module. This works thanks to
     ## compiler magic. It is useful to embed testing code in a module.
+    ##
+    ## It is also true when the module is compiled as a library
+    ## (`--app:lib`), where `appType` is `"lib"`. To keep embedded tests
+    ## out of library builds, use `when isMainModule and appType != "lib"`.
 
   CompileDate* {.magic: "CompileDate".}: string = "0000-00-00"
     ## The date (in UTC) of compilation as a string of the form

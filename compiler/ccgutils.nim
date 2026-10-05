@@ -11,7 +11,7 @@
 
 import
   ast, types, msgs, wordrecg,
-  platform, trees, options, cgendata, mangleutils, renderer
+  platform, trees, options, cgendata, mangleutils, renderer, modulegraphs
 
 import std/[hashes, strutils, formatfloat]
 
@@ -22,13 +22,13 @@ proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
     result = nil
-    for i in 0..<n.len:
-      result = getPragmaStmt(n[i], w)
+    for it in sons(n):
+      result = getPragmaStmt(it, w)
       if result != nil: break
   of nkPragma:
     result = nil
-    for i in 0..<n.len:
-      if whichPragma(n[i]) == w: return n[i]
+    for it in sons(n):
+      if whichPragma(it) == w: return it
   else:
     result = nil
 
@@ -92,7 +92,7 @@ proc ccgIntroducedPtr*(conf: ConfigRef; s: PSym, retType: PType): bool =
       result = true
     elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
       result = true           # requested anyway
-    elif (tfFinal in pt.flags) and (pt[0] == nil):
+    elif (tfFinal in pt.flags) and (pt.baseClass == nil):
       result = false          # no need, because no subtyping possible
     else:
       result = true           # ordinary objects are always passed by reference,
@@ -112,10 +112,26 @@ proc encodeName*(name: string): string =
 
 proc makeUnique(m: BModule; s: PSym, name: string = ""): string =
   result = if name == "": s.name.s else: name
+  # keep backend-minted ids out of the `_u` namespace; their item counter
+  # restarts at 0 and would collide with loaded symbols' ids. Which integer
+  # identifies such a symbol is decided ONCE, in `astdef.backendMintedDisamb`,
+  # shared with `mangleProcNameExt` and `ast2nif.toNifSymName`.
+  if s.itemId.isBackendMinted:
+    result.add "_c"
+    result.add $backendMintedDisamb(s)
+  else:
+    result.add "_u"
+    # Mirror `mangleProcNameExt`: use the per-(module,name) `disamb`, NOT
+    # `itemId.item`. Under the per-module IC backend the same symbol is loaded
+    # from a NIF in many processes and `itemId.item` is a fresh, load-order
+    # dependent counter — so a method base would mangle to `_u1` in one module,
+    # `_u3` in another and clean at its owner, none of which link. `disamb` is
+    # assigned deterministically per (module, name) and is serialized, so every
+    # process that touches the symbol derives the identical C name.
+    result.add $s.disamb
+  # module suffix LAST (a strippable trailing token; see `mangleProcNameExt`)
   result.add "__"
   result.add m.g.graph.ifaces[s.itemId.module].uniqueName
-  result.add "_u"
-  result.add $s.itemId.item
 
 proc encodeSym*(m: BModule; s: PSym; makeUnique: bool = false; extra: string = ""): string =
   #Module::Type
@@ -132,7 +148,7 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
   of tyObject, tyEnum, tyDistinct, tyUserTypeClass, tyGenericParam:
     result = encodeSym(m, t.sym)
   of tyGenericInst, tyUserTypeClassInst, tyGenericBody:
-    result = encodeName(t[0].sym.name.s)
+    result = encodeName(t.genericHead.sym.name.s)
     result.add "I"
     for i in 1..<t.len - 1:
       result.add encodeType(m, t[i], staticLists)
@@ -144,8 +160,7 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
       of tySequence: encodeName("seq")
       else: encodeName(kindName)
     result.add "I"
-    for i in 0..<t.len:
-      let s = t[i]
+    for s in kids(t):
       if s.isNil: continue
       result.add encodeType(m, s, staticLists)
     result.add "E"
@@ -156,12 +171,12 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
       raiseAssert "unreachable"
   of tyRange:
     var val = "range_"
-    if t.n[0].typ.kind in {tyFloat..tyFloat128}:
-      val.addFloat t.n[0].floatVal
+    if t.n.firstSon.typ.kind in {tyFloat..tyFloat128}:
+      val.addFloat t.n.firstSon.floatVal
       val.add "_"
-      val.addFloat t.n[1].floatVal
+      val.addFloat t.n.secondSon.floatVal
     else:
-      val.add $t.n[0].intVal & "_" & $t.n[1].intVal
+      val.add $t.n.firstSon.intVal & "_" & $t.n.secondSon.intVal
     result = encodeName(val)
   of tyString..tyUInt64, tyPointer, tyBool, tyChar, tyVoid, tyAnything, tyNil, tyEmpty:
     result = encodeName(kindName)
