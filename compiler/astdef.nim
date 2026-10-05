@@ -10,7 +10,7 @@
 import
   lineinfos, options, ropes, idents, int128
 
-import std/[tables, hashes]
+import std/[tables, hashes, sets]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -650,12 +650,16 @@ type
     next*: seq[int32]         # parallel to `data`: 1 + index of the next
                               # symbol with the same name, 0 = end of chain
     heads: seq[StrTableSlot]  # hash slots, a power of two of them
+    longChains: HashSet[pointer] # the symbols of the chains longer than
+                              # `ShortChain`: membership without a walk
 
   StrTableSlot = object       # one hash slot of a `TStrTable`
     name: int32               # `PIdent.id` of the name this chain is for. It
                               # is in the slot so that probing for a name never
                               # has to dereference a symbol to read its name.
     first: int32              # 1 + index of that name's first symbol, 0 = free
+    last: int32               # 1 + index of that name's newest symbol
+    count: int32              # number of symbols with that name
 
   # -------------- backend information -------------------------------
   TLocKind* = enum
@@ -1271,12 +1275,35 @@ proc strTableFirstOfName*(t: TStrTable, name: PIdent): int32 =
     if slot.name == id: return slot.first
     h = nextTry(h, high(t.heads))
 
+proc strTableSlotOfName(t: TStrTable; name: PIdent): int =
+  ## the index of the hash slot of `name`, -1 if there is none
+  result = -1
+  if t.names == 0: return
+  let id = int32(name.id)
+  var h: Hash = name.h and high(t.heads)
+  while true:
+    let slot = t.heads[h]
+    if slot.first == 0: return
+    if slot.name == id: return h
+    h = nextTry(h, high(t.heads))
+
+proc chainContains(t: TStrTable; slot: StrTableSlot; n: PSym): bool
+
 proc strTableContains*(t: TStrTable, n: PSym): bool =
-  var it = strTableFirstOfName(t, n.name)
-  while it != 0:
-    if t.data[it-1] == n: return true
-    it = t.next[it-1]
-  result = false
+  let h = strTableSlotOfName(t, n.name)
+  result = h >= 0 and chainContains(t, t.heads[h], n)
+
+const ShortChain = 32 ## longer chains are not walked to find a symbol
+
+proc chainContains(t: TStrTable; slot: StrTableSlot; n: PSym): bool =
+  if slot.count > ShortChain:
+    result = cast[pointer](n) in t.longChains
+  else:
+    result = false
+    var i = slot.first
+    while i != 0:
+      if t.data[i-1] == n: return true
+      i = t.next[i-1]
 
 proc strTableRawInsert(t: var TStrTable, n: PSym) =
   ## Appends `n` to `data` and links it in at the END of the chain of the
@@ -1291,16 +1318,22 @@ proc strTableRawInsert(t: var TStrTable, n: PSym) =
   while true:
     let slot = t.heads[h]
     if slot.first == 0:
-      t.heads[h] = StrTableSlot(name: id, first: pos+1)
+      t.heads[h] = StrTableSlot(name: id, first: pos+1, last: pos+1, count: 1)
       inc t.names
       break
     if slot.name == id:
-      var i = slot.first-1
-      while true:
-        if t.data[i] == n: return
-        if t.next[i] == 0: break
-        i = t.next[i]-1
-      t.next[i] = pos+1
+      if chainContains(t, slot, n): return
+      if slot.count == ShortChain:
+        # the chain becomes long: from now on its members are in the set
+        var i = slot.first
+        while i != 0:
+          t.longChains.incl cast[pointer](t.data[i-1])
+          i = t.next[i-1]
+      if slot.count >= ShortChain:
+        t.longChains.incl cast[pointer](n)
+      t.next[slot.last-1] = pos+1
+      t.heads[h].last = pos+1
+      inc t.heads[h].count
       break
     h = nextTry(h, high(t.heads))
   t.data.add n
@@ -1323,12 +1356,13 @@ proc strTableEnlarge(t: var TStrTable) =
       let slot = t.heads[h]
       if slot.first == 0:
         t.next[i] = 0
-        t.heads[h] = StrTableSlot(name: id, first: i+1)
+        t.heads[h] = StrTableSlot(name: id, first: i+1, last: i+1, count: 1)
         inc t.names
         break
       if slot.name == id:
         t.next[i] = slot.first
         t.heads[h].first = i+1
+        inc t.heads[h].count
         break
       h = nextTry(h, high(t.heads))
 
@@ -1342,6 +1376,9 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
   while it != 0:
     if t.data[it-1] == prevSym:
       t.data[it-1] = newSym
+      if cast[pointer](prevSym) in t.longChains:
+        t.longChains.excl cast[pointer](prevSym)
+        t.longChains.incl cast[pointer](newSym)
       return
     it = t.next[it-1]
   assert false
@@ -1356,20 +1393,19 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
   # otherwise return `nil`. Incl `n` to `t` unless `onConflictKeepOld = true`
   # and a conflict was found.
   assert n.name != nil
-  var last = strTableFirstOfName(t, n.name)
-  if last != 0:
-    # One walk to the end of the chain answers both questions: whether `n` is
-    # in it already -- semantic checking can happen more than once thanks to
-    # templates and overloading, `(var x=@[]; x).mapIt(it)` -- and which
-    # symbol of that name is the newest.
-    while true:
-      if t.data[last-1] == n: return nil
-      let nxt = t.next[last-1]
-      if nxt == 0: break
-      last = nxt
+  let h = strTableSlotOfName(t, n.name)
+  if h >= 0:
+    # `n` can be in the table already: semantic checking can happen more
+    # than once thanks to templates and overloading, `(var x=@[]; x).mapIt(it)`
+    let slot = t.heads[h]
+    if chainContains(t, slot, n): return nil
+    let last = slot.last
     result = t.data[last-1] # found it, the newest symbol of that name
     if not onConflictKeepOld:
       t.data[last-1] = n # overwrite it with newer definition!
+      if slot.count > ShortChain:
+        t.longChains.excl cast[pointer](result)
+        t.longChains.incl cast[pointer](n)
   else:
     strTableMakeRoom(t)
     strTableRawInsert(t, n)
