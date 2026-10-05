@@ -529,9 +529,10 @@ proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
 type
   TIdentIter* = object # iterator over all syms with same identifier
     next*: int32       # 1 + index of the symbol to yield next, 0 = exhausted
+    last: int32        # 1 + index of the name's last symbol
     name* {.cursor.}: PIdent
 
-# The symbols of one name form a chain through `tab.next` that is in insertion
+# The symbols of one name form a ring through `tab.next` that is in insertion
 # order, so iterating is a chain walk with no name comparison and no dependency
 # on the hash values.
 {.push boundChecks: off.}
@@ -542,12 +543,12 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   else:
     let i = ti.next-1
     result = tab.data[i]
-    ti.next = tab.next[i]
+    ti.next = if ti.next == ti.last: 0'i32 else: tab.next[i]
 {.pop.}
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   ti.name = s
-  ti.next = strTableFirstOfName(tab, s)
+  (ti.next, ti.last) = strTableChainOfName(tab, s)
   result = nextIdentIter(ti, tab)
 
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
@@ -556,7 +557,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   while ti.next != 0:
     let i = ti.next-1
     let s = tab.data[i]
-    ti.next = tab.next[i]
+    ti.next = if ti.next == ti.last: 0'i32 else: tab.next[i]
     if not contains(excluding, s.id):
       result = s
       break
@@ -564,7 +565,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
 proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
                           excluding: IntSet): PSym =
   ti.name = s
-  ti.next = strTableFirstOfName(tab, s)
+  (ti.next, ti.last) = strTableChainOfName(tab, s)
   result = nextIdentExcluding(ti, tab, excluding)
 
 type

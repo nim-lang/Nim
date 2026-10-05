@@ -340,9 +340,9 @@ proc pthread_atfork*(a1, a2, a3: proc () {.noconv.}): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_attr_destroy*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
+proc pthread_attr_getdetachstate*(a1: ptr Pthread_attr, a2: var cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getguardsize*(a1: ptr Pthread_attr, a2: var cint): cint {.
+proc pthread_attr_getguardsize*(a1: ptr Pthread_attr, a2: var csize_t): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_attr_getinheritsched*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
@@ -353,11 +353,11 @@ proc pthread_attr_getschedpolicy*(a1: ptr Pthread_attr,
 proc pthread_attr_getscope*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_getstack*(a1: ptr Pthread_attr,
-         a2: var pointer, a3: var int): cint {.importc, header: "<pthread.h>".}
+         a2: var pointer, a3: var csize_t): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_getstackaddr*(a1: ptr Pthread_attr,
           a2: var pointer): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_getstacksize*(a1: ptr Pthread_attr,
-          a2: var int): cint {.importc, header: "<pthread.h>".}
+          a2: var csize_t): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_init*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_attr_setdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
