@@ -33,6 +33,8 @@ echo "replies retained"
 
 #!STEP expect: replies retained
 
+#!STEP expect: replies retained; noop
+
 #!FILE main.nim
 import ../msinkcachedparams
 
@@ -48,6 +50,8 @@ echo "replies retained"
 #!STEP expect: replies retained
 
 #!STEP expect: replies retained
+
+#!STEP expect: replies retained; noop
 
 #!FLAGS --skipParentCfg --skipUserCfg --mm:orc
 
@@ -71,3 +75,5 @@ echo "replies retained"
 #!STEP expect: replies retained
 
 #!STEP expect: replies retained
+
+#!STEP expect: replies retained; noop
