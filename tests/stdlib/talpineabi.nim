@@ -1,11 +1,32 @@
 discard """
   disabled: "windows"
   targets: "c cpp"
-  matrix: "--mm:orc; --mm:refc; --mm:orc -d:checkAbi"
+  matrix: "--mm:orc; --mm:refc; --mm:orc -d:checkAbi; --mm:refc -d:checkAbi"
 """
 
 when defined(linux) and sizeof(int) == 8:
   import std/[assertions, posix]
+
+  when defined(checkAbi):
+    import std/macros
+
+    macro checkLayout(typ: typedesc): untyped =
+      ## Checks a test-only copy of the modeled native layout.
+      let declaration = typ.getTypeInst[1].getImpl.copyNimTree
+      if declaration[2][2].len == 0:
+        return newEmptyNode()
+      let
+        name = genSym(nskType, "CheckedLayout")
+        pragmas = declaration[0][1].copyNimTree
+      pragmas.add ident("completeStruct")
+      declaration[0] = newTree(nnkPragmaExpr, name, pragmas)
+      result = newTree(nnkBlockStmt, newEmptyNode(), newStmtList(
+        newTree(nnkTypeSection, declaration)
+      ))
+      # Only stack storage is used, so refc never inspects placeholder fields.
+      result[1].add quote do:
+        var value {.volatile.}: `name`
+        discard addr value
 
   proc nativeSize[T](value {.bycopy.}: T): csize_t {.
     importc: "sizeof", nodecl, noSideEffect.}
@@ -14,12 +35,11 @@ when defined(linux) and sizeof(int) == 8:
   template check(typ: typedesc) =
     ## Checks modeled layouts at compile time and opaque layouts at runtime.
     block:
+      when defined(checkAbi):
+        checkLayout(typ)
       var value {.volatile.}: typ
-      when defined(checkAbi) and compiles(static(sizeof(typ))):
-        discard addr value
-      else:
-        echo $typ, ": ", sizeof(typ), " / ", nativeSize(value)
-        doAssert sizeof(typ) == int(nativeSize(value))
+      echo $typ, ": ", sizeof(typ), " / ", nativeSize(value)
+      doAssert sizeof(typ) == int(nativeSize(value))
 
   when not defined(checkAbi):
     # Keep the additional compiler ABI checks focused on pthread layouts.
