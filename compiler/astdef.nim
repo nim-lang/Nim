@@ -644,18 +644,26 @@ type
     ## in insertion order too. Iteration is therefore independent of the hash
     ## values and of the table's growth history -- overload resolution and
     ## error messages must not depend on either.
+    ##
+    ## `slots` is an open addressing index into `data` with two kinds of
+    ## entries: a name's *head*, keyed by the name, and one *member* entry per
+    ## further symbol of that name, keyed by the symbol. The members make
+    ## "is this very symbol here already?" O(1) even for a name with thousands
+    ## of overloads.
     counter*: int             # number of symbols in the table, `data.len`
-    names: int                # number of distinct names == used `heads` slots
+    used: int                 # number of used `slots`
     data*: seq[PSym]          # the symbols, in insertion order, no holes
     next*: seq[int32]         # parallel to `data`: 1 + index of the next
-                              # symbol with the same name, 0 = end of chain
-    heads: seq[StrTableSlot]  # hash slots, a power of two of them
+                              # symbol with the same name. The chain is a
+                              # ring: its last symbol links to its first.
+    slots: seq[StrTableSlot]  # a power of two of them
 
-  StrTableSlot = object       # one hash slot of a `TStrTable`
-    name: int32               # `PIdent.id` of the name this chain is for. It
-                              # is in the slot so that probing for a name never
-                              # has to dereference a symbol to read its name.
-    first: int32              # 1 + index of that name's first symbol, 0 = free
+  StrTableSlot = object       # one slot of a `TStrTable`'s index
+    name: int32               # head: `PIdent.id` of the name, so that probing
+                              # for a name never has to dereference a symbol
+                              # to read its name. Member: see `memberTag`.
+    pos: int32                # 1 + index into `data`, 0 = free slot.
+                              # head: the name's LAST symbol, the ring's entry.
 
   # -------------- backend information -------------------------------
   TLocKind* = enum
@@ -1251,104 +1259,140 @@ proc mustRehash*(length, counter: int): bool =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc strTableFirstOfName*(t: TStrTable, name: PIdent): int32 =
-  ## 1 + the index of the FIRST symbol named `name`, 0 if there is none. The
-  ## rest of them follow through `t.next`, still in insertion order. Every
-  ## index in a `TStrTable` is stored biased by one so that a zeroed `newSeq`
-  ## means "empty" and no fill-with-minus-one pass is needed.
-  ##
-  ## The probe reads `heads` and nothing else: a slot carries the name it
-  ## stands for, so a wrong slot is rejected without following its index into
-  ## `data` and from there into a `PSym` and a `PIdent`. Only the slot that
-  ## matches is ever dereferenced, by the caller, for the symbol it wanted.
-  result = 0
-  if t.names == 0: return
+proc headSlot(t: TStrTable; name: PIdent): int =
+  ## the slot of the head of `name`, -1 if `name` is not in `t`. The probe
+  ## reads `slots` and nothing else: a slot carries the name it stands for,
+  ## so a wrong slot is rejected without following its index into `data`.
+  result = -1
+  if t.used == 0: return
   let id = int32(name.id)
-  var h: Hash = name.h and high(t.heads)
+  var h: Hash = name.h and high(t.slots)
   while true:
-    let slot = t.heads[h]
-    if slot.first == 0: return
-    if slot.name == id: return slot.first
-    h = nextTry(h, high(t.heads))
+    let slot = t.slots[h]
+    if slot.pos == 0: return
+    if slot.name == id: return h
+    h = nextTry(h, high(t.slots))
+
+proc strTableChainOfName*(t: TStrTable, name: PIdent): (int32, int32) =
+  ## 1 + the indexes of the first and the last symbol named `name`, (0, 0) if
+  ## there is none. From the first, `t.next` reaches the others in insertion
+  ## order; the last one links back to the first. Every index in a
+  ## `TStrTable` is stored biased by one so that a zeroed `newSeq` means
+  ## "empty" and no fill-with-minus-one pass is needed.
+  let h = headSlot(t, name)
+  if h < 0:
+    result = (0'i32, 0'i32)
+  else:
+    let last = t.slots[h].pos
+    result = (t.next[last-1], last)
+
+proc memberHash(n: PSym): Hash {.inline.} = hash(cast[pointer](n))
+
+proc memberTag(h: Hash): int32 {.inline.} =
+  # what a member slot keeps in `name`: negative, so it is never the
+  # `PIdent.id` of a name, and made of hash bits, so that probing past the
+  # member slots of OTHER symbols rarely has to look into `data`
+  -1'i32 - int32(h shr 33 and 0x3fff_ffff)
+
+proc hasMember(t: TStrTable; n: PSym): bool =
+  # A member slot is matched by the symbol it points to. A slot whose symbol
+  # was replaced (`setSym`) can no longer match anything and stays behind as
+  # a tombstone until the next `strTableEnlarge`.
+  result = false
+  let mh = memberHash(n)
+  let tag = memberTag(mh)
+  var h = mh and high(t.slots)
+  while true:
+    let slot = t.slots[h]
+    if slot.pos == 0: return false
+    if slot.name == tag and t.data[slot.pos-1] == n: return true
+    h = nextTry(h, high(t.slots))
+
+proc addMember(t: var TStrTable; pos: int32) =
+  let mh = memberHash(t.data[pos-1])
+  var h = mh and high(t.slots)
+  while t.slots[h].pos != 0: h = nextTry(h, high(t.slots))
+  t.slots[h] = StrTableSlot(name: memberTag(mh), pos: pos)
+  inc t.used
+
+proc chainContains(t: TStrTable; head: int; n: PSym): bool {.inline.} =
+  # the first symbol of a name is the only one without a member slot
+  t.data[t.next[t.slots[head].pos-1]-1] == n or hasMember(t, n)
 
 proc strTableContains*(t: TStrTable, n: PSym): bool =
-  var it = strTableFirstOfName(t, n.name)
-  while it != 0:
-    if t.data[it-1] == n: return true
-    it = t.next[it-1]
-  result = false
+  let h = headSlot(t, n.name)
+  result = h >= 0 and chainContains(t, h, n)
 
-proc strTableRawInsert(t: var TStrTable, n: PSym) =
-  ## Appends `n` to `data` and links it in at the END of the chain of the
-  ## symbols that share its name: that is what makes the chain order the
-  ## insertion order. Adding the very same symbol twice is a no-op -- the
-  ## `export` feature relies on it, a symbol can reach an interface through
-  ## more than one route.
-  let pos = int32(t.data.len)
-  let name = n.name
+proc link(t: var TStrTable; pos: int32) =
+  ## links `t.data[pos-1]` in at the END of the chain of its name: that is
+  ## what makes the chain order the insertion order.
+  let name = t.data[pos-1].name
   let id = int32(name.id)
-  var h: Hash = name.h and high(t.heads)
+  var h: Hash = name.h and high(t.slots)
   while true:
-    let slot = t.heads[h]
-    if slot.first == 0:
-      t.heads[h] = StrTableSlot(name: id, first: pos+1)
-      inc t.names
-      break
+    let slot = t.slots[h]
+    if slot.pos == 0:
+      t.slots[h] = StrTableSlot(name: id, pos: pos)
+      t.next[pos-1] = pos
+      inc t.used
+      return
     if slot.name == id:
-      var i = slot.first-1
-      while true:
-        if t.data[i] == n: return
-        if t.next[i] == 0: break
-        i = t.next[i]-1
-      t.next[i] = pos+1
-      break
-    h = nextTry(h, high(t.heads))
-  t.data.add n
-  t.next.add 0
-  inc t.counter
+      t.next[pos-1] = t.next[slot.pos-1]
+      t.next[slot.pos-1] = pos
+      t.slots[h].pos = pos
+      addMember(t, pos)
+      return
+    h = nextTry(h, high(t.slots))
 
 proc strTableEnlarge(t: var TStrTable) =
-  ## Rebuilds the hash slots and the chains. Walking `data` BACKWARDS and
-  ## prepending puts every chain back in insertion order in a single pass and
-  ## never walks a chain to its tail, so growing the table can neither permute
-  ## anything nor cost more than the symbols it moves.
-  t.heads = newSeq[StrTableSlot](if t.heads.len == 0: StartSize
-                                 else: t.heads.len * GrowthFactor)
-  t.names = 0
-  for i in countdown(int32(high(t.data)), 0'i32):
-    let name = t.data[i].name
-    let id = int32(name.id)
-    var h: Hash = name.h and high(t.heads)
-    while true:
-      let slot = t.heads[h]
-      if slot.first == 0:
-        t.next[i] = 0
-        t.heads[h] = StrTableSlot(name: id, first: i+1)
-        inc t.names
-        break
-      if slot.name == id:
-        t.next[i] = slot.first
-        t.heads[h].first = i+1
-        break
-      h = nextTry(h, high(t.heads))
+  ## Rebuilds the index and the chains, in `data` order, so growing the table
+  ## can neither permute anything nor cost more than the symbols it moves.
+  t.slots = newSeq[StrTableSlot](if t.slots.len == 0: StartSize
+                                 else: t.slots.len * GrowthFactor)
+  t.used = 0
+  for i in 0'i32..<int32(t.data.len): link(t, i+1)
+
+proc initStrTable*(symbols: int): TStrTable =
+  ## an empty table with room for `symbols` symbols: adding them never grows it
+  var size = StartSize
+  while size <= symbols+1 or mustRehash(size, symbols+1):
+    size = size * GrowthFactor
+  result = TStrTable(slots: newSeq[StrTableSlot](size))
+  result.data = newSeqOfCap[PSym](symbols)
+  result.next = newSeqOfCap[int32](symbols)
 
 template strTableMakeRoom(t: var TStrTable) =
-  # only distinct names take up a hash slot, so `names` is what has to fit
-  if t.heads.len == 0 or mustRehash(t.heads.len, t.names): strTableEnlarge(t)
+  # adding a symbol takes at most one slot
+  if t.slots.len == 0 or mustRehash(t.slots.len, t.used+1): strTableEnlarge(t)
+
+proc setSym(t: var TStrTable; pos: int32; n: PSym) =
+  ## `n` replaces `t.data[pos-1]`, a symbol of the same name
+  let (first, _) = strTableChainOfName(t, n.name)
+  t.data[pos-1] = n
+  if pos != first: addMember(t, pos)
 
 proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
   assert prevSym.name.id == newSym.name.id
-  var it = strTableFirstOfName(t, prevSym.name)
+  strTableMakeRoom(t)
+  var (it, last) = strTableChainOfName(t, prevSym.name)
   while it != 0:
     if t.data[it-1] == prevSym:
-      t.data[it-1] = newSym
+      setSym(t, it, newSym)
       return
-    it = t.next[it-1]
+    it = if it == last: 0'i32 else: t.next[it-1]
   assert false
 
 proc strTableAdd*(t: var TStrTable, n: PSym) =
+  ## Adding the very same symbol twice is a no-op -- the `export` feature
+  ## relies on it, a symbol can reach an interface through more than one
+  ## route.
   strTableMakeRoom(t)
-  strTableRawInsert(t, n)
+  let h = headSlot(t, n.name)
+  if h >= 0 and chainContains(t, h, n): return
+  t.data.add n
+  t.next.add 0
+  inc t.counter
+  link(t, int32(t.data.len))
 
 proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
                                  onConflictKeepOld = false): PSym =
@@ -1356,23 +1400,18 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
   # otherwise return `nil`. Incl `n` to `t` unless `onConflictKeepOld = true`
   # and a conflict was found.
   assert n.name != nil
-  var last = strTableFirstOfName(t, n.name)
-  if last != 0:
-    # One walk to the end of the chain answers both questions: whether `n` is
-    # in it already -- semantic checking can happen more than once thanks to
-    # templates and overloading, `(var x=@[]; x).mapIt(it)` -- and which
-    # symbol of that name is the newest.
-    while true:
-      if t.data[last-1] == n: return nil
-      let nxt = t.next[last-1]
-      if nxt == 0: break
-      last = nxt
+  strTableMakeRoom(t)
+  let h = headSlot(t, n.name)
+  if h >= 0:
+    # `n` can be in the table already: semantic checking can happen more
+    # than once thanks to templates and overloading, `(var x=@[]; x).mapIt(it)`
+    if chainContains(t, h, n): return nil
+    let last = t.slots[h].pos
     result = t.data[last-1] # found it, the newest symbol of that name
     if not onConflictKeepOld:
-      t.data[last-1] = n # overwrite it with newer definition!
+      setSym(t, last, n) # overwrite it with newer definition!
   else:
-    strTableMakeRoom(t)
-    strTableRawInsert(t, n)
+    strTableAdd(t, n)
     result = nil
 
 proc strTableIncl*(t: var TStrTable, n: PSym;
@@ -1381,8 +1420,8 @@ proc strTableIncl*(t: var TStrTable, n: PSym;
 
 proc strTableGet*(t: TStrTable, name: PIdent): PSym =
   ## The *first* symbol declared under `name`, nil if there is none.
-  let it = strTableFirstOfName(t, name)
-  result = if it != 0: t.data[it-1] else: nil
+  let (first, _) = strTableChainOfName(t, name)
+  result = if first != 0: t.data[first-1] else: nil
 
 # --- doc-comment bridge for the NIF serializer -------------------------------
 # `ast2nif` (the NIF reader/writer) cannot import `ast` (where the comment
