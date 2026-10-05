@@ -66,11 +66,14 @@ template dbg(body) =
       body
 
 proc hasDestructor(c: Con; t: PType): bool {.inline.} =
-  result = ast.hasDestructor(t)
+  # A cached sink wrapper can predate its element's lifted operations. The
+  # parameter still owns the element even if the wrapper's derived flags lag.
+  let typ = t.skipTypes({tySink})
+  result = ast.hasDestructor(typ)
   when toDebug.len > 0:
     # for more effective debugging
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
-      assert(not containsGarbageCollectedRef(t))
+      assert(not containsGarbageCollectedRef(typ))
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo; needsInit: bool): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.idgen, c.owner, info)
