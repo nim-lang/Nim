@@ -2050,7 +2050,15 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # Re-apply imports observed on the previous run only if its build switches
     # and precompiled config match. Otherwise they may belong to a now-dead
     # conditional branch; the frontend will rediscover live imports below.
-    if not configChanged:
+    if configChanged:
+      # A macro-generated import can load a cached BIF before the scanner has
+      # discovered the module and scheduled its rebuild. No semantic artifact
+      # from the previous configuration is valid, including modules outside
+      # the initial graph. Remove them so imports stop for discovery instead
+      # of loading stale declarations or references to a deferred module.
+      for file in walkFiles(cacheDir / "*.s.bif"):
+        removeFile(file)
+    else:
       discard deriveFromSemDeps(c, afterRound = false)
 
     # An undecidable `when` does not justify compiling its imports. Defer them

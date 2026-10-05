@@ -103,6 +103,15 @@ echo "other ", value()
   )
   writeFile(dir / "demos" / "config.nims", readFile(dir / "examples" / "config.nims"))
   writeFile(dir / "demos" / "main.nim", readFile(dir / "examples" / "main.nim"))
+  writeFile(
+    dir / "examples" / "generated.nim",
+    """
+import std/macros
+macro importShared(): untyped = parseStmt("import shared")
+importShared()
+echo "generated ", value()
+""",
+  )
 
   # The first three entry points deliberately have the same basename.
   for project, expected in [
@@ -134,6 +143,9 @@ echo "other ", value()
   # own source files and the importing project's source are unchanged.
   let config = dir / "examples" / "config.nims"
   writeFile(config, readFile(config) & "\nswitch(\"define\", \"sharedValue:43\")\n")
+  # The scanner cannot see this import. A BIF from the previous configuration
+  # must not let sem succeed before the module is discovered and rebuilt.
+  build("examples/generated.nim", "generated 43")
   build("examples/main.nim", "example 43")
   build("demos/main.nim", "example 42")
 finally:
