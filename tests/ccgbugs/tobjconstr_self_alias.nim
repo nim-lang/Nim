@@ -83,3 +83,21 @@ refDeepField(42)
 viaCall(42)
 viaClosureGlobal(42)
 viaClosureCapture(42)
+
+# bug #26329: a later array element reads the destination before it is replaced.
+type WithArray = object
+  a: int
+  arr: array[2, int]
+
+var o = WithArray(a: 5)
+o = WithArray(a: 1, arr: [2, o.a])
+doAssert o.a == 1
+doAssert o.arr == [2, 5]
+
+proc arrayElementAlias() =
+  var o = WithArray(a: 5)
+  o = WithArray(a: 1, arr: [2, o.a])
+  doAssert o.a == 1
+  doAssert o.arr == [2, 5]
+
+arrayElementAlias()
