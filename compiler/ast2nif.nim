@@ -3959,12 +3959,10 @@ proc loadInterface(c: var DecodeContext; module: FileIndex; hidden: bool;
   if not hidden: prof pIfaceModules
   cur.into:
     expect cur, IntLit
-    skip cur  # the symbol count, which no longer has a use here: a `TStrTable`
-              # is insertion ordered, so the order of the symbols sharing an
-              # identifier is a property of the table and no growth can permute
-              # it. Presizing to keep a rehash from doing so is what the count
-              # was read for. Still consumed, to stay in step with the record.
-    result = default(TStrTable)  # storage grows on the first `strTableAdd`
+    # the symbol count: presizing saves the rehashes. It cannot permute
+    # anything, a `TStrTable` is insertion ordered.
+    result = initStrTable(int intVal(cur))
+    skip cur
     while cur.hasMore:
       var sym: PSym = nil
       if cur.kind == Symbol:
