@@ -1188,8 +1188,10 @@ proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
   ## edit changes the artifact, hence the hash, hence every rule.
   result = getNimcacheDir(c.config).string / "ic_build_args.txt"
   var content = ""
+  var seenPaths = initHashSet[string]()
   for p in c.config.searchPaths:
-    content.add "--path:" & p.string & "\n"
+    if not seenPaths.containsOrIncl(p.string):
+      content.add "--path:" & p.string & "\n"
   for a in forwardedArgs:
     if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:"):
       continue
@@ -1198,13 +1200,18 @@ proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
     # Hash effective config settings, excluding the cache location and source
     # file list. Different config.nims files can resolve to identical settings;
     # their paths are only metadata for deciding when to refresh the snapshot.
-    # Keep resolved search paths and switches in the hash and preserve order.
+    # Search paths are already fingerprinted above in lookup order, keeping
+    # only their first occurrence. Do not hash the raw snapshot's list too:
+    # each config.nims implicitly appends libpath, so equivalent configs at
+    # different depths can contain different numbers of redundant entries.
+    # Keep all remaining settings, including switch order, in the hash.
     var normalized = ""
     try:
       for line in lines(c.config.icPreparsedConfig):
         let entry = line.strip
         if entry.startsWith("(nimcache ") or entry.startsWith("(sources ") or
-            entry == "(sources)": continue
+            entry == "(sources)" or entry.startsWith("(searchpaths ") or
+            entry == "(searchpaths)": continue
         normalized.add line
         normalized.add '\n'
     except IOError, OSError:
