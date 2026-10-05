@@ -1904,8 +1904,14 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
   ## again. The caller only seeds from sidecars when the build configuration
   ## has not changed either.
   result = false
-  let n0 = c.nodes.len  # snapshot: new nodes are traversed as they're added
-  for ni in 0 ..< n0:
+  # A discovered module's static scan can add guarded imports of its own.
+  # Restore that module's cached semantic imports too, before pruning decides
+  # those edges are only speculative. A snapshot of `nodes` loses the tail of
+  # such import chains on warm builds where no semantic pass needs to run.
+  var nextNode = 0
+  while nextNode < c.nodes.len:
+    let ni = nextNode
+    inc nextNode
     # A deferred module was not semmed by the last round.
     if c.nodes[ni].deferred: continue
     let confirmed = afterRound or semDepsAreCurrent(c, c.nodes[ni])

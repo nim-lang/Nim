@@ -709,7 +709,11 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
       for fn in deleted:
         removeFile(buildDir / fn)
       deleted.setLen 0
-      for fn, content in vfs: writeFile(buildDir / fn, content)
+      # Preserve unchanged fixtures' mtimes so no-op steps exercise cache reuse.
+      for fn, content in vfs:
+        let path = buildDir / fn
+        if not fileExists(path) or readFile(path) != content:
+          writeFile(path, content)
       let (_, cout, ccode) = compileIc()
 
       # `fails: <substring>` — the build MUST fail, with that text in its output.
