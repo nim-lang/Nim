@@ -973,11 +973,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameFlags(a, b)
     if result and {PickyCAliases, ExactTypeDescValues} <= c.flags:
       # additional requirement for the caching of generics for importc'ed types:
-      # the symbols must be identical too:
+      # the symbol flags and external names must match too. Ordinary aliases
+      # inherit the external name and can still share an instantiation.
       let symFlagsA = if a.sym != nil: a.sym.flags else: {}
       let symFlagsB = if b.sym != nil: b.sym.flags else: {}
       if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
-        result = symFlagsA == symFlagsB
+        result = symFlagsA == symFlagsB and a.sym.loc.snippet == b.sym.loc.snippet
     elif result and PickyBackendAliases in c.flags:
       let symFlagsA = if a.sym != nil: a.sym.flags else: {}
       let symFlagsB = if b.sym != nil: b.sym.flags else: {}
