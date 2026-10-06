@@ -49,6 +49,14 @@ errors.
 parameter and result types, not just their source-level shape. Use
 `--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
+- `items` for `array` now yields `lent T`, as it already did for `seq` and
+  `openArray`, instead of a copy of each element. A closure cannot capture a
+  `lent` value, so a closure that captures the loop variable of such a `for`
+  loop no longer compiles ("cannot be captured as it would violate memory
+  safety"). Copy the variable first (`for x in a: let x = x`), or use
+  `-d:nimNoLentIterators` to restore the old behavior. The JS backend and
+  NimScript are unaffected: there `items` yields copies.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
