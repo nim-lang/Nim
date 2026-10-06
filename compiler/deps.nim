@@ -1169,6 +1169,11 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     if normalize(name) notin notForwarded and a notin result:
       result.add a
 
+proc isSearchPathArg(arg: string): bool =
+  let first = if arg.startsWith("--"): 2 else: 1
+  let sep = arg.find({':', '='}, first)
+  result = sep >= first and normalize(arg[first ..< sep]) in ["path", "p"]
+
 proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
                          changed: var bool): string =
   ## nifmake decides staleness from file mtimes alone — it never looks at a
@@ -1188,23 +1193,30 @@ proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
   ## edit changes the artifact, hence the hash, hence every rule.
   result = getNimcacheDir(c.config).string / "ic_build_args.txt"
   var content = ""
+  var seenPaths = initHashSet[string]()
   for p in c.config.searchPaths:
-    content.add "--path:" & p.string & "\n"
+    if not seenPaths.containsOrIncl(p.string):
+      content.add "--path:" & p.string & "\n"
   for a in forwardedArgs:
-    if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:"):
+    if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:") or
+        isSearchPathArg(a):
       continue
     content.add a & "\n"
   if c.config.icPreparsedConfig.len > 0 and fileExists(c.config.icPreparsedConfig):
     # Hash effective config settings, excluding the cache location and source
     # file list. Different config.nims files can resolve to identical settings;
     # their paths are only metadata for deciding when to refresh the snapshot.
-    # Keep resolved search paths and switches in the hash and preserve order.
+    # Search paths (including command-line paths) are already fingerprinted
+    # above in lookup order, keeping only their first occurrence. NimScript
+    # config chains can append redundant library paths; these do not change
+    # the effective settings. Keep other settings and switch order in the hash.
     var normalized = ""
     try:
       for line in lines(c.config.icPreparsedConfig):
         let entry = line.strip
         if entry.startsWith("(nimcache ") or entry.startsWith("(sources ") or
-            entry == "(sources)": continue
+            entry == "(sources)" or entry.startsWith("(searchpaths ") or
+            entry == "(searchpaths)": continue
         normalized.add line
         normalized.add '\n'
     except IOError, OSError:
