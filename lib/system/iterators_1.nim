@@ -3,6 +3,8 @@ when sizeof(int) <= 2:
 else:
   type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16|enum
 
+proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic: "TypeTrait".}
+
 iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` (inclusive) with the given
   ## step count.
@@ -28,6 +30,17 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
       for i in countdown(5.uint32, 0.uint32, 2):
         i
     assert z == @[5.uint32, 3, 1]
+
+    let w = collect(newSeq):
+      for i in countdown(10.uint64, 1.uint64, 4):
+        i
+    assert w == @[10.uint64, 6, 2]
+
+    type Number = distinct uint64
+    let v = collect(newSeq):
+      for i in countdown(Number(2), Number(0)):
+        uint64(i)
+    assert v == @[2.uint64, 1, 0]
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res >= int(b):
@@ -36,11 +49,22 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
       else:
         yield T(res)
       dec(res, step)
+  elif T is SomeUnsignedInt:
+    if a >= b:
+      let n = (a - b) div T(step)
+      var k = T(0)
+      while true:
+        yield a - k * T(step)
+        if k == n: break
+        inc k
+  elif T is distinct and distinctBase(T) is SomeUnsignedInt:
+    for res in countdown(
+        distinctBase(T, false)(a), distinctBase(T, false)(b), step):
+      yield T(res)
   else:
     var res = a
     while res >= b:
       yield res
-      if res <= succ(b, step.Natural - 1): break
       dec(res, step)
 
 iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
