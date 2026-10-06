@@ -342,8 +342,15 @@ proc containsGarbageCollectedRef*(typ: PType): bool =
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
 
+proc isNimNodeType*(t: PType): bool {.inline.} =
+  ## `NimNode` is a `ref` type in system.nim but the VM stores it as a handle.
+  ## So are the deprecated `NimIdent` (an object) and `NimSym` of `std/macros`:
+  ## their values are AST nodes, like in the old VM.
+  t.sym != nil and t.sym.magic == mPNimrodNode and t.kind in {tyRef, tyObject}
+
 proc isManagedMemory(t: PType): bool =
-  result = t.kind in GcTypeKinds or
+  # NimNodes only exist at compile time; the VM does not count them
+  result = (t.kind in GcTypeKinds and not isNimNodeType(t)) or
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc containsManagedMemory*(typ: PType): bool =

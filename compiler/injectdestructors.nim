@@ -24,6 +24,7 @@ import std/[strtabs, tables, strutils, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+from vmlayout import hasPayloads
 from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites
 
 type
@@ -70,6 +71,11 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   # parameter still owns the element even if the wrapper's derived flags lag.
   let typ = t.skipTypes({tySink})
   result = ast.hasDestructor(typ)
+  if not result and c.graph.vmInjecting and
+      optSeqDestructors notin c.graph.config.globalOptions:
+    # the VM manages strings and seqs like --mm:orc does, also for --mm:refc
+    # where they have no hooks:
+    result = hasPayloads(t)
   when toDebug.len > 0:
     # for more effective debugging
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
@@ -236,6 +242,28 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
+  if c.graph.vmInjecting and op != nil and sfGeneratedOp in op.flags and
+      optSeqDestructors notin c.graph.config.globalOptions and
+      tfHasAsgn notin t.flags:
+    # --mm:refc lifts hooks without memory management for types without user
+    # defined hooks; the VM manages their strings and seqs itself:
+    op = nil
+  if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
+    # The VM does not lift hooks: that could conflict with hooks that are
+    # declared later. It implements these magics with value semantics instead:
+    const fallbacks: array[TTypeAttachedOp, (TMagic, string)] = [
+      attachedWasMoved: (mWasMoved, "=wasMoved"),
+      attachedDestructor: (mDestroy, "=destroy"),
+      attachedAsgn: (mAsgn, "=copy"),
+      attachedDup: (mDup, "=dup"),
+      attachedSink: (mAsgn, "=sink"),
+      attachedTrace: (mTrace, "=trace"),
+      attachedDeepCopy: (mAsgn, "=deepcopy")]
+    let (m, name) = fallbacks[kind]
+    var addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+    addrExp.add(dest)
+    return newTree(nkCall, newSymNode(createMagic(c.graph, c.idgen, name, m)),
+                   if kind == attachedDup: dest else: addrExp)
   if op == nil or op.ast.isGenericRoutine:
     # IC: injectDestructorCalls is demand-driven and runs HERE (cg), not in the
     # `lower` stage, so a structural, env-agnostic op the lower stage never had
@@ -1155,6 +1183,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 1..<n.len:
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
+      result = n
+    of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym:
+      # only in code that runs in the VM: `bindSym` arguments
       result = n
     of nkReplayAction:
       # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded
