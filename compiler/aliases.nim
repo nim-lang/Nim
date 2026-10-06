@@ -64,6 +64,19 @@ proc isAccessorPrefixOf(a, b: PNode): bool =
     else: discard
   result = sameLocation(cur, a)
 
+proc isStandaloneScalar(n: PNode): bool =
+  ## A read of a variable that is not of an aggregate type. Such a variable is
+  ## a location of its own and cannot live inside the destination, so a read
+  ## of it does not need a temporary (bug #26274). Aggregate parameters are
+  ## excluded as they are passed by pointer and can alias the destination.
+  var n = n
+  while n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}: n = n[1]
+  result = n.kind == nkSym and
+    n.sym.kind in {skVar, skLet, skForVar, skTemp, skConst, skParam, skResult} and
+    n.typ != nil and
+    n.typ.skipTypes(abstractInst).kind notin {tyObject, tyTuple, tyArray,
+      tyOpenArray, tyVarargs, tyUncheckedArray, tyVar, tyLent}
+
 proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult
 
 proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
@@ -276,7 +289,7 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
         if res != arNo:
           result = res
           if res == arYes: break
-        if pfBidirectional in flags:
+        if pfBidirectional in flags and not isStandaloneScalar(b[i][1]):
           let res2 = isPartOf(b[i][1], a, {pfStructural})
           if res2 != arNo:
             result = res2
