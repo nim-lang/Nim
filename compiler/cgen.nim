@@ -1848,7 +1848,6 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     assignParam(p, param, prc.typ.returnType)
   closureSetup(p, prc)
   icProfStart(tGenBody)
-  p.body = procBody
   genProcBody(p, procBody)
   icProfStop(tGenBody)
 

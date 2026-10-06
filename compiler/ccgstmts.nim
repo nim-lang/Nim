@@ -478,11 +478,7 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
     genLineDir(targetProc, vn)
     if not isCppCtorCall:
       backendEnsureMutable v
-      # the initializer cannot read the local it initializes:
-      let oldInitializedVar = targetProc.initializedVar
-      if sfGlobal notin v.flags: targetProc.initializedVar = v
       loadInto(targetProc, vn, value, v.locImpl)
-      targetProc.initializedVar = oldInitializedVar
   if forHcr:
     endBlockWith(targetProc):
       finishBranch(p.s(cpsStmts), hcrInit)
