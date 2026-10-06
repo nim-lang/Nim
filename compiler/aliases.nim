@@ -211,8 +211,12 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           result = res
           if res == arYes: break
     of nkBracket:
-      if b.len > 0:
-        result = isPartOf(a, b[0])
-      else:
-        result = arNo
-    else: result = arNo
+      # every element can read `a`, not just the first one (bug #26329)
+      result = arNo
+      for i in 0..<b.len:
+        let res = isPartOf(a, b[i])
+        if res != arNo:
+          result = res
+          if res == arYes: break
+    else:
+      result = arNo
