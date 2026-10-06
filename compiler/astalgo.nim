@@ -723,6 +723,7 @@ proc hasEmptySlot[T](data: TIdPairSeq[T]): bool =
   result = false
 
 proc idTableRawGet[T](t: TIdTable[T], key: int): int =
+  if t.data.len == 0: return -1
   var h: Hash
   h = key and high(t.data)    # start with real hash value
   while not isNil(t.data[h].key):
@@ -759,7 +760,9 @@ proc `[]=`*[T](t: var TIdTable[T], key: ItemId, val: T) =
     assert(not isNil(t.data[index].key))
     t.data[index].val = val
   else:
-    if mustRehash(t.data.len, t.counter):
+    if t.data.len == 0:
+      newSeq(t.data, StartSize)
+    elif mustRehash(t.data.len, t.counter):
       newSeq(n, t.data.len * GrowthFactor)
       for i in 0..high(t.data):
         if not isNil(t.data[i].key):
