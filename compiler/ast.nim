@@ -1312,14 +1312,13 @@ proc initStrTable*(): TStrTable =
   result = TStrTable(counter: 0)
 
 proc initIdTable*[T](): TIdTable[T] =
+  # the storage is allocated on the first put; most binding tables (one per
+  # overload candidate) stay empty, bug #26349
   result = TIdTable[T](counter: 0)
-  newSeq(result.data, StartSize)
 
 proc resetIdTable*[T](x: var TIdTable[T]) =
   x.counter = 0
-  # clear and set to old initial size:
   setLen(x.data, 0)
-  setLen(x.data, StartSize)
 
 proc initObjectSet*(): TObjectSet =
   result = TObjectSet(counter: 0)

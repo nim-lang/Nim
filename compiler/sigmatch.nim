@@ -2356,13 +2356,20 @@ proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
+  var convMatch = default(TCandidate)
   for i in 0..<c.converters.len:
     var src = c.converters[i].typ.firstParamType
     var dest = c.converters[i].typ.returnType
     # for generic type converters we need to check 'src <- a' before
     # 'f <- dest' in order to not break the unification:
     # see tests/tgenericconverter:
-    var convMatch = newCandidate(c, src)
+    # bug #26349: allocating a fresh candidate (and its binding table) for
+    # every converter is expensive. Only the bindings of `convMatch` are used
+    # after a match, so reuse it if the previous failed match left it empty:
+    if i == 0 or convMatch.bindings.currentLen != 0 or convMatch.state != csEmpty:
+      convMatch = newCandidate(c, src)
+    else:
+      convMatch.callee = src
     let srca = typeRel(convMatch, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
 

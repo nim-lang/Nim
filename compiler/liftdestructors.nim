@@ -1103,6 +1103,11 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  if isNimNodeType(t):
+    # NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
+    # time; the VM represents them as handles, there is nothing to count:
+    defaultOp(c, t, body, x, y)
+    return
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyUncheckedArray:
@@ -1462,6 +1467,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+
   # IC: review this solution again later
   orig.inclDerived {tfCheckedForDestructor}
   # for user defined generic destructors:

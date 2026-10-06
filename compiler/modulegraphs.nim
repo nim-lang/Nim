@@ -106,6 +106,9 @@ type
                                   # module re-export (`import x; export x`); the
                                   # Iface.module stays nil so a later direct
                                   # import still takes the full load path
+    vmInjecting*: bool            # the VM injects destructors: hooks that
+                                  # are missing are not lifted (that could
+                                  # conflict with hooks declared later)
     inVMTransform*: int           # >0 while the VM compiles a routine body
                                   # (vmgen.genProc's transformBody): hooks lifted
                                   # there (e.g. for closure-env types of LOADED

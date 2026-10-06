@@ -344,7 +344,7 @@ proc installDeps(dep: string, commit = "") =
   of "libffi":
     # technically a nimble package, however to play nicely with --noNimblePath,
     # let's just clone it wholesale:
-    if commit.len == 0: commit = "bb2bdaf1a29a4bff6fbd8ae4695877cbb3ec783e"
+    if commit.len == 0: commit = "240db71d0e7f3da74958ac120f47fcc6f1b65b24"
     cloneDependency(distDir, "https://github.com/Araq/libffi", commit)
   else: doAssert false, "unsupported: " & dep
   # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
