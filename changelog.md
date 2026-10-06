@@ -103,6 +103,11 @@ parameter and result types, not just their source-level shape. Use
 
 - `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
 
+- `std/asynchttpserver.newAsyncHttpServer` adds a parameter `readTimeout`, the
+  number of milliseconds a client has to deliver a complete request. A client
+  that is slower is disconnected (after a `408 Request Timeout` response once its
+  request line was received). The default of 0 keeps waiting indefinitely.
+
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
