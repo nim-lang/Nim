@@ -176,23 +176,28 @@ type
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = PosixUInt
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
-  Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
+  # The headers supply the native pthread layouts, so these opaque objects
+  # cannot promise a completeStruct layout.
+  Pthread_attr* {.importc: "pthread_attr_t",
+    header: "<pthread.h>", pure, final.} = object
   Pthread_barrier* {.importc: "pthread_barrier_t",
-                      header: "<sys/types.h>".} = int
+    header: "<pthread.h>", pure, final.} = object
   Pthread_barrierattr* {.importc: "pthread_barrierattr_t",
-                          header: "<sys/types.h>".} = int
-  Pthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>".} = int
+    header: "<pthread.h>", pure, final.} = object
+  Pthread_cond* {.importc: "pthread_cond_t",
+    header: "<pthread.h>", pure, final.} = object
   Pthread_condattr* {.importc: "pthread_condattr_t",
-                       header: "<sys/types.h>".} = int
+    header: "<pthread.h>", pure, final.} = object
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = PosixUInt
-  Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
+  Pthread_mutex* {.importc: "pthread_mutex_t",
+    header: "<pthread.h>", pure, final.} = object
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
-                        header: "<sys/types.h>".} = int
+    header: "<pthread.h>", pure, final.} = object
   Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = PosixInt
   Pthread_rwlock* {.importc: "pthread_rwlock_t",
-                     header: "<sys/types.h>".} = int
+    header: "<pthread.h>", pure, final.} = object
   Pthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
-                         header: "<sys/types.h>".} = int
+    header: "<pthread.h>", pure, final.} = object
   Pthread_spinlock* {.importc: "pthread_spinlock_t",
                        header: "<sys/types.h>".} = PosixInt
   Pthread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
