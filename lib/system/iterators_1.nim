@@ -51,12 +51,14 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
       dec(res, step)
   elif T is SomeUnsignedInt:
     if a >= b:
-      let n = (a - b) div T(step)
-      var k = T(0)
+      var
+        res = a
+        n = (a - b) div T(step)
       while true:
-        yield a - k * T(step)
-        if k == n: break
-        inc k
+        yield res
+        if n == 0: break
+        dec n
+        dec(res, step)
   elif T is distinct and distinctBase(T) is SomeUnsignedInt:
     for res in countdown(
         distinctBase(T, false)(a), distinctBase(T, false)(b), step):
