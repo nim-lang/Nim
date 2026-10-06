@@ -177,6 +177,16 @@ parameter and result types, not just their source-level shape. Use
   same priority as `*` (multiplication). As with the other Unicode operators, Nim
   only lexes them; their meaning is up to user code.
 
+- An experimental option `--experimental:ownedRefs` has been added that
+  implements the RFC https://github.com/nim-lang/RFCs/issues/575:
+  `owned ref T` and `owned proc` are statically checked unique ownership
+  annotations on top of ARC/ORC/YRC. Converting an owned reference to an
+  unowned one produces a counted reference, so there is no runtime failure
+  mode. A type whose references are all `owned` or `.cursor` cannot form a
+  cycle and stays out of the cycle collector, so for example a callback field
+  of type `owned proc ()` no longer makes its enclosing type cyclic.
+  Without the feature `owned` continues to be erased.
+
 ## Compiler changes
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's

@@ -829,6 +829,17 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
       # always has a type (bug #26218)
       result.transitionSonsKind(nkIfStmt)
 
+proc ownedToUnowned(c: Con; arg: PNode; formal: PType): PNode =
+  ## `--experimental:ownedRefs`: an `owned` argument passed to an unowned
+  ## sink parameter is converted, so that if a copy is required it is a
+  ## counted copy of the unowned reference rather than a copy of the owner.
+  result = arg
+  if optOwnedRefs notin c.graph.config.globalOptions and arg.typ != nil and
+      arg.typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
+    let f = formal.skipTypes({tyGenericInst, tyAlias, tySink})
+    if f.kind != tyOwned:
+      result = newTreeIT(nkHiddenSubConv, arg.info, f, newNodeI(nkEmpty, arg.info), arg)
+
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
   if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
     if n[0].kind in nkCallKinds:
@@ -883,7 +894,42 @@ proc distributeAsgn(asgnKind: TNodeKind; dest, ri: PNode; c: var Con; s: var Sco
   else:
     result = newTree(asgnKind, dest, p(ri, c, s, consumed))
 
+proc checkOwnedClosure(c: var Con; n: PNode): bool =
+  ## `--experimental:ownedRefs`: an `owned` closure promises that its
+  ## environment cannot be part of a cycle, which `canFormAcycle` relies on.
+  ## Now that lambda lifting has run, the environment type is known.
+  ## Returns true if `n` is such a conversion, which is a no-op at runtime.
+  result = false
+  if optOwnedRefs in c.graph.config.globalOptions or n.typ == nil or
+      n.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind != tyOwned:
+    return
+  var x = n[1]
+  while x.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and x.len == 2: x = x[1]
+  if x.kind != nkClosure: return
+  result = true
+  if x[1].kind == nkNilLit or x[1].typ == nil: return
+  let envT = x[1].typ.skipTypes(abstractInst+{tyOwned})
+  if envT.kind != tyRef or not canFormAcycle(c.graph, envT.elementType, envCheck = true): return
+  var culprit = ""
+  let obj = envT.elementType.skipTypes(abstractInst)
+  if obj.n != nil:
+    for i, f in obj.n:
+      if f.kind == nkSym and sfCursor notin f.sym.flags:
+        let ft = f.sym.typ.skipTypes(abstractInst)
+        if (ft.kind == tyRef and canFormAcycle(c.graph, ft.elementType)) or
+            (ft.kind == tyProc and ft.callConv == ccClosure):
+          culprit = f.sym.name.s
+          # `lowerings.addField` appends the field position to the name:
+          if culprit.endsWith($i): culprit.setLen(culprit.len - len($i))
+          break
+  localError(c.graph.config, n.info, "cannot produce an 'owned' closure: its environment " &
+    "can be part of a cycle" &
+    (if culprit.len > 0: " via the captured '" & culprit & "'" else: ""))
+
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}; inReturn = false): PNode =
+  if n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv} and n.len == 2 and
+      checkOwnedClosure(c, n):
+    return p(n[1], c, s, mode, tmpFlags, inReturn)
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
@@ -999,7 +1045,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
           if i < L and isCompileTimeOnly(parameters[i]):
             result[i] = n[i]
           elif i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
-            result[i] = p(n[i], c, s, sinkArg)
+            result[i] = p(ownedToUnowned(c, n[i], parameters[i]), c, s, sinkArg)
           else:
             result[i] = p(n[i], c, s, normal)
 

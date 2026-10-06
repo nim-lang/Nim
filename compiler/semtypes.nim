@@ -1169,6 +1169,26 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
   if c.inGenericContext == 0 and computeRequiresInit(c, result):
     result.incl tfRequiresInit
 
+proc checkOwnedBase(c: PContext; info: TLineInfo; t: PType) =
+  ## Under `--experimental:ownedRefs`, `owned` applies to the two reference
+  ## counted shared handles only: `ref T` and closures. `seq` and `string`
+  ## are already unique, so `owned` on them is rejected rather than erased.
+  if t.kind != tyOwned or optOwnedRefs in c.config.globalOptions: return
+  let base = t.skipModifier.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+  case base.kind
+  of tyRef: discard
+  of tyProc:
+    if base.callConv != ccClosure:
+      localError(c.config, info, "'owned' requires a closure, but '" &
+        typeToString(base) & "' is not a closure type")
+  of tyGenericParam, tyTypeDesc, tyFromExpr, tyError, tyAnything, tyUntyped,
+     tyTyped, tyGenericInvocation, tyBuiltInTypeClass, tyUserTypeClass,
+     tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyForward:
+    discard "checked after instantiation"
+  else:
+    localError(c.config, info, "'owned' is only valid for 'ref' and closure types, but got '" &
+      typeToString(base) & "'")
+
 proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
@@ -1214,7 +1234,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     # if not isNilable: result.flags.incl tfNotNil
     case wrapperKind
     of tyOwned:
-      if optOwnedRefs in c.config.globalOptions:
+      if ownedRefsEnabled(c):
         let t = newTypeS(tyOwned, c, result)
         t.incl tfHasOwned
         result = t
@@ -2369,8 +2389,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           (n[0].kind == nkSym and n[0].sym.magic == mTypeOf) or
           (n[0].kind == nkOpenSym and n[0][0].sym.magic == mTypeOf)):
         result = semTypeOf2(c, n, prev)
-      elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
-        result = semTypeExpr(c, n[1], prev)
+      elif op.s == "owned" and not ownedRefsEnabled(c) and n.len == 2:
+        result = semTypeNode(c, n[1], prev)
       else:
         result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
@@ -2442,7 +2462,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       case s.name.s
       of "lent": result = semAnyRef(c, n, tyLent, prev)
       of "sink": result = semAnyRef(c, n, tySink, prev)
-      of "owned": result = semAnyRef(c, n, tyOwned, prev)
+      of "owned":
+        if ownedRefsEnabled(c):
+          result = semAnyRef(c, n, tyOwned, prev)
+          checkOwnedBase(c, n.info, result)
+        else:
+          # `owned` is erased when the feature is off:
+          checkSonsLen(n, 2, c.config)
+          result = semTypeNode(c, n[1], prev)
       else: result = semGeneric(c, n, s, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:

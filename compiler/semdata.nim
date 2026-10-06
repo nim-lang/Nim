@@ -531,6 +531,11 @@ proc makeTypeWithModifier*(c: PContext,
   else:
     result = newTypeS(modifier, c, skipIntLit(baseType, c.idgen))
 
+proc ownedRefsEnabled*(c: PContext): bool {.inline.} =
+  ## `owned` is a real type constructor (rather than erased) under the old
+  ## `--newruntime` switch or `--experimental:ownedRefs`.
+  result = optOwnedRefs in c.config.globalOptions or ownedRefs in c.features
+
 proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
