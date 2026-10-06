@@ -1868,6 +1868,288 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
     result = false
 
 
+type
+  DestKind = enum
+    dkFresh     ## not a location of its own: a part of an enclosing
+                ## constructor's destination, which was checked already
+    dkLocal     ## a local of the routine (or its result); no indirection
+    dkGlobal    ## a global or threadvar; no indirection
+    dkVarParam  ## the location a `var` parameter of the routine points to
+    dkHeap      ## inside a ref'ed object or a seq/string payload
+    dkUnknown   ## behind some other pointer
+  ConstrDest = object
+    n: PNode    ## the destination expression
+    kind: DestKind
+    root: PSym  ## for dkLocal and dkGlobal
+
+const
+  PathKinds = {nkDotExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv}
+  ConvKinds = {nkHiddenStdConv, nkHiddenSubConv, nkConv}
+
+proc isDirectIndex(n: PNode): bool {.inline.} =
+  ## `n` is an `nkBracketExpr` that indexes into the storage of `n[0]` itself.
+  n[0].typ != nil and n[0].typ.skipTypes(abstractInst).kind in {tyArray, tyTuple}
+
+proc isLocalVar(s: PSym): bool {.inline.} =
+  s.kind in {skVar, skLet, skTemp, skForVar} and {sfGlobal, sfThread} * s.flags == {}
+
+proc constrDest(p: BProc; n: PNode): ConstrDest =
+  ## Classifies the destination of a constructor by the memory it lives in.
+  result = ConstrDest(n: n, kind: dkUnknown)
+  if n == nil: return
+  if n.kind == nkSym and n.sym == p.initializedVar:
+    # the local is being declared, its initializer cannot read it
+    result.kind = dkFresh
+    return
+  var it = n
+  while true:
+    case it.kind
+    of PathKinds: it = it[0]
+    of ConvKinds: it = it[1]
+    of nkBracketExpr:
+      if isDirectIndex(it):
+        it = it[0]
+      else:
+        if it[0].typ.skipTypes(abstractInst).kind in {tySequence, tyString}:
+          result.kind = dkHeap
+        return
+    of nkHiddenDeref, nkDerefExpr:
+      let x = it[0].skipConv
+      if x.typ.skipTypes(abstractInst).kind == tyRef:
+        result.kind = dkHeap
+      elif x.kind == nkSym and x.sym.kind == skParam and
+          x.typ.skipTypes(abstractInst).kind == tyVar:
+        result.kind = dkVarParam
+      return
+    of nkSym:
+      let s = it.sym
+      if s.kind == skResult or isLocalVar(s):
+        result.kind = dkLocal
+        result.root = s
+      elif s.kind in {skVar, skLet, skForVar}:
+        result.kind = dkGlobal
+        result.root = s
+      return
+    of nkEmpty, nkObjConstr, nkTupleConstr, nkPar, nkBracket, nkCurly,
+        nkClosure, nkLambdaKinds, nkCallKinds, nkStmtListExpr, nkStmtList,
+        nkIfExpr, nkIfStmt, nkCaseStmt, nkBlockExpr, nkBlockStmt:
+      # not a location but an element value: the location of an element of
+      # an enclosing constructor, whose check covered all element reads
+      result.kind = dkFresh
+      return
+    else:
+      return
+
+proc pathRoot(n: PNode): PSym =
+  ## The symbol an access path without indirections starts from.
+  result = nil
+  var it = n
+  while true:
+    case it.kind
+    of PathKinds: it = it[0]
+    of ConvKinds: it = it[1]
+    of nkBracketExpr:
+      if isDirectIndex(it): it = it[0]
+      else: return
+    of nkSym: return it.sym
+    else: return
+
+proc markAddrTaken(p: BProc; n: PNode) =
+  let r = pathRoot(n)
+  if r != nil: p.addrTaken.incl r.id
+
+proc markAllSyms(p: BProc; n: PNode) =
+  if n.kind == nkSym: p.addrTaken.incl n.sym.id
+  for i in 0..<n.safeLen: markAllSyms(p, n[i])
+
+proc collectAddrTaken(p: BProc; n: PNode) =
+  case n.kind
+  of nkAddr, nkHiddenAddr:
+    markAddrTaken(p, n[0])
+  of ConvKinds:
+    if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
+      markAddrTaken(p, n[1])
+  of nkCallKinds:
+    if n.typ != nil and
+        n.typ.skipTypes(abstractInst).kind in {tyVar, tyLent, tyOpenArray, tyVarargs}:
+      # the result is a view into the first argument:
+      if n.len > 1: markAddrTaken(p, n[1])
+    else:
+      # a `var` argument and an aggregate that is passed by pointer are only
+      # borrowed for the duration of the call; they cannot escape
+      collectAddrTaken(p, n[0])
+      for i in 1..<n.len:
+        let a = n[i]
+        if a.kind == nkHiddenAddr:
+          for j in 0..<a[0].safeLen: collectAddrTaken(p, a[0][j])
+        else:
+          collectAddrTaken(p, a)
+      return
+  of nkAsmStmt, nkPragma:
+    markAllSyms(p, n)
+    return
+  of nkLambdaKinds, routineDefs, nkTypeSection, nkConstSection:
+    return
+  else: discard
+  for i in 0..<n.safeLen: collectAddrTaken(p, n[i])
+
+proc isAddrTaken(p: BProc; s: PSym): bool =
+  ## Whether a pointer to (a part of) the local or parameter `s` can exist
+  ## beyond a call. This is more precise than `sfAddrTaken`, which is also
+  ## set for every `var` argument and misses `addr x.field`.
+  if p.body == nil: return true
+  if not p.addrTakenDone:
+    p.addrTakenDone = true
+    collectAddrTaken(p, p.body)
+  result = p.addrTaken.contains(s.id)
+
+proc symMayAlias(p: BProc; s: PSym; d: ConstrDest): bool =
+  ## Whether reading `s` itself may read the memory of `d`. Reads of the
+  ## destination's root symbol are handled by the caller.
+  case s.kind
+  of skVar, skLet, skTemp, skForVar:
+    if isLocalVar(s):
+      # locals of the routine came into existence after all of its parameters
+      # were bound and they are not on the heap; only an arbitrary pointer
+      # can point to one of them, if their address was taken:
+      result = d.kind == dkUnknown and isAddrTaken(p, s)
+    else:
+      # a global can be the target of a pointer but not of a ref:
+      result = d.kind in {dkVarParam, dkUnknown}
+  of skResult:
+    # the result can be passed by a hidden pointer:
+    result = d.kind notin {dkLocal, dkGlobal}
+  of skParam:
+    let t = s.typ.skipTypes(abstractInst)
+    if t.kind in {tyVar, tyLent, tyOpenArray, tyVarargs}:
+      # only reads through it can alias, these are analysed separately
+      result = false
+    elif ccgIntroducedPtr(p.config, s, if p.prc != nil: p.prc.typ.returnType else: nil):
+      # passed by a pointer to the caller's location, which existed before
+      # any of our locals:
+      result = d.kind != dkLocal
+    else:
+      result = d.kind == dkUnknown and isAddrTaken(p, s)
+  else:
+    # constants, routines, types, fields
+    result = false
+
+proc overlaps(a, b: PNode): bool {.inline.} =
+  isPartOf(a, b, {pfStructural}) != arNo or isPartOf(b, a, {pfStructural}) != arNo
+
+proc readsDest(p: BProc; n: PNode; d: ConstrDest): bool
+
+proc readsDestSons(p: BProc; n: PNode; d: ConstrDest; first = 0): bool =
+  for i in first..<n.safeLen:
+    if readsDest(p, n[i], d): return true
+  result = false
+
+proc readsPathIndexes(p: BProc; n: PNode; d: ConstrDest): bool =
+  ## Checks the index expressions of an access path, but not its root.
+  var it = n
+  result = false
+  while true:
+    case it.kind
+    of PathKinds: it = it[0]
+    of ConvKinds: it = it[1]
+    of nkBracketExpr:
+      if readsDest(p, it[1], d): return true
+      it = it[0]
+    else: return
+
+proc isRoutineParam(p: BProc; n: PNode): bool {.inline.} =
+  let n = n.skipConv
+  n.kind == nkSym and n.sym.kind == skParam and n.sym.owner == p.prc
+
+proc callMayReadDest(p: BProc; n: PNode; d: ConstrDest): bool =
+  let fn = n[0]
+  if fn.kind == nkSym and fn.sym.magic != mNone:
+    # magics only operate on their arguments:
+    return readsDestSons(p, n, d, 1)
+  if readsDestSons(p, n, d, 1): return true
+  let fnType = if fn.typ != nil: fn.typ.skipTypes(abstractInst) else: nil
+  # a closure can read its environment:
+  let noSideEffect = fnType != nil and fnType.kind == tyProc and
+    tfNoSideEffect in fnType.flags and fnType.callConv != ccClosure
+  case d.kind
+  of dkFresh: result = false
+  of dkLocal:
+    # the callee can only reach a local if a pointer to it exists:
+    result = isAddrTaken(p, d.root)
+  of dkGlobal, dkVarParam, dkHeap, dkUnknown:
+    # a function that only receives scalar values cannot read any location:
+    result = not noSideEffect
+    if not result:
+      for i in 1..<n.len:
+        let t = n[i].typ
+        if t == nil or t.skipTypes(abstractInst).kind notin
+            {tyBool, tyChar, tyEnum, tyInt..tyUInt64, tySet}:
+          return true
+
+proc readsDest(p: BProc; n: PNode; d: ConstrDest): bool =
+  ## Whether evaluating `n` may read memory that is written while a
+  ## constructor is built in place in `d`. Only the involved expressions are
+  ## considered; the reasoning is based on where `d` lives (see `DestKind`).
+  if n.isCompileTimeOnlyNode: return false
+  case n.kind
+  of nkSym:
+    let s = n.sym
+    result = (d.root != nil and s == d.root) or symMayAlias(p, s, d)
+  of PathKinds, ConvKinds, nkBracketExpr:
+    let root = pathRoot(n)
+    if root != nil:
+      if d.root != nil and root == d.root:
+        result = overlaps(d.n, n) or readsPathIndexes(p, n, d)
+      else:
+        result = symMayAlias(p, root, d) or readsPathIndexes(p, n, d)
+    elif n.kind == nkBracketExpr:
+      # indexing through a pointer, a seq or a string:
+      let x = n[0].skipConv
+      let k = x.typ.skipTypes(abstractInst).kind
+      case d.kind
+      of dkFresh: result = false
+      of dkLocal:
+        # neither a payload nor a parameter can point to a local:
+        result = (k notin {tySequence, tyString} and not isRoutineParam(p, x) and
+          isAddrTaken(p, d.root)) or readsDestSons(p, n, d)
+      of dkGlobal:
+        result = k notin {tySequence, tyString} or readsDestSons(p, n, d)
+      else:
+        result = true
+    else:
+      result = readsDestSons(p, n, d)
+  of nkHiddenDeref, nkDerefExpr:
+    let x = n[0].skipConv
+    let isRef = x.typ.skipTypes(abstractInst).kind == tyRef
+    case d.kind
+    of dkFresh: result = false
+    of dkLocal:
+      # a ref never points to a local; a parameter was bound before it existed:
+      result = (not (isRef or isRoutineParam(p, x)) and isAddrTaken(p, d.root)) or
+        readsDest(p, x, d)
+    of dkGlobal:
+      result = not isRef or readsDest(p, x, d)
+    else:
+      result = true
+  of nkCallKinds:
+    result = callMayReadDest(p, n, d)
+  of nkCharLit..nkNilLit, nkType, nkEmpty, nkNone, nkCommentStmt,
+      nkLambdaKinds, nkTypeOfExpr:
+    result = false
+  else:
+    result = readsDestSons(p, n, d)
+
+proc constrNeedsTemp(p: BProc; dest, constr: PNode): bool =
+  ## Whether the constructor `constr` must be built in a temporary instead of
+  ## in place in `dest`, because the evaluation of its elements may read the
+  ## (already partially overwritten) destination.
+  let d = constrDest(p, dest)
+  if d.kind == dkFresh: return false
+  for it in sonsFrom(constr, ord(constr.kind == nkObjConstr)):
+    let val = if it.kind == nkExprColonExpr: it[1] else: it
+    if readsDest(p, val, d): return true
+  result = false
+
 proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField: PNode; val: PNode; check: PNode; d: var TLoc; r: Rope; info: TLineInfo) =
   var tmp2 = TLoc(snippet: r)
   let field = lookupFieldAgain(p, ty, nField.sym, tmp2.snippet)
@@ -1911,12 +2193,12 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # - the destination is not a writable location (d.k == locNone)
   # - the constructed type differs from the destination type (subtype
   #   assignments need the genAssignment path for ObjectAssignmentDefect)
-  # - the constructor's field values may alias the destination (isPartOf)
+  # - the constructor's field values may read the destination
   var useTemp =
         isRef or
         d.k == locNone or
         (d.t != nil and not sameBackendType(t, d.t.skipTypes(abstractInstOwned))) or
-        (isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo)
+        constrNeedsTemp(p, d.lode, e)
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
@@ -1957,16 +2239,11 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     else:
       genAssignment(p, d, tmp, {})
 
-proc lhsDoesAlias(a, b: PNode): bool =
-  result = false
-  for y in sons(b):
-    if isPartOf(a, y) != arNo: return true
-
 proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   var tmp: TLoc = default(TLoc)
   # bug #668
-  let doesAlias = lhsDoesAlias(d.lode, n)
+  let doesAlias = d.k != locNone and constrNeedsTemp(p, d.lode, n)
   let dest = if doesAlias: addr(tmp) else: addr(d)
   if doesAlias:
     tmp = getTemp(p, n.typ)
@@ -3175,6 +3452,10 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
     var elem = newBuilder("")
     genSetNode(p, e, elem)
     putIntoDest(p, d, e, extract(elem))
+  elif d.k != locNone and constrNeedsTemp(p, d.lode, e):
+    var tmp = getTemp(p, e.typ)
+    genSetConstr(p, e, tmp)
+    genAssignment(p, d, tmp, {})
   else:
     if d.k == locNone: d = getTemp(p, e.typ)
     let size = getSize(p.config, e.typ)
@@ -3244,7 +3525,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
 
     var tmp: TLoc = default(TLoc)
     # bug #16331
-    let doesAlias = lhsDoesAlias(d.lode, n)
+    let doesAlias = d.k != locNone and constrNeedsTemp(p, d.lode, n)
     let dest = if doesAlias: addr(tmp) else: addr(d)
     if doesAlias:
       tmp = getTemp(p, n.typ)
@@ -3305,12 +3586,20 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
 proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
-    if d.k == locNone: d = getTemp(p, n.typ)
+    var tmp: TLoc = default(TLoc)
+    let doesAlias = d.k != locNone and constrNeedsTemp(p, d.lode, n)
+    let dest = if doesAlias: addr(tmp) else: addr(d)
+    if doesAlias:
+      tmp = getTemp(p, n.typ)
+    elif d.k == locNone:
+      d = getTemp(p, n.typ)
     for i, ni in isons(n):
-      arr = initLoc(locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
+      arr = initLoc(locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), dest[].storage)
       let lit = cIntLiteral(i)
-      arr.snippet = subscript(rdLoc(d), lit)
+      arr.snippet = subscript(rdLoc(dest[]), lit)
       expr(p, ni, arr)
+    if doesAlias:
+      genAssignment(p, d, tmp, {})
 
 proc genComplexConst(p: BProc, sym: PSym, d: var TLoc) =
   requestConstImpl(p, sym)

@@ -23,9 +23,8 @@ type
 
   PartFlag* = enum
     pfStructural    ## use structural prefix-chain detection and tree-walk
-    pfBidirectional ## also check reverse direction per field in nkObjConstr
 
-proc isCompileTimeOnlyNode(n: PNode): bool {.inline.} =
+proc isCompileTimeOnlyNode*(n: PNode): bool {.inline.} =
   ## `typeof` and typedesc/static values describe types at compile time; they
   ## do not read the runtime location that alias analysis is protecting.
   n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
@@ -63,19 +62,6 @@ proc isAccessorPrefixOf(a, b: PNode): bool =
       cur = cur[1]
     else: discard
   result = sameLocation(cur, a)
-
-proc isStandaloneScalar(n: PNode): bool =
-  ## A read of a variable that is not of an aggregate type. Such a variable is
-  ## a location of its own and cannot live inside the destination, so a read
-  ## of it does not need a temporary (bug #26274). Aggregate parameters are
-  ## excluded as they are passed by pointer and can alias the destination.
-  var n = n
-  while n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}: n = n[1]
-  result = n.kind == nkSym and
-    n.sym.kind in {skVar, skLet, skForVar, skTemp, skConst, skParam, skResult} and
-    n.typ != nil and
-    n.typ.skipTypes(abstractInst).kind notin {tyObject, tyTuple, tyArray,
-      tyOpenArray, tyVarargs, tyUncheckedArray, tyVar, tyLent}
 
 proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult
 
@@ -142,11 +128,6 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
   ##   siblings, but `pfStructural` walks the chain to recognise the
   ##   relationship.
   ## * Unrecognised node kinds are traversed recursively.
-  ##
-  ## When `pfBidirectional` is set:
-  ## * In `nkObjConstr` the reverse direction `isPartOf(value, a)` is also
-  ##   checked per field value so that reads hidden behind calls/closures
-  ##   are detected.
   ##
   ## cases:
   ##
@@ -289,11 +270,6 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
         if res != arNo:
           result = res
           if res == arYes: break
-        if pfBidirectional in flags and not isStandaloneScalar(b[i][1]):
-          let res2 = isPartOf(b[i][1], a, {pfStructural})
-          if res2 != arNo:
-            result = res2
-            if res2 == arYes: break
     of nkCallKinds:
       result = arNo
       for i in 1..<b.len:

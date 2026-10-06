@@ -105,6 +105,11 @@ type
     withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
     inUncheckedAssignSection*: int
+    body*: PNode              # the transformed body of `prc` (nil for init procs)
+    addrTaken*: IntSet        # locals and params of `body` whose address is
+                              # taken; computed lazily, see `addrTakenDone`
+    addrTakenDone*: bool
+    initializedVar*: PSym     # the local whose declaration is being generated
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
