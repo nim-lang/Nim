@@ -291,6 +291,9 @@ type
     genericsOpenSym
     vtables
     typeBoundOps
+    ownedRefs
+      ## `owned ref T` / `owned proc` as a statically checked unique
+      ## ownership annotation on top of ARC/ORC/YRC (RFC #575).
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

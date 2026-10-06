@@ -267,6 +267,9 @@ proc ensureIcConfig*(conf: ConfigRef) =
   ## process replays its output). The artifact lives in the nimcache derived from
   ## the command line (pre-config-parse), which is the one the children are told;
   ## a `--nimcache:` set inside `nim.cfg` is recovered from the artifact itself.
+  # Resolve the actual source before canonicalizing an extensionless argument.
+  # The spelling without `.nim` may not exist, or may name a compiled binary.
+  conf.setFromProjectName(addFileExt(conf.projectFull, NimExt).string)
   let cacheDir = getNimcacheDir(conf).string
   # Start from a clean cache when the on-disk NIF format stamp is absent or stale
   # (see `icFormatVersion`). This must happen HERE, before the config artifact is
@@ -282,9 +285,8 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # Projects in the same nimcache can load different config.nims chains or
   # project-specific .cfg files. Keep their snapshots separate; the build
   # signature still compares effective settings so equivalent configs can
-  # share compiled modules. Match commandIc's extensionless project handling.
-  let projectFile = addFileExt(conf.projectFull, NimExt)
-  let outPath = cacheDir / ("ic_config_" & moduleSuffix(projectFile.string, []) & ".cfg.nif")
+  # share compiled modules.
+  let outPath = cacheDir / ("ic_config_" & moduleSuffix(conf.projectFull.string, []) & ".cfg.nif")
   if not fileExists(outPath) or sourcesChanged(outPath):
     createDir(cacheDir)
     # Re-invoke ourselves as the config producer: reuse this process's command

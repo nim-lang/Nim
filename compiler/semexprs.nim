@@ -479,9 +479,14 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
-    let t = newTypeS(targetType.kind, c, baseType)
-    if targetType.kind == tyOwned:
-      t.incl tfHasOwned
+    var t: PType
+    if targetType.kind == tyOwned and not ownedRefsEnabled(c):
+      t = baseType # `owned` is erased when the feature is off
+    else:
+      t = newTypeS(targetType.kind, c, baseType)
+      if targetType.kind == tyOwned:
+        t.incl tfHasOwned
+        checkOwnedBase(c, n.info, t)
     result = newNodeI(nkType, n.info)
     result.typ = makeTypeDesc(c, t)
     return
@@ -1010,14 +1015,14 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #echo "NOW evaluating at compile time: ", call.renderTree
     if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
       if sfCompileTime in callee.flags:
-        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner)
+        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner, c)
         if result.isNil:
           localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
         else:
           var producedClosure = false
           result = fixupTypeAfterEval(c, result, n, producedClosure)
       else:
-        result = evalConstExpr(c.module, c.idgen, c.graph, call)
+        result = evalConstExpr(c.module, c.idgen, c.graph, call, c)
         if result.isNil: result = n
         else:
           var producedClosure = false
@@ -1037,7 +1042,7 @@ proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if a.findUnresolvedStatic != nil or
       c.config.errorCounter != oldErrorCount:
     return a
-  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner, c)
   if result.isNil:
     localError(c.config, n.info, errCannotInterpretNodeX % renderTree(n))
     result = c.graph.emptyNode
@@ -1976,7 +1981,8 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
 
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   const absInst = abstractInst - {tyOwned}
-  if ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
+  if optOwnedRefs in c.config.globalOptions and
+      ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
       le.typ != nil and le.typ.skipTypes(absInst).kind != tyOwned and
       scopedLifetime(c, ri):
     if le.kind == nkSym and le.sym.kind == skResult:

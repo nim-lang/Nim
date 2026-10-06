@@ -1169,6 +1169,11 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     if normalize(name) notin notForwarded and a notin result:
       result.add a
 
+proc isSearchPathArg(arg: string): bool =
+  let first = if arg.startsWith("--"): 2 else: 1
+  let sep = arg.find({':', '='}, first)
+  result = sep >= first and normalize(arg[first ..< sep]) in ["path", "p"]
+
 proc configSignatureFile(c: DepContext; forwardedArgs: seq[string]): string =
   ## nifmake decides staleness from file mtimes alone — it never looks at a
   ## rule's command line. So changing `-d:someDefine`, `--mm:` or `--threads:`
@@ -1195,18 +1200,17 @@ proc configSignatureFile(c: DepContext; forwardedArgs: seq[string]): string =
       content.add "--path:" & p.string & "\n"
   for a in forwardedArgs:
     if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:") or
-        a.startsWith("--icConfigHash:"):
+        a.startsWith("--icConfigHash:") or isSearchPathArg(a):
       continue
     content.add a & "\n"
   if c.config.icPreparsedConfig.len > 0 and fileExists(c.config.icPreparsedConfig):
     # Hash effective config settings, excluding the cache location and source
     # file list. Different config.nims files can resolve to identical settings;
     # their paths are only metadata for deciding when to refresh the snapshot.
-    # Search paths are already fingerprinted above in lookup order, keeping
-    # only their first occurrence. Do not hash the raw snapshot's list too:
-    # each config.nims implicitly appends libpath, so equivalent configs at
-    # different depths can contain different numbers of redundant entries.
-    # Keep all remaining settings, including switch order, in the hash.
+    # Search paths (including command-line paths) are already fingerprinted
+    # above in lookup order, keeping only their first occurrence. NimScript
+    # config chains can append redundant library paths; these do not change
+    # the effective settings. Keep other settings and switch order in the hash.
     var normalized = ""
     try:
       for line in lines(c.config.icPreparsedConfig):
