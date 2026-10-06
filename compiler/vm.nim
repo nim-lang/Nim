@@ -613,7 +613,7 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
 
 proc enumToStr(t: PType; x: BiggestInt): string =
   let n = t.n
-  if x <% n.len and (let f = n[x].sym; f.position == x):
+  if x <% n.len and (let f = n[int(x)].sym; f.position == x):
     result = if f.ast.isNil: f.name.s else: f.ast.strVal
   else:
     for i in 0..<n.len:
