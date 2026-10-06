@@ -298,6 +298,45 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
         when traceCollector:
           cprintf("[DECREF] %p\n", cell)
 
+proc nimDecRefIsLastOwned(p: pointer): bool {.compilerRtl, inl.} =
+  ## Releases the owning edge of a cell of acyclic type
+  ## (`--experimental:ownedRefs`, RFC #575).
+  ##
+  ## The relaxed fast path rests on a non-local invariant, so here it is: every
+  ## counted reference is derived either from the owned location, whose
+  ## accesses happen-before its destruction (or the program races on it), or
+  ## from another counted reference, whose contribution is already in `rc`.
+  ## So observing a zero count proves that no other reference exists and none
+  ## can appear; there is nothing to adjudicate and no RMW is needed. Two
+  ## participants are outside this argument: `.cursor`/`addr`/`cast` (the
+  ## pre-existing cursor hazard) and the cycle collector, which mutates `rc`
+  ## without holding a reference. The compiler only emits this call for cells
+  ## that cannot form a cycle, which the collector therefore never holds.
+  ##
+  ## The load is ACQUIRE as the count may have reached zero via another
+  ## thread's release-decrement. The slow path frees on the value its RMW
+  ## returned, never on the load, which keeps this out of the
+  ## nim-lang/threading#45 bug class. Do not "simplify" this into an
+  ## unconditional RMW, and do not copy it where the derivation does not hold.
+  result = false
+  if p != nil:
+    let cell = head(p)
+    when (defined(gcAtomicArc) or defined(gcYrc)) and hasThreadSupport:
+      let rc = atomicLoadN(addr cell.rc, ATOMIC_ACQUIRE)
+    else:
+      let rc = cell.rc
+    if (rc and not rcMask) == 0:
+      result = true
+      when traceCollector:
+        cprintf("[ABOUT TO DESTROY] %p\n", cell)
+    else:
+      when defined(nimOwnedStrict):
+        # Diagnostic only: an unowned reference outlives its owner. Without
+        # `nimOwnedStrict` it keeps the object alive, which is safe.
+        cstderr.rawWrite "[FATAL] dangling references exist\n"
+        rawQuit 1
+      result = nimDecRefIsLast(p)
+
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
   var y {.cursor.} = x

@@ -479,9 +479,14 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
-    let t = newTypeS(targetType.kind, c, baseType)
-    if targetType.kind == tyOwned:
-      t.incl tfHasOwned
+    var t: PType
+    if targetType.kind == tyOwned and not ownedRefsEnabled(c):
+      t = baseType # `owned` is erased when the feature is off
+    else:
+      t = newTypeS(targetType.kind, c, baseType)
+      if targetType.kind == tyOwned:
+        t.incl tfHasOwned
+        checkOwnedBase(c, n.info, t)
     result = newNodeI(nkType, n.info)
     result.typ = makeTypeDesc(c, t)
     return
@@ -1976,7 +1981,8 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
 
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   const absInst = abstractInst - {tyOwned}
-  if ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
+  if optOwnedRefs in c.config.globalOptions and
+      ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
       le.typ != nil and le.typ.skipTypes(absInst).kind != tyOwned and
       scopedLifetime(c, ri):
     if le.kind == nkSym and le.sym.kind == skResult:

@@ -2458,6 +2458,28 @@ template matchesVoidProc(t: PType): bool =
   (t.kind == tyProc and t.len == 1 and t.returnType == nil) or
     (t.kind == tyBuiltInTypeClass and t.elementType.kind == tyProc)
 
+proc isFreshOwnable(n: PNode): bool =
+  ## Expressions that produce a reference nobody else holds yet. These may
+  ## initialize an `owned` location even where the expression itself is not
+  ## typed as `owned` (modules without `--experimental:ownedRefs`, lambdas).
+  var n = n
+  while n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkStmtListExpr} and n.len > 0:
+    n = n.lastSon
+  case n.kind
+  of nkObjConstr, nkLambda, nkDo, nkNilLit:
+    result = true
+  of nkSym:
+    result = n.sym.kind in routineKinds
+  of nkCall:
+    # `new(T)`:
+    if n[0].kind == nkSym and n[0].sym.name.s == "new":
+      let m = getModule(n[0].sym)
+      result = m != nil and sfSystemModule in m.flags
+    else:
+      result = false
+  else:
+    result = false
+
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   result = nil
@@ -2510,6 +2532,20 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   let oldInheritancePenalty = m.inheritancePenalty
   var r = typeRel(m, f, a)
+  if r == isNone and a.kind != tyOwned:
+    # a fresh value has no other owner yet and so may become `owned`:
+    let fo = f.skipTypes({tyGenericInst, tyAlias, tySink})
+    if fo.kind == tyOwned and isFreshOwnable(arg):
+      if fo.skipModifier.skipTypes(abstractInst).kind == tyProc:
+        # keep the `owned` target visible as a conversion: once lambda lifting
+        # has produced the environment, injectdestructors checks that it is
+        # acyclic, which `owned` closures promise:
+        let inner = paramTypesMatchAux(m, fo.skipModifier, a, argSemantized, argOrig)
+        if inner != nil:
+          let t = if containsGenericType(fo): newTypeS(tyOwned, c, inner.typ) else: f
+          result = newTreeIT(nkHiddenSubConv, inner.info, t, newNodeI(nkEmpty, inner.info), inner)
+        return
+      r = typeRel(m, fo.skipModifier, a)
   # This special typing rule for macros and templates is not documented
   # anywhere and breaks symmetry. It's hard to get rid of though, my
   # custom seqs example fails to compile without this:
