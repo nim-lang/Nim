@@ -57,11 +57,19 @@ proc warningImpl(arg, orig: string) = discard
 proc hintImpl(arg, orig: string) = discard
 
 proc paramStr*(i: int): string =
-  ## Retrieves the `i`'th command line parameter.
+  ## Retrieves the `i`'th raw command line parameter seen by the Nim
+  ## compiler or script host.
+  ##
+  ## Use `commandLineParams proc <cmdline.html#commandLineParams>`_ for the
+  ## stripped arguments intended for the current script.
   builtin
 
 proc paramCount*(): int =
-  ## Retrieves the number of command line parameters.
+  ## Retrieves the number of raw command line parameters seen by the Nim
+  ## compiler or script host.
+  ##
+  ## Use `commandLineParams proc <cmdline.html#commandLineParams>`_ for the
+  ## stripped arguments intended for the current script.
   builtin
 
 proc switch*(key: string, val="") =
