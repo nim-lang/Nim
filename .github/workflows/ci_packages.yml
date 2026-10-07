@@ -1,5 +1,6 @@
 name: Packages CI
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
@@ -45,9 +46,9 @@ jobs:
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
-          sudo apt-get update -qq
-          DEBIAN_FRONTEND='noninteractive' \
-            sudo apt-get install --no-install-recommends -yq \
+          sudo apt-get -o Acquire::Retries=3 update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive \
+            apt-get -o Acquire::Retries=3 install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
               valgrind libc6-dbg libblas-dev liblapack-dev libpcre3 xorg-dev
       - name: 'Install dependencies (macOS)'
@@ -71,10 +72,36 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimCiSystemInfo
 
+      - name: 'Configure C/C++ compiler cache'
+        id: ccache
+        uses: ./.github/actions/compiler-cache
+        with:
+          key: ${{ matrix.os }}-${{ matrix.cpu }}-${{ matrix.batch }}
+          # Force real compilation on devel while populating PR caches. PATH
+          # wrappers remain: a test inspecting the compiler's executable path
+          # could observe them. Use enabled: 'false' for a fully unwrapped run.
+          recache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/devel' }}
+
       - name: 'Build csourcesAny'
-        shell: bash
-        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
+        uses: ./.github/actions/bootstrap
+        with:
+          runner: ${{ matrix.os }}
+          cpu: ${{ matrix.cpu }}
 
       - name: 'koch, Run CI'
         shell: bash
         run: . ci/funs.sh && nimInternalBuildKochAndRunCI
+
+      - name: 'Compiler cache statistics'
+        if: ${{ !cancelled() && steps.ccache.outputs.cache-dir != '' }}
+        shell: bash
+        run: ccache --show-stats
+
+      - name: 'Save compiler results'
+        # Refresh on each successful devel commit; PRs only restore base caches.
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/devel' && steps.ccache.outputs.cache-hit != 'true' && steps.ccache.outputs.cache-key != '' }}
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: ${{ steps.ccache.outputs.cache-dir }}
+          key: ${{ steps.ccache.outputs.cache-key }}

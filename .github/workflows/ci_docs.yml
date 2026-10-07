@@ -12,6 +12,10 @@ on:
       - 'tools/dochack/dochack.nim'
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
+      - '.github/actions/bootstrap/**'
+      - 'ci/funs.sh'
+      - 'ci/build_autogen.bat'
+      - 'config/build_config.txt'
       - 'koch.nim'
 
   pull_request:
@@ -27,6 +31,10 @@ on:
       - 'tools/dochack/dochack.nim'
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
+      - '.github/actions/bootstrap/**'
+      - 'ci/funs.sh'
+      - 'ci/build_autogen.bat'
+      - 'config/build_config.txt'
       - 'koch.nim'
 
 concurrency:
@@ -42,10 +50,12 @@ jobs:
         include:
           - target: linux
             os: ubuntu-22.04
+            cpu: amd64
           - target: windows
             os: windows-latest
           - target: osx
             os: macos-15
+            cpu: arm64
 
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
@@ -82,14 +92,15 @@ jobs:
         # this would work on windows and other CI use this on windows,
         # but we ensure here that `ci/build_autogen.bat` keeps working on windows.
         if: runner.os != 'Windows'
-        shell: bash
-        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc
-          # was previously using caching via `actions/cache@v1` but this wasn't
-          # used in other CI pipelines and it's unclear the added complexity
-          # was worth the saving; can be revisited if needed.
+        uses: ./.github/actions/bootstrap
+        with:
+          runner: ${{ matrix.os }}
+          cpu: ${{ matrix.cpu }}
 
       - name: 'Build csourcesAny (windows)'
         if: runner.os == 'Windows'
+        env:
+          NIM_CSOURCES_STRICT: '1'
         shell: cmd
         run: ci/build_autogen.bat
 

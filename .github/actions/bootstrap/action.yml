@@ -1,0 +1,63 @@
+name: Bootstrap Nim
+description: Build or restore the pinned csources compiler
+
+inputs:
+  runner:
+    description: Runner image label, used to isolate platform ABIs
+    required: true
+  cpu:
+    description: Target CPU for the csources Makefile
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Identify bootstrap compiler
+      id: bootstrap
+      shell: bash
+      env:
+        BOOTSTRAP_CPU: ${{ inputs.cpu }}
+      run: |
+        if [[ -z "$BOOTSTRAP_CPU" ]]; then
+          echo 'Bootstrap input cpu must not be empty' >&2
+          exit 1
+        fi
+        . ci/funs.sh
+        nimDefineVars
+        echo "path=$nim_csources" >> "$GITHUB_OUTPUT"
+        echo "image=${ImageOS:-${{ inputs.runner }}}" >> "$GITHUB_OUTPUT"
+        gcc --version > bin/nim-bootstrap-cc.txt
+
+    - name: Restore bootstrap compiler
+      id: cache
+      uses: actions/cache/restore@v6
+      continue-on-error: true
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
+      with:
+        # MSYS can append .exe when copying an executable. Node's globbing
+        # needs the physical name rather than MSYS's extensionless alias.
+        path: |
+          ${{ steps.bootstrap.outputs.path }}
+          ${{ steps.bootstrap.outputs.path }}.exe
+        # No partial matches: a compiler built for another pin or ABI is unusable.
+        key: csources-v2-${{ steps.bootstrap.outputs.image }}-${{ runner.arch }}-${{ inputs.cpu }}-${{ hashFiles('config/build_config.txt', 'ci/funs.sh', '.github/actions/bootstrap/action.yml', 'bin/nim-bootstrap-cc.txt') }}
+
+    - name: Build csourcesAny
+      shell: bash
+      env:
+        BOOTSTRAP_CPU: ${{ inputs.cpu }}
+        NIM_CSOURCES_STRICT: '1'
+      # Always call the helper: cache hits still need to populate bin/nim.
+      run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc "ucpu=$BOOTSTRAP_CPU"
+
+    - name: Save bootstrap compiler
+      if: steps.cache.outputs.cache-hit != 'true' && steps.cache.outputs.cache-primary-key != ''
+      uses: actions/cache/save@v6
+      continue-on-error: true
+      with:
+        path: |
+          ${{ steps.bootstrap.outputs.path }}
+          ${{ steps.bootstrap.outputs.path }}.exe
+        key: ${{ steps.cache.outputs.cache-primary-key }}
+      # Save before running tests so test failures do not discard a successful build.

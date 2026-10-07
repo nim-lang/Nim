@@ -44,8 +44,10 @@ jobs:
         run: . ci/funs.sh && nimCiSystemInfo
 
       - name: 'Build csourcesAny'
-        shell: bash
-        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
+        uses: ./.github/actions/bootstrap
+        with:
+          runner: ${{ matrix.os }}
+          cpu: ${{ matrix.cpu }}
 
       - name: 'Build koch'
         shell: bash
