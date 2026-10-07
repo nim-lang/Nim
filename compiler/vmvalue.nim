@@ -473,11 +473,10 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
     result = newNodeIT(nkBracket, L.info, t)
     let count = toInt(lengthOrd(conf, s))
     let size = count * vmSizeOf(L.vc.layouts[], conf, s.elementType)
-    if count > broadcastArrayThreshold and conf.backend != backendJs and
+    if count > broadcastArrayThreshold and
         (checkRead(L, src, size); isZeroed(src, size)):
       # the broadcast form of the old VM's `getNullValue`: a single son
       # stands for `count` zeroed elements, see `isDefaultBroadcastArray`.
-      # (jsgen does not understand that form.)
       result.add loadValue(L, src, s.elementType)
       result.flags.incl nfBroadcast
     else:
