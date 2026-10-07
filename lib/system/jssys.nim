@@ -81,6 +81,10 @@ proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inline.} =
   # XXX Shouldn't there be exception stack like in excpt.nim?
   setCurrentException(e)
 
+proc popCurrentException() {.compilerRtl, inline.} =
+  # Closure iterators restore the caller's exception separately.
+  setCurrentException(nil)
+
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
     TempFrame = tuple[procname: cstring, line: int, filename: cstring]
