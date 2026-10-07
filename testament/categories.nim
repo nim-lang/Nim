@@ -14,7 +14,7 @@
 
 import important_packages
 import std/[strformat, strutils, tables]
-from std/sequtils import filterIt
+from std/sequtils import filterIt, mapIt
 
 const
   specialCategories = [
@@ -385,6 +385,8 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
+import packagebatches
+
 proc listPackagesAll(): seq[NimblePackage] =
   result = @[]
   var nimbleDir = getEnv("NIMBLE_DIR")
@@ -415,8 +417,10 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
       result = pkgs
     else:
       result = @[]
+      let batches = packageBatchAssignments(pkgs.mapIt(it.name),
+        testamentData0.testamentNumBatch)
       for i in 0..<pkgs.len:
-        if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
+        if batches[i] == testamentData0.testamentBatch:
           result.add pkgs[i]
 
 proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
@@ -436,6 +440,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
   try:
     let pkgs = listPackages(packageFilter)
     for i, pkg in pkgs:
+      echo "Testing package [$#/$#] $#" % [$i, $pkgs.len, pkg.name]
       inc r.total
       var test = makeSupTest(pkg.name, "", cat, "[$#/$#] " % [$i, $pkgs.len])
       let buildPath = packagesDir / pkg.name
@@ -443,6 +448,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         var outp: string = ""
         let ok = retryCall(maxRetry = maxRetries, backoffDuration = 10.0):
           var status: int
+          echo "[$#] $#" % [pkg.name, cmd]
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
           status == QuitSuccess
         if not ok:
