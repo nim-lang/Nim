@@ -1890,6 +1890,23 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField: PNode;
   else:
     expr(p, val, tmp2)
 
+proc mentionsSym(n: PNode; s: PSym): bool =
+  if n.kind == nkSym: return n.sym == s
+  for i in 0..<n.safeLen:
+    if mentionsSym(n[i], s): return true
+  result = false
+
+proc constrAliasFlags(dest, constr: PNode): set[PartFlag] =
+  ## The common `dest = Constr(...)` where `dest` is `x` or `x[]` (a `var`
+  ## parameter) and `x` is not mentioned by the constructor needs no reverse
+  ## check: it would treat every read of a value whose type can be part of
+  ## `dest`'s type as an alias and produce a needless temporary (bug #26274).
+  let x = if dest != nil and dest.kind == nkHiddenDeref: dest[0] else: dest
+  if x != nil and x.kind == nkSym and not mentionsSym(constr, x.sym):
+    result = {pfStructural}
+  else:
+    result = {pfStructural, pfBidirectional}
+
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
@@ -1916,7 +1933,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
         isRef or
         d.k == locNone or
         (d.t != nil and not sameBackendType(t, d.t.skipTypes(abstractInstOwned))) or
-        (isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo)
+        (isPartOf(d.lode, e, constrAliasFlags(d.lode, e)) != arNo)
 
   var tmp: TLoc = default(TLoc)
   var r: Rope
