@@ -1700,6 +1700,28 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].addAssignmentWithValue("nimErr_"):
       p.blocks[0].sections[cpsInit].addCall(cgsymValue(p.module, "nimErrorFlag"))
 
+proc resultDestructorCpp(p: BProc; prc: PSym; res: PSym; procBody: PNode): PNode =
+  ## bug #25919: with C++ exceptions a result returned by value is lost when
+  ## the proc raises. Returns the `=destroy(result)` call to run before the
+  ## exception is rethrown, or nil when no cleanup is required.
+  result = nil
+  if p.config.exc == excCpp and sfInjectDestructors in prc.flags and
+      p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc}:
+    let t = res.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+    var op = getAttachedOp(p.module.g.graph, t, attachedDestructor)
+    if op != nil and op.ast.isGenericRoutine:
+      # like `injectdestructors.genOp`: use the canonical type's instance
+      let h = hashType(t, p.config, {CoType, CoConsiderOwned, CoDistinct})
+      let canon = p.module.g.graph.canonTypes.getOrDefault(h)
+      op = if canon != nil: getAttachedOp(p.module.g.graph, canon, attachedDestructor) else: nil
+    if op != nil and not op.ast.isGenericRoutine and
+        not isTrivialProc(p.module.g.graph, op) and
+        bodyCanRaise(p, procBody):
+      var arg = newSymNode(res)
+      if op.typ.signatureLen <= 1 or op.typ.firstParamType.kind == tyVar:
+        arg = newTreeIT(nkHiddenAddr, res.info, makePtrType(res.typ, p.module.idgen), arg)
+      result = newTreeI(nkCall, res.info, newSymNode(op), arg)
+
 proc genProcLvl3*(m: BModule, prc: PSym) =
   if m.config.cmd == cmdNifC:
     fillBackendName(m, prc)
@@ -1773,6 +1795,8 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   let tmpInfo = prc.info
   discard freshLineInfo(p, prc.info)
 
+  # `=destroy(result)` to run when the body raises, see `resultDestructorCpp`:
+  var resultCleanup: PNode = nil
   if sfPure notin prc.flags and prc.typ.returnType != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
@@ -1788,9 +1812,10 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         # declare the result symbol:
         assignLocalVar(p, resNode)
         assert(res.loc.snippet != "")
+        resultCleanup = resultDestructorCpp(p, prc, res, procBody)
         let paths = allPathsAsgnResult(p, procBody)
         if p.config.selectedGC in {gcArc, gcAtomicArc, gcOrc, gcYrc} and
-            paths == InitSkippable:
+            paths == InitSkippable and resultCleanup == nil:
           # In an ideal world the codegen could rely on injectdestructors doing its job properly
           # and then the analysis step would not be required.
           discard "result init optimized out"
@@ -1849,6 +1874,12 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   icProfStart(tGenBody)
   genProcBody(p, procBody)
+  if resultCleanup != nil:
+    p.s(cpsStmts).buf = "try {\n" & move(p.s(cpsStmts).buf)
+    p.s(cpsStmts).add("} catch (...) {\n")
+    genRestoreFrameAfterException(p)
+    genStmts(p, resultCleanup)
+    p.s(cpsStmts).add("throw;\n}\n")
   icProfStop(tGenBody)
 
   # IC: spurious write, seems fine for now:
