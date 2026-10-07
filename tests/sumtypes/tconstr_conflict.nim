@@ -1,9 +1,8 @@
 discard """
   errormsg: "The fields 'x' and 'a' cannot be initialized together, because they are from conflicting branches in the case object."
-  line: 18
+  line: 17
 """
 
-{.experimental: "sumTypes".}
 type
   Opt[T] = object
     case

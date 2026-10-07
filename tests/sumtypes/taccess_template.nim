@@ -1,9 +1,8 @@
 discard """
   errormsg: "field 'val' can only be accessed in a pattern matching `case` branch"
-  line: 13
+  line: 12
 """
 
-{.experimental: "sumTypes".}
 type
   Opt[T] = object
     case

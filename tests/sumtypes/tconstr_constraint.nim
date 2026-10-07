@@ -1,9 +1,8 @@
 discard """
   errormsg: "type mismatch: got 'string' for field 'v' but expected 'T: Addable'"
-  line: 14
+  line: 13
 """
 
-{.experimental: "sumTypes".}
 type
   Addable = concept
     proc `+`(a, b: Self): Self

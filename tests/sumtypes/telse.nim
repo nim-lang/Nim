@@ -1,9 +1,8 @@
 discard """
   errormsg: "sum type case objects cannot have an else branch"
-  line: 10
+  line: 9
 """
 
-{.experimental: "sumTypes".}
 type X = object
   case
   of A: discard

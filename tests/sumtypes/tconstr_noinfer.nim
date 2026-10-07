@@ -1,9 +1,8 @@
 discard """
   errormsg: "cannot infer generic type for sum type constructor; use a type conversion: Opt[...](...)"
-  line: 19
+  line: 18
 """
 
-{.experimental: "sumTypes".}
 type
   Opt[T] = object
     case

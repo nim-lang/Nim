@@ -1,4 +1,3 @@
-{.experimental: "sumTypes".}
 type
   Res* = object
     case

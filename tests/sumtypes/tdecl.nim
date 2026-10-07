@@ -11,8 +11,6 @@ Q
 '''
 """
 
-{.experimental: "sumTypes".}
-
 type
   Node = ref object
     case

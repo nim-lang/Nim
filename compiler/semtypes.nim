@@ -898,10 +898,6 @@ proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   ## whose (hidden) discriminator is of a generated enum type with the
   ## values `A`, `B`, `C`. The branch names become overloadable enum fields
   ## in the scope of the type declaration.
-  if sumTypes notin c.features:
-    localError(c.config, n.info,
-      "an object `case` without a discriminator requires '--experimental:sumTypes'")
-    return
   let owner = getCurrOwner(c)
   if owner.kind != skType:
     localError(c.config, n.info, "a sum type must be declared in a type section")

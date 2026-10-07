@@ -1,4 +1,3 @@
-{.experimental: "sumTypes".}
 type
   Opt*[T] = object
     case

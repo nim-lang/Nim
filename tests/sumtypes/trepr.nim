@@ -7,8 +7,6 @@ Node(Add(a: Node(Value(v: 1)), b: nil))
 '''
 """
 
-{.experimental: "sumTypes".}
-
 type
   Opt[T] = object
     case

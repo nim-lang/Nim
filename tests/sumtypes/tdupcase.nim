@@ -1,9 +1,8 @@
 discard """
   errormsg: "only one empty `case` section is allowed in an object type"
-  line: 11
+  line: 10
 """
 
-{.experimental: "sumTypes".}
 type X = object
   case
   of A: discard

@@ -1,9 +1,8 @@
 discard """
   errormsg: "sum type constructor requires named arguments"
-  line: 18
+  line: 17
 """
 
-{.experimental: "sumTypes".}
 type
   Opt[T] = object
     case

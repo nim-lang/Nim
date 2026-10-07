@@ -18,8 +18,6 @@ false true
 '''
 """
 
-{.experimental: "sumTypes".}
-
 from msumtypes import Opt, Hidden, some, none
 
 type

@@ -1,9 +1,8 @@
 discard """
   errormsg: "duplicate sum type branch name: A"
-  line: 10
+  line: 9
 """
 
-{.experimental: "sumTypes".}
 type X = object
   case
   of A: discard

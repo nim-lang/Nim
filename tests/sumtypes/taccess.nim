@@ -11,8 +11,6 @@ Pair(a: 1, b: "x")
 '''
 """
 
-{.experimental: "sumTypes".}
-
 type
   Opt[T] = object
     case

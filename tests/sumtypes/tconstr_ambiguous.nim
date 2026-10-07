@@ -1,9 +1,8 @@
 discard """
   errormsg: "ambiguous sum type branch 'None'; use a type conversion to select one of: tconstr_ambiguous.Opt tconstr_ambiguous.Other"
-  line: 18
+  line: 17
 """
 
-{.experimental: "sumTypes".}
 type
   Opt[T] = object
     case
