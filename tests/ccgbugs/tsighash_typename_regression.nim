@@ -55,3 +55,13 @@ block: # bug #26311
   var b: ConstCharPtr
   doAssert address(a) == addr a
   doAssert address(b) == addr b
+
+block: # imported cstring aliases in callback signatures
+  type ConstCstring {.importc: "const char *".} = cstring
+  proc setCb(cb: proc (message: ConstCstring) {.cdecl.}) = discard
+  proc oldCb(message: cstring) {.cdecl.} = discard
+  proc constCb(message: ConstCstring) {.cdecl.} = discard
+
+  static:
+    doAssert not compiles(setCb(oldCb))
+  setCb(constCb)
