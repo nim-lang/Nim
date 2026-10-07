@@ -1289,19 +1289,23 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
+    template compareCAliases(sameIdentity: untyped) =
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = sameIdentity and symFlagsA == symFlagsB and
+          a.sym.loc.snippet == b.sym.loc.snippet
+
     result = sameFlags(a, b)
     if result and {PickyCAliases, ExactTypeDescValues} <= c.flags:
       # additional requirement for the caching of generics for importc'ed types:
-      # the symbols must be identical too:
-      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
-      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
-      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
-        result = symFlagsA == symFlagsB
+      # the symbol flags and external names must match too. Ordinary aliases
+      # inherit the external name and can still share an instantiation.
+      compareCAliases(true)
     elif result and PickyBackendAliases in c.flags:
-      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
-      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
-      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
-        result = a.id == b.id
+      # Imported aliases can share the builtin's type ID while using a
+      # different C type, e.g. `const char *` instead of `cstring`.
+      compareCAliases(a.id == b.id)
 
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
