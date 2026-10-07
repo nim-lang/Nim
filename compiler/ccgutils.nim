@@ -141,7 +141,12 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
       result.add encodeType(m, t[i], staticLists)
     result.add "E"
   of tySequence, tyOpenArray, tyArray, tyVarargs, tyTuple, tyProc, tySet, tyTypeDesc,
-    tyPtr, tyRef, tyVar, tyLent, tySink, tyUncheckedArray, tyOr, tyAnd, tyBuiltInTypeClass:
+    tyPtr, tyRef, tyVar, tyLent, tySink, tyStatic, tyUncheckedArray, tyOr, tyAnd, tyBuiltInTypeClass:
+    if t.kind == tyStatic and t.n != nil:
+      staticLists.add "_s" & renderTree(t.n)
+      return
+    # A phantom static parameter can remain unbound after type inference.
+    # Encode its type like the other wrappers when there is no value to encode.
     result =
       case t.kind:
       of tySequence: encodeName("seq")
@@ -152,11 +157,6 @@ proc encodeType*(m: BModule; t: PType; staticLists: var string): string =
       if s.isNil: continue
       result.add encodeType(m, s, staticLists)
     result.add "E"
-  of tyStatic:
-    if t.n != nil:
-      staticLists.add "_s" & renderTree(t.n)
-    else:
-      raiseAssert "unreachable"
   of tyRange:
     var val = "range_"
     if t.n[0].typ.kind in {tyFloat..tyFloat128}:
