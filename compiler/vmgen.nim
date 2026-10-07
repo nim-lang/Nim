@@ -3953,9 +3953,13 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
     # result:
     let res = newSym(skTemp, getIdent(c.cache, ":vmres"), c.idgen, c.module, n.info)
     res.typ = n.typ
+    let body = prepareTopLevel(c, newTreeI(nkAsgn, n.info, newSymNode(res), n))
+    # allocate the slot after `prepareTopLevel`: it collects `addrTaken`,
+    # and a scalar `:vmres` whose address is taken (e.g. a `ref` sunk via
+    # `=sink(HiddenAddr(:vmres), call))`) must live in memory, not in a
+    # widened register, or `addrOfLoc` fails.
     let slot = setSlot(c, res, n)
     let boxed = c.prc.locals[res.itemId].boxed
-    let body = prepareTopLevel(c, newTreeI(nkAsgn, n.info, newSymNode(res), n))
     c.gen(body)
     discard boxed # a big value's register holds its address, like a boxed local's
     c.gABC(n, opcEof, TRegister(slot))
