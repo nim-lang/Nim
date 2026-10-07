@@ -400,6 +400,12 @@ proc loadElems(L: var Loader; data: Address; count: int; elemType: PType; res: P
   for i in 0..<count:
     res.add loadValue(L, data +! i*esize, elemType)
 
+proc isZeroed(a: Address; size: int): bool =
+  let p = cast[ptr UncheckedArray[byte]](toPtr(a))
+  for i in 0..<size:
+    if p[i] != 0: return false
+  result = true
+
 proc loadValue(L: var Loader; src: Address; t: PType): PNode =
   let conf = L.vc.conf
   let s = skipForLayout(t)
@@ -465,7 +471,16 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
       loadElems(L, ld[Address](src +! OpenArrayDataOffset), len, s.elementType, result)
   of tyArray:
     result = newNodeIT(nkBracket, L.info, t)
-    loadElems(L, src, toInt(lengthOrd(conf, s)), s.elementType, result)
+    let count = toInt(lengthOrd(conf, s))
+    let size = count * vmSizeOf(L.vc.layouts[], conf, s.elementType)
+    if count > broadcastArrayThreshold and
+        (checkRead(L, src, size); isZeroed(src, size)):
+      # the broadcast form of the old VM's `getNullValue`: a single son
+      # stands for `count` zeroed elements, see `isDefaultBroadcastArray`.
+      result.add loadValue(L, src, s.elementType)
+      result.flags.incl nfBroadcast
+    else:
+      loadElems(L, src, count, s.elementType, result)
   of tyTuple:
     result = newNodeIT(nkTupleConstr, L.info, t)
     for i in 0..<s.kidsLen:
