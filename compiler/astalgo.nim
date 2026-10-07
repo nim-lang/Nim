@@ -175,6 +175,15 @@ proc sumTypeCase*(n: PNode): PNode =
     if n[0].kind == nkSym and isSumTypeDiscriminator(n[0].sym): result = n
   else: discard
 
+proc sumTypeOwner*(e: PSym): PSym =
+  ## For a branch name `e` of a sum type: the type symbol of the sum type
+  ## (its type is a `tyGenericBody` for a generic sum type). nil otherwise.
+  result = nil
+  if e.kind == skEnumField and e.typ != nil:
+    let es = e.typ.sym
+    if es != nil and es.ast != nil and es.ast.kind == nkSym and es.ast.sym.kind == skType:
+      result = es.ast.sym
+
 proc getModule*(s: PSym): PSym =
   result = s
   assert((result.kind == skModule) or (result.owner != result))

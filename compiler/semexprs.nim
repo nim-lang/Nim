@@ -446,6 +446,8 @@ proc isOwnedSym(c: PContext; n: PNode): bool =
   let s = qualifiedLookUp(c, n, {})
   result = s != nil and sfSystemModule in s.owner.flags and s.name.s == "owned"
 
+proc sumTypeBranchCandidates(c: PContext; n: PNode): seq[PSym]
+
 proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   if n.len != 2:
     localError(c.config, n.info, "a type conversion takes exactly one argument")
@@ -497,7 +499,12 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   if n[1].kind == nkExprEqExpr and
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
-  var op = semExprWithType(c, n[1], flags * {efDetermineType} + {efAllowSymChoice})
+  # `T(Branch(...))` selects the sum type `T` that `Branch` belongs to:
+  let opExpected =
+    if n[1].kind in nkCallKinds+{nkObjConstr} and n[1].len > 0 and
+        sumTypeBranchCandidates(c, n[1][0]).len > 0: targetType
+    else: nil
+  var op = semExprWithType(c, n[1], flags * {efDetermineType} + {efAllowSymChoice}, opExpected)
   if isSymChoice(op) and op[0].sym.kind notin routineKinds:
     # T(foo) disambiguation syntax only allowed for routines
     op = semSymChoice(c, op)
@@ -3557,6 +3564,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       of skProc, skFunc, skMethod, skConverter, skIterator:
         if s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
+      of skEnumField:
+        # `Branch()` or `Branch(field: value)` of a sum type:
+        let branches = sumTypeBranchCandidates(c, n[0])
+        if branches.len > 0:
+          result = semSumTypeConstr(c, n, branches, flags, expectedType)
+        else:
+          result = semIndirectOp(c, n, flags, expectedType)
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags, expectedType)

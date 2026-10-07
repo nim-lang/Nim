@@ -926,7 +926,7 @@ proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   if sfExported in owner.flags: enumSym.incl sfExported
 
   let disc = newSym(skField, getIdent(c.cache, SumTypeDiscriminatorName), c.idgen,
-                    if c.inGenericContext > 0: owner else: rectype.sym, n.info)
+                    owner, n.info)
   disc.typ = enumType
   disc.position = pos
   disc.options = c.config.options
