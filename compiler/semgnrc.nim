@@ -464,8 +464,15 @@ proc semGenericStmt(c: PContext, n: PNode,
       var a = n[i]
       checkMinSonsLen(a, 1, c.config)
       for j in 0..<a.len-1:
-        a[j] = semGenericStmt(c, a[j], flags+{withinMixin}, ctx)
-        addTempDeclToIdents(c, a[j], skVar, false)
+        if a.kind == nkOfBranch and isSumTypePattern(c, a[j]):
+          # `Branch(x, y)`: `x` and `y` are bindings, not uses
+          a[j][0] = semGenericStmt(c, a[j][0], flags+{withinMixin}, ctx)
+          for k in 1..<a[j].len:
+            if a[j][k].kind in {nkIdent, nkAccQuoted}:
+              addTempDecl(c, a[j][k], skTemplate)
+        else:
+          a[j] = semGenericStmt(c, a[j], flags+{withinMixin}, ctx)
+          addTempDeclToIdents(c, a[j], skVar, false)
 
       a[^1] = semGenericStmtScope(c, a[^1], flags, ctx)
     closeScope(c)

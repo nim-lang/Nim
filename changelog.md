@@ -187,6 +187,33 @@ parameter and result types, not just their source-level shape. Use
   of type `owned proc ()` no longer makes its enclosing type cyclic.
   Without the feature `owned` continues to be erased.
 
+- Sum types, ported from Nimony: an object `case` without a discriminator
+  declares a sum type. The branch names construct values, and a pattern
+  matching `case` binds the fields of a branch:
+
+  ```nim
+  type
+    Node = ref object
+      case
+      of AddOpr, SubOpr:
+        a, b: Node
+      of Value:
+        val: int
+
+  proc eval(n: Node): int =
+    case n
+    of Value(v): v
+    of AddOpr(a, b): eval(a) + eval(b)
+    of SubOpr(a, b): eval(a) - eval(b)
+
+  echo eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) # 42
+  ```
+
+  The fields of a branch can only be accessed through such a `case`, or in a
+  `{.cast(uncheckedAccess).}` section. `$` and `repr` render a sum type like
+  its constructor. See the [manual](https://nim-lang.github.io/Nim/manual.html#types-sum-types)
+  for more information.
+
 ## Compiler changes
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's

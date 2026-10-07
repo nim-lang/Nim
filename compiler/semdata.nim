@@ -216,6 +216,9 @@ type
     lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
     inUncheckedAssignSection*: int
+    inUncheckedAccess*: int   # inside `{.cast(uncheckedAccess).}`: the fields
+                              # of a sum type are accessible outside of a
+                              # pattern matching `case`
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
     forwardTypeUpdates*: seq[(PSym, PType, PNode)]
       # top-level owner, type, and type node for delayed retries inside a

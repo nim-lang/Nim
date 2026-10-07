@@ -876,10 +876,101 @@ proc formatMissingEnums(c: PContext, n: PNode): string =
       coveredCases.incl val
   result = (c.getIntSetOfType(n[0].typ) - coveredCases).renderAsType(n[0].typ)
 
-proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                   father: PNode, rectype: PType) =
+proc isSumTypeCase(n: PNode): bool {.inline.} =
+  ## `case` without a discriminator: `n[0]` is `nkIdentDefs(empty, ...)`.
+  n[0].kind == nkIdentDefs and n[0].len > 0 and n[0][0].kind == nkEmpty
+
+proc sumTypeScope(c: PContext; owner: PSym): PScope =
+  ## The scope the declaration of `owner` lives in: generic type
+  ## declarations are processed in a scope of their own.
+  result = c.currentScope
+  if c.inGenericContext > 0 and owner.typ != nil and
+      owner.typ.kind == tyGenericBody and result.parent != nil:
+    result = result.parent
+
+proc addSumTypeBranchNames(c: PContext; scope: PScope; enumType: PType) =
+  for f in enumType.n:
+    addInterfaceOverloadableSymAt(c, scope, f.sym)
+
+proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
+                    father: PNode, rectype: PType, hasCaseFields: bool) =
+  ## Lowers `case` / `of A, B: fields` / `of C: fields` to a case object
+  ## whose (hidden) discriminator is of a generated enum type with the
+  ## values `A`, `B`, `C`. The branch names become overloadable enum fields
+  ## in the scope of the type declaration.
+  let owner = getCurrOwner(c)
+  if owner.kind != skType:
+    localError(c.config, n.info, "a sum type must be declared in a type section")
+    return
+  if tfSumType in rectype.flags:
+    localError(c.config, n.info, "only one empty `case` section is allowed in an object type")
+    return
+  if hasCaseFields:
+    localError(c.config, n.info, "a sum type `case` cannot be nested in another `case`")
+    return
+  rectype.incl tfSumType
+
+  let enumSym = newSym(skType, getIdent(c.cache, owner.name.s & "Kind"),
+                       c.idgen, owner, n.info)
+  let enumType = newType(tyEnum, c.idgen, enumSym)
+  rawAddSon(enumType, nil)
+  enumType.n = newNodeI(nkEnumTy, n.info)
+  enumSym.typ = enumType
+  enumType.sym = enumSym
+  # the owner of the branch names, constructors need it:
+  enumSym.ast = newSymNode(owner)
+  if sfExported in owner.flags: enumSym.incl sfExported
+
+  let disc = newSym(skField, getIdent(c.cache, SumTypeDiscriminatorName), c.idgen,
+                    owner, n.info)
+  disc.typ = enumType
+  disc.position = pos
+  disc.options = c.config.options
+  disc.incl sfDiscriminant
+  inc pos
+
   var a = copyNode(n)
+  a.add newSymNode(disc)
+  for i in 1..<n.len:
+    let it = n[i]
+    case it.kind
+    of nkOfBranch:
+      checkMinSonsLen(it, 2, c.config)
+      var b = newNodeI(nkOfBranch, it.info)
+      for j in 0..<it.len-1:
+        let ident = considerQuotedIdent(c, it[j])
+        if ident.id == ord(wInvalid): continue
+        if getSymFromList(enumType.n, ident) != nil:
+          localError(c.config, it[j].info, "duplicate sum type branch name: " & ident.s)
+          continue
+        let e = newSym(skEnumField, ident, c.idgen, enumSym, it[j].info)
+        e.typ = enumType
+        e.position = enumType.n.len
+        if sfExported in owner.flags: e.incl {sfUsed, sfExported}
+        enumType.n.add newSymNode(e)
+        b.add newIntTypeNode(e.position, enumType)
+        styleCheckDef(c, e)
+        onDef(e.info, e)
+        suggestSym(c.graph, e.info, e, c.graph.usageSym)
+      if b.len == 0: continue
+      a.add b
+      semRecordNodeAux(c, it[^1], check, pos, b, rectype, hasCaseFields = true)
+    of nkElse:
+      localError(c.config, it.info, "sum type case objects cannot have an else branch")
+    else: illFormedAst(n, c.config)
+  if enumType.n.len > 0x00007FFF:
+    localError(c.config, n.info, "a sum type must have less than 32768 branches")
+  setToStringProc(c.graph, enumType, genEnumToStrProc(enumType, n.info, c.graph, c.idgen))
+  addSumTypeBranchNames(c, sumTypeScope(c, owner), enumType)
+  father.add a
+
+proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
+                   father: PNode, rectype: PType, hasCaseFields: bool) =
   checkMinSonsLen(n, 2, c.config)
+  if isSumTypeCase(n):
+    semSumTypeCase(c, n, check, pos, father, rectype, hasCaseFields)
+    return
+  var a = copyNode(n)
   semRecordNodeAux(c, n[0], check, pos, a, rectype, hasCaseFields = true)
   if a[0].kind != nkSym:
     internalError(c.config, "semRecordCase: discriminant is no symbol")
@@ -983,7 +1074,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     elif father.kind in {nkElse, nkOfBranch}:
       father.add newNodeI(nkRecList, n.info)
   of nkRecCase:
-    semRecordCase(c, n, check, pos, father, rectype)
+    semRecordCase(c, n, check, pos, father, rectype, hasCaseFields)
   of nkNilLit:
     if father.kind != nkRecList: father.add newNodeI(nkRecList, n.info)
   of nkRecList:
@@ -1104,7 +1195,13 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
     return newConstraint(c, tyObject)
   if prevIsKind(prev, tyObject) and sfForward notin prev.sym.flags:
     # the symbol already has an object type (likely resem), don't create a new type
-    return skipGenericPrev(prev)
+    result = skipGenericPrev(prev)
+    if tfSumType in result.flags:
+      # but bring the branch names into scope again:
+      let rc = sumTypeCase(result.n)
+      if rc != nil:
+        addSumTypeBranchNames(c, sumTypeScope(c, getCurrOwner(c)), rc[0].sym.typ)
+    return
   var check = initIntSet()
   var pos = 0
   var base, realBase: PType = nil

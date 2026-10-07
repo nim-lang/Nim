@@ -831,6 +831,15 @@ proc defaultNodeField(c: PContext, a: PNode, aTyp: PType, checkDefault: bool): P
 proc defaultNodeField(c: PContext, a: PNode, checkDefault: bool): PNode =
   result = defaultNodeField(c, a, a.typ, checkDefault)
 
+proc sumTypeBranchCandidates(c: PContext; n: PNode): seq[PSym]
+
+proc isSumTypePattern(c: PContext; n: PNode): bool =
+  ## Whether `n`, a pattern of an `of` branch, is `Branch(bindings)` or
+  ## `{A, B}(bindings)` of a sum type: the bindings are declarations then.
+  if n.kind notin nkCallKinds or n.len < 2: return false
+  let head = if n[0].kind == nkCurly and n[0].len > 0: n[0][0] else: n[0]
+  result = sumTypeBranchCandidates(c, head).len > 0
+
 include semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =

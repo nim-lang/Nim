@@ -1,6 +1,7 @@
 # this module avoids ast depending on msgs or vice versa
 import std/strutils
 import options, ast, msgs
+from astalgo import isSumTypeDiscriminator
 
 proc typSym*(t: PType): PSym =
   result = t.sym
@@ -40,6 +41,10 @@ template quoteExpr*(a: string): untyped =
 proc genFieldDefect*(conf: ConfigRef, field: string, disc: PSym): string =
   let obj = disc.owner.name.s # `types.typeToString` might be better, eg for generics
   result = "field '$#' is not accessible for type '$#'" % [field, obj]
+  if isSumTypeDiscriminator(disc):
+    # the value of the hidden discriminator follows:
+    result.add " in branch '"
+    return
   if optDeclaredLocs in conf.globalOptions:
     result.add " [discriminant declared in $#]" % toFileLineCol(conf, disc.info)
   result.add " using '$# = " % disc.name.s
