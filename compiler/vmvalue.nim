@@ -211,7 +211,7 @@ proc storeValue*(vc: ValueConv; dest: Address; n: PNode; t: PType; inConst: bool
   of tySequence:
     case n.kind
     of nkBracket:
-      st[int](dest +! StrLenOffset, n.len)
+      stInt(dest +! StrLenOffset, n.len)
       if n.len > 0:
         let e = t.elementType
         let L = getLayout(vc.layouts[], conf, e)
@@ -229,7 +229,7 @@ proc storeValue*(vc: ValueConv; dest: Address; n: PNode; t: PType; inConst: bool
               else: heapAlloc(vc.mem[], n.len*L.size)
       storeElems(vc, p, n, e, n.len, inConst)
       st[Address](dest +! OpenArrayDataOffset, p)
-      st[int](dest +! OpenArrayLenOffset, n.len)
+      stInt(dest +! OpenArrayLenOffset, n.len)
   of tyArray:
     if n.kind == nkBracket:
       storeElems(vc, dest, n, t.elementType, toInt(lengthOrd(conf, t)), inConst)
@@ -426,7 +426,7 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
     result.typ = t
     result.info = L.info
   of tyString:
-    let len = ld[int](src +! StrLenOffset)
+    let len = ldInt(src +! StrLenOffset)
     if len > 0:
       let p = ld[Address](src +! StrPayloadOffset)
       checkRead(L, p, PayloadDataOffset + len)
@@ -455,7 +455,7 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
       result.info = L.info
   of tySequence:
     result = newNodeIT(nkBracket, L.info, t)
-    let len = ld[int](src +! StrLenOffset)
+    let len = ldInt(src +! StrLenOffset)
     if len < 0: valueError(L.vc, L.info, "VM produced a corrupt seq")
     if len > 0:
       let p = ld[Address](src +! StrPayloadOffset)
@@ -465,7 +465,7 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
       loadElems(L, p +! payloadDataOffset(vmAlignOf(L.vc.layouts[], conf, e)), len, e, result)
   of tyOpenArray, tyVarargs:
     result = newNodeIT(nkBracket, L.info, t)
-    let len = ld[int](src +! OpenArrayLenOffset)
+    let len = ldInt(src +! OpenArrayLenOffset)
     if len < 0: valueError(L.vc, L.info, "VM produced a corrupt openArray")
     if len > 0:
       loadElems(L, ld[Address](src +! OpenArrayDataOffset), len, s.elementType, result)
@@ -502,7 +502,7 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
       let objType = s.elementType.skipTypes(abstractInst)
       if objType.kind != tyObject:
         valueError(L.vc, L.info, "VM: cannot produce a constant of type " & typeToString(t))
-      let addrKey = cast[int](p)
+      let addrKey = cast[int](uint(p)) # an address fits a host `int`
       if L.onPath.containsOrIncl(addrKey):
         valueError(L.vc, L.info, "VM: the resulting value is cyclic")
       checkRead(L, p -! RefHeaderSize, RefHeaderSize)
