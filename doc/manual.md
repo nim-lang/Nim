@@ -2004,6 +2004,137 @@ Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign
     t.kind = intLit
   ```
 
+Sum types
+---------
+
+An object `case` without a discriminator declares a *sum type*: the object
+is in exactly one of the listed branches, and the branch names are new
+identifiers that are introduced by the declaration.
+
+```nim test
+type
+  Node = ref object
+    case
+    of AddOpr, SubOpr:   # several branches can share their fields
+      a, b: Node
+    of Value:
+      val: int
+
+  Opt[T] = object
+    case
+    of None: discard     # a branch without fields
+    of Some: val: T
+
+  Shape = object
+    x, y: float          # fields outside of the `case` are shared
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+```
+
+Under the hood, a sum type is a case object with a hidden discriminator.
+The branch names are the values of an enum that is generated for it; they
+behave like overloadable enum fields and are imported and exported together
+with the sum type. An object can contain at most one such `case` and it
+cannot have an `else` branch.
+
+
+### Construction
+
+A branch name is used like an object constructor, with named arguments for
+the fields of the branch and the shared fields:
+
+```nim test
+type
+  Opt[T] = object
+    case
+    of None: discard
+    of Some: val: T
+  Shape = object
+    x, y: float
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+
+let s = Circle(x: 1.0, y: 2.0, radius: 3.0)
+let a: Opt[int] = None()      # the expected type selects the instance
+let b = Some(val: "abc")      # `Opt[string]`, inferred from the field values
+let c = Opt[float](None())    # a type conversion provides the expected type
+```
+
+If a branch name belongs to several sum types, the expected type, a type
+conversion or a module qualifier (`module.Branch(...)`) selects one.
+
+
+### Pattern matching
+
+The fields of the branches can only be accessed in a `case` statement or
+expression that matches the branch. The fields are bound to the names that
+follow the branch name, in the order of their declaration:
+
+```nim test
+type
+  Node = ref object
+    case
+    of AddOpr, SubOpr:
+      a, b: Node
+    of Value:
+      val: int
+
+proc eval(n: Node): int =
+  case n
+  of Value(v): v
+  of AddOpr(a, b): eval(a) + eval(b)
+  of SubOpr(a, b): eval(a) - eval(b)
+
+assert eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) == 42
+```
+
+- Fewer names than fields can be given, `_` skips a field and `Branch()` or
+  just `Branch` binds nothing.
+- `{A, B}(x, y)` matches several branches; they must come from the same `of`
+  of the declaration so that they share their fields.
+- The `case` must cover all branches or have an `else` branch.
+
+A binding is not a copy but a view of the field: if the matched value is
+mutable, assigning to the binding changes the field.
+
+```nim test
+type
+  Shape = object
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+
+var shapes = @[Circle(radius: 1.0), Rect(w: 1.0, h: 2.0)]
+for i in 0 ..< shapes.len:
+  case shapes[i]
+  of Circle(r): r = r * 2
+  of Rect(w, _): w = 3.0
+assert $shapes == "@[Circle(radius: 2.0), Rect(w: 3.0, h: 2.0)]"
+```
+
+
+### cast uncheckedAccess
+
+Accessing a field of a branch outside of pattern matching is an error. It can
+be allowed via a `{.cast(uncheckedAccess).}` section; accessing a field of a
+branch that the object is not in is then undefined behavior, or raises a
+`FieldDefect` if field checks are enabled.
+
+```nim test
+type
+  Opt[T] = object
+    case
+    of None: discard
+    of Some: val: T
+
+let a = Some(val: 1)
+{.cast(uncheckedAccess).}:
+  assert a.val == 1
+```
+
+
 Default values for object fields
 --------------------------------
 
