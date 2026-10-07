@@ -446,8 +446,6 @@ proc isOwnedSym(c: PContext; n: PNode): bool =
   let s = qualifiedLookUp(c, n, {})
   result = s != nil and sfSystemModule in s.owner.flags and s.name.s == "owned"
 
-proc sumTypeBranchCandidates(c: PContext; n: PNode): seq[PSym]
-
 proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType = nil): PNode =
   if n.len != 2:
     localError(c.config, n.info, "a type conversion takes exactly one argument")
