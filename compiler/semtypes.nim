@@ -898,7 +898,12 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     if skipTypes(typ.elementType, abstractInst).kind in shouldChckCovered:
       chckCovered = true
   of tyForward:
-    errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
+    if typ.sym != nil:
+      errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
+    else:
+      # a generic instance with forward type arguments, see `semGeneric`
+      localError(c.config, n[0].info,
+        "selector type '$1' depends on a type that is not yet defined" % renderTree(n[0][^2]))
   elif not isOrdinalType(typ):
     localError(c.config, n[0].info, "selector must be of an ordinal type")
 
