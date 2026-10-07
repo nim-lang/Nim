@@ -1591,6 +1591,7 @@ proc genFlags*(s: set[TTypeFlag]; dest: var string) =
     of tfIsOutParam: dest.add "i5"
     of tfSendable: dest.add "s0"
     of tfImplicitStatic: dest.add "i6"
+    of tfSumType: dest.add "s1"
 
 
 proc parse*(t: typedesc[TTypeFlag]; s: string): set[TTypeFlag] =
@@ -1700,6 +1701,9 @@ proc parse*(t: typedesc[TTypeFlag]; s: string): set[TTypeFlag] =
     of 's':
       if i+1 < s.len and s[i+1] == '0':
         result.incl tfSendable
+        inc i
+      elif i+1 < s.len and s[i+1] == '1':
+        result.incl tfSumType
         inc i
       else: result.incl tfShallow
     of 't':

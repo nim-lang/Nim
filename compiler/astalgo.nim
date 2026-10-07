@@ -156,6 +156,25 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
     if n.sym.name.id == field.id: result = n.sym
   else: return nil
 
+const SumTypeDiscriminatorName* = "`kind"
+  ## no identifier can contain a backtick, so user code cannot name it
+
+proc isSumTypeDiscriminator*(s: PSym): bool {.inline.} =
+  s.kind == skField and sfDiscriminant in s.flags and s.name.s == SumTypeDiscriminatorName
+
+proc sumTypeCase*(n: PNode): PNode =
+  ## The `nkRecCase` of the record `n` of a sum type (nil if there is none).
+  result = nil
+  if n == nil: return
+  case n.kind
+  of nkRecList:
+    for it in n:
+      result = sumTypeCase(it)
+      if result != nil: return
+  of nkRecCase:
+    if n[0].kind == nkSym and isSumTypeDiscriminator(n[0].sym): result = n
+  else: discard
+
 proc getModule*(s: PSym): PSym =
   result = s
   assert((result.kind == skModule) or (result.owner != result))

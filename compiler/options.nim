@@ -293,6 +293,8 @@ type
     ownedRefs
       ## `owned ref T` / `owned proc` as a statically checked unique
       ## ownership annotation on top of ARC/ORC/YRC (RFC #575).
+    sumTypes
+      ## an object `case` without a discriminator declares a sum type
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
