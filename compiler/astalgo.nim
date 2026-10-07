@@ -175,6 +175,25 @@ proc sumTypeCase*(n: PNode): PNode =
     if n[0].kind == nkSym and isSumTypeDiscriminator(n[0].sym): result = n
   else: discard
 
+proc sumTypeEnum*(t: PType): PType =
+  ## The generated enum of branch names if `t` is a sum type, a `ref` to
+  ## one, or a generic sum type. nil otherwise.
+  result = nil
+  var t = t
+  if t == nil: return
+  if t.kind == tyGenericBody: t = t.last
+  if t != nil and t.kind in {tyRef, tyPtr}: t = t.elementType
+  if t != nil and t.kind == tyObject and tfSumType in t.flags:
+    let rc = sumTypeCase(t.n)
+    if rc != nil: result = rc[0].sym.typ
+
+proc enumOrSumTypeEnum*(t: PType): PType =
+  ## The enum whose fields come along when the type `t` is imported or
+  ## exported: `t` itself if it is an enum, the enum of branch names if it
+  ## is a sum type.
+  if t != nil and t.kind in {tyBool, tyEnum}: result = t
+  else: result = sumTypeEnum(t)
+
 proc sumTypeOwner*(e: PSym): PSym =
   ## For a branch name `e` of a sum type: the type symbol of the sum type
   ## (its type is a `tyGenericBody` for a generic sum type). nil otherwise.

@@ -20,7 +20,7 @@ false true
 
 {.experimental: "sumTypes".}
 
-import msumtypes as m
+from msumtypes import Opt, Hidden, some, none
 
 type
   Node = ref object

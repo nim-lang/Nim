@@ -1,5 +1,5 @@
 discard """
-  errormsg: "ambiguous sum type branch 'None'; use a type conversion to select one of: Opt Other"
+  errormsg: "ambiguous sum type branch 'None'; use a type conversion to select one of: tconstr_ambiguous.Opt tconstr_ambiguous.Other"
   line: 18
 """
 

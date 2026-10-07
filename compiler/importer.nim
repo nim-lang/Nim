@@ -13,6 +13,7 @@ import
   ast, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos,
   modulegraphs, wordrecg
+from astalgo import enumOrSumTypeEnum
 from std/strutils import `%`, startsWith, replace
 from std/sequtils import addUnique
 import std/[sets, tables, intsets]
@@ -89,8 +90,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   else:
     importSet.incl s.id
   if s.kind == skType:
-    var etyp = s.typ
-    if etyp.kind in {tyBool, tyEnum}:
+    var etyp = enumOrSumTypeEnum(s.typ)
+    if etyp != nil:
       for j in 0..<etyp.n.len:
         var e = etyp.n[j].sym
         if e.kind != skEnumField:

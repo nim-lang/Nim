@@ -489,6 +489,12 @@ proc sumTypeBranchCandidates(c: PContext; n: PNode): seq[PSym] =
       if sumTypeOwner(x.sym) != nil: result.add x.sym
   of nkOpenSym:
     result = sumTypeBranchCandidates(c, n[0])
+  of nkDotExpr:
+    # `module.Branch`:
+    if n.len == 2 and n[1].kind in {nkIdent, nkAccQuoted}:
+      # nil unless `n[0]` is a module:
+      let s = qualifiedLookUp(c, n, {checkModule})
+      if s != nil and sumTypeOwner(s) != nil: result.add s
   else: discard
 
 proc sumTypeOfExpected(owner: PSym; expectedType: PType): PType =
@@ -557,7 +563,9 @@ proc semSumTypeConstr(c: PContext; n: PNode; branches: seq[PSym];
     if branches.len > 1:
       var msg = "ambiguous sum type branch '" & branches[0].name.s &
         "'; use a type conversion to select one of:"
-      for b in branches: msg.add " " & sumTypeOwner(b).name.s
+      for b in branches:
+        let owner = sumTypeOwner(b)
+        msg.add " " & getModule(owner).name.s & "." & owner.name.s
       localError(c.config, n.info, msg)
       return errorNode(c, n)
     branch = branches[0]

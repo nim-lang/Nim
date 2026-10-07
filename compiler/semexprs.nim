@@ -3146,8 +3146,8 @@ proc semExport(c: PContext, n: PNode): PNode =
           markUsed(c, n.info, s)
           specialSyms(c, s)
           if s.kind == skType and sfPure notin s.flags:
-            var etyp = s.typ
-            if etyp.kind in {tyBool, tyEnum}:
+            var etyp = enumOrSumTypeEnum(s.typ)
+            if etyp != nil:
               for j in 0..<etyp.n.len:
                 var e = etyp.n[j].sym
                 if e.kind != skEnumField:
