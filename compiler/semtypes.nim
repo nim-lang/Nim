@@ -1884,12 +1884,13 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         # returning `tyGenericInvocation` makes `Option[Foo]` to `tyGenericInvocation` and
         # next time `semGeneric` is called with `Option[Foo]`, containsGenericType(typeof(`Foo`)) == true
         # and `isConcrete == false`.
+        # Do not set `result.sym` here: `typeSectionFinalPass` uses `assignType`
+        # which keeps an existing `sym`, so the instance would end up with the
+        # generic body's symbol and lose its arguments (bug #26368).
         if prev == nil:
           result = newTypeS(tyForward, c)
-          result.sym = s
         else:
           assignType(result, newTypeS(tyForward, c))
-          result.sym = s
         c.forwardTypeUpdates.add (getCurrOwner(c), result, n) #fixes 1500
         return
       else:
