@@ -32,6 +32,7 @@ type
     filterDiscriminator: PSym  # we generating destructor for case branch
     c: PContext # c can be nil, then we are called from lambdalifting!
     idgen: IdGenerator
+    ownedEdge: bool # filling the body for an `owned` location (RFC #575)
 
 template destructor*(t: PType): PSym = getAttachedOp(c.g, t, attachedDestructor)
 template assignment*(t: PType): PSym = getAttachedOp(c.g, t, attachedAsgn)
@@ -763,6 +764,10 @@ proc cyclicType*(g: ModuleGraph, t: PType): bool =
   case t.kind
   of tyRef: result = types.canFormAcycle(g, t.elementType)
   of tyProc: result = t.callConv == ccClosure
+  of tyOwned:
+    # an `owned` closure is acyclic by contract, see `canFormAcycle`
+    let b = t.skipModifier.skipTypes(abstractInst)
+    result = b.kind == tyRef and types.canFormAcycle(g, b.elementType)
   else: result = false
 
 proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -866,6 +871,10 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicDyn", c.info, tmp)
   elif isInheritableAcyclicRef:
     cond = callCodegenProc(c.g, "nimDecRefIsLastDyn", c.info, x)
+  elif c.ownedEdge and (c.g.config.selectedGC == gcYrc or
+      isDefined(c.g.config, "nimOwnedStrict")):
+    # releasing the owning edge of an acyclic cell: see `nimDecRefIsLastOwned`
+    cond = callCodegenProc(c.g, "nimDecRefIsLastOwned", c.info, x)
   else:
     cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
   cond.typ = getSysType(c.g, x.info, tyBool)
@@ -1150,7 +1159,18 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
           ownedClosureOp(c, base, body, x, y)
           return
       else: discard
-    defaultOp(c, base, body, x, y)
+      defaultOp(c, base, body, x, y)
+    else:
+      # `--experimental:ownedRefs`: the owning edge is an ordinary counted
+      # reference, but it is unique and so cannot be copied, only moved or
+      # converted to an unowned reference (RFC #575).
+      if c.kind in {attachedAsgn, attachedDup}:
+        ensureMutable c.fn
+        incl c.fn.flagsImpl, sfError
+      let oldOwnedEdge = c.ownedEdge
+      c.ownedEdge = base.kind == tyRef
+      fillBody(c, base, body, x, y)
+      c.ownedEdge = oldOwnedEdge
   of tyArray:
     if tfHasAsgn in t.flags or useNoGc(c, t):
       forallElements(c, t, body, x, y)

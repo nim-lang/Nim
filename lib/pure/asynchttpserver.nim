@@ -72,6 +72,7 @@ type
     reuseAddr: bool
     reusePort: bool
     maxBody: int ## The maximum number of bytes that will be read for the body.
+    readTimeout: int ## Milliseconds a request may take to arrive; 0 or less: no limit.
     maxFDs: int
 
 proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
@@ -88,9 +89,25 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
   result = getLocalAddr(self.socket)[1]
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
-                         maxBody = 8388608): AsyncHttpServer =
+                         maxBody = 8388608, readTimeout = 0): AsyncHttpServer =
   ## Creates a new `AsyncHttpServer` instance.
-  result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
+  ##
+  ## `readTimeout` is the number of milliseconds a client has to deliver a
+  ## complete request: the request line, the headers and the body. The time
+  ## starts when the server begins waiting for the request, so on a keep-alive
+  ## connection it also limits how long the connection may sit idle between
+  ## requests. A client that sends its bytes slowly, or not at all, therefore
+  ## cannot hold a connection longer than that.
+  ##
+  ## When the time is up the connection is closed. If the request line had been
+  ## received by then, the client first gets a `408 Request Timeout` response;
+  ## otherwise it is closed without a response, as nothing was asked yet.
+  ## The time the callback takes to handle a request is not limited.
+  ##
+  ## A `readTimeout` of 0 (the default) or less means that the server waits for
+  ## requests for as long as it takes. `readTimeout` was added in version 2.3.1.
+  result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort,
+                           maxBody: maxBody, readTimeout: readTimeout)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -185,6 +202,18 @@ proc processRequest(
   template request(): Request =
     req.mget()
 
+  # One timer bounds the request from the moment we start waiting for it until
+  # its last byte, so that sending it in dribs does not extend the time.
+  # `nil` when the server has no `readTimeout`.
+  let expiry = if server.readTimeout > 0: sleepAsync(server.readTimeout) else: nil
+
+  template expired(read: untyped): bool =
+    ## Whether `expiry` passed before `read` finished. `read` is then still
+    ## pending: closing `client` ends it, and nothing waits for its outcome.
+    if not expiry.isNil:
+      await (read or expiry)
+    not expiry.isNil and not read.finished
+
   # GET /path HTTP/1.1
   # Header: val
   # \n
@@ -202,7 +231,12 @@ proc processRequest(
   for i in 0..1:
     lineFut.mget().setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength = maxLine) # TODO: Timeouts.
+    let reading = client.recvLineInto(lineFut, maxLength = maxLine)
+    if expired(reading):
+      # No request line yet: nothing has been asked, so there is nothing to answer.
+      client.close()
+      return false
+    await reading
 
     if lineFut.mget == "":
       client.close()
@@ -255,7 +289,11 @@ proc processRequest(
     i = 0
     lineFut.mget.setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength = maxLine)
+    let reading = client.recvLineInto(lineFut, maxLength = maxLine)
+    if expired(reading):
+      await request.respondError(Http408)
+      client.close(); return false
+    await reading
 
     if lineFut.mget == "":
       client.close(); return false
@@ -290,7 +328,11 @@ proc processRequest(
       if contentLength > server.maxBody:
         await request.respondError(Http413)
         return false
-      request.body = await client.recv(contentLength)
+      let body = client.recv(contentLength)
+      if expired(body):
+        await request.respondError(Http408)
+        return false
+      request.body = await body
       if request.body.len != contentLength:
         await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
         return true
@@ -308,7 +350,11 @@ proc processRequest(
       # and the data to be read, of the previously specified size
       if sizeOrData mod 2 == 0:
         # Expect a number of chars to read
-        await client.recvLineInto(lineFut, maxLength = maxLine)
+        let reading = client.recvLineInto(lineFut, maxLength = maxLine)
+        if expired(reading):
+          await request.respondError(Http408)
+          return false
+        await reading
         try:
           bytesToRead = lineFut.mget.parseHexInt
         except ValueError:
@@ -326,10 +372,18 @@ proc processRequest(
           break
 
         # Read bytesToRead and add to body
-        let chunk = await client.recv(bytesToRead)
+        let reading = client.recv(bytesToRead)
+        if expired(reading):
+          await request.respondError(Http408)
+          return false
+        let chunk = await reading
         request.body.add(chunk)
         # Skip \r\n (chunk terminating bytes per spec)
-        let separator = await client.recv(2)
+        let separatorRead = client.recv(2)
+        if expired(separatorRead):
+          await request.respondError(Http408)
+          return false
+        let separator = await separatorRead
         if separator != "\r\n":
           await request.respond(Http400, "Bad Request. Encoding separator must be \\r\\n")
           return true

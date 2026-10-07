@@ -103,6 +103,11 @@ parameter and result types, not just their source-level shape. Use
 
 - `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
 
+- `std/asynchttpserver.newAsyncHttpServer` adds a parameter `readTimeout`, the
+  number of milliseconds a client has to deliver a complete request. A client
+  that is slower is disconnected (after a `408 Request Timeout` response once its
+  request line was received). The default of 0 keeps waiting indefinitely.
+
 [//]: # "Changes:"
 
 - `std/math` The `^` symbol now supports floating-point as exponent in addition to the Natural type.
@@ -171,6 +176,16 @@ parameter and result types, not just their source-level shape. Use
   https://github.com/nim-lang/RFCs/issues/571: `⟑ ⟇ ⩓ ⩔ ■ □ ☆`. They all have the
   same priority as `*` (multiplication). As with the other Unicode operators, Nim
   only lexes them; their meaning is up to user code.
+
+- An experimental option `--experimental:ownedRefs` has been added that
+  implements the RFC https://github.com/nim-lang/RFCs/issues/575:
+  `owned ref T` and `owned proc` are statically checked unique ownership
+  annotations on top of ARC/ORC/YRC. Converting an owned reference to an
+  unowned one produces a counted reference, so there is no runtime failure
+  mode. A type whose references are all `owned` or `.cursor` cannot form a
+  cycle and stays out of the cycle collector, so for example a callback field
+  of type `owned proc ()` no longer makes its enclosing type cyclic.
+  Without the feature `owned` continues to be erased.
 
 ## Compiler changes
 

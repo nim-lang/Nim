@@ -294,10 +294,13 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
           result = res
           if res == arYes: break
     of nkBracket:
-      if b.len > 0:
-        result = isPartOf(a, b[0], flags)
-      else:
-        result = arNo
+      # every element can read `a`, not just the first one (bug #26329)
+      result = arNo
+      for i in 0..<b.len:
+        let res = isPartOf(a, b[i], flags)
+        if res != arNo:
+          result = res
+          if res == arYes: break
     else:
       if pfStructural in flags:
         for i in 0..<b.safeLen:

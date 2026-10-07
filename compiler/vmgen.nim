@@ -754,7 +754,7 @@ proc genLitInto(c: PCtx; n: PNode; t: PType; dest: var TDest) =
       storeValue(valueConv(c), a, n, t, inConst = true)
       genLdImm(c, n, dest, loadInt(a, mk(c, t)))
     else:
-      genLdImm(c, n, dest, if n.kind == nkNilLit: 0 else: getOrdValue(n).toInt64)
+      genLdImm(c, n, dest, if n.kind == nkNilLit: 0'i64 else: getOrdValue(n).toInt64)
   else:
     if dest < 0: dest = c.getTemp(t)
     case s.kind

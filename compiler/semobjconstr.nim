@@ -481,7 +481,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
     t = skipTypes(t.elementType, {tyGenericInst, tyAlias, tySink, tyOwned})
-    if optOwnedRefs in c.config.globalOptions:
+    if ownedRefsEnabled(c):
       result.typ = makeVarType(c, result.typ, tyOwned)
       # we have to watch out, there are also 'owned proc' types that can be used
       # multiple times as long as they don't have closures.

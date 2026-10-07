@@ -39,7 +39,7 @@ else:
 
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
-          incompleteStruct.} = object
+          incompleteStruct, byref.} = object
     ## A type representing a directory stream.
 
 type
