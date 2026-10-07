@@ -1,10 +1,10 @@
 discard """
   matrix: "--mm:refc; --mm:orc"
   output: '''
-(`kind: Some, val: (x: 1)) (`kind: Some, val: (x: 2)) (`kind: Some, val: 3)
-1.5 Tree[system.float64] (`kind: None)
-(`kind: Some, val: 4) (`kind: None) 5
-(`kind: None)(`kind: None)(`kind: Ok, code: 1)
+Some(val: (x: 1)) Some(val: (x: 2)) Some(val: 3)
+1.5 Tree[system.float64] None()
+Some(val: 4) None() 5
+None()None()Ok(code: 1)
 Opt[system.int] Res
 false false
 '''
@@ -21,11 +21,13 @@ type B = object
 echo Some(val: B(x: 1)), " ", some(B(x: 2)), " ", mk(3)
 let t = leafs(1.5, 2.5)
 let o: Opt[B] = None()
-echo t.l.v, " ", typeof(t), " ", o
+{.cast(uncheckedAccess).}:
+  echo t.l.v, " ", typeof(t), " ", o
 
 # qualified branch names:
 let n: m.Opt[int] = m.None()
-echo m.Some(val: 4), " ", n, " ", m.Leaf(v: 5).v
+{.cast(uncheckedAccess).}:
+  echo m.Some(val: 4), " ", n, " ", m.Leaf(v: 5).v
 
 # `None` of two modules, selected by the expected type or a qualifier:
 let x: Opt[int] = None()

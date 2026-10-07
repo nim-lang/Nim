@@ -1355,6 +1355,16 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
     if r.sym.name.id == field.id: result = r.sym
   else: illFormedAst(n, c.config)
 
+proc isSumTypeFieldCheck(check: PNode): bool =
+  ## Whether the field check `check` built by `lookupInRecordAndBuildCheck`
+  ## guards a field in a branch of a sum type.
+  result = false
+  for i in 1..<check.len:
+    var it = check[i]
+    if it[0].kind == nkSym and it[0].sym.magic == mNot: it = it[1]
+    let disc = it[2]
+    if disc.kind == nkSym and isSumTypeDiscriminator(disc.sym): return true
+
 const
   tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
@@ -1658,6 +1668,10 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
         if n[1].kind == nkSym and n[1].sym == f:
           false # field lookup was done already, likely by hygienic template or bindSym
         else: true
+      if visibilityCheckNeeded and check != nil and c.inUncheckedAccess == 0 and
+          isSumTypeFieldCheck(check):
+        localError(c.config, n[1].info, "field '" & f.name.s &
+          "' can only be accessed in a pattern matching `case` branch")
       if not visibilityCheckNeeded or fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
         markUsed(c, n[1].info, f)

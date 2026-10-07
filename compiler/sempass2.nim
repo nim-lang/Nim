@@ -1409,7 +1409,7 @@ proc castBlock(tracked: PEffects, castPragma: PNode, bc: var PragmaBlockContext)
       bc.exc = newNodeI(nkArgList, pragma.info)
       bc.exc.add n
     bc.excSource = castPragma
-  of wUncheckedAssign:
+  of wUncheckedAssign, wUncheckedAccess:
     discard "handled in sempass1"
   else:
     localError(tracked.config, pragma.info,

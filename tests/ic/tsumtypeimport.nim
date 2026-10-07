@@ -2,11 +2,11 @@ discard """
 output: '''
 None Some Circle Square
 2 16
-(x: 0.0, y: 0.0, `kind: Circle, radius: 0.0)
-(`kind: Some, val: (x: 1)) (`kind: Some, val: 2) (`kind: Some, val: 3) (`kind: None)
+Circle(x: 0.0, y: 0.0, radius: 0.0)
+Some(val: (x: 1)) Some(val: 2) Some(val: 3) None()
 2.5 Tree[system.float64] 7
-(x: 0.0, y: 0.0, `kind: Square, w: 1.0, h: 1.0) (x: 0.0, y: 0.0, `kind: Circle, radius: 1.0)
-(`kind: Some, val: "re")
+Square(x: 0.0, y: 0.0, w: 1.0, h: 1.0) Circle(x: 0.0, y: 0.0, radius: 1.0)
+Some(val: "re")
 '''
 """
 
@@ -26,7 +26,8 @@ type B = object
 let n: Opt[float] = None()
 echo Some(val: B(x: 1)), " ", some(2), " ", mk(3), " ", n
 let t = leafs(1.5, 2.5)
-echo t.r.v, " ", typeof(t), " ", msumtype.Leaf(v: 7).v
+{.cast(uncheckedAccess).}:
+  echo t.r.v, " ", typeof(t), " ", msumtype.Leaf(v: 7).v
 echo Square(w: 1.0, h: 1.0), " ", origin
 let r: m2.Opt[string] = Some(val: "re")
 echo r

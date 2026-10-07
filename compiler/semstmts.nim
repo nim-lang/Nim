@@ -3125,6 +3125,7 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   pragma(c, nil, pragmaList, exprPragmas, isStatement = true)
 
   var inUncheckedAssignSection = 0
+  var inUncheckedAccess = 0
   for p in pragmaList:
     if whichPragma(p) == wCast:
       case whichPragma(p[1])
@@ -3132,11 +3133,15 @@ proc semPragmaBlock(c: PContext, n: PNode; expectedType: PType = nil): PNode =
         discard "handled in sempass2"
       of wUncheckedAssign:
         inUncheckedAssignSection = 1
+      of wUncheckedAccess:
+        inUncheckedAccess = 1
       else:
         localError(c.config, p.info, "invalid pragma block: " & $p)
 
   inc c.inUncheckedAssignSection, inUncheckedAssignSection
+  inc c.inUncheckedAccess, inUncheckedAccess
   n[1] = semExpr(c, n[1], expectedType = expectedType)
+  dec c.inUncheckedAccess, inUncheckedAccess
   dec c.inUncheckedAssignSection, inUncheckedAssignSection
   result = n
   result.typ = n[1].typ

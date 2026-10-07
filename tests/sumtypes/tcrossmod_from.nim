@@ -1,7 +1,7 @@
 discard """
   output: '''
-(`kind: Some, val: 1) (`kind: Some, val: 2)
-(`kind: Some, val: 3)
+Some(val: 1) Some(val: 2)
+Some(val: 3)
 '''
 """
 

@@ -3,9 +3,9 @@ discard """
   output: '''
 AddOpr SubOpr Value
 0 1 2
-Some 16 (`kind: None)
+Some 16 None()
 48
-(x: 0.0, y: 0.0, `kind: Circle, radius: 0.0, tag: 3)
+Circle(x: 0.0, y: 0.0, radius: 0.0, tag: 3)
 B
 Q
 '''

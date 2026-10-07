@@ -2,18 +2,18 @@ discard """
   matrix: "--mm:refc; --mm:orc"
   output: '''
 42 3
-(x: 1.0, y: 2.0, `kind: Circle, radius: 5.0, color: 255)
-(x: 0.0, y: 0.0, `kind: Rect, w: 2.0, h: 3.0, color: 0)
-(`kind: Some, val: 42) (`kind: None)
-(`kind: Some, val: "hello") Opt[system.string]
+Circle(x: 1.0, y: 2.0, radius: 5.0, color: 255)
+Rect(x: 0.0, y: 0.0, w: 2.0, h: 3.0, color: 0)
+Some(val: 42) None()
+Some(val: "hello") Opt[system.string]
 Tree[system.int] 7 8
-(`kind: Some, val: 10) (`kind: None)
-(`kind: None) (`kind: Another)
-(`kind: Some, val: 1) (`kind: Some, val: (`kind: Some, val: 2)) @[(`kind: Some, val: 'c'), (`kind: None)]
-(`kind: Lit, v: 2.5)
-(`kind: Some, val: 12)
-(`kind: Some, val: 4) 42
-(`kind: Some, val: 3) (`kind: Some, val: "x") (`kind: None)
+Some(val: 10) None()
+None() Another()
+Some(val: 1) Some(val: Some(val: 2)) @[Some(val: 'c'), None()]
+Lit(v: 2.5)
+Some(val: 12)
+Some(val: 4) 42
+Some(val: 3) Some(val: "x") None()
 false true
 '''
 """
@@ -53,7 +53,8 @@ type
 # named arguments, shared fields in any order:
 let v = Value(val: 42)
 let add = AddOpr(a: Value(val: 1), b: Value(val: 2))
-echo v.val, " ", add.a.val + add.b.val
+{.cast(uncheckedAccess).}:
+  echo v.val, " ", add.a.val + add.b.val
 echo Circle(x: 1.0, y: 2.0, color: 0xFF, radius: 5.0)
 echo Rect(w: 2.0, h: 3.0)
 
@@ -68,7 +69,8 @@ let b = Some(val: "hello")
 echo b, " ", typeof(b)
 let t = Leaf(v: 7)
 let f = Fork(l: t, r: Leaf(v: 8))
-echo typeof(t), " ", t.v, " ", f.r.v
+{.cast(uncheckedAccess).}:
+  echo typeof(t), " ", t.v, " ", f.r.v
 
 # a type conversion works like an expected type:
 echo Opt[int](Some(val: 10)), " ", Opt[string](None())
@@ -85,13 +87,15 @@ echo Lit(v: 2.5)
 
 # at compile time:
 const c = Some(val: 12)
-static: doAssert c.val == 12
+{.cast(uncheckedAccess).}:
+  static: doAssert c.val == 12
 echo c
 
 # field values that declare symbols are fine:
 let q = Some(val: (var tmp = 3; inc tmp; tmp))
 let r = Some(val: proc (x: int): int = x * 2)
-echo q, " ", r.val(21)
+{.cast(uncheckedAccess).}:
+  echo q, " ", r.val(21)
 
 # across modules:
 let x: Opt[int] = none[int]()
