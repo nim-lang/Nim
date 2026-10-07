@@ -88,6 +88,11 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
     # we cannot observe a store to a local variable if the current proc
     # has no error handler:
     result = true
+  elif d.k == locLocalVar and d.lode.kind == nkSym and d.lode.sym.kind == skTemp:
+    # bug #25919: compiler temporaries (e.g. injectdestructors' `:tmpD`) are
+    # not observable and are destroyed by a `finally`, so storing a partially
+    # constructed result into them is what prevents it from leaking:
+    result = true
   else:
     result = false
 
