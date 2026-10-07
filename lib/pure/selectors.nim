@@ -19,15 +19,18 @@
 ## and user events.
 ##
 ## Fully supported OS: MacOSX, FreeBSD, OpenBSD, NetBSD, Linux (except
-## for Android).
+## for Android), illumos.
 ##
 ## Partially supported OS: Windows (only sockets and user events),
-## Solaris and illumos (files, sockets, handles and user events).
+## Solaris (files, sockets, handles and user events).
 ## Android (files, sockets, handles and user events).
 ##
 ## By default, the implementation is chosen based on the target
 ## platform; you can pass `-d:nimIoselector=value` to override it.
 ## Accepted values are "epoll", "kqueue", "poll", and "select".
+## illumos defaults to native epoll emulation; Solaris defaults to poll.
+## On illumos, `-d:nimIoselector=poll` retains the poll backend without
+## timer, signal, or process notifications.
 ##
 ## TODO: `/dev/poll`, `event ports` and filesystem events.
 
@@ -38,10 +41,12 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
+const nimIoselector {.strdefine.} = ""
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
                                 defined(dragonfly) or defined(nuttx) or
+                                (defined(illumos) and nimIoselector in ["", "epoll"]) or
                                 (defined(linux) and not defined(android) and not defined(emscripten))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by `ioselectors` module.
@@ -301,7 +306,7 @@ else:
       skey.param = pparam
       skey.data = pdata
 
-  when ioselSupportedPlatform:
+  when ioselSupportedPlatform or defined(illumos):
     template blockSignals(newmask: var Sigset, oldmask: var Sigset) =
       when hasThreadSupport:
         if posix.pthread_sigmask(SIG_BLOCK, newmask, oldmask) == -1:
@@ -346,8 +351,6 @@ else:
           res = int(fdLim.rlim_cur) - 1
         res
 
-  const nimIoselector {.strdefine.} = ""
-
   when nimIoselector != "":
     when nimIoselector == "epoll":
       include ioselects/ioselectors_epoll
@@ -365,8 +368,10 @@ else:
     include ioselects/ioselectors_kqueue
   elif defined(windows):
     include ioselects/ioselectors_select
-  elif defined(sunos):
-    include ioselects/ioselectors_poll # need to replace it with event ports
+  elif defined(illumos):
+    include ioselects/ioselectors_epoll
+  elif defined(solaris):
+    include ioselects/ioselectors_poll # TODO: use event ports
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
   elif defined(nintendoswitch):
