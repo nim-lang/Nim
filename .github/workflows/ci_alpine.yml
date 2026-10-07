@@ -38,6 +38,7 @@ jobs:
               echo "passl: \"-lucontext\"" > tests/coroutines/nim.cfg
               echo "define:musl" >> config/nim.cfg
               export PATH="$PWD/bin:$PATH"
+              export NIM_CSOURCES_STRICT=1
               exec bash -ec "
                 . ci/funs.sh
                 nimBuildCsourcesIfNeeded CC=gcc ucpu=${{ matrix.cpu }}

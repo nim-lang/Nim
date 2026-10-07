@@ -1,0 +1,105 @@
+name: Cache C and C++ compilation
+description: Reuse compiled objects while still running Nim compilation and tests
+
+inputs:
+  key:
+    description: Matrix variant, including target CPU and test batch
+    required: true
+  enabled:
+    description: Set false to omit compiler wrappers and all cache operations
+    default: 'true'
+  recache:
+    description: Compile every object afresh while populating the cache
+    default: 'false'
+
+outputs:
+  cache-dir:
+    description: Directory containing compiler results
+    value: ${{ steps.configure.outputs.cache-dir }}
+  cache-key:
+    description: Key to use when saving results after the tests
+    value: ${{ steps.cache.outputs.cache-primary-key }}
+  cache-hit:
+    description: Whether this run's exact cache key was restored
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install pinned ccache
+      id: install
+      if: inputs.enabled == 'true'
+      shell: bash
+      continue-on-error: true
+      run: |
+        # Ubuntu 24.04's ccache lacks native CPU detection. Version 4.14.1
+        # hashes resolved native flags without invalidating portable objects.
+        case "$RUNNER_OS-$RUNNER_ARCH" in
+          Linux-X64)
+            archive=ccache-4.14.1-linux-x86_64-musl-static.tar.gz
+            checksum=8f684cf82a7acd2f1daddbefcda505c499afe8245cfbfe78f751ce389cd6df52
+            ;;
+          macOS-ARM64|macOS-X64)
+            archive=ccache-4.14.1-darwin.tar.gz
+            checksum=c279fa81e2e806b4d9e64d4a06cb569a84ef54151feef796e5d4f4e95a464563
+            ;;
+          *) echo "Unsupported cache platform: $RUNNER_OS-$RUNNER_ARCH" >&2; exit 1 ;;
+        esac
+        install_dir="$RUNNER_TEMP/nim-ccache-4.14.1"
+        mkdir -p "$install_dir"
+        curl --fail --location --retry 3 --connect-timeout 30 --max-time 180 \
+          "https://github.com/ccache/ccache/releases/download/v4.14.1/$archive" \
+          -o "$install_dir/$archive"
+        if [[ "$RUNNER_OS" == Linux ]]; then
+          actual=$(sha256sum "$install_dir/$archive" | cut -d ' ' -f 1)
+        else
+          actual=$(shasum -a 256 "$install_dir/$archive" | cut -d ' ' -f 1)
+        fi
+        [[ "$actual" == "$checksum" ]]
+        tar -xzf "$install_dir/$archive" -C "$install_dir" --strip-components=1
+        "$install_dir/ccache" --version
+        echo "path=$install_dir/ccache" >> "$GITHUB_OUTPUT"
+      # A failed download/verification leaves the real compilers on PATH.
+
+    - name: Configure compiler cache
+      id: configure
+      if: inputs.enabled == 'true' && steps.install.outcome == 'success'
+      shell: bash
+      env:
+        CCACHE_DIR: ${{ runner.temp }}/nim-ccache
+        CCACHE_BIN: ${{ steps.install.outputs.path }}
+        RECACHE: ${{ inputs.recache }}
+      run: |
+        mkdir -p "$CCACHE_DIR" "$RUNNER_TEMP/nim-ccache-bin"
+        for compiler in gcc g++ clang clang++ cc c++; do
+          ln -s "$CCACHE_BIN" "$RUNNER_TEMP/nim-ccache-bin/$compiler"
+        done
+        ln -s "$CCACHE_BIN" "$RUNNER_TEMP/nim-ccache-bin/ccache"
+        echo "$RUNNER_TEMP/nim-ccache-bin" >> "$GITHUB_PATH"
+        echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
+        echo "CCACHE_MAXSIZE=512M" >> "$GITHUB_ENV"
+        echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+        if [[ "$RECACHE" == true ]]; then
+          echo "CCACHE_RECACHE=true" >> "$GITHUB_ENV"
+        fi
+        echo "cache-dir=$CCACHE_DIR" >> "$GITHUB_OUTPUT"
+        echo "image=${ImageOS:-$RUNNER_OS}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore compiler results
+      id: cache
+      if: steps.configure.outputs.cache-dir != ''
+      uses: actions/cache/restore@v6
+      continue-on-error: true
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
+      with:
+        path: ${{ steps.configure.outputs.cache-dir }}
+        key: ccache-v2-${{ steps.configure.outputs.image }}-${{ runner.arch }}-${{ inputs.key }}-${{ hashFiles('.github/actions/compiler-cache/action.yml') }}-${{ github.sha }}
+        # ccache checks the compiler, source, headers and flags for every object.
+        # A previous commit's cache is useful even when some Nim-generated C changes.
+        restore-keys: ccache-v2-${{ steps.configure.outputs.image }}-${{ runner.arch }}-${{ inputs.key }}-${{ hashFiles('.github/actions/compiler-cache/action.yml') }}-
+
+    - name: Reset cache statistics
+      if: steps.configure.outputs.cache-dir != ''
+      shell: bash
+      run: ccache --zero-stats

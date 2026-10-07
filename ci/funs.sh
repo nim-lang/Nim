@@ -32,15 +32,17 @@ nimIsCiSkip(){
 }
 
 nimInternalInstallDepsWindows(){
-  echo_run mkdir dist
-  echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-  echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-  echo_run 7z x dist/mingw64.7z -odist
-  echo_run 7z x dist/dlls.zip -obin
+  echo_run mkdir -p dist || return
+  echo_run curl --fail --location --retry 3 --connect-timeout 30 --max-time 300 \
+    https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z || return
+  echo_run curl --fail --location --retry 3 --connect-timeout 30 --max-time 300 \
+    https://nim-lang.org/download/dlls.zip -o dist/dlls.zip || return
+  echo_run 7z x -y dist/mingw64.7z -odist || return
+  echo_run 7z x -y dist/dlls.zip -obin
 }
 
 nimInternalBuildKochAndRunCI(){
-  echo_run nim c koch
+  echo_run nim c koch || return
   if ! echo_run ./koch runCI; then
     echo_run echo "runCI failed"
     echo_run nim r tools/ci_testresults.nim
@@ -49,7 +51,7 @@ nimInternalBuildKochAndRunCI(){
 }
 
 nimDefineVars(){
-  . config/build_config.txt
+  . config/build_config.txt || return
   nim_csources=bin/nim_csources_$nim_csourcesHash
 }
 
@@ -86,12 +88,38 @@ _nimBuildCsourcesIfNeeded(){
     makeX=make
   fi
   nCPU=$(_nimNumCpu)
-  echo_run which $makeX
+  echo_run which $makeX || return
   # parallel jobs (5X faster on 16 cores: 10s instead of 50s)
-  echo_run $makeX -C $nim_csourcesDir -j $((nCPU + 2)) -l $nCPU "$@"
-  # keep $nim_csources in case needed to investigate bootstrap issues
-  # without having to rebuild
-  echo_run cp bin/nim $nim_csources
+  echo_run $makeX -C "$nim_csourcesDir" -j $((nCPU + 2)) -l $nCPU "$@" || return
+}
+
+_nimCsourcesIsRepo(){
+  # Git must not discover the enclosing Nim checkout for an unpacked archive.
+  (
+    cd "$nim_csourcesDir" || exit
+    test -e .git || exit 1
+    root=$(git rev-parse --show-toplevel 2>/dev/null) || exit
+    test "$(cd "$root" && pwd -P)" = "$(pwd -P)"
+  )
+}
+
+_nimFetchCsourcesPin(){
+  # Called only for a newly created repository or an explicitly strict CI build.
+  (
+    cd "$nim_csourcesDir" || exit
+    if ! git cat-file -e "$nim_csourcesHash^{commit}" 2>/dev/null; then
+      if ! echo_run git fetch -q --depth 1 "$nim_csourcesUrl" "$nim_csourcesHash"; then
+        # Older Git/servers may reject an unadvertised SHA. Fetch branch history
+        # instead; never replace the configured pin with the branch head.
+        echo_run git fetch -q "$nim_csourcesUrl" "$nim_csourcesBranch" || exit
+        if test -f .git/shallow; then
+          echo_run git fetch -q --unshallow "$nim_csourcesUrl" "$nim_csourcesBranch" || exit
+        fi
+        git cat-file -e "$nim_csourcesHash^{commit}" || exit
+      fi
+    fi
+    echo_run git checkout -q "$nim_csourcesHash" || exit
+  )
 }
 
 nimCiSystemInfo(){
@@ -116,32 +144,50 @@ nimBuildCsourcesIfNeeded(){
   # goal: allow cachine each tagged version independently
   # to avoid rebuilding, so that tools like `git bisect`
   # can grab a cached past version without rebuilding.
-  nimDefineVars
+  nimDefineVars || return
   (
     set -e
     # avoid polluting caller scope with internal variable definitions.
-    if test -f "$nim_csources"; then
+    cacheable=1
+    if test -d "$nim_csourcesDir"; then
+      if test "${NIM_CSOURCES_STRICT:-0}" = 1; then
+        _nimCsourcesIsRepo || { echo "Not a csources Git repository: $nim_csourcesDir" >&2; exit 1; }
+        (
+          cd "$nim_csourcesDir" || exit
+          # csources make leaves untracked .o files; reject source edits, not
+          # normal build output. Checkout still protects conflicting files.
+          status=$(git status --porcelain --untracked-files=no) || exit
+          test -z "$status" || { echo "Refusing to change dirty csources" >&2; exit 1; }
+        ) || exit
+      else
+        # Local builds preserve archive contents and a developer's chosen checkout.
+        # Their compiler must not be published under the configured pin's key.
+        cacheable=0
+      fi
+    fi
+    if test "$cacheable" = 1 && test -f "$nim_csources"; then
       echo "$nim_csources exists."
     else
       if test -d "$nim_csourcesDir"; then
         echo "$nim_csourcesDir exists."
       else
-        # Note: using git tags would allow fetching just what's needed, unlike git hashes, e.g.
-        # via `git clone -q --depth 1 --branch $tag $nim_csourcesUrl`.
-        echo_run git clone -q --depth 1 -b $nim_csourcesBranch \
-            $nim_csourcesUrl "$nim_csourcesDir"
-        # old `git` versions don't support -C option, using `cd` explicitly:
-        echo_run cd "$nim_csourcesDir"
-        echo_run git checkout $nim_csourcesHash
-        echo_run cd "$OLDPWD"
-        # if needed we could also add: `git reset --hard $nim_csourcesHash`
+        echo_run git init -q "$nim_csourcesDir" || exit
       fi
-      _nimBuildCsourcesIfNeeded "$@"
+      if test "$cacheable" = 1; then
+        _nimCsourcesIsRepo || exit
+        _nimFetchCsourcesPin || exit
+      fi
+      _nimBuildCsourcesIfNeeded "$@" || exit
+      if test "$cacheable" = 1; then
+        echo_run cp bin/nim "$nim_csources" || exit
+      fi
     fi
 
-    echo_run rm -f bin/nim
+    if test "$cacheable" = 1; then
+      echo_run rm -f bin/nim || exit
       # fixes bug #17913, but it's unclear why it's needed, maybe specific to MacOS Big Sur 11.3 on M1 arch?
-    echo_run cp $nim_csources bin/nim
-    echo_run $nim_csources -v
+      echo_run cp "$nim_csources" bin/nim || exit
+    fi
+    echo_run bin/nim -v
   )
 }

@@ -9,21 +9,77 @@ for /f "delims== tokens=1,2" %%G in (config/build_config.txt) do set %%G=%%H
 SET nim_csources=bin\nim_csources_%nim_csourcesHash%.exe
 echo "building from csources: %nim_csources%"
 
+SET nim_cacheable=1
+if exist %nim_csourcesDir% (
+  if not "%NIM_CSOURCES_STRICT%"=="1" SET nim_cacheable=0
+)
+if "%nim_cacheable%"=="0" goto buildCsources
+if "%NIM_CSOURCES_STRICT%"=="1" if exist %nim_csourcesDir% (
+  CALL :checkCsourcesRepo || exit /b 1
+  rem csources build output can be untracked; preserve it without rejecting it.
+  git -C %nim_csourcesDir% status --porcelain --untracked-files=no >nul || exit /b 1
+  for /f "delims=" %%G in ('git -C %nim_csourcesDir% status --porcelain --untracked-files=no') do (
+    echo Refusing to change dirty csources 1>&2
+    exit /b 1
+  )
+)
+if exist %nim_csources% goto csourcesReady
 if not exist %nim_csourcesDir% (
-  git clone -q --depth 1 -b %nim_csourcesBranch% %nim_csourcesUrl% %nim_csourcesDir%
+  git init -q %nim_csourcesDir% || exit /b 1
 )
 
-if not exist %nim_csources% (
-  cd %nim_csourcesDir%
-  git checkout %nim_csourcesHash%
-  echo "%PROCESSOR_ARCHITECTURE%"
-  if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
-    SET ARCH=64
+CALL :checkCsourcesRepo || exit /b 1
+cd %nim_csourcesDir% || exit /b 1
+git cat-file -e %nim_csourcesHash% 2>nul
+if errorlevel 1 (
+  git fetch -q --depth 1 %nim_csourcesUrl% %nim_csourcesHash%
+  if errorlevel 1 (
+    rem Older Git/servers can fetch branch history instead of an exact SHA.
+    git fetch -q %nim_csourcesUrl% %nim_csourcesBranch% || exit /b 1
+    if exist .git\shallow (
+      git fetch -q --unshallow %nim_csourcesUrl% %nim_csourcesBranch% || exit /b 1
+    )
   )
-  CALL build.bat
-  cd ..
-  copy /y bin\nim.exe  %nim_csources%
+  git cat-file -e %nim_csourcesHash% 2>nul
+  if errorlevel 1 exit /b 1
+)
+git checkout -q %nim_csourcesHash% || exit /b 1
+cd .. || exit /b 1
+:buildCsources
+cd %nim_csourcesDir% || exit /b 1
+echo "%PROCESSOR_ARCHITECTURE%"
+if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
+  SET ARCH=64
+)
+CALL build.bat || exit /b 1
+cd .. || exit /b 1
+if "%nim_cacheable%"=="1" (
+  copy /y bin\nim.exe %nim_csources% || exit /b 1
+)
+:csourcesReady
+if "%nim_cacheable%"=="1" (
+  copy /y %nim_csources% bin\nim.exe || exit /b 1
 )
 bin\nim.exe c --noNimblePath --skipUserCfg --skipParentCfg --hints:off koch
 koch boot -d:release --skipUserCfg --skipParentCfg --hints:off
 koch tools --skipUserCfg --skipParentCfg --hints:off
+exit /b
+
+:checkCsourcesRepo
+if not exist %nim_csourcesDir%\.git (
+  echo Not a csources Git repository: %nim_csourcesDir% 1>&2
+  exit /b 1
+)
+pushd %nim_csourcesDir% || exit /b 1
+git rev-parse --show-toplevel >nul
+if errorlevel 1 (
+  popd
+  exit /b 1
+)
+rem An enclosing Nim repository would report a nonempty prefix here.
+for /f "delims=" %%G in ('git rev-parse --show-prefix') do (
+  popd
+  exit /b 1
+)
+popd
+exit /b 0

@@ -12,6 +12,7 @@ template processTest(t, x: untyped) =
 
 when not defined(windows):
   import os, posix, nativesockets
+  import std/[monotimes, times]
 
   when ioselSupportedPlatform:
     import osproc
@@ -41,7 +42,7 @@ when not defined(windows):
                   addr(option), sizeof(option).SockLen) < 0:
       raiseOSError(osLastError())
 
-    var aiList = getAddrInfo("0.0.0.0", Port(13337))
+    var aiList = getAddrInfo("127.0.0.1", Port(0))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
       freeAddrInfo(aiList)
@@ -50,7 +51,7 @@ when not defined(windows):
       raiseOSError(osLastError())
     freeAddrInfo(aiList)
 
-    aiList = getAddrInfo("127.0.0.1", Port(13337))
+    aiList = getAddrInfo("127.0.0.1", getSockName(server_socket))
     discard posix.connect(client_socket, aiList.ai_addr,
                           aiList.ai_addrlen.Socklen)
 
@@ -59,10 +60,18 @@ when not defined(windows):
 
     freeAddrInfo(aiList)
 
-    # make sure both sockets are selected
-    var nevs = 0
-    while nevs < 2:
-      nevs += selector.select(100).len
+    # Writable notifications may repeat before the listening socket becomes ready.
+    # Wait for both descriptors, rather than counting two notifications.
+    var clientReady, serverReady = false
+    let deadline = getMonoTime() + initDuration(seconds = 10)
+    while not (clientReady and serverReady) and getMonoTime() < deadline:
+      for key in selector.select(100):
+        if key.fd == int(client_socket) and Event.Write in key.events:
+          clientReady = true
+          selector.updateHandle(client_socket, {})
+        if key.fd == int(server_socket) and Event.Read in key.events:
+          serverReady = true
+    doAssert clientReady and serverReady, "Timed out waiting for socket readiness"
 
     var sockAddress: SockAddr
     var addrLen = sizeof(sockAddress).Socklen
@@ -283,8 +292,7 @@ when not defined(windows):
       if result == -1:
         raiseOsError(osLastError())
 
-    const
-      testDirectory = "/tmp/kqtest"
+    let testDirectory = getTempDir() / ("kqtest_" & $getCurrentProcessId())
 
     type
       valType = object
@@ -313,10 +321,10 @@ when not defined(windows):
                     Event.VnodeRevoke}
 
       result = true
-      discard posix.unlink(testDirectory)
+      discard posix.unlink(testDirectory.cstring)
 
       createDir(testDirectory)
-      var dirfd = posix.open(cstring(testDirectory), posix.O_RDONLY)
+      var dirfd = posix.open(testDirectory.cstring, posix.O_RDONLY)
       if dirfd == -1:
         raiseOsError(osLastError())
 
@@ -513,7 +521,7 @@ else:
                   addr(option), sizeof(option).SockLen) < 0:
       raiseOSError(osLastError())
 
-    var aiList = getAddrInfo("0.0.0.0", Port(13337))
+    var aiList = getAddrInfo("127.0.0.1", Port(0))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
       freeAddrInfo(aiList)
@@ -521,7 +529,7 @@ else:
     discard server_socket.listen()
     freeAddrInfo(aiList)
 
-    aiList = getAddrInfo("127.0.0.1", Port(13337))
+    aiList = getAddrInfo("127.0.0.1", getSockName(server_socket))
     discard connect(client_socket, aiList.ai_addr,
                     aiList.ai_addrlen.Socklen)
     freeAddrInfo(aiList)
