@@ -455,6 +455,11 @@ Effect inference checks the body of a routine of another module of the group
 before it uses its effects. Only a recursion through the modules of the group
 is treated like a call of a forward declared routine.
 
+An import cycle without a `cyclic` import is deprecated: with
+`--experimental:cyclicImports` such an import produces the warning
+`ImplicitCyclicImport` that lists the modules of the cycle. The modules of such
+a cycle only see the declarations of each other that precede the imports.
+
 A `cyclic` import must be a top-level statement that is not nested in a
 `when` statement or produced by a macro. Type sections and routines that are
 nested in such constructs or that stem from an `include` are not part of the

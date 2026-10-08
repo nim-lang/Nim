@@ -220,6 +220,8 @@ parameter and result types, not just their source-level shape. Use
   (`import b {.cyclic.}`) makes the modules of an import cycle a group whose
   types and leading routines are visible to each other regardless of
   declaration order, so procs of different modules can call each other.
+  Under this switch an import cycle without `{.cyclic.}` is deprecated and
+  produces the new warning `ImplicitCyclicImport`.
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".

@@ -12,7 +12,7 @@
 import
   ast, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos,
-  modulegraphs, wordrecg
+  modulegraphs, wordrecg, renderer
 from astalgo import enumOrSumTypeEnum
 from std/strutils import `%`, startsWith, replace
 from std/sequtils import addUnique
@@ -320,6 +320,12 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
         err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
                 toFullPath(c.config, c.graph.importStack[i+1])
       c.recursiveDep = err
+      if (cyclicImports in c.config.features or cyclicImports in c.features) and
+          not (c.module.position in c.graph.cycleGroupMembers and f.int in c.graph.cycleGroupMembers):
+        # the cycle is not declared on either side:
+        message(c.config, n.info, warnImplicitCyclicImport,
+          "import cycle without '.cyclic'; this is deprecated, use 'import " &
+          n.renderTree & " {.cyclic.}':\n" & err)
 
     let trackUnusedImport = warnUnusedImportX in c.config.notes
     discard pushOptionEntry(c)

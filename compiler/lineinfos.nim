@@ -101,6 +101,7 @@ type
     warnImplicitRangeConversion = "ImplicitRangeConversion",
     warnSystemRangeConversion = "SystemRangeConversion",
     warnInvalidCmpOp = "InvalidCmpOp",
+    warnImplicitCyclicImport = "ImplicitCyclicImport",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -212,6 +213,7 @@ const
     warnImplicitRangeConversion: "implicit range conversion $1",
     warnSystemRangeConversion: "implicit range conversion $1",
     warnInvalidCmpOp: "$1",
+    warnImplicitCyclicImport: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
