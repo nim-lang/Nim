@@ -53,6 +53,7 @@ type
   TGenFlag = enum
     gfNode # Affects how variables are loaded - always loads as rkNode
     gfNodeAddr # Affects how variables are loaded - always loads as rkNodeAddr
+    gfLoopBorrow # element address used to bind an inlined loop variable
     gfIsParam # do not deepcopy parameters, they are immutable
     gfIsSinkParam # deepcopy sink parameters
   TGenFlags = set[TGenFlag]
@@ -1740,6 +1741,13 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
         gen(c, ri, cc)
         c.gABC(le, whichAsgnOpc(le), dest, cc)
         c.freeTemp(cc)
+      elif s.kind == skForVar and ri.kind == nkHiddenAddr and
+          ri[0].kind == nkBracketExpr:
+        # transformYield binds the loop variable to the yielded element. The
+        # collection stays live through the inlined loop body, so this borrow
+        # needs no permanent GC root (#26273). Other hidden addresses, including
+        # var arguments and returned views, keep their existing protection.
+        gen(c, ri[0], dest, {gfNodeAddr, gfLoopBorrow})
       else:
         gen(c, ri, dest)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
@@ -1856,11 +1864,16 @@ template needsRegLoad(): untyped =
 
 proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                         flags: TGenFlags) =
-  let a = c.genx(n[0], flags)
+  # Only the yielded element borrows; do not propagate this marker into the
+  # collection expression, which can contain unrelated address operations.
+  let a = c.genx(n[0], flags - {gfLoopBorrow})
   let b = c.genIndex(n[1], n[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
   if opc in {opcLdArrAddr, opcLdStrIdxAddr} and gfNodeAddr in flags:
-    c.gABC(n, opc, dest, a, b)
+    let addressOpc = if opc == opcLdArrAddr and gfLoopBorrow in flags:
+                       opcLdArrAddrBorrow
+                     else: opc
+    c.gABC(n, addressOpc, dest, a, b)
     if c.prc.regInfo[a].kind >= slotTempUnknown:
       c.prc.regInfo[a].kind = slotTempPerm
   elif needsRegLoad():
@@ -1971,7 +1984,9 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
     genArrAccessOpcode(c, n, dest, opc, flags)
   of tyTuple:
-    c.genObjAccessAux(n, c.genx(n[0], flags), int n[1].intVal, dest, flags)
+    # Tuple fields are not loop-element borrows; do not mark their base either.
+    c.genObjAccessAux(n, c.genx(n[0], flags - {gfLoopBorrow}),
+                     int n[1].intVal, dest, flags)
   of tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:

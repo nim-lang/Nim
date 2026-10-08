@@ -537,9 +537,13 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
   else:
     false
 
-template takeAddress(reg, source) =
+template takeAddress(reg, source; loopBorrow = false) =
   reg.nodeAddr = addr source
-  GC_ref source
+  # A loop-element borrow is backed by the collection for the loop body's
+  # lifetime. Permanently rooting each yielded node leaks it on every iteration.
+  # Keep the existing GC protection for all other addresses.
+  if not loopBorrow:
+    GC_ref source
 
 proc takeCharAddress(c: PCtx, src: PNode, index: BiggestInt, pc: int): TFullReg =
   let typ = newType(tyPtr, c.idgen, c.module.owner)
@@ -774,7 +778,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = src[idx]
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
-    of opcLdArrAddr:
+    of opcLdArrAddr, opcLdArrAddrBorrow:
       # a = addr(b[c])
       decodeBC(rkNodeAddr)
       if regs[rc].intVal > high(int):
@@ -792,14 +796,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           of nkStrKinds:
             regs[ra] = takeCharAddress(c, src[0], realIndex, pc)
           of nkBracket:
-            takeAddress regs[ra], src.sons[0].sons[realIndex]
+            takeAddress regs[ra], src.sons[0].sons[realIndex],
+              instr.opcode == opcLdArrAddrBorrow
           else:
             stackTrace(c, tos, pc, "opcLdArrAddr internal error")
         else:
           stackTrace(c, tos, pc, formatErrorIndexBound(idx, int right))
       else:
         if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
-          takeAddress regs[ra], src.sons[idx]
+          takeAddress regs[ra], src.sons[idx],
+            instr.opcode == opcLdArrAddrBorrow
         elif src.kind in nkStrKinds and idx <% src.strVal.len:
           regs[ra] = takeCharAddress(c, src, idx, pc)
         else:
