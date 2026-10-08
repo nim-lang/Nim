@@ -99,13 +99,13 @@ proc load(content: string) =
 
 proc render(): string =
   result = ""
-  var keys: seq[string]
+  var keys: seq[string] = @[]
   for key in counters.keys: keys.add key
   keys.sort()
   for key in keys:
     let c = counters[key]
     result.add "t " & $c.top & " " & escape(key) & "\n"
-    var owners: seq[string]
+    var owners: seq[string] = @[]
     for o in c.owners.keys: owners.add o
     owners.sort()
     for o in owners:
