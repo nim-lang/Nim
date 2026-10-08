@@ -198,6 +198,13 @@ gated on that dependency's **impl** cookie instead of its iface cookie, so e.g.
 iterators and `inline` procs are *not* tracked — they are inlined at codegen,
 where the backend's NIF-mtime invalidation re-codegens their users.
 
+Reusing a generic type instance also records a NeedsImpl edge in
+`semtypinst.searchInstTypes`, to the module that instantiated the type. The
+instance's stored type ID can change after a private body edit even when that
+module's interface cookie stays unchanged. This applies to offers loaded from
+both direct and transitive imports; ordinary callers still depend on the
+interface cookie unless they consume a body or reuse an instance.
+
 Discovery of macro-generated imports
 ====================================
 

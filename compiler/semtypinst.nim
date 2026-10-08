@@ -38,7 +38,9 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       genericTyp.sym != nil): return
 
   for inst in typeInstCacheItems(g, genericTyp.sym):
-    if inst.id == key.id: return inst
+    if inst.id == key.id:
+      g.recordIcImplDep(inst)
+      return inst
     if inst.kidsLen < key.kidsLen:
       # XXX: This happens for prematurely cached
       # types such as Channel[empty]. Why?
@@ -55,6 +57,7 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
                             flags = {ExactGenericParams, PickyCAliases}):
           break matchType
 
+      g.recordIcImplDep(inst)
       return inst
 
 proc cacheTypeInst(c: PContext; inst: PType) =
