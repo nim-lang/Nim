@@ -474,6 +474,62 @@ proc captureVar(c: var Ctx, s: PSym) =
     let e = getEnvParam(c.fn)
     discard addField(e.typ.elementType, s, c.g.cache, c.idgen)
 
+proc operandValue(n: PNode): PNode {.inline.} =
+  if n.kind == nkExprColonExpr: n[1] else: n
+
+proc isViewOrLocation(t: PType): bool {.inline.} =
+  t.skipTypes(abstractInst).kind in {tyVar, tyLent, tyOpenArray, tyVarargs,
+    tyTypeDesc, tyStatic, tyUntyped, tyTyped, tyUncheckedArray}
+
+proc needsSnapshot(n: PNode): bool =
+  ## Whether the value of the operand `n` can be changed by the side effects
+  ## of an operand to its right that has been hoisted out of the expression.
+  ## Such an operand has to be evaluated into a temporary first so that
+  ## the left-to-right evaluation order is preserved.
+  case n.kind
+  of nkLiterals, nkNilLit, nkEmpty, nkType:
+    result = false
+  of nkSym:
+    result = n.sym.kind in {skVar, skLet, skParam, skResult, skForVar, skTemp}
+  of nkHiddenAddr, nkAddr:
+    # an address (also of a `var` parameter) designates a location, not a value
+    result = false
+  else:
+    result = true
+  if result:
+    if n.typ == nil or isEmptyType(n.typ):
+      result = false
+    else:
+      # locations and views cannot be copied into a temporary
+      result = not isViewOrLocation(n.typ)
+
+proc hoistOperands(ctx: var Ctx, n, result: PNode; first: int; tempCalls: bool) =
+  ## Moves the statements of the operands `n[first..^1]` that are
+  ## `nkStmtListExpr` into `result`. Operands left of the last such
+  ## operand are evaluated into temporaries before the statements run.
+  var last = -1
+  for i in first..<n.len:
+    if operandValue(n[i]).kind == nkStmtListExpr: last = i
+  for i in first..<n.len:
+    var x = operandValue(n[i])
+    if x.kind == nkStmtListExpr:
+      let (st, ex) = exprToStmtList(x)
+      result.add(st)
+      x = ex
+    var snapshot = i < last and needsSnapshot(x)
+    if snapshot and i > 0 and n.kind in nkCallKinds and n[0].typ != nil:
+      # arguments passed to `var` (and similar) parameters are locations,
+      # even if they are not wrapped in `nkHiddenAddr` (like for magics)
+      let fn = n[0].typ.skipTypes(abstractInst)
+      if fn.kind == tyProc and i < fn.n.len and fn.n[i].typ != nil and
+          isViewOrLocation(fn.n[i].typ):
+        snapshot = false
+    if snapshot or (tempCalls and x.kind in nkCallKinds):
+      let tmp = ctx.newTempVar(x.typ, result, x)
+      x = ctx.newTempVarAccess(tmp)
+    if n[i].kind == nkExprColonExpr: n[i][1] = x
+    else: n[i] = x
+
 proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   result = n
   case n.kind
@@ -514,19 +570,8 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 
       if n.typ.isNil: internalError(ctx.g.config, "lowerStmtListExprs: constr typ.isNil")
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-
-      for i in 0..<n.len:
-        case n[i].kind
-        of nkExprColonExpr:
-          if n[i][1].kind == nkStmtListExpr:
-            let (st, ex) = exprToStmtList(n[i][1])
-            result.add(st)
-            n[i][1] = ex
-        of nkStmtListExpr:
-          let (st, ex) = exprToStmtList(n[i])
-          result.add(st)
-          n[i] = ex
-        else: discard
+      # the type of an object constructor is not an operand
+      ctx.hoistOperands(n, result, ord(n.kind == nkObjConstr), tempCalls = false)
       result.add(n)
 
   of nkIfStmt, nkIfExpr:
@@ -706,17 +751,9 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         result.add(ifNode)
         result.add(ctx.newTempVarAccess(tmp))
       else:
-        for i in 0..<n.len:
-          if n[i].kind == nkStmtListExpr:
-            let (st, ex) = exprToStmtList(n[i])
-            result.add(st)
-            n[i] = ex
-
-          if n[i].kind in nkCallKinds: # XXX: This should better be some sort of side effect tracking
-            let tmp = ctx.newTempVar(n[i].typ, result, n[i])
-            # result.add(ctx.newTempVarAsgn(tmp, n[i]))
-            n[i] = ctx.newTempVarAccess(tmp)
-
+        # XXX: temporaries for all calls should better be some sort of
+        # side effect tracking
+        ctx.hoistOperands(n, result, 0, tempCalls = true)
         result.add(n)
 
   of nkVarSection, nkLetSection:
