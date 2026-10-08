@@ -848,6 +848,24 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result.add(n)
       result.add(ex)
 
+  of nkPragmaBlock:
+    var ns = false
+    n[1] = ctx.lowerStmtListExprs(n[1], ns)
+    if ns:
+      needsSplit = true
+      if not isEmptyType(n.typ):
+        # The value is computed inside the pragma block's scope and stored
+        # in a temporary so that the block itself becomes a statement:
+        #   var tmp
+        #   {.pragma.}: stmts; tmp = value
+        #   tmp
+        result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+        let tmp = ctx.newTempVar(n.typ, result)
+        n[1] = ctx.convertExprBodyToAsgn(n[1], tmp)
+        n.typ = nil
+        result.add(n)
+        result.add(ctx.newTempVarAccess(tmp))
+
   else:
     for i in 0..<n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], needsSplit)
