@@ -1635,6 +1635,10 @@ proc customPragmaNode(n: NimNode): NimNode =
             typDef = getImpl(resolved)
             continue
         break
+      if typDef[2].kind == nnkBracketExpr and typDef[2][0].kind == nnkSym:
+        # alias of a generic instance like `BaseInt = Base[int]`
+        typDef = getImpl(typDef[2][0])
+        continue
       let typ = typDef[2].extractTypeImpl()
       if typ.kind notin {nnkRefTy, nnkPtrTy, nnkObjectTy}: break
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
@@ -1670,7 +1674,12 @@ proc customPragmaNode(n: NimNode): NimNode =
                   return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
-          typDef = getImpl(obj[1][0])
+          var parent = obj[1][0]
+          if parent.kind == nnkBracketExpr:
+            # generic parent like `Base[int]`: the fields are declared
+            # in the generic type's definition
+            parent = parent[0]
+          typDef = getImpl(parent)
         else:
           typDef = nil
 
