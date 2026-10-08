@@ -936,37 +936,6 @@ proc moduleIdgen*(g: ModuleGraph; m: PSym): IdGenerator =
     if m.position < g.ifaces.len:
       g.ifaces[m.position].idgen = result
 
-proc delModuleKeys[V](t: var Table[ItemId, V]; module: int32) =
-  var stale: seq[ItemId] = @[]
-  for id in t.keys:
-    if id.module == module: stale.add id
-  for id in stale: t.del id
-
-proc forgetModule*(g: ModuleGraph; m: PSym) =
-  ## Called before module `m` is recompiled (nimsuggest): drops the cached
-  ## instances of its generics, the instances it created of other modules'
-  ## generics (they may have bound its symbols, e.g. through `mixin`) and the
-  ## hooks it overrides. The recompilation replaces them; the instances other
-  ## modules created stay reusable.
-  let module = m.itemId.module
-  g.procInstCache.delModuleKeys(module)
-  g.typeInstCache.delModuleKeys(module)
-  for insts in mvalues(g.procInstCache):
-    var kept: seq[PInstantiation] = @[]
-    for inst in insts:
-      if inst.sym.itemId.module != module: kept.add inst
-    insts = kept
-  for types in mvalues(g.typeInstCache):
-    var kept: seq[PType] = @[]
-    for t in types:
-      if t.itemId.module != module: kept.add t
-    types = kept
-  for tbl in mitems(g.attachedOps):
-    var stale: seq[ItemId] = @[]
-    for id, op in tbl:
-      if id.module == module and sfOverridden in op.flags: stale.add id
-    for id in stale: tbl.del id
-
 proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
   # Public because it's used by DrNim.
