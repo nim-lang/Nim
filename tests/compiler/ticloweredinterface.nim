@@ -78,10 +78,16 @@ echo longReexportedModuleAlias.choose(Tag12(0))
   let executed = execCmdEx(quoteShell(binary))
   doAssert executed.exitCode == 0 and executed.output.strip == "12", executed.output
 
+  var loweredFiles: seq[string]
+  for file in walkDirRec(cache):
+    if file.endsWith(".t.bif"): loweredFiles.add file
   var checked, privateOverloads, aliases: int
-  for semantic in walkFiles(cache / "*.s.bif"):
-    let lowered = semantic[0 ..< semantic.len - ".s.bif".len] & ".t.bif"
-    if fileExists(lowered):
+  for semantic in walkDirRec(cache):
+    if not semantic.endsWith(".s.bif"):
+      continue
+    let loweredName = semantic.extractFilename.changeFileExt("").changeFileExt(".t.bif")
+    for lowered in loweredFiles:
+      if lowered.extractFilename != loweredName: continue
       let original = interfaces(semantic)
       # Compare the actual on-disk sequences, including symbols never demanded
       # by codegen. Reading these names through an eager-only pool accessor can

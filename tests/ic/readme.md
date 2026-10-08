@@ -2,6 +2,30 @@
 
     ./bin/testament --nim:<your compiler> cat ic
 
+The cache uses Nimony-style subdirectories to share work at each stage:
+
+```text
+nimcache/
+  parsed/                              # source/dependency scans shared across settings
+  configs/<effective settings hash>/
+    sem/                               # imported-module semantics
+      main/<entry-point suffix>/       # main module and its import cycle
+    backend/<backend>/<entry-point suffix>/
+```
+
+Only the driver computes the configuration hash. Children receive concrete
+semantic input directories and use `--nimcache` for their outputs. Equivalent
+settings share imported semantics; changing settings preserves the previous
+configuration for reuse. The main module's import cycle is kept separate because
+`isMainModule` can change those modules' semantics. Project configuration
+snapshots remain in the cache root.
+
+The metamorphic clean-cache comparison checks the active program's outputs and
+shared files required by the clean build. No-op checks cover every cached file.
+
+Switching configurations, entry points, or output paths invalidates the final
+link so an executable outside the cache is restored from the selected artifacts.
+
 ## The metamorphic tests are expensive, and look hung when they are not
 
 16 of the tests carry `#? metamorphic`. Each has 3–4 `#!STEP` directives, and
@@ -38,10 +62,7 @@ one stderr, so any per-process diagnostic printing (`NIM_IC_BNODE_GRIND`,
 
 ## Running a single test
 
-`testament r tests/ic/<file>.nim` works for the ordinary tests. It does NOT work
-for the metamorphic ones — the multi-step files carry several `discard """`
-spec blocks and the single-test path rejects them with "duplicate `specStart`".
-Those only run through `cat ic`.
+`testament r tests/ic/<file>.nim` works for ordinary and metamorphic tests.
 
 Files matching `tests/ic/*_temp.nim` are ignored by git (see `.gitignore`) and
 are scratch, not tests: several import helper modules that do not exist and fail

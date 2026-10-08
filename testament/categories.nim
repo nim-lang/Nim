@@ -15,6 +15,7 @@
 import important_packages
 import std/[strformat, strutils, tables]
 from std/sequtils import filterIt, mapIt
+from std/sha1 import secureHash, `$`
 
 const
   specialCategories = [
@@ -629,17 +630,30 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
   removeDir(buildDir)
   createDir(buildDir)
 
-  # Extra switches for both compilers, settable per step via `#!FLAGS`.
+  when defined(macosx):
+    # Mach-O debug maps contain object-file mtimes outside the header skipped
+    # by stableBinary. Make those timestamps (and their signature hashes)
+    # deterministic for the clean-vs-incremental comparison.
+    let hadZeroArDate = existsEnv("ZERO_AR_DATE")
+    let zeroArDate = getEnv("ZERO_AR_DATE")
+    putEnv("ZERO_AR_DATE", "1")
+    defer:
+      if hadZeroArDate: putEnv("ZERO_AR_DATE", zeroArDate)
+      else: delEnv("ZERO_AR_DATE")
+
+  # Command-line options apply to every step, including the classic oracle.
+  # `#!FLAGS` replaces only the per-step switches.
+  let compilerOptions = parseCmdLine(options)
   var extraFlags: seq[string] = @[]
 
   template compileIc(): untyped =
     execCmdEx2(compilerPrefix, @["ic", "--hint:Conf:off", "--warnings:off",
-      "--nimcache:" & nc, "--out:" & bin] & extraFlags & @["main.nim"],
+      "--nimcache:" & nc, "--out:" & bin] & compilerOptions & extraFlags & @["main.nim"],
       workingDir = buildDir)
 
   template compileRef(): untyped =
     execCmdEx2(compilerPrefix, @["c", "--hint:Conf:off", "--warnings:off",
-      "--nimcache:" & ncRef, "--out:" & binRef] & extraFlags & @["main.nim"],
+      "--nimcache:" & ncRef, "--out:" & binRef] & compilerOptions & extraFlags & @["main.nim"],
       workingDir = buildDir)
 
   # Parse the source into a flat op list: ("file", name, content) | ("step", attrs, "").
@@ -812,8 +826,25 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
           mmRaise(reOutputsDiffer, "clean binary == incremental binary",
             where & ": clean rebuild produced a different binary")
         var diff: seq[string] = @[]
+        # Earlier programs/configurations and unused shared modules remain cached.
+        # Compare all clean shared inputs and the active program's outputs;
+        # no-op checks still cover every file in the accumulated cache.
+        let activePrefix = "configs" / $secureHash(snap["ic_build_args.txt"]) & DirSep
+        let backendPrefix = snap["ic_link_args.txt"].splitLines[0].relativePath(nc) & DirSep
+        let mainPrefix = activePrefix / "sem" / "main" /
+          backendPrefix[0 ..< backendPrefix.len - 1].extractFilename & DirSep
         for p in changedPaths(snap, cleanSnap):
-          if not isProvenance(p): diff.add p
+          let inactiveConfig = p.startsWith("configs" & DirSep) and
+            not p.startsWith(activePrefix)
+          let inactiveBackend = p.startsWith(activePrefix / "backend" & DirSep) and
+            not p.startsWith(backendPrefix)
+          let inactiveMain = p.startsWith(activePrefix / "sem" / "main" & DirSep) and
+            not p.startsWith(mainPrefix)
+          let unusedShared = p notin cleanSnap and
+            (p.startsWith("parsed" & DirSep) or p.parentDir == activePrefix / "sem")
+          if not (inactiveConfig or inactiveBackend or inactiveMain or unusedShared or
+              isProvenance(p)):
+            diff.add p
         if diff.len != 0:
           mmRaise(reOutputsDiffer, "clean cache == incremental cache",
             where & ": clean rebuild differs in " & $diff.len & " cache file(s): " & diff.join(", "))

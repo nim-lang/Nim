@@ -73,6 +73,9 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
       stack.add dep
 
   var visited = initHashSet[string]()
+  # Main is already loaded with its full AST. An import cycle must not load it
+  # again as an interface-only dependency and discard its top-level statements.
+  visited.incl cachedModuleSuffix(g.config, mainFileIdx)
 
   while stack.len > 0:
     let suffix = stack.pop()

@@ -48,6 +48,9 @@ type
 
   DepContext = object
     config: ConfigRef
+    linkArgsFile: string # root-level input: the config/project/output last selected
+    argsFile: string     # effective settings, stable within the configuration directory
+    backendDir: string  # outputs for this backend and entry point
     nifler: string
     nodes: seq[Node]
     processedModules: Table[string, int]  # modname -> node index
@@ -67,10 +70,10 @@ proc toPair(c: DepContext; f: string): FilePair =
   FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
 
 proc depsFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".deps.nif"
+  getParsedCacheDir(c.config).string / f.modname & ".deps.nif"
 
 proc parsedFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".p.nif"
+  getParsedCacheDir(c.config).string / f.modname & ".p.nif"
 
 proc parsedDepsFile(c: DepContext; f: FilePair): string =
   ## The deps sidecar `nifler parse --deps <src> <out>.p.nif` actually writes: it
@@ -80,24 +83,24 @@ proc parsedDepsFile(c: DepContext; f: FilePair): string =
   parsedFile(c, f).changeFileExt("") & ".deps.nif"
 
 proc semmedFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".s.bif"
+  semanticFile(c.config, f.modname, ".s.bif").string
 
 proc ifaceFile(c: DepContext; f: FilePair): string =
   ## Interface-cookie sidecar written by `nim m` (ast2nif.writeIfaceCookie,
   ## OnlyIfChanged). Dependents' nim_m rules use it as their input instead of
   ## the semmed NIF: a body-only change in a dependency then keeps the sidecar
   ## mtime and nifmake prunes the whole re-sem cascade behind it.
-  getNimcacheDir(c.config).string / f.modname & ".iface.bif"
+  semanticFile(c.config, f.modname, ".iface.bif").string
 
 proc implFile(c: DepContext; suffix: string): string =
   ## Implementation-cookie sidecar (ast2nif.writeImplCookie): flips on ANY
   ## content change of the module (private bodies included; supersedes the
   ## iface cookie). Used as the edge for dependents that consumed the
   ## module's bodies at compile time (NeedsImpl edges).
-  getNimcacheDir(c.config).string / suffix & ".impl.bif"
+  semanticFile(c.config, suffix, ".impl.bif").string
 
 proc edgesFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".edges.bif"
+  semanticFile(c.config, f.modname, ".edges.bif").string
 
 proc readNeedsImpl(c: DepContext; f: FilePair): seq[string] =
   ## Reads the module's recorded NeedsImpl edge set (module suffixes whose
@@ -111,7 +114,7 @@ proc readNeedsImpl(c: DepContext; f: FilePair): seq[string] =
     result = collectBifStrLits(c.edgesFile(f))
 
 proc semDepsFile(c: DepContext; f: FilePair): string =
-  getNimcacheDir(c.config).string / f.modname & ".s.deps.bif"
+  semanticFile(c.config, f.modname, ".s.deps.bif").string
 
 proc readSemDeps(c: DepContext; f: FilePair): seq[string] =
   ## The module's REAL direct imports (full source paths) as sem resolved them,
@@ -725,7 +728,7 @@ proc includerSbifs*(conf: ConfigRef; targetFile: AbsoluteFile): seq[string] =
   ## own, so its type-checked tokens live in the *including* module's bif. Only
   ## the small `.deps.nif` preludes are read here, never a `.s.bif`.
   const depsExt = ".deps.nif"
-  let nc = getNimcacheDir(conf).string
+  let nc = getParsedCacheDir(conf).string
 
   # Candidate roots for resolving an `(include X)` entry to a real file, so its
   # module suffix (== its own deps-file stem) can be computed. Include entries
@@ -764,7 +767,7 @@ proc includerSbifs*(conf: ConfigRef; targetFile: AbsoluteFile): seq[string] =
     let b = work.pop()
     if seenBase.containsOrIncl(b): continue
     for stem in includedBy.getOrDefault(b):
-      let sbif = nc / stem & ".s.bif"
+      let sbif = semanticFile(conf, stem, ".s.bif").string
       if fileExists(sbif):
         if sbif notin result: result.add sbif   # module owner
       else:
@@ -965,15 +968,15 @@ proc pruneDeadSpeculative(c: var DepContext) =
     let wasDeferred = c.nodes[i].deferred
     c.nodes[i].deferred = not alive[i]
     if alive[i] or wasDeferred: continue
-    # A module selected by a previous configuration has been semmed already.
-    # Nothing may load that NIF: an importer that takes the guarded branch has
-    # to stop for discovery, so that the module is semmed again.
-    let f = c.nodes[i].files[0]
-    removeFile(c.semmedFile(f))
-    removeFile(c.ifaceFile(f))
-    removeFile(c.implFile(f.modname))
-    removeFile(c.edgesFile(f))
-    removeFile(c.semDepsFile(f))
+    # Preserve current semantics shared by other entry points. A stale module
+    # must stop an importer for discovery before it can consume outdated code.
+    if not semDepsAreCurrent(c, c.nodes[i]):
+      let f = c.nodes[i].files[0]
+      removeFile(c.semmedFile(f))
+      removeFile(c.ifaceFile(f))
+      removeFile(c.implFile(f.modname))
+      removeFile(c.edgesFile(f))
+      removeFile(c.semDepsFile(f))
     if c.nodes[i].missingImport.len > 0:
       rawMessage(c.config, hintSuccess,
         "ic: skipping " & c.nodes[i].files[0].nimFile &
@@ -983,38 +986,6 @@ proc pruneDeadSpeculative(c: var DepContext) =
   if deferred > 0:
     rawMessage(c.config, hintSuccess,
       "ic: " & $deferred & " module(s) deferred behind undecidable when guards")
-
-proc removeDeferredScans(c: DepContext) =
-  ## Drop the scan artifacts of the modules that are still deferred once
-  ## discovery is done, so an edit-accumulated cache does not differ from a
-  ## clean one for no reason (`tests/ic/tdead_when_import` pins that). Not
-  ## earlier: a module that discovery brings back is not scanned again.
-  ## Re-running nifler if it ever comes back costs a single parse. (Its sem
-  ## outputs went when it was deferred; its backend outputs are pruned with
-  ## every other module the backend does not reach.)
-  ##
-  ## But a FILE can belong to several nodes, and only the NODE is deferred.
-  ## `lib/system/inclrtl.nim` is `include`d by dozens of live stdlib modules and
-  ## also sits in the file set of a deferred one; a clean build therefore has
-  ## its `.p.nif`, and deleting it here does not tidy the cache, it corrupts it.
-  ## The consequences compound: the missing output re-fires that file's
-  ## `nifler` rule, which rewrites the parsed file with a fresh mtime, which
-  ## re-fires every `nim_m` rule listing it as an input — 16 full module re-sems
-  ## (system, os, times, strutils, macros, unicode, ...) on every warm build, for
-  ## ever, because the scanner is stateless and rediscovers the deferred node
-  ## each run. Measured on a 219-module program: an 11 s NO-OP build. So delete
-  ## only what no live node claims.
-  var liveFiles = initHashSet[string]()
-  for node in c.nodes:
-    if not node.deferred:
-      for f in node.files: liveFiles.incl f.nimFile
-  for node in c.nodes:
-    if not node.deferred: continue
-    for f in node.files:
-      if f.nimFile in liveFiles: continue
-      removeFile(c.parsedFile(f))
-      removeFile(c.depsFile(f))
-      removeFile(c.parsedDepsFile(f))
 
 proc computeSCCs(c: DepContext): seq[seq[int]] =
   ## Tarjan's strongly-connected-components over the module dependency graph
@@ -1069,6 +1040,21 @@ proc computeSCCs(c: DepContext): seq[seq[int]] =
         work.setLen work.len - 1
         if work.len > 0:
           lowlink[work[^1].v] = min(lowlink[work[^1].v], lowlink[v])
+
+proc selectMainSemanticModules(c: DepContext) =
+  ## An import cycle containing main is compiled together with its main role.
+  ## Keep the whole group separate from imported versions shared by other programs.
+  c.config.icMainModules = @[]
+  for comp in computeSCCs(c):
+    if 0 in comp:
+      for i in comp: c.config.icMainModules.add c.nodes[i].files[0].modname
+  c.config.icMainModules.sort()
+
+proc semanticArgs(conf: ConfigRef): seq[string] =
+  result = @["--icSemDir:" & conf.icSemDir.string,
+             "--icMainSemDir:" & conf.icMainSemDir.string]
+  for suffix in conf.icMainModules:
+    result.add "--icMainModule:" & suffix
 
 proc computeForwardedArgs(c: DepContext): seq[string] =
   ## Config/define forwarding shared by the frontend (`nim m`) and backend
@@ -1151,6 +1137,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "nimcache", "out", "o", "outdir", "usenimcache", "run", "r",
     "incremental", "ic", "symbolfiles", "genbif",
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
+    "icsemdir", "icmainsemdir", "icmainmodule",
     "icbackendstage", "icbackendmodule", "ismainmodule",
     "help", "h", "fullhelp", "version", "v", "advanced"]
   var positionalArgs = 0
@@ -1174,24 +1161,10 @@ proc isSearchPathArg(arg: string): bool =
   let sep = arg.find({':', '='}, first)
   result = sep >= first and normalize(arg[first ..< sep]) in ["path", "p"]
 
-proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
-                         changed: var bool): string =
-  ## nifmake decides staleness from file mtimes alone — it never looks at a
-  ## rule's command line. So changing `-d:someDefine`, `--mm:` or `--threads:`
-  ## between two `nim ic` runs re-generated the build file with the new switches
-  ## but re-fired nothing: the user got a silently stale binary built with the
-  ## OLD configuration. Reify the configuration as a FILE and make every rule
-  ## that consumes it an input, so a config change moves an mtime like any edit.
-  ## Written `OnlyIfChanged` so a genuine no-op run stays a no-op.
-  ##
-  ## Deliberately EXCLUDES the two per-build path switches (`--icproject:`,
-  ## `--icPreparsedConfig:`): they name where this build lives, not what it
-  ## produces, so including them made the signature differ between two caches
-  ## holding byte-identical artifacts — which defeats prefilling a test's cache
-  ## from a shared warm one (every rule would re-fire on the rewritten
-  ## signature). The precompiled config still counts, by CONTENT: a `nim.cfg`
-  ## edit changes the artifact, hence the hash, hence every rule.
-  result = getNimcacheDir(c.config).string / "ic_build_args.txt"
+proc configSignature(c: DepContext; forwardedArgs: seq[string]): string =
+  ## Effective settings choose a semantic/backend subdirectory. Paths identifying
+  ## the project/config snapshot do not affect its contents; resolved search paths
+  ## and the snapshot's effective settings do. Preserve lookup and switch order.
   var content = ""
   var seenPaths = initHashSet[string]()
   for p in c.config.searchPaths:
@@ -1222,13 +1195,10 @@ proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
     except IOError, OSError:
       normalized = c.config.icPreparsedConfig
     content.add "config:" & $secureHash(normalized) & "\n"
-  changed = not fileExists(result) or readFile(result) != content
-  if changed:
-    writeFile(result, content)
+  result = content
 
-proc configSignatureFile(c: DepContext; forwardedArgs: seq[string]): string =
-  var changed = false
-  result = configSignatureFile(c, forwardedArgs, changed)
+proc configSignatureFile(c: DepContext): string =
+  c.argsFile
 
 proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
   ## Frontend build file: the nifler (parse) and `nim m` (sem) rules only. The
@@ -1241,6 +1211,8 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
   ## per-module, its rules slot into the backend file unchanged.
   let nimcache = getNimcacheDir(c.config).string
   createDir(nimcache)
+  createDir(c.config.icMainSemDir.string)
+  selectMainSemanticModules(c)
   result = nimcache / c.nodes[0].files[0].modname & ".frontend.build.nif"
 
   var b = nifbuilder.open(result)
@@ -1267,6 +1239,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
   b.addStrLit getAppFilename()
   b.addStrLit "m"
   b.addStrLit "--nimcache:" & nimcache
+  for a in semanticArgs(c.config): b.addStrLit a
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
@@ -1315,7 +1288,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
   # a NIF for each. Only dependencies *outside* the component become build-graph
   # inputs — intra-component edges are produced by this very rule and listing
   # them would reintroduce the cycle nifmake just rejected.
-  let argsFile = configSignatureFile(c, forwardedArgs)
+  let argsFile = configSignatureFile(c)
   let sccs = computeSCCs(c)
   var sccOf = newSeq[int](c.nodes.len)
   for sccId, comp in sccs:
@@ -1335,6 +1308,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
     # `sfMainModule` for NIF writing under `nim m`).
     if members[0] == 0:
       b.addStrLit "--isMainModule:on"
+      b.addStrLit "--nimcache:" & c.config.icMainSemDir.string
     # For a real cycle, tell the compiler which modules form the group so it
     # compiles them all from source and writes each one's NIF.
     if isGroup:
@@ -1558,7 +1532,10 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   ## bodies); `link` compiles and links every `.c` in one `callCCompiler`. The
   ## main module's `cg` depends on every other `.c.nif` because it reads their
   ## init/datInit meta heads to wire up NimMain, so it must run last.
-  let nimcache = getNimcacheDir(c.config).string
+  let previousCache = c.config.nimcacheDir
+  c.config.nimcacheDir = AbsoluteDir(c.backendDir)
+  defer: c.config.nimcacheDir = previousCache
+  let nimcache = c.backendDir
   createDir(nimcache)
   result = nimcache / c.nodes[0].files[0].modname & ".backend.build.nif"
 
@@ -1576,8 +1553,8 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   var cFiles = newSeq[string](c.nodes.len)
   var tFiles = newSeq[string](c.nodes.len)
   # The `lower` stage writes a PROPER module NIF the cg/emit stages load via
-  # `toNifFilename` (a `.s.bif` sibling), so its `.t.bif` lives at the suffix base
-  # (mirroring `semmedFile`), not next to the throwaway `.c`.
+  # `toNifFilename`, so its `.t.bif` lives at the suffix base in this program's
+  # backend directory, rather than next to its generated `.c`.
   for i, node in c.nodes:
     cFiles[i] = backendCFile(c, node)
     cnifFiles[i] = cFiles[i] & ".nif"
@@ -1628,7 +1605,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   if prunedStale:
     removeFile(mergeFile)
 
-  let argsFile = configSignatureFile(c, forwardedArgs)
+  let argsFile = configSignatureFile(c)
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -1644,6 +1621,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addStrLit getAppFilename()
   b.addStrLit "nifc"
   b.addStrLit "--nimcache:" & nimcache
+  for a in semanticArgs(c.config): b.addStrLit a
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
   for a in forwardedArgs:
@@ -1879,6 +1857,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     # Forward the resolved target so it writes exactly `exeFile` (`--out`'s
     # path splits back into outDir+outFile in the child).
     b.addStrLit "--out:" & exeFile
+  inputStr c.linkArgsFile
   for i in 0 ..< c.nodes.len:
     if live[i]:
       inputStr cFiles[i]
@@ -1895,8 +1874,8 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
   ## imports, macro-generated ones included) back into the graph. Returns true
   ## if a confirmed (hard) node or edge was added; see below.
   ##
-  ## Run BEFORE the first nifmake pass as well as after a failure. The static
-  ## scanner cannot see `parseStmt("import dyn")`, so on the run that first hits
+  ## Run BEFORE the first nifmake pass as well as after every frontend round.
+  ## The static scanner cannot see `parseStmt("import dyn")`, so on the run that first hits
   ## it the frontend fails, this recovers the node, and the retry succeeds. But
   ## the graph is rebuilt from scratch on every `nim ic`, so on the NEXT run the
   ## frontend succeeds on round one — with `dyn` absent from the graph again,
@@ -1909,25 +1888,27 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
   ## so they are hard edges, even under a `when` the scanner cannot decide, as
   ## long as the sources it was produced from are unchanged. A stale sidecar's
   ## imports are only speculative: deferred, and rediscovered if sem still takes
-  ## them. `afterRound`: called after a frontend round, in which every module
-  ## whose sources changed has just been semmed again, so every sidecar is
-  ## current (a rewrite with unchanged content keeps the sidecar's old mtime,
-  ## which is why mtimes are only consulted at start-up). Only hard additions
-  ## count as progress for the discovery loop, which defers speculative ones
-  ## again. The caller only seeds from sidecars when the build configuration
-  ## has not changed either.
-  result = false
+  ## them. `afterRound`: scheduled modules whose sources changed have just
+  ## been semmed again. Their sidecars are current even if unchanged content
+  ## kept an old mtime. Newly discovered modules have not had their own rules
+  ## run yet, so their cached sidecars still need source freshness checks.
+  ## Only hard additions count as progress for the discovery loop, which
+  ## defers speculative ones again. The cache subdirectory ensures every
+  ## sidecar belongs to the current build configuration.
   # A discovered module's static scan can add guarded imports of its own.
   # Restore that module's cached semantic imports too, before pruning decides
   # those edges are only speculative. A snapshot of `nodes` loses the tail of
   # such import chains on warm builds where no semantic pass needs to run.
+  let scheduledNodes = c.nodes.len
+  var madeProgress = false
   var nextNode = 0
   while nextNode < c.nodes.len:
     let ni = nextNode
     inc nextNode
     # A deferred module was not semmed by the last round.
     if c.nodes[ni].deferred: continue
-    let confirmed = afterRound or semDepsAreCurrent(c, c.nodes[ni])
+    let confirmed = (afterRound and ni < scheduledNodes) or
+      semDepsAreCurrent(c, c.nodes[ni])
     for p in readSemDeps(c, c.nodes[ni].files[0]):
       let pair = c.toPair(p)
       var idx = c.processedModules.getOrDefault(pair.modname, -1)
@@ -1943,13 +1924,14 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
         c.nodes.add newNode
         idx = newNode.id
         traverseDeps(c, pair, newNode)
-        if confirmed: result = true
+        if confirmed: madeProgress = true
       if idx != ni:
         if confirmed and (idx notin c.nodes[ni].deps or idx in c.nodes[ni].specDeps):
-          result = true
+          madeProgress = true
         if not confirmed: inc c.speculating
         addDepEdge(c, c.nodes[ni], idx)
         if not confirmed: dec c.speculating
+  result = madeProgress
 
 proc allSemmed(c: DepContext): bool =
   ## Whether every scheduled module has its semmed NIF.
@@ -1994,12 +1976,44 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     var c = DepContext(
       config: conf,
+      linkArgsFile: cacheDir / "ic_link_args.txt",
       nifler: nifler,
       nodes: @[],
       processedModules: initTable[string, int](),
       includeStack: @[],
       systemNodeId: -1
     )
+
+    let forwardedArgs = computeForwardedArgs(c)
+    let signature = configSignature(c, forwardedArgs)
+    # Like Nimony, share source scans and imported semantics, while keeping each
+    # program's backend outputs separate. Only the driver knows the config key;
+    # children receive concrete input directories and an ordinary --nimcache.
+    let activeSignature = cacheDir / "ic_build_args.txt"
+    if not fileExists(activeSignature) or readFile(activeSignature) != signature:
+      writeFile(activeSignature, signature)
+    let configDir = cacheDir / "configs" / $secureHash(signature)
+    let mainSuffix = moduleSuffix(projectFile, cast[seq[string]](conf.searchPaths))
+    conf.icParsedDir = AbsoluteDir(cacheDir / "parsed")
+    conf.icSemDir = AbsoluteDir(configDir / "sem")
+    conf.icMainSemDir = AbsoluteDir(configDir / "sem" / "main" / mainSuffix)
+    conf.icMainModules = @[mainSuffix]
+    conf.nimcacheDir = conf.icSemDir
+    c.argsFile = configDir / "ic_build_args.txt"
+    c.backendDir = configDir / "backend" / $conf.backend / mainSuffix
+    createDir(conf.icParsedDir.string)
+    createDir(conf.nimcacheDir.string)
+    let argsFile = configSignatureFile(c)
+    if not fileExists(argsFile): writeFile(argsFile, signature)
+
+    # The executable can live outside the selected cache and may have been
+    # overwritten by another configuration or entry point. Only the link rule
+    # needs this changing input; every module keeps its cached outputs.
+    if not frontendOnly:
+      let linkArgs = c.backendDir & "\n" & projectFile & "\n" &
+        conf.absOutFile.string & "\n"
+      if not fileExists(c.linkArgsFile) or readFile(c.linkArgsFile) != linkArgs:
+        writeFile(c.linkArgsFile, linkArgs)
 
     # Create root node for main project file
     let rootPair = c.toPair(projectFile)
@@ -2054,20 +2068,16 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
+    selectMainSemanticModules(c)
 
-    let forwardedArgs = computeForwardedArgs(c)
-    var configChanged = false
-    discard configSignatureFile(c, forwardedArgs, configChanged)
-
-    # Re-apply imports observed on the previous run only if its build switches
-    # and precompiled config match. Otherwise they may belong to a now-dead
-    # conditional branch; the frontend will rediscover live imports below.
-    if not configChanged:
-      discard deriveFromSemDeps(c, afterRound = false)
+    # Cached imports belong to this configuration, including when returning to
+    # a previously built one. Missing generated imports are discovered below.
+    discard deriveFromSemDeps(c, afterRound = false)
 
     # An undecidable `when` does not justify compiling its imports. Defer them
     # until the importer confirms the branch during semantic analysis.
     pruneDeadSpeculative(c)
+    selectMainSemanticModules(c)
 
     # Discovery via `.s.deps`: imports GENERATED by macros (chronicles builds
     # `import chronicles/textlines` via parseStmt from the chronicles_sinks
@@ -2129,19 +2139,21 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       # `.s.deps`, removes its own NIF and exits successfully (see
       # `pipelines.compilePipelineModule`), so a clean exit is not enough.
       let discoveryPending = not allSemmed(c)
-      if exitCode == 0 and not discoveryPending:
-        frontendOk = true
-        break
-
       # Re-derive from the post-sem deps of every node compiled so far. Imports
       # the static scanner missed become new nodes; the importer->import edge
       # the scanner could not see is added so the discovered module builds
-      # first. (Static-import edges are already present, so `notin deps` skips
-      # the redundant ones.)
+      # first. Do this even when sem succeeded: a generated import may already
+      # have a cached BIF, but still need a rule to check its sources and include
+      # it in the backend graph. (Static-import edges are already present.)
       let discovered = deriveFromSemDeps(c, afterRound = true)
       # Imports taken from stale sidecars, and a discovered module's own
       # undecidable imports, are speculative: defer them like the initial scan's.
-      if discovered: pruneDeadSpeculative(c)
+      if discovered:
+        selectMainSemanticModules(c)
+        pruneDeadSpeculative(c)
+      if exitCode == 0 and not discoveryPending and not discovered:
+        frontendOk = true
+        break
       if not discovered and exitCode == 0:
         # Only the deferred-import stops happened, and they taught us nothing.
         rawMessage(conf, errGenerated,
@@ -2162,8 +2174,6 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         # exit code is derived from `errorCounter`.
         inc conf.errorCounter
         break
-
-    removeDeferredScans(c)
 
     # Phase 2 — backend (whole-program `nim nifc`), run once over the now-final
     # graph. Kept a separate nifmake run so backend rebuilds are decided purely
