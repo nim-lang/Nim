@@ -315,6 +315,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
         suggestMod(n[0], realModule)
       elif n.kind == nkInfix:
         suggestMod(n[2], s)
+      elif n.kind == nkPrefix:
+        # `./foo`, `../foo` and the expanded `./[foo, bar]` form (bug #26307)
+        suggestMod(n[1], s)
       else:
         suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     suggestMod(n, result)
