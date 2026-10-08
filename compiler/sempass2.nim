@@ -1495,6 +1495,11 @@ proc track(tracked: PEffects, n: PNode) =
     if tracked.config.hasWarn(warnProveField) or strictCaseObjects in tracked.c.features:
       checkFieldAccess(tracked.guards, n, tracked.config, strictCaseObjects in tracked.c.features)
   of nkTryStmt: trackTryStmt(tracked, n)
+  of nkDefer:
+    # bug #26333: a `defer` body is run like a 'finally' section:
+    inc tracked.inExceptOrFinallyStmt
+    for child in n: track(tracked, child)
+    dec tracked.inExceptOrFinallyStmt
   of nkPragma: trackPragmaStmt(tracked, n)
   of nkAsgn, nkFastAsgn, nkSinkAsgn:
     track(tracked, n[1])

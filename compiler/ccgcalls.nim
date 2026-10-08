@@ -81,12 +81,32 @@ proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call.firstSon.kind == nkSym and sfNoInit in call.firstSon.sym.flags
 
+proc usedInFinally(p: BProc; n: PNode): bool =
+  ## whether the location `n` might be read by an enclosing 'finally' section
+  ## (this includes `defer`) when an exception is raised.
+  result = false
+  if p.nestedTryStmts.len == 0: return false
+  var n = n
+  while true:
+    case n.kind
+    of nkSym:
+      return sfUsedInFinallyOrExcept in n.sym.flags
+    of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
+        nkCheckedFieldExpr:
+      n = n.firstSon
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      n = n.secondSon
+    else:
+      # cannot analyse the location; assume the worst
+      return true
+
 proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   if d.k in {locTemp, locNone} or not canRaise:
     result = true
-  elif d.k == locLocalVar and p.withinTryWithExcept == 0:
+  elif d.k == locLocalVar and p.withinTryWithExcept == 0 and
+      not usedInFinally(p, d.lode):
     # we cannot observe a store to a local variable if the current proc
-    # has no error handler:
+    # has no error handler and no 'finally' section that reads it (bug #26333):
     result = true
   elif d.k == locLocalVar and d.lode.kind == nkSym and d.lode.sym.kind == skTemp:
     # bug #25919: compiler temporaries (e.g. injectdestructors' `:tmpD`) are
@@ -144,6 +164,14 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         else:
           if d.k == locNone and p.splitDecls == 0 and p.config.exc != excGoto:
             d = getTempCpp(p, typ.returnType, extract(result))
+          elif not isHarmlessStore(p, canRaise, d):
+            # bug #26333: do not overwrite `d` if the call raised:
+            var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
+            var list = initLoc(locCall, d.lode, OnUnknown)
+            list.snippet = extract(result)
+            genAssignment(p, tmp, list, {needAssignCall})
+            if canRaise: raiseExit(p)
+            genAssignment(p, d, tmp, {})
           else:
             if d.k == locNone: d = getTemp(p, typ.returnType)
             var list = initLoc(locCall, d.lode, OnUnknown)
