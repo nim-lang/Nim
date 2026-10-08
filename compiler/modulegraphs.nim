@@ -936,6 +936,25 @@ proc moduleIdgen*(g: ModuleGraph; m: PSym): IdGenerator =
     if m.position < g.ifaces.len:
       g.ifaces[m.position].idgen = result
 
+proc delModuleKeys[V](t: var Table[ItemId, V]; module: int32) =
+  var stale: seq[ItemId] = @[]
+  for id in t.keys:
+    if id.module == module: stale.add id
+  for id in stale: t.del id
+
+proc forgetModule*(g: ModuleGraph; m: PSym) =
+  ## Called before module `m` is recompiled (nimsuggest): drops the cached
+  ## instances of its generics and the hooks it overrides. The recompilation
+  ## replaces them; instances of other modules' generics stay reusable.
+  let module = m.itemId.module
+  g.procInstCache.delModuleKeys(module)
+  g.typeInstCache.delModuleKeys(module)
+  for tbl in mitems(g.attachedOps):
+    var stale: seq[ItemId] = @[]
+    for id, op in tbl:
+      if id.module == module and sfOverridden in op.flags: stale.add id
+    for id in stale: tbl.del id
+
 proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
   # Public because it's used by DrNim.

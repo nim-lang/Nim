@@ -1,11 +1,6 @@
-import fixtures/[mtypename, mtypename_inst]
+proc typeName(T: typedesc): string {.compileTime.} = $T
 
-const
-  a = typeName(int)
-  b = typeName(string)
-  c = typeName(float)
-  d = typeName(bool)
-  e = typeName(char)
+const shift = 0
 
 proc p1(): string {.compileTime.} = "s1"
 const c1 = (let f = p1; f())
@@ -34,15 +29,15 @@ const c12 = (let f = p12; f())
 
 proc foo(): int = 1#[!]#
 
-# Recompiling this module re-instantiates `typeName` here, so its own
-# compile-time procs come after more symbols than in the first compilation.
-# They must not reuse ids of that compilation: the VM would run the code of
-# whichever proc had the id before.
+# The edit adds generic instances before the compile-time procs, so the
+# recompilation creates more symbols before them than the first compilation
+# did. It must not reuse the ids of that compilation: the VM would run the
+# code of whichever proc had the id before.
 discard """
 $nimsuggest --tester --v4 $file
 >chk $1
-chk;;skUnknown;;;;Hint;;$file;;11;;6;;"\'c1\' is declared but not used [XDeclaredButNotUsed]";;0
-!edit 'int = 1' 'int = 2'
+chk;;skUnknown;;;;Hint;;$file;;1;;5;;"\'typeName\' is declared but not used [XDeclaredButNotUsed]";;0
+!edit 'shift = 0' 'shift = (typeName(int8) & typeName(int16) & typeName(int32) & typeName(int64) & typeName(uint8)).len'
 >chk $1
-chk;;skUnknown;;;;Hint;;$file;;11;;6;;"\'c1\' is declared but not used [XDeclaredButNotUsed]";;0
+chk;;skUnknown;;;;Hint;;$file;;10;;6;;"\'c3\' is declared but not used [XDeclaredButNotUsed]";;0
 """

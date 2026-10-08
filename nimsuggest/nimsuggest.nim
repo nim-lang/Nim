@@ -831,9 +831,8 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
   else:
     myLog fmt "Recompiling partially starting from {graph.getModule(projectFileIdx)}"
 
-  # inst caches are breaking incremental compilation when the cache caches stuff
-  # from dirty buffer
-  graph.clearInstCache(projectFileIdx)
+  # the instance caches of the modules being recompiled are dropped by
+  # `forgetModule`; the instances of the other modules stay valid
 
   GC_fullCollect()
 

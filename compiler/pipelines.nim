@@ -696,6 +696,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       partialInitModule(result, graph, fileIdx, filename)
   elif graph.isDirty(result):
     result.excl sfDirty
+    graph.forgetModule(result)
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil
