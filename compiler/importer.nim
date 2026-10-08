@@ -300,29 +300,33 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   let transf = transformImportAs(c, n)
   n = transf.node
   let f = checkModuleName(c.config, n)
-  if f != InvalidFileIdx and transf.cyclic:
-    if cyclicImports notin c.config.features and cyclicImports notin c.features:
-      localError(c.config, n.info, "'.cyclic' imports require '--experimental:cyclicImports'")
-    elif c.graph.getModule(f) == nil:
-      # the cycle group is formed before sem runs (see `pipelines.cyclicImportTargets`),
-      # so this import was not visible to it:
-      localError(c.config, n.info, "'.cyclic' imports must be unconditional top-level statements")
+  if f != InvalidFileIdx and transf.cyclic and c.graph.getModule(f) == nil and
+      not c.graph.loadsFromNif(f):
+    # the cycle group is formed before sem runs (see `pipelines.cyclicImportTargets`),
+    # so this import was not visible to it:
+    localError(c.config, n.info, "'.cyclic' imports must be unconditional top-level statements")
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
     let L = c.graph.importStack.len
     let recursion = c.graph.importStack.find(f)
     c.graph.importStack.add f
     #echo "adding ", toFullPath(f), " at ", L+1
-    if recursion >= 0 and not transf.cyclic:
+    if recursion >= 0:
       var err = ""
       for i in recursion..<L:
         if i > recursion: err.add "\n"
         err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
                 toFullPath(c.config, c.graph.importStack[i+1])
-      c.recursiveDep = err
-      if (cyclicImports in c.config.features or cyclicImports in c.features) and
-          not (c.module.position in c.graph.cycleGroupMembers and f.int in c.graph.cycleGroupMembers):
-        # the cycle is not declared on either side:
+      if not transf.cyclic:
+        c.recursiveDep = err
+      if c.graph.inSameCycleGroup(c.module.fileIdx, f):
+        discard "the cycle is declared by the other side"
+      elif transf.cyclic:
+        # `f` was entered by a plain import and is being checked already, so
+        # it cannot join a cycle group anymore:
+        localError(c.config, n.info, "'.cyclic' import of a module that imports this " &
+          "module without '.cyclic'; annotate that import with '{.cyclic.}' too:\n" & err)
+      else:
         message(c.config, n.info, warnImplicitCyclicImport,
           "import cycle without '.cyclic'; this is deprecated, use 'import " &
           n.renderTree & " {.cyclic.}':\n" & err)

@@ -1,6 +1,5 @@
 discard """
   joinable: false
-  matrix: "--experimental:cyclicImports"
   output: "0 7"
 """
 

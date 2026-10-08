@@ -1,5 +1,4 @@
 discard """
-  matrix: "--experimental:cyclicImports"
   errormsg: "fb(x - 1) can raise an unlisted exception: ref ValueError"
   file: "tcyclic_effects_error.nim"
 """

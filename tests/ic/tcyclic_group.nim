@@ -10,8 +10,6 @@ discard """
 # agree on the main module's name with the other modules' translation units
 # and must not lose the main module's top-level code.
 
-#!FLAGS --experimental:cyclicImports
-
 #!FILE b.nim
 import main {.cyclic.}
 proc fb*(): int = fa() + 10

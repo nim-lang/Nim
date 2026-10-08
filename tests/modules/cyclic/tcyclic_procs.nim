@@ -1,7 +1,6 @@
 discard """
   joinable: false
   targets: "c js"
-  matrix: "--experimental:cyclicImports"
   output: '''
 1
 2

@@ -106,9 +106,6 @@ proc prePass*(c: PContext; n: PNode) =
                 if feature == codeReordering:
                   c.features.incl feature
                   c.module.incl sfReorder
-                elif feature == cyclicImports:
-                  # the cycle group is formed before sem runs:
-                  c.features.incl feature
               except ValueError:
                 discard
             else:
@@ -303,6 +300,20 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         semDepPaths.add toFullPath(graph.config, f)
       writeSemDeps(graph.config, module.position.int32, semDepPaths)
 
+proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
+  ## The module path of an import, without its pragmas. Like
+  ## `importer.splitPragmas`, but it leaves `n` alone: the pragma of
+  ## `dir/m {.cyclic.}` belongs to the last part of the path.
+  if n.kind == nkPragmaExpr and n.len == 2 and n[1].kind == nkPragma:
+    for p in n[1]:
+      if p.kind == nkIdent and whichKeyword(p.ident) == wCyclic: cyclic = true
+    result = n[0]
+  elif n.kind in {nkInfix, nkPrefix} and n.len > 0:
+    result = copyTree(n)
+    result[^1] = withoutCyclicPragma(n[^1], cyclic)
+  else:
+    result = n
+
 proc cyclicImportTargets(c: PContext; n: PNode): seq[FileIndex] =
   ## The modules that `n`'s top-level `import m {.cyclic.}` statements refer to.
   ## Only these are considered for a cycle group; an `import` produced by a
@@ -312,16 +323,15 @@ proc cyclicImportTargets(c: PContext; n: PNode): seq[FileIndex] =
     if it.kind != nkImportStmt: continue
     for x in it:
       var x = x
-      if x.kind == nkInfix and x.len == 3: x = x[1] # `m {.cyclic.} as alias`
-      if x.kind == nkPragmaExpr and x.len == 2 and x[1].kind == nkPragma:
-        for p in x[1]:
-          if p.kind == nkIdent and whichKeyword(p.ident) == wCyclic:
-            let f = checkModuleName(c.config, x[0], doLocalError = false)
-            if f != InvalidFileIdx and f != c.module.fileIdx:
-              result.add f
-
-proc cyclicImportsEnabled(c: PContext): bool {.inline.} =
-  cyclicImports in c.config.features or cyclicImports in c.features
+      if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and
+          x[0].ident.s == "as":
+        x = x[1] # `m {.cyclic.} as alias`
+      var cyclic = false
+      let path = withoutCyclicPragma(x, cyclic)
+      if cyclic:
+        let f = checkModuleName(c.config, path, doLocalError = false)
+        if f != InvalidFileIdx and f != c.module.fileIdx:
+          result.add f
 
 type
   CycleMember = object
@@ -384,16 +394,16 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   ## recursive import would finish them: the root comes last and its
   ## remaining statements are returned to the caller.
   var members = @[move root]
-  graph.cycleGroupMembers.incl members[0].module.position
+  let rootIdx = members[0].module.fileIdx
+  graph.cycleGroups[rootIdx] = rootIdx
   var i = 0
   while i < members.len:
-    if members[i].ctx.cyclicImportsEnabled:
-      for f in cyclicImportTargets(members[i].ctx, members[i].code):
-        # a module that exists already is not part of this group; it is
-        # imported like any other module:
-        if graph.getModule(f) == nil:
-          graph.cycleGroupMembers.incl f.int
-          members.add openCycleMember(graph, f, members[i].module)
+    for f in cyclicImportTargets(members[i].ctx, members[i].code):
+      # a module that exists already is not part of this group; it is
+      # imported like any other module, and so is a precompiled one:
+      if graph.getModule(f) == nil and not loadsFromNif(graph, f):
+        graph.cycleGroups[f] = rootIdx
+        members.add openCycleMember(graph, f, members[i].module)
     inc i
 
   template withMember(m: var CycleMember; body: untyped) =
@@ -491,8 +501,7 @@ proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenera
       if graph.pipelinePass != EvalPass:
         message(graph.config, sl.info, hintProcessingStmt, $idgen[])
       var semNode: PNode
-      if ctx.cyclicImportsEnabled and module.position notin graph.cycleGroupMembers and
-          cyclicImportTargets(ctx, sl).len > 0:
+      if fileIdx notin graph.cycleGroups and cyclicImportTargets(ctx, sl).len > 0:
         var root = CycleMember(module: module, idgen: idgen, ctx: ctx, bModule: bModule,
           code: sl, topLevelStmts: topLevelStmts, options: graph.config.options)
         semNode = semCycleGroup(graph, root)
@@ -610,19 +619,11 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           fileIdx == graph.config.m.trackPos.fileIndex))
   if result == nil:
     when not defined(nimKochBootstrap):
-      # For cmdM: load imports from NIF files (but compile the main module from source)
-      # Skip when withinSystem is true (compiling system.nim itself).
-      # Also skip for members of the current strongly-connected import group
-      # (`--icGroup`): those are mutually recursive with the main module and have
-      # no precompiled NIF yet, so they must be compiled from source in this same
-      # process (falling through below) — that resolves the cycle in-memory, the
-      # same way the non-incremental compiler handles recursive module imports.
-      if graph.config.cmd == cmdM and
-         sfMainModule notin flags and
-         not graph.withinSystem and
-         not graph.config.isDefined("nimscript") and
-         (graph.config.icGroup.len == 0 or
-          toFullPath(graph.config, fileIdx) notin graph.config.icGroup):
+      # For cmdM: load imports from NIF files (but compile the main module from
+      # source). The members of the `--icGroup` fall through below: that
+      # resolves the cycle in-memory, the same way the non-incremental compiler
+      # handles recursive module imports.
+      if sfMainModule notin flags and loadsFromNif(graph, fileIdx):
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
           if graph.config.ideActive:
