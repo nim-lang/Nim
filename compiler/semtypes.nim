@@ -989,7 +989,12 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     if skipTypes(typ.elementType, abstractInst).kind in shouldChckCovered:
       chckCovered = true
   of tyForward:
-    errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
+    if typ.sym != nil:
+      errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
+    else:
+      # a generic instance with forward type arguments, see `semGeneric`
+      localError(c.config, n[0].info,
+        "selector type '$1' depends on a type that is not yet defined" % renderTree(n[0][^2]))
   elif not isOrdinalType(typ):
     localError(c.config, n[0].info, "selector must be of an ordinal type")
 
@@ -1981,12 +1986,13 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         # returning `tyGenericInvocation` makes `Option[Foo]` to `tyGenericInvocation` and
         # next time `semGeneric` is called with `Option[Foo]`, containsGenericType(typeof(`Foo`)) == true
         # and `isConcrete == false`.
+        # Do not set `result.sym` here: `typeSectionFinalPass` uses `assignType`
+        # which keeps an existing `sym`, so the instance would end up with the
+        # generic body's symbol and lose its arguments (bug #26368).
         if prev == nil:
           result = newTypeS(tyForward, c)
-          result.sym = s
         else:
           assignType(result, newTypeS(tyForward, c))
-          result.sym = s
         c.forwardTypeUpdates.add (getCurrOwner(c), result, n) #fixes 1500
         return
       else:
