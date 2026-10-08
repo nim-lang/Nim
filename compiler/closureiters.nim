@@ -1036,7 +1036,9 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     result[^1] = ctx.transformClosureIteratorBody(result[^1], gotoOut)
 
   of nkIfStmt, nkCaseStmt:
-    for i in 0..<n.len:
+    # The selector of a `case` is an expression, not a branch: it must not
+    # be given a `gotoOut` (it can contain an `if` expression, for example).
+    for i in ord(n.kind == nkCaseStmt)..<n.len:
       n[i] = ctx.transformClosureIteratorBody(n[i], gotoOut)
     if n[^1].kind != nkElse:
       # We don't have an else branch, but every possible branch has to end with
