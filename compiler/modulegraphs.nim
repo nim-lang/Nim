@@ -39,6 +39,8 @@ type
     hiddenPending: bool ## The full interface is built from its ordered BIF
                         ## record on first use by `ensureHiddenIface`.
     uniqueName*: Rope
+    idgen: IdGenerator  ## The id generator the module was compiled with;
+                        ## recompilations reuse it, see `moduleIdgen`.
 
   Operators* = object
     opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
@@ -918,6 +920,21 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.ifaces[int m].module)
+
+proc moduleIdgen*(g: ModuleGraph; m: PSym): IdGenerator =
+  ## The id generator to compile module `m` with. The first compilation
+  ## creates it; a recompilation (nimsuggest) reuses it, so numbering
+  ## continues after the last id the previous compilation instead
+  ## of restarting at the module's first id. Reused ids would make tables
+  ## keyed by ids, such as the VM's compiled procs, map the new symbols and
+  ## types to the old ones.
+  if m.position < g.ifaces.len and g.ifaces[m.position].idgen != nil:
+    result = g.ifaces[m.position].idgen
+    result.sealed = false
+  else:
+    result = idGeneratorFromModule(m)
+    if m.position < g.ifaces.len:
+      g.ifaces[m.position].idgen = result
 
 proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
