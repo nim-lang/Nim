@@ -29,8 +29,8 @@
 ## platform; you can pass `-d:nimIoselector=value` to override it.
 ## Accepted values are "epoll", "kqueue", "poll", and "select".
 ## illumos defaults to native epoll emulation; Solaris defaults to poll.
-## On illumos, `-d:nimIoselector=poll` retains the poll backend without
-## timer, signal, or process notifications.
+## The poll and select backends do not support timer, signal, or process
+## notifications, regardless of the target platform.
 ##
 ## TODO: `/dev/poll`, `event ports` and filesystem events.
 
@@ -43,13 +43,15 @@ when defined(nimPreviewSlimSystem):
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 const nimIoselector {.strdefine.} = ""
 
-const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
-                                defined(netbsd) or defined(openbsd) or
-                                defined(dragonfly) or defined(nuttx) or
-                                (defined(illumos) and nimIoselector in ["", "epoll"]) or
-                                (defined(linux) and not defined(android) and not defined(emscripten))
-  ## This constant is used to determine whether the destination platform is
-  ## fully supported by `ioselectors` module.
+const ioselSupportedPlatform* =
+  nimIoselector in ["", "epoll", "kqueue"] and
+  (defined(macosx) or defined(freebsd) or defined(netbsd) or
+   defined(openbsd) or defined(dragonfly) or defined(nuttx) or
+   defined(illumos) or
+   (defined(linux) and not defined(android) and not defined(emscripten)))
+  ## Whether the destination platform and selected backend provide full
+  ## selector support. Explicit poll or select overrides disable timer,
+  ## signal, and process notifications even on otherwise supported platforms.
 
 const bsdPlatform = defined(macosx) or defined(freebsd) or
                     defined(netbsd) or defined(openbsd) or
@@ -306,7 +308,7 @@ else:
       skey.param = pparam
       skey.data = pdata
 
-  when ioselSupportedPlatform or defined(illumos):
+  when ioselSupportedPlatform:
     template blockSignals(newmask: var Sigset, oldmask: var Sigset) =
       when hasThreadSupport:
         if posix.pthread_sigmask(SIG_BLOCK, newmask, oldmask) == -1:
