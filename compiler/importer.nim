@@ -201,6 +201,30 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
     if filter:
       importPureEnumFields(c, it, it.typ)
 
+proc reimportUnnamed*(c: PContext; partners: openArray[PSym]) =
+  ## The modules of a cycle group import each other before they declare
+  ## anything, so the converters, patterns and pure enums that are not
+  ## reachable by name have to be imported again once they exist.
+  for im in c.imports:
+    var isPartner = false
+    for p in partners:
+      if im.m.position == p.position: isPartner = true
+    if isPartner and im.mode != importSet:
+      let iface = addr c.graph.ifaces[im.m.position]
+      for it in iface.converters:
+        if sfExported in it.flags and
+            (im.mode == importAll or it.name.id notin im.exceptSet):
+          addConverter(c, it)
+      for it in iface.patterns:
+        if sfExported in it.flags and
+            (im.mode == importAll or it.name.id notin im.exceptSet):
+          addPattern(c, it)
+      for it in iface.pureEnums:
+        if im.mode == importAll or it.name.id notin im.exceptSet:
+          for field in it.typ.n:
+            if field.kind == nkSym and not strTableContains(c.pureEnumFields, field.sym):
+              importPureEnumField(c, field.sym)
+
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
   addUnnamedIt(c, fromMod, it.name.id notin exceptSet)
@@ -289,7 +313,7 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     let recursion = c.graph.importStack.find(f)
     c.graph.importStack.add f
     #echo "adding ", toFullPath(f), " at ", L+1
-    if recursion >= 0:
+    if recursion >= 0 and not transf.cyclic:
       var err = ""
       for i in recursion..<L:
         if i > recursion: err.add "\n"

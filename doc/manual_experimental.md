@@ -419,17 +419,49 @@ module (directly or indirectly) too:
   ```
 
 The modules connected by such imports form a *cycle group* that is checked
-together: first the imports of every module in the group, then the type
-sections of every module. Hence the top-level types of a module are visible
-to the other modules of the group regardless of the order of the declarations
-and imports. The remaining statements are checked module by module in the
-order an ordinary recursive import would check them, which also determines
-the order in which the modules' top-level code runs.
+together, phase by phase; every phase runs for all modules of the group before
+the next one starts:
+
+1. The imports of every module.
+2. The type sections of every module.
+3. The *leading declarations* of every module: the routines, constants and
+   pragmas up to the first statement of a different kind (like a `var`
+   section, a `when` statement or a call). The bodies of these routines are
+   checked later, so they can refer to the declarations of all modules in the
+   group.
+4. The remaining statements, module by module, in the order an ordinary
+   recursive import would check them. This also determines the order in which
+   the modules' top-level code runs.
+
+Hence the top-level types and leading routines of a module are visible to the
+other modules of the group regardless of the order of the declarations and
+imports, and the modules' procs can call each other:
+
+  ```nim
+  # module a
+  import b {.cyclic.}
+
+  proc isEven*(n: int): bool = n == 0 or isOdd(n - 1)
+  ```
+
+  ```nim
+  # module b
+  import a {.cyclic.}
+
+  proc isOdd*(n: int): bool = n != 0 and isEven(n - 1)
+  ```
+
+Effect inference checks the body of a routine of another module of the group
+before it uses its effects. Only a recursion through the modules of the group
+is treated like a call of a forward declared routine.
 
 A `cyclic` import must be a top-level statement that is not nested in a
-`when` statement or produced by a macro. Type sections that are nested in
-such constructs or that stem from an `include` are not part of the group's
-type pass.
+`when` statement or produced by a macro. Type sections and routines that are
+nested in such constructs or that stem from an `include` are not part of the
+group's phases. The bodies of macros, converters and `.compileTime` routines
+are checked during phase 3 and only see the declarations that precede them. A
+constant ends the leading declarations if a routine body of the group is still
+unchecked, as the constant's value could depend on it.
 
 Special Operators
 =================

@@ -953,7 +953,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   # top-level statements still see their callees' inferred effects — deferring
   # past that point would make every top-level call pessimistic, which is a
   # bigger change than this stage is trying to make.
-  if optDeferBodies in c.config.globalOptions:
+  if c.bodyTasks.len > 0:
     drainBodyTasks(c)
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
@@ -1020,6 +1020,49 @@ type
     cpTypesLeft    ## registers the names of all top-level types
     cpTypesRight   ## the type definitions themselves
     cpTypesFinal   ## resolves the remaining forward type references
+    cpUnnamedImports ## converters, term rewriting patterns and pure enums of
+                     ## the other modules: they were imported before they
+                     ## were declared
+    cpDecls        ## the leading declarations of the module; their routine
+                   ## bodies are deferred
+
+proc demandCycleBody*(group: seq[PContext]; prc: PSym) =
+  ## Runs the deferred body of `prc` if it belongs to a module of the group.
+  ## A body that is already running is left alone: that is a recursion via the
+  ## modules of the group, which effect tracking treats pessimistically.
+  for c in group:
+    let idx = c.bodyTaskIndex.getOrDefault(prc.itemId, -1)
+    if idx >= 0:
+      runBodyTask(c, idx)
+      break
+
+proc hasPendingBodies(c: PContext): bool =
+  result = false
+  for t in c.bodyTasks:
+    if t.state == btPending: return true
+
+proc isCycleDecl(c: PContext; n: PNode): bool =
+  ## The declaration phase covers the module's leading declarations. It stops
+  ## at the first statement that does something else, as that statement could
+  ## depend on the order in which the modules of the group are checked.
+  case n.kind
+  of nkCommentStmt, nkEmpty, nkPragma, nkExportStmt,
+     nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef,
+     nkTemplateDef, nkMacroDef:
+    result = true
+  of nkImportStmt, nkImportExceptStmt, nkFromStmt, nkTypeSection:
+    result = nfSem in n.flags
+  of nkDiscardStmt:
+    # a `discard """..."""` comment:
+    result = n.len == 0 or n[0].kind in {nkEmpty, nkStrLit..nkTripleStrLit}
+  of nkConstSection:
+    # a constant can call a routine and the VM needs its body, so it must
+    # not see a deferred one:
+    result = not hasPendingBodies(c)
+    for p in c.cyclePartners:
+      if hasPendingBodies(p): result = false
+  else:
+    result = false
 
 proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
   case phase
@@ -1041,6 +1084,18 @@ proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
         of cpTypesRight: typeSectionRightSidePass(c, n[i])
         else: typeSectionFinalPass(c, n[i])
         dec c.inTypeContext
+  of cpUnnamedImports:
+    var partners: seq[PSym] = @[]
+    for p in c.cyclePartners: partners.add p.module
+    reimportUnnamed(c, partners)
+  of cpDecls:
+    c.deferAllBodies = true
+    for i in 0..<n.len:
+      if not isCycleDecl(c, n[i]): break
+      if nfSem notin n[i].flags:
+        n[i] = semStmt(c, n[i], {})
+        n[i].flags.incl nfSem
+    c.deferAllBodies = false
 
 proc semCyclePhase*(c: PContext; n: PNode; phase: CyclePhase) =
   if c.config.errorMax <= 1:
@@ -1066,8 +1121,9 @@ proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   # module whose sem was cut short (an error, `ESuggestDone`) can still hold
   # units, and their scopes are detached from `PContext` — nothing else would
   # ever close them.
-  if optDeferBodies in c.config.globalOptions:
+  if c.bodyTasks.len > 0:
     drainBodyTasks(c)
+  if optDeferBodies in c.config.globalOptions:
     graph.demandRoutineBody = c.prevDemandRoutineBody
   if c.config.ideActive and not c.suggestionsMade:
     suggestSentinel(c)

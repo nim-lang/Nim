@@ -187,6 +187,11 @@ type
                                   # (`genIcModuleDestroyGlobals`), already in
                                   # call order; only the main module's `cg`
                                   # fills this, from the `.c.nif` meta heads
+    demandCycleBody*: proc (prc: PSym) {.closure.}
+      ## set while a cycle group (`import m {.cyclic.}`) is checked: effect
+      ## tracking asks for the deferred body of a routine of the group before it
+      ## falls back to the pessimistic assumptions about a routine without
+      ## effects.
     demandRoutineBody*: proc (prc: PSym) {.closure.}
       ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
       ## is needed NOW". A deferred unit's body is unsemmed until the module's

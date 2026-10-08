@@ -263,6 +263,13 @@ type
     prevDemandRoutineBody*: proc (prc: PSym) {.closure.}
       # the enclosing module's hook, restored by `closePContext`: an import is
       # compiled from inside the importer's pass, so these nest.
+    deferAllBodies*: bool
+      # the declaration phase of a cycle group (`import m {.cyclic.}`): routine
+      # bodies are deferred like under `--deferBodies:on`, so that they can
+      # refer to declarations of the other modules of the group.
+    cyclePartners*: seq[PContext]
+      # the other modules of this module's cycle group; their deferred bodies
+      # are drained before a statement that could observe them.
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch

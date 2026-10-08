@@ -218,7 +218,8 @@ parameter and result types, not just their source-level shape. Use
 
 - Added `--experimental:cyclicImports`: an import annotated with `{.cyclic.}`
   (`import b {.cyclic.}`) makes the modules of an import cycle a group whose
-  types are visible to each other regardless of declaration order.
+  types and leading routines are visible to each other regardless of
+  declaration order, so procs of different modules can call each other.
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".

@@ -406,7 +406,16 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
     m.options = graph.config.options
     popOwner(m.ctx)
 
-  for phase in CyclePhase:
+  var ctxs: seq[PContext] = @[]
+  for m in mitems(members):
+    ctxs.add m.ctx
+    for p in members:
+      if p.ctx != m.ctx: m.ctx.cyclePartners.add p.ctx
+  let prevDemand = graph.demandCycleBody
+  graph.demandCycleBody = proc (prc: PSym) = demandCycleBody(ctxs, prc)
+
+  for phase in [cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
+                cpUnnamedImports, cpDecls, cpUnnamedImports]:
     for m in mitems(members):
       withMember m:
         semCyclePhase(m.ctx, m.code, phase)
@@ -415,6 +424,9 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
     let m = addr members[k]
     withMember m[]:
       let semNode = semWithPContext(m.ctx, m.code)
+      # the module is about to be closed and its code generated, which can
+      # require the deferred bodies of the other modules:
+      for p in m.ctx.cyclePartners: drainBodyTasks(p)
       let top = processPipeline(graph, semNode, m.bModule)
       if top != nil and m.topLevelStmts != nil:
         m.topLevelStmts.add top
@@ -423,6 +435,7 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   root = move members[0]
   withMember root:
     result = semWithPContext(root.ctx, root.code)
+  graph.demandCycleBody = prevDemand
 
 proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool =
