@@ -389,6 +389,48 @@ scope. Therefore, the following will *fail to compile:*
 This feature will likely be replaced with a better solution to remove
 the need for forward declarations.
 
+
+Cyclic imports
+==============
+
+With `--experimental:cyclicImports` an import can be annotated with the
+`cyclic` pragma to declare that the imported module imports the current
+module (directly or indirectly) too:
+
+  ```nim
+  # module a
+  import b {.cyclic.}
+
+  type
+    A* = object
+      b*: B  # a type of the partner module, even though `b` imports `a`
+
+  proc useB*(b: B): int = b.x
+  ```
+
+  ```nim
+  # module b
+  import a {.cyclic.}
+
+  type
+    B* = object
+      x*: int
+      a*: ref A
+  ```
+
+The modules connected by such imports form a *cycle group* that is checked
+together: first the imports of every module in the group, then the type
+sections of every module. Hence the top-level types of a module are visible
+to the other modules of the group regardless of the order of the declarations
+and imports. The remaining statements are checked module by module in the
+order an ordinary recursive import would check them, which also determines
+the order in which the modules' top-level code runs.
+
+A `cyclic` import must be a top-level statement that is not nested in a
+`when` statement or produced by a macro. Type sections that are nested in
+such constructs or that stem from an `include` are not part of the group's
+type pass.
+
 Special Operators
 =================
 

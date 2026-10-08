@@ -930,7 +930,7 @@ proc isEmptyTree(n: PNode): bool =
   of nkEmpty, nkCommentStmt: result = true
   else: result = false
 
-proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
+proc importSystemOnce(c: PContext, n: PNode) =
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
       assert c.graph.systemModule != nil
@@ -939,6 +939,9 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
       inc c.topStmts
   else:
     inc c.topStmts
+
+proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
+  importSystemOnce(c, n)
   if sfNoForward in c.module.flags:
     result = semAllTypeSections(c, n)
   else:
@@ -1005,6 +1008,52 @@ proc semWithPContext*(c: PContext, n: PNode): PNode =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.ideActive: findSuggest(c, n)
+
+type
+  CyclePhase* = enum
+    ## The phases a module of an `import m {.cyclic.}` group runs through
+    ## before its remaining statements are checked by `semWithPContext`.
+    ## Every phase runs for all modules of the group before the next phase
+    ## starts, so the modules see each other's declarations regardless of
+    ## their order.
+    cpImports      ## the module's top-level imports
+    cpTypesLeft    ## registers the names of all top-level types
+    cpTypesRight   ## the type definitions themselves
+    cpTypesFinal   ## resolves the remaining forward type references
+
+proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
+  case phase
+  of cpImports:
+    importSystemOnce(c, n)
+    for i in 0..<n.len:
+      if n[i].kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+        # the result is flagged with `nfSem`, so the final pass skips it:
+        n[i] = semStmt(c, n[i], {})
+        n[i].flags.incl nfSem
+  of cpTypesLeft, cpTypesRight, cpTypesFinal:
+    for i in 0..<n.len:
+      if n[i].kind == nkTypeSection:
+        inc c.inTypeContext
+        case phase
+        of cpTypesLeft:
+          n[i].flags.incl nfSem
+          typeSectionLeftSidePass(c, n[i])
+        of cpTypesRight: typeSectionRightSidePass(c, n[i])
+        else: typeSectionFinalPass(c, n[i])
+        dec c.inTypeContext
+
+proc semCyclePhase*(c: PContext; n: PNode; phase: CyclePhase) =
+  if c.config.errorMax <= 1:
+    semCyclePhaseImpl(c, n, phase)
+  else:
+    let oldContextLen = msgs.getInfoContextLen(c.config)
+    let oldInGenericInst = c.inGenericInst
+    try:
+      semCyclePhaseImpl(c, n, phase)
+    except ERecoverableError:
+      recoverContext(c)
+      c.inGenericInst = oldInGenericInst
+      msgs.setInfoContextLen(c.config, oldContextLen)
 
 proc reportUnusedModules(c: PContext) =
   if c.config.cmd == cmdM: return

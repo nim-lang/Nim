@@ -293,6 +293,9 @@ type
     ownedRefs
       ## `owned ref T` / `owned proc` as a statically checked unique
       ## ownership annotation on top of ARC/ORC/YRC (RFC #575).
+    cyclicImports
+      ## `import m {.cyclic.}`: the modules of an import cycle are checked
+      ## together, so declarations are visible across the cycle in any order.
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

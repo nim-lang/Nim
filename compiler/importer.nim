@@ -252,8 +252,8 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden, track
   c.importModuleMap[result.id] = realModule.id
   c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
 
-proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
-  result = (nil, false)
+proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden, cyclic: bool] =
+  result = (nil, false, false)
   var ret = default(typeof(result))
   proc processPragma(n2: PNode): PNode =
     let (result2, kws) = splitPragmas(c, n2)
@@ -261,7 +261,8 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: 
     for ai in kws:
       case ai
       of wImportHidden: ret.importHidden = true
-      else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden})
+      of wCyclic: ret.cyclic = true
+      else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden} & " or " & ${wCyclic})
 
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     ret.node = newNodeI(nkImportAs, n.info)
@@ -275,6 +276,13 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   let transf = transformImportAs(c, n)
   n = transf.node
   let f = checkModuleName(c.config, n)
+  if f != InvalidFileIdx and transf.cyclic:
+    if cyclicImports notin c.config.features and cyclicImports notin c.features:
+      localError(c.config, n.info, "'.cyclic' imports require '--experimental:cyclicImports'")
+    elif c.graph.getModule(f) == nil:
+      # the cycle group is formed before sem runs (see `pipelines.cyclicImportTargets`),
+      # so this import was not visible to it:
+      localError(c.config, n.info, "'.cyclic' imports must be unconditional top-level statements")
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
     let L = c.graph.importStack.len

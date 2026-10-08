@@ -127,6 +127,8 @@ type
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
                                   # module dependencies.
+    cycleGroupMembers*: IntSet  # modules (by FileIndex) that belong to a group of
+                                # modules connected by `import m {.cyclic.}`
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
     cache*: IdentCache
@@ -918,6 +920,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.ifaces = @[]
   result.importStack = @[]
+  result.cycleGroupMembers = initIntSet()
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
   result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()

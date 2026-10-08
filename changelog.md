@@ -216,6 +216,10 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- Added `--experimental:cyclicImports`: an import annotated with `{.cyclic.}`
+  (`import b {.cyclic.}`) makes the modules of an import cycle a group whose
+  types are visible to each other regardless of declaration order.
+
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".
   The issue was that `hasValuelessStatics` in `semtypinst.nim` didn't recognize
