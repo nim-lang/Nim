@@ -2003,7 +2003,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         # operator. `nkAccQuoted` is used to quote an identifier that
         # wouldn't be allowed to use in an unquoted context.
         if n.kind == nkPostfix: n = n[1]
-        if n.kind == nkAccQuoted: n = n[0]
+        if n.kind == nkAccQuoted:
+          if n.len == 1:
+            n = n[0]
+          else:
+            # multi-part quoted identifier like `field name`: concatenate
+            # the parts the same way `considerQuotedIdent` does.
+            result = ""
+            for i in 0..<n.len:
+              let x = n[i]
+              case x.kind
+              of nkIdent: result.add x.ident.s
+              of nkSym: result.add x.sym.name.s
+              of nkOpenSymChoice, nkClosedSymChoice, nkOpenSym:
+                if x[0].kind == nkSym: result.add x[0].sym.name.s
+                else: return ""
+              of nkLiterals - nkFloatLiterals: result.add x.renderTree
+              else: return ""
+            return
         case n.kind
         of nkStrLit..nkTripleStrLit: n.strVal
         of nkIdent: n.ident.s
