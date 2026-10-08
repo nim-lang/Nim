@@ -228,32 +228,6 @@ template benchmark(benchmarkName: untyped, code: untyped) =
     let elapsedStr = elapsed.formatFloat(format = ffDecimal, precision = 3)
     myLog "CPU Time [" & benchmarkName & "] " & elapsedStr & "s"
 
-proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
-  if projectFileIdx == InvalidFileIdx:
-    graph.typeInstCache.clear()
-    graph.procInstCache.clear()
-    return
-  var typeIdsToDelete = newSeq[ItemId]()
-  for id in graph.typeInstCache.keys:
-    if id.module == projectFileIdx.int:
-      typeIdsToDelete.add id
-  for id in typeIdsToDelete:
-    graph.typeInstCache.del id
-  var procIdsToDelete = newSeq[ItemId]()
-  for id in graph.procInstCache.keys:
-    if id.module == projectFileIdx.int:
-      procIdsToDelete.add id
-  for id in procIdsToDelete:
-    graph.procInstCache.del id
-
-  for tbl in mitems(graph.attachedOps):
-    var attachedOpsToDelete = newSeq[ItemId]()
-    for id in tbl.keys:
-      if id.module == projectFileIdx.int and sfOverridden in tbl[id].flags:
-        attachedOpsToDelete.add id
-    for id in attachedOpsToDelete:
-      tbl.del id
-
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
              graph: ModuleGraph) =
   let conf = graph.config
@@ -290,7 +264,6 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
   if conf.suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile and not isInclude:
-    graph.clearInstCache(dirtyIdx)
     graph.compilePipelineProject(dirtyIdx)
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
@@ -310,7 +283,6 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
       # `isInclude`: a freshly discovered include file is not "known" yet, but we
       # still must (source-)compile its includer to serve the query.
       if isKnownFile or isInclude:
-        graph.clearInstCache(modIdx)
         graph.compilePipelineProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
