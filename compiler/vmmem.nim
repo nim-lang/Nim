@@ -38,7 +38,8 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 type
-  Address* = uint ## a raw VM address; the VM uses host pointers
+  Address* = uint64 ## a raw VM address; the VM uses host pointers, but
+    ## stores them in 8 bytes even on a 32 bit host, see `VmPtrSize`
 
   RegionKind* = enum
     rgStack, rgGlobals, rgConst, rgHeapChunk, rgBigBlock, rgForeign,
@@ -91,25 +92,32 @@ const
   MaxSmallBlock = 32 * 1024
   BlockHeaderSize* = 16    # every heap block starts with (size, state)
   BlockAlign* = 16
-  StateAllocated = 0xA110C8ED'u
-  StateFree = 0xF4EEB10C'u
+  StateAllocated = 0xA110C8ED'u64
+  StateFree = 0xF4EEB10C'u64
 
-  StrlitFlag* = 1 shl (sizeof(int)*8 - 2) ## `cap` flag of a string or seq
+  StrlitFlag* = 1'i64 shl 62 ## `cap` flag of a string or seq
     ## payload that lives in constant memory and must not be freed or
-    ## mutated. Same value as the native runtime's `NIM_STRLIT_FLAG`.
-  RcImmortal* = 1 shl (sizeof(int)*8 - 2) ## `rc` flag of a ref cell in
+    ## mutated. Same value as the 64 bit runtime's `NIM_STRLIT_FLAG`.
+  RcImmortal* = 1'i64 shl 62 ## `rc` flag of a ref cell in
     ## constant memory: never counted, never freed.
   RefHeaderSize* = 8 ## the refcount precedes the object directly
   ProcChunkSize = 64 * 1024
 
-template `+!`*(a: Address; b: int): Address = a + cast[Address](b)
-template `-!`*(a: Address; b: int): Address = a - cast[Address](b)
+template `+!`*(a: Address; b: int): Address = a + cast[Address](int64(b))
+template `-!`*(a: Address; b: int): Address = a - cast[Address](int64(b))
 
-template toPtr*(a: Address): pointer = cast[pointer](a)
-template toAddr*(p: pointer): Address = cast[Address](p)
+template toPtr*(a: Address): pointer =
+  when sizeof(pointer) == 8: cast[pointer](a)
+  else: cast[pointer](uint32(a and 0xFFFF_FFFF'u64))
+template toAddr*(p: pointer): Address = Address(cast[uint64](p))
 
-template ld*[T](a: Address): T = cast[ptr T](a)[]
-template st*[T](a: Address; v: T) = cast[ptr T](a)[] = v
+template ld*[T](a: Address): T = cast[ptr T](toPtr(a))[]
+template st*[T](a: Address; v: T) = cast[ptr T](toPtr(a))[] = v
+
+# An `int` in VM memory always occupies 8 bytes (see `VmPtrSize`), so `int`
+# is never the type to access VM memory with: it is 4 bytes on a 32 bit host.
+template ldInt*(a: Address): int = int(ld[int64](a))
+template stInt*(a: Address; v: int) = st[int64](a, int64(v))
 
 proc alignUp(x, a: int): int {.inline.} = (x + a - 1) and not (a - 1)
 
@@ -208,8 +216,8 @@ proc rawHeapAlloc(m: var VmMemory; size: int): Address =
     let total = BlockHeaderSize + alignUp(size, BlockAlign)
     let b = hostAlloc(total)
     addRegion(m, b, total, rgBigBlock)
-    st[uint](b, uint(alignUp(size, BlockAlign)))
-    st[uint](b +! 8, StateAllocated)
+    st[uint64](b, uint64(alignUp(size, BlockAlign)))
+    st[uint64](b +! 8, StateAllocated)
     m.bytesInUse += size
     return b +! BlockHeaderSize
   let (cls, bs) = sizeClass(size)
@@ -226,8 +234,8 @@ proc rawHeapAlloc(m: var VmMemory; size: int): Address =
     b = m.heapCur
     m.heapCur = m.heapCur +! total
     m.heapLeft -= total
-  st[uint](b, uint(bs))
-  st[uint](b +! 8, StateAllocated)
+  st[uint64](b, uint64(bs))
+  st[uint64](b +! 8, StateAllocated)
   m.bytesInUse += bs
   result = b +! BlockHeaderSize
 
@@ -241,18 +249,18 @@ proc isHeapBlock*(m: var VmMemory; p: Address): bool =
   if p < BlockHeaderSize or (p and Address(BlockAlign-1)) != 0: return false
   let i = findRegion(m, p -! BlockHeaderSize)
   if i < 0 or m.regions[i].kind notin {rgHeapChunk, rgBigBlock}: return false
-  result = ld[uint](p -! 8) == StateAllocated
+  result = ld[uint64](p -! 8) == StateAllocated
 
 proc isFreedBlock*(m: var VmMemory; p: Address): bool =
   ## true if `p` is the start of a heap block that was freed.
   if p < BlockHeaderSize or (p and Address(BlockAlign-1)) != 0: return false
   let i = findRegion(m, p -! BlockHeaderSize)
   if i < 0 or m.regions[i].kind notin {rgHeapChunk, rgBigBlock}: return false
-  result = ld[uint](p -! 8) == StateFree
+  result = ld[uint64](p -! 8) == StateFree
 
 proc blockSize*(m: var VmMemory; p: Address): int =
   ## usable size of the heap block `p`.
-  result = int(ld[uint](p -! BlockHeaderSize))
+  result = int(ld[uint64](p -! BlockHeaderSize))
 
 proc heapDealloc*(m: var VmMemory; p: Address): bool =
   ## frees a heap block. Returns false if `p` is not a live heap block
@@ -260,14 +268,14 @@ proc heapDealloc*(m: var VmMemory; p: Address): bool =
   if p == 0: return true
   if not isHeapBlock(m, p): return false
   let b = p -! BlockHeaderSize
-  let bs = int(ld[uint](b))
+  let bs = int(ld[uint64](b))
   m.bytesInUse -= bs
   if bs > MaxSmallBlock:
     removeRegion(m, b)
     hostDealloc(b)
   else:
     let (cls, _) = sizeClass(bs)
-    st[uint](b +! 8, StateFree)
+    st[uint64](b +! 8, StateFree)
     st[Address](p, m.freeLists[cls])
     m.freeLists[cls] = b
   result = true
@@ -291,7 +299,7 @@ proc heapRealloc*(m: var VmMemory; p: Address; newSize: int): Address =
 proc bumpAlloc(m: var VmMemory; area: var BumpArea; size, align: int): Address =
   ## zeroed memory that is never freed.
   let size = max(size, 1)
-  var pad = int((area.cur +! (align-1)) and not Address(align-1)) - int(area.cur)
+  var pad = int(((area.cur +! (align-1)) and not Address(align-1)) - area.cur)
   if area.cur == 0 or area.left < pad + size:
     let chunk = max(BumpChunkSize, alignUp(size, BlockAlign))
     area.cur = hostAlloc(chunk)
@@ -361,23 +369,23 @@ proc newPayload*(m: var VmMemory; cap, elemSize, elemAlign: int; isString: bool)
   ## allocates a zeroed payload for `cap` elements on the heap.
   let bytes = payloadDataOffset(elemAlign) + cap*elemSize + ord(isString)
   result = heapAlloc(m, bytes)
-  st[int](result, cap)
+  stInt(result, cap)
 
 proc newConstPayload*(m: var VmMemory; cap, elemSize, elemAlign: int; isString: bool): Address =
   ## allocates a payload in constant memory; it is flagged with `StrlitFlag`.
   let bytes = payloadDataOffset(elemAlign) + cap*elemSize + ord(isString)
   result = allocConst(m, bytes, max(elemAlign, 8))
-  st[int](result, cap or StrlitFlag)
+  st[int64](result, int64(cap) or StrlitFlag)
 
 proc payloadCap*(p: Address): int {.inline.} =
-  if p == 0: 0 else: ld[int](p) and not StrlitFlag
+  if p == 0: 0 else: int(ld[int64](p) and not StrlitFlag)
 
 proc isLiteralPayload*(p: Address): bool {.inline.} =
-  p != 0 and (ld[int](p) and StrlitFlag) != 0
+  p != 0 and (ld[int64](p) and StrlitFlag) != 0
 
 proc storeString*(m: var VmMemory; dest: Address; s: string; inConst: bool) =
   ## writes a string value (len, p) to `dest`. The empty string has no payload.
-  st[int](dest, s.len)
+  stInt(dest, s.len)
   if s.len == 0:
     st[Address](dest +! 8, 0)
   else:
@@ -388,7 +396,7 @@ proc storeString*(m: var VmMemory; dest: Address; s: string; inConst: bool) =
 
 proc loadString*(src: Address): string =
   ## reads the string value at `src`. Assumes `src` was checked.
-  let L = ld[int](src)
+  let L = ldInt(src)
   result = newString(L)
   if L > 0:
     let p = ld[Address](src +! 8)
@@ -408,32 +416,32 @@ proc newRef*(m: var VmMemory; size, align: int): Address =
 proc newConstRef*(m: var VmMemory; size, align: int): Address =
   let off = refBlockOffset(align)
   result = allocConst(m, off + max(size, 1), max(align, 8)) +! off
-  st[int](result -! RefHeaderSize, RcImmortal)
+  st[int64](result -! RefHeaderSize, RcImmortal)
 
-proc refCount*(p: Address): int {.inline.} = ld[int](p -! RefHeaderSize)
+proc refCount*(p: Address): int64 {.inline.} = ld[int64](p -! RefHeaderSize)
 
 proc incRef*(p: Address) {.inline.} =
-  let rc = ld[int](p -! RefHeaderSize)
+  let rc = ld[int64](p -! RefHeaderSize)
   if (rc and RcImmortal) == 0:
-    st[int](p -! RefHeaderSize, rc + 1)
+    st[int64](p -! RefHeaderSize, rc + 1)
 
 proc decRefIsLast*(p: Address): bool {.inline.} =
   ## `nimDecRefIsLast`: true if this was the last reference; the object
   ## then has to be destroyed and disposed.
-  let rc = ld[int](p -! RefHeaderSize)
+  let rc = ld[int64](p -! RefHeaderSize)
   if (rc and RcImmortal) != 0:
     result = false
   elif rc == 0:
     result = true
   else:
-    st[int](p -! RefHeaderSize, rc - 1)
+    st[int64](p -! RefHeaderSize, rc - 1)
     result = false
 
 proc disposeRef*(m: var VmMemory; p: Address; align: int): bool =
   ## `nimRawDispose`: frees the memory of a ref. Returns false for an
   ## invalid pointer.
   if p == 0: return true
-  if (ld[int](p -! RefHeaderSize) and RcImmortal) != 0: return true
+  if (ld[int64](p -! RefHeaderSize) and RcImmortal) != 0: return true
   result = heapDealloc(m, p -! refBlockOffset(align))
 
 # ------------------------- handles -------------------------------------------
