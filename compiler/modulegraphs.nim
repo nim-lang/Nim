@@ -924,7 +924,7 @@ proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
 proc moduleIdgen*(g: ModuleGraph; m: PSym): IdGenerator =
   ## The id generator to compile module `m` with. The first compilation
   ## creates it; a recompilation (nimsuggest) reuses it, so numbering
-  ## continues after the last id the previous compilation instead
+  ## continues after the last id the previous compilation returned instead
   ## of restarting at the module's first id. Reused ids would make tables
   ## keyed by ids, such as the VM's compiled procs, map the new symbols and
   ## types to the old ones.
@@ -944,11 +944,23 @@ proc delModuleKeys[V](t: var Table[ItemId, V]; module: int32) =
 
 proc forgetModule*(g: ModuleGraph; m: PSym) =
   ## Called before module `m` is recompiled (nimsuggest): drops the cached
-  ## instances of its generics and the hooks it overrides. The recompilation
-  ## replaces them; instances of other modules' generics stay reusable.
+  ## instances of its generics, the instances it created of other modules'
+  ## generics (they may have bound its symbols, e.g. through `mixin`) and the
+  ## hooks it overrides. The recompilation replaces them; the instances other
+  ## modules created stay reusable.
   let module = m.itemId.module
   g.procInstCache.delModuleKeys(module)
   g.typeInstCache.delModuleKeys(module)
+  for insts in mvalues(g.procInstCache):
+    var kept: seq[PInstantiation] = @[]
+    for inst in insts:
+      if inst.sym.itemId.module != module: kept.add inst
+    insts = kept
+  for types in mvalues(g.typeInstCache):
+    var kept: seq[PType] = @[]
+    for t in types:
+      if t.itemId.module != module: kept.add t
+    types = kept
   for tbl in mitems(g.attachedOps):
     var stale: seq[ItemId] = @[]
     for id, op in tbl:
