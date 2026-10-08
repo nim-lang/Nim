@@ -16,7 +16,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Routes the matrix entries marked with `pool:` to the self-hosted runners
+  # (labels `wsl` / `windows`) if they are online and idle, otherwise to the
+  # GitHub-hosted image. Secrets are not passed to PRs from forks, so with an
+  # empty token those always run GitHub-hosted. `RUNNER_STATUS_TOKEN` is a
+  # fine-grained PAT with "Administration: Read-only" on this repository.
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      linux: ${{ steps.p.outputs.linux }}
+      windows: ${{ steps.p.outputs.windows }}
+    steps:
+      - id: p
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_STATUS_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          linux='"ubuntu-24.04"'; windows='"windows-2025"'
+          if [ -n "$GH_TOKEN" ]; then
+            idle=$(gh api "repos/$REPO/actions/runners" \
+              --jq '.runners[] | select(.status=="online" and (.busy|not)) | .labels[].name' || true)
+            grep -qx wsl     <<<"$idle" && linux='["self-hosted","wsl"]'
+            grep -qx windows <<<"$idle" && windows='["self-hosted","windows"]'
+          fi
+          echo "linux=$linux"     >> "$GITHUB_OUTPUT"
+          echo "windows=$windows" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: pick
     strategy:
       fail-fast: false
       matrix:
@@ -24,6 +51,7 @@ jobs:
           - name: Linux_amd64
             os: ubuntu-24.04
             cpu: amd64
+            pool: linux
           # Build-only, like nimony's i386 job: the test suite regularly breaks
           # on i386 (refs bug #17325), but that the compiler still bootstraps
           # where `int` and pointers are 32 bits is worth asserting on its own.
@@ -43,6 +71,7 @@ jobs:
             os: windows-2025
             cpu: amd64
             batch: '0_3'
+            pool: windows
           - name: Windows_amd64_batch1_3
             os: windows-2025
             cpu: amd64
@@ -53,7 +82,7 @@ jobs:
             batch: '2_3'
 
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.pool && fromJSON(needs.pick.outputs[matrix.pool]) || matrix.os }}
     timeout-minutes: 90 # `60` led to lots of cancelled jobs
 
     defaults:
@@ -81,7 +110,8 @@ jobs:
           node-version: 20
 
       - name: 'Install dependencies (amd64 Linux)'
-        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+        # Preinstalled on the self-hosted runner (which has no sudo).
+        if: runner.os == 'Linux' && matrix.cpu == 'amd64' && runner.environment == 'github-hosted'
         run: |
           set -e
           . ci/funs.sh
