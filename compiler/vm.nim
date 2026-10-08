@@ -115,7 +115,7 @@ proc storeInt(dest: Address; k: MemKind; v: int64) {.inline.} =
 
 proc readString(c: PCtx; s: Address): string =
   if not canRead(c.mem, s, 16): return ""
-  let L = ld[int](s)
+  let L = ldInt(s)
   let p = ld[Address](s +! StrPayloadOffset)
   if L <= 0 or p == 0 or not canRead(c.mem, p, PayloadDataOffset + L): return ""
   result = loadString(s)
@@ -177,7 +177,7 @@ proc reserve(c: PCtx; s: Address; newLen, esize, ealign: int; isString: bool): b
   ## makes the payload of the string or seq at `s` unique and big enough for
   ## `newLen` elements. Returns false for invalid memory.
   if not canWrite(c.mem, s, 16): return false
-  let len = ld[int](s)
+  let len = ldInt(s)
   let p = ld[Address](s +! StrPayloadOffset)
   let dataOff = payloadDataOffset(ealign)
   if len < 0: return false
@@ -198,27 +198,27 @@ proc reserve(c: PCtx; s: Address; newLen, esize, ealign: int; isString: bool): b
 proc strSetLen(c: PCtx; s: Address; newLen: int): bool =
   if newLen < 0: return false
   if not reserve(c, s, newLen, 1, 1, true): return false
-  let len = ld[int](s)
+  let len = ldInt(s)
   let p = ld[Address](s +! StrPayloadOffset)
   if newLen > len:
     zeroMem(toPtr(p +! (PayloadDataOffset + len)), newLen - len + 1)
   else:
     st[char](p +! (PayloadDataOffset + newLen), '\0')
-  st[int](s, newLen)
+  stInt(s, newLen)
   result = true
 
 proc strAdd(c: PCtx; s: Address; data: pointer; L: int): bool =
-  let len = ld[int](s)
+  let len = ldInt(s)
   if not reserve(c, s, len + L, 1, 1, true): return false
   let p = ld[Address](s +! StrPayloadOffset)
   if L > 0: moveMem(toPtr(p +! (PayloadDataOffset + len)), data, L)
   st[char](p +! (PayloadDataOffset + len + L), '\0')
-  st[int](s, len + L)
+  stInt(s, len + L)
   result = true
 
 proc strAddStr(c: PCtx; s, src: Address): bool =
   if not canRead(c.mem, src, 16): return false
-  let L = ld[int](src)
+  let L = ldInt(src)
   if L <= 0: return true
   # `src` may alias `s`; copy first:
   let tmp = readString(c, src)
@@ -245,19 +245,19 @@ proc strAsgn(c: PCtx; dest, src: Address): bool =
   if dest == src: return true
   if not canWrite(c.mem, dest, 16) or not canRead(c.mem, src, 16): return false
   let sp = ld[Address](src +! StrPayloadOffset)
-  let L = ld[int](src)
+  let L = ldInt(src)
   if L < 0 or not payloadOk(c, sp, PayloadDataOffset + L): return false
   if ld[Address](dest +! StrPayloadOffset) == sp and sp != 0:
-    st[int](dest, L)
+    stInt(dest, L)
     return true
   if sp == 0 or isLiteralPayload(sp):
     if not freePayload(c, dest): return false
-    st[int](dest, L)
+    stInt(dest, L)
     st[Address](dest +! StrPayloadOffset, sp)
     return true
   if not payloadOk(c, sp, PayloadDataOffset + L): return false
   let tmp = loadString(src)
-  st[int](dest, 0)
+  stInt(dest, 0)
   result = strSetLen(c, dest, 0)
   if result and tmp.len > 0:
     result = strAdd(c, dest, unsafeAddr tmp[0], tmp.len)
@@ -284,13 +284,13 @@ proc emptyCString(c: PCtx): Address =
 
 proc seqSetLen(c: PCtx; s: Address; newLen, esize, ealign: int): bool =
   if newLen < 0: return false
-  let len = ld[int](s)
+  let len = ldInt(s)
   if newLen > len:
     if not reserve(c, s, newLen, esize, ealign, false): return false
     let p = ld[Address](s +! StrPayloadOffset)
     let dataOff = payloadDataOffset(ealign)
     zeroMem(toPtr(p +! (dataOff + len*esize)), (newLen - len)*esize)
-  st[int](s, newLen)
+  stInt(s, newLen)
   result = true
 
 # ------------------------- type headers --------------------------------------
@@ -392,7 +392,7 @@ proc unshare(c: PCtx; a: Address; t: PType): bool =
   of tyString:
     if not canWrite(c.mem, a, 16): return false
     let p = ld[Address](a +! StrPayloadOffset)
-    let L = ld[int](a)
+    let L = ldInt(a)
     if p != 0 and L <= 0 and not isLiteralPayload(p):
       # an empty copy does not need a payload (`setLen(s, 0)` keeps it):
       st[Address](a +! StrPayloadOffset, 0)
@@ -404,7 +404,7 @@ proc unshare(c: PCtx; a: Address; t: PType): bool =
   of tySequence:
     if not canWrite(c.mem, a, 16): return false
     let p = ld[Address](a +! StrPayloadOffset)
-    let L = ld[int](a)
+    let L = ldInt(a)
     if p != 0 and L <= 0 and not isLiteralPayload(p):
       st[Address](a +! StrPayloadOffset, 0)
     elif p != 0 and L > 0:
@@ -437,7 +437,7 @@ proc destroyValue(c: PCtx; a: Address; t: PType): bool =
     let p = ld[Address](a +! StrPayloadOffset)
     let et = t.elementType
     if p != 0 and not isLiteralPayload(p) and hasPayloads(et):
-      let L = ld[int](a)
+      let L = ldInt(a)
       let esize = vmSizeOf(c.layouts, c.config, et)
       let off = payloadDataOffset(vmAlignOf(c.layouts, c.config, et))
       if L < 0 or not canRead(c.mem, p, off + L*esize): return false
@@ -1201,7 +1201,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       let s = rAdr(ra)
       checkWrite(s, 16)
       if len < 0: stackTrace(c, tos, pc, formatErrorIndexBound(len, high(int)))
-      st[int](s, 0)
+      stInt(s, 0)
       st[Address](s +! StrPayloadOffset, 0)
       ensure strSetLen(c, s, len)
     of opcStrSetLen:
@@ -1239,7 +1239,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       let oa = rAdr(instr.regB)
       checkRead(oa, 16)
       let data = ld[Address](oa)
-      let len = ld[int](oa +! 8)
+      let len = ldInt(oa +! 8)
       checkRead(data, len)
       var s = newString(len)
       if len > 0: copyMem(addr s[0], toPtr(data), len)
@@ -1254,7 +1254,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       checkWrite(s, 16)
       let len = int(rInt(instr.regB))
       if len < 0: stackTrace(c, tos, pc, formatErrorIndexBound(len, high(int)))
-      st[int](s, 0)
+      stInt(s, 0)
       st[Address](s +! StrPayloadOffset, 0)
       ensure seqSetLen(c, s, len, esize, ealign)
     of opcSeqSetLen:
@@ -1268,7 +1268,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       let ealign = int(w shr 32)
       let s = rAdr(instr.regB)
       checkWrite(s, 16)
-      let len = ld[int](s)
+      let len = ldInt(s)
       ensure seqSetLen(c, s, len+1, esize, ealign)
       rAdr(ra) = ld[Address](s +! StrPayloadOffset) +! (payloadDataOffset(ealign) + len*esize)
     of opcSeqData:
@@ -1292,7 +1292,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         let s = rAdr(ra)
         let p = if canRead(c.mem, s, 16): ld[Address](s +! StrPayloadOffset) else: 0
         stackTrace(c, tos, pc, errInvalidFree & (if isFreedBlock(c.mem, p): " (double free)" else: "") &
-          " " & $cast[int](p) & " in region kind " &
+          " " & $p & " in region kind " &
           (let r = findRegion(c.mem, p); if r < 0: "none" else: "?"))
     of opcSamePayload:
       let a = rAdr(instr.regB)
@@ -1307,8 +1307,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       let ealign = int(rInt(instr.regC+1))
       checkWrite(d, 16)
       checkRead(s, 16)
-      let len = ld[int](s)
-      st[int](d, min(ld[int](d), len))
+      let len = ldInt(s)
+      stInt(d, min(ldInt(d), len))
       ensure seqSetLen(c, d, len, esize, ealign)
       ensure reserve(c, d, len, esize, ealign, false)
       if len > 0:
@@ -1329,7 +1329,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
     of opcMakeUnique:
       let s = rAdr(ra)
       checkWrite(s, 16)
-      ensure reserve(c, s, ld[int](s), 1, 1, true)
+      ensure reserve(c, s, ldInt(s), 1, 1, true)
 
     # ----------------------------- refs and objects
     of opcNewRef:
@@ -1781,7 +1781,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       let oa = rAdr(instr.regC)
       checkRead(oa, 16)
       let data = ld[Address](oa)
-      let len = ld[int](oa +! 8)
+      let len = ldInt(oa +! 8)
       checkRead(data, len*8)
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
