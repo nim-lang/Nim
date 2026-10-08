@@ -977,6 +977,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           var x = newNodeI(result.kind, v.info)
           x.add result[i]
           vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x, c)
+          c.graph.rememberCompileTimeVar(c.module, x)
         if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
           message(c.config, v.info, hintGlobalVar)
         if {sfGlobal, sfPure} <= v.flags:
