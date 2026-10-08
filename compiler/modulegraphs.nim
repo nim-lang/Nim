@@ -839,11 +839,9 @@ proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): 
 proc createMagic(g: ModuleGraph; name: string, m: TMagic): PSym =
   result = createMagic(g, g.idgen, name, m)
 
-proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
+proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
   ## The unique module name is guaranteed to only contain {'A'..'Z', 'a'..'z', '0'..'9', '_'}
   ## so that it is useful as a C identifier snippet.
-  let fid = FileIndex(m.position)
-  let path = AbsoluteFile toFullPath(conf, fid)
   var isLib = false
   var rel = ""
   if path.string.startsWith(conf.libpath.string):
@@ -881,6 +879,9 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
       # We mangle upper letters too so that there cannot
       # be clashes with our special meanings of 'Z' and 'O'
       result.addInt ord(c)
+
+proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
+  uniqueModuleName(conf, m, AbsoluteFile toFullPath(conf, FileIndex(m.position)))
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   assert m != nil
