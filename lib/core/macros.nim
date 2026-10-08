@@ -1662,6 +1662,22 @@ proc customPragmaNode(n: NimNode): NimNode =
             # Add branches
             for i in 1 ..< identDefs.len:
               identDefsStack.add(identDefs[i].last)
+          of nnkRecWhen:
+            # the compiler records the evaluated conditions as `true`/`false`;
+            # take the first true branch. If a condition could not be
+            # evaluated (generic object), consider all remaining branches.
+            for branch in identDefs.children:
+              if branch.kind == nnkElifBranch:
+                let cond = branch[0]
+                if cond.kind in {nnkIdent, nnkSym} and eqIdent(cond, "false"):
+                  discard "branch not taken"
+                elif cond.kind in {nnkIdent, nnkSym} and eqIdent(cond, "true"):
+                  identDefsStack.add(branch[1])
+                  break
+                else:
+                  identDefsStack.add(branch[1])
+              else:
+                identDefsStack.add(branch.last)
           else:
             for i in 0 .. identDefs.len - 3:
               let varNode = identDefs[i]

@@ -1045,7 +1045,13 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         if c.inGenericContext == 0:
           var e = semConstBoolExpr(c, it[0])
           if e.kind != nkIntLit: discard "don't report followup error"
-          elif e.intVal != 0 and branch == nil: branch = it[1]
+          else:
+            # record the evaluated condition in the type's declaration so that
+            # macros inspecting `getImpl` (e.g. `hasCustomPragma`) can tell
+            # which branch was taken (bug #26373):
+            n[i][0] = newSymNode(getSysSym(c.graph, it[0].info,
+                                 if e.intVal != 0: "true" else: "false"), it[0].info)
+            if e.intVal != 0 and branch == nil: branch = n[i][1]
         else:
           # XXX this is still a hard compilation in a generic context, this can
           # result in unresolved generic parameters being treated like real types
@@ -1058,11 +1064,14 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
             let val = getConstExpr(c.module, it[0], c.idgen, c.graph)
             if val == nil or val.kind != nkIntLit:
               cannotResolve = true
-            elif not cannotResolve and val.intVal != 0 and branch == nil:
-              branch = it[1]
+            else:
+              n[i][0] = newSymNode(getSysSym(c.graph, it[0].info,
+                                   if val.intVal != 0: "true" else: "false"), it[0].info)
+              if not cannotResolve and val.intVal != 0 and branch == nil:
+                branch = n[i][1]
       of nkElse:
         checkSonsLen(it, 1, c.config)
-        if branch == nil and not cannotResolve: branch = it[0]
+        if branch == nil and not cannotResolve: branch = n[i][0]
         idx = 0
       else: illFormedAst(n, c.config)
       if c.inGenericContext > 0 and cannotResolve:
