@@ -1036,7 +1036,12 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     result[^1] = ctx.transformClosureIteratorBody(result[^1], gotoOut)
 
   of nkIfStmt, nkCaseStmt:
-    for i in 0..<n.len:
+    let firstBranch = if n.kind == nkCaseStmt: 1 else: 0
+    if n.kind == nkCaseStmt:
+      # Yields in the selector have already been lowered out. Its expressions
+      # must finish evaluating without jumping to the state after the case.
+      n[0] = ctx.transformBreaksAndReturns(n[0])
+    for i in firstBranch..<n.len:
       n[i] = ctx.transformClosureIteratorBody(n[i], gotoOut)
     if n[^1].kind != nkElse:
       # We don't have an else branch, but every possible branch has to end with
