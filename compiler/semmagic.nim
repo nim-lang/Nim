@@ -230,6 +230,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(toInt128(ord(types.canFormAcycle(c.graph, operand))), traitCall, c.idgen, c.graph)
   of "hasDefaultValue":
     result = newIntNodeT(toInt128(ord(not operand.requiresInit)), traitCall, c.idgen, c.graph)
+  of "hasNonZeroDefault":
+    # true if `default(T)` is not the all-zero bit pattern (field default values)
+    let cond = defaultNodeField(c, traitCall[1], operand, false) != nil
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.idgen, c.graph)
   of "isNamedTuple":
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil

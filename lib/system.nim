@@ -935,15 +935,26 @@ proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
     assert x.a == 2
 
 
+when defined(nimHasNonZeroDefaultTrait):
+  proc hasNonZeroDefault(t: typedesc): bool {.magic: "TypeTrait".}
+
 proc reset*[T](obj: var T) {.noSideEffect.} =
   ## Resets an object `obj` to its default value.
   when nimvm:
     obj = default(typeof(obj))
   else:
     when defined(gcDestructors):
+      when defined(nimHasNonZeroDefaultTrait):
+        const nonZero = hasNonZeroDefault(typeof(obj))
+      else:
+        const nonZero = false
       {.cast(noSideEffect), cast(raises: []), cast(tags: []).}:
-        `=destroy`(obj)
-        `=wasMoved`(obj)
+        when nonZero:
+          # field default values: the moved-from state is not the default value
+          obj = default(typeof(obj))
+        else:
+          `=destroy`(obj)
+          `=wasMoved`(obj)
     else:
       obj = default(typeof(obj))
 
