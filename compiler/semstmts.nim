@@ -1569,7 +1569,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
       typ = typ.skipTypes({tyAlias, tyGenericInst, tyOwned})
       if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
-      if typ.len > 0 and not isException(typ.elementType):
+      elif typ.len > 0 and not isException(typ.elementType):
         localError(c.config, n.info, "raised object of type $1 does not inherit from Exception" % typeToString(typ))
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =

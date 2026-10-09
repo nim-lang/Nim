@@ -1240,7 +1240,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
               sfSystemModule notin c.module.flags:
             message(c.config, n.info, warnInheritFromException, "")
           if not tryAddInheritedFields(c, check, pos, concreteBase, n):
-            return newType(tyError, c.idgen, result.owner)
+            return newType(tyError, c.idgen, getCurrOwner(c))
 
       elif concreteBase.kind == tyForward:
         needsForwardUpdate = true

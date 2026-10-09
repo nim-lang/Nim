@@ -267,6 +267,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   var obj = t
   while obj.baseClass != nil:
     obj = skipTypes(obj.baseClass, abstractPtrs)
+    if obj.kind != tyObject: break # after an instantiation error (`nim check`)
     hasCase = hasCase or isCaseObj(obj.n)
 
   if hasCase and c.kind in {attachedAsgn, attachedDeepCopy}:
@@ -697,6 +698,8 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     let h = sighashes.hashType(t,c.g.config, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.g.canonTypes.getOrDefault(h)
     if canon != nil: t = canon
+  if t.destructor == nil and c.g.config.errorCounter > 0:
+    return # e.g. `seq[empty]` after "invalid type" under `nim check`
 
   case c.kind
   of attachedAsgn, attachedDeepCopy:
