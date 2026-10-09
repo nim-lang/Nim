@@ -377,32 +377,38 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             candidates.add "\n"
         of kGenericParamTypeMismatch:
           let pos = err.firstMismatch.arg
-          doAssert n[0].kind == nkBracketExpr and pos < n[0].len
-          let arg = n[0][pos]
-          doAssert arg != nil
           var wanted = err.firstMismatch.formal.typ
           if wanted.kind == tyGenericParam and wanted.genericParamHasConstraints:
             wanted = wanted.genericConstraint
-          let got = arg.typ.skipTypes({tyTypeDesc})
-          doAssert err.firstMismatch.formal != nil
-          doAssert wanted != nil
-          doAssert got != nil
-          candidates.add "  generic parameter mismatch, expected "
-          candidates.addTypeDeclVerboseMaybe(c.config, wanted)
-          candidates.add " but got '"
-          candidates.add renderTree(arg)
-          candidates.add "' of type: "
-          candidates.addTypeDeclVerboseMaybe(c.config, got)
-          if nArg.kind in nkSymChoices:
+          if not (n[0].kind == nkBracketExpr and pos < n[0].len):
+            # the explicit generic arguments are gone, e.g. for a call that
+            # was produced from an object field's default value (#24904)
+            candidates.add "  generic parameter mismatch, expected "
+            candidates.addTypeDeclVerboseMaybe(c.config, wanted)
             candidates.add "\n"
-            candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
-          if got != nil and got.kind == tyProc and wanted.kind == tyProc:
-            # These are proc mismatches so,
-            # add the extra explict detail of the mismatch
-            candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
-          if got != nil:
-            effectProblem(wanted, got, candidates, c)
-          candidates.add "\n"
+          else:
+            let arg = n[0][pos]
+            doAssert arg != nil
+            let got = arg.typ.skipTypes({tyTypeDesc})
+            doAssert err.firstMismatch.formal != nil
+            doAssert wanted != nil
+            doAssert got != nil
+            candidates.add "  generic parameter mismatch, expected "
+            candidates.addTypeDeclVerboseMaybe(c.config, wanted)
+            candidates.add " but got '"
+            candidates.add renderTree(arg)
+            candidates.add "' of type: "
+            candidates.addTypeDeclVerboseMaybe(c.config, got)
+            if nArg.kind in nkSymChoices:
+              candidates.add "\n"
+              candidates.add ambiguousIdentifierMsg(nArg, indent = 2)
+            if got != nil and got.kind == tyProc and wanted.kind == tyProc:
+              # These are proc mismatches so,
+              # add the extra explict detail of the mismatch
+              candidates.addPragmaAndCallConvMismatch(wanted, got, c.config)
+            if got != nil:
+              effectProblem(wanted, got, candidates, c)
+            candidates.add "\n"
         of kUnknown: discard "do not break 'nim check'"
       else:
         candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
