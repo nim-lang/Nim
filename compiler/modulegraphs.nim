@@ -79,8 +79,9 @@ type
                                   # `nim nifc`, bucketed only after every
                                   # module is loaded (`flushMethodReplays`)
     icImplDeps*: IntSet           # NeedsImpl edge tracking under `nim m`:
-                                  # module ids (FileIndex) whose routine BODIES
-                                  # this compilation consumed at compile time.
+                                  # module ids (FileIndex) whose routine bodies
+                                  # or generic type instances this compilation
+                                  # consumed at compile time.
                                   # Written to the `.edges` sidecar; deps.nim
                                   # then gates the dependent on those modules'
                                   # IMPL cookie instead of the iface cookie, so
@@ -91,7 +92,8 @@ type
                                   # consumer records an edge here: VM-compiled /
                                   # getImpl'ed bodies (recordIcImplDep from vm/
                                   # vmgen), expanded templates (semTemplateExpr)
-                                  # and instantiated generics (generateInstance).
+                                  # and instantiated generics (generateInstance,
+                                  # searchInstTypes).
                                   # Inline iterators / `inline` procs are NOT
                                   # tracked: they are inlined by the backend,
                                   # whose `lower`/`cg` rules depend on the
@@ -975,6 +977,13 @@ proc recordIcImplDep*(g: ModuleGraph; s: PSym) =
   if g.config.cmd == cmdM and s != nil and s.kind in routineKinds and
      s.itemId.module >= 0 and not isBackendMinted(s.itemId):
     g.icImplDeps.incl module(s.itemId).int
+
+proc recordIcImplDep*(g: ModuleGraph; t: PType) =
+  ## Reusing a generic type instance embeds its defining module's type ID.
+  ## A body edit can change that ID without changing the interface cookie.
+  if g.config.cmd == cmdM and t != nil and t.itemId.module >= 0 and
+     not isBackendMinted(t.itemId):
+    g.icImplDeps.incl module(t.itemId).int
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
