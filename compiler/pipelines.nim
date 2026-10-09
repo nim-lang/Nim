@@ -618,7 +618,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
-    discard processPipelineModule(graph, result, graph.moduleIdgen(result), s)
+    discard processPipelineModule(graph, result, idGeneratorFromModule(result), s)
     when defined(nimsuggest):
       if graph.config.ideActive:
         graph.setSuggestDataComplete(fileIdx, not (graph.config.ideCmd in {ideSug, ideCon} and

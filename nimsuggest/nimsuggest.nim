@@ -260,7 +260,7 @@ proc resetVm(graph: ModuleGraph) =
   graph.vm = nil
   for (m, section) in graph.compileTimeVars:
     if not graph.isDirty(m):
-      setupCompileTimeVar(m, graph.moduleIdgen(m), graph, section)
+      setupCompileTimeVar(m, idGeneratorFromModule(m), graph, section)
 
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
              graph: ModuleGraph) =

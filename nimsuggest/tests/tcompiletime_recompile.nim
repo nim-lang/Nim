@@ -31,8 +31,9 @@ proc foo(): int = 1#[!]#
 
 # The edit adds generic instances before the compile-time procs, so the
 # recompilation creates more symbols before them than the first compilation
-# did. It must not reuse the ids of that compilation: the VM would run the
-# code of whichever proc had the id before.
+# did, so the same ids now belong to other procs. Nothing keyed by id may
+# survive from the first compilation: with the VM's proc addresses kept, a
+# `typeName` instance gets the id `p5` had and the VM calls `p5` instead.
 discard """
 $nimsuggest --tester --v4 $file
 >chk $1
