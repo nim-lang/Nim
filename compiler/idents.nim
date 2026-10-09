@@ -26,7 +26,7 @@ type
     h*: Hash                 # hash value of s
 
   IdentCache* = ref object
-    buckets: array[0..4096 * 2 - 1, PIdent]
+    buckets: array[0..4096 * 4 - 1, PIdent]
     wordCounter: int
     idAnon*, idDelegator*, emptyIdent*: PIdent
 
