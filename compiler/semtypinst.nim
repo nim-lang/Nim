@@ -423,6 +423,10 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var body = t.genericHead
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
+  if t.kidsLen > body.kidsLen:
+    # more arguments than generic parameters; only reached after an error,
+    # e.g. a malformed generic type under `nim check` (#10217)
+    return errorType(cl.c)
   var header = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
@@ -678,7 +682,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
   case t.kind
   of tyGenericInvocation:
     result = handleGenericInvocation(cl, t)
-    if result.last.kind == tyUserTypeClass:
+    if result.kind != tyError and result.last.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:

@@ -2441,7 +2441,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n[1], prev)
-          if result.kind == tyTypeDesc and tfUnresolved notin result.flags:
+          if result == nil:
+            # malformed code, as seen by nimsuggest (#25818)
+            localError(c.config, n.info, errTypeExpected)
+            result = newOrPrevType(tyError, prev, c)
+          elif result.kind == tyTypeDesc and tfUnresolved notin result.flags:
             result = result.base
           if n[2].kind != nkNilLit:
             localError(c.config, n.info,

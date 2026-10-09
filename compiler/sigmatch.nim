@@ -1499,7 +1499,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # varargs[untyped] is special too but handled earlier. So we only need to
     # handle varargs[typed]:
     if f.kind == tyVarargs:
-      if tfVarargs in a.flags:
+      # a {.varargs.} proc carries the flag too (#15607)
+      if tfVarargs in a.flags and a.kind != tyProc:
         return typeRel(c, f.base, a.elementType, flags)
       if f[0].kind == tyTyped: return
 

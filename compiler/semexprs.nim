@@ -2154,8 +2154,11 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           rhsTyp = rhsTyp.last
         if lhs.sym.typ.kind == tyAnything:
           rhsTyp = rhsTyp.skipTypes({tySink}).skipIntLit(c.idgen)
-        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
-          internalAssert c.config, c.p.resultSym != nil
+        if lhs.sym != c.p.resultSym:
+          # `result` of an outer routine, bug #18556
+          localError(c.config, n.info, "cannot infer the return type of '" &
+            lhs.sym.owner.name.s & "' from within a nested routine")
+        elif cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           # Make sure the type is valid for the result variable
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
           lhs.typ = rhsTyp
