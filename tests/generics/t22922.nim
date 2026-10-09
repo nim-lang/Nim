@@ -10,7 +10,7 @@ type
   Q[L: static int] = object
     v: Atomic[R[L]]
 
-proc f[L: static int](q: Q[L]): void =
+proc f[L: static int](q: var Q[L]): void =
   discard
 
 var q: Q[4]
