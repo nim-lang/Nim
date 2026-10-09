@@ -3,6 +3,7 @@ discard """
 a.s=@[4] b.s=@[1, 2, 3] c=@[9, 9, 9]
 @[4] @[9, 9, 9]
 @[4] @[9, 9, 9]
+kb
 '''
   matrix: "--mm:orc -d:useMalloc; --mm:arc -d:useMalloc"
   valgrind: "true"
@@ -44,6 +45,27 @@ proc viaTable() =
   var c = @[9, 9, 9]
   echo t[1].s, " ", c
 
+# `=wasMoved` must also reset the fields of the branch that the reset
+# discriminator selects: `H`'s hook leaves bytes that overlap `s`.
+type
+  H = object
+    p: int
+    v: int
+  K = enum ka, kb
+  P = object
+    case kind: K
+    of ka: s: seq[int]
+    of kb: h: H
+
+proc `=wasMoved`(x: var H) = x.p = 0
+
+proc consume(x: sink P) = echo x.kind
+
+proc viaHook() =
+  var o = P(kind: kb, h: H(p: 12345, v: 0x1234567))
+  if o.kind == kb: consume o
+
 viaMove()
 viaReset()
 viaTable()
+viaHook()

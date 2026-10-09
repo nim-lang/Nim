@@ -228,6 +228,11 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
     if c.kind in {attachedDestructor, attachedWasMoved}:
       # destructor/wasMoved for selector is done after case stmt
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
+    if c.kind == attachedWasMoved and emptyBranches != n.len-1:
+      # the reset selector now selects a different branch whose fields
+      # overlap the old ones: reset them too, the old branch's hooks
+      # need not have cleared every byte
+      body.add copyTree(caseStmt)
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
     # destroys in reverse order #24719
