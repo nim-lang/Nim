@@ -2098,19 +2098,25 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
   if t.kind == tyRef:
     let objType = t.elementType.skipTypes(abstractInst+{tyOwned})
-    if dest < 0: dest = c.getIntTemp()
-    c.gABCW(n, opcNewRef, dest, 0, 0, packAddr(vmSize(c, objType), vmAlign(c, objType)))
+    # construct into a fresh temporary so that `x = Foo(a: x)` works (bug #26393):
+    let target = if c.isTemp(dest): TRegister(dest) else: c.getIntTemp()
+    c.gABCW(n, opcNewRef, target, 0, 0, packAddr(vmSize(c, objType), vmAlign(c, objType)))
     if needsInitObj(c, objType):
-      c.gABCW(n, opcInitObj, dest, 0, 0, uint64(typeHandle(c, objType)))
+      c.gABCW(n, opcInitObj, target, 0, 0, uint64(typeHandle(c, objType)))
     for i in 1..<n.len:
       let it = n[i]
       if nfPreventCg in it.flags:
         discard
       elif it.kind == nkExprColonExpr and it[0].kind == nkSym:
-        var loc = fieldLoc(c, memLoc(dest, 0, objType, false), objType, it[0].sym)
+        var loc = fieldLoc(c, memLoc(target, 0, objType, false), objType, it[0].sym)
         genStoreValue(c, loc, it[1])
       else:
         globalError(c.config, n.info, "invalid object constructor")
+    if dest < 0:
+      dest = target
+    elif dest != target:
+      genCopyVal(c, n, dest, target, n.typ)
+      c.freeTemp(target)
   else:
     # construct into a fresh temporary so that `x = Obj(a: x.b)` works:
     let target = if c.isTemp(dest): TRegister(dest) else: c.getTemp(n.typ)
