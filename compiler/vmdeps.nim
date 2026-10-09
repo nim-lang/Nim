@@ -37,9 +37,13 @@ proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLi
   result = newSymNode(sym)
   result.typ = t
 
-proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
+proc atomicTypeX(s: PSym; t: PType; info: TLineInfo): PNode =
   result = newSymNode(s)
   result.info = info
+  # `s.typ` can differ from `t`: the object type of a generic `ref object`
+  # instance shares the symbol of the generic body (bug #26374). Keep `t`
+  # so that `getTypeImpl` etc. on the result see the instantiated type.
+  result.typ = t
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator;
                    inst=false; allowRecursionX=false; skipAlias = false): PNode
@@ -76,7 +80,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false; skipAlias = false): PNode =
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info, idgen)
-  template atomicType(s): untyped = atomicTypeX(s, info)
+  template atomicType(s): untyped = atomicTypeX(s, t, info)
   template mapTypeToAst(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst)
   template mapTypeToAstR(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst, true)
   template mapTypeToAst(t, i, info): untyped =
