@@ -1733,6 +1733,7 @@ proc genFlags*(s: set[TLocFlag]; dest: var string) =
     of lfNoDecl: dest.add "d"
     of lfDynamicLib: dest.add "l"
     of lfExportLib: dest.add "e"
+    of lfImportLib: dest.add "m"
     of lfHeader: dest.add "h"
     of lfImportCompilerProc: dest.add "c"
     of lfSingleUse: dest.add "s"
@@ -1755,6 +1756,7 @@ proc parse*(t: typedesc[TLocFlag]; s: string): set[TLocFlag] =
     of 'h': result.incl lfHeader
     of 'i': result.incl lfIndirect
     of 'l': result.incl lfDynamicLib
+    of 'm': result.incl lfImportLib
     of 'n': result.incl lfNoDeepCopy
     of 'p': result.incl lfPrepareForMutation
     of 's': result.incl lfSingleUse
