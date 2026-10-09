@@ -1,6 +1,6 @@
 import sem, cgen, modulegraphs, ast, llstream, parser, msgs,
        lineinfos, reorder, options, semdata, cgendata, modules, pathutils,
-       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg,
+       packages, syntaxes, depends, vm, pragmas, idents, lookups, wordrecg, modulepaths,
        liftdestructors, nifgen
 
 when not defined(nimKochBootstrap):
@@ -113,17 +113,8 @@ proc prePass*(c: PContext; n: PNode) =
         else:
           discard
 
-proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
-                    stream: PLLStream): bool =
-  if graph.stopCompile(): return true
-  var
-    p: Parser = default(Parser)
-    s: PLLStream
-    fileIdx = module.fileIdx
-
-  prepareConfigNotes(graph, module)
-  let ctx = preparePContext(graph, module, idgen)
-  let bModule: PPassContext =
+proc setupBackend(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  result =
     case graph.pipelinePass
     of CgenPass:
       setupCgen(graph, module, idgen)
@@ -158,59 +149,16 @@ proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenera
     of NonePass:
       raiseAssert "use setPipeLinePass to set a proper PipelinePass"
 
-  if stream == nil:
-    let filename = toFullPathConsiderDirty(graph.config, fileIdx)
-    s = llStreamOpen(filename, fmRead)
-    if s == nil:
-      rawMessage(graph.config, errCannotOpenFile, filename.string)
-      return false
-    graph.interactive = false
-  else:
-    s = stream
-    graph.interactive = stream.kind == llsStdIn
-  var topLevelStmts =
+proc newTopLevelStmts(graph: ModuleGraph; module: PSym): PNode =
+  result =
     if {optCompress, optGenBif} * graph.config.globalOptions != {} or
         graph.config.cmd == cmdM:
       newNodeI(nkStmtList, module.info)
     else:
       nil
-  while true:
-    syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
 
-    if not belongsToStdlib(graph, module) or (belongsToStdlib(graph, module) and module.name.s == "distros"):
-      # XXX what about caching? no processing then? what if I change the
-      # modules to include between compilation runs? we'd need to track that
-      # in ROD files. I think we should enable this feature only
-      # for the interactive mode.
-      if module.name.s != "nimscriptapi":
-        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen, topLevelStmts
-        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen, topLevelStmts
-
-    checkFirstLineIndentation(p)
-    block processCode:
-      if graph.stopCompile(): break processCode
-      var n = parseTopLevelStmt(p)
-      if n.kind == nkEmpty: break processCode
-      # read everything, no streaming possible
-      var sl = newNodeI(nkStmtList, n.info)
-      sl.add n
-      while true:
-        var n = parseTopLevelStmt(p)
-        if n.kind == nkEmpty: break
-        sl.add n
-
-      prePass(ctx, sl)
-      if sfReorder in module.flags or codeReordering in graph.config.features:
-        sl = reorder(graph, sl, module)
-      if graph.pipelinePass != EvalPass:
-        message(graph.config, sl.info, hintProcessingStmt, $idgen[])
-      var semNode = semWithPContext(ctx, sl)
-      let top = processPipeline(graph, semNode, bModule)
-      if top != nil and topLevelStmts != nil:
-        topLevelStmts.add top
-
-    closeParser(p)
-    if s.kind != llsStdIn: break
+proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
+                          ctx: PContext; bModule: PPassContext; topLevelStmts: PNode) =
   let finalNode = closePContext(graph, ctx, nil)
   case graph.pipelinePass
   of CgenPass:
@@ -352,6 +300,220 @@ proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenera
         semDepPaths.add toFullPath(graph.config, f)
       writeSemDeps(graph.config, module.position.int32, semDepPaths)
 
+proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
+  ## The module path of an import, without its pragmas. Like
+  ## `importer.splitPragmas`, but it leaves `n` alone: the pragma of
+  ## `dir/m {.cyclic.}` belongs to the last part of the path.
+  if n.kind == nkPragmaExpr and n.len == 2 and n[1].kind == nkPragma:
+    for p in n[1]:
+      if p.kind == nkIdent and whichKeyword(p.ident) == wCyclic: cyclic = true
+    result = n[0]
+  elif n.kind in {nkInfix, nkPrefix} and n.len > 0:
+    result = copyTree(n)
+    result[^1] = withoutCyclicPragma(n[^1], cyclic)
+  else:
+    result = n
+
+proc cyclicImportTargets(c: PContext; n: PNode): seq[FileIndex] =
+  ## The modules that `n`'s top-level `import m {.cyclic.}` statements refer to.
+  ## Only these are considered for a cycle group; an `import` produced by a
+  ## macro or nested in a `when` is checked in order like any other statement.
+  result = @[]
+  for it in n:
+    if it.kind != nkImportStmt: continue
+    for x in it:
+      var x = x
+      if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and
+          x[0].ident.s == "as":
+        x = x[1] # `m {.cyclic.} as alias`
+      var cyclic = false
+      let path = withoutCyclicPragma(x, cyclic)
+      if cyclic:
+        let f = checkModuleName(c.config, path, doLocalError = false)
+        if f != InvalidFileIdx and f != c.module.fileIdx:
+          result.add f
+
+type
+  CycleMember = object
+    module: PSym
+    idgen: IdGenerator
+    ctx: PContext
+    bModule: PPassContext
+    code: PNode
+    topLevelStmts: PNode
+    options: TOptions
+
+proc parseModuleFile(graph: ModuleGraph; fileIdx: FileIndex): PNode =
+  result = newNodeI(nkStmtList, newLineInfo(fileIdx, 1, 1))
+  let filename = toFullPathConsiderDirty(graph.config, fileIdx)
+  let s = llStreamOpen(filename, fmRead)
+  if s == nil:
+    rawMessage(graph.config, errCannotOpenFile, filename.string)
+    return
+  var p: Parser = default(Parser)
+  syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
+  checkFirstLineIndentation(p)
+  while true:
+    let n = parseTopLevelStmt(p)
+    if n.kind == nkEmpty: break
+    result.add n
+  closeParser(p)
+
+proc openCycleMember(graph: ModuleGraph; fileIdx: FileIndex; fromModule: PSym): CycleMember =
+  ## Like the start of `processPipelineModuleImpl`: the module of a cycle group
+  ## gets its context and backend, but sem only runs once the whole group is known.
+  let module = newModule(graph, fileIdx)
+  if fileIdx == graph.config.projectMainIdx2: module.incl sfMainModule
+  onProcessing(graph, fileIdx, "import", fromModule = fromModule)
+  let path = toFullPath(graph.config, fileIdx)
+  if fileExists(AbsoluteFile path):
+    graph.cachedFiles[path] = $secureHashFile(path)
+  graph.addDep(fromModule, fileIdx)
+  prepareConfigNotes(graph, module)
+  let idgen = idGeneratorFromModule(module)
+  result = CycleMember(module: module, idgen: idgen,
+    ctx: preparePContext(graph, module, idgen),
+    bModule: setupBackend(graph, module, idgen),
+    topLevelStmts: newTopLevelStmts(graph, module),
+    options: graph.config.options)
+  if not belongsToStdlib(graph, module):
+    processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module,
+      result.ctx, result.bModule, idgen, result.topLevelStmts
+    processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module,
+      result.ctx, result.bModule, idgen, result.topLevelStmts
+  result.code = parseModuleFile(graph, fileIdx)
+  prePass(result.ctx, result.code)
+  if sfReorder in module.flags or codeReordering in graph.config.features:
+    result.code = reorder(graph, result.code, module)
+
+proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
+  ## `root` contains `import m {.cyclic.}` statements: it and the modules that
+  ## are reachable via such imports form a cycle group. Every module of the
+  ## group runs through the `CyclePhase`s before any module continues with the
+  ## next phase. Afterwards the modules are finished one by one in the order a
+  ## recursive import would finish them: the root comes last and its
+  ## remaining statements are returned to the caller.
+  var members = @[move root]
+  let rootIdx = members[0].module.fileIdx
+  graph.cycleGroups[rootIdx] = rootIdx
+  var i = 0
+  while i < members.len:
+    for f in cyclicImportTargets(members[i].ctx, members[i].code):
+      # a module that exists already is not part of this group; it is
+      # imported like any other module, and so is a precompiled one:
+      if graph.getModule(f) == nil and not loadsFromNif(graph, f):
+        graph.cycleGroups[f] = rootIdx
+        members.add openCycleMember(graph, f, members[i].module)
+    inc i
+
+  template withMember(m: var CycleMember; body: untyped) =
+    # the owner stack is shared by all contexts and the last opened member
+    # is on top of it:
+    pushOwner(m.ctx, m.module)
+    prepareConfigNotes(graph, m.module)
+    graph.config.options = m.options
+    body
+    m.options = graph.config.options
+    popOwner(m.ctx)
+
+  var ctxs: seq[PContext] = @[]
+  for m in mitems(members):
+    ctxs.add m.ctx
+    for p in members:
+      if p.ctx != m.ctx: m.ctx.cyclePartners.add p.ctx
+  let prevDemand = graph.demandCycleBody
+  graph.demandCycleBody = proc (prc: PSym) = demandCycleBody(ctxs, prc)
+
+  for phase in [cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
+                cpUnnamedImports, cpDecls, cpUnnamedImports]:
+    for m in mitems(members):
+      withMember m:
+        semCyclePhase(m.ctx, m.code, phase)
+
+  for k in countdown(members.high, 1):
+    let m = addr members[k]
+    withMember m[]:
+      let semNode = semWithPContext(m.ctx, m.code)
+      # the module is about to be closed and its code generated, which can
+      # require the deferred bodies of the other modules:
+      for p in m.ctx.cyclePartners: drainBodyTasks(p)
+      let top = processPipeline(graph, semNode, m.bModule)
+      if top != nil and m.topLevelStmts != nil:
+        m.topLevelStmts.add top
+      finishPipelineModule(graph, m.module, m.idgen, m.ctx, m.bModule, m.topLevelStmts)
+
+  root = move members[0]
+  withMember root:
+    result = semWithPContext(root.ctx, root.code)
+  graph.demandCycleBody = prevDemand
+
+proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
+                    stream: PLLStream): bool =
+  if graph.stopCompile(): return true
+  var
+    p: Parser = default(Parser)
+    s: PLLStream
+    fileIdx = module.fileIdx
+
+  prepareConfigNotes(graph, module)
+  let ctx = preparePContext(graph, module, idgen)
+  let bModule = setupBackend(graph, module, idgen)
+
+  if stream == nil:
+    let filename = toFullPathConsiderDirty(graph.config, fileIdx)
+    s = llStreamOpen(filename, fmRead)
+    if s == nil:
+      rawMessage(graph.config, errCannotOpenFile, filename.string)
+      return false
+    graph.interactive = false
+  else:
+    s = stream
+    graph.interactive = stream.kind == llsStdIn
+  var topLevelStmts = newTopLevelStmts(graph, module)
+  while true:
+    syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
+
+    if not belongsToStdlib(graph, module) or (belongsToStdlib(graph, module) and module.name.s == "distros"):
+      # XXX what about caching? no processing then? what if I change the
+      # modules to include between compilation runs? we'd need to track that
+      # in ROD files. I think we should enable this feature only
+      # for the interactive mode.
+      if module.name.s != "nimscriptapi":
+        processImplicitImports graph, graph.config.implicitImports, nkImportStmt, module, ctx, bModule, idgen, topLevelStmts
+        processImplicitImports graph, graph.config.implicitIncludes, nkIncludeStmt, module, ctx, bModule, idgen, topLevelStmts
+
+    checkFirstLineIndentation(p)
+    block processCode:
+      if graph.stopCompile(): break processCode
+      var n = parseTopLevelStmt(p)
+      if n.kind == nkEmpty: break processCode
+      # read everything, no streaming possible
+      var sl = newNodeI(nkStmtList, n.info)
+      sl.add n
+      while true:
+        var n = parseTopLevelStmt(p)
+        if n.kind == nkEmpty: break
+        sl.add n
+
+      prePass(ctx, sl)
+      if sfReorder in module.flags or codeReordering in graph.config.features:
+        sl = reorder(graph, sl, module)
+      if graph.pipelinePass != EvalPass:
+        message(graph.config, sl.info, hintProcessingStmt, $idgen[])
+      var semNode: PNode
+      if fileIdx notin graph.cycleGroups and cyclicImportTargets(ctx, sl).len > 0:
+        var root = CycleMember(module: module, idgen: idgen, ctx: ctx, bModule: bModule,
+          code: sl, topLevelStmts: topLevelStmts, options: graph.config.options)
+        semNode = semCycleGroup(graph, root)
+      else:
+        semNode = semWithPContext(ctx, sl)
+      let top = processPipeline(graph, semNode, bModule)
+      if top != nil and topLevelStmts != nil:
+        topLevelStmts.add top
+
+    closeParser(p)
+    if s.kind != llsStdIn: break
+  finishPipelineModule(graph, module, idgen, ctx, bModule, topLevelStmts)
   result = true
 
 proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
@@ -457,19 +619,11 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           fileIdx == graph.config.m.trackPos.fileIndex))
   if result == nil:
     when not defined(nimKochBootstrap):
-      # For cmdM: load imports from NIF files (but compile the main module from source)
-      # Skip when withinSystem is true (compiling system.nim itself).
-      # Also skip for members of the current strongly-connected import group
-      # (`--icGroup`): those are mutually recursive with the main module and have
-      # no precompiled NIF yet, so they must be compiled from source in this same
-      # process (falling through below) — that resolves the cycle in-memory, the
-      # same way the non-incremental compiler handles recursive module imports.
-      if graph.config.cmd == cmdM and
-         sfMainModule notin flags and
-         not graph.withinSystem and
-         not graph.config.isDefined("nimscript") and
-         (graph.config.icGroup.len == 0 or
-          toFullPath(graph.config, fileIdx) notin graph.config.icGroup):
+      # For cmdM: load imports from NIF files (but compile the main module from
+      # source). The members of the `--icGroup` fall through below: that
+      # resolves the cycle in-memory, the same way the non-incremental compiler
+      # handles recursive module imports.
+      if sfMainModule notin flags and loadsFromNif(graph, fileIdx):
         let precomp = moduleFromNifFile(graph, fileIdx)
         if precomp.module == nil:
           if graph.config.ideActive:

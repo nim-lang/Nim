@@ -129,6 +129,9 @@ type
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
                                   # module dependencies.
+    cycleGroups*: Table[FileIndex, FileIndex]
+      ## the modules that belong to a group of modules connected by
+      ## `import m {.cyclic.}`, mapped to the module the group was entered by
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
     cache*: IdentCache
@@ -187,6 +190,11 @@ type
                                   # (`genIcModuleDestroyGlobals`), already in
                                   # call order; only the main module's `cg`
                                   # fills this, from the `.c.nif` meta heads
+    demandCycleBody*: proc (prc: PSym) {.closure.}
+      ## set while a cycle group (`import m {.cyclic.}`) is checked: effect
+      ## tracking asks for the deferred body of a routine of the group before it
+      ## falls back to the pessimistic assumptions about a routine without
+      ## effects.
     demandRoutineBody*: proc (prc: PSym) {.closure.}
       ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
       ## is needed NOW". A deferred unit's body is unsemmed until the module's
@@ -834,11 +842,9 @@ proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): 
 proc createMagic(g: ModuleGraph; name: string, m: TMagic): PSym =
   result = createMagic(g, g.idgen, name, m)
 
-proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
+proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
   ## The unique module name is guaranteed to only contain {'A'..'Z', 'a'..'z', '0'..'9', '_'}
   ## so that it is useful as a C identifier snippet.
-  let fid = FileIndex(m.position)
-  let path = AbsoluteFile toFullPath(conf, fid)
   var isLib = false
   var rel = ""
   if path.string.startsWith(conf.libpath.string):
@@ -876,6 +882,27 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
       # We mangle upper letters too so that there cannot
       # be clashes with our special meanings of 'Z' and 'O'
       result.addInt ord(c)
+
+proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
+  uniqueModuleName(conf, m, AbsoluteFile toFullPath(conf, FileIndex(m.position)))
+
+proc loadsFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
+  ## `nim m` loads an import from its precompiled NIF file. The members of the
+  ## current strongly-connected import group (`--icGroup`) are mutually
+  ## recursive with the main module and have no precompiled NIF yet, so they
+  ## are compiled from source in this same process.
+  when defined(nimKochBootstrap):
+    result = false
+  else:
+    result = g.config.cmd == cmdM and
+      not g.withinSystem and
+      not g.config.isDefined("nimscript") and
+      (g.config.icGroup.len == 0 or
+       toFullPath(g.config, fileIdx) notin g.config.icGroup)
+
+proc inSameCycleGroup*(g: ModuleGraph; a, b: FileIndex): bool =
+  let ga = g.cycleGroups.getOrDefault(a, InvalidFileIdx)
+  result = ga != InvalidFileIdx and ga == g.cycleGroups.getOrDefault(b, InvalidFileIdx)
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   assert m != nil
@@ -920,6 +947,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.ifaces = @[]
   result.importStack = @[]
+  result.cycleGroups = initTable[FileIndex, FileIndex]()
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
   result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
