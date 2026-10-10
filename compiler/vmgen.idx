@@ -1,0 +1,10 @@
+nimTitle	vmgen	vmgen.html	module vmgen		0
+nim	debugEchoCode	vmgen.html#debugEchoCode	const debugEchoCode		43
+nim	echoCode	vmgen.html#echoCode,PCtx,int,int	proc echoCode(c: PCtx; start = 0; last = -1)		143
+nim	valueConv	vmgen.html#valueConv,PCtx	proc valueConv(c: PCtx): ValueConv		261
+nim	genProc	vmgen.html#genProc,PCtx,PSym	proc genProc(c: PCtx; s: PSym): VmProcInfo		519
+nim	importcCond	vmgen.html#importcCond,PCtx,PSym	proc importcCond(c: PCtx; s: PSym): bool		791
+nim	importcCondVar	vmgen.html#importcCondVar,PSym	proc importcCondVar(s: PSym): bool		818
+nim	callShapeOf	vmgen.html#callShapeOf,PCtx,PSym	proc callShapeOf(c: PCtx; s: PSym): CallShape		1793
+nim	genStmt	vmgen.html#genStmt,PCtx,PNode	proc genStmt(c: PCtx; n: PNode): int		3941
+nim	genExpr	vmgen.html#genExpr,PCtx,PNode	proc genExpr(c: PCtx; n: PNode; requiresValue = true): int		3953

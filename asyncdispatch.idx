@@ -1,0 +1,63 @@
+nimTitle	asyncdispatch	asyncdispatch.html	module std/asyncdispatch		0
+nim	callSoon	asyncdispatch.html#callSoon,proc)	proc callSoon(cbproc: proc () {.gcsafe.})		303
+nim	CompletionData	asyncdispatch.html#CompletionData	object CompletionData		326
+nim	PDispatcher	asyncdispatch.html#PDispatcher	type PDispatcher		334
+nim	CustomRef	asyncdispatch.html#CustomRef	type CustomRef		341
+nim	AsyncFD	asyncdispatch.html#AsyncFD	type AsyncFD		343
+nim	AsyncEvent	asyncdispatch.html#AsyncEvent	type AsyncEvent		356
+nim	Callback	asyncdispatch.html#Callback	type Callback		358
+nim	`==`	asyncdispatch.html#==,AsyncFD,AsyncFD	proc `==`(x: AsyncFD; y: AsyncFD): bool		361
+nim	newDispatcher	asyncdispatch.html#newDispatcher	proc newDispatcher(): owned PDispatcher		363
+nim	setGlobalDispatcher	asyncdispatch.html#setGlobalDispatcher,sinkPDispatcher	proc setGlobalDispatcher(disp: sink PDispatcher)		373
+nim	getGlobalDispatcher	asyncdispatch.html#getGlobalDispatcher	proc getGlobalDispatcher(): PDispatcher		379
+nim	getIoHandler	asyncdispatch.html#getIoHandler,PDispatcher	proc getIoHandler(disp: PDispatcher): Handle		384
+nim	register	asyncdispatch.html#register,AsyncFD	proc register(fd: AsyncFD)		389
+nim	hasPendingOperations	asyncdispatch.html#hasPendingOperations	proc hasPendingOperations(): bool		407
+nim	newCustom	asyncdispatch.html#newCustom	proc newCustom(): CustomRef		501
+nim	recv	asyncdispatch.html#recv,AsyncFD,int	proc recv(socket: AsyncFD; size: int; flags = {SafeDisconn}): owned(Future[string])		508
+nim	recvInto	asyncdispatch.html#recvInto,AsyncFD,pointer,int	proc recvInto(socket: AsyncFD; buf: pointer; size: int; flags = {SafeDisconn}): owned(\n    Future[int])		581
+nim	send	asyncdispatch.html#send,AsyncFD,pointer,int	proc send(socket: AsyncFD; buf: pointer; size: int; flags = {SafeDisconn}): owned(\n    Future[void])		647
+nim	sendTo	asyncdispatch.html#sendTo,AsyncFD,pointer,int,ptr.SockAddr,SockLen	proc sendTo(socket: AsyncFD; data: pointer; size: int; saddr: ptr SockAddr;\n       saddrLen: SockLen; flags = {SafeDisconn}): owned(Future[void])		692
+nim	recvFromInto	asyncdispatch.html#recvFromInto,AsyncFD,pointer,int,ptr.SockAddr,ptr.SockLen	proc recvFromInto(socket: AsyncFD; data: pointer; size: int; saddr: ptr SockAddr;\n             saddrLen: ptr SockLen; flags = {SafeDisconn}): owned(Future[int])		737
+nim	acceptAddr	asyncdispatch.html#acceptAddr,AsyncFD	proc acceptAddr(socket: AsyncFD; flags = {SafeDisconn};\n           inheritable = defined(nimInheritHandles)): owned(\n    Future[tuple[address: string, client: AsyncFD]])		785
+nim	setInheritable	asyncdispatch.html#setInheritable,AsyncFD,bool	proc setInheritable(fd: AsyncFD; inheritable: bool): bool		882
+nim	closeSocket	asyncdispatch.html#closeSocket,AsyncFD	proc closeSocket(socket: AsyncFD)		884
+nim	unregister	asyncdispatch.html#unregister,AsyncFD	proc unregister(fd: AsyncFD)		889
+nim	contains	asyncdispatch.html#contains,PDispatcher,AsyncFD	proc contains(disp: PDispatcher; fd: AsyncFD): bool		893
+nim	addRead	asyncdispatch.html#addRead,AsyncFD,Callback	proc addRead(fd: AsyncFD; cb: Callback)		988
+nim	addWrite	asyncdispatch.html#addWrite,AsyncFD,Callback	proc addWrite(fd: AsyncFD; cb: Callback)		1006
+nim	addTimer	asyncdispatch.html#addTimer,int,bool,Callback	proc addTimer(timeout: int; oneshot: bool; cb: Callback)		1059
+nim	addProcess	asyncdispatch.html#addProcess,int,Callback	proc addProcess(pid: int; cb: Callback)		1093
+nim	newAsyncEvent	asyncdispatch.html#newAsyncEvent	proc newAsyncEvent(): AsyncEvent		1112
+nim	trigger	asyncdispatch.html#trigger,AsyncEvent	proc trigger(ev: AsyncEvent)		1127
+nim	unregister	asyncdispatch.html#unregister,AsyncEvent	proc unregister(ev: AsyncEvent)		1132
+nim	close	asyncdispatch.html#close,AsyncEvent	proc close(ev: AsyncEvent)		1143
+nim	addEvent	asyncdispatch.html#addEvent,AsyncEvent,Callback	proc addEvent(ev: AsyncEvent; cb: Callback)		1150
+nim	drain	asyncdispatch.html#drain,int	proc drain(timeout = 500)		1707
+nim	poll	asyncdispatch.html#poll,int	proc poll(timeout = 500)		1719
+nim	createAsyncNativeSocket	asyncdispatch.html#createAsyncNativeSocket,cint,cint,cint	proc createAsyncNativeSocket(domain: cint; sockType: cint; protocol: cint;\n                        inheritable = defined(nimInheritHandles)): AsyncFD		1736
+nim	createAsyncNativeSocket	asyncdispatch.html#createAsyncNativeSocket,Domain,SockType,Protocol	proc createAsyncNativeSocket(domain: Domain = Domain.AF_INET;\n                        sockType: SockType = SOCK_STREAM;\n                        protocol: Protocol = IPPROTO_TCP;\n                        inheritable = defined(nimInheritHandles)): AsyncFD		1741
+nim	dial	asyncdispatch.html#dial,string,Port,Protocol	proc dial(address: string; port: Port; protocol: Protocol = IPPROTO_TCP): owned(\n    Future[AsyncFD])		1901
+nim	connect	asyncdispatch.html#connect,AsyncFD,string,Port	proc connect(socket: AsyncFD; address: string; port: Port; domain = Domain.AF_INET): owned(\n    Future[void])		1916
+nim	sleepAsync	asyncdispatch.html#sleepAsync	proc sleepAsync(ms: int | float): owned(Future[void])		1931
+nim	withTimeout	asyncdispatch.html#withTimeout,Future[T],int	proc withTimeout[T](fut: Future[T]; timeout: int): owned(Future[bool])		1943
+nim	accept	asyncdispatch.html#accept,AsyncFD	proc accept(socket: AsyncFD; flags = {SafeDisconn};\n       inheritable = defined(nimInheritHandles)): owned(Future[AsyncFD])		1970
+nim	send	asyncdispatch.html#send,AsyncFD,string	proc send(socket: AsyncFD; data: string; flags = {SafeDisconn}): owned(Future[void])		1994
+nim	readAll	asyncdispatch.html#readAll,FutureStream[string]	proc readAll(future: FutureStream[string]): owned(Future[string])		2017
+nim	runForever	asyncdispatch.html#runForever	proc runForever()		2031
+nim	waitFor	asyncdispatch.html#waitFor,Future[T]	proc waitFor[T](fut: Future[T]): T		2036
+nim	activeDescriptors	asyncdispatch.html#activeDescriptors	proc activeDescriptors(): int		2043
+nim	maxDescriptors	asyncdispatch.html#maxDescriptors	proc maxDescriptors(): int		2056
+heading	Asynchronous procedures	asyncdispatch.html#asynchronous-procedures	 Asynchronous procedures		0
+heading	Handling Exceptions	asyncdispatch.html#asynchronous-procedures-handling-exceptions	  Handling Exceptions		0
+heading	Discarding futures	asyncdispatch.html#discarding-futures	 Discarding futures		0
+heading	Handling futures	asyncdispatch.html#handling-futures	 Handling futures		0
+heading	Examples	asyncdispatch.html#examples	 Examples		0
+heading	Investigating pending futures	asyncdispatch.html#investigating-pending-futures	 Investigating pending futures		0
+heading	Limitations/Bugs	asyncdispatch.html#limitationsslashbugs	 Limitations/Bugs		0
+heading	Multiple async backend support	asyncdispatch.html#multiple-async-backend-support	 Multiple async backend support		0
+idx	epoll	asyncdispatch.html#epoll_1	Multiple async backend support		0
+idx	kqueue	asyncdispatch.html#kqueue_1	Multiple async backend support		0
+nimgrp	createasyncnativesocket	asyncdispatch.html#createAsyncNativeSocket-procs-all	proc		1736
+nimgrp	send	asyncdispatch.html#send-procs-all	proc		647
+nimgrp	unregister	asyncdispatch.html#unregister-procs-all	proc		889

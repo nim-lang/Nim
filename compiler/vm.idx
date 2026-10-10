@@ -1,0 +1,35 @@
+nimTitle	vm	vm.html	module vm		0
+nim	numArgs	vm.html#numArgs,VmArgs	proc numArgs(a: VmArgs): int		21
+nim	getInt	vm.html#getInt,VmArgs,Natural	proc getInt(a: VmArgs; i: Natural): BiggestInt		28
+nim	getBool	vm.html#getBool,VmArgs,Natural	proc getBool(a: VmArgs; i: Natural): bool		29
+nim	getFloat	vm.html#getFloat,VmArgs,Natural	proc getFloat(a: VmArgs; i: Natural): BiggestFloat		30
+nim	getString	vm.html#getString,VmArgs,Natural	proc getString(a: VmArgs; i: Natural): string		32
+nim	getNode	vm.html#getNode,VmArgs,Natural	proc getNode(a: VmArgs; i: Natural): PNode		39
+nim	getVar	vm.html#getVar,VmArgs,Natural	proc getVar(a: VmArgs; i: Natural): Address		44
+nim	getVarString	vm.html#getVarString,VmArgs,Natural	proc getVarString(a: VmArgs; i: Natural): string		48
+nim	setVarString	vm.html#setVarString,VmArgs,Natural,string	proc setVarString(a: VmArgs; i: Natural; s: string)		51
+nim	setResult	vm.html#setResult,VmArgs,BiggestInt	proc setResult(a: VmArgs; v: BiggestInt)		54
+nim	setResult	vm.html#setResult,VmArgs,BiggestFloat	proc setResult(a: VmArgs; v: BiggestFloat)		55
+nim	setResult	vm.html#setResult,VmArgs,bool	proc setResult(a: VmArgs; v: bool)		56
+nim	setResult	vm.html#setResult,VmArgs,string	proc setResult(a: VmArgs; v: string)		58
+nim	setResult	vm.html#setResult,VmArgs,PNode	proc setResult(a: VmArgs; n: PNode)		61
+nim	setResultRef	vm.html#setResultRef,VmArgs,Address	proc setResultRef(a: VmArgs; p: Address)		66
+nim	setResult	vm.html#setResult,VmArgs,AbsoluteDir	proc setResult(a: VmArgs; v: AbsoluteDir)		71
+nim	setResult	vm.html#setResult,VmArgs,seq[string]	proc setResult(a: VmArgs; v: seq[string])		73
+nim	setResult	vm.html#setResult,VmArgs,	proc setResult(a: VmArgs; v: (BiggestInt, BiggestInt))		78
+nim	execProc	vm.html#execProc,PCtx,PSym,openArray[PNode]	proc execProc(c: PCtx; sym: PSym; args: openArray[PNode]): PNode		2266
+nim	evalStmt	vm.html#evalStmt,PCtx,PNode	proc evalStmt(c: PCtx; n: PNode)		2302
+nim	evalExpr	vm.html#evalExpr,PCtx,PNode	proc evalExpr(c: PCtx; n: PNode): PNode		2313
+nim	getGlobalValue	vm.html#getGlobalValue,PCtx,PSym	proc getGlobalValue(c: PCtx; s: PSym): PNode		2325
+nim	setGlobalValue	vm.html#setGlobalValue,PCtx,PSym,PNode	proc setGlobalValue(c: PCtx; s: PSym; val: PNode)		2332
+nim	registerAdditionalOps	vm.html#registerAdditionalOps,PCtx	proc registerAdditionalOps(c: PCtx)		192
+nim	setupGlobalCtx	vm.html#setupGlobalCtx,PSym,ModuleGraph,IdGenerator	proc setupGlobalCtx(module: PSym; graph: ModuleGraph; idgen: IdGenerator)		2346
+nim	setupEvalGen	vm.html#setupEvalGen,ModuleGraph,PSym,IdGenerator	proc setupEvalGen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext		2353
+nim	interpreterCode	vm.html#interpreterCode,PPassContext,PNode	proc interpreterCode(c: PPassContext; n: PNode): PNode		2358
+nim	evalConstExpr	vm.html#evalConstExpr,PSym,IdGenerator,ModuleGraph,PNode,PPassContext	proc evalConstExpr(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode;\n              semCtx: PPassContext = nil): PNode		2403
+nim	evalStaticExpr	vm.html#evalStaticExpr,PSym,IdGenerator,ModuleGraph,PNode,PSym,PPassContext	proc evalStaticExpr(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode;\n               prc: PSym; semCtx: PPassContext = nil): PNode		2407
+nim	evalStaticStmt	vm.html#evalStaticStmt,PSym,IdGenerator,ModuleGraph,PNode,PSym,PPassContext	proc evalStaticStmt(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode;\n               prc: PSym; semCtx: PPassContext = nil)		2411
+nim	setupCompileTimeVar	vm.html#setupCompileTimeVar,PSym,IdGenerator,ModuleGraph,PNode,PPassContext	proc setupCompileTimeVar(module: PSym; idgen: IdGenerator; g: ModuleGraph; n: PNode;\n                    semCtx: PPassContext = nil)		2415
+nim	genericParamsInMacroCall	vm.html#genericParamsInMacroCall.i,PSym,PNode	iterator genericParamsInMacroCall(macroSym: PSym; call: PNode): (PSym, PNode)		2419
+nim	evalMacroCall	vm.html#evalMacroCall,PSym,IdGenerator,ModuleGraph,ref.int,PNode,PNode,PSym,PPassContext	proc evalMacroCall(module: PSym; idgen: IdGenerator; g: ModuleGraph;\n              templInstCounter: ref int; n, nOrig: PNode; sym: PSym;\n              semCtx: PPassContext = nil): PNode		2454
+nimgrp	setresult	vm.html#setResult-procs-all	proc		54

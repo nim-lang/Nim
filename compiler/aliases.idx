@@ -1,0 +1,9 @@
+nimTitle	aliases	aliases.html	module aliases		0
+nim	arNo	aliases.html#arNo	TAnalysisResult.arNo		21
+nim	arMaybe	aliases.html#arMaybe	TAnalysisResult.arMaybe		21
+nim	arYes	aliases.html#arYes	TAnalysisResult.arYes		21
+nim	TAnalysisResult	aliases.html#TAnalysisResult	enum TAnalysisResult		21
+nim	pfStructural	aliases.html#pfStructural	PartFlag.pfStructural		24
+nim	pfBidirectional	aliases.html#pfBidirectional	PartFlag.pfBidirectional		24
+nim	PartFlag	aliases.html#PartFlag	enum PartFlag		24
+nim	isPartOf	aliases.html#isPartOf,PNode,PNode,set[PartFlag]	proc isPartOf(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult		116

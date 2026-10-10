@@ -1,0 +1,5 @@
+nimTitle	vmvalue	vmvalue.html	module vmvalue		0
+nim	ValueConv	vmvalue.html#ValueConv	object ValueConv		24
+nim	loadInt	vmvalue.html#loadInt,Address,MemKind	proc loadInt(src: Address; k: MemKind): BiggestInt		56
+nim	storeValue	vmvalue.html#storeValue,ValueConv,Address,PNode,PType,bool	proc storeValue(vc: ValueConv; dest: Address; n: PNode; t: PType; inConst: bool)		83
+nim	loadValue	vmvalue.html#loadValue,ValueConv,Address,PType,TLineInfo	proc loadValue(vc: ValueConv; src: Address; t: PType; info: TLineInfo): PNode		558
