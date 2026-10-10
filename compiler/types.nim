@@ -1021,9 +1021,10 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result:
       ifFastObjectTypeCheckFailed(a, b):
         cycleCheck()
-        # should be generic, and belong to the same generic head type:
-        assert a.typeInst != nil, "generic object " & $a & " has no typeInst"
-        assert b.typeInst != nil, "generic object " & $b & " has no typeInst"
+        # should be generic, and belong to the same generic head type; an
+        # object with a non-concrete field is not, after an error (`nim check`):
+        if a.typeInst == nil or b.typeInst == nil:
+          result = false
         if result:
           withoutShallowFlags:
             # this is required because of generic `ref object`s,
