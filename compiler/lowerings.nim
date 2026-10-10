@@ -210,13 +210,21 @@ proc lookupInRecord(n: PNode, id: ItemId): PSym =
     if matchesDerivedFieldId(n.sym.itemId, id): result = n.sym
   else: discard
 
+proc capturedFieldName(s: PSym; position: int): string =
+  ## The name of the env field that holds the captured local `s`. The position
+  ## disambiguates same-named locals (gensyms, shadowing); the `:` separator,
+  ## which cannot occur in a Nim identifier, keeps `x1` at position 1 and `x`
+  ## at position 11 apart (bug #26353).
+  result = s.name.s & ":" & $position
+
 proc lookupCapturedField(n: PNode, s: PSym): PSym =
   ## Find an env field that `addField` would have produced for the captured
   ## local `s`. Used as a fallback when the derived-itemId match fails because
   ## `s` is a macro-generated gensym whose process-local id diverges from the
   ## loaded env field's (see `addField`). `addField` always names a field
-  ## `s.name & $field.position`, so that pair uniquely identifies the field for a
-  ## local of this name without relying on the (unstable) item id.
+  ## `capturedFieldName(s, field.position)`, so that pair uniquely identifies
+  ## the field for a local of this name without relying on the (unstable) item
+  ## id.
   result = nil
   case n.kind
   of nkRecList:
@@ -234,7 +242,7 @@ proc lookupCapturedField(n: PNode, s: PSym): PSym =
         if result != nil: return
       else: discard
   of nkSym:
-    if n.sym.kind == skField and n.sym.name.s == s.name.s & $n.sym.position:
+    if n.sym.kind == skField and n.sym.name.s == capturedFieldName(s, n.sym.position):
       result = n.sym
   else: discard
 
@@ -268,7 +276,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   unsealForTransform(obj)
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
+  var field = newSym(skField, getIdent(cache, capturedFieldName(s, obj.n.len)),
                      idgen, s.owner, s.info, s.options)
   field.itemId = derivedFieldId(s.itemId)
   let t = skipIntLit(s.typ, idgen)
@@ -288,7 +296,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.itemId)
   if result == nil:
-    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), idgen,
+    var field = newSym(skField, getIdent(cache, capturedFieldName(s, obj.n.len)), idgen,
                        s.owner, s.info, s.options)
     field.itemId = derivedFieldId(s.itemId)
     let t = skipIntLit(s.typ, idgen)
