@@ -2554,7 +2554,7 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
       var
         frmtstr {.noinit.}: array[0..5, char]
-        buf {.noinit.}: array[0..2500, char]
+        buf {.noinit.}: array[0..349, char]
         L: cint
       frmtstr[0] = '%'
       if precision >= 0:
@@ -2563,11 +2563,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
         frmtstr[3] = '*'
         frmtstr[4] = floatFormatToChar[format]
         frmtstr[5] = '\0'
-        L = c_snprintf(cast[cstring](addr buf), csize_t(2501), cast[cstring](addr frmtstr), precision, f)
+        L = c_snprintf(cast[cstring](addr buf), csize_t(350), cast[cstring](addr frmtstr), precision, f)
       else:
         frmtstr[1] = floatFormatToChar[format]
         frmtstr[2] = '\0'
-        L = c_snprintf(cast[cstring](addr buf), csize_t(2501), cast[cstring](addr frmtstr), f)
+        L = c_snprintf(cast[cstring](addr buf), csize_t(350), cast[cstring](addr frmtstr), f)
       result = newString(L)
       for i in 0 ..< L:
         # Depending on the locale either dot or comma is produced,
