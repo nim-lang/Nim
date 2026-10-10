@@ -1635,6 +1635,10 @@ proc customPragmaNode(n: NimNode): NimNode =
             typDef = getImpl(resolved)
             continue
         break
+      if typDef[2].kind == nnkBracketExpr and typDef[2][0].kind == nnkSym:
+        # alias of a generic instance like `BaseInt = Base[int]`
+        typDef = getImpl(typDef[2][0])
+        continue
       let typ = typDef[2].extractTypeImpl()
       if typ.kind notin {nnkRefTy, nnkPtrTy, nnkObjectTy}: break
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
@@ -1658,6 +1662,22 @@ proc customPragmaNode(n: NimNode): NimNode =
             # Add branches
             for i in 1 ..< identDefs.len:
               identDefsStack.add(identDefs[i].last)
+          of nnkRecWhen:
+            # the compiler records the evaluated conditions as `true`/`false`;
+            # take the first true branch. If a condition could not be
+            # evaluated (generic object), consider all remaining branches.
+            for branch in identDefs.children:
+              if branch.kind == nnkElifBranch:
+                let cond = branch[0]
+                if cond.kind in {nnkIdent, nnkSym} and eqIdent(cond, "false"):
+                  discard "branch not taken"
+                elif cond.kind in {nnkIdent, nnkSym} and eqIdent(cond, "true"):
+                  identDefsStack.add(branch[1])
+                  break
+                else:
+                  identDefsStack.add(branch[1])
+              else:
+                identDefsStack.add(branch.last)
           else:
             for i in 0 .. identDefs.len - 3:
               let varNode = identDefs[i]
@@ -1670,7 +1690,12 @@ proc customPragmaNode(n: NimNode): NimNode =
                   return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
-          typDef = getImpl(obj[1][0])
+          var parent = obj[1][0]
+          if parent.kind == nnkBracketExpr:
+            # generic parent like `Base[int]`: the fields are declared
+            # in the generic type's definition
+            parent = parent[0]
+          typDef = getImpl(parent)
         else:
           typDef = nil
 

@@ -101,6 +101,7 @@ type
     warnImplicitRangeConversion = "ImplicitRangeConversion",
     warnSystemRangeConversion = "SystemRangeConversion",
     warnInvalidCmpOp = "InvalidCmpOp",
+    warnImplicitCyclicImport = "ImplicitCyclicImport",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -212,6 +213,7 @@ const
     warnImplicitRangeConversion: "implicit range conversion $1",
     warnSystemRangeConversion: "implicit range conversion $1",
     warnInvalidCmpOp: "$1",
+    warnImplicitCyclicImport: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
@@ -266,7 +268,8 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result = default(array[0..3, TNoteKinds])
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix, warnSystemRangeConversion}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed, warnAnyEnumConv, warnBareExcept, warnStdPrefix, warnSystemRangeConversion,
+    warnImplicitCyclicImport}
   result[2] = result[3] - {hintStackTrace, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnImplicitRangeConversion, warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,

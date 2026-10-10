@@ -24,7 +24,7 @@ when defined(nimPreviewSlimSystem):
 
 import ast, options, lineinfos, modulegraphs, cgendata, cgen, trees, wordrecg,
   pathutils, extccomp, msgs, modulepaths, idents, types, ast2nif, typekeys,
-  cnif, icmodnames
+  cnif, icmodnames, ropes
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
 from injectdestructors import injectDestructorCalls
@@ -69,12 +69,19 @@ proc loadModuleDependencies(g: ModuleGraph; mainFileIdx: FileIndex;
 
   if mainModule.module != nil:
     incl mainModule.module.flagsImpl, sfMainModule
+    # Every other process names the main module by its NIF suffix, as it does
+    # with all modules it loads. Use that name here too: in an import cycle
+    # other modules refer to the main module's routines.
+    g.ifaces[mainFileIdx.int].uniqueName = rope(uniqueModuleName(g.config, mainModule.module,
+      AbsoluteFile cachedModuleSuffix(g.config, mainFileIdx)))
     for dep in mainModule.deps:
       stack.add dep
 
   var visited = initHashSet[string]()
-  # Main is already loaded with its full AST. An import cycle must not load it
-  # again as an interface-only dependency and discard its top-level statements.
+  # In an import cycle a dependency lists the main module among its deps. It is
+  # loaded above already, with its full AST as the codegen target, and must not
+  # be loaded a second time, interface-only: `findTargetModule` would then pick
+  # that copy and the program would lose all of its module init code.
   visited.incl cachedModuleSuffix(g.config, mainFileIdx)
 
   while stack.len > 0:

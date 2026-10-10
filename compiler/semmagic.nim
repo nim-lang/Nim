@@ -230,6 +230,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(toInt128(ord(types.canFormAcycle(c.graph, operand))), traitCall, c.idgen, c.graph)
   of "hasDefaultValue":
     result = newIntNodeT(toInt128(ord(not operand.requiresInit)), traitCall, c.idgen, c.graph)
+  of "hasNonZeroDefault":
+    # true if `default(T)` is not the all-zero bit pattern (field default values)
+    let cond = defaultNodeField(c, traitCall[1], operand, false) != nil
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.idgen, c.graph)
   of "isNamedTuple":
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
@@ -454,6 +458,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # nkDeref is for 'ref T':  x[].field
   # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
   proc transform(c: PContext; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+    if n == nil: return nil # incomplete AST after an error under `nim check`
     result = shallowCopy(n)
     if sameTypeOrNil(n.typ, old):
       result.typ = fresh

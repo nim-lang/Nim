@@ -12,7 +12,7 @@
 import
   ast, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos,
-  modulegraphs, wordrecg
+  modulegraphs, wordrecg, renderer
 from astalgo import enumOrSumTypeEnum
 from std/strutils import `%`, startsWith, replace
 from std/sequtils import addUnique
@@ -201,6 +201,30 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
     if filter:
       importPureEnumFields(c, it, it.typ)
 
+proc reimportUnnamed*(c: PContext; partners: openArray[PSym]) =
+  ## The modules of a cycle group import each other before they declare
+  ## anything, so the converters, patterns and pure enums that are not
+  ## reachable by name have to be imported again once they exist.
+  for im in c.imports:
+    var isPartner = false
+    for p in partners:
+      if im.m.position == p.position: isPartner = true
+    if isPartner and im.mode != importSet:
+      let iface = addr c.graph.ifaces[im.m.position]
+      for it in iface.converters:
+        if sfExported in it.flags and
+            (im.mode == importAll or it.name.id notin im.exceptSet):
+          addConverter(c, it)
+      for it in iface.patterns:
+        if sfExported in it.flags and
+            (im.mode == importAll or it.name.id notin im.exceptSet):
+          addPattern(c, it)
+      for it in iface.pureEnums:
+        if im.mode == importAll or it.name.id notin im.exceptSet:
+          for field in it.typ.n:
+            if field.kind == nkSym and not strTableContains(c.pureEnumFields, field.sym):
+              importPureEnumField(c, field.sym)
+
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
   addUnnamedIt(c, fromMod, it.name.id notin exceptSet)
@@ -252,8 +276,8 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden, track
   c.importModuleMap[result.id] = realModule.id
   c.importModuleLookup.mgetOrPut(result.name.id, @[]).addUnique realModule.id
 
-proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
-  result = (nil, false)
+proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden, cyclic: bool] =
+  result = (nil, false, false)
   var ret = default(typeof(result))
   proc processPragma(n2: PNode): PNode =
     let (result2, kws) = splitPragmas(c, n2)
@@ -261,7 +285,8 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: 
     for ai in kws:
       case ai
       of wImportHidden: ret.importHidden = true
-      else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden})
+      of wCyclic: ret.cyclic = true
+      else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden} & " or " & ${wCyclic})
 
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     ret.node = newNodeI(nkImportAs, n.info)
@@ -275,6 +300,11 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   let transf = transformImportAs(c, n)
   n = transf.node
   let f = checkModuleName(c.config, n)
+  if f != InvalidFileIdx and transf.cyclic and c.graph.getModule(f) == nil and
+      not c.graph.loadsFromNif(f):
+    # the cycle group is formed before sem runs (see `pipelines.cyclicImportTargets`),
+    # so this import was not visible to it:
+    localError(c.config, n.info, "'.cyclic' imports must be unconditional top-level statements")
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
     let L = c.graph.importStack.len
@@ -287,7 +317,19 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
         if i > recursion: err.add "\n"
         err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
                 toFullPath(c.config, c.graph.importStack[i+1])
-      c.recursiveDep = err
+      if not transf.cyclic:
+        c.recursiveDep = err
+      if c.graph.inSameCycleGroup(c.module.fileIdx, f):
+        discard "the cycle is declared by the other side"
+      elif transf.cyclic:
+        # `f` was entered by a plain import and is being checked already, so
+        # it cannot join a cycle group anymore:
+        localError(c.config, n.info, "'.cyclic' import of a module that imports this " &
+          "module without '.cyclic'; annotate that import with '{.cyclic.}' too:\n" & err)
+      else:
+        message(c.config, n.info, warnImplicitCyclicImport,
+          "import cycle without '.cyclic'; this is deprecated, use 'import " &
+          n.renderTree & " {.cyclic.}':\n" & err)
 
     let trackUnusedImport = warnUnusedImportX in c.config.notes
     discard pushOptionEntry(c)
@@ -315,6 +357,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
         suggestMod(n[0], realModule)
       elif n.kind == nkInfix:
         suggestMod(n[2], s)
+      elif n.kind == nkPrefix:
+        # `./foo`, `../foo` and the expanded `./[foo, bar]` form (bug #26307)
+        suggestMod(n[1], s)
       else:
         suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     suggestMod(n, result)

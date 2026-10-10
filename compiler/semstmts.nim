@@ -1569,7 +1569,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
       typ = typ.skipTypes({tyAlias, tyGenericInst, tyOwned})
       if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
-      if typ.len > 0 and not isException(typ.elementType):
+      elif typ.len > 0 and not isException(typ.elementType):
         localError(c.config, n.info, "raised object of type $1 does not inherit from Exception" % typeToString(typ))
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
@@ -2615,7 +2615,7 @@ proc deferrableBody(c: PContext; s: PSym): bool =
   ## enclosing unit, and one declared inside `compiles()`, a generic
   ## instantiation or a `static:` block belongs to whatever is driving that, so
   ## none of them is a unit of its own.
-  result = optDeferBodies in c.config.globalOptions and
+  result = (optDeferBodies in c.config.globalOptions or c.deferAllBodies) and
     s.kind in {skProc, skFunc, skMethod, skIterator} and
     s.magic == mNone and
     sfCompileTime notin s.flags and
@@ -2746,9 +2746,11 @@ proc flushBodiesBeforeTopLevelStmt*(c: PContext; stmt: PNode) =
   ## boundary at module scope, where the only live state is the module's, and
   ## running a unit is safe. `vm.setupGlobalCtx` is reached from inside generic
   ## instantiations and template expansions, where it is not.
-  if c.bodyTasks.len > 0 and stmt.kind notin DeferrableNeighbours and
-      c.currentScope.depthLevel <= 2:
-    drainBodyTasks(c)
+  if stmt.kind notin DeferrableNeighbours and c.currentScope.depthLevel <= 2:
+    if c.bodyTasks.len > 0:
+      drainBodyTasks(c)
+    # a routine of the cycle group is just as observable:
+    for p in c.cyclePartners: drainBodyTasks(p)
 
 proc drainBeforeModulePass*(c: PContext) =
   ## About to compile another module from inside this one's header pass.
@@ -2762,7 +2764,7 @@ proc drainBeforeModulePass*(c: PContext) =
   ## today: everything declared above an `import` is fully semmed when it runs.
   ##
   ## Imports sit at the top of a module, so in practice this drains nothing.
-  if optDeferBodies in c.config.globalOptions:
+  if c.bodyTasks.len > 0:
     drainBodyTasks(c)
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
