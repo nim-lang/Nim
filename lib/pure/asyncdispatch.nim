@@ -360,15 +360,34 @@ when defined(windows) or defined(nimdoc):
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
 
+  proc closeDispatcher*(disp: PDispatcher) =
+    ## Closes the dispatcher and releases its underlying OS resource (the I/O
+    ## completion port handle). The dispatcher cannot be used afterwards.
+    if disp.ioPort != 0:
+      discard closeHandle(disp.ioPort)
+      disp.ioPort = 0
+
+  proc dispatcherFinalizer(d: PDispatcher) {.nimcall.} =
+    # releases the OS resource when the dispatcher becomes unreachable;
+    # `closeDispatcher` does not raise
+    closeDispatcher(d)
+
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
-    new result
+    new result, dispatcherFinalizer
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initHashSet[AsyncFD]()
     result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](64)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
+
+  proc threadDispatcherCleanup() {.gcsafe, raises: [].} =
+    # a thread that touched async keeps its dispatcher alive in a threadvar;
+    # without this the OS resource leaks at thread exit
+    if not gDisp.isNil:
+      closeDispatcher(gDisp)
+      gDisp = nil
 
   proc setGlobalDispatcher*(disp: sink PDispatcher) =
     if not gDisp.isNil:
@@ -379,6 +398,8 @@ when defined(windows) or defined(nimdoc):
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
       setGlobalDispatcher(newDispatcher())
+      when declared(onThreadDestruction):
+        onThreadDestruction(threadDispatcherCleanup)
     result = gDisp
 
   proc getIoHandler*(disp: PDispatcher): Handle =
@@ -1230,6 +1251,23 @@ else:
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
+  proc closeDispatcher*(disp: PDispatcher) =
+    ## Closes the dispatcher and releases its underlying OS resource (the
+    ## epoll/kqueue/select fd). The dispatcher cannot be used afterwards.
+    if disp.selector != nil:
+      disp.selector.close()
+      disp.selector = nil
+
+  proc threadDispatcherCleanup() {.gcsafe, raises: [].} =
+    # a thread that touched async keeps its thread-local dispatcher alive in
+    # `gDisp`; without this its selector fd leaks when the thread terminates
+    if not gDisp.isNil:
+      try:
+        closeDispatcher(gDisp)
+      except CatchableError:
+        discard
+      gDisp = nil
+
   when defined(nuttx):
     import std/exitprocs
 
@@ -1250,6 +1288,8 @@ else:
       setGlobalDispatcher(newDispatcher())
       when defined(nuttx):
         addFinalyzer()
+      when declared(onThreadDestruction):
+        onThreadDestruction(threadDispatcherCleanup)
     result = gDisp
 
   proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
