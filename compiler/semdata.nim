@@ -43,6 +43,7 @@ type
     mapping*: SymMapping
     caseContext*: seq[tuple[n: PNode, idx: int]]
     localBindStmts*: seq[PNode]
+    hasUnresolvedAutoCall*: bool # a self-call still uses the `auto` return placeholder
 
   TMatchedConcept* = object
     candidateType*: PType
