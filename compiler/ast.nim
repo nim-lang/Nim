@@ -1905,9 +1905,13 @@ template canRaiseImpl*(fnArg: typed): bool =
     elif fn.kind == nkSym and fn.sym.magic == mEcho:
       markCanRaiseBranch 2
       res = true
-    elif fn.typ != nil and fn.typ.kind == tyProc and fn.typ.n != nil:
+    elif fn.typ != nil and (let t = fn.typ.skipTypes({tyGenericInst, tyAlias, tySink});
+        t.kind == tyProc and t.n != nil):
+      # `skipTypes`: a callee typed by a generic proc-type alias
+      # (`Cb[T] = proc (x: T)`) is a `tyGenericInst` wrapping the `tyProc`,
+      # bug #26342.
       markCanRaiseBranch 3
-      let effects = effectsOf(fn.typ)
+      let effects = effectsOf(t)
       if effects.kind == nkSym:
         # The historical shape: slot 0 used to be an `nkType` before the effects
         # moved in (see `newProcType`). Nothing to read, so nothing licenses a
