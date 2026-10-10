@@ -1067,6 +1067,16 @@ proc forgetCompilation*(g: ModuleGraph; m: PSym) =
   g.ifaces[module].patterns.setLen 0
   g.ifaces[module].pureEnums.setLen 0
   g.nifExpansions.del(module)
+  for insts in mvalues(g.typeInstCache):
+    var kept: seq[PType] = @[]
+    for t in insts:
+      if t.itemId.module != module: kept.add t
+    insts = kept
+  for insts in mvalues(g.procInstCache):
+    var kept: seq[PInstantiation] = @[]
+    for inst in insts:
+      if inst.sym.itemId.module != module: kept.add inst
+    insts = kept
   for db in mvalues(g.suggestSymbols):
     db.removeOriginModule(module)
   for ops in mitems(g.attachedOps):
