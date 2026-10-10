@@ -5,8 +5,7 @@ discard """
 
 import std/[json, options]
 
-import std/assertions
-import std/objectdollar
+import std/[assertions, macros, objectdollar]
 
 
 # RefPerson is used to test that overloaded `==` operator is not called by
@@ -19,6 +18,11 @@ proc `==`(a, b: RefPerson): bool =
   assert(not a.isNil and not b.isNil)
   a.name == b.name
 
+type Uncopiable = distinct int
+
+proc `=copy`(dest: var Uncopiable; source: Uncopiable) {.error.}
+
+proc `==`(a, b: Uncopiable): bool {.borrow.}
 
 template disableJsVm(body) =
   # something doesn't work in JS VM
@@ -27,6 +31,17 @@ template disableJsVm(body) =
     else: body
   else:
     body
+
+macro buildOnce(value: untyped): untyped =
+  ## Creates a proc that can be called only once
+  let name = genSym(nskProc)
+  return quote:
+    proc `name`(): auto =
+      var called {.global.} = false
+      doAssert(not called, "Expression should only be executed once")
+      called = true
+      return `value`
+    `name`
 
 proc main() =
   type
@@ -196,6 +211,52 @@ proc main() =
         let x = none(cstring)
         doAssert x.isNone
         doAssert $x == "none(cstring)"
+
+    # withValue should only evaluate the expression once
+    block:
+      let someValue = buildOnce(some(Uncopiable(42)))
+      someValue().withValue(value):
+        doAssert(value.int == 42)
+      do:
+        doAssert false
+
+    # withValue should only evaluate the expression once
+    block:
+      let someValue = buildOnce(some(Uncopiable(42)))
+      someValue().withValue(value):
+        doAssert(value.int == 42)
+
+    # mapIt should only evalute its expression once
+    block:
+      let someValue = buildOnce(some(Uncopiable(42)))
+      doAssert someValue().mapIt($it.int) == some("42")
+
+    # flatMapIt should only evalute its expression once
+    block:
+      let someValue = buildOnce(some(Uncopiable(42)))
+      doAssert someValue().flatMapIt(some($it.int)) == some("42")
+
+    # filterIt should only evaluate its expression once
+    block:
+      let someValue = buildOnce(some(Uncopiable(42)))
+      var outcome: int
+      someValue().applyIt:
+        outcome = it.int
+      doAssert outcome == 42
+
+    # or should only evaluate its expression once
+    block:
+      let a = buildOnce(some(42))
+      doAssert a().or(some(0)) == some(42)
+
+      let b = buildOnce(some(42))
+      doAssert none(int).or(b()) == some(42)
+
+    # or should not copy values
+    # Disabled on JS because of: internal error: ("genAddr: 2", skTemp)
+    when not defined(js):
+      block:
+        doAssert some(Uncopiable(42)).or(some(Uncopiable(0))) == some(Uncopiable(42))
 
 static: main()
 main()
