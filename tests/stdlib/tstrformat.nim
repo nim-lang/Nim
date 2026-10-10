@@ -592,5 +592,119 @@ proc main() =
   block:
     doAssert not compiles(fmt"{formatting errors detected at compile time")
 
+  # ============================================================================
+  # Python-compatible format specification tests
+  # Tests for new features: = alignment, thousands separators, %, c type
+  # ============================================================================
+
+  block: # Thousands separator with comma
+    # Python: f"{1234567890:,}" == "1,234,567,890"
+    doAssert fmt"{1234567890:,}" == "1,234,567,890"
+    doAssert fmt"{1234:,}" == "1,234"
+    doAssert fmt"{123:,}" == "123"  # No separator needed
+    doAssert fmt"{12:,}" == "12"
+    doAssert fmt"{1:,}" == "1"
+    doAssert fmt"{0:,}" == "0"
+    # Negative numbers
+    doAssert fmt"{-1234567:,}" == "-1,234,567"
+    doAssert fmt"{-1234:,}" == "-1,234"
+    # With width
+    doAssert fmt"{1234:10,}" == "     1,234"
+    doAssert fmt"{1234:010,}" == "00,001,234"
+    # Python: format(1234, "08,d") == "0001,234"
+    doAssert fmt"{1234:08,d}" == "0001,234"
+
+  block: # Thousands separator with underscore
+    # Python: f"{1234567890:_}" == "1_234_567_890"
+    doAssert fmt"{1234567890:_}" == "1_234_567_890"
+    doAssert fmt"{1234:_}" == "1_234"
+    doAssert fmt"{123:_}" == "123"
+    # Negative numbers
+    doAssert fmt"{-1234567:_}" == "-1_234_567"
+    # Binary with underscore (groups of 4)
+    doAssert fmt"{255:_b}" == "1111_1111"
+    doAssert fmt"{65535:_b}" == "1111_1111_1111_1111"
+    doAssert fmt"{15:_b}" == "1111"  # No separator needed for 4 or fewer
+    # Hex with underscore (groups of 4)
+    doAssert fmt"{0xDEADBEEF:_x}" == "dead_beef"
+    doAssert fmt"{0xFFFF:_x}" == "ffff"  # No separator for 4 or fewer
+    doAssert fmt"{0xFFFFF:_x}" == "f_ffff"
+    # Octal with underscore (groups of 4)
+    doAssert fmt"{0o7654321:_o}" == "765_4321"
+
+  block: # Thousands separator with floats
+    # Python: f"{1234567890:,.2f}" == "1,234,567,890.00"
+    doAssert fmt"{1234567890.0:,.2f}" == "1,234,567,890.00"
+    doAssert fmt"{1234.5678:,.2f}" == "1,234.57"
+    doAssert fmt"{1234567.89:_.2f}" == "1_234_567.89"
+    # Negative floats
+    doAssert fmt"{-1234567.89:,.2f}" == "-1,234,567.89"
+
+  block: # = alignment (sign-aware padding)
+    # Python: f"{-42:=10}" == "-        42" (spaces after sign)
+    # But with 0 prefix: f"{-42:0=10}" == "-000000042"
+    doAssert fmt"{-42:0=10}" == "-000000042"
+    doAssert fmt"{42:0=+10}" == "+000000042"
+    doAssert fmt"{42:0= 10}" == " 000000042"
+    # With custom fill character
+    doAssert fmt"{-42:*=10}" == "-*******42"
+    doAssert fmt"{42:*=+10}" == "+*******42"
+    # Floats with = alignment
+    doAssert fmt"{-3.14:0=10}" == "-000003.14"
+    doAssert fmt"{3.14:0=+10}" == "+000003.14"
+    doAssert fmt"{-3.14:*=10}" == "-*****3.14"
+
+  block: # Percentage formatting
+    # Python: f"{0.25:.2%}" == "25.00%"
+    doAssert fmt"{0.25:.2%}" == "25.00%"
+    doAssert fmt"{0.5:%}" == "50.000000%"
+    doAssert fmt"{1.0:.0%}" == "100.%"
+    doAssert fmt"{0.125:.1%}" == "12.5%"
+    # Negative percentages
+    doAssert fmt"{-0.25:.2%}" == "-25.00%"
+    # With width and alignment
+    doAssert fmt"{0.25:>10.2%}" == "    25.00%"
+    doAssert fmt"{0.25:<10.2%}" == "25.00%    "
+    doAssert fmt"{0.25:^10.2%}" == "  25.00%  "
+    # Zero padding
+    doAssert fmt"{0.05:010.2%}" == "000005.00%"
+
+  block: # Character type (c)
+    # Python: f"{65:c}" == "A"
+    doAssert fmt"{65:c}" == "A"
+    doAssert fmt"{97:c}" == "a"
+    doAssert fmt"{48:c}" == "0"
+    doAssert fmt"{32:c}" == " "
+    # Unicode characters
+    doAssert fmt"{0x03B1:c}" == "α"  # Greek alpha
+    doAssert fmt"{0x1F600:c}" == "😀"  # Emoji
+    # With width and alignment
+    doAssert fmt"{65:>5c}" == "    A"
+    doAssert fmt"{65:<5c}" == "A    "
+    doAssert fmt"{65:^5c}" == "  A  "
+    doAssert fmt"{65:*>5c}" == "****A"
+
+  block: # Combined features
+    # Width + thousands separator + precision
+    # Python: f"{1234567890:020,.2f}" == "0,001,234,567,890.00"
+    doAssert fmt"{1234567890.0:020,.2f}" == "0,001,234,567,890.00"
+    # Sign + width + separator
+    doAssert fmt"{1234567:+,}" == "+1,234,567"
+    doAssert fmt"{-1234567:+,}" == "-1,234,567"
+    # Alternate form + separator (hex)
+    doAssert fmt"{0xDEADBEEF:#_x}" == "0xdead_beef"
+    doAssert fmt"{0xDEADBEEF:#_X}" == "0xDEAD_BEEF"
+
+  block: # Edge cases
+    # Zero with thousands separator
+    doAssert fmt"{0:,}" == "0"
+    doAssert fmt"{0:_}" == "0"
+    # Very large numbers
+    doAssert fmt"{999999999999:,}" == "999,999,999,999"
+    # Percentage of zero
+    doAssert fmt"{0.0:.2%}" == "0.00%"
+    # Character edge cases
+    doAssert fmt"{0:c}" == "\x00"  # Null character
+
 static: main()
 main()
