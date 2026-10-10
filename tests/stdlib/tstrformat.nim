@@ -544,6 +544,12 @@ proc main() =
     var x = 5
     doAssert fmt"{(x=7;123.456)=:13e}" == "(x=7;123.456)= 1.234560e+02"
     doAssert x==7
+
+  block: # binary operators in interpolated expressions
+    let n = 1
+    doAssert &"{n-1}" == "0"
+    doAssert fmt"{n-1}" == "0"
+
   block: #curly bracket expressions and tuples
     proc formatValue(result: var string; value:Table|bool|JsonNode; specifier:string) = result.add $value
 

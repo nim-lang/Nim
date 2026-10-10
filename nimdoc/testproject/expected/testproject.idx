@@ -67,6 +67,7 @@ nim	T19396	testproject.html#T19396	object T19396		404
 nim	somePragma	testproject.html#somePragma.t	template somePragma()		408
 nim	MyObject	testproject.html#MyObject	object MyObject		412
 nim	AnotherObject	testproject.html#AnotherObject	object AnotherObject		417
+nim	Xxx	testproject.html#Xxx	object Xxx		424
 nimgrp	bar	testproject.html#bar-procs-all	proc		43
 nimgrp	baz	testproject.html#baz-procs-all	proc		46
 heading	Basic usage	testproject.html#basic-usage	 Basic usage		0

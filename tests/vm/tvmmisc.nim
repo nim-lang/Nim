@@ -1,6 +1,31 @@
 import macros
 import os
 
+block: # bug #26213
+  type
+    DistinctPointer = distinct pointer
+    NestedPointer = distinct DistinctPointer
+    DistinctPtr = distinct ptr int
+  const
+    x0 = cast[pointer](1'u)
+    x1 = cast[pointer](1)
+    v0 = cast[distinct pointer](1'u)
+    v1 = cast[distinct pointer](1)
+    named = cast[DistinctPointer](1'u)
+    nested = cast[NestedPointer](1)
+    typed = cast[DistinctPtr](1'u)
+  static:
+    doAssert named is DistinctPointer
+    doAssert nested is NestedPointer
+    doAssert typed is DistinctPtr
+  doAssert cast[int](x0) == 1
+  doAssert cast[int](x1) == 1
+  doAssert cast[int](v0) == 1
+  doAssert cast[int](v1) == 1
+  doAssert cast[int](named) == 1
+  doAssert cast[int](nested) == 1
+  doAssert cast[int](typed) == 1
+
 # bug #4462
 block:
   proc foo(t: typedesc) {.compileTime.} =
@@ -794,3 +819,78 @@ block: # bug #23925
 static: # bug #21353
   var s: proc () = default(proc ())
   doAssert s == nil
+
+# bug #25208
+
+
+type Conf = object
+  val: int
+
+const defaultConf = Conf(val: 123)
+
+template foo2323(conf) =
+  assert conf.val == 123
+  var conf2 = conf
+  assert conf2.val == 123
+
+static:
+  var conf: Conf = defaultConf
+  conf = defaultConf  # removing this results in the expected output
+  conf.val = 2
+  foo2323(defaultConf)
+
+  discard cast[pointer](default(pointer)) # bug #25446
+
+
+proc g1314(_: static bool) = discard
+proc g1314(_: int) = discard
+proc y1314() = g1314((; let k = 0; k))
+y1314()
+
+proc myProc(first: range[0..100]) =
+  var x = first
+  while x > 0:
+    dec(x)
+
+const r = (myProc(3); 1)
+
+block: # bug #25682
+  type Obj = object
+    x: int
+
+  template value(self: Obj): int =
+    let m = 1223
+    discard m
+    self.x
+
+  static:
+    var r = Obj(x: 10)
+    r.value = 42
+    doAssert r.x == 42
+
+block:
+  type Obj = object
+    x: int
+
+  template value(self: Obj): int =
+    ## doc comment
+    self.x
+
+  static:
+    var r = Obj(x: 10)
+    r.value = 42
+    doAssert r.x == 42
+
+block: # bug #25949
+  template loadFile(filename: string): auto =
+    when nimvm:    
+      staticRead(filename)
+    else:
+      "something"
+    
+  proc roundTrip(): bool =
+    let content = loadFile("tests/tomls/case.toml")
+    content == "something"
+
+  doAssert roundTrip()
+

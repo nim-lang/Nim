@@ -87,6 +87,17 @@ template main() =
     doAssert "".rsplit("") == @[""]
     doAssert s.rsplit({}) == @[s]
     doAssert s.rsplit("") == @[s]
+    # Separators that can overlap themselves (#24949): a match must not reuse
+    # bytes already consumed by the separator to its right.
+    doAssert "a...b".rsplit("..") == @["a.", "b"]
+    doAssert "a...b".rsplit("..", maxsplit = 1) == @["a.", "b"]
+    doAssert "a....b".rsplit("..") == @["a", "", "b"]
+    doAssert "aaaaaaab".rsplit("aa") == @["a", "", "", "b"]
+    doAssert "....a.b".rsplit("...") == @[".", "a.b"]
+    doAssert "aababa.b".rsplit("aba") == @["aab", ".b"]
+    doAssert "..ab".rsplit("..") == @["", "ab"]
+    doAssert "ab..".rsplit("..") == @["ab", ""]
+    doAssert "ab".rsplit("xyz") == @["ab"]
 
   block: # splitWhitespace
     let s = " this is an example  "
@@ -641,6 +652,30 @@ template main() =
 
       let myA = CAMPAIGN_TABLE
       doAssert $parseEnum[Tables](myA) == "wikientries_campaign"
+
+    block:
+      const tripleQuotedStr = """foobar"""
+
+      type MyEnum = enum
+        a = tripleQuotedStr
+        b = """bazquz"""
+
+      let myA = tripleQuotedStr
+      doAssert $parseEnum[MyEnum](myA) == myA
+      let myB = "bazquz"
+      doAssert $parseEnum[MyEnum](myB) == myB
+
+    block:
+      const rawStr = r"foobar"
+
+      type MyEnum = enum
+        a = rawStr
+        b = r"bazquz"
+
+      let myA = rawStr
+      doAssert $parseEnum[MyEnum](myA) == myA
+      let myB = r"bazquz"
+      doAssert $parseEnum[MyEnum](myB) == myB
 
     block: # check enum defined in block
       type

@@ -420,3 +420,10 @@ type
       y*: proc (x: string)
     of false:
       hidden: string
+
+type Xxx* = object
+  field*: int
+  field2: int
+    ## Doc comment
+  field3*: int
+    ## Doc comment2

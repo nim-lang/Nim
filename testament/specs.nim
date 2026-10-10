@@ -24,6 +24,7 @@ var compilerPrefix* = findExe("nim")
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
 let isAzure* = existsEnv("TF_BUILD")
+let isGithubActions* = existsEnv("GITHUB_ACTIONS")
 
 var skips*: seq[string]
 
@@ -313,7 +314,11 @@ proc initSpec*(filename: string): TSpec =
 
 proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
-    hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
+    let count = testamentData.testamentNumBatch
+    # String hashes can be negative. Normalize the remainder so every test maps
+    # to one of the non-negative batch indexes instead of silently mapping to
+    # no batch at all.
+    ((hash(filename) mod count) + count) mod count == testamentData.testamentBatch
   else:
     true
 
@@ -434,8 +439,10 @@ proc parseSpec*(filename: string): TSpec =
           if isTravis: result.err = reDisabled
         of "appveyor": # deprecated
           if isAppVeyor: result.err = reDisabled
-        of "azure":
+        of "azure": # deprecated
           if isAzure: result.err = reDisabled
+        of "github":
+          if isGithubActions: result.err = reDisabled
         else:
           # Check whether the value exists as an OS or CPU that is
           # defined in `compiler/platform`.

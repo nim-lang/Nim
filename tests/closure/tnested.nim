@@ -213,3 +213,23 @@ block:
       discard call2()
 
   pork()
+
+# bug #25046
+proc makeiter(v: string): iterator(): string =
+  return iterator(): string =
+    yield v
+
+var flag = ""
+
+var iter = makeiter("test1")
+for c in iter():
+  flag = c
+
+assert flag == "test1"
+
+# loops
+for c in makeiter("test2")():
+  flag = c
+
+assert flag == "test2"
+

@@ -36,6 +36,8 @@ elif defined(linux):
     # Android
     "/data/data/com.termux/files/usr/etc/tls/cert.pem",
     "/system/etc/security/cacerts",
+    # Nix
+    "/etc/ssl/certs/ca-bundle.crt"
   ]
 elif defined(bsd):
   const certificatePaths = [

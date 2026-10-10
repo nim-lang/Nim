@@ -34,10 +34,10 @@ To learn how to compile Nim programs and generate documentation see
 the [Compiler User Guide](nimc.html) and the [DocGen Tools Guide](docgen.html).
 
 The language constructs are explained using an extended BNF, in which `(a)*`
-means 0 or more `a`'s, `a+` means 1 or more `a`'s, and `(a)?` means an
+means 0 or more *a*'s, `a+` means 1 or more *a*'s, and `(a)?` means an
 optional *a*. Parentheses may be used to group elements.
 
-`&` is the lookahead operator; `&a` means that an `a` is expected but
+`&` is the lookahead operator; `&a` means that an *a* is expected but
 not consumed. It will be consumed in the following rule.
 
 The `|`, `/` symbols are used to mark alternatives and have the lowest
@@ -188,6 +188,37 @@ denotes an indentation that consists of more spaces than the entry at the top
 of the stack; `IND{=}` an indentation that has the same number of spaces. `DED`
 is another pseudo terminal that describes the *action* of popping a value
 from the stack, `IND{>}` then implies to push onto the stack.
+
+A token that is not the first token on its line carries no indentation at all,
+and the grammar distinguishes that case too: an *optional* indentation
+pseudo-terminal means "this indentation, or none". `IND{>}?` accepts a token
+that is indented further than the top of the stack *or* that continues the
+current line; `IND{=}?` accepts a token at the current indentation or on the
+same line; `(IND{>} | IND{=})?` accepts anything but a dedent.
+
+The same rule applies to comments. The terminal `COMMENT` (a documentation
+comment; ordinary `#` comments never reach the parser) without an
+indentation pseudo-terminal in front of it denotes a comment **on the same
+line** as the preceding token, so `COMMENT?` reads "an optional trailing
+comment". A comment that starts a line of its own is never matched by a bare
+`COMMENT?`: it is either a statement of its own (`commentStmt`) or the grammar
+spells its position explicitly, as in `IND{>} COMMENT` or `IND{>}? COMMENT`.
+For example `optInd = COMMENT? IND{>}?` allows a trailing
+comment and then requires the next token to be on the same line or indented
+further. And in `routine`, `'=' COMMENT? stmt` makes the difference between
+
+  ```nim
+  proc p() = ## a trailing comment: documents `p`
+    discard
+  ```
+
+and
+
+  ```nim
+  proc p() =
+    ## a comment on its own line: the first statement of the body
+    discard
+  ```
 
 With this notation we can now easily define the core of the grammar: A block of
 statements (simplified example):
@@ -712,8 +743,8 @@ Unicode Operators
 
 These Unicode operators are also parsed as operators:
 
-    ∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓   # same priority as * (multiplication)
-    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔             # same priority as + (addition)
+    ∙ ∘ × ★ ☆ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ⟑ ⟇ ⩓ ⩔ ■ □   # same priority as * (multiplication)
+    ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔                           # same priority as + (addition)
 
 
 Unicode operators can be combined with non-Unicode operator
@@ -1024,6 +1055,9 @@ These are the major type classes:
 * procedural type
 * generic type
 
+The compiler's internal type zoo is richer than this summary suggests:
+some types that are structurally equal still differ in backend representation.
+
 
 Ordinal types
 -------------
@@ -1143,6 +1177,8 @@ semantic analysis). Assignments from the base type to one of its subrange types
 
 A subrange type has the same size as its base type (`int` in the
 Subrange example).
+
+Implicit "downsizing" conversions to range types (for example, `int -> range[0..255]` or `range[1..256] -> range[0..255]`) emit the `ImplicitRangeConversion` warning. Conversions that are clearly safe (for example, `range[0..255] -> range[0..65535]`) and any explicit casts do not trigger this warning. Conversions from `int` to common subranges such as `Natural` or `Positive` do not trigger this warning by default, but can be enabled with `--warning:systemRangeConversion`.
 
 
 Pre-defined floating-point types
@@ -1968,6 +2004,137 @@ Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign
     t.kind = intLit
   ```
 
+Sum types
+---------
+
+An object `case` without a discriminator declares a *sum type*: the object
+is in exactly one of the listed branches, and the branch names are new
+identifiers that are introduced by the declaration.
+
+```nim test
+type
+  Node = ref object
+    case
+    of AddOpr, SubOpr:   # several branches can share their fields
+      a, b: Node
+    of Value:
+      val: int
+
+  Opt[T] = object
+    case
+    of None: discard     # a branch without fields
+    of Some: val: T
+
+  Shape = object
+    x, y: float          # fields outside of the `case` are shared
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+```
+
+Under the hood, a sum type is a case object with a hidden discriminator.
+The branch names are the values of an enum that is generated for it; they
+behave like overloadable enum fields and are imported and exported together
+with the sum type. An object can contain at most one such `case` and it
+cannot have an `else` branch.
+
+
+### Construction
+
+A branch name is used like an object constructor, with named arguments for
+the fields of the branch and the shared fields:
+
+```nim test
+type
+  Opt[T] = object
+    case
+    of None: discard
+    of Some: val: T
+  Shape = object
+    x, y: float
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+
+let s = Circle(x: 1.0, y: 2.0, radius: 3.0)
+let a: Opt[int] = None()      # the expected type selects the instance
+let b = Some(val: "abc")      # `Opt[string]`, inferred from the field values
+let c = Opt[float](None())    # a type conversion provides the expected type
+```
+
+If a branch name belongs to several sum types, the expected type, a type
+conversion or a module qualifier (`module.Branch(...)`) selects one.
+
+
+### Pattern matching
+
+The fields of the branches can only be accessed in a `case` statement or
+expression that matches the branch. The fields are bound to the names that
+follow the branch name, in the order of their declaration:
+
+```nim test
+type
+  Node = ref object
+    case
+    of AddOpr, SubOpr:
+      a, b: Node
+    of Value:
+      val: int
+
+proc eval(n: Node): int =
+  case n
+  of Value(v): v
+  of AddOpr(a, b): eval(a) + eval(b)
+  of SubOpr(a, b): eval(a) - eval(b)
+
+assert eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) == 42
+```
+
+- Fewer names than fields can be given, `_` skips a field and `Branch()` or
+  just `Branch` binds nothing.
+- `{A, B}(x, y)` matches several branches; they must come from the same `of`
+  of the declaration so that they share their fields.
+- The `case` must cover all branches or have an `else` branch.
+
+A binding is not a copy but a view of the field: if the matched value is
+mutable, assigning to the binding changes the field.
+
+```nim test
+type
+  Shape = object
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+
+var shapes = @[Circle(radius: 1.0), Rect(w: 1.0, h: 2.0)]
+for i in 0 ..< shapes.len:
+  case shapes[i]
+  of Circle(r): r = r * 2
+  of Rect(w, _): w = 3.0
+assert $shapes == "@[Circle(radius: 2.0), Rect(w: 3.0, h: 2.0)]"
+```
+
+
+### cast uncheckedAccess
+
+Accessing a field of a branch outside of pattern matching is an error. It can
+be allowed via a `{.cast(uncheckedAccess).}` section; accessing a field of a
+branch that the object is not in is then undefined behavior, or raises a
+`FieldDefect` if field checks are enabled.
+
+```nim test
+type
+  Opt[T] = object
+    case
+    of None: discard
+    of Some: val: T
+
+let a = Some(val: 1)
+{.cast(uncheckedAccess).}:
+  assert a.val == 1
+```
+
+
 Default values for object fields
 --------------------------------
 
@@ -2171,6 +2338,10 @@ Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. `nil` is
 an allowed value for a variable of a procedural type.
+
+Procedure compatibility also checks the backend representation of the
+parameter and result types, not just their source-level shape. Use
+`--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
 Examples:
 
@@ -2626,10 +2797,10 @@ Overload resolution
 In a call `p(args)` where `p` may refer to more than one
 candidate, it is said to be a symbol choice. Overload resolution will attempt to
 find the best candidate, thus transforming the symbol choice into a resolved symbol.
-The routine `p` that matches best is selected following a series of trials explained below. 
+The routine `p` that matches best is selected following a series of trials explained below.
 In order: Category matching, Hierarchical Order Comparison, and finally, Complexity Analysis.
 
-If multiple candidates match equally well after all trials have been tested, the ambiguity 
+If multiple candidates match equally well after all trials have been tested, the ambiguity
 is reported during semantic analysis.
 
 First Trial: Category matching
@@ -2662,7 +2833,7 @@ resolved symbol.
 For example, if a candidate with one exact match is compared to a candidate with multiple
 generic matches and zero exact matches, the candidate with an exact match will win.
 
-Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number 
+Below is a pseudocode interpretation of category matching, `count(p, m)` counts the number
 of matches of the matching category `m` for the routine `p`.
 
 A routine `p` matches better than a routine `q` if the following
@@ -2690,11 +2861,11 @@ type A[T] = object
 ```
 
 Matching formals for this type include `T`, `object`, `A`, `A[...]` and `A[C]` where `C` is a concrete type, `A[...]`
-is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of 
+is a generic typeclass composition and `T` is an unconstrained generic type variable. This list is in order of
 specificity with respect to `A` as each subsequent category narrows the set of types that are members of their match set.
 
 In this trial, the formal parameters of candidates are compared in order (1st parameter, 2nd parameter, etc.) to search for
-a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen 
+a candidate that has an unrivaled specificity. If such a formal parameter is found, the candidate it belongs to is chosen
 as the resolved symbol.
 
 Third Trial: Complexity Analysis
@@ -2949,13 +3120,13 @@ proc sort*[I: Index; T: Comparable](x: var Indexable[I, T])
 
 In the above example, `Comparable` and `Indexable` are types that will match any type that
 can can bind each definition declared in the concept body. The special `Self` type defined
-in the concept body refers to the type being matched, also called the "implementation" of 
-the concept. Implementations that match the concept are generic matches, and the concept 
+in the concept body refers to the type being matched, also called the "implementation" of
+the concept. Implementations that match the concept are generic matches, and the concept
 typeclasses themselves work in a similar way to generic type variables in that they are never
 concrete types themselves (even if they have concrete type parameters such as `Indexable[int, int]`)
-and expressions like `typeof(x)` in the body of `proc sort` from the above example will return the 
+and expressions like `typeof(x)` in the body of `proc sort` from the above example will return the
 type of the implementation, not the concept typeclass. Concepts are useful for providing information
-to the compiler in generic contexts, most notably for generic type checking, and as a tool for 
+to the compiler in generic contexts, most notably for generic type checking, and as a tool for
 [Overload resolution]. Generic type checking is forthcoming, so this will only explain overload
 resolution for now.
 
@@ -2982,7 +3153,7 @@ Concept overload resolution
 
 When an operand's type is being matched to a concept, the operand's type  is set as the "potential
 implementation". For each definition in the concept body, overload resolution is performed by substituting `Self`
-for the potential implementation to try and find a match for each definition. If this succeeds, the concept 
+for the potential implementation to try and find a match for each definition. If this succeeds, the concept
 matches. Implementations do not need to exactly match the definitions in the concept. For example:
 
 ```nim
@@ -3006,7 +3177,13 @@ This leads to confusing and impractical behavior in most situations, so the rule
 1. if a concept is being compared with `T` or any type that accepts all other types (`auto`) the concept
 is more specific
 2. if the concept is being compared with another concept the result is deferred to [Concept subset matching]
-3. in any other case the concept is less specific then it's competitor 
+3. in any other case the concept is less specific then it's competitor
+
+Currently, the concept evaluation mechanism evaluates to a successful match on the first acceptable candidate
+for each defined binding. This has a couple of notable effects:
+
+- generic parameters are fulfilled by the first candidate match even if other candidates would also match and bind different parameters
+- inheritable objects match as they do in normal overload resolution except the "depth" is not accounted for, because that would require calculating the minimum depth of any matching binding
 
 
 Concept subset matching
@@ -3018,6 +3195,44 @@ are also valid implementations of `C2` but not vice versa then `C1` is a subset 
 If neither of them are subsets of one another, then the disambiguation proceeds to complexity analysis
 and the concept with the most definitions wins, if any. No definite winner is an ambiguity error at
 compile time.
+
+Recursive concepts
+------------------
+
+Concepts can reference themselves in their definitions, enabling recursive type constraints.
+This is useful for matching `distinct` types that should inherit traits from their base type:
+
+```nim
+import std/typetraits
+
+type
+  PrimitiveBase = SomeNumber | bool | ptr | pointer | enum
+
+  # Matches PrimitiveBase directly, or any distinct type whose base is Primitive
+  Primitive = concept x
+    x is PrimitiveBase or distinctBase(x) is Primitive
+
+  # Application: a handle type that should be treated like a primitive
+  Handle = distinct int
+  SpecialHandle = distinct Handle
+
+assert int is Primitive
+assert Handle is Primitive
+assert SpecialHandle is Primitive  # works through 2 levels
+assert not (string is Primitive)
+```
+
+Concepts can also be mutually recursive (co-dependent):
+
+```nim
+type
+  Serializable = concept
+    proc serialize(s: Self; writer: var Writer)
+  Writer = concept
+    proc write(w: var Self; data: Serializable)
+```
+
+The compiler uses cycle detection to handle these cases without infinite recursion.
 
 Statements and expressions
 ==========================
@@ -4564,10 +4779,10 @@ for any type (with some exceptions) by defining a routine with the name `[]`.
   ```nim
   type Foo = object
     data: seq[int]
-  
+
   proc `[]`(foo: Foo, i: int): int =
     result = foo.data[i]
-  
+
   let foo = Foo(data: @[1, 2, 3])
   echo foo[1] # 2
   ```
@@ -4578,12 +4793,12 @@ which has precedence over assigning to the result of `[]`.
   ```nim
   type Foo = object
     data: seq[int]
-  
+
   proc `[]`(foo: Foo, i: int): int =
     result = foo.data[i]
   proc `[]=`(foo: var Foo, i: int, val: int) =
     foo.data[i] = val
-  
+
   var foo = Foo(data: @[1, 2, 3])
   echo foo[1] # 2
   foo[1] = 5
@@ -4815,7 +5030,14 @@ default to being inline, but this may change in future versions of the
 implementation.
 
 The `iterator` type is always of the calling convention `closure`
-implicitly; the following example shows how to use iterators to implement
+implicitly.
+
+Unlike named iterators, anonymous iterator expressions evaluate
+to the `iterator` type. In practice, this means a named iterator declaration
+without `{.closure.}` defaults to inline, but an expression like `let it =
+iterator(): int = yield 1` produces a callable closure iterator value.
+
+The following example shows how to use iterators to implement
 a `collaborative tasking`:idx: system:
 
   ```nim
@@ -6063,40 +6285,48 @@ instantiations cross multiple different modules:
 
   ```nim
   # module A
+  type O* = object
+
   proc genericA*[T](x: T) =
     mixin init
     init(x)
   ```
 
+  ```nim
+  # module C
+  import A
+
+  proc init*(x: O) = discard
+  ```
 
   ```nim
-  import C
-
   # module B
+  import A, C
+
   proc genericB*[T](x: T) =
-    # Without the `bind init` statement C's init proc is
-    # not available when `genericB` is instantiated:
+    # Without the `bind init` statement, C's `init` proc is not
+    # available when `genericA` is instantiated through `genericB`
+    # from `module main`, which does not import C:
     bind init
     genericA(x)
   ```
 
   ```nim
-  # module C
-  type O = object
-  proc init*(x: var O) = discard
-  ```
-
-  ```nim
   # module main
-  import B, C
+  import A, B
 
-  genericB O()
+  genericB(O())
   ```
 
-In module B has an `init` proc from module C in its scope that is not
-taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx: these
-symbols by a `bind` statement inside `genericB`.
+Because `genericA` uses `mixin init`, `init` is an open symbol that is
+resolved when `genericA` is instantiated. Here `genericA` is instantiated
+through `genericB`, whose final instantiation happens in `module main`.
+Since `module main` does not import `module C`, `init` is not in scope at
+that point, and the instantiation fails with ``undeclared identifier: 'init'``.
+The `bind init` statement inside `genericB` forwards the `init` symbol that
+is visible in `module B` into the instantiation of `genericA`, which makes
+the example compile. This `bind`, which re-exposes a symbol to a nested
+generic instantiation, is a `delegating bind`:idx:.
 
 
 Templates
@@ -6355,7 +6585,7 @@ The default for symbols of entity `type`, `var`, `let` and `const`
 is `gensym`. For `proc`, `iterator`, `converter`, `template`,
 `macro`, the default is `inject`, but if a `gensym` symbol with the same name
 is defined in the same syntax-level scope, it will be `gensym` by default.
-This can be overridden by marking the routine as `inject`. 
+This can be overridden by marking the routine as `inject`.
 
 If the name of the entity is passed as a template parameter, it is an `inject`'ed symbol:
 
@@ -6375,7 +6605,7 @@ The `inject` and `gensym` pragmas are second class annotations; they have
 no semantics outside a template definition and cannot be abstracted over:
 
   ```nim
-  {.pragma myInject: inject.}
+  {.pragma: myInject, inject.}
 
   template t() =
     var x {.myInject.}: int # does NOT work
@@ -6909,9 +7139,10 @@ Each module needs to be in its own file and has its own `namespace`:idx:.
 Modules enable `information hiding`:idx: and `separate compilation`:idx:.
 A module may gain access to the symbols of another module by the `import`:idx:
 statement. `Recursive module dependencies`:idx: are allowed, but are slightly
-subtle. Only top-level symbols that are marked with an asterisk (`*`) are
-exported. A valid module name can only be a valid Nim identifier (and thus its
-filename is ``identifier.nim``).
+subtle unless they are declared as [cyclic imports](#modules-cyclic-imports).
+Only top-level symbols that are marked with an asterisk (`*`) are exported.
+A valid module name can only be a valid Nim identifier (and thus its filename
+is ``identifier.nim``).
 
 The algorithm for compiling modules is:
 
@@ -6945,6 +7176,91 @@ This is best illustrated by an example:
     # added T1 to A's interface symbol table
     result = x + 1
   ```
+
+
+Cyclic imports
+--------------
+
+An import can be annotated with the `cyclic` pragma to declare that the
+imported module imports the current module (directly or indirectly) too:
+
+  ```nim
+  # module a
+  import b {.cyclic.}
+
+  type
+    A* = object
+      b*: B  # a type of the partner module, even though `b` imports `a`
+
+  proc useB*(b: B): int = b.x
+  ```
+
+  ```nim
+  # module b
+  import a {.cyclic.}
+
+  type
+    B* = object
+      x*: int
+      a*: ref A
+  ```
+
+The modules connected by such imports form a *cycle group* that is checked
+together, phase by phase; every phase runs for all modules of the group before
+the next one starts:
+
+1. The imports of every module.
+2. The type sections of every module.
+3. The *leading declarations* of every module: the routines, constants and
+   pragmas up to the first statement of a different kind (like a `var`
+   section, a `when` statement or a call). The bodies of these routines are
+   checked later, so they can refer to the declarations of all modules in the
+   group.
+4. The remaining statements, module by module, in the order an ordinary
+   recursive import would check them. This also determines the order in which
+   the modules' top-level code runs.
+
+Hence the top-level types and leading routines of a module are visible to the
+other modules of the group regardless of the order of the declarations and
+imports, and the modules' procs can call each other:
+
+  ```nim
+  # module a
+  import b {.cyclic.}
+
+  proc isEven*(n: int): bool = n == 0 or isOdd(n - 1)
+  ```
+
+  ```nim
+  # module b
+  import a {.cyclic.}
+
+  proc isOdd*(n: int): bool = n != 0 and isEven(n - 1)
+  ```
+
+Effect inference checks the body of a routine of another module of the group
+before it uses its effects. Only a recursion through the modules of the group
+is treated like a call of a forward declared routine.
+
+An import cycle without a `cyclic` import is deprecated: with
+`--warning:ImplicitCyclicImport:on` such an import produces a warning that
+lists the modules of the cycle. The modules of such a cycle only see the declarations of each other that
+precede the imports, as described above.
+
+The group is formed when the compiler reaches the first module of the cycle
+that has a `cyclic` import. If the cycle is entered through a plain import
+instead, the module that is being checked already cannot join the group anymore
+and its `cyclic` import is an error: the plain import has to be annotated with
+`cyclic` too. Hence it is good practice to annotate the imports on both sides
+of a cycle.
+
+A `cyclic` import must be a top-level statement that is not nested in a
+`when` statement or produced by a macro. Type sections and routines that are
+nested in such constructs or that stem from an `include` are not part of the
+group's phases. The bodies of macros, converters and `.compileTime` routines
+are checked during phase 3 and only see the declarations that precede them. A
+constant ends the leading declarations if a routine body of the group is still
+unchecked, as the constant's value could depend on it.
 
 
 Import statement
@@ -7196,7 +7512,7 @@ identifier is considered ambiguous, which can be resolved in the following ways:
 
   write(stdout, x) # error: x is ambiguous
   write(stdout, A.x) # no error: qualifier used
-  
+
   proc bar(a: int): int = a + 1
   assert bar(x) == x + 1 # no error: only A.x of type int matches
 
@@ -7860,7 +8176,7 @@ alignment requirement of the type are ignored.
   main()
   ```
 
-This pragma has no effect on the JS backend.
+This pragma has no effect on the JavaScript backend and may significantly increase memory usage with the `--mm:refc` option.
 
 
 Noalias pragma
@@ -7935,6 +8251,38 @@ underlying C `struct`:c: in a `sizeof` expression:
     DIR* {.importc: "DIR", header: "<dirent.h>",
            pure, incompleteStruct.} = object
   ```
+
+Attempting to use `sizeof` on an `incompleteStruct` type at compile-time
+will error with "'sizeof' cannot be used with '.incompleteStruct' types".
+
+
+CompleteStruct pragma
+---------------------
+The `completeStruct` pragma is a contract indicating that an `importc` type
+declaration contains all fields of the corresponding C type, allowing
+`sizeof`, `alignof`, and `offsetof` to be computed at compile-time.
+
+By default, `importc` types are assumed to be incomplete (their size is
+unknown at compile-time). Use `completeStruct` when you need compile-time
+size information and can guarantee the Nim definition matches the C layout:
+
+  ```Nim
+  type
+    InotifyEvent {.importc: "struct inotify_event", header: "<sys/inotify.h>",
+                   completeStruct.} = object
+      wd: cint
+      mask: uint32
+      cookie: uint32
+      len: uint32
+      # All fields must match the C struct exactly
+  ```
+
+If the Nim fields don't match the C struct, a static assertion will fail
+during C code generation.
+
+Without `completeStruct`, attempting to use `sizeof` on an `importc` type
+at compile-time will error with "'sizeof' requires '.importc' types to be
+'.completeStruct'".
 
 
 Compile pragma
@@ -8785,7 +9133,7 @@ Byref pragma
 The `byref` pragma can be applied to an object or tuple type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
-if the the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
+if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
 parameters are marked as `byref` in an `importc` proc, these params translate to pointers.
 When an `importcpp` type has a `byref` pragma, these params translate to
 C++ references `&`.
@@ -9249,4 +9597,3 @@ It is not valid to pass an lvalue of a supertype to an `out T` parameter:
 
 However, in the future this could be allowed and provide a better way to write object
 constructors that take inheritance into account.
-

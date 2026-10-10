@@ -130,3 +130,14 @@ block: # issue #22646
   var x: Vec[3, float]
   let y = Color(x)
   doAssert Vec3[float](y) == x
+
+block: # bug #25697
+  type MyList = distinct seq[int]
+
+  iterator items(x: MyList): lent int {.borrow.}
+
+  let s = MyList(@[1, 2, 3])
+  var count = 0
+  for item in s:
+    count += 1
+  doAssert count == 3, "Expected 3 items, got " & $count

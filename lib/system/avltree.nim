@@ -51,7 +51,7 @@ proc split(t: var PAvlNode) =
     t.link[0] = temp
     inc t.level
 
-proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
+proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.gcsafe.} =
   if t.isBottom:
     t = allocAvlNode(a, key, upperBound)
   else:
@@ -70,7 +70,7 @@ proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
     skew(t)
     split(t)
 
-proc del(a: var MemRegion, t: var PAvlNode, x: int) {.benign.} =
+proc del(a: var MemRegion, t: var PAvlNode, x: int) {.gcsafe.} =
   if isBottom(t): return
   a.last = t
   if x <% t.key:

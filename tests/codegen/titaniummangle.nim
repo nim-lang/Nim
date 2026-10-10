@@ -1,6 +1,6 @@
 discard """
-  targets: "c"
-  matrix: "--debugger:native"
+  targets: "c cpp"
+  matrix: "--debugger:native --mangle:cpp; --debugger:native"
   ccodecheck: "'_ZN14titaniummangle8testFuncE'"
   ccodecheck: "'_ZN14titaniummangle8testFuncE6stringN14titaniummangle3FooE'"
   ccodecheck: "'_ZN14titaniummangle8testFuncE3int7varargsI6stringE'"
@@ -31,6 +31,10 @@ discard """
   ccodecheck: "'_ZN14titaniummangle8testFuncE9ContainerI10Container2I5int325int32EE'"
   ccodecheck: "'_ZN14titaniummangle7xxx_s10E'"
   ccodecheck: "'_ZN14titaniummangle7xxx_s20E'"
+  ccodecheck: "'_ZN14titaniummangle10writeValueE12DynamicBytesI6staticI3intE6staticI3intEE'"
+  ccodecheck: "'_ZN14titaniummangle10writeValueE7PhantomI6staticI3intEE'"
+  ccodecheck: "'_ZN14titaniummangle9bound_s10E7PhantomIE'"
+  ccodecheck: "'_ZN14titaniummangle9bound_s20E7PhantomIE'"
 """
 
 #When debugging this notice that if one check fails, it can be due to any of the above.
@@ -198,3 +202,17 @@ proc testFunc() =
 
 
 testFunc()
+
+# issue #26336: unused static parameters can remain unbound after conversion.
+type
+  DynamicBytes[minLen: static[int] = 0, maxLen: static[int] = high(int)] = distinct seq[byte]
+  Phantom[N: static[int]] = distinct seq[byte]
+
+proc writeValue[T](value: T) = discard
+proc bound[N](value: Phantom[N]): int = N
+
+let bytes = DynamicBytes(@[1'u8, 2, 3])
+writeValue(bytes)
+writeValue(Phantom(@[1'u8, 2, 3]))
+doAssert bound(Phantom[10](@[1'u8])) == 10
+doAssert bound(Phantom[20](@[1'u8])) == 20

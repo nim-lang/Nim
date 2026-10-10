@@ -42,17 +42,18 @@ the result to HTML [^html] or Latex [^latex].
 
 Full list of supported commands:
 
-===================   ======================   ============   ==============
-command               runs on...               input format   output format
-===================   ======================   ============   ==============
-`nim md2html`:cmd:    standalone md files      ``.md``        ``.html`` HTML
-`nim md2tex`:cmd:     same                     same           ``.tex`` LaTeX
-`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
-`nim rst2tex`:cmd:    same                     same           ``.tex`` LaTeX
-`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
-`nim doc2tex`:cmd:    same                     same           ``.tex`` LaTeX
-`nim jsondoc`:cmd:    same                     same           ``.json`` JSON
-===================   ======================   ============   ==============
+===================   =======================   ============   ==============
+command               runs on...                input format   output format
+===================   =======================   ============   ==============
+`nim md2html`:cmd:    standalone md files       ``.md``        ``.html`` HTML
+`nim book`:cmd:       directory with md files   same           same
+`nim md2tex`:cmd:     same                      same           ``.tex`` LaTeX
+`nim rst2html`:cmd:   standalone rst files      ``.rst``       ``.html`` HTML
+`nim rst2tex`:cmd:    same                      same           ``.tex`` LaTeX
+`nim doc`:cmd:        documentation comments    ``.nim``       ``.html`` HTML
+`nim doc2tex`:cmd:    same                      same           ``.tex`` LaTeX
+`nim jsondoc`:cmd:    same                      same           ``.json`` JSON
+===================   =======================   ============   ==============
 
 
 Basic markup
@@ -95,6 +96,10 @@ Supported common RST/Markdown features:
     - ``include``
     - admonitions: "attention", "caution", "danger", "error", "hint",
       "important", "note", "tip", "warning", "admonition"
+      - ``:title:`` option sets custom title for an admonition,
+        otherwise its kind capitalized is used
+      - ``:collapsible:`` makes an admonition collapsible in HTML output
+        ``:collapsible: closed`` makes it closed by default
     - substitution definitions: `replace` and `image`
   + comments
 * inline markup
@@ -276,9 +281,9 @@ This parser has 2 modes for inline markup:
 
 2) Compatibility mode which is RST rules.
 
-.. Note:: in both modes the parser interpretes text between single
+.. Note:: in both modes the parser interprets text between single
      backticks (code) identically:
-     backslash does not escape; the only exception: ``\`` folowed by `
+     backslash does not escape; the only exception: ``\`` followed by `
      does escape so that we can always input a single backtick ` in
      inline code. However that makes impossible to input code with
      ``\`` at the end in *single* backticks, one must use *double*

@@ -984,6 +984,9 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
               errStr.add "in the BIO layer"
             else:
               let errStr = $ERR_error_string(sslErr, nil)
+              when defined(musl):
+                if osErr != 0.OSErrorCode:
+                  raiseOSError(osErr, errStr)
               raiseSSLError(errStr & ": " & errStr)
             raiseOSError(osErr, errStr)
         of SSL_ERROR_SSL:
@@ -1732,7 +1735,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   when useWinVersion or defined(macosx):
     result = send(socket.fd, data, size.cint, 0'i32)
   else:
-    when defined(solaris):
+    when defined(sunos):
       const MSG_NOSIGNAL = 0
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
 
@@ -1743,7 +1746,7 @@ proc send*(socket: Socket, data: string,
   var written = 0
   var attempts = 0
   while data.len - written > 0:
-    let sent = send(socket, cstring(data), data.len)
+    let sent = send(socket, readRawData(data, written), data.len - written)
 
     if sent < 0:
       let lastError = osLastError()
@@ -1761,6 +1764,7 @@ proc send*(socket: Socket, data: string,
       if not isBlockingErr:
         let lastError = osLastError()
         socketError(socket, lastError = lastError, flags = flags)
+        return
       else:
         attempts.inc()
         if attempts > maxRetries:

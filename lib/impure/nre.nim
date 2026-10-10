@@ -9,6 +9,11 @@
 when defined(js):
   {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
 
+## .. warning:: NRE is deprecated.
+##   Use [Regex](https://github.com/nitely/nim-regex) or
+##   `NRE2 <nre2.html>`_ that wraps Regex so that you can easily replace NRE.
+##   PCRE library is now at end of life.
+##
 ## What is NRE?
 ## ============
 ##
@@ -84,7 +89,7 @@ type
   Regex* = ref RegexDesc
     ## Represents the pattern that things are matched against, constructed with
     ## `re(string)`. Examples: `re"foo"`, `re(r"(*ANYCRLF)(?x)foo #
-    ## comment".`
+    ## comment")`
     ##
     ## `pattern: string`
     ## :   the string that was used to create the pattern. For details on how
@@ -154,7 +159,7 @@ type
     ## will need to pass these as separate flags to PCRE.
 
   RegexMatch* = object
-    ## Usually seen as Option[RegexMatch], it represents the result of an
+    ## Usually seen as `Option[RegexMatch]`, it represents the result of an
     ## execution. On failure, it is none, on success, it is some.
     ##
     ## `pattern: Regex`

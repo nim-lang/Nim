@@ -54,7 +54,11 @@ const
     "onpause onplay onplaying onprogress onratechange onreset onresize " &
     "onscroll onseeked onseeking onselect onshow onstalled onsubmit " &
     "onsuspend ontimeupdate ontoggle onvolumechange onwaiting " ## HTML DOM Event Attributes
-  ariaAttr* = " role "                           ## HTML DOM Aria Attributes
+  ariaAttr* = " role aria-atomic aria-busy aria-controls aria-current " &
+    "aria-describedby aria-description aria-details aria-disabled " &
+    "aria-dropeffect aria-errormessage aria-flowto aria-grabbed " &
+    "aria-haspopup aria-hidden aria-invalid aria-keyshortcuts aria-label " &
+    "aria-labelledby aria-live aria-owns aria-relevant aria-roledescription "  ## HTML DOM Aria Attributes
   commonAttr* = coreAttr & eventAttr & ariaAttr  ## HTML DOM Common Attributes
 
 proc getIdent(e: NimNode): string =

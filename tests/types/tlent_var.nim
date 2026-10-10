@@ -23,3 +23,18 @@ proc varProc(x: var int) =
 doAssert: not compiles(test_lent(x) = 1)
 doAssert: not compiles(varProc(test_lent(x)))
 
+type X = tuple[a: int, b: int]
+
+type ArrayBuf*[N: static int, T] = object
+  buf*: array[N, T]
+
+var v: ArrayBuf[32, X]
+
+
+# proc `[]`*[N, T](b: var ArrayBuf[N, T], i: BackwardsIndex): lent T = # works
+#   b.buf[i]
+
+template `[]`*[N, T](b: var ArrayBuf[N, T], i: BackwardsIndex): lent T =
+  b.buf[i]
+
+doAssert $v[^4] == "(a: 0, b: 0)"

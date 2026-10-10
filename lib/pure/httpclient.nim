@@ -573,7 +573,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
   result = $httpMethod
   result.add ' '
 
-  if proxy.isNil or (requestUrl.scheme == "https" and proxy.url.scheme == "socks5h"):
+  if proxy.isNil or requestUrl.scheme == "https":
     # /path?query
     if not requestUrl.path.startsWith("/"): result.add '/'
     result.add(requestUrl.path)

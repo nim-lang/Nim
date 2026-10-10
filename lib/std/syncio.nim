@@ -15,13 +15,12 @@ import std/formatfloat
 when defined(windows):
   import std/widestrs
 
-from system/ansi_c import c_memchr
+from system/ansi_c import c_memchr, CFilePtr
 
 # ----------------- IO Part ------------------------------------------------
+
 type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
-  File* = ptr CFile ## The type representing a file handle.
+  File* = CFilePtr ## The type representing a file handle.
 
   FileMode* = enum       ## The file mode when opening a file.
     fmRead,              ## Open the file for read access only.
@@ -182,7 +181,7 @@ proc checkErr(f: File) =
 
 {.push stackTrace: off, profiler: off.}
 proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
-  tags: [ReadIOEffect], benign.} =
+  tags: [ReadIOEffect], gcsafe.} =
   ## Reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
@@ -191,20 +190,20 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start,
     len: Natural): int {.
-  tags: [ReadIOEffect], benign.} =
+  tags: [ReadIOEffect], gcsafe.} =
   ## Reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[start]), len)
 
-proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], benign.} =
+proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], gcsafe.} =
   ## Reads up to `a.len` bytes into the buffer `a`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `a.len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[0]), a.len)
 
 proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
-  tags: [ReadIOEffect], benign, deprecated:
+  tags: [ReadIOEffect], gcsafe, deprecated:
     "use other `readChars` overload, possibly via: readChars(toOpenArray(buf, start, len-1))".} =
   ## Reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
@@ -213,13 +212,13 @@ proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
     raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)
 
-proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], gcsafe.} =
   ## Writes a value to the file `f`. May throw an IO exception.
   discard c_fputs(c, f)
   checkErr(f)
 
 proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
-  tags: [WriteIOEffect], benign.} =
+  tags: [WriteIOEffect], gcsafe.} =
   ## Writes the bytes of buffer pointed to by the parameter `buffer` to the
   ## file `f`. Returns the number of actual written bytes, which may be less
   ## than `len` in case of an error.
@@ -227,7 +226,7 @@ proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
   checkErr(f)
 
 proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
-  tags: [WriteIOEffect], benign.} =
+  tags: [WriteIOEffect], gcsafe.} =
   ## Writes the bytes of `a[start..start+len-1]` to the file `f`. Returns
   ## the number of actual written bytes, which may be less than `len` in case
   ## of an error.
@@ -235,7 +234,7 @@ proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
   result = writeBuffer(f, addr(x[int(start)]), len)
 
 proc writeChars*(f: File, a: openArray[char], start, len: Natural): int {.
-  tags: [WriteIOEffect], benign.} =
+  tags: [WriteIOEffect], gcsafe.} =
   ## Writes the bytes of `a[start..start+len-1]` to the file `f`. Returns
   ## the number of actual written bytes, which may be less than `len` in case
   ## of an error.
@@ -264,7 +263,7 @@ when defined(windows):
           break
         inc i, w
 
-proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, s: string) {.tags: [WriteIOEffect], gcsafe.} =
   when defined(windows):
     writeWindows(f, s, doRaise = true)
   else:
@@ -287,6 +286,11 @@ else:
     IOFBF {.importc: "_IOFBF", nodecl.}: cint
     IONBF {.importc: "_IONBF", nodecl.}: cint
 
+when defined(posix) and not defined(nimscript):
+  # Not part of the `SupportIoctlInheritCtl` branches below: `open` needs
+  # `fstat` on every posix target, including Linux and the BSDs.
+  from std/posix import Stat, S_ISDIR, fstat
+
 const SupportIoctlInheritCtl = (defined(linux) or defined(bsd)) and
                               not defined(nimscript)
 when SupportIoctlInheritCtl:
@@ -297,13 +301,7 @@ when SupportIoctlInheritCtl:
   proc c_ioctl(fd: cint, request: cint): cint {.
     importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
 elif defined(posix) and not defined(lwip) and not defined(nimscript):
-  var
-    F_GETFD {.importc, header: "<fcntl.h>".}: cint
-    F_SETFD {.importc, header: "<fcntl.h>".}: cint
-    FD_CLOEXEC {.importc, header: "<fcntl.h>".}: cint
-
-  proc c_fcntl(fd: cint, cmd: cint): cint {.
-    importc: "fcntl", header: "<fcntl.h>", varargs.}
+  from std/posix import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
 elif defined(windows):
   type
     WinDWORD = culong
@@ -383,17 +381,17 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     elif defined(freertos) or defined(zephyr):
       result = true
     elif defined(posix):
-      var flags = c_fcntl(f, F_GETFD)
+      var flags = fcntl(f, F_GETFD)
       if flags == -1:
         return false
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
-      result = c_fcntl(f, F_SETFD, flags) != -1
+      result = fcntl(f, F_SETFD, flags) != -1
     else:
       result = setHandleInformation(f, HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
 proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
-              benign.} =
+              gcsafe.} =
   ## Reads a line of text from the file `f` into `line`. May throw an IO
   ## exception.
   ## A line of text may be delimited by `LF` or `CRLF`. The newline
@@ -485,7 +483,8 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(cast[cstring](addr line[pos]), sp.cint, f) != nil
+      fgetsSuccess = c_fgets(cast[cstring](beginStore(line, pos + sp, pos)), sp.cint, f) != nil
+      endStore(line)
       if fgetsSuccess: break
       when not defined(nimscript):
         if errno == EINTR:
@@ -495,10 +494,11 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       checkErr(f)
       break
 
-    let m = c_memchr(addr line[pos], cint('\L'), cast[csize_t](sp))
+    let lineData = readRawData(line)
+    let m = c_memchr(addr lineData[pos], cint('\L'), cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[int](m) - cast[int](addr line[0])
+      var last = cast[int](m) - cast[int](lineData)
       if last > 0 and line[last-1] == '\c':
         line.setLen(last-1)
         return last > 1 or fgetsSuccess
@@ -519,43 +519,43 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     sp = 128 # read in 128 bytes at a time
     line.setLen(pos+sp)
 
-proc readLine*(f: File): string {.tags: [ReadIOEffect], benign.} =
+proc readLine*(f: File): string {.tags: [ReadIOEffect], gcsafe.} =
   ## Reads a line of text from the file `f`. May throw an IO exception.
   ## A line of text may be delimited by `LF` or `CRLF`. The newline
   ## character(s) are not part of the returned string.
   result = newStringOfCap(80)
   if not readLine(f, result): raiseEOF()
 
-proc write*(f: File, i: int) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, i: int) {.tags: [WriteIOEffect], gcsafe.} =
   when sizeof(int) == 8:
     if c_fprintf(f, "%lld", i) < 0: checkErr(f)
   else:
     if c_fprintf(f, "%ld", i) < 0: checkErr(f)
 
-proc write*(f: File, i: BiggestInt) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, i: BiggestInt) {.tags: [WriteIOEffect], gcsafe.} =
   when sizeof(BiggestInt) == 8:
     if c_fprintf(f, "%lld", i) < 0: checkErr(f)
   else:
     if c_fprintf(f, "%ld", i) < 0: checkErr(f)
 
-proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, b: bool) {.tags: [WriteIOEffect], gcsafe.} =
   if b: write(f, "true")
   else: write(f, "false")
 
-proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, r: float32) {.tags: [WriteIOEffect], gcsafe.} =
   var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
-proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], gcsafe.} =
   var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
-proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, c: char) {.tags: [WriteIOEffect], gcsafe.} =
   discard c_putc(cint(c), f)
 
-proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.} =
+proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], gcsafe.} =
   for x in items(a): write(f, x)
 
 proc readAllBuffer(file: File): string =
@@ -564,7 +564,8 @@ proc readAllBuffer(file: File): string =
   result = ""
   var buffer = newString(BufSize)
   while true:
-    var bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
+    var bytesRead = readBuffer(file, beginStore(buffer, BufSize), BufSize)
+    endStore(buffer)
     if bytesRead == BufSize:
       result.add(buffer)
     else:
@@ -579,7 +580,7 @@ proc rawFileSize(file: File): int64 =
   result = c_ftell(file)
   discard c_fseek(file, oldPos, 0)
 
-proc endOfFile*(f: File): bool {.tags: [], benign.} =
+proc endOfFile*(f: File): bool {.tags: [], gcsafe.} =
   ## Returns true if `f` is at the end.
   var c = c_fgetc(f)
   discard c_ungetc(c, f)
@@ -590,7 +591,8 @@ proc readAllFile(file: File, len: int64): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(len)
-  let bytes = readBuffer(file, addr(result[0]), len)
+  let bytes = readBuffer(file, beginStore(result, len.int), len.int)
+  endStore(result)
   if endOfFile(file):
     if bytes.int64 < len:
       result.setLen(bytes)
@@ -603,7 +605,7 @@ proc readAllFile(file: File): string =
   var len = rawFileSize(file)
   result = readAllFile(file, len)
 
-proc readAll*(file: File): string {.tags: [ReadIOEffect], benign.} =
+proc readAll*(file: File): string {.tags: [ReadIOEffect], gcsafe.} =
   ## Reads all data from the stream `file`.
   ##
   ## Raises an IO exception in case of an error. It is an error if the
@@ -621,7 +623,7 @@ proc readAll*(file: File): string {.tags: [ReadIOEffect], benign.} =
     result = readAllBuffer(file)
 
 proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
-                          tags: [WriteIOEffect], benign.} =
+                          tags: [WriteIOEffect], gcsafe.} =
   ## Writes the values `x` to `f` and then writes "\\n".
   ## May throw an IO exception.
   for i in items(x):
@@ -680,40 +682,9 @@ const
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
 
-when defined(posix) and not defined(nimscript):
-  when defined(linux) and defined(amd64):
-    type
-      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
-
-      # fillers ensure correct size & offsets
-      Stat {.importc: "struct stat",
-              header: "<sys/stat.h>", final, pure.} = object ## struct stat
-        filler_1: array[24, char]
-        st_mode: Mode ## Mode of file
-        filler_2: array[144 - 24 - 4, char]
-
-    proc modeIsDir(m: Mode): bool =
-      ## Test for a directory.
-      (m and 0o170000) == 0o40000
-
-  else:
-    type
-      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
-
-      Stat {.importc: "struct stat",
-               header: "<sys/stat.h>", final, pure.} = object ## struct stat
-        st_mode: Mode ## Mode of file
-
-    proc modeIsDir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
-      ## Test for a directory.
-
-  proc c_fstat(a1: cint, a2: var Stat): cint {.
-    importc: "fstat", header: "<sys/stat.h>".}
-
-
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
-          bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
+          bufSize: int = -1): bool {.tags: [], raises: [], gcsafe.} =
   ## Opens a file named `filename` with given `mode`.
   ##
   ## Default mode is readonly. Returns true if the file could be opened.
@@ -728,7 +699,7 @@ proc open*(f: var File, filename: string,
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
       var res {.noinit.}: Stat
-      if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
+      if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
         closeIgnoreError(f2)
         return false
     when not defined(nimInheritHandles) and declared(setInheritable) and
@@ -747,7 +718,7 @@ proc open*(f: var File, filename: string,
     result = false
 
 proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
-  tags: [], benign.} =
+  tags: [], gcsafe.} =
   ## Reopens the file `f` with given `filename` and `mode`. This
   ## is often used to redirect the `stdin`, `stdout` or `stderr`
   ## file variables.
@@ -766,7 +737,7 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
     result = false
 
 proc open*(f: var File, filehandle: FileHandle,
-           mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
+           mode: FileMode = fmRead): bool {.tags: [], raises: [], gcsafe.} =
   ## Creates a `File` from a `filehandle` with given `mode`.
   ##
   ## Default mode is readonly. Returns true if the file could be opened.
@@ -792,26 +763,26 @@ proc open*(filename: string,
   if not open(result, filename, mode, bufSize):
     raise newException(IOError, "cannot open: " & filename)
 
-proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign, sideEffect.} =
+proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.gcsafe, sideEffect.} =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero.
   if c_fseek(f, pos, cint(relativeTo)) != 0:
     raiseEIO("cannot set file position")
 
-proc getFilePos*(f: File): int64 {.benign.} =
+proc getFilePos*(f: File): int64 {.gcsafe.} =
   ## Retrieves the current position of the file pointer that is used to
   ## read from the file `f`. The file's first byte has the index zero.
   result = c_ftell(f)
   if result < 0: raiseEIO("cannot retrieve file position")
 
-proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
+proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], gcsafe.} =
   ## Retrieves the file size (in bytes) of `f`.
   let oldPos = getFilePos(f)
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
 
-proc setStdIoUnbuffered*() {.tags: [], benign.} =
+proc setStdIoUnbuffered*() {.tags: [], gcsafe.} =
   ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
   when declared(stdout):
     discard c_setvbuf(stdout, nil, IONBF, 0)
@@ -865,7 +836,7 @@ when defined(windows) and appType == "console" and
     discard setConsoleCP(Utf8codepage)
     addExitProc(restoreConsoleCP)
 
-proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
+proc readFile*(filename: string): string {.tags: [ReadIOEffect], gcsafe.} =
   ## Opens a file named `filename` for reading, calls `readAll
   ## <#readAll,File>`_ and closes the file afterwards. Returns the string.
   ## Raises an IO exception in case of an error. If you need to call
@@ -880,7 +851,7 @@ proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
   else:
     raise newException(IOError, "cannot open: " & filename)
 
-proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
+proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], gcsafe.} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.

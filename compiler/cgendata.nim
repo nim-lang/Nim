@@ -75,10 +75,17 @@ type
     flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, label: Natural]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, hasExcept: bool,
+                              label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
-                              # bool is true when are in the except part of a try block
+                              # `inExcept` is true when we are in the except part of a try block.
+                              # `hasExcept` is true if the try statement has except branches; a
+                              # try without them cannot handle a raise from within its body, so
+                              # it is transparent to `raise` -- this holds for the `try/finally`
+                              # the user wrote and for the ones injected for destructor calls
+                              # alike, which is why no codegen logic here distinguishes
+                              # `nkHiddenTryStmt` from `nkTryStmt`.
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
@@ -116,10 +123,11 @@ type
 
   BModuleList* = ref object of RootObj
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Builder
+    icExtensionLoaders*: array['0'..'9', seq[string]]
     mapping*: Rope             # the generated mapping file (if requested)
-    modules*: seq[BModule]     # list of all compiled modules
+    mods*: seq[BModule]     # list of all compiled modules
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
-    forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
+    forwardedProcs*: seq[PSym] # procs that did not yet have a body
     generatedHeader*: BModule
     typeInfoMarker*: TypeCacheWithOwner
     typeInfoMarkerV2*: TypeCacheWithOwner
@@ -139,6 +147,20 @@ type
                             # not a list of IDs nor can it be made to be one.
     mangledPrcs*: HashSet[string]
 
+    icEmitted*: IntSet
+      ## Under `--icBackendStage:cg`: the positions of the modules THIS process
+      ## writes a translation unit for. `cgen.findPendingModule` consults it to
+      ## decide where a demanded definition goes — see the comment there. Empty
+      ## outside that stage, which is why every other backend keeps the ordinary
+      ## whole-program routing.
+    icTargets*: Table[int, string]
+      ## Under `--icBackendStage:cg`: module position -> the `target(...)`
+      ## option list derived from that module's `{.localPassC: "-m...".}`. A
+      ## definition owned by such a module but emitted into another TU (a
+      ## generic instance, or an emit-everywhere copy) is compiled under these
+      ## options via a pragma — see `cgen.icTargetPush`. Filled lazily, per
+      ## owner module, from its replay actions.
+
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
     flags*: set[CodegenFlag]
@@ -155,6 +177,13 @@ type
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
+    emittedContentDefs*: HashSet[string]
+      # cmdNifC per-module backend: content-addressed C names (generic
+      # instances and synthesized hooks) whose body this TU already emitted.
+      # Distinct symbols (minted in different source modules) can share one
+      # `_i<disamb>` name; `declaredThings` keys on symbol id and lets the
+      # second one through, so we dedup the body by name here instead.
+    queue*: seq[PSym]         # queue of procs to generate
     alive*: IntSet            # symbol IDs of alive data as computed by `dce.nim`
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
@@ -172,11 +201,32 @@ type
     extensionLoaders*: array['0'..'9', Builder] # special procs for the
                                              # OpenGL wrapper
     sigConflicts*: CountTable[SigHash]
+    icImplMods*: IntSet       # module ids whose routine BODIES this TU
+                              # embeds (redirected defs, shared instances,
+                              # hooks); recorded as the artifact's cdeps so
+                              # the reuse gate can check their impl cookies
+    icGlobalDtorName*: string # per-module backend: the C name of this
+                              # module's global-destructor proc, recorded in
+                              # the artifact's meta head so the main module's
+                              # `cg` — a different process — can call it
+    icDataDefs*: seq[tuple[cname, nifname: string]]
+                              # C names of data definitions (consts, globals,
+                              # RTTI) this TU embeds plus their NIF symbol
+                              # names (empty for RTTI, which has no symbol);
+                              # recorded in the cnif artifact so a later run
+                              # can reuse the TU and re-demand definitions
+                              # that cached TUs still reference
+    hasTopLevelEmit*: bool    # a top-level `{.emit.}` wrote user C text into
+                              # a file section: `emit` must not split the
+                              # module, its text may define anything
     g*: BModuleList
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 template vccAndC*(p: BProc): bool = p.module.config.cCompiler == ccVcc and p.module.config.backend == backendC
+
+proc delayedCodegen*(m: BModule): bool {.inline.} =
+  useAliveDataFromDce in m.flags or m.config.globalOptions.contains(optCompress)
 
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:
@@ -210,7 +260,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),
-    config: g.config, graph: g, nimtvDeclared: initIntSet())
+    config: g.config, graph: g, nimtvDeclared: initIntSet(),
+    icEmitted: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:

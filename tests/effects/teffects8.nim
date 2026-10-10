@@ -1,5 +1,5 @@
 discard """
-  errormsg: "can raise an unlisted exception: Exception"
+  errormsg: "ValueError can raise an unlisted exception: ValueError"
   line: 10
 """
 {.push warningAsError[Effect]: on.}

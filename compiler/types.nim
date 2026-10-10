@@ -11,28 +11,16 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs, wordrecg
+  lineinfos, int128, modulegraphs, astmsgs
 
 import std/[intsets, strutils]
 
 when defined(nimPreviewSlimSystem):
-  import std/[assertions, formatfloat]
+  import std/[assertions]
+
+export isResolvedUserTypeClass, TPreferedDesc, typeToString
 
 type
-  TPreferedDesc* = enum
-    preferName, # default
-    preferDesc, # probably should become what preferResolved is
-    preferExported,
-    preferModuleInfo, # fully qualified
-    preferGenericArg,
-    preferTypeName,
-    preferResolved, # fully resolved symbols
-    preferMixed,
-      # most useful, shows: symbol + resolved symbols if it differs, e.g.:
-      # tuple[a: MyInt{int}, b: float]
-    preferInlayHint,
-    preferInferredEffects,
-
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
     isIntConv,
@@ -55,16 +43,12 @@ type
     pcmNotIterator
     pcmDifferentCallConv
 
-proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
-
 proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
   if optDeclaredLocs in conf.globalOptions:
     result.add typeToString(typ, preferMixed)
     result.addDeclaredLoc(conf, typ)
   else:
     result.add typeToString(typ)
-
-template `$`*(typ: PType): string = typeToString(typ)
 
 # ------------------- type iterator: ----------------------------------------
 type
@@ -102,7 +86,7 @@ const
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc, tyOwned, tyUserTypeClass}
-  
+
   # incorrect definition of `[]` and `[]=` for these types in system.nim
   arrPutGetMagicApplies* = {tyArray, tyOpenArray, tyString, tySequence, tyCstring, tyTuple}
 
@@ -135,7 +119,7 @@ proc getOrdValueAux*(n: PNode, err: var bool): Int128 =
   of nkNilLit:
     int128.Zero
   of nkHiddenStdConv:
-    getOrdValueAux(n[1], err)
+    getOrdValueAux(n.secondSon, err)
   else:
     err = true
     int128.Zero
@@ -157,15 +141,9 @@ proc getFloatValue*(n: PNode): BiggestFloat =
   of nkHiddenStdConv: getFloatValue(n[1])
   else: NaN
 
-proc isIntLit*(t: PType): bool {.inline.} =
-  result = t.kind == tyInt and t.n != nil and t.n.kind == nkIntLit
-
-proc isFloatLit*(t: PType): bool {.inline.} =
-  result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
-
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)
-  if getDeclarationPath: result.addDeclaredLoc(conf, typ.sym)
+  if getDeclarationPath and typ.sym != nil: result.addDeclaredLoc(conf, typ.sym)
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
@@ -364,8 +342,15 @@ proc containsGarbageCollectedRef*(typ: PType): bool =
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
 
+proc isNimNodeType*(t: PType): bool {.inline.} =
+  ## `NimNode` is a `ref` type in system.nim but the VM stores it as a handle.
+  ## So are the deprecated `NimIdent` (an object) and `NimSym` of `std/macros`:
+  ## their values are AST nodes, like in the old VM.
+  t.sym != nil and t.sym.magic == mPNimrodNode and t.kind in {tyRef, tyObject}
+
 proc isManagedMemory(t: PType): bool =
-  result = t.kind in GcTypeKinds or
+  # NimNodes only exist at compile time; the VM does not count them
+  result = (t.kind in GcTypeKinds and not isNimNodeType(t)) or
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc containsManagedMemory*(typ: PType): bool =
@@ -386,50 +371,62 @@ proc containsHiddenPointer*(typ: PType): bool =
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
 
-proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool
-proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef: bool, hasTrace: bool): bool =
+proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PType, withRef, hasTrace, sawPlainEdge: bool; envCheck = false): bool
+proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef, hasTrace, sawPlainEdge: bool; envCheck = false): bool =
   result = false
   if n != nil:
     var hasCursor = n.kind == nkSym and sfCursor in n.sym.flags
     # cursor fields don't own the refs, which cannot form reference cycles
     if hasTrace or not hasCursor:
-      result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
+      result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace, sawPlainEdge, envCheck)
       if not result:
         case n.kind
         of nkNone..nkNilLit:
           discard
         else:
           for i in 0..<n.len:
-            result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
+            result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace, sawPlainEdge, envCheck)
             if result: return
 
-
 proc sameBackendType*(x, y: PType): bool
-proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool =
+proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef, hasTrace, sawPlainEdge: bool; envCheck = false): bool =
+  # `sawPlainEdge`: whether the walk from `orig` crossed a reference that is
+  # not `owned`. Owning edges are move-only and so form a forest (RFC #575):
+  # a cycle back to `orig` is only possible if it contains a non-owned edge.
+  # Owned edges must still be followed as a cycle can pass through them
+  # (`A.owned -> B`, `B.plain -> A`).
   result = false
   if typ == nil: return
   if tfAcyclic in typ.flags: return
+  let isOwnedEdge = typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct}).kind == tyOwned
   var t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
   if tfAcyclic in t.flags: return
+  # `sawPlainEdge` is part of the key: a type first reached only via owned
+  # edges must be revisited when it is also reachable via a plain edge.
+  template visited(t: PType; saw: bool): bool = containsOrIncl(marker, t.id * 2 + ord(saw))
   case t.kind
   of tyRef, tyPtr, tyUncheckedArray:
     if t.kind == tyRef or hasTrace:
+      let saw = sawPlainEdge or (t.kind != tyUncheckedArray and not isOwnedEdge)
       if withRef and sameBackendType(t, orig):
-        result = true
-      elif not containsOrIncl(marker, t.id):
-        result = canFormAcycleAux(g, marker, t.elementType, orig, withRef or t.kind != tyUncheckedArray, hasTrace)
+        result = saw
+      elif not visited(t, saw):
+        result = canFormAcycleAux(g, marker, t.elementType, orig, withRef or t.kind != tyUncheckedArray, hasTrace, saw, envCheck)
   of tyObject:
     if withRef and sameBackendType(t, orig):
-      result = true
-    elif not containsOrIncl(marker, t.id):
+      result = sawPlainEdge
+    elif not visited(t, sawPlainEdge):
       var hasTrace = hasTrace
       let op = getAttachedOp(g, t.skipTypes({tyRef}), attachedTrace)
       if op != nil and sfOverridden in op.flags:
         hasTrace = true
-      if t.baseClass != nil:
-        result = canFormAcycleAux(g, marker, t.baseClass, orig, withRef, hasTrace)
+      let base = t.baseClass
+      # `envCheck`: closure environments are final but derive from the empty
+      # `RootObj`, which adds no fields:
+      if base != nil and not (envCheck and base.baseClass == nil and (base.n == nil or base.n.len == 0)):
+        result = canFormAcycleAux(g, marker, base, orig, withRef, hasTrace, sawPlainEdge, envCheck)
         if result: return
-      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef, hasTrace)
+      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef, hasTrace, sawPlainEdge, envCheck)
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
@@ -438,358 +435,42 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
       result = true
   of tyTuple:
     if withRef and sameBackendType(t, orig):
-      result = true
-    elif not containsOrIncl(marker, t.id):
+      result = sawPlainEdge
+    elif not visited(t, sawPlainEdge):
       for a in t.kids:
-        result = canFormAcycleAux(g, marker, a, orig, withRef, hasTrace)
+        result = canFormAcycleAux(g, marker, a, orig, withRef, hasTrace, sawPlainEdge, envCheck)
         if result: return
   of tySequence, tyArray, tyOpenArray, tyVarargs:
     if withRef and sameBackendType(t, orig):
-      result = true
-    elif not containsOrIncl(marker, t.id):
-      result = canFormAcycleAux(g, marker, t.elementType, orig, withRef, hasTrace)
-  of tyProc: result = typ.callConv == ccClosure
+      result = sawPlainEdge
+    elif not visited(t, sawPlainEdge):
+      result = canFormAcycleAux(g, marker, t.elementType, orig, withRef, hasTrace, sawPlainEdge, envCheck)
+  of tyProc:
+    # the environment of an `owned` closure is acyclic by contract, checked
+    # where the closure is formed. Any other closure may capture anything.
+    result = t.callConv == ccClosure and not isOwnedEdge
   else: discard
 
 proc isFinal*(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
-proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
+proc canFormAcycle*(g: ModuleGraph, typ: PType; envCheck = false): bool =
+  ## `envCheck` is for the check of an `owned` closure's environment only. It
+  ## must not influence the classification codegen uses: an environment can
+  ## still gain fields after its hooks were lifted (closure iterators).
   var marker = initIntSet()
   let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
-  result = canFormAcycleAux(g, marker, t, t, false, false)
-
-proc valueToString(a: PNode): string =
-  case a.kind
-  of nkCharLit, nkUIntLit..nkUInt64Lit:
-    result = $cast[uint64](a.intVal)
-  of nkIntLit..nkInt64Lit:
-    result = $a.intVal
-  of nkFloatLit..nkFloat128Lit: result = $a.floatVal
-  of nkStrLit..nkTripleStrLit: result = a.strVal
-  of nkStaticExpr: result = "static(" & a[0].renderTree & ")"
-  else: result = "<invalid value>"
-
-proc rangeToStr(n: PNode): string =
-  assert(n.kind == nkRange)
-  result = valueToString(n[0]) & ".." & valueToString(n[1])
-
-const
-  typeToStr: array[TTypeKind, string] = ["None", "bool", "char", "empty",
-    "Alias", "typeof(nil)", "untyped", "typed", "typeDesc",
-    # xxx typeDesc=>typedesc: typedesc is declared as such, and is 10x more common.
-    "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
-    "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
-    "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
-    "pointer", "OpenArray[$1]", "string", "cstring", "Forward",
-    "int", "int8", "int16", "int32", "int64",
-    "float", "float32", "float64", "float128",
-    "uint", "uint8", "uint16", "uint32", "uint64",
-    "owned", "sink",
-    "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
-    "BuiltInTypeClass", "UserTypeClass",
-    "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
-    "void", "iterable"]
-
-const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
-  preferGenericArg, preferResolved, preferMixed, preferInlayHint, preferInferredEffects}
+  if t.kind == tyRef:
+    # the edge that leads to the cell is not part of a cycle through it,
+    # so it does not count as a plain edge:
+    result = canFormAcycleAux(g, marker, t.elementType, t, true, false, false, envCheck)
+  else:
+    result = canFormAcycleAux(g, marker, t, t, false, false, false, envCheck)
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.add concrete
-  tc.flags.incl tfResolved
-
-# TODO: It would be a good idea to kill the special state of a resolved
-# concept by switching to tyAlias within the instantiated procs.
-# Currently, tyAlias is always skipped with skipModifier, which means that
-# we can store information about the matched concept in another position.
-# Then builtInFieldAccess can be modified to properly read the derived
-# consts and types stored within the concept.
-template isResolvedUserTypeClass*(t: PType): bool =
-  tfResolved in t.flags
-
-proc addTypeFlags(name: var string, typ: PType) {.inline.} =
-  if tfNotNil in typ.flags: name.add(" not nil")
-
-proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
-  let preferToplevel = prefer
-  proc getPrefer(prefer: TPreferedDesc): TPreferedDesc =
-    if preferToplevel in {preferResolved, preferMixed}:
-      preferToplevel # sticky option
-    else:
-      prefer
-
-  proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
-    result = ""
-    let prefer = getPrefer(prefer)
-    let t = typ
-    if t == nil: return
-    if prefer in preferToResolveSymbols and t.sym != nil and
-         sfAnon notin t.sym.flags and t.kind notin {tySequence, tyInferred}:
-      if t.kind == tyInt and isIntLit(t):
-        if prefer == preferInlayHint:
-          result = t.sym.name.s
-        else:
-          result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-      elif t.kind == tyAlias and t.elementType.kind != tyAlias:
-        result = typeToString(t.elementType)
-      elif prefer in {preferResolved, preferMixed}:
-        case t.kind
-        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
-          result = typeToStr[t.kind]
-        of tyGenericBody:
-          result = typeToString(t.last)
-        of tyCompositeTypeClass:
-          # avoids showing `A[any]` in `proc fun(a: A)` with `A = object[T]`
-          result = typeToString(t.last.last)
-        else:
-          result = t.sym.name.s
-        if prefer == preferMixed and result != t.sym.name.s:
-          result = t.sym.name.s & "{" & result & "}"
-      elif prefer in {preferName, preferTypeName, preferInlayHint, preferInferredEffects} or t.sym.owner.isNil:
-        # note: should probably be: {preferName, preferTypeName, preferGenericArg}
-        result = t.sym.name.s
-        if t.kind == tyGenericParam and t.genericParamHasConstraints:
-          result.add ": "
-          result.add t.elementType.typeToString
-      else:
-        result = t.sym.owner.name.s & '.' & t.sym.name.s
-      result.addTypeFlags(t)
-      return
-    case t.kind
-    of tyInt:
-      if not isIntLit(t) or prefer == preferExported:
-        result = typeToStr[t.kind]
-      else:
-        case prefer:
-        of preferGenericArg:
-          result = $t.n.intVal
-        of preferInlayHint:
-          result = "int"
-        else:
-          result = "int literal(" & $t.n.intVal & ")"
-    of tyGenericInst:
-      result = typeToString(t.genericHead) & '['
-      for needsComma, a in t.genericInstParams:
-        if needsComma: result.add(", ")
-        result.add(typeToString(a, preferGenericArg))
-      result.add(']')
-    of tyGenericInvocation:
-      result = typeToString(t.genericHead) & '['
-      for needsComma, a in t.genericInvocationParams:
-        if needsComma: result.add(", ")
-        result.add(typeToString(a, preferGenericArg))
-      result.add(']')
-    of tyGenericBody:
-      result = typeToString(t.typeBodyImpl) & '['
-      for i, a in t.genericBodyParams:
-        if i > 0: result.add(", ")
-        result.add(typeToString(a, preferTypeName))
-      result.add(']')
-    of tyTypeDesc:
-      if t.elementType.kind == tyNone: result = "typedesc"
-      else: result = "typedesc[" & typeToString(t.elementType) & "]"
-    of tyStatic:
-      if prefer == preferGenericArg and t.n != nil:
-        result = t.n.renderTree
-      else:
-        result = "static[" & (if t.hasElementType: typeToString(t.skipModifier) else: "") & "]"
-        if t.n != nil: result.add "(" & renderTree(t.n) & ")"
-    of tyUserTypeClass:
-      if t.sym != nil and t.sym.owner != nil:
-        if t.isResolvedUserTypeClass: return typeToString(t.last)
-        return t.sym.owner.name.s
-      else:
-        result = "<invalid tyUserTypeClass>"
-    of tyBuiltInTypeClass:
-      result =
-        case t.base.kind
-        of tyVar: "var"
-        of tyRef: "ref"
-        of tyPtr: "ptr"
-        of tySequence: "seq"
-        of tyArray: "array"
-        of tySet: "set"
-        of tyRange: "range"
-        of tyDistinct: "distinct"
-        of tyProc: "proc"
-        of tyObject: "object"
-        of tyTuple: "tuple"
-        of tyOpenArray: "openArray"
-        else: typeToStr[t.base.kind]
-    of tyInferred:
-      let concrete = t.previouslyInferred
-      if concrete != nil: result = typeToString(concrete)
-      else: result = "inferred[" & typeToString(t.base) & "]"
-    of tyUserTypeClassInst:
-      let body = t.base
-      result = body.sym.name.s & "["
-      for needsComma, a in t.userTypeClassInstParams:
-        if needsComma: result.add(", ")
-        result.add(typeToString(a))
-      result.add "]"
-    of tyAnd:
-      for i, son in t.ikids:
-        if i > 0: result.add(" and ")
-        result.add(typeToString(son))
-    of tyOr:
-      for i, son in t.ikids:
-        if i > 0: result.add(" or ")
-        result.add(typeToString(son))
-    of tyNot:
-      result = "not " & typeToString(t.elementType)
-    of tyUntyped:
-      #internalAssert t.len == 0
-      result = "untyped"
-    of tyFromExpr:
-      if t.n == nil:
-        result = "unknown"
-      else:
-        result = "typeof(" & renderTree(t.n) & ")"
-    of tyArray:
-      result = "array"
-      if t.hasElementType:
-        if t.indexType.kind == tyRange:
-          result &= "[" & rangeToStr(t.indexType.n) & ", " &
-              typeToString(t.elementType) & ']'
-        else:
-          result &= "[" & typeToString(t.indexType) & ", " &
-              typeToString(t.elementType) & ']'
-    of tyUncheckedArray:
-      result = "UncheckedArray"
-      if t.hasElementType:
-        result &= "[" & typeToString(t.elementType) & ']'
-    of tySequence:
-      if t.sym != nil and prefer != preferResolved:
-        result = t.sym.name.s
-      else:
-        result = "seq"
-        if t.hasElementType:
-          result &= "[" & typeToString(t.elementType) & ']'
-    of tyOrdinal:
-      result = "ordinal"
-      if t.hasElementType:
-        result &= "[" & typeToString(t.skipModifier) & ']'
-    of tySet:
-      result = "set"
-      if t.hasElementType:
-        result &= "[" & typeToString(t.elementType) & ']'
-    of tyOpenArray:
-      result = "openArray"
-      if t.hasElementType:
-        result &= "[" & typeToString(t.elementType) & ']'
-    of tyDistinct:
-      result = "distinct " & typeToString(t.elementType,
-        if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
-    of tyIterable:
-      # xxx factor this pattern
-      result = "iterable"
-      if t.hasElementType:
-        result &= "[" & typeToString(t.skipModifier) & ']'
-    of tyTuple:
-      # we iterate over t.sons here, because t.n may be nil
-      if t.n != nil:
-        result = "tuple["
-        for i in 0..<t.n.len:
-          assert(t.n[i].kind == nkSym)
-          result.add(t.n[i].sym.name.s & ": " & typeToString(t.n[i].sym.typ))
-          if i < t.n.len - 1: result.add(", ")
-        result.add(']')
-      elif t.isEmptyTupleType:
-        result = "tuple[]"
-      elif t.isSingletonTupleType:
-        result = "("
-        for son in t.kids:
-          result.add(typeToString(son))
-        result.add(",)")
-      else:
-        result = "("
-        for i, son in t.ikids:
-          if i > 0: result.add ", "
-          result.add(typeToString(son))
-        result.add(')')
-    of tyPtr, tyRef, tyVar, tyLent:
-      result = if isOutParam(t): "out " else: typeToStr[t.kind]
-      result.add typeToString(t.elementType)
-    of tyRange:
-      result = "range "
-      if t.n != nil and t.n.kind == nkRange:
-        result.add rangeToStr(t.n)
-      if prefer != preferExported:
-        result.add("(" & typeToString(t.elementType) & ")")
-    of tyProc:
-      result = if tfIterator in t.flags: "iterator "
-               elif t.owner != nil:
-                 case t.owner.kind
-                 of skTemplate: "template "
-                 of skMacro: "macro "
-                 of skConverter: "converter "
-                 else: "proc "
-              else:
-                "proc "
-      if tfUnresolved in t.flags: result.add "[*missing parameters*]"
-      result.add "("
-      for i, a in t.paramTypes:
-        if i > FirstParamAt: result.add(", ")
-        let j = paramTypeToNodeIndex(i)
-        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym:
-          result.add(t.n[j].sym.name.s)
-          result.add(": ")
-        result.add(typeToString(a))
-      result.add(')')
-      if t.returnType != nil: result.add(": " & typeToString(t.returnType))
-      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
-      var hasImplicitRaises = false
-      if not isNil(t.owner) and not isNil(t.owner.ast) and (t.owner.ast.len - 1) >= pragmasPos:
-        let pragmasNode = t.owner.ast[pragmasPos]
-        let raisesSpec = effectSpec(pragmasNode, wRaises)
-        if not isNil(raisesSpec):
-          addSep(prag)
-          prag.add("raises: ")
-          prag.add($raisesSpec)
-          hasImplicitRaises = true
-      if tfNoSideEffect in t.flags:
-        addSep(prag)
-        prag.add("noSideEffect")
-      if tfThread in t.flags:
-        addSep(prag)
-        prag.add("gcsafe")
-      var effectsOfStr = ""
-      for i, a in t.paramTypes:
-        let j = paramTypeToNodeIndex(i)
-        if t.n != nil and j < t.n.len and t.n[j].kind == nkSym and t.n[j].sym.kind == skParam and sfEffectsDelayed in t.n[j].sym.flags:
-          addSep(effectsOfStr)
-          effectsOfStr.add(t.n[j].sym.name.s)
-      if effectsOfStr != "":
-        addSep(prag)
-        prag.add("effectsOf: ")
-        prag.add(effectsOfStr)
-      if not hasImplicitRaises and prefer == preferInferredEffects and not isNil(t.owner) and not isNil(t.owner.typ) and not isNil(t.owner.typ.n) and (t.owner.typ.n.len > 0):
-        let effects = t.n[0]
-        if effects.kind == nkEffectList and effects.len == effectListLen:
-          var inferredRaisesStr = ""
-          let effs = effects[exceptionEffects]
-          if not isNil(effs):
-            for eff in items(effs):
-              if not isNil(eff):
-                addSep(inferredRaisesStr)
-                inferredRaisesStr.add($eff.typ)
-          addSep(prag)
-          prag.add("raises: <inferred> [")
-          prag.add(inferredRaisesStr)
-          prag.add("]")
-      if prag.len != 0: result.add("{." & prag & ".}")
-    of tyVarargs:
-      result = typeToStr[t.kind] % typeToString(t.elementType)
-    of tySink:
-      result = "sink " & typeToString(t.skipModifier)
-    of tyOwned:
-      result = "owned " & typeToString(t.elementType)
-    else:
-      result = typeToStr[t.kind]
-    result.addTypeFlags(t)
-  result = typeToString(typ, prefer)
+  tc.incl tfResolved
 
 proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
@@ -981,6 +662,34 @@ proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
     let last = lastOrd(conf, t)
     let first = firstOrd(conf, t)
     result = last - first + One
+
+const broadcastArrayThreshold* = 32
+  ## `getNullValue` represents the default of an `array[N, T]` with `N` above this
+  ## as a single *broadcast* element — a one-son `nkBracket` standing for `N`
+  ## identical zero copies — instead of materialising `N` zero nodes. This keeps
+  ## huge zeroed arrays (e.g. SSZ byte buffers in nimbus) compact in the IC caches
+  ## (`.s.bif`/`.t.bif`), in the VM, and in the generated C (`{0}` zero-fills).
+
+proc isDefaultBroadcastArray*(n: PNode; conf: ConfigRef): bool =
+  ## True iff `n` is a broadcast default array: a single son standing for
+  ## `lengthOrd` identical zero copies. Identified by the explicit `nfBroadcast`
+  ## marker (set by `getNullValue`), NOT by `len == 1 < lengthOrd` — the latter
+  ## also matches an ordinary 1-element collection that happens to be an
+  ## `nkBracket` carrying an array type, e.g. a `@[a, b, c]` seq value shrunk to
+  ## length 1 by `setLen`/`delete` (its VM node keeps the array-literal type).
+  result = n != nil and n.kind == nkBracket and nfBroadcast in n.flags
+
+proc expandBroadcastArray*(n: PNode; conf: ConfigRef) =
+  ## Materialise a broadcast default array (see `isDefaultBroadcastArray`) into a
+  ## full `lengthOrd`-son `nkBracket`, each son a copy of the single default
+  ## element. Used by VM ops that index-address, mutate, or measure such a node;
+  ## the common read-only paths leave it compact. Clears `nfBroadcast` since the
+  ## node is now a fully materialised literal.
+  if isDefaultBroadcastArray(n, conf):
+    let total = toInt(lengthOrd(conf, n.typ.skipTypes(abstractInst)))
+    let elem = n[0]
+    for i in 1 ..< total: n.add copyTree(elem)
+    n.flags.excl nfBroadcast
 
 # -------------- type equality -----------------------------------------------
 
@@ -1190,11 +899,6 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
   else:
     result = false
 
-proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
-  if not sameTypeOrNilAux(a.baseClass, b.baseClass, c): return false
-  if not sameObjectTree(a.n, b.n, c): return false
-  result = true
-
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
   if not sameTupleLengths(a, b): return false
   # XXX This is not tuple specific.
@@ -1238,7 +942,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       x + {tyRange}
     else:
       x
-  
+
   template withoutShallowFlags(body) =
     let oldFlags = c.flags
     c.flags.excl IgnoreRangeShallow
@@ -1246,7 +950,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     c.flags = oldFlags
 
   if x == y: return true
-  let aliasSkipSet = maybeSkipRange({tyAlias})
+  let aliasSkipSet = maybeSkipRange({tyAlias, tyInferred})
   var a = skipTypes(x, aliasSkipSet)
   while a.kind == tyUserTypeClass and tfResolved in a.flags:
     a = skipTypes(a.last, aliasSkipSet)
@@ -1289,19 +993,23 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
+    template compareCAliases(sameIdentity: untyped) =
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = sameIdentity and symFlagsA == symFlagsB and
+          a.sym.loc.snippet == b.sym.loc.snippet
+
     result = sameFlags(a, b)
     if result and {PickyCAliases, ExactTypeDescValues} <= c.flags:
       # additional requirement for the caching of generics for importc'ed types:
-      # the symbols must be identical too:
-      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
-      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
-      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
-        result = symFlagsA == symFlagsB
+      # the symbol flags and external names must match too. Ordinary aliases
+      # inherit the external name and can still share an instantiation.
+      compareCAliases(true)
     elif result and PickyBackendAliases in c.flags:
-      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
-      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
-      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
-        result = a.id == b.id
+      # Imported aliases can share the builtin's type ID while using a
+      # different C type, e.g. `const char *` instead of `cstring`.
+      compareCAliases(a.id == b.id)
 
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -1418,9 +1126,10 @@ proc sameBackendTypeIgnoreRange*(x, y: PType): bool =
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
-proc sameBackendTypePickyAliases*(x, y: PType): bool =
+proc sameBackendTypePickyAliases*(x, y: PType, flags: TTypeCmpFlags = {}): bool =
   var c = initSameTypeClosure()
   c.flags.incl {IgnoreTupleFields, IgnoreRangeShallow, PickyCAliases, PickyBackendAliases}
+  c.flags.incl flags
   c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
@@ -1723,11 +1432,11 @@ proc skipConv*(n: PNode): PNode =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     # only skip the conversion if it doesn't lose too important information
     # (see bug #1334)
-    if n[0].typ.classify == n.typ.classify:
-      result = n[0]
+    if n.firstSon.typ.classify == n.typ.classify:
+      result = n.firstSon
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if n[1].typ.classify == n.typ.classify:
-      result = n[1]
+    if n.secondSon.typ.classify == n.typ.classify:
+      result = n.secondSon
   else: discard
 
 proc skipHidden*(n: PNode): PNode =
@@ -1744,7 +1453,7 @@ proc skipHidden*(n: PNode): PNode =
 
 proc skipConvTakeType*(n: PNode): PNode =
   result = n.skipConv
-  result.typ() = n.typ
+  result.typ = n.typ
 
 proc isEmptyContainer*(t: PType): bool =
   case t.kind
@@ -1784,7 +1493,7 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
       result = n
     else:
       result = copyTree(result)
-      result.typ() = dest
+      result.typ = dest
   else:
     result = n
 
@@ -2014,7 +1723,7 @@ proc nominalRoot*(t: PType): PType =
   ## i.e. the type directly associated with the symbol where the root
   ## nominal type of `t` was defined, skipping things like generic instances,
   ## aliases, `var`/`sink`/`typedesc` modifiers
-  ## 
+  ##
   ## instead of returning the uninstantiated body of a generic type,
   ## returns the type of the symbol instead (with tyGenericBody type)
   result = nil
@@ -2128,3 +1837,7 @@ proc reduceToBase*(f: PType): PType =
     result = f.elementType
   else:
     result = f
+
+proc supportsCopyMem*(t: PType): bool =
+  let t = t.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
+  result = not containsGarbageCollectedRef(t) and not hasDestructor(t)

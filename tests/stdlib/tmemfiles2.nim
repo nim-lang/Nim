@@ -1,4 +1,5 @@
 discard """
+  matrix: "; -d:nimMemfileFallback"
   disabled: "Windows"
   output: '''Full read size: 20
 Half read size: 10 Data: Hello'''

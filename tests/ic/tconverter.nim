@@ -1,18 +1,16 @@
 discard """
-  output: "yes"
+output:
+ok
 """
 
-import mdefconverter
+type
+  Meters = distinct float
+  Feet = distinct float
 
-echo "yes"
+converter toMeters(f: Feet): Meters =
+  Meters(float(f) * 0.3048)
 
-#!EDIT!#
+proc showMeters(m: Meters) =
+  echo "ok"
 
-discard """
-  output: "converted int to bool"
-"""
-
-import mdefconverter
-
-if 4:
-  echo "converted int to bool"
+showMeters(Feet(10.0))

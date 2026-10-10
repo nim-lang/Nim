@@ -82,7 +82,7 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: P
     var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen,
                   owner, value.info, g.config.options)
     temp.typ = skipTypes(value.typ, abstractInst)
-    incl(temp.flags, sfFromGeneric)
+    incl(temp.flagsImpl, sfFromGeneric)
     tempAsNode = newSymNode(temp)
 
   var v = newNodeI(nkVarSection, value.info)
@@ -103,7 +103,7 @@ proc evalOnce*(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): P
   var temp = newSym(skTemp, getIdent(g.cache, genPrefix), idgen,
                     owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
-  incl(temp.flags, sfFromGeneric)
+  incl(temp.flagsImpl, sfFromGeneric)
 
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp)
@@ -127,8 +127,8 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNod
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
   var temp = newSym(skVar, getIdent(g.cache, genPrefix), idgen, owner, n.info, owner.options)
   temp.typ = n[1].typ
-  incl(temp.flags, sfFromGeneric)
-  incl(temp.flags, sfGenSym)
+  incl(temp.flagsImpl, sfFromGeneric)
+  incl(temp.flagsImpl, sfGenSym)
 
   var v = newNodeI(nkVarSection, n.info)
   let tempAsNode = newSymNode(temp)
@@ -147,13 +147,13 @@ proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo
   result = newType(tyObject, idgen, owner)
   if final:
     rawAddSon(result, nil)
-    incl result.flags, tfFinal
+    incl result, tfFinal
   else:
     rawAddSon(result, getCompilerProc(g, "RootObj").typ)
   result.n = newNodeI(nkRecList, info)
   let s = newSym(skType, getIdent(g.cache, "Env_" & toFilename(g.config, info) & "_" & $owner.name.s),
                   idgen, owner, info, owner.options)
-  incl s.flags, sfAnon
+  incl s.flagsImpl, sfAnon
   s.typ = result
   result.sym = s
 
@@ -174,12 +174,12 @@ proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   # returns a[].field as a node
   assert field.kind == skField
   var deref = newNodeI(nkHiddenDeref, info)
-  deref.typ() = a.typ.skipTypes(abstractInst)[0]
+  deref.typ = a.typ.skipTypes(abstractInst)[0]
   deref.add a
   result = newNodeI(nkDotExpr, info)
   result.add deref
   result.add newSymNode(field)
-  result.typ() = field.typ
+  result.typ = field.typ
 
 proc rawDirectAccess*(obj, field: PSym): PNode =
   # returns a.field as a node
@@ -187,7 +187,7 @@ proc rawDirectAccess*(obj, field: PSym): PNode =
   result = newNodeI(nkDotExpr, field.info)
   result.add newSymNode(obj)
   result.add newSymNode(field)
-  result.typ() = field.typ
+  result.typ = field.typ
 
 proc lookupInRecord(n: PNode, id: ItemId): PSym =
   result = nil
@@ -207,15 +207,70 @@ proc lookupInRecord(n: PNode, id: ItemId): PSym =
         if result != nil: return
       else: discard
   of nkSym:
-    if n.sym.itemId.module == id.module and n.sym.itemId.item == -abs(id.item): result = n.sym
+    if matchesDerivedFieldId(n.sym.itemId, id): result = n.sym
+  else: discard
+
+proc lookupCapturedField(n: PNode, s: PSym): PSym =
+  ## Find an env field that `addField` would have produced for the captured
+  ## local `s`. Used as a fallback when the derived-itemId match fails because
+  ## `s` is a macro-generated gensym whose process-local id diverges from the
+  ## loaded env field's (see `addField`). `addField` always names a field
+  ## `s.name & $field.position`, so that pair uniquely identifies the field for a
+  ## local of this name without relying on the (unstable) item id.
+  result = nil
+  case n.kind
+  of nkRecList:
+    for i in 0..<n.len:
+      result = lookupCapturedField(n[i], s)
+      if result != nil: return
+  of nkRecCase:
+    if n[0].kind != nkSym: return
+    result = lookupCapturedField(n[0], s)
+    if result != nil: return
+    for i in 1..<n.len:
+      case n[i].kind
+      of nkOfBranch, nkElse:
+        result = lookupCapturedField(lastSon(n[i]), s)
+        if result != nil: return
+      else: discard
+  of nkSym:
+    if n.sym.kind == skField and n.sym.name.s == s.name.s & $n.sym.position:
+      result = n.sym
   else: discard
 
 proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym =
+  # Idempotent w.r.t. the captured symbol (mirrors `addUniqueField`): re-lifting
+  # a LOADED routine re-derives its transformed body (never serialized under IC)
+  # and re-captures the same locals, but the env object loaded from the NIF
+  # already carries their fields. Re-adding would duplicate the field and, worse,
+  # mutate a Sealed loaded type via `propagateToOwner` (the `t.state != Sealed`
+  # crash). Return the existing field instead.
+  let existing = lookupInRecord(obj.n, s.itemId)
+  if existing != nil:
+    return existing
+  # Re-lifting a LOADED routine during a VM transform (its transformed body is
+  # re-derived per process, never serialized) re-captures the same locals, but
+  # for a macro-generated gensym (e.g. libp2p `p2pProtocolBackendImpl`'s
+  # `msgVar`) its process-local id diverges from the one baked into the loaded
+  # env field, so the id match above misses. Reuse the existing same-named field
+  # rather than appending a divergent duplicate, which keeps the re-derived
+  # closure consistent (else a stale `:env` access reaches `cannotEval`).
+  # Confined to a loaded (Sealed) env: in a freshly built env ids are consistent,
+  # and two distinct same-named captures legitimately get distinct fields there.
+  if obj.state == Sealed:
+    let byName = lookupCapturedField(obj.n, s)
+    if byName != nil:
+      return byName
+  # Genuinely new field. Under IC the env may be a loaded Sealed type whose
+  # transform-time mutation is process-local (the body is discarded after the
+  # macro runs), so downgrade it to mutable instead of crashing on
+  # `t.state != Sealed` (mirrors `markAsClosure`).
+  unsealForTransform(obj)
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
                      idgen, s.owner, s.info, s.options)
-  field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+  field.itemId = derivedFieldId(s.itemId)
   let t = skipIntLit(s.typ, idgen)
   field.typ = t
   if s.kind in {skLet, skVar, skField, skForVar}:
@@ -235,7 +290,7 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator)
   if result == nil:
     var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), idgen,
                        s.owner, s.info, s.options)
-    field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+    field.itemId = derivedFieldId(s.itemId)
     let t = skipIntLit(s.typ, idgen)
     field.typ = t
     assert t.kind != tyTyped
@@ -250,12 +305,12 @@ proc newDotExpr*(obj, b: PSym): PNode =
   assert field != nil, b.name.s
   result.add newSymNode(obj)
   result.add newSymNode(field)
-  result.typ() = field.typ
+  result.typ = field.typ
 
 proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
-  deref.typ() = a.typ.skipTypes(abstractInst).elementType
+  deref.typ = a.typ.skipTypes(abstractInst).elementType
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
   while true:
@@ -273,12 +328,12 @@ proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
   result = newNodeI(nkDotExpr, info)
   result.add deref
   result.add newSymNode(field)
-  result.typ() = field.typ
+  result.typ = field.typ
 
 proc indirectAccess*(a: PNode, b: string, info: TLineInfo; cache: IdentCache): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
-  deref.typ() = a.typ.skipTypes(abstractInst).elementType
+  deref.typ = a.typ.skipTypes(abstractInst).elementType
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
   let bb = getIdent(cache, b)
@@ -297,7 +352,7 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo; cache: IdentCache): P
   result = newNodeI(nkDotExpr, info)
   result.add deref
   result.add newSymNode(field)
-  result.typ() = field.typ
+  result.typ = field.typ
 
 proc getFieldFromObj*(t: PType; v: PSym): PSym =
   assert v.kind != skField
@@ -306,6 +361,16 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
     assert t.kind == tyObject
     result = lookupInRecord(t.n, v.itemId)
     if result != nil: break
+    # A LOADED (Sealed) env object carries fields baked by the producer process;
+    # re-lifting a NIF-loaded routine in a consumer (e.g. a macro VM-evaluating an
+    # imported `p2pProtocolBackendImpl`) re-captures the same local under a
+    # divergent process-local id, so the derived-itemId match misses. Fall back to
+    # the name+position identity `addField` uses — SYMMETRIC with `addField`'s
+    # Sealed by-name reuse — so the access resolves the field `addField` produced
+    # instead of failing with `not part of closure object type`.
+    if t.state == Sealed:
+      result = lookupCapturedField(t.n, v)
+      if result != nil: break
     t = t.baseClass
     if t == nil: break
     t = t.skipTypes(skipPtrs)
@@ -320,7 +385,7 @@ proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
 proc genAddrOf*(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ() = newType(typeKind, idgen, n.typ.owner)
+  result.typ = newType(typeKind, idgen, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
@@ -344,18 +409,18 @@ proc callCodegenProc*(g: ModuleGraph; name: string;
     if optionalArgs != nil:
       for i in 1..<optionalArgs.len-2:
         result.add optionalArgs[i]
-    result.typ() = sym.typ.returnType
+    result.typ = sym.typ.returnType
 
 proc newIntLit*(g: ModuleGraph; info: TLineInfo; value: BiggestInt): PNode =
   result = nkIntLit.newIntNode(value)
-  result.typ() = getSysType(g, info, tyInt)
+  result.typ = getSysType(g, info, tyInt)
 
 proc genHigh*(g: ModuleGraph; n: PNode): PNode =
   if skipTypes(n.typ, abstractVar).kind == tyArray:
     result = newIntLit(g, n.info, toInt64(lastOrd(g.config, skipTypes(n.typ, abstractVar))))
   else:
     result = newNodeI(nkCall, n.info, 2)
-    result.typ() = getSysType(g, n.info, tyInt)
+    result.typ = getSysType(g, n.info, tyInt)
     result[0] = newSymNode(getSysMagic(g, n.info, "high", mHigh))
     result[1] = n
 
@@ -364,7 +429,7 @@ proc genLen*(g: ModuleGraph; n: PNode): PNode =
     result = newIntLit(g, n.info, toInt64(lastOrd(g.config, skipTypes(n.typ, abstractVar)) + 1))
   else:
     result = newNodeI(nkCall, n.info, 2)
-    result.typ() = getSysType(g, n.info, tyInt)
+    result.typ = getSysType(g, n.info, tyInt)
     result[0] = newSymNode(getSysMagic(g, n.info, "len", mLengthSeq))
     result[1] = n
 

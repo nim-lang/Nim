@@ -30,7 +30,8 @@ proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline, systemRai
   system.`[]`(s, s.len - int(i))
 proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline, systemRaisesDefect.} =
   a[Idx(a.len - int(i) + int low(a))]
-proc `[]`*(s: var string; i: BackwardsIndex): var char {.inline, systemRaisesDefect.} = s[s.len - int(i)]
+when not defined(nimsso):
+  proc `[]`*(s: var string; i: BackwardsIndex): var char {.inline, systemRaisesDefect.} = s[s.len - int(i)]
 
 proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline, systemRaisesDefect.} =
   system.`[]=`(s, s.len - int(i), x)
@@ -58,16 +59,35 @@ template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 template `^^`(s, i: untyped): untyped =
   (when i is BackwardsIndex: s.len - int(i) else: int(i))
 
-template spliceImpl(s, a, L, b: typed): untyped =
+template spliceStringImpl(s, a, L, b: typed): untyped =
   # make room for additional elements or cut:
   var shift = b.len - max(0,L)  # ignore negative slice size
   var newLen = s.len + shift
   if shift > 0:
     # enlarge:
     setLen(s, newLen)
-    for i in countdown(newLen-1, a+b.len): movingCopy(s[i], s[i-shift])
+    for i in countdown(newLen-1, a+b.len):
+      s[i] = s[i-shift]
   else:
-    for i in countup(a+b.len, newLen-1): movingCopy(s[i], s[i-shift])
+    for i in countup(a+b.len, newLen-1):
+      s[i] = s[i-shift]
+    # cut down:
+    setLen(s, newLen)
+  # fill the hole:
+  for i in 0 ..< b.len: s[a+i] = b[i]
+
+template spliceSeqImpl(s, a, L, b: typed): untyped =
+  # make room for additional elements or cut:
+  var shift = b.len - max(0,L)  # ignore negative slice size
+  var newLen = s.len + shift
+  if shift > 0:
+    # enlarge:
+    setLen(s, newLen)
+    for i in countdown(newLen-1, a+b.len):
+      movingCopy(s[i], s[i-shift])
+  else:
+    for i in countup(a+b.len, newLen-1):
+      movingCopy(s[i], s[i-shift])
     # cut down:
     setLen(s, newLen)
   # fill the hole:
@@ -101,7 +121,7 @@ proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) {.systemRa
   if L == b.len:
     for i in 0..<L: s[i+a] = b[i]
   else:
-    spliceImpl(s, a, L, b)
+    spliceStringImpl(s, a, L, b)
 
 proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] {.systemRaisesDefect.} =
   ## Slice operation for arrays.
@@ -161,4 +181,4 @@ proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) {
   if L == b.len:
     for i in 0 ..< L: s[i+a] = b[i]
   else:
-    spliceImpl(s, a, L, b)
+    spliceSeqImpl(s, a, L, b)

@@ -20,3 +20,25 @@ block: # issue #24021
       discard
     else:
       discard foo.z
+
+
+# bug #22791
+type Foo = object
+  case a: bool
+  of false:
+    discard
+  of true:
+    case b: bool
+    of false:
+      discard
+    of true:
+      c: bool
+
+const f = Foo(a: true, b: true, c: true)
+case f.a
+of true:
+  case f.b
+  of true:
+    echo f.c
+  else: discard
+else: discard

@@ -11,7 +11,7 @@ tvmutils.nim(28, 10) [opcFJmp]     if i == 4:
 tvmutils.nim(28, 13) [opcLdImmInt]     if i == 4:
 tvmutils.nim(28, 10) [opcEqInt]     if i == 4:
 tvmutils.nim(28, 10) [opcFJmp]     if i == 4:
-tvmutils.nim(29, 7) [opcLdConst]       vmTrace(false)
+tvmutils.nim(29, 7) [opcLdImm]       vmTrace(false)
 tvmutils.nim(29, 15) [opcLdImmInt]       vmTrace(false)
 tvmutils.nim(29, 14) [opcIndCall]       vmTrace(false)
 5

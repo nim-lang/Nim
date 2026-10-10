@@ -32,7 +32,7 @@ doAssert objDeref.x == 42
 
 # String tests
 obj.s = "lorem ipsum dolor sit amet"
-when defined(gcArc) or defined(gcOrc):
+when defined(gcArc) or defined(gcOrc) or defined(gcYrc):
   prepareMutation(obj.s)
 
 
@@ -237,7 +237,7 @@ block: # bug #15939
     doAssert bar == "foo"
 
 template prepareMutationForOrc(x: string) =
-  when defined(gcArc) or defined(gcOrc):
+  when defined(gcArc) or defined(gcOrc) or defined(gcYrc):
     when nimvm:
       discard
     else:

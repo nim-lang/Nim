@@ -316,6 +316,28 @@ proc getNumber(L: var Lexer, result: var Token) =
     L.bufpos = msgPos
     lexMessage(L, msgKind, msg % t.literal)
 
+  proc checkBitWidth(L: var Lexer, base: NumericalBase, tokType: TokType, 
+                     numDigits: int, startpos: int) =
+    # Check bit width for non-base-10 literals
+    # Warn if the digit count exceeds what can fit in the target type
+    let bitsPerDigit = case base
+      of base2: 1
+      of base8: 3
+      of base16: 4
+      else: raiseAssert "unreachable"
+    let bitWidth = case tokType
+      of tkInt8Lit, tkUInt8Lit: 8
+      of tkInt16Lit, tkUInt16Lit: 16
+      of tkInt32Lit, tkUInt32Lit: 32
+      of tkInt64Lit, tkUIntLit, tkIntLit, tkUInt64Lit: 64
+      else: raiseAssert "unreachable"
+    # Maximum digits = ceil(bitWidth / bitsPerDigit) = (bitWidth + bitsPerDigit - 1) div bitsPerDigit
+    let maxDigits = (bitWidth + bitsPerDigit - 1) div bitsPerDigit
+    if numDigits > maxDigits:
+      lexMessageLitNum(L,
+        "number has " & $numDigits & " digits but type only supports " &
+        $maxDigits & " digits: '$1'", startpos, warnLongLiterals)
+
   var
     xi: BiggestInt
     isBase10 = true
@@ -490,6 +512,11 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkFloat64Lit, tkFloatLit:
           setNumber result.fNumber, (cast[ptr float64](addr(xi)))[]
         else: internalError(L.config, getLineInfo(L), "getNumber")
+
+        # Check bit width for non-base-10 literals
+        # Warn if the digit count exceeds what can fit in the target type
+        if result.base != base10 and result.tokType in {tkIntLit..tkUInt64Lit} and numDigits > 0:
+          checkBitWidth(L, result.base, result.tokType, numDigits, startpos)
 
         # Bounds checks. Non decimal literals are allowed to overflow the range of
         # the datatype as long as their pattern don't overflow _bitwise_, hence
@@ -708,17 +735,11 @@ proc getEscapedChar(L: var Lexer, tok: var Token) =
   else: lexMessage(L, errGenerated, "invalid character constant")
 
 proc handleCRLF(L: var Lexer, pos: int): int =
-  template registerLine =
-    let col = L.getColNumber(pos)
-
-  case L.buf[pos]
-  of CR:
-    registerLine()
-    result = nimlexbase.handleCR(L, pos)
-  of LF:
-    registerLine()
-    result = nimlexbase.handleLF(L, pos)
-  else: result = pos
+  result =
+    case L.buf[pos]
+    of CR: nimlexbase.handleCR(L, pos)
+    of LF: nimlexbase.handleLF(L, pos)
+    else: pos
 
 type
   StringMode = enum
@@ -818,8 +839,8 @@ proc getCharacter(L: var Lexer; tok: var Token) =
 
 const
   UnicodeOperatorStartChars = {'\226', '\194', '\195'}
-    # the allowed unicode characters ("∙ ∘ × ★ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔")
-    # all start with one of these.
+    # the allowed unicode characters ("∙ ∘ × ★ ☆ ⊗ ⊘ ⊙ ⊛ ⊠ ⊡ ∩ ∧ ⊓ ⟑ ⟇ ⩓ ⩔ ■ □
+    # ± ⊕ ⊖ ⊞ ⊟ ∪ ∨ ⊔") all start with one of these.
 
 type
   UnicodeOprPred = enum
@@ -851,7 +872,18 @@ proc unicodeOprLen(buf: cstring; pos: int): (int8, UnicodeOprPred) =
       elif buf[pos+2] == '\159': result = 3.a # ⊟
       elif buf[pos+2] == '\160': result = 3.m # ⊠
       elif buf[pos+2] == '\161': result = 3.m # ⊡
-    elif buf[pos+1] == '\152' and buf[pos+2] == '\133': result = 3.m # ★
+    elif buf[pos+1] == '\150':
+      if buf[pos+2] == '\160': result = 3.m # ■
+      elif buf[pos+2] == '\161': result = 3.m # □
+    elif buf[pos+1] == '\152':
+      if buf[pos+2] == '\133': result = 3.m # ★
+      elif buf[pos+2] == '\134': result = 3.m # ☆
+    elif buf[pos+1] == '\159':
+      if buf[pos+2] == '\135': result = 3.m # ⟇
+      elif buf[pos+2] == '\145': result = 3.m # ⟑
+    elif buf[pos+1] == '\169':
+      if buf[pos+2] == '\147': result = 3.m # ⩓
+      elif buf[pos+2] == '\148': result = 3.m # ⩔
   of '\194':
     if buf[pos+1] == '\177': result = 2.a # ±
   of '\195':
@@ -896,7 +928,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
     tok.tokType = tkSymbol
   else:
     tok.tokType = TokType(tok.ident.id + ord(tkSymbol))
-    if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
+    if suspicious and {optStyleHint, optStyleError, optStyleWarning} * L.config.globalOptions != {}:
       lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
   L.bufpos = pos
 
@@ -1322,7 +1354,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
           lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
     of '-':
       if L.buf[L.bufpos+1] in {'0'..'9'} and
-          (L.bufpos-1 == 0 or L.buf[L.bufpos-1] in UnaryMinusWhitelist):
+          (L.bufpos == 0 or L.buf[L.bufpos-1] in UnaryMinusWhitelist):
         # x)-23 # binary minus
         # ,-23  # unary minus
         # \n-78 # unary minus? Yes.

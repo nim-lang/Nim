@@ -287,3 +287,14 @@ template main =
 
 static: main()
 main()
+
+# https://github.com/nim-lang/Nim/issues/18583
+type EmptyStr18583List = object
+proc `$`(x: EmptyStr18583List): string = ""
+
+block:
+  var L: SinglyLinkedList[EmptyStr18583List]
+  L.prepend(EmptyStr18583List())
+  L.prepend(EmptyStr18583List())
+  let s = $L
+  doAssert s == "[, ]", "got: " & s

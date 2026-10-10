@@ -5,18 +5,35 @@ discard """
 import std/encodings
 import std/assertions
 
+proc supportsEncoding(encoding: string): bool =
+  ## Checks whether the system supports writing to an encoding.
+  when defined(musl):
+    try:
+      let encoder = open(encoding, "utf-8")
+      encoder.close()
+      result = true
+    except EncodingError:
+      result = false
+  else:
+    result = true
+
 var fromGBK = open("utf-8", "gbk")
-var toGBK = open("gbk", "utf-8")
+when not defined(musl):
+  var toGBK = open("gbk", "utf-8")
 
 var fromGB2312 = open("utf-8", "gb2312")
-var toGB2312 = open("gb2312", "utf-8")
+when not defined(musl):
+  var toGB2312 = open("gb2312", "utf-8")
 
 
 block:
   let data = "\215\237\186\243\178\187\214\170\204\236\212\218\203\174\163\172\194\250\180\178\208\199\195\206\209\185\208\199\186\211"
   doAssert fromGBK.convert(data) == "醉后不知天在水，满床星梦压星河"
 
-block:
+if supportsEncoding("gbk"):
+  when defined(musl):
+    let toGBK = open("gbk", "utf-8")
+    defer: toGBK.close()
   let data = "万两黄金容易得，知心一个也难求"
   doAssert toGBK.convert(data) == "\205\242\193\189\187\198\189\240\200\221\210\215\181\195\163\172\214\170\208\196\210\187\184\246\210\178\196\209\199\243"
 
@@ -25,7 +42,10 @@ block:
   let data = "\215\212\208\197\200\203\201\250\182\254\176\217\196\234\163\172\187\225\181\177\203\174\187\247\200\253\199\167\192\239"
   doAssert fromGB2312.convert(data) == "自信人生二百年，会当水击三千里"
 
-block:
+if supportsEncoding("gb2312"):
+  when defined(musl):
+    let toGB2312 = open("gb2312", "utf-8")
+    defer: toGB2312.close()
   let data = "谁怕？一蓑烟雨任平生"
   doAssert toGB2312.convert(data) == "\203\173\197\194\163\191\210\187\203\242\209\204\211\234\200\206\198\189\201\250"
 
@@ -96,12 +116,46 @@ block:
   let
     orig = "öäüß"
     cp1252 = convert(orig, "CP1252", "UTF-8")
-    ibm850 = convert(cp1252, "ibm850", "CP1252")
     current = getCurrentEncoding()
   doAssert orig == "\195\182\195\164\195\188\195\159"
-  doAssert ibm850 == "\148\132\129\225"
-  doAssert convert(ibm850, current, "ibm850") == orig
+  if supportsEncoding("ibm850"):
+    let ibm850 = convert(cp1252, "ibm850", "CP1252")
+    doAssert ibm850 == "\148\132\129\225"
+    doAssert convert(ibm850, current, "ibm850") == orig
 
 block: # fixes about #23481
   doAssertRaises EncodingError:
     discard open(destEncoding="this is a invalid enc")
+
+block: # bug #26173 - stateful encodings must survive output buffer growth
+  # ISO-2022-JP is stateful: `ESC $ B` switches to two byte JIS X 0208 mode and
+  # `ESC ( B` switches back to ASCII. `convert` sized its output buffer from the
+  # input length, so any input whose UTF-8 form is longer hit `E2BIG` and resumed
+  # the conversion after a short write. The shift state does not necessarily
+  # survive that, so the tail of the text came out as raw bytes and the result was
+  # silently wrong - and longer than the input.
+  proc repeatedA(n: int): string =
+    result = "\x1B\x24\x42"
+    for _ in 0 ..< n: result.add "\x24\x22" # あ
+    result.add "\x1B\x28\x42"
+
+  var expected = ""
+  for n in 1 .. 64:
+    expected.add "あ"
+    doAssert convert(repeatedA(n), "UTF-8", "ISO-2022-JP") == expected
+
+  # mixed ASCII and JIS runs, i.e. several state switches in one string
+  const mixed = "\x1B\x24\x42\x21\x5A\x3F\x37\x35\x2C\x21\x5B\x39\x41\x36\x68" &
+                "\x46\x6E\x40\x44\x3B\x33\x1B\x28\x42\x20\x1B\x24\x42\x43\x66" &
+                "\x38\x45\x38\x4D\x37\x7A\x24\x4E\x24\x34\x3E\x52\x32\x70\x1B\x28\x42"
+  doAssert convert(mixed, "UTF-8", "ISO-2022-JP") ==
+    "【新規】港区南青山 " &
+    "中古戸建のご紹介"
+
+block: # stateless encodings keep working when the output buffer grows
+  var euc = ""
+  var expected = ""
+  for _ in 0 ..< 2000:
+    euc.add "\xA4\xA2"
+    expected.add "あ"
+  doAssert convert(euc, "UTF-8", "EUC-JP") == expected

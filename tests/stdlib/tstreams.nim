@@ -87,6 +87,20 @@ block:
   ss.setPosition(0)
   doAssert(ss.peekStr(5) == "hello")
 
+# bug #26088 - Overwriting a string stream must not truncate it
+block:
+  var short = newStringStream("0123456789ABCDEF")
+  short.setPosition(0)
+  short.write("XX")
+  doAssert short.data == "XX23456789ABCDEF"
+  doAssert not short.atEnd
+
+  var long = newStringStream("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+  long.setPosition(0)
+  long.write("XX")
+  doAssert long.data == "XX23456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  doAssert not long.atEnd
+
 # bug #19716
 static: # Ensure streams it doesnt break with nimscript on arc/orc #19716
   let s = newStringStream("a")

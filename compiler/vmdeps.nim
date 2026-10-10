@@ -35,11 +35,15 @@ proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLi
   sym.magic = m
   sym.typ = t
   result = newSymNode(sym)
-  result.typ() = t
+  result.typ = t
 
-proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
+proc atomicTypeX(s: PSym; t: PType; info: TLineInfo): PNode =
   result = newSymNode(s)
   result.info = info
+  # `s.typ` can differ from `t`: the object type of a generic `ref object`
+  # instance shares the symbol of the generic body (bug #26374). Keep `t`
+  # so that `getTypeImpl` etc. on the result see the instantiated type.
+  result.typ = t
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator;
                    inst=false; allowRecursionX=false; skipAlias = false): PNode
@@ -52,7 +56,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
   for a in t.kids:
     if a == nil:
       let voidt = atomicTypeX(cache, "void", mVoid, t, info, idgen)
-      voidt.typ() = newType(tyVoid, idgen, t.owner)
+      voidt.typ = newType(tyVoid, idgen, t.owner)
       result.add voidt
     else:
       result.add mapTypeToAstX(cache, a, info, idgen, inst)
@@ -62,7 +66,10 @@ proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
     result = newNodeI(nkIdentDefs, n.info)
     result.add n  # name
     result.add mapTypeToAstX(cache, n.sym.typ, n.info, idgen, true, false)  # type
-    result.add newNodeI(nkEmpty, n.info)  # no assigned value
+    if n.sym.ast != nil:
+      result.add copyTree(n.sym.ast)
+    else:
+      result.add newNodeI(nkEmpty, n.info)  # no assigned value
   else:
     result = copyNode(n)
     for i in 0..<n.safeLen:
@@ -73,7 +80,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false; skipAlias = false): PNode =
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info, idgen)
-  template atomicType(s): untyped = atomicTypeX(s, info)
+  template atomicType(s): untyped = atomicTypeX(s, t, info)
   template mapTypeToAst(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst)
   template mapTypeToAstR(t, info): untyped = mapTypeToAstX(cache, t, info, idgen, inst, true)
   template mapTypeToAst(t, i, info): untyped =
@@ -87,7 +94,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     var id = newNodeX(nkIdentDefs)
     id.add n  # name
     id.add mapTypeToAst(t, info)  # type
-    id.add newNodeI(nkEmpty, info)  # no assigned value
+    if n.sym.ast != nil:
+      id.add copyTree(n.sym.ast)
+    else:
+      id.add newNodeI(nkEmpty, n.info)  # no assigned value
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
@@ -137,7 +147,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if allowRecursion:
         result = mapTypeToAstR(t.skipModifier, info)
         # keep original type info for getType calls on the output node:
-        result.typ() = t
+        result.typ = t
       else:
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.last, info)
@@ -147,7 +157,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     else:
       result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion)
       # keep original type info for getType calls on the output node:
-      result.typ() = t
+      result.typ = t
   of tyGenericBody:
     if inst:
       result = mapTypeToAstR(t.typeBodyImpl, info)

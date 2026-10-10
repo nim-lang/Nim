@@ -53,6 +53,12 @@ template main() =
 
     doAssert(heap.find(2) == -1)
 
+  block: # test del when the replacement is smaller than its parent
+    var heap = [0, 10, 1, 11, 12, 2, 3, 13, 14, 15, 16, 4, 5, 6, 7].toHeapQueue
+    heap.del(heap.find(11))
+    doAssert heapProperty(heap)
+    doAssert heap.toSortedSeq == @[0, 1, 2, 3, 4, 5, 6, 7, 10, 12, 13, 14, 15, 16]
+
   block: # test del last
     var heap = initHeapQueue[int]()
     let data = [1, 2, 3]
@@ -104,3 +110,15 @@ template main() =
 
 static: main()
 main()
+
+# https://github.com/nim-lang/Nim/issues/18583
+type EmptyStr18583HeapQ = object
+proc `$`(x: EmptyStr18583HeapQ): string = ""
+proc `<`(a, b: EmptyStr18583HeapQ): bool = false
+
+block:
+  var h = initHeapQueue[EmptyStr18583HeapQ]()
+  push(h, EmptyStr18583HeapQ())
+  push(h, EmptyStr18583HeapQ())
+  let s = $h
+  doAssert s == "[, ]", "got: " & s

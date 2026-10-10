@@ -39,11 +39,30 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
       if isExtern: Extern
       elif lfExportLib in s.loc.flags: ExportLibVar
       else: Private
-    m.s[cfsVars].addVar(m, s,
-      name = s.loc.snippet,
-      typ = getTypeDesc(m, s.loc.t),
-      kind = Threadvar,
-      visibility = vis)
+    if m.config.cmd == cmdNifC and vis == Private and not isExtern:
+      # A `{.threadvar.}`/`{.global.}` thread-local declared inside a routine is
+      # emitted by every module that emit-everywhere's its enclosing routine
+      # (e.g. libp2p's `var keys {.global.}: HashSet`), so its content-addressed
+      # name collides at link. Same fix as a plain global (genGlobalVarDecl):
+      # `extern` declaration + a droppable `'d'` definition unit the merge stage
+      # assigns one owner. The thread-local storage class rides on both.
+      let cname = stripCnifMarks(s.loc.snippet)
+      let td = getTypeDesc(m, s.loc.t)
+      # `extern` declaration via the full `addVar` overload — it knows the
+      # thread-local storage class (`NIM_THREADVAR`); the simple `addVar`'s
+      # `addVarHeader` does not implement `Threadvar`.
+      m.s[cfsVars].addVar(m, s, name = s.loc.snippet, typ = td,
+                          kind = Threadvar, visibility = Extern)
+      m.s[cfsVars].add(cnifDefDirective(cname, "d", icNifName(m, s)))
+      m.s[cfsVars].addVar(m, s,
+        name = s.loc.snippet, typ = td, kind = Threadvar, visibility = vis)
+      m.s[cfsVars].add(cnifEndDefs())
+    else:
+      m.s[cfsVars].addVar(m, s,
+        name = s.loc.snippet,
+        typ = getTypeDesc(m, s.loc.t),
+        kind = Threadvar,
+        visibility = vis)
 
 proc generateThreadLocalStorage(m: BModule) =
   if m.g.nimtv.buf.len != 0 and (usesThreadVars in m.flags or sfMainModule in m.module.flags):

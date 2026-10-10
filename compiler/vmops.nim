@@ -36,7 +36,9 @@ from std/osproc import nil
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
-else:
+when not defined(nimPreviewSlimSystem):
+  # explicit negated `when` rather than `else:` so nifler's dep scanner guards
+  # this import with its condition (it emits `else:` imports unconditionally).
   from std/formatfloat import addFloatRoundtrip, addFloatSprintf
 
 
@@ -45,9 +47,6 @@ import vmconv, vmmarshal
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
-
-template osop(op) {.dirty.} =
-  registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
 
 template oscommonop(op) {.dirty.} =
   registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)
@@ -137,11 +136,10 @@ template wrapDangerous2svoid(op, modop) {.dirty.} =
     modop op
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
-  setResult(a, if a.currentException.isNil: ""
-               else: a.currentException[3].skipColon.strVal)
+  setResult(a, currentExceptionMsg(a.ctx, a.currentException))
 
 proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
-  setResult(a, a.currentException)
+  setResultRef(a, a.currentException)
 
 proc raiseDefectWrapper(a: VmArgs) {.nimcall.} =
   discard
@@ -394,14 +392,20 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
 
   registerCallback c, "stdlib.formatfloat.addFloatRoundtrip", proc(a: VmArgs) =
-    let p = a.getVar(0)
+    var s = a.getVarString(0)
     let x = a.getFloat(1)
-    addFloatRoundtrip(p.strVal, x)
+    # the VM holds float32 values exactly; they must be printed as such:
+    if a.shape.paramTypes[1].skipTypes(abstractRange).kind == tyFloat32:
+      addFloatRoundtrip(s, x.float32)
+    else:
+      addFloatRoundtrip(s, x)
+    a.setVarString(0, s)
 
   registerCallback c, "stdlib.formatfloat.addFloatSprintf", proc(a: VmArgs) =
-    let p = a.getVar(0)
+    var s = a.getVarString(0)
     let x = a.getFloat(1)
-    addFloatSprintf(p.strVal, x)
+    addFloatSprintf(s, x)
+    a.setVarString(0, s)
 
   registerCallback c, "stdlib.strutils.formatBiggestFloat", proc(a: VmArgs) =
     setResult(a, formatBiggestFloat(a.getFloat(0), FloatFormatMode(a.getInt(1)),
@@ -421,7 +425,6 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.marshal.loadVM", proc(a: VmArgs) =
     let typ = a.getNode(0).typ
-    let p = a.getReg(1)
     var res: string = ""
-    storeAny(res, typ, regToNode(p[]), c.config)
+    storeAny(res, typ, a.getNode(1), c.config)
     setResult(a, res)

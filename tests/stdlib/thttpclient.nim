@@ -3,6 +3,7 @@ discard """
   disabled: "openbsd"
   disabled: "freebsd"
   disabled: "windows"
+  disabled: "osx"
 """
 
 #[

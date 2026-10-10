@@ -326,7 +326,7 @@ proc clear*(s: StringTableRef, mode: StringTableMode) {.
   s.counter = 0
   s.data.setLen(startSize)
   for i in 0..<s.data.len:
-    s.data[i].hasValue = false
+    s.data[i] = default(KeyValuePair)
 
 proc clear*(s: StringTableRef) {.since: (1, 1).} =
   ## Resets a string table to be empty again without changing the mode.
@@ -380,8 +380,10 @@ proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
     result = "{:}"
   else:
     result = "{"
+    var first = true
     for key, val in pairs(t):
-      if result.len > 1: result.add(", ")
+      if first: first = false
+      else: result.add(", ")
       result.add(key)
       result.add(": ")
       result.add(val)

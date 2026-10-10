@@ -50,6 +50,11 @@ let results = runCallbacks()
 
 doAssert(expected == $results)
 
+block issue26176:
+  let g = proc(x: int): int {.closure.} =
+    result = x + 1
+  doAssert g(1) == 2
+
 block issue7048:
   block:
     proc foo(x: seq[int]): auto =

@@ -37,8 +37,7 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-when defined(nimPreviewSlimSystem):
-  import std/syncio
+from system/ansi_c import CFilePtr
 
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?
@@ -341,9 +340,9 @@ proc pthread_atfork*(a1, a2, a3: proc () {.noconv.}): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_attr_destroy*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
+proc pthread_attr_getdetachstate*(a1: ptr Pthread_attr, a2: var cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getguardsize*(a1: ptr Pthread_attr, a2: var cint): cint {.
+proc pthread_attr_getguardsize*(a1: ptr Pthread_attr, a2: var csize_t): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_attr_getinheritsched*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
@@ -354,11 +353,11 @@ proc pthread_attr_getschedpolicy*(a1: ptr Pthread_attr,
 proc pthread_attr_getscope*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_getstack*(a1: ptr Pthread_attr,
-         a2: var pointer, a3: var int): cint {.importc, header: "<pthread.h>".}
+         a2: var pointer, a3: var csize_t): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_getstackaddr*(a1: ptr Pthread_attr,
           a2: var pointer): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_getstacksize*(a1: ptr Pthread_attr,
-          a2: var int): cint {.importc, header: "<pthread.h>".}
+          a2: var csize_t): cint {.importc, header: "<pthread.h>".}
 proc pthread_attr_init*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_attr_setdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
@@ -581,9 +580,9 @@ proc nice*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc pathconf*(a1: cstring, a2: cint): int {.importc, header: "<unistd.h>".}
 
 proc pause*(): cint {.importc, header: "<unistd.h>".}
-proc pclose*(a: File): cint {.importc, header: "<stdio.h>".}
+proc pclose*(a: CFilePtr): cint {.importc, header: "<stdio.h>".}
 proc pipe*(a: array[0..1, cint]): cint {.importc, header: "<unistd.h>".}
-proc popen*(a1, a2: cstring): File {.importc, header: "<stdio.h>".}
+proc popen*(a1, a2: cstring): CFilePtr {.importc, header: "<stdio.h>".}
 proc pread*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
   importc, header: "<unistd.h>".}
 proc pwrite*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
@@ -591,7 +590,7 @@ proc pwrite*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
 proc read*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
 when not defined(nintendoswitch):
   proc readlink*(a1, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
-proc ioctl*(f: FileHandle, device: uint): int {.importc: "ioctl",
+proc ioctl*(f: cint, device: uint): int {.importc: "ioctl",
       header: "<sys/ioctl.h>", varargs, tags: [WriteIOEffect].}
   ## A system call for device-specific input/output operations and other
   ## operations which cannot be expressed by regular system calls
@@ -828,7 +827,7 @@ else:
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
                      a3: var Timespec): cint {.importc, header: "<signal.h>".}
 
-when defined(sunos) or defined(solaris):
+when defined(sunos):
   # The following compile time flag is needed on Illumos/Solaris to use the POSIX
   # `sigwait` implementation. See the documentation here:
   # https://docs.oracle.com/cd/E19455-01/806-5257/6je9h033k/index.html

@@ -52,7 +52,7 @@ proc updateSubmodules*(dir: string, allowBundled = false) =
     let oldDir = getCurrentDir()
     setCurrentDir(dir)
     try:
-      exec "git submodule update --init"
+      exec "git submodule update --init --recursive"
     finally:
       setCurrentDir(oldDir)
   elif allowBundled:

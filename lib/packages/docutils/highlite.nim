@@ -326,7 +326,8 @@ proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
       pos = nimNumber(g, pos)
     of '\'':
       inc(pos)
-      if g.kind != gtPunctuation:
+      let followsBacktick = pos >= 2 and g.buf[pos - 2] == '`'
+      if not followsBacktick:
         g.kind = gtCharLit
         while true:
           case g.buf[pos]
@@ -338,6 +339,8 @@ proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
           of '\\':
             inc(pos, 2)
           else: inc(pos)
+      else:
+        g.kind = gtPunctuation
     of '\"':
       inc(pos)
       if (g.buf[pos] == '\"') and (g.buf[pos + 1] == '\"'):

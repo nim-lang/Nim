@@ -10,6 +10,7 @@
 ## Computes hash values for routine (proc, method etc) signatures.
 
 import ast, ropes, modulegraphs, options, msgs, pathutils
+from lineinfos import FileIndex
 from std/hashes import Hash
 import std/tables
 import types
@@ -20,19 +21,36 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 
-proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
+when defined(icDbgHashDump):
+  # `NIM_IC_DBGHASH=<substring>`: every byte fed into the hash of a type whose
+  # symbol name contains the substring is echoed to stderr, so two processes
+  # that disagree on a type's hash can be diffed on their INPUTS.
+  import std / [envvars, strutils, syncio]
+  var dumpOn = false
+  var dumpBuf = ""
+  proc upd(c: var MD5Context; p: cstring; n: int) =
+    md5Update(c, p, n)
+    if dumpOn:
+      for i in 0 ..< n:
+        let ch = p[i]
+        if ch in {' '..'~'}: dumpBuf.add ch
+        else: dumpBuf.add "\\x" & toHex(ord(ch), 2)
+else:
+  template upd(c: var MD5Context; p: cstring; n: int) = md5Update(c, p, n)
+
+proc `&=`(c: var MD5Context, s: string) = upd(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) =
   # XXX suspicious code here; relies on ch being zero terminated?
-  md5Update(c, cast[cstring](unsafeAddr ch), 1)
+  upd(c, cast[cstring](unsafeAddr ch), 1)
 
 proc `&=`(c: var MD5Context, i: BiggestInt) =
-  md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
+  upd(c, cast[cstring](unsafeAddr i), sizeof(i))
 proc `&=`(c: var MD5Context, f: BiggestFloat) =
-  md5Update(c, cast[cstring](unsafeAddr f), sizeof(f))
+  upd(c, cast[cstring](unsafeAddr f), sizeof(f))
 proc `&=`(c: var MD5Context, s: SigHash) =
-  md5Update(c, cast[cstring](unsafeAddr s), sizeof(s))
+  upd(c, cast[cstring](unsafeAddr s), sizeof(s))
 template lowlevel(v) =
-  md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
+  upd(c, cast[cstring](unsafeAddr(v)), sizeof(v))
 
 
 type
@@ -41,6 +59,7 @@ type
     CoType
     CoOwnerSig
     CoIgnoreRange
+    CoIgnoreRangeInArray
     CoConsiderOwned
     CoDistinct
     CoHashTypeInsideNode
@@ -51,7 +70,17 @@ proc hashSym(c: var MD5Context, s: PSym) =
     c &= ":anon"
   else:
     var it = s
+    when defined(icDbgHash):
+      var ownerSteps = 0
     while it != nil:
+      when defined(icDbgHash):
+        inc ownerSteps
+        if ownerSteps >= 1000 and ownerSteps <= 1030:
+          echo "OWNERLOOP(hashSym) n=", ownerSteps, " sym=", it.name.s, " kind=", it.kind,
+            " id=", it.itemId, " flags=", it.flags, " state=", it.state,
+            " start=", s.name.s, " startId=", s.itemId
+        elif ownerSteps == 1031:
+          raiseAssert "owner-chain cycle detected, see OWNERLOOP dump above"
       c &= it.name.s
       c &= "."
       it = it.owner
@@ -63,8 +92,30 @@ proc hashTypeSym(c: var MD5Context, s: PSym; conf: ConfigRef) =
     c &= ":anon"
   else:
     var it = s
-    c &= customPath(conf.toFullPath(s.info))
+    # The source file path disambiguates same-named object types from different
+    # modules whose owner-chain names also coincide (e.g. libp2p kademlia/protobuf
+    # `Message` vs rendezvous/protobuf `Message`, both modules named `protobuf`).
+    # A type sym that reaches the backend as a `Complete` stub never individually
+    # loaded carries `unknownLineInfo` (fileIndex -1), which `toFullPath` collapses
+    # to the `???` placeholder — so the two would hash to ONE mangled C name and the
+    # wrong struct gets emitted. Fall back to the sym's HOME module file (its
+    # per-module NIF-suffix path, stable+unique) for the path. Only fires on a -1
+    # fileIndex; non-IC type syms always have a real `info`, so the fast path is
+    # taken and the hash is unchanged (koch boot byte-equal).
+    let infoFi = s.info.fileIndex
+    let pathFi = if infoFi.int32 >= 0'i32: infoFi else: s.itemId.module.int32.FileIndex
+    c &= customPath(conf.toFullPath(pathFi))
+    when defined(icDbgHash):
+      var ownerSteps = 0
     while it != nil:
+      when defined(icDbgHash):
+        inc ownerSteps
+        if ownerSteps >= 1000 and ownerSteps <= 1030:
+          echo "OWNERLOOP n=", ownerSteps, " sym=", it.name.s, " kind=", it.kind,
+            " id=", it.itemId, " flags=", it.flags, " state=", it.state,
+            " start=", s.name.s, " startId=", s.itemId
+        elif ownerSteps == 1031:
+          raiseAssert "owner-chain cycle detected, see OWNERLOOP dump above"
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
         hashType c, it.typ, {CoProc}, conf
@@ -101,9 +152,53 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]; conf: Confi
   else:
     for i in 0..<n.len: hashTree(c, n[i], flags, conf)
 
+when defined(icDbgHash):
+  var hashDepth = 0
+  var hashCalls = 0
+  var hashMaxDepth = 0
+
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef) =
   if t == nil:
     c &= "\254"
+    return
+  if t.state == Partial:
+    # The `tyObject` branch below reads `typeInstImpl` RAW: it clears the slot
+    # to break the #8883 recursion, so it cannot go through the accessor that
+    # would load the type. On a generic instance that is still a stub the slot
+    # is nil, the instantiation is silently left out of the hash, and the
+    # C name of every type built on it (a closure env capturing a `Table`,
+    # say) comes out different from the one a process that happened to load
+    # the instance first computes. That went unnoticed for as long as the
+    # backend loaded every generic instance eagerly through the `(toffer)`
+    # records; it no longer does.
+    loadTypeCallback(t)
+  when defined(icDbgHash):
+    inc hashDepth
+    inc hashCalls
+    if hashDepth > hashMaxDepth: hashMaxDepth = hashDepth
+    if hashCalls >= 500_000_000 and hashCalls <= 500_000_300:
+      echo "HASHLOOP n=", hashCalls, " d=", hashDepth, " kind=", t.kind, " id=", t.itemId,
+        " bindingId=", t.bindingId, " sym=", (if t.sym != nil: t.sym.name.s else: "NIL"),
+        " state=", t.state, " owner=", (if t.owner != nil: t.owner.name.s else: "NIL")
+    elif hashCalls == 500_000_301:
+      echo "HASHLOOP maxDepth=", hashMaxDepth
+      raiseAssert "hashType runaway detected, see HASHLOOP dump above"
+    defer:
+      dec hashDepth
+
+  # Ensure type is fully loaded before hashing to avoid hash changing
+  # as properties are accessed and trigger lazy loading.
+  backendEnsureMutable(t)
+
+  # Bare type-class keywords used as a typedesc without arguments (e.g. `array`,
+  # `range`, `distinct` passed to `signatureHash`) have no children, so the
+  # structural branches below would index a non-existent `elementType`. Hash them
+  # by kind (+ sym for an extra, stable distinction) — enough for a stable,
+  # distinct identity. (`seq`/`openArray`/`tuple` already fall through the empty
+  # `else` loop unharmed; this covers the branches that index `elementType`.)
+  if t.kind in {tyArray, tyRange, tyDistinct} and not t.hasElementType:
+    c &= char(t.kind)
+    if t.sym != nil: c.hashSym(t.sym)
     return
 
   case t.kind
@@ -115,6 +210,14 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       if t.sym != nil: c.hashSym(t.sym)
       if t.sym == nil or tfFromGeneric in t.flags:
         c.hashType t.elementType, flags, conf
+    elif CoType in flags and t.sym != nil and
+        {sfImportc, sfExportc} * t.sym.flags != {}:
+      # An external distinct type keeps its own backend spelling.
+      c &= char(t.kind)
+      if t.sym.loc.snippet != "":
+        c &= t.sym.loc.snippet
+      else:
+        c.hashSym(t.sym)
     elif CoType in flags or t.sym == nil:
       c.hashType t.elementType, flags, conf
     else:
@@ -136,22 +239,27 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if CoConsiderOwned in flags:
       c &= char(t.kind)
     c.hashType t.skipModifier, flags, conf
-  of tyBool, tyChar, tyInt..tyUInt64:
-    # no canonicalization for integral types, so that e.g. ``pid_t`` is
-    # produced instead of ``NI``:
+  of tyBool, tyChar, tyPointer, tyCstring, tyInt..tyUInt64:
+    # no canonicalization for builtin scalar-ish / pointer-like types, so
+    # that e.g. ``pid_t`` or an imported ``pointer`` alias keep their
+    # backend spelling instead of collapsing into the generic Nim builtin:
     c &= char(t.kind)
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
-      c.hashSym(t.sym)
+      # Aliases inherit the external name, but have a different symbol.
+      if t.sym.loc.snippet != "":
+        c &= t.sym.loc.snippet
+      else:
+        c.hashSym(t.sym)
   of tyObject, tyEnum:
-    if t.typeInst != nil:
+    if t.typeInstImpl != nil:
       # prevent against infinite recursions here, see bug #8883:
-      let inst = t.typeInst
-      t.typeInst = nil
+      let inst = t.typeInstImpl
+      t.typeInstImpl = nil # IC: spurious writes are ok since we set it back immediately
       assert inst.kind == tyGenericInst
       c.hashType inst.genericHead, flags, conf
       for _, a in inst.genericInstParams:
-        c.hashType a, flags, conf
-      t.typeInst = inst
+        c.hashType a, flags+{CoDistinct}, conf
+      t.typeInstImpl = inst
       return
     c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
@@ -180,9 +288,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
           # Hack to prevent endless recursion
           # xxx instead, use a hash table to indicate we've already visited a type, which
           # would also be more efficient.
-          symWithFlags.flags.excl {sfAnon, sfGenSym}
+          symWithFlags.flagsImpl.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode}, conf)
-          symWithFlags.flags = oldFlags
+          symWithFlags.flagsImpl = oldFlags
         else:
           # The object has no fields: we _must_ add something here in order to
           # make the hash different from the one we produce by hashing only the
@@ -206,6 +314,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     c.hashTree(t.n, {}, conf)
   of tyTuple:
     c &= char(t.kind)
+    c &= t.len
     if t.n != nil and CoType notin flags:
       for i in 0..<t.n.len:
         assert(t.n[i].kind == nkSym)
@@ -216,10 +325,17 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     else:
       for a in t.kids: c.hashType a, flags+{CoIgnoreRange}, conf
   of tyRange:
-    if CoIgnoreRange notin flags:
+    if {CoIgnoreRange, CoIgnoreRangeInArray} * flags == {}:
       c &= char(t.kind)
       c.hashTree(t.n, {}, conf)
-    c.hashType(t.elementType, flags, conf)
+      c.hashType(t.elementType, flags, conf)
+    elif CoIgnoreRangeInArray in flags:
+      # include only the length of the range (not its specific bounds)
+      c &= char(t.kind)
+      let l = lengthOrd(conf, t)
+      lowlevel l
+    else:
+      c.hashType(t.elementType, flags, conf)
   of tyStatic:
     c &= char(t.kind)
     c.hashTree(t.n, {}, conf)
@@ -236,6 +352,29 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
         c.hashType(param.typ, flags, conf)
         c &= ','
       c.hashType(t.returnType, flags, conf)
+    elif t.n != nil and t.n.kind == nkFormalParams:
+      # Under IC a loaded proc type stores its parameters only in `n`; `sons`
+      # holds just the return type. Hashing `t.signature` would silently drop
+      # every parameter, collapsing distinct proc types onto one hash, so the
+      # same logical type got different C struct names in different TUs
+      # ("incompatible type for argument" on closure args). Hash the return
+      # type first and then the parameter types from `n` — for from-source
+      # types `n`'s param types equal `sons[1..]`, so non-IC hashes are
+      # unchanged. (Same fix as typekeys' tyProc branch.)
+      c.hashType(t.returnType, flags, conf)
+      for i in 1..<t.n.len:
+        let p = t.n[i]
+        if p.kind == nkSym:
+          backendEnsureMutable(p.sym)
+          # The hidden closure env param: under IC, lambda lifting shares the
+          # routine's AST params with `typ.n`, so the lifted `:envP` leaks into
+          # the TYPE's params (from-source types never carry it). It is not part
+          # of the type's identity — `genProcParams` skips it the same way.
+          if t.callConv == ccClosure and p.sym.name.s == ":envP":
+            continue
+          c.hashType(p.sym.typ, flags, conf)
+        else:
+          c.hashType(p.typ, flags, conf)
     else:
       for a in t.signature: c.hashType(a, flags, conf)
     c &= char(t.callConv)
@@ -249,8 +388,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
-    c.hashType(t.indexType, flags-{CoIgnoreRange}, conf)
+    c.hashType(t.indexType, flags-{CoIgnoreRange}+{CoIgnoreRangeInArray}, conf)
     c.hashType(t.elementType, flags-{CoIgnoreRange}, conf)
+  of tyBuiltInTypeClass:
+    # A builtin type class (`object`, `tuple`, `proc`, `ref`, `seq`, ...) is
+    # identified solely by the *kind* of its single placeholder son plus a few
+    # flags/callConv (see `sameType`). That son is a fresh, field-less, sym-less
+    # type, so the generic `else` below would recurse into it and hash its
+    # process-local `t.id` — unstable across the NIF boundary. nim-serialization
+    # keys auto-serialization on `signatureHash(object)`/`tuple`/... and missed
+    # under IC because the registering and consuming modules minted different
+    # placeholder ids. Hash the class identity that `sameType` actually compares.
+    c &= char(t.kind)
+    let elem = t.elementType
+    c &= char(elem.kind)
+    for f in eqTypeFlags * elem.flags: c &= char(ord(f))
+    if elem.kind == tyProc and tfExplicitCallConv in elem.flags:
+      c &= char(elem.callConv)
   else:
     c &= char(t.kind)
     for a in t.kids: c.hashType(a, flags, conf)
@@ -274,8 +428,20 @@ proc hashType*(t: PType; conf: ConfigRef; flags: set[ConsiderFlag] = {CoType}): 
   result = default(SigHash)
   var c: MD5Context = default(MD5Context)
   md5Init c
+  when defined(icDbgHashDump):
+    var iOwnDump = false
+    let dumpName = (if t.sym != nil: t.sym.name.s
+                    elif t.owner != nil: t.owner.name.s else: "")
+    if not dumpOn and dumpName.len > 0:
+      let want = getEnv("NIM_IC_DBGHASH")
+      if want.len > 0 and dumpName.contains(want):
+        dumpOn = true; iOwnDump = true; dumpBuf.setLen 0
   hashType c, t, flags+{CoOwnerSig}, conf
   md5Final c, result.MD5Digest
+  when defined(icDbgHashDump):
+    if iOwnDump:
+      stderr.writeLine "HASHDUMP " & dumpName & " flags=" & $flags & " -> " & $result & " : " & dumpBuf
+      dumpOn = false
   when defined(debugSigHashes):
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
             typeToString(t), $result)
@@ -434,4 +600,3 @@ proc idOrSig*(s: PSym, currentModule: string,
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)
-

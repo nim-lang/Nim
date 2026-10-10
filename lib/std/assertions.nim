@@ -19,11 +19,15 @@ import std/private/miscdollars
 
 type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
+{.push overflowChecks: off, rangeChecks: off.}
+
 proc `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.
   result = ""
   result.toLocation(info.filename, info.line, info.column + 1)
+
+{.pop.}
 
 # ---------------------------------------------------------------------------
 

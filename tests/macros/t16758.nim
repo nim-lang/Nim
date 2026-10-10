@@ -1,7 +1,3 @@
-discard """
-errormsg: "'blk.p(a)' has nil child at index 1"
-action: reject
-"""
 import macros
 
 type BlockLiteral[T] = object

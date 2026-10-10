@@ -109,9 +109,11 @@ proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
     of FromSearchPath: "@p"
     of FromNimblePath: "@n"
 
+  # Note: We encode ".." specially as "@d" to avoid issues with changeFileExt
+  # which would misinterpret ".." as "name.ext" and strip the second part.
   prefix & best.multiReplace(
-    {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
+    {"..": "@d", $os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
 
 proc demangleModuleName*(path: string): string =
   ## Demangle a relative module path.
-  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@p": "", "@n": "", "@c": ":"})
+  result = path.multiReplace({"@@": "@", "@d": "..", "@h": "#", "@s": "/", "@m": "", "@p": "", "@n": "", "@c": ":"})

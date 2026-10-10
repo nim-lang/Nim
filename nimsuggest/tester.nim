@@ -5,8 +5,8 @@
 # When debugging, to run a single test, use for e.g.:
 # `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
-import os, osproc, strutils, streams, re, sexp, net
-from sequtils import toSeq
+import os, osproc, strutils, streams, sexp, net
+from sequtils import toSeq, filterIt
 
 type
   Test = object
@@ -21,6 +21,14 @@ const
   # we could also use `stdtest/specialpaths`
 
 import std/compilesettings
+
+# nimsuggest's incremental (NIF/IC) mode is opt-in via `--ideImports:nif`. By default
+# nimsuggest recompiles the import closure from source (cmdCheck), which is fast and
+# stable, so the whole suite runs that path. Only the tests listed below exercise the
+# IC path; running every test under IC dominated the suite's wall-clock (each test
+# recompiles `system` cold into NIF, plus a few warm-cache-only ordering/highlight
+# quirks) and blew CI's job timeout.
+const icTests = ["tic.nim", "tv3_import.nim"]
 
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
@@ -74,6 +82,14 @@ proc parseTest(filename: string; epcMode=false): Test =
         # else: ignore empty lines for better readability of the specs
     inc i
   tmp.close()
+  # The IC tests opt into the NIF path and get their own private cache. The stdio
+  # variant (epcMode=false) starts cold and writes the NIFs; the EPC variant reuses
+  # them warm, so a single test exercises both the NIF write and the NIF read path.
+  if extractFilename(filename) in icTests:
+    let nimcache = getTempDir() / ("nimsuggest_ic_" &
+      extractFilename(result.dest).changeFileExt(""))
+    if not epcMode: removeDir(nimcache)
+    result.cmd.add " --ideImports:nif --nimcache:" & nimcache
   # now that we know the markers, substitute them:
   for a in mitems(result.script):
     a[0] = a[0] % markers
@@ -148,8 +164,28 @@ proc runCmd(cmd, dest: string): bool =
     quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
-  if pattern.contains('*'):
-    result = match(x, re(escapeRe(pattern).replace("\\x2A","(.*)"), {}))
+  let pp = splitLines(pattern.strip())
+  let xx = splitLines(x.strip())
+  if pp.len > xx.len:
+    return false
+  for l in 0..pp.len-1:
+    let p = pp[l].split('\t')
+    let x = xx[l].split('\t')
+    if p.len > x.len:
+      return false
+    for i in 0..p.len-1:
+      let starAt = p[i].find('*')
+      if starAt >= 0:
+        if p[i] == "*":
+          discard "field exists, that is good enough"
+        elif x[i].startsWith(p[i].substr(0, starAt-1)) and x[i].endsWith(p[i].substr(starAt+1)):
+          discard
+        else:
+          return false
+      else:
+        if x[i] != p[i]:
+          return false
+  return true
 
 proc sendEpcStr(socket: Socket; cmd: string) =
   let s = cmd.find(' ')
@@ -307,6 +343,29 @@ proc runEpcTest(filename: string): int =
     echo report
   result = report.len
 
+proc runMemCapTest(): int =
+  # --maxMemory must stop a runaway nimsuggest before it eats the machine:
+  # with a cap far below the compiler's own startup footprint the process
+  # must quit with a diagnostic instead of serving requests.
+  let nimsug = "bin" / addFileExt("nimsuggest_testing", ExeExt)
+  doAssert nimsug.fileExists, nimsug
+  let victim = getTempDir() / "tmaxmemory_victim.nim"
+  writeFile(victim, "proc hello() = discard\L")
+  var p = startProcess(command=nimsug, args = @[victim, "--maxMemory:20"],
+                       options={poStdErrToStdOut, poUsePath, poDaemon})
+  var code = waitForExit(p, timeout = 30000)
+  if code == -1:
+    # still running: the cap failed to fire, don't leak the process
+    p.kill()
+    code = waitForExit(p)
+  let output = p.outputStream.readAll()
+  close(p)
+  if code == 0 or output.find("exceeded the") < 0:
+    echo "mem cap test failed: exit ", code, " output: ", output
+    result = 1
+  else:
+    echo "mem cap test: OK"
+
 proc runTest(filename: string): int =
   let s = parseTest filename
   if s.skipDisabledTest: return 0
@@ -356,7 +415,10 @@ proc main() =
     # run only stdio when running single test
     failures += runTest(xx)
   else:
-    let files = toSeq(walkFiles(tpath / "t*.nim"))
+    # a .nims is a test of its own (a NimScript project) unless it's the config of the
+    # .nim test beside it
+    let files = toSeq(walkFiles(tpath / "t*.nim")) &
+      toSeq(walkFiles(tpath / "t*.nims")).filterIt(not fileExists(it.changeFileExt("nim")))
     for i, x in files:
       echo "$#/$# test: $#" % [$i, $files.len, x]
       when defined(i386):
@@ -368,6 +430,9 @@ proc main() =
         # XXX Windows IO redirection seems bonkers:
         failures += runTest(xx)
       failures += runEpcTest(xx)
+    when defined(linux) or defined(macosx) or defined(windows):
+      # only where the watchdog can read the resident size
+      failures += runMemCapTest()
   if failures > 0:
     quit 1
 

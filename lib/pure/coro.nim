@@ -36,7 +36,7 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 const defaultStackSize = 512 * 1024
-const useOrcArc = defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc)
+const useOrcArc = defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc)
 
 when useOrcArc:
   proc nimGC_setStackBottom*(theStackBottom: pointer) = discard
@@ -326,7 +326,7 @@ proc run*() =
         GC_removeStack(current.stack.bottom)
       when coroBackend == CORO_BACKEND_FIBERS:
         DeleteFiber(current.execContext)
-      else:
+      elif not defined(musl):
         dealloc(current.stack.top)
       dealloc(current)
       ctx.current = next

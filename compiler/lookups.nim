@@ -203,9 +203,39 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
           ambiguous = true
           break outer
 
+proc standsAlone(s: PSym): bool {.inline.} =
+  ## Can `s` be an expression all by itself? A routine that takes parameters
+  ## cannot be, and that is what tells the two readings of `x.f(a)` apart when
+  ## a scope holds both a module and a declaration named `x`.
+  result = s.kind notin routineKinds or s.typ == nil or s.typ.len <= 1
+
+proc pickFromScope(scope: PScope; s: PIdent; filter: TSymKinds): PSym =
+  ## the symbol of name `s` that `scope` declares, or nil. One scope can hold a
+  ## module name *and* a declaration of that name: `import mem` and a later
+  ## `template mem` both end up in the module's top level scope and, `skModule`
+  ## being an "overloadable" kind, neither is a redefinition of the other.
+  ##
+  ## A module name loses to such a declaration, but only to one that could be
+  ## an expression on its own. `template mem: CPUMemory` can be, so
+  ## `mem.read16(x)` is `read16(mem, x)`; `template re(data: string)` cannot,
+  ## so in `re.re(x)` the `re` on the left is the imported module and the call
+  ## is qualified. `symChoice` and `errorUseQualifier` let modules lose too.
+  var ti: TIdentIter = default(TIdentIter)
+  var candidate = initIdentIter(ti, scope.symbols, s)
+  result = nil
+  while candidate != nil:
+    if candidate.kind in filter:
+      if result == nil:
+        result = candidate
+        # anything but a module name is simply the first declaration and wins
+        if result.kind != skModule: return result
+      elif candidate.kind != skModule and standsAlone(candidate):
+        return candidate
+    candidate = nextIdentIter(ti, scope.symbols)
+
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
   for scope in allScopes(c.currentScope):
-    result = strTableGet(scope.symbols, s)
+    result = pickFromScope(scope, s, {low(TSymKind)..high(TSymKind)})
     if result != nil: return result
   result = someSymFromImportTable(c, s, ambiguous)
 
@@ -214,11 +244,10 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
   var count = 0
   for scope in allScopes(c.currentScope):
     echo "scope ", i
-    for h in 0..high(scope.symbols.data):
-      if scope.symbols.data[h] != nil:
-        if count >= max: return
-        echo count, ": ", scope.symbols.data[h].name.s
-        count.inc
+    for sym in scope.symbols:
+      if count >= max: return
+      echo count, ": ", sym.name.s
+      count.inc
     if i == limit: return
     inc i
 
@@ -246,16 +275,12 @@ proc searchScopesAll*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
 
 proc selectFromScopesElseAll*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
   result = @[]
-  block outer:
-    for scope in allScopes(c.currentScope):
-      var ti: TIdentIter = default(TIdentIter)
-      var candidate = initIdentIter(ti, scope.symbols, s)
-      while candidate != nil:
-        if candidate.kind in filter:
-          result.add candidate
-          # Break here, because further symbols encountered would be shadowed
-          break outer
-        candidate = nextIdentIter(ti, scope.symbols)
+  for scope in allScopes(c.currentScope):
+    let candidate = pickFromScope(scope, s, filter)
+    if candidate != nil:
+      result.add candidate
+      # Stop here, because further symbols encountered would be shadowed
+      break
 
   if result.len == 0:
     searchImportsAll(c, s, filter, result)
@@ -311,7 +336,7 @@ proc errorSym*(c: PContext, ident: PIdent, info: TLineInfo): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   result = newSym(skError, ident, c.idgen, getCurrOwner(c), info, {})
   result.typ = errorType(c)
-  incl(result.flags, sfDiscardable)
+  incl(result.flagsImpl, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
     c.moduleScope.addSym(result)
@@ -378,6 +403,9 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo, note = errGenerated) =
   ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
+    when defined(icDbgRefc):
+      echo "[icRedef] ", s
+      echo getStackTrace()
     localError(c.config, info, note,
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
@@ -412,8 +440,6 @@ proc addDecl*(c: PContext, sym: PSym) {.inline.} =
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
-from ic / ic import addHidden
-
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   ## adds symbol to the module for either private or public access.
   if sfExported in sym.flags:
@@ -422,8 +448,6 @@ proc addInterfaceDeclAux(c: PContext, sym: PSym) =
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
   elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevelInsideDeclaration(c, sym):
     strTableAdd(semtabAll(c.graph, c.module), sym)
-    if c.config.symbolFiles != disabledSf:
-      addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds a symbol on the scope and the interface if appropriate
@@ -462,6 +486,15 @@ proc openShadowScope*(c: PContext) =
   c.currentScope = PScope(parent: c.currentScope,
                           symbols: initStrTable(),
                           depthLevel: c.scopeDepth)
+
+proc rememberShadowDefs*(c: PContext) =
+  ## bug #25693: a template/macro operand's local definitions are sem-checked in
+  ## a shadow scope that is then discarded. Record those definitions so that a
+  ## later re-emission (e.g. a captured `typed` fragment expanded more than once)
+  ## can be detected as a redefinition rather than silently miscompiled.
+  for s in c.currentScope.symbols:
+    if s.kind in {skVar, skLet, skForVar} and {sfGenSym, sfWasGenSym} * s.flags == {}:
+      c.shadowDiscardedDefs.incl s.id
 
 proc closeShadowScope*(c: PContext) =
   ## closes the shadow scope, but doesn't merge any of the symbols

@@ -99,12 +99,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
         # only closure iterators may be assigned to anything.
         result = t
-      let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
+      let innerFlags = flags - {taObjField, taTupField, taIsOpenArray}
+      let f = if kind in {skProc, skFunc}: innerFlags+{taNoUntyped} else: innerFlags
       for _, a in t.paramTypes:
         if result != nil: break
-        result = typeAllowedAux(marker, a, skParam, c, f-{taIsOpenArray})
+        result = typeAllowedAux(marker, a, skParam, c, f)
       if result.isNil and t.returnType != nil:
-        result = typeAllowedAux(marker, t.returnType, skResult, c, flags)
+        result = typeAllowedAux(marker, t.returnType, skResult, c, innerFlags)
   of tyTypeDesc:
     if kind in {skVar, skLet, skConst} and taProcContextIsNotMacro in flags:
       result = t

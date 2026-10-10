@@ -1,5 +1,6 @@
 discard """
 ccodeCheck: "\\i @'NIM_ALIGN(128) NI mylocal1' .*"
+matrix: "--mm:refc -d:useGcAssert -d:useSysAssert; --mm:orc"
 targets: "c cpp"
 output: "align ok"
 """
@@ -67,3 +68,103 @@ block: # bug #22419
 
   f()()
 
+
+type Xxx = object
+  v {.align: 128.}: byte
+
+type Yyy = object
+  v: byte
+  v2: Xxx
+
+for i in 0..<3:
+  let x = new Yyy
+  # echo "addr v2.v:", cast[uint](addr x.v2.v)
+  doAssert cast[uint](addr x.v2.v) mod 128 == 0
+
+let m = new Yyy
+m.v2.v = 42
+doAssert m.v2.v == 42
+m.v = 7
+doAssert m.v == 7
+
+
+type
+  MyType16 = object
+    a {.align(16).}: int
+
+
+var x: array[10, ref MyType16]
+for q in 0..500:
+  for i in 0..<x.len:
+    new x[i]
+    x[i].a = q
+    doAssert(cast[int](x[i]) mod alignof(MyType16) == 0)
+
+type
+  MyType32  = object
+    a{.align(32).}: int
+
+var y: array[10, ref MyType32]
+for q in 0..500:
+  for i in 0..<y.len:
+    new y[i]
+    y[i].a = q
+    doAssert(cast[int](y[i]) mod alignof(MyType32) == 0)
+
+# Additional tests: allocate custom aligned objects using `new`
+type
+  MyType64 = object
+    a{.align(64).}: int
+
+var z: array[10, ref MyType64]
+for q in 0..500:
+  for i in 0..<z.len:
+    new z[i]
+    z[i].a = q
+    doAssert(cast[int](z[i]) mod alignof(MyType64) == 0)
+
+type
+  MyType128 = object
+    a{.align(128).}: int
+
+var w: array[10, ref MyType128]
+for q in 0..500:
+  for i in 0..<w.len:
+    new w[i]
+    w[i].a = q
+    doAssert(cast[int](w[i]) mod alignof(MyType128) == 0)
+
+# Nested aligned-object tests
+type
+  Inner128 = object
+    v {.align(128).}: byte
+
+  OuterWithInner = object
+    prefix: int
+    inner: Inner128
+
+var outerArr: array[8, ref OuterWithInner]
+for q in 0..200:
+  for i in 0..<outerArr.len:
+    new outerArr[i]
+    # write to inner to ensure it's allocated
+    outerArr[i].inner.v = cast[byte](q and 0xFF)
+    doAssert(cast[uint](addr outerArr[i].inner) mod uint(alignof(Inner128)) == 0)
+
+# Nested two-level alignment
+type
+  DeepInner = object
+    b {.align(128).}: int
+
+  Mid = object
+    di: DeepInner
+
+  Top = object
+    m: Mid
+
+var topArr: array[4, ref Top]
+for q in 0..100:
+  for i in 0..<topArr.len:
+    new topArr[i]
+    topArr[i].m.di.b = q
+    doAssert(cast[uint](addr topArr[i].m.di) mod uint(alignof(DeepInner)) == 0)

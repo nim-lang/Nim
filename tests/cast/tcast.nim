@@ -17,5 +17,9 @@ proc main() =
 
   doAssert cast[int8](int16.high) == -1
 
+  block: # bug #25222
+    let ovf = 2 + int high char
+    doAssert cast[char](ovf) == '\1'
+
 static: main()
 main()

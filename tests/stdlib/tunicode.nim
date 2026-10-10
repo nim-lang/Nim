@@ -194,6 +194,23 @@ block stripTests:
   doAssert(strip("×text×", leading = false, runes = ["×".asRune]) == "×text")
   doAssert(strip("×text×", trailing = false, runes = ["×".asRune]) == "text×")
 
+  doAssert(strip("\u2000") == "")
+  doAssert(strip("a\u2000") == "a")
+
+  # bug #19846
+  block:
+    # check against unicode whose utf8 byteLen > 2
+    doAssert(strip("‟„”“‛‚’‘‗•STR•‗‘’‚‛“”„‟", runes = "•‗‘’‚‛“”„‟".toRunes) == "STR")
+    let chi = "abc\u8377\u9020"
+    doAssert(strip(chi, leading = false, runes = ["\u9020".asRune]) == "abc\u8377")
+    doAssert(strip(chi) == chi)  # the last byte of s is \x0a, which is in unicodeSpace
+
+    let
+      grinning_face = "\u{1f600}"
+      thinking_face = "\u{1f914}"
+    doAssert(strip(grinning_face & thinking_face & thinking_face,
+                   runes = thinking_face.toRunes) == grinning_face)
+
 block repeatTests:
   doAssert repeat('c'.Rune, 5) == "ccccc"
   doAssert repeat("×".asRune, 5) == "×××××"

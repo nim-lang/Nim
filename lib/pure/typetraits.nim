@@ -96,6 +96,9 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ##
   ## Other languages name a type like these `blob`:idx:.
 
+proc canFormCycles*(t: typedesc): bool {.magic: "TypeTrait".}
+  ## Returns true if `t` can form cycles.
+
 proc hasDefaultValue*(t: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true if `t` has a valid default value.
   runnableExamples:

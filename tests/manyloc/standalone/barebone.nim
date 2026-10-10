@@ -1,7 +1,7 @@
 discard """
 ccodecheck: "\\i !@('systemInit')"
 ccodecheck: "\\i !@('systemDatInit')"
-output: "hello"
+output: "hi 4778"
 """
 # bug  #2041: Macros need to be available for os:standalone!
 import macros

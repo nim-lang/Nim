@@ -10,7 +10,7 @@
 # This include implements the high level optimization pass.
 # included from sem.nim
 
-proc hlo(c: PContext, n: PNode): PNode
+proc hlo(c: PContext, n: PNode, loopDetector: int): PNode
 
 proc evalPattern(c: PContext, n, orig: PNode): PNode =
   internalAssert c.config, n.kind == nkCall and n[0].kind == nkSym
@@ -61,10 +61,11 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
         # activate this pattern again:
         c.patterns[i] = pattern
 
-proc hlo(c: PContext, n: PNode): PNode =
-  inc(c.hloLoopDetector)
+proc hlo(c: PContext, n: PNode, loopDetector: int): PNode =
   # simply stop and do not perform any further transformations:
-  if c.hloLoopDetector > 300: return n
+  if loopDetector > 300:
+    message(c.config, n.info, warnUser, "term rewrite macro instantiation too nested")
+    return n
   case n.kind
   of nkMacroDef, nkTemplateDef, procDefs:
     # already processed (special cases in semstmts.nim)
@@ -80,7 +81,7 @@ proc hlo(c: PContext, n: PNode): PNode =
       # no optimization applied, try subtrees:
       for i in 0..<result.safeLen:
         let a = result[i]
-        let h = hlo(c, a)
+        let h = hlo(c, a, loopDetector)
         if h != a: result[i] = h
     else:
       # perform type checking, so that the replacement still fits:
@@ -90,17 +91,15 @@ proc hlo(c: PContext, n: PNode): PNode =
         result = fitNode(c, n.typ, result, n.info)
       # optimization has been applied so check again:
       result = commonOptimizations(c.graph, c.idgen, c.module, result)
-      result = hlo(c, result)
+      result = hlo(c, result, loopDetector + 1)
       result = commonOptimizations(c.graph, c.idgen, c.module, result)
 
 proc hloBody(c: PContext, n: PNode): PNode =
   # fast exit:
   if c.patterns.len == 0 or optTrMacros notin c.config.options: return n
-  c.hloLoopDetector = 0
-  result = hlo(c, n)
+  result = hlo(c, n, 0)
 
 proc hloStmt(c: PContext, n: PNode): PNode =
   # fast exit:
   if c.patterns.len == 0 or optTrMacros notin c.config.options: return n
-  c.hloLoopDetector = 0
-  result = hlo(c, n)
+  result = hlo(c, n, 0)

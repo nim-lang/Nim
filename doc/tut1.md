@@ -1144,7 +1144,7 @@ there is a difference between the `$` and `repr` outputs:
   echo myCharacter, ":", repr(myCharacter)
   # --> n:'n'
   echo myString, ":", repr(myString)
-  # --> nim:0x10fa8c050"nim"
+  # --> nim:"nim"
   echo myInteger, ":", repr(myInteger)
   # --> 42:42
   echo myFloat, ":", repr(myFloat)
@@ -1159,8 +1159,8 @@ In Nim new types can be defined within a `type` statement:
 
   ```nim  test = "nim c $1"
   type
-    biggestInt = int64      # biggest integer type that is available
-    biggestFloat = float64  # biggest float type that is available
+    BiggestInt = int64      # biggest integer type that is available
+    BiggestFloat = float64  # biggest float type that is available
   ```
 
 Enumeration and object types may only be defined within a
@@ -1278,9 +1278,10 @@ Arrays can be constructed using `[]`:
     echo x[i]
   ```
 
-The notation `x[i]` is used to access the i-th element of `x`.
-Array access is always bounds checked (at compile-time or at runtime). These
-checks can be disabled via pragmas or invoking the compiler with the
+The notation `x[i]` is used to access the i-th element of `x` in the example
+above. Valid indexes can be defined by any subrange. Array access is
+always bounds checked (at compile-time or at runtime). These checks can be
+disabled via pragmas or invoking the compiler with the
 ``--bound_checks:off`` command line switch.
 
 Arrays are value types, like any other Nim type. The assignment operator

@@ -3,7 +3,7 @@ discard """
   output: '''
 First top-level statement of ModuleB
 m22469.nim(3)            m22469
-fatal.nim(53)            sysFatal
+fatal.nim(62)            sysFatal
 Error: unhandled exception: over- or underflow [OverflowDefect]
 '''
 """

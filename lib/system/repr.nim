@@ -77,7 +77,7 @@ include system/repr_impl
 type
   PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
 
-proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
+proc addSetElem(result: var string, elem: int, typ: PNimType) {.gcsafe.} =
   case typ.kind
   of tyEnum: add result, reprEnum(elem, typ)
   of tyBool: add result, reprBool(bool(elem))
@@ -147,7 +147,7 @@ when not defined(useNimRtl):
     for i in 0..cl.indent-1: add result, ' '
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
-               cl: var ReprClosure) {.benign.}
+               cl: var ReprClosure) {.gcsafe.}
 
   proc reprArray(result: var string, p: pointer, typ: PNimType,
                  cl: var ReprClosure) =
@@ -188,7 +188,7 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
-                     cl: var ReprClosure) {.benign.} =
+                     cl: var ReprClosure) {.gcsafe.} =
     case n.kind
     of nkNone: sysAssert(false, "reprRecordAux")
     of nkSlot:

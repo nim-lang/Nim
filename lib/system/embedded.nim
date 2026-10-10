@@ -24,6 +24,7 @@ when not gotoBasedExceptions:
   proc popSafePoint {.compilerRtl, inl.} = discard
 proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} = discard
 proc popCurrentException {.compilerRtl, inl.} = discard
+proc closureIterSetExc(e: ref Exception) {.compilerRtl, inl.} = discard
 
 # some platforms have native support for stack traces:
 const

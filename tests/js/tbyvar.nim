@@ -49,6 +49,13 @@ proc bar(s: var seq[int], a: int) =
 s.bar(5)
 doAssert(s == @[123, 1])
 
+# Imported JavaScript patterns must receive the underlying array, not the
+# `{base, off, len}` view used for regular `var openArray` parameters.
+proc jsSort[T](x: var openArray[T], cmp: proc(a, b: T): int) {.importcpp: "#.sort(#)", nodecl.}
+var sorted = @[2, 1]
+sorted.jsSort(proc(a, b: int): int = a - b)
+doAssert(sorted == @[1, 2])
+
 import tables
 block: # Test get addr of byvar return value
   var t = initTable[string, int]()

@@ -21,6 +21,7 @@ Advanced commands:
                             see also: --dump.format:json (useful with: `| jq`)
   //check                   checks the project for syntax and semantics
                             (can be combined with --defusages)
+  //track                   goto-definition / find-usages via `nim ic`
 
 Runtime checks (see -x):
   --objChecks:on|off        turn obj conversion checks on|off
@@ -33,6 +34,8 @@ Runtime checks (see -x):
   --infChecks:on|off        turn Inf checks on|off
 
 Advanced options:
+  --def:FILE,LINE,COL       find the definition of the symbol at the position
+  --usages:FILE,LINE,COL    find all usages of the symbol at the position
   --defusages:FILE,LINE,COL
                             find the definition and all usages of a symbol
   -o:FILE, --out:FILE       set the output filename
@@ -44,6 +47,9 @@ Advanced options:
   --filenames:abs|canonical|legacyRelProj
                             customize how filenames are rendered in compiler messages,
                             defaults to `abs` (absolute)
+  --msgFormat:std|gcc       format of the location prefix in compiler messages:
+                            `std` uses `file(line, col)`, `gcc` uses the
+                            GCC/Emacs style `file:line:col:`
   --processing:dots|filenames|off
                             show files as they're being processed by nim compiler
   --unitsep:on|off          use the ASCII unit separator (31) between error
@@ -91,6 +97,7 @@ Advanced options:
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo:on|off        enables debug information
+  --mangle:nim|cpp          selects `nim` or `cpp` style name mangling, defaults to `cpp`
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
   --cc:SYMBOL               specify the C compiler
@@ -114,9 +121,11 @@ Advanced options:
   --docSeeSrcUrl:url        activate 'see source' for doc command
                             (see doc.item.seesrc in config/nimdoc.cfg)
   --docInternal             also generate documentation for non-exported symbols
+  --raw                     turn off markup rendering for JSON docs
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc:on|off         embeds the original source code as comments
                             in the generated output
+  --genBif:on|off           generate per-module semantic BIF metadata in nimcache
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --trmacros:on|off         turn term rewriting macros on|off
@@ -179,3 +188,4 @@ Advanced options:
                             the JavaScript backend (default: on)
   --nimBasePattern:nimbase.h
                             allows to specify a custom pattern for `nimbase.h`
+  --spawncodegen:on|off     spawn a separate process for the codegen phase

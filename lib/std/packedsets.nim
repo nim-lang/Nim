@@ -56,11 +56,14 @@ proc mustRehash[T](t: T): bool {.inline.} =
   assert length > t.counter
   result = (length * 2 < t.counter * 3) or (length - t.counter < 4)
 
+{.push overflowChecks: off.}
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
   const PERTURB_SHIFT = 5
   var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
   perturb = cast[Hash](perturb2)
+  # Overflow is intentional: only the low bits selected by maxHash are used.
   result = ((5 * h) + 1 + perturb) and maxHash
+{.pop.}
 
 proc packedSetGet[A](t: PackedSet[A], key: int): Trunk =
   var h = key and t.max
@@ -294,7 +297,11 @@ proc containsOrIncl*[A](s: var PackedSet[A], key: A): bool =
     for i in 0..<s.elems:
       if s.a[i] == ord(key):
         return true
-    incl(s, key)
+    if s.elems < s.a.len:
+      s.a[s.elems] = ord(key)
+      inc(s.elems)
+    else:
+      incl(s, key)
     result = false
   else:
     var t = packedSetGet(s, ord(key) shr TrunkShift)

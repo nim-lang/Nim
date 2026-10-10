@@ -205,7 +205,10 @@ proc del*[T](heap: var HeapQueue[T], index: Natural) =
   let newLen = heap.len - 1
   heap.data.setLen(newLen)
   if index < newLen:
-    siftdownToBottom(heap, index)
+    if index > 0 and heapCmp(heap[index], heap[(index - 1) shr 1]):
+      siftup(heap, 0, index)
+    else:
+      siftdownToBottom(heap, index)
 
 proc replace*[T](heap: var HeapQueue[T], item: sink T): T =
   ## Pops and returns the current smallest value, and add the new item.
@@ -260,7 +263,9 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     assert $heap == "[1, 2]"
 
   result = "["
+  var first = true
   for x in heap.data:
-    if result.len > 1: result.add(", ")
+    if first: first = false
+    else: result.add(", ")
     result.addQuoted(x)
   result.add("]")

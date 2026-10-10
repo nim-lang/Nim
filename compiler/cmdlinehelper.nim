@@ -49,14 +49,31 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
     setFromProjectName(conf, conf.projectName)
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
+  if conf.cmd == cmdM and conf.icProject.len > 0:
+    # Each IC frontend child compiles one module as its project file, but
+    # project-wide substitutions such as `$projectpath` must keep referring to
+    # the original entry project. In particular, system.nim includes the user's
+    # `panicoverride.nim` for `--os:standalone`; without this reset the include
+    # points at `lib/panicoverride` while system.nim is compiled in its own child.
+    conf.projectPath = AbsoluteDir conf.icProject.splitFile.dir
 
 proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
-    conf.setCmd cmdIdeTools
+    conf.setCmd cmdCheck
+    conf.ideActive = true
+    # what a config's `getCommand()` returns: left empty, a config's tasks take the
+    # IDE for `nim help` (they print themselves and change the command to "help")
+    if conf.command.len == 0: conf.command = "check"
   if conf.cmd == cmdNimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
+  if self.suggestMode and conf.projectFull.string.splitFile.ext == ".nims":
+    # a NimScript project, checked the way `nim check foo.nims` checks it: its
+    # system module has the NimScript API (see `commandCheck`)
+    incl(conf.globalOptions, optWasNimscript)
+    defineSymbol(conf.symbols, "nimscript")
+    defineSymbol(conf.symbols, "nimconfig")
   # restores `conf.notes` after loading config files
   # because it has overwrites the notes when compiling the system module which
   # is a foreign module compared to the project

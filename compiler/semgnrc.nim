@@ -50,13 +50,13 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   result = semGenericStmt(c, n, flags, ctx)
   closeScope(c)
 
-template isMixedIn(sym): bool =
+template isMixedIn(sym): bool {.dirty.} =
   let s = sym
   s.name.id in ctx.toMixin or (withinConcept in flags and
                                s.magic == mNone and
                                s.kind in OverloadableSyms)
 
-template canOpenSym(s): bool =
+template canOpenSym(s): bool {.dirty.} =
   {withinMixin, withinConcept} * flags == {withinMixin} and s.id notin ctx.toBind
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
@@ -65,7 +65,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           fromDotExpr=false): PNode =
   result = nil
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
-  incl(s.flags, sfUsed)
+  incl(s.flagsImpl, sfUsed)
   template maybeDotChoice(c: PContext, n: PNode, s: PSym, fromDotExpr: bool) =
     if fromDotExpr:
       result = symChoice(c, n, s, scForceOpen)
@@ -78,16 +78,24 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           if result.kind == nkSym:
             result = newOpenSym(result)
           else:
-            result.typ() = nil
+            result.typ = nil
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ() = nil
+          result.typ = nil
   case s.kind
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of skProc, skFunc, skMethod, skIterator, skConverter, skModule, skEnumField:
     maybeDotChoice(c, n, s, fromDotExpr)
+    when defined(nimsuggest):
+      # The pre-pass cannot pick between overloads; that only happens per
+      # instantiation. When the cursor is on such a choice, record every
+      # member so idetools can offer them all as possible definitions.
+      if result.kind in nkSymChoices and result.len > 1 and c.config.ideActive and
+          isTracked(n.info, c.config.m.trackPos, s.name.s.len):
+        for child in result:
+          suggestSym(c.graph, n.info, child.sym, c.graph.usageSym, isDecl = false)
   of skTemplate, skMacro:
     # alias syntax, see semSym for skTemplate, skMacro
     if sfNoalias notin s.flags and not fromDotExpr:
@@ -116,7 +124,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
             result = newOpenSym(result)
           else:
             result.flags.incl nfDisabledOpenSym
-            result.typ() = nil
+            result.typ = nil
       else:
         result = n
     else:
@@ -126,10 +134,22 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ() = nil
+          result.typ = nil
     onUse(n.info, s)
   of skParam:
-    result = n
+    if s.typ != nil and s.typ.kind == tyStatic and s.typ.n != nil:
+      # The enclosing routine gives this static parameter a concrete value.
+      # Keep that value so the nested generic can fold it as a compile-time
+      # expression instead of generating a runtime parameter reference.
+      result = s.typ.n
+    elif s.owner == c.p.owner:
+      # Parameters of the routine currently being semchecked stay as local
+      # identifiers
+      result = n
+    else:
+      # Preserve captured outer parameters so nested generic procs can still
+      # see them after the generic pre-pass.
+      result = newSymNode(s, n.info)
     onUse(n.info, s)
   of skType:
     if (s.typ != nil) and
@@ -145,7 +165,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ() = nil
+          result.typ = nil
     elif c.inGenericContext > 0 and withinConcept notin flags:
       # don't leave generic param as identifier node in generic type,
       # sigmatch will try to instantiate generic type AST without all params
@@ -157,7 +177,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
           result = newOpenSym(result)
         else:
           result.flags.incl nfDisabledOpenSym
-          result.typ() = nil
+          result.typ = nil
     else:
       result = n
     onUse(n.info, s)
@@ -168,7 +188,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = newOpenSym(result)
       else:
         result.flags.incl nfDisabledOpenSym
-        result.typ() = nil
+        result.typ = nil
     onUse(n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
@@ -226,7 +246,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         if s.kind == skType: # don't put types in sym choice
           var ambig = false
           if candidates.len > 1:
-            let s2 = searchInScopes(c, ident, ambig)
+            discard searchInScopes(c, ident, ambig)
           result = newDot(result, semGenericStmtSymbol(c, n, s, ctx, flags,
             isAmbiguous = ambig, fromDotExpr = true))
         else:
@@ -248,13 +268,13 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   onDef(n.info, s)
 
 proc addTempDeclToIdents(c: PContext; n: PNode; kind: TSymKind; inCall: bool) =
-  case n.kind 
+  case n.kind
   of nkIdent:
     if inCall:
       addTempDecl(c, n, kind)
   of nkCallKinds:
     for s in n:
-      addTempDeclToIdents(c, s, kind, true)  
+      addTempDeclToIdents(c, s, kind, true)
   else:
     for s in n:
       addTempDeclToIdents(c, s, kind, inCall)
@@ -266,7 +286,7 @@ proc semGenericStmt(c: PContext, n: PNode,
   when defined(nimsuggest):
     if withinTypeDesc in flags: inc c.inTypeContext
 
-  #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
+  #if conf.ideActive: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   case n.kind
@@ -274,7 +294,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = lookup(c, n, flags, ctx)
     if result != nil and result.kind == nkSym:
       assert result.sym != nil
-      incl result.sym.flags, sfUsed
+      incl result.sym.flagsImpl, sfUsed
       markOwnerModuleAsUsed(c, result.sym)
   of nkDotExpr:
     #let luf = if withinMixin notin flags: {checkUndeclared} else: {}
@@ -318,7 +338,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var first = int ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:
-      incl(s.flags, sfUsed)
+      incl(s.flagsImpl, sfUsed)
       mixinContext = s.magic in {mDefined, mDeclared, mDeclaredInScope, mCompiles, mAstToStr}
       let whichChoice = if s.id in ctx.toBind: scClosed
                         elif s.isMixedIn: scForceOpen
@@ -350,6 +370,11 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
         result[0] = sc
         first = 1
+        when defined(nimsuggest):
+          if sc.kind in nkSymChoices and sc.len > 1 and c.config.ideActive and
+              isTracked(fn.info, c.config.m.trackPos, s.name.s.len):
+            for child in sc:
+              suggestSym(c.graph, fn.info, child.sym, c.graph.usageSym, isDecl = false)
         # We're not interested in the example code during this pass so let's
         # skip it
         if s.magic == mRunnableExamples:
@@ -439,8 +464,15 @@ proc semGenericStmt(c: PContext, n: PNode,
       var a = n[i]
       checkMinSonsLen(a, 1, c.config)
       for j in 0..<a.len-1:
-        a[j] = semGenericStmt(c, a[j], flags+{withinMixin}, ctx)
-        addTempDeclToIdents(c, a[j], skVar, false)
+        if a.kind == nkOfBranch and isSumTypePattern(c, a[j]):
+          # `Branch(x, y)`: `x` and `y` are bindings, not uses
+          a[j][0] = semGenericStmt(c, a[j][0], flags+{withinMixin}, ctx)
+          for k in 1..<a[j].len:
+            if a[j][k].kind in {nkIdent, nkAccQuoted}:
+              addTempDecl(c, a[j][k], skTemplate)
+        else:
+          a[j] = semGenericStmt(c, a[j], flags+{withinMixin}, ctx)
+          addTempDeclToIdents(c, a[j], skVar, false)
 
       a[^1] = semGenericStmtScope(c, a[^1], flags, ctx)
     closeScope(c)
@@ -632,7 +664,7 @@ proc semGenericStmt(c: PContext, n: PNode,
           # treat as mixin context for user pragmas & macro args
           x[j] = semGenericStmt(c, x[j], flags+{withinMixin}, ctx)
       elif prag == wInvalid:
-        # only sem if not a language-level pragma 
+        # only sem if not a language-level pragma
         # treat as mixin context for user pragmas & macro args
         result[i] = semGenericStmt(c, x, flags+{withinMixin}, ctx)
   of nkExprColonExpr, nkExprEqExpr:
@@ -674,4 +706,3 @@ proc semConceptBody(c: PContext, n: PNode): PNode =
   )
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
-

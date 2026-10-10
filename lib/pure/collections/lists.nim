@@ -304,8 +304,10 @@ proc `$`*[T](L: SomeLinkedCollection[T]): string =
     assert $a == "[1, 2, 3, 4]"
 
   result = "["
+  var first = true
   for x in nodes(L):
-    if result.len > 1: result.add(", ")
+    if first: first = false
+    else: result.add(", ")
     result.addQuoted(x.value)
   result.add("]")
 

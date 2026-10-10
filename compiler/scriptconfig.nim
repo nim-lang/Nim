@@ -13,7 +13,7 @@
 import
   ast, modules, idents, condsyms,
   options, llstream, vm, vmdef, commands,
-  wordrecg, modulegraphs,
+  wordrecg, modulegraphs, lineinfos,
   pathutils, pipelines
 
 when defined(nimPreviewSlimSystem):
@@ -213,15 +213,21 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   unregisterArcOrc(conf)
   conf.globalOptions.excl optOwnedRefs
   conf.selectedGC = gcUnselected
+  conf.globalOptions.incl optWithinConfigSystem
 
   var m = graph.makeModule(scriptName)
-  incl(m.flags, sfMainModule)
+  incl(m, sfMainModule)
   var vm = setupVM(m, cache, scriptName.string, graph, idgen)
   graph.vm = vm
 
   graph.setPipeLinePass(EvalPass)
-  graph.compilePipelineSystemModule()
-  discard graph.processPipelineModule(m, vm.idgen, stream)
+  try:
+    graph.compilePipelineSystemModule()
+    discard graph.processPipelineModule(m, vm.idgen, stream)
+  except ERecoverableError:
+    # IDE tooling must still start with an invalid config script. Continue with
+    # the settings evaluated so far, restoring the non-script state below.
+    if not conf.ideActive: raise
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
@@ -230,7 +236,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC in {gcArc, gcOrc, gcAtomicArc}:
+  if conf.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
     conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
     defineSymbol(conf.symbols, "gcdestructors")
@@ -240,6 +246,8 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
       defineSymbol(conf.symbols, "gcarc")
     of gcOrc:
       defineSymbol(conf.symbols, "gcorc")
+    of gcYrc:
+      defineSymbol(conf.symbols, "gcyrc")
     of gcAtomicArc:
       defineSymbol(conf.symbols, "gcatomicarc")
     else:
@@ -251,4 +259,5 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
+  conf.globalOptions.excl optWithinConfigSystem
   conf.symbolFiles = oldSymbolFiles

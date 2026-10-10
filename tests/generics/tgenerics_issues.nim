@@ -892,3 +892,25 @@ block: # https://github.com/nim-lang/Nim/issues/20416
   proc p2[T](sg:Container[T]) = discard
   var v : Container[int]
   p2(v)
+
+block: # issue #25494
+  proc foo[T: enum](s = {T.low..T.high}) =
+    discard
+
+  type
+    MyEnum = enum
+      a, b, c
+
+  foo[MyEnum]()
+
+block: # issue #25005
+  type
+    RpcResponse[T] = ref object
+      result: T
+
+  func testit[T](p: var ref T) =
+    p = new(T)
+
+  var v: RpcResponse[string]
+  testit(v)
+

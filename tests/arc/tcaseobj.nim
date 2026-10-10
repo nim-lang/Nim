@@ -365,3 +365,28 @@ proc do2(x: int, e: ItemExt): seq[(string, ItemExt)] =
   do1(x).map(proc(v: (string, Item)): auto = (v[0], ItemExt(a: v[1], b: e.b)))
 
 doAssert $do2(0, ItemExt(a: Item(kind: 1, c: "second"), b: "third")) == """@[("zero", (a: (kind: 1, c: "first"), b: "third"))]"""
+
+block:
+  type RangeCrash = object
+    case x: range[0..7]
+    of 0..2:
+      a: string
+    else:
+      b: string
+
+  var rangeCrash = RangeCrash()
+  {.cast(uncheckedAssign).}:
+    rangeCrash.x = 5
+
+block:
+  type Discrim = distinct uint8
+  type DistinctCrash = object
+    case x: Discrim
+    of Discrim(0)..Discrim(2):
+      a: string
+    else:
+      b: string
+
+  var distinctCrash = DistinctCrash()
+  {.cast(uncheckedAssign).}:
+    distinctCrash.x = Discrim(5)

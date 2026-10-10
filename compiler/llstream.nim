@@ -163,7 +163,7 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   inc(s.lineOffset)
   result = min(bufLen, s.s.len - s.rd)
   if result > 0:
-    copyMem(buf, addr(s.s[s.rd]), result)
+    copyMem(buf, readRawData(s.s, s.rd), result)
     inc(s.rd, result)
 
 proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
@@ -173,7 +173,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsString:
     result = min(bufLen, s.s.len - s.rd)
     if result > 0:
-      copyMem(buf, addr(s.s[0 + s.rd]), result)
+      copyMem(buf, readRawData(s.s, s.rd), result)
       inc(s.rd, result)
   of llsFile:
     result = readBuffer(s.f, buf, bufLen)

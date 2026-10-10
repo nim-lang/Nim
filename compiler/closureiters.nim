@@ -64,7 +64,8 @@
 #    the target state is `except` block. For all states in `except` block
 #    the target state is `finally` block. For all other states there is no
 #    target state (0, as the first state can never be except nor finally).
-#  - env var :curExcLevel is created, finallies use it to decide their exit logic
+#  - env var :curExc is created, where "current" exception within the iterator is stored,
+#    also finallies use it to decide their exit logic
 #  - if there are finallies, env var :finallyPath is created. It contains exit state labels
 #    for every finally level, and is changed in runtime in try, except, break, and return
 #    nodes to control finally exit behavior.
@@ -111,7 +112,6 @@
 #   :state = 2              # And we continue to our finally
 #   break :stateLoop
 # of 1: # Except
-#   inc(:curExcLevel, -1)    # Exception is caught
 #   yield 1
 #   :tmpResult = 3           # Return
 #   :finalyPath[LEVEL] = 0   # Configure finally path.
@@ -123,7 +123,7 @@
 # of 2: # Finally
 #   yield 2
 #   if :finallyPath[LEVEL] == 0: # This node is created by `newEndFinallyNode`
-#     if :curExcLevel == 0:
+#     if :curExc == nil:
 #       :state = -1
 #       return result = :tmpResult
 #     else:
@@ -139,8 +139,8 @@
 
 import
   ast, msgs, idents,
-  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
-  options
+  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos, trees,
+  types
 
 import std/tables
 
@@ -165,7 +165,10 @@ type
     fn: PSym
     tmpResultSym: PSym # Used when we return, but finally has to interfere
     finallyPathSym: PSym
-    curExcLevelSym: PSym # Current exception level (because exceptions are stacked)
+    curExcSym: PSym # Current exception
+    externExcSym: PSym # Extern exception: what would getCurrentException() return outside of closure iter
+
+    enclosingPragmas: seq[PNode] # stack of pragma blocks wrapping stmtlist
 
     states: seq[State] # The resulting states. Label is int literal.
     finallyPathStack: seq[FinallyTarget] # Stack of split blocks, whiles and finallies
@@ -177,6 +180,9 @@ type
     idgen: IdGenerator
     varStates: Table[ItemId, int] # Used to detect if local variable belongs to multiple states
     finallyPathLen: PNode # int literal
+
+    nullifyCurExc: PNode # Empty node, if no yields in tries
+    restoreExternExc: PNode # Empty node, id no yields in tries
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -196,7 +202,7 @@ proc newStateAssgn(ctx: var Ctx, toValue: PNode): PNode =
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.idgen, ctx.fn, ctx.fn.info)
   result.typ = typ
-  result.flags.incl sfNoInit
+  result.flagsImpl.incl sfNoInit
   assert(not typ.isNil, "Env var needs a type")
 
   let envParam = getEnvParam(ctx.fn)
@@ -242,13 +248,15 @@ proc newFinallyPathAssign(ctx: var Ctx, level: int, label: PNode, info: TLineInf
   let fp = newFinallyPathAccess(ctx, level, info)
   result = newTree(nkAsgn, fp, label)
 
-proc newCurExcLevelAccess(ctx: var Ctx): PNode =
-  if ctx.curExcLevelSym.isNil:
-    ctx.curExcLevelSym = ctx.newEnvVar(":curExcLevel", ctx.g.getSysType(ctx.fn.info, tyInt16))
-  ctx.newEnvVarAccess(ctx.curExcLevelSym)
+proc newCurExcAccess(ctx: var Ctx): PNode =
+  if ctx.curExcSym.isNil:
+    let getCurExc = ctx.g.callCodegenProc("getCurrentException")
+    ctx.curExcSym = ctx.newEnvVar(":curExc", getCurExc.typ)
+  ctx.newEnvVarAccess(ctx.curExcSym)
 
 proc newStateLabel(ctx: Ctx): PNode =
-  ctx.g.newIntLit(TLineInfo(), 0)
+  result = nkIntLit.newIntNode(0)
+  result.typ = getSysType(ctx.g, TLineInfo(), tyInt16)
 
 proc newState(ctx: var Ctx, n: PNode, inlinable: bool, label: PNode): PNode =
   # Creates a new state, adds it to the context
@@ -284,6 +292,15 @@ proc newTempVar(ctx: var Ctx, typ: PType, parent: PNode, initialValue: PNode = n
   assert(not typ.isNil, "Temp var needs a type")
   parent.add(ctx.newTempVarDef(result, initialValue))
 
+proc newExternExcAccess(ctx: var Ctx): PNode =
+  if ctx.externExcSym == nil:
+    ctx.externExcSym = newSym(skVar, getIdent(ctx.g.cache, ":externExc"), ctx.idgen, ctx.fn, ctx.fn.info)
+    ctx.externExcSym.typ = ctx.curExcSym.typ
+  newSymNode(ctx.externExcSym, ctx.fn.info)
+
+proc newRestoreExternException(ctx: var Ctx): PNode =
+  ctx.g.callCodegenProc("closureIterSetExc", ctx.fn.info, ctx.newExternExcAccess())
+
 proc hasYields(n: PNode): bool =
   # TODO: This is very inefficient. It traverses the node, looking for nkYieldStmt.
   case n.kind
@@ -298,20 +315,12 @@ proc hasYields(n: PNode): bool =
         result = true
         break
 
-proc newNullifyCurExcLevel(ctx: var Ctx, info: TLineInfo, decrement = false): PNode =
-  # :curEcx = 0
-  let curExc = ctx.newCurExcLevelAccess()
+proc newNullifyCurExc(ctx: var Ctx, info: TLineInfo): PNode =
+  # :curExc = nil
+  let curExc = ctx.newCurExcAccess()
   curExc.info = info
-  let nilnode = ctx.g.newIntLit(info, 0)
+  let nilnode = newNodeIT(nkNilLit, info, getSysType(ctx.g, info, tyNil))
   result = newTree(nkAsgn, curExc, nilnode)
-
-proc newChangeCurExcLevel(ctx: var Ctx, info: TLineInfo, by: int): PNode =
-  # inc(:curEcxLevel, by)
-  let curExc = ctx.newCurExcLevelAccess()
-  curExc.info = info
-  result = newTreeIT(nkCall, info, ctx.g.getSysType(info, tyVoid),
-                     newSymNode(ctx.g.getSysMagic(info, "inc", mInc)), curExc,
-                     ctx.g.newIntLit(info, by))
 
 proc newOr(g: ModuleGraph, a, b: PNode): PNode {.inline.} =
   result = newTreeIT(nkCall, a.info, g.getSysType(a.info, tyBool),
@@ -328,9 +337,14 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
         var cond: PNode = nil
         for i in 0..<c.len - 1:
           assert(c[i].kind == nkType)
+          # Use the :curExc env field (set by the wrapper before entering the
+          # except landing state) instead of calling getCurrentException():
+          # injectdestructors does not process the args of this raw generic
+          # `of` magic call, so an owning getCurrentException() temp would
+          # never be destroyed and the caught exception would leak (#23615).
           let nextCond = newTreeIT(nkCall, c.info, ctx.g.getSysType(c.info, tyBool),
             newSymNode(g.getSysMagic(c.info, "of", mOf)),
-            g.callCodegenProc("getCurrentException"),
+            ctx.newCurExcAccess(),
             c[i])
 
           cond = if cond.isNil: nextCond
@@ -344,7 +358,7 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
         else:
           ifBranch = newNodeI(nkElse, c.info)
 
-      ifBranch.add(newTreeI(nkStmtList, c.info, ctx.newChangeCurExcLevel(c.info, -1), c[^1]))
+      ifBranch.add(c[^1])
       ifStmt.add(ifBranch)
 
   if ifStmt.len != 0:
@@ -352,9 +366,10 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
   else:
     result = ctx.g.emptyNode
 
-proc addElseToExcept(ctx: var Ctx, n, gotoOut: PNode) =
+proc addElseToExcept(ctx: var Ctx, n, gotoOut: PNode): PNode =
   # We should adjust finallyPath to gotoOut if exception is handled
   # if there is no finally node next to this except, gotoOut must be nil
+  result = n
   if n.kind == nkStmtList:
     if n[0].kind == nkIfStmt and n[0][^1].kind != nkElse:
       # Not all cases are covered, which means exception is not handled
@@ -377,6 +392,7 @@ proc addElseToExcept(ctx: var Ctx, n, gotoOut: PNode) =
     # raised one.
     n.add newTree(nkCall,
       newSymNode(ctx.g.getCompilerProc("popCurrentException")))
+    n.add ctx.newNullifyCurExc(n.info)
     if gotoOut != nil:
       # We have a finally node following this except block, and exception is handled
       # Configure its path to continue normally
@@ -450,7 +466,7 @@ proc newNotCall(g: ModuleGraph; e: PNode): PNode =
 
 proc boolLit(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
   result = newIntLit(g, info, ord value)
-  result.typ() = getSysType(g, info, tyBool)
+  result.typ = getSysType(g, info, tyBool)
 
 proc captureVar(c: var Ctx, s: PSym) =
   if c.varStates.getOrDefault(s.itemId) != localRequiresLifting:
@@ -463,6 +479,16 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   case n.kind
   of nkSkip:
     discard
+
+  of nkStmtList:
+    # This parent tells us its children are statements. A typed child can
+    # therefore be lowered without preserving its final value.
+    for i in 0..<n.len:
+      n[i] = ctx.lowerStmtListExprs(n[i], needsSplit)
+      if n[i].kind == nkStmtListExpr and n[i].hasYields:
+        let (st, res) = exprToStmtList(n[i])
+        st.add(res)
+        n[i] = st
 
   of nkYieldStmt:
     var ns = false
@@ -529,6 +555,11 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             let newBranch = newTree(nkElse, branchBody)
             curS.add(newBranch)
           else:
+            if n.kind == nkIfStmt and branch[0].kind == nkStmtListExpr:
+              # A statement if can still have a typed branch whose value is unused.
+              let (st, res) = exprToStmtList(branch[0])
+              st.add(res)
+              branch[0] = st
             curS.add(branch)
 
         of nkElifExpr, nkElifBranch:
@@ -549,6 +580,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
               curS.add(elseBody)
             curS = newIf
           else:
+            if n.kind == nkIfStmt and branch[1].kind == nkStmtListExpr:
+              let (st, res) = exprToStmtList(branch[1])
+              st.add(res)
+              branch[1] = st
             newBranch = branch
             if curS.kind == nkIfStmt:
               curS.add(newBranch)
@@ -585,10 +620,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let branch = n[i]
           case branch.kind
           of nkExceptBranch:
-            if branch[0].kind == nkType:
-              branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
-            else:
-              branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
+            branch[^1] = ctx.convertExprBodyToAsgn(branch[^1], tmp)
           of nkFinally:
             discard
           else:
@@ -720,7 +752,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv,
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv, nkObjUpConv,
       nkDerefExpr, nkHiddenDeref:
     var ns = false
     for i in ord(n.kind == nkCast)..<n.len:
@@ -803,6 +835,20 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
+  of nkPragmaBlock:
+    var ns = false
+    n[1] = ctx.lowerStmtListExprs(n[1], ns)
+    if ns:
+      needsSplit = true
+      if not isEmptyType(n.typ):
+        result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+        let tmp = ctx.newTempVar(n.typ, result)
+        # Keep the value's evaluation inside the pragma block as well.
+        n[1] = ctx.convertExprBodyToAsgn(n[1], tmp)
+        n.typ = nil
+        result.add(n)
+        result.add(ctx.newTempVarAccess(tmp))
+
   of nkBlockExpr:
     var ns = false
     n[1] = ctx.lowerStmtListExprs(n[1], ns)
@@ -811,7 +857,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let (st, ex) = exprToStmtList(n[1])
       n.transitionSonsKind(nkBlockStmt)
-      n.typ() = nil
+      n.typ = nil
       n[1] = st
       result.add(n)
       result.add(ex)
@@ -823,7 +869,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   # Generate the following code:
   # if :finallyPath[FINALLY_LEVEL] == 0:
-  #   if :curExcLevel == 0:
+  #   if :curExc == nil:
   #     :state = -1
   #     return result = :tmpResult
   #   else:
@@ -837,9 +883,9 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
 
   let excNilCmp = newTreeIT(nkCall,
                       info, ctx.g.getSysType(info, tyBool),
-                      newSymNode(ctx.g.getSysMagic(info, "==", mEqI), info),
-                      ctx.newCurExcLevelAccess(),
-                      ctx.g.newIntLit(info, 0))
+                      newSymNode(ctx.g.getSysMagic(info, "==", mEqRef), info),
+                      ctx.newCurExcAccess(),
+                      newNodeIT(nkNilLit, info, getSysType(ctx.g, info, tyNil)))
 
   let retStmt =
     block:
@@ -856,7 +902,7 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   retStmt.flags.incl(nfNoRewrite)
 
   let ifBody = newTree(nkIfStmt,
-                       newTree(nkElifBranch, excNilCmp, retStmt),
+                       newTree(nkElifBranch, excNilCmp, newTree(nkStmtList, ctx.newRestoreExternException(), retStmt)),
                        newTree(nkElse,
                            newTree(nkStmtList,
                                    newTreeI(nkRaiseStmt, info, ctx.g.emptyNode))))
@@ -911,14 +957,15 @@ proc transformBreakStmt(ctx: var Ctx, n: PNode): PNode =
     result = n
 
 proc transformReturnStmt(ctx: var Ctx, n: PNode): PNode =
-  # "Returning" involves jumping along all the cureent finally path.
+  # "Returning" involves jumping along all the current finally path.
   # The last finally should exit to state 0 which is a special case for last exit
   # (either return or propagating exception to the caller).
   # It is eccounted for in newEndFinallyNode.
   result = newNodeI(nkStmtList, n.info)
 
   # Returns prevent exception propagation
-  result.add(ctx.newNullifyCurExcLevel(n.info))
+  result.add(ctx.nullifyCurExc)
+
 
   var finallyChain = newSeq[PNode]()
 
@@ -942,6 +989,7 @@ proc transformReturnStmt(ctx: var Ctx, n: PNode): PNode =
     result.add(ctx.newJumpAlongFinallyChain(finallyChain, n.info))
   else:
     # There are no (split) finallies on the path, so we can return right away
+    result.add(ctx.restoreExternExc)
     result.add(n)
 
 proc transformBreaksAndReturns(ctx: var Ctx, n: PNode): PNode =
@@ -952,7 +1000,7 @@ proc transformBreaksAndReturns(ctx: var Ctx, n: PNode): PNode =
   # of nkContinueStmt: # By this point all relevant continues should be
   # lowered to breaks in transf.nim.
   of nkReturnStmt:
-    if ctx.curFinallyLevel > 0 and nfNoRewrite notin n.flags:
+    if nfNoRewrite notin n.flags:
       result = ctx.transformReturnStmt(n)
   else:
     for i in 0..<n.len:
@@ -976,9 +1024,14 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         for j in i + 1..<n.len:
           s.add(n[j])
 
+        var body = s
+        for pragma in ctx.enclosingPragmas:
+          body = newTreeI(nkPragmaBlock, n[i + 1].info,
+                          pragma[0].copyTree, body)
+
         n.sons.setLen(i + 1)
-        discard ctx.newState(s, true, label)
-        if ctx.transformClosureIteratorBody(s, gotoOut) != s:
+        discard ctx.newState(body, true, label)
+        if ctx.transformClosureIteratorBody(body, gotoOut) != body:
           internalError(ctx.g.config, "transformClosureIteratorBody != s")
         break
       else:
@@ -986,6 +1039,7 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
 
   of nkYieldStmt:
     result = addGotoOut(result, gotoOut)
+    result = newTree(nkStmtList, ctx.restoreExternExc, result)
 
   of nkElse, nkElseExpr:
     result[0] = addGotoOut(result[0], gotoOut)
@@ -996,7 +1050,12 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     result[^1] = ctx.transformClosureIteratorBody(result[^1], gotoOut)
 
   of nkIfStmt, nkCaseStmt:
-    for i in 0..<n.len:
+    let firstBranch = if n.kind == nkCaseStmt: 1 else: 0
+    if n.kind == nkCaseStmt:
+      # Yields in the selector have already been lowered out. Its expressions
+      # must finish evaluating without jumping to the state after the case.
+      n[0] = ctx.transformBreaksAndReturns(n[0])
+    for i in firstBranch..<n.len:
       n[i] = ctx.transformClosureIteratorBody(n[i], gotoOut)
     if n[^1].kind != nkElse:
       # We don't have an else branch, but every possible branch has to end with
@@ -1055,7 +1114,7 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     result.add(tryLabel)
     var tryBody = toStmtList(n[0])
 
-    let exceptBody = ctx.collectExceptState(n)
+    var exceptBody = ctx.collectExceptState(n)
     var finallyBody = ctx.getFinallyNode(n)
     var exceptLabel, finallyLabel = ctx.g.emptyNode
 
@@ -1094,8 +1153,7 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         inc ctx.curFinallyLevel
         ctx.finallyPathStack.add(FinallyTarget(n: n[^1], label: finallyLabel))
 
-      if ctx.transformClosureIteratorBody(tryBody, tryOut) != tryBody:
-        internalError(ctx.g.config, "transformClosureIteratorBody != tryBody")
+      tryBody = ctx.transformClosureIteratorBody(tryBody, tryOut)
 
       if exceptBody.kind != nkEmpty:
         ctx.curExcLandingState = if finallyBody.kind != nkEmpty: finallyLabel
@@ -1103,10 +1161,9 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         discard ctx.newState(exceptBody, false, exceptLabel)
 
         let normalOut = if finallyBody.kind != nkEmpty: gotoOut else: nil
-        ctx.addElseToExcept(exceptBody, normalOut)
+        exceptBody = ctx.addElseToExcept(exceptBody, normalOut)
         # echo "EXCEPT: ", renderTree(exceptBody)
-        if ctx.transformClosureIteratorBody(exceptBody, tryOut) != exceptBody:
-          internalError(ctx.g.config, "transformClosureIteratorBody != exceptBody")
+        exceptBody = ctx.transformClosureIteratorBody(exceptBody, tryOut)
 
       ctx.curExcLandingState = oldExcLandingState
 
@@ -1114,9 +1171,16 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
         discard ctx.finallyPathStack.pop()
         discard ctx.newState(finallyBody, false, finallyLabel)
         let finallyExit = newTree(nkGotoState, ctx.newFinallyPathAccess(ctx.curFinallyLevel - 1, finallyBody.info))
-        if ctx.transformClosureIteratorBody(finallyBody, finallyExit) != finallyBody:
-          internalError(ctx.g.config, "transformClosureIteratorBody != finallyBody")
+        finallyBody = ctx.transformClosureIteratorBody(finallyBody, finallyExit)
         dec ctx.curFinallyLevel
+
+  of nkPragmaBlock:
+    # Propagate the pragma blocks so that blocks like {.cast(uncheckedAssign).}
+    # remain effective
+    ctx.enclosingPragmas.add(n)
+    n[1] = ctx.transformClosureIteratorBody(n[1], gotoOut)
+    discard ctx.enclosingPragmas.pop()
+    result = n
 
   of nkGotoState, nkForStmt:
     internalError(ctx.g.config, "closure iter " & $n.kind)
@@ -1201,34 +1265,6 @@ proc createExceptionTable(ctx: var Ctx): PNode {.inline.} =
   for i in 0 .. ctx.states.high:
     result.add(ctx.states[i].excLandingState)
 
-proc newExceptBody(ctx: var Ctx, info: TLineInfo): PNode {.inline.} =
-  # Generates code:
-  #   :state = exceptionTable[:state]
-  #   if :state == 0:
-  #     raise
-  result = newNodeI(nkStmtList, info)
-
-  let intTyp = ctx.g.getSysType(info, tyInt)
-  let boolTyp = ctx.g.getSysType(info, tyBool)
-
-  # :state = exceptionTable[:state]
-  result.add ctx.newStateAssgn(
-    newTreeIT(nkBracketExpr, info, intTyp,
-              ctx.createExceptionTable(),
-              ctx.newStateAccess()))
-
-  # if :state == 0: raise
-  block:
-    let cond = newTreeIT(nkCall, info, boolTyp,
-      ctx.g.getSysMagic(info, "==", mEqI).newSymNode(),
-      ctx.newStateAccess(),
-      newIntTypeNode(0, intTyp))
-
-    let raiseStmt = newTree(nkRaiseStmt, ctx.g.emptyNode)
-    let ifBranch = newTree(nkElifBranch, cond, raiseStmt)
-    let ifStmt = newTree(nkIfStmt, ifBranch)
-    result.add(ifStmt)
-
 proc wrapIntoTryExcept(ctx: var Ctx, n: PNode): PNode {.inline.} =
   # Generates code:
   # var :tmp = nil
@@ -1236,24 +1272,45 @@ proc wrapIntoTryExcept(ctx: var Ctx, n: PNode): PNode {.inline.} =
   #   body
   # except:
   #   :state = exceptionTable[:state]
-  #   if :state == 0:
-  #     raise
-  #   :tmp = getCurrentException()
+  #   :curExc = getCurrentException()
+  # if :state == 0:
+  #   closureIterSetExc(:externExc)
+  #   raise
   #
-  # pushCurrentException(:tmp)
+  # pushCurrentException(:curExc)
 
-  let tryBody = newTree(nkStmtList, n)
-  let exceptBody = ctx.newExceptBody(ctx.fn.info)
-  let exceptBranch = newTree(nkExceptBranch, exceptBody)
+  let info = ctx.fn.info
+  let getCurExc = ctx.g.callCodegenProc("getCurrentException")
+  let exceptBody = newTreeI(nkStmtList, info,
+                            ctx.newStateAssgn(
+                              newTreeIT(nkBracketExpr, info, ctx.g.getSysType(info, tyInt),
+                                        ctx.createExceptionTable(),
+                                        ctx.newStateAccess())),
+                            newTreeI(nkFastAsgn, info, ctx.newCurExcAccess(), getCurExc))
 
   result = newTree(nkStmtList)
-  let getCurExc = ctx.g.callCodegenProc("getCurrentException")
-  let tempExc = ctx.newTempVar(getCurExc.typ, result)
-  result.add newTree(nkTryStmt, tryBody, exceptBranch)
-  exceptBody.add ctx.newTempVarAsgn(tempExc, getCurExc)
+  result.add newTree(nkTryStmt,
+                     newTree(nkStmtList, n),
+                     newTree(nkExceptBranch, exceptBody))
 
-  result.add newTree(nkCall, newSymNode(ctx.g.getCompilerProc("pushCurrentException")), ctx.newTempVarAccess(tempExc))
-  result.add ctx.newChangeCurExcLevel(n.info, 1)
+  # if :state == 0:
+  #   closureIterSetExc(:externExc)
+  #   raise
+  block:
+    let boolTyp = ctx.g.getSysType(info, tyBool)
+    let intTyp = ctx.g.getSysType(info, tyInt)
+    let cond = newTreeIT(nkCall, info, boolTyp,
+      ctx.g.getSysMagic(info, "==", mEqI).newSymNode(),
+      ctx.newStateAccess(),
+      newIntTypeNode(0, intTyp))
+
+    let raiseStmt = newTree(nkRaiseStmt, ctx.newCurExcAccess())
+    let ifBody = newTree(nkStmtList, ctx.newRestoreExternException(), raiseStmt)
+    let ifBranch = newTree(nkElifBranch, cond, ifBody)
+    let ifStmt = newTree(nkIfStmt, ifBranch)
+    result.add(ifStmt)
+
+  result.add newTree(nkCall, newSymNode(ctx.g.getCompilerProc("pushCurrentException")), ctx.newCurExcAccess())
 
 proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   # while true:
@@ -1276,6 +1333,19 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   blockStmt.add(blockBody)
   loopBody.add(blockStmt)
 
+  if ctx.hasExceptions:
+    # Since we have yields in tries, we must switch current exception
+    # between the iter and "outer world"
+    # var :externExc = getCurrentException()
+    # closureIterSetExc(:curExc)
+    let getCurExc = ctx.g.callCodegenProc("getCurrentException")
+    discard ctx.newExternExcAccess()
+    let setCurExc = ctx.g.callCodegenProc("closureIterSetExc", n.info, ctx.newCurExcAccess())
+    result = newTreeI(nkStmtList, n.info,
+                      ctx.newTempVarDef(ctx.externExcSym, getCurExc),
+                      setCurExc,
+                      result)
+
 proc countStateOccurences(ctx: var Ctx, n: PNode, stateOccurences: var openArray[int]) =
   ## Find all nkGotoState(stateIdx) nodes that do not follow nkYield.
   ## For every such node increment stateOccurences[stateIdx]
@@ -1293,16 +1363,15 @@ proc countStateOccurences(ctx: var Ctx, n: PNode, stateOccurences: var openArray
 
 proc replaceDeletedStates(ctx: var Ctx, n: PNode): PNode =
   result = n
-  for i in 0 ..< n.safeLen:
-    let c = n[i]
-    if c.kind == nkIntLit:
-      let idx = c.intVal
-      if idx >= 0 and idx < ctx.states.len and ctx.states[idx].label == c and ctx.states[idx].deletable:
-        let gt = ctx.replaceDeletedStates(skipStmtList(ctx.states[idx].body))
-        assert(gt.kind == nkGotoState)
-        n[i] = gt[0]
-    else:
-      n[i] = ctx.replaceDeletedStates(c)
+  if n.kind == nkIntLit:
+    let idx = n.intVal
+    if idx >= 0 and idx < ctx.states.len and ctx.states[idx].label == n and ctx.states[idx].deletable:
+      let gt = ctx.replaceDeletedStates(skipStmtList(ctx.states[idx].body))
+      assert(gt.kind == nkGotoState)
+      result = gt[0]
+  else:
+    for i in 0 ..< n.safeLen:
+      n[i] = ctx.replaceDeletedStates(n[i])
 
 proc replaceInlinedStates(ctx: var Ctx, n: PNode): PNode =
   ## Find all nkGotoState(stateIdx) nodes that do not follow nkYield.
@@ -1333,6 +1402,7 @@ proc optimizeStates(ctx: var Ctx) =
   # Replace deletable state labels to labels of respective non-empty states
   for i in 0 .. ctx.states.high:
     ctx.states[i].body = ctx.replaceDeletedStates(ctx.states[i].body)
+    ctx.states[i].excLandingState = ctx.replaceDeletedStates(ctx.states[i].excLandingState)
 
   # Remove deletable states
   var i = 0
@@ -1377,18 +1447,96 @@ proc optimizeStates(ctx: var Ctx) =
   for i in 0 .. ctx.states.high:
     ctx.states[i].label.intVal = i
 
+proc detectCapturedSym(c: var Ctx, s: PSym, stateIdx: int) =
+  if s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym:
+    let vs = c.varStates.getOrDefault(s.itemId, localNotSeen)
+    if vs == localNotSeen: # First seing this variable
+      c.varStates[s.itemId] = stateIdx
+    elif vs == localRequiresLifting:
+      discard # Sym already marked
+    elif vs != stateIdx:
+      c.captureVar(s)
+
+proc isClosureIterLocal(c: Ctx, s: PSym): bool =
+  s.kind in {skResult, skVar, skLet, skForVar, skTemp} and
+  sfGlobal notin s.flags and s.owner == c.fn and s != c.externExcSym
+
+proc outlivesSuspension(c: Ctx, s: PSym): bool =
+  ## Is `s`'s lifetime observable after the iterator has suspended? Only if it
+  ## owns memory: there is a `=destroy` that belongs at the end of its scope,
+  ## and under refc a stack slot the collector has to keep seeing. Everything
+  ## else is unobservable once its last read is gone, which is what lets
+  ## #23787 keep it on the stack.
+  s.typ != nil and (hasDestructor(s.typ) or containsGarbageCollectedRef(s.typ))
+
+proc extendLifetimes(c: var Ctx, n: PNode, live: var seq[PSym]) =
+  ## We claim ARC/ORC destroy by scope, not by last usage. `detectCapturedVars`
+  ## can only see the *states*, so all it can offer is the last-usage criterion,
+  ## and the splitting transformation makes every state its own scope: a local
+  ## whose scope outlives the `yield` would be destroyed *at* the `yield`
+  ## (bug #26041). Scopes only exist before the split, so the promise has to be
+  ## kept here, on the unsplit body, by lifting whatever is still alive when a
+  ## `yield` is reached. The scopes below mirror the ones `injectdestructors`
+  ## opens, since that pass decides where the `=destroy` calls actually land.
+  template inNewScope(body: PNode) =
+    let oldLen = live.len
+    extendLifetimes(c, body, live)
+    live.setLen oldLen
+
+  case n.kind
+  of nkSkip:
+    discard
+  of nkYieldStmt:
+    for s in live:
+      if c.outlivesSuspension(s): c.captureVar(s)
+  of nkAddr, nkHiddenAddr:
+    # bug #25596; the very fact that the address is taken can make the local
+    # outlive its last read, and we cannot see where the pointer ends up.
+    let s = getRoot(n)
+    if s != nil and c.isClosureIterLocal(s): c.captureVar(s)
+    for i in 0..<n.safeLen:
+      extendLifetimes(c, n[i], live)
+  of nkVarSection, nkLetSection:
+    for it in n:
+      if it.kind in {nkIdentDefs, nkVarTuple}:
+        extendLifetimes(c, it[^1], live)
+        for i in 0 .. it.len - 3:
+          if it[i].kind == nkSym and c.isClosureIterLocal(it[i].sym):
+            live.add it[i].sym
+  of nkCaseStmt:
+    extendLifetimes(c, n[0], live)
+    for i in 1..<n.len:
+      inNewScope(n[i][^1])
+  of nkWhileStmt:
+    extendLifetimes(c, n[0], live)
+    inNewScope(n[1])
+  of nkParForStmt:
+    extendLifetimes(c, n[^2], live)
+    inNewScope(n[^1])
+  of nkBlockStmt, nkBlockExpr:
+    inNewScope(n[1])
+  of nkIfStmt, nkIfExpr:
+    for it in n:
+      if it.kind in {nkElifBranch, nkElifExpr}:
+        extendLifetimes(c, it[0], live)
+      inNewScope(it[^1])
+  of nkTryStmt:
+    inNewScope(n[0])
+    for i in 1..<n.len:
+      inNewScope(n[i][^1])
+  else:
+    for i in 0..<n.safeLen:
+      extendLifetimes(c, n[i], live)
+
+proc extendLifetimes(c: var Ctx, n: PNode) =
+  var live: seq[PSym] = @[]
+  extendLifetimes(c, n, live)
+
 proc detectCapturedVars(c: var Ctx, n: PNode, stateIdx: int) =
   case n.kind
   of nkSym:
     let s = n.sym
-    if s.kind in {skResult, skVar, skLet, skForVar, skTemp} and sfGlobal notin s.flags and s.owner == c.fn:
-      let vs = c.varStates.getOrDefault(s.itemId, localNotSeen)
-      if vs == localNotSeen: # First seing this variable
-        c.varStates[s.itemId] = stateIdx
-      elif vs == localRequiresLifting:
-        discard # Sym already marked
-      elif vs != stateIdx:
-        c.captureVar(s)
+    detectCapturedSym(c, s, stateIdx)
   of nkReturnStmt:
     if n[0].kind in {nkAsgn, nkFastAsgn, nkSinkAsgn}:
       # we have a `result = result` expression produced by the closure
@@ -1454,10 +1602,16 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
 
   ctx.curExcLandingState = ctx.newStateLabel()
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), idgen, fn, fn.info)
+
+
+  ctx.nullifyCurExc = newTree(nkStmtList)
+  ctx.restoreExternExc = newTree(nkStmtList)
+
   var n = n.toStmtList
   # echo "transformed into ", n
 
   discard ctx.newState(n, false, nil)
+
   let gotoOut = newTree(nkGotoState, g.newIntLit(n.info, -1))
 
   var ns = false
@@ -1467,8 +1621,17 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
   if n.hasYieldsInExpressions():
     internalError(ctx.g.config, n.info, "yield in expr not lowered")
 
+  # Locals are lifted from two places: here, while the lexical scopes that decide
+  # where `injectdestructors` puts the `=destroy` calls still exist, and from
+  # `detectCapturedVars` below, which needs the states the split produces.
+  ctx.extendLifetimes(n)
+
   # Splitting transformation
   discard ctx.transformClosureIteratorBody(n, gotoOut)
+
+  if ctx.hasExceptions:
+    ctx.nullifyCurExc.add(ctx.newNullifyCurExc(fn.info))
+    ctx.restoreExternExc.add(ctx.newRestoreExternException())
 
   # Assign state label indexes
   for i in 0 .. ctx.states.high:
@@ -1487,7 +1650,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
     let body = ctx.transformStateAssignments(s.body)
     caseDispatcher.add newTreeI(nkOfBranch, body.info, s.label, body)
 
-  caseDispatcher.add newTreeI(nkElse, n.info, newTreeI(nkReturnStmt, n.info, g.emptyNode))
+  caseDispatcher.add newTreeI(nkElse, n.info,
+                              newTree(nkStmtList, ctx.restoreExternExc,
+                                      newTreeI(nkReturnStmt, n.info, g.emptyNode)))
 
   result = wrapIntoStateLoop(ctx, caseDispatcher)
   result = liftLocals(ctx, result)

@@ -116,23 +116,33 @@ template repr*(t: typedesc): string = $t
 
 proc reprObject[T: tuple|object](res: var string, x: T) {.noSideEffect, raises: [].} =
   res.add '('
+  var isSumType {.used.} = false
+  when T is object:
+    # a sum type is rendered as `T(Branch(field: value))`:
+    for name, value in fieldPairs(x):
+      when name == "`kind":
+        res.add $value
+        res.add '('
+        isSumType = true
   var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
   when not isNamed:
     var count = 0
   for name, value in fieldPairs(x):
-    if not firstElement: res.add(", ")
-    when isNamed:
-      res.add(name)
-      res.add(": ")
-    else:
-      count.inc
-    res.add repr(value)
-    firstElement = false
+    when name != "`kind":
+      if not firstElement: res.add(", ")
+      when isNamed:
+        res.add(name)
+        res.add(": ")
+      else:
+        count.inc
+      res.add repr(value)
+      firstElement = false
   when not isNamed:
     if count == 1:
       res.add(',') # $(1,) should print as the semantically legal (1,)
   res.add(')')
+  if isSumType: res.add(')')
 
 
 proc repr*[T: tuple|object](x: T): string {.noSideEffect, raises: [].} =

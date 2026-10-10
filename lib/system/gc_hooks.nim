@@ -11,7 +11,7 @@
 ## collectors etc.
 
 type
-  GlobalMarkerProc = proc () {.nimcall, benign, raises: [], tags: [].}
+  GlobalMarkerProc = proc () {.nimcall, gcsafe, raises: [], tags: [].}
 var
   globalMarkersLen: int
   globalMarkers: array[0..3499, GlobalMarkerProc]
@@ -46,8 +46,8 @@ var
   newObjHook*: proc (typ: PNimType, size: int): pointer {.nimcall, tags: [], raises: [], gcsafe.}
   traverseObjHook*: proc (p: pointer, op: int) {.nimcall, tags: [], raises: [], gcsafe.}
 
-proc nimGCvisit(p: pointer, op: int) {.inl, compilerRtl.} =
+proc nimGCvisit(p: pointer, op: int) {.inl, compilerRtl, raises: [].} =
   traverseObjHook(p, op)
 
-proc newObj(typ: PNimType, size: int): pointer {.inl, compilerRtl.} =
+proc newObj(typ: PNimType, size: int): pointer {.inl, compilerRtl, raises: [].} =
   result = newObjHook(typ, size)

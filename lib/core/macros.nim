@@ -134,13 +134,13 @@ const
   nnkSharedTy* {.deprecated.} = nnkSinkAsgn
 
 type
-  NimIdent* {.deprecated.} = object of RootObj
+  NimIdent* {.deprecated, magic: "PNimrodNode".} = object of RootObj
     ## Represents a Nim identifier in the AST. **Note**: This is only
     ## rarely useful, for identifier construction from a string
     ## use `ident"abc"`.
 
   NimSymObj = object # hidden
-  NimSym* {.deprecated.} = ref NimSymObj
+  NimSym* {.deprecated, magic: "PNimrodNode".} = ref NimSymObj
     ## Represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
 
@@ -433,15 +433,15 @@ when defined(nimHasNoReturnError):
 else:
   {.pragma: errorNoReturn.}
 
-proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign, errorNoReturn.}
+proc error*(msg: string, n: NimNode = nil) {.magic: "NError", gcsafe, errorNoReturn.}
   ## Writes an error message at compile time. The optional `n: NimNode`
   ## parameter is used as the source for file and line number information in
   ## the compilation error message.
 
-proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
+proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", gcsafe.}
   ## Writes a warning message at compile time.
 
-proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
+proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", gcsafe.}
   ## Writes a hint message at compile time.
 
 proc newStrLitNode*(s: string): NimNode {.noSideEffect.} =
@@ -511,7 +511,7 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   ## Generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
 
-proc callsite*(): NimNode {.magic: "NCallSite", benign, deprecated:
+proc callsite*(): NimNode {.magic: "NCallSite", gcsafe, deprecated:
   "Deprecated since v0.18.1; use `varargs[untyped]` in the macro prototype instead".}
   ## Returns the AST of the invocation expression that invoked this macro.
   # see https://github.com/nim-lang/RFCs/issues/387 as candidate replacement.
@@ -933,7 +933,7 @@ proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
 
 const collapseSymChoice = not defined(nimLegacyMacrosCollapseSymChoice)
 
-proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
+proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.gcsafe.} =
   if level > 0:
     if indented:
       res.add("\n")
@@ -982,21 +982,21 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
   if isLisp:
     res.add(")")
 
-proc treeRepr*(n: NimNode): string {.benign.} =
+proc treeRepr*(n: NimNode): string {.gcsafe.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`_, and `astGenRepr`_.
   result = ""
   n.treeTraverse(result, isLisp = false, indented = true)
 
-proc lispRepr*(n: NimNode; indented = false): string {.benign.} =
+proc lispRepr*(n: NimNode; indented = false): string {.gcsafe.} =
   ## Convert the AST `n` to a human-readable lisp-like string.
   ##
   ## See also `repr`, `treeRepr`_, and `astGenRepr`_.
   result = ""
   n.treeTraverse(result, isLisp = true, indented = indented)
 
-proc astGenRepr*(n: NimNode): string {.benign.} =
+proc astGenRepr*(n: NimNode): string {.gcsafe.} =
   ## Convert the AST `n` to the code required to generate that AST.
   ##
   ## See also `repr`_, `treeRepr`_, and `lispRepr`_.
@@ -1005,7 +1005,7 @@ proc astGenRepr*(n: NimNode): string {.benign.} =
     NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
-  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+  proc traverse(res: var string, level: int, n: NimNode) {.gcsafe.} =
     for i in 0..level-1: res.add "  "
     if n.kind in NodeKinds:
       res.add("new" & ($n.kind).substr(3) & "Node(")
@@ -1559,6 +1559,8 @@ macro expandMacros*(body: typed): untyped =
   echo body.toStrLit
   result = body
 
+proc getTypeInstSkipAlias(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+
 proc extractTypeImpl(n: NimNode): NimNode =
   ## attempts to extract the type definition of the given symbol
   case n.kind
@@ -1573,10 +1575,16 @@ proc extractTypeImpl(n: NimNode): NimNode =
       result = n[0].getImpl()
   of nnkTypeDef:
     result = n[2]
+    if result.kind notin {nnkSym, nnkObjectTy, nnkRefTy, nnkPtrTy, nnkBracketExpr}:
+      # Handle typeof() and similar unresolvable type expressions
+      let typSym = if n[0].kind == nnkPragmaExpr: n[0][0] else: n[0]
+      if typSym.kind == nnkSym:
+        let resolved = typSym.getTypeInstSkipAlias()
+        if resolved.kind == nnkSym:
+          return resolved.getImpl.extractTypeImpl()
+      error("Invalid node to retrieve type implementation of: " & $result.kind)
   else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
-
-proc getTypeInstSkipAlias(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
 
 proc customPragmaNode(n: NimNode): NimNode =
   result = nil
@@ -1618,6 +1626,19 @@ proc customPragmaNode(n: NimNode): NimNode =
     var typDef = getImpl(typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
+      # Resolve typeof() and similar unresolvable type expressions
+      if typDef[2].kind notin {nnkSym, nnkObjectTy, nnkRefTy, nnkPtrTy, nnkBracketExpr}:
+        let typSym = if typDef[0].kind == nnkPragmaExpr: typDef[0][0] else: typDef[0]
+        if typSym.kind == nnkSym:
+          let resolved = typSym.getTypeInstSkipAlias()
+          if resolved.kind == nnkSym:
+            typDef = getImpl(resolved)
+            continue
+        break
+      if typDef[2].kind == nnkBracketExpr and typDef[2][0].kind == nnkSym:
+        # alias of a generic instance like `BaseInt = Base[int]`
+        typDef = getImpl(typDef[2][0])
+        continue
       let typ = typDef[2].extractTypeImpl()
       if typ.kind notin {nnkRefTy, nnkPtrTy, nnkObjectTy}: break
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
@@ -1641,6 +1662,22 @@ proc customPragmaNode(n: NimNode): NimNode =
             # Add branches
             for i in 1 ..< identDefs.len:
               identDefsStack.add(identDefs[i].last)
+          of nnkRecWhen:
+            # the compiler records the evaluated conditions as `true`/`false`;
+            # take the first true branch. If a condition could not be
+            # evaluated (generic object), consider all remaining branches.
+            for branch in identDefs.children:
+              if branch.kind == nnkElifBranch:
+                let cond = branch[0]
+                if cond.kind in {nnkIdent, nnkSym} and eqIdent(cond, "false"):
+                  discard "branch not taken"
+                elif cond.kind in {nnkIdent, nnkSym} and eqIdent(cond, "true"):
+                  identDefsStack.add(branch[1])
+                  break
+                else:
+                  identDefsStack.add(branch[1])
+              else:
+                identDefsStack.add(branch.last)
           else:
             for i in 0 .. identDefs.len - 3:
               let varNode = identDefs[i]
@@ -1653,7 +1690,12 @@ proc customPragmaNode(n: NimNode): NimNode =
                   return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
-          typDef = getImpl(obj[1][0])
+          var parent = obj[1][0]
+          if parent.kind == nnkBracketExpr:
+            # generic parent like `Base[int]`: the fields are declared
+            # in the generic type's definition
+            parent = parent[0]
+          typDef = getImpl(parent)
         else:
           typDef = nil
 

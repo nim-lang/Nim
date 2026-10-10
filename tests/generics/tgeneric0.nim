@@ -219,3 +219,6 @@ block: # bug #19531
   x.cb()
   y.cb()
 
+
+block:
+  proc r(_: typedesc, _: static uint | static int) = discard; r(uint, 0)

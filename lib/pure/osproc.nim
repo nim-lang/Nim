@@ -921,7 +921,7 @@ elif not defined(useNimRtl):
     for key, val in pairs(t):
       var x = key & "=" & val
       result[i] = cast[cstring](alloc(x.len+1))
-      copyMem(result[i], addr(x[0]), x.len+1)
+      copyMem(result[i], x.cstring, x.len+1)
       inc(i)
 
   proc envToCStringArray(): cstringArray =
@@ -932,7 +932,7 @@ elif not defined(useNimRtl):
     for key, val in envPairs():
       var x = key & "=" & val
       result[i] = cast[cstring](alloc(x.len+1))
-      copyMem(result[i], addr(x[0]), x.len+1)
+      copyMem(result[i], x.cstring, x.len+1)
       inc(i)
 
   type

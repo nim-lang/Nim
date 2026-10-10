@@ -50,12 +50,10 @@ proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 proc GC_disable() = discard
 proc GC_enable() = discard
 
-when not defined(gcOrc):
+when not defined(gcOrc) and not defined(gcYrc):
   proc GC_fullCollect() = discard
   proc GC_enableMarkAndSweep() = discard
   proc GC_disableMarkAndSweep() = discard
-
-proc GC_setStrategy(strategy: GC_Strategy) = discard
 
 proc getOccupiedMem(): int = discard
 proc getFreeMem(): int = discard

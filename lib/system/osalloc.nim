@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.push raises: [], gcsafe.}
+
 proc roundup(x, v: int): int {.inline.} =
   result = (x + (v-1)) and not (v-1)
   sysAssert(result >= x, "roundup: result < x")
@@ -29,8 +31,8 @@ const doNotUnmap = not (defined(amd64) or defined(i386)) or
 
 
 when defined(nimAllocPagesViaMalloc):
-  when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc):
-    {.error: "-d:nimAllocPagesViaMalloc is only supported with --mm:arc or --mm:atomicArc or --mm:orc".}
+  when not defined(gcArc) and not defined(gcOrc) and not defined(gcAtomicArc) and not defined(gcYrc):
+    {.error: "-d:nimAllocPagesViaMalloc is only supported with --mm:arc or --mm:atomicArc or --mm:orc or --mm:yrc".}
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
     let base = c_malloc(csize_t size + PageSize - 1 + sizeof(uint32))
@@ -87,7 +89,7 @@ elif defined(emscripten) and not defined(StandaloneHeapSize):
 
     var mmapDescrPos = cast[int](result) -% sizeof(EmscriptenMMapBlock)
 
-    var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
+    var mmapDescr = cast[PEmscriptenMMapBlock](mmapDescrPos)
     mmapDescr.realSize = realSize
     mmapDescr.realPointer = realPointer
 
@@ -97,7 +99,7 @@ elif defined(emscripten) and not defined(StandaloneHeapSize):
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     var mmapDescrPos = cast[int](p) -% sizeof(EmscriptenMMapBlock)
-    var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
+    var mmapDescr = cast[PEmscriptenMMapBlock](mmapDescrPos)
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
 elif defined(genode) and not defined(StandaloneHeapSize):
@@ -117,7 +119,7 @@ elif defined(posix) and not defined(StandaloneHeapSize):
   when defined(macosx) or defined(freebsd):
     const MAP_ANONYMOUS = 0x1000
     const MAP_PRIVATE = 0x02        # Changes are private
-  elif defined(solaris):
+  elif defined(sunos):
     const MAP_ANONYMOUS = 0x100
     const MAP_PRIVATE = 0x02        # Changes are private
   elif defined(linux) and defined(amd64):
@@ -216,3 +218,5 @@ elif hostOS == "standalone" or defined(StandaloneHeapSize):
 
 else:
   {.error: "Port memory manager to your platform".}
+
+{.pop.}
