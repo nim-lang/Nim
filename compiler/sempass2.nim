@@ -332,12 +332,20 @@ proc warnAboutGcUnsafe(n: PNode; conf: ConfigRef) =
   #assert false
   message(conf, n.info, warnGcUnsafe, renderTree(n))
 
+proc skipVmOnlyEffect(a: PEffects): bool {.inline.} =
+  ## Effects raised inside a `when nimvm` branch do not exist in the code that
+  ## is actually generated, so they must not be attributed to the routine.
+  ## Under `nim e` that branch *is* the code being run, so it still counts.
+  a.inNimvmBranch > 0 and a.config.cmd != cmdNimscript
+
 proc markGcUnsafe(a: PEffects; reason: PSym) =
+  if skipVmOnlyEffect(a): return
   if not a.inEnforcedGcSafe:
     a.gcUnsafe = true
     if a.owner.kind in routineKinds: a.owner.gcUnsafetyReason = reason
 
 proc markGcUnsafe(a: PEffects; reason: PNode) =
+  if skipVmOnlyEffect(a): return
   if not a.inEnforcedGcSafe:
     a.gcUnsafe = true
     if a.owner.kind in routineKinds:
@@ -511,6 +519,7 @@ proc createTag(g: ModuleGraph; n: PNode): PNode =
 
 proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
   #assert e.kind != nkRaiseStmt
+  if skipVmOnlyEffect(a): return
   var aa = a.exc
   for i in a.bottom..<aa.len:
     # we only track the first node that can have the effect E in order
@@ -551,6 +560,7 @@ proc addRaiseEffectsFromExpr(a: PEffects, e, comesFrom: PNode) =
     addRaiseEffect(a, e, comesFrom)
 
 proc addTag(a: PEffects, e, comesFrom: PNode) =
+  if skipVmOnlyEffect(a): return
   var aa = a.tags
   for i in 0..<aa.len:
     # we only track the first node that can have the effect E in order
