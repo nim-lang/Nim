@@ -528,8 +528,13 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   ## outermost activation is the whole frontend and nested modules are folded
   ## into it. Under `--ic:on` each `nim m` process compiles one module and the
   ## outermost activation is that module — which is the row §1.2 tabulates.
-  timedOutermost(tSemModule):
-    result = processPipelineModuleImpl(graph, module, idgen, stream)
+  let outerModule = graph.compilingModule
+  graph.compilingModule = module.position.int32
+  try:
+    timedOutermost(tSemModule):
+      result = processPipelineModuleImpl(graph, module, idgen, stream)
+  finally:
+    graph.compilingModule = outerModule
 
 proc loadedDefSym(defs: PNode): PSym =
   ## The defined symbol of a let/var entry as it loads back from a NIF: the
@@ -566,6 +571,7 @@ proc initLoadedCompileTimeGlobals(graph: ModuleGraph; module: PSym; topLevel: PN
         var sect = newNodeI(stmt.kind, s.info)
         sect.add s.ast
         setupCompileTimeVar(module, idgen, graph, sect)
+        graph.rememberCompileTimeVar(module, sect)
 
 proc finalizeLoadedModules(graph: ModuleGraph) =
   ## Apply the VM-level load effects of every module just loaded from a NIF —
@@ -696,6 +702,8 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       partialInitModule(result, graph, fileIdx, filename)
   elif graph.isDirty(result):
     result.excl sfDirty
+    graph.forgetCompileTimeVars(result)
+    graph.forgetCompilation(result)
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil

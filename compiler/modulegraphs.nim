@@ -142,7 +142,9 @@ type
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
     suggestSymbols*: SuggestSymbolDatabase
+    compilingModule*: int32
     suggestErrors*: Table[FileIndex, seq[Suggest]]
+    compileTimeVars*: seq[tuple[module: PSym; section: PNode]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     bucketTable*: CountTable[ItemId]
     objectTree*: Table[ItemId, seq[tuple[depth: int, value: PType]]]
@@ -951,7 +953,9 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.owners = @[]
   result.suggestSymbols = initTable[FileIndex, SuggestFileSymbolDatabase]()
+  result.compilingModule = -1
   result.suggestErrors = initTable[FileIndex, seq[Suggest]]()
+  result.compileTimeVars = @[]
   result.methods = @[]
   result.compilerprocs = initStrTable()
   result.exposed = initStrTable()
@@ -1051,11 +1055,61 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
     g.suggestErrors.del(fileIdx)
     incl m.flagsImpl, sfDirty
 
+proc delModuleKeys[V](t: var Table[ItemId, V]; module: int32) =
+  var stale: seq[ItemId] = @[]
+  for id in t.keys:
+    if id.module == module: stale.add id
+  for id in stale: t.del id
+
+proc forgetCompilation*(g: ModuleGraph; m: PSym) =
+  let module = m.position.int32
+  g.ifaces[module].converters.setLen 0
+  g.ifaces[module].patterns.setLen 0
+  g.ifaces[module].pureEnums.setLen 0
+  g.nifExpansions.del(module)
+  for insts in mvalues(g.typeInstCache):
+    var kept: seq[PType] = @[]
+    for t in insts:
+      if t.itemId.module != module: kept.add t
+    insts = kept
+  for insts in mvalues(g.procInstCache):
+    var kept: seq[PInstantiation] = @[]
+    for inst in insts:
+      if inst.sym.itemId.module != module: kept.add inst
+    insts = kept
+  for db in mvalues(g.suggestSymbols):
+    db.removeOriginModule(module)
+  for ops in mitems(g.attachedOps):
+    ops.delModuleKeys(module)
+  g.enumToStringProcs.delModuleKeys(module)
+  var staleCanon: seq[SigHash] = @[]
+  for h, t in g.canonTypes:
+    if t.itemId.module == module: staleCanon.add h
+  for h in staleCanon: g.canonTypes.del h
+  var log: seq[LogEntry] = @[]
+  for e in g.opsLog:
+    if e.module != module:
+      log.add e
+    elif e.kind == HookEntry and g.loadedOps[e.op].getOrDefault(e.key) == e.sym:
+      g.loadedOps[e.op].del e.key
+    elif e.kind == EnumToStrEntry and g.loadedEnumToStringProcs.getOrDefault(e.key) == e.sym:
+      g.loadedEnumToStringProcs.del e.key
+  g.opsLog = log
+
 proc unmarkAllDirty*(g: ModuleGraph) =
   for i in 0i32..<g.ifaces.len.int32:
     let m = g.ifaces[i].module
     if m != nil:
       m.flagsImpl.excl sfDirty
+
+proc rememberCompileTimeVar*(g: ModuleGraph; m: PSym; section: PNode) =
+  if g.suggestMode: g.compileTimeVars.add (m, section)
+
+proc forgetCompileTimeVars*(g: ModuleGraph; m: PSym) =
+  var kept: seq[tuple[module: PSym; section: PNode]] = @[]
+  for it in g.compileTimeVars:
+    if it.module != m: kept.add it
+  g.compileTimeVars = kept
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags

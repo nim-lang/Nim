@@ -17,6 +17,7 @@ type
     caughtExceptionsSet*: bool
     isDecl*: bool
     isGenericInstance*: bool
+    originModule*: int32
 
   SuggestFileSymbolDatabase* = object
     lineInfo*: seq[TinyLineInfo]
@@ -25,6 +26,7 @@ type
     caughtExceptionsSet*: PackedBoolArray
     isDecl*: PackedBoolArray
     isGenericInstance*: PackedBoolArray
+    originModule*: seq[int32]
     fileIndex*: FileIndex
     trackCaughtExceptions*: bool
     isSorted*: bool
@@ -90,7 +92,8 @@ proc getSymInfoPair*(s: SuggestFileSymbolDatabase; idx: int): SymInfoPair =
         s.isGenericInstance[idx]
       else:
         false,
-    isDecl: s.isDecl[idx]
+    isDecl: s.isDecl[idx],
+    originModule: s.originModule[idx]
   )
 
 proc reverse*(s: var SuggestFileSymbolDatabase) =
@@ -100,6 +103,7 @@ proc reverse*(s: var SuggestFileSymbolDatabase) =
   s.caughtExceptionsSet.reverse()
   s.isGenericInstance.reverse()
   s.isDecl.reverse()
+  s.originModule.reverse()
 
 proc newSuggestFileSymbolDatabase*(aFileIndex: FileIndex; aTrackCaughtExceptions: bool): SuggestFileSymbolDatabase =
   SuggestFileSymbolDatabase(
@@ -155,6 +159,7 @@ proc exchange(s: var SuggestFileSymbolDatabase; i, j: int) =
   var tmp5 = s.sym[i]
   s.sym[i] = s.sym[j]
   s.sym[j] = tmp5
+  swap(s.originModule[i], s.originModule[j])
 
 proc quickSort(s: var SuggestFileSymbolDatabase; ll, rr: int) =
   var
@@ -209,6 +214,7 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
   ))
   s.sym.add(v.sym)
   s.isDecl.add(v.isDecl)
+  s.originModule.add(v.originModule)
   if s.trackCaughtExceptions:
     s.caughtExceptions.add(v.caughtExceptions)
     s.caughtExceptionsSet.add(v.caughtExceptionsSet)
@@ -217,6 +223,17 @@ proc add*(s: var SuggestFileSymbolDatabase; v: SymInfoPair) =
 
 proc add*(s: var SuggestSymbolDatabase; v: SymInfoPair; trackCaughtExceptions: bool) =
   s.mgetOrPut(v.info.fileIndex, newSuggestFileSymbolDatabase(v.info.fileIndex, trackCaughtExceptions)).add(v)
+
+proc removeOriginModule*(s: var SuggestFileSymbolDatabase; originModule: int32) =
+  if originModule notin s.originModule:
+    return
+  var kept = newSuggestFileSymbolDatabase(s.fileIndex, s.trackCaughtExceptions)
+  for i in 0..<s.sym.len:
+    if s.originModule[i] != originModule:
+      kept.add s.getSymInfoPair(i)
+  kept.isSorted = s.isSorted
+  kept.isComplete = s.isComplete
+  s = kept
 
 proc findSymInfoIndex*(s: var SuggestFileSymbolDatabase; li: TLineInfo; isGenericInstance: bool): int =
   # if trackCaughtExceptions is false, then all records in the database are not generic instances, so

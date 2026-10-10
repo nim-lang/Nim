@@ -39,6 +39,7 @@ import compiler / [options, commands, modules,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils, condsyms, syntaxes, suggestsymdb]
+from compiler/vm import setupCompileTimeVar
 
 when defined(nimPreviewSlimSystem):
   import std/typedthreads
@@ -254,6 +255,13 @@ proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
     for id in attachedOpsToDelete:
       tbl.del id
 
+proc resetVm(graph: ModuleGraph) =
+  if graph.vm == nil or not graph.needsCompilation(): return
+  graph.vm = nil
+  for (m, section) in graph.compileTimeVars:
+    if not graph.isDirty(m):
+      setupCompileTimeVar(m, idGeneratorFromModule(m), graph, section)
+
 proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, tag: string,
              graph: ModuleGraph) =
   let conf = graph.config
@@ -291,6 +299,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
     graph.usageSym = nil
   if not isKnownFile and not isInclude:
     graph.clearInstCache(dirtyIdx)
+    graph.resetVm()
     graph.compilePipelineProject(dirtyIdx)
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
@@ -311,6 +320,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int, 
       # still must (source-)compile its includer to serve the query.
       if isKnownFile or isInclude:
         graph.clearInstCache(modIdx)
+        graph.resetVm()
         graph.compilePipelineProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
@@ -834,6 +844,7 @@ proc recompilePartially(graph: ModuleGraph, projectFileIdx = InvalidFileIdx) =
   # inst caches are breaking incremental compilation when the cache caches stuff
   # from dirty buffer
   graph.clearInstCache(projectFileIdx)
+  graph.resetVm()
 
   GC_fullCollect()
 

@@ -977,6 +977,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           var x = newNodeI(result.kind, v.info)
           x.add result[i]
           vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x, c)
+          c.graph.rememberCompileTimeVar(c.module, x)
         if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
           message(c.config, v.info, hintGlobalVar)
         if {sfGlobal, sfPure} <= v.flags:
@@ -2475,18 +2476,6 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(c.config, n.info, errGenerated,
                  "'destroy' or 'deepCopy' expected for 'override'")
 
-proc cursorInProcAux(conf: ConfigRef; n: PNode): bool =
-  result = false
-  if inCheckpoint(n.info, conf.m.trackPos) != cpNone: return true
-  for i in 0..<n.safeLen:
-    if cursorInProcAux(conf, n[i]): return true
-
-proc cursorInProc(conf: ConfigRef; n: PNode): bool =
-  if n.info.fileIndex == conf.m.trackPos.fileIndex:
-    result = cursorInProcAux(conf, n)
-  else:
-    result = false
-
 proc hasObjParam(s: PSym): bool =
   result = false
   var t = s.typ
@@ -3011,11 +3000,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var deferredScope: PScope = nil
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
-    if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
-        cursorInProc(c.config, n[bodyPos]):
-      # speed up nimsuggest
-      if s.kind == skMethod: semMethodPrototype(c, s, n)
-    elif isAnon:
+    if isAnon:
       let gp = n[genericParamsPos]
       if gp.kind == nkEmpty or (gp.len == 1 and tfRetType in gp[0].typ.flags):
         # absolutely no generics (empty) or a single generic return type are
