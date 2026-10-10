@@ -1694,7 +1694,7 @@ proc lookupFieldAgain*(ty: PType; field: PSym): PSym =
   while ty != nil:
     ty = ty.skipTypes(skipPtrs)
     assert(ty.kind in {tyTuple, tyObject})
-    result = lookupInRecord(ty.n, field.name)
+    result = lookupInRecord(ty.n, field)
     if result != nil: break
     ty = ty.baseClass
   if result == nil: result = field

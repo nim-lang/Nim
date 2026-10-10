@@ -532,10 +532,11 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
       fnNode = newIntNode(nkIntLit, cast[BiggestInt](a))
       fnNode.typ = t
       fnNode.info = L.info
-    if s.callConv == ccClosure:
+    let env = if s.callConv == ccClosure: ld[int64](src +! ClosureEnvOffset)
+              else: 0
+    if s.callConv == ccClosure and (a != 0 or env != 0):
       result = newNodeIT(nkTupleConstr, L.info, t)
       result.add fnNode
-      let env = ld[int64](src +! ClosureEnvOffset)
       if env == 0:
         result.add newNodeIT(nkNilLit, L.info, L.vc.nilType)
       else:

@@ -2049,7 +2049,12 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
     result = n.typ.base
     # fix types constructed by macros/template:
     if prev != nil and prev.kind != tyGenericBody and prev.sym != nil:
-      if result.sym.isNil:
+      if result.kind == tyGenericInst:
+        # a generic instance has no symbol of its own but is shared via the
+        # instantiation cache, so it must not be renamed. Alias it instead,
+        # as `semTypeOf` does (bugs #26400, #26412):
+        fixupTypeOf(c, prev, result)
+      elif result.sym.isNil:
         # Behold! you're witnessing enormous power yielded
         # by macros. Only macros can summon unnamed types
         # and cast spell upon AST. Here we need to give

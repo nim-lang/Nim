@@ -2378,6 +2378,10 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest) =
   if dt.kind in {tyOpenArray, tyVarargs}:
     genOpenArrayConv(c, n, arg, dest)
     return
+  if st.kind == tyNil:
+    # `T(nil)`: a nil of the target type; a closure's nil is two words wide
+    genLitInto(c, newNodeIT(nkNilLit, n.info, n.typ), n.typ, dest)
+    return
   if dt.kind == tyProc and st.kind == tyProc and
       (dt.callConv == ccClosure) != (st.callConv == ccClosure):
     # nimcall to closure:

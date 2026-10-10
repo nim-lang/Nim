@@ -3445,17 +3445,20 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   if uint32(docId) != 0'u32 and s.astImpl != nil and nodeCommentWriter != nil:
     nodeCommentWriter(s.astImpl, docPool.strings[docId])
 
-proc lookupField(n: PNode; name: PIdent): PSym =
-  ## `astalgo.lookupInRecord`, which ast2nif cannot import.
+proc lookupField(n: PNode; name: PIdent; position: int): PSym =
+  ## `astalgo.lookupInRecord`, which ast2nif cannot import. The position
+  ## matters for closure envs, whose fields can share a name.
   result = nil
   if n == nil: return
   case n.kind
   of nkRecList, nkRecCase, nkOfBranch, nkElse:
     for child in n.sons:
-      result = lookupField(child, name)
+      result = lookupField(child, name, position)
       if result != nil: return
   of nkSym:
-    if n.sym.kindImpl == skField and n.sym.name.id == name.id: result = n.sym
+    if n.sym.kindImpl == skField and n.sym.name.id == name.id and
+        n.sym.positionImpl == position:
+      result = n.sym
   else: discard
 
 proc recordType(c: var DecodeContext; t: PType): PType =
@@ -3485,9 +3488,10 @@ proc loadFieldUse(c: var DecodeContext; symAsStr: string; thisModule: string;
   ## owner it falls back to a stub.
   var t = c.recordType(owner)
   if t != nil:
-    let name = stubKindAndName(c.cache, parseSymName(symAsStr).name)[1]
+    let parsed = parseSymName(symAsStr)
+    let name = stubKindAndName(c.cache, parsed.name)[1]
     while t != nil:
-      result = lookupField(t.nImpl, name)
+      result = lookupField(t.nImpl, name, parsed.count)
       if result != nil: return
       t = if t.kind == tyObject and t.sonsImpl.len > 0: c.recordType(t.sonsImpl[0])
           else: nil
