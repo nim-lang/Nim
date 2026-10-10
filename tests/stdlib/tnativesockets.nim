@@ -10,6 +10,10 @@ block:
   let hostname = getHostname()
   doAssert hostname.len > 0
 
+block:
+  doAssertRaises(OSError):
+    discard getHostByName("nonexistent.invalid")
+
 when defined(windows):
   assertAll:
     toInt(IPPROTO_IP) == 0
