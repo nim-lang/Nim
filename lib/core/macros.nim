@@ -1582,6 +1582,9 @@ proc extractTypeImpl(n: NimNode): NimNode =
         let resolved = typSym.getTypeInstSkipAlias()
         if resolved.kind == nnkSym:
           return resolved.getImpl.extractTypeImpl()
+        elif resolved.kind == nnkBracketExpr and resolved[0].kind == nnkSym:
+          # alias of a generic instance like `typeof(Base[int]())`
+          return resolved[0].getImpl.extractTypeImpl()
       error("Invalid node to retrieve type implementation of: " & $result.kind)
   else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
@@ -1633,6 +1636,10 @@ proc customPragmaNode(n: NimNode): NimNode =
           let resolved = typSym.getTypeInstSkipAlias()
           if resolved.kind == nnkSym:
             typDef = getImpl(resolved)
+            continue
+          elif resolved.kind == nnkBracketExpr and resolved[0].kind == nnkSym:
+            # alias of a generic instance like `typeof(Base[int]())`
+            typDef = getImpl(resolved[0])
             continue
         break
       if typDef[2].kind == nnkBracketExpr and typDef[2][0].kind == nnkSym:
