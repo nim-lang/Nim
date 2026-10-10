@@ -25,7 +25,7 @@ type
     pfStructural    ## use structural prefix-chain detection and tree-walk
     pfBidirectional ## also check reverse direction per field in nkObjConstr
 
-proc isCompileTimeOnlyNode(n: PNode): bool {.inline.} =
+proc isCompileTimeOnlyNode*(n: PNode): bool {.inline.} =
   ## `typeof` and typedesc/static values describe types at compile time; they
   ## do not read the runtime location that alias analysis is protecting.
   n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
