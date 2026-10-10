@@ -25,6 +25,11 @@ block:
   doAssert callme(a, f2) == "f2" # not `f`
   doAssert a.callme(f3) == "f3"
 
+  # Dot-call syntax must preserve typedesc arguments for astToStr.
+  type Bar = object
+  template typeName(x: untyped): untyped = x.astToStr()
+  doAssert typeName(Bar) == "Bar"
+
 type
   T1 = object
     x*: int
