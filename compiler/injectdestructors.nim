@@ -913,14 +913,12 @@ proc checkOwnedClosure(c: var Con; n: PNode): bool =
   var culprit = ""
   let obj = envT.elementType.skipTypes(abstractInst)
   if obj.n != nil:
-    for i, f in obj.n:
+    for f in obj.n:
       if f.kind == nkSym and sfCursor notin f.sym.flags:
         let ft = f.sym.typ.skipTypes(abstractInst)
         if (ft.kind == tyRef and canFormAcycle(c.graph, ft.elementType)) or
             (ft.kind == tyProc and ft.callConv == ccClosure):
           culprit = f.sym.name.s
-          # `lowerings.addField` appends the field position to the name:
-          if culprit.endsWith($i): culprit.setLen(culprit.len - len($i))
           break
   localError(c.graph.config, n.info, "cannot produce an 'owned' closure: its environment " &
     "can be part of a cycle" &

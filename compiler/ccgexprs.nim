@@ -1043,7 +1043,7 @@ proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
   while ty != nil:
     ty = ty.skipTypes(skipPtrs)
     assert(ty.kind in {tyTuple, tyObject})
-    result = lookupInRecord(ty.n, field.name)
+    result = lookupInRecord(ty.n, field)
     if result != nil:
       if resTyp != nil: resTyp[] = ty
       break
