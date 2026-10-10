@@ -29,8 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "48"
-    ## v48: track implementation dependencies for reused generic type instances.
+  icFormatVersion* = "49"
+    ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v46: every type definition wraps its sons in `(genericargs ...)`.
     ## v45: localPassC backend actions are keyed by their generated C file.
     ## v44: CacheCounter values live in the shared, file-locked `ic.counters`.
@@ -452,6 +452,10 @@ type
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
     ic*: bool # whether ic is enabled
+    icParsedDir*: AbsoluteDir # shared source/dependency scans, selected by the IC driver
+    icSemDir*: AbsoluteDir    # imported-module semantics for the effective configuration
+    icMainSemDir*: AbsoluteDir # semantics for this entry point's import-cycle group
+    icMainModules*: seq[string] # module suffixes whose semantics live in icMainSemDir
     icGroup*: HashSet[string] # under `nim m`: absolute paths of the modules in
                               # this strongly-connected import group. They are all
                               # compiled from source in one process (so mutual
@@ -1007,6 +1011,32 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
     else:
       AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
         nimcacheSuffix(conf))
+
+proc getParsedCacheDir*(conf: ConfigRef): AbsoluteDir =
+  if conf.icParsedDir.isEmpty: getNimcacheDir(conf) else: conf.icParsedDir
+
+proc getSemanticCacheDir*(conf: ConfigRef): AbsoluteDir =
+  if conf.icSemDir.isEmpty: getNimcacheDir(conf) else: conf.icSemDir
+
+proc semanticFile*(conf: ConfigRef; suffix, ext: string): AbsoluteFile =
+  ## Locate a semantic input independently of the child's output directory.
+  let dir =
+    if not conf.icMainSemDir.isEmpty and suffix in conf.icMainModules:
+      conf.icMainSemDir
+    else:
+      getSemanticCacheDir(conf)
+  dir / RelativeFile(suffix & ext)
+
+iterator semanticFiles*(conf: ConfigRef): string =
+  ## Scan the active semantic modules, excluding imported versions of main's group.
+  for file in walkFiles(getSemanticCacheDir(conf).string / "*.s.bif"):
+    let suffix = file.extractFilename.changeFileExt("").changeFileExt("")
+    if conf.icMainSemDir.isEmpty or suffix notin conf.icMainModules:
+      yield file
+  if not conf.icMainSemDir.isEmpty:
+    for suffix in conf.icMainModules:
+      let file = semanticFile(conf, suffix, ".s.bif").string
+      if fileExists(file): yield file
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())

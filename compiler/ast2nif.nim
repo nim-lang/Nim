@@ -2128,7 +2128,7 @@ proc writeIfaceCookie(config: ConfigRef; thisModule: int32; flat: seq[CookieTok]
   let groupSuffixes = icGroupSuffixes(config)
   for dep in c.depSuffixes:
     if dep == selfSuffix or dep in groupSuffixes: continue
-    let depIface = toGeneratedFile(config, AbsoluteFile(dep), ".iface.bif").string
+    let depIface = semanticFile(config, dep, ".iface.bif").string
     s.update "|"
     s.update dep
     s.update ":"
@@ -2858,7 +2858,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     var modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".t.bif")).string
     let lowered = useLowered and fileExists(modFile)
     if not lowered:
-      modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string
+      modFile = semanticFile(conf, suffix, ".s.bif").string
     if not fileExists(modFile):
       raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
         ". This can happen when loading a module from NIF that references another module " &
@@ -2890,7 +2890,7 @@ proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
   let m = c.mods[module]
   if m.semTried: return
   m.semTried = true
-  let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
+  let semFile = semanticFile(c.infos.config, m.suffix, ".s.bif").string
   if not fileExists(semFile): return
   var sm = icbif.load(semFile)
   prof pBifLoads
@@ -4007,7 +4007,7 @@ proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
   ## Build the full interface independently, on demand. Appending private
   ## symbols to the public table would lose the full interface's own order.
   let conf = c.infos.config
-  if fileExists((getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string):
+  if fileExists(semanticFile(conf, suffix, ".s.bif").string):
     let module = moduleId(c, suffix, {})
     if not c.mods.hasKey(module): return false
     interfHidden = loadInterface(c, module, true, resolveModule)
@@ -4079,7 +4079,7 @@ proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
     let t = toGeneratedFile(conf, AbsoluteFile(suffix), ".t.bif").string
     if fileExists(t):
       return t
-  result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.bif").string
+  result = semanticFile(conf, suffix, ".s.bif").string
 
 proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: bool): PSym =
   result = c.syms.getOrDefault(symAsStr)[0]
@@ -4208,11 +4208,9 @@ proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes:
   ## includes me?" without NIF-loading that module — so the includer can be
   ## *source*-compiled (modules that `include` files are never served from NIF).
   result = @[]
-  let dir = getNimcacheDir(config)
-  if not dirExists(dir.string): return
   # The primary module artifacts are `<suffix>.s.bif` (the sidecars are
   # `.iface.nif`/`.impl.nif`/`.edges.nif`/`.s.deps.nif`, which this glob excludes).
-  for f in walkFiles((dir / RelativeFile"*.s.bif").string):
+  for f in semanticFiles(config):
     var m = bif.load(f)
     var includer = ""
     var includes: seq[string] = @[]
