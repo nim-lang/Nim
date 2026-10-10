@@ -36,8 +36,8 @@ jobs:
           if [ -n "$GH_TOKEN" ]; then
             idle=$(gh api "repos/$REPO/actions/runners" \
               --jq '.runners[] | select(.status=="online" and (.busy|not)) | .labels[].name' || true)
-            grep -qx wsl     <<<"$idle" && linux='["self-hosted","wsl"]'
-            grep -qx windows <<<"$idle" && windows='["self-hosted","windows"]'
+            grep -qix wsl     <<<"$idle" && linux='["self-hosted","wsl"]'
+            grep -qix windows <<<"$idle" && windows='["self-hosted","windows"]'
           fi
           echo "linux=$linux"     >> "$GITHUB_OUTPUT"
           echo "windows=$windows" >> "$GITHUB_OUTPUT"
