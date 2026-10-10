@@ -49,6 +49,9 @@ type
     HttpConnect = "CONNECT"  ## Converts the request connection to a transparent
                              ## TCP/IP tunnel, usually used for proxies.
     HttpPatch = "PATCH"      ## Applies partial modifications to a resource.
+    HttpQuery = "QUERY"      ## Requests the server to perform a query operation
+                             ## defined by the message body. Similar to GET but
+                             ## allows a request body.
 
 
 const
