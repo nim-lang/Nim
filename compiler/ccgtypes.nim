@@ -738,6 +738,9 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
     result = field.loc.snippet
   else:
     result = rope(mangleField(m, field.name))
+    if sfCapturedLocal in field.flags:
+      # captured locals may share a name, see `lowerings.addField`
+      result.add "_" & $field.position
   if result == "": internalError(m.config, field.info, "mangleRecFieldName")
 
 proc hasCppCtor(m: BModule; typ: PType): bool =

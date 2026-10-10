@@ -259,6 +259,9 @@ proc mangleName(m: BModule, s: PSym): Rope =
           x.add("HEX" & toHex(ord(c), 2))
         inc i
       result = rope(x)
+    if s.kind == skField and sfCapturedLocal in s.flags:
+      # captured locals may share a name, see `lowerings.addField`
+      result.add "_" & $s.position
     # From ES5 on reserved words can be used as object field names
     if s.kind != skField:
       if m.config.hcrOn:

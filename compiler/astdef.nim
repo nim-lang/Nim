@@ -153,6 +153,10 @@ type
 
 const
   sfNoInit* = sfMainModule       # don't generate code to init the variable
+  sfCapturedLocal* = sfTemplateParam
+    # skField: closure env field holding a captured local. It is named like the
+    # local, so several of these can share a name; they are told apart by
+    # position (bug #26353).
 
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
