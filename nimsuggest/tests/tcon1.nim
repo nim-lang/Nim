@@ -30,14 +30,14 @@ testB(#[!]#
 discard """
 $nimsuggest --tester $file
 >con $1
-con;;skProc;;tcon1.test;;proc (s: string, a: int);;$file;;4;;5;;"";;100
-con;;skProc;;tcon1.test;;proc (s: string, a: string, b: int);;$file;;7;;5;;"";;100
+con;;skProc;;tcon1.test;;proc (s: string, a: int){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;4;;5;;"";;100
+con;;skProc;;tcon1.test;;proc (s: string, a: string, b: int){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;7;;5;;"";;100
 >con $2
-con;;skProc;;tcon1.testB;;proc (a: string, b: string);;$file;;10;;5;;"";;100
+con;;skProc;;tcon1.testB;;proc (a: string, b: string){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;10;;5;;"";;100
 >con $3
-con;;skProc;;tcon1.test;;proc (s: string, a: string, b: int);;$file;;7;;5;;"";;100
-con;;skProc;;tcon1.test;;proc (s: string, a: int);;$file;;4;;5;;"";;100
+con;;skProc;;tcon1.test;;proc (s: string, a: string, b: int){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;7;;5;;"";;100
+con;;skProc;;tcon1.test;;proc (s: string, a: int){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;4;;5;;"";;100
 >con $4
-con;;skProc;;tcon1.test;;proc (s: string, a: int);;$file;;4;;5;;"";;100
-con;;skProc;;tcon1.test;;proc (s: string, a: string, b: int);;$file;;7;;5;;"";;100
+con;;skProc;;tcon1.test;;proc (s: string, a: int){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;4;;5;;"";;100
+con;;skProc;;tcon1.test;;proc (s: string, a: string, b: int){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;7;;5;;"";;100
 """

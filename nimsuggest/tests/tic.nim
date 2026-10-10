@@ -15,6 +15,6 @@ test(#[!]#
 discard """
 $nimsuggest --v3 --ic:off --tester $file 
 >con $1
-con;;skProc;;tic.test;;proc (a: string, b: string);;$file;;10;;5;;"";;100
-con;;skProc;;tic.test;;proc (a: int);;$file;;11;;5;;"";;100
+con;;skProc;;tic.test;;proc (a: string, b: string){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;10;;5;;"";;100
+con;;skProc;;tic.test;;proc (a: int){.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;11;;5;;"";;100
 """
