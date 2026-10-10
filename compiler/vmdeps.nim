@@ -43,7 +43,10 @@ proc atomicTypeX(s: PSym; t: PType; info: TLineInfo): PNode =
   # `s.typ` can differ from `t`: the object type of a generic `ref object`
   # instance shares the symbol of the generic body (bug #26374). Keep `t`
   # so that `getTypeImpl` etc. on the result see the instantiated type.
-  result.typ = t
+  # But a `tyForward` is a stale placeholder (e.g. the name node of a
+  # `T = typeof(...)` type section entry); `s.typ` is the resolved type.
+  if t.kind != tyForward:
+    result.typ = t
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator;
                    inst=false; allowRecursionX=false; skipAlias = false): PNode
