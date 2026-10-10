@@ -1459,11 +1459,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       if prc.offset < -1:
         # it's a callback:
         var shape = callShapeOf(c, prc)
-        c.callbacks[-prc.offset-2](
-          VmArgs(ctxp: cast[pointer](c), args: slotAddr(rb + 2 + shape.resultSlots),
-                 res: slotAddr(rb + 2), shape: addr shape,
-                 currentException: c.currentExceptionA,
-                 currentLineInfo: c.debug[pc]))
+        try:
+          c.callbacks[-prc.offset-2](
+            VmArgs(ctxp: cast[pointer](c), args: slotAddr(rb + 2 + shape.resultSlots),
+                   res: slotAddr(rb + 2), shape: addr shape,
+                   currentException: c.currentExceptionA,
+                   currentLineInfo: c.debug[pc]))
+        except IOError, OSError:
+          # a host proc like `readFile` failed; report it like an unhandled
+          # VM exception instead of crashing the compiler (#22558, #24530)
+          let e = getCurrentException()
+          stackTrace(c, tos, pc, "unhandled exception: " & e.msg & " [" & $e.name & "]")
       elif importcCond(c, prc):
         globalError(c.config, c.debug[pc], "cannot evaluate importc'ed proc at compile time: " &
                     prc.name.s)

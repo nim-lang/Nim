@@ -3160,7 +3160,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n[namePos].sym
-    if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
+    # like the C backend, skip generic routines (#25229)
+    if n[genericParamsPos].kind == nkEmpty and
+        {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
       genSym(p, n[namePos], r)
       r.res = ""
   of nkGotoState, nkState:

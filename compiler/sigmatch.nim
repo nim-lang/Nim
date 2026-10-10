@@ -562,6 +562,8 @@ proc handleRange(c: PContext, f, a: PType, min, max: TTypeKind): TTypeRelation =
       # Make sure the conversion happens between types w/ same signedness
       (f.kind in {tyInt..tyInt64} and a[0].kind in {tyInt..tyInt64} or
        f.kind in {tyUInt8..tyUInt32} and a[0].kind in {tyUInt8..tyUInt32}) and
+      # the bounds can still be unresolved static expressions (#10690, #22922)
+      a.n[0].kind in {nkCharLit..nkUInt64Lit} and a.n[1].kind in {nkCharLit..nkUInt64Lit} and
       a.n[0].intVal >= firstOrd(nil, f) and a.n[1].intVal <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
       # not depend on the target integer size configurations!
@@ -1497,7 +1499,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     # varargs[untyped] is special too but handled earlier. So we only need to
     # handle varargs[typed]:
     if f.kind == tyVarargs:
-      if tfVarargs in a.flags:
+      # a {.varargs.} proc carries the flag too (#15607)
+      if tfVarargs in a.flags and a.kind != tyProc:
         return typeRel(c, f.base, a.elementType, flags)
       if f[0].kind == tyTyped: return
 
@@ -2188,6 +2191,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let instantiated = prepareTypesInBody(c.c, c.bindings, f.n)
     let reevaluated = c.c.semExpr(c.c, instantiated).typ
     dec c.c.inGenericContext
+    if reevaluated == nil:
+      # the expression has no type, e.g. a proc returning `typedesc` (#25152)
+      return isNone
     case reevaluated.kind
     of tyFromExpr:
       # not resolved
@@ -2524,7 +2530,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       if evaluated != nil:
         # Don't build the type in-place because `evaluated` and `arg` may point
         # to the same object and we'd end up creating recursive types (#9255)
-        let typ = newTypeS(tyStatic, c, son = evaluated.typ)
+        # a `NimNode` value is plain AST without a type (#16456):
+        let typ = newTypeS(tyStatic, c,
+          son = if evaluated.typ != nil: evaluated.typ else: arg.typ)
         typ.n = evaluated
         arg = copyTree(arg) # fix #12864
         arg.typ = typ

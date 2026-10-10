@@ -1046,6 +1046,12 @@ proc transformCall(c: PTransf, n: PNode): PNode =
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
+  elif magic == mNBindSym and n.len > 2:
+    # dynamic bindSym: (ident, rule, ..., info node, callback index);
+    # the arguments are regular code that the VM runs (#11496)
+    result = newTransNode(n)
+    for i in 0..<n.len:
+      result[i] = if i in 1..n.len-3: transform(c, n[i]) else: n[i]
   elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n
@@ -1257,7 +1263,7 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
-  of nkTypeSection, nkTypeOfExpr, nkMixinStmt, nkBindStmt:
+  of nkTypeSection, nkTypeOfExpr, nkStmtListType, nkMixinStmt, nkBindStmt:
     # no need to transform type sections:
     return n
   of nkVarSection, nkLetSection:

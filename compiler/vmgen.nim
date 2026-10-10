@@ -598,6 +598,9 @@ proc addrOfLoc(c: PCtx; n: PNode; loc: var Loc): TRegister =
 
 proc loadLoc(c: PCtx; n: PNode; loc: var Loc; dest: var TDest) =
   ## loads the value of `loc` into `dest`. Frees `loc`.
+  # under `nim check`, a `cannotEval` leaves `loc` without a type and the
+  # code is discarded anyway:
+  if c.cannotEval: return
   let t = loc.typ
   if isScalar(c, t):
     let k = mk(c, t)
@@ -987,6 +990,7 @@ proc genIndexReg(c: PCtx; n: PNode; arr: PType): TRegister =
 proc derefLoc(c: PCtx; ptrNode: PNode; typ: PType): Loc =
   ## the location that the pointer `ptrNode` points to
   var p = genLoc(c, ptrNode)
+  if c.cannotEval: return p
   if p.kind == lkFrame and p.widened and p.off == 0:
     result = memLoc(p.reg, 0, typ, p.isTemp)
   else:

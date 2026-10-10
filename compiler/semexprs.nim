@@ -565,6 +565,7 @@ proc semCast(c: PContext, n: PNode): PNode =
     errorUseQualifier(c, n[1].info, castedExpr)
   if targetType == nil:
     localError(c.config, n.info, "Invalid usage of cast, cast requires a type to convert to, e.g., cast[int](0d).")
+    return errorNode(c, n)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
@@ -817,8 +818,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     of tyArray:
       expectedIndexType = expectedBase[0]
       expectedElementType = expectedBase[1]
-    of tyOpenArray, tySequence:
-      # typed bracket expressions can also have seq type
+    of tyOpenArray, tyVarargs, tySequence:
+      # typed bracket expressions can also have seq or varargs type (#7357)
       expectedElementType = expectedBase[0]
     else: discard
   var
@@ -2154,8 +2155,11 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           rhsTyp = rhsTyp.last
         if lhs.sym.typ.kind == tyAnything:
           rhsTyp = rhsTyp.skipTypes({tySink}).skipIntLit(c.idgen)
-        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
-          internalAssert c.config, c.p.resultSym != nil
+        if lhs.sym != c.p.resultSym:
+          # `result` of an outer routine, bug #18556
+          localError(c.config, n.info, "cannot infer the return type of '" &
+            lhs.sym.owner.name.s & "' from within a nested routine")
+        elif cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           # Make sure the type is valid for the result variable
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
           lhs.typ = rhsTyp
@@ -3557,6 +3561,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
+    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil:
+      # a gensym'ed routine that was never declared, bug #15097
+      localError(c.config, n[0].info, "attempting to call undeclared routine: '" & s.name.s & "'")
+      return errorNode(c, n)
     if s != nil:
       case s.kind
       of skMacro, skTemplate:

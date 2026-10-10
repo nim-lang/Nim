@@ -458,6 +458,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # nkDeref is for 'ref T':  x[].field
   # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
   proc transform(c: PContext; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+    if n == nil: return nil # incomplete AST after an error under `nim check`
     result = shallowCopy(n)
     if sameTypeOrNil(n.typ, old):
       result.typ = fresh

@@ -85,33 +85,39 @@ proc processImplicitImports*(graph: ModuleGraph; implicits: seq[string], nodeKin
       if topLevelStmts != nil:
         topLevelStmts.add top
 
+proc prePassPragma(c: PContext; s: PNode) =
+  var key = if s.kind in nkPragmaCallKinds and s.len > 1: s[0] else: s
+  if key.kind in {nkBracketExpr, nkCast} or key.kind notin nkIdentKinds:
+    return
+  let ident = whichKeyword(considerQuotedIdent(c, key))
+  case ident
+  of wReorder:
+    pragmaNoForward(c, s, flag = sfReorder)
+  of wExperimental:
+    if isTopLevel(c) and s.kind in nkPragmaCallKinds and s.len == 2:
+      let name = c.semConstExpr(c, s[1])
+      case name.kind
+      of nkStrLit, nkRStrLit, nkTripleStrLit:
+        try:
+          let feature = parseEnum[Feature](name.strVal)
+          if feature == codeReordering:
+            c.features.incl feature
+            c.module.incl sfReorder
+        except ValueError:
+          discard
+      else:
+        discard
+  else:
+    discard
+
 proc prePass*(c: PContext; n: PNode) =
   for son in n:
     if son.kind == nkPragma:
       for s in son:
-        var key = if s.kind in nkPragmaCallKinds and s.len > 1: s[0] else: s
-        if key.kind in {nkBracketExpr, nkCast} or key.kind notin nkIdentKinds:
-          continue
-        let ident = whichKeyword(considerQuotedIdent(c, key))
-        case ident
-        of wReorder:
-          pragmaNoForward(c, s, flag = sfReorder)
-        of wExperimental:
-          if isTopLevel(c) and s.kind in nkPragmaCallKinds and s.len == 2:
-            let name = c.semConstExpr(c, s[1])
-            case name.kind
-            of nkStrLit, nkRStrLit, nkTripleStrLit:
-              try:
-                let feature = parseEnum[Feature](name.strVal)
-                if feature == codeReordering:
-                  c.features.incl feature
-                  c.module.incl sfReorder
-              except ValueError:
-                discard
-            else:
-              discard
-        else:
-          discard
+        try:
+          prePassPragma(c, s)
+        except ERecoverableError:
+          discard "already reported, `nim check` goes on (#8799)"
 
 proc setupBackend(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   result =

@@ -27,7 +27,11 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   of skMacro:
     result = semMacroExpr(c, n, orig, s)
   of skTemplate:
-    result = semTemplateExpr(c, n, s, {efFromHlo})
+    if s.ast[genericParamsPos].kind != nkEmpty:
+      # generic parameters are only bound by overload resolution (#6411)
+      result = semDirectOp(c, n, {})
+    else:
+      result = semTemplateExpr(c, n, s, {efFromHlo})
   else:
     result = semDirectOp(c, n, {})
   if c.config.hasHint(hintPattern):

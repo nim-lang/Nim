@@ -905,7 +905,9 @@ proc semCaptureSym*(s, owner: PSym) =
     var o = start
     while o != nil and o.kind != skModule:
       if o == last: break
-      o.typ.callConv = ccClosure
+      # `o.typ` is still nil while the routine's own signature is checked,
+      # e.g. for a capturing lambda in a parameter default value (#26021)
+      if o.typ != nil: o.typ.callConv = ccClosure
       o = o.skipGenericOwner
 
   if interestingVar(s) and s.kind != skResult:

@@ -24,7 +24,16 @@ proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
     localError(conf, info, "type 'var var' is not allowed")
 
 proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
-  var t = typ.skipTypes({tyDistinct})
+  var t = typ
+  var seen: seq[PType] = @[]
+  while t.kind == tyDistinct:
+    # `type x = distinct x` would make `skipTypes` loop forever (#5282)
+    for s in seen:
+      if s == t:
+        localError(conf, info, "illegal recursion in type '" & typeToString(typ) & "'")
+        return
+    seen.add t
+    t = t.skipModifier
   if t.kind in tyTypeClasses: discard
   elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
@@ -423,6 +432,10 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var body = t.genericHead
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
+  if t.kidsLen > body.kidsLen:
+    # more arguments than generic parameters; only reached after an error,
+    # e.g. a malformed generic type under `nim check` (#10217)
+    return errorType(cl.c)
   var header = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
@@ -678,7 +691,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
   case t.kind
   of tyGenericInvocation:
     result = handleGenericInvocation(cl, t)
-    if result.last.kind == tyUserTypeClass:
+    if result.kind != tyError and result.last.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
@@ -892,7 +905,9 @@ when false:
 proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
   if t != nil and t.baseClass != nil:
     let b = skipTypes(t.baseClass, skipPtrs)
-    recomputeFieldPositions(b, b.n, currPosition)
+    # the base is not an object after an instantiation error (`nim check`)
+    if b.kind == tyObject:
+      recomputeFieldPositions(b, b.n, currPosition)
   case obj.kind
   of nkRecList:
     for i in 0..<obj.len: recomputeFieldPositions(nil, obj[i], currPosition)
