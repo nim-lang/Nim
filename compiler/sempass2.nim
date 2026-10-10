@@ -129,6 +129,8 @@ proc collectObjectTree(graph: ModuleGraph, n: PNode) =
             else:
               graph.objectTree[root].add (depthLevel, typ)
 
+proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo)
+
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit = false) =
   if typ == nil or (sfGeneratedOp in tracked.owner.flags and not explicit):
     # don't create type bound ops for anything in a function with a `nodestroy` pragma
@@ -147,6 +149,10 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit
     if op != nil and sfNeverRaises notin op.flags:
       tracked.canRaiseDefect = true
       break
+  let destructor = getAttachedOp(tracked.graph, typ, attachedDestructor)
+  if destructor != nil and sfOverridden in destructor.flags and
+      tfNoSideEffect notin destructor.typ.flags:
+    markSideEffect(tracked, destructor, info)
   if tracked.config.selectedGC == gcRefc or
       optSeqDestructors in tracked.config.globalOptions or
       tfHasAsgn in typ.flags:
