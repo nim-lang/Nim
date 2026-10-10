@@ -392,7 +392,12 @@ proc addElseToExcept(ctx: var Ctx, n, gotoOut: PNode): PNode =
     # raised one.
     n.add newTree(nkCall,
       newSymNode(ctx.g.getCompilerProc("popCurrentException")))
-    n.add ctx.newNullifyCurExc(n.info)
+    # `:curExc` must now track the exception of an enclosing except branch
+    # (if any) as it is what `currException` gets restored to after the next
+    # yield. Setting it to nil here would make the outer except's
+    # `popCurrentException` operate on nil (#26291).
+    n.add newTreeI(nkAsgn, n.info, ctx.newCurExcAccess(),
+                   ctx.g.callCodegenProc("getCurrentException"))
     if gotoOut != nil:
       # We have a finally node following this except block, and exception is handled
       # Configure its path to continue normally
