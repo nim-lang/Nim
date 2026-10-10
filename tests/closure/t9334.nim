@@ -1,6 +1,6 @@
 discard """
   cmd: "nim $target --hints:off $options -r $file"
-  nimout: '''@[1]
+  nimout: '''@[1, 1]
 @[1, 1]
 '''
   nimoutFull: true
@@ -15,5 +15,5 @@ proc f =
   echo repr data
 
 static:
-  f() # prints [1]
+  f() # prints [1, 1] (the old VM printed [1])
 f() # prints [1, 1]

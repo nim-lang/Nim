@@ -1141,7 +1141,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
   # exists, else it bailed.
   result.add "--icPreparsedConfig:" & c.config.icPreparsedConfig
   # Everything else the user typed on the `nim ic` command line. The children
-  # replay the project's CONFIG FILES (ic_config.cfg.nif), never the driver's
+  # replay the project's CONFIG FILES (the precompiled config), never the driver's
   # argv, so a switch that exists only there — `--opt:speed`, `--panics:on`,
   # `--experimental:…`, `--passC:…` — silently did not reach them: `nim ic
   # --opt:speed` produced a byte-identical debug binary. Forward the switches
@@ -1169,6 +1169,11 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     if normalize(name) notin notForwarded and a notin result:
       result.add a
 
+proc isSearchPathArg(arg: string): bool =
+  let first = if arg.startsWith("--"): 2 else: 1
+  let sep = arg.find({':', '='}, first)
+  result = sep >= first and normalize(arg[first ..< sep]) in ["path", "p"]
+
 proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
                          changed: var bool): string =
   ## nifmake decides staleness from file mtimes alone — it never looks at a
@@ -1188,22 +1193,30 @@ proc configSignatureFile(c: DepContext; forwardedArgs: seq[string];
   ## edit changes the artifact, hence the hash, hence every rule.
   result = getNimcacheDir(c.config).string / "ic_build_args.txt"
   var content = ""
+  var seenPaths = initHashSet[string]()
   for p in c.config.searchPaths:
-    content.add "--path:" & p.string & "\n"
+    if not seenPaths.containsOrIncl(p.string):
+      content.add "--path:" & p.string & "\n"
   for a in forwardedArgs:
-    if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:"):
+    if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:") or
+        isSearchPathArg(a):
       continue
     content.add a & "\n"
   if c.config.icPreparsedConfig.len > 0 and fileExists(c.config.icPreparsedConfig):
-    # Hash the precompiled config MINUS its `(nimcache "...")` entry — the one
-    # line in the artifact that records where this build's cache lives rather
-    # than what the config says. Everything else is genuinely config-derived, so
-    # two builds with the same `nim.cfg`/`config.nims` hash the same no matter
-    # which directory they run in.
+    # Hash effective config settings, excluding the cache location and source
+    # file list. Different config.nims files can resolve to identical settings;
+    # their paths are only metadata for deciding when to refresh the snapshot.
+    # Search paths (including command-line paths) are already fingerprinted
+    # above in lookup order, keeping only their first occurrence. NimScript
+    # config chains can append redundant library paths; these do not change
+    # the effective settings. Keep other settings and switch order in the hash.
     var normalized = ""
     try:
       for line in lines(c.config.icPreparsedConfig):
-        if "(nimcache " in line: continue
+        let entry = line.strip
+        if entry.startsWith("(nimcache ") or entry.startsWith("(sources ") or
+            entry == "(sources)" or entry.startsWith("(searchpaths ") or
+            entry == "(searchpaths)": continue
         normalized.add line
         normalized.add '\n'
     except IOError, OSError:
@@ -1904,8 +1917,14 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
   ## again. The caller only seeds from sidecars when the build configuration
   ## has not changed either.
   result = false
-  let n0 = c.nodes.len  # snapshot: new nodes are traversed as they're added
-  for ni in 0 ..< n0:
+  # A discovered module's static scan can add guarded imports of its own.
+  # Restore that module's cached semantic imports too, before pruning decides
+  # those edges are only speculative. A snapshot of `nodes` loses the tail of
+  # such import chains on warm builds where no semantic pass needs to run.
+  var nextNode = 0
+  while nextNode < c.nodes.len:
+    let ni = nextNode
+    inc nextNode
     # A deferred module was not semmed by the last round.
     if c.nodes[ni].deferred: continue
     let confirmed = afterRound or semDepsAreCurrent(c, c.nodes[ni])

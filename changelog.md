@@ -49,6 +49,14 @@ errors.
 parameter and result types, not just their source-level shape. Use
 `--legacy:procParamTypeBackendAliases` to restore the older behavior.
 
+- `items` for `array` now yields `lent T`, as it already did for `seq` and
+  `openArray`, instead of a copy of each element. A closure cannot capture a
+  `lent` value, so a closure that captures the loop variable of such a `for`
+  loop no longer compiles ("cannot be captured as it would violate memory
+  safety"). Copy the variable first (`for x in a: let x = x`), or use
+  `-d:nimNoLentIterators` to restore the old behavior. The JS backend and
+  NimScript are unaffected: there `items` yields copies.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
@@ -94,6 +102,11 @@ parameter and result types, not just their source-level shape. Use
 - `std/nre2` is added to replace deprecated NRE.
 
 - `system.typeof` adds a new parameter `modifierMode` to specify how type modifiers are handled.
+
+- `std/asynchttpserver.newAsyncHttpServer` adds a parameter `readTimeout`, the
+  number of milliseconds a client has to deliver a complete request. A client
+  that is slower is disconnected (after a `408 Request Timeout` response once its
+  request line was received). The default of 0 keeps waiting indefinitely.
 
 [//]: # "Changes:"
 
@@ -164,7 +177,51 @@ parameter and result types, not just their source-level shape. Use
   same priority as `*` (multiplication). As with the other Unicode operators, Nim
   only lexes them; their meaning is up to user code.
 
+- An experimental option `--experimental:ownedRefs` has been added that
+  implements the RFC https://github.com/nim-lang/RFCs/issues/575:
+  `owned ref T` and `owned proc` are statically checked unique ownership
+  annotations on top of ARC/ORC/YRC. Converting an owned reference to an
+  unowned one produces a counted reference, so there is no runtime failure
+  mode. A type whose references are all `owned` or `.cursor` cannot form a
+  cycle and stays out of the cycle collector, so for example a callback field
+  of type `owned proc ()` no longer makes its enclosing type cyclic.
+  Without the feature `owned` continues to be erased.
+
+- Sum types, ported from Nimony: an object `case` without a discriminator
+  declares a sum type. The branch names construct values, and a pattern
+  matching `case` binds the fields of a branch:
+
+  ```nim
+  type
+    Node = ref object
+      case
+      of AddOpr, SubOpr:
+        a, b: Node
+      of Value:
+        val: int
+
+  proc eval(n: Node): int =
+    case n
+    of Value(v): v
+    of AddOpr(a, b): eval(a) + eval(b)
+    of SubOpr(a, b): eval(a) - eval(b)
+
+  echo eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) # 42
+  ```
+
+  The fields of a branch can only be accessed through such a `case`, or in a
+  `{.cast(uncheckedAccess).}` section. `$` and `repr` render a sum type like
+  its constructor. See the [manual](https://nim-lang.github.io/Nim/manual.html#types-sum-types)
+  for more information.
+
 ## Compiler changes
+
+- An import annotated with `{.cyclic.}` (`import b {.cyclic.}`) makes the
+  modules of an import cycle a group whose types and leading routines are
+  visible to each other regardless of declaration order, so procs of different
+  modules can call each other. See the manual's section about cyclic imports.
+  An import cycle without `{.cyclic.}` is deprecated; the new warning
+  `ImplicitCyclicImport` (off by default) reports it.
 
 - Fixed a bug where `sizeof(T)` inside a `typedesc` template called from a generic type's
   `when` clause would error with "'sizeof' requires '.importc' types to be '.completeStruct'".

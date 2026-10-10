@@ -876,10 +876,101 @@ proc formatMissingEnums(c: PContext, n: PNode): string =
       coveredCases.incl val
   result = (c.getIntSetOfType(n[0].typ) - coveredCases).renderAsType(n[0].typ)
 
-proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                   father: PNode, rectype: PType) =
+proc isSumTypeCase(n: PNode): bool {.inline.} =
+  ## `case` without a discriminator: `n[0]` is `nkIdentDefs(empty, ...)`.
+  n[0].kind == nkIdentDefs and n[0].len > 0 and n[0][0].kind == nkEmpty
+
+proc sumTypeScope(c: PContext; owner: PSym): PScope =
+  ## The scope the declaration of `owner` lives in: generic type
+  ## declarations are processed in a scope of their own.
+  result = c.currentScope
+  if c.inGenericContext > 0 and owner.typ != nil and
+      owner.typ.kind == tyGenericBody and result.parent != nil:
+    result = result.parent
+
+proc addSumTypeBranchNames(c: PContext; scope: PScope; enumType: PType) =
+  for f in enumType.n:
+    addInterfaceOverloadableSymAt(c, scope, f.sym)
+
+proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
+                    father: PNode, rectype: PType, hasCaseFields: bool) =
+  ## Lowers `case` / `of A, B: fields` / `of C: fields` to a case object
+  ## whose (hidden) discriminator is of a generated enum type with the
+  ## values `A`, `B`, `C`. The branch names become overloadable enum fields
+  ## in the scope of the type declaration.
+  let owner = getCurrOwner(c)
+  if owner.kind != skType:
+    localError(c.config, n.info, "a sum type must be declared in a type section")
+    return
+  if tfSumType in rectype.flags:
+    localError(c.config, n.info, "only one empty `case` section is allowed in an object type")
+    return
+  if hasCaseFields:
+    localError(c.config, n.info, "a sum type `case` cannot be nested in another `case`")
+    return
+  rectype.incl tfSumType
+
+  let enumSym = newSym(skType, getIdent(c.cache, owner.name.s & "Kind"),
+                       c.idgen, owner, n.info)
+  let enumType = newType(tyEnum, c.idgen, enumSym)
+  rawAddSon(enumType, nil)
+  enumType.n = newNodeI(nkEnumTy, n.info)
+  enumSym.typ = enumType
+  enumType.sym = enumSym
+  # the owner of the branch names, constructors need it:
+  enumSym.ast = newSymNode(owner)
+  if sfExported in owner.flags: enumSym.incl sfExported
+
+  let disc = newSym(skField, getIdent(c.cache, SumTypeDiscriminatorName), c.idgen,
+                    owner, n.info)
+  disc.typ = enumType
+  disc.position = pos
+  disc.options = c.config.options
+  disc.incl sfDiscriminant
+  inc pos
+
   var a = copyNode(n)
+  a.add newSymNode(disc)
+  for i in 1..<n.len:
+    let it = n[i]
+    case it.kind
+    of nkOfBranch:
+      checkMinSonsLen(it, 2, c.config)
+      var b = newNodeI(nkOfBranch, it.info)
+      for j in 0..<it.len-1:
+        let ident = considerQuotedIdent(c, it[j])
+        if ident.id == ord(wInvalid): continue
+        if getSymFromList(enumType.n, ident) != nil:
+          localError(c.config, it[j].info, "duplicate sum type branch name: " & ident.s)
+          continue
+        let e = newSym(skEnumField, ident, c.idgen, enumSym, it[j].info)
+        e.typ = enumType
+        e.position = enumType.n.len
+        if sfExported in owner.flags: e.incl {sfUsed, sfExported}
+        enumType.n.add newSymNode(e)
+        b.add newIntTypeNode(e.position, enumType)
+        styleCheckDef(c, e)
+        onDef(e.info, e)
+        suggestSym(c.graph, e.info, e, c.graph.usageSym)
+      if b.len == 0: continue
+      a.add b
+      semRecordNodeAux(c, it[^1], check, pos, b, rectype, hasCaseFields = true)
+    of nkElse:
+      localError(c.config, it.info, "sum type case objects cannot have an else branch")
+    else: illFormedAst(n, c.config)
+  if enumType.n.len > 0x00007FFF:
+    localError(c.config, n.info, "a sum type must have less than 32768 branches")
+  setToStringProc(c.graph, enumType, genEnumToStrProc(enumType, n.info, c.graph, c.idgen))
+  addSumTypeBranchNames(c, sumTypeScope(c, owner), enumType)
+  father.add a
+
+proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
+                   father: PNode, rectype: PType, hasCaseFields: bool) =
   checkMinSonsLen(n, 2, c.config)
+  if isSumTypeCase(n):
+    semSumTypeCase(c, n, check, pos, father, rectype, hasCaseFields)
+    return
+  var a = copyNode(n)
   semRecordNodeAux(c, n[0], check, pos, a, rectype, hasCaseFields = true)
   if a[0].kind != nkSym:
     internalError(c.config, "semRecordCase: discriminant is no symbol")
@@ -898,7 +989,12 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     if skipTypes(typ.elementType, abstractInst).kind in shouldChckCovered:
       chckCovered = true
   of tyForward:
-    errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
+    if typ.sym != nil:
+      errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
+    else:
+      # a generic instance with forward type arguments, see `semGeneric`
+      localError(c.config, n[0].info,
+        "selector type '$1' depends on a type that is not yet defined" % renderTree(n[0][^2]))
   elif not isOrdinalType(typ):
     localError(c.config, n[0].info, "selector must be of an ordinal type")
 
@@ -949,7 +1045,13 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         if c.inGenericContext == 0:
           var e = semConstBoolExpr(c, it[0])
           if e.kind != nkIntLit: discard "don't report followup error"
-          elif e.intVal != 0 and branch == nil: branch = it[1]
+          else:
+            # record the evaluated condition in the type's declaration so that
+            # macros inspecting `getImpl` (e.g. `hasCustomPragma`) can tell
+            # which branch was taken (bug #26373):
+            n[i][0] = newSymNode(getSysSym(c.graph, it[0].info,
+                                 if e.intVal != 0: "true" else: "false"), it[0].info)
+            if e.intVal != 0 and branch == nil: branch = n[i][1]
         else:
           # XXX this is still a hard compilation in a generic context, this can
           # result in unresolved generic parameters being treated like real types
@@ -962,11 +1064,14 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
             let val = getConstExpr(c.module, it[0], c.idgen, c.graph)
             if val == nil or val.kind != nkIntLit:
               cannotResolve = true
-            elif not cannotResolve and val.intVal != 0 and branch == nil:
-              branch = it[1]
+            else:
+              n[i][0] = newSymNode(getSysSym(c.graph, it[0].info,
+                                   if val.intVal != 0: "true" else: "false"), it[0].info)
+              if not cannotResolve and val.intVal != 0 and branch == nil:
+                branch = n[i][1]
       of nkElse:
         checkSonsLen(it, 1, c.config)
-        if branch == nil and not cannotResolve: branch = it[0]
+        if branch == nil and not cannotResolve: branch = n[i][0]
         idx = 0
       else: illFormedAst(n, c.config)
       if c.inGenericContext > 0 and cannotResolve:
@@ -983,7 +1088,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     elif father.kind in {nkElse, nkOfBranch}:
       father.add newNodeI(nkRecList, n.info)
   of nkRecCase:
-    semRecordCase(c, n, check, pos, father, rectype)
+    semRecordCase(c, n, check, pos, father, rectype, hasCaseFields)
   of nkNilLit:
     if father.kind != nkRecList: father.add newNodeI(nkRecList, n.info)
   of nkRecList:
@@ -1104,7 +1209,13 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
     return newConstraint(c, tyObject)
   if prevIsKind(prev, tyObject) and sfForward notin prev.sym.flags:
     # the symbol already has an object type (likely resem), don't create a new type
-    return skipGenericPrev(prev)
+    result = skipGenericPrev(prev)
+    if tfSumType in result.flags:
+      # but bring the branch names into scope again:
+      let rc = sumTypeCase(result.n)
+      if rc != nil:
+        addSumTypeBranchNames(c, sumTypeScope(c, getCurrOwner(c)), rc[0].sym.typ)
+    return
   var check = initIntSet()
   var pos = 0
   var base, realBase: PType = nil
@@ -1129,7 +1240,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
               sfSystemModule notin c.module.flags:
             message(c.config, n.info, warnInheritFromException, "")
           if not tryAddInheritedFields(c, check, pos, concreteBase, n):
-            return newType(tyError, c.idgen, result.owner)
+            return newType(tyError, c.idgen, getCurrOwner(c))
 
       elif concreteBase.kind == tyForward:
         needsForwardUpdate = true
@@ -1168,6 +1279,26 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
     incl(result, tfFinal)
   if c.inGenericContext == 0 and computeRequiresInit(c, result):
     result.incl tfRequiresInit
+
+proc checkOwnedBase(c: PContext; info: TLineInfo; t: PType) =
+  ## Under `--experimental:ownedRefs`, `owned` applies to the two reference
+  ## counted shared handles only: `ref T` and closures. `seq` and `string`
+  ## are already unique, so `owned` on them is rejected rather than erased.
+  if t.kind != tyOwned or optOwnedRefs in c.config.globalOptions: return
+  let base = t.skipModifier.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+  case base.kind
+  of tyRef: discard
+  of tyProc:
+    if base.callConv != ccClosure:
+      localError(c.config, info, "'owned' requires a closure, but '" &
+        typeToString(base) & "' is not a closure type")
+  of tyGenericParam, tyTypeDesc, tyFromExpr, tyError, tyAnything, tyUntyped,
+     tyTyped, tyGenericInvocation, tyBuiltInTypeClass, tyUserTypeClass,
+     tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyForward:
+    discard "checked after instantiation"
+  else:
+    localError(c.config, info, "'owned' is only valid for 'ref' and closure types, but got '" &
+      typeToString(base) & "'")
 
 proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
@@ -1214,7 +1345,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     # if not isNilable: result.flags.incl tfNotNil
     case wrapperKind
     of tyOwned:
-      if optOwnedRefs in c.config.globalOptions:
+      if ownedRefsEnabled(c):
         let t = newTypeS(tyOwned, c, result)
         t.incl tfHasOwned
         result = t
@@ -1864,12 +1995,13 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         # returning `tyGenericInvocation` makes `Option[Foo]` to `tyGenericInvocation` and
         # next time `semGeneric` is called with `Option[Foo]`, containsGenericType(typeof(`Foo`)) == true
         # and `isConcrete == false`.
+        # Do not set `result.sym` here: `typeSectionFinalPass` uses `assignType`
+        # which keeps an existing `sym`, so the instance would end up with the
+        # generic body's symbol and lose its arguments (bug #26368).
         if prev == nil:
           result = newTypeS(tyForward, c)
-          result.sym = s
         else:
           assignType(result, newTypeS(tyForward, c))
-          result.sym = s
         c.forwardTypeUpdates.add (getCurrOwner(c), result, n) #fixes 1500
         return
       else:
@@ -2309,7 +2441,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n[1], prev)
-          if result.kind == tyTypeDesc and tfUnresolved notin result.flags:
+          if result == nil:
+            # malformed code, as seen by nimsuggest (#25818)
+            localError(c.config, n.info, errTypeExpected)
+            result = newOrPrevType(tyError, prev, c)
+          elif result.kind == tyTypeDesc and tfUnresolved notin result.flags:
             result = result.base
           if n[2].kind != nkNilLit:
             localError(c.config, n.info,
@@ -2369,8 +2505,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           (n[0].kind == nkSym and n[0].sym.magic == mTypeOf) or
           (n[0].kind == nkOpenSym and n[0][0].sym.magic == mTypeOf)):
         result = semTypeOf2(c, n, prev)
-      elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
-        result = semTypeExpr(c, n[1], prev)
+      elif op.s == "owned" and not ownedRefsEnabled(c) and n.len == 2:
+        result = semTypeNode(c, n[1], prev)
       else:
         result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
@@ -2442,7 +2578,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       case s.name.s
       of "lent": result = semAnyRef(c, n, tyLent, prev)
       of "sink": result = semAnyRef(c, n, tySink, prev)
-      of "owned": result = semAnyRef(c, n, tyOwned, prev)
+      of "owned":
+        if ownedRefsEnabled(c):
+          result = semAnyRef(c, n, tyOwned, prev)
+          checkOwnedBase(c, n.info, result)
+        else:
+          # `owned` is erased when the feature is off:
+          checkSonsLen(n, 2, c.config)
+          result = semTypeNode(c, n[1], prev)
       else: result = semGeneric(c, n, s, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:

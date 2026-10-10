@@ -156,6 +156,53 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
     if n.sym.name.id == field.id: result = n.sym
   else: return nil
 
+const SumTypeDiscriminatorName* = "`kind"
+  ## no identifier can contain a backtick, so user code cannot name it
+
+proc isSumTypeDiscriminator*(s: PSym): bool {.inline.} =
+  s.kind == skField and sfDiscriminant in s.flags and s.name.s == SumTypeDiscriminatorName
+
+proc sumTypeCase*(n: PNode): PNode =
+  ## The `nkRecCase` of the record `n` of a sum type (nil if there is none).
+  result = nil
+  if n == nil: return
+  case n.kind
+  of nkRecList:
+    for it in n:
+      result = sumTypeCase(it)
+      if result != nil: return
+  of nkRecCase:
+    if n[0].kind == nkSym and isSumTypeDiscriminator(n[0].sym): result = n
+  else: discard
+
+proc sumTypeEnum*(t: PType): PType =
+  ## The generated enum of branch names if `t` is a sum type, a `ref` to
+  ## one, or a generic sum type. nil otherwise.
+  result = nil
+  var t = t
+  if t == nil: return
+  if t.kind == tyGenericBody: t = t.last
+  if t != nil and t.kind in {tyRef, tyPtr}: t = t.elementType
+  if t != nil and t.kind == tyObject and tfSumType in t.flags:
+    let rc = sumTypeCase(t.n)
+    if rc != nil: result = rc[0].sym.typ
+
+proc enumOrSumTypeEnum*(t: PType): PType =
+  ## The enum whose fields come along when the type `t` is imported or
+  ## exported: `t` itself if it is an enum, the enum of branch names if it
+  ## is a sum type.
+  if t != nil and t.kind in {tyBool, tyEnum}: result = t
+  else: result = sumTypeEnum(t)
+
+proc sumTypeOwner*(e: PSym): PSym =
+  ## For a branch name `e` of a sum type: the type symbol of the sum type
+  ## (its type is a `tyGenericBody` for a generic sum type). nil otherwise.
+  result = nil
+  if e.kind == skEnumField and e.typ != nil:
+    let es = e.typ.sym
+    if es != nil and es.ast != nil and es.ast.kind == nkSym and es.ast.sym.kind == skType:
+      result = es.ast.sym
+
 proc getModule*(s: PSym): PSym =
   result = s
   assert((result.kind == skModule) or (result.owner != result))
@@ -529,9 +576,10 @@ proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
 type
   TIdentIter* = object # iterator over all syms with same identifier
     next*: int32       # 1 + index of the symbol to yield next, 0 = exhausted
+    last: int32        # 1 + index of the name's last symbol
     name* {.cursor.}: PIdent
 
-# The symbols of one name form a chain through `tab.next` that is in insertion
+# The symbols of one name form a ring through `tab.next` that is in insertion
 # order, so iterating is a chain walk with no name comparison and no dependency
 # on the hash values.
 {.push boundChecks: off.}
@@ -542,12 +590,12 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   else:
     let i = ti.next-1
     result = tab.data[i]
-    ti.next = tab.next[i]
+    ti.next = if ti.next == ti.last: 0'i32 else: tab.next[i]
 {.pop.}
 
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   ti.name = s
-  ti.next = strTableFirstOfName(tab, s)
+  (ti.next, ti.last) = strTableChainOfName(tab, s)
   result = nextIdentIter(ti, tab)
 
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
@@ -556,7 +604,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   while ti.next != 0:
     let i = ti.next-1
     let s = tab.data[i]
-    ti.next = tab.next[i]
+    ti.next = if ti.next == ti.last: 0'i32 else: tab.next[i]
     if not contains(excluding, s.id):
       result = s
       break
@@ -564,7 +612,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
 proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
                           excluding: IntSet): PSym =
   ti.name = s
-  ti.next = strTableFirstOfName(tab, s)
+  (ti.next, ti.last) = strTableChainOfName(tab, s)
   result = nextIdentExcluding(ti, tab, excluding)
 
 type
@@ -605,6 +653,7 @@ proc hasEmptySlot[T](data: TIdPairSeq[T]): bool =
   result = false
 
 proc idTableRawGet[T](t: TIdTable[T], key: int): int =
+  if t.data.len == 0: return -1
   var h: Hash
   h = key and high(t.data)    # start with real hash value
   while not isNil(t.data[h].key):
@@ -646,7 +695,9 @@ proc `[]=`*[T](t: var TIdTable[T], key: ItemId, val: T) =
     assert(not isNil(t.data[index].key))
     t.data[index].val = val
   else:
-    if mustRehash(t.data.len, t.counter):
+    if t.data.len == 0:
+      newSeq(t.data, StartSize)
+    elif mustRehash(t.data.len, t.counter):
       newSeq(n, t.data.len * GrowthFactor)
       for i in 0..high(t.data):
         if not isNil(t.data[i].key):

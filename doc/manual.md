@@ -2004,6 +2004,137 @@ Some restrictions for case objects can be disabled via a `{.cast(uncheckedAssign
     t.kind = intLit
   ```
 
+Sum types
+---------
+
+An object `case` without a discriminator declares a *sum type*: the object
+is in exactly one of the listed branches, and the branch names are new
+identifiers that are introduced by the declaration.
+
+```nim test
+type
+  Node = ref object
+    case
+    of AddOpr, SubOpr:   # several branches can share their fields
+      a, b: Node
+    of Value:
+      val: int
+
+  Opt[T] = object
+    case
+    of None: discard     # a branch without fields
+    of Some: val: T
+
+  Shape = object
+    x, y: float          # fields outside of the `case` are shared
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+```
+
+Under the hood, a sum type is a case object with a hidden discriminator.
+The branch names are the values of an enum that is generated for it; they
+behave like overloadable enum fields and are imported and exported together
+with the sum type. An object can contain at most one such `case` and it
+cannot have an `else` branch.
+
+
+### Construction
+
+A branch name is used like an object constructor, with named arguments for
+the fields of the branch and the shared fields:
+
+```nim test
+type
+  Opt[T] = object
+    case
+    of None: discard
+    of Some: val: T
+  Shape = object
+    x, y: float
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+
+let s = Circle(x: 1.0, y: 2.0, radius: 3.0)
+let a: Opt[int] = None()      # the expected type selects the instance
+let b = Some(val: "abc")      # `Opt[string]`, inferred from the field values
+let c = Opt[float](None())    # a type conversion provides the expected type
+```
+
+If a branch name belongs to several sum types, the expected type, a type
+conversion or a module qualifier (`module.Branch(...)`) selects one.
+
+
+### Pattern matching
+
+The fields of the branches can only be accessed in a `case` statement or
+expression that matches the branch. The fields are bound to the names that
+follow the branch name, in the order of their declaration:
+
+```nim test
+type
+  Node = ref object
+    case
+    of AddOpr, SubOpr:
+      a, b: Node
+    of Value:
+      val: int
+
+proc eval(n: Node): int =
+  case n
+  of Value(v): v
+  of AddOpr(a, b): eval(a) + eval(b)
+  of SubOpr(a, b): eval(a) - eval(b)
+
+assert eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) == 42
+```
+
+- Fewer names than fields can be given, `_` skips a field and `Branch()` or
+  just `Branch` binds nothing.
+- `{A, B}(x, y)` matches several branches; they must come from the same `of`
+  of the declaration so that they share their fields.
+- The `case` must cover all branches or have an `else` branch.
+
+A binding is not a copy but a view of the field: if the matched value is
+mutable, assigning to the binding changes the field.
+
+```nim test
+type
+  Shape = object
+    case
+    of Circle: radius: float
+    of Rect: w, h: float
+
+var shapes = @[Circle(radius: 1.0), Rect(w: 1.0, h: 2.0)]
+for i in 0 ..< shapes.len:
+  case shapes[i]
+  of Circle(r): r = r * 2
+  of Rect(w, _): w = 3.0
+assert $shapes == "@[Circle(radius: 2.0), Rect(w: 3.0, h: 2.0)]"
+```
+
+
+### cast uncheckedAccess
+
+Accessing a field of a branch outside of pattern matching is an error. It can
+be allowed via a `{.cast(uncheckedAccess).}` section; accessing a field of a
+branch that the object is not in is then undefined behavior, or raises a
+`FieldDefect` if field checks are enabled.
+
+```nim test
+type
+  Opt[T] = object
+    case
+    of None: discard
+    of Some: val: T
+
+let a = Some(val: 1)
+{.cast(uncheckedAccess).}:
+  assert a.val == 1
+```
+
+
 Default values for object fields
 --------------------------------
 
@@ -7008,9 +7139,10 @@ Each module needs to be in its own file and has its own `namespace`:idx:.
 Modules enable `information hiding`:idx: and `separate compilation`:idx:.
 A module may gain access to the symbols of another module by the `import`:idx:
 statement. `Recursive module dependencies`:idx: are allowed, but are slightly
-subtle. Only top-level symbols that are marked with an asterisk (`*`) are
-exported. A valid module name can only be a valid Nim identifier (and thus its
-filename is ``identifier.nim``).
+subtle unless they are declared as [cyclic imports](#modules-cyclic-imports).
+Only top-level symbols that are marked with an asterisk (`*`) are exported.
+A valid module name can only be a valid Nim identifier (and thus its filename
+is ``identifier.nim``).
 
 The algorithm for compiling modules is:
 
@@ -7044,6 +7176,91 @@ This is best illustrated by an example:
     # added T1 to A's interface symbol table
     result = x + 1
   ```
+
+
+Cyclic imports
+--------------
+
+An import can be annotated with the `cyclic` pragma to declare that the
+imported module imports the current module (directly or indirectly) too:
+
+  ```nim
+  # module a
+  import b {.cyclic.}
+
+  type
+    A* = object
+      b*: B  # a type of the partner module, even though `b` imports `a`
+
+  proc useB*(b: B): int = b.x
+  ```
+
+  ```nim
+  # module b
+  import a {.cyclic.}
+
+  type
+    B* = object
+      x*: int
+      a*: ref A
+  ```
+
+The modules connected by such imports form a *cycle group* that is checked
+together, phase by phase; every phase runs for all modules of the group before
+the next one starts:
+
+1. The imports of every module.
+2. The type sections of every module.
+3. The *leading declarations* of every module: the routines, constants and
+   pragmas up to the first statement of a different kind (like a `var`
+   section, a `when` statement or a call). The bodies of these routines are
+   checked later, so they can refer to the declarations of all modules in the
+   group.
+4. The remaining statements, module by module, in the order an ordinary
+   recursive import would check them. This also determines the order in which
+   the modules' top-level code runs.
+
+Hence the top-level types and leading routines of a module are visible to the
+other modules of the group regardless of the order of the declarations and
+imports, and the modules' procs can call each other:
+
+  ```nim
+  # module a
+  import b {.cyclic.}
+
+  proc isEven*(n: int): bool = n == 0 or isOdd(n - 1)
+  ```
+
+  ```nim
+  # module b
+  import a {.cyclic.}
+
+  proc isOdd*(n: int): bool = n != 0 and isEven(n - 1)
+  ```
+
+Effect inference checks the body of a routine of another module of the group
+before it uses its effects. Only a recursion through the modules of the group
+is treated like a call of a forward declared routine.
+
+An import cycle without a `cyclic` import is deprecated: with
+`--warning:ImplicitCyclicImport:on` such an import produces a warning that
+lists the modules of the cycle. The modules of such a cycle only see the declarations of each other that
+precede the imports, as described above.
+
+The group is formed when the compiler reaches the first module of the cycle
+that has a `cyclic` import. If the cycle is entered through a plain import
+instead, the module that is being checked already cannot join the group anymore
+and its `cyclic` import is an error: the plain import has to be annotated with
+`cyclic` too. Hence it is good practice to annotate the imports on both sides
+of a cycle.
+
+A `cyclic` import must be a top-level statement that is not nested in a
+`when` statement or produced by a macro. Type sections and routines that are
+nested in such constructs or that stem from an `include` are not part of the
+group's phases. The bodies of macros, converters and `.compileTime` routines
+are checked during phase 3 and only see the declarations that precede them. A
+constant ends the leading declarations if a routine body of the group is still
+unchecked, as the constant's value could depend on it.
 
 
 Import statement

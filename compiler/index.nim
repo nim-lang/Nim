@@ -12,7 +12,7 @@ note: this is named `index` so that navigating to https://nim-lang.github.io/Nim
 will work.
 
 xxx this should also import other modules, not transitively imported by `compiler/nim.nim`,
-eg `evalffi`, otherwise these aren't shown. A glob could be used at CT.
+eg `vmffi`, otherwise these aren't shown. A glob could be used at CT.
 ]#
 
 import nim

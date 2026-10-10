@@ -46,6 +46,7 @@ when hasThreadSupport:
     SelectorImpl[T] = object
       kqFD: cint
       maxFD: int
+      numFD: int
       changes: ptr SharedArray[KEvent]
       fds: ptr SharedArray[SelectorKey[T]]
       count*: int
@@ -59,6 +60,7 @@ else:
     SelectorImpl[T] = object
       kqFD: cint
       maxFD: int
+      numFD: int
       changes: seq[KEvent]
       fds: seq[SelectorKey[T]]
       count*: int
@@ -103,23 +105,28 @@ proc newSelector*[T](): owned(Selector[T]) =
     discard posix.close(kqFD)
     raiseIOSelectorsError(err)
 
+  # `maxFD` is `kern.maxfilesperproc`, typically in the hundreds of
+  # thousands: start small, checkFd() grows the table on demand.
+  let numFD = min(1024, maxFD.int)
+
   when hasThreadSupport:
     result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
-    result.fds = allocSharedArray[SelectorKey[T]](maxFD)
+    result.fds = allocSharedArray[SelectorKey[T]](numFD)
     result.changes = allocSharedArray[KEvent](MAX_KQUEUE_EVENTS)
     result.changesSize = MAX_KQUEUE_EVENTS
     initLock(result.changesLock)
   else:
     result = Selector[T]()
-    result.fds = newSeq[SelectorKey[T]](maxFD)
+    result.fds = newSeq[SelectorKey[T]](numFD)
     result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
 
-  for i in 0 ..< maxFD:
+  for i in 0 ..< numFD:
     result.fds[i].ident = InvalidIdent
 
   result.sock = usock
   result.kqFD = kqFD
   result.maxFD = maxFD.int
+  result.numFD = numFD
 
 proc close*[T](s: Selector[T]) =
   let res1 = posix.close(s.kqFD)
@@ -156,6 +163,17 @@ proc close*(ev: SelectEvent) =
 template checkFd(s, f) =
   if f >= s.maxFD:
     raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
+  if f >= s.numFD:
+    var numFD = s.numFD
+    while numFD <= f: numFD *= 2
+    numFD = min(numFD, s.maxFD)
+    when hasThreadSupport:
+      s.fds = reallocSharedArray(s.fds, s.numFD, numFD)
+    else:
+      s.fds.setLen(numFD)
+    for i in s.numFD ..< numFD:
+      s.fds[i].ident = InvalidIdent
+    s.numFD = numFD
 
 when hasThreadSupport:
   template withChangeLock[T](s: Selector[T], body: untyped) =
@@ -332,6 +350,7 @@ proc registerProcess*[T](s: Selector[T], pid: int,
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   let fdi = ev.rfd.int
+  s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == InvalidIdent, "Event is already registered in the queue!")
   setKey(s, fdi, {Event.User}, 0, data)
 
@@ -361,6 +380,7 @@ template processVnodeEvents(events: set[Event]): cuint =
 
 proc registerVnode*[T](s: Selector[T], fd: cint, events: set[Event], data: T) =
   let fdi = fd.int
+  s.checkFd(fdi)
   setKey(s, fdi, {Event.Vnode} + events, 0, data)
   var fflags = processVnodeEvents(events)
 
@@ -599,7 +619,7 @@ template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
-  return s.fds[fd.int].ident != InvalidIdent
+  return fd.int < s.numFD and s.fds[fd.int].ident != InvalidIdent
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)

@@ -342,8 +342,15 @@ proc containsGarbageCollectedRef*(typ: PType): bool =
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
 
+proc isNimNodeType*(t: PType): bool {.inline.} =
+  ## `NimNode` is a `ref` type in system.nim but the VM stores it as a handle.
+  ## So are the deprecated `NimIdent` (an object) and `NimSym` of `std/macros`:
+  ## their values are AST nodes, like in the old VM.
+  t.sym != nil and t.sym.magic == mPNimrodNode and t.kind in {tyRef, tyObject}
+
 proc isManagedMemory(t: PType): bool =
-  result = t.kind in GcTypeKinds or
+  # NimNodes only exist at compile time; the VM does not count them
+  result = (t.kind in GcTypeKinds and not isNimNodeType(t)) or
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc containsManagedMemory*(typ: PType): bool =
@@ -364,50 +371,62 @@ proc containsHiddenPointer*(typ: PType): bool =
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
 
-proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool
-proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef: bool, hasTrace: bool): bool =
+proc canFormAcycleAux(g: ModuleGraph; marker: var IntSet, typ: PType, orig: PType, withRef, hasTrace, sawPlainEdge: bool; envCheck = false): bool
+proc canFormAcycleNode(g: ModuleGraph; marker: var IntSet, n: PNode, orig: PType, withRef, hasTrace, sawPlainEdge: bool; envCheck = false): bool =
   result = false
   if n != nil:
     var hasCursor = n.kind == nkSym and sfCursor in n.sym.flags
     # cursor fields don't own the refs, which cannot form reference cycles
     if hasTrace or not hasCursor:
-      result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace)
+      result = canFormAcycleAux(g, marker, n.typ, orig, withRef, hasTrace, sawPlainEdge, envCheck)
       if not result:
         case n.kind
         of nkNone..nkNilLit:
           discard
         else:
           for i in 0..<n.len:
-            result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace)
+            result = canFormAcycleNode(g, marker, n[i], orig, withRef, hasTrace, sawPlainEdge, envCheck)
             if result: return
 
-
 proc sameBackendType*(x, y: PType): bool
-proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef: bool, hasTrace: bool): bool =
+proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PType, withRef, hasTrace, sawPlainEdge: bool; envCheck = false): bool =
+  # `sawPlainEdge`: whether the walk from `orig` crossed a reference that is
+  # not `owned`. Owning edges are move-only and so form a forest (RFC #575):
+  # a cycle back to `orig` is only possible if it contains a non-owned edge.
+  # Owned edges must still be followed as a cycle can pass through them
+  # (`A.owned -> B`, `B.plain -> A`).
   result = false
   if typ == nil: return
   if tfAcyclic in typ.flags: return
+  let isOwnedEdge = typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct}).kind == tyOwned
   var t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
   if tfAcyclic in t.flags: return
+  # `sawPlainEdge` is part of the key: a type first reached only via owned
+  # edges must be revisited when it is also reachable via a plain edge.
+  template visited(t: PType; saw: bool): bool = containsOrIncl(marker, t.id * 2 + ord(saw))
   case t.kind
   of tyRef, tyPtr, tyUncheckedArray:
     if t.kind == tyRef or hasTrace:
+      let saw = sawPlainEdge or (t.kind != tyUncheckedArray and not isOwnedEdge)
       if withRef and sameBackendType(t, orig):
-        result = true
-      elif not containsOrIncl(marker, t.id):
-        result = canFormAcycleAux(g, marker, t.elementType, orig, withRef or t.kind != tyUncheckedArray, hasTrace)
+        result = saw
+      elif not visited(t, saw):
+        result = canFormAcycleAux(g, marker, t.elementType, orig, withRef or t.kind != tyUncheckedArray, hasTrace, saw, envCheck)
   of tyObject:
     if withRef and sameBackendType(t, orig):
-      result = true
-    elif not containsOrIncl(marker, t.id):
+      result = sawPlainEdge
+    elif not visited(t, sawPlainEdge):
       var hasTrace = hasTrace
       let op = getAttachedOp(g, t.skipTypes({tyRef}), attachedTrace)
       if op != nil and sfOverridden in op.flags:
         hasTrace = true
-      if t.baseClass != nil:
-        result = canFormAcycleAux(g, marker, t.baseClass, orig, withRef, hasTrace)
+      let base = t.baseClass
+      # `envCheck`: closure environments are final but derive from the empty
+      # `RootObj`, which adds no fields:
+      if base != nil and not (envCheck and base.baseClass == nil and (base.n == nil or base.n.len == 0)):
+        result = canFormAcycleAux(g, marker, base, orig, withRef, hasTrace, sawPlainEdge, envCheck)
         if result: return
-      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef, hasTrace)
+      if t.n != nil: result = canFormAcycleNode(g, marker, t.n, orig, withRef, hasTrace, sawPlainEdge, envCheck)
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
@@ -416,27 +435,38 @@ proc canFormAcycleAux(g: ModuleGraph, marker: var IntSet, typ: PType, orig: PTyp
       result = true
   of tyTuple:
     if withRef and sameBackendType(t, orig):
-      result = true
-    elif not containsOrIncl(marker, t.id):
+      result = sawPlainEdge
+    elif not visited(t, sawPlainEdge):
       for a in t.kids:
-        result = canFormAcycleAux(g, marker, a, orig, withRef, hasTrace)
+        result = canFormAcycleAux(g, marker, a, orig, withRef, hasTrace, sawPlainEdge, envCheck)
         if result: return
   of tySequence, tyArray, tyOpenArray, tyVarargs:
     if withRef and sameBackendType(t, orig):
-      result = true
-    elif not containsOrIncl(marker, t.id):
-      result = canFormAcycleAux(g, marker, t.elementType, orig, withRef, hasTrace)
-  of tyProc: result = typ.callConv == ccClosure
+      result = sawPlainEdge
+    elif not visited(t, sawPlainEdge):
+      result = canFormAcycleAux(g, marker, t.elementType, orig, withRef, hasTrace, sawPlainEdge, envCheck)
+  of tyProc:
+    # the environment of an `owned` closure is acyclic by contract, checked
+    # where the closure is formed. Any other closure may capture anything.
+    result = t.callConv == ccClosure and not isOwnedEdge
   else: discard
 
 proc isFinal*(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
-proc canFormAcycle*(g: ModuleGraph, typ: PType): bool =
+proc canFormAcycle*(g: ModuleGraph, typ: PType; envCheck = false): bool =
+  ## `envCheck` is for the check of an `owned` closure's environment only. It
+  ## must not influence the classification codegen uses: an environment can
+  ## still gain fields after its hooks were lifted (closure iterators).
   var marker = initIntSet()
   let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
-  result = canFormAcycleAux(g, marker, t, t, false, false)
+  if t.kind == tyRef:
+    # the edge that leads to the cell is not part of a cycle through it,
+    # so it does not count as a plain edge:
+    result = canFormAcycleAux(g, marker, t.elementType, t, true, false, false, envCheck)
+  else:
+    result = canFormAcycleAux(g, marker, t, t, false, false, false, envCheck)
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.add concrete
@@ -963,19 +993,23 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
+    template compareCAliases(sameIdentity: untyped) =
+      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
+      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
+      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
+        result = sameIdentity and symFlagsA == symFlagsB and
+          a.sym.loc.snippet == b.sym.loc.snippet
+
     result = sameFlags(a, b)
     if result and {PickyCAliases, ExactTypeDescValues} <= c.flags:
       # additional requirement for the caching of generics for importc'ed types:
-      # the symbols must be identical too:
-      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
-      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
-      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
-        result = symFlagsA == symFlagsB
+      # the symbol flags and external names must match too. Ordinary aliases
+      # inherit the external name and can still share an instantiation.
+      compareCAliases(true)
     elif result and PickyBackendAliases in c.flags:
-      let symFlagsA = if a.sym != nil: a.sym.flags else: {}
-      let symFlagsB = if b.sym != nil: b.sym.flags else: {}
-      if (symFlagsA+symFlagsB) * {sfImportc, sfExportc} != {}:
-        result = a.id == b.id
+      # Imported aliases can share the builtin's type ID while using a
+      # different C type, e.g. `const char *` instead of `cstring`.
+      compareCAliases(a.id == b.id)
 
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -987,9 +1021,10 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result:
       ifFastObjectTypeCheckFailed(a, b):
         cycleCheck()
-        # should be generic, and belong to the same generic head type:
-        assert a.typeInst != nil, "generic object " & $a & " has no typeInst"
-        assert b.typeInst != nil, "generic object " & $b & " has no typeInst"
+        # should be generic, and belong to the same generic head type; an
+        # object with a non-concrete field is not, after an error (`nim check`):
+        if a.typeInst == nil or b.typeInst == nil:
+          result = false
         if result:
           withoutShallowFlags:
             # this is required because of generic `ref object`s,

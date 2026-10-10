@@ -22,23 +22,29 @@ template toLocation*(result: var string, file: string | cstring, line: int, col:
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 
 template tupleObjectDollar*[T: tuple | object](result: var string, x: T) =
-  result = "("
+  result = ""
+  when T is object:
+    # a sum type is rendered like its constructor, `Branch(field: value)`:
+    for name, value in fieldPairs(x):
+      when name == "`kind": result.add $value
+  result.add "("
   const isNamed = T is object or isNamedTuple(typeof(T))
   var count {.used.} = 0
   for name, value in fieldPairs(x):
-    if count > 0: result.add(", ")
-    when isNamed:
-      result.add(name)
-      result.add(": ")
-    count.inc
-    when compiles($value):
-      when value isnot string and value isnot seq and compiles(value.isNil):
-        if value.isNil: result.add "nil"
-        else: result.addQuoted(value)
+    when name != "`kind":
+      if count > 0: result.add(", ")
+      when isNamed:
+        result.add(name)
+        result.add(": ")
+      count.inc
+      when compiles($value):
+        when value isnot string and value isnot seq and compiles(value.isNil):
+          if value.isNil: result.add "nil"
+          else: result.addQuoted(value)
+        else:
+          result.addQuoted(value)
       else:
-        result.addQuoted(value)
-    else:
-      result.add("...")
+        result.add("...")
   when not isNamed:
     if count == 1:
       result.add(",") # $(1,) should print as the semantically legal (1,)

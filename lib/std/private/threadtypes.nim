@@ -162,7 +162,9 @@ type
 const hasAllocStack* = defined(zephyr) # maybe freertos too?
 
 type
-  Thread*[TArg] = object
+  Thread*[TArg] {.byref.} = object
+    ## Passed by reference: a by-value copy would read `core`/`dataFn` while
+    ## the thread itself clears them on exit (data race, #26354).
     core*: PGcThread
     sys*: SysThread
     when TArg is void:

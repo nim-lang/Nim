@@ -479,9 +479,14 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
-    let t = newTypeS(targetType.kind, c, baseType)
-    if targetType.kind == tyOwned:
-      t.incl tfHasOwned
+    var t: PType
+    if targetType.kind == tyOwned and not ownedRefsEnabled(c):
+      t = baseType # `owned` is erased when the feature is off
+    else:
+      t = newTypeS(targetType.kind, c, baseType)
+      if targetType.kind == tyOwned:
+        t.incl tfHasOwned
+        checkOwnedBase(c, n.info, t)
     result = newNodeI(nkType, n.info)
     result.typ = makeTypeDesc(c, t)
     return
@@ -492,7 +497,12 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   if n[1].kind == nkExprEqExpr and
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
-  var op = semExprWithType(c, n[1], flags * {efDetermineType} + {efAllowSymChoice})
+  # `T(Branch(...))` selects the sum type `T` that `Branch` belongs to:
+  let opExpected =
+    if n[1].kind in nkCallKinds+{nkObjConstr} and n[1].len > 0 and
+        sumTypeBranchCandidates(c, n[1][0]).len > 0: targetType
+    else: nil
+  var op = semExprWithType(c, n[1], flags * {efDetermineType} + {efAllowSymChoice}, opExpected)
   if isSymChoice(op) and op[0].sym.kind notin routineKinds:
     # T(foo) disambiguation syntax only allowed for routines
     op = semSymChoice(c, op)
@@ -555,6 +565,7 @@ proc semCast(c: PContext, n: PNode): PNode =
     errorUseQualifier(c, n[1].info, castedExpr)
   if targetType == nil:
     localError(c.config, n.info, "Invalid usage of cast, cast requires a type to convert to, e.g., cast[int](0d).")
+    return errorNode(c, n)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
@@ -807,8 +818,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PTyp
     of tyArray:
       expectedIndexType = expectedBase[0]
       expectedElementType = expectedBase[1]
-    of tyOpenArray, tySequence:
-      # typed bracket expressions can also have seq type
+    of tyOpenArray, tyVarargs, tySequence:
+      # typed bracket expressions can also have seq or varargs type (#7357)
       expectedElementType = expectedBase[0]
     else: discard
   var
@@ -1010,14 +1021,14 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #echo "NOW evaluating at compile time: ", call.renderTree
     if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
       if sfCompileTime in callee.flags:
-        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner)
+        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner, c)
         if result.isNil:
           localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
         else:
           var producedClosure = false
           result = fixupTypeAfterEval(c, result, n, producedClosure)
       else:
-        result = evalConstExpr(c.module, c.idgen, c.graph, call)
+        result = evalConstExpr(c.module, c.idgen, c.graph, call, c)
         if result.isNil: result = n
         else:
           var producedClosure = false
@@ -1037,7 +1048,7 @@ proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if a.findUnresolvedStatic != nil or
       c.config.errorCounter != oldErrorCount:
     return a
-  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner, c)
   if result.isNil:
     localError(c.config, n.info, errCannotInterpretNodeX % renderTree(n))
     result = c.graph.emptyNode
@@ -1343,6 +1354,16 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
     if r.sym.name.id == field.id: result = r.sym
   else: illFormedAst(n, c.config)
 
+proc isSumTypeFieldCheck(check: PNode): bool =
+  ## Whether the field check `check` built by `lookupInRecordAndBuildCheck`
+  ## guards a field in a branch of a sum type.
+  result = false
+  for i in 1..<check.len:
+    var it = check[i]
+    if it[0].kind == nkSym and it[0].sym.magic == mNot: it = it[1]
+    let disc = it[2]
+    if disc.kind == nkSym and isSumTypeDiscriminator(disc.sym): return true
+
 const
   tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
@@ -1646,6 +1667,10 @@ proc builtinFieldAccess(c: PContext; n: PNode; flags: var TExprFlags): PNode =
         if n[1].kind == nkSym and n[1].sym == f:
           false # field lookup was done already, likely by hygienic template or bindSym
         else: true
+      if visibilityCheckNeeded and check != nil and c.inUncheckedAccess == 0 and
+          isSumTypeFieldCheck(check):
+        localError(c.config, n[1].info, "field '" & f.name.s &
+          "' can only be accessed in a pattern matching `case` branch")
       if not visibilityCheckNeeded or fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
         markUsed(c, n[1].info, f)
@@ -1976,7 +2001,8 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
 
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   const absInst = abstractInst - {tyOwned}
-  if ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
+  if optOwnedRefs in c.config.globalOptions and
+      ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
       le.typ != nil and le.typ.skipTypes(absInst).kind != tyOwned and
       scopedLifetime(c, ri):
     if le.kind == nkSym and le.sym.kind == skResult:
@@ -2129,8 +2155,11 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           rhsTyp = rhsTyp.last
         if lhs.sym.typ.kind == tyAnything:
           rhsTyp = rhsTyp.skipTypes({tySink}).skipIntLit(c.idgen)
-        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
-          internalAssert c.config, c.p.resultSym != nil
+        if lhs.sym != c.p.resultSym:
+          # `result` of an outer routine, bug #18556
+          localError(c.config, n.info, "cannot infer the return type of '" &
+            lhs.sym.owner.name.s & "' from within a nested routine")
+        elif cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           # Make sure the type is valid for the result variable
           typeAllowedCheck(c, n.info, rhsTyp, skResult)
           lhs.typ = rhsTyp
@@ -3133,8 +3162,8 @@ proc semExport(c: PContext, n: PNode): PNode =
           markUsed(c, n.info, s)
           specialSyms(c, s)
           if s.kind == skType and sfPure notin s.flags:
-            var etyp = s.typ
-            if etyp.kind in {tyBool, tyEnum}:
+            var etyp = enumOrSumTypeEnum(s.typ)
+            if etyp != nil:
               for j in 0..<etyp.n.len:
                 var e = etyp.n[j].sym
                 if e.kind != skEnumField:
@@ -3532,6 +3561,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
+    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil:
+      # a gensym'ed routine that was never declared, bug #15097
+      localError(c.config, n[0].info, "attempting to call undeclared routine: '" & s.name.s & "'")
+      return errorNode(c, n)
     if s != nil:
       case s.kind
       of skMacro, skTemplate:
@@ -3551,6 +3584,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       of skProc, skFunc, skMethod, skConverter, skIterator:
         if s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
+      of skEnumField:
+        # `Branch()` or `Branch(field: value)` of a sum type:
+        let branches = sumTypeBranchCandidates(c, n[0])
+        if branches.len > 0:
+          result = semSumTypeConstr(c, n, branches, flags, expectedType)
+        else:
+          result = semIndirectOp(c, n, flags, expectedType)
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags, expectedType)

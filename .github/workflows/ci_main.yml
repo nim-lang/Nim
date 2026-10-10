@@ -16,7 +16,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Routes the matrix entries marked with `pool:` to the self-hosted runners
+  # (labels `wsl` / `windows`) if they are online and idle, otherwise to the
+  # GitHub-hosted image. Secrets are not passed to PRs from forks, so with an
+  # empty token those always run GitHub-hosted. `RUNNER_STATUS_TOKEN` is a
+  # fine-grained PAT with "Administration: Read-only" on this repository.
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      linux: ${{ steps.p.outputs.linux }}
+      windows: ${{ steps.p.outputs.windows }}
+    steps:
+      - id: p
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_STATUS_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          linux='"ubuntu-24.04"'; windows='"windows-2025"'
+          if [ -n "$GH_TOKEN" ]; then
+            idle=$(gh api "repos/$REPO/actions/runners" \
+              --jq '.runners[] | select(.status=="online" and (.busy|not)) | .labels[].name' || true)
+            grep -qix wsl     <<<"$idle" && linux='["self-hosted","wsl"]'
+            grep -qix windows <<<"$idle" && windows='["self-hosted","windows"]'
+          fi
+          echo "linux=$linux"     >> "$GITHUB_OUTPUT"
+          echo "windows=$windows" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: pick
     strategy:
       fail-fast: false
       matrix:
@@ -24,10 +51,14 @@ jobs:
           - name: Linux_amd64
             os: ubuntu-24.04
             cpu: amd64
-          # regularly breaks, refs bug #17325
-          # - name: Linux_i386
-          #   os: ubuntu-24.04
-          #   cpu: i386
+            pool: linux
+          # Build-only, like nimony's i386 job: the test suite regularly breaks
+          # on i386 (refs bug #17325), but that the compiler still bootstraps
+          # where `int` and pointers are 32 bits is worth asserting on its own.
+          - name: Linux_i386
+            os: ubuntu-24.04
+            cpu: i386
+            buildOnly: 'true'
           - name: OSX_arm64
             os: macos-15
             cpu: arm64
@@ -40,6 +71,7 @@ jobs:
             os: windows-2025
             cpu: amd64
             batch: '0_3'
+            pool: windows
           - name: Windows_amd64_batch1_3
             os: windows-2025
             cpu: amd64
@@ -50,7 +82,7 @@ jobs:
             batch: '2_3'
 
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.pool && fromJSON(needs.pick.outputs[matrix.pool]) || matrix.os }}
     timeout-minutes: 90 # `60` led to lots of cancelled jobs
 
     defaults:
@@ -78,7 +110,8 @@ jobs:
           node-version: 20
 
       - name: 'Install dependencies (amd64 Linux)'
-        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+        # Preinstalled on the self-hosted runner (which has no sudo).
+        if: runner.os == 'Linux' && matrix.cpu == 'amd64' && runner.environment == 'github-hosted'
         run: |
           set -e
           . ci/funs.sh
@@ -95,22 +128,12 @@ jobs:
           set -e
           . ci/funs.sh
           echo_run sudo dpkg --add-architecture i386
-          # Downgrade llvm:
-          # - llvm has to be downgraded to have 32bit version installed for sfml.
-
-          cat << EOF | sudo tee /etc/apt/preferences.d/pin-to-rel
-          Package: libllvm6.0
-          Pin: origin "azure.archive.ubuntu.com"
-          Pin-Priority: 1001
-          EOF
-
-          echo_run sudo apt-get update -qq || echo "failed, see bug #17343"
-          # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
-          # `could not load: libffi.so` during dynamic loading.
+          echo_run sudo apt-get update -qq
+          # Only a C toolchain: this job bootstraps but runs no tests, so none of
+          # the libraries the test suite links against are needed.
           DEBIAN_FRONTEND='noninteractive' \
-            echo_run sudo apt-get install --no-install-recommends --allow-downgrades -yq \
-              g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
-              libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
+            echo_run sudo apt-get install --no-install-recommends -yq \
+              gcc-multilib g++-multilib
 
           cat << EOF > bin/gcc
           #!/bin/bash
@@ -150,4 +173,15 @@ jobs:
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
       - name: 'koch, Run CI'
+        if: matrix.buildOnly != 'true'
         run: . ci/funs.sh && nimInternalBuildKochAndRunCI
+
+      - name: 'koch boot (build-only)'
+        # `koch boot` self-hosts until two consecutive compilers are identical, so
+        # it runs the freshly built 32 bit compiler (and its VM) on the compiler.
+        if: matrix.buildOnly == 'true'
+        run: |
+          set -e
+          . ci/funs.sh
+          echo_run nim c koch
+          echo_run ./koch boot -d:release

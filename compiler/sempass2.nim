@@ -1240,6 +1240,11 @@ proc trackCall(tracked: PEffects; n: PNode) =
       else:
         discard
       var effectList = op.n[0]
+      if a.kind == nkSym and isNoEffectList(effectList) and
+          tracked.graph.demandCycleBody != nil:
+        # possibly a routine of the cycle group whose body is still deferred:
+        tracked.graph.demandCycleBody(a.sym)
+        effectList = op.n[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
         if {sfBase, sfThread} * a.sym.flags == {sfBase}:
           if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
@@ -1409,7 +1414,7 @@ proc castBlock(tracked: PEffects, castPragma: PNode, bc: var PragmaBlockContext)
       bc.exc = newNodeI(nkArgList, pragma.info)
       bc.exc.add n
     bc.excSource = castPragma
-  of wUncheckedAssign:
+  of wUncheckedAssign, wUncheckedAccess:
     discard "handled in sempass1"
   else:
     localError(tracked.config, pragma.info,

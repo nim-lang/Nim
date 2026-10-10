@@ -666,6 +666,10 @@ macro check*(conditions: untyped): untyped =
         $exp[0] in ["not", "in", "notin", "==", "<=",
                     ">=", "<", ">", "!=", "is", "isnot"]:
 
+      # the arguments are untyped, so we cannot know whether they are types;
+      # the operands of `is` and `isnot` usually are. Every operand must be
+      # evaluated exactly once:
+      let isTypeCheck = $exp[0] in ["is", "isnot"]
       for i in 1 ..< exp.len:
         if exp[i].kind notin nnkLiterals:
           inc counter
@@ -674,7 +678,7 @@ macro check*(conditions: untyped): untyped =
           if exp[i].kind == nnkIdent:
             result.printOuts.add getAst(print(argStr, paramAst))
           if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar} and
-                  (exp[i].typeKind notin {ntyTypeDesc} or $exp[0] notin ["is", "isnot"]):
+                  not isTypeCheck:
             let callVar = newIdentNode(":c" & $counter)
             # Construct AST directly instead of using getAst to preserve line info
             let asgnNode = newNimNode(nnkVarSection, exp[i])
@@ -692,22 +696,6 @@ macro check*(conditions: untyped): untyped =
             #   Ident "v"
             #   IntLit 2
             result.check[i] = exp[i][1]
-          if exp[i].typeKind notin {ntyTypeDesc}:
-            let arg = newIdentNode(":p" & $counter)
-            # Construct AST directly instead of using getAst to preserve line info
-            let asgnNode = newNimNode(nnkVarSection, exp[i])
-            let identDef = newNimNode(nnkIdentDefs, exp[i])
-            identDef.add arg
-            identDef.add newEmptyNode()
-            identDef.add paramAst
-            asgnNode.add identDef
-            result.assigns.add asgnNode
-            result.printOuts.add getAst(print(argStr, arg))
-            result.printOuts[^1].setLineInfo exp.lineInfoObj
-            if exp[i].kind != nnkExprEqExpr:
-              result.check[i] = arg
-            else:
-              result.check[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:

@@ -29,7 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "47"
+  icFormatVersion* = "48"
+    ## v48: track implementation dependencies for reused generic type instances.
     ## v46: every type definition wraps its sons in `(genericargs ...)`.
     ## v45: localPassC backend actions are keyed by their generated C file.
     ## v44: CacheCounter values live in the shared, file-locked `ic.counters`.
@@ -228,7 +229,7 @@ type
     cmdCompileToNif
     cmdNifC  # generate C code from NIF files
     cmdIc  # generate .build.nif for nifmake
-    cmdIcConfig # `nim ic`'s precompiled-config producer (writes ic_config.cfg.nif)
+    cmdIcConfig # `nim ic`'s precompiled-config producer (writes config snapshots)
     cmdTrack # `nim track --def/--usages`: IC frontend build + NIF scan for IDE queries
 
 const
@@ -290,6 +291,9 @@ type
     genericsOpenSym
     vtables
     typeBoundOps
+    ownedRefs
+      ## `owned ref T` / `owned proc` as a statically checked unique
+      ## ownership annotation on top of ARC/ORC/YRC (RFC #575).
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

@@ -32,6 +32,7 @@ type
     filterDiscriminator: PSym  # we generating destructor for case branch
     c: PContext # c can be nil, then we are called from lambdalifting!
     idgen: IdGenerator
+    ownedEdge: bool # filling the body for an `owned` location (RFC #575)
 
 template destructor*(t: PType): PSym = getAttachedOp(c.g, t, attachedDestructor)
 template assignment*(t: PType): PSym = getAttachedOp(c.g, t, attachedAsgn)
@@ -196,8 +197,9 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
       c.addMemReset = prevAddMemReset
       localEnforceDefaultOp = true
 
-    if c.kind != attachedDestructor:
-      # copy the selector before case stmt, but destroy after case stmt
+    if c.kind notin {attachedDestructor, attachedWasMoved}:
+      # copy the selector before case stmt, but destroy (or reset) after case stmt:
+      # the branch fields can only be reached while the selector still has its old value
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
 
     let oldfilterDiscriminator = c.filterDiscriminator
@@ -223,9 +225,14 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
     if emptyBranches != n.len-1:
       body.add(caseStmt)
 
-    if c.kind == attachedDestructor:
-      # destructor for selector is done after case stmt
+    if c.kind in {attachedDestructor, attachedWasMoved}:
+      # destructor/wasMoved for selector is done after case stmt
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
+    if c.kind == attachedWasMoved and emptyBranches != n.len-1:
+      # the reset selector now selects a different branch whose fields
+      # overlap the old ones: reset them too, the old branch's hooks
+      # need not have cleared every byte
+      body.add copyTree(caseStmt)
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
     # destroys in reverse order #24719
@@ -266,6 +273,7 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   var obj = t
   while obj.baseClass != nil:
     obj = skipTypes(obj.baseClass, abstractPtrs)
+    if obj.kind != tyObject: break # after an instantiation error (`nim check`)
     hasCase = hasCase or isCaseObj(obj.n)
 
   if hasCase and c.kind in {attachedAsgn, attachedDeepCopy}:
@@ -696,6 +704,8 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     let h = sighashes.hashType(t,c.g.config, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.g.canonTypes.getOrDefault(h)
     if canon != nil: t = canon
+  if t.destructor == nil and c.g.config.errorCounter > 0:
+    return # e.g. `seq[empty]` after "invalid type" under `nim check`
 
   case c.kind
   of attachedAsgn, attachedDeepCopy:
@@ -763,6 +773,10 @@ proc cyclicType*(g: ModuleGraph, t: PType): bool =
   case t.kind
   of tyRef: result = types.canFormAcycle(g, t.elementType)
   of tyProc: result = t.callConv == ccClosure
+  of tyOwned:
+    # an `owned` closure is acyclic by contract, see `canFormAcycle`
+    let b = t.skipModifier.skipTypes(abstractInst)
+    result = b.kind == tyRef and types.canFormAcycle(g, b.elementType)
   else: result = false
 
 proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -866,6 +880,10 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicDyn", c.info, tmp)
   elif isInheritableAcyclicRef:
     cond = callCodegenProc(c.g, "nimDecRefIsLastDyn", c.info, x)
+  elif c.ownedEdge and (c.g.config.selectedGC == gcYrc or
+      isDefined(c.g.config, "nimOwnedStrict")):
+    # releasing the owning edge of an acyclic cell: see `nimDecRefIsLastOwned`
+    cond = callCodegenProc(c.g, "nimDecRefIsLastOwned", c.info, x)
   else:
     cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
   cond.typ = getSysType(c.g, x.info, tyBool)
@@ -1103,6 +1121,11 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  if isNimNodeType(t):
+    # NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
+    # time; the VM represents them as handles, there is nothing to count:
+    defaultOp(c, t, body, x, y)
+    return
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyUncheckedArray:
@@ -1145,7 +1168,18 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
           ownedClosureOp(c, base, body, x, y)
           return
       else: discard
-    defaultOp(c, base, body, x, y)
+      defaultOp(c, base, body, x, y)
+    else:
+      # `--experimental:ownedRefs`: the owning edge is an ordinary counted
+      # reference, but it is unique and so cannot be copied, only moved or
+      # converted to an unowned reference (RFC #575).
+      if c.kind in {attachedAsgn, attachedDup}:
+        ensureMutable c.fn
+        incl c.fn.flagsImpl, sfError
+      let oldOwnedEdge = c.ownedEdge
+      c.ownedEdge = base.kind == tyRef
+      fillBody(c, base, body, x, y)
+      c.ownedEdge = oldOwnedEdge
   of tyArray:
     if tfHasAsgn in t.flags or useNoGc(c, t):
       forallElements(c, t, body, x, y)
@@ -1462,6 +1496,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+
   # IC: review this solution again later
   orig.inclDerived {tfCheckedForDestructor}
   # for user defined generic destructors:

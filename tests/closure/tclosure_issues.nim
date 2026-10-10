@@ -97,3 +97,15 @@ block: # bug #25904
         yield 0
         0
   let _ = w
+
+block: # bug #26337
+  iterator raw(): int {.closure.} =
+    try:
+      yield 1
+    except:
+      discard
+    yield 2
+
+  let it = raw
+  doAssert it() == 1
+  doAssert it() == 2

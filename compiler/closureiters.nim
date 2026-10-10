@@ -480,6 +480,16 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   of nkSkip:
     discard
 
+  of nkStmtList:
+    # This parent tells us its children are statements. A typed child can
+    # therefore be lowered without preserving its final value.
+    for i in 0..<n.len:
+      n[i] = ctx.lowerStmtListExprs(n[i], needsSplit)
+      if n[i].kind == nkStmtListExpr and n[i].hasYields:
+        let (st, res) = exprToStmtList(n[i])
+        st.add(res)
+        n[i] = st
+
   of nkYieldStmt:
     var ns = false
     for i in 0..<n.len:
@@ -545,6 +555,11 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             let newBranch = newTree(nkElse, branchBody)
             curS.add(newBranch)
           else:
+            if n.kind == nkIfStmt and branch[0].kind == nkStmtListExpr:
+              # A statement if can still have a typed branch whose value is unused.
+              let (st, res) = exprToStmtList(branch[0])
+              st.add(res)
+              branch[0] = st
             curS.add(branch)
 
         of nkElifExpr, nkElifBranch:
@@ -565,6 +580,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
               curS.add(elseBody)
             curS = newIf
           else:
+            if n.kind == nkIfStmt and branch[1].kind == nkStmtListExpr:
+              let (st, res) = exprToStmtList(branch[1])
+              st.add(res)
+              branch[1] = st
             newBranch = branch
             if curS.kind == nkIfStmt:
               curS.add(newBranch)
@@ -816,6 +835,20 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
+  of nkPragmaBlock:
+    var ns = false
+    n[1] = ctx.lowerStmtListExprs(n[1], ns)
+    if ns:
+      needsSplit = true
+      if not isEmptyType(n.typ):
+        result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+        let tmp = ctx.newTempVar(n.typ, result)
+        # Keep the value's evaluation inside the pragma block as well.
+        n[1] = ctx.convertExprBodyToAsgn(n[1], tmp)
+        n.typ = nil
+        result.add(n)
+        result.add(ctx.newTempVarAccess(tmp))
+
   of nkBlockExpr:
     var ns = false
     n[1] = ctx.lowerStmtListExprs(n[1], ns)
@@ -1017,7 +1050,12 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     result[^1] = ctx.transformClosureIteratorBody(result[^1], gotoOut)
 
   of nkIfStmt, nkCaseStmt:
-    for i in 0..<n.len:
+    let firstBranch = if n.kind == nkCaseStmt: 1 else: 0
+    if n.kind == nkCaseStmt:
+      # Yields in the selector have already been lowered out. Its expressions
+      # must finish evaluating without jumping to the state after the case.
+      n[0] = ctx.transformBreaksAndReturns(n[0])
+    for i in firstBranch..<n.len:
       n[i] = ctx.transformClosureIteratorBody(n[i], gotoOut)
     if n[^1].kind != nkElse:
       # We don't have an else branch, but every possible branch has to end with

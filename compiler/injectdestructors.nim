@@ -24,6 +24,7 @@ import std/[strtabs, tables, strutils, intsets]
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
+from vmlayout import hasPayloads
 from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites
 
 type
@@ -66,11 +67,19 @@ template dbg(body) =
       body
 
 proc hasDestructor(c: Con; t: PType): bool {.inline.} =
-  result = ast.hasDestructor(t)
+  # A cached sink wrapper can predate its element's lifted operations. The
+  # parameter still owns the element even if the wrapper's derived flags lag.
+  let typ = t.skipTypes({tySink})
+  result = ast.hasDestructor(typ)
+  if not result and c.graph.vmInjecting and
+      optSeqDestructors notin c.graph.config.globalOptions:
+    # the VM manages strings and seqs like --mm:orc does, also for --mm:refc
+    # where they have no hooks:
+    result = hasPayloads(t)
   when toDebug.len > 0:
     # for more effective debugging
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
-      assert(not containsGarbageCollectedRef(t))
+      assert(not containsGarbageCollectedRef(typ))
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo; needsInit: bool): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.idgen, c.owner, info)
@@ -233,6 +242,28 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
+  if c.graph.vmInjecting and op != nil and sfGeneratedOp in op.flags and
+      optSeqDestructors notin c.graph.config.globalOptions and
+      tfHasAsgn notin t.flags:
+    # --mm:refc lifts hooks without memory management for types without user
+    # defined hooks; the VM manages their strings and seqs itself:
+    op = nil
+  if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
+    # The VM does not lift hooks: that could conflict with hooks that are
+    # declared later. It implements these magics with value semantics instead:
+    const fallbacks: array[TTypeAttachedOp, (TMagic, string)] = [
+      attachedWasMoved: (mWasMoved, "=wasMoved"),
+      attachedDestructor: (mDestroy, "=destroy"),
+      attachedAsgn: (mAsgn, "=copy"),
+      attachedDup: (mDup, "=dup"),
+      attachedSink: (mAsgn, "=sink"),
+      attachedTrace: (mTrace, "=trace"),
+      attachedDeepCopy: (mAsgn, "=deepcopy")]
+    let (m, name) = fallbacks[kind]
+    var addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+    addrExp.add(dest)
+    return newTree(nkCall, newSymNode(createMagic(c.graph, c.idgen, name, m)),
+                   if kind == attachedDup: dest else: addrExp)
   if op == nil or op.ast.isGenericRoutine:
     # IC: injectDestructorCalls is demand-driven and runs HERE (cg), not in the
     # `lower` stage, so a structural, env-agnostic op the lower stage never had
@@ -798,6 +829,17 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false,
       # always has a type (bug #26218)
       result.transitionSonsKind(nkIfStmt)
 
+proc ownedToUnowned(c: Con; arg: PNode; formal: PType): PNode =
+  ## `--experimental:ownedRefs`: an `owned` argument passed to an unowned
+  ## sink parameter is converted, so that if a copy is required it is a
+  ## counted copy of the unowned reference rather than a copy of the owner.
+  result = arg
+  if optOwnedRefs notin c.graph.config.globalOptions and arg.typ != nil and
+      arg.typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
+    let f = formal.skipTypes({tyGenericInst, tyAlias, tySink})
+    if f.kind != tyOwned:
+      result = newTreeIT(nkHiddenSubConv, arg.info, f, newNodeI(nkEmpty, arg.info), arg)
+
 proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
   if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
     if n[0].kind in nkCallKinds:
@@ -852,7 +894,42 @@ proc distributeAsgn(asgnKind: TNodeKind; dest, ri: PNode; c: var Con; s: var Sco
   else:
     result = newTree(asgnKind, dest, p(ri, c, s, consumed))
 
+proc checkOwnedClosure(c: var Con; n: PNode): bool =
+  ## `--experimental:ownedRefs`: an `owned` closure promises that its
+  ## environment cannot be part of a cycle, which `canFormAcycle` relies on.
+  ## Now that lambda lifting has run, the environment type is known.
+  ## Returns true if `n` is such a conversion, which is a no-op at runtime.
+  result = false
+  if optOwnedRefs in c.graph.config.globalOptions or n.typ == nil or
+      n.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind != tyOwned:
+    return
+  var x = n[1]
+  while x.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and x.len == 2: x = x[1]
+  if x.kind != nkClosure: return
+  result = true
+  if x[1].kind == nkNilLit or x[1].typ == nil: return
+  let envT = x[1].typ.skipTypes(abstractInst+{tyOwned})
+  if envT.kind != tyRef or not canFormAcycle(c.graph, envT.elementType, envCheck = true): return
+  var culprit = ""
+  let obj = envT.elementType.skipTypes(abstractInst)
+  if obj.n != nil:
+    for i, f in obj.n:
+      if f.kind == nkSym and sfCursor notin f.sym.flags:
+        let ft = f.sym.typ.skipTypes(abstractInst)
+        if (ft.kind == tyRef and canFormAcycle(c.graph, ft.elementType)) or
+            (ft.kind == tyProc and ft.callConv == ccClosure):
+          culprit = f.sym.name.s
+          # `lowerings.addField` appends the field position to the name:
+          if culprit.endsWith($i): culprit.setLen(culprit.len - len($i))
+          break
+  localError(c.graph.config, n.info, "cannot produce an 'owned' closure: its environment " &
+    "can be part of a cycle" &
+    (if culprit.len > 0: " via the captured '" & culprit & "'" else: ""))
+
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSingleUsedTemp}; inReturn = false): PNode =
+  if n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv} and n.len == 2 and
+      checkOwnedClosure(c, n):
+    return p(n[1], c, s, mode, tmpFlags, inReturn)
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
@@ -968,7 +1045,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
           if i < L and isCompileTimeOnly(parameters[i]):
             result[i] = n[i]
           elif i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
-            result[i] = p(n[i], c, s, sinkArg)
+            result[i] = p(ownedToUnowned(c, n[i], parameters[i]), c, s, sinkArg)
           else:
             result[i] = p(n[i], c, s, normal)
 
@@ -1152,6 +1229,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       for i in 1..<n.len:
         result[i] = n[i]
     of nkGotoState, nkState, nkAsmStmt:
+      result = n
+    of nkClosedSymChoice, nkOpenSymChoice, nkOpenSym:
+      # only in code that runs in the VM: `bindSym` arguments
       result = n
     of nkReplayAction:
       # A `.rod`/NIF replay record. It only ever appears in a NIF-loaded

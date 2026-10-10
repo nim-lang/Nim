@@ -37,7 +37,8 @@ type
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine",
     wCursor = "cursor", wNoalias = "noalias", wEffectsOf = "effectsOf",
-    wUncheckedAssign = "uncheckedAssign", wRunnableExamples = "runnableExamples",
+    wUncheckedAssign = "uncheckedAssign", wUncheckedAccess = "uncheckedAccess",
+    wRunnableExamples = "runnableExamples",
 
     wImmediate = "immediate", wConstructor = "constructor", wDestructor = "destructor",
     wDelegator = "delegator", wOverride = "override", wImportCpp = "importcpp",
@@ -121,7 +122,7 @@ type
     wInOut = "inout", wOneWay = "oneway",
     # end of codegen keywords
 
-    wBitsize = "bitsize", wImportHidden = "all",
+    wBitsize = "bitsize", wImportHidden = "all", wCyclic = "cyclic",
     wSendable = "sendable"
 
   TSpecialWords* = set[TSpecialWord]
