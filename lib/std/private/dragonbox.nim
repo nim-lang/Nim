@@ -871,7 +871,7 @@ when defined(sizeof_Int128):
     let lo: uint64 = cast[uint64](p)
     return (hi, lo)
 
-elif defined(vcc) and defined(cpu64):
+elif defined(vcc) and defined(amd64):
   proc umul128(x, y: uint64, z: ptr uint64): uint64 {.importc: "_umul128", header: "<intrin.h>".}
   proc mul128*(x: uint64; y: uint64): uint64x2 {.inline.} =
     var hi: uint64 = 0
