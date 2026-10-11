@@ -1576,7 +1576,17 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                           allowMetaTypes = true)
       result = recurse(expanded, true)
 
-  of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
+  of tyCompositeTypeClass:
+    if anon and paramType.base.kind == tyGenericBody:
+      # `b: distinct Table` after `a: Table`: here `Table` names the implicit
+      # generic param of `a` whose `auto` arguments are bound already, so
+      # lift the generic body again to get a fresh set of them (bug #1385)
+      result = recurse(paramType.base, true)
+    else:
+      result = addImplicitGeneric(c,
+          copyType(paramType, c.idgen, getCurrOwner(c)), paramTypId,
+          info, genericParams, paramName)
+  of tyUserTypeClasses, tyBuiltInTypeClass,
      tyAnd, tyOr, tyNot, tyConcept:
     result = addImplicitGeneric(c,
         copyType(paramType, c.idgen, getCurrOwner(c)), paramTypId,
@@ -1716,7 +1726,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
-        if not containsGenericType(typ):
+        if typ.kind == tyForward and def.kind == nkNilLit:
+          # `nil` for a type that is still being defined, like
+          # `T = ref object of RootRef; p: proc (x: T = nil)` (#6615)
+          def.typ = typ
+        elif not containsGenericType(typ):
           # check type compatibility between def.typ and typ:
           def = fitNode(c, typ, def, def.info)
         elif typ.kind == tyStatic:
@@ -2640,6 +2654,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
   of nkSym:
     let s = getGenSym(c, n.sym)
+    if s.kind == skGenericParam and s.typ != nil and
+        s.typ.kind == tyGenericParam and s.typ.len == 0 and
+        tfWildcard in s.typ.flags:
+      # a generic param passed as a symbol, for example created by
+      # `genSym(nskGenericParam)` (#4939); see `semTypeIdent`
+      s.transitionGenericParamToType()
+      s.typ.excl tfWildcard
     if s.typ != nil and (s.kind == skType or s.typ.kind == tyTypeDesc):
       var t =
         if s.kind == skType:
@@ -2843,6 +2864,12 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
 
       if constraint.kind != nkEmpty:
         typ = semTypeNode(c, constraint, nil)
+        if typ.kind in {tySet, tyArray, tySequence, tyUncheckedArray} and
+            typ.elementType.kind == tyNone:
+          # a bare `seq` etc. is the type class of all seqs, it must not share
+          # the generic param of the magic type between constraints (#8435);
+          # see `typeSectionFinalPass`
+          typ = newTypeS(tyBuiltInTypeClass, c, newTypeS(typ.kind, c))
         if typ.kind != tyStatic or typ.len == 0:
           if typ.kind == tyTypeDesc:
             if typ.elementType.kind == tyNone:

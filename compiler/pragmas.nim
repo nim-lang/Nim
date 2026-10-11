@@ -635,7 +635,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         # XXX what to do here if 'amb' is true?
         if e != nil:
           incl(e.flagsImpl, sfUsed)
-          if isDefined(con.config, "nimPreviewAsmSemSymbol"):
+          if isDefined(con.config, "nimPreviewAsmSemSymbol") and
+              not (e.kind == skParam and e.typ.kind == tyStatic):
+            # (the value of a `static` param would end up as verbatim text)
             result.add con.semExprWithType(con, newSymNode(e), {efTypeAllowed})
           else:
             result.add newSymNode(e)

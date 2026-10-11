@@ -138,10 +138,9 @@ block test_t4799_6:
   doAssert(testS(b, a, c) == "rc2base1rd3")
   doAssert(testS(c, b, a) == "rd3rc2base1")
   doAssert(testS([a, b, c]) == "base1rc2rd3")
-  # this is not varargs bug, but array construction bug
-  # see #7955
-  #doAssert(testS([b, c, a]) == "rc2rd3base1")
-  #doAssert(testS([c, b, a]) == "rd3rc2base1")
+  # bug #7955
+  doAssert(testS([b, c, a]) == "rc2rd3base1")
+  doAssert(testS([c, b, a]) == "rd3rc2base1")
 
 proc test_inproc() =
   block test_inproc_1:

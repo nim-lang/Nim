@@ -10,7 +10,7 @@
 ## This module contains 'typeAllowed' and friends which check
 ## for invalid types like `openArray[var int]`.
 
-import ast, renderer, options, semdata, types
+import ast, renderer, options, semdata, types, nversion
 import std/intsets
 
 when defined(nimPreviewSlimSystem):
@@ -183,7 +183,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyPtr:
     result = typeAllowedAux(marker, t.elementType, kind, c, flags+{taHeap})
   of tySet:
-    result = typeAllowedAux(marker, t.elementType, kind, c, flags)
+    let base = t.elementType.skipTypes({tyGenericInst, tyAlias, tySink})
+    if isOrdinalType(base, allowEnumWithHoles = true) and
+        lengthOrd(c.config, base) > MaxSetElements:
+      # can be the result of instantiating a generic `set[T]` (#8141)
+      result = t
+    else:
+      result = typeAllowedAux(marker, t.elementType, kind, c, flags)
   of tyObject:
     if kind in {skProc, skFunc, skConst} and
         t.baseClass != nil and taIsDefaultField notin flags:
