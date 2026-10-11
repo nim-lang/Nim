@@ -2160,6 +2160,9 @@ proc writeImplCookie(config: ConfigRef; thisModule: int32; flat: seq[CookieTok];
   s.update ifaceHex
   writeCookieFile(config, selfSuffix, "impl", $SecureHash(s.finalize()), ".impl.bif")
 
+proc edgesFilename*(config: ConfigRef; fileIdx: FileIndex): string =
+  toGeneratedFile(config, AbsoluteFile(modname(fileIdx.int, config)), ".edges.bif").string
+
 proc writeEdgesFile(config: ConfigRef; thisModule: int32; implDeps: seq[int]) =
   ## Records which modules' bodies this compilation consumed at compile time
   ## (`ModuleGraph.icImplDeps`): the NeedsImpl edge set. deps.nim reads this
@@ -2181,7 +2184,7 @@ proc writeEdgesFile(config: ConfigRef; thisModule: int32; implDeps: seq[int]) =
   for suffix in suffixes:
     b.addStrLit suffix
   b.closeTag()
-  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".edges.bif").string
+  let path = edgesFilename(config, FileIndex thisModule)
   # Deliberately ALWAYS written (unlike every other output of the nim_m rule):
   # nothing gates on this file's mtime — deps.nim only reads its content — so
   # it doubles as the rule's freshness stamp. nifmake's `needsRebuild` takes

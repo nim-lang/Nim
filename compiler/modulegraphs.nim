@@ -900,9 +900,10 @@ when not defined(nimKochBootstrap):
       return known[]
     g.icStale[k] = false
     result = false
-    let nif = toNifFilename(g.config, fileIdx)
-    if fileExists(nif):
-      let written = getLastModificationTime(nif)
+    var stamp = edgesFilename(g.config, fileIdx)
+    if not fileExists(stamp): stamp = toNifFilename(g.config, fileIdx)
+    if fileExists(stamp):
+      let written = getLastModificationTime(stamp)
       for src in toFullPath(g.config, fileIdx) & nifIncludes(g.config, fileIdx):
         if fileExists(src) and getLastModificationTime(src) >= written:
           result = true
