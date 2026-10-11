@@ -524,7 +524,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
     elif e.kind == nkSym and (e.typ.kind == tyStatic or e.typ.kind == tyTypeDesc):
       if e.typ.kind == tyStatic:
-        if e.sym.ast != nil:
+        if e.sym.ast != nil and e.sym.kind != skGenericParam:
+          # the `ast` of a generic param is only its default value (#9942)
           return semArrayIndex(c, e.sym.ast)
         if e.typ.skipModifier.kind != tyGenericParam and not isOrdinalType(e.typ.skipModifier):
           let info = if n.safeLen > 1: n[1].info else: n.info
@@ -2903,7 +2904,11 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         def = semConstExpr(c, def)
         if typ == nil:
           if def.typ.kind != tyTypeDesc:
-            typ = newTypeS(tyStatic, c, def.typ)
+            # not `static[int literal(3)]`, see #9942
+            typ = newTypeS(tyStatic, c, def.typ.skipIntLit(c.idgen))
+            typ.incl tfHasStatic
+            if not containsGenericType(def.typ):
+              def = fitNode(c, typ, def, def.info)
         else:
           # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
           # from manyloc/named_argument_bug/triengine:

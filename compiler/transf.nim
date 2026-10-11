@@ -618,6 +618,9 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   # numeric types need range checks:
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n[1].typ, abstractVarRange)
+  while source.isResolvedUserTypeClass:
+    # the type that matched the concept (#10506)
+    source = skipTypes(source.last, abstractVarRange)
   case dest.kind
   of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
     # we don't include uint and uint64 here as these are no ordinal types ;-)
