@@ -9,6 +9,8 @@
 
 ## This module implements formatting floats as strings.
 
+{.push checks: off.}
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -145,3 +147,5 @@ when defined(nimPreviewSlimSystem):
   func `$`*(x: float | float32): string =
     ## Outplace version of `addFloat`.
     result.addFloat(x)
+
+{.pop.}

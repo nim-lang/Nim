@@ -22,6 +22,8 @@
 ##  This function may temporarily write up to DtoaMinBufferLength characters into the buffer.
 
 
+{.push checks: off.}
+
 import std/private/digitsutils
 
 when defined(nimPreviewSlimSystem):
@@ -1314,3 +1316,4 @@ when false:
     result = newString(L)
     copyMem(addr result[0], addr buffer[0], L)
 
+{.pop.}

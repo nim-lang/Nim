@@ -9,6 +9,8 @@
 
 ## Contains the used algorithms for counting bits.
 
+{.push checks: off.}
+
 from std/private/bitops_utils import forwardImpl, castToUnsigned
 
 const useBuiltins* = not defined(noIntrinsicsBitOpts)
@@ -91,3 +93,5 @@ proc countBits32*(n: uint32): int {.compilerproc, inline.} =
 
 proc countBits64*(n: uint64): int {.compilerproc, inline.} =
   result = countSetBitsImpl(n)
+
+{.pop.}

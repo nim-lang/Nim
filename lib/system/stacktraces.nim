@@ -10,6 +10,8 @@
 # Additional code for customizable stack traces. Unstable API, for internal
 # usage only.
 
+{.push stackTrace: off.}
+
 const
   reraisedFromBegin* = -10
   reraisedFromEnd* = -100
@@ -95,3 +97,5 @@ when defined(nimStackTraceOverride):
         patchStackTraceEntry(result[result.high])
     if programCounters.len > 0:
       result.addStackTraceEntrySeq(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
+
+{.pop.}

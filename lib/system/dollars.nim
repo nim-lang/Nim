@@ -3,6 +3,8 @@ runnableExamples:
   assert $0.1 == "0.1"
   assert $(-2*3) == "-6"
 
+{.push checks: off.}
+
 import std/private/[digitsutils, miscdollars]
 
 when not defined(nimPreviewSlimSystem):
@@ -155,3 +157,5 @@ proc `$`*[T](x: openArray[T]): string =
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   ##   ```
   collectionToString(x, "[", ", ", "]")
+
+{.pop.}

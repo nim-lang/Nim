@@ -293,6 +293,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     let trackUnusedImport = warnUnusedImportX in c.config.notes
     var realModule: PSym
     discard pushOptionEntry(c)
+    # the imported module starts with the options this module started with,
+    # not with the ones a `{.push.}` around the import set (bug #26431):
+    c.config.options = c.optionStack[0].options
     realModule = c.graph.importModuleCallback(c.graph, c.module, f)
     result = importModuleAs(c, n, realModule, transf.importHidden, trackUnusedImport)
     popOptionEntry(c)
