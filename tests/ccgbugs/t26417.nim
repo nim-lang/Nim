@@ -11,6 +11,8 @@ discard """
 caught
 sink 8
 x!
+7 2 2 4 5 @[1]
+9
 '''
 """
 
@@ -95,3 +97,31 @@ proc setV(v: var Variant; s: string) =
 let v = new Variant
 setV(v[], "x")
 echo v.b
+
+# arbitrary paths as the destination:
+type
+  Holder = object
+    x: int
+    inner: Big
+    arr: array[2, Big]
+  RH = ref Holder
+
+proc p1(h: var Holder; d: int) = h.inner = Big(d: d)
+proc p2(h: var Holder; i, d: int) = h.arr[i] = Big(d: d)
+proc p3(h: RH; i, d: int) = h.arr[i] = Big(d: d)
+proc p4(s: var seq[Big]; i, d: int) = s[i] = Big(d: d)
+proc p5(s: seq[RH]; i, d: int) = s[i].inner = Big(d: d)
+proc p6(h: var Holder; d: int) = h.inner = typeof(h.inner)(d: d)
+proc p7(h: var Holder) = h.inner = Big(s: h.inner.s & @[1], d: h.x)
+proc p8(h: var Holder; i: int) = h.arr[i] = Big(d: h.arr[1-i].d)
+proc p9(h: RH; d: int) = h[].arr[0] = Big(d: d)
+
+block:
+  var h = RH(x: 7)
+  p1(h[], 1); p2(h[], 1, 2); p3(h, 0, 3)
+  var s = newSeq[Big](2); p4(s, 1, 4)
+  var rs = @[RH()]; p5(rs, 0, 5)
+  p6(h[], 6); p7(h[]); p8(h[], 0)
+  echo h.inner.d, " ", h.arr[0].d, " ", h.arr[1].d, " ", s[1].d, " ", rs[0].inner.d, " ", h.inner.s
+  p9(h, 9)
+  echo h.arr[0].d

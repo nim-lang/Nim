@@ -245,7 +245,11 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
     of DerefKinds:
       # a* !<| b[] iff
       result = arNo
-      if isPartOf(a.typ, b.typ) != arNo:
+      if a.kind == nkSym and a.sym.kind == skTemp and sfGlobal notin a.sym.flags:
+        # a compiler introduced temporary is a local whose address is not
+        # taken, it cannot live behind a pointer
+        discard
+      elif isPartOf(a.typ, b.typ) != arNo:
         result = isPartOf(a, b[0], flags)
         if result == arNo: result = arMaybe
 
