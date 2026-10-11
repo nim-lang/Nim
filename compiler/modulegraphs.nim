@@ -899,6 +899,7 @@ when not defined(nimKochBootstrap):
     g.icStale.withValue(k, known):
       return known[]
     g.icStale[k] = false
+    result = false
     let nif = toNifFilename(g.config, fileIdx)
     if fileExists(nif):
       let written = getLastModificationTime(nif)
