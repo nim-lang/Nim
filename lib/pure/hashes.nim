@@ -124,7 +124,7 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
       result = uint64(0)
       {.emit: """__uint128_t r = `a`; r *= `b`; `result` = (r >> 64) ^ r;""".}
-    elif defined(windows) and not defined(tcc):
+    elif defined(windows) and defined(amd64) and not defined(tcc):
       proc umul128(a, b: uint64, c: ptr uint64): uint64 {.importc: "_umul128", header: "intrin.h".}
       var b = b
       let c = umul128(a, b, addr b)
