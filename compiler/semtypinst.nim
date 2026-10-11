@@ -844,6 +844,13 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       of tyArray:
         let idx = result.indexType
         internalAssert cl.c.config, idx.kind != tyStatic
+        let idxB = idx.skipTypes({tyGenericInst, tyAlias, tySink})
+        if idxB.kind in {tyInt..tyInt64, tyUInt..tyUInt64} and
+            lengthOrd(cl.c.config, idxB) > high(uint16).int:
+          # like `array[int, T]`, e.g. a value passed to a non-static
+          # generic param (#10363)
+          localError(cl.c.config, cl.info,
+            "index type '" & typeToString(idxB) & "' for array is too large")
 
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)

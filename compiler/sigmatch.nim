@@ -3280,8 +3280,13 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           # container node kind accordingly
           let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1,
-                 implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+          if cnKind == nkArgList:
+            # like a non-empty `varargs[untyped]`, so that templates splice
+            # it into a call (#9996)
+            setSon(m.call, formal.position + 1, container)
+          else:
+            setSon(m.call, formal.position + 1,
+                   implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
         else:
           # no default value
           m.state = csNoMatch

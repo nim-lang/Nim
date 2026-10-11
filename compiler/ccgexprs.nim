@@ -3459,7 +3459,10 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
   while arg.kind == nkObjDownConv: arg = arg.firstSon
 
   let dest = skipTypes(n.typ, abstractPtrs)
-  let src = skipTypes(arg.typ, abstractPtrs)
+  var src = skipTypes(arg.typ, abstractPtrs)
+  while src.isResolvedUserTypeClass:
+    # the type that matched the concept (#10506)
+    src = skipTypes(src.last, abstractPtrs)
   discard getTypeDesc(p.module, src)
   let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}
   if isRef and d.k == locNone and n.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr} and n.isLValue:
