@@ -10,6 +10,8 @@
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
 # --------------------------------------------------------------------------------------------------
 
+{.push checks: off.}
+
 import std/private/digitsutils
 
 when defined(nimPreviewSlimSystem):
@@ -434,3 +436,5 @@ proc float32ToChars*(buffer: var openArray[char]; v: float32; forceTrailingDotZe
     buffer[pos+2] = 'n'
     buffer[pos+3] = ' '
     return pos + 3
+
+{.pop.}
