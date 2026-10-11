@@ -157,7 +157,7 @@ when defined(sizeof_Int128):
     let y0: uint32 = hi32(cast[uint64](p))
     return y1 or uint32(y0 > 1)
 
-elif defined(vcc) and defined(cpu64):
+elif defined(vcc) and defined(amd64):
   proc umul128(x, y: uint64, z: ptr uint64): uint64 {.importc: "_umul128", header: "<intrin.h>".}
   proc roundToOdd(g: uint64; cpHi: uint32): uint32 {.inline.} =
     var p1: uint64 = 0
