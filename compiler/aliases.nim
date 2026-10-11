@@ -25,7 +25,7 @@ type
     pfStructural    ## use structural prefix-chain detection and tree-walk
     pfBidirectional ## also check reverse direction per field in nkObjConstr
 
-proc isCompileTimeOnlyNode(n: PNode): bool {.inline.} =
+proc isCompileTimeOnlyNode*(n: PNode): bool {.inline.} =
   ## `typeof` and typedesc/static values describe types at compile time; they
   ## do not read the runtime location that alias analysis is protecting.
   n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
@@ -245,7 +245,11 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
     of DerefKinds:
       # a* !<| b[] iff
       result = arNo
-      if isPartOf(a.typ, b.typ) != arNo:
+      if a.kind == nkSym and a.sym.kind == skTemp and sfGlobal notin a.sym.flags:
+        # a compiler introduced temporary is a local whose address is not
+        # taken, it cannot live behind a pointer
+        discard
+      elif isPartOf(a.typ, b.typ) != arNo:
         result = isPartOf(a, b[0], flags)
         if result == arNo: result = arMaybe
 

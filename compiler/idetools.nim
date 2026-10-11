@@ -221,7 +221,7 @@ proc findPos(conf: ConfigRef; m: var BifModule; target: TLineInfo;
 proc runIdeQuery*(conf: ConfigRef) =
   ## Entry point: called from `main.nim` after `commandCheck` when a
   ## `--def`/`--usages` query is active. Assumes the check just emitted the
-  ## project's `.s.bif` files into `getNimcacheDir(conf)`.
+  ## project's `.s.bif` files into its selected semantic directories.
   let section = conf.ideCmd
   if section notin {ideDef, ideUse, ideDus}: return
   let target = conf.m.trackPos
@@ -266,7 +266,7 @@ proc runIdeQuery*(conf: ConfigRef) =
   #      each (see `symMatches`).
   var seen = initHashSet[string]()
   if isGlobalName(foundName):
-    for f in walkFiles((getNimcacheDir(conf).string) / "*.s.bif"):
+    for f in semanticFiles(conf):
       if not containsSym(f, foundName): continue
       var m = load(f)
       let tid = findSym(m.buf.pool, foundName)

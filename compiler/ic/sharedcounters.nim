@@ -25,7 +25,7 @@
 ## be contiguous. They are unique, but unlike under `nim c` neither dense nor
 ## ordered by import order.
 
-import std/[os, strutils, tables, syncio, assertions]
+import std/[algorithm, os, strutils, tables, syncio, assertions]
 import ../[options, pathutils]
 
 when defined(windows):
@@ -79,7 +79,7 @@ var
   mine = initTable[string, Mine]()
 
 proc counterFile(conf: ConfigRef): string =
-  getNimcacheDir(conf).string / "ic.counters"
+  getSemanticCacheDir(conf).string / "ic.counters"
 
 proc load(content: string) =
   # `t <top> <key>` starts a counter, `o <owner> <start> <len>...` follow it
@@ -99,9 +99,17 @@ proc load(content: string) =
 
 proc render(): string =
   result = ""
-  for key, c in counters:
+  var keys: seq[string] = @[]
+  for key in counters.keys: keys.add key
+  keys.sort()
+  for key in keys:
+    let c = counters[key]
     result.add "t " & $c.top & " " & escape(key) & "\n"
-    for o, segs in c.owners:
+    var owners: seq[string] = @[]
+    for o in c.owners.keys: owners.add o
+    owners.sort()
+    for o in owners:
+      let segs = c.owners[o]
       if segs.len == 0: continue
       result.add "o " & escape(o)
       for s in segs: result.add " " & $s.start & " " & $s.len

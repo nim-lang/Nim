@@ -119,6 +119,13 @@ proc hashTypeSym(c: var MD5Context, s: PSym; conf: ConfigRef) =
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
         hashType c, it.typ, {CoProc}, conf
+        # The signature alone does not identify the instance (`verify[int]()`
+        # and `verify[float]()` share `proc ()`), so hash what makes the
+        # instance's C name unique too (bug #26405): its `disamb` and, unless
+        # that is content-derived (IC), the module it was instantiated in.
+        c &= it.disamb
+        if (it.disamb and InstanceDisambBit) == 0'i32:
+          c &= customPath(conf.toFullPath(it.itemId.module.int32.FileIndex))
       c &= it.name.s
       c &= "."
       it = it.owner
@@ -207,7 +214,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
       c.hashType a, flags, conf
   of tyDistinct:
     if CoDistinct in flags:
-      if t.sym != nil: c.hashSym(t.sym)
+      if t.sym != nil:
+        if CoOwnerSig in flags: c.hashTypeSym(t.sym, conf)
+        else: c.hashSym(t.sym)
       if t.sym == nil or tfFromGeneric in t.flags:
         c.hashType t.elementType, flags, conf
     elif CoType in flags and t.sym != nil and

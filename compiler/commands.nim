@@ -995,6 +995,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passCmd2, passPP}:
       conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
+  of "icsemdir", "icmainsemdir":
+    # IC children receive concrete semantic input directories; only the driver
+    # chooses configuration and entry-point subdirectories.
+    expectArg(conf, switch, arg, pass, info)
+    let dir = processPath(conf, arg, info, notRelativeToProj=true)
+    if switch.normalize == "icsemdir": conf.icSemDir = dir
+    else: conf.icMainSemDir = dir
+  of "icmainmodule":
+    expectArg(conf, switch, arg, pass, info)
+    if arg notin conf.icMainModules: conf.icMainModules.add arg
   of "icpreparsedconfig":
     # `nim m`/`nim nifc` only: path of the precompiled-config artifact (see
     # options.icPreparsedConfig). Read in `passCmd1`, before `loadConfigs`, so

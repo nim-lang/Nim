@@ -29,9 +29,9 @@ proc build(): seq[int] =
   doAssert executed.exitCode == 0, executed.output
   result = @[]
   for x in executed.output.strip.split(','): result.add parseInt(x)
-  # the last number is the final counter value, all others are allocations
+  # The last number is main's counter value, all others are allocations.
   doAssert toHashSet(result[0..^2]).len == result.len-1, $result
-  for x in result[0..^2]: doAssert x in 1..result[^1], $result
+  for x in result[0..^2]: doAssert x > 0, $result
 
 try:
   writeFile(dir / "counter.nim", """
@@ -47,10 +47,11 @@ proc nextId*(): int {.compileTime.} =
     writeFile(dir / "m" & $i & ".nim", "import counter\nconst id" & $i & "* = nextId()\n")
     imports.add ", m" & $i
     ids.add "id" & $i & ", \",\", "
-  writeFile(source, imports & "\nconst total = ids.value\necho " & ids & "total\n")
+  writeFile(source, imports & "\nconst own = nextId()\nconst total = ids.value\n" &
+    "echo own, \",\", " & ids & "total\n")
 
   let first = build()
-  doAssert first.len == siblings+1 and first[^1] == siblings, $first
+  doAssert first.len == siblings+2 and first[^1] == siblings+1, $first
 
   # Touching every file re-sems every module; they must be handed the same
   # numbers again, so no artifact changes.

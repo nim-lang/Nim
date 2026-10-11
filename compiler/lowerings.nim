@@ -214,9 +214,9 @@ proc lookupCapturedField(n: PNode, s: PSym): PSym =
   ## Find an env field that `addField` would have produced for the captured
   ## local `s`. Used as a fallback when the derived-itemId match fails because
   ## `s` is a macro-generated gensym whose process-local id diverges from the
-  ## loaded env field's (see `addField`). `addField` always names a field
-  ## `s.name & $field.position`, so that pair uniquely identifies the field for a
-  ## local of this name without relying on the (unstable) item id.
+  ## loaded env field's (see `addField`). `addField` names a field like the
+  ## local it holds, so match by name without relying on the (unstable) item
+  ## id.
   result = nil
   case n.kind
   of nkRecList:
@@ -234,7 +234,7 @@ proc lookupCapturedField(n: PNode, s: PSym): PSym =
         if result != nil: return
       else: discard
   of nkSym:
-    if n.sym.kind == skField and n.sym.name.s == s.name.s & $n.sym.position:
+    if n.sym.kind == skField and n.sym.name.id == s.name.id:
       result = n.sym
   else: discard
 
@@ -266,10 +266,9 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   # macro runs), so downgrade it to mutable instead of crashing on
   # `t.state != Sealed` (mirrors `markAsClosure`).
   unsealForTransform(obj)
-  # because of 'gensym' support, we have to mangle the name with its ID.
-  # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
-                     idgen, s.owner, s.info, s.options)
+  # The field keeps the local's name; same-named locals (gensyms, shadowing)
+  # get distinct fields that are told apart by position, see `sfCapturedLocal`.
+  var field = newSym(skField, s.name, idgen, s.owner, s.info, s.options)
   field.itemId = derivedFieldId(s.itemId)
   let t = skipIntLit(s.typ, idgen)
   field.typ = t
@@ -280,7 +279,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
   propagateToOwner(obj, t)
   field.position = obj.n.len
   # sfNoInit flag for skField is used in closureiterator codegen
-  field.flags = s.flags * {sfCursor, sfNoInit}
+  field.flags = s.flags * {sfCursor, sfNoInit} + {sfCapturedLocal}
   obj.n.add newSymNode(field)
   fieldCheck()
   result = field
@@ -288,9 +287,9 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.itemId)
   if result == nil:
-    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), idgen,
-                       s.owner, s.info, s.options)
+    var field = newSym(skField, s.name, idgen, s.owner, s.info, s.options)
     field.itemId = derivedFieldId(s.itemId)
+    field.incl sfCapturedLocal
     let t = skipIntLit(s.typ, idgen)
     field.typ = t
     assert t.kind != tyTyped

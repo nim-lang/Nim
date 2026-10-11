@@ -326,7 +326,31 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
     result = newTree(nkFastAsgn, dest, ri)
   else:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    if getAttachedOp(c.graph, t, attachedSink) != nil:
+    let op = getAttachedOp(c.graph, t, attachedSink)
+    if op != nil and sfOverridden notin op.flags and ri.kind == nkObjConstr and
+        t.kind == tyObject and sameType(t, ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})):
+      # `=sink(dest, T(f: v))` would construct the (potentially huge) object
+      # in a temporary first (bug #26417). Instead evaluate the field values
+      # into temporaries, then `=destroy(dest)` and construct in place. All
+      # reads of `dest` and all exceptions happen before the destruction.
+      result = newNodeI(nkStmtList, dest.info)
+      var constr = copyNode(ri)
+      constr.add ri[0]
+      for i in 1..<ri.len:
+        let it = ri[i]
+        if it.kind == nkExprColonExpr and it[1].kind notin {nkCharLit..nkNilLit} and
+            not (it[1].typ != nil and it[1].typ.isCompileTimeOnly):
+          let tmp = c.getTemp(s, it[1].typ, it[1].info, needsInit = false)
+          result.add newTree(nkFastAsgn, tmp, it[1])
+          let field = shallowCopy(it)
+          for j in 0..<it.len: field[j] = it[j]
+          field[1] = tmp
+          constr.add field
+        else:
+          constr.add it
+      result.add c.genDestroy(dest)
+      result.add newTree(nkFastAsgn, dest, constr)
+    elif op != nil:
       result = c.genOp(t, attachedSink, dest, ri)
       result.add ri
     else:
@@ -913,14 +937,12 @@ proc checkOwnedClosure(c: var Con; n: PNode): bool =
   var culprit = ""
   let obj = envT.elementType.skipTypes(abstractInst)
   if obj.n != nil:
-    for i, f in obj.n:
+    for f in obj.n:
       if f.kind == nkSym and sfCursor notin f.sym.flags:
         let ft = f.sym.typ.skipTypes(abstractInst)
         if (ft.kind == tyRef and canFormAcycle(c.graph, ft.elementType)) or
             (ft.kind == tyProc and ft.callConv == ccClosure):
           culprit = f.sym.name.s
-          # `lowerings.addField` appends the field position to the name:
-          if culprit.endsWith($i): culprit.setLen(culprit.len - len($i))
           break
   localError(c.graph.config, n.info, "cannot produce an 'owned' closure: its environment " &
     "can be part of a cycle" &

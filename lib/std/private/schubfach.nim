@@ -10,6 +10,8 @@
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
 # --------------------------------------------------------------------------------------------------
 
+{.push checks: off.}
+
 import std/private/digitsutils
 
 when defined(nimPreviewSlimSystem):
@@ -157,7 +159,7 @@ when defined(sizeof_Int128):
     let y0: uint32 = hi32(cast[uint64](p))
     return y1 or uint32(y0 > 1)
 
-elif defined(vcc) and defined(cpu64):
+elif defined(vcc) and defined(amd64):
   proc umul128(x, y: uint64, z: ptr uint64): uint64 {.importc: "_umul128", header: "<intrin.h>".}
   proc roundToOdd(g: uint64; cpHi: uint32): uint32 {.inline.} =
     var p1: uint64 = 0
@@ -434,3 +436,5 @@ proc float32ToChars*(buffer: var openArray[char]; v: float32; forceTrailingDotZe
     buffer[pos+2] = 'n'
     buffer[pos+3] = ' '
     return pos + 3
+
+{.pop.}
