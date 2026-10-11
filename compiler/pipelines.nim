@@ -214,11 +214,17 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         false
       elif graph.config.ideActive:
         # nimsuggest (cmdM): persist NIF for cleanly-compiled, SAVED modules so
-        # later queries load them instead of recompiling. Never persist the
-        # actively edited buffer (it may hold unsaved/incomplete code) nor a
-        # module that failed to compile — that would poison the cache.
+        # later queries load them instead of recompiling. Never persist a module
+        # built from or on top of an edited buffer (it may hold
+        # unsaved/incomplete code) nor a module that failed to compile — that
+        # would poison the cache.
+        var tainted = not graph.config.m.fileInfos[module.position].dirtyFile.isEmpty
+        for dep in graph.importDeps.getOrDefault(module.position.FileIndex, @[]):
+          if graph.icTainted.contains(dep.int): tainted = true
+        if tainted: graph.icTainted.incl module.position
+        else: graph.icTainted.excl module.position
         graph.config.cmd == cmdM and graph.config.errorCounter == 0 and
-          graph.config.m.fileInfos[module.position].dirtyFile.isEmpty
+          not tainted and sfMainModule notin module.flags
       else:
         ({optCompress, optGenBif} * graph.config.globalOptions != {}) or
         (graph.config.cmd == cmdM and
@@ -305,6 +311,8 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       for f in resolvedImportDeps:
         semDepPaths.add toFullPath(graph.config, f)
       writeSemDeps(graph.config, module.position.int32, semDepPaths)
+      if graph.config.ideActive:
+        graph.icWrittenFiles.incl module.position
 
 proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
   ## The module path of an import, without its pragmas. Like

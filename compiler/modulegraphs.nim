@@ -22,6 +22,8 @@ when not defined(nimKochBootstrap):
 
 import typekeys
 
+from std/times import `<=`
+
 when defined(nimPreviewSlimSystem):
   import std/assertions
 
@@ -121,6 +123,9 @@ type
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
+    icStale: Table[int32, bool]
+    icWrittenFiles*: IntSet
+    icTainted*: IntSet
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
     interactive*: bool
@@ -886,6 +891,29 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
 proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
   uniqueModuleName(conf, m, AbsoluteFile toFullPath(conf, FileIndex(m.position)))
 
+when not defined(nimKochBootstrap):
+  proc icMustCompile(g: ModuleGraph; fileIdx: FileIndex): bool =
+    if not g.config.ideActive or g.icWrittenFiles.contains(fileIdx.int):
+      return false
+    let k = fileIdx.int32
+    g.icStale.withValue(k, known):
+      return known[]
+    g.icStale[k] = false
+    let nif = toNifFilename(g.config, fileIdx)
+    if fileExists(nif):
+      let written = getLastModificationTime(nif)
+      for src in toFullPath(g.config, fileIdx) & nifIncludes(g.config, fileIdx):
+        if fileExists(src) and getLastModificationTime(src) >= written:
+          result = true
+          break
+    if not result:
+      for dep in readSemDeps(g.config, fileIdx):
+        let d = fileInfoIdx(g.config, AbsoluteFile dep)
+        if g.icTainted.contains(d.int) or icMustCompile(g, d):
+          result = true
+          break
+    g.icStale[k] = result
+
 proc loadsFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
   ## `nim m` loads an import from its precompiled NIF file. The members of the
   ## current strongly-connected import group (`--icGroup`) are mutually
@@ -898,7 +926,8 @@ proc loadsFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
       not g.withinSystem and
       not g.config.isDefined("nimscript") and
       (g.config.icGroup.len == 0 or
-       toFullPath(g.config, fileIdx) notin g.config.icGroup)
+       toFullPath(g.config, fileIdx) notin g.config.icGroup) and
+      not icMustCompile(g, fileIdx)
 
 proc inSameCycleGroup*(g: ModuleGraph; a, b: FileIndex): bool =
   let ga = g.cycleGroups.getOrDefault(a, InvalidFileIdx)
@@ -945,6 +974,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.packageSyms = initStrTable()
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
+  result.icStale = initTable[int32, bool]()
   result.ifaces = @[]
   result.importStack = @[]
   result.cycleGroups = initTable[FileIndex, FileIndex]()
@@ -1050,6 +1080,8 @@ proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
     g.suggestSymbols.del(fileIdx)
     g.suggestErrors.del(fileIdx)
     incl m.flagsImpl, sfDirty
+  g.icWrittenFiles.excl fileIdx.int
+  g.icStale.clear()
 
 proc unmarkAllDirty*(g: ModuleGraph) =
   for i in 0i32..<g.ifaces.len.int32:
@@ -1286,6 +1318,9 @@ when not defined(nimKochBootstrap):
     # relationship is invisible for NIF-served modules.
     for incPath in result.includes:
       g.addIncludeDep(fileIdx, fileInfoIdx(g.config, AbsoluteFile incPath))
+    if g.suggestMode:
+      for dep in readSemDeps(g.config, fileIdx):
+        g.addDep(m, fileInfoIdx(g.config, AbsoluteFile dep))
 
     # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
     # consumer's `genericCacheGet` finds the instance and SKIPS re-running

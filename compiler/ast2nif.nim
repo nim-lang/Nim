@@ -4200,6 +4200,20 @@ proc loadInclude(c: var DecodeContext; cur: var Cursor; includes: var seq[string
       includes.add strVal(cur)
       skip cur
 
+proc readIncludeRecords(m: var BifModule; includer: var string; includes: var seq[string]) =
+  var c = m.buf.beginRead()
+  if c.kind == TagLit and tagIs(c, toNifTag(nkStmtList)):
+    c.loopInto:
+      if c.kind == TagLit and (tagIs(c, "include") or tagIs(c, "modulesrc")):
+        let isInc = tagIs(c, "include")
+        var ic = c
+        ic.loopInto:
+          if ic.kind == StrLit:
+            if isInc: includes.add strVal(ic)
+            else: includer = strVal(ic)
+          skip ic
+      skip c
+
 proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes: seq[string]]] =
   ## Standalone "full table" scan of every `<suffix>.nif` in the nimcache: reads
   ## only each module's header records — `(modulesrc "path")` (the includer's own
@@ -4218,31 +4232,24 @@ proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes:
     var m = bif.load(f)
     var includer = ""
     var includes: seq[string] = @[]
-    var c = m.buf.beginRead()
-    if c.kind == TagLit and tagIs(c, toNifTag(nkStmtList)):
-      # The dep records (import/include/reexpmod/modulesrc) are written first and
-      # contiguously; `done` short-circuits once the first body node is seen
-      # (`into` forbids an early `break`, so we skip the remainder instead).
-      var done = false
-      c.loopInto:
-        if done or c.kind != TagLit:
-          skip c
-        elif tagIs(c, "include") or tagIs(c, "modulesrc"):
-          let isInc = tagIs(c, "include")
-          var ic = c
-          ic.loopInto:
-            if ic.kind == StrLit:
-              if isInc: includes.add strVal(ic)
-              else: includer = strVal(ic)
-            skip ic
-          skip c
-        elif tagIs(c, "import") or tagIs(c, "interface") or tagIs(c, "hiddeninterface"):
-          skip c
-        else:
-          done = true
-          skip c
+    readIncludeRecords(m, includer, includes)
     if includer.len > 0 and includes.len > 0:
       result.add (includer, includes)
+
+proc nifIncludes*(config: ConfigRef; fileIdx: FileIndex): seq[string] =
+  ## The files the module `include`d when its NIF was written, read from the
+  ## NIF's header records only.
+  result = @[]
+  let f = toNifFilename(config, fileIdx)
+  if fileExists(f):
+    var m = icbif.load(f)
+    var includer = ""
+    readIncludeRecords(m, includer, result)
+
+proc readSemDeps*(config: ConfigRef; fileIdx: FileIndex): seq[string] =
+  ## The module's direct imports recorded by `writeSemDeps`.
+  let f = semanticFile(config, moduleSuffix(config, fileIdx), ".s.deps.bif").string
+  result = if fileExists(f): collectBifStrLits(f) else: @[]
 
 proc nifModuleHasIncludes*(config: ConfigRef; fileIdx: FileIndex): bool =
   ## Cheap header-only check: does the module's `<suffix>.nif` contain an
