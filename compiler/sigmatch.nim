@@ -1700,7 +1700,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else:
       result = isNone
   of tyGenericInst:
-    var prev = lookup(c.bindings, f)
+    # a concrete instance is not bound to the type it matched (#8605)
+    var prev = if f.isMetaType: lookup(c.bindings, f) else: nil
     let origF = f
     var f = if prev == nil: f else: prev
 

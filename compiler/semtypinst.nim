@@ -45,6 +45,10 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     seen.add t
     t = t.skipModifier
   if t.kind in tyTypeClasses: discard
+  elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
+    localError(conf, info, "type 'var var' is not allowed")
+  elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):
+    localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
   elif (let st = t.skipTypes({tyGenericInst, tyAlias, tySink}); st.kind == tySet) and
       st.elementType.kind notin {tyGenericParam, tyError} and
       isOrdinalType(st.elementType, allowEnumWithHoles = true) and
@@ -52,10 +56,6 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     # (#8141)
     localError(conf, info, "set is too large; use `std/sets` for ordinal " &
       "types with more than 2^16 elements")
-  elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
-    localError(conf, info, "type 'var var' is not allowed")
-  elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):
-    localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
 
 proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   result = nil

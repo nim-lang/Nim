@@ -207,7 +207,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##   ```
 
 proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
-                                                              exitCode: int] {.noinit.} =
+                                                              exitCode: int] {.noinit, compileTime.} =
   ## Similar to `gorge <#gorge,string,string,string>`_ but also returns the
   ## precious exit code.
   discard

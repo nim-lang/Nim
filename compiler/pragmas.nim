@@ -1339,6 +1339,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
+    elif validPragmas == procTypePragmas and k in procPragmas:
+      # `proc p(): proc() {.importc.}` attaches the pragma to the return type
+      localError(c.config, it.info, "invalid pragma for a proc type: " &
+        renderTree(it, {renderNoComments}) &
+        "; if it is meant for the routine, put its proc return type in parentheses")
     else:
       # semCustomPragma gives appropriate error for invalid pragmas
       n[i] = semCustomPragma(c, it, sym)
