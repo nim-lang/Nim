@@ -76,6 +76,8 @@ deinitLock(l)
 ]##
 
 
+{.push checks: off, stackTrace: off, profiler: off.}
+
 import std/private/[threadtypes]
 export Thread
 
@@ -305,3 +307,5 @@ proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
 
 when not defined(gcOrc) and not defined(gcYrc):
   include system/threadids
+
+{.pop.}
