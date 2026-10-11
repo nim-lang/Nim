@@ -534,6 +534,7 @@ proc vccplatform(conf: ConfigRef): string =
         of cpuI386: " --platform:x86"
         of cpuArm: " --platform:arm"
         of cpuAmd64: " --platform:amd64"
+      of cpuArm64: " --platform:arm64"
         else: ""
     else:
       result = ""
