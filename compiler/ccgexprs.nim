@@ -2658,7 +2658,16 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc = initLocExpr(p, e.secondSon)
   let etyp = skipTypes(e.typ, abstractRange+{tyOwned})
   let srcTyp = skipTypes(e.secondSon.typ, abstractRange)
-  if etyp.kind in ValueTypes and lfIndirect notin a.flags:
+  if etyp.kind in {tyVar, tyLent} and tfVarIsPtr notin etyp.flags and
+      srcTyp.kind notin {tyVar, tyLent, tyPtr, tyPointer, tyRef}:
+    # `cast[var T](x)` reinterprets the location of `x` (#5972)
+    let x = cCast(ptrType(getTypeDesc(p.module, etyp.elementType)),
+                  wrapPar(addrLoc(p.config, a)))
+    # `var T` is `T&` in C++, see `getTypeDescAux`:
+    putIntoDest(p, d, e,
+      if etyp.kind == tyVar and p.module.compileToCpp: cDeref(x) else: x,
+      a.storage)
+  elif etyp.kind in ValueTypes and lfIndirect notin a.flags:
     let destTyp = getTypeDesc(p.module, e.typ)
     let val = addrLoc(p.config, a)
     # (* (destType*) val)
@@ -2704,7 +2713,12 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
   let
     destt = skipTypes(e.typ, abstractRange)
     srct = skipTypes(e.secondSon.typ, abstractRange)
-  if destt.kind in ValueTypes or srct.kind in ValueTypes:
+  # sets larger than 8 bytes are C arrays (#3540) and closures are C
+  # structs (#5785), neither can be cast in C:
+  template isValueType(t: PType): bool =
+    t.kind in ValueTypes or (t.kind == tySet and getSize(p.config, t) > 8) or
+      (t.kind == tyProc and t.callConv == ccClosure)
+  if isValueType(destt) or isValueType(srct):
     # 'cast' and some float type involved? --> use a union.
     inc(p.labels)
     var lbl = p.labels.rope
@@ -3417,7 +3431,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
   # this avoids invalid C code like `*(T*)&x` for types that can't have their address taken (e.g., WASM __externref_t)
   if getTypeDesc(p.module, n.typ) == getTypeDesc(p.module, n.firstSon.typ):
     expr(p, n.firstSon, d)
-  elif n.firstSon.typ.kind != tyObject:
+  elif n.firstSon.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind != tyObject: # #4137
     let destTyp = getTypeDesc(p.module, n.typ)
     let val = rdLoc(a)
     if n.isLValue:

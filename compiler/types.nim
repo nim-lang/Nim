@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, trees, msgs, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs
+  lineinfos, int128, modulegraphs, astmsgs, nversion
 
 import std/[intsets, strutils]
 
@@ -1634,7 +1634,15 @@ proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
   of tyRef, tyPtr, tyVar, tyLent, tySink,
       tyArray, tyUncheckedArray, tySequence, tyDistinct:
     return isRecursiveStructuralType(t.elementType, cycleDetector)
-  of tyAlias, tyGenericInst:
+  of tyGenericInst:
+    # `A = TableRef[string, A]` (#14015)
+    var cycleDetectorCopy: IntSet
+    for i in FirstGenericParamAt..<t.kidsLen-1:
+      cycleDetectorCopy = cycleDetector
+      if isRecursiveStructuralType(t[i], cycleDetectorCopy):
+        return true
+    return isRecursiveStructuralType(t.skipModifier, cycleDetector)
+  of tyAlias:
     return isRecursiveStructuralType(t.skipModifier, cycleDetector)
   else:
     return false

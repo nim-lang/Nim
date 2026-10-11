@@ -901,6 +901,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     # this can only happen for errornous var statements:
     if typ == nil: continue
 
+    if a[^1].kind == nkEmpty and typ.kind == tyTypeDesc and
+        c.p.owner.kind != skMacro and c.matchedConcept == nil and
+        c.inGenericContext == 0:
+      # `var a: typedesc` is as invalid as `var a = int` (#8654)
+      typFlags.incl taProcContextIsNotMacro
+
     if c.matchedConcept != nil:
       typFlags.incl taConcept
     typeAllowedCheck(c, a.info, typ, symkind, typFlags)
@@ -2016,7 +2022,12 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
             # AtomicFlag* {.importc: "atomic_flag", header: "<stdatomic.h>", size: 1.} = object
             localError(c.config, pragmas[i].info, "size pragma only allowed for enum types and imported types")
 
-    if a[1].kind == nkEmpty:
+    if a[1].kind == nkEmpty and s.typ != nil and
+        s.typ.kind in {tyOr, tyAnd, tyNot} and typeClassContains(s.typ, s.typ):
+      # `type string = string | char` (#9772)
+      localError(c.config, s.info, "illegal recursion in type '" & s.name.s & "'")
+      s.typ = errorType(c)
+    elif a[1].kind == nkEmpty:
       var x = a[2]
       if x.kind in nkCallKinds and nfSem in x.flags:
         discard "already semchecked, see line marked with bug #10548"
@@ -2827,6 +2838,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # potential forward declaration.
   setGenericParamsMisc(c, n)
 
+  # see the shared forward declaration symbol case below:
+  let fwdType = if sfForward in s.flags and n[bodyPos].kind != nkEmpty: s.typ
+                else: nil
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
   else:
@@ -2871,6 +2885,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     ## declarations if they share the same sym.
     ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
+    if fwdType != nil and fwdType.kind == tyProc and s.typ != nil:
+      # keep the calling convention of the forward declaration (#5030)
+      s.typ.callConv = fwdType.callConv
+      if tfExplicitCallConv in fwdType.flags: s.typ.incl tfExplicitCallConv
   let hasProto = proto != nil
 
   # set the default calling conventions

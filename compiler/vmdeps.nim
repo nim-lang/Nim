@@ -29,8 +29,13 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     localError(conf, info, "cannot open file: " & file)
     result = ""
 
+proc atomicTypeX(s: PSym; t: PType; info: TLineInfo): PNode
+
 proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                  idgen: IdGenerator): PNode =
+  if m != mNone and t.sym != nil and t.sym.magic == m:
+    # use the builtin's symbol so that `int.getType == int.getType` (#5109)
+    return atomicTypeX(t.sym, t, info)
   let sym = newSym(skType, getIdent(cache, name), idgen, t.owner, info)
   sym.magic = m
   sym.typ = t

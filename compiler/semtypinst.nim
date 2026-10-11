@@ -12,7 +12,7 @@
 import std / tables
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
-  lineinfos, modulegraphs, layeredtable
+  lineinfos, modulegraphs, layeredtable, nversion, int128
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -22,6 +22,16 @@ const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
+
+proc typeClassContains*(t, x: PType; depth = 0): bool =
+  ## does the type class `t` (`A | B`, `A and B`, `not A`) contain `x` as
+  ## one of its alternatives?
+  result = false
+  if depth > 100: return true
+  for k in t.kids:
+    let k = k.skipTypes({tyAlias})
+    if k == x or (k.kind in {tyOr, tyAnd, tyNot} and typeClassContains(k, x, depth+1)):
+      return true
 
 proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   var t = typ
@@ -35,6 +45,13 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     seen.add t
     t = t.skipModifier
   if t.kind in tyTypeClasses: discard
+  elif (let st = t.skipTypes({tyGenericInst, tyAlias, tySink}); st.kind == tySet) and
+      st.elementType.kind notin {tyGenericParam, tyError} and
+      isOrdinalType(st.elementType, allowEnumWithHoles = true) and
+      lengthOrd(conf, st.elementType) > toInt128(MaxSetElements):
+    # (#8141)
+    localError(conf, info, "set is too large; use `std/sets` for ordinal " &
+      "types with more than 2^16 elements")
   elif t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion or isRecursiveStructuralType(t):

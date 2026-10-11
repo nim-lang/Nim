@@ -568,6 +568,12 @@ proc semCast(c: PContext, n: PNode): PNode =
     return errorNode(c, n)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
+  if c.inGenericContext == 0 and castedExpr.kind == nkSym and
+      castedExpr.sym.kind in routineKinds and
+      isGenericRoutine(castedExpr.sym) and sfFromGeneric notin castedExpr.sym.flags:
+    # (#12765)
+    localError(c.config, n[1].info, errProcHasNoConcreteType % castedExpr.renderTree)
+    return errorNode(c, n)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
     localError(c.config, n.info, "expression cannot be cast to '$1'" % $targetType)
   result = newNodeI(nkCast, n.info)
@@ -2165,6 +2171,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ.setReturnType rhsTyp
+          if rhsTyp.kind == tyTypeDesc and c.p.owner.kind in {skProc, skFunc}:
+            # returns a type, only usable at compile time (#8301)
+            incl(c.p.owner, sfCompileTime)
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
     borrowCheck(c, n, lhs, rhs)
@@ -3582,7 +3591,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         elif s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skProc, skFunc, skMethod, skConverter, skIterator:
-        if s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
+        # an imported overload of `addr` must take part in overload
+        # resolution (#4007):
+        if s.magic == mNone or (s.magic == mAddr and c.isAmbiguous):
+          result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skEnumField:
         # `Branch()` or `Branch(field: value)` of a sum type:

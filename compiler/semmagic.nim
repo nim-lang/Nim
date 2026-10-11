@@ -96,6 +96,15 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
       result = errorNode(c, n)
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
+  let a = n[1].skipHiddenAddr
+  if n.len > 3 and a.typ != nil and a.typ.skipTypes(abstractInst).kind in {tyPtr, tyRef}:
+    # `p[i] = x` dereferences `p`, also when written as `[]=`(p, i, x)
+    # like templates do (#7272):
+    var call = newNodeI(nkCall, n.info)
+    call.add newIdentNode(getIdent(c.cache, "[]="), n.info)
+    call.add newDeref(a)
+    for i in 2..<n.len: call.add n[i]
+    return semExprNoType(c, call)
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
   let b = newNodeI(nkBracketExpr, n.info)
   b.add(n[1].skipHiddenAddr)

@@ -1771,6 +1771,10 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false; result: var Rope) =
         res.add($rdLoc(a))
       elif sym.kind == skType:
         res.add($getTypeDesc(p.module, sym.typ))
+      elif sym.typ != nil and sym.typ.kind == tyStatic and sym.typ.n != nil:
+        # a `static` parameter does not exist at runtime, emit its value (#4165)
+        var a: TLoc = initLocExpr(p, sym.typ.n)
+        res.add($rdLoc(a))
       else:
         discard getTypeDesc(p.module, skipTypes(sym.typ, abstractPtrs))
         fillBackendName(p.module, sym)

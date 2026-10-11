@@ -271,7 +271,9 @@ proc commonType*(c: PContext; x, y: PType): PType =
       if result == b: return y
       # bug #7906, tyRef/tyPtr + tyGenericInst of ref/ptr object ->
       # ill-formed AST, no need for additional tyRef/tyPtr
-      if k != tyNone and x.kind != tyGenericInst:
+      if k != tyNone and x.kind != tyGenericInst and
+          # the base can be an instance of a generic `ref object` (#7955)
+          result.skipTypes({tyGenericInst, tyAlias}).kind != k:
         let r = result
         result = newType(k, c.idgen, r.owner)
         result.addSonSkipIntLit(r, c.idgen)
