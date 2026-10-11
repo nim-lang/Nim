@@ -275,13 +275,7 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # (see `icFormatVersion`). This must happen HERE, before the config artifact is
   # produced — `commandIc` performs the same check later, but by then the artifact
   # would already live in the cache and the wipe would delete it.
-  createDir(cacheDir)
-  let versionFile = cacheDir / "ic.version"
-  let stamp = if fileExists(versionFile): readFile(versionFile) else: ""
-  if stamp != icFormatVersion:
-    removeDir(cacheDir)
-    createDir(cacheDir)
-    writeFile(versionFile, icFormatVersion)
+  ensureIcCacheFormat(conf)
   # Projects in the same nimcache can load different config.nims chains or
   # project-specific .cfg files. Keep their snapshots separate; the build
   # signature still compares effective settings so equivalent configs can

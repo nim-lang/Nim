@@ -1963,16 +1963,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       rawMessage(conf, errGenerated, "project file not found: " & projectFile)
       return
 
-    # Create nimcache directory; start from a clean one when its format
-    # stamp is absent or outdated (see `icFormatVersion`)
+    ensureIcCacheFormat(conf)
     let cacheDir = getNimcacheDir(conf).string
-    createDir(cacheDir)
-    let versionFile = cacheDir & "/ic.version"
-    let stamp = if fileExists(versionFile): readFile(versionFile) else: ""
-    if stamp != icFormatVersion:
-      removeDir(cacheDir)
-      createDir(cacheDir)
-      writeFile(versionFile, icFormatVersion)
 
     var c = DepContext(
       config: conf,

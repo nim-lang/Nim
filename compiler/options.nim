@@ -1013,6 +1013,18 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
       AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
         nimcacheSuffix(conf))
 
+proc ensureIcCacheFormat*(conf: ConfigRef) =
+  ## Starts from an empty nimcache when its `ic.version` stamp is absent or
+  ## differs from `icFormatVersion`.
+  let cacheDir = getNimcacheDir(conf).string
+  createDir(cacheDir)
+  let versionFile = cacheDir / "ic.version"
+  let stamp = if fileExists(versionFile): readFile(versionFile) else: ""
+  if stamp != icFormatVersion:
+    removeDir(cacheDir)
+    createDir(cacheDir)
+    writeFile(versionFile, icFormatVersion)
+
 proc getParsedCacheDir*(conf: ConfigRef): AbsoluteDir =
   if conf.icParsedDir.isEmpty: getNimcacheDir(conf) else: conf.icParsedDir
 

@@ -665,6 +665,8 @@ proc mainCommand(graph: ModuleGraph) =
     quit "cannot find file: " & conf.projectFull.string
 
   add(conf.searchPaths, conf.libpath)
+  if conf.ideImportsFromNif:
+    ensureIcCacheFormat(conf)
 
   conf.setErrorMaxHighMaybe # honor --errorMax even if it may not make sense here
   # do not print errors, but log them
@@ -1468,6 +1470,8 @@ else:
         quit "cannot find file: " & conf.projectFull.string
 
       add(conf.searchPaths, conf.libpath)
+      if conf.ideImportsFromNif:
+        ensureIcCacheFormat(conf)
 
       conf.setErrorMaxHighMaybe
       # do not print errors, but log them
