@@ -168,16 +168,15 @@ iterator decodeQuery*(data: string, sep = '&'): tuple[key, value: string] =
     assert toSeq(decodeQuery("foo=1;bar=2=3", ';')) == @[("foo", "1"), ("bar", "2=3")]
     assert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
-  proc parseData(data: string, i: int, field: var string, sep: char): int =
+  proc parseData(data: string, i: int, field: var string, until: set[char]): int =
     result = i
     while result < data.len:
       let c = data[result]
       case c
       of '%': add(field, decodePercent(data, result))
       of '+': add(field, ' ')
-      of '&': break
       else:
-        if c == sep: break
+        if c in until: break
         else: add(field, data[result])
       inc(result)
 
@@ -187,19 +186,19 @@ iterator decodeQuery*(data: string, sep = '&'): tuple[key, value: string] =
   # decode everything in one pass:
   while i < data.len:
     setLen(name, 0) # reuse memory
-    i = parseData(data, i, name, '=')
+    i = parseData(data, i, name, {'=', sep})
     setLen(value, 0) # reuse memory
     if i < data.len and data[i] == '=':
       inc(i) # skip '='
       when defined(nimLegacyParseQueryStrict):
-        i = parseData(data, i, value, '=')
+        i = parseData(data, i, value, {'=', sep})
       else:
-        i = parseData(data, i, value, sep)
+        i = parseData(data, i, value, {sep})
     yield (name, value)
     if i < data.len:
       when defined(nimLegacyParseQueryStrict):
-        if data[i] != '&':
-          uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
+        if data[i] != sep:
+          uriParseError("'$#' expected at index '$#' for '$#'" % [$sep, $i, data])
       inc(i)
 
 func parseAuthority(authority: string, result: var Uri) =

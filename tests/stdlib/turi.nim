@@ -316,6 +316,9 @@ template main() =
     doAssert toSeq(decodeQuery("a=1;b=0", sep = ';')) == @[("a", "1"), ("b", "0")]
     doAssert toSeq(decodeQuery("a=1&b=2c=6")) == @[("a", "1"), ("b", "2c=6")]
     doAssert toSeq(decodeQuery("a=1;b=2c=6", sep = ';')) == @[("a", "1"), ("b", "2c=6")]
+    doAssert toSeq(decodeQuery("a;b", sep = ';')) == @[("a", ""), ("b", "")]
+    doAssert toSeq(decodeQuery("a;b=2;c", sep = ';')) == @[("a", ""), ("b", "2"), ("c", "")]
+    doAssert toSeq(decodeQuery("a=b&c;d=e", sep = ';')) == @[("a", "b&c"), ("d", "e")]
 
   block: # bug #17481
     let u1 = parseUri("./")
