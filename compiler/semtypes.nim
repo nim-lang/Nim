@@ -1203,6 +1203,25 @@ proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
   else:
     result = true
 
+proc checkUncheckedArrayLast(c: PContext; n: PNode) =
+  ## an `UncheckedArray` field becomes a C flexible array member, it must
+  ## be the last field (#9275)
+  var last: PNode = nil
+  proc walk(c: PContext; n: PNode; last: var PNode) =
+    case n.kind
+    of nkRecList:
+      for it in n: walk(c, it, last)
+    of nkSym, nkRecCase:
+      if last != nil:
+        localError(c.config, last.info,
+          "an 'UncheckedArray' field must be the last field of an object")
+        last = nil
+      if n.kind == nkSym and n.sym.typ != nil and
+          n.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind == tyUncheckedArray:
+        last = n
+    else: discard
+  walk(c, n, last)
+
 proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   result = nil
   if n.len == 0:
@@ -1270,6 +1289,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
       return newType(tyError, c.idgen, result.owner)
 
   semRecordNodeAux(c, n[2], check, pos, result.n, result)
+  if result.sym == nil or sfImportc notin result.sym.flags:
+    checkUncheckedArrayLast(c, result.n)
   if n[0].kind != nkEmpty:
     # dummy symbol for `pragma`:
     var s = newSymS(skType, newIdentNode(getIdent(c.cache, "dummy"), n.info), c)

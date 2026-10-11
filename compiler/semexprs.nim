@@ -664,7 +664,10 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
-    res = typeRel(m, t2, t1) >= isSubtype # isNone
+    if t2.kind == tyBuiltInTypeClass and t2.last.kind == tyVar:
+      res = t1.kind == tyVar # `x is var` (#9443)
+    else:
+      res = typeRel(m, t2, t1) >= isSubtype # isNone
     # `res = sameType(t1, t2)` would be wrong, e.g. for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
@@ -684,6 +687,10 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n[2].kind notin {nkStrLit..nkTripleStrLit}:
     let t2 = semTypeNode(c, n[2], nil)
     n[2] = newNodeIT(nkType, n[2].info, t2)
+    if n[1].kind == nkHiddenDeref and (t2.kind == tyVar or
+        (t2.kind == tyBuiltInTypeClass and t2.last.kind == tyVar)):
+      # `x is var` asks for the `var` of `x` (#9443)
+      n[1] = n[1][0]
     if t2.kind == tyStatic:
       let evaluated = tryConstExpr(c, n[1])
       if evaluated != nil:
@@ -1550,6 +1557,9 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
+      if result == nil and t.len > 0 and t.last.kind == tyGenericInst:
+        # a generic param of the type that matched the concept (#9006)
+        result = readTypeParameter(c, t.last, i, n.info)
     elif c.inGenericContext > 0:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, copyTree(result))
@@ -1800,6 +1810,10 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags, afterOverloading = f
   n[0] = semExprWithType(c, n[0], {efNoEvaluateGeneric, efAllowSymChoice})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+  if arr.isResolvedUserTypeClass:
+    # the type that matched the concept (#9289)
+    arr = arr.last.skipTypes({tyGenericInst, tyUserTypeClassInst, tyOwned,
+                              tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
     if arr.base.kind == tyNone:
       result = n

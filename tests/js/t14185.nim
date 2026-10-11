@@ -1,6 +1,7 @@
 discard """
   targets: "js"
   errormsg: "'keys' is of type <varargs[string]> which cannot be captured as it would violate memory safety"
+  file: "iterators.nim"
 """
 
 # bug #14185: used to crash the JS backend
