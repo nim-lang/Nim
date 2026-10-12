@@ -5,6 +5,7 @@ Advanced commands:
   //js                      compile project to Javascript
   //nif                     compile project to NIF
   //e                       run a Nimscript file
+  //book                    generate documentation site from a directory with Markdown files
   //md2html                 convert a Markdown file to HTML
                             use `--docCmd:skip` to skip compiling snippets
   //rst2html                convert a reStructuredText file to HTML
