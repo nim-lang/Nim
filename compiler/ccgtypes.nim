@@ -1370,6 +1370,29 @@ proc getNimNode(m: BModule): Rope =
 proc tiNameForHcr(m: BModule; name: Rope): Rope =
   return if m.hcrOn: cDeref(name) else: name
 
+proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string) =
+  ## With hot code reloading a type info lives in the HCR runtime, so that it
+  ## survives its module being reloaded: the module holds a pointer to it and
+  ## registers it in `HcrCreateTypeInfos`, which runs for every module before
+  ## any `DatInit`. Other modules get the same pointer with `hcrGetGlobal`
+  ## (see `declareNimType`).
+  m.s[cfsStrData].addVar(kind = Global, name = name, typ = ptrType(typ))
+  m.hcrCreateTypeInfosProc.add('\t')
+  var registerHcr: CallBuilder
+  m.hcrCreateTypeInfosProc.addStmt():
+    m.hcrCreateTypeInfosProc.addCall(registerHcr, callee = "hcrRegisterGlobal"):
+      m.hcrCreateTypeInfosProc.addArgument(registerHcr):
+        m.hcrCreateTypeInfosProc.add(getModuleDllPath(m, m.module))
+      m.hcrCreateTypeInfosProc.addArgument(registerHcr):
+        m.hcrCreateTypeInfosProc.add(makeCString(name))
+      m.hcrCreateTypeInfosProc.addArgument(registerHcr):
+        m.hcrCreateTypeInfosProc.addSizeof(typ)
+      m.hcrCreateTypeInfosProc.addArgument(registerHcr):
+        m.hcrCreateTypeInfosProc.add(CNil)
+      m.hcrCreateTypeInfosProc.addArgument(registerHcr):
+        m.hcrCreateTypeInfosProc.addCast(typ = ptrType(CPointer)):
+          m.hcrCreateTypeInfosProc.add(cAddr(name))
+
 proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
                         name, base: Rope; info: TLineInfo) =
   var nimtypeKind: int
@@ -1411,22 +1434,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     m.s[cfsTypeInit3].addAssignment("nimTypeRoot", cAddr(nameHcr))
 
   if m.hcrOn:
-    m.s[cfsStrData].addVar(kind = Global, name = name, typ = ptrType("TNimType"))
-    m.hcrCreateTypeInfosProc.add('\t')
-    var registerHcr: CallBuilder
-    m.hcrCreateTypeInfosProc.addStmt():
-      m.hcrCreateTypeInfosProc.addCall(registerHcr, callee = "hcrRegisterGlobal"):
-        m.hcrCreateTypeInfosProc.addArgument(registerHcr):
-          m.hcrCreateTypeInfosProc.add(getModuleDllPath(m, m.module))
-        m.hcrCreateTypeInfosProc.addArgument(registerHcr):
-          m.hcrCreateTypeInfosProc.add(makeCString(name))
-        m.hcrCreateTypeInfosProc.addArgument(registerHcr):
-          m.hcrCreateTypeInfosProc.addSizeof("TNimType")
-        m.hcrCreateTypeInfosProc.addArgument(registerHcr):
-          m.hcrCreateTypeInfosProc.add(CNil)
-        m.hcrCreateTypeInfosProc.addArgument(registerHcr):
-          m.hcrCreateTypeInfosProc.addCast(typ = ptrType(CPointer)):
-            m.hcrCreateTypeInfosProc.add(cAddr(name))
+    declareTypeInfoForHcr(m, name, "TNimType")
   else:
     if m.config.cmd == cmdNifC:
       # Emit-everywhere (see genTypeInfoV1's perModuleCg gate): every demanding
@@ -1912,11 +1920,14 @@ proc genVTable(result: var Builder, seqs: seq[PSym]) =
       result.addField(table, ""):
         result.add(cCast(CPointer, seqs[i].loc.snippet))
 
-proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
+proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, tiName: Rope; info: TLineInfo) =
   ## The C++/HCR flavour: C++ has no designated initializers, so the RTTI record
   ## is a bare variable that the module's `DatInit` fills field by field.
   cgsym(m, "TNimTypeV2")
-  if m.config.cmd == cmdNifC:
+  let name = tiNameForHcr(m, tiName)
+  if m.hcrOn:
+    declareTypeInfoForHcr(m, tiName, "TNimTypeV2")
+  elif m.config.cmd == cmdNifC:
     # Same emit-everywhere split as `genTypeInfoV2Impl`: every `cg` process that
     # demands this type declares it `extern`, and the DEFINITION is a droppable
     # `'d'` unit the merge stage gives a single owner. Without the split the bare
@@ -1926,17 +1937,17 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, name: Rope; info: TLin
     # TU's `DatInit`: they are top-level code, not a definition, and every module
     # computes the same values.
     m.s[cfsStrData].addDeclWithVisibility(Extern):
-      m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
-    m.s[cfsVars].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+      m.s[cfsStrData].addVar(kind = Local, name = tiName, typ = "TNimTypeV2")
+    m.s[cfsVars].add(cnifDefDirective(tiName, "d", icNifName(m, origType)))
     var def = newBuilder("")
     def.addDeclWithVisibility(Private):
-      def.addVar(kind = Local, name = name, typ = "TNimTypeV2")
+      def.addVar(kind = Local, name = tiName, typ = "TNimTypeV2")
     m.s[cfsVars].add extract(def)
     m.s[cfsVars].add(cnifEndDefs())
-    m.icDataDefs.add (name, icNifName(m, origType))
+    m.icDataDefs.add (tiName, icNifName(m, origType))
   else:
     m.s[cfsStrData].addDeclWithVisibility(Private):
-      m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimTypeV2")
+      m.s[cfsStrData].addVar(kind = Local, name = tiName, typ = "TNimTypeV2")
 
   var flags = 0
   if not canFormAcycle(m.g.graph, t): flags = flags or 1

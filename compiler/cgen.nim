@@ -382,6 +382,13 @@ proc getModuleDllPath(m: BModule): Rope =
   let filename = strutils.`%`(platform.OS[m.g.config.target.targetOS].dllFrmt, [name & ext])
   result = makeCString(dir.string & "/" & filename)
 
+proc stdlibModule(g: BModuleList, name: string): BModule =
+  ## The module `name` of the standard library, nil when the program does not use it.
+  result = nil
+  for m in g.mods:
+    if m != nil and m.module.name.s == name and belongsToStdlib(g.graph, m.module):
+      return m
+
 proc getModuleDllPath(m: BModule, module: int): Rope =
   result = getModuleDllPath(m.g.mods[module])
 
@@ -2599,31 +2606,33 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       g.mainDatInit.addCallStmt("hcrAddModule", mainModulePath)
       g.mainDatInit.addCallStmt("HcrCreateTypeInfos")
       # nasty nasty hack to get the command line functionality working with HCR
-      # register the 2 variables on behalf of the os module which might not even
-      # be loaded (in which case it will get collected but that is not a problem)
+      # register the 2 variables on behalf of the module that reads them
+      # (`std/cmdline`), which is initialized after this code has run.
       # EDIT: indeed, this hack, in combination with another un-necessary one
       # (`makeCString` was doing line wrap of string litterals) was root cause for
       # bug #16265.
-      let osModulePath = ($systemModulePath).replace("stdlib_system", "stdlib_os").rope
-      g.mainDatInit.addCallStmt("hcrAddModule", osModulePath)
-      let cmdCountTyp = ptrType(CInt)
-      let cmdLineTyp = ptrType(ptrType(ptrType(CChar)))
-      g.mainDatInit.addVar(name = "cmd_count", typ = cmdCountTyp)
-      g.mainDatInit.addVar(name = "cmd_line", typ = cmdLineTyp)
-      g.mainDatInit.addCallStmt("hcrRegisterGlobal",
-        osModulePath,
-        "\"cmdCount\"",
-        cSizeof(cmdCountTyp),
-        CNil,
-        cCast(ptrType(CPointer), cAddr("cmd_count")))
-      g.mainDatInit.addCallStmt("hcrRegisterGlobal",
-        osModulePath,
-        "\"cmdLine\"",
-        cSizeof(cmdLineTyp),
-        CNil,
-        cCast(ptrType(CPointer), cAddr("cmd_line")))
-      g.mainDatInit.addAssignment(cDeref("cmd_count"), "cmdCount")
-      g.mainDatInit.addAssignment(cDeref("cmd_line"), "cmdLine")
+      let cmdLineModule = stdlibModule(g, "cmdline")
+      if cmdLineModule != nil:
+        let cmdLineModulePath = getModuleDllPath(cmdLineModule)
+        g.mainDatInit.addCallStmt("hcrAddModule", cmdLineModulePath)
+        let cmdCountTyp = ptrType(CInt)
+        let cmdLineTyp = ptrType(ptrType(ptrType(CChar)))
+        g.mainDatInit.addVar(name = "cmd_count", typ = cmdCountTyp)
+        g.mainDatInit.addVar(name = "cmd_line", typ = cmdLineTyp)
+        g.mainDatInit.addCallStmt("hcrRegisterGlobal",
+          cmdLineModulePath,
+          "\"cmdCount\"",
+          cSizeof(cmdCountTyp),
+          CNil,
+          cCast(ptrType(CPointer), cAddr("cmd_count")))
+        g.mainDatInit.addCallStmt("hcrRegisterGlobal",
+          cmdLineModulePath,
+          "\"cmdLine\"",
+          cSizeof(cmdLineTyp),
+          CNil,
+          cCast(ptrType(CPointer), cAddr("cmd_line")))
+        g.mainDatInit.addAssignment(cDeref("cmd_count"), "cmdCount")
+        g.mainDatInit.addAssignment(cDeref("cmd_line"), "cmdLine")
     else:
       m.s[cfsInitProc].add(extract(hcrModuleMeta))
     return
@@ -3124,6 +3133,8 @@ proc addHcrInitGuards(p: BProc; n: PNode, inInitGuard: var bool, init: var IfBui
   else:
     let stmtShouldExecute = n.kind in {nkVarSection, nkLetSection} or
                             nfExecuteOnReload in n.flags
+    if n.kind in {nkTryStmt, nkHiddenTryStmt} and nfExecuteOnReload in n.flags:
+      p.hcrGuardedBody = n.firstSon
     if inInitGuard:
       if stmtShouldExecute:
         endBlockWith(p):

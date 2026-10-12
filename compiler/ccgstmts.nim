@@ -452,7 +452,7 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
     # put it in the locals section - mainly because of loops which
     # use the var in a call to resetLoc() in the statements section
     let rv = rdLoc(v.loc)
-    p.s(cpsLocals).addCallStmt("hcrRegisterGlobal",
+    targetProc.s(cpsLocals).addCallStmt("hcrRegisterGlobal",
       getModuleDllPath(p.module, v),
       '"' & v.loc.snippet & '"',
       cSizeof(rv),
@@ -467,8 +467,8 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
   var hcrInit = default(IfBuilder)
   if forHcr:
     startBlockWith(targetProc):
-      hcrInit = initIfStmt(p.s(cpsStmts))
-      initElifBranch(p.s(cpsStmts), hcrInit, cCall("hcrRegisterGlobal",
+      hcrInit = initIfStmt(targetProc.s(cpsStmts))
+      initElifBranch(targetProc.s(cpsStmts), hcrInit, cCall("hcrRegisterGlobal",
         getModuleDllPath(p.module, v),
         '"' & v.loc.snippet & '"',
         cSizeof(rdLoc(v.loc)),
@@ -481,8 +481,8 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
       loadInto(targetProc, vn, value, v.locImpl)
   if forHcr:
     endBlockWith(targetProc):
-      finishBranch(p.s(cpsStmts), hcrInit)
-      finishIfStmt(p.s(cpsStmts), hcrInit)
+      finishBranch(targetProc.s(cpsStmts), hcrInit)
+      finishIfStmt(targetProc.s(cpsStmts), hcrInit)
 
 proc genSingleVar(p: BProc, a: PNode) =
   let v = a.firstSon.sym
@@ -1177,6 +1177,21 @@ proc genRestoreFrameAfterException(p: BProc) =
         p.procSec(cpsInit).addCall(cgsymValue(p.module, "getFrame"))
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "setFrame"), "_nimCurFrame")
 
+proc addHcrInitGuards(p: BProc; n: PNode, inInitGuard: var bool, init: var IfBuilder)
+
+proc genTryBody(p: BProc; t: PNode; d: var TLoc) =
+  if p.hcrGuardedBody != nil and p.hcrGuardedBody == t.firstSon:
+    p.hcrGuardedBody = nil
+    var inInitGuard = false
+    var init = default(IfBuilder)
+    addHcrInitGuards(p, t.firstSon, inInitGuard, init)
+    if inInitGuard:
+      endBlockWith(p):
+        finishBranch(p.s(cpsStmts), init)
+        finishIfStmt(p.s(cpsStmts), init)
+  else:
+    expr(p, t.firstSon, d)
+
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #[ code to generate:
 
@@ -1226,12 +1241,12 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
   if t.kind == nkHiddenTryStmt:
     lineCg(p, cpsStmts, "try {$n", [])
-    expr(p, t.firstSon, d)
+    genTryBody(p, t, d)
     lineCg(p, cpsStmts, "}$n", [])
   else:
     startBlockWith(p):
       p.s(cpsStmts).add("try {\n")
-    expr(p, t.firstSon, d)
+    genTryBody(p, t, d)
     endBlockWith(p):
       p.s(cpsStmts).add("}\n")
 
@@ -1416,7 +1431,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   if not isEmptyType(t.typ) and d.k == locNone:
     d = getTemp(p, t.typ)
 
-  expr(p, t.firstSon, d)
+  genTryBody(p, t, d)
 
   var ifStmt = default(IfBuilder)
   var scope = default(ScopeBuilder)
@@ -1618,7 +1633,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       cOp(Equal, dotField(safePoint, "status"), cIntValue(0))))
   let fin = if t.lastSon.kind == nkFinally: t.lastSon else: nil
   p.nestedTryStmts.add((fin, quirkyExceptions, hasExceptBranches(t), 0.Natural))
-  expr(p, t.firstSon, d)
+  genTryBody(p, t, d)
   var quirkyIf = default(IfBuilder)
   var quirkyScope = default(ScopeBuilder)
   var isScope = false

@@ -103,6 +103,8 @@ type
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
     withinBlockLeaveActions*: int # complex to explain
+    hcrGuardedBody*: PNode    # the body of a 'try' that wraps a module's
+                              # statements; each gets its own HCR init guard
     sigConflicts*: CountTable[string]
     inUncheckedAssignSection*: int
 

@@ -235,7 +235,12 @@ when defined(createNimHcr):
 
   {.pragma: nimhcr, compilerproc, exportc, dynlib.}
 
-  const Arm64Jumps = defined(musl) and hostCPU == "arm64"
+  const
+    Arm64Jumps = hostCPU == "arm64" and (defined(musl) or defined(macosx))
+    JitJumpTable = defined(macosx) and hostCPU == "arm64"
+      ## macOS on arm64 refuses memory that is writable and executable unless
+      ## it was mapped with `MAP_JIT`, and then a thread has it either
+      ## writable or executable, never both.
   type
     ShortJumpInstruction {.packed.} = object
       opcode: byte
@@ -256,11 +261,17 @@ when defined(createNimHcr):
         importc: "__builtin___clear_cache", nodecl, raises: [].}
         ## Flushes the instruction cache after writing a jump.
 
+      when JitJumpTable:
+        proc jitWriteProtect(enabled: cint) {.
+          importc: "pthread_jit_write_protect_np", header: "<pthread.h>", raises: [].}
+        jitWriteProtect(0)
       # Load the target address at offset eight, then branch to it in X16.
       let instructions = cast[ptr array[2, uint32]](jumpTableEntry)
       instructions[][0] = 0x58000050'u32
       instructions[][1] = 0xd61f0200'u32
       jumpTableEntry.absoluteAddr = targetFn
+      when JitJumpTable:
+        jitWriteProtect(1)
       let first = cast[pointer](jumpTableEntry)
       clearCache(first, first.shift(sizeof(LongJumpInstruction)))
       return
@@ -298,11 +309,46 @@ when defined(createNimHcr):
   let jumpTableSize = if jumpTableSizeStr.len > 0: parseInt(jumpTableSizeStr)
                       else: defaultJumpTableSize
 
+  when JitJumpTable:
+    from std/posix import mmap, MAP_FAILED, MAP_PRIVATE, MAP_ANONYMOUS,
+      PROT_READ, PROT_WRITE, PROT_EXEC
+
+    type
+      JitMemSeq = object
+        ## What the jump table needs of a `ReservedMemSeq`, in memory mapped
+        ## with `MAP_JIT`. The entries never move; the pages are zero and
+        ## get their memory when they are first written.
+        mem: ptr UncheckedArray[LongJumpInstruction]
+        len, maxLen: int
+
+    proc initJitMemSeq(maxLen: int): JitMemSeq =
+      const MAP_JIT = 0x0800.cint
+      let mem = mmap(nil, maxLen * sizeof(LongJumpInstruction),
+                     PROT_READ or PROT_WRITE or PROT_EXEC,
+                     MAP_PRIVATE or MAP_ANONYMOUS or MAP_JIT, -1, 0)
+      if mem == MAP_FAILED: raiseOSError(osLastError())
+      JitMemSeq(mem: cast[ptr UncheckedArray[LongJumpInstruction]](mem),
+                len: 0, maxLen: maxLen)
+
+    proc len(s: JitMemSeq): int = s.len
+
+    proc setLen(s: var JitMemSeq, newLen: int) =
+      if newLen > s.maxLen:
+        raise newException(RangeDefect,
+          "the jump table is full; raise HOT_CODE_RELOADING_JUMP_TABLE_SIZE")
+      s.len = newLen
+
+    proc `[]`(s: var JitMemSeq, i: int): var LongJumpInstruction = s.mem[i]
+
   # TODO: perhaps keep track of free slots due to removed procs using a free list
-  var jumpTable = ReservedMemSeq[LongJumpInstruction].init(
-    memStart = cast[pointer](0x10000000),
-    maxLen = jumpTableSize * 1024 * 1024 div sizeof(LongJumpInstruction),
-    accessFlags = memExecReadWrite)
+  when JitJumpTable:
+    var jumpTable = initJitMemSeq(
+      jumpTableSize * 1024 * 1024 div sizeof(LongJumpInstruction))
+  else:
+    var jumpTable = ReservedMemSeq[LongJumpInstruction].init(
+      memStart = cast[pointer](0x10000000),
+      maxLen = jumpTableSize * 1024 * 1024 div sizeof(LongJumpInstruction),
+      accessFlags = memExecReadWrite)
 
   type
     ProcSym = object
@@ -348,6 +394,19 @@ when defined(createNimHcr):
   var hcrDynlibHandle: pointer
   var getProcAddr: HcrProcGetter
 
+  proc procSlot(module, name: string): ptr LongJumpInstruction =
+    ## The permanent address callers jump through for `name` of `module`,
+    ## made on first use. Where it jumps to is written by `hcrRegisterProc`.
+    modules[module].procs.withValue(name, p):
+      trace "    update proc: ", name
+      result = p.jump
+      p.gen = generation
+    do:
+      let len = jumpTable.len
+      jumpTable.setLen(len + 1)
+      result = addr jumpTable[len]
+      modules[module].procs[name] = ProcSym(jump: result, gen: generation)
+
   proc hcrRegisterProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.} =
     trace "  register proc: ", module.sanitize, " ", name
     # Please note: We must allocate a local copy of the strings, because the supplied
@@ -355,24 +414,18 @@ when defined(createNimHcr):
     let name = $name
     let module = $module
 
-    var jumpTableEntryAddr: ptr LongJumpInstruction
-
-    modules[module].procs.withValue(name, p):
-      trace "    update proc: ", name
-      jumpTableEntryAddr = p.jump
-      p.gen = generation
-    do:
-      let len = jumpTable.len
-      jumpTable.setLen(len + 1)
-      jumpTableEntryAddr = addr jumpTable[len]
-      modules[module].procs[name] = ProcSym(jump: jumpTableEntryAddr, gen: generation)
-
+    let jumpTableEntryAddr = procSlot(module, name)
     writeJump jumpTableEntryAddr, fn
     return jumpTableEntryAddr
 
   proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get proc: ", module.sanitize, " ", name
-    return modules[$module].procs.getOrDefault($name, ProcSym()).jump
+    # The proc may not be registered yet: a module asks for the procs it uses
+    # in its `DatInit`, and with ARC/ORC a module can use a proc of a module
+    # that is initialized after it (the hooks of a type are emitted with the
+    # type, and a generic instantiated for that type is emitted with the
+    # generic). The slot is handed out now and filled when the owner registers.
+    return procSlot($module, $name)
 
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
@@ -433,9 +486,16 @@ when defined(createNimHcr):
     cleanup modules[module].procs:
       modules[module].procs.del(name)
 
+  const KeepsReplacedLibs = defined(gcArc) or defined(gcOrc) or
+                            defined(gcAtomicArc) or defined(gcYrc)
+    ## With ARC/ORC a string or seq literal is not copied when it is stored:
+    ## a global that outlives the reload can point into the constant data of
+    ## the library it was set from. Such a library stays loaded.
+
   proc unloadDll(name: string) =
-    if modules[name].handle != nil:
-      unloadLib(modules[name].handle)
+    when not KeepsReplacedLibs:
+      if modules[name].handle != nil:
+        unloadLib(modules[name].handle)
 
   proc loadDll(name: cstring) {.nimhcr.} =
     let name = $name
@@ -446,7 +506,8 @@ when defined(createNimHcr):
       modules[name] = newModuleDesc()
 
     let copiedName =
-      when defined(musl):
+      when defined(musl) or KeepsReplacedLibs:
+        # a library that stays loaded is not loaded again under its name
         name & ".copy." & $generation & "." & dllExt
       else:
         name & ".copy." & dllExt

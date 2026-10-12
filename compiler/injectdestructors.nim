@@ -646,6 +646,15 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
+proc isReloadableGlobalWithInit(c: Con; s: Scope; it: PNode): bool =
+  ## With hot code reloading: a module level global with a destructor that
+  ## is declared with its initial value.
+  result = c.graph.config.hcrOn and s.parent == nil and
+    it.kind == nkIdentDefs and it.len == 3 and it[0].kind == nkSym and
+    it[2].kind != nkEmpty and
+    {sfGlobal, sfThread, sfCursor, sfCompileTime, sfPure} * it[0].sym.flags == {sfGlobal} and
+    hasDestructor(c, it[0].typ)
+
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
@@ -673,7 +682,12 @@ proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
     for m in s.wasMoved: finSection.add m
     for i in countdown(s.final.high, 0): finSection.add s.final[i]
     if s.needsTry:
-      result.add newTryFinally(ret, finSection)
+      let tryFinally = newTryFinally(ret, finSection)
+      if c.graph.config.hcrOn and s.parent == nil and c.owner.kind == skModule:
+        # the statements of a module are judged one by one for whether a
+        # reload runs them; as one 'try' they would all be skipped.
+        tryFinally.flags.incl nfExecuteOnReload
+      result.add tryFinally
     else:
       result.add ret
       result.add finSection
@@ -1109,6 +1123,21 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             if it[i].kind == nkSym: s.locals.add it[i].sym
           let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
+        elif isReloadableGlobalWithInit(c, s, it):
+          # keep 'var x = y' one statement: the code generator runs the
+          # initializer of such a section only when a reload introduced 'x',
+          # and a separate 'x op y' would be top level code, which a reload
+          # does not run.
+          let v = it[0]
+          s.locals.add v.sym
+          c.graph.globalDestructors.add c.genDestroy(v)
+          let section = copyNode(n)
+          let itCopy = copyNode(it)
+          itCopy.add v
+          itCopy.add it[1]
+          itCopy.add p(ri, c, s, sinkArg)
+          section.add itCopy
+          result.add section
         elif it.kind == nkIdentDefs and hasDestructor(c, skipPragmaExpr(it[0]).typ):
           for j in 0..<it.len-2:
             let v = skipPragmaExpr(it[j])
