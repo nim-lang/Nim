@@ -4,6 +4,7 @@ Advanced commands:
   //compileToOC, objc       compile project to Objective C code
   //js                      compile project to Javascript
   //e                       run a Nimscript file
+  //book                    generate documentation site from a directory with Markdown files
   //md2html                 convert a Markdown file to HTML
                             use `--docCmd:skip` to skip compiling snippets
   //rst2html                convert a reStructuredText file to HTML
