@@ -42,6 +42,8 @@ proc newModule*(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   graph.registerModule(result)
 
 proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
+  when not defined(nimKochBootstrap):
+    graph.icNoteSourceRead(s.position.FileIndex, fileIdx)
   result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(s.position.FileIndex, fileIdx)

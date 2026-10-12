@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
+import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets, times]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 
@@ -21,8 +21,6 @@ when not defined(nimKochBootstrap):
   import "../dist/nimony/src/lib" / bitabs
 
 import typekeys
-
-from std/times import `<=`
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -124,6 +122,7 @@ type
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     icStale: Table[int32, bool]
+    icSourceStamps: Table[int32, Time]
     icWrittenFiles*: IntSet
     icTainted*: IntSet
     suggestMode*: bool # whether we are in nimsuggest mode or not.
@@ -892,6 +891,10 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
   uniqueModuleName(conf, m, AbsoluteFile toFullPath(conf, FileIndex(m.position)))
 
 when not defined(nimKochBootstrap):
+  proc icStampFile(g: ModuleGraph; fileIdx: FileIndex): string =
+    result = edgesFilename(g.config, fileIdx)
+    if not fileExists(result): result = toNifFilename(g.config, fileIdx)
+
   proc icMustCompile(g: ModuleGraph; fileIdx: FileIndex): bool =
     if not g.config.ideActive or g.icWrittenFiles.contains(fileIdx.int):
       return false
@@ -900,12 +903,11 @@ when not defined(nimKochBootstrap):
       return known[]
     g.icStale[k] = false
     result = false
-    var stamp = edgesFilename(g.config, fileIdx)
-    if not fileExists(stamp): stamp = toNifFilename(g.config, fileIdx)
+    let stamp = icStampFile(g, fileIdx)
     if fileExists(stamp):
       let written = getLastModificationTime(stamp)
       for src in toFullPath(g.config, fileIdx) & nifIncludes(g.config, fileIdx):
-        if fileExists(src) and getLastModificationTime(src) >= written:
+        if fileExists(src) and written < getLastModificationTime(src):
           result = true
           break
     if not result:
@@ -915,6 +917,27 @@ when not defined(nimKochBootstrap):
           result = true
           break
     g.icStale[k] = result
+
+  proc icNoteSourceRead*(g: ModuleGraph; module, src: FileIndex) =
+    ## Records the modification time of a source file of `module` before it is
+    ## read: the NIF written from it is stamped with the newest such time.
+    if not g.config.ideActive: return
+    let path = toFullPath(g.config, src)
+    if not fileExists(path): return
+    let t = getLastModificationTime(path)
+    let k = module.int32
+    if module == src or not g.icSourceStamps.hasKey(k) or g.icSourceStamps[k] < t:
+      g.icSourceStamps[k] = t
+
+  proc icStampWrittenNif*(g: ModuleGraph; module: FileIndex) =
+    ## `setLastModificationTime` keeps microseconds only: round up so the stamp
+    ## is never older than the sources it was built from.
+    var t: Time
+    if g.icSourceStamps.take(module.int32, t):
+      let stamp = icStampFile(g, module)
+      let sub = t.nanosecond mod 1000
+      if sub != 0: t = t + initDuration(nanoseconds = 1000 - sub)
+      if fileExists(stamp): setLastModificationTime(stamp, t)
 
 proc loadsFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
   ## `nim m` loads an import from its precompiled NIF file. The members of the
@@ -977,6 +1000,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.icStale = initTable[int32, bool]()
+  result.icSourceStamps = initTable[int32, Time]()
   result.ifaces = @[]
   result.importStack = @[]
   result.cycleGroups = initTable[FileIndex, FileIndex]()

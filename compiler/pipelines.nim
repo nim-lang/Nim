@@ -313,6 +313,7 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       writeSemDeps(graph.config, module.position.int32, semDepPaths)
       if graph.config.ideActive:
         graph.icWrittenFiles.incl module.position
+        graph.icStampWrittenNif(module.position.FileIndex)
 
 proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
   ## The module path of an import, without its pragmas. Like
@@ -474,6 +475,8 @@ proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenera
   let bModule = setupBackend(graph, module, idgen)
 
   if stream == nil:
+    when not defined(nimKochBootstrap):
+      graph.icNoteSourceRead(fileIdx, fileIdx)
     let filename = toFullPathConsiderDirty(graph.config, fileIdx)
     s = llStreamOpen(filename, fmRead)
     if s == nil:
