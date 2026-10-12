@@ -932,7 +932,7 @@ when not defined(nimKochBootstrap):
   proc icStampWrittenNif*(g: ModuleGraph; module: FileIndex) =
     ## `setLastModificationTime` keeps microseconds only: round up so the stamp
     ## is never older than the sources it was built from.
-    var t: Time
+    var t = default(Time)
     if g.icSourceStamps.take(module.int32, t):
       let stamp = icStampFile(g, module)
       let sub = t.nanosecond mod 1000
