@@ -3324,7 +3324,13 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
       cgsym(m, "nimTestErrorFlag")
 
-    if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
+    if m.hcrOn:
+      # The main module is the one module a reload cannot replace: it is the
+      # running executable. The destructors of every module's globals would
+      # make its code depend on what the other modules declare, so with hot
+      # code reloading the globals are not destroyed when the program ends.
+      discard
+    elif {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
     else:

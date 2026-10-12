@@ -257,9 +257,10 @@ when defined(createNimHcr):
   proc writeJump(jumpTableEntry: ptr LongJumpInstruction, targetFn: pointer) =
     ## Writes a jump to the current procedure implementation.
     when Arm64Jumps:
-      proc clearCache(first, last: pointer) {.
+      proc clearCache(first, last: cstring) {.
         importc: "__builtin___clear_cache", nodecl, raises: [].}
-        ## Flushes the instruction cache after writing a jump.
+        ## Flushes the instruction cache after writing a jump. The builtin
+        ## takes `char*`, which C++ does not make from a `void*`.
 
       when JitJumpTable:
         proc jitWriteProtect(enabled: cint) {.
@@ -273,7 +274,8 @@ when defined(createNimHcr):
       when JitJumpTable:
         jitWriteProtect(1)
       let first = cast[pointer](jumpTableEntry)
-      clearCache(first, first.shift(sizeof(LongJumpInstruction)))
+      clearCache(cast[cstring](first),
+                 cast[cstring](first.shift(sizeof(LongJumpInstruction))))
       return
 
     let

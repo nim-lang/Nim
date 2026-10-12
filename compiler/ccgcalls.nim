@@ -21,6 +21,13 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
     # A base method may be overridden by a branch with a wider exception set.
     # Its inferred effects describe only the base body, not every vtable target.
     result = true
+  elif p.hcrOn and n.kind == nkSym and {sfImportc, sfCompilerProc} * n.sym.flags == {} and
+      getModule(n.sym) != p.module.module and sfSystemModule notin getModule(n.sym).flags:
+    # A reload can replace the proc of another module by one that raises
+    # (`sfNeverRaises` is inferred from today's body). The caller is not
+    # compiled again for that (the main module cannot be), so it checks for an
+    # error whatever the proc does today.
+    result = true
   elif n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
   elif optPanics in p.config.globalOptions or
