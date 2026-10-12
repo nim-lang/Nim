@@ -1388,9 +1388,10 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))
   of ideOutline2:
-    var owners: seq[string] = @[]
-    graph.outline2(parseFile(fileIndex, graph.cache, graph.config),
-      splitFile(toFullPath(conf, moduleToCompile)).name, owners, false)
+    let n = parseFile(fileIndex, graph.cache, graph.config)
+    if n != nil:
+      var owners: seq[string] = @[]
+      graph.outline2(n, splitFile(toFullPath(conf, moduleToCompile)).name, owners, false)
   of ideChk:
     myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:

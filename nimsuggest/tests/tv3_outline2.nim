@@ -41,6 +41,61 @@ when defined(windows):
 else:
   proc elsewhere() = discard
 
+type
+  Gen*[T] = object
+    val: T
+  Variant = object
+    case kind: bool
+    of true: x: int
+    of false: y: string
+  Valued = enum
+    v1 = (1, "one"), v2 = "two", v3
+
+proc exportedPragma*() {.inline.} = discard
+proc `$`*(x: Gen[int]): string = discard
+proc `[]`(x: Gen[int]; i: int): int = discard
+proc `[]=`(x: var Gen[int]; i, v: int) = discard
+proc `addr`(x: int) = discard
+proc `foo bar`() = discard
+template `!!`(x: untyped): untyped = x
+
+proc lvl1() =
+  proc lvl2() =
+    proc lvl3() = discard
+
+proc localKinds() =
+  iterator localIter(): int = discard
+  template localTmpl() = discard
+  macro localMacro() = discard
+  converter localConv(x: float): int = discard
+  method localMethod(x: int) = discard
+  type LocalEnum = enum le1, le2
+
+let lam = proc () =
+  proc inLambda() = discard
+
+const
+  c1 = 1
+  c2* = 2
+
+block:
+  proc inBlock() = discard
+
+static:
+  proc inStatic() = discard
+
+proc fwd()
+proc fwd() = discard
+
+proc semError(): int = undefinedIdent
+
+import fixtures/minclude_import
+
+proc unclosed(x: int =
+  discard
+
+proc afterSyntaxError() = discard
+
 discard """
 $nimsuggest --v3 --tester $file
 >outline2 $file
@@ -69,4 +124,42 @@ outline	skType	tv3_outline2.withLocals.LocalType		$file	35	7	""	100	35	22
 outline	skProc	tv3_outline2.withLocals.localProc		$file	37	7	""	100	37	28
 outline	skProc	tv3_outline2.onWindows		$file	40	7	""	100	40	28
 outline	skProc	tv3_outline2.elsewhere		$file	42	7	""	100	42	28
+outline	skType	tv3_outline2.Gen		$file	45	2	""	100	46	10
+outline	skType	tv3_outline2.Variant		$file	47	2	""	100	50	23
+outline	skType	tv3_outline2.Valued		$file	51	2	""	100	52	35
+outline	skEnumField	tv3_outline2.Valued.v1		$file	52	4	""	100	52	6
+outline	skEnumField	tv3_outline2.Valued.v2		$file	52	21	""	100	52	23
+outline	skEnumField	tv3_outline2.Valued.v3		$file	52	33	""	100	52	35
+outline	skProc	tv3_outline2.exportedPragma		$file	54	5	""	100	54	43
+outline	skProc	tv3_outline2.`$$`		$file	55	5	""	100	55	40
+outline	skProc	tv3_outline2.`[]`		$file	56	5	""	100	56	45
+outline	skProc	tv3_outline2.`[]=`		$file	57	5	""	100	57	48
+outline	skProc	tv3_outline2.`addr`		$file	58	5	""	100	58	29
+outline	skProc	tv3_outline2.foobar		$file	59	5	""	100	59	26
+outline	skTemplate	tv3_outline2.`!!`		$file	60	9	""	100	60	38
+outline	skProc	tv3_outline2.lvl1		$file	62	5	""	100	64	25
+outline	skProc	tv3_outline2.lvl1.lvl2		$file	63	7	""	100	64	25
+outline	skProc	lvl1.lvl2.lvl3		$file	64	9	""	100	64	25
+outline	skProc	tv3_outline2.localKinds		$file	66	5	""	100	72	32
+outline	skIterator	tv3_outline2.localKinds.localIter		$file	67	11	""	100	67	37
+outline	skTemplate	tv3_outline2.localKinds.localTmpl		$file	68	11	""	100	68	32
+outline	skMethod	tv3_outline2.localKinds.localMethod		$file	71	9	""	100	71	38
+outline	skType	tv3_outline2.localKinds.LocalEnum		$file	72	7	""	100	72	32
+outline	skEnumField	localKinds.LocalEnum.le1		$file	72	24	""	100	72	27
+outline	skEnumField	localKinds.LocalEnum.le2		$file	72	29	""	100	72	32
+outline	skProc	tv3_outline2.inLambda		$file	75	7	""	100	75	27
+outline	skConst	tv3_outline2.c1		$file	78	2	""	100	78	8
+outline	skConst	tv3_outline2.c2		$file	79	2	""	100	79	9
+outline	skProc	tv3_outline2.inBlock		$file	82	7	""	100	82	26
+outline	skProc	tv3_outline2.inStatic		$file	85	7	""	100	85	27
+outline	skProc	tv3_outline2.fwd		$file	87	5	""	100	87	10
+outline	skProc	tv3_outline2.fwd		$file	88	5	""	100	88	20
+outline	skProc	tv3_outline2.semError		$file	90	5	""	100	90	37
+outline	skProc	tv3_outline2.unclosed		$file	94	5	""	100	95	9
+outline	skProc	tv3_outline2.afterSyntaxError		$file	97	5	""	100	97	33
+>outline2 $path/fixtures/mnonexistent.nim
+>outline2 $path/fixtures/minclude_include.nim
+outline	skProc	minclude_import.create		*fixtures/minclude_include.nim	3	5	""	100	4	45
+>outline2 $path/fixtures/minclude_types.nim;$path/fixtures/mdep_v2.nim
+outline	skType	minclude_types.Foo		*fixtures/minclude_types.nim	7	2	""	100	9	14
 """
