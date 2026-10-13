@@ -42,7 +42,7 @@ NimScript is subject to some limitations caused by the implementation of the VM
   means that any stdlib module which relies on `importc` can not be used in
   the VM.
 
-* `ptr` operations are are hard to emulate with the symbolic representation
+* `ptr` operations are hard to emulate with the symbolic representation
   the VM uses. They are available and tested extensively but there are bugs left.
 
 * `var T` function arguments rely on `ptr` operations internally and might
