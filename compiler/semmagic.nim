@@ -721,13 +721,5 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if isCursor(n[1]):
       localError(c.config, n.info, errFailedMove,
         "cannot move cursor '" & $n[1] & "'; a cursor does not own its value")
-  of mSucc, mPred:
-    result = n
-    let orig = n.typ
-    let rangeType = orig.skipTypes({tyGenericInst, tyAlias, tySink})
-    if rangeType.kind == tyRange:
-      # the result of `succ`/`pred` must be in the range (#8422)
-      result.typ = rangeType.skipTypes({tyRange})
-      result = newTreeIT(nkHiddenStdConv, n.info, orig, newNodeI(nkEmpty, n.info), result)
   else:
     result = n
