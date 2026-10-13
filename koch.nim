@@ -231,6 +231,11 @@ proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
                  options = "-d:danger " & args)
 
+proc bundleNimsuggest2(args: string) =
+  bundleChecksums(false)
+  nimCompileFold("Compile nimsuggest2", "nimsuggest/nimsuggest2.nim",
+                 options = "-d:danger " & args)
+
 proc buildVccTool(args: string) =
   let input = "tools/vccexe/vccexe.nim"
   if contains(args, "--cc:vcc"):
@@ -261,6 +266,7 @@ proc zip(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
+  bundleNimsuggest2(args)
   bundleNimpretty(args)
   bundleWinTools(args)
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
@@ -288,6 +294,7 @@ proc buildTool(toolname, args: string) =
 
 proc buildTools(args: string = "") =
   bundleNimsuggest(args)
+  bundleNimsuggest2(args)
   nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
@@ -315,6 +322,7 @@ proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
+  bundleNimsuggest2(args)
   bundleWinTools(args)
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
@@ -774,6 +782,7 @@ proc runCI(cmd: string) =
       # in bundleNimsuggest depending on some environment variable when we are in CI. One advantage
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
+      execFold("build nimsuggest2_testing", "nim c -o:bin/nimsuggest2_testing -d:release nimsuggest/nimsuggest2")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
 
@@ -890,6 +899,7 @@ when isMainModule:
       of "nimble": bundleNimbleExe(latest, op.cmdLineRest)
       of "atlas": bundleAtlasExe(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
+      of "nimsuggest2": bundleNimsuggest2(op.cmdLineRest)
       # toolsNoNimble is kept for backward compatibility with build scripts
       of "toolsnonimble", "toolsnoexternal":
         buildTools(op.cmdLineRest)
