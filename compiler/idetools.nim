@@ -278,3 +278,113 @@ proc runIdeQuery*(conf: ConfigRef) =
     var qm = load(ownerFile)
     let tid = findSym(qm.buf.pool, foundName)
     scanBuf(conf, qm, section, tid, foundName, seen)
+
+# nimsuggest2's one-shot: the symbol at a position and its occurrences, read from
+# a module's `.s.bif`; the caller resolves the names to symbols.
+
+const routineTags = ["proc", "func", "method", "converter", "macro", "template", "iterator"]
+
+type
+  IdeSymAt* = object
+    name*: string           ## NIF name of the symbol written at the position
+    routines*: seq[string]  ## first symbol of each enclosing routine definition, innermost first
+
+proc identMatches(name, ident: string): bool =
+  ## Whether the NIF name `name` (`ident.disamb.module`, a field's
+  ## `ident`f.disamb`) is the identifier `ident`.
+  var e = 1
+  while e < name.len and name[e] notin {'.', '`'}: inc e
+  cmpIgnoreStyle(name.substr(0, e - 1), ident) == 0
+
+proc hit(res: var IdeSymAt; name: string; routines: seq[string]) =
+  res.name = name
+  for i in countdown(routines.high, 0):
+    if routines[i].len > 0: res.routines.add routines[i]
+
+proc ownInfo(c: Cursor; parent: NifLineInfo): NifLineInfo =
+  ## A node without line info of its own is at its parent's position.
+  result = rawLineInfo(c)
+  if not result.isValid: result = parent
+
+proc toLineInfo(conf: ConfigRef; c: Cursor; li: NifLineInfo): TLineInfo =
+  newLineInfo(fileInfoIdx(conf, AbsoluteFile poolFile(pool(c), li.file)), li.line.int, li.col.int)
+
+proc atTarget(conf: ConfigRef; c: Cursor; li: NifLineInfo; target: TLineInfo; len: int): bool =
+  li.isValid and li.line.int == target.line.int and li.col.int <= target.col.int and
+    target.col.int <= li.col.int + len and
+    fileInfoIdx(conf, AbsoluteFile poolFile(pool(c), li.file)) == target.fileIndex
+
+proc collectSymAt(c: var Cursor; conf: ConfigRef; target: TLineInfo; ident: string;
+                  parent: NifLineInfo; routines: var seq[string]; res: var IdeSymAt) =
+  let li = ownInfo(c, parent)
+  case c.kind
+  of TagLit:
+    let tag = c.tags.tagName(cursorTagId(c))
+    let isRoutine = tag in routineTags
+    let defHere = tag == symDefTagName and (atTarget(conf, c, li, target, ident.len) or
+      atTarget(conf, c, parent, target, ident.len))
+    if isRoutine: routines.add ""
+    c.into:
+      var first = true
+      while c.hasMore:
+        if first and defHere and c.kind == SymbolDef and res.name.len == 0 and
+            identMatches(symName(c), ident):
+          hit(res, symName(c), routines)
+        first = false
+        collectSymAt(c, conf, target, ident, li, routines, res)
+    if isRoutine: discard routines.pop()
+  of Symbol:
+    if routines.len > 0 and routines[^1].len == 0: routines[^1] = symName(c)
+    if res.name.len == 0 and atTarget(conf, c, li, target, ident.len):
+      let name = symName(c)
+      if identMatches(name, ident): hit(res, name, routines)
+    inc c
+  else:
+    inc c
+
+proc ideSymAt*(conf: ConfigRef; bif: string; target: TLineInfo; ident: string): IdeSymAt =
+  ## The symbol named `ident` written at `target`, as `bif` records it; an
+  ## empty `name` when there is none.
+  result = IdeSymAt()
+  if not fileExists(bif): return
+  var m = load(bif)
+  if m.buf.len == 0: return
+  var routines: seq[string] = @[]
+  var c = m.buf.beginRead()
+  while c.hasMore:
+    collectSymAt(c, conf, target, ident, NoNifLineInfo, routines, result)
+  c.endRead()
+
+proc collectOccurrences(c: var Cursor; conf: ConfigRef; targetSym: SymId; targetName: string;
+                        parent: NifLineInfo; res: var seq[TLineInfo]) =
+  let li = ownInfo(c, parent)
+  case c.kind
+  of TagLit:
+    let defHere = li.isValid and c.tags.tagName(cursorTagId(c)) == symDefTagName
+    c.into:
+      var first = true
+      while c.hasMore:
+        if first and defHere and c.kind == SymbolDef and symMatches(c):
+          res.add toLineInfo(conf, c, li)
+          if parent.isValid: res.add toLineInfo(conf, c, parent)
+        first = false
+        collectOccurrences(c, conf, targetSym, targetName, li, res)
+  of Symbol:
+    if li.isValid and symMatches(c):
+      res.add toLineInfo(conf, c, li)
+    inc c
+  else:
+    inc c
+
+proc ideOccurrences*(conf: ConfigRef; bif, name: string): seq[TLineInfo] =
+  ## Where `bif` records `name`: its definition and every use.
+  result = @[]
+  if not fileExists(bif) or not containsSym(bif, name): return
+  var m = load(bif)
+  if m.buf.len == 0: return
+  let targetSym = findSym(m.buf.pool, name)
+  let targetName = name
+  var c = m.buf.beginRead()
+  while c.hasMore:
+    collectOccurrences(c, conf, targetSym, targetName, NoNifLineInfo, result)
+  c.endRead()
