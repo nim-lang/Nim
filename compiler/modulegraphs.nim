@@ -408,6 +408,16 @@ proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
         s.itemId.module == m.position:
       result.add s.itemId
 
+iterator allSymsNamed*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
+  ## The top-level symbols of `m` called `name`, also the private ones.
+  ## Does not load the private symbols of a module from the IC cache.
+  if m.position < g.ifaces.len and not g.ifaces[m.position].hiddenPending:
+    var ti = default(TIdentIter)
+    var s = initIdentIter(ti, g.ifaces[m.position].interfHidden, name)
+    while s != nil:
+      yield s
+      s = nextIdentIter(ti, g.ifaces[m.position].interfHidden)
+
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
   if importHidden: ensureHiddenIface(g, m.position)
