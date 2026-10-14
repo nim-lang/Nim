@@ -1598,6 +1598,14 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                           allowMetaTypes = true)
       result = recurse(expanded, true)
 
+  of tyOrdinal:
+    if paramType.elementType.kind == tyNone:
+      # a bare `Ordinal` is a type class like `T: Ordinal` (#10945)
+      result = addImplicitGeneric(c, newTypeS(tyGenericParam, c, paramType),
+        paramTypId, info, genericParams, paramName)
+    else:
+      result = nil
+
   of tyCompositeTypeClass:
     if anon and paramType.base.kind == tyGenericBody:
       # `b: distinct Table` after `a: Table`: here `Table` names the implicit
