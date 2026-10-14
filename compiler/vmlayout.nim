@@ -191,6 +191,17 @@ proc layoutIdx(c: var LayoutCache; conf: ConfigRef; t: PType): int =
     c.layouts.add L
     c.tab[t.itemId] = result
 
+proc delModule*[V](t: var Table[ItemId, V]; module: int32) =
+  ## removes the entries of `module`'s symbols or types from `t`
+  var keys: seq[ItemId] = @[]
+  for k in t.keys:
+    if k.module == module: keys.add k
+  for k in keys: t.del k
+
+proc forgetModule*(c: var LayoutCache; module: int32) =
+  ## the layouts stay in `c.layouts`, only the lookup is invalidated
+  delModule(c.tab, module)
+
 proc getLayout*(c: var LayoutCache; conf: ConfigRef; t: PType): VmLayout =
   c.layouts[layoutIdx(c, conf, t)]
 

@@ -638,7 +638,7 @@ proc toStr(c: PCtx; v: int64; t: PType): string =
   else: $v
 
 proc compile(c: PCtx, s: PSym): VmProcInfo =
-  let isNew = not c.procToCodePos.hasKey(s.id)
+  let isNew = not c.procToCodePos.hasKey(s.itemId)
   when defined(nimVmListing):
     if isNew: echo "COMPILING ", s.name.s, " ", c.config $ s.info
   result = vmgen.genProc(c, s)
@@ -2354,6 +2354,19 @@ proc setupEvalGen*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassC
   # XXX produce a new 'globals' environment here:
   setupGlobalCtx(module, graph, idgen)
   result = PCtx graph.vm
+
+proc forgetModule*(graph: ModuleGraph; module: PSym) =
+  ## `module` is about to be recompiled (nimsuggest) and its symbols and types
+  ## get the same item ids again: drop everything the VM cached for them.
+  if graph.vm.isNil: return
+  let c = PCtx graph.vm
+  let m = module.itemId.module
+  delModule(c.procToCodePos, m)
+  delModule(c.globalAddrs, m)
+  delModule(c.constAddrs, m)
+  delModule(c.procShapes, m)
+  forgetModule(c.layouts, m)
+  forgetModule(c.mem, m)
 
 proc interpreterCode*(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
