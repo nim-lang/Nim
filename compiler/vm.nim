@@ -1726,6 +1726,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         setNode(ra, n)
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
+    of opcSymCustomPragmas:
+      let a = node(instr.regB)
+      if a != nil and a.kind == nkSym:
+        let p = if a.sym.kind == skField and a.sym.customPragmas != nil:
+                  copyTree(a.sym.customPragmas)
+                else: newNode(nkPragma)
+        p.flags.incl nfIsRef
+        setNode(ra, p)
+      else:
+        stackTrace(c, tos, pc, "node is not a symbol")
     of opcSymIsInstantiationOf:
       let a = node(instr.regB)
       let b = node(instr.regC)

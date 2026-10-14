@@ -29,7 +29,7 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "49"
+  icFormatVersion* = "50"
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v48: track implementation dependencies for reused generic type instances.
     ## v46: every type definition wraps its sons in `(genericargs ...)`.

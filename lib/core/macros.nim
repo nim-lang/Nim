@@ -280,6 +280,11 @@ when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform)
     ## See an example in `tests/macros/tmacros_various.nim`.
 
 proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect, deprecated.}
+
+when defined(nimHasFieldCustomPragmas):
+  proc fieldCustomPragmas(field: NimNode): NimNode {.magic: "SymCustomPragmas", noSideEffect.}
+    ## The custom pragmas of the field symbol `field`, as the compiler
+    ## instantiated them with the object type.
   ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
   ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
   ## context. For top level declarations this is an `nskModule` symbol,
@@ -1589,15 +1594,6 @@ proc extractTypeImpl(n: NimNode): NimNode =
   else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
 
-proc substGenericParams(n: NimNode; subst: seq[(NimNode, NimNode)]): NimNode =
-  if subst.len == 0: return n
-  if n.kind == nnkSym:
-    for (param, arg) in subst:
-      if n == param: return arg
-    return n
-  result = n.copyNimNode
-  for x in n: result.add substGenericParams(x, subst)
-
 proc customPragmaNode(n: NimNode): NimNode =
   result = nil
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkType, nnkCheckedFieldExpr})
@@ -1631,28 +1627,16 @@ proc customPragmaNode(n: NimNode): NimNode =
       else:
         return timpl
 
+  when defined(nimHasFieldCustomPragmas):
+    let field = if n.kind == nnkCheckedFieldExpr: n[0][1] elif n.kind == nnkDotExpr: n[1] else: nil
+    if field != nil and field.kind == nnkSym and field.symKind == nskField:
+      return fieldCustomPragmas(field)
+
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
     var typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
-    while typInst.kind == nnkVarTy: typInst = typInst[0]
-    # the fields are declared in the generic type's definition, its generic
-    # params are replaced by the arguments of the instance, `N` by `2` in
-    # `R[2]`:
-    var subst: seq[(NimNode, NimNode)] = @[]
-    var typDef: NimNode = nil
-    template goTo(t: NimNode) =
-      var target = t
-      var args: seq[NimNode] = @[]
-      while target.kind == nnkBracketExpr:
-        args.setLen 0
-        for i in 1 ..< target.len: args.add substGenericParams(target[i], subst)
-        target = target[0]
-      typDef = getImpl(target)
-      subst.setLen 0
-      if typDef.kind == nnkTypeDef and typDef[1].kind == nnkGenericParams and
-          typDef[1].len == args.len:
-        for i in 0 ..< args.len: subst.add((typDef[1][i], args[i]))
-    goTo(typInst)
+    while typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst = typInst[0]
+    var typDef = getImpl(typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       # Resolve typeof() and similar unresolvable type expressions
@@ -1665,18 +1649,18 @@ proc customPragmaNode(n: NimNode): NimNode =
             continue
           elif resolved.kind == nnkBracketExpr and resolved[0].kind == nnkSym:
             # alias of a generic instance like `typeof(Base[int]())`
-            goTo(resolved)
+            typDef = getImpl(resolved[0])
             continue
         break
       if typDef[2].kind == nnkBracketExpr and typDef[2][0].kind == nnkSym:
         # alias of a generic instance like `BaseInt = Base[int]`
-        goTo(typDef[2])
+        typDef = getImpl(typDef[2][0])
         continue
       let typ = typDef[2].extractTypeImpl()
       if typ.kind notin {nnkRefTy, nnkPtrTy, nnkObjectTy}: break
       let isRef = typ.kind in {nnkRefTy, nnkPtrTy}
       if isRef and typ[0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
-        goTo(typ[0])
+        typDef = getImpl(typ[0])
       else: # object definition, maybe an object directly defined as a ref type
         let
           obj = (if isRef: typ[0] else: typ)
@@ -1720,11 +1704,15 @@ proc customPragmaNode(n: NimNode): NimNode =
                   # This is a public field. We are skipping the postfix *
                   varName = varName[1]
                 if eqIdent($varName, name):
-                  return substGenericParams(varNode[1], subst)
+                  return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
-          # a generic parent like `Base[int, N]` is handled like the instance
-          goTo(obj[1][0])
+          var parent = obj[1][0]
+          if parent.kind == nnkBracketExpr:
+            # generic parent like `Base[int]`: the fields are declared
+            # in the generic type's definition
+            parent = parent[0]
+          typDef = getImpl(parent)
         else:
           typDef = nil
 

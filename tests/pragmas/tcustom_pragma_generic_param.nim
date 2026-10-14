@@ -6,12 +6,14 @@ discard """
 7
 4
 9
+5
+int16
+2
 '''
 """
 
 # the value of a custom pragma of a field can refer to the generic params of
-# the object type, `getCustomPragmaVal` replaces them by the arguments of the
-# instance
+# the object type, the compiler instantiates the pragmas with the type
 
 import std/macros
 
@@ -54,3 +56,15 @@ proc inGeneric[N: static int](x: R[N]): int = x.field.getCustomPragmaVal(tag)
 echo inGeneric(R[9]())
 
 doAssert r.field.hasCustomPragma(tag)
+
+template ty(t: typedesc) {.pragma.}
+type G[T; N: static int] = object
+  a {.tag(N + 1).}: int
+  b {.ty(T).}: int
+  c {.tag(sizeof(T)).}: int
+
+var g: G[int16, 4]
+echo g.a.getCustomPragmaVal(tag)
+var x: g.b.getCustomPragmaVal(ty) = 3
+echo typeof(x)
+echo g.c.getCustomPragmaVal(tag)
