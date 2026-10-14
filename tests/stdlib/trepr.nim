@@ -175,6 +175,41 @@ discard b =>
 block:
   return"""
 
+  block: # a statement list in expression position keeps its parentheses
+    # without them the text is an `if` followed by a dangling `& tail`, or
+    # `.len` applied to `items` alone; `(discard)` above was the one case handled
+    let e1 = deb:
+      discard (inc pos; 8'i32)
+      discard (inc pos; inc pos; pos) - 1
+      if (inc pos; pos > 3): discard
+    doAssert e1 == """
+discard (inc pos; 8'i32)
+discard (inc pos; inc pos; pos) -
+    1
+if (inc pos; pos > 3):
+  discard"""
+
+    let e2 = deb:
+      discard (block:
+        inc pos
+        items).len
+    doAssert e2 == """
+discard (
+  block:
+    inc pos
+    items).len"""
+
+    let e3 = deb:
+      discard (if cond: yes else: no) & tail
+    doAssert e3 == """
+discard (
+  if cond:
+    yes
+  else:
+    no
+  ) &
+    tail"""
+
   block: # bug #17292 (bug 4)
     let a = deb:
       proc `=destroy`() = discard

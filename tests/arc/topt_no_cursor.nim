@@ -15,11 +15,7 @@ splat = splitDrive do:
 `=wasMoved`(splat.drive)
 :tmp_1 = splat.path_1
 `=wasMoved`(splat.path_1)
-result = (
-  let blitTmp_1 = :tmp
-  blitTmp_1,
-  let blitTmp_2 = :tmp_1
-  blitTmp_2)
+result = ((let blitTmp_1 = :tmp; blitTmp_1), (let blitTmp_2 = :tmp_1; blitTmp_2))
 `=destroy`(splat)
 -- end of expandArc ------------------------
 --expandArc: delete
@@ -42,9 +38,7 @@ var
   tmpTupleAsgn
 result = default(Maybe)
 lresult = @[123]
-tmpTupleAsgn = (
-  let blitTmp = lresult
-  blitTmp, ";")
+tmpTupleAsgn = ((let blitTmp = lresult; blitTmp), ";")
 lvalue = tmpTupleAsgn[0]
 lnext = tmpTupleAsgn[1]
 `=sink`(result.value, move lvalue)
@@ -61,14 +55,8 @@ var
   :tmpD_2
 try:
   it_cursor = x
-  a = (
-    :tmpD = `=dup`(it_cursor.key)
-    :tmpD,
-    :tmpD_1 = `=dup`(it_cursor.val)
-    :tmpD_1)
-  echo [
-    :tmpD_2 = `$$`(a)
-    :tmpD_2]
+  a = ((:tmpD = `=dup`(it_cursor.key); :tmpD), (:tmpD_1 = `=dup`(it_cursor.val); :tmpD_1))
+  echo [(:tmpD_2 = `$$`(a); :tmpD_2)]
 finally:
   `=destroy`(:tmpD_2)
   `=destroy_1`(a)
@@ -127,21 +115,19 @@ var par
 this.isValid = fileExists(this.value)
 if dirExists(this.value):
   var :tmpD
-  par = (dir:
-    :tmpD = `=dup`(this.value)
-    :tmpD, front: "")
+  par = (dir: (:tmpD = `=dup`(this.value); :tmpD), front: "")
 else:
   var
     :tmpD_1
     :tmpD_2
     :tmpD_3
-  par = (dir_1: parentDir(this.value), front_1:
-    :tmpD_1 = `=dup`(
+  par = (dir_1: parentDir(this.value), front_1: (
+    :tmpD_1 = `=dup`((
       :tmpD_3 = splitDrive do:
         :tmpD_2 = `=dup`(this.value)
-        :tmpD_2
-      :tmpD_3.path)
-    :tmpD_1)
+        :tmpD_2;
+      :tmpD_3).path);
+    :tmpD_1))
   `=destroy`(:tmpD_3)
 if dirExists(par.dir):
   `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
