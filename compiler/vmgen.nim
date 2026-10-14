@@ -1753,6 +1753,9 @@ proc genRet(c: PCtx; n: PNode) =
 proc genReturn(c: PCtx; n: PNode) =
   if n[0].kind != nkEmpty:
     gen(c, n[0])
+  # a `return` within an `except` section has no safepoint that could
+  # run the `finally` section, so all of them run here (#10925):
+  leaveTries(c, n, 0)
   genRet(c, n)
 
 # ------------------------- calls ---------------------------------------------
