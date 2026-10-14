@@ -858,7 +858,15 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       a[^1] = firstRange(c.config, typ)
 
     if a[^1].kind != nkEmpty:
+      # the value of a `{.compileTime.}` variable is computed at compile
+      # time, so `bindSym` & co. must see a static context (#10628):
+      var isCompileTime = false
+      for j in 0..<a.len-2:
+        if a[j].kind == nkPragmaExpr and hasPragma(a[j][1], wCompileTime):
+          isCompileTime = true
+      if isCompileTime: inc c.inStaticContext
       def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
+      if isCompileTime: dec c.inStaticContext
 
       if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
