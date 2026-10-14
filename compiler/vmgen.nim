@@ -2955,7 +2955,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
       # on this.
       let first = if n[1][0].kind == nkRange: n[1][0][0] else: n[1][0]
       c.typeKindDefault = toInt(getOrdValue(first)) + 1
-    let e = genSetElem(c, n[2], setType)
+    # like the C backend, `x in {a..b}` does not check the range of `x`, the
+    # VM's set operations handle out of range elements (#11804):
+    let elemNode = if n[1].kind == nkCurly and n[2].kind in {nkChckRange, nkChckRange64}: n[2][0]
+                   else: n[2]
+    let e = genSetElem(c, elemNode, setType)
     c.typeKindDefault = 0
     if dest < 0: dest = c.getIntTemp()
     if isBigSet(c, setType):
