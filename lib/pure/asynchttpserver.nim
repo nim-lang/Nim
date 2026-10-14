@@ -62,6 +62,11 @@ type
     client*: AsyncSocket # TODO: Separate this into a Response object?
     reqMethod*: HttpMethod
     headers*: HttpHeaders
+    headerFields*: seq[tuple[name, value: string]] ## \
+      ## Each header line as it arrived, in order: the name as sent and the
+      ## field value without its surrounding whitespace. `headers` splits a
+      ## value at its commas and keeps only the last of repeated lines; this
+      ## keeps both intact (RFC 9110 section 5).
     protocol*: tuple[orig: string, major, minor: int]
     url*: Uri
     hostname*: string    ## The hostname of the client that made the request.
@@ -175,6 +180,16 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
     inc i
     n = protocol.parseSaturatedNatural(result.minor, i)
 
+func headerField(line: string): tuple[name, value: string] =
+  ## A header line split at its first colon, the value without the
+  ## whitespace around it (RFC 9110 section 5.5). Unlike `parseHeader`, the
+  ## value is not split at its commas.
+  let colon = line.find(':')
+  if colon < 0:
+    (line, "")
+  else:
+    (line[0 ..< colon], line[colon + 1 .. ^1].strip(chars = {' ', '\t'}))
+
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
@@ -218,6 +233,7 @@ proc processRequest(
   # Header: val
   # \n
   request.headers.clear()
+  request.headerFields.setLen(0)
   request.body = ""
   when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
     request.hostname = address
@@ -303,8 +319,10 @@ proc processRequest(
     if lineFut.mget == "\c\L": break
     let (key, value) = parseHeader(lineFut.mget)
     request.headers[key] = value
-    # Ensure the client isn't trying to DoS us.
-    if request.headers.len > headerLimit:
+    request.headerFields.add headerField(lineFut.mget)
+    # Ensure the client isn't trying to DoS us. Repeated lines of one name do
+    # not grow `headers`, so the lines are counted too.
+    if request.headers.len > headerLimit or request.headerFields.len > headerLimit:
       await client.sendStatus("400 Bad Request")
       request.client.close()
       return false
