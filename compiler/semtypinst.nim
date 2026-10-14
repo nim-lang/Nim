@@ -268,6 +268,17 @@ proc hasValuelessStatics(n: PNode): bool =
       if hasValuelessStatics(x):
         return true
 
+proc resetTypeTestPath(n: PNode): bool =
+  # `mIs` is resolved during semantic checking. Reset cached types along the
+  # path so nested type tests are checked again after generic substitution.
+  result = n.kind in nkCallKinds and n[0].kind == nkSym and
+    n[0].sym.magic == mIs
+  for i in ord(n.kind in nkCallKinds)..<n.safeLen:
+    result = resetTypeTestPath(n[i]) or result
+  if result:
+    n.typ = nil
+    n.flags.excl nfSem
+
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
   result = copyNode(n)
@@ -324,6 +335,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
         if not cond.hasValuelessStatics:
+          discard resetTypeTestPath(cond)
           var e = cl.c.semConstExpr(cl.c, cond)
           if e.kind != nkIntLit:
             internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
