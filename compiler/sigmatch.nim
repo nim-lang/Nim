@@ -2080,6 +2080,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # This is the bound type - can't benifit from these tallies
       let
         inheritancePenaltyOld = c.inheritancePenalty
+      # the params of a generic type are bound to `typedesc[T]`, a constraint
+      # like `B: not A` refers to the type itself (#10739):
+      let x = if c.callee.kind == tyGenericBody and x.kind == tyTypeDesc and
+                  a.kind != tyTypeDesc and x.len > 0: x.base
+              else: x
       result = typeRel(c, x, a, flags) # check if it fits
       c.inheritancePenalty = inheritancePenaltyOld
       if result > isGeneric: result = isGeneric
