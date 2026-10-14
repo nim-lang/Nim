@@ -1609,7 +1609,8 @@ proc customPragmaNode(n: NimNode): NimNode =
     else:
       return impl[0] # handle types which don't have macro at all
 
-  if n.kind == nnkSym: # either an variable or a proc
+  let isFieldSym = n.kind == nnkSym and n.symKind == nskField
+  if n.kind == nnkSym and not isFieldSym: # either an variable or a proc
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
@@ -1622,11 +1623,20 @@ proc customPragmaNode(n: NimNode): NimNode =
       else:
         return timpl
 
-  if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
-    let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
-    var typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
-    while typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst = typInst[0]
-    var typDef = getImpl(typInst)
+  if n.kind in {nnkDotExpr, nnkCheckedFieldExpr} or isFieldSym:
+    var name: string
+    var typDef: NimNode
+    if isFieldSym:
+      # a field symbol as `getType` produces it: it is owned by the type
+      # that declares it (#11511)
+      name = $n
+      typDef = getImpl(n.owner)
+      if typDef.kind != nnkTypeDef: typDef = nil
+    else:
+      name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
+      var typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
+      while typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst = typInst[0]
+      typDef = getImpl(typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       # Resolve typeof() and similar unresolvable type expressions
