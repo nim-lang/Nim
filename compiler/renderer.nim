@@ -1112,11 +1112,15 @@ proc gstmtListExpr(g: var TSrcGen, n: PNode) =
   let oneLine = fits(g, g.lineLen + length)
   put(g, tkParLe, "(")
   if not oneLine: indentNL(g)
+  var first = true
   for i in 0..<n.len:
-    if i > 0:
+    # a transformation can leave an empty node behind; it is no statement
+    if n[i].kind == nkEmpty: continue
+    if not first:
       put(g, tkSemiColon, ";")
       if oneLine: put(g, tkSpaces, Space)
       else: optNL(g)
+    first = false
     if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
       gstmts(g, n[i], emptyContext, doIndent = false)
     else:
