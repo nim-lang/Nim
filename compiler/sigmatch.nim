@@ -70,6 +70,7 @@ type
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
     typedescMatched*: bool
+    liftedStmtList: bool     # the current argument was lifted to a lambda
     isNoCall*: bool          # misused for generic type instantiations C[T]
     inferredTypes: seq[PType] # inferred types during the current signature
                               # matching. they will be reset if the matching
@@ -2744,6 +2745,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       # lift do blocks without params to lambdas
       # now deprecated
       message(c.config, argOrig.info, warnStmtListLambda)
+      m.liftedStmtList = true
       let p = c.graph
       let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
           params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
@@ -3072,6 +3074,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
   let firstArgBlock = findFirstArgBlock(m, n)
   while a < n.len:
     c.openShadowScope
+    m.liftedStmtList = false
 
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n[f].sym
@@ -3244,7 +3247,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             noMatch()
         checkConstraint(n[a])
 
-    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}) and
+        not m.liftedStmtList:
+      # the declarations of a statement list that became a lambda are local
+      # to it (#10848)
       c.mergeShadowScope
     else:
       c.rememberShadowDefs
