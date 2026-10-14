@@ -632,7 +632,11 @@ proc mainThread(graph: ModuleGraph) =
   var idle = 0
   var cachedMsgs: CachedMsgs = @[]
   while true:
-    let (hasData, req) = requests.tryRecv()
+    let (hasData, req) =
+      if conf.suggestVersion >= 3:
+        (true, requests.recv())
+      else:
+        requests.tryRecv()
     if hasData:
       conf.writelnHook = wrHook
       conf.suggestionResultHook = sugResultHook
