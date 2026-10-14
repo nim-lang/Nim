@@ -2635,6 +2635,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       # operand and left symbols behind; templates expect the pristine AST.
       return argOrig
     else:
+      let fr = f.skipTypes({tyGenericInst, tyAlias, tySink})
+      if fr.kind == tyRange and argSemantized.kind in {nkCharLit..nkUInt64Lit} and
+          fr.elementType.kind notin {tyUInt..tyUInt64} and
+          (getInt(argSemantized) < firstOrd(c.config, fr) or
+           getInt(argSemantized) > lastOrd(c.config, fr)):
+        # the literal does not fit the range, as for routines (#12780):
+        return nil
       return argSemantized # argOrig
 
   block instantiateGenericRoutine:
