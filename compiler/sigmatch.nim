@@ -2480,6 +2480,18 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   # XXX: This would be much nicer if we don't use `semTryExpr` and
   # instead we directly search for overloads with `resolveOverloads`:
   result = c.semTryExpr(c, call, {efNoSem2Check})
+  if result == nil and f.n.kind == nkIdent and m.calleeSym != nil:
+    # the converter is not visible here (a generic instantiation in another
+    # module, or it is private): use the one of the routine's module (#11154)
+    let module = m.calleeSym.getModule
+    if module != nil and module != c.module:
+      var choice = newNodeI(nkClosedSymChoice, f.n.info)
+      for s in allSymsNamed(c.graph, module, f.n.ident):
+        if s.kind in routineKinds: choice.add newSymNode(s, f.n.info)
+      if choice.len > 0:
+        if c.config.cmd == cmdM: c.graph.icImplDeps.incl module.position
+        call[0] = if choice.len == 1: choice[0] else: choice
+        result = c.semTryExpr(c, call, {efNoSem2Check})
 
   if result != nil:
     if result.typ == nil: return nil
