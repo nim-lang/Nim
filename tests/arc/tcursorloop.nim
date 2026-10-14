@@ -9,14 +9,12 @@ var
 try:
   `=copy`(it, root)
   block :tmp:
-    while (
-      not (it == nil)):
+    while (not (it == nil)):
       if true:
         echo [it.s]
         `=copy`(it, it.ri)
   jt_cursor = root
-  if (
-    not (jt_cursor == nil)):
+  if (not (jt_cursor == nil)):
     echo [jt_cursor.s]
     jt_cursor = jt_cursor.ri
 finally:

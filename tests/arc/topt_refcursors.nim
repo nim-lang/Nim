@@ -10,14 +10,12 @@ var
 try:
   it_cursor = root
   block :tmp:
-    while (
-      not (it_cursor == nil)):
+    while (not (it_cursor == nil)):
       echo [it_cursor.s]
       it_cursor = it_cursor.ri
   `=copy`(jt, root)
   block :tmp_1:
-    while (
-      not (jt == nil)):
+    while (not (jt == nil)):
       var ri_1
       try:
         `=copy`(ri_1, jt.ri)

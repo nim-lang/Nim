@@ -772,12 +772,38 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
     optNL(g)
 
 
+proc gstmtListExpr(g: var TSrcGen, n: PNode) =
+  ## A statement list in expression position is written `(a; b)`: without the
+  ## parentheses `(if a: b else: c) & t` is an `if` followed by a dangling
+  ## `& t`, and `(block: ...; s).len` applies `.len` to `s` alone.
+  ## After `(` the parser reads statements only if a keyword or a `;` comes
+  ## first, so the `;` after the first statement cannot be left out.
+  # `lsub` has no length for a statement list, so that an operand of this
+  # kind keeps the line breaks around it that it always had
+  var length = 2 * n.len
+  for i in 0..<n.len: length += lsub(g, n[i])
+  let oneLine = fits(g, g.lineLen + length)
+  put(g, tkParLe, "(")
+  if not oneLine: indentNL(g)
+  var first = true
+  for i in 0..<n.len:
+    # a transformation can leave an empty node behind; it is no statement
+    if n[i].kind == nkEmpty: continue
+    if not first:
+      put(g, tkSemiColon, ";")
+      if oneLine: put(g, tkSpaces, Space)
+      else: optNL(g)
+    first = false
+    if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+      gstmts(g, n[i], emptyContext, doIndent = false)
+    else:
+      gsub(g, n[i], fromStmtList = true)
+    gcoms(g)
+  if not oneLine: dedent(g)
+  put(g, tkParRi, ")")
+
 proc gcond(g: var TSrcGen, n: PNode) =
-  if n.kind == nkStmtListExpr:
-    put(g, tkParLe, "(")
   gsub(g, n)
-  if n.kind == nkStmtListExpr:
-    put(g, tkParRi, ")")
 
 proc gif(g: var TSrcGen, n: PNode) =
   var c: TContext = initContext()
@@ -1074,6 +1100,19 @@ const postExprBlocks = {nkStmtList, nkStmtListExpr,
   nkOfBranch, nkElifBranch, nkElse,
   nkExceptBranch, nkFinally, nkDo}
 
+proc gpostBlock(g: var TSrcGen, n: PNode, i: int) =
+  ## A statement list after `:` or `do:` is a block, not an operand: it keeps
+  ## the form of a block whatever its kind.
+  if i < n.len and n[i].kind == nkStmtListExpr:
+    if n[i].len == 1 and n[i][0].kind == nkDiscardStmt:
+      put(g, tkParLe, "(")
+      gsub(g, n[i][0])
+      put(g, tkParRi, ")")
+    else:
+      gstmts(g, n[i], emptyContext)
+  else:
+    gsub(g, n, i)
+
 proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
   var i = i
   if n[i].kind in {nkStmtList, nkStmtListExpr}:
@@ -1083,7 +1122,7 @@ proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
       put(g, tkSpaces, Space)
       put(g, tkDo, "do")
       put(g, tkColon, ":")
-  gsub(g, n, i)
+  gpostBlock(g, n, i)
   i.inc
   for j in i ..< n.len:
     if n[j].kind == nkDo:
@@ -1092,7 +1131,7 @@ proc postStatements(g: var TSrcGen, n: PNode, i: int, fromStmtList: bool) =
       optNL(g)
       put(g, tkDo, "do")
       put(g, tkColon, ":")
-    gsub(g, n, j)
+    gpostBlock(g, n, j)
 
 proc isCustomLit(n: PNode): bool =
   if n.len == 2 and n[0].kind == nkRStrLit:
@@ -1615,7 +1654,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
     gsub(g, n, 1)
-  of nkStmtList, nkStmtListExpr, nkStmtListType:
+  of nkStmtListExpr:
+    gstmtListExpr(g, n)
+  of nkStmtList, nkStmtListType:
     if n.len == 1 and n[0].kind == nkDiscardStmt:
       put(g, tkParLe, "(")
       gsub(g, n[0])
