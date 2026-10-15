@@ -73,9 +73,9 @@ proc hasNoInit(call: PNode): bool {.inline.} =
 proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   if d.k in {locTemp, locNone} or not canRaise:
     result = true
-  elif d.k == locLocalVar and p.withinTryWithExcept == 0:
+  elif d.k == locLocalVar and p.withinTryWithExcept == 0 and p.nestedTryStmts.len == 0:
     # we cannot observe a store to a local variable if the current proc
-    # has no error handler:
+    # has no enclosing error handler or finally block:
     result = true
   else:
     result = false
