@@ -1114,6 +1114,7 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
       writeSym(w, dest, sym.guardImpl)
       dest.addIntLit sym.bitsizeImpl
       dest.addIntLit sym.alignmentImpl
+      writeNode(w, dest, sym.customPragmasImpl)
     else:
       discard
 
@@ -3326,6 +3327,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
         s.guardImpl = loadSymStub(c, n, thisModule, localSyms)
         loadField s.bitsizeImpl
         loadField s.alignmentImpl
+        s.customPragmasImpl = loadNode(c, n, thisModule, localSyms)
       else:
         discard
 
