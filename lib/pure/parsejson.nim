@@ -11,7 +11,7 @@
 ## and exported by the `json` standard library
 ## module, but can also be used in its own right.
 
-import std/[strutils, lexbase, streams, unicode]
+import std/[strutils, lexbase, streams, unicode, parseutils]
 import std/private/decode_helpers
 
 when defined(nimPreviewSlimSystem):
@@ -67,6 +67,8 @@ type
 
   JsonParser* = object of BaseLexer ## the parser object.
     a*: string
+    i: BiggestInt
+    f: float
     tok*: TokKind
     kind: JsonEventKind
     err: JsonError
@@ -130,12 +132,12 @@ proc str*(my: JsonParser): string {.inline.} =
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
   ## returns the number for the event: `jsonInt`
   assert(my.kind == jsonInt)
-  return parseBiggestInt(my.a)
+  result = my.i
 
 proc getFloat*(my: JsonParser): float {.inline.} =
   ## returns the number for the event: `jsonFloat`
   assert(my.kind == jsonFloat)
-  return parseFloat(my.a)
+  result = my.f
 
 proc kind*(my: JsonParser): JsonEventKind {.inline.} =
   ## returns the current event type for the JSON parser
@@ -342,35 +344,46 @@ proc skip(my: var JsonParser) =
       break
   my.bufpos = pos
 
-proc parseNumber(my: var JsonParser) =
-  var pos = my.bufpos
+proc parseNumberValue(my: var JsonParser; tokenStart, tokenLen: int;
+    kind: TokKind): TokKind {.inline.} =
+  var L = 0
+  if kind == tkFloat:
+    L = parseFloat(my.buf, my.f, tokenStart)
+  else:
+    L = parseBiggestInt(my.buf, my.i, tokenStart)
+  if L != tokenLen:
+    raise newException(ValueError, "invalid number: " & my.buf[tokenStart..tokenLen-1])
+  result = kind
+
+proc parseNumber(my: var JsonParser): TokKind {.inline.} =
+  let tokenStart = my.bufpos
+  var pos = tokenStart
+  var hasDot = false
+  var hasExp = false
   if my.buf[pos] == '-':
-    add(my.a, '-')
     inc(pos)
   if my.buf[pos] == '.':
-    add(my.a, "0.")
+    hasDot = true
     inc(pos)
   else:
     while my.buf[pos] in Digits:
-      add(my.a, my.buf[pos])
       inc(pos)
     if my.buf[pos] == '.':
-      add(my.a, '.')
+      hasDot = true
       inc(pos)
-  # digits after the dot:
   while my.buf[pos] in Digits:
-    add(my.a, my.buf[pos])
     inc(pos)
   if my.buf[pos] in {'E', 'e'}:
-    add(my.a, my.buf[pos])
+    hasExp = true
     inc(pos)
     if my.buf[pos] in {'+', '-'}:
-      add(my.a, my.buf[pos])
       inc(pos)
     while my.buf[pos] in Digits:
-      add(my.a, my.buf[pos])
       inc(pos)
+
   my.bufpos = pos
+  result = if hasDot or hasExp: tkFloat else: tkInt
+  result = parseNumberValue(my, tokenStart, pos - tokenStart, result)
 
 proc parseName(my: var JsonParser) =
   var pos = my.bufpos
@@ -385,11 +398,7 @@ proc getTok*(my: var JsonParser): TokKind =
   skip(my) # skip whitespace, comments
   case my.buf[my.bufpos]
   of '-', '.', '0'..'9':
-    parseNumber(my)
-    if {'.', 'e', 'E'} in my.a:
-      result = tkFloat
-    else:
-      result = tkInt
+    result = parseNumber(my)
   of '"':
     result = parseString(my)
   of '[':
