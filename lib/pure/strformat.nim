@@ -174,7 +174,7 @@ For strings and numeric types the optional argument is a so-called
 
 The general form of a standard format specifier is:
 
-    [[fill]align][sign][#][0][minimumwidth][.precision][type]
+    [[fill]align][sign][#][0][minimumwidth][grouping][.precision][type]
 
 The square brackets `[]` indicate an optional element.
 
@@ -190,6 +190,11 @@ The optional `align` flag can be one of the following:
 
 `^`
 :   Forces the field to be centered within the available space.
+
+`=`
+:   Forces the padding to be placed after the sign (if any) but before
+    the digits. This is used for printing fields in the form '+000000120'.
+    This alignment option is only valid for numeric types.
 
 Note that unless a minimum field width is defined, the field width
 will always be the same size as the data to fill it, so that the alignment
@@ -222,6 +227,19 @@ then the field width will be determined by the content.
 If the width field is preceded by a zero (`0`) character, this enables
 zero-padding.
 
+The optional `grouping` option specifies a thousands separator:
+
+`,`
+:   Use a comma as the thousands separator for decimal numbers.
+    Example: `fmt"{1234567:,}"` produces `"1,234,567"`.
+
+`_`
+:   Use an underscore as the thousands separator. For decimal numbers,
+    it separates every 3 digits. For binary, octal, and hexadecimal,
+    it separates every 4 digits.
+    Example: `fmt"{1234567:_}"` produces `"1_234_567"`.
+    Example: `fmt"{0xDEADBEEF:_x}"` produces `"dead_beef"`.
+
 The `precision` is a decimal number indicating how many digits should be displayed
 after the decimal point in a floating point conversion. For non-numeric types the
 field indicates the maximum field size - in other words, how many characters will
@@ -235,6 +253,8 @@ The available integer presentation types are:
   Type                   Result
 =================        ====================================================
 `b`                      Binary. Outputs the number in base 2.
+`c`                      Character. Converts the integer to the corresponding
+                         Unicode character before printing.
 `d`                      Decimal Integer. Outputs the number in base 10.
 `o`                      Octal format. Outputs the number in base 8.
 `x`                      Hex format. Outputs the number in base 16, using
@@ -264,6 +284,9 @@ The available floating point presentation types are:
                          exponent notation.
 `G`                      General format. Same as `g` except it switches to `E`
                          if the number gets to large.
+`%`                      Percentage. Multiplies the number by 100 and displays
+                         in fixed (`f`) format, followed by a percent sign.
+                         Example: `fmt"{0.25:.2%}"` produces `"25.00%"`.
 `i`                      Complex General format. This is only supported for
                          complex numbers, which it prints using the mathematical
                          (RE+IMj) format. The real and imaginary parts are printed
@@ -366,6 +389,25 @@ type
     typ*: char                     ## Type like 'f', 'g' or 'd'.
     endPosition*: int              ## End position in the format specifier after
                                    ## `parseStandardFormatSpecifier` returned.
+    grouping*: char                ## Thousands separator: ',' or '_' or '\0' for none.
+
+proc addGroupingSeparators(s: string; groupChar: char; groupSize: int): string =
+  ## Inserts grouping separators into a numeric string.
+  ## For example: "1234567" with ',' and groupSize 3 becomes "1,234,567"
+  if s.len <= groupSize:
+    return s
+  result = ""
+  let firstGroupLen = s.len mod groupSize
+  if firstGroupLen > 0:
+    result = s[0..<firstGroupLen]
+    if s.len > firstGroupLen:
+      result.add groupChar
+  var i = firstGroupLen
+  while i < s.len:
+    result.add s[i..<min(i + groupSize, s.len)]
+    i += groupSize
+    if i < s.len:
+      result.add groupChar
 
 proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
   ## Converts `n` to a string. If `n` is `SomeFloat`, it casts to `int64`.
@@ -404,23 +446,78 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
       result.add(mkDigit(d.int, spec.typ))
     for idx in 0..<(result.len div 2):
       swap result[idx], result[result.len - idx - 1]
-  if spec.padWithZero:
-    let sign = negative or spec.sign != '-'
-    let toFill = spec.minimumWidth - result.len - xx.len - ord(sign)
-    if toFill > 0:
-      result = repeat('0', toFill) & result
 
+  # Determine the sign string
+  var signStr = ""
   if negative:
-    result = "-" & xx & result
+    signStr = "-"
   elif spec.sign != '-':
-    result = spec.sign & xx & result
-  else:
-    result = xx & result
+    signStr = $spec.sign
 
+  # Track if we've done zero padding (for later grouping)
+  var zeroPaddingApplied = false
+
+  # Handle zero padding before grouping (so zeros get grouped too)
+  if spec.padWithZero or spec.align == '=':
+    let fillChar = if spec.padWithZero: '0' else: spec.fill
+    if fillChar == '0' and spec.grouping != '\0':
+      # Zeros should be integrated into grouping if possible
+      # Calculate target digit count to achieve minimum width after grouping
+      let groupSize = if radix == 10: 3 else: 4
+      let prefixLen = xx.len + signStr.len
+      let targetWidth = spec.minimumWidth - prefixLen
+      # Try to pad digits until grouped result reaches target width exactly
+      var bestResult = result
+      while true:
+        let testResult = '0' & bestResult
+        let grouped = addGroupingSeparators(testResult, spec.grouping, groupSize)
+        if grouped.len > targetWidth:
+          break
+        bestResult = testResult
+        if grouped.len == targetWidth:
+          break
+      result = bestResult
+      zeroPaddingApplied = true
+    elif spec.grouping == '\0':
+      # No grouping - simple zero padding
+      let toFill = spec.minimumWidth - result.len - xx.len - signStr.len
+      if toFill > 0:
+        result = repeat(fillChar, toFill) & result
+    # For non-zero fill char with grouping, apply after grouping
+
+  # Apply grouping separators if requested
+  if spec.grouping != '\0':
+    # For binary, octal, hex: group by 4; for decimal: group by 3
+    let groupSize = if radix == 10: 3 else: 4
+    # Only underscore is valid for non-decimal radixes
+    if radix != 10 and spec.grouping == ',':
+      raise newException(ValueError,
+        "cannot use ',' grouping with non-decimal format type")
+    result = addGroupingSeparators(result, spec.grouping, groupSize)
+
+    # If we did zero padding but grouped result is still too short,
+    # add additional ungrouped zeros
+    if zeroPaddingApplied:
+      let prefixLen = xx.len + signStr.len
+      let targetWidth = spec.minimumWidth - prefixLen
+      let toFill = targetWidth - result.len
+      if toFill > 0:
+        result = repeat('0', toFill) & result
+
+  # Handle = alignment with non-zero fill (after grouping)
+  if spec.align == '=' and not spec.padWithZero:
+    let toFill = spec.minimumWidth - result.len - xx.len - signStr.len
+    if toFill > 0:
+      result = repeat(spec.fill, toFill) & result
+
+  result = signStr & xx & result
+
+  # Apply alignment
   if spec.align == '<':
     for i in result.len..<spec.minimumWidth:
       result.add(spec.fill)
-  else:
+  elif spec.align != '=' and not spec.padWithZero:
+    # '=' alignment is already handled above
     let toFill = spec.minimumWidth - result.len
     if spec.align == '^':
       let half = toFill div 2
@@ -434,13 +531,23 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   ## An exported helper proc that parses the "standard format specifiers",
   ## as specified by the grammar:
   ##
-  ##     [[fill]align][sign][#][0][minimumwidth][.precision][type]
+  ##     [[fill]align][sign][#][0][minimumwidth][grouping][.precision][type]
   ##
   ## This is only of interest if you want to write a custom `format` proc that
   ## should support the standard format specifiers. If `ignoreUnknownSuffix` is true,
   ## an unknown suffix after the `type` field is not an error.
-  const alignChars = {'<', '>', '^'}
-  result = StandardFormatSpecifier(fill: ' ', align: '\0', sign: '-')
+  ##
+  ## The `align` character can be one of `<`, `>`, `^`, or `=`:
+  ## - `<` left-aligns the result
+  ## - `>` right-aligns the result (default for numbers)
+  ## - `^` centers the result
+  ## - `=` places padding after the sign but before the digits (sign-aware padding)
+  ##
+  ## The `grouping` option can be `,` or `_` to insert a thousands separator.
+  ## For decimal numbers, separators are inserted every 3 digits.
+  ## For binary, octal, and hexadecimal, `_` inserts separators every 4 digits.
+  const alignChars = {'<', '>', '^', '='}
+  result = StandardFormatSpecifier(fill: ' ', align: '\0', sign: '-', grouping: '\0')
   var i = start
   if i + 1 < s.len and s[i+1] in alignChars:
     result.fill = s[i]
@@ -464,6 +571,12 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
 
   let parsedLength = parseSaturatedNatural(s, result.minimumWidth, i)
   inc i, parsedLength
+
+  # Parse grouping option (comma or underscore for thousands separator)
+  if i < s.len and s[i] in {',', '_'}:
+    result.grouping = s[i]
+    inc i
+
   if i < s.len and s[i] == '.':
     inc i
     let parsedLengthB = parseSaturatedNatural(s, result.precision, i)
@@ -471,7 +584,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   else:
     result.precision = -1
 
-  if i < s.len and s[i] in {'A'..'Z', 'a'..'z'}:
+  if i < s.len and s[i] in {'A'..'Z', 'a'..'z', '%'}:
     result.typ = s[i]
     inc i
   result.endPosition = i
@@ -485,10 +598,25 @@ proc toRadix(typ: char): int =
   of 'd', '\0': 10
   of 'o': 8
   of 'b': 2
+  of 'c': -1  # Special marker for character conversion
   else:
     raise newException(ValueError,
       "invalid type in format string for number, expected one " &
-      " of 'x', 'X', 'b', 'd', 'o' but got: " & typ)
+      " of 'x', 'X', 'b', 'd', 'o', 'c' but got: " & typ)
+
+proc formatChar(value: int; spec: StandardFormatSpecifier): string =
+  ## Formats an integer as a Unicode character.
+  result = $Rune(value)
+  # Apply alignment
+  let toFill = spec.minimumWidth - result.runeLen
+  if toFill > 0:
+    if spec.align == '<' or spec.align == '\0':
+      result = result & repeat(spec.fill, toFill)
+    elif spec.align == '^':
+      let half = toFill div 2
+      result = repeat(spec.fill, half) & result & repeat(spec.fill, toFill - half)
+    else:  # '>' or '='
+      result = repeat(spec.fill, toFill) & result
 
 proc formatValue*[T: SomeInteger](result: var string; value: T;
                                   specifier: static string) =
@@ -502,7 +630,10 @@ proc formatValue*[T: SomeInteger](result: var string; value: T;
       spec = parseStandardFormatSpecifier(specifier)
       radix = toRadix(spec.typ)
 
-    result.add formatInt(value, radix, spec)
+    when radix == -1:  # 'c' character type
+      result.add formatChar(value.int, spec)
+    else:
+      result.add formatInt(value, radix, spec)
 
 proc formatValue*[T: SomeInteger](result: var string; value: T;
                                   specifier: string) =
@@ -516,18 +647,51 @@ proc formatValue*[T: SomeInteger](result: var string; value: T;
       spec = parseStandardFormatSpecifier(specifier)
       radix = toRadix(spec.typ)
 
-    result.add formatInt(value, radix, spec)
+    if radix == -1:  # 'c' character type
+      result.add formatChar(value.int, spec)
+    else:
+      result.add formatInt(value, radix, spec)
+
+proc addGroupingSeparatorsToFloat(s: string; groupChar: char): string =
+  ## Inserts grouping separators into the integer part of a float string.
+  ## Handles sign, decimal point, and exponent correctly.
+  var intPart = ""
+  var prefix = ""
+  var suffix = ""
+  var i = 0
+
+  # Handle sign
+  if i < s.len and s[i] in {'+', '-', ' '}:
+    prefix = $s[i]
+    inc i
+
+  # Find where integer part ends (at '.' or 'e'/'E' or end)
+  let intStart = i
+  while i < s.len and s[i] in {'0'..'9'}:
+    inc i
+  intPart = s[intStart..<i]
+
+  # Rest is suffix (decimal point, fraction, exponent)
+  suffix = s[i..^1]
+
+  # Apply grouping to integer part
+  if intPart.len > 3:
+    intPart = addGroupingSeparators(intPart, groupChar, 3)
+
+  result = prefix & intPart & suffix
 
 proc formatFloat(
     result: var string, value: SomeFloat, fmode: FloatFormatMode,
-    spec: StandardFormatSpecifier) =
-  var f = formatBiggestFloat(value, fmode, spec.precision)
+    spec: StandardFormatSpecifier, isPercent: bool = false) =
+  let actualValue = if isPercent: value * 100.0 else: value
+  var f = formatBiggestFloat(actualValue, fmode, spec.precision)
+
   var sign = false
-  if value >= 0.0:
+  if actualValue >= 0.0:
     if spec.sign != '-':
       sign = true
-      if value == 0.0:
-        if 1.0 / value == Inf:
+      if actualValue == 0.0:
+        if 1.0 / actualValue == Inf:
           # only insert the sign if value != negZero
           f.insert($spec.sign, 0)
       else:
@@ -535,36 +699,99 @@ proc formatFloat(
   else:
     sign = true
 
-  if spec.padWithZero:
+  # Handle zero padding with grouping - zeros should be integrated into grouping
+  if (spec.padWithZero or spec.align == '=') and spec.grouping != '\0':
+    let fillChar = if spec.padWithZero: '0' else: spec.fill
+    if fillChar == '0':
+      # Extract sign, integer part, and suffix (decimal point, fraction, exponent)
+      var signStr = ""
+      var idx = 0
+      if sign:
+        signStr = $f[0]
+        idx = 1
+
+      let intStart = idx
+      while idx < f.len and f[idx] in {'0'..'9'}:
+        inc idx
+      var intPart = f[intStart..<idx]
+      let suffix = f[idx..^1]  # decimal point, fraction, exponent
+      let percentSuffix = if isPercent: "%" else: ""
+
+      # Calculate target width for integer part + suffix + percent
+      # We need: signStr.len + groupedIntPart.len + suffix.len + percent.len = minimumWidth
+      let fixedLen = signStr.len + suffix.len + percentSuffix.len
+      let targetIntWidth = spec.minimumWidth - fixedLen
+
+      # Pad integer part until grouped version reaches target width
+      while true:
+        let grouped = addGroupingSeparators('0' & intPart, spec.grouping, 3)
+        if grouped.len > targetIntWidth:
+          break
+        intPart = '0' & intPart
+        if grouped.len == targetIntWidth:
+          break
+
+      # Apply grouping to padded integer part
+      intPart = addGroupingSeparators(intPart, spec.grouping, 3)
+
+      # If still too short, add ungrouped zeros
+      let stillNeeded = targetIntWidth - intPart.len
+      if stillNeeded > 0:
+        intPart = repeat('0', stillNeeded) & intPart
+
+      f = signStr & intPart & suffix & percentSuffix
+
+      if spec.typ in {'A'..'Z'}:
+        result.add toUpperAscii(f)
+      else:
+        result.add f
+      return
+
+  # Apply grouping separators to the integer part (non-zero-padded case)
+  if spec.grouping != '\0':
+    f = addGroupingSeparatorsToFloat(f, spec.grouping)
+
+  # Add percent suffix before padding
+  if isPercent:
+    f.add '%'
+
+  if spec.padWithZero or spec.align == '=':
+    # Sign-aware padding (non-grouped case)
     var signStr = ""
     if sign:
       signStr = $f[0]
       f = f[1..^1]
 
+    let fillChar = if spec.padWithZero: '0' else: spec.fill
     let toFill = spec.minimumWidth - f.len - ord(sign)
     if toFill > 0:
-      f = repeat('0', toFill) & f
+      f = repeat(fillChar, toFill) & f
     if sign:
       f = signStr & f
 
-  # the default for numbers is right-alignment:
-  let align = if spec.align == '\0': '>' else: spec.align
-  let res = alignString(f, spec.minimumWidth, align, spec.fill)
-  if spec.typ in {'A'..'Z'}:
-    result.add toUpperAscii(res)
+    if spec.typ in {'A'..'Z'}:
+      result.add toUpperAscii(f)
+    else:
+      result.add f
   else:
-    result.add res
+    # the default for numbers is right-alignment:
+    let align = if spec.align == '\0': '>' else: spec.align
+    let res = alignString(f, spec.minimumWidth, align, spec.fill)
+    if spec.typ in {'A'..'Z'}:
+      result.add toUpperAscii(res)
+    else:
+      result.add res
 
 proc toFloatFormatMode(typ: char): FloatFormatMode =
   case typ
   of 'e', 'E': ffScientific
-  of 'f', 'F': ffDecimal
+  of 'f', 'F', '%': ffDecimal
   of 'g', 'G': ffDefault
   of '\0': ffDefault
   else:
     raise newException(ValueError,
       "invalid type in format string for number, expected one " &
-      " of 'e', 'E', 'f', 'F', 'g', 'G' but got: " & typ)
+      " of 'e', 'E', 'f', 'F', 'g', 'G', '%' but got: " & typ)
 
 proc formatValue*(result: var string; value: SomeFloat; specifier: static string) =
   ## Standard format implementation for `SomeFloat`. It makes little
@@ -576,8 +803,9 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: static string
     const
       spec = parseStandardFormatSpecifier(specifier)
       fmode = toFloatFormatMode(spec.typ)
+      isPercent = spec.typ == '%'
 
-    formatFloat(result, value, fmode, spec)
+    formatFloat(result, value, fmode, spec, isPercent)
 
 proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
   ## Standard format implementation for `SomeFloat`. It makes little
@@ -589,8 +817,9 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
     let
       spec = parseStandardFormatSpecifier(specifier)
       fmode = toFloatFormatMode(spec.typ)
+      isPercent = spec.typ == '%'
 
-    formatFloat(result, value, fmode, spec)
+    formatFloat(result, value, fmode, spec, isPercent)
 
 proc formatValue*(result: var string; value: string; specifier: static string) =
   ## Standard format implementation for `string`. It makes little
