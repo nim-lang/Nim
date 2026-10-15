@@ -1346,12 +1346,18 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
       putIntoDest(p, d, n,
         cCall(cgsymValue(p.module, "nimStrAtV3"), bra, rcb), a.storage)
   else:
+    let cached = if ty.kind == tyString: preparedStrPayload(p, x) else: ""
     if lfPrepareForMutation in d.flags and ty.kind == tyString and
-        optSeqDestructors in p.config.globalOptions:
+        optSeqDestructors in p.config.globalOptions and cached.len == 0:
       let bra = byRefLoc(p, a)
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"), bra)
     let ra = rdLoc(a)
-    putIntoDest(p, d, n, subscript(dataField(p, ra), rcb), a.storage)
+    if cached.len > 0:
+      # `s.p` is loop-invariant here, and reading it through a local pointer is
+      # what lets the C compiler disambiguate the stores and vectorize (#26118)
+      putIntoDest(p, d, n, subscript(derefField(cached, "data"), rcb), a.storage)
+    else:
+      putIntoDest(p, d, n, subscript(dataField(p, ra), rcb), a.storage)
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   var ty = skipTypes(n.firstSon.typ, abstractVarRange + tyUserTypeClasses)
