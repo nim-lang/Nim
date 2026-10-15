@@ -197,6 +197,17 @@ block stripTests:
   doAssert(strip("\u2000") == "")
   doAssert(strip("a\u2000") == "a")
 
+  # bug #26415: malformed UTF-8 at the end must not read out of bounds
+  doAssert(strip("a\xE2") == "a\xE2")
+  doAssert(strip("\xF0") == "\xF0")
+  doAssert(strip("\xE2\x82") == "\xE2\x82")
+  doAssert(strip("a\xE2\x82 ") == "a\xE2\x82")
+  doAssert(strip("\x80") == "\x80")
+  doAssert(strip(" \x80\x80 ") == "\x80\x80")
+  doAssert(strip("x\xF0\x9F\x98\x80") == "x\xF0\x9F\x98\x80")
+  doAssert(strip("\xF0\x9F\x98\x80 ") == "\xF0\x9F\x98\x80")
+  doAssert(strip("\u00e9\xA9", leading = false, runes = ["\u00e9".asRune]) == "\u00e9\xA9")
+
   # bug #19846
   block:
     # check against unicode whose utf8 byteLen > 2
