@@ -33,7 +33,6 @@
 
 import std/tables
 import ast
-from vmlayout import delModule
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -478,10 +477,6 @@ proc typeHandle*(m: var VmMemory; t: PType): int32 =
 
 proc getType*(m: VmMemory; h: int64): PType {.inline.} =
   if h <= 0 or h >= m.types.len: nil else: m.types[h]
-
-proc forgetModule*(m: var VmMemory; module: int32) =
-  ## new proc handles are handed out for `module`'s procs from now on
-  delModule(m.procIds, module)
 
 proc procAddress*(m: var VmMemory; s: PSym): Address =
   ## the VM's address of the proc `s`; 0 for nil.

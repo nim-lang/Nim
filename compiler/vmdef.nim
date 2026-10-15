@@ -413,7 +413,7 @@ type
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
     vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
-    procToCodePos*: Table[ItemId, VmProcInfo]
+    procToCodePos*: Table[int, VmProcInfo]
     cannotEval*: bool
     when hasFFI:
       ffiSites*: seq[FfiSite] # for opcFfiCall

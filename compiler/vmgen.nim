@@ -3998,7 +3998,7 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   c.gABC(n, opcEof, d)
 
 proc genProc(c: PCtx; s: PSym): VmProcInfo =
-  result = c.procToCodePos.getOrDefault(s.itemId, NoVmProcInfo)
+  result = c.procToCodePos.getOrDefault(s.id, NoVmProcInfo)
   if result.frameSlots < 0:
     # compile-time execution consumes this routine's BODY: under IC that is a
     # NeedsImpl dependency on the routine's home module (iface-cookie gating
@@ -4096,7 +4096,7 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     result.bigResult = bigResult
     result.paramSlots = L.paramSlots.int32
     result.envSlot = envSlot.int32
-    c.procToCodePos[s.itemId] = result
+    c.procToCodePos[s.id] = result
     c.prc = oldPrc
     when defined(nimVmListing):
       echo "PROC ", s.name.s, " frame: ", result.frameSlots, " result: ", result.resultSlots,
