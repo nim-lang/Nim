@@ -20,11 +20,27 @@ template main() =
   block: # removeDotSegments
     doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
     doAssert removeDotSegments("") == "" # empty test
-    doAssert removeDotSegments(".") == "." # trailing period
+    doAssert removeDotSegments(".") == "" # a single dot should yield the empty string (rule 2D of RFC-3986
     doAssert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/././") == "a1/a3/a4/a5/a6/a7/"
+
+    # The tests pass but removeDotSegments is NOT supposed to be called on a URL!
     doAssert removeDotSegments("https://a1/a2/../a3/a4/a5/./a6/a7/././") == "https://a1/a3/a4/a5/a6/a7/"
     doAssert removeDotSegments("http://a1/a2") == "http://a1/a2"
     doAssert removeDotSegments("http://www.ai.") == "http://www.ai."
+
+    # Correct test-cases:
+    doAssert removeDotSegments("https://a1/a2/../a3/a4/a5/./a6/a7/././".parseUri.path) == "/a3/a4/a5/a6/a7/"
+    doAssert removeDotSegments("http://a1/a2".parseUri.path) == "/a2"
+    doAssert removeDotSegments("http://www.ai.".parseUri.path) == ""
+  
+    # Now the deactivated test-cases are successfully passed
+    doAssert removeDotSegments("http://www.ai./".parseUri.path) == "/"
+    doAssert removeDotSegments("a/b.../c") == "a/b.../c"
+    doAssert removeDotSegments("a/b../c") == "a/b../c"
+    doAssert removeDotSegments("a/.../c") == "a/.../c"
+    doAssert removeDotSegments("a//../b") == "a/b"  # ["a", "", UP, "b"] --> [ "a", "b" ]
+    doAssert removeDotSegments("a/b/c//") == "a/b/c//" #respect empty segment
+   
     when false: # xxx these cases are buggy
       # this should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
       doAssert removeDotSegments("http://www.ai./") == "http://www.ai./" # fails
@@ -34,6 +50,54 @@ template main() =
       echo removeDotSegments("a/.../c") # .c
       echo removeDotSegments("a//../b") # a/b
       echo removeDotSegments("a/b/c//") # a/b/c//
+
+    # Comprehensive RFC 3986 Section 5.2.4 Test Suite
+
+    # 1. Standard RFC 3986 Section 5.4 Normal Examples
+    doAssert removeDotSegments("/a/b/c/./../../g") == "/a/g"
+    doAssert removeDotSegments("mid/content.obj../foo") == "mid/content.obj../foo"
+
+    # 2. Leading Relative Segments & Overruns (Root/Parent escapes)
+    doAssert removeDotSegments("../../../../../a/b/c") == "a/b/c"
+    doAssert removeDotSegments("./a/b/c") == "a/b/c"
+    doAssert removeDotSegments("../a/b/c") == "a/b/c"
+    doAssert removeDotSegments("/../a/b/c") == "/a/b/c"
+    doAssert removeDotSegments("/../../a/b/c") == "/a/b/c"
+
+    # 3. Trailing Corner Cases (Isolated Dot/Dot-Dot without trailing slashes)
+    doAssert removeDotSegments("/.") == "/"
+    doAssert removeDotSegments("/..") == "/"
+    doAssert removeDotSegments(".") == ""
+    doAssert removeDotSegments("..") == ""
+    doAssert removeDotSegments("a/b/c/.") == "a/b/c/"
+    doAssert removeDotSegments("a/b/c/..") == "a/b/"
+
+    # 4. Empty Segments & Multiple Consecutive Slashes (RFC compliance on preservation)
+    doAssert removeDotSegments("a/b/c//") == "a/b/c//"
+    doAssert removeDotSegments("///a///b") == "///a///b"
+    doAssert removeDotSegments("/") == "/"
+    doAssert removeDotSegments("//") == "//"
+    doAssert removeDotSegments("///") == "///"
+
+    # 5. Embedded and Partial Matches (Ensuring ".." or "." within words isn't falsely stripped)
+    doAssert removeDotSegments("/a/b...c/d") == "/a/b...c/d"
+    doAssert removeDotSegments("/a/..b/c") == "/a/..b/c"
+    doAssert removeDotSegments("/a/b../c") == "/a/b../c"
+    doAssert removeDotSegments("/a/.b/c") == "/a/.b/c"
+    doAssert removeDotSegments("/a/b./c") == "/a/b./c"
+
+    # 6. Percent-Encoded Dots (Must remain opaque and uncollapsed)
+    doAssert removeDotSegments("/a/%2E%2E/b") == "/a/%2E%2E/b"
+    doAssert removeDotSegments("/a/%2e/b") == "/a/%2e/b"
+    doAssert removeDotSegments("%2E%2E/a/b") == "%2E%2E/a/b"
+
+    # 7. Complex Mixed Paths
+    doAssert removeDotSegments("/a/./b/../../c/") == "/c/"
+    doAssert removeDotSegments("/a/b/../../../../c/../d") == "/d"
+    doAssert removeDotSegments("a/./b/../c/./d/../../e") == "a/e"
+
+
+          
 
   block: # parseUri
     block:
