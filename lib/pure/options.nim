@@ -74,7 +74,7 @@ when defined(nimHasEffectsOf):
 else:
   {.pragma: effectsOf.}
 
-import std/typetraits
+import std/[typetraits, macros]
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -379,3 +379,129 @@ proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
   ## Generally, using the `get proc <#get,Option[T]>`_ is preferred.
   assert self.isSome
   result = self.val
+
+macro evalOnceAs(expAlias, exp: untyped): untyped =
+  ## Injects `expAlias` in caller scope, evaluating it only once and ensuring no copies are made.
+  expectKind(expAlias, nnkIdent)
+  return if exp.kind != nnkSym:
+    newLetStmt(expAlias, exp)
+  else:
+    newProc(name = genSym(nskTemplate, $expAlias), params = [getType(untyped)],
+      body = exp, procType = nnkTemplateDef)
+
+template withValue*[T](source: Option[T]; varname, ifExists, ifAbsent: untyped) =
+  ## Reads a value from an Option, assigns it to a variable, and calls `ifExists` when it is `some`.
+  ## If the value is `none`, it calls `ifAbsent`.
+  runnableExamples:
+    some("abc").withValue(foo):
+      assert foo == "abc"
+    do:
+      assert false
+
+    var absentCalled: bool
+    none(int).withValue(foo):
+      assert false
+    do:
+      absentCalled = true
+    assert absentCalled
+
+  block:
+    evalOnceAs(local, source)
+    if local.isSome:
+      template varname(): auto {.inject, used.} = unsafeGet(local)
+      ifExists
+    else:
+      ifAbsent
+
+template withValue*[T](source: Option[T]; varname, ifExists: untyped) =
+  ## Reads a value from an Option, assigns it to a variable, and calls `ifExists` when it is `some`.
+  runnableExamples:
+    some("abc").withValue(foo):
+      assert foo == "abc"
+
+    none(int).withValue(foo):
+      assert false
+
+  source.withValue(varname, ifExists):
+    discard
+
+template mapIt*[T](value: Option[T], action: untyped): untyped =
+  ## Applies an action to the value of the `Option`, if it has one.
+  runnableExamples:
+    assert some(42).mapIt(it * 2).mapIt($it) == some("84")
+    assert none(int).mapIt(it * 2).mapIt($it) == none(string)
+
+  block:
+    type InnerType = typeof(
+      block:
+        var it {.inject, used.}: typeof(value.get())
+        action
+    )
+
+    var outcome: Option[InnerType]
+    value.withValue(it):
+      outcome = some(action)
+    outcome
+
+template flatMapIt*[T](value: Option[T], action: untyped): untyped =
+  ## Executes an action on the value of the `Option`, where that action can also return an `Option`.
+  runnableExamples:
+    assert some(42).flatMapIt(some($it)) == some("42")
+    assert some(42).flatMapIt(none(string)) == none(string)
+    assert none(int).flatMapIt(some($it)) == none(string)
+    assert none(int).flatMapIt(none(string)) == none(string)
+
+  block:
+    type InnerType = typeof(
+      block:
+        var it {.inject, used.}: typeof(value.get())
+        action.get()
+    )
+
+    var outcome: Option[InnerType]
+    value.withValue(it):
+      outcome = action
+    outcome
+
+template filterIt*[T](value: Option[T], action: untyped): Option[T] =
+  ## Tests the value of the `Option` with a predicate, returning a `none` if it fails.
+  runnableExamples:
+    assert some(42).filterIt(it > 0) == some(42)
+    assert none(int).filterIt(it > 0) == none(int)
+    assert some(-11).filterIt(it > 0) == none(int)
+
+  block:
+    var outcome = value
+    outcome.withValue(it):
+      if not action:
+        outcome = none(T)
+    do:
+      outcome = none(T)
+    outcome
+
+template applyIt*[T](value: Option[T], action: untyped) =
+  ## Executes a code block if the `Option` is `some`, assigning the value to a variable named `it`
+  runnableExamples:
+    var value: string
+    some("foo").applyIt:
+      value = it
+    assert value == "foo"
+
+    none(string).applyIt:
+      assert false
+
+  value.withValue(it):
+    action
+
+template `or`*[T](a, b: Option[T]): Option[T] =
+  ## Returns the value of the `Option` if it has one, otherwise returns the other `Option`.
+  runnableExamples:
+    assert((some(42) or some(9999)) == some(42))
+    assert((none(int) or some(9999)) == some(9999))
+    assert((none(int) or none(int)) == none(int))
+  block:
+    evalOnceAs(local, a)
+    if local.isSome:
+      local
+    else:
+      b
