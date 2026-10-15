@@ -275,6 +275,7 @@ type
     opcTypeTrait,
     opcSymOwner,
     opcSymIsInstantiationOf,
+    opcSymCustomPragmas,
     opcNBindSym,    # regs[A] = copyTree(node regs[B])
     opcNDynBindSym, # regs[A] = dynamic bindSym; the arguments start at B, W indexes `callShapes`
     opcNChild,

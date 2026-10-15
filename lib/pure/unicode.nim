@@ -1038,17 +1038,16 @@ proc split*(s: openArray[char], sep: Rune, maxsplit: int = -1): seq[string] {.no
   accResult(split(s, sep, maxsplit))
 
 func getRuneHeadIdx(s: openArray[char], idx: int): int =
-  ## Given `[idx]` is within a Rune, then `s[result]` is the first byte of that Rune.
+  ## Given `[idx]` is the last byte of a Rune, then `s[result]` is the first
+  ## byte of that Rune. For malformed UTF-8 the byte at `idx` is treated
+  ## as a Rune of its own and `idx` is returned.
   result = idx
-  if s[result] <= '\x7F': # 0b0111_1111
-    return
-  # 0b1...
-  dec result
-  for _ in 0..1:
-    if s[result] >= '\xC0': # 0b11xx_xxxx
-      # 0b110... or 0b1110...
-      return
-    dec result
+  var h = idx
+  # skip continuation bytes (0b10xx_xxxx); a lead byte is preceded by at most 5
+  while h > 0 and idx - h < 5 and (uint(s[h]) shr 6) == 0b10:
+    dec h
+  if h < idx and uint(s[h]) >= 0xC0 and h + runeLenAt(s, h) - 1 == idx:
+    result = h
 
 proc strip*(s: openArray[char], leading = true, trailing = true,
             runes: openArray[Rune] = unicodeSpaces): string {.noSideEffect,

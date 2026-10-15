@@ -172,7 +172,7 @@ proc bitsize*(s: PSym): int {.inline.} =
 proc `bitsize=`*(s: PSym, val: int) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.bitsizeImpl = val
+  s.bitsizeImpl = int32 val
 
 proc alignment*(s: PSym): int {.inline.} =
   if s.state == Partial: loadSym(s)
@@ -181,7 +181,17 @@ proc alignment*(s: PSym): int {.inline.} =
 proc `alignment=`*(s: PSym, val: int) {.inline.} =
   assert s.state != Sealed
   if s.state == Partial: loadSym(s)
-  s.alignmentImpl = val
+  s.alignmentImpl = int32 val
+
+proc customPragmas*(s: PSym): PNode {.inline.} =
+  ## The custom pragmas of an object field as an `nkPragma`, or nil.
+  if s.state == Partial: loadSym(s)
+  result = s.customPragmasImpl
+
+proc `customPragmas=`*(s: PSym, val: PNode) {.inline.} =
+  assert s.state != Sealed
+  if s.state == Partial: loadSym(s)
+  s.customPragmasImpl = val
 
 proc magic*(s: PSym): TMagic {.inline.} =
   if s.state == Partial: loadSym(s)
@@ -1292,8 +1302,9 @@ proc copySym*(s: PSym; idgen: IdGenerator): PSym =
   result.constraintImpl = s.constraint
   if result.kind in {skVar, skLet, skField}:
     result.guardImpl = s.guard
-    result.bitsizeImpl = s.bitsize
-    result.alignmentImpl = s.alignment
+    result.bitsizeImpl = int32 s.bitsize
+    result.alignmentImpl = int32 s.alignment
+    result.customPragmasImpl = s.customPragmas
 
 proc createModuleAlias*(s: PSym, idgen: IdGenerator, newIdent: PIdent, info: TLineInfo;
                         options: TOptions): PSym =
@@ -1467,6 +1478,7 @@ proc transitionToLet*(s: PSym) =
   s.guardImpl = obj.guardImpl
   s.bitsizeImpl = obj.bitsizeImpl
   s.alignmentImpl = obj.alignmentImpl
+  s.customPragmasImpl = obj.customPragmasImpl
 
 template copyNodeImpl(dst, src, processSonsStmt) =
   if src == nil: return

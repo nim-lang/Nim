@@ -280,6 +280,11 @@ when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform)
     ## See an example in `tests/macros/tmacros_various.nim`.
 
 proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect, deprecated.}
+
+when defined(nimHasFieldCustomPragmas):
+  proc fieldCustomPragmas(field: NimNode): NimNode {.magic: "SymCustomPragmas", noSideEffect.}
+    ## The custom pragmas of the field symbol `field`, as the compiler
+    ## instantiated them with the object type.
   ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
   ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
   ## context. For top level declarations this is an `nskModule` symbol,
@@ -1621,6 +1626,11 @@ proc customPragmaNode(n: NimNode): NimNode =
         return timpl[0][1]
       else:
         return timpl
+
+  when defined(nimHasFieldCustomPragmas):
+    let field = if n.kind == nnkCheckedFieldExpr: n[0][1] elif n.kind == nnkDotExpr: n[1] else: nil
+    if field != nil and field.kind == nnkSym and field.symKind == nskField:
+      return fieldCustomPragmas(field)
 
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])

@@ -3309,6 +3309,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mGetImplTransf: genUnaryABC(c, n, dest, opcGetImplTransf)
   of mSymOwner: genUnaryABC(c, n, dest, opcSymOwner)
   of mSymIsInstantiationOf: genBinaryABC(c, n, dest, opcSymIsInstantiationOf)
+  of mSymCustomPragmas: genUnaryABC(c, n, dest, opcSymCustomPragmas)
   of mNChild: genBinaryABC(c, n, dest, opcNChild)
   of mNSetChild: genVoidABC(c, n, dest, opcNSetChild)
   of mNDel: genVoidABC(c, n, dest, opcNDel)
