@@ -687,6 +687,15 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
   else:
     result = newSymG(kind, n, c)
 
+proc customPragmasOf(n: PNode): PNode =
+  ## the custom pragmas of the checked pragma section `n`, or nil
+  result = nil
+  for it in n:
+    let callee = if it.kind in nkPragmaCallKinds and it.len > 0: it[0] else: it
+    if callee.kind == nkSym and sfCustomPragma in callee.sym.flags:
+      if result == nil: result = newNodeI(nkPragma, n.info)
+      result.add it
+
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags, fromTopLevel = false): PSym =
   if n.kind == nkPragmaExpr:
@@ -696,7 +705,11 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     of skType:
       # process pragmas later, because result.typ has not been set yet
       discard
-    of skField: pragma(c, result, n[1], fieldPragmas)
+    of skField:
+      pragma(c, result, n[1], fieldPragmas)
+      # kept on the symbol so that the instances of a generic object type
+      # have them with the generic params replaced:
+      result.customPragmas = customPragmasOf(n[1])
     of skVar:   pragma(c, result, n[1], varPragmas)
     of skLet:   pragma(c, result, n[1], letPragmas)
     of skConst: pragma(c, result, n[1], constPragmas)

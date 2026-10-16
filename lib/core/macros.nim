@@ -280,6 +280,11 @@ when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform)
     ## See an example in `tests/macros/tmacros_various.nim`.
 
 proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect, deprecated.}
+
+when defined(nimHasFieldCustomPragmas):
+  proc fieldCustomPragmas(field: NimNode): NimNode {.magic: "SymCustomPragmas", noSideEffect.}
+    ## The custom pragmas of the field symbol `field`, as the compiler
+    ## instantiated them with the object type.
   ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
   ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
   ## context. For top level declarations this is an `nskModule` symbol,
@@ -1623,20 +1628,16 @@ proc customPragmaNode(n: NimNode): NimNode =
       else:
         return timpl
 
-  if n.kind in {nnkDotExpr, nnkCheckedFieldExpr} or isFieldSym:
-    var name: string
-    var typDef: NimNode
-    if isFieldSym:
-      # a field symbol as `getType` produces it: it is owned by the type
-      # that declares it (#11511)
-      name = $n
-      typDef = getImpl(n.owner)
-      if typDef.kind != nnkTypeDef: typDef = nil
-    else:
-      name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
-      var typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
-      while typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst = typInst[0]
-      typDef = getImpl(typInst)
+  when defined(nimHasFieldCustomPragmas):
+    let field = if n.kind == nnkCheckedFieldExpr: n[0][1] elif n.kind == nnkDotExpr: n[1] else: nil
+    if field != nil and field.kind == nnkSym and field.symKind == nskField:
+      return fieldCustomPragmas(field)
+
+  if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
+    let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
+    var typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
+    while typInst.kind in {nnkVarTy, nnkBracketExpr}: typInst = typInst[0]
+    var typDef = getImpl(typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       # Resolve typeof() and similar unresolvable type expressions

@@ -581,7 +581,8 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mGenericDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault,
+    mSymCustomPragmas
 
 
 const
@@ -769,8 +770,10 @@ type
       nifBodyLoadedImpl*: bool # body loaded from the fully lowered IC artifact
     of skLet, skVar, skField, skForVar:
       guardImpl*: PSym
-      bitsizeImpl*: int
-      alignmentImpl*: int # for alignment
+      bitsizeImpl*: int32
+      alignmentImpl*: int32 # for alignment
+      customPragmasImpl*: PNode # for fields: the custom pragmas, instantiated
+                                # with the object type
     else: nil
     magicImpl*: TMagic
     typImpl*: PType
@@ -1210,6 +1213,7 @@ proc forcePartial*(s: PSym) =
     s.guardImpl = nil
     s.bitsizeImpl = 0
     s.alignmentImpl = 0 # for alignment
+    s.customPragmasImpl = nil
   else: discard
   s.magicImpl = mNone
   s.typImpl = nil
