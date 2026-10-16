@@ -60,8 +60,12 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   var params = ""
   var staticLists = ""
   if s.typ.paramsLen > 0: # we dont care about the return param
-    for _, pt in paramTypes(s.typ):
+    for i, pt in paramTypes(s.typ):
       if pt.isNil: continue
+      # under IC the lifted env param can leak into `s.typ`, but only in the
+      # processes that already lifted `s`; keep it out of the name
+      if s.typ.n != nil and i < s.typ.n.len and s.typ.n[i].kind == nkSym and
+          isClosureEnvParam(s.typ, s.typ.n[i].sym): continue
       params.add encodeType(m, pt, staticLists)
 
   result.add encodeSym(m, s, makeUnique, staticLists)
@@ -682,7 +686,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       # pointer-type mismatch). We still must fill its name/loc (later passes such
       # as `assignParam` and `closureSetup` reference it), but it is omitted from
       # the C signature to match the from-source ABI.
-      let isClosureEnv = t.callConv == ccClosure and param.name.s == ":envP"
+      let isClosureEnv = isClosureEnvParam(t, param)
       var descKind = dkParam
       if m.config.backend == backendCpp and optByRef in param.options:
         if param.typ.kind == tyGenericInst:

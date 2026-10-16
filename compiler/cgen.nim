@@ -296,11 +296,6 @@ proc homeEmitsInstance*(s: PSym; modPos: int; conf: ConfigRef;
   ##   demands it, and codegen of it crashes. The home always loads its own
   ##   header, so it sees its offers; a demander that did not load the home's
   ##   header just emits the body as before, which `merge` dedups;
-  ## - closure ITERATOR instances: whether a process lambda-lifts one (adding
-  ##   the hidden `:env` parameter) decides its C signature, and the demanders
-  ##   disagree with the home about it (Nimbus' `get_ptc[gloas.BeaconState]`
-  ##   is emitted both with and without `ref Env`), so a prototype written by a
-  ##   demander can name a function nobody defines. They stay emit-everywhere;
   ## - everything `isSeedableRoutine` rejects (metatypes, unused, forward, ...).
   ##
   ## `cg` transforms a seeded instance in its own process, exactly as a
@@ -310,7 +305,6 @@ proc homeEmitsInstance*(s: PSym; modPos: int; conf: ConfigRef;
   else:
     result = not exportcOnly and
       sfFromGeneric in s.flags and sfGeneratedOp notin s.flags and
-      s.kind != skIterator and
       not isBackendMinted(s.itemId) and
       isSeedableRoutine(s, modPos, exportcOnly) and
       isOfferedInstance(s, conf)
@@ -1920,7 +1914,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   for paramNode in sonsFrom(prc.typ.n, 1):
     let param = paramNode.sym
     if param.typ.isCompileTimeOnly: continue
-    if prc.typ.callConv == ccClosure and param.name.s == ":envP":
+    if isClosureEnvParam(prc.typ, param):
       # The hidden closure-env param is materialised by `closureSetup`, never a
       # normal C parameter (`genProcParams` omits it from the signature). In a
       # from-source build it lives only in the routine's AST params and never in
