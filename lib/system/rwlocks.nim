@@ -54,8 +54,11 @@ else:
                              #include <pthread.h>""", byref.} = object
       when defined(linux) and defined(amd64):
         abi: array[56 div sizeof(clong), clong]
+    SysRwLockAttr {.importc: "pthread_rwlockattr_t", pure, final,
+                    header: "<pthread.h>".} = object
 
-  proc pthread_rwlock_init(rwlock: var SysRwLockObj, attr: pointer): cint {.
+  proc pthread_rwlock_init(rwlock: var SysRwLockObj,
+                          attr: ptr SysRwLockAttr): cint {.
     importc: "pthread_rwlock_init", header: "<pthread.h>", noSideEffect.}
   proc pthread_rwlock_destroy(rwlock: var SysRwLockObj): cint {.
     importc: "pthread_rwlock_destroy", header: "<pthread.h>", noSideEffect.}
@@ -67,19 +70,10 @@ else:
     importc: "pthread_rwlock_unlock", header: "<pthread.h>", noSideEffect.}
 
   when defined(linux):
-    # PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP: once a writer is waiting,
-    # new readers block. Prevents continuous mutator read-locks from starving
-    # the collector's write-lock acquisition (glibc default is PREFER_READER).
-    type
-      SysRwLockAttr {.importc: "pthread_rwlockattr_t", pure, final,
-                      header: "<pthread.h>".} = object
-    const PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP = cint(3)
     proc pthread_rwlockattr_init(attr: ptr SysRwLockAttr): cint {.
       importc: "pthread_rwlockattr_init", header: "<pthread.h>".}
     proc pthread_rwlockattr_destroy(attr: ptr SysRwLockAttr): cint {.
       importc: "pthread_rwlockattr_destroy", header: "<pthread.h>".}
-    proc pthread_rwlockattr_setkind_np(attr: ptr SysRwLockAttr; pref: cint): cint {.
-      importc: "pthread_rwlockattr_setkind_np", header: "<pthread.h>".}
 
   when defined(ios):
     type RwLock* = ptr SysRwLockObj
@@ -110,7 +104,13 @@ else:
       when defined(linux):
         var attr: SysRwLockAttr
         discard pthread_rwlockattr_init(addr attr)
-        discard pthread_rwlockattr_setkind_np(addr attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP)
+        # The writer preference extension is supplied by glibc, not Linux.
+        {.emit: """
+        #if defined(__GLIBC__)
+        pthread_rwlockattr_setkind_np(&`attr`,
+          PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+        #endif
+        """.}
         discard pthread_rwlock_init(L, addr attr)
         discard pthread_rwlockattr_destroy(addr attr)
       else:
