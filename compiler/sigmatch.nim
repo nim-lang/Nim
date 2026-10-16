@@ -70,6 +70,7 @@ type
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
     typedescMatched*: bool
+    liftedStmtList: bool     # the current argument was lifted to a lambda
     isNoCall*: bool          # misused for generic type instantiations C[T]
     inferredTypes: seq[PType] # inferred types during the current signature
                               # matching. they will be reset if the matching
@@ -2080,6 +2081,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # This is the bound type - can't benifit from these tallies
       let
         inheritancePenaltyOld = c.inheritancePenalty
+      # the params of a generic type are bound to `typedesc[T]`, a constraint
+      # like `B: not A` refers to the type itself (#10739):
+      let x = if c.callee.kind == tyGenericBody and x.kind == tyTypeDesc and
+                  a.kind != tyTypeDesc and x.len > 0: x.base
+              else: x
       result = typeRel(c, x, a, flags) # check if it fits
       c.inheritancePenalty = inheritancePenaltyOld
       if result > isGeneric: result = isGeneric
@@ -2474,6 +2480,18 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   # XXX: This would be much nicer if we don't use `semTryExpr` and
   # instead we directly search for overloads with `resolveOverloads`:
   result = c.semTryExpr(c, call, {efNoSem2Check})
+  if result == nil and f.n.kind == nkIdent and m.calleeSym != nil:
+    # the converter is not visible here (a generic instantiation in another
+    # module, or it is private): use the one of the routine's module (#11154)
+    let module = m.calleeSym.getModule
+    if module != nil and module != c.module:
+      var choice = newNodeI(nkClosedSymChoice, f.n.info)
+      for s in allSymsNamed(c.graph, module, f.n.ident):
+        if s.kind in routineKinds: choice.add newSymNode(s, f.n.info)
+      if choice.len > 0:
+        if c.config.cmd == cmdM: c.graph.icImplDeps.incl module.position
+        call[0] = if choice.len == 1: choice[0] else: choice
+        result = c.semTryExpr(c, call, {efNoSem2Check})
 
   if result != nil:
     if result.typ == nil: return nil
@@ -2617,6 +2635,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       # operand and left symbols behind; templates expect the pristine AST.
       return argOrig
     else:
+      let fr = f.skipTypes({tyGenericInst, tyAlias, tySink})
+      if fr.kind == tyRange and argSemantized.kind in {nkCharLit..nkUInt64Lit} and
+          fr.elementType.kind notin {tyUInt..tyUInt64} and
+          (getInt(argSemantized) < firstOrd(c.config, fr) or
+           getInt(argSemantized) > lastOrd(c.config, fr)):
+        # the literal does not fit the range, as for routines (#12780):
+        return nil
       return argSemantized # argOrig
 
   block instantiateGenericRoutine:
@@ -2739,6 +2764,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       # lift do blocks without params to lambdas
       # now deprecated
       message(c.config, argOrig.info, warnStmtListLambda)
+      m.liftedStmtList = true
       let p = c.graph
       let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
           params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
@@ -3067,6 +3093,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
   let firstArgBlock = findFirstArgBlock(m, n)
   while a < n.len:
     c.openShadowScope
+    m.liftedStmtList = false
 
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n[f].sym
@@ -3239,7 +3266,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             noMatch()
         checkConstraint(n[a])
 
-    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}) and
+        not m.liftedStmtList:
+      # the declarations of a statement list that became a lambda are local
+      # to it (#10848)
       c.mergeShadowScope
     else:
       c.rememberShadowDefs

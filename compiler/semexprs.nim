@@ -2242,6 +2242,11 @@ proc semProcBody(c: PContext, n: PNode; expectedType: PType = nil): PNode =
       #   # comment
       # are not expressions:
       fixNilType(c, result)
+    elif implicitlyDiscardable(result) and result.typ.kind != tyError and
+        not argtypeMatches(c, c.p.resultSym.typ, result.typ):
+      # a discardable call that does not produce the result, as in
+      # `result.field = x; add(result.field, y)` (#11161)
+      discardCheck(c, result, {})
     else:
       var a = newNodeI(nkAsgn, n.info, 2)
       a[0] = newSymNode(c.p.resultSym)
