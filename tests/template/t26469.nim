@@ -39,3 +39,20 @@ macro m(): untyped =
   doAssert field[1][0].eqIdent"used", field.treeRepr
 
 m()
+
+# a custom pragma bound in the template body keeps its `pragma` form,
+# it is not turned into `pragma()`
+template zero() {.pragma.}
+
+template withField(name: untyped) =
+  type name = object
+    f {.zero.}: int
+
+withField(X)
+
+macro pragmaShape(T: type): untyped =
+  let prag = T.getTypeInst[1].getImpl[2][2][0][0][1][0]
+  doAssert prag.kind == nnkSym, prag.treeRepr
+  result = newEmptyNode()
+
+pragmaShape(X)

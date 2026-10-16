@@ -829,7 +829,7 @@ proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
 
   result = r
   # Transform the nkCall node back to its original form if possible
-  if n.kind == nkIdent and r.len == 1:
+  if n.kind in nkIdentKinds and r.len == 1:
     # pragma() -> pragma
     result = result[0]
   elif n.kind == nkExprColonExpr and r.len == 2:
