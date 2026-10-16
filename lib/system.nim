@@ -1386,6 +1386,8 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
 when defined(js):
   proc js_abs[T: SomeNumber](x: T): T {.importc: "Math.abs".}
 else:
+  when defined(tcc) and defined(posix) and not defined(genode) and not defined(macosx):
+    {.passL: "-lm".}
   proc c_fabs(x: cdouble): cdouble {.importc: "fabs", header: "<math.h>".}
   proc c_fabsf(x: cfloat): cfloat {.importc: "fabsf", header: "<math.h>".}
 
