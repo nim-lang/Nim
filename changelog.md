@@ -120,6 +120,8 @@ parameter and result types, not just their source-level shape. Use
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
+- `os.moveFile`, `os.copyFileWithPermissions` and `os.copyDirWithPermissions`
+  no longer have the effect `Exception`; they raise `OSError` and `IOError`.
 - `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
   Use https://github.com/nitely/nim-regex or `std/nre2`.
   See: https://github.com/nim-lang/Nim/issues/23668.
