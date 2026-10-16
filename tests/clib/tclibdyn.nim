@@ -26,8 +26,6 @@ else:
   # executable's own directory, so no rpath is needed)
   when defined(windows):
     let rpath = ""
-  elif defined(macosx):
-    let rpath = fmt"--passL:-rpath,{build}"
   else:
     let rpath = fmt"--passL:-Wl,-rpath,{build}"
   let consumer = build / "consumer".addFileExt(ExeExt)
