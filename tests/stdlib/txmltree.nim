@@ -129,3 +129,11 @@ block: #26039
   doAssert $tree == """<rss xmlns:atom="http://www.w3.org/2005/Atom">
   <atom:link data-dummy="test" />
 </rss>"""
+
+block: # bug #24062
+  let value = "line1\nline2\r\n\tend"
+  let tree = <>a(b = value)
+  doAssert $tree == """<a b="line1&#10;line2&#13;&#10;&#9;end" />"""
+  doAssert parseXml($tree).attr("b") == value
+  # text keeps its line breaks
+  doAssert $(<>a(newText("x\ny"))) == "<a>x\ny</a>"
