@@ -403,6 +403,16 @@ proc globalName*(sym: PSym; config: ConfigRef): string =
   if sym.itemId.isBackendMinted:
     result.add BackendLocalMarker
 
+var offeredInstances {.threadvar.}: HashSet[string]
+  ## NIF names of the generic instances some loaded module `(offer)`s; filled by
+  ## the backend's top-level loader (see `ttOffer`).
+
+proc isOfferedInstance*(sym: PSym; config: ConfigRef): bool =
+  ## Whether `sym`'s home module offers it, i.e. created it outside of any
+  ## `compiles()` probe so that importers reuse it. Only meaningful under
+  ## `cmdNifC`, and only once the home module's header has been loaded.
+  globalName(sym, config) in offeredInstances
+
 type
   ParsedSymName* = object
     name*: string
@@ -4172,6 +4182,8 @@ type
       ## generic instances this module created; modulegraphs.nim rebuilds
       ## `procInstCache` from them so a consumer reuses the instance instead of
       ## re-instantiating it in its own (operator-blind) module scope.
+    offeredNames*: seq[tuple[generic, inst: string]]
+      ## backend only: the NIF names of `genericOffers`, unresolved
     typeOffers*: seq[tuple[generic: PSym; inst: PType]]
       ## generic TYPE instances this module created; modulegraphs.nim rebuilds
       ## `typeInstCache` from them so a consumer reuses the baked instance
@@ -4445,7 +4457,23 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         # either (`writeLoweredModule` writes what was loaded), which is fine:
         # its only readers are backend stages.
         if c.infos.config.cmd == cmdNifC:
-          skip cur
+          # The backend keeps only the instance's NAME: a home module's `cg`
+          # emits exactly the instances it offers, and every other demander
+          # just prototypes them (`cgen.homeEmitsInstance`). No sym or type is
+          # resolved, so this neither loads anything nor shifts load order.
+          var names: array[2, string] = ["", ""]
+          cur.into:
+            var idx = 0
+            while cur.hasMore:
+              if cur.kind == Symbol and idx < 2:
+                names[idx] = symName(cur)
+                if parseSymName(names[idx]).module.len == 0: names[idx].add suffix
+                inc idx
+              skip cur
+          if names[1].len > 0:
+            offeredInstances.incl names[1]
+            # the `lower` stage writes them back into the `.t.bif`
+            result.offeredNames.add (names[0], names[1])
           continue
         # (offer <genericSym> <instSym> <genericParamsCount> <type>...) — resolve
         # to PSyms/PTypes; modulegraphs registers them into `procInstCache`.
@@ -4718,6 +4746,13 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
     for ct in off.concreteTypes:
       # Canonical name, see `writeNifModule`'s copy of this loop.
       w.deps.addSymUse pool.syms.getOrIncl(nifTypeName(w, ct)), NoLineInfo
+    w.deps.addParRi
+  # The backend loads offers by name only (see `ttOffer`); carry those names
+  # so `cg` still knows which instances this module is home to.
+  for off in precomp.offeredNames:
+    w.deps.addParLe offerTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(off.generic), NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(off.inst), NoLineInfo
     w.deps.addParRi
   for off in precomp.typeOffers:
     w.deps.addParLe typeOfferTag, NoLineInfo

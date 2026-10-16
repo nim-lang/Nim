@@ -19,7 +19,8 @@ import
   mangleutils, cbuilderbase, modulegraphs, icprof
 
 from expanddefaults import caseObjDefaultBranch
-from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions
+from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions,
+  isOfferedInstance
 from ic/replayer import localTargetOptions
 from typekeys import modname
 from std/algorithm import sort
@@ -206,50 +207,15 @@ proc seedsOnlyExportcRoutines*(conf: ConfigRef): bool =
   ## entry points there and leaves everything else to demand.
   conf.target.targetOS == osStandalone and conf.selectedGC == gcNone
 
-proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
-  ## A used or exported, concrete, non-generic runtime routine with a body,
-  ## OWNED by the module at `modPos`. Shared by the `cg` stage's owned-routine
-  ## seeding (so a routine called only from other modules is still emitted by
-  ## its owner, next to the owner's emits and C options) and the `lower` stage's
-  ## owned-routine enumeration, so both stages see exactly the same set. An
-  ## unused private routine is left alone: classic codegen never visits it, and
-  ## transforming it can reject a valid program (for example, an unused helper
-  ## that captures its owner's `result`). Exported routines are kept even when
-  ## the module does not use them itself, because a use by an importer is only
-  ## recorded in the importer's process, never in this module's NIF. With
-  ## `exportcOnly` (see `seedsOnlyExportcRoutines`) only `{.exportc.}` routines
-  ## qualify. The other exclusions:
-  ## - nested/closure procs (owner is a proc, not a module): emitted via their
-  ##   enclosing routine's lambda-lifting, never standalone;
-  ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
-  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
-  ##   not real codegen targets.
-  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
-  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
-  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
-  ##   method's body sub-tree (incl. its closure iterator); transforming it here
-  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
-  ##   identity, baking a conflicting `up` field → "up references do not agree"
-  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
-  ##   at lift time). So a dispatcher is never an owned runtime routine.
-  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
-  ## iterator, which is expanded at each call site) and must be emitted by its
-  ## owner — else a cross-module `for` over it links to nothing.
-  ##
-  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine — not
-  ## in `cg` and not in the `lower` stage. They are demanded by the backend's
-  ## emit-everywhere path and deduped by `merge` (content C name); the frontend
-  ## materialises them through the `(offer)` mechanism. The `lower` stage must
-  ## not transform an instance: a not-fully-concrete instance (a closure factory
-  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
-  ## its further-specialised use sites) still carries unresolved overload choices
-  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
+proc isSeedableRoutine(s: PSym; modPos: int; exportcOnly: bool): bool =
+  ## The structural half shared by `ownsRuntimeRoutine` and `homeEmitsInstance`:
+  ## a used or exported, concrete runtime routine with a body, serialized by the
+  ## module at `modPos`.
   s.itemId.module == modPos and
   (s.kind in {skProc, skFunc, skConverter, skMethod} or
    (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
   s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
   s.magic == mNone and
-  sfFromGeneric notin s.flags and
   sfDispatcher notin s.flags and
   (if exportcOnly: {sfExportc, sfCompilerProc} * s.flags == {sfExportc}
    else: {sfUsed, sfExported} * s.flags != {}) and
@@ -267,9 +233,91 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
   # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
   # (the other empty-body case) carry `sfForward` and are excluded above.
 
+proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
+  ## A used or exported, concrete, non-generic runtime routine with a body,
+  ## OWNED by the module at `modPos`. Shared by the `cg` stage's owned-routine
+  ## seeding (so a routine called only from other modules is still emitted by
+  ## its owner, next to the owner's emits and C options) and the `lower` stage's
+  ## owned-routine enumeration, so both stages see exactly the same set. An
+  ## unused private routine is left alone: classic codegen never visits it, and
+  ## transforming it can reject a valid program (for example, an unused helper
+  ## that captures its owner's `result`). Exported routines are kept even when
+  ## the module does not use them itself, because a use by an importer is only
+  ## recorded in the importer's process, never in this module's NIF. With
+  ## `exportcOnly` (see `seedsOnlyExportcRoutines`) only `{.exportc.}` routines
+  ## qualify. The other exclusions:
+  ## - nested/closure procs (owner is a proc, not a module): emitted via their
+  ##   enclosing routine's lambda-lifting, never standalone;
+  ## - generic instances (`sfFromGeneric`): seeded by their home module instead,
+  ##   see `homeEmitsInstance`;
+  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
+  ##   not real codegen targets.
+  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
+  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
+  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
+  ##   method's body sub-tree (incl. its closure iterator); transforming it here
+  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
+  ##   identity, baking a conflicting `up` field → "up references do not agree"
+  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
+  ##   at lift time). So a dispatcher is never an owned runtime routine.
+  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
+  ## iterator, which is expanded at each call site) and must be emitted by its
+  ## owner — else a cross-module `for` over it links to nothing.
+  ##
+  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine, so
+  ## the `lower` stage never transforms one; `cg` seeds them separately through
+  ## `homeEmitsInstance` and transforms them itself. The `lower` stage must
+  ## not transform an instance: a not-fully-concrete instance (a closure factory
+  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
+  ## its further-specialised use sites) still carries unresolved overload choices
+  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
+  sfFromGeneric notin s.flags and isSeedableRoutine(s, modPos, exportcOnly)
+
+proc homeEmitsInstance*(s: PSym; modPos: int; conf: ConfigRef;
+                        exportcOnly = false): bool =
+  ## Whether the `cg` of the module at `modPos` emits the generic instance `s`
+  ## ITSELF, so that every other demander only prototypes it. That module is
+  ## the instance's HOME: the module that created it and serializes it, and
+  ## whose `(offer)` makes every importer reuse this very symbol instead of
+  ## minting its own. Emitting it once there restores the original
+  ## one-definition semantics; emit-everywhere + `merge` remains the fallback
+  ## for what does not qualify.
+  ##
+  ## The predicate reads only the symbol as its home serialized it, so the
+  ## home's `cg` (which seeds it) and every demander's `cg` (which then skips
+  ## the body) agree without talking to each other. It excludes:
+  ## - BACKEND-MINTED syms (`rttiDestroy`/`rttiTrace` wrappers, lifted hooks):
+  ##   no module's index lists them, so no home would seed them;
+  ## - generated type-bound ops (`sfGeneratedOp`): same reason — they are
+  ##   produced per process, not serialized by a home;
+  ## - instances the home does not OFFER: the ones minted inside a `compiles()`
+  ##   probe. Such an instance can survive with a body that never resolved
+  ##   (`$` of a `CountTable[PIdent]` with a raw `nkDotExpr` callee); nothing
+  ##   demands it, and codegen of it crashes. The home always loads its own
+  ##   header, so it sees its offers; a demander that did not load the home's
+  ##   header just emits the body as before, which `merge` dedups;
+  ## - closure ITERATOR instances: whether a process lambda-lifts one (adding
+  ##   the hidden `:env` parameter) decides its C signature, and the demanders
+  ##   disagree with the home about it (Nimbus' `get_ptc[gloas.BeaconState]`
+  ##   is emitted both with and without `ref Env`), so a prototype written by a
+  ##   demander can name a function nobody defines. They stay emit-everywhere;
+  ## - everything `isSeedableRoutine` rejects (metatypes, unused, forward, ...).
+  ##
+  ## `cg` transforms a seeded instance in its own process, exactly as a
+  ## demander did before, so the `lower` stage still never sees one.
+  when defined(nimIcInstanceEverywhere):
+    result = false
+  else:
+    result = not exportcOnly and
+      sfFromGeneric in s.flags and sfGeneratedOp notin s.flags and
+      s.kind != skIterator and
+      not isBackendMinted(s.itemId) and
+      isSeedableRoutine(s, modPos, exportcOnly) and
+      isOfferedInstance(s, conf)
+
 proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ## Whether SOME module's `cg` is guaranteed to emit `prc`'s body on its own,
-  ## without this TU asking for it. There are exactly two seeders in the
+  ## without this TU asking for it. There are exactly three seeders in the
   ## per-module backend, and this enumerates them:
   ##
   ##   * `nifbackend.generateCodeForModule` walks its module's index and
@@ -281,9 +329,14 @@ proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ##     into the MAIN TU. A dispatcher is a `copySym` clone that no module's
   ##     index enumerates, so the first rule cannot see it.
   ##
-  ## Anything else — a generic instance, a synthesized hook, a nested routine
-  ## (emitted as part of its enclosing routine's lambda-lifted body), an inline
-  ## iterator (expanded at each call site) — is seeded by nobody. Those are
+  ##   * the same `generateCodeForModule` walk also seeds the generic instances
+  ##     its module is HOME to (`homeEmitsInstance`), the ones every importer
+  ##     reuses through the module's `(offer)`s.
+  ##
+  ## Anything else — an instance that does not qualify, a synthesized hook, a
+  ## nested routine (emitted as part of its enclosing routine's lambda-lifted
+  ## body), an inline iterator (expanded at each call site) — is seeded by
+  ## nobody. Those are
   ## emitted by EVERY demander and `merge` keeps one per content-addressed C
   ## name. That is the single default, and it is the safe direction: emitting a
   ## body twice costs a merge dedup, while emitting it nowhere is a link error.
@@ -295,9 +348,10 @@ proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ## `.t.bif` it was read from rather than a module that seeds it, so it must not
   ## be routed through the ownership question at all.
   if isBackendMinted(prc.itemId): return false
+  let exportcOnly = seedsOnlyExportcRoutines(m.config)
   result = sfDispatcher in prc.flags or
-           ownsRuntimeRoutine(prc, prc.itemId.module,
-                              exportcOnly = seedsOnlyExportcRoutines(m.config))
+           ownsRuntimeRoutine(prc, prc.itemId.module, exportcOnly) or
+           homeEmitsInstance(prc, prc.itemId.module, m.config, exportcOnly)
 
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## Whether the translation unit `m` emits `prc`'s BODY, as opposed to only a

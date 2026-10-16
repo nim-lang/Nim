@@ -171,7 +171,8 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
     let modPos = precomp.module.position
     let exportcOnly = seedsOnlyExportcRoutines(g.config)
     for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-      if ownsRuntimeRoutine(s, modPos, exportcOnly):
+      if ownsRuntimeRoutine(s, modPos, exportcOnly) or
+          homeEmitsInstance(s, modPos, g.config, exportcOnly):
         requestProcDef(bmod, s)
 
 proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
