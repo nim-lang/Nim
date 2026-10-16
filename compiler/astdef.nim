@@ -1440,3 +1440,16 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym =
 # decl's `##` doc comment across a NIF round-trip.
 var nodeCommentReader*: proc(n: PNode): string {.nimcall.}
 var nodeCommentWriter*: proc(n: PNode; s: string) {.nimcall.}
+
+const closureEnvParamName* = ":envP"
+  ## the hidden environment parameter that lambda lifting adds to a closure
+
+proc isClosureEnvParam*(procType: PType; param: PSym): bool {.inline.} =
+  ## True for the hidden closure environment parameter of `procType`. From
+  ## source, lambda lifting adds it only to the routine's AST params. Under IC
+  ## the loaded routine shares its AST params with `procType.n` (see
+  ## `lambdalifting.closureParams`), so it also shows up in the proc *type*, but
+  ## only in the processes where lifting has already run on it. Everything that
+  ## derives an identity or a C name from the type must skip it, or that
+  ## identity differs between processes.
+  procType.callConvImpl == ccClosure and param.name.s == closureEnvParamName
