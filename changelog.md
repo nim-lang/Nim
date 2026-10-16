@@ -24,6 +24,9 @@ rounding guarantees (via the
 
 - With `-d:nimPreviewCheckedClose`, the `close` function in the `std/syncio` module now raises an IO exception in case of an error.
 
+- With `-d:nimPreviewCheckedFlush`, the `flushFile` function in the `std/syncio`
+  module raises an IO exception when the buffered data cannot be written.
+
 - Unknown warnings and hints now gives warnings `warnUnknownNotes` instead of
 errors.
 
