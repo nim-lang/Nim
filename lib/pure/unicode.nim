@@ -969,7 +969,7 @@ template splitCommon(s, sep, maxsplit: untyped) =
       while last < sLen and not stringHasSep(s, last, sep):
         inc(last, runeLenAt(s, last))
       if splits == 0: last = sLen
-      yield substr(s.toOpenArray(first, (last - 1)))
+      yield substr(s.toOpenArray(first, min(last, sLen) - 1))
       if splits == 0: break
       dec(splits)
       inc(last, if last < sLen: runeLenAt(s, last) else: 1)
