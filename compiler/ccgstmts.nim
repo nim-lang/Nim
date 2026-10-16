@@ -1427,6 +1427,18 @@ proc bodyCanRaise(p: BProc; n: PNode): bool =
     for it in sons(n):
       if bodyCanRaise(p, it): return true
 
+proc hasExceptBranch(n: PNode): bool =
+  case n.kind
+  of nkExceptBranch:
+    result = true
+  of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
+      nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    result = false
+  else:
+    result = false
+    for it in sons(n):
+      if hasExceptBranch(it): return true
+
 proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let fin = if t.lastSon.kind == nkFinally: t.lastSon else: nil
   inc p.labels
@@ -1540,9 +1552,12 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     let finallyBranch = son(t, i)
     var finallyScope: ScopeBuilder
     startSimpleBlock(p, finallyScope)
-    if not bodyCanRaise(p, finallyBranch.firstSon):
+    if not bodyCanRaise(p, finallyBranch.firstSon) and
+        not hasExceptBranch(finallyBranch.firstSon):
       # this is an important optimization; most destroy blocks are detected not to raise an
-      # exception and so we help the C optimizer by not mutating nimErr_ pointlessly:
+      # exception and so we help the C optimizer by not mutating nimErr_ pointlessly.
+      # An 'except' branch tests nimErr_ even when its 'try' body cannot raise, so it
+      # would catch the exception that passes through this 'finally':
       genStmts(p, finallyBranch.firstSon)
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
