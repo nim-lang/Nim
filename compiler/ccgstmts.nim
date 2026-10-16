@@ -1192,6 +1192,15 @@ proc genTryBody(p: BProc; t: PNode; d: var TLoc) =
   else:
     expr(p, t.firstSon, d)
 
+proc borrowCurrentException(p: BProc): Snippet =
+  ## A call of `nimBorrowCurrentException` whose result the caller may
+  ## dereference. In a module of nimrtl the proc is exported rather than
+  ## inlined, so its prototype only declares `Exception` forward; the full
+  ## type is requested here.
+  let prc = magicsys.getCompilerProc(p.module.g.graph, "nimBorrowCurrentException")
+  discard getTypeDesc(p.module, prc.typ.returnType.elementType)
+  result = cCall(cgsymValue(p.module, "nimBorrowCurrentException"))
+
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #[ code to generate:
 
@@ -1300,10 +1309,10 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           if optTinyRtti in p.config.globalOptions:
             let checkFor = $getObjDepth(typeNode.typ)
-            appcg(p.module, orExpr, "#isObjDisplayCheck(#nimBorrowCurrentException()->$1, $2, $3)", [memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ, p.config)))])
+            appcg(p.module, orExpr, "#isObjDisplayCheck($1->$2, $3, $4)", [borrowCurrentException(p), memberName, checkFor, $genDisplayElem(MD5Digest(hashType(typeNode.typ, p.config)))])
           else:
             let checkFor = genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
-            appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
+            appcg(p.module, orExpr, "#isObj($1->$2, $3)", [borrowCurrentException(p), memberName, checkFor])
 
       if orExpr.len != 0:
         if not hasIf:
@@ -1479,7 +1488,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       var orExpr: Snippet = ""
       for label in sonsButLast(exceptBranch):
         assert(label.kind == nkType)
-        var excVal = cCall(cgsymValue(p.module, "nimBorrowCurrentException"))
+        let excVal = borrowCurrentException(p)
         let member =
           if p.module.compileToCpp:
             derefField(excVal, "m_type")
@@ -1682,7 +1691,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       var orExpr: Snippet = ""
       for label in sonsButLast(exceptBranch):
         assert(label.kind == nkType)
-        var excVal = cCall(cgsymValue(p.module, "nimBorrowCurrentException"))
+        let excVal = borrowCurrentException(p)
         let member =
           if p.module.compileToCpp:
             derefField(excVal, "m_type")
