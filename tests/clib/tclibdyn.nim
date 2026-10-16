@@ -1,3 +1,7 @@
+discard """
+  joinable: "false"
+"""
+
 when defined(consumer):
   proc sampleclibAdd(a, b: int): int {.cdecl, importc: "sampleclib_add", clib: "sampleclib".}
   doAssert sampleclibAdd(1, 2) == 3
