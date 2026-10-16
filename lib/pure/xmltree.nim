@@ -743,12 +743,18 @@ proc addImpl(result: var string, n: XmlNode, indent = 0, indWidth = 2,
   proc addEscapedAttr(result: var string, s: string) =
     # `addEscaped` alternative with less escaped characters.
     # Only to be used for escaping attribute values enclosed in double quotes!
+    # A parser replaces a literal tab, line feed or carriage return in an
+    # attribute value with a space (XML 1.0, section 3.3.3), so these are
+    # written as character references.
     for c in items(s):
       case c
       of '<': result.add("&lt;")
       of '>': result.add("&gt;")
       of '&': result.add("&amp;")
       of '"': result.add("&quot;")
+      of '\t': result.add("&#9;")
+      of '\n': result.add("&#10;")
+      of '\r': result.add("&#13;")
       else: result.add(c)
 
   if n == nil: return
