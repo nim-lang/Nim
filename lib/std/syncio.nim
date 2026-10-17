@@ -348,9 +348,19 @@ proc readChar*(f: File): char {.tags: [ReadIOEffect].} =
     raiseEOF()
   result = char(x)
 
-proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
-  ## Flushes `f`'s buffer.
-  discard c_fflush(f)
+when defined(nimPreviewCheckedFlush) and not defined(nimscript):
+  proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
+    ## Flushes `f`'s buffer.
+    ##
+    ## Raises an IO exception if the buffered data cannot be written.
+    if c_fflush(f) != 0:
+      let err = errno
+      c_clearerr(f)
+      raiseEIO("errno: " & $err & " `" & $strerror(err) & "`")
+else:
+  proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
+    ## Flushes `f`'s buffer.
+    discard c_fflush(f)
 
 proc getFileHandle*(f: File): FileHandle =
   ## Returns the file handle of the file `f`. This is only useful for

@@ -398,7 +398,7 @@ else:
     return method2Proc()
 
   proc CRYPTO_set_mem_functions(a,b,c: pointer) =
-    let theProc = cast[proc(a,b,c: pointer) {.cdecl.}](utilModule().symNullable("CRYPTO_set_mem_functions"))
+    let theProc = cast[proc(a,b,c: pointer) {.cdecl, gcsafe, raises: [].}](utilModule().symNullable("CRYPTO_set_mem_functions"))
     if not theProc.isNil: theProc(a, b, c)
 
   proc SSL_library_init*(): cint {.discardable.} =
@@ -408,18 +408,18 @@ else:
     let newInitSym = sslSymNullable("OPENSSL_init_ssl")
     if not newInitSym.isNil:
       let newInitProc =
-        cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
+        cast[proc(opts: uint64, settings: uint8): cint {.cdecl, gcsafe, raises: [].}](newInitSym)
       return newInitProc(0, 0)
-    let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
+    let olderProc = cast[proc(): cint {.cdecl, gcsafe, raises: [].}](sslSymThrows("SSL_library_init"))
     if not olderProc.isNil: result = olderProc()
 
   proc SSL_load_error_strings*() =
     # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
-    let theProc = cast[proc() {.cdecl.}](sslSymNullable("SSL_load_error_strings"))
+    let theProc = cast[proc() {.cdecl, gcsafe, raises: [].}](sslSymNullable("SSL_load_error_strings"))
     if not theProc.isNil: theProc()
 
   proc ERR_load_BIO_strings*() =
-    let theProc = cast[proc() {.cdecl.}](utilModule().symNullable("ERR_load_BIO_strings"))
+    let theProc = cast[proc() {.cdecl, gcsafe, raises: [].}](utilModule().symNullable("ERR_load_BIO_strings"))
     if not theProc.isNil: theProc()
 
   proc SSLv23_client_method*(): PSSL_METHOD =
@@ -445,12 +445,12 @@ else:
 
   proc OpenSSL_add_all_algorithms*() =
     # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
-    let theProc = cast[proc() {.cdecl.}](sslSymNullable("OPENSSL_add_all_algorithms_conf"))
+    let theProc = cast[proc() {.cdecl, gcsafe, raises: [].}](sslSymNullable("OPENSSL_add_all_algorithms_conf"))
     if not theProc.isNil: theProc()
 
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
-    let theProc = cast[proc(): culong {.cdecl, gcsafe.}](utilSymNullable("OpenSSL_version_num", "SSLeay"))
+    let theProc = cast[proc(): culong {.cdecl, gcsafe, raises: [].}](utilSymNullable("OpenSSL_version_num", "SSLeay"))
     result =
       if theProc.isNil: 0.culong
       else: theProc()
@@ -459,9 +459,9 @@ else:
     # A compatibility wrapper for `SSL_in_init()` for OpenSSL 1.0, 1.1 and LibreSSL
     const MainProc = "SSL_in_init"
     let
-      theProc {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe.}](sslSymNullable(MainProc))
+      theProc {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe, raises: [].}](sslSymNullable(MainProc))
       # Fallback
-      sslState {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe.}](sslSymNullable("SSL_state"))
+      sslState {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe, raises: [].}](sslSymNullable("SSL_state"))
 
     if not theProc.isNil:
       result = theProc(ssl)
@@ -471,7 +471,7 @@ else:
       raiseInvalidLibrary MainProc
 
   proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint =
-    var theProc {.global.}: proc(ctx: SslCtx, str: cstring): cint {.cdecl, gcsafe.}
+    var theProc {.global.}: proc(ctx: SslCtx, str: cstring): cint {.cdecl, gcsafe, raises: [].}
     if theProc.isNil:
       theProc = cast[typeof(theProc)](sslSymThrows("SSL_CTX_set_ciphersuites"))
     result = theProc(ctx, str)

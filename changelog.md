@@ -24,6 +24,9 @@ rounding guarantees (via the
 
 - With `-d:nimPreviewCheckedClose`, the `close` function in the `std/syncio` module now raises an IO exception in case of an error.
 
+- With `-d:nimPreviewCheckedFlush`, the `flushFile` function in the `std/syncio`
+  module raises an IO exception when the buffered data cannot be written.
+
 - Unknown warnings and hints now gives warnings `warnUnknownNotes` instead of
 errors.
 
@@ -122,6 +125,12 @@ parameter and result types, not just their source-level shape. Use
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
 - `os.moveFile`, `os.copyFileWithPermissions` and `os.copyDirWithPermissions`
   no longer have the effect `Exception`; they raise `OSError` and `IOError`.
+- `dynlib.loadLibPattern` and `dynlib.checkedSymAddr` no longer have the
+  effect `Exception`: they raise what the platform's `loadLib` and `symAddr`
+  raise (nothing on POSIX and Windows). The OpenSSL procs that `std/openssl`
+  loads at run time are declared `raises: []`, so `net.newContext` and
+  `httpclient.newHttpClient` can be called from a `{.raises: [CatchableError].}`
+  proc.
 - `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
   Use https://github.com/nitely/nim-regex or `std/nre2`.
   See: https://github.com/nim-lang/Nim/issues/23668.
