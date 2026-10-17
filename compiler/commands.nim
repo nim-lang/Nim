@@ -1167,6 +1167,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optCompileOnly}, arg, pass, info)
   of "spawncodegen":
     processOnOffSwitchG(conf, {optSpawnCodegen}, arg, pass, info)
+  of "spawnedcodegen": # internal: set for the child of --spawncodegen
+    processOnOffSwitchG(conf, {optSpawnedCodegen}, arg, pass, info)
   of "gencdeps":
     processOnOffSwitchG(conf, {optGenCDeps}, arg, pass, info)
   of "colors": processOnOffSwitchG(conf, {optUseColors}, arg, pass, info)

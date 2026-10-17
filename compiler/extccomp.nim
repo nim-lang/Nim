@@ -337,7 +337,7 @@ proc isVSCompatible*(conf: ConfigRef): bool =
 
 proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
-  # for niminst support
+  # for niminst support; the --spawncodegen child is a regular build though
   var fullSuffix = suffix
   case conf.backend
   of backendCpp, backendJs, backendObjc: fullSuffix = "." & $conf.backend & suffix
@@ -348,7 +348,8 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
     return ""
 
   if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
-      optCompileOnly notin conf.globalOptions:
+      (optCompileOnly notin conf.globalOptions or
+       optSpawnedCodegen in conf.globalOptions):
     let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
@@ -1282,7 +1283,7 @@ proc spawnCodegenSubprocess*(conf: ConfigRef) =
   # non-option arguments.
   # We also disable the conf hint since it would otherwise show twice as the
   # config files get parsed by both processes.
-  var subArgs = @["--compileOnly", "--hint[Conf]:off"]
+  var subArgs = @["--compileOnly", "--spawnedCodegen", "--hint[Conf]:off"]
   var projectFileAdded = false
   var commandAdded = false
   for a in os.commandLineParams():

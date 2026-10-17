@@ -146,6 +146,8 @@ type                          # please make sure we have under 32 options
                               # implementation
     optSpawnCodegen           # spawn a separate nim process for codegen
                               # to reclaim memory before C compilation
+    optSpawnedCodegen         # we are the --compileOnly child spawned by
+                              # optSpawnCodegen; still a full build
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optBenchmarkVM            # Enables cpuTime() in the VM
