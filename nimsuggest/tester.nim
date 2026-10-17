@@ -14,6 +14,7 @@ type
     startup: seq[string]
     script: seq[(string, string)]
     disabled: bool
+    oneShot: bool # `$nimsuggest2`: each query is a `nimsuggest2 --one-shot` of its own
 
 const
   DummyEof = "!EOF!"
@@ -34,6 +35,7 @@ proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = "bin" / addFileExt("nimsuggest_testing", ExeExt)
   doAssert nimsug.fileExists, nimsug
+  let nimsug2 = "bin" / addFileExt("nimsuggest2_testing", ExeExt)
   const libpath = querySetting(libPath)
   result.filename = filename
   result.dest = getTempDir() / extractFilename(filename)
@@ -64,6 +66,10 @@ proc parseTest(filename: string; epcMode=false): Test =
           # be strict about format
           doAssert x.startsWith("disabled:false")
           result.disabled = false
+      elif x.startsWith("$nimsuggest2"):
+        doAssert nimsug2.fileExists, nimsug2
+        result.oneShot = true
+        result.cmd = x % ["nimsuggest2", nimsug2, "file", filename, "lib", libpath]
       elif x.startsWith("$nimsuggest"):
         result.cmd = x % ["nimsuggest", nimsug, "file", filename, "lib", libpath]
       elif x.startsWith("!"):
@@ -285,7 +291,7 @@ proc skipDisabledTest(test: Test): bool =
 
 proc runEpcTest(filename: string): int =
   let s = parseTest(filename, true)
-  if s.skipDisabledTest: return 0
+  if s.skipDisabledTest or s.oneShot: return 0
   for req, _ in items(s.script):
     if req.startsWith("highlight"):
       echo "disabled epc: " & s.filename
@@ -366,9 +372,31 @@ proc runMemCapTest(): int =
   else:
     echo "mem cap test: OK"
 
+proc runOneShotTest(s: Test): int =
+  let cl = parseCmdLine(s.cmd)
+  let nimcache = getTempDir() / ("nimsuggest2_" &
+    extractFilename(s.filename).changeFileExt(""))
+  removeDir(nimcache)
+  var report = ""
+  for req, resp in items(s.script):
+    if runCmd(req, s.dest): continue
+    let p = startProcess(cl[0], args = @["--one-shot"] & cl[1 .. ^1] &
+      @["--nimcache:" & nimcache], options = {})
+    p.inputStream.writeLine(req)
+    p.inputStream.close()
+    let answer = p.outputStream.readAll()
+    discard p.waitForExit()
+    p.close()
+    doReport(s.filename, answer, resp, report)
+  if report.len > 0:
+    echo "==== ONE-SHOT ==================================="
+    echo report
+  result = report.len
+
 proc runTest(filename: string): int =
   let s = parseTest filename
   if s.skipDisabledTest: return 0
+  if s.oneShot: return runOneShotTest(s)
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd

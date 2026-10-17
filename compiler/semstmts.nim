@@ -3029,8 +3029,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var deferredScope: PScope = nil
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
-    if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
-        cursorInProc(c.config, n[bodyPos]):
+    if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and
+        not c.config.ideNsNifs and not cursorInProc(c.config, n[bodyPos]):
       # speed up nimsuggest
       if s.kind == skMethod: semMethodPrototype(c, s, n)
     elif isAnon:
