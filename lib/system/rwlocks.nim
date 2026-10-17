@@ -69,11 +69,17 @@ else:
   proc pthread_rwlock_unlock(rwlock: var SysRwLockObj): cint {.
     importc: "pthread_rwlock_unlock", header: "<pthread.h>", noSideEffect.}
 
-  when defined(linux):
+  when defined(linux) and not (defined(musl) or defined(android)):
+    var preferWriter {.importc: "PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP",
+                        header: "<pthread.h>".}: cint
     proc pthread_rwlockattr_init(attr: ptr SysRwLockAttr): cint {.
       importc: "pthread_rwlockattr_init", header: "<pthread.h>".}
     proc pthread_rwlockattr_destroy(attr: ptr SysRwLockAttr): cint {.
       importc: "pthread_rwlockattr_destroy", header: "<pthread.h>".}
+    proc pthread_rwlockattr_setkind_np(attr: ptr SysRwLockAttr,
+                                     preference: cint): cint {.
+      importc: "pthread_rwlockattr_setkind_np", header: "<pthread.h>".}
+      ## Sets the native read/write lock preference.
 
   when defined(ios):
     type RwLock* = ptr SysRwLockObj
@@ -101,16 +107,10 @@ else:
   else:
     type RwLock* = SysRwLockObj
     proc initRwLock*(L: var RwLock) =
-      when defined(linux):
+      when defined(linux) and not (defined(musl) or defined(android)):
         var attr: SysRwLockAttr
         discard pthread_rwlockattr_init(addr attr)
-        # The writer preference extension is supplied by glibc, not Linux.
-        {.emit: """
-        #if defined(__GLIBC__)
-        pthread_rwlockattr_setkind_np(&`attr`,
-          PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
-        #endif
-        """.}
+        discard pthread_rwlockattr_setkind_np(addr attr, preferWriter)
         discard pthread_rwlock_init(L, addr attr)
         discard pthread_rwlockattr_destroy(addr attr)
       else:
