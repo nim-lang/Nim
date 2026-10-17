@@ -1947,17 +1947,22 @@ proc allSemmed(c: DepContext): bool =
     if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
       return false
 
-proc reportToNimsuggest(c: DepContext; cacheDir: string) =
+proc reportToNimsuggest(c: DepContext; cacheDir: string; started: Time) =
   ## `nim ns`: writes `cacheDir/nimsuggest.txt`, one line each for where the
-  ## semantic NIFs are, the precompiled config, and every module this run
-  ## checked (`icmodule:`) or could not (`icdeferred:`), so nimsuggest2 loads
-  ## only NIFs nifmake checked.
+  ## semantic NIFs are, the precompiled config, every module this run checked
+  ## (`icmodule:`) or could not (`icdeferred:`), so nimsuggest2 loads only NIFs
+  ## nifmake checked, and the files those modules include (`icinclude:`). Its
+  ## modification time is when this run started: a source newer than it changed
+  ## after this run read it.
   var lines = @["icsemdir:" & c.config.icSemDir.string,
     "icconfig:" & c.config.icPreparsedConfig]
   for node in c.nodes:
     lines.add (if node.deferred: "icdeferred:" else: "icmodule:") & node.files[0].nimFile
+    for i in 1 ..< node.files.len:
+      lines.add "icinclude:" & node.files[i].nimFile
   let report = cacheDir / "nimsuggest.txt"
   writeFile(report & ".tmp", lines.join("\n"))
+  setLastModificationTime(report & ".tmp", started)
   moveFile(report & ".tmp", report)
 
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
@@ -1967,6 +1972,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## backend (`nim nifc` -> C -> link), which a goto-def / find-usages scan does
   ## not need.
   when not defined(nimKochBootstrap):
+    let started = getTime()
     let nifler = findNifler()
     if nifler.len == 0:
       rawMessage(conf, errGenerated, "nifler tool not found. Install nimony or add nifler to PATH.")
@@ -2195,7 +2201,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         inc conf.errorCounter
         break
 
-    if conf.cmd == cmdNs: c.reportToNimsuggest(cacheDir)
+    if conf.cmd == cmdNs: c.reportToNimsuggest(cacheDir, started)
 
     # Phase 2 — backend (whole-program `nim nifc`), run once over the now-final
     # graph. Kept a separate nifmake run so backend rebuilds are decided purely
