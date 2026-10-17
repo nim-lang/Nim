@@ -1976,6 +1976,10 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   else:
     m.s[cfsProcs].add(extract(generatedProc))
   if isReloadable(m, prc):
+    if sfDispatcher in prc.flags:
+      # The main module registers every dispatcher, also one it never calls
+      # itself, so the pointer may not have been declared yet.
+      genProcPrototype(m, prc)
     m.s[cfsDynLibInit].add('\t')
     m.s[cfsDynLibInit].addAssignmentWithValue(prc.loc.snippet):
       m.s[cfsDynLibInit].addCast(getProcTypeCast(m, prc)):

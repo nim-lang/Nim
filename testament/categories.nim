@@ -94,6 +94,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # hcr tests
 
     testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_methods.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
 
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",

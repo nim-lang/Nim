@@ -3634,6 +3634,17 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if delayedCodegen(p.module) or {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
+        if p.hcrOn and sfDispatcher in sym.flags and
+            sfMainModule notin p.module.module.flags and
+            sym.id notin p.module.declaredProtos:
+          # The main module defines the dispatcher and registers it with the
+          # HCR runtime; this module gets the pointer from there.
+          p.module.s[cfsDynLibInit].add('\t')
+          p.module.s[cfsDynLibInit].addAssignment(sym.loc.snippet,
+            cCast(getTypeDesc(p.module, sym.loc.t),
+              cCall("hcrGetProc",
+                getModuleDllPath(p.module, sym),
+                '"' & sym.loc.snippet & '"')))
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
