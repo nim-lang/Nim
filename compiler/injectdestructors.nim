@@ -1204,10 +1204,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             sfGlobal notin it[0].sym.flags and ri.kind in exprBranchKinds and
             not isEmptyType(ri.typ):
           # 'var x = if cond: a else: b': the branches produce the value in 'x'
-          # directly. Every branch assigns to it or leaves the construct, so
-          # it needs no initialization of its own.
+          # directly. Note: 'x' cannot become '.noinit' here as with IC
+          # its symbol can be sealed.
           let v = it[0]
-          v.sym.incl sfNoInit
           let section = copyNode(n)
           section.add newTree(nkIdentDefs, v, it[1], newNodeI(nkEmpty, it.info))
           result.add section
