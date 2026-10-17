@@ -931,8 +931,16 @@ proc usesSym(n: PNode; s: PSym): bool =
 proc aliasesTarget(dest, ri: PNode): bool =
   ## Whether ``ri`` might read the location ``dest``. If so, the assignment
   ## ``dest = ri`` must not be distributed into the branches of ``ri``.
-  let root = parampatterns.exprRoot(dest, allowCalls = false)
-  result = root == nil or usesSym(ri, root)
+  var root = dest
+  while true:
+    case root.kind
+    of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkHiddenDeref, nkDerefExpr,
+       nkHiddenAddr, nkObjUpConv, nkObjDownConv:
+      root = root[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      root = root[1]
+    else: break
+  result = root.kind != nkSym or usesSym(ri, root.sym)
 
 proc distributeAsgn(asgnKind: TNodeKind; dest, ri: PNode; c: var Con; s: var Scope): PNode =
   ## Distributes an assignment ``dest = ri`` into the leaf expressions of
