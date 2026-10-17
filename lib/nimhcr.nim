@@ -241,6 +241,11 @@ when defined(createNimHcr):
       ## macOS on arm64 refuses memory that is writable and executable unless
       ## it was mapped with `MAP_JIT`, and then a thread has it either
       ## writable or executable, never both.
+
+  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps:
+    {.error: "hot code reloading has no jump table for " & hostCPU & " on " &
+      hostOS & (when hostCPU == "arm64" and defined(linux):
+        "; with musl, pass -d:musl" else: "").}
   type
     ShortJumpInstruction {.packed.} = object
       opcode: byte
