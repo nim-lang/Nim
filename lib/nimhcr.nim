@@ -241,6 +241,11 @@ when defined(createNimHcr):
       ## macOS on arm64 refuses memory that is writable and executable unless
       ## it was mapped with `MAP_JIT`, and then a thread has it either
       ## writable or executable, never both.
+
+  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps:
+    {.error: "hot code reloading has no jump table for " & hostCPU & " on " &
+      hostOS & (when hostCPU == "arm64" and defined(linux):
+        "; with musl, pass -d:musl" else: "").}
   type
     ShortJumpInstruction {.packed.} = object
       opcode: byte
@@ -369,6 +374,7 @@ when defined(createNimHcr):
       handle: LibHandle
       hash: string
       gen: int
+      loadedIn: int # the generation whose reload loaded the library
       lastModification: Time
       handlers: seq[tuple[isBefore: bool, cb: proc () {.nimcall.}]]
 
@@ -377,6 +383,7 @@ when defined(createNimHcr):
     result.globals = initTable[string, GlobalVarSym]()
     result.handle = nil
     result.gen = -1
+    result.loadedIn = -1
     result.lastModification = low(Time)
 
   # the global state necessary for traversing and reloading the module import tree
@@ -385,6 +392,8 @@ when defined(createNimHcr):
   var system: string
   var mainDatInit: HcrModuleInitializer
   var generation = 0
+  # true while the `afterCodeReload` handlers of a reload run
+  var runningAfterHandlers = false
 
   # necessary for queries such as "has module X changed" - contains all but the main module
   var hashToModuleMap = initTable[string, string]()
@@ -519,6 +528,7 @@ when defined(createNimHcr):
     assert lib != nil
     modules[name].handle = lib
     modules[name].gen = generation
+    modules[name].loadedIn = generation
     modules[name].lastModification = getLastModificationTime(name)
 
     # update the list of imports by the module
@@ -620,13 +630,20 @@ when defined(createNimHcr):
     # the next module to be inited will be the root
     currentModule = root
 
+  proc isNewerOnDisk(module: string): bool =
+    modules[module].lastModification < getLastModificationTime(module)
+
   proc hcrHasModuleChanged*(moduleHash: string): bool {.nimhcr.} =
+    ## Before a reload, whether the module's library was rebuilt. In the
+    ## `afterCodeReload` handlers, whether that reload loaded it: by then the
+    ## library on disk is the loaded one.
     let module = hashToModuleMap[moduleHash]
-    return modules[module].lastModification < getLastModificationTime(module)
+    return isNewerOnDisk(module) or
+      (runningAfterHandlers and modules[module].loadedIn == generation)
 
   proc hcrReloadNeeded*(): bool {.nimhcr.} =
-    for hash, _ in hashToModuleMap:
-      if hcrHasModuleChanged(hash):
+    for _, module in hashToModuleMap:
+      if isNewerOnDisk(module):
         return true
     return false
 
@@ -677,7 +694,11 @@ when defined(createNimHcr):
 
     # execute the after reload handlers
     traversedHandlerModules.clear()
-    recursiveExecuteHandlers(false, root)
+    runningAfterHandlers = true
+    try:
+      recursiveExecuteHandlers(false, root)
+    finally:
+      runningAfterHandlers = false
 
     # collecting no longer referenced modules - based on their generation
     cleanup modules:
