@@ -2183,6 +2183,79 @@ proc typeToC(t: PType): string =
       # be clashes with our special meanings
       result.addInt ord(c)
 
+type
+  RttiInitScope = object
+    ## what `beginRttiInit` swapped out of the module: the enclosing type
+    ## info's (or the module's DatInit's) sections, node array and markers
+    sections: array[cfsTypeInit1..cfsTypeInit3, Builder]
+    procs: Builder
+    typeNodes: int
+    typeNodesName: Rope
+
+proc beginRttiInit(m: BModule; scope: var RttiInitScope) =
+  ## The per-module backend emits V1 type info everywhere it is demanded, and
+  ## the merge stage keeps one `TNimType` definition. Its init code — the
+  ## `TNimNode` tree, field offsets, marker hookup — used to go into every
+  ## demanding module's DatInit regardless: Nimbus initialized 12.5k type infos
+  ## 74k times, in DatInit procs of up to 5 MB that the C compiler took minutes
+  ## each to optimize. Instead the init code goes into a proc of its own
+  ## (`endRttiInit`), a definition unit the merge stage gives a single owner;
+  ## every demanding module merely calls it.
+  for s in cfsTypeInit1..cfsTypeInit3:
+    scope.sections[s] = newBuilder("")
+    swap(m.s[s], scope.sections[s])
+  scope.procs = newBuilder("")
+  swap(m.icRttiProcs, scope.procs)
+  scope.typeNodes = m.typeNodes
+  scope.typeNodesName = m.typeNodesName
+  m.typeNodes = 0
+  m.typeNodesName = getTempName(m)
+
+proc endRttiInit(m: BModule; scope: var RttiInitScope; name: Rope) =
+  ## Wraps the init code gathered since `beginRttiInit` into `<name>_init`,
+  ## restores the enclosing scope and calls the proc from there. The proc
+  ## guards against running twice: every TU that demands the type info calls
+  ## it, and with `nimTypeNames` a second run would even link the type info
+  ## into `nimTypeRoot`'s list again — as a cycle.
+  var body = newBuilder("")
+  if m.typeNodes > 0:
+    body.addArrayVar(kind = Global, name = m.typeNodesName,
+      elementType = cgsymValue(m, "TNimNode"), len = m.typeNodes)
+  for s in cfsTypeInit1..cfsTypeInit3:
+    body.add(extract(m.s[s]))
+  let markers = extract(m.icRttiProcs)
+  for s in cfsTypeInit1..cfsTypeInit3:
+    swap(m.s[s], scope.sections[s])
+  swap(m.icRttiProcs, scope.procs)
+  m.typeNodes = scope.typeNodes
+  m.typeNodesName = scope.typeNodesName
+  if body.buf.len == 0: return
+
+  let initName = name & "_init"
+  var header = newBuilder("")
+  header.addDeclWithVisibility(Private):
+    header.addProcHeader(ccNimCall, initName, CVoid, cProcParams())
+  let proto = extract(header)
+  m.s[cfsProcHeaders].add(proto)
+  m.s[cfsProcHeaders].finishProcHeaderAsProto()
+  # 'd': a liveness root kept by its owner only; 'u': a unique proc body, so a
+  # split module may move it into any of its C files. The prototype comes
+  # first so the unit starts like a proc, and the markers precede their use.
+  m.s[cfsProcs].add(cnifDefDirective(initName, "ud", ""))
+  m.s[cfsProcs].add(proto)
+  m.s[cfsProcs].finishProcHeaderAsProto()
+  m.s[cfsProcs].add(markers)
+  m.s[cfsProcs].add(proto)
+  m.s[cfsProcs].finishProcHeaderWithBody():
+    m.s[cfsProcs].addVar(kind = Global, name = "nimRttiDone", typ = NimBool,
+      initializer = NimFalse)
+    m.s[cfsProcs].addSingleIfStmt("nimRttiDone"):
+      m.s[cfsProcs].addReturn()
+    m.s[cfsProcs].addAssignment("nimRttiDone", NimTrue)
+    m.s[cfsProcs].add(extract(body))
+  m.s[cfsProcs].add(cnifEndDefs())
+  m.s[cfsTypeInit3].addCallStmt(initName)
+
 proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
@@ -2254,6 +2327,10 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
   #rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
+  let ntiName = result
+  var initScope = default(RttiInitScope)
+  if perModuleCg: beginRttiInit(m, initScope)
+
   case t.kind
   of tyEmpty, tyVoid: result = cIntValue(0)
   of tyPointer, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
@@ -2263,6 +2340,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
   of tyUserTypeClasses:
     internalAssert m.config, t.isResolvedUserTypeClass
+    if perModuleCg: endRttiInit(m, initScope, ntiName)
     return genTypeInfoV1(m, t.skipModifier, info)
   of tyProc:
     if t.callConv != ccClosure:
@@ -2311,6 +2389,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     m.s[cfsTypeInit3].addDerefFieldAssignment(v2info, "typeInfoV1", cCast(CPointer, cAddr(result)))
     m.s[cfsTypeInit3].addFieldAssignment(result, "typeInfoV2", cCast(CPointer, v2info))
 
+  if perModuleCg: endRttiInit(m, initScope, ntiName)
   result = prefixTI(result)
 
 proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rope =

@@ -170,6 +170,18 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
       headerBuilder.addParam(paramBuilder, name = "op", typ = NimInt)
   let header = extract(headerBuilder)
 
+  if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
+    # The per-module backend gives each V1 type info's init code its own proc,
+    # owned by a single TU (`ccgtypes.beginRttiInit`); the marker is only
+    # referenced from there, so it lives in that proc's definition unit.
+    m.icRttiProcs.addDeclWithVisibility(StaticProc):
+      m.icRttiProcs.add(header)
+      m.icRttiProcs.finishProcHeaderWithBody():
+        m.icRttiProcs.add(extract(p.s(cpsLocals)))
+        m.icRttiProcs.add(extract(p.s(cpsInit)))
+        m.icRttiProcs.add(extract(p.s(cpsStmts)))
+    return
+
   m.s[cfsProcHeaders].addDeclWithVisibility(StaticProc):
     m.s[cfsProcHeaders].add(header)
     m.s[cfsProcHeaders].finishProcHeaderAsProto()
