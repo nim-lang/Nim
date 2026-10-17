@@ -20,7 +20,7 @@ when not defined(nimcore):
 
 import compiler / [options, commands, modules, msgs, pipelines, sigmatch, ast, idents,
   modulegraphs, prefixmatches, lineinfos, cmdlinehelper, pathutils, condsyms,
-  syntaxes, suggestsymdb, lexer, ast2nif, idetools]
+  syntaxes, suggestsymdb, lexer, ast2nif, idetools, icconfig]
 
 const HighestSuggestProtocolVersion = 4
 const Usage = """
@@ -470,6 +470,17 @@ proc nsReport(conf: ConfigRef): string =
   ## Where `nim ns` leaves its report (see `useNsReport`).
   getNimcacheDir(conf).string / "nimsuggest.txt"
 
+proc changedSince(report: string): bool =
+  ## Whether a module or include file `nim ns` read was saved after that run
+  ## started, which is the report's modification time.
+  result = false
+  let seen = getLastModificationTime(report)
+  for line in readFile(report).splitLines:
+    let i = line.find(':')
+    if i > 0 and line.substr(0, i) in ["icmodule:", "icdeferred:", "icinclude:"]:
+      let f = line.substr(i + 1)
+      if fileExists(f) and getLastModificationTime(f) > seen: return true
+
 proc runNimNs(graph: ModuleGraph) =
   ## Brings the project's NIFs and `nsReport` up to date with `nim ns`. Modules
   ## that fail to compile there are compiled from source by the queries; not
@@ -686,7 +697,9 @@ proc oneShot*() =
   ## `nimsuggest2 --one-shot`: answers the command read from stdin and exits.
   ## Every module is loaded from the NIFs `nim ns` left in the nimcache, then
   ## the module the command names is compiled from source like an import: no
-  ## module is the main module. `changed` runs `nim ns`.
+  ## module is the main module. `changed` runs `nim ns`, and so does any
+  ## command once a file it read was saved after its last run (a branch switch,
+  ## an edit outside the editor) or the config changed.
   let
     cache = newIdentCache()
     conf = newConfigRef()
@@ -696,10 +709,13 @@ proc oneShot*() =
   self.processCmdLineAndProjectPath(conf)
   conf.ideActive = true
   let preReport = nsReport(conf)
+  var configChanged = false
   if fileExists(preReport):
     for line in readFile(preReport).splitLines:
-      if line.startsWith("icconfig:"):
-        conf.icPreparsedConfig = line.substr("icconfig:".len)
+      if line.startsWith("icconfig:") and line.len > "icconfig:".len:
+        let config = line.substr("icconfig:".len)
+        configChanged = sourcesChanged(config)
+        if not configChanged: conf.icPreparsedConfig = config
   conf.writelnHook = proc (msg: string) = discard
   conf.prefixDir = conf.getPrefixDir()
   let graph = newModuleGraph(cache, conf)
@@ -721,7 +737,8 @@ proc oneShot*() =
   let line = stdin.readLine()
   myLog "one-shot: " & line
   let q = parseQuery(line, conf)
-  if q.cmd == ideChanged or not fileExists(nsReport(conf)):
+  if q.cmd == ideChanged or configChanged or not fileExists(nsReport(conf)) or
+      changedSince(nsReport(conf)):
     runNimNs(graph)
   useNsReport(graph, readFile(nsReport(conf)))
   case q.opc
