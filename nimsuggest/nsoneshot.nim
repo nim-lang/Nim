@@ -630,10 +630,11 @@ proc answerFromNif(graph: ModuleGraph; q: Query): bool =
   result = true
 
 proc queryRoot(graph: ModuleGraph; q: Query): FileIndex =
-  ## The module a command compiles: the file it names or the module including
-  ## that file; the project's main file when it names none.
+  ## The module a command compiles: the project's main file for the commands
+  ## about the whole project (`chk`, `globalSymbols`, `recompile`) or when it
+  ## names no file; otherwise the file it names or the module including it.
   let conf = graph.config
-  if q.cmd in {ideGlobalSymbols, ideRecompile} or q.file.len == 0:
+  if q.cmd in {ideChk, ideGlobalSymbols, ideRecompile} or q.file.len == 0:
     return fileInfoIdx(conf, conf.projectFull)
   let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
   if not graph.isIcVerified(toFullPath(conf, fileIdx)) and
