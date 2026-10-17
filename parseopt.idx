@@ -1,0 +1,30 @@
+nimTitle	parseopt	parseopt.html	module std/parseopt		0
+nim	LaxMode	parseopt.html#LaxMode	CliMode.LaxMode		346
+nim	NimMode	parseopt.html#NimMode	CliMode.NimMode		346
+nim	GnuMode	parseopt.html#GnuMode	CliMode.GnuMode		346
+nim	CliMode	parseopt.html#CliMode	enum CliMode		346
+nim	cmdEnd	parseopt.html#cmdEnd	CmdLineKind.cmdEnd		369
+nim	cmdArgument	parseopt.html#cmdArgument	CmdLineKind.cmdArgument		369
+nim	cmdLongOption	parseopt.html#cmdLongOption	CmdLineKind.cmdLongOption		369
+nim	cmdShortOption	parseopt.html#cmdShortOption	CmdLineKind.cmdShortOption		369
+nim	CmdLineKind	parseopt.html#CmdLineKind	enum CmdLineKind		369
+nim	OptParser	parseopt.html#OptParser	object OptParser		374
+nim	initOptParser	parseopt.html#initOptParser,seq[string],set[char],seq[string],CliMode	proc initOptParser(cmdline: seq[string]; shortNoVal: set[char] = {};\n              longNoVal: seq[string] = @[]; mode: CliMode = NimMode): OptParser		475
+nim	initOptParser	parseopt.html#initOptParser,seq[string],set[char],seq[string],bool	proc initOptParser(cmdline: seq[string]; shortNoVal: set[char] = {};\n              longNoVal: seq[string] = @[]; allowWhitespaceAfterColon: bool): OptParser		502
+nim	initOptParser	parseopt.html#initOptParser,string,set[char],seq[string],CliMode	proc initOptParser(cmdline = ""; shortNoVal: set[char] = {};\n              longNoVal: seq[string] = @[]; mode: CliMode = NimMode): OptParser		520
+nim	initOptParser	parseopt.html#initOptParser,string,set[char],seq[string],bool	proc initOptParser(cmdline = ""; shortNoVal: set[char] = {};\n              longNoVal: seq[string] = @[]; allowWhitespaceAfterColon: bool): OptParser		551
+nim	next	parseopt.html#next,OptParser	proc next(p: var OptParser)		627
+nim	cmdLineRest	parseopt.html#cmdLineRest,OptParser	proc cmdLineRest(p: OptParser): string		715
+nim	remainingArgs	parseopt.html#remainingArgs,OptParser	proc remainingArgs(p: OptParser): seq[string]		730
+nim	getopt	parseopt.html#getopt.i,OptParser	iterator getopt(p: var OptParser): tuple[kind: CmdLineKind, key, val: string]		746
+nim	getopt	parseopt.html#getopt.i,seq[string],set[char],seq[string],CliMode	iterator getopt(cmdline: seq[string] = @[]; shortNoVal: set[char] = {};\n       longNoVal: seq[string] = @[]; mode: CliMode = NimMode): tuple[\n    kind: CmdLineKind, key, val: string]		784
+heading	Supported Syntax	parseopt.html#supported-syntax	 Supported Syntax		0
+heading	Parsing	parseopt.html#parsing	 Parsing		0
+heading	nimshortNoVal and nimlongNoVal	parseopt.html#nimshortnoval-and-nimlongnoval	 <tt class="docutils literal"><span class="pre"><span class="Identifier">shortNoVal</span></span></tt> and <tt class="docutils literal"><span class="pre"><span class="Identifier">longNoVal</span></span></tt>		0
+heading	Parser Modes	parseopt.html#parser-modes	 Parser Modes		0
+heading	Mode Differences	parseopt.html#parser-modes-mode-differences	  Mode Differences		0
+heading	Mode-Specific Behavior	parseopt.html#parser-modes-modeminusspecific-behavior	  Mode-Specific Behavior		0
+heading	Custom Rule Sets	parseopt.html#custom-rule-sets	 Custom Rule Sets		0
+heading	See also	parseopt.html#see-also	 See also		0
+nimgrp	initoptparser	parseopt.html#initOptParser-procs-all	proc		475
+nimgrp	getopt	parseopt.html#getopt-iterators-all	iterator		746

@@ -1,0 +1,130 @@
+nimTitle	semdata	semdata.html	module semdata		0
+nim	TOptionEntry	semdata.html#TOptionEntry	object TOptionEntry		23
+nim	POptionEntry	semdata.html#POptionEntry	type POptionEntry		32
+nim	PProcCon	semdata.html#PProcCon	type PProcCon		33
+nim	TProcCon	semdata.html#TProcCon	object TProcCon		34
+nim	TMatchedConcept	semdata.html#TMatchedConcept	object TMatchedConcept		47
+nim	TInstantiationPair	semdata.html#TInstantiationPair	object TInstantiationPair		52
+nim	efLValue	semdata.html#efLValue	TExprFlag.efLValue		56
+nim	efWantIterator	semdata.html#efWantIterator	TExprFlag.efWantIterator		56
+nim	efWantIterable	semdata.html#efWantIterable	TExprFlag.efWantIterable		56
+nim	efPreferIteratorForIterable	semdata.html#efPreferIteratorForIterable	TExprFlag.efPreferIteratorForIterable		56
+nim	efInTypeof	semdata.html#efInTypeof	TExprFlag.efInTypeof		56
+nim	efNeedStatic	semdata.html#efNeedStatic	TExprFlag.efNeedStatic		56
+nim	efPreferStatic	semdata.html#efPreferStatic	TExprFlag.efPreferStatic		56
+nim	efPreferNilResult	semdata.html#efPreferNilResult	TExprFlag.efPreferNilResult		56
+nim	efWantStmt	semdata.html#efWantStmt	TExprFlag.efWantStmt		56
+nim	efAllowStmt	semdata.html#efAllowStmt	TExprFlag.efAllowStmt		56
+nim	efDetermineType	semdata.html#efDetermineType	TExprFlag.efDetermineType		56
+nim	efExplain	semdata.html#efExplain	TExprFlag.efExplain		56
+nim	efWantValue	semdata.html#efWantValue	TExprFlag.efWantValue		56
+nim	efOperand	semdata.html#efOperand	TExprFlag.efOperand		56
+nim	efNoSemCheck	semdata.html#efNoSemCheck	TExprFlag.efNoSemCheck		56
+nim	efNoEvaluateGeneric	semdata.html#efNoEvaluateGeneric	TExprFlag.efNoEvaluateGeneric		56
+nim	efInCall	semdata.html#efInCall	TExprFlag.efInCall		56
+nim	efFromHlo	semdata.html#efFromHlo	TExprFlag.efFromHlo		56
+nim	efNoSem2Check	semdata.html#efNoSem2Check	TExprFlag.efNoSem2Check		56
+nim	efNoUndeclared	semdata.html#efNoUndeclared	TExprFlag.efNoUndeclared		56
+nim	efIsDotCall	semdata.html#efIsDotCall	TExprFlag.efIsDotCall		56
+nim	efCannotBeDotCall	semdata.html#efCannotBeDotCall	TExprFlag.efCannotBeDotCall		56
+nim	efTypeAllowed	semdata.html#efTypeAllowed	TExprFlag.efTypeAllowed		56
+nim	efWantNoDefaults	semdata.html#efWantNoDefaults	TExprFlag.efWantNoDefaults		56
+nim	efIgnoreDefaults	semdata.html#efIgnoreDefaults	TExprFlag.efIgnoreDefaults		56
+nim	efAllowSymChoice	semdata.html#efAllowSymChoice	TExprFlag.efAllowSymChoice		56
+nim	TExprFlag	semdata.html#TExprFlag	enum TExprFlag		56
+nim	TExprFlags	semdata.html#TExprFlags	type TExprFlags		91
+nim	importAll	semdata.html#importAll	ImportMode.importAll		93
+nim	importSet	semdata.html#importSet	ImportMode.importSet		93
+nim	importExcept	semdata.html#importExcept	ImportMode.importExcept		93
+nim	ImportMode	semdata.html#ImportMode	enum ImportMode		93
+nim	ImportedModule	semdata.html#ImportedModule	object ImportedModule		95
+nim	PContext	semdata.html#PContext	type PContext		104
+nim	btPending	semdata.html#btPending	BodyTaskState.btPending		105
+nim	btRunning	semdata.html#btRunning	BodyTaskState.btRunning		105
+nim	btDone	semdata.html#btDone	BodyTaskState.btDone		105
+nim	BodyTaskState	semdata.html#BodyTaskState	enum BodyTaskState		105
+nim	BodyTask	semdata.html#BodyTask	object BodyTask		110
+nim	TContext	semdata.html#TContext	object TContext		142
+nim	bsNone	semdata.html#bsNone	TBorrowState.bsNone		274
+nim	bsReturnNotMatch	semdata.html#bsReturnNotMatch	TBorrowState.bsReturnNotMatch		274
+nim	bsNoDistinct	semdata.html#bsNoDistinct	TBorrowState.bsNoDistinct		274
+nim	bsGeneric	semdata.html#bsGeneric	TBorrowState.bsGeneric		274
+nim	bsNotSupported	semdata.html#bsNotSupported	TBorrowState.bsNotSupported		274
+nim	bsMatch	semdata.html#bsMatch	TBorrowState.bsMatch		274
+nim	TBorrowState	semdata.html#TBorrowState	enum TBorrowState		274
+nim	config	semdata.html#config.t,PContext	template config(c: PContext): ConfigRef		277
+nim	getIntLitType	semdata.html#getIntLitType,PContext,PNode	proc getIntLitType(c: PContext; literal: PNode): PType		279
+nim	setIntLitType	semdata.html#setIntLitType,PContext,PNode	proc setIntLitType(c: PContext; result: PNode)		294
+nim	makeInstPair	semdata.html#makeInstPair,PSym,PInstantiation	proc makeInstPair(s: PSym; inst: PInstantiation): TInstantiationPair		323
+nim	filename	semdata.html#filename,PContext	proc filename(c: PContext): string		326
+nim	scopeDepth	semdata.html#scopeDepth,PContext	proc scopeDepth(c: PContext): int		330
+nim	getCurrOwner	semdata.html#getCurrOwner,PContext	proc getCurrOwner(c: PContext): PSym		334
+nim	pushOwner	semdata.html#pushOwner,PContext,PSym	proc pushOwner(c: PContext; owner: PSym)		341
+nim	popOwner	semdata.html#popOwner,PContext	proc popOwner(c: PContext)		344
+nim	lastOptionEntry	semdata.html#lastOptionEntry,PContext	proc lastOptionEntry(c: PContext): POptionEntry		348
+nim	popProcCon	semdata.html#popProcCon,PContext	proc popProcCon(c: PContext)		351
+nim	put	semdata.html#put,PProcCon,PSym,PSym	proc put(p: PProcCon; key, val: PSym)		353
+nim	get	semdata.html#get,PProcCon,PSym	proc get(p: PProcCon; key: PSym): PSym		360
+nim	getGenSym	semdata.html#getGenSym,PContext,PSym	proc getGenSym(c: PContext; s: PSym): PSym		364
+nim	considerGenSyms	semdata.html#considerGenSyms,PContext,PNode	proc considerGenSyms(c: PContext; n: PNode)		389
+nim	newOptionEntry	semdata.html#newOptionEntry,ConfigRef	proc newOptionEntry(conf: ConfigRef): POptionEntry		398
+nim	pushOptionEntry	semdata.html#pushOptionEntry,PContext	proc pushOptionEntry(c: PContext): POptionEntry		407
+nim	popOptionEntry	semdata.html#popOptionEntry,PContext	proc popOptionEntry(c: PContext)		419
+nim	newContext	semdata.html#newContext,ModuleGraph,PSym	proc newContext(graph: ModuleGraph; module: PSym): PContext		426
+nim	addIncludeFileDep	semdata.html#addIncludeFileDep,PContext,FileIndex	proc addIncludeFileDep(c: PContext; f: FileIndex)		448
+nim	addImportFileDep	semdata.html#addImportFileDep,PContext,FileIndex	proc addImportFileDep(c: PContext; f: FileIndex)		451
+nim	addPragmaComputation	semdata.html#addPragmaComputation,PContext,PNode	proc addPragmaComputation(c: PContext; n: PNode)		463
+nim	addConverter	semdata.html#addConverter,PContext,PSym	proc addConverter(c: PContext; conv: PSym)		475
+nim	addConverterDef	semdata.html#addConverterDef,PContext,PSym	proc addConverterDef(c: PContext; conv: PSym)		492
+nim	addPureEnum	semdata.html#addPureEnum,PContext,PSym	proc addPureEnum(c: PContext; e: PSym)		495
+nim	addPattern	semdata.html#addPattern,PContext,PSym	proc addPattern(c: PContext; p: PSym)		506
+nim	exportSym	semdata.html#exportSym,PContext,PSym	proc exportSym(c: PContext; s: PSym)		511
+nim	reexportSym	semdata.html#reexportSym,PContext,PSym	proc reexportSym(c: PContext; s: PSym)		514
+nim	newLib	semdata.html#newLib,TLibKind	proc newLib(kind: TLibKind): PLib		517
+nim	addToLib	semdata.html#addToLib,PLib,PSym	proc addToLib(lib: PLib; sym: PSym)		520
+nim	newTypeS	semdata.html#newTypeS,TTypeKind,PContext,sinkPType	proc newTypeS(kind: TTypeKind; c: PContext; son: sink PType = nil): PType		525
+nim	makePtrType	semdata.html#makePtrType,PSym,PType,IdGenerator	proc makePtrType(owner: PSym; baseType: PType; idgen: IdGenerator): PType		528
+nim	makePtrType	semdata.html#makePtrType,PContext,PType	proc makePtrType(c: PContext; baseType: PType): PType		531
+nim	makeTypeWithModifier	semdata.html#makeTypeWithModifier,PContext,TTypeKind,PType	proc makeTypeWithModifier(c: PContext; modifier: TTypeKind; baseType: PType): PType		534
+nim	ownedRefsEnabled	semdata.html#ownedRefsEnabled,PContext	proc ownedRefsEnabled(c: PContext): bool		544
+nim	makeVarType	semdata.html#makeVarType,PContext,PType	proc makeVarType(c: PContext; baseType: PType; kind = tyVar): PType		549
+nim	makeTypeSymNode	semdata.html#makeTypeSymNode,PContext,PType,TLineInfo	proc makeTypeSymNode(c: PContext; typ: PType; info: TLineInfo): PNode		555
+nim	makeTypeFromExpr	semdata.html#makeTypeFromExpr,PContext,PNode	proc makeTypeFromExpr(c: PContext; n: PNode): PType		564
+nim	makeStaticExpr	semdata.html#makeStaticExpr,PContext,PNode	proc makeStaticExpr(c: PContext; n: PNode): PNode		578
+nim	makeAndType	semdata.html#makeAndType,PContext,PType,PType	proc makeAndType(c: PContext; t1, t2: PType): PType		584
+nim	makeOrType	semdata.html#makeOrType,PContext,PType,PType	proc makeOrType(c: PContext; t1, t2: PType): PType		593
+nim	makeNotType	semdata.html#makeNotType,PContext,PType	proc makeNotType(c: PContext; t1: PType): PType		612
+nim	makeRangeWithStaticExpr	semdata.html#makeRangeWithStaticExpr,PContext,PNode	proc makeRangeWithStaticExpr(c: PContext; n: PNode): PType		622
+nim	rangeHasUnresolvedStatic	semdata.html#rangeHasUnresolvedStatic.t,PType	template rangeHasUnresolvedStatic(t: PType): bool		630
+nim	errorType	semdata.html#errorType,PContext	proc errorType(c: PContext): PType		633
+nim	errorNode	semdata.html#errorNode,PContext,PNode	proc errorNode(c: PContext; n: PNode): PNode		638
+nim	localErrorNode	semdata.html#localErrorNode.t,PContext,PNode,TLineInfo,TMsgKind,string	template localErrorNode(c: PContext; n: PNode; info: TLineInfo; msg: TMsgKind;\n               arg: string): PNode		643
+nim	localErrorNode	semdata.html#localErrorNode.t,PContext,PNode,TLineInfo,string	template localErrorNode(c: PContext; n: PNode; info: TLineInfo; arg: string): PNode		647
+nim	localErrorNode	semdata.html#localErrorNode.t,PContext,PNode,TMsgKind,string	template localErrorNode(c: PContext; n: PNode; msg: TMsgKind; arg: string): PNode		651
+nim	localErrorNode	semdata.html#localErrorNode.t,PContext,PNode,string	template localErrorNode(c: PContext; n: PNode; arg: string): PNode		656
+nim	makeRangeType	semdata.html#makeRangeType,PContext,BiggestInt,BiggestInt,TLineInfo,PType	proc makeRangeType(c: PContext; first, last: BiggestInt; info: TLineInfo;\n              intType: PType = nil): PType		667
+nim	isSelf	semdata.html#isSelf,PType	proc isSelf(t: PType): bool		677
+nim	makeTypeDesc	semdata.html#makeTypeDesc,PContext,PType	proc makeTypeDesc(c: PContext; typ: PType): PType		681
+nim	symFromType	semdata.html#symFromType,PContext,PType,TLineInfo	proc symFromType(c: PContext; t: PType; info: TLineInfo): PSym		688
+nim	symNodeFromType	semdata.html#symNodeFromType,PContext,PType,TLineInfo	proc symNodeFromType(c: PContext; t: PType; info: TLineInfo): PNode		694
+nim	markIndirect	semdata.html#markIndirect,PContext,PSym	proc markIndirect(c: PContext; s: PSym)		698
+nim	illFormedAst	semdata.html#illFormedAst,PNode,ConfigRef	proc illFormedAst(n: PNode; conf: ConfigRef)		703
+nim	illFormedAstLocal	semdata.html#illFormedAstLocal,PNode,ConfigRef	proc illFormedAstLocal(n: PNode; conf: ConfigRef)		706
+nim	checkSonsLen	semdata.html#checkSonsLen,PNode,int,ConfigRef	proc checkSonsLen(n: PNode; length: int; conf: ConfigRef)		709
+nim	checkMinSonsLen	semdata.html#checkMinSonsLen,PNode,int,ConfigRef	proc checkMinSonsLen(n: PNode; length: int; conf: ConfigRef)		712
+nim	isTopLevel	semdata.html#isTopLevel,PContext	proc isTopLevel(c: PContext): bool		715
+nim	isTopLevelInsideDeclaration	semdata.html#isTopLevelInsideDeclaration,PContext,PSym	proc isTopLevelInsideDeclaration(c: PContext; sym: PSym): bool		718
+nim	pushCaseContext	semdata.html#pushCaseContext,PContext,PNode	proc pushCaseContext(c: PContext; caseNode: PNode)		722
+nim	popCaseContext	semdata.html#popCaseContext,PContext	proc popCaseContext(c: PContext)		725
+nim	setCaseContextIdx	semdata.html#setCaseContextIdx,PContext,int	proc setCaseContextIdx(c: PContext; idx: int)		728
+nim	addExport	semdata.html#addExport.t,PContext,PSym	template addExport(c: PContext; s: PSym)		731
+nim	addToGenericProcCache	semdata.html#addToGenericProcCache,PContext,PSym,PInstantiation	proc addToGenericProcCache(c: PContext; s: PSym; inst: PInstantiation)		735
+nim	addToGenericCache	semdata.html#addToGenericCache,PContext,PSym,PType	proc addToGenericCache(c: PContext; s: PSym; inst: PType)		738
+nim	sealRodFile	semdata.html#sealRodFile,PContext	proc sealRodFile(c: PContext)		741
+nim	rememberExpansion	semdata.html#rememberExpansion,PContext,TLineInfo,PSym	proc rememberExpansion(c: PContext; info: TLineInfo; expandedSym: PSym)		749
+nim	renderNotLValue	semdata.html#renderNotLValue,PNode	proc renderNotLValue(n: PNode): string		770
+nim	isSsoStringIndex	semdata.html#isSsoStringIndex,ConfigRef,PNode	proc isSsoStringIndex(conf: ConfigRef; n: PNode): bool		778
+nim	analyseIfAddressTakenInCall	semdata.html#analyseIfAddressTakenInCall,PContext,PNode	proc analyseIfAddressTakenInCall(c: PContext; n: PNode; isConverter = false)		830
+nim	replaceHookMagic	semdata.html#replaceHookMagic,PContext,PNode,TTypeAttachedOp	proc replaceHookMagic(c: PContext; n: PNode; kind: TTypeAttachedOp): PNode		885
+nimgrp	makeptrtype	semdata.html#makePtrType-procs-all	proc		528
+nimgrp	localerrornode	semdata.html#localErrorNode-templates-all	template		643

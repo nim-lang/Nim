@@ -1,0 +1,66 @@
+nimTitle	vmmem	vmmem.html	module vmmem		0
+nim	Address	vmmem.html#Address	type Address		41
+nim	rgStack	vmmem.html#rgStack	RegionKind.rgStack		44
+nim	rgGlobals	vmmem.html#rgGlobals	RegionKind.rgGlobals		44
+nim	rgConst	vmmem.html#rgConst	RegionKind.rgConst		44
+nim	rgHeapChunk	vmmem.html#rgHeapChunk	RegionKind.rgHeapChunk		44
+nim	rgBigBlock	vmmem.html#rgBigBlock	RegionKind.rgBigBlock		44
+nim	rgForeign	vmmem.html#rgForeign	RegionKind.rgForeign		44
+nim	rgProcs	vmmem.html#rgProcs	RegionKind.rgProcs		44
+nim	RegionKind	vmmem.html#RegionKind	enum RegionKind		44
+nim	Region	vmmem.html#Region	object Region		48
+nim	StackMark	vmmem.html#StackMark	object StackMark		56
+nim	VmMemory	vmmem.html#VmMemory	object VmMemory		68
+nim	StackSegmentSize	vmmem.html#StackSegmentSize	const StackSegmentSize		91
+nim	BlockHeaderSize	vmmem.html#BlockHeaderSize	const BlockHeaderSize		93
+nim	BlockAlign	vmmem.html#BlockAlign	const BlockAlign		94
+nim	StrlitFlag	vmmem.html#StrlitFlag	const StrlitFlag		98
+nim	RcImmortal	vmmem.html#RcImmortal	const RcImmortal		101
+nim	RefHeaderSize	vmmem.html#RefHeaderSize	const RefHeaderSize		103
+nim	`+!`	vmmem.html#+!.t,Address,int	template `+!`(a: Address; b: int): Address		106
+nim	`-!`	vmmem.html#-!.t,Address,int	template `-!`(a: Address; b: int): Address		107
+nim	toPtr	vmmem.html#toPtr.t,Address	template toPtr(a: Address): pointer		109
+nim	toAddr	vmmem.html#toAddr.t,pointer	template toAddr(p: pointer): Address		112
+nim	ld	vmmem.html#ld.t,Address	template ld[T](a: Address): T		114
+nim	st	vmmem.html#st.t,Address,T	template st[T](a: Address; v: T)		115
+nim	ldInt	vmmem.html#ldInt.t,Address	template ldInt(a: Address): int		119
+nim	stInt	vmmem.html#stInt.t,Address,int	template stInt(a: Address; v: int)		120
+nim	findRegion	vmmem.html#findRegion,VmMemory,Address	proc findRegion(m: var VmMemory; a: Address): int		143
+nim	canRead	vmmem.html#canRead,VmMemory,Address,int	proc canRead(m: var VmMemory; a: Address; size: int): bool		162
+nim	canWrite	vmmem.html#canWrite,VmMemory,Address,int	proc canWrite(m: var VmMemory; a: Address; size: int): bool		170
+nim	isConstMemory	vmmem.html#isConstMemory,VmMemory,Address	proc isConstMemory(m: var VmMemory; a: Address): bool		178
+nim	registerForeign	vmmem.html#registerForeign,VmMemory,pointer,int	proc registerForeign(m: var VmMemory; p: pointer; size: int)		182
+nim	unregisterForeign	vmmem.html#unregisterForeign,VmMemory,pointer	proc unregisterForeign(m: var VmMemory; p: pointer)		187
+nim	heapAlloc	vmmem.html#heapAlloc,VmMemory,int	proc heapAlloc(m: var VmMemory; size: int): Address		242
+nim	isHeapBlock	vmmem.html#isHeapBlock,VmMemory,Address	proc isHeapBlock(m: var VmMemory; p: Address): bool		247
+nim	isFreedBlock	vmmem.html#isFreedBlock,VmMemory,Address	proc isFreedBlock(m: var VmMemory; p: Address): bool		254
+nim	blockSize	vmmem.html#blockSize,VmMemory,Address	proc blockSize(m: var VmMemory; p: Address): int		261
+nim	heapDealloc	vmmem.html#heapDealloc,VmMemory,Address	proc heapDealloc(m: var VmMemory; p: Address): bool		265
+nim	heapRealloc	vmmem.html#heapRealloc,VmMemory,Address,int	proc heapRealloc(m: var VmMemory; p: Address; newSize: int): Address		283
+nim	allocGlobal	vmmem.html#allocGlobal,VmMemory,int,int	proc allocGlobal(m: var VmMemory; size, align: int): Address		313
+nim	allocConst	vmmem.html#allocConst,VmMemory,int,int	proc allocConst(m: var VmMemory; size, align: int): Address		318
+nim	stackMark	vmmem.html#stackMark,VmMemory	proc stackMark(m: VmMemory): StackMark		325
+nim	pushFrame	vmmem.html#pushFrame,VmMemory,int	proc pushFrame(m: var VmMemory; size: int): Address		327
+nim	popFrames	vmmem.html#popFrames,VmMemory,StackMark	proc popFrames(m: var VmMemory; mark: StackMark)		348
+nim	allocBox	vmmem.html#allocBox,VmMemory,int	proc allocBox(m: var VmMemory; size: int): Address		353
+nim	payloadDataOffset	vmmem.html#payloadDataOffset,int	proc payloadDataOffset(elemAlign: int): int		365
+nim	newPayload	vmmem.html#newPayload,VmMemory,int,int,int,bool	proc newPayload(m: var VmMemory; cap, elemSize, elemAlign: int; isString: bool): Address		368
+nim	newConstPayload	vmmem.html#newConstPayload,VmMemory,int,int,int,bool	proc newConstPayload(m: var VmMemory; cap, elemSize, elemAlign: int; isString: bool): Address		374
+nim	payloadCap	vmmem.html#payloadCap,Address	proc payloadCap(p: Address): int		380
+nim	isLiteralPayload	vmmem.html#isLiteralPayload,Address	proc isLiteralPayload(p: Address): bool		383
+nim	storeString	vmmem.html#storeString,VmMemory,Address,string,bool	proc storeString(m: var VmMemory; dest: Address; s: string; inConst: bool)		386
+nim	loadString	vmmem.html#loadString,Address	proc loadString(src: Address): string		397
+nim	refBlockOffset	vmmem.html#refBlockOffset,int	proc refBlockOffset(align: int): int		409
+nim	newRef	vmmem.html#newRef,VmMemory,int,int	proc newRef(m: var VmMemory; size, align: int): Address		411
+nim	newConstRef	vmmem.html#newConstRef,VmMemory,int,int	proc newConstRef(m: var VmMemory; size, align: int): Address		416
+nim	refCount	vmmem.html#refCount,Address	proc refCount(p: Address): int64		421
+nim	incRef	vmmem.html#incRef,Address	proc incRef(p: Address)		423
+nim	decRefIsLast	vmmem.html#decRefIsLast,Address	proc decRefIsLast(p: Address): bool		428
+nim	disposeRef	vmmem.html#disposeRef,VmMemory,Address,int	proc disposeRef(m: var VmMemory; p: Address; align: int): bool		440
+nim	nodeHandle	vmmem.html#nodeHandle,VmMemory,PNode	proc nodeHandle(m: var VmMemory; n: PNode): int32		455
+nim	getNode	vmmem.html#getNode,VmMemory,int64	proc getNode(m: VmMemory; h: int64): PNode		465
+nim	typeHandle	vmmem.html#typeHandle,VmMemory,PType	proc typeHandle(m: var VmMemory; t: PType): int32		468
+nim	getType	vmmem.html#getType,VmMemory,int64	proc getType(m: VmMemory; h: int64): PType		478
+nim	procAddress	vmmem.html#procAddress,VmMemory,PSym	proc procAddress(m: var VmMemory; s: PSym): Address		481
+nim	getProc	vmmem.html#getProc,VmMemory,Address	proc getProc(m: var VmMemory; a: Address): PSym		498
+nim	resetNodeHandles	vmmem.html#resetNodeHandles,VmMemory,openArray[int32]	proc resetNodeHandles(m: var VmMemory; keep: openArray[int32]): seq[int32]		509

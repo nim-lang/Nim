@@ -1,0 +1,47 @@
+nimTitle	vmlayout	vmlayout.html	module vmlayout		0
+nim	VmPtrSize	vmlayout.html#VmPtrSize	const VmPtrSize		32
+nim	VmMaxAlign	vmlayout.html#VmMaxAlign	const VmMaxAlign		33
+nim	StrLenOffset	vmlayout.html#StrLenOffset	const StrLenOffset		36
+nim	StrPayloadOffset	vmlayout.html#StrPayloadOffset	const StrPayloadOffset		37
+nim	PayloadCapOffset	vmlayout.html#PayloadCapOffset	const PayloadCapOffset		38
+nim	PayloadDataOffset	vmlayout.html#PayloadDataOffset	const PayloadDataOffset		39
+nim	ClosureFnOffset	vmlayout.html#ClosureFnOffset	const ClosureFnOffset		40
+nim	ClosureEnvOffset	vmlayout.html#ClosureEnvOffset	const ClosureEnvOffset		41
+nim	OpenArrayDataOffset	vmlayout.html#OpenArrayDataOffset	const OpenArrayDataOffset		42
+nim	OpenArrayLenOffset	vmlayout.html#OpenArrayLenOffset	const OpenArrayLenOffset		43
+nim	TypeHeaderSize	vmlayout.html#TypeHeaderSize	const TypeHeaderSize		44
+nim	mkBlock	vmlayout.html#mkBlock	MemKind.mkBlock		47
+nim	mkI8	vmlayout.html#mkI8	MemKind.mkI8		47
+nim	mkI16	vmlayout.html#mkI16	MemKind.mkI16		47
+nim	mkI32	vmlayout.html#mkI32	MemKind.mkI32		47
+nim	mkI64	vmlayout.html#mkI64	MemKind.mkI64		47
+nim	mkU8	vmlayout.html#mkU8	MemKind.mkU8		47
+nim	mkU16	vmlayout.html#mkU16	MemKind.mkU16		47
+nim	mkU32	vmlayout.html#mkU32	MemKind.mkU32		47
+nim	mkU64	vmlayout.html#mkU64	MemKind.mkU64		47
+nim	mkF32	vmlayout.html#mkF32	MemKind.mkF32		47
+nim	mkF64	vmlayout.html#mkF64	MemKind.mkF64		47
+nim	mkPtr	vmlayout.html#mkPtr	MemKind.mkPtr		47
+nim	mkNode	vmlayout.html#mkNode	MemKind.mkNode		47
+nim	MemKind	vmlayout.html#MemKind	enum MemKind		47
+nim	VmLayout	vmlayout.html#VmLayout	object VmLayout		56
+nim	LayoutCache	vmlayout.html#LayoutCache	object LayoutCache		62
+nim	ScalarMemKinds	vmlayout.html#ScalarMemKinds	const ScalarMemKinds		68
+nim	SignedMemKinds	vmlayout.html#SignedMemKinds	const SignedMemKinds		69
+nim	UnsignedMemKinds	vmlayout.html#UnsignedMemKinds	const UnsignedMemKinds		70
+nim	FloatMemKinds	vmlayout.html#FloatMemKinds	const FloatMemKinds		71
+nim	alignTo	vmlayout.html#alignTo,int,int	proc alignTo(address, alignment: int): int		73
+nim	skipForLayout	vmlayout.html#skipForLayout,PType	proc skipForLayout(t: PType): PType		76
+nim	hasTypeHeader	vmlayout.html#hasTypeHeader,PType	proc hasTypeHeader(t: PType): bool		95
+nim	setSize	vmlayout.html#setSize,ConfigRef,PType	proc setSize(conf: ConfigRef; t: PType): int		109
+nim	memKind	vmlayout.html#memKind,ConfigRef,PType	proc memKind(conf: ConfigRef; t: PType): MemKind		122
+nim	memKindSize	vmlayout.html#memKindSize,MemKind	proc memKindSize(k: MemKind): int		164
+nim	getLayout	vmlayout.html#getLayout,LayoutCache,ConfigRef,PType	proc getLayout(c: var LayoutCache; conf: ConfigRef; t: PType): VmLayout		194
+nim	vmSizeOf	vmlayout.html#vmSizeOf,LayoutCache,ConfigRef,PType	proc vmSizeOf(c: var LayoutCache; conf: ConfigRef; t: PType): int		197
+nim	vmAlignOf	vmlayout.html#vmAlignOf,LayoutCache,ConfigRef,PType	proc vmAlignOf(c: var LayoutCache; conf: ConfigRef; t: PType): int		200
+nim	fieldOffset	vmlayout.html#fieldOffset,LayoutCache,ConfigRef,PType,PSym	proc fieldOffset(c: var LayoutCache; conf: ConfigRef; objType: PType; field: PSym): int		350
+nim	elemOffset	vmlayout.html#elemOffset,LayoutCache,ConfigRef,PType,int	proc elemOffset(c: var LayoutCache; conf: ConfigRef; tupType: PType; i: int): int		359
+nim	elemSize	vmlayout.html#elemSize,LayoutCache,ConfigRef,PType	proc elemSize(c: var LayoutCache; conf: ConfigRef; t: PType): int		366
+nim	hasPayloads	vmlayout.html#hasPayloads,PType	proc hasPayloads(t: PType): bool		405
+nim	BoxThreshold	vmlayout.html#BoxThreshold	const BoxThreshold		410
+nim	isBig	vmlayout.html#isBig,LayoutCache,ConfigRef,PType	proc isBig(c: var LayoutCache; conf: ConfigRef; t: PType): bool		413
