@@ -15,5 +15,6 @@ afterCodeReload:
   echo "   0: after - closure iterator: ", c()
   echo "   0: after - closure iterator: ", c()
   echo "   0: after - c_2 = ", c_2
+  echo "   0: after - nimhcr_2 changed? ", hasModuleChanged(nimhcr_2)
 
 proc getInt*(): int = return g_1 + g_2.len

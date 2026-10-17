@@ -265,7 +265,9 @@ Outside this table:
 - Programs that use threads are not tested.
 - The jump table is implemented for x86, x86-64, and for arm64 on macOS and
   on musl. Other combinations (arm64 on glibc among them) have no
-  implementation.
+  implementation, and the HCR runtime does not compile for them.
+- Nim does not detect musl by itself: on musl, pass `-d:musl`:option:.
+  Without it, arm64 counts as one of the combinations above.
 - The tests are disabled on OpenBSD and NetBSD, and are not run with
   `--mm:boehm`:option:.
 
