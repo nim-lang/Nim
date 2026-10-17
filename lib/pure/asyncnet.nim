@@ -210,6 +210,16 @@ when defineSsl:
   proc raiseSslHandleError =
     raiseSSLError("The SSL Handle is closed/unset")
 
+  proc setVerifyHost(socket: AsyncSocket, hostname: string) =
+    ## Makes the handshake fail unless the certificate matches `hostname`.
+    ## Has no effect when the context does not verify the peer.
+    when not defined(nimDisableCertificateValidation):
+      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+      let param = SSL_get0_param(socket.sslHandle)
+      X509_VERIFY_PARAM_set_hostflags(param, X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT)
+      if X509_VERIFY_PARAM_set1_host(param, hostname.cstring, hostname.len.csize_t) != 1:
+        raiseSSLError()
+
   proc getSslError(socket: AsyncSocket, err: cint): cint =
     assert socket.isSsl
     assert err < 0
@@ -321,6 +331,7 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+        setVerifyHost(socket, address)
 
       let flags = {SocketFlag.SafeDisconn}
       sslSetConnectState(socket.sslHandle)
@@ -803,6 +814,7 @@ when defineSsl:
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
+        setVerifyHost(socket, hostname)
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
