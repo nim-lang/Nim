@@ -359,7 +359,7 @@ elif emulatedThreadVars:
     {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
   template tearDownForeignThreadGc* =
     {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
-elif not hasThreadLocalAllocator:
+elif not usesThreadLocalAllocator:
   template setupForeignThreadGc* = discard
   template tearDownForeignThreadGc* = discard
 
