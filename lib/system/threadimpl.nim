@@ -19,7 +19,7 @@ when not defined(useNimRtl):
 
       threadType = ThreadType.NimThread
 
-when hasThreadLocalAllocator and not emulatedThreadVars:
+when usesThreadLocalAllocator and not emulatedThreadVars:
   proc setupForeignThreadGc*() {.gcsafe, raises: [].} =
     initThreadAllocator()
 
@@ -90,7 +90,7 @@ else:
         deallocThreadStorage(thrd.rawStack)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
-  when hasThreadLocalAllocator:
+  when usesThreadLocalAllocator:
     initThreadAllocator()
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
@@ -106,7 +106,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
-    when hasThreadLocalAllocator:
+    when usesThreadLocalAllocator:
       releaseThreadAllocator()
 
 template nimThreadProcWrapperBody*(closure: untyped): untyped =
