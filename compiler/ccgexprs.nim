@@ -991,7 +991,8 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e.firstSon.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
     var a: TLoc = initLocExpr(p, e.firstSon)
-    putIntoDest(p, d, e, cAddr(a.snippet), a.storage)
+    # an indirect loc (a global under HCR) already is the address
+    putIntoDest(p, d, e, if lfIndirect in a.flags: a.snippet else: cAddr(a.snippet), a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
   elif mapType(p.config, e.firstSon.typ, mapTypeChooser(e.firstSon) == skParam) == ctArray or isCppRef(p, e.typ):
     expr(p, e.firstSon, d)
