@@ -202,7 +202,8 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
   var sLoc = rdLoc(s.loc)
   result = getTempName(m)
 
-  if sfThread in s.flags and emulatedThreadVars(m.config):
+  if sfThread in s.flags and emulatedThreadVars(m.config) and
+      not treatThreadVarDifferentlyForHCR(m, s):
     accessThreadLocalVar(p, s)
     sLoc = derefField("NimTV_", sLoc)
 

@@ -991,7 +991,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e.firstSon.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
     var a: TLoc = initLocExpr(p, e.firstSon)
-    # an indirect loc (a global under HCR) already is the address
+    # an indirect loc (a global or threadvar under HCR) already is the address
     putIntoDest(p, d, e, if lfIndirect in a.flags: a.snippet else: cAddr(a.snippet), a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
   elif mapType(p.config, e.firstSon.typ, mapTypeChooser(e.firstSon) == skParam) == ctArray or isCppRef(p, e.typ):
@@ -3711,7 +3711,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
         internalError p.config, n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
-      if sfThread in sym.flags:
+      if sfThread in sym.flags and not treatThreadVarDifferentlyForHCR(p.module, sym):
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars(p.config):
           putIntoDest(p, d, sym.loc.lode, derefField("NimTV_", sym.loc.snippet))

@@ -255,6 +255,11 @@ parameter and result types, not just their source-level shape. Use
 - On `--os:ios`, the default file name for `--app:lib` is now `libfoo.dylib`
   instead of `libfoo.so`, matching `--os:macosx` and the Darwin convention.
 
+- With `--hotCodeReloading:on`, a module can use the thread-local variables
+  and the methods of another module, which made the program fail to link or
+  to dispatch before; `std/logging` works with it now. A thread-local
+  variable keeps its value, for each thread, when its module is reloaded.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.
