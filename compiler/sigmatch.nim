@@ -3138,7 +3138,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
-  for f in 1..<m.callee.n.len:
+  let firstFormal = if m.callee.kind != tyGenericBody: 1 else: 0
+  for f in firstFormal..<m.callee.n.len:
     let formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
