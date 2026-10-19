@@ -69,7 +69,6 @@ when defined(boehmgc):
       threadTrouble()
     finally:
       afterThreadRuns()
-    boehmGC_unregister_my_thread()
 else:
   proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     try:
@@ -124,3 +123,7 @@ template nimThreadProcWrapperBody*(closure: untyped): untyped =
   thrd.core = nil
   thrd.dataFn = nil
   deallocThreadStorage(cast[pointer](core))
+  when defined(boehmgc):
+    # Keep the thread registered while freeing its core: allocShared uses
+    # Boehm's GC_malloc, so the local `core` must remain a GC root until then.
+    boehmGC_unregister_my_thread()
