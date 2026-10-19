@@ -489,6 +489,7 @@ proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
     CApath: cstring): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_free*(arg0: SslCtx){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_set_verify*(s: SslCtx, mode: int, cb: proc (a: int, b: pointer): int {.cdecl.}){.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get_verify_mode*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_verify_result*(ssl: SslPtr): int{.cdecl,
     dynlib: DLLSSLName, importc.}
 
@@ -835,7 +836,7 @@ when defined(nimHasStyleChecks):
 
 # Certificate validation
 # On old openSSL version some of these symbols are not available
-when not defined(nimDisableCertificateValidation) and not defined(windows):
+when not defined(nimDisableCertificateValidation):
 
   # SSL_get_peer_certificate removed in 3.0
   # SSL_get1_peer_certificate added in 3.0
@@ -853,19 +854,19 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
       let method2Proc = cast[proc(ssl: SslCtx): PX509 {.cdecl, gcsafe, raises: [].}](methodSym)
       return method2Proc(ssl)
 
-  proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLSSLName, importc.}
+  proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLUtilName, importc.}
 
   proc X509_get_issuer_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLUtilName, importc.}
 
   proc X509_NAME_oneline*(a: PX509_NAME, buf: cstring, size: cint): cstring {.
-    cdecl, dynlib:DLLSSLName, importc.}
+    cdecl, dynlib:DLLUtilName, importc.}
 
   proc X509_NAME_get_text_by_NID*(subject:cstring, NID: cint, buf: cstring, size: cint): cint{.
-    cdecl, dynlib:DLLSSLName, importc.}
+    cdecl, dynlib:DLLUtilName, importc.}
 
-  proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
+  proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLUtilName, importc.}
 
-  proc X509_free*(cert: PX509) {.cdecl, dynlib: DLLSSLName, importc.}
+  proc X509_free*(cert: PX509) {.cdecl, dynlib: DLLUtilName, importc.}
 
   # Certificates store
 

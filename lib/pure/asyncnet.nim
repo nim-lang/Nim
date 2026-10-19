@@ -129,6 +129,8 @@ type
       bioIn: BIO
       bioOut: BIO
       sslNoShutdown: bool
+      sslVerifyHost: string ## host name to check the peer certificate
+                            ## against once the handshake is done
     domain: Domain
     sockType: SockType
     protocol: Protocol
@@ -210,6 +212,25 @@ when defineSsl:
   proc raiseSslHandleError =
     raiseSSLError("The SSL Handle is closed/unset")
 
+  proc checkCertName(socket: AsyncSocket, hostname: string) =
+    ## Raises `SslError` unless the peer certificate matches `hostname`.
+    ## Does nothing when the context does not verify the peer.
+    when not defined(nimDisableCertificateValidation):
+      if SSL_get_verify_mode(socket.sslHandle) == SSL_VERIFY_NONE:
+        return
+      try:
+        let certificate = SSL_get_peer_certificate(socket.sslHandle)
+        if certificate.isNil:
+          raiseSSLError("No SSL certificate found.")
+        const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+        let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+          X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+        X509_free(certificate)
+        if match != 1:
+          raiseSSLError("SSL Certificate check failed.")
+      except LibraryError:
+        raiseSSLError("SSL import failed")
+
   proc getSslError(socket: AsyncSocket, err: cint): cint =
     assert socket.isSsl
     assert err < 0
@@ -265,8 +286,8 @@ when defineSsl:
     else:
       raiseSSLError("Cannot appease SSL.")
 
-  template sslLoop(socket: AsyncSocket, flags: set[SocketFlag],
-                   op: untyped) =
+  template sslLoopImpl(socket: AsyncSocket, flags: set[SocketFlag],
+                       op: untyped) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
       if socket.sslHandle == nil:
@@ -295,6 +316,24 @@ when defineSsl:
           else:
             raiseSSLError("Socket has been disconnected")
 
+  proc finishHandshake(socket: AsyncSocket, flags: set[SocketFlag]) {.async.} =
+    ## Completes the handshake and checks the peer certificate against
+    ## `socket.sslVerifyHost`, so that no application data is sent to or
+    ## read from a peer that fails the check.
+    sslLoopImpl(socket, flags, sslDoHandshake(socket.sslHandle))
+    if opResult != 1:
+      if ERR_peek_last_error() != 0: raiseSSLError()
+      else: raiseSSLError("TLS handshake failed, connection closed by peer.")
+    if socket.sslVerifyHost.len > 0:
+      checkCertName(socket, socket.sslVerifyHost)
+      socket.sslVerifyHost = ""
+
+  template sslLoop(socket: AsyncSocket, flags: set[SocketFlag],
+                   op: untyped) =
+    if socket.sslVerifyHost.len > 0:
+      await finishHandshake(socket, flags)
+    sslLoopImpl(socket, flags, op)
+
 proc dial*(address: string, port: Port, protocol = IPPROTO_TCP,
            buffered = true): owned(Future[AsyncSocket]) {.async.} =
   ## Establishes connection to the specified `address`:`port` pair via the
@@ -321,10 +360,10 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+        socket.sslVerifyHost = address
 
-      let flags = {SocketFlag.SafeDisconn}
       sslSetConnectState(socket.sslHandle)
-      sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
+      await finishHandshake(socket, {SocketFlag.SafeDisconn})
 
 template readInto(buf: pointer, size: int, socket: AsyncSocket,
                   flags: set[SocketFlag]): int =
@@ -803,6 +842,7 @@ when defineSsl:
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
+        socket.sslVerifyHost = hostname
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
