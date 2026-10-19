@@ -2186,9 +2186,10 @@ proc typeToC(t: PType): string =
 type
   RttiInitScope = object
     ## what `beginRttiInit` swapped out of the module: the enclosing type
-    ## info's (or the module's DatInit's) sections, node array and markers
+    ## info's (or the module's DatInit's) sections and node array; plus the
+    ## marker procs of the type info whose init proc is being built
     sections: array[cfsTypeInit1..cfsTypeInit3, Builder]
-    procs: Builder
+    markers: Builder
     typeNodes: int
     typeNodesName: Rope
 
@@ -2204,8 +2205,7 @@ proc beginRttiInit(m: BModule; scope: var RttiInitScope) =
   for s in cfsTypeInit1..cfsTypeInit3:
     scope.sections[s] = newBuilder("")
     swap(m.s[s], scope.sections[s])
-  scope.procs = newBuilder("")
-  swap(m.icRttiProcs, scope.procs)
+  scope.markers = newBuilder("")
   scope.typeNodes = m.typeNodes
   scope.typeNodesName = m.typeNodesName
   m.typeNodes = 0
@@ -2223,10 +2223,9 @@ proc endRttiInit(m: BModule; scope: var RttiInitScope; name: Rope) =
       elementType = cgsymValue(m, "TNimNode"), len = m.typeNodes)
   for s in cfsTypeInit1..cfsTypeInit3:
     body.add(extract(m.s[s]))
-  let markers = extract(m.icRttiProcs)
+  let markers = extract(scope.markers)
   for s in cfsTypeInit1..cfsTypeInit3:
     swap(m.s[s], scope.sections[s])
-  swap(m.icRttiProcs, scope.procs)
   m.typeNodes = scope.typeNodes
   m.typeNodesName = scope.typeNodesName
   if body.buf.len == 0: return
@@ -2351,7 +2350,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
-      let markerProc = genTraverseProc(m, origType, sig)
+      let markerProc = genTraverseProc(m, origType, sig, initScope.markers)
       m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, result), "marker", markerProc)
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
@@ -2359,7 +2358,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
       # it may not be used in other places except in `genTraverseProc`,
       # we have to generate a typedesc for this case, not a weak one
       discard getTypeDesc(m, origType.last)
-      let markerProc = genTraverseProc(m, origType, sig)
+      let markerProc = genTraverseProc(m, origType, sig, initScope.markers)
       m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, result), "marker", markerProc)
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)
