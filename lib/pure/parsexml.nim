@@ -186,7 +186,7 @@ type
     errAttributeValueExpected ## non-empty attribute value expected
 
   ParserState = enum
-    stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
+    stateStart, stateNormal, stateCharData, stateAttr, stateEmptyElementTag, stateError
 
   XmlParseOption* = enum ## options for the XML parser
     reportWhitespace,    ## report whitespace
@@ -743,28 +743,39 @@ proc rawGetTok(my: var XmlParser) =
 
 proc getTok(my: var XmlParser) =
   while true:
-    let lastKind = my.kind
     rawGetTok(my)
     case my.kind
     of xmlComment:
       if my.options.contains(reportComments): break
     of xmlWhitespace:
-      if my.options.contains(reportWhitespace) or lastKind in {xmlCharData,
-          xmlComment, xmlEntity}:
-        break
+      # whitespace within character data is part of it, otherwise it only
+      # separates markup (bug #25462)
+      if my.options.contains(reportWhitespace) or my.state == stateCharData: break
     else: break
+
+proc trackCharData(my: var XmlParser) =
+  ## the parser is within character data when the last token, whitespace and
+  ## comments aside, was character data or an entity reference: a comment
+  ## interrupts character data but does not end it
+  if my.state in {stateNormal, stateCharData}:
+    case my.kind
+    of xmlCharData, xmlEntity: my.state = stateCharData
+    of xmlComment, xmlWhitespace: discard
+    else: my.state = stateNormal
 
 proc next*(my: var XmlParser) =
   ## retrieves the first/next event. This controls the parser.
   case my.state
-  of stateNormal:
+  of stateNormal, stateCharData:
     getTok(my)
+    trackCharData(my)
   of stateStart:
     my.state = stateNormal
     getTok(my)
     if my.kind == xmlPI and my.a == "xml":
       # just skip the first ``<?xml >`` processing instruction
       getTok(my)
+    trackCharData(my)
   of stateAttr:
     # parse an attribute key-value pair:
     if my.buf[my.bufpos] == '>':
