@@ -834,7 +834,7 @@ when defineSsl:
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
-    when not defined(nimDisableCertificateValidation) and not defined(windows):
+    when not defined(nimDisableCertificateValidation):
       assert socket.isSsl
       try:
         let certificate = socket.sslHandle.SSL_get_peer_certificate()
@@ -877,7 +877,7 @@ when defineSsl:
       ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      when not defined(nimDisableCertificateValidation) and not defined(windows):
+      when not defined(nimDisableCertificateValidation):
         # FIXME: this should be skipped on CVerifyNone
         if hostname.len > 0 and not isIpAddress(hostname):
           socket.checkCertName(hostname)
@@ -2086,7 +2086,7 @@ proc connect*(socket: Socket, address: string,
       ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      when not defined(nimDisableCertificateValidation) and not defined(windows):
+      when not defined(nimDisableCertificateValidation):
         if not isIpAddress(address):
           socket.checkCertName(address)
 

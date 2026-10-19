@@ -215,7 +215,7 @@ when defineSsl:
   proc checkCertName(socket: AsyncSocket, hostname: string) =
     ## Raises `SslError` unless the peer certificate matches `hostname`.
     ## Does nothing when the context does not verify the peer.
-    when not defined(nimDisableCertificateValidation) and not defined(windows):
+    when not defined(nimDisableCertificateValidation):
       if SSL_get_verify_mode(socket.sslHandle) == SSL_VERIFY_NONE:
         return
       try:

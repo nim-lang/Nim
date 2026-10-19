@@ -1,6 +1,5 @@
 discard """
   matrix: "-d:ssl"
-  disabled: "windows"
 """
 
 import std/[asyncdispatch, asyncnet, net, strutils, assertions]
