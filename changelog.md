@@ -60,6 +60,19 @@ parameter and result types, not just their source-level shape. Use
   `-d:nimNoLentIterators` to restore the old behavior. The JS backend and
   NimScript are unaffected: there `items` yields copies.
 
+- `std/asyncnet` (and `AsyncHttpClient` with it) now checks that the server
+  certificate matches the host name when the context uses `CVerifyPeer`, as
+  `std/net` already does. Before, any certificate signed by a trusted CA was
+  accepted for any host. A mismatch now raises `SslError` from
+  `AsyncSocket.connect`, or from the first `send` or `recv` after
+  `wrapConnectedSocket`. Connections to IP addresses and contexts created with
+  `CVerifyNone` are not checked. A failed TLS handshake now also raises
+  `SslError` from `AsyncSocket.connect` instead of being ignored.
+
+- `std/net` and `std/asyncnet` now also check the certificate host name on
+  Windows. Before, the check was skipped there because `X509_check_host` was
+  imported from the wrong DLL (libssl instead of libcrypto).
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
