@@ -403,16 +403,6 @@ proc globalName*(sym: PSym; config: ConfigRef): string =
   if sym.itemId.isBackendMinted:
     result.add BackendLocalMarker
 
-var offeredInstances {.threadvar.}: HashSet[string]
-  ## NIF names of the generic instances some loaded module `(offer)`s; filled by
-  ## the backend's top-level loader (see `ttOffer`).
-
-proc isOfferedInstance*(sym: PSym; config: ConfigRef): bool =
-  ## Whether `sym`'s home module offers it, i.e. created it outside of any
-  ## `compiles()` probe so that importers reuse it. Only meaningful under
-  ## `cmdNifC`, and only once the home module's header has been loaded.
-  globalName(sym, config) in offeredInstances
-
 type
   ParsedSymName* = object
     name*: string
@@ -4183,7 +4173,8 @@ type
       ## `procInstCache` from them so a consumer reuses the instance instead of
       ## re-instantiating it in its own (operator-blind) module scope.
     offeredNames*: seq[tuple[generic, inst: string]]
-      ## backend only: the NIF names of `genericOffers`, unresolved
+      ## backend only: the NIF names of `genericOffers`, unresolved; the
+      ## `lower` stage writes them back into the `.t.bif`
     typeOffers*: seq[tuple[generic: PSym; inst: PType]]
       ## generic TYPE instances this module created; modulegraphs.nim rebuilds
       ## `typeInstCache` from them so a consumer reuses the baked instance
@@ -4471,8 +4462,6 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
                 inc idx
               skip cur
           if names[1].len > 0:
-            offeredInstances.incl names[1]
-            # the `lower` stage writes them back into the `.t.bif`
             result.offeredNames.add (names[0], names[1])
           continue
         # (offer <genericSym> <instSym> <genericParamsCount> <type>...) — resolve

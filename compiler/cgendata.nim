@@ -202,7 +202,7 @@ type
     icRttiProcs*: Builder     # per-module backend: the marker procs of the
                               # V1 type info whose init proc is being built
                               # (see `ccgtypes.beginRttiInit`)
-    labels*: Natural         # for generating unique module-scope names
+    labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Builder] # special procs for the
                                              # OpenGL wrapper
     sigConflicts*: CountTable[SigHash]

@@ -19,8 +19,7 @@ import
   mangleutils, cbuilderbase, modulegraphs, icprof
 
 from expanddefaults import caseObjDefaultBranch
-from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions,
-  isOfferedInstance
+from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions
 from ic/replayer import localTargetOptions
 from typekeys import modname
 from std/algorithm import sort
@@ -273,7 +272,7 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
   ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
   sfFromGeneric notin s.flags and isSeedableRoutine(s, modPos, exportcOnly)
 
-proc homeEmitsInstance*(s: PSym; modPos: int; conf: ConfigRef;
+proc homeEmitsInstance*(s: PSym; modPos: int; g: ModuleGraph;
                         exportcOnly = false): bool =
   ## Whether the `cg` of the module at `modPos` emits the generic instance `s`
   ## ITSELF, so that every other demander only prototypes it. That module is
@@ -307,7 +306,7 @@ proc homeEmitsInstance*(s: PSym; modPos: int; conf: ConfigRef;
       sfFromGeneric in s.flags and sfGeneratedOp notin s.flags and
       not isBackendMinted(s.itemId) and
       isSeedableRoutine(s, modPos, exportcOnly) and
-      isOfferedInstance(s, conf)
+      globalName(s, g.config) in g.icOfferedInstances
 
 proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ## Whether SOME module's `cg` is guaranteed to emit `prc`'s body on its own,
@@ -345,7 +344,7 @@ proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   let exportcOnly = seedsOnlyExportcRoutines(m.config)
   result = sfDispatcher in prc.flags or
            ownsRuntimeRoutine(prc, prc.itemId.module, exportcOnly) or
-           homeEmitsInstance(prc, prc.itemId.module, m.config, exportcOnly)
+           homeEmitsInstance(prc, prc.itemId.module, m.g.graph, exportcOnly)
 
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## Whether the translation unit `m` emits `prc`'s BODY, as opposed to only a
