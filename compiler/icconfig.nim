@@ -204,14 +204,21 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
   endRead(c)
   result = sawMeta and version == IcConfigVersion
 
+proc icConfigStamp(configFile: string): string =
+  ## Always written by the producer, unlike the `OnlyIfChanged` artifact itself,
+  ## so it records when the config sources were last read.
+  configFile.changeFileExt("stamp")
+
 proc sourcesChanged*(configFile: string): bool =
   ## True when the precompiled config at `configFile` is missing, malformed,
   ## written by an incompatible version, or any recorded config *source* file is
-  ## newer than it (or has vanished) — i.e. the artifact must be regenerated.
-  ## Mirrors nifler's `sourcesChanged`: the source list lives inside the artifact
-  ## so this needs no out-of-band knowledge of which `nim.cfg`s were read.
-  if not fileExists(configFile): return true
-  let modtime = getLastModificationTime(configFile)
+  ## newer than its stamp (or has vanished) — i.e. the artifact must be
+  ## regenerated. Mirrors nifler's `sourcesChanged`: the source list lives inside
+  ## the artifact so this needs no out-of-band knowledge of which `nim.cfg`s were
+  ## read.
+  let stamp = icConfigStamp(configFile)
+  if not fileExists(configFile) or not fileExists(stamp): return true
+  let modtime = getLastModificationTime(stamp)
   var pool = newPool()
   var tags = newTagPool()
   let
@@ -257,6 +264,7 @@ proc produceIcConfig*(conf: ConfigRef) =
     return
   createDir(parentDir(outPath))
   writeIcConfig(conf, outPath)
+  writeFile(icConfigStamp(outPath), "")
 
 proc ensureIcConfig*(conf: ConfigRef) =
   ## Driver-side (`cmdIc`). Make sure an up-to-date precompiled config exists,
