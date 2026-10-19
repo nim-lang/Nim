@@ -62,8 +62,10 @@ parameter and result types, not just their source-level shape. Use
   `std/net` already does. Before, any certificate signed by a trusted CA was
   accepted for any host. A mismatch now raises `SslError` from
   `AsyncSocket.connect`, or from the first `send` or `recv` after
-  `wrapConnectedSocket`. Connections to IP addresses and contexts created with
-  `CVerifyNone` are not checked.
+  `wrapConnectedSocket`. Connections to IP addresses, contexts created with
+  `CVerifyNone` and Windows (as in `std/net`) are not checked. A failed TLS
+  handshake now also raises `SslError` from `AsyncSocket.connect` instead of
+  being ignored.
 
 ## Standard library additions and changes
 

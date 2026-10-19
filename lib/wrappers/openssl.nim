@@ -489,6 +489,7 @@ proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
     CApath: cstring): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_free*(arg0: SslCtx){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_set_verify*(s: SslCtx, mode: int, cb: proc (a: int, b: pointer): int {.cdecl.}){.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get_verify_mode*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_verify_result*(ssl: SslPtr): int{.cdecl,
     dynlib: DLLSSLName, importc.}
 
@@ -612,18 +613,6 @@ proc SSL_set_tlsext_host_name*(ssl: SslPtr, name: cstring): int =
   ## Set the SNI server name extension to be used in a client hello.
   ## Returns 1 if SNI was set, 0 if current SSL configuration doesn't support SNI.
   result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
-
-when not defined(nimDisableCertificateValidation):
-  type PX509_VERIFY_PARAM* = SslPtr
-
-  proc SSL_get0_param*(ssl: SslPtr): PX509_VERIFY_PARAM {.cdecl, dynlib: DLLSSLName, importc.}
-
-  proc X509_VERIFY_PARAM_set_hostflags*(param: PX509_VERIFY_PARAM, flags: cuint) {.
-    cdecl, dynlib: DLLUtilName, importc.}
-
-  proc X509_VERIFY_PARAM_set1_host*(param: PX509_VERIFY_PARAM, name: cstring,
-      namelen: csize_t): cint {.cdecl, dynlib: DLLUtilName, importc.}
-    ## Makes the handshake verify that the peer certificate matches `name`.
 
 proc SSL_get_servername*(ssl: SslPtr, typ: cint = TLSEXT_NAMETYPE_host_name): cstring {.cdecl, dynlib: DLLSSLName, importc.}
   ## Retrieve the server name requested in the client hello. This can be used

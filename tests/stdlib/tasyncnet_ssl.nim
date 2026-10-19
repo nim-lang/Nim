@@ -58,7 +58,7 @@ when not disableSSLTesting():
     try:
       discard waitFor fut
     except SslError as e:
-      result = "certificate verify failed" in e.msg
+      result = "SSL Certificate check failed" in e.msg
 
   block matching_certificate_connect:
     doAssert waitFor(viaConnect(trusting(localhostCert), localhostCert, localhostKey)) == "hello"
