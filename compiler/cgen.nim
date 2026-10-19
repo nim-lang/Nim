@@ -666,6 +666,7 @@ proc dataField(p: BProc, val: Rope): Rope {.inline.} =
   result = derefField(dataFieldAccessor(p, val), "data")
 
 proc genProcPrototype(m: BModule, sym: PSym)
+proc treatThreadVarDifferentlyForHCR(m: BModule, s: PSym): bool
 
 include ccgliterals
 include ccgtypes
@@ -1001,6 +1002,22 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
+proc treatThreadVarDifferentlyForHCR(m: BModule, s: PSym): bool =
+  ## A threadvar has no storage of its own under HCR: the library that would
+  ## hold it is replaced on a reload, and another module cannot link to it.
+  ## The HCR runtime keeps a slot per thread instead.
+  m.hcrOn and sfThread in s.flags and sfImportc notin s.flags and
+      ({lfNoDecl, lfHeader, lfDynamicLib} * s.loc.flags == {})
+
+proc useHcrThreadVar(m: BModule, s: PSym) =
+  ## Turns the loc of `s` into a pointer to the slot of the calling thread.
+  let typ = getTypeDesc(m, s.loc.t, dkVar)
+  if lfIndirect notin s.loc.flags:
+    backendEnsureMutable s
+    s.locImpl.snippet = cCast(ptrType(typ), cCall("hcrGetThreadVar",
+      getModuleDllPath(m, s), makeCString(s.loc.snippet), cSizeof(typ)))
+    incl(s, lfIndirect)
+
 proc genGlobalVarDecl(res: var Builder, p: BProc; n: PNode; td: Snippet;
                       initializer: Snippet = "",
                       initializerKind: VarInitializerKind = Assignment,
@@ -1049,6 +1066,11 @@ proc assignGlobalVar(p: BProc; n: PNode; value: Rope) =
     backendEnsureMutable s
     fillLoc(s.locImpl, locGlobalVar, n, OnHeap)
     if treatGlobalDifferentlyForHCR(p.module, s): incl(s, lfIndirect)
+  if treatThreadVarDifferentlyForHCR(p.module, s):
+    useHcrThreadVar(p.module, s)
+    if value != "":
+      internalError(p.config, n.info, ".threadvar variables cannot have a value")
+    return
 
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
@@ -1976,6 +1998,10 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   else:
     m.s[cfsProcs].add(extract(generatedProc))
   if isReloadable(m, prc):
+    if sfDispatcher in prc.flags:
+      # The main module registers every dispatcher, also one it never calls
+      # itself, so the pointer may not have been declared yet.
+      genProcPrototype(m, prc)
     m.s[cfsDynLibInit].add('\t')
     m.s[cfsDynLibInit].addAssignmentWithValue(prc.loc.snippet):
       m.s[cfsDynLibInit].addCast(getProcTypeCast(m, prc)):
@@ -2196,6 +2222,9 @@ proc genVarPrototype(m: BModule, n: PNode) =
   backendEnsureMutable sym
   fillLoc(sym.locImpl, locGlobalVar, n, OnHeap)
   if treatGlobalDifferentlyForHCR(m, sym): incl(sym, lfIndirect)
+  if treatThreadVarDifferentlyForHCR(m, sym):
+    useHcrThreadVar(m, sym)
+    return
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
@@ -2849,7 +2878,8 @@ proc genInitCode(m: BModule) =
   # not support. So we add it to another special section: ``cfsInitProc``
 
   if m.hcrOn:
-    var procsToLoad = @["hcrRegisterProc", "hcrGetProc", "hcrRegisterGlobal", "hcrGetGlobal"]
+    var procsToLoad = @["hcrRegisterProc", "hcrGetProc", "hcrRegisterGlobal", "hcrGetGlobal",
+                        "hcrGetThreadVar"]
 
     m.s[cfsInitProc].addDeclWithVisibility(ExportLib):
       m.s[cfsInitProc].addProcHeaderWithParams(ccNimCall, getHcrInitName(m), CVoid):

@@ -1370,12 +1370,13 @@ proc getNimNode(m: BModule): Rope =
 proc tiNameForHcr(m: BModule; name: Rope): Rope =
   return if m.hcrOn: cDeref(name) else: name
 
-proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string) =
+proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string; trailingPointers = 0) =
   ## With hot code reloading a type info lives in the HCR runtime, so that it
   ## survives its module being reloaded: the module holds a pointer to it and
   ## registers it in `HcrCreateTypeInfos`, which runs for every module before
   ## any `DatInit`. Other modules get the same pointer with `hcrGetGlobal`
-  ## (see `declareNimType`).
+  ## (see `declareNimType`). `trailingPointers` reserves room for the entries
+  ## of a trailing `UncheckedArray[pointer]`, the vtable of a `TNimTypeV2`.
   m.s[cfsStrData].addVar(kind = Global, name = name, typ = ptrType(typ))
   m.hcrCreateTypeInfosProc.add('\t')
   var registerHcr: CallBuilder
@@ -1387,6 +1388,8 @@ proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string) =
         m.hcrCreateTypeInfosProc.add(makeCString(name))
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
         m.hcrCreateTypeInfosProc.addSizeof(typ)
+        if trailingPointers > 0:
+          m.hcrCreateTypeInfosProc.add(" + " & $trailingPointers & " * " & cSizeof(CPointer))
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
         m.hcrCreateTypeInfosProc.add(CNil)
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
@@ -1925,8 +1928,11 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, tiName: Rope; info: TL
   ## is a bare variable that the module's `DatInit` fills field by field.
   cgsym(m, "TNimTypeV2")
   let name = tiNameForHcr(m, tiName)
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
   if m.hcrOn:
-    declareTypeInfoForHcr(m, tiName, "TNimTypeV2")
+    # in C the vtable is stored in the type info itself, in C++ it is a pointer
+    declareTypeInfoForHcr(m, tiName, "TNimTypeV2",
+      trailingPointers = if m.compileToCpp: 0 else: dispatchMethods.len)
   elif m.config.cmd == cmdNifC:
     # Same emit-everywhere split as `genTypeInfoV2Impl`: every `cg` process that
     # demands this type declares it `extern`, and the DEFINITION is a droppable
@@ -1991,8 +1997,22 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, tiName: Rope; info: TL
       genDisplay(m.s[cfsVars], m, t, objDepth)
     typeEntry.addFieldAssignment(name, "display", objDisplayStore)
 
-  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
-  if dispatchMethods.len > 0:
+  if dispatchMethods.len > 0 and m.hcrOn:
+    # A method is called through the HCR runtime, and the pointers of the
+    # procs are set only after the type infos are filled in: ask the runtime
+    # for the methods' slots, which it hands out before they are registered.
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    var vTable = dotField(name, "vTable")
+    if m.compileToCpp:
+      vTable = getTempName(m)
+      m.s[cfsVars].addArrayVar(kind = Global, name = vTable,
+        elementType = CPointer, len = dispatchMethods.len)
+      typeEntry.addFieldAssignment(name, "vTable", vTable)
+    for i, meth in dispatchMethods:
+      typeEntry.addAssignment(subscript(vTable, $i),
+        cCall("hcrGetProc", getModuleDllPath(m, meth), '"' & meth.loc.snippet & '"'))
+  elif dispatchMethods.len > 0:
     let vTablePointerName = getTempName(m)
     m.s[cfsVars].addArrayVarWithInitializer(kind = Global,
         name = vTablePointerName,
