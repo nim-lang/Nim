@@ -1382,7 +1382,6 @@ proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string; trailingPointers
   ## (see `declareNimType`). `trailingPointers` reserves room for the entries
   ## of a trailing `UncheckedArray[pointer]`, the vtable of a `TNimTypeV2`.
   m.s[cfsStrData].addVar(kind = Global, name = name, typ = ptrType(typ))
-  m.hcrCreateTypeInfosProc.add('\t')
   var registerHcr: CallBuilder
   m.hcrCreateTypeInfosProc.addStmt():
     m.hcrCreateTypeInfosProc.addCall(registerHcr, callee = "hcrRegisterGlobal"):
@@ -1752,7 +1751,6 @@ proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
   let nr = rope(name)
   if m.hcrOn:
     m.s[cfsStrData].addVar(kind = Global, name = str, typ = ptrType(nr))
-    m.s[cfsTypeInit1].add('\t')
     m.s[cfsTypeInit1].addAssignmentWithValue(str):
       m.s[cfsTypeInit1].addCast(typ = ptrType(nr)):
         var hcrGlobal: CallBuilder

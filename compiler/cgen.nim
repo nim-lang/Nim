@@ -454,7 +454,12 @@ proc cgFormatValue(result: var string; value: Int128) =
   result.addInt128 value
 
 template addf(result: var Builder, args: varargs[untyped]) =
-  result.buf.addf(args)
+  if result.indents <= 0:
+    result.buf.addf(args)
+  else:
+    var tmp = ""
+    tmp.addf(args)
+    result.add(tmp)
 
 # TODO: please document
 macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
@@ -510,10 +515,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
         flushStrLit()
         result.add newCall(formatValue, resVar, args[j-1])
       of 'n':
-        flushStrLit()
-        result.add quote do:
-          if optLineDir notin `m`.config.options:
-            `resVar`.add("\L")
+        strLit.add "\L"
         inc(i)
       of 'N':
         strLit.add "\L"
@@ -547,22 +549,6 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   flushStrLit()
   result.add newCall(ident"rope", resVar)
 
-proc addIndent(p: BProc; result: var Rope) =
-  var i = result.len
-  let newLen = i + p.blocks.len
-  result.setLen newLen
-  while i < newLen:
-    result[i] = '\t'
-    inc i
-
-proc addIndent(p: BProc; result: var Builder) =
-  var i = result.buf.len
-  let newLen = i + p.blocks.len
-  result.buf.setLen newLen
-  while i < newLen:
-    result.buf[i] = '\t'
-    inc i
-
 template appcg(m: BModule, c: var (Rope | Builder), frmt: FormatStr,
            args: untyped) =
   c.add(ropecg(m, frmt, args))
@@ -576,22 +562,18 @@ template appcg(p: BProc, sec: TCProcSection, frmt: FormatStr,
   p.s(sec).add(ropecg(p.module, frmt, args))
 
 template line(p: BProc, sec: TCProcSection, r: string) =
-  addIndent p, p.s(sec)
   p.s(sec).add(r)
 
 template lineF(p: BProc, sec: TCProcSection, frmt: FormatStr,
               args: untyped) =
-  addIndent p, p.s(sec)
   p.s(sec).add(frmt % args)
 
 template lineCg(p: BProc, sec: TCProcSection, frmt: FormatStr,
                args: untyped) =
-  addIndent p, p.s(sec)
   p.s(sec).add(ropecg(p.module, frmt, args))
 
 template linefmt(p: BProc, sec: TCProcSection, frmt: FormatStr,
              args: untyped) =
-  addIndent p, p.s(sec)
   p.s(sec).add(ropecg(p.module, frmt, args))
 
 proc safeLineNm(info: TLineInfo): int =
@@ -601,21 +583,26 @@ proc safeLineNm(info: TLineInfo): int =
 proc genPostprocessDir(field1, field2, field3: string): string =
   result = postprocessDirStart & field1 & postprocessDirSep & field2 & postprocessDirSep & field3 & postprocessDirEnd
 
+proc addLineDirective(r: var Builder, dir: string) =
+  # an empty builder might be added in the middle of a line:
+  if r.buf.len == 0 or not r.atLineStart: r.addNewline()
+  r.addLineEnd(dir)
+
 proc genCLineDir(r: var Builder, fileIdx: FileIndex, line: int; conf: ConfigRef) =
   assert line >= 0
   if optLineDir in conf.options and line > 0:
     if fileIdx == InvalidFileIdx:
-      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
+      r.addLineDirective("#line " & $line & " \"generated_not_to_break_here\"")
     else:
-      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
+      r.addLineDirective("#line " & $line & " FX_" & $fileIdx.int32)
 
 proc genCLineDir(r: var Builder, fileIdx: FileIndex, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
   assert line >= 0
   if optLineDir in p.config.options and line > 0:
     if fileIdx == InvalidFileIdx:
-      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
+      r.addLineDirective("#line " & $line & " \"generated_not_to_break_here\"")
     else:
-      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
+      r.addLineDirective("#line " & $line & " FX_" & $fileIdx.int32)
 
 proc genCLineDir(r: var Builder, info: TLineInfo; conf: ConfigRef) =
   if optLineDir in conf.options:
@@ -652,7 +639,7 @@ proc genLineDir(p: BProc; t: PNode) =
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
       if freshLine:
-        line(p, cpsStmts, genPostprocessDir("nimln", $line, $t.info.fileIndex.int32))
+        p.s(cpsStmts).addLineEnd(genPostprocessDir("nimln", $line, $t.info.fileIndex.int32))
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
@@ -1036,8 +1023,6 @@ proc assignLocalVar(p: BProc; n: PNode) =
     initializer = genCppInitializer(p.module, p, n.typ, didGenTemp)
     initializerKind = CppConstructor
   localVarDecl(p.s(cpsLocals), p, n, initializer, initializerKind)
-  if optLineDir in p.config.options:
-    p.s(cpsLocals).add("\n")
 
 include ccgthreadvars
 
@@ -1271,33 +1256,26 @@ $1define nimlf_(n, file) \
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   cgsym(p.module, "nimFrame")
-  result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
+  result = ropecg(p.module, "nimfr_($1, $2);$n", [procname, filename])
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Snippet; line: int): Snippet =
   cgsym(p.module, "nimFrame")
   p.blocks[0].sections[cpsLocals].addVar(name = frame, typ = "TFrame")
   var res = newBuilder("")
-  res.add('\t')
   res.addFieldAssignment(frame, "procname", procname)
-  res.add('\t')
   res.addFieldAssignment(frame, "filename", filename)
-  res.add('\t')
   res.addFieldAssignment(frame, "line", cIntValue(line))
-  res.add('\t')
   res.addFieldAssignment(frame, "len", cIntValue(-1))
-  res.add('\t')
   res.addCallStmt("nimFrame", cAddr(frame))
   result = extract(res)
 
 proc deinitFrameNoDebug(p: BProc; frame: Snippet): Snippet =
   var res = newBuilder("")
-  res.add('\t')
   res.addCallStmt(cgsymValue(p.module, "popFrameOfAddr"), cAddr(frame))
   result = extract(res)
 
 proc deinitFrame(p: BProc): Snippet =
   var res = newBuilder("")
-  res.add('\t')
   res.addCallStmt(cgsymValue(p.module, "popFrame"))
   result = extract(res)
 
@@ -1441,7 +1419,6 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
         # A seeded but dead wrapper must not cause an unavailable extension to
         # be resolved. The pointer and its assignment share liveness/ownership.
         builder.add(cnifDefDirective(stripCnifMarks(tmp), "u", icNifName(m, sym)))
-      builder.add('\t')
       builder.addAssignment(tmp,
         cCast(getTypeDesc(m, sym.typ, dkVar),
           cCall(callee, params)))
@@ -1460,7 +1437,6 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   else:
     # cgsym has side effects, do it first:
     let fn = cgsymValue(m, "nimGetProcAddr")
-    m.s[cfsDynLibInit].add('\t')
     m.s[cfsDynLibInit].addAssignment(tmp,
       cCast(getTypeDesc(m, sym.typ, dkVar),
         cCall(fn,
@@ -1897,7 +1873,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
           discard "result init optimized out"
         else:
           initLocalVar(p, res, immediateAsgn=false)
-      var returnBuilder = newBuilder("\t")
+      var returnBuilder = newBuilder("")
       let rres = rdLoc(res.loc)
       returnBuilder.addReturn(rres)
       returnStmt = extract(returnBuilder)
@@ -1951,11 +1927,15 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   icProfStart(tGenBody)
   genProcBody(p, procBody)
   if resultCleanup != nil:
-    p.s(cpsStmts).buf = "try {\n" & move(p.s(cpsStmts).buf)
-    p.s(cpsStmts).add("} catch (...) {\n")
+    let body = move(p.s(cpsStmts).buf)
+    p.s(cpsStmts).addLineEndIndent("try {")
+    p.s(cpsStmts).add(body)
+    p.s(cpsStmts).addDedent("}")
+    p.s(cpsStmts).addLineEndIndent(" catch (...) {")
     genRestoreFrameAfterException(p)
     genStmts(p, resultCleanup)
-    p.s(cpsStmts).add("throw;\n}\n")
+    p.s(cpsStmts).addLineEnd("throw;")
+    p.s(cpsStmts).addLineEndDedent("}")
   icProfStop(tGenBody)
 
   # IC: spurious write, seems fine for now:
@@ -1988,7 +1968,6 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
           generatedProc.add(extract(p.s(cpsLocals)))
         if optProfiler in prc.options:
           # invoke at proc entry for recursion:
-          p.s(cpsInit).add('\t')
           p.s(cpsInit).addCallStmt(cgsymValue(m, "nimProfile"))
         if beforeRetNeeded in p.flags:
           # this pair of {} is required for C++ (C++ is weird with its
@@ -2049,7 +2028,6 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       # The main module registers every dispatcher, also one it never calls
       # itself, so the pointer may not have been declared yet.
       genProcPrototype(m, prc)
-    m.s[cfsDynLibInit].add('\t')
     m.s[cfsDynLibInit].addAssignmentWithValue(prc.loc.snippet):
       m.s[cfsDynLibInit].addCast(getProcTypeCast(m, prc)):
         m.s[cfsDynLibInit].addCall("hcrRegisterProc",
@@ -2111,7 +2089,6 @@ proc genProcPrototype(m: BModule, sym: PSym) =
           name = name,
           typ = t)
       if isReloadable(m, sym):
-        m.s[cfsDynLibInit].add('\t')
         m.s[cfsDynLibInit].addAssignmentWithValue(name):
           m.s[cfsDynLibInit].addCast(t):
             m.s[cfsDynLibInit].addCall("hcrGetProc",
@@ -2166,7 +2143,6 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       # reloadable (and has no _actual suffix) - other modules will need to be able to get it through
       # the hcr dynlib (also put it in the DynLibInit section - right after it gets loaded)
       if isReloadable(q, prc):
-        q.s[cfsDynLibInit].add('\t')
         q.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
           cCast(getTypeDesc(q, prc.loc.t),
             cCall("hcrRegisterProc",
@@ -2207,7 +2183,6 @@ proc genProcLvl2(m: BModule, prc: PSym) =
     # to do the declaredProtos check before the call to genProcPrototype
     if isReloadable(m, prc) and prc.id notin m.declaredProtos and
       q != nil and not sameModules(q.module, m.module):
-      m.s[cfsDynLibInit].add('\t')
       m.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
         cCast(getProcTypeCast(m, prc),
           cCall("hcrGetProc",
@@ -2299,7 +2274,6 @@ proc genVarPrototype(m: BModule, n: PNode) =
           typ = typ,
           visibility = vis)
       if m.hcrOn:
-        m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,
           cCast(typ,
             cCall("hcrGetGlobal",
