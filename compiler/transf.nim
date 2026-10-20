@@ -209,7 +209,12 @@ proc transformSym(c: PTransf, n: PNode): PNode =
   result = transformSymAux(c, n)
 
 proc freshVar(c: PTransf; v: PSym): PNode =
-  result = freshOwnedSym(c, v, getCurrOwner(c))
+  if sfGlobal in v.flags and v.owner.kind == skModule:
+    # a global is shared by all copies of the loop body, closures that use it
+    # refer to the original symbol (#12375):
+    result = newSymNode(v)
+  else:
+    result = freshOwnedSym(c, v, getCurrOwner(c))
 
 proc introduceNewRoutineHeaderSyms(c: PTransf; n: PNode; oldOwner, newOwner: PSym) =
   # We need to introduce new symbols for the parameters and result of a routine when

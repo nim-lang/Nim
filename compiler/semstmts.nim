@@ -858,7 +858,15 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       a[^1] = firstRange(c.config, typ)
 
     if a[^1].kind != nkEmpty:
+      # the value of a `{.compileTime.}` variable is computed at compile
+      # time, so `bindSym` & co. must see a static context (#10628):
+      var isCompileTime = false
+      for j in 0..<a.len-2:
+        if a[j].kind == nkPragmaExpr and hasPragma(a[j][1], wCompileTime):
+          isCompileTime = true
+      if isCompileTime: inc c.inStaticContext
       def = semExprWithType(c, a[^1], {efTypeAllowed}, typ)
+      if isCompileTime: dec c.inStaticContext
 
       if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
@@ -1205,11 +1213,25 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
 proc implicitIterator(c: PContext, it: string, arg: PNode, flags: TExprFlags): PNode =
   result = newNodeI(nkCall, arg.info)
-  result.add(newIdentNode(getIdent(c.cache, it), arg.info))
+  let ident = getIdent(c.cache, it)
+  result.add newIdentNode(ident, arg.info)
   if arg.typ != nil and arg.typ.kind in {tyVar, tyLent}:
     result.add newDeref(arg)
   else:
     result.add arg
+  let module = if c.p != nil and c.p.owner != nil: c.p.owner.getModule else: nil
+  if module != nil and module != c.module and c.inGenericInst > 0:
+    # a generic instantiated in another module also sees the iterators of
+    # the module that declares it (#11167):
+    var choice = newNodeI(nkOpenSymChoice, arg.info)
+    var hasPrivate = false
+    for s in allSymsNamed(c.graph, module, ident):
+      if s.kind == skIterator:
+        choice.add newSymNode(s, arg.info)
+        if sfExported notin s.flags: hasPrivate = true
+    if hasPrivate and c.semTryExpr(c, copyTree(result), flags + {efWantIterator}) == nil:
+      if c.config.cmd == cmdM: c.graph.icImplDeps.incl module.position
+      result[0] = choice
   result = semExprNoDeref(c, result, flags + {efWantIterator})
 
 proc isTrivalStmtExpr(n: PNode): bool =

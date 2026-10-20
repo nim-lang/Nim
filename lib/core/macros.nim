@@ -1614,7 +1614,8 @@ proc customPragmaNode(n: NimNode): NimNode =
     else:
       return impl[0] # handle types which don't have macro at all
 
-  if n.kind == nnkSym: # either an variable or a proc
+  let isFieldSym = n.kind == nnkSym and n.symKind == nskField
+  if n.kind == nnkSym and not isFieldSym: # either an variable or a proc
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
