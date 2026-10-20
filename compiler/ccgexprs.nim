@@ -3857,6 +3857,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       p.s(cpsStmts).addDiscard(a.snippet)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt:
+    cgsym(p.module, "Exception")
     case p.config.exc
     of excGoto:
       genTryGoto(p, n, d)
