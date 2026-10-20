@@ -454,9 +454,12 @@ proc cgFormatValue(result: var string; value: Int128) =
   result.addInt128 value
 
 template addf(result: var Builder, args: varargs[untyped]) =
-  var tmp = ""
-  tmp.addf(args)
-  result.add(tmp)
+  if result.indents <= 0:
+    result.buf.addf(args)
+  else:
+    var tmp = ""
+    tmp.addf(args)
+    result.add(tmp)
 
 # TODO: please document
 macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
