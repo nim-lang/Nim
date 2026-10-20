@@ -9,6 +9,13 @@
 #
 # included from cgen.nim
 
+proc isInAnotherReloadableModule(p: BProc; s: PSym): bool =
+  ## Whether `s` belongs to a module other than the one being generated that
+  ## a reload can replace. A symbol the compiler made up has no module.
+  let owner = getModule(s)
+  result = owner != nil and owner != p.module.module and
+    sfSystemModule notin owner.flags
+
 proc canRaiseDisp(p: BProc; n: PNode): bool =
   # we assume things like sysFatal cannot raise themselves
   # 5 = "decided here, neither predicate ran". Without resetting, the marker
@@ -20,6 +27,13 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
   if n.kind == nkSym and n.sym.kind == skMethod:
     # A base method may be overridden by a branch with a wider exception set.
     # Its inferred effects describe only the base body, not every vtable target.
+    result = true
+  elif p.hcrOn and n.kind == nkSym and {sfImportc, sfCompilerProc} * n.sym.flags == {} and
+      isInAnotherReloadableModule(p, n.sym):
+    # A reload can replace the proc of another module by one that raises
+    # (`sfNeverRaises` is inferred from today's body). The caller is not
+    # compiled again for that (the main module cannot be), so it checks for an
+    # error whatever the proc does today.
     result = true
   elif n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
     result = false
@@ -84,9 +98,9 @@ proc hasNoInit(call: PNode): bool {.inline.} =
 proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   if d.k in {locTemp, locNone} or not canRaise:
     result = true
-  elif d.k == locLocalVar and p.withinTryWithExcept == 0:
+  elif d.k == locLocalVar and p.withinTryWithExcept == 0 and p.nestedTryStmts.len == 0:
     # we cannot observe a store to a local variable if the current proc
-    # has no error handler:
+    # has no enclosing error handler or finally block:
     result = true
   elif d.k == locLocalVar and d.lode.kind == nkSym and d.lode.sym.kind == skTemp:
     # bug #25919: compiler temporaries (e.g. injectdestructors' `:tmpD`) are
@@ -489,7 +503,10 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Builder, argBuilder:
           result.add(extract(arg))
 
 proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
-  if sym.flags * {sfImportc, sfNonReloadable} == {} and sym.loc.k == locProc and
+  # A method dispatcher belongs to the module of the base method, but its body
+  # is generated into the main module, so it is always called through its
+  # pointer.
+  if sym.flags * {sfImportc, sfNonReloadable, sfDispatcher} == {} and sym.loc.k == locProc and
       (sym.typ.callConv == ccInline or sym.owner.id == module.id):
     res = res & "_actual".rope
 

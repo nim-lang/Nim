@@ -12,6 +12,9 @@ When a module is reloaded, any newly added global variables will be
 initialized, but all other top-level code appearing in the module won't
 be re-executed and the state of all existing global variables will be
 preserved.
+A thread-local variable (`{.threadvar.}`) is preserved in the same way,
+with one value for each thread: its storage belongs to the HCR runtime and
+not to the library of its module, and any module can read and write it.
 
 
 Basic workflow
@@ -236,6 +239,81 @@ in the program has been changed. When closure iterators are used (directly or
 through async code), the reloaded definitions will affect only newly created
 instances. Existing iterator instances will execute their original code to
 completion.
+
+Supported configurations
+------------------------
+
+Hot code reloading depends on the operating system, the CPU and the memory
+management mode: the run-time writes machine code for a jump table and loads
+every module as a dynamic library. The test suite (`tests/dll`) runs the
+reloading tests in these configurations, which are the ones to rely on:
+
+==================  =========  ======================  =================
+Operating system    CPU        Memory management       Backend
+==================  =========  ======================  =================
+Linux (glibc)       amd64      `orc`, `refc`           C
+Linux (musl)        amd64      `orc`, `refc`           C
+Linux (musl)        arm64      `orc`, `refc`           C
+Windows             amd64      `orc`, `refc`           C
+macOS               arm64      `orc`, `refc`           C, C++
+==================  =========  ======================  =================
+
+Each of them is tested as a debug and as a release build, with
+`--threads:off`:option:.
+
+Outside this table:
+
+- `--mm:arc`:option: uses the same code as `orc` and is known to work on
+  macOS, but no test runs it.
+- Programs that use threads are not tested, apart from one test that keeps
+  thread-local variables of two threads apart across a reload with
+  `--mm:orc --threads:on`:option:.
+- The jump table is implemented for x86, x86-64, and for arm64 on macOS and
+  on musl. Other combinations (arm64 on glibc among them) have no
+  implementation, and the HCR runtime does not compile for them.
+- Nim does not detect musl by itself: on musl, pass `-d:musl`:option:.
+  Without it, arm64 counts as one of the combinations above.
+- The tests are disabled on OpenBSD and NetBSD, and are not run with
+  `--mm:boehm`:option:.
+
+Things to know when the memory management mode is `arc` or `orc`:
+
+- A library that a reload replaces stays loaded: string and sequence literals
+  are not copied when they are stored, so a global variable can keep pointing
+  into the old library. Every reload therefore costs memory.
+- Global variables are not destroyed when the program ends. The main module
+  cannot be replaced while it runs, so it must not contain code that depends
+  on what the other modules declare; a destructor with a side effect does
+  not run at exit.
+
+On macOS on arm64 the jump table is mapped with `MAP_JIT`. A binary signed
+with the hardened runtime needs the `com.apple.security.cs.allow-jit`
+entitlement for that.
+
+Finding the libraries at run-time
+---------------------------------
+
+The program loads `nimrtl`, `nimhcr` and the libraries of its modules when it
+starts. `could not load: libnimhcr.so` means the dynamic loader did not find
+them. The two run-time libraries are looked up by name, so their directory
+has to be on the loader's search path:
+
+  ```console
+  # Linux and the BSDs
+  $ LD_LIBRARY_PATH=$PWD ./myprogram
+
+  # macOS
+  $ DYLD_LIBRARY_PATH=$PWD ./myprogram
+  ```
+
+On Windows the directory of the executable is searched, so nothing is needed
+when the two DLLs are next to it. Instead of the environment variable, the
+directory can be recorded in the executable when it is linked, for example
+with `--passL:"-Wl,-rpath,\$ORIGIN"`:option: on Linux or
+`--passL:-rpath --passL:@loader_path`:option: on macOS.
+
+`nimrtl` and `nimhcr` have to be compiled with the same memory management
+mode as the program.
 
 JavaScript target
 =================

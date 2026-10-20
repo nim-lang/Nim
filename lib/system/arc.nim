@@ -359,7 +359,7 @@ elif emulatedThreadVars:
     {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
   template tearDownForeignThreadGc* =
     {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
-elif not hasThreadLocalAllocator:
+elif not usesThreadLocalAllocator:
   template setupForeignThreadGc* = discard
   template tearDownForeignThreadGc* = discard
 
@@ -368,7 +368,7 @@ proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): b
 
 when defined(gcDestructors):
   proc nimGetVTable(p: pointer, index: int): pointer
-        {.compilerRtl, inline, raises: [].} =
+        {.compilerRtl, inl, raises: [].} =
     result = cast[ptr PNimTypeV2](p).vTable[index]
 
 {.pop.} # raises: []

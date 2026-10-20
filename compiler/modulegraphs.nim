@@ -103,6 +103,9 @@ type
                                   # iterators, embedded foreign definitions).
                                   # Written to a sidecar so deps.nim can make
                                   # the stage's rule depend on their NIFs.
+    icOfferedInstances*: HashSet[string] # backend: NIF names of the generic
+                                  # instances some loaded module `(offer)`s
+                                  # (see `cgen.homeEmitsInstance`)
     icQualIfaces*: IntSet         # module positions whose interface tables were
                                   # populated ONLY for qualified access through a
                                   # module re-export (`import x; export x`); the
@@ -1219,8 +1222,9 @@ when not defined(nimKochBootstrap):
         not g.icQualIfaces.containsOrIncl(fIdx.int):
       var interf = initStrTable()
       var interfHidden = initStrTable()
-      discard loadNifModule(ast.program, ModuleSuffix(msuffix),
-                            interf, interfHidden, {}, moduleResolver(g))
+      let precomp = loadNifModule(ast.program, ModuleSuffix(msuffix),
+                                  interf, interfHidden, {}, moduleResolver(g))
+      for off in precomp.offeredNames: g.icOfferedInstances.incl off.inst
       g.ifaces[fIdx.int].interf = interf
       g.ifaces[fIdx.int].interfHidden = interfHidden
       g.ifaces[fIdx.int].hiddenPending = true
@@ -1303,6 +1307,10 @@ when not defined(nimKochBootstrap):
     # `(toffer …)`. Keyed by the generic body sym's itemId, as `searchInstTypes`.
     for off in result.typeOffers:
       g.typeInstCache.mgetOrPut(off.generic.itemId, @[]).add off.inst
+
+    # The backend loads offers by name only; `cgen.homeEmitsInstance` asks them.
+    for off in result.offeredNames:
+      g.icOfferedInstances.incl off.inst
 
     # Mark module as cached
     g.cachedMods.incl fileIdx.int

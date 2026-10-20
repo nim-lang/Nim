@@ -795,7 +795,17 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # Ensure types that are semantically equal also match at the backend level.
     # E.g. reject assigning proc(csize_t) to proc(uint) since these map to
     # different C types (size_t vs unsigned long long).
-    let fCheck = concreteType(c, f)
+    var fInst = f
+    if containsGenericType(f):
+      # typeRel's generic invocation shortcut (see the XXX in typeRel) reports
+      # isEqual for formals like `seq[Box[T]]`, so compare against the
+      # instantiated formal.
+      fInst =
+        if c.call != nil: generateTypeInstance(c.c, c.bindings, c.call.info, f)
+        else: nil
+      if fInst != nil and containsGenericType(fInst):
+        fInst = nil
+    let fCheck = if fInst != nil: concreteType(c, fInst) else: nil
     let aCheck = concreteType(c, a)
     # Note that `result` is equal; now check whether they have the same
     # backend type.
@@ -1326,6 +1336,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   template considerPreviousT(body: untyped) =
     var prev = lookup(c.bindings, f)
     if prev == nil: body
+    elif prev == f: return isNone # bound to itself, see #13225
     else: return typeRel(c, prev, a, flags)
 
   if c.c.inGenericContext > 0 and not c.isNoCall and
@@ -1699,7 +1710,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     else:
       result = isNone
   of tyGenericInst:
-    var prev = lookup(c.bindings, f)
+    # a concrete instance is not bound to the type it matched (#8605)
+    var prev = if f.isMetaType: lookup(c.bindings, f) else: nil
     let origF = f
     var f = if prev == nil: f else: prev
 
@@ -1721,6 +1733,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         for i in 1..<rootf.len-1:
           let ff = rootf[i]
           let aa = roota[i]
+          if (ff.kind in {tyVar, tyLent} or aa.kind in {tyVar, tyLent}) and
+              aa.kind != ff.kind:
+            # `A[var T]` is not `A[int]` (#5337, #11228)
+            result = isNone
+            break
           let res = typeRel(c, ff, aa, nextFlags)
           if res != isNone and res != isEqual: result = isGeneric
           if res notin {isEqual, isGeneric}:
@@ -1899,6 +1916,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       result = isNone
       let oldInheritancePenalty = c.inheritancePenalty
       var minInheritance = maxInheritancePenalty
+      var bestBranch: PType = nil
       for branch in f.kids:
         c.inheritancePenalty = -1
         let x = typeRel(c, branch, aOrig, flags)
@@ -1906,11 +1924,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if  c.inheritancePenalty > -1:
             minInheritance = min(minInheritance, c.inheritancePenalty)
           result = x
+          bestBranch = branch
       c.inheritancePenalty = oldInheritancePenalty
       if result >= isIntConv:
         if minInheritance < maxInheritancePenalty:
           inc c.inheritancePenalty, minInheritance + ord(c.inheritancePenalty < 0)
         if result > isGeneric: result = isGeneric
+        if aOrig.isEmptyContainer and bestBranch != nil and
+            not bestBranch.isMetaType:
+          # `{}` or `[]` take the type of the branch they match (#6207)
+          if doBind: put(c, f, bestBranch)
+          return result
         bindingRet result
       else:
         result = isNone
@@ -2359,6 +2383,14 @@ proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
   else:
     result = false
 
+proc allGenericParamsBound(m: TCandidate; routine: PSym): bool =
+  let params = routine.ast[genericParamsPos]
+  result = true
+  for i in 0..<params.len:
+    if params[i].kind == nkSym and params[i].typ.kind == tyGenericParam and
+        lookup(m.bindings, params[i].typ) == nil:
+      return false
+
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
@@ -2388,9 +2420,17 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
+      # a generic param that only occurs in the result type cannot be
+      # inferred from the argument; this converter cannot apply (#2869)
+      if c.converters[i].isGenericRoutineStrict and
+          not allGenericParamsBound(convMatch, c.converters[i]):
+        continue
       dest = generateTypeInstance(c, convMatch.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
-    if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar}):
+    # a converter's seq/array/string result can be passed to an openArray (#2652)
+    let toOpenArray = fdest == isConvertible and f.kind == tyOpenArray
+    if (fdest in {isEqual, isGeneric} or toOpenArray) and
+        not (dest.kind == tyLent and f.kind in {tyVar}):
       if dest.kind in {tyVar, tyLent} and tfVarIsPtr notin dest.flags:
         # under IC the converter's return type can be loaded (Sealed) and
         # shared; flag a private copy instead of mutating it
@@ -2421,6 +2461,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
       if dest.kind in {tyVar, tyLent}:
         result = newDeref(result)
+      if toOpenArray:
+        result = implicitConv(nkHiddenStdConv, f, result, m, c)
 
       inc(m.convMatches)
       if not m.genericConverter:
@@ -2565,7 +2607,12 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   # anywhere and breaks symmetry. It's hard to get rid of though, my
   # custom seqs example fails to compile without this:
   if r != isNone and m.calleeSym != nil and
-    m.calleeSym.kind in {skMacro, skTemplate}:
+    m.calleeSym.kind in {skMacro, skTemplate} and
+      # `[]` and `@[]` need the conversion to the formal type that is
+      # applied below, otherwise they keep their `empty` element type (#2459)
+      not (argSemantized.typ != nil and argSemantized.typ.isEmptyContainer and
+        f.kind notin {tyTyped, tyUntyped, tyTypeDesc, tyStatic} and
+        not f.isMetaType):
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
     incMatches(m, r)
@@ -2876,6 +2923,13 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool):
     # {tyTypeDesc, tyUntyped, tyTyped, tyError}:
     # a.typ == nil is valid
     result = a
+  elif a.kind == nkArgList and formal.kind notin {tyUntyped, tyTyped} and
+      not (formal.kind == tyVarargs and formal.elementType.kind in {tyUntyped, tyTyped}):
+    # the `varargs[untyped]` of a macro passed on (#11768)
+    let b = newNodeI(nkBracket, a.info)
+    for x in a: b.add x
+    result = c.semOperand(c, b, {efDetermineType})
+    newlyTyped = true
   elif a.typ.isNil:
     if formal.kind == tyIterable:
       let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable,
@@ -2896,6 +2950,15 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode, newlyTyped: var bool):
     considerGenSyms(c, result)
     if result.kind != nkHiddenDeref and result.typ.kind in {tyVar, tyLent} and c.matchedConcept == nil:
       result = newDeref(result)
+    elif result.kind == nkBracket and result.typ.kind in {tyVarargs, tyOpenArray}:
+      # the typed `varargs` argument of a macro passed on: it is an array
+      # constructor (#11768)
+      let arr = newTypeS(tyArray, c)
+      rawAddSon(arr, makeRangeType(c, 0, result.len-1, result.info))
+      rawAddSon(arr, result.typ.elementType)
+      result = shallowCopy(result)
+      for i in 0..<a.len: result[i] = a[i]
+      result.typ = arr
     # Recovery for calls resolved too early as non-iterators.
     # TODO: retry only skIterator overloads instead of re-semming,
     # or preserve iterator-candidates info from the earlier semcheck.
@@ -2957,6 +3020,16 @@ proc findFirstArgBlock(m: var TCandidate, n: PNode): int =
         formalLast.sym.typ.kind notin {tyVoid, tyVarargs}:
       result = a2
     else: break
+
+proc isVoidParam(c: PContext; n: PNode): bool =
+  var s: PSym = nil
+  case n.kind
+  of nkSym: s = n.sym
+  of nkIdent:
+    var amb = false
+    s = searchInScopes(c, n.ident, amb)
+  else: discard
+  result = s != nil and s.kind == skParam and s.typ != nil and s.typ.kind == tyVoid
 
 proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
   template noMatch() =
@@ -3100,8 +3173,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
           else:
             noMatch()
         else:
-          m.firstMismatch.kind = kExtraArg
-          noMatch()
+          if isVoidParam(c, n[a]):
+            # a `void` parameter passed on to an erased `void` param (#5043)
+            discard
+          else:
+            m.firstMismatch.kind = kExtraArg
+            noMatch()
       else:
         if m.callee.n[f].kind != nkSym:
           internalError(c.config, n[a].info, "matches")
@@ -3204,7 +3281,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
-  for f in 1..<m.callee.n.len:
+  let firstFormal = if m.callee.kind != tyGenericBody: 1 else: 0
+  for f in firstFormal..<m.callee.n.len:
     let formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
@@ -3213,8 +3291,13 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           # container node kind accordingly
           let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
           var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1,
-                 implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+          if cnKind == nkArgList:
+            # like a non-empty `varargs[untyped]`, so that templates splice
+            # it into a call (#9996)
+            setSon(m.call, formal.position + 1, container)
+          else:
+            setSon(m.call, formal.position + 1,
+                   implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
         else:
           # no default value
           m.state = csNoMatch

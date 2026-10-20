@@ -130,7 +130,6 @@ batchable: false
 #       import) the whole command line for compilation changes - for example:
 #         winlean.nim: {.passc: "-DWIN32_LEAN_AND_MEAN".}
 #   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
-#   - everything thread-local related
 # - tests
 #   - add a new travis build matrix entry which builds everything with HCR enabled
 #     - currently building with useNimRtl is problematic - lots of problems...
@@ -235,7 +234,17 @@ when defined(createNimHcr):
 
   {.pragma: nimhcr, compilerproc, exportc, dynlib.}
 
-  const Arm64Jumps = defined(musl) and hostCPU == "arm64"
+  const
+    Arm64Jumps = hostCPU == "arm64" and (defined(musl) or defined(macosx))
+    JitJumpTable = defined(macosx) and hostCPU == "arm64"
+      ## macOS on arm64 refuses memory that is writable and executable unless
+      ## it was mapped with `MAP_JIT`, and then a thread has it either
+      ## writable or executable, never both.
+
+  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps:
+    {.error: "hot code reloading has no jump table for " & hostCPU & " on " &
+      hostOS & (when hostCPU == "arm64" and defined(linux):
+        "; with musl, pass -d:musl" else: "").}
   type
     ShortJumpInstruction {.packed.} = object
       opcode: byte
@@ -252,17 +261,25 @@ when defined(createNimHcr):
   proc writeJump(jumpTableEntry: ptr LongJumpInstruction, targetFn: pointer) =
     ## Writes a jump to the current procedure implementation.
     when Arm64Jumps:
-      proc clearCache(first, last: pointer) {.
+      proc clearCache(first, last: cstring) {.
         importc: "__builtin___clear_cache", nodecl, raises: [].}
-        ## Flushes the instruction cache after writing a jump.
+        ## Flushes the instruction cache after writing a jump. The builtin
+        ## takes `char*`, which C++ does not make from a `void*`.
 
+      when JitJumpTable:
+        proc jitWriteProtect(enabled: cint) {.
+          importc: "pthread_jit_write_protect_np", header: "<pthread.h>", raises: [].}
+        jitWriteProtect(0)
       # Load the target address at offset eight, then branch to it in X16.
       let instructions = cast[ptr array[2, uint32]](jumpTableEntry)
       instructions[][0] = 0x58000050'u32
       instructions[][1] = 0xd61f0200'u32
       jumpTableEntry.absoluteAddr = targetFn
+      when JitJumpTable:
+        jitWriteProtect(1)
       let first = cast[pointer](jumpTableEntry)
-      clearCache(first, first.shift(sizeof(LongJumpInstruction)))
+      clearCache(cast[cstring](first),
+                 cast[cstring](first.shift(sizeof(LongJumpInstruction))))
       return
 
     let
@@ -298,11 +315,46 @@ when defined(createNimHcr):
   let jumpTableSize = if jumpTableSizeStr.len > 0: parseInt(jumpTableSizeStr)
                       else: defaultJumpTableSize
 
+  when JitJumpTable:
+    from std/posix import mmap, MAP_FAILED, MAP_PRIVATE, MAP_ANONYMOUS,
+      PROT_READ, PROT_WRITE, PROT_EXEC
+
+    type
+      JitMemSeq = object
+        ## What the jump table needs of a `ReservedMemSeq`, in memory mapped
+        ## with `MAP_JIT`. The entries never move; the pages are zero and
+        ## get their memory when they are first written.
+        mem: ptr UncheckedArray[LongJumpInstruction]
+        len, maxLen: int
+
+    proc initJitMemSeq(maxLen: int): JitMemSeq =
+      const MAP_JIT = 0x0800.cint
+      let mem = mmap(nil, maxLen * sizeof(LongJumpInstruction),
+                     PROT_READ or PROT_WRITE or PROT_EXEC,
+                     MAP_PRIVATE or MAP_ANONYMOUS or MAP_JIT, -1, 0)
+      if mem == MAP_FAILED: raiseOSError(osLastError())
+      JitMemSeq(mem: cast[ptr UncheckedArray[LongJumpInstruction]](mem),
+                len: 0, maxLen: maxLen)
+
+    proc len(s: JitMemSeq): int = s.len
+
+    proc setLen(s: var JitMemSeq, newLen: int) =
+      if newLen > s.maxLen:
+        raise newException(RangeDefect,
+          "the jump table is full; raise HOT_CODE_RELOADING_JUMP_TABLE_SIZE")
+      s.len = newLen
+
+    proc `[]`(s: var JitMemSeq, i: int): var LongJumpInstruction = s.mem[i]
+
   # TODO: perhaps keep track of free slots due to removed procs using a free list
-  var jumpTable = ReservedMemSeq[LongJumpInstruction].init(
-    memStart = cast[pointer](0x10000000),
-    maxLen = jumpTableSize * 1024 * 1024 div sizeof(LongJumpInstruction),
-    accessFlags = memExecReadWrite)
+  when JitJumpTable:
+    var jumpTable = initJitMemSeq(
+      jumpTableSize * 1024 * 1024 div sizeof(LongJumpInstruction))
+  else:
+    var jumpTable = ReservedMemSeq[LongJumpInstruction].init(
+      memStart = cast[pointer](0x10000000),
+      maxLen = jumpTableSize * 1024 * 1024 div sizeof(LongJumpInstruction),
+      accessFlags = memExecReadWrite)
 
   type
     ProcSym = object
@@ -321,6 +373,7 @@ when defined(createNimHcr):
       handle: LibHandle
       hash: string
       gen: int
+      loadedIn: int # the generation whose reload loaded the library
       lastModification: Time
       handlers: seq[tuple[isBefore: bool, cb: proc () {.nimcall.}]]
 
@@ -329,6 +382,7 @@ when defined(createNimHcr):
     result.globals = initTable[string, GlobalVarSym]()
     result.handle = nil
     result.gen = -1
+    result.loadedIn = -1
     result.lastModification = low(Time)
 
   # the global state necessary for traversing and reloading the module import tree
@@ -337,6 +391,8 @@ when defined(createNimHcr):
   var system: string
   var mainDatInit: HcrModuleInitializer
   var generation = 0
+  # true while the `afterCodeReload` handlers of a reload run
+  var runningAfterHandlers = false
 
   # necessary for queries such as "has module X changed" - contains all but the main module
   var hashToModuleMap = initTable[string, string]()
@@ -348,6 +404,19 @@ when defined(createNimHcr):
   var hcrDynlibHandle: pointer
   var getProcAddr: HcrProcGetter
 
+  proc procSlot(module, name: string): ptr LongJumpInstruction =
+    ## The permanent address callers jump through for `name` of `module`,
+    ## made on first use. Where it jumps to is written by `hcrRegisterProc`.
+    modules[module].procs.withValue(name, p):
+      trace "    update proc: ", name
+      result = p.jump
+      p.gen = generation
+    do:
+      let len = jumpTable.len
+      jumpTable.setLen(len + 1)
+      result = addr jumpTable[len]
+      modules[module].procs[name] = ProcSym(jump: result, gen: generation)
+
   proc hcrRegisterProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.} =
     trace "  register proc: ", module.sanitize, " ", name
     # Please note: We must allocate a local copy of the strings, because the supplied
@@ -355,24 +424,18 @@ when defined(createNimHcr):
     let name = $name
     let module = $module
 
-    var jumpTableEntryAddr: ptr LongJumpInstruction
-
-    modules[module].procs.withValue(name, p):
-      trace "    update proc: ", name
-      jumpTableEntryAddr = p.jump
-      p.gen = generation
-    do:
-      let len = jumpTable.len
-      jumpTable.setLen(len + 1)
-      jumpTableEntryAddr = addr jumpTable[len]
-      modules[module].procs[name] = ProcSym(jump: jumpTableEntryAddr, gen: generation)
-
+    let jumpTableEntryAddr = procSlot(module, name)
     writeJump jumpTableEntryAddr, fn
     return jumpTableEntryAddr
 
   proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get proc: ", module.sanitize, " ", name
-    return modules[$module].procs.getOrDefault($name, ProcSym()).jump
+    # The proc may not be registered yet: a module asks for the procs it uses
+    # in its `DatInit`, and with ARC/ORC a module can use a proc of a module
+    # that is initialized after it (the hooks of a type are emitted with the
+    # type, and a generic instantiated for that type is emitted with the
+    # generic). The slot is handed out now and filled when the owner registers.
+    return procSlot($module, $name)
 
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
@@ -406,6 +469,84 @@ when defined(createNimHcr):
     trace "  get global: ", module.sanitize, " ", name
     return modules[$module].globals[$name].p
 
+  # Threadvars live here and not in the library of their module, as globals
+  # do: a reload replaces that library. Each thread has its own list of slots,
+  # found through a key that is made when this library is loaded, before the
+  # program starts a thread. This library may be built with --threads:off,
+  # so the slots come from C's allocator and not from Nim's, which would be
+  # shared between threads without a lock.
+  type
+    ThreadVarSlot = object
+      next: ptr ThreadVarSlot
+      data: pointer
+      key: cstring # "module" & '\0' & "name", owned by the slot
+
+  proc c_calloc(n, size: csize_t): pointer {.importc: "calloc", header: "<stdlib.h>".}
+  proc c_free(p: pointer) {.importc: "free", header: "<stdlib.h>".}
+  proc c_memcmp(a, b: pointer, size: csize_t): cint {.importc: "memcmp", header: "<string.h>".}
+
+  proc freeThreadVarSlots(first: pointer) {.noconv.} =
+    ## At the end of a thread: its slots go, and what they hold is not
+    ## destroyed, as a threadvar is not destroyed at the end of a thread
+    ## without HCR either.
+    var slot = cast[ptr ThreadVarSlot](first)
+    while slot != nil:
+      let next = slot.next
+      c_free(slot.data)
+      c_free(slot.key)
+      c_free(slot)
+      slot = next
+
+  when defined(windows):
+    proc FlsAlloc(callback: proc (data: pointer) {.stdcall.}): uint32 {.
+      importc, stdcall, dynlib: "kernel32".}
+    proc FlsGetValue(index: uint32): pointer {.importc, stdcall, dynlib: "kernel32".}
+    proc FlsSetValue(index: uint32, data: pointer): int32 {.importc, stdcall, dynlib: "kernel32".}
+    proc freeAtThreadEnd(first: pointer) {.stdcall.} = freeThreadVarSlots(first)
+    let threadVarsKey = FlsAlloc(freeAtThreadEnd)
+    doAssert threadVarsKey != 0xFFFF_FFFF'u32, "FlsAlloc failed"
+    template firstSlot(): pointer = FlsGetValue(threadVarsKey)
+    template setFirstSlot(slot: pointer) = discard FlsSetValue(threadVarsKey, slot)
+  else:
+    when not defined(macosx):
+      {.passl: "-pthread".}
+    type PthreadKey {.importc: "pthread_key_t", header: "<pthread.h>".} = object
+    proc pthread_key_create(key: ptr PthreadKey,
+                            destructor: proc (data: pointer) {.noconv.}): cint {.
+      importc, header: "<pthread.h>".}
+    proc pthread_getspecific(key: PthreadKey): pointer {.importc, header: "<pthread.h>".}
+    proc pthread_setspecific(key: PthreadKey, data: pointer): cint {.
+      importc, header: "<pthread.h>".}
+    var threadVarsKey: PthreadKey
+    doAssert pthread_key_create(addr threadVarsKey, freeThreadVarSlots) == 0,
+      "pthread_key_create failed"
+    template firstSlot(): pointer = pthread_getspecific(threadVarsKey)
+    template setFirstSlot(slot: pointer) =
+      doAssert pthread_setspecific(threadVarsKey, slot) == 0, "pthread_setspecific failed"
+
+  proc hcrGetThreadVar*(module: cstring, name: cstring, size: int): pointer {.nimhcr.} =
+    ## The slot of the calling thread for the threadvar `name` of `module`,
+    ## `size` bytes made zero on first use.
+    let keyLen = module.len + 1 + name.len + 1
+    var slot = cast[ptr ThreadVarSlot](firstSlot())
+    while slot != nil:
+      if slot.key.len == module.len and
+          c_memcmp(slot.key, module, csize_t(module.len)) == 0 and
+          c_memcmp(addr slot.key[module.len + 1], name, csize_t(name.len + 1)) == 0:
+        return slot.data
+      slot = slot.next
+    trace "  new threadvar slot: ", module.sanitize, " ", name
+    slot = cast[ptr ThreadVarSlot](c_calloc(1, csize_t(sizeof(ThreadVarSlot))))
+    doAssert slot != nil, "out of memory"
+    slot.data = c_calloc(1, csize_t(max(size, 1)))
+    slot.key = cast[cstring](c_calloc(1, csize_t(keyLen)))
+    doAssert slot.data != nil and slot.key != nil, "out of memory"
+    copyMem(slot.key, module, module.len)
+    copyMem(addr slot.key[module.len + 1], name, name.len)
+    slot.next = cast[ptr ThreadVarSlot](firstSlot())
+    setFirstSlot(slot)
+    return slot.data
+
   proc getListOfModules(cstringArray: ptr pointer): seq[string] =
     var curr = cast[ptr cstring](cstringArray)
     while len(curr[]) > 0:
@@ -433,9 +574,16 @@ when defined(createNimHcr):
     cleanup modules[module].procs:
       modules[module].procs.del(name)
 
+  const KeepsReplacedLibs = defined(gcArc) or defined(gcOrc) or
+                            defined(gcAtomicArc) or defined(gcYrc)
+    ## With ARC/ORC a string or seq literal is not copied when it is stored:
+    ## a global that outlives the reload can point into the constant data of
+    ## the library it was set from. Such a library stays loaded.
+
   proc unloadDll(name: string) =
-    if modules[name].handle != nil:
-      unloadLib(modules[name].handle)
+    when not KeepsReplacedLibs:
+      if modules[name].handle != nil:
+        unloadLib(modules[name].handle)
 
   proc loadDll(name: cstring) {.nimhcr.} =
     let name = $name
@@ -446,7 +594,8 @@ when defined(createNimHcr):
       modules[name] = newModuleDesc()
 
     let copiedName =
-      when defined(musl):
+      when defined(musl) or KeepsReplacedLibs:
+        # a library that stays loaded is not loaded again under its name
         name & ".copy." & $generation & "." & dllExt
       else:
         name & ".copy." & dllExt
@@ -456,6 +605,7 @@ when defined(createNimHcr):
     assert lib != nil
     modules[name].handle = lib
     modules[name].gen = generation
+    modules[name].loadedIn = generation
     modules[name].lastModification = getLastModificationTime(name)
 
     # update the list of imports by the module
@@ -557,13 +707,20 @@ when defined(createNimHcr):
     # the next module to be inited will be the root
     currentModule = root
 
+  proc isNewerOnDisk(module: string): bool =
+    modules[module].lastModification < getLastModificationTime(module)
+
   proc hcrHasModuleChanged*(moduleHash: string): bool {.nimhcr.} =
+    ## Before a reload, whether the module's library was rebuilt. In the
+    ## `afterCodeReload` handlers, whether that reload loaded it: by then the
+    ## library on disk is the loaded one.
     let module = hashToModuleMap[moduleHash]
-    return modules[module].lastModification < getLastModificationTime(module)
+    return isNewerOnDisk(module) or
+      (runningAfterHandlers and modules[module].loadedIn == generation)
 
   proc hcrReloadNeeded*(): bool {.nimhcr.} =
-    for hash, _ in hashToModuleMap:
-      if hcrHasModuleChanged(hash):
+    for _, module in hashToModuleMap:
+      if isNewerOnDisk(module):
         return true
     return false
 
@@ -614,7 +771,11 @@ when defined(createNimHcr):
 
     # execute the after reload handlers
     traversedHandlerModules.clear()
-    recursiveExecuteHandlers(false, root)
+    runningAfterHandlers = true
+    try:
+      recursiveExecuteHandlers(false, root)
+    finally:
+      runningAfterHandlers = false
 
     # collecting no longer referenced modules - based on their generation
     cleanup modules:
@@ -659,6 +820,8 @@ elif defined(hotcodereloading) or defined(testNimHcr):
     proc hcrRegisterGlobal*(module: cstring, name: cstring, size: Natural,
                             gcMarker: HcrGcMarkerProc, outPtr: ptr pointer): bool {.nimhcr.}
     proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
+
+    proc hcrGetThreadVar*(module: cstring, name: cstring, size: int): pointer {.nimhcr.}
 
     proc hcrInit*(moduleList: ptr pointer,
                   main, sys: cstring,

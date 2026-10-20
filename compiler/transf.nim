@@ -59,6 +59,7 @@ type
     flags: TransformFlags
     graph: ModuleGraph
     idgen: IdGenerator
+    callee: PNode # the callee being transformed, see `methodAsValue`
 
 proc newTransNode(a: PNode): PNode {.inline.} =
   result = shallowCopy(a)
@@ -146,8 +147,21 @@ proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
     result = nil
     internalError(c.graph.config, info, "wrong AST for borrowed symbol")
 
+proc methodAsValue(c: PTransf, n: PNode): PNode =
+  ## A base method that is not called but used as a proc value must
+  ## dispatch too (#4320); calls are handled by `methodCall`.
+  result = nil
+  let s = n.sym
+  if n != c.callee and sfDispatcher notin s.flags:
+    let disp = getDispatcher(s)
+    if disp != nil and sameType(disp.typ, s.typ):
+      result = newSymNode(disp, n.info)
+
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
+  if s.kind == skMethod:
+    let disp = methodAsValue(c, n)
+    if disp != nil: return disp
   if s.typ != nil and s.typ.callConv == ccClosure:
     if s.kind in routineKinds:
       discard transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
@@ -372,8 +386,13 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     # (bug #2604). We need to patch this environment here too:
     let a = n[1]
     if a.kind == nkSym:
-      n[1] = transformSymAux(c, a)
-    return n
+      # do not patch `n` in place: the loop body that contains it is
+      # duplicated for every `yield` of an inline iterator (#6269)
+      result = newTransNode(n)
+      result[0] = n[0]
+      result[1] = transformSymAux(c, a)
+    else:
+      result = n
   of nkLambdaKinds, nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let oldProc = n[namePos].sym
@@ -599,6 +618,9 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   # numeric types need range checks:
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n[1].typ, abstractVarRange)
+  while source.isResolvedUserTypeClass:
+    # the type that matched the concept (#10506)
+    source = skipTypes(source.last, abstractVarRange)
   case dest.kind
   of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
     # we don't include uint and uint64 here as these are no ordinal types ;-)
@@ -1057,10 +1079,12 @@ proc transformCall(c: PTransf, n: PNode): PNode =
     result = n
   elif magic == mProcCall:
     # but do not change to its dispatcher:
+    c.callee = n[1][0]
     result = transformSons(c, n[1])
   elif magic == mStrToStr:
     result = transform(c, n[1])
   else:
+    c.callee = n[0]
     let s = transformSons(c, n)
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:

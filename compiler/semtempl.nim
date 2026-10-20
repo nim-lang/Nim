@@ -210,7 +210,10 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           closeScope(c)
     let (ident, hasParam) = getIdentReplaceParams(c, n)
     if not hasParam:
-      if n.kind != nkSym and not (n.kind == nkIdent and n.ident.id == ord(wUnderscore)):
+      if n.kind == nkIdent and n.ident.id in c.toInject:
+        # its uses are not gensym'ed either (#10609)
+        discard
+      elif n.kind != nkSym and not (n.kind == nkIdent and n.ident.id == ord(wUnderscore)):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c, n.info, local)

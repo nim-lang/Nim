@@ -38,7 +38,7 @@ import compiler / [options, commands, modules,
   passes, passaux, msgs, pipelines,
   sigmatch, ast,
   idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
-  pathutils, condsyms, syntaxes, suggestsymdb]
+  pathutils, condsyms, syntaxes, suggestsymdb, lexer]
 
 when defined(nimPreviewSlimSystem):
   import std/typedthreads
@@ -134,7 +134,7 @@ proc myLog(s: string) =
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known|project file.nim[;dirtyfile.nim]:line:col\n" &
+  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|outline2|known|project file.nim[;dirtyfile.nim]:line:col\n" &
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
@@ -144,6 +144,7 @@ const
       "con", #current NimSuggest supports the `con` commmand
       "exceptionInlayHints",
       "unknownFile", #current NimSuggest can handle unknown files
+      "outline2",
     ] &
     # the memory cap is only enforced where the resident size is readable
     # (Linux /proc, macOS libproc, Windows working set)
@@ -571,6 +572,11 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
       conf.ideCmd = ideInlayHints
     else:
       err()
+  of "outline2":
+    if conf.suggestVersion >= 3:
+      conf.ideCmd = ideOutline2
+    else:
+      err()
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -626,7 +632,11 @@ proc mainThread(graph: ModuleGraph) =
   var idle = 0
   var cachedMsgs: CachedMsgs = @[]
   while true:
-    let (hasData, req) = requests.tryRecv()
+    let (hasData, req) =
+      if conf.suggestVersion >= 3:
+        (true, requests.recv())
+      else:
+        requests.tryRecv()
     if hasData:
       conf.writelnHook = wrHook
       conf.suggestionResultHook = sugResultHook
@@ -1183,6 +1193,83 @@ proc calculateExpandRange(n: PNode, info: TLineInfo): TLineInfo =
         return result
     result = unknownLineInfo
 
+proc outline2Kind(n: PNode): TSymKind =
+  case n.kind
+  of nkProcDef: skProc
+  of nkFuncDef: skFunc
+  of nkMethodDef: skMethod
+  of nkIteratorDef: skIterator
+  of nkConverterDef: skConverter
+  of nkTemplateDef: skTemplate
+  of nkMacroDef: skMacro
+  of nkTypeDef: skType
+  of nkConstDef: skConst
+  else: skUnknown
+
+proc outline2NameNode(n: PNode): PNode =
+  case n.kind
+  of nkPostfix: outline2NameNode(n[1])
+  of nkPragmaExpr: outline2NameNode(n[0])
+  of nkIdent, nkSym, nkAccQuoted: n
+  else: nil
+
+proc outline2Name(n: PNode): string =
+  case n.kind
+  of nkIdent: n.ident.s
+  of nkSym: n.sym.name.s
+  of nkAccQuoted:
+    var name = ""
+    for x in n:
+      if x.kind in nkLiterals - nkFloatLiterals: name.add x.renderTree
+      else: name.add outline2Name(x)
+    name
+  else: ""
+
+proc outline2Result(graph: ModuleGraph; kind: TSymKind; nameNode: PNode;
+                    endInfo: TLineInfo; module: string; owners: seq[string]) =
+  let name = graph.cache.getIdent(outline2Name(nameNode))
+  if name.s.len == 0: return
+  let info = nameNode.info
+  var suggest = Suggest(section: ideOutline, symkind: byte kind, quality: 100,
+    name: addr name.s, filePath: toFullPath(graph.config, info),
+    line: toLinenumber(info), column: toColumn(info), tokenLen: name.s.len,
+    version: graph.config.suggestVersion, endLine: endInfo.line, endCol: endInfo.col)
+  if optIdeTerse notin graph.config.globalOptions:
+    case owners.len
+    of 0: suggest.qualifiedPath = @[module]
+    of 1: suggest.qualifiedPath = @[module, owners[0]]
+    else: suggest.qualifiedPath = owners[^2 .. ^1]
+    if name.s[0] in OpChars + {'[', '{', '('} or name.id in ord(wAddr)..ord(wYield):
+      suggest.qualifiedPath.add('`' & name.s & '`')
+    else:
+      suggest.qualifiedPath.add(name.s)
+  suggestResult(graph.config, suggest)
+
+proc outline2(graph: ModuleGraph; n: PNode; module: string; owners: var seq[string];
+              inRoutine: bool) =
+  case n.kind
+  of nkFormalParams:
+    discard
+  of routineDefs, nkTypeDef, nkConstDef:
+    let kind = outline2Kind(n)
+    let nameNode = outline2NameNode(n[0])
+    if nameNode != nil and (not inRoutine or
+        kind in {skProc, skMethod, skIterator, skTemplate, skType}):
+      graph.outline2Result(kind, nameNode, n.endInfo, module, owners)
+    owners.add(if nameNode != nil: outline2Name(nameNode) else: "")
+    for child in n:
+      graph.outline2(child, module, owners, inRoutine or n.kind in routineDefs)
+    owners.setLen(owners.len - 1)
+  of nkEnumTy:
+    for i in 1 ..< n.len:
+      let field = if n[i].kind == nkEnumFieldDef: n[i][0] else: n[i]
+      let nameNode = outline2NameNode(field)
+      if nameNode != nil:
+        graph.outline2Result(skEnumField, nameNode, nameNode.endInfo, module, owners)
+  else:
+    for child in n:
+      graph.outline2(child, module, owners, inRoutine or n.kind in {nkLambda, nkDo})
+
 proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, line, col: int; tag: string,
     graph: ModuleGraph) =
   let conf = graph.config
@@ -1304,6 +1391,11 @@ proc executeNoHooksV3(cmd: IdeCmd, file: AbsoluteFile, dirtyfile: AbsoluteFile, 
   of ideOutline:
     let n = parseFile(fileIndex, graph.cache, graph.config)
     graph.iterateOutlineNodes(n, graph.fileSymbols(fileIndex).deduplicateSymInfoPair(false))
+  of ideOutline2:
+    let n = parseFile(fileIndex, graph.cache, graph.config)
+    if n != nil:
+      var owners: seq[string] = @[]
+      graph.outline2(n, splitFile(toFullPath(conf, moduleToCompile)).name, owners, false)
   of ideChk:
     myLog fmt "Reporting errors for {graph.suggestErrors.len} file(s)"
     for sug in graph.suggestErrorsIter:

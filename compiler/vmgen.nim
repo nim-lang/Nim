@@ -1972,8 +1972,15 @@ proc genBuiltin(c: PCtx; n: PNode; b: VmBuiltin; dest: var TDest) =
     c.freeTemp(a)
   of vbCopySeqPayload:
     # nimCopySeqPayload(addr dest, addr src, elemSize, elemAlign)
+    # the size and alignment arguments are the target's (`sizeof(int)` is 4
+    # on a 32-bit target), the VM lays the elements out by its own rules:
     let area = c.getTempN(4)
-    for i in 1..4: c.gen(n[i], TRegister(area+i-1))
+    for i in 1..2: c.gen(n[i], TRegister(area+i-1))
+    var a = n[1]
+    while a.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast}: a = a.lastSon
+    let elemType = a.typ.skipTypes(abstractInst).elementType.skipTypes(abstractInst).elementType
+    c.genLdImm(n[3], TRegister(area+2), vmSize(c, elemType))
+    c.genLdImm(n[4], TRegister(area+3), vmAlign(c, elemType))
     c.gABC(n, opcSeqCopyPayload, area, TRegister(area+1), TRegister(area+2))
     c.gW(n, 0)
     c.freeTemp(area)
@@ -3302,6 +3309,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mGetImplTransf: genUnaryABC(c, n, dest, opcGetImplTransf)
   of mSymOwner: genUnaryABC(c, n, dest, opcSymOwner)
   of mSymIsInstantiationOf: genBinaryABC(c, n, dest, opcSymIsInstantiationOf)
+  of mSymCustomPragmas: genUnaryABC(c, n, dest, opcSymCustomPragmas)
   of mNChild: genBinaryABC(c, n, dest, opcNChild)
   of mNSetChild: genVoidABC(c, n, dest, opcNSetChild)
   of mNDel: genVoidABC(c, n, dest, opcNDel)

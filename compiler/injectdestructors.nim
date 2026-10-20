@@ -646,6 +646,15 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
+proc isReloadableGlobalWithInit(c: Con; s: Scope; it: PNode): bool =
+  ## With hot code reloading: a module level global with a destructor that
+  ## is declared with its initial value.
+  result = c.graph.config.hcrOn and s.parent == nil and
+    it.kind == nkIdentDefs and it.len == 3 and it[0].kind == nkSym and
+    it[2].kind != nkEmpty and
+    {sfGlobal, sfThread, sfCursor, sfCompileTime, sfPure} * it[0].sym.flags == {sfGlobal} and
+    hasDestructor(c, it[0].typ)
+
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
@@ -673,7 +682,12 @@ proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
     for m in s.wasMoved: finSection.add m
     for i in countdown(s.final.high, 0): finSection.add s.final[i]
     if s.needsTry:
-      result.add newTryFinally(ret, finSection)
+      let tryFinally = newTryFinally(ret, finSection)
+      if c.graph.config.hcrOn and s.parent == nil and c.owner.kind == skModule:
+        # the statements of a module are judged one by one for whether a
+        # reload runs them; as one 'try' they would all be skipped.
+        tryFinally.flags.incl nfExecuteOnReload
+      result.add tryFinally
     else:
       result.add ret
       result.add finSection
@@ -905,6 +919,29 @@ const
   exprBranchKinds = {nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt,
                      nkTryStmt, nkPragmaBlock}
 
+proc usesSym(n: PNode; s: PSym): bool =
+  case n.kind
+  of nkSym: result = n.sym == s
+  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit: result = false
+  else:
+    result = false
+    for child in n:
+      if usesSym(child, s): return true
+
+proc aliasesTarget(dest, ri: PNode): bool =
+  ## Whether ``ri`` might read the location ``dest``. If so, the assignment
+  ## ``dest = ri`` must not be distributed into the branches of ``ri``.
+  var root = dest
+  while true:
+    case root.kind
+    of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkHiddenDeref, nkDerefExpr,
+       nkHiddenAddr, nkObjUpConv, nkObjDownConv:
+      root = root[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      root = root[1]
+    else: break
+  result = root.kind != nkSym or usesSym(ri, root.sym)
+
 proc distributeAsgn(asgnKind: TNodeKind; dest, ri: PNode; c: var Con; s: var Scope): PNode =
   ## Distributes an assignment ``dest = ri`` into the leaf expressions of
   ## ``ri`` when ``ri`` is an expression-based control flow construct. This
@@ -952,7 +989,24 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
   if n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv} and n.len == 2 and
       checkOwnedClosure(c, n):
     return p(n[1], c, s, mode, tmpFlags, inReturn)
-  if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
+  if n.kind in {nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt} and not isEmptyType(n.typ):
+    # Like Nimony's xelim: a single destination for the whole construct that
+    # every branch assigns to directly. A temporary per branch would be copied
+    # into the construct's own destination afterwards (bug #26491).
+    result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+    let tmp = c.getTemp(s, n.typ, n.info, needsInit = true)
+    tmp.sym.flags = tmpFlags
+    if hasDestructor(c, n.typ) and n.typ.kind notin {tyOpenArray, tyVarargs}:
+      # bug #23247 we don't own the data, so it's harmful to destroy it
+      s.final.add c.genDestroy(tmp)
+      result.add moveOrCopy(tmp, n, c, s, {IsDecl})
+    else:
+      # every branch assigns to it or leaves the construct and there is no
+      # destructor to run on it:
+      tmp.sym.incl sfNoInit
+      result.add distributeAsgn(nkFastAsgn, tmp, n, c, s)
+    result.add p(tmp, c, s, mode)
+  elif n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process, tmpFlags = tmpFlags)
@@ -1109,6 +1163,21 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
             if it[i].kind == nkSym: s.locals.add it[i].sym
           let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
+        elif isReloadableGlobalWithInit(c, s, it):
+          # keep 'var x = y' one statement: the code generator runs the
+          # initializer of such a section only when a reload introduced 'x',
+          # and a separate 'x op y' would be top level code, which a reload
+          # does not run.
+          let v = it[0]
+          s.locals.add v.sym
+          c.graph.globalDestructors.add c.genDestroy(v)
+          let section = copyNode(n)
+          let itCopy = copyNode(it)
+          itCopy.add v
+          itCopy.add it[1]
+          itCopy.add p(ri, c, s, sinkArg)
+          section.add itCopy
+          result.add section
         elif it.kind == nkIdentDefs and hasDestructor(c, skipPragmaExpr(it[0]).typ):
           for j in 0..<it.len-2:
             let v = skipPragmaExpr(it[j])
@@ -1131,6 +1200,17 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
                              sfNoInit in v[1].sym.flags
               if not skipInit:
                 result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, if v.kind == nkSym: {IsDecl} else: {})
+        elif it.kind == nkIdentDefs and it.len == 3 and it[0].kind == nkSym and
+            sfGlobal notin it[0].sym.flags and ri.kind in exprBranchKinds and
+            not isEmptyType(ri.typ):
+          # 'var x = if cond: a else: b': the branches produce the value in 'x'
+          # directly. Note: 'x' cannot become '.noinit' here as with IC
+          # its symbol can be sealed.
+          let v = it[0]
+          let section = copyNode(n)
+          section.add newTree(nkIdentDefs, v, it[1], newNodeI(nkEmpty, it.info))
+          result.add section
+          result.add distributeAsgn(nkFastAsgn, v, ri, c, s)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -1151,10 +1231,18 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         var flags = if n.kind == nkSinkAsgn: {IsExplicitSink} else: {}
         if inReturn:
           flags.incl(IsReturn)
-        result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
+        if n[1].kind in exprBranchKinds and aliasesTarget(n[0], n[1]):
+          # the branches cannot write to the target directly as they read it:
+          let tmp = c.getTemp(s, n[1].typ, n.info, needsInit = true)
+          tmp.sym.flags = {sfSingleUsedTemp}
+          s.final.add c.genDestroy(tmp)
+          result = newTree(nkStmtList, moveOrCopy(tmp, n[1], c, s, {IsDecl}),
+                           moveOrCopy(p(n[0], c, s, mode), tmp, c, s, flags))
+        else:
+          result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
-      elif n[1].kind in exprBranchKinds:
+      elif n[1].kind in exprBranchKinds and not aliasesTarget(n[0], n[1]):
         # Distribute the assignment into each branch to avoid
         # creating pointless temporaries for expression-based control flow.
         let dest = p(n[0], c, s, mode)

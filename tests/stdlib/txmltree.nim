@@ -129,3 +129,46 @@ block: #26039
   doAssert $tree == """<rss xmlns:atom="http://www.w3.org/2005/Atom">
   <atom:link data-dummy="test" />
 </rss>"""
+
+block: # bug #24062
+  let value = "line1\nline2\r\n\tend"
+  let tree = <>a(b = value)
+  doAssert $tree == """<a b="line1&#10;line2&#13;&#10;&#9;end" />"""
+  doAssert parseXml($tree).attr("b") == value
+  # text keeps its line breaks
+  doAssert $(<>a(newText("x\ny"))) == "<a>x\ny</a>"
+
+block: # bug #25462
+  let x = parseXml("""<foo>
+  <bar>x</bar>
+  <!-- c -->
+  <baz>y</baz>
+</foo>""")
+  doAssert x.tag == "foo"
+  doAssert x.len == 3
+  doAssert x[0].kind == xnElement
+  doAssert x[0].tag == "bar"
+  doAssert x[0].len == 1
+  doAssert x[0][0].kind == xnText
+  doAssert x[0][0].text == "x"
+  doAssert x[1].kind == xnComment
+  doAssert x[1].text == " c "
+  doAssert x[2].kind == xnElement
+  doAssert x[2].tag == "baz"
+  doAssert x[2].len == 1
+  doAssert x[2][0].kind == xnText
+  doAssert x[2][0].text == "y"
+
+  # no regression regarding bug #1518: whitespace within character data
+  # interrupted by a comment is kept
+  let y = parseXml("<a>x<!-- c --> y</a>")
+  doAssert y.tag == "a"
+  doAssert y.len == 4
+  doAssert y[0].kind == xnText
+  doAssert y[0].text == "x"
+  doAssert y[1].kind == xnComment
+  doAssert y[1].text == " c "
+  doAssert y[2].kind == xnText
+  doAssert y[2].text == " "
+  doAssert y[3].kind == xnText
+  doAssert y[3].text == "y"

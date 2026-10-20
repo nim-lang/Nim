@@ -1173,11 +1173,19 @@ const
          defined(nogc) or defined(boehmgc) or defined(gogc))
   hasThreadLocalAllocator =
     hasDefaultAllocator and hasThreadSupport and defined(gcDestructors)
+  usesThreadLocalAllocator =
+    hasThreadLocalAllocator or
+    (defined(useNimRtl) and hasAlloc and hasThreadSupport and defined(gcDestructors) and
+     not (defined(useMalloc) or defined(gcRegions) or defined(nogc) or
+          defined(boehmgc) or defined(gogc)))
+    ## Every thread checks out a region of the allocator, which is in this
+    ## module or, with useNimRtl, in nimrtl.
 
-when hasThreadLocalAllocator:
-  # threadimpl is included before mmdisp provides these implementations.
-  proc initThreadAllocator() {.gcsafe, raises: [].}
-  proc releaseThreadAllocator() {.gcsafe, raises: [].}
+when usesThreadLocalAllocator:
+  # threadimpl is included before mmdisp provides these implementations;
+  # with useNimRtl, nimrtl provides them.
+  proc initThreadAllocator() {.rtl, raises: [].}
+  proc releaseThreadAllocator() {.rtl, raises: [].}
 
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, gcsafe.}
@@ -1386,6 +1394,8 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
 when defined(js):
   proc js_abs[T: SomeNumber](x: T): T {.importc: "Math.abs".}
 else:
+  when defined(tcc) and defined(posix) and not defined(genode) and not defined(macosx):
+    {.passL: "-lm".}
   proc c_fabs(x: cdouble): cdouble {.importc: "fabs", header: "<math.h>".}
   proc c_fabsf(x: cfloat): cfloat {.importc: "fabsf", header: "<math.h>".}
 

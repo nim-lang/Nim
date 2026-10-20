@@ -568,6 +568,12 @@ proc semCast(c: PContext, n: PNode): PNode =
     return errorNode(c, n)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
+  if c.inGenericContext == 0 and castedExpr.kind == nkSym and
+      castedExpr.sym.kind in routineKinds and
+      isGenericRoutine(castedExpr.sym) and sfFromGeneric notin castedExpr.sym.flags:
+    # (#12765)
+    localError(c.config, n[1].info, errProcHasNoConcreteType % castedExpr.renderTree)
+    return errorNode(c, n)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
     localError(c.config, n.info, "expression cannot be cast to '$1'" % $targetType)
   result = newNodeI(nkCast, n.info)
@@ -658,7 +664,10 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
-    res = typeRel(m, t2, t1) >= isSubtype # isNone
+    if t2.kind == tyBuiltInTypeClass and t2.last.kind == tyVar:
+      res = t1.kind == tyVar # `x is var` (#9443)
+    else:
+      res = typeRel(m, t2, t1) >= isSubtype # isNone
     # `res = sameType(t1, t2)` would be wrong, e.g. for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
@@ -678,6 +687,10 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n[2].kind notin {nkStrLit..nkTripleStrLit}:
     let t2 = semTypeNode(c, n[2], nil)
     n[2] = newNodeIT(nkType, n[2].info, t2)
+    if n[1].kind == nkHiddenDeref and (t2.kind == tyVar or
+        (t2.kind == tyBuiltInTypeClass and t2.last.kind == tyVar)):
+      # `x is var` asks for the `var` of `x` (#9443)
+      n[1] = n[1][0]
     if t2.kind == tyStatic:
       let evaluated = tryConstExpr(c, n[1])
       if evaluated != nil:
@@ -1544,6 +1557,9 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
+      if result == nil and t.len > 0 and t.last.kind == tyGenericInst:
+        # a generic param of the type that matched the concept (#9006)
+        result = readTypeParameter(c, t.last, i, n.info)
     elif c.inGenericContext > 0:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, copyTree(result))
@@ -1794,6 +1810,10 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags, afterOverloading = f
   n[0] = semExprWithType(c, n[0], {efNoEvaluateGeneric, efAllowSymChoice})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+  if arr.isResolvedUserTypeClass:
+    # the type that matched the concept (#9289)
+    arr = arr.last.skipTypes({tyGenericInst, tyUserTypeClassInst, tyOwned,
+                              tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
     if arr.base.kind == tyNone:
       result = n
@@ -2165,6 +2185,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ.setReturnType rhsTyp
+          if rhsTyp.kind == tyTypeDesc and c.p.owner.kind in {skProc, skFunc}:
+            # returns a type, only usable at compile time (#8301)
+            incl(c.p.owner, sfCompileTime)
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
     borrowCheck(c, n, lhs, rhs)
@@ -3582,7 +3605,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         elif s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skProc, skFunc, skMethod, skConverter, skIterator:
-        if s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
+        # an imported overload of `addr` must take part in overload
+        # resolution (#4007):
+        if s.magic == mNone or (s.magic == mAddr and c.isAmbiguous):
+          result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skEnumField:
         # `Branch()` or `Branch(field: value)` of a sum type:

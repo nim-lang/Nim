@@ -379,7 +379,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
           # routine's AST params with `typ.n`, so the lifted `:envP` leaks into
           # the TYPE's params (from-source types never carry it). It is not part
           # of the type's identity — `genProcParams` skips it the same way.
-          if t.callConv == ccClosure and p.sym.name.s == ":envP":
+          if isClosureEnvParam(t, p.sym):
             continue
           c.hashType(p.sym.typ, flags, conf)
         else:

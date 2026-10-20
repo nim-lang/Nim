@@ -29,7 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "49"
+  icFormatVersion* = "51"
+    ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v48: track implementation dependencies for reused generic type instances.
     ## v46: every type definition wraps its sons in `(genericargs ...)`.
@@ -260,7 +261,8 @@ type
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
-    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand, ideInlayHints
+    ideRecompile, ideChanged, ideType, ideDeclaration, ideExpand, ideInlayHints,
+    ideOutline2
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     dotOperators,
@@ -1267,6 +1269,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "mod": ideMod
   of "highlight": ideHighlight
   of "outline": ideOutline
+  of "outline2": ideOutline2
   of "known": ideKnown
   of "msg": ideMsg
   of "project": ideProject
@@ -1299,6 +1302,7 @@ proc `$`*(c: IdeCmd): string =
   of ideChanged: "changed"
   of ideType: "type"
   of ideInlayHints: "inlayHints"
+  of ideOutline2: "outline2"
 
 proc floatInt64Align*(conf: ConfigRef): int16 =
   ## Returns either 4 or 8 depending on reasons.

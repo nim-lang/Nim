@@ -581,7 +581,8 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mGenericDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess, mZeroDefault,
+    mSymCustomPragmas
 
 
 const
@@ -769,8 +770,10 @@ type
       nifBodyLoadedImpl*: bool # body loaded from the fully lowered IC artifact
     of skLet, skVar, skField, skForVar:
       guardImpl*: PSym
-      bitsizeImpl*: int
-      alignmentImpl*: int # for alignment
+      bitsizeImpl*: int32
+      alignmentImpl*: int32 # for alignment
+      customPragmasImpl*: PNode # for fields: the custom pragmas, instantiated
+                                # with the object type
     else: nil
     magicImpl*: TMagic
     typImpl*: PType
@@ -1210,6 +1213,7 @@ proc forcePartial*(s: PSym) =
     s.guardImpl = nil
     s.bitsizeImpl = 0
     s.alignmentImpl = 0 # for alignment
+    s.customPragmasImpl = nil
   else: discard
   s.magicImpl = mNone
   s.typImpl = nil
@@ -1436,3 +1440,16 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym =
 # decl's `##` doc comment across a NIF round-trip.
 var nodeCommentReader*: proc(n: PNode): string {.nimcall.}
 var nodeCommentWriter*: proc(n: PNode; s: string) {.nimcall.}
+
+const closureEnvParamName* = ":envP"
+  ## the hidden environment parameter that lambda lifting adds to a closure
+
+proc isClosureEnvParam*(procType: PType; param: PSym): bool {.inline.} =
+  ## True for the hidden closure environment parameter of `procType`. From
+  ## source, lambda lifting adds it only to the routine's AST params. Under IC
+  ## the loaded routine shares its AST params with `procType.n` (see
+  ## `lambdalifting.closureParams`), so it also shows up in the proc *type*, but
+  ## only in the processes where lifting has already run on it. Everything that
+  ## derives an identity or a C name from the type must skip it, or that
+  ## identity differs between processes.
+  procType.callConvImpl == ccClosure and param.name.s == closureEnvParamName

@@ -49,7 +49,7 @@ proc isTestFile*(file: string): bool =
 
 # --------------------- DLL generation tests ----------------------------------
 
-proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc = false) =
+proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   const rpath = when defined(macosx):
       " --passL:-rpath --passL:@loader_path"
     else:
@@ -80,19 +80,25 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string, isOrc =
     defer: putEnv(libpathenv, libpath)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-  when not defined(osx):
-    # the nimhcr runtime segfaults on macOS:
-    testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
+  if "refc" notin options:
+    # with refc, a thread of a program that uses nimrtl does not set up its
+    # GC heap either, and hangs on its first allocation; not fixed yet
+    testSpec r, makeTest("tests/dll/nimrtl_threads.nim", options & " --threads:on" & rpath, cat)
+    if "boehm" notin options:
+      # Boehm's GC has no setupForeignThreadGc
+      testSpec r, makeTest("tests/dll/nimrtl_foreign_thread.nim", options & " --threads:on" & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
-  # the nimhcr runtime segfaults on macOS, so no hcr test runs there:
-  if "boehm" notin options and not defined(osx):
+  if "boehm" notin options:
     # hcr tests
 
-    var basicHcrTest = makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
-    # test segfaults for now but compiles:
-    if isOrc: basicHcrTest.spec.action = actionCompile
-    testSpec r, basicHcrTest
+    testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_methods.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_global_ref.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_threadvar.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_logging.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_async.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
 
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
@@ -109,8 +115,8 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
   runBasicDLLTest c, r, cat, options & " --mm:refc"
   runBasicDLLTest c, r, cat, options & " -d:release --mm:refc"
-  runBasicDLLTest c, r, cat, options, isOrc = true
-  runBasicDLLTest c, r, cat, options & " -d:release", isOrc = true
+  runBasicDLLTest c, r, cat, options
+  runBasicDLLTest c, r, cat, options & " -d:release"
   when not defined(windows) and not defined(osx):
     # boehm library linking broken on macos 13
     # still cannot find a recent Windows version of boehm.dll:

@@ -226,6 +226,21 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       pushOwner(c, oldPrc)
       pushInfoContext(c.config, oldPrc.info)
       openScope(c)
+      # the body refers to the generic params, bring their instantiated
+      # values into scope like `generateInstance` does (#6622):
+      let gp = s.ast[genericParamsPos]
+      if gp.isGenericParams:
+        let concrete = c.generics[i].inst.concreteTypes
+        for j in 0..<min(gp.len, concrete.len):
+          if gp[j].kind != nkSym or concrete[j] == nil: continue
+          let q = gp[j].sym
+          let t = concrete[j]
+          let a = newSym(if t.kind == tyStatic: skConst else: skType,
+                         q.name, c.idgen, oldPrc, q.info)
+          a.flagsImpl.incl {sfUsed, sfFromGeneric}
+          a.typ = t
+          if t.kind == tyStatic: a.ast = t.n
+          addDecl(c, a)
       var n = oldPrc.ast
       n[bodyPos] = copyTree(getBody(c.graph, s))
       instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
@@ -239,6 +254,38 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
     if {sfNoSideEffect, sfSideEffect} * s.flags ==
         {sfNoSideEffect, sfSideEffect}:
       localError(s.info, errXhasSideEffects, s.name.s)
+
+proc checkInstConstraints(c: PContext; t: PType; info: TLineInfo) =
+  ## `Foo[string]` in an instantiated signature must still satisfy the
+  ## constraints of `Foo`'s generic params (#4084).
+  var t = t
+  while t != nil and t.kind in {tyVar, tyLent, tySink, tyPtr, tyRef, tySequence,
+                                tyOpenArray, tyVarargs, tyAlias}:
+    t = t.elementType
+  if t == nil or t.kind != tyGenericInst or t.isMetaType: return
+  let body = t.genericHead
+  if body.kind != tyGenericBody or body.sym == nil: return
+  var hasConstraint = false
+  for _, p in genericBodyParams(body):
+    if p.kind != tyGenericParam: return # static params etc. are not checked
+    if p.len > 0: hasConstraint = true
+  if not hasConstraint: return
+  for i in 1..<t.len-1:
+    if t[i].kind in {tyStatic, tyTypeDesc}: return
+  var n = newNodeI(nkBracketExpr, info)
+  n.add newSymNode(body.sym, info)
+  for i in 1..<t.len-1:
+    n.add newNodeIT(nkType, info, makeTypeDesc(c, t[i]))
+  var m = newCandidate(c, body)
+  m.isNoCall = true
+  matches(c, n, copyTree(n), m)
+  if m.state != csMatch:
+    localError(c.config, info, "cannot instantiate " & typeToString(t) &
+      "; it does not satisfy the constraints of " & body.sym.name.s)
+
+proc checkSignatureConstraints(c: PContext; procType: PType; info: TLineInfo) =
+  for i in 0..<procType.signatureLen:
+    checkInstConstraints(c, procType[i], info)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
@@ -534,6 +581,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   c.matchedConcept = nil
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
+  checkSignatureConstraints(c, result.typ, info)
   for _, param in paramTypes(result.typ):
     entry.concreteTypes[i] = param
     inc i
