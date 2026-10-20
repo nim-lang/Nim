@@ -257,7 +257,62 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     it = it.prev
     dec last
 
-template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
+when defined(boehmgc):
+  type
+    StdErrWriter = object
+      ## Writes to stderr through a buffer on the stack. The signal handler
+      ## uses it because with Boehm it must not allocate: see `signalHandler`.
+      buf: array[512, char]
+      pos: int ## used part of `buf`
+      len: int ## characters written so far, as `string.len` would count them
+
+  proc flush(w: var StdErrWriter) =
+    if w.pos > 0:
+      writeToStdErr(cast[cstring](addr w.buf[0]), w.pos)
+      w.pos = 0
+
+  proc add(w: var StdErrWriter, c: char) =
+    if w.pos == w.buf.len: flush(w)
+    w.buf[w.pos] = c
+    inc w.pos
+    inc w.len
+
+  proc add(w: var StdErrWriter, s: string) =
+    var i = 0
+    while i < s.len:
+      add(w, s[i])
+      inc i
+
+  proc addDecimal(w: var StdErrWriter, x: int) =
+    # x is a line number or a count of frames, never negative
+    var digits: array[20, char]
+    var n = 0
+    var y = x
+    while true:
+      digits[n] = char(y mod 10 + ord('0'))
+      inc n
+      y = y div 10
+      if y == 0: break
+    while n > 0:
+      dec n
+      add(w, digits[n])
+
+  proc toLocation(w: var StdErrWriter, file: cstring, line: int, col: int) =
+    # the same format as `toLocation` of std/private/miscdollars, which
+    # only writes to a string
+    var i = 0
+    while file[i] != '\0':
+      add(w, file[i])
+      inc i
+    if line > 0:
+      add(w, "(")
+      addDecimal(w, line)
+      if col > 0:
+        add(w, ", ")
+        addDecimal(w, col)
+      add(w, ")")
+
+template addFrameEntry(s: untyped, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
   s.toLocation(f.filename, f.line, 0)
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
@@ -312,8 +367,10 @@ proc i2s(x: int64): string =
       result[last-i] = ch
       inc i
 
+template addDecimal(s: var string, x: int) = s.add(i2s(x))
+
 when hasSomeStackTrace:
-  proc auxWriteStackTrace(f: PFrame, s: var string) {.raises: [].} =
+  proc auxWriteStackTrace[S](f: PFrame, s: var S) {.raises: [].} =
     when hasThreadSupport:
       var
         tempFrames: array[maxStackTraceLines, PFrame] # but better than a threadvar
@@ -351,7 +408,7 @@ when hasSomeStackTrace:
     for j in countdown(i-1, 0):
       if tempFrames[j] == nil:
         add(s, "(")
-        s.add(i2s(skipped))
+        addDecimal(s, skipped)
         add(s, " calls omitted) ...\n")
       else:
         addFrameEntry(s, tempFrames[j])
@@ -694,7 +751,23 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     # memory allocator - less frequently than on windows but still.
     # However, since we're about to go down anyway, YOLO.
 
-    when hasSomeStackTrace:
+    when defined(boehmgc):
+      # Boehm takes its allocator lock both to allocate and in `GC_disable`.
+      # If the signal comes from inside Boehm (it calls `abort` on a bad
+      # `GC_free`), this thread already holds that lock and would wait for it
+      # forever, so write without allocating. `errorMessageWriter` is skipped
+      # because it takes a string. The native and the overridden stack traces
+      # build strings, so only Nim's own stack trace is written here.
+      var w = StdErrWriter()
+      when NimStackTrace and not defined(nimStackTraceOverride):
+        if framePtr == nil:
+          add(w, noStacktraceAvailable)
+        else:
+          add(w, "Traceback (most recent call last)\n")
+          auxWriteStackTrace(framePtr, w)
+      processSignal(sign, w.add)
+      flush(w)
+    elif hasSomeStackTrace:
       when not usesDestructors: GC_disable()
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
