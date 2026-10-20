@@ -1473,7 +1473,6 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   else:
     p.flags.incl noSafePoints
   genLineDir(p, t)
-  cgsym(p.module, "Exception")
   var safePoint: Rope = ""
   if not quirkyExceptions:
     safePoint = getTempName(p.module)
