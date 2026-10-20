@@ -1143,11 +1143,11 @@ proc nimNodeOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if isNimNodeType(t):
-    if c.g.config.selectedGC in {gcArc, gcOrc, gcYrc, gcAtomicArc}:
+    if optSeqDestructors in c.g.config.globalOptions:
       nimNodeOp(c, t, body, x, y)
     else:
-      # --mm:refc: the VM counts NimNodes like it manages strings and seqs,
-      # without hooks, see `vmlayout.hasPayloads`:
+      # --mm:refc, JS: the VM counts NimNodes like it manages strings and
+      # seqs, without hooks, see `vmlayout.hasPayloads`:
       defaultOp(c, t, body, x, y)
     return
   case t.kind

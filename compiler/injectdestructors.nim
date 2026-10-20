@@ -1596,7 +1596,10 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     return n
   var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo)
 
-  if optCursorInference in g.config.options:
+  if optCursorInference in g.config.options and
+      not (g.vmInjecting and optSeqDestructors notin g.config.globalOptions):
+    # (the VM manages strings, seqs and NimNodes itself without the hooks
+    # that cursor inference relies on, see `hasDestructor`)
     computeCursors(owner, n, g)
 
   var scope = Scope(body: n)
