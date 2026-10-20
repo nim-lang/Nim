@@ -24,7 +24,6 @@ proc registerTraverseProc(p: BProc, v: PSym) =
     traverseProc = genTraverseProcForGlobal(p.module, v, v.info)
 
   if traverseProc.len != 0 and not p.hcrOn:
-    p.module.preInitProc.procSec(cpsInit).add("\n\t")
     let fnName = cgsymValue(p.module,
       if sfThread in v.flags: "nimRegisterThreadLocalMarker"
       else: "nimRegisterGlobalMarker")
@@ -1170,9 +1169,7 @@ proc genRestoreFrameAfterException(p: BProc) =
   if optStackTrace in p.module.config.options:
     if hasCurFramePointer notin p.flags:
       p.flags.incl hasCurFramePointer
-      p.procSec(cpsLocals).add('\t')
       p.procSec(cpsLocals).addVar(kind = Local, name = "_nimCurFrame", typ = ptrType("TFrame"))
-      p.procSec(cpsInit).add('\t')
       p.procSec(cpsInit).addAssignmentWithValue("_nimCurFrame"):
         p.procSec(cpsInit).addCall(cgsymValue(p.module, "getFrame"))
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "setFrame"), "_nimCurFrame")
@@ -1246,21 +1243,21 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     # the finally below. Wrap the whole try/catch sequence in one more try to
     # catch it -- including the case where it first travelled through a nested
     # try's own finally, which must run before this one.
-    lineCg(p, cpsStmts, "try {$n", [])
+    p.s(cpsStmts).addLineEndIndent("try {")
 
   if t.kind == nkHiddenTryStmt:
-    lineCg(p, cpsStmts, "try {$n", [])
+    p.s(cpsStmts).addLineEndIndent("try {")
     genTryBody(p, t, d)
-    lineCg(p, cpsStmts, "}$n", [])
+    p.s(cpsStmts).addLineEndDedent("}")
   else:
     startBlockWith(p):
-      p.s(cpsStmts).add("try {\n")
+      p.s(cpsStmts).addLineEndIndent("try {")
     genTryBody(p, t, d)
     endBlockWith(p):
-      p.s(cpsStmts).add("}\n")
+      p.s(cpsStmts).addLineEndDedent("}")
 
   # First pass: handle Nim based exceptions:
-  lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
+  p.s(cpsStmts).addLineEndIndent(ropecg(p.module, "catch (#Exception* T$1_) {", [etmp+1]))
   genRestoreFrameAfterException(p)
   # an unhandled exception happened!
   lineCg(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
@@ -1338,7 +1335,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       p.s(cpsStmts).add("throw;\n")
   if hasIf:
     finishIfStmt(p.s(cpsStmts), ifStmt)
-  linefmt(p, cpsStmts, "}$n", [])
+  p.s(cpsStmts).addLineEndDedent("}")
 
   # Second pass: handle C++ based exceptions:
   template genExceptBranchBody(body: PNode) {.dirty.} =
@@ -1358,10 +1355,10 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       if it.len == 1:
         # general except section:
         startBlockWith(p):
-          p.s(cpsStmts).add("catch (...) {\n")
+          p.s(cpsStmts).addLineEndIndent("catch (...) {")
         genExceptBranchBody(it.firstSon)
         endBlockWith(p):
-          p.s(cpsStmts).add("}\n")
+          p.s(cpsStmts).addLineEndDedent("}")
         catchAllPresent = true
       else:
         for label in sonsButLast(it):
@@ -1374,16 +1371,16 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
               backendEnsureMutable exvar.sym
               fillLoc(exvar.sym.locImpl, locTemp, exvar, OnStack)
               startBlockWith(p):
-                lineCg(p, cpsStmts, "catch ($1& $2) {$n", [getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc)])
+                p.s(cpsStmts).addLineEndIndent(ropecg(p.module, "catch ($1& $2) {", [getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc)]))
               genExceptBranchBody(it.lastSon)  # exception handler body will duplicated for every type
               endBlockWith(p):
-                p.s(cpsStmts).add("}\n")
+                p.s(cpsStmts).addLineEndDedent("}")
           elif isImportedException(typeNode.typ, p.config):
             startBlockWith(p):
-              lineCg(p, cpsStmts, "catch ($1&) {$n", [getTypeDesc(p.module, label.typ)])
+              p.s(cpsStmts).addLineEndIndent(ropecg(p.module, "catch ($1&) {", [getTypeDesc(p.module, label.typ)]))
             genExceptBranchBody(it.lastSon)  # exception handler body will duplicated for every type
             endBlockWith(p):
-              p.s(cpsStmts).add("}\n")
+              p.s(cpsStmts).addLineEndDedent("}")
 
   excl p.flags, noSafePoints
   discard pop(p.nestedTryStmts)
@@ -1391,17 +1388,18 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   if fin != nil:
     if not catchAllPresent:
       startBlockWith(p):
-        p.s(cpsStmts).add("catch (...) {\n")
+        p.s(cpsStmts).addLineEndIndent("catch (...) {")
       genRestoreFrameAfterException(p)
       linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
       endBlockWith(p):
-        p.s(cpsStmts).add("}\n")
+        p.s(cpsStmts).addLineEndDedent("}")
 
     # close the wrapper opened above:
-    lineCg(p, cpsStmts, "} catch (...) {$n", [])
+    p.s(cpsStmts).addDedent("}")
+    p.s(cpsStmts).addLineEndIndent(" catch (...) {")
     genRestoreFrameAfterException(p)
     linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
-    lineCg(p, cpsStmts, "}$n", [])
+    p.s(cpsStmts).addLineEndDedent("}")
 
     var scope: ScopeBuilder
     startSimpleBlock(p, scope)
@@ -1855,7 +1853,6 @@ proc genAsmStmt(p: BProc, t: PNode) =
     # top level asm statement?
     p.module.s[cfsProcHeaders].add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
   else:
-    addIndent p, p.s(cpsStmts)
     p.s(cpsStmts).add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
 
 proc determineSection(n: PNode): TCFileSection =
