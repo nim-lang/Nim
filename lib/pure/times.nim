@@ -1990,8 +1990,10 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
         break
   of s:
     parsed.second = takeInt(1..2)
+    result = parsed.second in SecondRange
   of ss:
     parsed.second = takeInt(2..2)
+    result = parsed.second in SecondRange
   of fff, ffffff, fffffffff:
     let len = ($pattern).len
     let v = takeInt(len..len)
