@@ -34,7 +34,7 @@ import
 
 from lambdalifting import getEnvParam
 from modulegraphs import getBody, recordIcImplDep, getAttachedOp
-from liftdestructors import isTrivial
+from liftdestructors import isTrivial, liftNimNodeHooks
 
 when defined(nimCompilerStacktraceHints):
   import std/stackframes
@@ -783,7 +783,7 @@ proc genLit(c: PCtx; n: PNode; dest: var TDest) =
 proc genNodeLit(c: PCtx; info: PNode; node: PNode; dest: var TDest) =
   ## a NimNode literal
   if dest < 0: dest = c.getIntTemp()
-  genLdImm(c, info, dest, nodeHandle(c.mem, node))
+  genLdImm(c, info, dest, pinnedNodeHandle(c.mem, node))
 
 proc genTypeLit(c: PCtx; info: PNode; t: PType; dest: var TDest) =
   genNodeLit(c, info, newNodeIT(nkType, info.info, t), dest)
@@ -1746,7 +1746,8 @@ proc genRaise(c: PCtx; n: PNode) =
 proc genRet(c: PCtx; n: PNode) =
   if c.prc.hasResult and c.prc.resultInfo.inMemory:
     # the caller expects a widened scalar:
-    let k = mk(c, c.prc.sym.typ.returnType)
+    let k = if c.prc.sym.kind == skMacro: mkNode
+            else: mk(c, c.prc.sym.typ.returnType)
     c.genLdSlot(n, c.prc.resultInfo.slot, c.prc.resultInfo.slot, k)
   c.gABC(n, opcRet)
 
@@ -2064,13 +2065,21 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   if isBig(c, resultType):
     # the callee writes a big result to the memory that we provide:
     genAllocBox(c, n, TRegister(area+2), resultType)
+  var owned: seq[TRegister] = @[]
   for i in 1..<n.len:
     if i-1 < L.paramOffsets.len:
-      genArgInto(c, n[i], L.paramTypes[i-1],
-                 TRegister(firstParam + L.paramOffsets[i-1]), isMacro or isTemplate)
+      let slot = TRegister(firstParam + L.paramOffsets[i-1])
+      genArgInto(c, n[i], L.paramTypes[i-1], slot, isMacro or isTemplate)
+      if (isMacro or isTemplate) and mk(c, L.paramTypes[i-1]) == mkNode and
+          L.paramTypes[i-1].kind != tyTypeDesc and n[i].skipConv.kind in nkCallKinds and
+          i < fntyp.signatureLen and isCompileTimeOnly(fntyp[i]):
+        # injectdestructors leaves the arguments of `untyped` and `typed`
+        # parameters alone (`getAst`); we release the NimNodes they produce:
+        owned.add slot
     else:
       globalError(c.config, n.info, "VM: cannot pass varargs to an importc'ed proc")
   c.gABC(n, opcIndCall, 0, area, TRegister(L.resultSlots + L.paramSlots))
+  for slot in owned: c.gABC(n, opcNodeDecRef, slot)
   if L.resultSlots > 0 and ((n.typ != nil and not isEmptyType(n.typ)) or isTemplate or isMacro):
     if isBig(c, resultType):
       if dest < 0:
@@ -3543,7 +3552,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     let arg = n[1].skipAddr
     let t = arg.typ.skipTypes(abstractInst+{tyOwned, tyVar, tyLent, tySink})
     let deep = n[0].kind == nkSym and n[0].sym.name.s == "=destroy"
-    if t.kind == tyString or (t.kind == tySequence and not (deep and hasPayloads(t.elementType))):
+    if isNimNodeType(t):
+      # a NimNode without hooks (--mm:refc) lives in a register:
+      let p = c.genx(arg)
+      c.gABC(n, opcNodeDecRef, p)
+      c.freeTemp(p)
+    elif t.kind == tyString or (t.kind == tySequence and not (deep and hasPayloads(t.elementType))):
       var loc = genLoc(c, arg)
       let a = addrOfLoc(c, n, loc)
       c.gABC(n, opcPayloadFree, a)
@@ -3600,11 +3614,27 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
     if dest < 0 or not c.isTemp(dest): dest = c.getTemp(arg.typ)
     var loc = valLoc(c, dest, arg.typ, false)
     genStoreValue(c, loc, arg)
+    if isNimNodeType(arg.typ.skipTypes(abstractInst+{tyOwned, tyVar, tyLent, tySink})):
+      c.gABC(n, opcNodeIncRef, dest)
   of mAsgn:
     # `=copy` and `=sink` of a type without hooks (see injectdestructors):
     unused(c, n, dest)
     let t = n[1].skipAddr.typ.skipTypes(abstractInst+{tyOwned, tyVar, tyLent, tySink})
-    if hasPayloads(t):
+    if isNimNodeType(t):
+      # a NimNode without hooks (--mm:refc) lives in a register:
+      let v = c.genx(n[2])
+      if not (n[0].kind == nkSym and n[0].sym.name.s == "=sink"):
+        c.gABC(n, opcNodeIncRef, v) # first: `x` and `y` can be the same handle
+      var loc = genLoc(c, n[1].skipAddr, write = true)
+      var keep = loc
+      keep.isTemp = false
+      var old: TDest = -1
+      loadLoc(c, n, keep, old)
+      c.gABC(n, opcNodeDecRef, old)
+      storeLoc(c, n, loc, v)
+      c.freeTemp(old)
+      c.freeTemp(v)
+    elif hasPayloads(t):
       var x = genValueAddr(c, n[1].skipAddr)
       var y = genValueAddr(c, n[2])
       let opc = if n[0].kind == nkSym and n[0].sym.name.s == "=sink": opcSinkValue
@@ -3630,14 +3660,19 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}, m: TMag
   of mGCref:
     unused(c, n, dest)
     let p = c.genx(n[1])
-    c.gABC(n, opcIncRef, p)
+    # the hooks of NimNode (see liftdestructors) count its handle:
+    c.gABC(n, if isNimNodeType(n[1].typ.skipTypes(abstractInst)): opcNodeIncRef
+              else: opcIncRef, p)
     c.freeTemp(p)
   of mGCunref:
     unused(c, n, dest)
     let p = c.genx(n[1])
-    let t = c.getIntTemp()
-    c.gABC(n, opcDecRefIsLast, t, p)
-    c.freeTemp(t)
+    if isNimNodeType(n[1].typ.skipTypes(abstractInst)):
+      c.gABC(n, opcNodeDecRef, p)
+    else:
+      let t = c.getIntTemp()
+      c.gABC(n, opcDecRefIsLast, t, p)
+      c.freeTemp(t)
     c.freeTemp(p)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
@@ -3927,6 +3962,7 @@ proc vmInjectDestructors(c: PCtx; owner: PSym; n: PNode): PNode =
   defer:
     for v in ctVars: v.flagsImpl.incl sfCompileTime
     for (v, o) in reowned: v.setOwner o
+  liftNimNodeHooks(c.graph, nil, n.info, c.idgen)
   let oldInjecting = c.graph.vmInjecting
   c.graph.vmInjecting = true
   result = injectDestructorCalls(c.graph, c.idgen, owner, n)
@@ -4016,7 +4052,10 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     # procs easily:
     inc c.graph.inVMTransform
     var body = transformBody(c.graph, c.idgen, s, if isCompileTimeProc(s): {} else: {useCache})
-    let injected = usesNewRuntime(c) and sfInjectDestructors in s.flags
+    # every routine that the VM runs is injected, also when its owner did not
+    # need it for the backend (JS, --mm:none): the VM manages its NimNodes,
+    # strings and seqs:
+    let injected = usesNewRuntime(c)
     if injected:
       body = vmInjectDestructors(c, s, body)
     dec c.graph.inVMTransform
@@ -4029,7 +4068,9 @@ proc genProc(c: PCtx; s: PSym): VmProcInfo =
     let isMacro = s.kind == skMacro
     let L = callLayout(c, s.typ, isMacro, s.info)
     discard getFreeRange(c, max(L.resultSlots, 1), false)
-    let ret = s.typ.returnType
+    # the result of a macro is a NimNode, whatever its declared type:
+    let ret = if isMacro: getSysSym(c.graph, s.info, "NimNode").typ
+              else: s.typ.returnType
     let resultInMem = p.resultAddrTaken and L.resultSlots == 1 and ret != nil and
                       isScalar(c, ret.skipTypes({tyTypeDesc}))
     # a big result is written to the memory that the caller provides:

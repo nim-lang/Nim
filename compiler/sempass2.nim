@@ -1923,6 +1923,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   var inferredEffects = newNodeI(nkEffectList, s.info)
 
+  liftNimNodeHooks(g, c, s.info, c.idgen)
   var t: TEffects = initEffects(g, inferredEffects, s, c)
   rawInitEffects g, effects
 
@@ -1939,7 +1940,11 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if t.exc.len == 0 and not t.canRaiseDefect:
     s.incl sfNeverRaises
 
-  if s.kind != skMacro:
+  if s.kind == skMacro:
+    # the VM manages the NimNodes, strings and seqs of a macro also when it
+    # has no locals with lifted hooks (see `nkVarSection` above):
+    s.incl sfInjectDestructors
+  else:
     let params = s.typ.n
     for i in 1..<params.len:
       let param = params[i].sym

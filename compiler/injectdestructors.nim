@@ -234,6 +234,13 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
     addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
+proc vmManagesItself(c: Con; op: PSym; t: PType): bool {.inline.} =
+  ## --mm:refc lifts hooks without memory management for types without user
+  ## defined hooks; the VM manages their strings, seqs and NimNodes itself:
+  c.graph.vmInjecting and op != nil and sfGeneratedOp in op.flags and
+    optSeqDestructors notin c.graph.config.globalOptions and
+    tfHasAsgn notin t.flags
+
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = getAttachedOp(c.graph, t, kind)
   if op == nil or op.ast.isGenericRoutine:
@@ -242,11 +249,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
-  if c.graph.vmInjecting and op != nil and sfGeneratedOp in op.flags and
-      optSeqDestructors notin c.graph.config.globalOptions and
-      tfHasAsgn notin t.flags:
-    # --mm:refc lifts hooks without memory management for types without user
-    # defined hooks; the VM manages their strings and seqs itself:
+  if vmManagesItself(c, op, t):
     op = nil
   if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
     # The VM does not lift hooks: that could conflict with hooks that are
@@ -545,7 +548,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   let tmp = c.getTemp(s, nTyp, n.info, needsInit = false)
   let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
   let op = getAttachedOp(c.graph, typ, attachedDup)
-  if op != nil and tfHasOwned notin typ.flags:
+  if op != nil and tfHasOwned notin typ.flags and not vmManagesItself(c, op, typ):
     if sfError in op.flags:
       c.checkForErrorPragma(nTyp, n, "=dup")
     else:
@@ -1117,8 +1120,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[1] = p(n[1], c, s, sinkArg)
         dec c.inEnsureMove
       else:
+        # dynamic bindSym: (ident, rule, ..., info node, callback index);
+        # the info node is the call's AST, not code (see `transf`):
+        let args = if n[0].kind == nkSym and n[0].sym.magic == mNBindSym and n.len > 2: n.len-2
+                   else: n.len
         for i in 1..<n.len:
-          if i < L and isCompileTimeOnly(parameters[i]):
+          if i >= args or (i < L and isCompileTimeOnly(parameters[i])):
             result[i] = n[i]
           elif i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
             result[i] = p(ownedToUnowned(c, n[i], parameters[i]), c, s, sinkArg)
