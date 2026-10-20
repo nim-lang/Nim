@@ -146,6 +146,8 @@ type                          # please make sure we have under 32 options
                               # implementation
     optSpawnCodegen           # spawn a separate nim process for codegen
                               # to reclaim memory before C compilation
+    optMergeableCcode         # generated C code must be identical for all
+                              # targets so that niminst can merge it
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optBenchmarkVM            # Enables cpuTime() in the VM

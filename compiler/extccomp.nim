@@ -336,7 +336,7 @@ proc isVSCompatible*(conf: ConfigRef): bool =
           (conf.cCompiler == ccIcl and conf.target.hostOS in osDos..osWindows)
 
 proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
-  # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
+  # use ``cpu.os.cc`` for cross compilation, unless ``--mergeableCcode`` is given
   # for niminst support
   var fullSuffix = suffix
   case conf.backend
@@ -348,7 +348,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
     return ""
 
   if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
-      optCompileOnly notin conf.globalOptions:
+      optMergeableCcode notin conf.globalOptions:
     let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix

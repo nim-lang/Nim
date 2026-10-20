@@ -13,6 +13,13 @@
   illumos as Solaris; source distributions must regenerate their csources
   with the updated compiler and niminst.
 
+- `--compileOnly` no longer implies the host's C compiler settings and no
+  longer omits the `/* Compiled for ... */` header comment: cross compilation
+  settings (`cpu.os.cc.*`) are honored, which also fixes cross compilation with
+  `--spawnCodegen`. The old behavior, needed by niminst to generate C code that
+  can be shared among targets, is available via the new `--mergeableCcode`
+  switch.
+
 - `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
 floating point numbers that are minimal in size and possess round-trip and correct
 rounding guarantees (via the

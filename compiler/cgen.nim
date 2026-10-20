@@ -2295,7 +2295,7 @@ proc headerTop(): Rope =
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   result = headerTop()
-  if optCompileOnly notin conf.globalOptions:
+  if optMergeableCcode notin conf.globalOptions:
     result.add ("/* Compiled for: $1, $2, $3 */$N") %
         [rope(platform.OS[conf.target.targetOS].name),
         rope(platform.CPU[conf.target.targetCPU].name),
