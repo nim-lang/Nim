@@ -1408,7 +1408,11 @@ proc findEnforcedStaticType(t: PType): PType =
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro:
     let staticType = findEnforcedStaticType(param.typ)
-    if staticType != nil:
+    if param.kind == skResult:
+      # already a NimNode (see `maybeAddResult`); a copy would differ from
+      # the routine's result symbol that `return` and injectdestructors use:
+      addDecl(c, param)
+    elif staticType != nil:
       var a = copySym(param, c.idgen)
       a.typ = staticType.base
       addDecl(c, a)
@@ -2861,8 +2865,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyIterable, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
+    # its hooks count the VM's handle, see `liftdestructors.nimNodeOp`:
     incl m.typ, tfTriggersCompileTime
-    incl m.typ, tfCheckedForDestructor
   of mException: discard
   of mBuiltinType:
     case m.name.s

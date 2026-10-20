@@ -1120,11 +1120,35 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
+proc nimNodeOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  ## NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
+  ## time; the VM represents them as reference counted handles. `GC_ref` and
+  ## `GC_unref` of a NimNode count its handle.
+  case c.kind
+  of attachedAsgn, attachedDeepCopy:
+    # count first: `x` and `y` can be the same handle
+    body.add genBuiltin(c, mGCref, "GC_ref", y)
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+    body.add newAsgnStmt(x, y)
+  of attachedSink:
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+    body.add newAsgnStmt(x, y)
+  of attachedDup:
+    body.add genBuiltin(c, mGCref, "GC_ref", y)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+  of attachedWasMoved, attachedTrace:
+    defaultOp(c, t, body, x, y)
+
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if isNimNodeType(t):
-    # NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
-    # time; the VM represents them as handles, there is nothing to count:
-    defaultOp(c, t, body, x, y)
+    if optSeqDestructors in c.g.config.globalOptions:
+      nimNodeOp(c, t, body, x, y)
+    else:
+      # --mm:refc, JS: the VM counts NimNodes like it manages strings and
+      # seqs, without hooks, see `vmlayout.hasPayloads`:
+      defaultOp(c, t, body, x, y)
     return
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
@@ -1553,3 +1577,12 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     # on a possibly-`Sealed` foreign type (it used to write `flagsImpl` behind
     # the accessor's back precisely to dodge the seal assert).
     orig.inclDerived {tfHasAsgn}
+
+proc liftNimNodeHooks*(g: ModuleGraph; c: PContext; info: TLineInfo; idgen: IdGenerator) =
+  ## The hooks of NimNode count the VM's handles. Every routine that uses
+  ## NimNodes must see them, also a routine that only passes on its
+  ## parameters, so they are lifted before such routines are checked, not on
+  ## demand.
+  let nn = systemModuleSym(g, getIdent(g.cache, "NimNode"))
+  if nn != nil and nn.kind == skType and nn.typ != nil:
+    createTypeBoundOps(g, c, nn.typ, info, idgen)
