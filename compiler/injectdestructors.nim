@@ -1217,7 +1217,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
           let section = copyNode(n)
           section.add newTree(nkIdentDefs, v, it[1], newNodeI(nkEmpty, it.info))
           result.add section
-          result.add distributeAsgn(nkFastAsgn, v, ri, c, s)
+          # not 'nkFastAsgn': with refc that is a shallow seq/string copy
+          # and 'x' would alias the branch's location (bug #26512):
+          result.add distributeAsgn(nkAsgn, v, ri, c, s)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
