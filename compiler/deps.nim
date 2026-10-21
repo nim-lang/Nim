@@ -59,6 +59,7 @@ type
     implicitNodeIds: seq[int] # node IDs of `--import`ed modules (conf.implicitImports);
                               # every ordinary module implicitly imports these, so each
                               # gets a dependency edge on them, exactly like system.nim
+    nsRootIds: seq[int] # `nim ns`: node IDs of the `--nsRoot` modules; unknown files support
     scanningMain: bool # currently scanning the project main module's deps;
                        # makes `when isMainModule` conditions evaluate true
                        # only there (every other module is imported)
@@ -922,7 +923,7 @@ proc pruneDeadSpeculative(c: var DepContext) =
   let n = c.nodes.len
   if n == 0: return
 
-  var roots = @[0]
+  var roots = @[0] & c.nsRootIds
   if c.systemNodeId >= 0: roots.add c.systemNodeId
   for i in c.implicitNodeIds: roots.add i
 
@@ -1145,7 +1146,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "incremental", "ic", "symbolfiles", "genbif",
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
     "icsemdir", "icmainsemdir", "icmainmodule",
-    "icbackendstage", "icbackendmodule", "ismainmodule",
+    "icbackendstage", "icbackendmodule", "ismainmodule", "nsroot",
     "help", "h", "fullhelp", "version", "v", "advanced"]
   var positionalArgs = 0
   for a in commandLineParams():
@@ -1951,7 +1952,8 @@ proc reportToNimsuggest(c: DepContext; cacheDir: string; started: Time) =
   ## `nim ns`: writes `cacheDir/nimsuggest.txt`, one line each for where the
   ## semantic NIFs are, the precompiled config, every module this run checked
   ## (`icmodule:`) or could not (`icdeferred:`), so nimsuggest2 loads only NIFs
-  ## nifmake checked, and the files those modules include (`icinclude:`). Its
+  ## nifmake checked, the files those modules include (`icinclude:`) and the
+  ## `--nsRoot` modules (`icroot:`), so the next run builds them again. Its
   ## modification time is when this run started: a source newer than it changed
   ## after this run read it.
   var lines = @["icsemdir:" & c.config.icSemDir.string,
@@ -1960,6 +1962,8 @@ proc reportToNimsuggest(c: DepContext; cacheDir: string; started: Time) =
     lines.add (if node.deferred: "icdeferred:" else: "icmodule:") & node.files[0].nimFile
     for i in 1 ..< node.files.len:
       lines.add "icinclude:" & node.files[i].nimFile
+  for root in c.config.nsRoots:
+    if fileExists(root): lines.add "icroot:" & root
   let report = cacheDir / "nimsuggest.txt"
   writeFile(report & ".tmp", lines.join("\n"))
   setLastModificationTime(report & ".tmp", started)
@@ -2094,6 +2098,22 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
+    # `nim ns`: the other roots are built like the project file, as ordinary
+    # modules nothing imports.
+    for root in conf.nsRoots:
+      if not fileExists(root): continue
+      let pair = c.toPair(root)
+      var id = c.processedModules.getOrDefault(pair.modname, -1)
+      if id == -1:
+        let node = Node(files: @[pair], id: c.nodes.len)
+        if c.systemNodeId >= 0: node.deps.add c.systemNodeId
+        if getsImplicitImports(c, pair.nimFile):
+          for impId in c.implicitNodeIds: node.deps.add impId
+        c.nodes.add node
+        c.processedModules[pair.modname] = node.id
+        id = node.id
+        traverseDeps(c, pair, node)
+      c.nsRootIds.add id
     selectMainSemanticModules(c)
 
     # Cached imports belong to this configuration, including when returning to

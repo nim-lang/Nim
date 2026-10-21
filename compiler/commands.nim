@@ -1004,6 +1004,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     let dir = processPath(conf, arg, info, notRelativeToProj=true)
     if switch.normalize == "icsemdir": conf.icSemDir = dir
     else: conf.icMainSemDir = dir
+  of "nsroot":
+    # `nim ns` only: another module to build as a root (ie: unknow file), like the project file.
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      let root = canonicalizePath(conf, AbsoluteFile arg).string
+      if root notin conf.nsRoots: conf.nsRoots.add root
   of "icmainmodule":
     expectArg(conf, switch, arg, pass, info)
     if arg notin conf.icMainModules: conf.icMainModules.add arg
