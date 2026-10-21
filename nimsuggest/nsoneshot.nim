@@ -481,14 +481,24 @@ proc changedSince(report: string): bool =
       let f = line.substr(i + 1)
       if fileExists(f) and getLastModificationTime(f) > seen: return true
 
-proc runNimNs(graph: ModuleGraph) =
-  ## Brings the project's NIFs and `nsReport` up to date with `nim ns`. Modules
-  ## that fail to compile there are compiled from source by the queries; not
-  ## being able to run `nim ns` is an error.
+proc nsRoots(report: string): seq[string] =
+  ## The modules besides the project `nim ns` built as roots (`--nsRoot`).
+  ## For unknown files support.
+  result = @[]
+  if fileExists(report):
+    for line in readFile(report).splitLines:
+      if line.startsWith("icroot:"): result.add line.substr("icroot:".len)
+
+proc runNimNs(graph: ModuleGraph; roots: seq[string]) =
+  ## Brings the NIFs of the project and of `roots` and `nsReport` up to date
+  ## with `nim ns`. Modules that fail to compile there are compiled from source
+  ## by the queries; not being able to run `nim ns` is an error.
   let conf = graph.config
   let nim = getAppDir() / addFileExt("nim", ExeExt)
   let cache = getNimcacheDir(conf).string
-  let cmd = quoteShellCommand([nim, "ns", "--nimcache:" & cache, conf.projectFull.string])
+  var args = @[nim, "ns", "--nimcache:" & cache]
+  for root in roots: args.add "--nsRoot:" & root
+  let cmd = quoteShellCommand(args & conf.projectFull.string)
   template fail(msg: string) =
     stderr.writeLine "nimsuggest2: nim ns: " & msg
     quit 1
@@ -640,6 +650,11 @@ proc answerFromNif(graph: ModuleGraph; q: Query): bool =
     graph.suggestResult(sym, info)
   result = true
 
+proc isKnown(graph: ModuleGraph; fileIdx: FileIndex): bool =
+  ## Whether `nim ns` built `fileIdx`, or a module including it.
+  toFullPath(graph.config, fileIdx) in gNsModules or
+    graph.inclToMod.hasKey(fileIdx) or graph.registerIncluderFromNif(fileIdx)
+
 proc queryRoot(graph: ModuleGraph; q: Query): FileIndex =
   ## The module a command compiles: the project's main file for the commands
   ## about the whole project (`chk`, `globalSymbols`, `recompile`) or when it
@@ -699,7 +714,8 @@ proc oneShot*() =
   ## the module the command names is compiled from source like an import: no
   ## module is the main module. `changed` runs `nim ns`, and so does any
   ## command once a file it read was saved after its last run (a branch switch,
-  ## an edit outside the editor) or the config changed.
+  ## an edit outside the editor) or the config changed. A command about a file
+  ## `nim ns` did not build makes the file one of its roots and runs it.
   let
     cache = newIdentCache()
     conf = newConfigRef()
@@ -737,10 +753,12 @@ proc oneShot*() =
   let line = stdin.readLine()
   myLog "one-shot: " & line
   let q = parseQuery(line, conf)
-  if q.cmd == ideChanged or configChanged or not fileExists(nsReport(conf)) or
-      changedSince(nsReport(conf)):
-    runNimNs(graph)
-  useNsReport(graph, readFile(nsReport(conf)))
+  let report = nsReport(conf)
+  var roots = nsRoots(report)
+  if q.cmd == ideChanged or configChanged or not fileExists(report) or
+      changedSince(report):
+    runNimNs(graph, roots)
+  useNsReport(graph, readFile(report))
   case q.opc
   of "changed", "recompile", "quit":
     quit 0
@@ -748,14 +766,19 @@ proc oneShot*() =
     echo conf.projectFull.string
     quit 0
   of "known":
-    let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
-    echo toFullPath(conf, fileIdx) in gNsModules or
-      graph.inclToMod.hasKey(fileIdx) or graph.registerIncluderFromNif(fileIdx)
+    echo graph.isKnown(fileInfoIdx(conf, AbsoluteFile q.file))
     quit 0
   else: discard
   if q.cmd == ideNone:
     echo Help
     quit 0
+  if q.cmd notin {ideChk, ideGlobalSymbols, ideRecompile, ideOutline2} and
+      q.file.endsWith(".nim") and fileExists(q.file):
+    let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
+    if not graph.isKnown(fileIdx):
+      roots.add toFullPath(conf, fileIdx)
+      runNimNs(graph, roots)
+      useNsReport(graph, readFile(report))
 
   conf.setErrorMaxHighMaybe
   conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
