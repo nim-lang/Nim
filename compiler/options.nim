@@ -448,6 +448,9 @@ type
                      # `--ideImports:nif` opts in.
     ideNsNifs*: bool # nimsuggest2's one-shot: read only the NIFs `nim ns` built
                      # and verified, never write any.
+    nsRoots*: seq[string] # `nim ns`: modules built as roots besides the project
+                          # (`--nsRoot`), so nimsuggest2 has NIFs for files the
+                          # project does not import (unknown files).
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`
