@@ -1090,6 +1090,13 @@ proc docOfSym(sym: PSym): string =
   return ""
 
 proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
+  # A non-field sym reached from inside a reclist (e.g. a field type's `sym`, a
+  # type alias whose owner routine body uses the very fields being written) is
+  # not part of that reclist: field uses in it must not claim the reclist's
+  # field defs, otherwise the owning type's own entry degrades to a `SymUse`
+  # and loads as an owner-less stub (#26489).
+  let savedReclist = w.inTypeReclist
+  if sym.kindImpl != skField: w.inTypeReclist = 0
   dest.addParLe sdefTag, nifLineInfoWithComment(w.infos, sym.infoImpl, docOfSym(sym))
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   # The index visibility marker is still used by tooling and interface
@@ -1176,6 +1183,7 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
   else:
     dest.addDotToken
   dest.addParRi
+  w.inTypeReclist = savedReclist
 
 
 proc shouldWriteSymDef(w: var Writer; sym: PSym): bool {.inline.} =
