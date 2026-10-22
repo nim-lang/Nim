@@ -1302,6 +1302,27 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     fillBody(c, skipModifier(t), body, x, y)
   of tyConcept, tyIterable: raiseAssert "unreachable"
 
+proc canonicalType(g: ModuleGraph; t: PType): PType =
+  ## The type whose hooks every type equal to `t` shares.
+  ##
+  ## Under `--parsem:on`, two types that are one by the content key the hooks
+  ## are NAMED by (`setHookDisamb`) but two by the signature hash used to get a
+  ## hook each, both claiming one name, and which of them was probed to the
+  ## next number depended on which unit lifted first. So a type that the
+  ## content key finds is taken when it is the same type — the key alone is
+  ## no identity: the lifted environments of two closures are anonymous
+  ## objects that it does not tell apart.
+  let h = sighashes.hashType(t, g.config, {CoType, CoConsiderOwned, CoDistinct})
+  result = g.canonTypes.getOrDefault(h)
+  if result == nil:
+    if optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
+      let k = typeContentHash(g, t)
+      let other = g.canonTypes.getOrDefault(k)
+      if other == nil: g.canonTypes[k] = t
+      elif sameType(other, t): result = other
+    if result == nil: result = t
+    g.canonTypes[h] = result
+
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo;
                             idgen: IdGenerator): PSym =
@@ -1312,12 +1333,7 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
     # the base's hook is the one of its canonical type, as for any other
     # use (`createTypeBoundOps`), not one of its own that merely shares the
     # canonical type's name
-    let skipped = baseType.skipTypes({tyGenericInst, tyAlias, tySink})
-    let h = typeContentHash(g, skipped)
-    var canon = g.canonTypes.getOrDefault(h)
-    if canon == nil:
-      g.canonTypes[h] = skipped
-      canon = skipped
+    let canon = canonicalType(g, baseType.skipTypes({tyGenericInst, tyAlias, tySink}))
     if getAttachedOp(g, canon, kind) == nil:
       discard produceSym(g, c, canon, kind, info, idgen)
     setAttachedOp(g, idgen.module, baseType, kind, getAttachedOp(g, canon, kind))
@@ -1625,18 +1641,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
 
-  # Under `--parsem:on` the canonical type is found by the key the hooks are
-  # NAMED by: two types that are one for `setHookDisamb` but two for the
-  # signature hash got a hook each, both claiming one name, and which of them
-  # was probed to the next number depended on which unit lifted first.
-  let h = if optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
-            typeContentHash(g, skipped)
-          else:
-            sighashes.hashType(skipped, g.config, {CoType, CoConsiderOwned, CoDistinct})
-  var canon = g.canonTypes.getOrDefault(h)
-  if canon == nil:
-    g.canonTypes[h] = skipped
-    canon = skipped
+  let canon = canonicalType(g, skipped)
 
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
