@@ -2719,6 +2719,91 @@ proc enqueueBodyTask(c: PContext; s: PSym; n: PNode; resultType: PType;
     friendModules: c.friendModules,
     errorOutputs: c.config.m.errorOutputs)
 
+proc solveCycle(c: PContext; members: seq[int]) =
+  ## The effects of a cycle of units: routines that need each other's bodies,
+  ## mutual recursion without forward declarations, typically. Whichever of
+  ## them ran first saw the others' effects as they were at that moment, and
+  ## which one that is depends on who demanded what — so none of them
+  ## published (`deferEffects`). Here they are solved together: starting
+  ## from no effects, every member is tracked again, in key order, until
+  ## nothing grows. That is the least solution, what every member would get if
+  ## the others' effects had been known up front, and it does not depend on
+  ## the order the units ran in. Then each one checks its declared effects
+  ## against it and publishes.
+  ##
+  ## The extra rounds are silent: the first tracking reported what tracking
+  ## reports, and the declared-effect checks wait for `publishMember`.
+  ##
+  ## Routines that are not units but read a member's provisional effects
+  ## (`deferRoutineEffects`: an instance calling back into the cycle) are
+  ## solved along with the unit they were tracked in.
+  var units = members
+  units.sort()
+  # (unit index, routine): -1 for the unit's own routine, else the position
+  # in its `cycleRoutines`
+  var order: seq[tuple[unit, extra: int]] = @[]
+  for u in units:
+    if c.bodyTasks[u].effectsDeferred: order.add (u, -1)
+    for e in 0..<c.bodyTasks[u].cycleRoutines.len: order.add (u, e)
+  if order.len == 0:
+    for m in members: c.bodyTasks[m].onStack = false
+    return
+  var cycle = newSeq[CycleMember](order.len)
+
+  template asMember(k: int; body: untyped) =
+    let task = addr c.bodyTasks[order[k].unit]
+    let savedOptions = c.config.options
+    let savedNotes = c.config.notes
+    let savedWarningAsErrors = c.config.warningAsErrors
+    let savedFeatures = c.features
+    let savedCurrentUnit = c.currentUnit
+    let savedArena = reenterUnitArena(c.idgen, order[k].unit, move task.arenaTable)
+    c.currentUnit = order[k].unit
+    c.config.options = task.options
+    c.config.notes = task.notes
+    c.config.warningAsErrors = task.warningAsErrors
+    c.features = task.features
+    try:
+      body
+    finally:
+      task.arenaTable = move c.idgen.disambTable
+      leaveArena(c.idgen, savedArena)
+      c.currentUnit = savedCurrentUnit
+      c.config.options = savedOptions
+      c.config.notes = savedNotes
+      c.config.warningAsErrors = savedWarningAsErrors
+      c.features = savedFeatures
+
+  for k in 0..<order.len:
+    let task = addr c.bodyTasks[order[k].unit]
+    if order[k].extra < 0:
+      cycle[k] = initCycleMember(c, task.owner, task.owner.ast[bodyPos],
+                                 task.declGcSafe, task.declNoSideEffect)
+    else:
+      let r = task.cycleRoutines[order[k].extra]
+      cycle[k] = initCycleMember(c, r.s, r.s.ast[bodyPos],
+                                 r.declGcSafe, r.declNoSideEffect)
+  let savedErrorOutputs = c.config.m.errorOutputs
+  let savedErrorCounter = c.config.errorCounter
+  let savedErrorMax = c.config.errorMax
+  c.config.m.errorOutputs = {}
+  c.config.errorMax = high(int)
+  try:
+    var changed = true
+    while changed:
+      changed = false
+      for k in 0..<order.len:
+        asMember(k):
+          if retrackMember(c, cycle[k]): changed = true
+  finally:
+    c.config.m.errorOutputs = savedErrorOutputs
+    c.config.errorCounter = savedErrorCounter
+    c.config.errorMax = savedErrorMax
+    for m in members: c.bodyTasks[m].onStack = false
+  for k in 0..<order.len:
+    asMember(k):
+      publishMember(c, cycle[k])
+
 proc runBodyTask(c: PContext; idx: int) =
   ## Re-attaches one unit's positional state, sems it, and detaches again.
   ##
@@ -2729,6 +2814,18 @@ proc runBodyTask(c: PContext; idx: int) =
   ## neither the state of whoever demanded it nor leave any behind.
   if c.bodyTasks[idx].state != btPending: return
   c.bodyTasks[idx].state = btRunning
+  let parSem = optParSem in c.config.globalOptions
+  if parSem:
+    # a new node of the demand graph (`solveCycle`)
+    let owner = c.bodyTasks[idx].owner
+    c.bodyTasks[idx].tarjanIndex = c.tarjanCounter
+    c.bodyTasks[idx].lowlink = c.tarjanCounter
+    inc c.tarjanCounter
+    c.bodyTasks[idx].onStack = true
+    c.tarjanStack.add idx
+    c.bodyTasks[idx].declGcSafe = owner.typ != nil and tfGcSafe in owner.typ.flags
+    c.bodyTasks[idx].declNoSideEffect = owner.typ != nil and
+      tfNoSideEffect in owner.typ.flags
   let
     savedScope = c.currentScope
     savedProcCon = c.p
@@ -2759,8 +2856,15 @@ proc runBodyTask(c: PContext; idx: int) =
     savedInUncheckedAccess = c.inUncheckedAccess
     savedLastTLineInfo = c.lastTLineInfo
     savedCurrentUnit = c.currentUnit
+    savedTemplInstCounter = c.templInstCounter[]
   let t = c.bodyTasks[idx]
   c.currentUnit = idx
+  # §4.2: names minted inside the unit come from its own arena, whoever ran
+  # before it. Not for a cycle group's units, which keep today's names.
+  var savedArena = default(ArenaState)
+  if parSem:
+    savedArena = enterUnitArena(c.idgen, idx)
+    c.templInstCounter[] = 0
   c.currentScope = t.scope
   c.p = t.procCon
   c.p.next = savedProcCon
@@ -2800,8 +2904,27 @@ proc runBodyTask(c: PContext; idx: int) =
     # so the unused-symbol check has to wait for the body that uses them. The
     # scope is re-attached right now, so plain `closeScope` is that check.
     closeScope(c)
+    if parSem:
+      c.bodyTasks[idx].arenaTable = move c.idgen.disambTable
+      c.idgen.disambTable = initCountTable[PIdent]()
+      if c.bodyTasks[idx].lowlink == c.bodyTasks[idx].tarjanIndex:
+        # the root of a cycle of units: everything above it on the stack is
+        # in the cycle, and the cycle is closed now
+        var members: seq[int] = @[]
+        while true:
+          let m = c.tarjanStack.pop()
+          members.add m
+          if m == idx: break
+        solveCycle(c, members)
   finally:
     c.bodyTasks[idx].state = btDone
+    if parSem and c.bodyTasks[idx].onStack and
+        c.bodyTasks[idx].lowlink == c.bodyTasks[idx].tarjanIndex:
+      # left by an error: close the cycle without solving it
+      while c.tarjanStack.len > 0:
+        let m = c.tarjanStack.pop()
+        c.bodyTasks[m].onStack = false
+        if m == idx: break
     if savedCompilesContextId > 0 and c.config.errorCounter > savedErrorCounter:
       # `tryExpr` rolls the counter back; keep the unit's errors failing the
       # build all the same (`closePContext` adds them back).
@@ -2834,6 +2957,9 @@ proc runBodyTask(c: PContext; idx: int) =
     c.inUncheckedAccess = savedInUncheckedAccess
     c.lastTLineInfo = savedLastTLineInfo
     c.currentUnit = savedCurrentUnit
+    if parSem:
+      leaveArena(c.idgen, savedArena)
+      c.templInstCounter[] = savedTemplInstCounter
 
 proc keepsForwardSemantics(c: PContext; prc: PSym; idx: int): bool =
   ## A routine that was forward declared, and whose implementation comes after
@@ -2863,6 +2989,15 @@ proc demandRoutineBody(c: PContext; prc: PSym; forEffects: bool): bool =
   if idx >= 0:
     result = forEffects and keepsForwardSemantics(c, prc, idx)
     if not result: runBodyTask(c, idx)
+    let cur = c.currentUnit
+    if not result and cur >= 0 and c.bodyTasks[idx].onStack and
+        optParSem in c.config.globalOptions:
+      # an edge of the demand graph into a cycle that is not closed yet: the
+      # demanding unit is part of it (`solveCycle`). A forward declaration
+      # that keeps its semantics is no edge: it is what cuts a cycle at the
+      # place the programmer chose.
+      c.bodyTasks[cur].lowlink = min(c.bodyTasks[cur].lowlink,
+                                     c.bodyTasks[idx].lowlink)
   elif c.prevDemandRoutineBody != nil:
     result = c.prevDemandRoutineBody(prc, forEffects)
   else:
@@ -2918,6 +3053,16 @@ proc drainBodyTasks*(c: PContext) =
   ## The body pass. In key order, which is simply front to back: the header
   ## pass appended in source order and the on-demand path only ever marks
   ## entries done early, never reorders them.
+  ##
+  ## `-d:nimParsemGrind` drains back to front instead: a schedule that differs
+  ## from the reference one as much as possible, for checking that the output
+  ## does not depend on the order units run in (§5's grinder, one worker).
+  when defined(nimParsemGrind):
+    var j = c.bodyTasks.len - 1
+    while j >= 0:
+      runBodyTask(c, j)
+      dec j
+    # a unit can enqueue nothing today; if one ever does, finish in key order
   var i = 0
   while i < c.bodyTasks.len:
     # not a `for`: a unit's body can enqueue nothing (nested routines are not

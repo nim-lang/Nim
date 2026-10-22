@@ -528,6 +528,26 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   defer:
     dec c.instCounter
     c.inTypeofContext = currentTypeofContext
+  # `--parsem:on` (doc/parallel_compiler.md §4.2): what the instance mints is
+  # named from its own arena, keyed by the instantiation, not from the arena of
+  # the unit that happened to need it first. The key needs the concrete types,
+  # so everything up to the cache lookup mints into a scratch arena first.
+  var arenaSaved = default(ArenaState)
+  var arenaMode = 0 # 0: none, 1: scratch, 2: the instance's own
+  var savedTemplInstCounter = 0
+  if optParSem in c.config.globalOptions:
+    arenaSaved = enterScratchArena(c.idgen)
+    arenaMode = 1
+  defer:
+    case arenaMode
+    of 1:
+      # a cache hit (or an error): the symbols minted are counted where they
+      # would have been without arenas
+      for s in leaveScratchArena(c.idgen, arenaSaved): redisamb(c.idgen, s)
+    of 2:
+      leaveArena(c.idgen, arenaSaved)
+      c.templInstCounter[] = savedTemplInstCounter
+    else: discard
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   let producer = getModule(fn)
@@ -593,6 +613,19 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     incl(result, sfCompileTime)
   var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
   if oldPrc == nil:
+    if arenaMode == 1 and c.compilesContextId > 0:
+      # inside `compiles()` the instance is not canonical (see
+      # `setInstanceDisamb`): counted where it would be without arenas
+      for s in leaveScratchArena(c.idgen, arenaSaved): redisamb(c.idgen, s)
+      arenaMode = 0
+    elif arenaMode == 1:
+      let minted = leaveScratchArena(c.idgen, arenaSaved)
+      arenaSaved = enterKeyedArena(c.idgen,
+        instanceArenaKey(c.graph, fn, entry.concreteTypes))
+      arenaMode = 2
+      for s in minted: redisamb(c.idgen, s)
+      savedTemplInstCounter = c.templInstCounter[]
+      c.templInstCounter[] = 0
     # The signature has to be instantiated before the cache can be queried,
     # but cache hits don't need a private copy of the generic's full AST.
     var n = copyTree(fn.ast)
@@ -614,7 +647,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     # Under IC the instance's NIF name must be canonical across modules:
     # derive its `disamb` from the instantiation identity (generic +
     # concrete types) instead of the per-module counter.
-    setInstanceDisamb(c.graph, result, fn, entry.concreteTypes)
+    setInstanceDisamb(c.graph, result, fn, entry.concreteTypes,
+                      inCompiles = c.compilesContextId > 0)
     # bug #12985 bug #22913
     # TODO: use the context of the declaration of generic functions instead
     # TODO: consider fixing options as well

@@ -146,6 +146,19 @@ type
                                 ## the expanding module, as at its declaration
     errorOutputs*: TErrorOutputs ## the module's, so that a unit demanded
                                  ## inside `compiles()` still reports
+    tarjanIndex*, lowlink*: int  ## the cycles of units (`solveCycle`) are the
+                                 ## strongly connected components of the
+                                 ## demands, found by Tarjan's algorithm
+    onStack*: bool               ## on `tarjanStack`: its cycle is not closed
+                                 ## yet, so its effects are provisional
+    effectsDeferred*: bool       ## `trackProc` left the effects to `solveCycle`
+    declGcSafe*, declNoSideEffect*: bool ## as declared, before any inference
+    cycleRoutines*: seq[tuple[s: PSym; declGcSafe, declNoSideEffect: bool]]
+      ## routines that are not units (instances, nested routines) whose
+      ## tracking inside this unit met a unit of an open cycle: they are
+      ## solved with the cycle (`solveCycle`)
+    arenaTable*: CountTable[PIdent] ## the unit's `disamb` arena, kept for
+                                    ## `solveCycle`, which mints again
 
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
@@ -279,6 +292,9 @@ type
       # routines (by `id`) whose transitively reachable units are all done; a
       # compile-time evaluation does not have to walk them again
       # (`demandReachableBodies`).
+    tarjanCounter*: int
+    tarjanStack*: seq[int]
+      # units whose cycle is not closed yet (`solveCycle`)
     unitErrorsInCompiles*: int
       # errors of units that were demanded inside `compiles()`, whose
       # `tryExpr` rolled the error counter back; re-added by `closePContext`.
@@ -296,6 +312,41 @@ type
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
 
 template config*(c: PContext): ConfigRef = c.graph.config
+
+proc isProvisionalUnit*(c: PContext; s: PSym): bool =
+  ## `--parsem:on`: `s` is a unit of a cycle of units that is not closed yet,
+  ## so its effects are not final (`semstmts.solveCycle`)
+  let idx = c.bodyTaskIndex.getOrDefault(s.itemId, -1)
+  result = idx >= 0 and c.bodyTasks[idx].onStack
+
+proc declaredUnitFlags*(c: PContext; s: PSym): (bool, bool) =
+  ## `.gcsafe` and `.noSideEffect` of `s` as declared, before inference
+  let idx = c.bodyTaskIndex.getOrDefault(s.itemId, -1)
+  if idx >= 0 and c.bodyTasks[idx].state != btPending:
+    result = (c.bodyTasks[idx].declGcSafe, c.bodyTasks[idx].declNoSideEffect)
+  else:
+    result = (tfGcSafe in s.typ.flags, tfNoSideEffect in s.typ.flags)
+
+proc deferEffects*(c: PContext; s: PSym): bool =
+  ## Called by `trackProc` once `s`'s body is tracked: when `s` is the running
+  ## unit and its cycle of units is still open (it reached a unit below it on
+  ## `tarjanStack`, or units above it reached one), its effects are left to
+  ## `solveCycle`.
+  let idx = c.currentUnit
+  result = idx >= 0 and c.bodyTasks[idx].owner == s and
+    c.bodyTasks[idx].state == btRunning and c.bodyTasks[idx].onStack and
+    (c.bodyTasks[idx].lowlink < c.bodyTasks[idx].tarjanIndex or
+     c.tarjanStack[^1] != idx)
+  if result:
+    c.bodyTasks[idx].effectsDeferred = true
+
+proc deferRoutineEffects*(c: PContext; s: PSym; declGcSafe, declNoSideEffect: bool): bool =
+  ## A routine that is not a unit met a unit of an open cycle while it was
+  ## tracked: it joins the cycle of the unit it is tracked in.
+  let idx = c.currentUnit
+  result = idx >= 0 and idx < c.bodyTasks.len and c.bodyTasks[idx].onStack
+  if result:
+    c.bodyTasks[idx].cycleRoutines.add (s, declGcSafe, declNoSideEffect)
 
 proc getIntLitType*(c: PContext; literal: PNode): PType =
   # we cache some common integer literal types for performance:
