@@ -253,6 +253,15 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- The new switch `--compileTime:restricted` limits what compiling a project
+  can do: compile-time code runs only the command lines given with
+  `--staticExecWhitelist:"<command line>"`, reads only below the project, `--path`,
+  nimble package and Nim `lib` directories, and cannot write files or change
+  the environment; configuration files of the project and its parent
+  directories are not read. The default, `--compileTime:normal`, is unchanged.
+  `{.passC.}`, `{.passL.}`, `{.compile.}`, `{.link.}` and `getEnv` are not
+  covered. See "Compiling code you have not read" in the compiler user guide.
+
 - An import annotated with `{.cyclic.}` (`import b {.cyclic.}`) makes the
   modules of an import cycle a group whose types and leading routines are
   visible to each other regardless of declaration order, so procs of different

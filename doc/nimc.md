@@ -228,6 +228,9 @@ directories (in this order; later files overwrite previous settings):
 
 Command-line settings have priority over configuration file settings.
 
+With `--compileTime:restricted`:option: only the files of 1) and 2) are read;
+see [Compiling code you have not read].
+
 The default build of a project is a `debug build`:idx:. To compile a
 `release build`:idx: define the `release` symbol:
 
@@ -240,6 +243,46 @@ To compile a `dangerous release build`:idx: define the `danger` symbol:
   ```cmd
   nim c -d:danger myproject.nim
   ```
+
+
+Compiling code you have not read
+--------------------------------
+
+Compiling a Nim project can run code: macros and `static` blocks run at
+compile time and can call `staticExec`, `gorgeEx`, `readFile`, `writeFile`,
+`putEnv` and similar procs; configuration files (``nim.cfg`` included, through
+settings like ``gcc.exe`` and ``@putenv``) and NimScript files can run
+commands too. The `--compileTime:restricted`:option: switch limits this, for
+example when a tool compiles code nobody has reviewed:
+
+- `staticExec`, `gorge` and `gorgeEx` run only the command lines given with
+  `--staticExecWhitelist`:option:, compared as whole strings
+  (``--staticExecWhitelist:"git rev-parse HEAD"``). Any other command is a
+  compile-time error that names it. Allowing a program by name would not be
+  enough, as most programs have options that run other commands.
+- `staticRead`/`slurp`, `readFile`, `readLines`, `fileExists`, `dirExists`
+  and the procs of `std/staticos` read only below the project directory, the
+  `--path`:option: and nimble package directories and Nim's ``lib``
+  directory, after symbolic links are resolved. Other paths are compile-time
+  errors.
+- `writeFile`, `createDir`, `putEnv` and `delEnv` at compile time, and the
+  NimScript procs that change files or the environment, are errors.
+- Configuration files of the project and its parent directories
+  (``nim.cfg``, ``config.nims``, ``$project.nims``, ``$project.nim.cfg``)
+  are not read. The system and user configuration and the command line still
+  apply, so `--compileTime`:option: and `--staticExecWhitelist`:option: can only
+  come from them. A NimScript file named on the command line still runs.
+- `--experimental:vmopsDanger`:option: cannot be combined with it.
+
+`nim check`:cmd: and nimsuggest keep skipping `staticExec` and the procs that
+write files, with or without the switch.
+
+The switch does not cover: the `{.passC.}`, `{.passL.}`, `{.compile.}` and
+`{.link.}` pragmas, which hand flags and files to the C compiler and linker;
+`getEnv`, which can embed environment variables (secrets) into the program;
+`include` and `import` of files outside the directories above; on Windows,
+symbolic links in the paths read are not resolved; and whatever a package
+manager does before it starts the compiler.
 
 
 Search path handling
