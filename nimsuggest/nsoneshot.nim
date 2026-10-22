@@ -41,6 +41,7 @@ Options:
     --info:protocolVer      return the newest protocol version that is supported
     --info:capabilities     return the capabilities supported by nimsuggest2
   --maxresults:N          limit the number of suggestions to N
+  --parallelBuild:N       build the NIFs with at most N jobs, like `nim ic`
 
 In addition, all command line options of Nim that do not affect code generation
 are supported.
@@ -50,6 +51,7 @@ var
   gLogging = defined(logging)
   gRoot = InvalidFileIdx # the module a one-shot command compiles
   gNsModules: HashSet[string] # the project's modules, as `nim ns` reported them
+  gParallelBuild = "" # `--parallelBuild`'s value, passed on to `nim ns`
 
 proc myLog(s: string) =
   if gLogging: log(s)
@@ -498,6 +500,7 @@ proc runNimNs(graph: ModuleGraph; roots: seq[string]) =
   let cache = getNimcacheDir(conf).string
   var args = @[nim, "ns", "--nimcache:" & cache]
   for root in roots: args.add "--nsRoot:" & root
+  if gParallelBuild.len > 0: args.add "--parallelBuild:" & gParallelBuild
   let cmd = quoteShellCommand(args & conf.projectFull.string)
   template fail(msg: string) =
     stderr.writeLine "nimsuggest2: nim ns: " & msg
@@ -699,6 +702,9 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "log": gLogging = true
       of "maxresults":
         conf.suggestMaxResults = parseInt(p.val)
+      of "parallelbuild":
+        processSwitch(pass, p, conf)
+        gParallelBuild = p.val
       else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
