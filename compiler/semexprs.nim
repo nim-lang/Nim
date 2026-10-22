@@ -1734,7 +1734,14 @@ proc dotTransformation(c: PContext, n: PNode, initialDerefs: int): PNode =
     # undo the derefs for overload resolution
     for _ in initialDerefs ..< currentDerefs:
       root = root[0]
+  # an operand that was resolved to a concrete type must not be semchecked
+  # again by overload resolution: that is not idempotent and can turn a `var`
+  # argument into a by-value one (#26521). `copyTree` does not keep `nfSem`.
+  # Symchoices etc. still need to be resolved (and reported as ambiguous):
+  let keepSem = nfSem in root.flags and root.kind notin nkSymChoices and
+    root.typ != nil and root.typ.kind notin {tyNone, tyError, tyFromExpr}
   root = copyTree(root)
+  if keepSem: root.flags.incl nfSem
   if isSymChoice(n[1]) or
       # generics usually leave field names as symchoices, but not types
       (n[1].kind == nkSym and n[1].sym.kind == skType):
