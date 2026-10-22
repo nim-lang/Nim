@@ -673,6 +673,14 @@ proc pathRelativeToConfig(arg: string, pass: TCmdLinePass, conf: ConfigRef): str
   else:
     result = arg
 
+proc checkVmopsDangerConflict(conf: ConfigRef; info: TLineInfo) =
+  # vmopsDanger enables `execCmdEx` at compile time, which bypasses the
+  # `--staticExecWhitelist`
+  if vmopsDanger in conf.features and conf.compileTimeMode == ctmRestricted:
+    liMessage(conf, info, errGenerated,
+      "--experimental:vmopsDanger cannot be combined with --compileTime:restricted",
+      doAbort, instLoc())
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var key = ""
@@ -1082,6 +1090,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs:
       # for now, -r uses nodejs, so define nodejs
       defineSymbol(conf.symbols, "nodejs")
+  of "compiletime":
+    expectArg(conf, switch, arg, pass, info)
+    case arg.normalize
+    of "normal": conf.compileTimeMode = ctmNormal
+    of "restricted": conf.compileTimeMode = ctmRestricted
+    else: localError(conf, info, "expected 'normal' or 'restricted' but found '$1'" % arg)
+    checkVmopsDangerConflict(conf, info)
+  of "staticexecwhitelist":
+    expectArg(conf, switch, arg, pass, info)
+    if arg notin conf.staticExecWhitelist: conf.staticExecWhitelist.add arg
   of "maxloopiterationsvm":
     expectArg(conf, switch, arg, pass, info)
     var value: int = 10_000_000
@@ -1251,6 +1269,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.features.incl parseEnum[Feature](arg)
       except ValueError:
         localError(conf, info, "unknown experimental feature")
+      checkVmopsDangerConflict(conf, info)
   of "legacy":
     try:
       conf.legacyFeatures.incl parseEnum[LegacyFeature](arg)

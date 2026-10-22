@@ -28,7 +28,18 @@ proc readOutput(p: Process): (string, int) =
     result[0].setLen(result[0].len - "\n".len)
   result[1] = p.waitForExit
 
+proc checkCommandAllowed*(conf: ConfigRef; cmd: string; info: TLineInfo) =
+  ## Under `--compileTime:restricted`, compile-time code runs only the command
+  ## lines given with `--staticExecWhitelist`, compared as whole strings: allowing a
+  ## program by name would allow its options that run other commands
+  ## (`sh -c`, `git -c alias.x=!cmd`).
+  if compileTimeEffects(conf, skippedByCheck = false) == cteRestrict and
+      cmd notin conf.staticExecWhitelist:
+    globalError(conf, info, "command refused by --compileTime:restricted, " &
+      "it is not in --staticExecWhitelist: '" & cmd & "'")
+
 proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (string, int) =
+  checkCommandAllowed(conf, cmd, info) # before the cache: a cached result is still a run
   let workingDir = parentDir(toFullPath(conf, info))
   result = ("", 0)
   if cache.len > 0:

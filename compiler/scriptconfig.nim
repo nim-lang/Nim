@@ -12,7 +12,7 @@
 
 import
   ast, modules, idents, condsyms,
-  options, llstream, vm, vmdef, commands,
+  options, llstream, vm, vmdef, vmdeps, gorgeimpl, commands,
   wordrecg, modulegraphs, lineinfos,
   pathutils, pipelines
 
@@ -60,6 +60,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   template cbos(name, body) {.dirty.} =
     cbexc(name, OSError, body)
 
+  template effect(name: string; skippedByCheck: bool; body) {.dirty.} =
+    ## `body` changes files or the environment; see `compileTimeEffects`.
+    case compileTimeEffects(conf, skippedByCheck)
+    of cteSkip: discard
+    of cteRestrict: refuseCompileTimeEffect(conf, a.currentLineInfo, name)
+    of cteRun: body
+
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
   cbos listFilesImpl:
@@ -67,17 +74,14 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos listDirsImpl:
     listDirs(a, {pcDir})
   cbos removeDir:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
+    effect("removeDir", skippedByCheck = true):
       os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
+    effect("removeFile", skippedByCheck = true):
       os.removeFile getString(a, 0)
   cbos createDir:
-    os.createDir getString(a, 0)
+    effect("createDir", skippedByCheck = false):
+      os.createDir getString(a, 0)
 
   result.registerCallback "stdlib.system.getError",
     proc (a: VmArgs) = setResult(a, errorMsg)
@@ -87,24 +91,16 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos getCurrentDir:
     setResult(a, os.getCurrentDir())
   cbos moveFile:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
+    effect("moveFile", skippedByCheck = true):
       os.moveFile(getString(a, 0), getString(a, 1))
   cbos moveDir:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
+    effect("moveDir", skippedByCheck = true):
       os.moveDir(getString(a, 0), getString(a, 1))
   cbos copyFile:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
+    effect("copyFile", skippedByCheck = true):
       os.copyFile(getString(a, 0), getString(a, 1))
   cbos copyDir:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
+    effect("copyDir", skippedByCheck = true):
       os.copyDir(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
     setResult(a, getLastModificationTime(getString(a, 0)).toUnix)
@@ -112,9 +108,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.findExe(getString(a, 0)))
 
   cbos rawExec:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
-      discard
-    else:
+    if compileTimeEffects(conf) != cteSkip:
+      checkCommandAllowed(conf, getString(a, 0), a.currentLineInfo)
       setResult(a, osproc.execCmd getString(a, 0))
 
   cbconf getEnv:
@@ -122,9 +117,11 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf existsEnv:
     setResult(a, os.existsEnv(a.getString 0))
   cbconf putEnv:
-    os.putEnv(a.getString 0, a.getString 1)
+    effect("putEnv", skippedByCheck = false):
+      os.putEnv(a.getString 0, a.getString 1)
   cbconf delEnv:
-    os.delEnv(a.getString 0)
+    effect("delEnv", skippedByCheck = false):
+      os.delEnv(a.getString 0)
   cbconf dirExists:
     setResult(a, os.dirExists(a.getString 0))
   cbconf fileExists:
@@ -183,12 +180,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+    if compileTimeEffects(conf) == cteSkip:
       setResult(a, "")
     else:
       setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
-    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+    if compileTimeEffects(conf) == cteSkip:
       setResult(a, "")
     else:
       setResult(a, stdin.readAll())

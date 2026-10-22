@@ -15,6 +15,10 @@ import std/os
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
+proc refuseCompileTimeEffect*(conf: ConfigRef; info: TLineInfo; op: string) =
+  ## The error for a call that `compileTimeEffects` answers with `cteRestrict`.
+  globalError(conf, info, "'" & op & "' refused by --compileTime:restricted")
+
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
     var filename = parentDir(toFullPath(conf, info)) / file

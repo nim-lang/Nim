@@ -105,35 +105,23 @@ template wrap2si(op, modop) {.dirty.} =
     setResult(a, op(getString(a, 0), getInt(a, 1)))
   modop op
 
-template wrap1svoid(op, modop) {.dirty.} =
-  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-    op(getString(a, 0))
-  modop op
-
-template wrap2svoid(op, modop) {.dirty.} =
-  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-    op(getString(a, 0), getString(a, 1))
-  modop op
-
-template wrapDangerous1svoid(op, modop) {.dirty.} =
-  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
-    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-      discard
-    modop op
-  else:
-    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-      op(getString(a, 0))
-    modop op
-
-template wrapDangerous2svoid(op, modop) {.dirty.} =
-  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
-    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-      discard
-    modop op
-  else:
-    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-      op(getString(a, 0), getString(a, 1))
-    modop op
+template wrapEffect(op, modop: untyped; skippedByCheck: bool; call: untyped) {.dirty.} =
+  ## Registers `op`, which changes files or the environment, under the policy of
+  ## `compileTimeEffects`.
+  block:
+    let policy = compileTimeEffects(c.config, skippedByCheck)
+    if policy == cteRestrict:
+      proc `op Wrapper`(a: VmArgs) =
+        refuseCompileTimeEffect(c.config, a.currentLineInfo, astToStr(op))
+      modop op
+    elif policy == cteSkip and vmopsDanger notin c.config.features:
+      proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+        discard
+      modop op
+    else: # cteRun, or cteSkip overridden by vmopsDanger
+      proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+        call
+      modop op
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, currentExceptionMsg(a.ctx, a.currentException))
@@ -254,12 +242,14 @@ proc registerAdditionalOps*(c: PCtx) =
   when defined(nimcore):
     wrap2s(getEnv, envvarsop)
     wrap1s(existsEnv, envvarsop)
-    wrap2svoid(putEnv, envvarsop)
-    wrap1svoid(delEnv, envvarsop)
+    wrapEffect(putEnv, envvarsop, skippedByCheck = false,
+               putEnv(getString(a, 0), getString(a, 1)))
+    wrapEffect(delEnv, envvarsop, skippedByCheck = false, delEnv(getString(a, 0)))
     wrap1s(dirExists, oscommonop)
     wrap1s(fileExists, oscommonop)
-    wrapDangerous2svoid(writeFile, ioop)
-    wrapDangerous1svoid(createDir, osdirsop)
+    wrapEffect(writeFile, ioop, skippedByCheck = true,
+               writeFile(getString(a, 0), getString(a, 1)))
+    wrapEffect(createDir, osdirsop, skippedByCheck = true, createDir(getString(a, 0)))
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
@@ -276,8 +266,8 @@ proc registerAdditionalOps*(c: PCtx) =
     registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
       setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
 
-    if defined(nimsuggest) or c.config.cmd == cmdCheck:
-      discard "don't run staticExec for 'nim suggest'"
+    if compileTimeEffects(c.config) == cteSkip:
+      discard "don't run staticExec for 'nim check' and 'nim suggest'"
     else:
       systemop gorgeEx
   macrosop getProjectPath

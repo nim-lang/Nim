@@ -1959,8 +1959,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       putStr(ra, opSlurp(str(instr.regB), c.debug[pc], c.module, c.config))
     of opcGorge:
       let rb = instr.regB
-      if defined(nimsuggest) or c.config.cmd == cmdCheck:
-        discard "don't run staticExec for 'nim suggest'"
+      if compileTimeEffects(c.config) == cteSkip:
+        discard "don't run staticExec for 'nim check' and 'nim suggest'"
         putStr(ra, "")
       else:
         when defined(nimcore):

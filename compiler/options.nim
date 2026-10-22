@@ -260,6 +260,19 @@ type
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 
+  CompileTimeMode* = enum ## `--compileTime`
+    ctmNormal = "normal"
+    ctmRestricted = "restricted"
+
+  CompileTimeEffects* = enum
+    ## What compile-time code may do to the world outside the compiler: run a
+    ## program, or change files or the environment. See `compileTimeEffects`.
+    cteRun       ## the call runs
+    cteSkip      ## `nim check` and nimsuggest: the call does nothing, so that
+                 ## checking code never changes anything
+    cteRestrict  ## `--compileTime:restricted`: a command runs only when it is
+                 ## on the `--staticExecWhitelist`; any other call is an error
+
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideChkFile, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject, ideGlobalSymbols,
@@ -602,6 +615,8 @@ type
     expandPosition*: TLineInfo
 
     currentConfigDir*: string # used for passPP only; absolute dir
+    compileTimeMode*: CompileTimeMode
+    staticExecWhitelist*: seq[string] # exact command lines (`--staticExecWhitelist`)
     clientProcessId*: int
 
 
@@ -853,6 +868,18 @@ proc icReuseSemLowering*(conf: ConfigRef): bool {.inline.} =
   ## Nimbus) depends on the cached lowering being reused, not re-derived. See
   ## doc/ic_backend_simplify.md §6b.
   isDefined(conf, "icReuseSemLowering")
+
+proc compileTimeEffects*(conf: ConfigRef; skippedByCheck = true): CompileTimeEffects =
+  ## The one answer to "may compile-time code (macros, `static`, NimScript) run
+  ## a program or change files or the environment?".
+  ## `skippedByCheck` is false for the calls that `nim check` has always run
+  ## (`putEnv`, `delEnv`, NimScript's `mkDir`); `nim check` keeps doing so.
+  if skippedByCheck and (defined(nimsuggest) or conf.cmd == cmdCheck):
+    cteSkip
+  elif conf.compileTimeMode == ctmRestricted:
+    cteRestrict
+  else:
+    cteRun
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.ideActive or conf.cmd in cmdDocLike
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
