@@ -31,6 +31,9 @@ proc runNim(args: string; dir = root; env: StringTableRef = nil): tuple[output: 
   let env = if env != nil: env else: envWith("XDG_CONFIG_HOME", root / "xdg_empty")
   result = execCmdEx(nim & " " & args, env = env, workingDir = dir)
 
+proc refusedRead(output: string): bool =
+  "read refused by --compileTime:restricted" in output
+
 suite "--compileTime:restricted":
   test "R4: NimScript cannot change files or the environment; exec takes the whitelist":
     let dir = root / "r4s"
@@ -79,5 +82,77 @@ suite "--compileTime:restricted":
       let res = runNim(args, proj)
       check res.exitCode == 0
       check not fileExists(proj / "r7.marker")
+
+  # R3: compile-time reads stay under the project, --path, nimble and lib.
+  let r3 = root / "r3"
+  let proj = r3 / "proj"
+  let outside = r3 / "outside"
+  let extra = r3 / "extra"
+  write(outside / "secret.txt", "secret")
+  write(extra / "extra.txt", "extra")
+  write(proj / "inside.txt", "inside")
+  write(proj / "sub" / "data.txt", "data")
+  createSymlink(outside / "secret.txt", proj / "link_file")
+  createSymlink(outside, proj / "link_dir")
+  write(proj / "r3.nim", """
+import std/[os, staticos, compilesettings]
+const which {.strdefine.} = ""
+const outside {.strdefine.} = ""
+const extra {.strdefine.} = ""
+when which == "inside":
+  const a = staticRead("inside.txt")
+  const b = slurp(currentSourcePath.parentDir / "sub" / "data.txt")
+  const c = staticRead(extra / "extra.txt")
+  const d = staticRead(querySetting(libPath) / "system.nim")
+  static:
+    doAssert a == "inside" and b == "data" and c == "extra" and d.len > 0
+    doAssert readFile("inside.txt") == "inside"
+    doAssert readLines("inside.txt", 1) == @["inside"]
+    doAssert fileExists("inside.txt") and not fileExists("missing.txt")
+    doAssert dirExists("sub")
+    doAssert staticFileExists("inside.txt")
+    doAssert staticDirExists("sub")
+    doAssert staticWalkDir("sub").len == 1
+  echo "inside ok"
+elif which == "slurpAbs":
+  static: discard staticRead(outside / "secret.txt")
+elif which == "slurpRel":
+  static: discard staticRead("../outside/secret.txt")
+elif which == "slurpLinkFile":
+  static: discard staticRead("link_file")
+elif which == "slurpLinkDir":
+  static: discard staticRead("link_dir/secret.txt")
+elif which == "readFile":
+  static: discard readFile("link_file")
+elif which == "readLines":
+  static: discard readLines(outside / "secret.txt", 1)
+elif which == "fileExists":
+  static: discard fileExists(outside / "secret.txt")
+elif which == "dirExists":
+  static: discard dirExists("link_dir")
+elif which == "staticWalkDir":
+  static: discard staticWalkDir(outside)
+elif which == "staticFileExists":
+  static: discard staticFileExists(outside / "missing.txt")
+elif which == "staticDirExists":
+  static: discard staticDirExists(outside)
+""")
+
+  proc runR3(which: string): tuple[output: string, exitCode: int] =
+    runNim("c --compileOnly --hints:off --compileTime:restricted --path:" & extra &
+      " -d:which=" & which & " -d:outside=" & outside & " -d:extra=" & extra & " r3.nim", proj)
+
+  test "R3: reads under the project, --path and lib are allowed":
+    let res = runR3("inside")
+    check res.exitCode == 0
+
+  test "R3: reads outside are refused, also through symbolic links":
+    for which in ["slurpAbs", "slurpRel", "slurpLinkFile", "slurpLinkDir", "readFile",
+                  "readLines", "fileExists", "dirExists", "staticWalkDir",
+                  "staticFileExists", "staticDirExists"]:
+      let res = runR3(which)
+      checkpoint which & ":\n" & res.output
+      check res.exitCode != 0
+      check refusedRead(res.output)
 
 removeDir(root)

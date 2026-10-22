@@ -8,9 +8,10 @@
 #
 
 import ast, types, msgs, options, idents, lineinfos
-from pathutils import AbsoluteFile
+from pathutils import AbsoluteFile, AbsoluteDir, isEmpty
 
 import std/os
+from std/strutils import split
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -19,11 +20,55 @@ proc refuseCompileTimeEffect*(conf: ConfigRef; info: TLineInfo; op: string) =
   ## The error for a call that `compileTimeEffects` answers with `cteRestrict`.
   globalError(conf, info, "'" & op & "' refused by --compileTime:restricted")
 
+proc realPath(path: string): string =
+  ## `path` made absolute with every symbolic link resolved, the way the OS
+  ## resolves it. From the first part that does not exist on, the rest is
+  ## appended as written: the OS cannot open such a path anyway.
+  ## Note: on Windows `expandFilename` does not resolve links.
+  let parts = absolutePath(path).split({DirSep, AltSep})
+  result = parts[0] & DirSep # "/" or a drive like "C:\"
+  var exists = true
+  for i in 1..<parts.len:
+    let part = parts[i]
+    if part.len == 0 or part == ".": continue
+    let next = if part == "..": (if result.parentDir.len > 0: result.parentDir else: result)
+               else: result / part
+    if exists and (fileExists(next) or dirExists(next)):
+      result = expandFilename(next)
+    else:
+      exists = false
+      result = next
+
+proc checkCompileTimeRead*(conf: ConfigRef; path: string; info: TLineInfo) =
+  ## Under `--compileTime:restricted`, compile-time code reads only below the
+  ## project directory, the `--path` and nimble package directories and Nim's
+  ## `lib`; after symbolic links are resolved. Project configuration files are
+  ## not read in this mode, so every root was given by the command line or the
+  ## system or user configuration.
+  if compileTimeEffects(conf, skippedByCheck = false) != cteRestrict: return
+  var roots = @[conf.libpath]
+  if not conf.projectPath.isEmpty: roots.add conf.projectPath
+  roots.add conf.searchPaths
+  roots.add conf.lazyPaths
+  roots.add conf.nimblePaths
+  try:
+    let real = realPath(path)
+    for root in roots:
+      if dirExists(root.string) and real.isRelativeTo(realPath(root.string)):
+        return
+  except OSError:
+    globalError(conf, info, "read refused by --compileTime:restricted: '" & path &
+      "' cannot be resolved: " & getCurrentExceptionMsg())
+  globalError(conf, info, "read refused by --compileTime:restricted: '" & path &
+    "' is outside the project, --path, nimble package and Nim lib directories")
+
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
     var filename = parentDir(toFullPath(conf, info)) / file
     if not fileExists(filename):
       filename = findFile(conf, file).string
+    if filename.len > 0: # else readFile fails with "cannot open file" below
+      checkCompileTimeRead(conf, filename, info)
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:

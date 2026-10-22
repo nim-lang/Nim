@@ -100,11 +100,6 @@ template wrap2s(op, modop) {.dirty.} =
     setResult(a, op(getString(a, 0), getString(a, 1)))
   modop op
 
-template wrap2si(op, modop) {.dirty.} =
-  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-    setResult(a, op(getString(a, 0), getInt(a, 1)))
-  modop op
-
 template wrapEffect(op, modop: untyped; skippedByCheck: bool; call: untyped) {.dirty.} =
   ## Registers `op`, which changes files or the environment, under the policy of
   ## `compileTimeEffects`.
@@ -122,6 +117,14 @@ template wrapEffect(op, modop: untyped; skippedByCheck: bool; call: untyped) {.d
       proc `op Wrapper`(a: VmArgs) {.nimcall.} =
         call
       modop op
+
+template wrapRead(op, modop, call: untyped) {.dirty.} =
+  ## Registers `op`, which reads the path in its first argument, with the
+  ## check of `checkCompileTimeRead`.
+  proc `op Wrapper`(a: VmArgs) =
+    checkCompileTimeRead(c.config, getString(a, 0), a.currentLineInfo)
+    call
+  modop op
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, currentExceptionMsg(a.ctx, a.currentException))
@@ -245,21 +248,24 @@ proc registerAdditionalOps*(c: PCtx) =
     wrapEffect(putEnv, envvarsop, skippedByCheck = false,
                putEnv(getString(a, 0), getString(a, 1)))
     wrapEffect(delEnv, envvarsop, skippedByCheck = false, delEnv(getString(a, 0)))
-    wrap1s(dirExists, oscommonop)
-    wrap1s(fileExists, oscommonop)
+    wrapRead(dirExists, oscommonop, setResult(a, dirExists(getString(a, 0))))
+    wrapRead(fileExists, oscommonop, setResult(a, fileExists(getString(a, 0))))
     wrapEffect(writeFile, ioop, skippedByCheck = true,
                writeFile(getString(a, 0), getString(a, 1)))
     wrapEffect(createDir, osdirsop, skippedByCheck = true, createDir(getString(a, 0)))
-    wrap1s(readFile, ioop)
-    wrap2si(readLines, ioop)
+    wrapRead(readFile, ioop, setResult(a, readFile(getString(a, 0))))
+    wrapRead(readLines, ioop, setResult(a, readLines(getString(a, 0), getInt(a, 1))))
     systemop getCurrentExceptionMsg
     systemop getCurrentException
     systemop raiseDefect
-    registerCallback c, "stdlib.staticos.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+    registerCallback c, "stdlib.staticos.staticWalkDir", proc (a: VmArgs) =
+      checkCompileTimeRead(c.config, getString(a, 0), a.currentLineInfo)
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-    registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
+    registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) =
+      checkCompileTimeRead(c.config, getString(a, 0), a.currentLineInfo)
       setResult(a, dirExists(getString(a, 0)))
-    registerCallback c, "stdlib.staticos.staticFileExists", proc (a: VmArgs) {.nimcall.} =
+    registerCallback c, "stdlib.staticos.staticFileExists", proc (a: VmArgs) =
+      checkCompileTimeRead(c.config, getString(a, 0), a.currentLineInfo)
       setResult(a, fileExists(getString(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
       setResult(a, querySettingImpl(c.config, getInt(a, 0)))
