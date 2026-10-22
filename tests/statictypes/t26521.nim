@@ -3,6 +3,7 @@ discard """
 42
 7
 3
+4
 '''
 """
 
@@ -34,3 +35,31 @@ echo i
 proc baz(x: int): int = x
 proc baz(s: static[int]): int = s + 1
 echo 2.baz()
+
+# a block argument must not be semchecked again for a `static` parameter
+type
+  Reader = object
+    position: int
+  Mode = enum A, B
+
+proc read(r: var Reader, T: type int): int = r.position + 3
+
+template consumeList(self: var Reader, mode: static Mode, body: untyped) =
+  inc self.position
+  body
+
+template consumeList(self: var Reader, body: untyped) =
+  self.consumeList(Mode.A, body)
+
+proc readIt(rd: var Reader, x: var int) =
+  rd.consumeList:
+    if rd.position > 0:
+      x = 3
+    else:
+      raise newException(ValueError, "x")
+    x = rd.read(int)
+
+var rd: Reader
+var y = 0
+readIt(rd, y)
+echo y
