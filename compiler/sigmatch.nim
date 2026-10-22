@@ -2568,7 +2568,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       # don't try to evaluate
       discard
     elif arg.kind != nkEmpty:
-      var evaluated = c.semTryConstExpr(c, arg)
+      # `arg` is already semchecked and is shared with the other overload
+      # candidates; re-semchecking it in place would wrap its `var` arguments
+      # in another `nkHiddenDeref` (#26521):
+      var evaluated = c.semTryConstExpr(c, copyTree(arg))
       if evaluated != nil:
         # Don't build the type in-place because `evaluated` and `arg` may point
         # to the same object and we'd end up creating recursive types (#9255)
