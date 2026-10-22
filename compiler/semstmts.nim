@@ -2587,18 +2587,38 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
-# ---- doc/parallel_compiler.md stage 1: deferred routine bodies --------------
+# ---- doc/parallel_compiler.md: deferred routine bodies (`--parsem:on`) -------
 #
-# `--deferBodies:on` moves the sem of a top-level routine's BODY out of the
-# statement that declares it and into a pass that runs when the module's header
-# is complete. One worker, drained in key order: no threads, no scheduling, only
-# the order change — which is the half of the plan that changes results and so
-# has to be reviewed on its own (§5, stage 1). The parallel version of §5 stage
-# 4 must stay byte-identical to this.
+# `--parsem:on` moves the sem of a top-level routine's BODY out of the statement
+# that declares it and into a pass that runs when the module's header pass is
+# complete. A body therefore sees the complete top-level scope: it can call a
+# routine, or use a template, declared further down without a forward
+# declaration. The header pass itself stays sequential and in source order, so a
+# top-level statement still only sees what is declared above it.
 #
-# What "top level" buys is that the unit needs nothing from the statement it was
-# declared in: everything positional is captured in the `BodyTask`, and the rest
-# of `PContext` is module-shared and does not move between declaration and drain.
+# A unit can be needed before the body pass gets to it. Instead of draining the
+# queue at arbitrary statement boundaries — which would sem bodies against an
+# incomplete scope and so take the "no forward declarations" property away — a
+# unit is run ON DEMAND, by exactly the consumers that need its result:
+#
+# * a compile-time evaluation (`const`, `static:`, a macro): before the VM
+#   session starts, every unit reachable from the code to evaluate is run
+#   (`demandReachableBodies`). The VM must never meet a pending unit itself:
+#   `vmgen` would have to run sem — and a nested VM session — while one is
+#   already executing on the graph's single `PCtx` (§4.6 step 2).
+# * effect tracking: `trackCall` asks for the callee (`sempass2`).
+# * an `auto` return type: the call's type is the callee's inferred one
+#   (`semResolvedCall`).
+#
+# A unit demanded early is semmed against the scope as it is at that point,
+# which is never smaller than the scope at its declaration: code that compiles
+# without `--parsem` compiles with it. Recursion between units (a demand for a
+# unit that is running) is answered the way a call to a forward declaration is
+# answered today: from the routine's declared effects, pessimistically.
+#
+# One worker, units run in key order: no threads, no scheduling, only the order
+# change — which is the half of the plan that changes results and so has to be
+# reviewed on its own. The parallel version must stay byte-identical to this.
 
 proc semRoutineBodyUnit(c: PContext; s: PSym; n: PNode; resultType: PType;
                         isInlineIterator: bool) =
@@ -2615,29 +2635,75 @@ proc semRoutineBodyUnit(c: PContext; s: PSym; n: PNode; resultType: PType;
       maybeAddResult(c, s, n)
     trackProc(c, s, s.ast[bodyPos])
 
+proc semGenericRoutineBody(c: PContext; s: PSym; n: PNode) =
+  ## What a generic routine's body gets before it is instantiated. Under
+  ## `--parsem:on` a unit too: it binds the body's symbols, so it has to see
+  ## the complete top-level scope like any other body.
+  openScope(c)
+  n[bodyPos] = semGenericStmt(c, n[bodyPos])
+  closeScope(c)
+  if s.magic == mNone:
+    fixupInstantiatedSymbols(c, s)
+
+proc genericBodyBindsEarly(c: PContext; n: PNode): bool =
+  ## Would the generic body bind at its declaration, as it does without
+  ## `--parsem`? Then it does exactly that and is not a unit.
+  ##
+  ## Binding a generic body against the complete scope is observable in a way a
+  ## routine body's sem is not: an identifier that is not declared yet stays
+  ## unbound and is looked up at instantiation, where builtins come first (`x[i]`
+  ## on an array); bound to a later declaration it becomes an overloaded call.
+  ## `system`'s generics are full of such identifiers. So the complete scope is
+  ## only for a body that would not bind otherwise — e.g. one that calls a
+  ## routine declared further down — and code that compiles without the switch
+  ## binds exactly as before. A trial run on a copy, silenced, decides; it is
+  ## cheap (`semGenericStmt` resolves nothing but identifiers).
+  let
+    oldErrorCount = c.config.errorCounter
+    oldErrorMax = c.config.errorMax
+    oldErrorOutputs = c.config.m.errorOutputs
+    oldContextLen = msgs.getInfoContextLen(c.config)
+    oldScope = c.currentScope
+  c.config.m.errorOutputs = {}
+  c.config.errorMax = high(int)
+  openScope(c)
+  try:
+    discard semGenericStmt(c, copyTree(n[bodyPos]))
+    result = c.config.errorCounter == oldErrorCount
+  except ERecoverableError:
+    result = false
+  c.currentScope = oldScope
+  msgs.setInfoContextLen(c.config, oldContextLen)
+  c.config.m.errorOutputs = oldErrorOutputs
+  c.config.errorCounter = oldErrorCount
+  c.config.errorMax = oldErrorMax
+
 proc deferrableBody(c: PContext; s: PSym): bool =
   ## Which routines become units. §2.1: run-time routines of this module,
   ## declared at its top level.
   ##
   ## Macros, templates, `{.compileTime.}` routines and converters keep their
   ## bodies in the header pass — the VM needs them and they are part of what
-  ## importers see. Generic routines never reach here (they take
-  ## `semGenericStmt`, which is header work). A nested routine belongs to its
+  ## importers see. For a generic routine the unit is its `semGenericStmt`,
+  ## which an instantiation demands. A nested routine belongs to its
   ## enclosing unit, and one declared inside `compiles()`, a generic
   ## instantiation or a `static:` block belongs to whatever is driving that, so
   ## none of them is a unit of its own.
-  result = (optDeferBodies in c.config.globalOptions or c.deferAllBodies) and
+  result = (optParSem in c.config.globalOptions or c.deferAllBodies) and
     s.kind in {skProc, skFunc, skMethod, skIterator} and
     s.magic == mNone and
     sfCompileTime notin s.flags and
     s.owner != nil and s.owner.kind == skModule and s.owner == c.module and
+    # declared directly at the top level, not in a top-level `block:` (the
+    # current scope is the one `semProcAux` opened for the parameters)
+    c.currentScope.parent == c.topLevelScope and
     c.compilesContextId == 0 and
     c.inGenericContext == 0 and c.inGenericInst == 0 and
     c.inStaticContext == 0 and c.inUnrolledContext == 0 and
     c.config.ideCmd == ideNone
 
 proc enqueueBodyTask(c: PContext; s: PSym; n: PNode; resultType: PType;
-                     isInlineIterator: bool): PScope =
+                     isInlineIterator: bool; isGeneric = false): PScope =
   ## Captures the unit and hands back the scope the caller must DETACH rather
   ## than close: the parameters have to still be in it when the body runs.
   result = c.currentScope
@@ -2645,16 +2711,22 @@ proc enqueueBodyTask(c: PContext; s: PSym; n: PNode; resultType: PType;
   c.bodyTasks.add BodyTask(
     key: uint64(c.bodyTasks.len), state: btPending,
     owner: s, def: n, resultType: resultType,
-    isInlineIterator: isInlineIterator,
+    isInlineIterator: isInlineIterator, isGeneric: isGeneric,
     scope: result, procCon: c.p,
     optionStack: c.optionStack,
     options: c.config.options, notes: c.config.notes,
-    warningAsErrors: c.config.warningAsErrors, features: c.features)
+    warningAsErrors: c.config.warningAsErrors, features: c.features,
+    friendModules: c.friendModules,
+    errorOutputs: c.config.m.errorOutputs)
 
 proc runBodyTask(c: PContext; idx: int) =
   ## Re-attaches one unit's positional state, sems it, and detaches again.
-  ## Re-entrant: a unit's body can demand another unit (a nested `const`), and
-  ## the saved-and-restored locals here are what makes that nest correctly.
+  ##
+  ## Runs from anywhere: at the module's end, but also on demand from the
+  ## middle of a generic instantiation, a template expansion, `compiles()` or
+  ## another unit. So EVERY positional field of `PContext` (§3 (a)) is saved,
+  ## reset to what it is at the top level, and restored — a unit must see
+  ## neither the state of whoever demanded it nor leave any behind.
   if c.bodyTasks[idx].state != btPending: return
   c.bodyTasks[idx].state = btRunning
   let
@@ -2666,7 +2738,29 @@ proc runBodyTask(c: PContext; idx: int) =
     savedWarningAsErrors = c.config.warningAsErrors
     savedFeatures = c.features
     savedOwnerLen = c.graph.owners.len
+    savedErrorOutputs = c.config.m.errorOutputs
+    savedErrorCounter = c.config.errorCounter
+    savedErrorMax = c.config.errorMax
+    savedMatchedConcept = c.matchedConcept
+    savedFriendModules = c.friendModules
+    savedInstCounter = c.instCounter
+    savedInGenericContext = c.inGenericContext
+    savedInStaticContext = c.inStaticContext
+    savedInUnrolledContext = c.inUnrolledContext
+    savedCompilesContextId = c.compilesContextId
+    savedInGenericInst = c.inGenericInst
+    savedInParallelStmt = c.inParallelStmt
+    savedRecursiveDep = c.recursiveDep
+    savedIsAmbiguous = c.isAmbiguous
+    savedInTypeContext = c.inTypeContext
+    savedInConceptDecl = c.inConceptDecl
+    savedInTypeofContext = c.inTypeofContext
+    savedInUncheckedAssignSection = c.inUncheckedAssignSection
+    savedInUncheckedAccess = c.inUncheckedAccess
+    savedLastTLineInfo = c.lastTLineInfo
+    savedCurrentUnit = c.currentUnit
   let t = c.bodyTasks[idx]
+  c.currentUnit = idx
   c.currentScope = t.scope
   c.p = t.procCon
   c.p.next = savedProcCon
@@ -2675,9 +2769,32 @@ proc runBodyTask(c: PContext; idx: int) =
   c.config.notes = t.notes
   c.config.warningAsErrors = t.warningAsErrors
   c.features = t.features
+  # Demanded from inside `compiles()`, the unit's errors must still be
+  # reported: they are errors of the routine, not of the `compiles` operand.
+  c.config.m.errorOutputs = t.errorOutputs
+  if savedCompilesContextId > 0: c.config.errorMax = c.unitErrorMax
+  c.matchedConcept = nil
+  c.friendModules = t.friendModules
+  c.instCounter = 0
+  c.inGenericContext = 0
+  c.inStaticContext = 0
+  c.inUnrolledContext = 0
+  c.compilesContextId = 0
+  c.inGenericInst = 0
+  c.inParallelStmt = 0
+  c.recursiveDep = ""
+  c.isAmbiguous = false
+  c.inTypeContext = 0
+  c.inConceptDecl = 0
+  c.inTypeofContext = 0
+  c.inUncheckedAssignSection = 0
+  c.inUncheckedAccess = 0
   pushOwner(c, t.owner)
   try:
-    semRoutineBodyUnit(c, t.owner, t.def, t.resultType, t.isInlineIterator)
+    if t.isGeneric:
+      semGenericRoutineBody(c, t.owner, t.def)
+    else:
+      semRoutineBodyUnit(c, t.owner, t.def, t.resultType, t.isInlineIterator)
     # The deferred half of the `closeScope` that `semProcAux` turned into a
     # `rawCloseScope`: at declaration time every parameter still looks unused,
     # so the unused-symbol check has to wait for the body that uses them. The
@@ -2685,6 +2802,10 @@ proc runBodyTask(c: PContext; idx: int) =
     closeScope(c)
   finally:
     c.bodyTasks[idx].state = btDone
+    if savedCompilesContextId > 0 and c.config.errorCounter > savedErrorCounter:
+      # `tryExpr` rolls the counter back; keep the unit's errors failing the
+      # build all the same (`closePContext` adds them back).
+      inc c.unitErrorsInCompiles, c.config.errorCounter - savedErrorCounter
     setLen(c.graph.owners, savedOwnerLen)
     c.currentScope = savedScope
     c.p = savedProcCon
@@ -2693,12 +2814,46 @@ proc runBodyTask(c: PContext; idx: int) =
     c.config.notes = savedNotes
     c.config.warningAsErrors = savedWarningAsErrors
     c.features = savedFeatures
+    c.config.m.errorOutputs = savedErrorOutputs
+    c.config.errorMax = savedErrorMax
+    c.matchedConcept = savedMatchedConcept
+    c.friendModules = savedFriendModules
+    c.instCounter = savedInstCounter
+    c.inGenericContext = savedInGenericContext
+    c.inStaticContext = savedInStaticContext
+    c.inUnrolledContext = savedInUnrolledContext
+    c.compilesContextId = savedCompilesContextId
+    c.inGenericInst = savedInGenericInst
+    c.inParallelStmt = savedInParallelStmt
+    c.recursiveDep = savedRecursiveDep
+    c.isAmbiguous = savedIsAmbiguous
+    c.inTypeContext = savedInTypeContext
+    c.inConceptDecl = savedInConceptDecl
+    c.inTypeofContext = savedInTypeofContext
+    c.inUncheckedAssignSection = savedInUncheckedAssignSection
+    c.inUncheckedAccess = savedInUncheckedAccess
+    c.lastTLineInfo = savedLastTLineInfo
+    c.currentUnit = savedCurrentUnit
 
-proc demandRoutineBody(c: PContext; prc: PSym) =
+proc keepsForwardSemantics(c: PContext; prc: PSym; idx: int): bool =
+  ## A routine that was forward declared, and whose implementation comes after
+  ## the unit that is asking, is a forward declaration for that unit — as it is
+  ## without `--parsem`, where the unit is checked before the implementation is
+  ## reached. Its declaration is the contract, so effect tracking does not run
+  ## it early. That is also what breaks a cycle of mutually recursive routines,
+  ## at the place the programmer chose. The header pass asking (`currentUnit`
+  ## -1) is past every pending unit's implementation.
+  result = sfWasForwarded in prc.flags and c.currentUnit >= 0 and
+    idx > c.currentUnit
+
+proc demandRoutineBody(c: PContext; prc: PSym; forEffects: bool): bool =
   ## §2.3's "run it inline": something needs a unit's body before the body pass
-  ## would have got to it. `btRunning` means genuine recursion on this thread
-  ## and is left alone — the caller then sees the partially semmed body, which
-  ## is what it sees today too.
+  ## would have got to it. `btRunning` means genuine recursion and is left
+  ## alone — the caller then treats the routine like a forward declaration.
+  ##
+  ## Only this unit, not every smaller key: the consumers that need a body
+  ## (effects, `auto`, the VM) all demand what THEY need, transitively, so the
+  ## key order only has to be kept by the body pass itself.
   ##
   ## Chains outwards, because module passes nest: an import is compiled from
   ## inside the importer's pass, so the routine asked about may belong to a
@@ -2706,23 +2861,63 @@ proc demandRoutineBody(c: PContext; prc: PSym) =
   ## unit against ITS module's `PContext`, which is what the closure captured.
   let idx = c.bodyTaskIndex.getOrDefault(prc.itemId, -1)
   if idx >= 0:
-    # Every SMALLER key first, not just this one. §2.3 lets a unit block on
-    # units with a smaller key, and a body semmed today sees every routine
-    # declared above it already analysed; running the demanded unit alone would
-    # invert that. `asyncdispatch` is the case that found it: the `{.async.}`
-    # machinery transforms `runOnce` (declared at the bottom) during the header
-    # pass, and on its own that unit was tracked before
-    # `processCallbacksAndTimers` (declared 1100 lines above), which then had no
-    # effect list yet — so `runOnce` was inferred GC-unsafe and its `{.gcsafe.}`
-    # forward declaration rejected it.
-    for i in 0 .. idx: runBodyTask(c, i)
+    result = forEffects and keepsForwardSemantics(c, prc, idx)
+    if not result: runBodyTask(c, idx)
   elif c.prevDemandRoutineBody != nil:
-    c.prevDemandRoutineBody(prc)
+    result = c.prevDemandRoutineBody(prc, forEffects)
+  else:
+    result = false
+
+proc ownsUnits(c: PContext; prc: PSym): bool =
+  ## Can `prc`'s body reach a pending unit? Only a routine of a module whose
+  ## units are not all done can; everything else (imported modules, loaded IC
+  ## modules) is complete and is not walked — which also keeps the walk from
+  ## loading bodies it does not need.
+  result = prc.itemId.module == c.module.itemId.module
+  if not result:
+    for p in c.cyclePartners:
+      if prc.itemId.module == p.module.itemId.module: return true
+
+proc demandReachable(c: PContext; n: PNode; visited: var IntSet;
+                     sawRunning: var bool) =
+  if n == nil: return
+  case n.kind
+  of nkSym:
+    let s = n.sym
+    if s.kind in routineKinds and s.id notin c.closedUnits and
+        not visited.containsOrIncl(s.id):
+      discard c.graph.demandRoutineBody(s, forEffects = false)
+      if ownsUnits(c, s) and s.ast != nil and s.ast.len > bodyPos:
+        let idx = c.bodyTaskIndex.getOrDefault(s.itemId, -1)
+        if idx >= 0 and c.bodyTasks[idx].state == btRunning:
+          # recursion through a compile-time evaluation: the part of the body
+          # that is semmed so far is all there is to walk
+          sawRunning = true
+        demandReachable(c, s.ast[bodyPos], visited, sawRunning)
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+    discard
+  else:
+    for i in 0..<n.len: demandReachable(c, n[i], visited, sawRunning)
+
+proc demandReachableBodies(c: PContext; n: PNode) =
+  ## Before a compile-time evaluation of `n`: run every unit the VM could reach
+  ## from it, so that `vmgen` never meets an unsemmed body. Over-approximates
+  ## (both branches of a `when nimvm`, every routine a template body mentions),
+  ## which only matters for code that relies on `--parsem`'s complete scope: a
+  ## unit demanded early whose body uses a routine declared further down gets
+  ## "undeclared identifier", exactly as it would today.
+  var visited = initIntSet()
+  var sawRunning = false
+  demandReachable(c, n, visited, sawRunning)
+  if not sawRunning:
+    # every routine walked is now closed under "reachable units are done", so
+    # no later walk has to look at it again
+    for id in visited: c.closedUnits.incl id
 
 proc drainBodyTasks*(c: PContext) =
-  ## The body pass. In key order, which for stage 1 is simply front to back:
-  ## the header pass appended in source order and the on-demand path only ever
-  ## marks entries done early, never reorders them.
+  ## The body pass. In key order, which is simply front to back: the header
+  ## pass appended in source order and the on-demand path only ever marks
+  ## entries done early, never reorders them.
   var i = 0
   while i < c.bodyTasks.len:
     # not a `for`: a unit's body can enqueue nothing (nested routines are not
@@ -2736,31 +2931,15 @@ const
                           nkConverterDef, nkTemplateDef, nkMacroDef,
                           nkTypeSection, nkCommentStmt, nkEmpty, nkPragma,
                           nkWhenStmt, nkStmtList}
-    ## Top-level statements a pending unit may safely outlive. A run of
-    ## declarations defers as a batch; anything else flushes it first.
+    ## Top-level statements a pending unit of a cycle group may safely outlive.
 
 proc flushBodiesBeforeTopLevelStmt*(c: PContext; stmt: PNode) =
-  ## Units live only until the next top-level statement that could OBSERVE one.
-  ##
-  ## Deferring a body all the way to the end of the module is what §2.1 asks
-  ## for, but it puts a pending unit in reach of the VM: a top-level `const x =
-  ## f()` makes `vmgen` compile `f`, `vmgen` goes through `transformBody`, and
-  ## answering the demand there means running sem — and a nested VM session —
-  ## while one is already executing on the graph's single `PCtx`. That is §4.6
-  ## step 2, "the hardest single item in this plan", and the doc allows it to be
-  ## deferred behind a restriction until it is done. This is that restriction,
-  ## and it is a cheap one: modules are long runs of routine definitions, so a
-  ## run defers as a batch and only a `const`, `static:`, `var` initialiser or
-  ## plain expression ends one.
-  ##
-  ## Flushing HERE and not at the VM's own entry matters: this is a statement
-  ## boundary at module scope, where the only live state is the module's, and
-  ## running a unit is safe. `vm.setupGlobalCtx` is reached from inside generic
-  ## instantiations and template expansions, where it is not.
+  ## The deferred bodies of a cycle group (`import m {.cyclic.}`) live only
+  ## until the next top-level statement that could OBSERVE one. `--parsem:on`
+  ## does not flush: its units are demanded by whoever needs them.
   if stmt.kind notin DeferrableNeighbours and c.currentScope.depthLevel <= 2:
-    if c.bodyTasks.len > 0:
+    if c.bodyTasks.len > 0 and optParSem notin c.config.globalOptions:
       drainBodyTasks(c)
-    # a routine of the cycle group is just as observable:
     for p in c.cyclePartners: drainBodyTasks(p)
 
 proc drainBeforeModulePass*(c: PContext) =
@@ -2768,14 +2947,12 @@ proc drainBeforeModulePass*(c: PContext) =
   ##
   ## That module may reference anything declared here so far — `system` imports
   ## `std/syncio` from its own last statements, and syncio's routines call
-  ## system's — and it will be compiled to completion before this statement
-  ## returns. So this module's units have to be complete first, or the importee
-  ## sees them as "not yet processed" and infers `RootEffect` for every call
-  ## into them. Draining here keeps the invariant an importer already relies on
-  ## today: everything declared above an `import` is fully semmed when it runs.
-  ##
-  ## Imports sit at the top of a module, so in practice this drains nothing.
-  if c.bodyTasks.len > 0:
+  ## system's. For a cycle group, the deferred bodies are completed first, which
+  ## keeps the invariant an importer relies on today: everything declared above
+  ## an `import` is fully semmed when it runs. `--parsem:on` does not drain: its
+  ## units would see an incomplete scope, and the importee demands the ones it
+  ## needs (`graph.demandRoutineBody` chains out to this module).
+  if c.bodyTasks.len > 0 and optParSem notin c.config.globalOptions:
     drainBodyTasks(c)
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
@@ -3072,11 +3249,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if (s.typ.returnType != nil and s.kind != skIterator):
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), c.idgen, s, n.info))
 
-        openScope(c)
-        n[bodyPos] = semGenericStmt(c, n[bodyPos])
-        closeScope(c)
-        if s.magic == mNone:
-          fixupInstantiatedSymbols(c, s)
+        if deferrableBody(c, s) and not genericBodyBindsEarly(c, n):
+          deferredScope = enqueueBodyTask(c, s, n, nil, false, isGeneric = true)
+        else:
+          semGenericRoutineBody(c, s, n)
       if s.kind == skMethod: semMethodPrototype(c, s, n)
       popProcCon(c)
   else:

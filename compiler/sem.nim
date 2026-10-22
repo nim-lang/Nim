@@ -880,14 +880,19 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.semAsgnOpr = semAsgnOpr
   result.templInstCounter = new int
 
-  # `--deferBodies:on`: a top-level `const`/`static:` can reach a body that the
-  # body pass has not run yet, and `transformBody` asks for it here. Modules
-  # nest (an import is compiled from inside the importer's pass), so keep the
-  # enclosing module's hook and put it back in `closePContext`.
-  if optDeferBodies in graph.config.globalOptions:
+  # `--parsem:on`: effect tracking, `auto` and the VM can need a body that the
+  # body pass has not run yet, and ask for it through these. Modules nest (an
+  # import is compiled from inside the importer's pass), so keep the enclosing
+  # module's hooks and put them back in `closePContext`.
+  if optParSem in graph.config.globalOptions:
     result.prevDemandRoutineBody = graph.demandRoutineBody
+    result.prevDemandReachableBodies = graph.demandReachableBodies
+    result.unitErrorMax = graph.config.errorMax
+    result.currentUnit = -1
     let ctx = result
-    graph.demandRoutineBody = proc (prc: PSym) = demandRoutineBody(ctx, prc)
+    graph.demandRoutineBody = proc (prc: PSym; forEffects: bool): bool =
+      demandRoutineBody(ctx, prc, forEffects)
+    graph.demandReachableBodies = proc (n: PNode) = demandReachableBodies(ctx, n)
 
   pushProcCon(result, module)
   pushOwner(result, result.module)
@@ -1125,8 +1130,10 @@ proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   # ever close them.
   if c.bodyTasks.len > 0:
     drainBodyTasks(c)
-  if optDeferBodies in c.config.globalOptions:
+  if optParSem in c.config.globalOptions:
     graph.demandRoutineBody = c.prevDemandRoutineBody
+    graph.demandReachableBodies = c.prevDemandReachableBodies
+    inc c.config.errorCounter, c.unitErrorsInCompiles
   if c.config.ideActive and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope

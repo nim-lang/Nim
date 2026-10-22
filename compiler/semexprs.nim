@@ -3472,6 +3472,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     of skProc, skFunc, skMethod, skConverter, skIterator:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
+      if c.graph.demandRoutineBody != nil:
+        # `--parsem:on`: a routine used as a value is matched against proc
+        # types by its inferred effects (`gcsafe`, `noSideEffect`, ...)
+        if result.kind == nkSym:
+          discard c.graph.demandRoutineBody(result.sym, forEffects = true)
+        else:
+          for x in result:
+            if x.kind == nkSym:
+              discard c.graph.demandRoutineBody(x.sym, forEffects = true)
       if result.kind == nkSym:
         markUsed(c, n.info, s)
         markIndirect(c, result.sym)

@@ -957,6 +957,12 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
     if result.typ != nil and result.typ.kind == tyAnything and
+        c.graph.demandRoutineBody != nil:
+      # `--parsem:on`: the callee's body, which infers the type, may still be
+      # a pending unit
+      discard c.graph.demandRoutineBody(finalCallee, forEffects = false)
+      result.typ = finalCallee.typ.returnType
+    if result.typ != nil and result.typ.kind == tyAnything and
         finalCallee.kind in {skProc, skFunc, skMethod, skConverter} and
         c.inGenericContext == 0:
       # the routine is still being checked and its `auto` return type

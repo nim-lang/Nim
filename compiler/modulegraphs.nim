@@ -198,19 +198,22 @@ type
       ## tracking asks for the deferred body of a routine of the group before it
       ## falls back to the pessimistic assumptions about a routine without
       ## effects.
-    demandRoutineBody*: proc (prc: PSym) {.closure.}
-      ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
-      ## is needed NOW". A deferred unit's body is unsemmed until the module's
-      ## body pass runs, but the header pass can reach one before then — a
-      ## top-level `const x = f()` or `static:` block makes the VM compile `f`,
-      ## and `vmgen` goes through `transformBody`. That is the one place every
-      ## consumer of a semmed body passes through, so the demand is asked for
-      ## there rather than at each of sem's compile-time-evaluation entries,
-      ## where a missed one would be a miscompile.
+    demandRoutineBody*: proc (prc: PSym; forEffects: bool): bool {.closure.}
+      ## `--parsem:on` (doc/parallel_compiler.md §2.4): "this body is needed
+      ## NOW". A deferred unit's body is unsemmed until the module's body pass
+      ## runs, but effect tracking, an `auto` return type, an instantiation or
+      ## a compile-time evaluation can need it before then. Runs `prc` if it is
+      ## a pending unit — except, `forEffects`, when it keeps the semantics of a
+      ## forward declaration: then the result is true and the declaration is
+      ## all the caller may go by. A unit that is running (a recursion) is left
+      ## alone and answered `false`, like a recursion without `--parsem`.
       ##
       ## A closure, not the `{.nimcall.}` the hooks below are: running a unit
       ## needs the module's `PContext`, and it nests, so `preparePContext` sets
       ## it and `closePContext` puts the enclosing module's back.
+    demandReachableBodies*: proc (n: PNode) {.closure.}
+      ## `--parsem:on`: called before the VM evaluates `n`. Runs every pending
+      ## unit the VM could reach from `n`, so that `vmgen` never meets one.
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator

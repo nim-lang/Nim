@@ -2413,6 +2413,8 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
     if g.config.expandDone():
       return n
   #if g.config.errorCounter > 0: return n
+  # `--parsem:on`: no deferred body may be pending once the session starts
+  if g.demandReachableBodies != nil: g.demandReachableBodies(n)
   let n = transformExpr(g, idgen, module, n)
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
@@ -2516,6 +2518,10 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
     globalError(g.config, n.info, "in call '$#' got $#, but expected $# argument(s)" % [
         n.renderTree, $(n.safeLen-1), $(sym.typ.paramsLen)])
 
+  # `--parsem:on`: no deferred body may be pending once the session starts
+  if g.demandReachableBodies != nil:
+    g.demandReachableBodies(newSymNode(sym))
+    g.demandReachableBodies(n)
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode
