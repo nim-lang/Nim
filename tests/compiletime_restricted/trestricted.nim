@@ -35,6 +35,54 @@ proc refusedRead(output: string): bool =
   "read refused by --compileTime:restricted" in output
 
 suite "--compileTime:restricted":
+  test "R5: project and parent configuration files are not read":
+    # Given: a project whose configuration files would each leave a trace.
+    # `nim.cfg` replaces the C compiler with a script, which is how a
+    # configuration file runs commands without NimScript.
+    let parent = root / "r5"
+    let proj = parent / "proj"
+    let ccScript = parent / "cc.sh"
+    write(ccScript, "#!/bin/sh\necho ran > \"" & (parent / "cc.marker") & "\"\nexec cc \"$@\"\n")
+    setFilePermissions(ccScript, {fpUserRead, fpUserWrite, fpUserExec})
+    write(parent / "nim.cfg", "@putenv \"NIM_TRESTRICTED_PARENTCFG\" \"1\"\n")
+    write(parent / "config.nims", "writeFile(\"" & (parent / "parentnims.marker") & "\", \"\")\n")
+    write(proj / "nim.cfg",
+      "@putenv \"NIM_TRESTRICTED_NIMCFG\" \"1\"\n" &
+      "clang.exe = \"" & ccScript & "\"\nclang.linkerexe = \"" & ccScript & "\"\n" &
+      "gcc.exe = \"" & ccScript & "\"\ngcc.linkerexe = \"" & ccScript & "\"\n")
+    write(proj / "config.nims", "writeFile(\"" & (parent / "confignims.marker") & "\", \"\")\n")
+    write(proj / "m.nims", "writeFile(\"" & (parent / "projnims.marker") & "\", \"\")\n")
+    write(proj / "m.nim.cfg", "@putenv \"NIM_TRESTRICTED_PROJCFG\" \"1\"\n")
+    write(proj / "m.nim", """
+import std/envvars
+const seen = getEnv("NIM_TRESTRICTED_PARENTCFG") & "," & getEnv("NIM_TRESTRICTED_NIMCFG") & "," &
+  getEnv("NIM_TRESTRICTED_PROJCFG")
+echo "seen:", seen
+""")
+    let markers = ["cc.marker", "parentnims.marker", "confignims.marker", "projnims.marker"]
+
+    # When: compiled normally, every file takes effect (the fixture works).
+    let normal = runNim("c -f -r --hints:off --nimcache:" & (parent / "cache_normal") & " m.nim", proj)
+    check normal.exitCode == 0
+    check "seen:1,1,1" in normal.output
+    for m in markers:
+      check fileExists(parent / m)
+      removeFile(parent / m)
+
+    # When: compiled with --compileTime:restricted, none of them is read.
+    let restricted = runNim("c -f -r --hints:off --compileTime:restricted --nimcache:" &
+      (parent / "cache_restricted") & " m.nim", proj)
+    check restricted.exitCode == 0
+    check "seen:,," in restricted.output
+    for m in markers:
+      check not fileExists(parent / m)
+
+  test "R5: a NimScript file named on the command line still runs":
+    write(root / "r5s" / "s.nims", "echo \"script ran\"\n")
+    let res = runNim("e --hints:off --compileTime:restricted s.nims", root / "r5s")
+    check res.exitCode == 0
+    check "script ran" in res.output
+
   test "R4: NimScript cannot change files or the environment; exec takes the whitelist":
     let dir = root / "r4s"
     for (name, code, expected) in [
@@ -54,6 +102,28 @@ suite "--compileTime:restricted":
     let ok = runNim("e --hints:off --compileTime:restricted \"--staticExecWhitelist:echo yes\" ok.nims", dir)
     check ok.exitCode == 0
     check "yes" in ok.output
+
+  test "R2: a project configuration cannot widen the whitelist or switch the mode off":
+    let proj = root / "r2"
+    write(proj / "nim.cfg", "--compileTime:normal\n--staticExecWhitelist:\"echo pwned\"\n")
+    write(proj / "m.nim", "const x = staticExec(\"echo pwned\")\n")
+    let res = runNim("c --compileOnly --hints:off --compileTime:restricted m.nim", proj)
+    check res.exitCode != 0
+    check "command refused by --compileTime:restricted, it is not in --staticExecWhitelist: 'echo pwned'" in res.output
+
+  test "R2: the user configuration can set the mode and the whitelist":
+    let xdg = root / "r2u" / "xdg"
+    write(xdg / "nim" / "nim.cfg", "--compileTime:restricted\n--staticExecWhitelist:\"echo fromuser\"\n")
+    let proj = root / "r2u" / "proj"
+    write(proj / "nim.cfg", "--staticExecWhitelist:\"echo fromproject\"\n")
+    write(proj / "ok.nim", "const x = staticExec(\"echo fromuser\")\nstatic: doAssert x == \"fromuser\"\n")
+    write(proj / "ng.nim", "const x = staticExec(\"echo fromproject\")\n")
+    let env = envWith("XDG_CONFIG_HOME", xdg)
+    let ok = runNim("c --compileOnly --hints:off ok.nim", proj, env)
+    check ok.exitCode == 0
+    let ng = runNim("c --compileOnly --hints:off ng.nim", proj, env)
+    check ng.exitCode != 0
+    check "it is not in --staticExecWhitelist: 'echo fromproject'" in ng.output
 
   test "R6: vmopsDanger from the user configuration is refused in restricted mode":
     let xdg = root / "r6" / "xdg"
