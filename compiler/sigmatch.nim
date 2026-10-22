@@ -1213,6 +1213,17 @@ when false:
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
 
+proc varElemMismatch(ff, aa: PType): bool =
+  ## An element `var T` is a pointer, `T` is the value itself: `seq[var T]`
+  ## must not match `seq[T]` and vice versa (#26058). A generic parameter
+  ## can still bind to `var T`.
+  if ff.kind in {tyVar, tyLent}:
+    result = aa.kind != ff.kind
+  elif aa.kind in {tyVar, tyLent}:
+    result = ff.kind notin {tyGenericParam, tyAnything} + tyTypeClasses
+  else:
+    result = false
+
 proc typeRel(c: var TCandidate, f, aOrig: PType,
              flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -1483,6 +1494,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
       if f.indexType.kind != tyGenericParam and aa.kind == tyEmpty:
         result = isGeneric
+      elif varElemMismatch(ff, aa):
+        return isNone
       else:
         result = typeRel(c, ff, aa, flags)
       if result < isGeneric:
@@ -1551,6 +1564,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if a.kind == f.kind:
       if (f[0].kind != tyGenericParam) and (a.elementType.kind == tyEmpty):
         result = isSubtype
+      elif varElemMismatch(f[0], a.elementType):
+        result = isNone
       else:
         let ff = f[0]
         let aa = a.elementType
