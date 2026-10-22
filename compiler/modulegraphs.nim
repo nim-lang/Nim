@@ -163,6 +163,10 @@ type
     packageTypes*: TStrTable
     emptyNode*: PNode
     canonTypes*: Table[SigHash, PType]
+    hooksInProduction*: IntSet
+      # `--parsem:on`: lifted hooks whose body is being filled (by sym id)
+    hooksInCycle*: IntSet
+      # ... and those that another hook met while they were (`liftdestructors`)
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
@@ -677,8 +681,45 @@ proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
     g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
 
 
+proc hookKey(g: ModuleGraph; opName: string; typ: PType): string =
+  result = opName
+  result.add '|'
+  result.add typeKey(typ, g.config, loadTypeCallback, loadSymCallback)
+
+proc typeContentHash*(g: ModuleGraph; t: PType): SigHash =
+  ## `--parsem:on`: the identity of a type for its lifted hooks, the same one
+  ## `setHookDisamb` names them by (`liftdestructors.createTypeBoundOps`)
+  SigHash(toMD5(typeKey(t, g.config, loadTypeCallback, loadSymCallback)))
+
+proc instanceKey(g: ModuleGraph; generic: PSym;
+                 concreteTypes: openArray[PType]): string =
+  ## the instantiation identity: the generic plus the `typeKey` of every
+  ## concrete type argument — exactly what the instantiation cache compares
+  result = generic.name.s
+  result.add '.'
+  result.addInt generic.disamb
+  result.add '.'
+  result.add modname(generic.itemId.module, g.config)
+  for t in concreteTypes:
+    result.add '|'
+    result.add typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+
+proc arenaKey(key: string): uint32 =
+  let d = toMD5(key)
+  result = uint32(d[4]) or (uint32(d[5]) shl 8) or (uint32(d[6]) shl 16) or
+           (uint32(d[7]) shl 24)
+
+proc instanceArenaKey*(g: ModuleGraph; generic: PSym;
+                       concreteTypes: openArray[PType]): uint32 =
+  ## for `ast.enterKeyedArena`
+  arenaKey(instanceKey(g, generic, concreteTypes))
+
+proc hookArenaKey*(g: ModuleGraph; opName: string; typ: PType): uint32 =
+  ## for `ast.enterKeyedArena`
+  arenaKey(hookKey(g, opName, typ))
+
 proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
-                        concreteTypes: openArray[PType]) =
+                        concreteTypes: openArray[PType]; inCompiles = false) =
   ## Under IC, replace a fresh routine instance's counter-based `disamb` with
   ## a content-derived one: a hash of the generic's identity plus the
   ## `typeKey` of every concrete type argument — exactly the identity the
@@ -688,17 +729,17 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
   ## prerequisite for cross-module generic-instance merging (and gives the
   ## dce analysis its `offers` keys). The hash is computed once, here; it is
   ## never recomputed — the value travels in the serialized `disamb` field.
-  if g.config.cmd notin {cmdNifC, cmdM}: return
+  ##
+  ## `--parsem:on` needs the same for a classic build: which unit instantiates
+  ## first must not show in the instance's name (doc/parallel_compiler.md §4.2).
+  ## Except inside `compiles()`: such an instance is cached for its `compiles`
+  ## only, so the same identity can be instantiated again outside, and two
+  ## claimants of one key would be told apart by the order they came in.
+  if g.config.cmd notin {cmdNifC, cmdM} and
+      (optParSem notin g.config.globalOptions or inCompiles):
+    return
   if isDefined(g.config, "icNoInstKey"): return
-  var key = generic.name.s
-  key.add '.'
-  key.addInt generic.disamb
-  key.add '.'
-  key.add modname(generic.itemId.module, g.config)
-  for t in concreteTypes:
-    key.add '|'
-    key.add typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-  let d = toMD5(key)
+  let d = toMD5(instanceKey(g, generic, concreteTypes))
   var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
            (int32(d[3] and 0x3F'u8) shl 24)) or InstanceDisambBit
   # Same-name hash collisions inside this process get probed to the next
@@ -723,12 +764,10 @@ proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
   ## defines a new one — the hook flavor of the backend def-migration hole.
   ## With a content-derived value the hook's NIF name (and hence its C name)
   ## is stable as long as the type itself is unchanged.
-  if g.config.cmd notin {cmdNifC, cmdM}: return
+  if g.config.cmd notin {cmdNifC, cmdM} and optParSem notin g.config.globalOptions:
+    return
   if isDefined(g.config, "icNoHookKey"): return
-  var key = opName
-  key.add '|'
-  key.add typeKey(typ, g.config, loadTypeCallback, loadSymCallback)
-  let d = toMD5(key)
+  let d = toMD5(hookKey(g, opName, typ))
   var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
            (int32(d[3] and 0x1F'u8) shl 24)) or HookDisambBit
   # Same-name hash collisions inside this process get probed to the next

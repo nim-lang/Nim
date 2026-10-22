@@ -95,6 +95,7 @@ type
     c: PContext
     escapingParams: IntSet
     inNimvmBranch: int
+    metOpenCycle: bool # `--parsem:on`: called a unit of an open cycle
   PEffects = var TEffects
 
 const
@@ -144,6 +145,9 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo; explicit
   createTypeBoundOps(tracked.graph, tracked.c, typ, info, tracked.c.idgen)
   for kind in TTypeAttachedOp:
     let op = getAttachedOp(tracked.graph, typ, kind)
+    if op != nil and tracked.graph.demandRoutineBody != nil:
+      # a user hook declared further down: see `trackCall`
+      discard tracked.graph.demandRoutineBody(op, forEffects = true)
     if op != nil and sfNeverRaises notin op.flags:
       tracked.canRaiseDefect = true
       break
@@ -768,6 +772,25 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym;
   if tfNoSideEffect notin s.typ.flags:
     markSideEffect(tracked, s, n.info)
 
+proc propagateDeclared(tracked: PEffects, n: PNode, s: PSym) =
+  ## `--parsem:on`: a call to a unit that is a forward declaration for the
+  ## caller (`keepsForwardSemantics`). Only the declaration counts — not
+  ## whatever the unit's body has inferred by then, which would depend on the
+  ## order units ran in.
+  let pragma = s.ast[pragmasPos]
+  let spec = effectSpec(pragma, wRaises)
+  if spec.isNil: tracked.unknownRaises.add (s, n.info)
+  mergeRaises(tracked, spec, n)
+  mergeTags(tracked, effectSpec(pragma, wTags), n)
+  tracked.canRaiseDefect = true
+  let (declGcSafe, declNoSideEffect) = declaredUnitFlags(tracked.c, s)
+  if not (declGcSafe or declNoSideEffect) and sfImportc notin s.flags:
+    # (`notGcSafe`: no side effects implies GC-safe)
+    if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
+    markGcUnsafe(tracked, s)
+  if not declNoSideEffect:
+    markSideEffect(tracked, s, n.info)
+
 proc procVarCheck(n: PNode; conf: ConfigRef) =
   if n.kind in nkSymChoices:
     for x in n: procVarCheck(x, conf)
@@ -1139,6 +1162,18 @@ proc trackCall(tracked: PEffects; n: PNode) =
         markSideEffect(tracked, a, n.info)
   # p's effects are ours too:
   var a = n[0]
+  var keepsForward = false
+  block:
+    let callee = if a.kind == nkCast and a.len == 2: a[1] else: a
+    if callee.kind == nkSym and callee.sym.kind in routineKinds and
+        tracked.graph.demandRoutineBody != nil:
+      # `--parsem:on`: possibly a unit whose body is still deferred. Demanded
+      # before ANYTHING is read off the callee: not only its effect list (which
+      # a routine with explicit `.tags` or `.raises` has partially from its
+      # declaration) but also `sfNeverRaises` and `sfSideEffect`, which only
+      # its body's tracking sets. `true`: the unit keeps forward-declaration
+      # semantics, its declaration is the contract (`keepsForwardSemantics`).
+      keepsForward = tracked.graph.demandRoutineBody(callee.sym, forEffects = true)
   if a.kind == nkSym:
     let s = a.sym
     case s.magic
@@ -1244,22 +1279,21 @@ proc trackCall(tracked: PEffects; n: PNode) =
         if sfSideEffect in a.sym.flags: markSideEffect(tracked, a, n.info)
       else:
         discard
-      var asForward = isForwardedProc(a)
-      if a.kind == nkSym and tracked.graph.demandRoutineBody != nil:
-        # `--parsem:on`: possibly a unit whose body is still deferred. Not only
-        # when there is no effect list yet: a routine with explicit `.tags` or
-        # `.raises` has a partial one from its declaration. `true`: the unit
-        # keeps forward-declaration semantics, its declaration is the contract
-        # (`keepsForwardSemantics`).
-        asForward = tracked.graph.demandRoutineBody(a.sym, forEffects = true) or
-          asForward
+      let asForward = keepsForward or isForwardedProc(a)
+      if a.kind == nkSym and isProvisionalUnit(tracked.c, a.sym):
+        # `--parsem:on`: a unit of a cycle that is still open has provisional
+        # effects only; whoever reads them is tracked again until they settle
+        # (`trackProc`, `semstmts.solveCycle`)
+        tracked.metOpenCycle = true
       var effectList = op.n[0]
       if a.kind == nkSym and isNoEffectList(effectList) and
           tracked.graph.demandCycleBody != nil:
         # possibly a routine of the cycle group whose body is still deferred:
         tracked.graph.demandCycleBody(a.sym)
         effectList = op.n[0]
-      if a.kind == nkSym and a.sym.kind == skMethod:
+      if keepsForward:
+        propagateDeclared(tracked, n, a.sym)
+      elif a.kind == nkSym and a.sym.kind == skMethod:
         if {sfBase, sfThread} * a.sym.flags == {sfBase}:
           if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
           markGcUnsafe(tracked, a)
@@ -1950,34 +1984,28 @@ proc hasRealBody(s: PSym): bool =
   ## which is not a real implementation, refs #14314
   result = {sfForward, sfImportc} * s.flags == {}
 
-proc trackProc*(c: PContext; s: PSym, body: PNode) =
+proc inferEffects(c: PContext; s: PSym; body: PNode): TEffects =
   let g = c.graph
-  when defined(nimsuggest):
-    if g.config.expandDone():
-      return
-  var effects = s.typ.n[0]
-  if effects.kind != nkEffectList: return
-  # effects already computed?
-  if not s.hasRealBody: return
-  let emitWarnings = tfEffectSystemWorkaround in s.typ.flags
-  if effects.len == effectListLen and not emitWarnings: return
-
   var inferredEffects = newNodeI(nkEffectList, s.info)
 
   liftNimNodeHooks(g, c, s.info, c.idgen)
-  var t: TEffects = initEffects(g, inferredEffects, s, c)
-  rawInitEffects g, effects
+  result = initEffects(g, inferredEffects, s, c)
 
   if not isEmptyType(s.typ.returnType) and
      s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast[resultPos].sym # get result symbol
-    t.scopes[res.id] = t.currentBlock
+    result.scopes[res.id] = result.currentBlock
     if sfNoInit in s.flags:
       # marks result "noinit"
       incl res, sfNoInit
 
-  track(t, body)
+  track(result, body)
 
+proc publishEffects(c: PContext; s: PSym; body: PNode; t: var TEffects) =
+  ## checks the inferred effects against the routine's declared ones and
+  ## makes them the routine's
+  let g = c.graph
+  var effects = s.typ.n[0]
   if t.exc.len == 0 and not t.canRaiseDefect:
     s.incl sfNeverRaises
 
@@ -2079,6 +2107,98 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       when false: trackWrites(s, body)
   if strictNotNil in c.features and s.kind in {skProc, skFunc, skMethod, skConverter}:
     checkNil(s, body, g.config, c.idgen)
+
+
+proc provisionalEffects(s: PSym; t: TEffects; declGcSafe, declNoSideEffect: bool) =
+  ## `--parsem:on`: what a routine of a still-open cycle of units shows its
+  ## callers in the meantime (`trackProc`, `retrackMember`). A declared
+  ## `.raises`, `.tags`, `.gcsafe` or `.noSideEffect` is the contract, as
+  ## after `publishEffects`.
+  let effects = s.typ.n[0]
+  let p = s.ast[pragmasPos]
+  let raisesSpec = effectSpec(p, wRaises)
+  effects[exceptionEffects] = if raisesSpec != nil: raisesSpec else: t.exc
+  let tagsSpec = effectSpec(p, wTags)
+  effects[tagEffects] = if tagsSpec != nil: tagsSpec else: t.tags
+  if t.exc.len == 0 and not t.canRaiseDefect: s.incl sfNeverRaises
+  else: s.excl sfNeverRaises
+  if declGcSafe or not t.gcUnsafe: s.typ.incl tfGcSafe
+  else: s.typ.excl tfGcSafe
+  if declNoSideEffect or (not t.hasSideEffect and sfSideEffect notin s.flags):
+    s.typ.incl tfNoSideEffect
+  else: s.typ.excl tfNoSideEffect
+
+proc trackProc*(c: PContext; s: PSym, body: PNode) =
+  let g = c.graph
+  when defined(nimsuggest):
+    if g.config.expandDone():
+      return
+  var effects = s.typ.n[0]
+  if effects.kind != nkEffectList: return
+  # effects already computed?
+  if not s.hasRealBody: return
+  let emitWarnings = tfEffectSystemWorkaround in s.typ.flags
+  if effects.len == effectListLen and not emitWarnings: return
+
+  let declGcSafe = tfGcSafe in s.typ.flags
+  let declNoSideEffect = tfNoSideEffect in s.typ.flags
+  rawInitEffects g, effects
+  var t = inferEffects(c, s, body)
+  if deferEffects(c, s) or
+      (t.metOpenCycle and deferRoutineEffects(c, s, declGcSafe, declNoSideEffect)):
+    # a unit of a cycle of units that is still open, or a routine that read
+    # the provisional effects of one: its effects depend on those of the
+    # cycle, so they are solved with it when it closes (`semstmts.solveCycle`)
+    provisionalEffects(s, t, declGcSafe, declNoSideEffect)
+    return
+  publishEffects(c, s, body, t)
+
+type
+  CycleMember* = object
+    ## `--parsem:on`: a routine of a cycle of units, for `solveCycle`
+    owner*: PSym
+    body*: PNode
+    declGcSafe, declNoSideEffect: bool
+    t: TEffects
+
+proc initCycleMember*(c: PContext; s: PSym; body: PNode;
+                      declGcSafe, declNoSideEffect: bool): CycleMember =
+  ## Starts from no effects at all, which is what makes the rounds of
+  ## `retrackMember` find the LEAST solution: the one each routine would have
+  ## if the others' effects had been known when it was tracked.
+  result = CycleMember(owner: s, body: body, declGcSafe: declGcSafe,
+                       declNoSideEffect: declNoSideEffect)
+  let effects = s.typ.n[0]
+  rawInitEffects c.graph, effects
+  let p = s.ast[pragmasPos]
+  let raisesSpec = effectSpec(p, wRaises)
+  if raisesSpec != nil: effects[exceptionEffects] = raisesSpec
+  let tagsSpec = effectSpec(p, wTags)
+  if tagsSpec != nil: effects[tagEffects] = tagsSpec
+  s.incl sfNeverRaises
+  s.typ.incl tfGcSafe
+  if sfSideEffect notin s.flags: s.typ.incl tfNoSideEffect
+
+proc retrackMember*(c: PContext; m: var CycleMember): bool =
+  ## One round: tracks the body again against the others' current effects.
+  ## Returns whether the result grew. Tracking is monotone in the callees'
+  ## effects, so the rounds terminate.
+  template summary(t: TEffects): untyped =
+    ((if t.exc == nil: -1 else: t.exc.len),
+     (if t.tags == nil: -1 else: t.tags.len), t.gcUnsafe, t.hasSideEffect,
+     t.canRaiseDefect, t.unknownRaises.len)
+  let old = summary(m.t)
+  m.t = inferEffects(c, m.owner, m.body)
+  provisionalEffects(m.owner, m.t, m.declGcSafe, m.declNoSideEffect)
+  result = old != summary(m.t)
+
+proc publishMember*(c: PContext; m: var CycleMember) =
+  let s = m.owner
+  # back to what the declaration says, `publishEffects` adds what was inferred
+  s.excl sfNeverRaises
+  if not m.declGcSafe: s.typ.excl tfGcSafe
+  if not m.declNoSideEffect: s.typ.excl tfNoSideEffect
+  publishEffects(c, s, m.body, m.t)
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   case n.kind

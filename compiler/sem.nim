@@ -23,6 +23,7 @@ import
 import vtables
 import icprof
 import std/[strtabs, math, tables, intsets, strutils, packedsets]
+from std/algorithm import sort
 
 when not defined(leanCompiler):
   import spawn
@@ -884,11 +885,11 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   # body pass has not run yet, and ask for it through these. Modules nest (an
   # import is compiled from inside the importer's pass), so keep the enclosing
   # module's hooks and put them back in `closePContext`.
+  result.currentUnit = -1
   if optParSem in graph.config.globalOptions:
     result.prevDemandRoutineBody = graph.demandRoutineBody
     result.prevDemandReachableBodies = graph.demandReachableBodies
     result.unitErrorMax = graph.config.errorMax
-    result.currentUnit = -1
     let ctx = result
     graph.demandRoutineBody = proc (prc: PSym; forEffects: bool): bool =
       demandRoutineBody(ctx, prc, forEffects)
@@ -962,6 +963,10 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   # bigger change than this stage is trying to make.
   if c.bodyTasks.len > 0:
     drainBodyTasks(c)
+  if optParSem in c.config.globalOptions:
+    # what follows (the top-level statements' tracking, the backend of a
+    # classic build) mints in the tail region, clear of every unit's arena
+    enterTail(c.idgen)
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
     # steps are not required anymore and actually harmful for the upcoming

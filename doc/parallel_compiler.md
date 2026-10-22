@@ -1,6 +1,6 @@
 # A concurrent compiler: routine bodies as the unit of parallelism
 
-Status: PLAN (2026-09-01); stage 1 revised 2026-10-22 (`--parsem:on`, §2.4). Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
+Status: PLAN (2026-09-01); stage 1 revised 2026-10-22 (`--parsem:on`, §2.4); stage 2: grinder clean for the compiler. Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
 Companion to `doc/ic.md` (the IC design this sits on top of). Line numbers below
 are from that commit; the measurements are from a 32-core machine.
 
@@ -247,9 +247,34 @@ without the switch compiles with it. Two rules keep that exact:
    (`rstast.renderRstToRst` is the case in the compiler's own import closure).
    The header pass asking is past every pending unit's implementation, so
    for it the unit is run.
-2. A demand for a unit that is **running** is a recursion and is left alone;
-   the caller takes the path a recursive call takes without `--parsem` (no
-   effect list yet). Treating it as a forward declaration instead broke
+2. A demand for a unit that is **running**, or done but part of a cycle that
+   is not closed yet, is a recursion. The units form the nodes of a *demand
+   graph* and the cycles are its strongly connected components, found by
+   Tarjan's algorithm as the units run (`runBodyTask`, `demandRoutineBody`).
+   A unit whose cycle is still open when its body has been tracked does not
+   publish its effects (`deferEffects`); when the cycle's root finishes, its
+   units start again from *no* effects and are tracked again, in key order and
+   with messages silenced, until nothing grows; then each checks its declared
+   effects and publishes (`solveCycle`). That is the least solution — what
+   each member would get if the others' effects had been known up front — and
+   it does not depend on which member ran first. A plain union of the members'
+   effects would not do: a `try` around a call inside the cycle filters what
+   comes back (`tests/parsem/tcycleeffects`). A routine that is not a unit —
+   an instance or a nested routine — and reads the provisional effects of a
+   unit of an open cycle joins the cycle the same way (`deferRoutineEffects`):
+   going by the unit's declaration instead made the instantiated `==` of
+   `seq[Foo]`, a `func` that recurses into `Foo`'s `==`, "have side effects"
+   (`tests/effects/tlaxeffects`). A call that rule 1 applies to goes by the
+   declaration only (`propagateDeclared`), whatever the target's body has
+   inferred by then; it is no edge of the demand graph, it cuts the cycle.
+
+   The first version left a running unit alone and let the caller take the
+   path of a recursive call without `--parsem` (an empty effect list). That
+   was unsound for mutual recursion without forward declarations: the member
+   entered second saw the first's effects as empty, so an exception raised
+   by the first escaped a `.raises: []` caller (`tests/parsem/tcycleraises`);
+   and it made every member of such a cycle GC-unsafe and side-effecting.
+   Treating a running unit as a forward declaration instead broke
    `tests/effects/tlaxeffects` (`==` of an object recursing through the
    instantiated `==` of `seq`).
 3. A routine **used as a value** is matched against proc types by its inferred
@@ -284,6 +309,7 @@ failure with the switch also fails without it):
 | compile-time side effects of bodies (`static:` echo, `{.compileTime.}` tables filled by macros in bodies) run later (§4.10.5) | `generics/tnullary_generics`, `macros/tincremental` |
 | a body no longer lifts a hook implicitly before the explicit one further down is declared — the explicit one wins instead of "cannot bind another `=destroy`" | `destructor/tdestructor_too_late`, `destructor/tinvalid_rebind`, `destructor/tinvalid_rebind_nonempty` |
 | a later top-level overload of a nested routine's name makes a proc value a symchoice; under the deprecated `--newruntime`, `owned` of a symchoice is typed `owned None` (a latent bug) | `destructor/twidgets`, `destructor/twidgets_unown`, `destructor/tuse_ownedref_after_move` |
+| mutual recursion without forward declarations is inferred precisely (§2.4 rule 2): a nested `.noSideEffect` routine that only calls back into its pure outer routine no longer "can have side effects" | `effects/tnestedprocs` (variant `tests/parsem/tnestedprocs_parsem`) |
 | a method dispatcher is created from its base method before the base is tracked, so it lacks `sfInjectDestructors` and `--expandArc` does not show it; its body is `nkFastAsgn` only, so nothing is lost | `arc/topt_no_cursor` |
 
 
@@ -297,8 +323,9 @@ Consequence for §2.3: a unit may now *demand* one with a larger key. In the
 sequential implementation that is plain recursion with a `btRunning` guard. For
 the parallel stages, the deadlock-freedom argument has to move from "keys
 decrease along waits" to "a wait on a unit that is (transitively) waiting on
-the waiter is answered by rule 2", i.e. a wait-for-graph cycle check instead of
-a key comparison — see §6, question 6.
+the waiter is answered by rule 2": a wait-for-graph cycle is exactly an open
+cycle of the demand graph, whose members do not wait for each other's effects
+but are solved together — see §6, question 6.
 
 ### 2.5 The per-body pipeline and its outputs
 
@@ -775,6 +802,53 @@ anonymous proc types in `ast2nif`; content-addressed string literal names in
 from the cold-build analysis ("process-independent serialized ids") falls out of
 this stage for free.
 
+*Grinder clean for the compiler (2026-10-22).* The measuring instrument came
+first: `-d:nimParsemGrind` builds a compiler whose body pass drains back to
+front, the schedule furthest from the reference one. The C output of
+`compiler/nim.nim --parsem:on` built by it is diffed against the reference
+compiler's: 181 of 221 files differed at the start, **none** now. Without the
+switch the output is byte-identical to before, and the switch still
+bootstraps to a fixed point. What it took:
+
+* `disamb` arenas (`ast.enterUnitArena`, `enterKeyedArena`,
+  `enterScratchArena`). The module's `disamb` space below `HookDisambBit` is
+  cut into regions: the header pass counts in `[0, 2^16)`, unit `i` in
+  `2^16 + i * 2^11`, a generic instance or lifted hook in an arena keyed by
+  the hash of its identity in `[2^28, 2^28 + 2^27)`, and everything after the
+  body pass (the classic backend) plus the overflow of any arena in a tail
+  region. An instance's key is only known once its signature is instantiated,
+  so it mints into a scratch arena until the cache lookup and gives those
+  symbols their numbers afterwards (`redisamb`); a cache hit (or an instance
+  inside `compiles()`, which is cached for that `compiles` only) counts them
+  where they would have been counted without arenas. `templInstCounter`
+  restarts per arena. Instances and hooks also get the content-derived
+  `disamb` that `--ic:on` already gave them (`setInstanceDisamb`,
+  `setHookDisamb`). 181 → 21 files.
+* Effects that depended on the order. `trackCall` read `sfNeverRaises` before
+  demanding the callee, and so did hook lifting. Mutually recursive units
+  were inferred depending on who ran first, and unsoundly so: now a fixpoint
+  per cycle (§2.4 rule 2). A call that keeps forward-declaration semantics
+  goes by the declaration only. 21 → 17 files.
+* Hooks. A type has many `PType`s, and which of them a hook was lifted for,
+  first, decided three things: the hook's owner (and with it the translation
+  unit the classic backend defines it in), the canonical type the others
+  share the hook with (`canonTypes`, first come), and whether the type that
+  `injectdestructors` looks a hook up on has one at all. Now the owner is the
+  module of the type's first nominal component (`liftdestructors.hookOwner`),
+  the canonical type is found by the content key the hook is named by
+  (`typeContentHash`, also for a `distinct` type's base), the prototypes are
+  minted in the hook's arena too, the ops are attached to the skipped type as
+  well, and a cycle of hooks of a recursive type is uniformly "can raise".
+  17 → 0 files.
+
+Every one of these changes is behind `--parsem:on` (and outside `--ic:on`,
+which places hooks and instances by its own rules). Not started: unit-relative
+names for body-local types in `ast2nif`, content-addressed literal names, the
+VM's own `templInstCounter`, and the grinder on `.s.bif` under `--ic:on` and on
+more than the compiler itself. Open: an arena whose instance key collides with
+another's in the same module is probed first-come, and so is a hook or instance
+`disamb` collision (`instDisambs`); neither has shown up in the grinder.
+
 **Stage 3 — worker-private state.** The §3 split; `WorkerConfig`; per-task
 containers of §4.5 with key-ordered merge; `hlo` pattern copy; message
 buffering; `program`/pools/`IdentCache` locking; `sysTypes` pre-warm;
@@ -837,10 +911,11 @@ contention), VM ownership step 2 (handoff). Optional; measure first.
    is that acceptable for `nim check` (it is where most latency complaints come
    from)? The header/body split helps `check` even sequentially: errors in
    bodies are found per body, so `--errorMax` can stop earlier.
-6. **Waits on larger keys** (§2.4). Without forward declarations a unit can
-   need a later one (effects, `auto`, a generic body). Sequentially that is a
-   demand with a recursion guard. In parallel: is a wait-for-graph cycle check
-   on each wait enough, or should effect inference move out of the unit into a
-   pass over the call graph's SCCs once all bodies are semmed? The latter would
-   also make mutual recursion between *unannotated* routines inferred precisely
-   (today, and under rule 2, one member of the cycle is answered pessimistically).
+6. **Waits on larger keys** (§2.4). *Answered for effects (2026-10-22):* the
+   SCCs are found as the units run, not in a pass afterwards, and each is
+   solved by a fixpoint (§2.4 rule 2). Open for stage 4: a member of an open
+   cycle is `onStack` on the thread that entered the cycle; a demand from
+   another worker for it has to wait for the cycle's root, which needs the
+   wait-for check this question asked about. `auto` and a generic body have no
+   fixpoint: a cycle through them is an error or a recursion guard, as it is
+   sequentially.
