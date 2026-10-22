@@ -141,6 +141,8 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
       run filename, " -d:release --gc:boehm"
 
   testLegacyGc "gctest"
+  when not defined(windows) and not defined(android) and not defined(osx):
+    run "tboehm_signal", " --gc:boehm"
 
   test "foreign_thr"
   test "gcemscripten"
