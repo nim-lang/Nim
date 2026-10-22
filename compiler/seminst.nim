@@ -509,6 +509,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   # hashes only signatures now, so a generic body edit moves only the impl
   # cookie, and just the modules that instantiated it re-sem.
   recordIcImplDep(c.graph, fn)
+  if c.graph.demandRoutineBody != nil:
+    # `--parsem:on`: the generic body may still be a pending unit
+    discard c.graph.demandRoutineBody(fn, forEffects = false)
   let canUseBindingCache = c.inGenericContext == 0 and c.matchedConcept == nil
   if canUseBindingCache:
     result = genericCacheGetFromBindings(c.graph, fn, pt, c.compilesContextId,

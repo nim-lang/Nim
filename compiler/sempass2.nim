@@ -751,10 +751,11 @@ proc importedFromC(n: PNode): bool =
   # when imported from C, we assume GC-safety.
   result = n.kind == nkSym and sfImportc in n.sym.flags
 
-proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
+proc propagateEffects(tracked: PEffects, n: PNode, s: PSym;
+                      asForward = false) =
   let pragma = s.ast[pragmasPos]
   let spec = effectSpec(pragma, wRaises)
-  if spec.isNil and sfForward in s.flags:
+  if spec.isNil and (asForward or sfForward in s.flags):
     tracked.unknownRaises.add (s, n.info)
   mergeRaises(tracked, spec, n)
 
@@ -836,6 +837,10 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, formals: PType; ar
     var s = n.skipConv
     if s.kind == nkCast and s[1].typ.kind == tyProc:
       s = s[1]
+    if s.kind == nkSym and s.sym.kind in routineKinds and isNoEffectList(effectList) and
+        tracked.graph.demandRoutineBody != nil:
+      # `--parsem:on`: a routine declared further down, see `trackCall`
+      discard tracked.graph.demandRoutineBody(s.sym, forEffects = true)
     if s.kind == nkSym and s.sym.kind in routineKinds and isNoEffectList(effectList):
       propagateEffects(tracked, n, s.sym)
     elif isNoEffectList(effectList):
@@ -1239,6 +1244,15 @@ proc trackCall(tracked: PEffects; n: PNode) =
         if sfSideEffect in a.sym.flags: markSideEffect(tracked, a, n.info)
       else:
         discard
+      var asForward = isForwardedProc(a)
+      if a.kind == nkSym and tracked.graph.demandRoutineBody != nil:
+        # `--parsem:on`: possibly a unit whose body is still deferred. Not only
+        # when there is no effect list yet: a routine with explicit `.tags` or
+        # `.raises` has a partial one from its declaration. `true`: the unit
+        # keeps forward-declaration semantics, its declaration is the contract
+        # (`keepsForwardSemantics`).
+        asForward = tracked.graph.demandRoutineBody(a.sym, forEffects = true) or
+          asForward
       var effectList = op.n[0]
       if a.kind == nkSym and isNoEffectList(effectList) and
           tracked.graph.demandCycleBody != nil:
@@ -1251,8 +1265,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
           markGcUnsafe(tracked, a)
         propagateEffects(tracked, n, a.sym)
       elif isNoEffectList(effectList):
-        if isForwardedProc(a):
-          propagateEffects(tracked, n, a.sym)
+        if asForward:
+          propagateEffects(tracked, n, a.sym, asForward = true)
         elif isIndirectCall(tracked, a):
           assumeTheWorst(tracked, n, op)
           gcsafeAndSideeffectCheck()
