@@ -29,7 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "50"
+  icFormatVersion* = "52"
+    ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v48: track implementation dependencies for reused generic type instances.
     ## v46: every type definition wraps its sons in `(genericargs ...)`.
@@ -145,6 +146,8 @@ type                          # please make sure we have under 32 options
                               # implementation
     optSpawnCodegen           # spawn a separate nim process for codegen
                               # to reclaim memory before C compilation
+    optMergeableCcode         # generated C code must be identical for all
+                              # targets so that niminst can merge it
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optBenchmarkVM            # Enables cpuTime() in the VM

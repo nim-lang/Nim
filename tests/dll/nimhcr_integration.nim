@@ -7,6 +7,7 @@ main: hasAnyModuleChanged? true
 main: before
    0: after
 main: after
+main: nimhcr_0 changed? true
               The answer is: 1000
 main: hasAnyModuleChanged? false
               The answer is: 1000
@@ -26,6 +27,7 @@ main: before
 bar
    0: after - improved!
 main: after
+main: nimhcr_0 changed? true
               The answer is: 110
 main: hasAnyModuleChanged? true
    0: before - improved!
@@ -37,7 +39,9 @@ bar
    0: after - closure iterator: 0
    0: after - closure iterator: 1
    0: after - c_2 = [1, 2, 3]
+   0: after - nimhcr_2 changed? true
 main: after
+main: nimhcr_0 changed? true
               The answer is: 9
 main: hasAnyModuleChanged? true
    2: before!
@@ -46,10 +50,12 @@ main: before
    0: after - closure iterator! after reload! does it remember? :2
    0: after - closure iterator! after reload! does it remember? :3
 main: after
+main: nimhcr_0 changed? true
               The answer is: 1000
 main: hasAnyModuleChanged? true
 main: before
 main: after
+main: nimhcr_0 changed? true
               The answer is: 42
 done
 '''
@@ -138,6 +144,7 @@ beforeCodeReload:
 
 afterCodeReload:
   echo "main: after"
+  echo "main: nimhcr_0 changed? ", hasModuleChanged(nimhcr_0)
 
 echo "main: HELLO!"
 

@@ -693,8 +693,11 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     # during memory allocation, we'll also (likely) see a crash and corrupt the
     # memory allocator - less frequently than on windows but still.
     # However, since we're about to go down anyway, YOLO.
+    # Not with Boehm: it calls `abort` while holding its allocator lock (on a
+    # bad `GC_free`), and `GC_disable` and the allocation below wait for that
+    # lock forever, so only the message is written.
 
-    when hasSomeStackTrace:
+    when hasSomeStackTrace and not defined(boehmgc):
       when not usesDestructors: GC_disable()
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)

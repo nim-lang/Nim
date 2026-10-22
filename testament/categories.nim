@@ -80,6 +80,13 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     defer: putEnv(libpathenv, libpath)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
+  if "refc" notin options:
+    # with refc, a thread of a program that uses nimrtl does not set up its
+    # GC heap either, and hangs on its first allocation; not fixed yet
+    testSpec r, makeTest("tests/dll/nimrtl_threads.nim", options & " --threads:on" & rpath, cat)
+    if "boehm" notin options:
+      # Boehm's GC has no setupForeignThreadGc
+      testSpec r, makeTest("tests/dll/nimrtl_foreign_thread.nim", options & " --threads:on" & rpath, cat)
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
@@ -87,6 +94,11 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # hcr tests
 
     testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_methods.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_global_ref.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_threadvar.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_logging.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_async.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
 
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
@@ -140,6 +152,8 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
       run filename, " -d:release --gc:boehm"
 
   testLegacyGc "gctest"
+  when not defined(windows) and not defined(android) and not defined(osx):
+    run "tboehm_signal", " --gc:boehm"
 
   test "foreign_thr"
   test "gcemscripten"

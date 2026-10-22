@@ -60,8 +60,12 @@ proc mangleProc(m: BModule; s: PSym; makeUnique: bool): string =
   var params = ""
   var staticLists = ""
   if s.typ.paramsLen > 0: # we dont care about the return param
-    for _, pt in paramTypes(s.typ):
+    for i, pt in paramTypes(s.typ):
       if pt.isNil: continue
+      # under IC the lifted env param can leak into `s.typ`, but only in the
+      # processes that already lifted `s`; keep it out of the name
+      if s.typ.n != nil and i < s.typ.n.len and s.typ.n[i].kind == nkSym and
+          isClosureEnvParam(s.typ, s.typ.n[i].sym): continue
       params.add encodeType(m, pt, staticLists)
 
   result.add encodeSym(m, s, makeUnique, staticLists)
@@ -682,7 +686,7 @@ proc genProcParams(m: BModule; t: PType, rettype: var Rope, params: var Builder,
       # pointer-type mismatch). We still must fill its name/loc (later passes such
       # as `assignParam` and `closureSetup` reference it), but it is omitted from
       # the C signature to match the from-source ABI.
-      let isClosureEnv = t.callConv == ccClosure and param.name.s == ":envP"
+      let isClosureEnv = isClosureEnvParam(t, param)
       var descKind = dkParam
       if m.config.backend == backendCpp and optByRef in param.options:
         if param.typ.kind == tyGenericInst:
@@ -1370,14 +1374,14 @@ proc getNimNode(m: BModule): Rope =
 proc tiNameForHcr(m: BModule; name: Rope): Rope =
   return if m.hcrOn: cDeref(name) else: name
 
-proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string) =
+proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string; trailingPointers = 0) =
   ## With hot code reloading a type info lives in the HCR runtime, so that it
   ## survives its module being reloaded: the module holds a pointer to it and
   ## registers it in `HcrCreateTypeInfos`, which runs for every module before
   ## any `DatInit`. Other modules get the same pointer with `hcrGetGlobal`
-  ## (see `declareNimType`).
+  ## (see `declareNimType`). `trailingPointers` reserves room for the entries
+  ## of a trailing `UncheckedArray[pointer]`, the vtable of a `TNimTypeV2`.
   m.s[cfsStrData].addVar(kind = Global, name = name, typ = ptrType(typ))
-  m.hcrCreateTypeInfosProc.add('\t')
   var registerHcr: CallBuilder
   m.hcrCreateTypeInfosProc.addStmt():
     m.hcrCreateTypeInfosProc.addCall(registerHcr, callee = "hcrRegisterGlobal"):
@@ -1387,6 +1391,8 @@ proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string) =
         m.hcrCreateTypeInfosProc.add(makeCString(name))
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
         m.hcrCreateTypeInfosProc.addSizeof(typ)
+        if trailingPointers > 0:
+          m.hcrCreateTypeInfosProc.add(" + " & $trailingPointers & " * " & cSizeof(CPointer))
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
         m.hcrCreateTypeInfosProc.add(CNil)
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
@@ -1745,7 +1751,6 @@ proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
   let nr = rope(name)
   if m.hcrOn:
     m.s[cfsStrData].addVar(kind = Global, name = str, typ = ptrType(nr))
-    m.s[cfsTypeInit1].add('\t')
     m.s[cfsTypeInit1].addAssignmentWithValue(str):
       m.s[cfsTypeInit1].addCast(typ = ptrType(nr)):
         var hcrGlobal: CallBuilder
@@ -1925,8 +1930,11 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, tiName: Rope; info: TL
   ## is a bare variable that the module's `DatInit` fills field by field.
   cgsym(m, "TNimTypeV2")
   let name = tiNameForHcr(m, tiName)
+  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
   if m.hcrOn:
-    declareTypeInfoForHcr(m, tiName, "TNimTypeV2")
+    # in C the vtable is stored in the type info itself, in C++ it is a pointer
+    declareTypeInfoForHcr(m, tiName, "TNimTypeV2",
+      trailingPointers = if m.compileToCpp: 0 else: dispatchMethods.len)
   elif m.config.cmd == cmdNifC:
     # Same emit-everywhere split as `genTypeInfoV2Impl`: every `cg` process that
     # demands this type declares it `extern`, and the DEFINITION is a droppable
@@ -1991,8 +1999,22 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, tiName: Rope; info: TL
       genDisplay(m.s[cfsVars], m, t, objDepth)
     typeEntry.addFieldAssignment(name, "display", objDisplayStore)
 
-  let dispatchMethods = toSeq(getMethodsPerType(m.g.graph, t))
-  if dispatchMethods.len > 0:
+  if dispatchMethods.len > 0 and m.hcrOn:
+    # A method is called through the HCR runtime, and the pointers of the
+    # procs are set only after the type infos are filled in: ask the runtime
+    # for the methods' slots, which it hands out before they are registered.
+    for i in dispatchMethods:
+      genProcPrototype(m, i)
+    var vTable = dotField(name, "vTable")
+    if m.compileToCpp:
+      vTable = getTempName(m)
+      m.s[cfsVars].addArrayVar(kind = Global, name = vTable,
+        elementType = CPointer, len = dispatchMethods.len)
+      typeEntry.addFieldAssignment(name, "vTable", vTable)
+    for i, meth in dispatchMethods:
+      typeEntry.addAssignment(subscript(vTable, $i),
+        cCall("hcrGetProc", getModuleDllPath(m, meth), '"' & meth.loc.snippet & '"'))
+  elif dispatchMethods.len > 0:
     let vTablePointerName = getTempName(m)
     m.s[cfsVars].addArrayVarWithInitializer(kind = Global,
         name = vTablePointerName,
@@ -2179,6 +2201,78 @@ proc typeToC(t: PType): string =
       # be clashes with our special meanings
       result.addInt ord(c)
 
+type
+  RttiInitScope = object
+    ## what `beginRttiInit` swapped out of the module: the enclosing type
+    ## info's (or the module's DatInit's) sections and node array; plus the
+    ## marker procs of the type info whose init proc is being built
+    sections: array[cfsTypeInit1..cfsTypeInit3, Builder]
+    markers: Builder
+    typeNodes: int
+    typeNodesName: Rope
+
+proc beginRttiInit(m: BModule; scope: var RttiInitScope) =
+  ## The per-module backend emits V1 type info everywhere it is demanded, and
+  ## the merge stage keeps one `TNimType` definition. Its init code — the
+  ## `TNimNode` tree, field offsets, marker hookup — used to go into every
+  ## demanding module's DatInit regardless: Nimbus initialized 12.5k type infos
+  ## 74k times, in DatInit procs of up to 5 MB that the C compiler took minutes
+  ## each to optimize. Instead the init code goes into a proc of its own
+  ## (`endRttiInit`), a definition unit the merge stage gives a single owner;
+  ## every demanding module merely calls it.
+  for s in cfsTypeInit1..cfsTypeInit3:
+    scope.sections[s] = newBuilder("")
+    swap(m.s[s], scope.sections[s])
+  scope.markers = newBuilder("")
+  scope.typeNodes = m.typeNodes
+  scope.typeNodesName = m.typeNodesName
+  m.typeNodes = 0
+  m.typeNodesName = getTempName(m)
+
+proc endRttiInit(m: BModule; scope: var RttiInitScope; name: Rope) =
+  ## Wraps the init code gathered since `beginRttiInit` into `<name>_init`,
+  ## restores the enclosing scope and calls the proc from there. The proc
+  ## guards against running twice: every TU that demands the type info calls
+  ## it, and with `nimTypeNames` a second run would even link the type info
+  ## into `nimTypeRoot`'s list again — as a cycle.
+  var body = newBuilder("")
+  if m.typeNodes > 0:
+    body.addArrayVar(kind = Global, name = m.typeNodesName,
+      elementType = cgsymValue(m, "TNimNode"), len = m.typeNodes)
+  for s in cfsTypeInit1..cfsTypeInit3:
+    body.add(extract(m.s[s]))
+  let markers = extract(scope.markers)
+  for s in cfsTypeInit1..cfsTypeInit3:
+    swap(m.s[s], scope.sections[s])
+  m.typeNodes = scope.typeNodes
+  m.typeNodesName = scope.typeNodesName
+  if body.buf.len == 0: return
+
+  let initName = name & "_init"
+  var header = newBuilder("")
+  header.addDeclWithVisibility(Private):
+    header.addProcHeader(ccNimCall, initName, CVoid, cProcParams())
+  let proto = extract(header)
+  m.s[cfsProcHeaders].add(proto)
+  m.s[cfsProcHeaders].finishProcHeaderAsProto()
+  # 'd': a liveness root kept by its owner only; 'u': a unique proc body, so a
+  # split module may move it into any of its C files. The prototype comes
+  # first so the unit starts like a proc, and the markers precede their use.
+  m.s[cfsProcs].add(cnifDefDirective(initName, "ud", ""))
+  m.s[cfsProcs].add(proto)
+  m.s[cfsProcs].finishProcHeaderAsProto()
+  m.s[cfsProcs].add(markers)
+  m.s[cfsProcs].add(proto)
+  m.s[cfsProcs].finishProcHeaderWithBody():
+    m.s[cfsProcs].addVar(kind = Global, name = "nimRttiDone", typ = NimBool,
+      initializer = NimFalse)
+    m.s[cfsProcs].addSingleIfStmt("nimRttiDone"):
+      m.s[cfsProcs].addReturn()
+    m.s[cfsProcs].addAssignment("nimRttiDone", NimTrue)
+    m.s[cfsProcs].add(extract(body))
+  m.s[cfsProcs].add(cnifEndDefs())
+  m.s[cfsTypeInit3].addCallStmt(initName)
+
 proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
@@ -2250,6 +2344,10 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
   #rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
+  let ntiName = result
+  var initScope = default(RttiInitScope)
+  if perModuleCg: beginRttiInit(m, initScope)
+
   case t.kind
   of tyEmpty, tyVoid: result = cIntValue(0)
   of tyPointer, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
@@ -2259,6 +2357,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
   of tyUserTypeClasses:
     internalAssert m.config, t.isResolvedUserTypeClass
+    if perModuleCg: endRttiInit(m, initScope, ntiName)
     return genTypeInfoV1(m, t.skipModifier, info)
   of tyProc:
     if t.callConv != ccClosure:
@@ -2269,7 +2368,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcGo}:
-      let markerProc = genTraverseProc(m, origType, sig)
+      let markerProc = genTraverseProc(m, origType, sig, initScope.markers)
       m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, result), "marker", markerProc)
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
@@ -2277,7 +2376,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
       # it may not be used in other places except in `genTraverseProc`,
       # we have to generate a typedesc for this case, not a weak one
       discard getTypeDesc(m, origType.last)
-      let markerProc = genTraverseProc(m, origType, sig)
+      let markerProc = genTraverseProc(m, origType, sig, initScope.markers)
       m.s[cfsTypeInit3].addFieldAssignment(tiNameForHcr(m, result), "marker", markerProc)
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)
@@ -2307,6 +2406,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     m.s[cfsTypeInit3].addDerefFieldAssignment(v2info, "typeInfoV1", cCast(CPointer, cAddr(result)))
     m.s[cfsTypeInit3].addFieldAssignment(result, "typeInfoV2", cCast(CPointer, v2info))
 
+  if perModuleCg: endRttiInit(m, initScope, ntiName)
   result = prefixTI(result)
 
 proc genTypeInfo*(config: ConfigRef, m: BModule; t: PType; info: TLineInfo): Rope =

@@ -12,6 +12,9 @@ When a module is reloaded, any newly added global variables will be
 initialized, but all other top-level code appearing in the module won't
 be re-executed and the state of all existing global variables will be
 preserved.
+A thread-local variable (`{.threadvar.}`) is preserved in the same way,
+with one value for each thread: its storage belongs to the HCR runtime and
+not to the library of its module, and any module can read and write it.
 
 
 Basic workflow
@@ -262,10 +265,14 @@ Outside this table:
 
 - `--mm:arc`:option: uses the same code as `orc` and is known to work on
   macOS, but no test runs it.
-- Programs that use threads are not tested.
+- Programs that use threads are not tested, apart from one test that keeps
+  thread-local variables of two threads apart across a reload with
+  `--mm:orc --threads:on`:option:.
 - The jump table is implemented for x86, x86-64, and for arm64 on macOS and
   on musl. Other combinations (arm64 on glibc among them) have no
-  implementation.
+  implementation, and the HCR runtime does not compile for them.
+- Nim does not detect musl by itself: on musl, pass `-d:musl`:option:.
+  Without it, arm64 counts as one of the combinations above.
 - The tests are disabled on OpenBSD and NetBSD, and are not run with
   `--mm:boehm`:option:.
 

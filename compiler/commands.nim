@@ -332,6 +332,7 @@ proc compileOptionValue*(conf: ConfigRef; switch: string; known: var bool): bool
   case switch.normalize
   of "debuginfo": result = contains(conf.globalOptions, optCDebug)
   of "compileonly", "c": result = contains(conf.globalOptions, optCompileOnly)
+  of "mergeableccode": result = contains(conf.globalOptions, optMergeableCcode)
   of "nolinking": result = contains(conf.globalOptions, optNoLinking)
   of "nomain": result = contains(conf.globalOptions, optNoMain)
   of "forcebuild", "f": result = contains(conf.globalOptions, optForceFullMake)
@@ -1167,6 +1168,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optCompileOnly}, arg, pass, info)
   of "spawncodegen":
     processOnOffSwitchG(conf, {optSpawnCodegen}, arg, pass, info)
+  of "mergeableccode":
+    processOnOffSwitchG(conf, {optMergeableCcode}, arg, pass, info)
   of "gencdeps":
     processOnOffSwitchG(conf, {optGenCDeps}, arg, pass, info)
   of "colors": processOnOffSwitchG(conf, {optUseColors}, arg, pass, info)

@@ -33,6 +33,8 @@ type
     c: PContext # c can be nil, then we are called from lambdalifting!
     idgen: IdGenerator
     ownedEdge: bool # filling the body for an `owned` location (RFC #575)
+    freshBranch: bool # wasMoved: resetting a just selected branch whose bytes
+                      # are left over from another branch (bug #26519)
 
 template destructor*(t: PType): PSym = getAttachedOp(c.g, t, attachedDestructor)
 template assignment*(t: PType): PSym = getAttachedOp(c.g, t, attachedAsgn)
@@ -207,32 +209,45 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
       c.filterDiscriminator = nil # we have found the case part, proceed as normal
 
     # we need to generate a case statement:
-    var caseStmt = newNodeI(nkCaseStmt, c.info)
-    # XXX generate 'if' that checks same branches
-    # generate selector:
-    var access = dotField(x, n[0].sym)
-    caseStmt.add(access)
-    var emptyBranches = 0
-    # copy the branches over, but replace the fields with the for loop body:
-    for i in 1..<n.len:
-      var branch = copyTree(n[i])
-      branch[^1] = newNodeI(nkStmtList, c.info)
+    proc genCaseStmt(c: var TLiftCtx; n, x, y: PNode; enforceDefaultOp: bool;
+                     emptyBranches: var int): PNode {.nimcall.} =
+      result = newNodeI(nkCaseStmt, c.info)
+      # XXX generate 'if' that checks same branches
+      # generate selector:
+      result.add dotField(x, n[0].sym)
+      # copy the branches over, but replace the fields with the for loop body:
+      for i in 1..<n.len:
+        var branch = copyTree(n[i])
+        branch[^1] = newNodeI(nkStmtList, c.info)
 
-      fillBodyObj(c, n[i].lastSon, branch[^1], x, y,
-                  enforceDefaultOp = localEnforceDefaultOp, enforceWasMoved = c.kind == attachedAsgn)
-      if branch[^1].len == 0: inc emptyBranches
-      caseStmt.add(branch)
-    if emptyBranches != n.len-1:
-      body.add(caseStmt)
+        fillBodyObj(c, n[i].lastSon, branch[^1], x, y,
+                    enforceDefaultOp = enforceDefaultOp, enforceWasMoved = c.kind == attachedAsgn)
+        if branch[^1].len == 0: inc emptyBranches
+        result.add(branch)
+
+    var emptyBranches = 0
+    if not c.freshBranch:
+      # in a fresh branch the selector is garbage: it must not be read before
+      # it is reset below
+      let caseStmt = genCaseStmt(c, n, x, y, localEnforceDefaultOp, emptyBranches)
+      if emptyBranches != n.len-1:
+        body.add(caseStmt)
 
     if c.kind in {attachedDestructor, attachedWasMoved}:
       # destructor/wasMoved for selector is done after case stmt
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
-    if c.kind == attachedWasMoved and emptyBranches != n.len-1:
+    if c.kind == attachedWasMoved:
       # the reset selector now selects a different branch whose fields
       # overlap the old ones: reset them too, the old branch's hooks
-      # need not have cleared every byte
-      body.add copyTree(caseStmt)
+      # need not have cleared every byte. The nested selectors of that branch
+      # are leftover bytes too, so they are reset before they are read:
+      let prevFresh = c.freshBranch
+      c.freshBranch = true
+      var freshEmpty = 0
+      let freshCase = genCaseStmt(c, n, x, y, localEnforceDefaultOp, freshEmpty)
+      if freshEmpty != n.len-1:
+        body.add freshCase
+      c.freshBranch = prevFresh
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
     # destroys in reverse order #24719
@@ -1120,11 +1135,35 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
+proc nimNodeOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  ## NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
+  ## time; the VM represents them as reference counted handles. `GC_ref` and
+  ## `GC_unref` of a NimNode count its handle.
+  case c.kind
+  of attachedAsgn, attachedDeepCopy:
+    # count first: `x` and `y` can be the same handle
+    body.add genBuiltin(c, mGCref, "GC_ref", y)
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+    body.add newAsgnStmt(x, y)
+  of attachedSink:
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+    body.add newAsgnStmt(x, y)
+  of attachedDup:
+    body.add genBuiltin(c, mGCref, "GC_ref", y)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+  of attachedWasMoved, attachedTrace:
+    defaultOp(c, t, body, x, y)
+
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if isNimNodeType(t):
-    # NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
-    # time; the VM represents them as handles, there is nothing to count:
-    defaultOp(c, t, body, x, y)
+    if optSeqDestructors in c.g.config.globalOptions:
+      nimNodeOp(c, t, body, x, y)
+    else:
+      # --mm:refc, JS: the VM counts NimNodes like it manages strings and
+      # seqs, without hooks, see `vmlayout.hasPayloads`:
+      defaultOp(c, t, body, x, y)
     return
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
@@ -1553,3 +1592,12 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     # on a possibly-`Sealed` foreign type (it used to write `flagsImpl` behind
     # the accessor's back precisely to dodge the seal assert).
     orig.inclDerived {tfHasAsgn}
+
+proc liftNimNodeHooks*(g: ModuleGraph; c: PContext; info: TLineInfo; idgen: IdGenerator) =
+  ## The hooks of NimNode count the VM's handles. Every routine that uses
+  ## NimNodes must see them, also a routine that only passes on its
+  ## parameters, so they are lifted before such routines are checked, not on
+  ## demand.
+  let nn = systemModuleSym(g, getIdent(g.cache, "NimNode"))
+  if nn != nil and nn.kind == skType and nn.typ != nil:
+    createTypeBoundOps(g, c, nn.typ, info, idgen)

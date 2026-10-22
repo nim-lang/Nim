@@ -349,7 +349,7 @@ proc isNimNodeType*(t: PType): bool {.inline.} =
   t.sym != nil and t.sym.magic == mPNimrodNode and t.kind in {tyRef, tyObject}
 
 proc isManagedMemory(t: PType): bool =
-  # NimNodes only exist at compile time; the VM does not count them
+  # NimNodes only exist at compile time; only the VM counts them
   result = (t.kind in GcTypeKinds and not isNimNodeType(t)) or
     (t.kind == tyProc and t.callConv == ccClosure)
 

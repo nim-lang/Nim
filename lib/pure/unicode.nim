@@ -969,7 +969,7 @@ template splitCommon(s, sep, maxsplit: untyped) =
       while last < sLen and not stringHasSep(s, last, sep):
         inc(last, runeLenAt(s, last))
       if splits == 0: last = sLen
-      yield substr(s.toOpenArray(first, (last - 1)))
+      yield substr(s.toOpenArray(first, min(last, sLen) - 1))
       if splits == 0: break
       dec(splits)
       inc(last, if last < sLen: runeLenAt(s, last) else: 1)
@@ -1001,8 +1001,21 @@ iterator split*(s: openArray[char], seps: openArray[Rune] = unicodeSpaces,
   splitCommon(s, seps, maxsplit)
 
 iterator splitWhitespace*(s: openArray[char]): string =
-  ## Splits a unicode string at whitespace runes.
-  splitCommon(s, unicodeSpaces, -1)
+  ## Splits a unicode string at whitespace runes. A run of whitespace counts
+  ## as one separator and whitespace at the start and at the end is skipped,
+  ## so no empty strings are yielded.
+  runnableExamples:
+    import std/sequtils
+    assert toSeq(splitWhitespace("  añyóng\u3000 hÃllo\t")) == @["añyóng", "hÃllo"]
+  var last = 0
+  while last < s.len:
+    while last < s.len and stringHasSep(s, last, unicodeSpaces):
+      inc(last, runeLenAt(s, last))
+    let first = last
+    while last < s.len and not stringHasSep(s, last, unicodeSpaces):
+      inc(last, runeLenAt(s, last))
+    if last > first:
+      yield substr(s.toOpenArray(first, min(last, s.len) - 1))
 
 template accResult(iter: untyped) =
   result = @[]

@@ -171,7 +171,8 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
     let modPos = precomp.module.position
     let exportcOnly = seedsOnlyExportcRoutines(g.config)
     for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-      if ownsRuntimeRoutine(s, modPos, exportcOnly):
+      if ownsRuntimeRoutine(s, modPos, exportcOnly) or
+          homeEmitsInstance(s, modPos, g, exportcOnly):
         requestProcDef(bmod, s)
 
 proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
@@ -929,8 +930,12 @@ proc cPartBytes(conf: ConfigRef): int =
   ## 0 disables splitting. `-d:icCPartBytes:N` overrides. Measured on a cold
   ## `-d:release` IC build of the compiler, 32 cores: unsplit 35.9s, 1 MB parts
   ## 30.6s (2 modules split), 500 KB 27.9s, 300 KB 25.1s (18 modules, 70 extra
-  ## files), 200 KB 25.0s.
-  result = 300_000
+  ## files), 200 KB 25.0s. But small parts make gcc inline far more (the
+  ## inline budget scales with the TU size) and repeat the DWARF types per
+  ## TU: Nimbus (refc, debug, 6 jobs) with 300 KB parts = 503 MB binary, cold
+  ## 404s, main-module edit 61s; 1 MB parts = 373 MB, 384s, 54s; unsplit =
+  ## 342 MB, 377s, 86s.
+  result = 1_000_000
   if isDefined(conf, "icCPartBytes"):
     try: result = parseInt(conf.symbols["icCPartBytes"])
     except ValueError: discard

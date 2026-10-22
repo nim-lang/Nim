@@ -336,7 +336,7 @@ proc isVSCompatible*(conf: ConfigRef): bool =
           (conf.cCompiler == ccIcl and conf.target.hostOS in osDos..osWindows)
 
 proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
-  # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
+  # use ``cpu.os.cc`` for cross compilation, unless ``--mergeableCcode`` is given
   # for niminst support
   var fullSuffix = suffix
   case conf.backend
@@ -348,7 +348,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
     return ""
 
   if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
-      optCompileOnly notin conf.globalOptions:
+      optMergeableCcode notin conf.globalOptions:
     let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
@@ -1053,6 +1053,10 @@ proc callCCompiler*(conf: ConfigRef) =
 
     if conf.hcrOn: # lets assume that optCompileOnly isn't on
       cmds = @[]
+      # a running program reloads a library as soon as it looks newer, so the
+      # linker writes each one beside its final name and it is moved into place
+      # complete: written in place, it could be loaded half written or be missing
+      var linkedLibs: seq[tuple[linked, target: AbsoluteFile]] = @[]
       let mainFileIdx = conf.toCompile.len - 1
       for idx, x in conf.toCompile:
         # don't relink each of the many binaries (one for each source file) if the nim code is
@@ -1065,7 +1069,11 @@ proc callCCompiler*(conf: ConfigRef) =
         let objFile = conf.getObjFilePath(x)
         let buildDll = idx != mainFileIdx
         let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
-        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
+        let linkOutput =
+          if buildDll: AbsoluteFile(linkTarget.string & ".tmp")
+          else: linkTarget
+        if buildDll: linkedLibs.add (linkOutput, linkTarget)
+        cmds.add(getLinkCmd(conf, linkOutput, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
         if isVSCompatible(conf):
@@ -1075,6 +1083,8 @@ proc callCCompiler*(conf: ConfigRef) =
       # if it fails than that from execLinkCmd() but that doesn't matter
       prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
       execCmdsInParallel(conf, cmds, prettyCb)
+      for lib in linkedLibs:
+        moveFile(lib.linked.string, lib.target.string)
       # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
       if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
         let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])

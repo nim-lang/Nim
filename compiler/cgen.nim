@@ -206,50 +206,15 @@ proc seedsOnlyExportcRoutines*(conf: ConfigRef): bool =
   ## entry points there and leaves everything else to demand.
   conf.target.targetOS == osStandalone and conf.selectedGC == gcNone
 
-proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
-  ## A used or exported, concrete, non-generic runtime routine with a body,
-  ## OWNED by the module at `modPos`. Shared by the `cg` stage's owned-routine
-  ## seeding (so a routine called only from other modules is still emitted by
-  ## its owner, next to the owner's emits and C options) and the `lower` stage's
-  ## owned-routine enumeration, so both stages see exactly the same set. An
-  ## unused private routine is left alone: classic codegen never visits it, and
-  ## transforming it can reject a valid program (for example, an unused helper
-  ## that captures its owner's `result`). Exported routines are kept even when
-  ## the module does not use them itself, because a use by an importer is only
-  ## recorded in the importer's process, never in this module's NIF. With
-  ## `exportcOnly` (see `seedsOnlyExportcRoutines`) only `{.exportc.}` routines
-  ## qualify. The other exclusions:
-  ## - nested/closure procs (owner is a proc, not a module): emitted via their
-  ##   enclosing routine's lambda-lifting, never standalone;
-  ## - generic instances (`sfFromGeneric`): emitted by demand, deduped by merge;
-  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
-  ##   not real codegen targets.
-  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
-  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
-  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
-  ##   method's body sub-tree (incl. its closure iterator); transforming it here
-  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
-  ##   identity, baking a conflicting `up` field → "up references do not agree"
-  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
-  ##   at lift time). So a dispatcher is never an owned runtime routine.
-  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
-  ## iterator, which is expanded at each call site) and must be emitted by its
-  ## owner — else a cross-module `for` over it links to nothing.
-  ##
-  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine — not
-  ## in `cg` and not in the `lower` stage. They are demanded by the backend's
-  ## emit-everywhere path and deduped by `merge` (content C name); the frontend
-  ## materialises them through the `(offer)` mechanism. The `lower` stage must
-  ## not transform an instance: a not-fully-concrete instance (a closure factory
-  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
-  ## its further-specialised use sites) still carries unresolved overload choices
-  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
+proc isSeedableRoutine(s: PSym; modPos: int; exportcOnly: bool): bool =
+  ## The structural half shared by `ownsRuntimeRoutine` and `homeEmitsInstance`:
+  ## a used or exported, concrete runtime routine with a body, serialized by the
+  ## module at `modPos`.
   s.itemId.module == modPos and
   (s.kind in {skProc, skFunc, skConverter, skMethod} or
    (s.kind == skIterator and s.typ != nil and s.typ.callConv == ccClosure)) and
   s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
   s.magic == mNone and
-  sfFromGeneric notin s.flags and
   sfDispatcher notin s.flags and
   (if exportcOnly: {sfExportc, sfCompilerProc} * s.flags == {sfExportc}
    else: {sfUsed, sfExported} * s.flags != {}) and
@@ -267,9 +232,85 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
   # `nkEmpty`, but `state_transition_epoch` still calls it. Forward declarations
   # (the other empty-body case) carry `sfForward` and are excluded above.
 
+proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
+  ## A used or exported, concrete, non-generic runtime routine with a body,
+  ## OWNED by the module at `modPos`. Shared by the `cg` stage's owned-routine
+  ## seeding (so a routine called only from other modules is still emitted by
+  ## its owner, next to the owner's emits and C options) and the `lower` stage's
+  ## owned-routine enumeration, so both stages see exactly the same set. An
+  ## unused private routine is left alone: classic codegen never visits it, and
+  ## transforming it can reject a valid program (for example, an unused helper
+  ## that captures its owner's `result`). Exported routines are kept even when
+  ## the module does not use them itself, because a use by an importer is only
+  ## recorded in the importer's process, never in this module's NIF. With
+  ## `exportcOnly` (see `seedsOnlyExportcRoutines`) only `{.exportc.}` routines
+  ## qualify. The other exclusions:
+  ## - nested/closure procs (owner is a proc, not a module): emitted via their
+  ##   enclosing routine's lambda-lifting, never standalone;
+  ## - generic instances (`sfFromGeneric`): seeded by their home module instead,
+  ##   see `homeEmitsInstance`;
+  ## - `importc`/`compileTime`/`error`/forward sentinels and meta signatures:
+  ##   not real codegen targets.
+  ## - method DISPATCHERS (`sfDispatcher`): their bodies are (re)synthesized into
+  ##   the main TU by `emitMethodDispatchers`/`generateIfMethodDispatchers`, never
+  ##   per module. A dispatcher is a `copySym` clone of the method that shares the
+  ##   method's body sub-tree (incl. its closure iterator); transforming it here
+  ##   would lambda-lift that SHARED iterator a SECOND time under a different owner
+  ##   identity, baking a conflicting `up` field → "up references do not agree"
+  ##   (the divergence is impossible in non-IC, where the dispatcher body is empty
+  ##   at lift time). So a dispatcher is never an owned runtime routine.
+  ## A `{.closure.}` iterator IS a standalone runtime routine (unlike an inline
+  ## iterator, which is expanded at each call site) and must be emitted by its
+  ## owner — else a cross-module `for` over it links to nothing.
+  ##
+  ## Generic INSTANCES (`sfFromGeneric`) are NEVER an owned runtime routine, so
+  ## the `lower` stage never transforms one; `cg` seeds them separately through
+  ## `homeEmitsInstance` and transforms them itself. The `lower` stage must
+  ## not transform an instance: a not-fully-concrete instance (a closure factory
+  ## over a `static` param, or a `$`/`=` op instance whose body resolves only at
+  ## its further-specialised use sites) still carries unresolved overload choices
+  ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
+  sfFromGeneric notin s.flags and isSeedableRoutine(s, modPos, exportcOnly)
+
+proc homeEmitsInstance*(s: PSym; modPos: int; g: ModuleGraph;
+                        exportcOnly = false): bool =
+  ## Whether the `cg` of the module at `modPos` emits the generic instance `s`
+  ## ITSELF, so that every other demander only prototypes it. That module is
+  ## the instance's HOME: the module that created it and serializes it, and
+  ## whose `(offer)` makes every importer reuse this very symbol instead of
+  ## minting its own. Emitting it once there restores the original
+  ## one-definition semantics; emit-everywhere + `merge` remains the fallback
+  ## for what does not qualify.
+  ##
+  ## The predicate reads only the symbol as its home serialized it, so the
+  ## home's `cg` (which seeds it) and every demander's `cg` (which then skips
+  ## the body) agree without talking to each other. It excludes:
+  ## - BACKEND-MINTED syms (`rttiDestroy`/`rttiTrace` wrappers, lifted hooks):
+  ##   no module's index lists them, so no home would seed them;
+  ## - generated type-bound ops (`sfGeneratedOp`): same reason — they are
+  ##   produced per process, not serialized by a home;
+  ## - instances the home does not OFFER: the ones minted inside a `compiles()`
+  ##   probe. Such an instance can survive with a body that never resolved
+  ##   (`$` of a `CountTable[PIdent]` with a raw `nkDotExpr` callee); nothing
+  ##   demands it, and codegen of it crashes. The home always loads its own
+  ##   header, so it sees its offers; a demander that did not load the home's
+  ##   header just emits the body as before, which `merge` dedups;
+  ## - everything `isSeedableRoutine` rejects (metatypes, unused, forward, ...).
+  ##
+  ## `cg` transforms a seeded instance in its own process, exactly as a
+  ## demander did before, so the `lower` stage still never sees one.
+  when defined(nimIcInstanceEverywhere):
+    result = false
+  else:
+    result = not exportcOnly and
+      sfFromGeneric in s.flags and sfGeneratedOp notin s.flags and
+      not isBackendMinted(s.itemId) and
+      isSeedableRoutine(s, modPos, exportcOnly) and
+      globalName(s, g.config) in g.icOfferedInstances
+
 proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ## Whether SOME module's `cg` is guaranteed to emit `prc`'s body on its own,
-  ## without this TU asking for it. There are exactly two seeders in the
+  ## without this TU asking for it. There are exactly three seeders in the
   ## per-module backend, and this enumerates them:
   ##
   ##   * `nifbackend.generateCodeForModule` walks its module's index and
@@ -281,9 +322,14 @@ proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ##     into the MAIN TU. A dispatcher is a `copySym` clone that no module's
   ##     index enumerates, so the first rule cannot see it.
   ##
-  ## Anything else — a generic instance, a synthesized hook, a nested routine
-  ## (emitted as part of its enclosing routine's lambda-lifted body), an inline
-  ## iterator (expanded at each call site) — is seeded by nobody. Those are
+  ##   * the same `generateCodeForModule` walk also seeds the generic instances
+  ##     its module is HOME to (`homeEmitsInstance`), the ones every importer
+  ##     reuses through the module's `(offer)`s.
+  ##
+  ## Anything else — an instance that does not qualify, a synthesized hook, a
+  ## nested routine (emitted as part of its enclosing routine's lambda-lifted
+  ## body), an inline iterator (expanded at each call site) — is seeded by
+  ## nobody. Those are
   ## emitted by EVERY demander and `merge` keeps one per content-addressed C
   ## name. That is the single default, and it is the safe direction: emitting a
   ## body twice costs a merge dedup, while emitting it nowhere is a link error.
@@ -295,9 +341,10 @@ proc bodyIsSeededByItsOwner(m: BModule; prc: PSym): bool =
   ## `.t.bif` it was read from rather than a module that seeds it, so it must not
   ## be routed through the ownership question at all.
   if isBackendMinted(prc.itemId): return false
+  let exportcOnly = seedsOnlyExportcRoutines(m.config)
   result = sfDispatcher in prc.flags or
-           ownsRuntimeRoutine(prc, prc.itemId.module,
-                              exportcOnly = seedsOnlyExportcRoutines(m.config))
+           ownsRuntimeRoutine(prc, prc.itemId.module, exportcOnly) or
+           homeEmitsInstance(prc, prc.itemId.module, m.g.graph, exportcOnly)
 
 proc emitsBodyInThisModule(m: BModule, prc: PSym): bool =
   ## Whether the translation unit `m` emits `prc`'s BODY, as opposed to only a
@@ -407,7 +454,12 @@ proc cgFormatValue(result: var string; value: Int128) =
   result.addInt128 value
 
 template addf(result: var Builder, args: varargs[untyped]) =
-  result.buf.addf(args)
+  if result.indents <= 0:
+    result.buf.addf(args)
+  else:
+    var tmp = ""
+    tmp.addf(args)
+    result.add(tmp)
 
 # TODO: please document
 macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
@@ -463,10 +515,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
         flushStrLit()
         result.add newCall(formatValue, resVar, args[j-1])
       of 'n':
-        flushStrLit()
-        result.add quote do:
-          if optLineDir notin `m`.config.options:
-            `resVar`.add("\L")
+        strLit.add "\L"
         inc(i)
       of 'N':
         strLit.add "\L"
@@ -500,22 +549,6 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   flushStrLit()
   result.add newCall(ident"rope", resVar)
 
-proc addIndent(p: BProc; result: var Rope) =
-  var i = result.len
-  let newLen = i + p.blocks.len
-  result.setLen newLen
-  while i < newLen:
-    result[i] = '\t'
-    inc i
-
-proc addIndent(p: BProc; result: var Builder) =
-  var i = result.buf.len
-  let newLen = i + p.blocks.len
-  result.buf.setLen newLen
-  while i < newLen:
-    result.buf[i] = '\t'
-    inc i
-
 template appcg(m: BModule, c: var (Rope | Builder), frmt: FormatStr,
            args: untyped) =
   c.add(ropecg(m, frmt, args))
@@ -529,22 +562,18 @@ template appcg(p: BProc, sec: TCProcSection, frmt: FormatStr,
   p.s(sec).add(ropecg(p.module, frmt, args))
 
 template line(p: BProc, sec: TCProcSection, r: string) =
-  addIndent p, p.s(sec)
   p.s(sec).add(r)
 
 template lineF(p: BProc, sec: TCProcSection, frmt: FormatStr,
               args: untyped) =
-  addIndent p, p.s(sec)
   p.s(sec).add(frmt % args)
 
 template lineCg(p: BProc, sec: TCProcSection, frmt: FormatStr,
                args: untyped) =
-  addIndent p, p.s(sec)
   p.s(sec).add(ropecg(p.module, frmt, args))
 
 template linefmt(p: BProc, sec: TCProcSection, frmt: FormatStr,
              args: untyped) =
-  addIndent p, p.s(sec)
   p.s(sec).add(ropecg(p.module, frmt, args))
 
 proc safeLineNm(info: TLineInfo): int =
@@ -554,21 +583,26 @@ proc safeLineNm(info: TLineInfo): int =
 proc genPostprocessDir(field1, field2, field3: string): string =
   result = postprocessDirStart & field1 & postprocessDirSep & field2 & postprocessDirSep & field3 & postprocessDirEnd
 
+proc addLineDirective(r: var Builder, dir: string) =
+  # an empty builder might be added in the middle of a line:
+  if r.buf.len == 0 or not r.atLineStart: r.addNewline()
+  r.addLineEnd(dir)
+
 proc genCLineDir(r: var Builder, fileIdx: FileIndex, line: int; conf: ConfigRef) =
   assert line >= 0
   if optLineDir in conf.options and line > 0:
     if fileIdx == InvalidFileIdx:
-      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
+      r.addLineDirective("#line " & $line & " \"generated_not_to_break_here\"")
     else:
-      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
+      r.addLineDirective("#line " & $line & " FX_" & $fileIdx.int32)
 
 proc genCLineDir(r: var Builder, fileIdx: FileIndex, line: int; p: BProc; info: TLineInfo; lastFileIndex: FileIndex) =
   assert line >= 0
   if optLineDir in p.config.options and line > 0:
     if fileIdx == InvalidFileIdx:
-      r.add(rope("\n#line " & $line & " \"generated_not_to_break_here\"\n"))
+      r.addLineDirective("#line " & $line & " \"generated_not_to_break_here\"")
     else:
-      r.add(rope("\n#line " & $line & " FX_" & $fileIdx.int32 & "\n"))
+      r.addLineDirective("#line " & $line & " FX_" & $fileIdx.int32)
 
 proc genCLineDir(r: var Builder, info: TLineInfo; conf: ConfigRef) =
   if optLineDir in conf.options:
@@ -605,7 +639,7 @@ proc genLineDir(p: BProc; t: PNode) =
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
       if freshLine:
-        line(p, cpsStmts, genPostprocessDir("nimln", $line, $t.info.fileIndex.int32))
+        p.s(cpsStmts).addLineEnd(genPostprocessDir("nimln", $line, $t.info.fileIndex.int32))
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
@@ -666,6 +700,7 @@ proc dataField(p: BProc, val: Rope): Rope {.inline.} =
   result = derefField(dataFieldAccessor(p, val), "data")
 
 proc genProcPrototype(m: BModule, sym: PSym)
+proc treatThreadVarDifferentlyForHCR(m: BModule, s: PSym): bool
 
 include ccgliterals
 include ccgtypes
@@ -988,8 +1023,6 @@ proc assignLocalVar(p: BProc; n: PNode) =
     initializer = genCppInitializer(p.module, p, n.typ, didGenTemp)
     initializerKind = CppConstructor
   localVarDecl(p.s(cpsLocals), p, n, initializer, initializerKind)
-  if optLineDir in p.config.options:
-    p.s(cpsLocals).add("\n")
 
 include ccgthreadvars
 
@@ -1000,6 +1033,22 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       ({lfNoDecl, lfHeader} * s.loc.flags == {})
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
+
+proc treatThreadVarDifferentlyForHCR(m: BModule, s: PSym): bool =
+  ## A threadvar has no storage of its own under HCR: the library that would
+  ## hold it is replaced on a reload, and another module cannot link to it.
+  ## The HCR runtime keeps a slot per thread instead.
+  m.hcrOn and sfThread in s.flags and sfImportc notin s.flags and
+      ({lfNoDecl, lfHeader, lfDynamicLib} * s.loc.flags == {})
+
+proc useHcrThreadVar(m: BModule, s: PSym) =
+  ## Turns the loc of `s` into a pointer to the slot of the calling thread.
+  let typ = getTypeDesc(m, s.loc.t, dkVar)
+  if lfIndirect notin s.loc.flags:
+    backendEnsureMutable s
+    s.locImpl.snippet = cCast(ptrType(typ), cCall("hcrGetThreadVar",
+      getModuleDllPath(m, s), makeCString(s.loc.snippet), cSizeof(typ)))
+    incl(s, lfIndirect)
 
 proc genGlobalVarDecl(res: var Builder, p: BProc; n: PNode; td: Snippet;
                       initializer: Snippet = "",
@@ -1049,6 +1098,11 @@ proc assignGlobalVar(p: BProc; n: PNode; value: Rope) =
     backendEnsureMutable s
     fillLoc(s.locImpl, locGlobalVar, n, OnHeap)
     if treatGlobalDifferentlyForHCR(p.module, s): incl(s, lfIndirect)
+  if treatThreadVarDifferentlyForHCR(p.module, s):
+    useHcrThreadVar(p.module, s)
+    if value != "":
+      internalError(p.config, n.info, ".threadvar variables cannot have a value")
+    return
 
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
@@ -1202,33 +1256,26 @@ $1define nimlf_(n, file) \
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   cgsym(p.module, "nimFrame")
-  result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
+  result = ropecg(p.module, "nimfr_($1, $2);$n", [procname, filename])
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Snippet; line: int): Snippet =
   cgsym(p.module, "nimFrame")
   p.blocks[0].sections[cpsLocals].addVar(name = frame, typ = "TFrame")
   var res = newBuilder("")
-  res.add('\t')
   res.addFieldAssignment(frame, "procname", procname)
-  res.add('\t')
   res.addFieldAssignment(frame, "filename", filename)
-  res.add('\t')
   res.addFieldAssignment(frame, "line", cIntValue(line))
-  res.add('\t')
   res.addFieldAssignment(frame, "len", cIntValue(-1))
-  res.add('\t')
   res.addCallStmt("nimFrame", cAddr(frame))
   result = extract(res)
 
 proc deinitFrameNoDebug(p: BProc; frame: Snippet): Snippet =
   var res = newBuilder("")
-  res.add('\t')
   res.addCallStmt(cgsymValue(p.module, "popFrameOfAddr"), cAddr(frame))
   result = extract(res)
 
 proc deinitFrame(p: BProc): Snippet =
   var res = newBuilder("")
-  res.add('\t')
   res.addCallStmt(cgsymValue(p.module, "popFrame"))
   result = extract(res)
 
@@ -1372,7 +1419,6 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
         # A seeded but dead wrapper must not cause an unavailable extension to
         # be resolved. The pointer and its assignment share liveness/ownership.
         builder.add(cnifDefDirective(stripCnifMarks(tmp), "u", icNifName(m, sym)))
-      builder.add('\t')
       builder.addAssignment(tmp,
         cCast(getTypeDesc(m, sym.typ, dkVar),
           cCall(callee, params)))
@@ -1391,7 +1437,6 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   else:
     # cgsym has side effects, do it first:
     let fn = cgsymValue(m, "nimGetProcAddr")
-    m.s[cfsDynLibInit].add('\t')
     m.s[cfsDynLibInit].addAssignment(tmp,
       cCast(getTypeDesc(m, sym.typ, dkVar),
         cCall(fn,
@@ -1828,7 +1873,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
           discard "result init optimized out"
         else:
           initLocalVar(p, res, immediateAsgn=false)
-      var returnBuilder = newBuilder("\t")
+      var returnBuilder = newBuilder("")
       let rres = rdLoc(res.loc)
       returnBuilder.addReturn(rres)
       returnStmt = extract(returnBuilder)
@@ -1866,7 +1911,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   for paramNode in sonsFrom(prc.typ.n, 1):
     let param = paramNode.sym
     if param.typ.isCompileTimeOnly: continue
-    if prc.typ.callConv == ccClosure and param.name.s == ":envP":
+    if isClosureEnvParam(prc.typ, param):
       # The hidden closure-env param is materialised by `closureSetup`, never a
       # normal C parameter (`genProcParams` omits it from the signature). In a
       # from-source build it lives only in the routine's AST params and never in
@@ -1882,11 +1927,15 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   icProfStart(tGenBody)
   genProcBody(p, procBody)
   if resultCleanup != nil:
-    p.s(cpsStmts).buf = "try {\n" & move(p.s(cpsStmts).buf)
-    p.s(cpsStmts).add("} catch (...) {\n")
+    let body = move(p.s(cpsStmts).buf)
+    p.s(cpsStmts).addLineEndIndent("try {")
+    p.s(cpsStmts).add(body)
+    p.s(cpsStmts).addDedent("}")
+    p.s(cpsStmts).addLineEndIndent(" catch (...) {")
     genRestoreFrameAfterException(p)
     genStmts(p, resultCleanup)
-    p.s(cpsStmts).add("throw;\n}\n")
+    p.s(cpsStmts).addLineEnd("throw;")
+    p.s(cpsStmts).addLineEndDedent("}")
   icProfStop(tGenBody)
 
   # IC: spurious write, seems fine for now:
@@ -1919,7 +1968,6 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
           generatedProc.add(extract(p.s(cpsLocals)))
         if optProfiler in prc.options:
           # invoke at proc entry for recursion:
-          p.s(cpsInit).add('\t')
           p.s(cpsInit).addCallStmt(cgsymValue(m, "nimProfile"))
         if beforeRetNeeded in p.flags:
           # this pair of {} is required for C++ (C++ is weird with its
@@ -1976,7 +2024,10 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   else:
     m.s[cfsProcs].add(extract(generatedProc))
   if isReloadable(m, prc):
-    m.s[cfsDynLibInit].add('\t')
+    if sfDispatcher in prc.flags:
+      # The main module registers every dispatcher, also one it never calls
+      # itself, so the pointer may not have been declared yet.
+      genProcPrototype(m, prc)
     m.s[cfsDynLibInit].addAssignmentWithValue(prc.loc.snippet):
       m.s[cfsDynLibInit].addCast(getProcTypeCast(m, prc)):
         m.s[cfsDynLibInit].addCall("hcrRegisterProc",
@@ -2038,7 +2089,6 @@ proc genProcPrototype(m: BModule, sym: PSym) =
           name = name,
           typ = t)
       if isReloadable(m, sym):
-        m.s[cfsDynLibInit].add('\t')
         m.s[cfsDynLibInit].addAssignmentWithValue(name):
           m.s[cfsDynLibInit].addCast(t):
             m.s[cfsDynLibInit].addCall("hcrGetProc",
@@ -2093,7 +2143,6 @@ proc genProcLvl2(m: BModule, prc: PSym) =
       # reloadable (and has no _actual suffix) - other modules will need to be able to get it through
       # the hcr dynlib (also put it in the DynLibInit section - right after it gets loaded)
       if isReloadable(q, prc):
-        q.s[cfsDynLibInit].add('\t')
         q.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
           cCast(getTypeDesc(q, prc.loc.t),
             cCall("hcrRegisterProc",
@@ -2134,7 +2183,6 @@ proc genProcLvl2(m: BModule, prc: PSym) =
     # to do the declaredProtos check before the call to genProcPrototype
     if isReloadable(m, prc) and prc.id notin m.declaredProtos and
       q != nil and not sameModules(q.module, m.module):
-      m.s[cfsDynLibInit].add('\t')
       m.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
         cCast(getProcTypeCast(m, prc),
           cCall("hcrGetProc",
@@ -2196,6 +2244,9 @@ proc genVarPrototype(m: BModule, n: PNode) =
   backendEnsureMutable sym
   fillLoc(sym.locImpl, locGlobalVar, n, OnHeap)
   if treatGlobalDifferentlyForHCR(m, sym): incl(sym, lfIndirect)
+  if treatThreadVarDifferentlyForHCR(m, sym):
+    useHcrThreadVar(m, sym)
+    return
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
@@ -2223,7 +2274,6 @@ proc genVarPrototype(m: BModule, n: PNode) =
           typ = typ,
           visibility = vis)
       if m.hcrOn:
-        m.initProc.procSec(cpsLocals).add('\t')
         m.initProc.procSec(cpsLocals).addAssignment(sym.loc.snippet,
           cCast(typ,
             cCall("hcrGetGlobal",
@@ -2245,7 +2295,7 @@ proc headerTop(): Rope =
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   result = headerTop()
-  if optCompileOnly notin conf.globalOptions:
+  if optMergeableCcode notin conf.globalOptions:
     result.add ("/* Compiled for: $1, $2, $3 */$N") %
         [rope(platform.OS[conf.target.targetOS].name),
         rope(platform.CPU[conf.target.targetCPU].name),
@@ -2849,7 +2899,8 @@ proc genInitCode(m: BModule) =
   # not support. So we add it to another special section: ``cfsInitProc``
 
   if m.hcrOn:
-    var procsToLoad = @["hcrRegisterProc", "hcrGetProc", "hcrRegisterGlobal", "hcrGetGlobal"]
+    var procsToLoad = @["hcrRegisterProc", "hcrGetProc", "hcrRegisterGlobal", "hcrGetGlobal",
+                        "hcrGetThreadVar"]
 
     m.s[cfsInitProc].addDeclWithVisibility(ExportLib):
       m.s[cfsInitProc].addProcHeaderWithParams(ccNimCall, getHcrInitName(m), CVoid):

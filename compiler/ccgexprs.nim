@@ -991,7 +991,8 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e.firstSon.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
     var a: TLoc = initLocExpr(p, e.firstSon)
-    putIntoDest(p, d, e, cAddr(a.snippet), a.storage)
+    # an indirect loc (a global or threadvar under HCR) already is the address
+    putIntoDest(p, d, e, if lfIndirect in a.flags: a.snippet else: cAddr(a.snippet), a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
   elif mapType(p.config, e.firstSon.typ, mapTypeChooser(e.firstSon) == skParam) == ctArray or isCppRef(p, e.typ):
     expr(p, e.firstSon, d)
@@ -3163,7 +3164,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       if not wasDeclared and p.hcrOn:
         let name = mangleDynLibProc(p.module, prc)
         let rt = getTypeDesc(p.module, prc.loc.t)
-        p.module.s[cfsDynLibInit].add('\t')
         p.module.s[cfsDynLibInit].addAssignmentWithValue(name):
           p.module.s[cfsDynLibInit].addCast(rt):
             p.module.s[cfsDynLibInit].addCall("hcrGetProc",
@@ -3538,7 +3538,6 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
   if m.hcrOn:
     m.s[cfsVars].addVar(kind = Global, name = sym.loc.snippet,
       typ = ptrType(getTypeDesc(m, sym.loc.t, dkVar)))
-    m.initProc.procSec(cpsLocals).add('\t')
     m.initProc.procSec(cpsLocals).addAssignmentWithValue(sym.loc.snippet):
       m.initProc.procSec(cpsLocals).addCast(ptrType(getTypeDesc(m, sym.loc.t, dkVar))):
         m.initProc.procSec(cpsLocals).addCall("hcrGetGlobal",
@@ -3583,7 +3582,6 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
     q.s[cfsVars].addVar(kind = Global, name = sym.loc.snippet,
       typ = ptrType(getTypeDesc(q, sym.loc.t, dkVar)))
     # register it (but ignore the boolean result of hcrRegisterGlobal)
-    q.initProc.procSec(cpsLocals).add('\t')
     q.initProc.procSec(cpsLocals).addStmt():
       var registerCall: CallBuilder
       q.initProc.procSec(cpsLocals).addCall(registerCall, "hcrRegisterGlobal"):
@@ -3600,7 +3598,6 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
             q.initProc.procSec(cpsLocals).add(cAddr(sym.loc.snippet))
     # always copy over the contents of the actual constant with the _const
     # suffix ==> this means that the constant is reloadable & updatable!
-    q.initProc.procSec(cpsLocals).add('\t')
     q.initProc.procSec(cpsLocals).addStmt():
       var copyCall: CallBuilder
       q.initProc.procSec(cpsLocals).addCall(copyCall, cgsymValue(q, "nimCopyMem")):
@@ -3634,6 +3631,16 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if delayedCodegen(p.module) or {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
+        if p.hcrOn and sfDispatcher in sym.flags and
+            sfMainModule notin p.module.module.flags and
+            sym.id notin p.module.declaredProtos:
+          # The main module defines the dispatcher and registers it with the
+          # HCR runtime; this module gets the pointer from there.
+          p.module.s[cfsDynLibInit].addAssignment(sym.loc.snippet,
+            cCast(getTypeDesc(p.module, sym.loc.t),
+              cCall("hcrGetProc",
+                getModuleDllPath(p.module, sym),
+                '"' & sym.loc.snippet & '"')))
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
@@ -3699,7 +3706,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
         internalError p.config, n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
-      if sfThread in sym.flags:
+      if sfThread in sym.flags and not treatThreadVarDifferentlyForHCR(p.module, sym):
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars(p.config):
           putIntoDest(p, d, sym.loc.lode, derefField("NimTV_", sym.loc.snippet))
@@ -3845,6 +3852,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       p.s(cpsStmts).addDiscard(a.snippet)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt:
+    cgsym(p.module, "Exception")
     case p.config.exc
     of excGoto:
       genTryGoto(p, n, d)

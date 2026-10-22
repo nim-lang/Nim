@@ -503,7 +503,10 @@ proc genParams(p: BProc, ri: PNode, typ: PType; result: var Builder, argBuilder:
           result.add(extract(arg))
 
 proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
-  if sym.flags * {sfImportc, sfNonReloadable} == {} and sym.loc.k == locProc and
+  # A method dispatcher belongs to the module of the base method, but its body
+  # is generated into the main module, so it is always called through its
+  # pointer.
+  if sym.flags * {sfImportc, sfNonReloadable, sfDispatcher} == {} and sym.loc.k == locProc and
       (sym.typ.callConv == ccInline or sym.owner.id == module.id):
     res = res & "_actual".rope
 

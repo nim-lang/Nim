@@ -254,3 +254,17 @@ block: # bug #17768
 
   doAssert s1.runeSubStr(0, -1) == "abcde"
   doAssert s2.runeSubStr(0, -1) == "abcdé"
+
+block: # split does not read past a truncated sequence at the end
+  doAssert split("a\xE2") == @["a\xE2"]
+  doAssert split("a b\xF0\x9F") == @["a", "b\xF0\x9F"]
+  doAssert split("a;\xE2", ";".runeAt(0)) == @["a", "\xE2"]
+
+block: # bug #23619
+  doAssert splitWhitespace("  foo \t bar  baz  ") == @["foo", "bar", "baz"]
+  doAssert splitWhitespace("añyóng\u3000\u2003hÃllo") == @["añyóng", "hÃllo"]
+  doAssert splitWhitespace("") == newSeq[string]()
+  doAssert splitWhitespace(" \t\u3000") == newSeq[string]()
+  doAssert splitWhitespace("one") == @["one"]
+  # a truncated sequence at the end is kept, not read past
+  doAssert splitWhitespace("a \xE2") == @["a", "\xE2"]

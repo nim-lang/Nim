@@ -795,7 +795,17 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # Ensure types that are semantically equal also match at the backend level.
     # E.g. reject assigning proc(csize_t) to proc(uint) since these map to
     # different C types (size_t vs unsigned long long).
-    let fCheck = concreteType(c, f)
+    var fInst = f
+    if containsGenericType(f):
+      # typeRel's generic invocation shortcut (see the XXX in typeRel) reports
+      # isEqual for formals like `seq[Box[T]]`, so compare against the
+      # instantiated formal.
+      fInst =
+        if c.call != nil: generateTypeInstance(c.c, c.bindings, c.call.info, f)
+        else: nil
+      if fInst != nil and containsGenericType(fInst):
+        fInst = nil
+    let fCheck = if fInst != nil: concreteType(c, fInst) else: nil
     let aCheck = concreteType(c, a)
     # Note that `result` is equal; now check whether they have the same
     # backend type.
@@ -3271,7 +3281,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
-  for f in 1..<m.callee.n.len:
+  let firstFormal = if m.callee.kind != tyGenericBody: 1 else: 0
+  for f in firstFormal..<m.callee.n.len:
     let formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:

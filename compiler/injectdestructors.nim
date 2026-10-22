@@ -234,6 +234,13 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
     addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
+proc vmManagesItself(c: Con; op: PSym; t: PType): bool {.inline.} =
+  ## --mm:refc lifts hooks without memory management for types without user
+  ## defined hooks; the VM manages their strings, seqs and NimNodes itself:
+  c.graph.vmInjecting and op != nil and sfGeneratedOp in op.flags and
+    optSeqDestructors notin c.graph.config.globalOptions and
+    tfHasAsgn notin t.flags
+
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = getAttachedOp(c.graph, t, kind)
   if op == nil or op.ast.isGenericRoutine:
@@ -242,11 +249,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = getAttachedOp(c.graph, canon, kind)
-  if c.graph.vmInjecting and op != nil and sfGeneratedOp in op.flags and
-      optSeqDestructors notin c.graph.config.globalOptions and
-      tfHasAsgn notin t.flags:
-    # --mm:refc lifts hooks without memory management for types without user
-    # defined hooks; the VM manages their strings and seqs itself:
+  if vmManagesItself(c, op, t):
     op = nil
   if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
     # The VM does not lift hooks: that could conflict with hooks that are
@@ -545,7 +548,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
   let tmp = c.getTemp(s, nTyp, n.info, needsInit = false)
   let typ = nTyp.skipTypes({tyGenericInst, tyAlias, tySink})
   let op = getAttachedOp(c.graph, typ, attachedDup)
-  if op != nil and tfHasOwned notin typ.flags:
+  if op != nil and tfHasOwned notin typ.flags and not vmManagesItself(c, op, typ):
     if sfError in op.flags:
       c.checkForErrorPragma(nTyp, n, "=dup")
     else:
@@ -919,6 +922,29 @@ const
   exprBranchKinds = {nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt,
                      nkTryStmt, nkPragmaBlock}
 
+proc usesSym(n: PNode; s: PSym): bool =
+  case n.kind
+  of nkSym: result = n.sym == s
+  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit: result = false
+  else:
+    result = false
+    for child in n:
+      if usesSym(child, s): return true
+
+proc aliasesTarget(dest, ri: PNode): bool =
+  ## Whether ``ri`` might read the location ``dest``. If so, the assignment
+  ## ``dest = ri`` must not be distributed into the branches of ``ri``.
+  var root = dest
+  while true:
+    case root.kind
+    of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkHiddenDeref, nkDerefExpr,
+       nkHiddenAddr, nkObjUpConv, nkObjDownConv:
+      root = root[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      root = root[1]
+    else: break
+  result = root.kind != nkSym or usesSym(ri, root.sym)
+
 proc distributeAsgn(asgnKind: TNodeKind; dest, ri: PNode; c: var Con; s: var Scope): PNode =
   ## Distributes an assignment ``dest = ri`` into the leaf expressions of
   ## ``ri`` when ``ri`` is an expression-based control flow construct. This
@@ -966,7 +992,24 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
   if n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv} and n.len == 2 and
       checkOwnedClosure(c, n):
     return p(n[1], c, s, mode, tmpFlags, inReturn)
-  if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
+  if n.kind in {nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt} and not isEmptyType(n.typ):
+    # Like Nimony's xelim: a single destination for the whole construct that
+    # every branch assigns to directly. A temporary per branch would be copied
+    # into the construct's own destination afterwards (bug #26491).
+    result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+    let tmp = c.getTemp(s, n.typ, n.info, needsInit = true)
+    tmp.sym.flags = tmpFlags
+    if hasDestructor(c, n.typ) and n.typ.kind notin {tyOpenArray, tyVarargs}:
+      # bug #23247 we don't own the data, so it's harmful to destroy it
+      s.final.add c.genDestroy(tmp)
+      result.add moveOrCopy(tmp, n, c, s, {IsDecl})
+    else:
+      # every branch assigns to it or leaves the construct and there is no
+      # destructor to run on it:
+      tmp.sym.incl sfNoInit
+      result.add distributeAsgn(nkFastAsgn, tmp, n, c, s)
+    result.add p(tmp, c, s, mode)
+  elif n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt, nkPragmaBlock}:
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process, tmpFlags = tmpFlags)
@@ -1077,8 +1120,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         result[1] = p(n[1], c, s, sinkArg)
         dec c.inEnsureMove
       else:
+        # dynamic bindSym: (ident, rule, ..., info node, callback index);
+        # the info node is the call's AST, not code (see `transf`):
+        let args = if n[0].kind == nkSym and n[0].sym.magic == mNBindSym and n.len > 2: n.len-2
+                   else: n.len
         for i in 1..<n.len:
-          if i < L and isCompileTimeOnly(parameters[i]):
+          if i >= args or (i < L and isCompileTimeOnly(parameters[i])):
             result[i] = n[i]
           elif i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
             result[i] = p(ownedToUnowned(c, n[i], parameters[i]), c, s, sinkArg)
@@ -1160,6 +1207,19 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
                              sfNoInit in v[1].sym.flags
               if not skipInit:
                 result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, if v.kind == nkSym: {IsDecl} else: {})
+        elif it.kind == nkIdentDefs and it.len == 3 and it[0].kind == nkSym and
+            sfGlobal notin it[0].sym.flags and ri.kind in exprBranchKinds and
+            not isEmptyType(ri.typ):
+          # 'var x = if cond: a else: b': the branches produce the value in 'x'
+          # directly. Note: 'x' cannot become '.noinit' here as with IC
+          # its symbol can be sealed.
+          let v = it[0]
+          let section = copyNode(n)
+          section.add newTree(nkIdentDefs, v, it[1], newNodeI(nkEmpty, it.info))
+          result.add section
+          # not 'nkFastAsgn': with refc that is a shallow seq/string copy
+          # and 'x' would alias the branch's location (bug #26512):
+          result.add distributeAsgn(nkAsgn, v, ri, c, s)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -1180,10 +1240,18 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
         var flags = if n.kind == nkSinkAsgn: {IsExplicitSink} else: {}
         if inReturn:
           flags.incl(IsReturn)
-        result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
+        if n[1].kind in exprBranchKinds and aliasesTarget(n[0], n[1]):
+          # the branches cannot write to the target directly as they read it:
+          let tmp = c.getTemp(s, n[1].typ, n.info, needsInit = true)
+          tmp.sym.flags = {sfSingleUsedTemp}
+          s.final.add c.genDestroy(tmp)
+          result = newTree(nkStmtList, moveOrCopy(tmp, n[1], c, s, {IsDecl}),
+                           moveOrCopy(p(n[0], c, s, mode), tmp, c, s, flags))
+        else:
+          result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s, flags)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
-      elif n[1].kind in exprBranchKinds:
+      elif n[1].kind in exprBranchKinds and not aliasesTarget(n[0], n[1]):
         # Distribute the assignment into each branch to avoid
         # creating pointless temporaries for expression-based control flow.
         let dest = p(n[0], c, s, mode)
@@ -1530,7 +1598,10 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     return n
   var c = Con(owner: owner, graph: g, idgen: idgen, body: n, otherUsage: unknownLineInfo)
 
-  if optCursorInference in g.config.options:
+  if optCursorInference in g.config.options and
+      not (g.vmInjecting and optSeqDestructors notin g.config.globalOptions):
+    # (the VM manages strings, seqs and NimNodes itself without the hooks
+    # that cursor inference relies on, see `hasDestructor`)
     computeCursors(owner, n, g)
 
   var scope = Scope(body: n)

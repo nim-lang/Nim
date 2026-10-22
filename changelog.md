@@ -13,6 +13,13 @@
   illumos as Solaris; source distributions must regenerate their csources
   with the updated compiler and niminst.
 
+- `--compileOnly` no longer implies the host's C compiler settings and no
+  longer omits the `/* Compiled for ... */` header comment: cross compilation
+  settings (`cpu.os.cc.*`) are honored, which also fixes cross compilation with
+  `--spawnCodegen`. The old behavior, needed by niminst to generate C code that
+  can be shared among targets, is available via the new `--mergeableCcode`
+  switch.
+
 - `-d:nimPreviewFloatRoundtrip` becomes the default. `system.addFloat` and `system.$` now can produce string representations of
 floating point numbers that are minimal in size and possess round-trip and correct
 rounding guarantees (via the
@@ -23,6 +30,9 @@ rounding guarantees (via the
   parameter like `getOrDefault(..., default = ...)` will have to be changed.
 
 - With `-d:nimPreviewCheckedClose`, the `close` function in the `std/syncio` module now raises an IO exception in case of an error.
+
+- With `-d:nimPreviewCheckedFlush`, the `flushFile` function in the `std/syncio`
+  module raises an IO exception when the buffered data cannot be written.
 
 - Unknown warnings and hints now gives warnings `warnUnknownNotes` instead of
 errors.
@@ -56,6 +66,19 @@ parameter and result types, not just their source-level shape. Use
   safety"). Copy the variable first (`for x in a: let x = x`), or use
   `-d:nimNoLentIterators` to restore the old behavior. The JS backend and
   NimScript are unaffected: there `items` yields copies.
+
+- `std/asyncnet` (and `AsyncHttpClient` with it) now checks that the server
+  certificate matches the host name when the context uses `CVerifyPeer`, as
+  `std/net` already does. Before, any certificate signed by a trusted CA was
+  accepted for any host. A mismatch now raises `SslError` from
+  `AsyncSocket.connect`, or from the first `send` or `recv` after
+  `wrapConnectedSocket`. Connections to IP addresses and contexts created with
+  `CVerifyNone` are not checked. A failed TLS handshake now also raises
+  `SslError` from `AsyncSocket.connect` instead of being ignored.
+
+- `std/net` and `std/asyncnet` now also check the certificate host name on
+  Windows. Before, the check was skipped there because `X509_check_host` was
+  imported from the wrong DLL (libssl instead of libcrypto).
 
 ## Standard library additions and changes
 
@@ -120,6 +143,14 @@ parameter and result types, not just their source-level shape. Use
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
+- `os.moveFile`, `os.copyFileWithPermissions` and `os.copyDirWithPermissions`
+  no longer have the effect `Exception`; they raise `OSError` and `IOError`.
+- `dynlib.loadLibPattern` and `dynlib.checkedSymAddr` no longer have the
+  effect `Exception`: they raise what the platform's `loadLib` and `symAddr`
+  raise (nothing on POSIX and Windows). The OpenSSL procs that `std/openssl`
+  loads at run time are declared `raises: []`, so `net.newContext` and
+  `httpclient.newHttpClient` can be called from a `{.raises: [CatchableError].}`
+  proc.
 - `std/re` and `std/nre` are deprecated as PCRE library is obsolete.
   Use https://github.com/nitely/nim-regex or `std/nre2`.
   See: https://github.com/nim-lang/Nim/issues/23668.
@@ -243,6 +274,11 @@ parameter and result types, not just their source-level shape. Use
 
 - On `--os:ios`, the default file name for `--app:lib` is now `libfoo.dylib`
   instead of `libfoo.so`, matching `--os:macosx` and the Darwin convention.
+
+- With `--hotCodeReloading:on`, a module can use the thread-local variables
+  and the methods of another module, which made the program fail to link or
+  to dispatch before; `std/logging` works with it now. A thread-local
+  variable keeps its value, for each thread, when its module is reloaded.
 
 ## Tool changes
 
