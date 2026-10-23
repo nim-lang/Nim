@@ -841,11 +841,39 @@ bootstraps to a fixed point. What it took:
   well, and a cycle of hooks of a recursive type is uniformly "can raise".
   17 → 0 files.
 
+* 2026-10-23, the grinder over 653 test programs (debug builds, which carry
+  line tracing) instead of only the compiler: a call of a lifted hook took
+  its line info from the hook, i.e. from the use that lifted it first; hooks
+  now get the declaration of the type's first nominal component
+  (`liftdestructors.hookInfo`). The
+  signature phase of an instance counted gensyms on the enclosing unit's
+  counter, which a cache hit then did not advance. `wasMoved(x)` was
+  replaced by a LIFTED hook at sem time if one existed already; now only by
+  a declared one (the backend lowers the magic and a lifted `=wasMoved`
+  alike). The other hook magics keep the old rule: an explicit `=sink`
+  left as a magic is lowered with an extra `=dup`, so for them the
+  replacement is not cosmetic. A `getAst` in a compile-time
+  evaluation used whichever gensym counter the last macro left in the VM.
+  Two known cases are left. A user `=destroy` whose body lifts the hooks of
+  its own recursive type (`tests/destructor/tselect`): whether it has
+  finished when the lifted hook asks whether it raises depends on the order;
+  the fix is to make hook raise analysis part of `solveCycle`. And a
+  successful `tryExpr` whose result is kept (overload resolution, not
+  `compiles()`): what it instantiates is private to its `compiles` context
+  (bug #1055), but an ordinary instance made earlier is shared into it, so
+  whether the kept code uses one instance or two depends on the order
+  (`tests/iter/titer10`, `tpermutations`). Promoting the context's instances when it succeeds
+  was tried and is wrong: instances made in a `compiles` context can be
+  incomplete in ways neither the error counter nor the body shows (a call of
+  the uninstantiated generic, `tests/generics/tgeneric0`) — which is what
+  #1055 protects against. A fix would make the kept result's own instances
+  ordinary only after re-checking them outside the context.
+
 Every one of these changes is behind `--parsem:on` (and outside `--ic:on`,
 which places hooks and instances by its own rules). Not started: unit-relative
-names for body-local types in `ast2nif`, content-addressed literal names, the
-VM's own `templInstCounter`, and the grinder on `.s.bif` under `--ic:on` and on
-more than the compiler itself. Open: an arena whose instance key collides with
+names for body-local types in `ast2nif`, content-addressed literal names (not
+needed with one worker: codegen order does not depend on the order units ran
+in; stage 5 needs them), and the grinder on `.s.bif` under `--ic:on`. Open: an arena whose instance key collides with
 another's in the same module is probed first-come, and so is a hook or instance
 `disamb` collision (`instDisambs`); neither has shown up in the grinder.
 

@@ -535,9 +535,14 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   var arenaSaved = default(ArenaState)
   var arenaMode = 0 # 0: none, 1: scratch, 2: the instance's own
   var savedTemplInstCounter = 0
-  if optParSem in c.config.globalOptions:
+  let parSem = optParSem in c.config.globalOptions
+  if parSem:
     arenaSaved = enterScratchArena(c.idgen)
     arenaMode = 1
+    # the instance's own gensym numbering, from the signature on: a cache
+    # hit must leave the enclosing counter where it was
+    savedTemplInstCounter = c.templInstCounter[]
+    c.templInstCounter[] = 0
   defer:
     case arenaMode
     of 1:
@@ -546,8 +551,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
       for s in leaveScratchArena(c.idgen, arenaSaved): redisamb(c.idgen, s)
     of 2:
       leaveArena(c.idgen, arenaSaved)
-      c.templInstCounter[] = savedTemplInstCounter
     else: discard
+    if parSem: c.templInstCounter[] = savedTemplInstCounter
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   let producer = getModule(fn)
@@ -624,8 +629,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
         instanceArenaKey(c.graph, fn, entry.concreteTypes))
       arenaMode = 2
       for s in minted: redisamb(c.idgen, s)
-      savedTemplInstCounter = c.templInstCounter[]
-      c.templInstCounter[] = 0
     # The signature has to be instantiated before the cache can be queried,
     # but cache hits don't need a private copy of the generic's full AST.
     var n = copyTree(fn.ast)
