@@ -846,7 +846,17 @@ proc isSumTypePattern(c: PContext; n: PNode): bool =
 include semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
-  for i in c.lastGenericIdx..<c.generics.len:
+  var order = newSeq[int](c.generics.len - c.lastGenericIdx)
+  for i in 0..<order.len: order[i] = c.lastGenericIdx + i
+  if optParSem in c.config.globalOptions:
+    # created in the order units ran in; their names are content-derived
+    # (`setInstanceDisamb`), so that is the canonical order
+    order.sort(proc (a, b: int): int =
+      let x = c.generics[a].inst.sym
+      let y = c.generics[b].inst.sym
+      result = cmp(x.name.s, y.name.s)
+      if result == 0: result = cmp(x.disamb, y.disamb))
+  for i in order:
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast[bodyPos] == nil:

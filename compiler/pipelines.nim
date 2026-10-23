@@ -17,7 +17,7 @@ import ../dist/checksums/src/checksums/sha1
 when not defined(leanCompiler):
   import jsgen, docgen2
 
-import std/[syncio, objectdollar, assertions, tables, strutils, strtabs, sets, intsets]
+import std/[syncio, objectdollar, assertions, tables, strutils, strtabs, sets, intsets, algorithm]
 import renderer
 import ic/replayer
 
@@ -231,7 +231,16 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       var replayActions: seq[PNode] = @[]
       # Get pragma-recorded replay actions (compile, link, passC, passL, etc.)
       if graph.nifReplayActions.hasKey(module.position.int32):
-        replayActions.add graph.nifReplayActions[module.position.int32]
+        if optParSem in graph.config.globalOptions:
+          # in the order of the arenas they were made in (`arenaTag`)
+          let acts = graph.nifReplayActions[module.position.int32]
+          let tags = graph.nifReplayTags.getOrDefault(module.position.int32)
+          var order = newSeq[int](acts.len)
+          for i in 0..<order.len: order[i] = i
+          order.sort(proc (a, b: int): int = cmp(tags[a], tags[b]))
+          for i in order: replayActions.add acts[i]
+        else:
+          replayActions.add graph.nifReplayActions[module.position.int32]
       # Also get VM state diff (macro cache operations)
       if graph.vm != nil:
         for (m, n) in PCtx(graph.vm).vmstateDiff:
@@ -284,6 +293,16 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       let firstUnusedId = max(idgen.symId, idgen.typeId)
       var expansions: seq[(PSym, TLineInfo)] = @[]
       discard graph.nifExpansions.take(module.position.int32, expansions)
+      if optParSem in graph.config.globalOptions:
+        # recorded as bodies were checked, i.e. in the order units ran in;
+        # the records are an index for IDE queries, so the canonical order
+        # is the source position (doc/parallel_compiler.md §2.6 rule 5)
+        expansions.sort(proc (a, b: (PSym, TLineInfo)): int =
+          result = cmp(a[1].fileIndex.int32, b[1].fileIndex.int32)
+          if result == 0: result = cmp(a[1].line, b[1].line)
+          if result == 0: result = cmp(a[1].col, b[1].col)
+          if result == 0: result = cmp(a[0].name.s, b[0].name.s)
+          if result == 0: result = cmp(a[0].disamb, b[0].disamb))
       # The module symbol's own backend-relevant flags. `sfInjectDestructors` is
       # set by sempass2 when the module's TOP-LEVEL statements need the
       # destructor pass; `moduleFromNifFile` builds a fresh module PSym, so
@@ -291,8 +310,26 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       # `injectDestructorCalls` and top-level locals were never destroyed.
       let moduleFlags =
         if sfInjectDestructors in module.flags: ModFlagInjectDestructors else: 0'i32
+      if optParSem in graph.config.globalOptions:
+        # the logs and offers that bodies append to, in an order that does
+        # not depend on the order units ran in (doc/parallel_compiler.md §2.6
+        # rule 5); `sort` is stable, so within an arena the order is the code's
+        genericOffers.sort(proc (a, b: typeof(genericOffers[0])): int =
+          result = cmp(a.inst.name.s, b.inst.name.s)
+          if result == 0: result = cmp(a.inst.disamb, b.inst.disamb))
+        typeOffers.sort(proc (a, b: typeof(typeOffers[0])): int =
+          result = cmp(a.generic.name.s, b.generic.name.s)
+          if result == 0:
+            result = cmp($typeContentHash(graph, a.inst), $typeContentHash(graph, b.inst)))
+      let opsLog =
+        if optParSem in graph.config.globalOptions:
+          var log = graph.opsLog
+          log.sort(proc (a, b: LogEntry): int = cmp(a.arenaTag, b.arenaTag))
+          log
+        else:
+          graph.opsLog
       timed tWriteNif:
-        writeNifModule(graph.config, module.position.int32, topLevelStmts, graph.opsLog,
+        writeNifModule(graph.config, module.position.int32, topLevelStmts, opsLog,
                        replayActions, implDeps,
                        genericOffers, typeOffers, resolvedImportDeps, firstUnusedId,
                        expansions, moduleFlags,

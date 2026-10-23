@@ -86,11 +86,25 @@ proc sameInstantiation(a, b: TInstantiation): bool =
   else:
     result = false
 
+proc sharesInstanceWith(g: ModuleGraph; inst: PInstantiation; module: PSym): bool =
+  ## `nim m --parsem:on`: one process compiles a whole import group, and an
+  ## instance made by one module of the group was shared with the others —
+  ## whichever instantiated first owned it, and that depends on the order
+  ## units ran in. Like separate processes, each module of the group makes its
+  ## own (the backend merges them); only an instance of a module loaded from
+  ## its NIF file, or the module's own, is shared.
+  result = true
+  if g.config.cmd == cmdM and optParSem in g.config.globalOptions and
+      inst.sym != nil:
+    let m = inst.sym.itemId.module
+    result = m == module.position or isCachedModule(g, m)
+
 proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
-                     id: CompilesId): PSym =
+                     id: CompilesId; module: PSym): PSym =
   result = nil
   for inst in procInstCacheItems(g, genericSym):
-    if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
+    if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]) and
+        sharesInstanceWith(g, inst, module):
       return inst.sym
 
 proc sameBindingSnapshot(pt: LayeredIdTable; inst: PInstantiation): bool =
@@ -535,6 +549,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   var arenaSaved = default(ArenaState)
   var arenaMode = 0 # 0: none, 1: scratch, 2: the instance's own
   var savedTemplInstCounter = 0
+  let savedArenaTag = c.graph.arenaTag
   let parSem = optParSem in c.config.globalOptions
   if parSem:
     arenaSaved = enterScratchArena(c.idgen)
@@ -551,6 +566,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
       for s in leaveScratchArena(c.idgen, arenaSaved): redisamb(c.idgen, s)
     of 2:
       leaveArena(c.idgen, arenaSaved)
+      c.graph.arenaTag = savedArenaTag
     else: discard
     if parSem: c.templInstCounter[] = savedTemplInstCounter
   # NOTE: for access of private fields within generics from a different module
@@ -616,7 +632,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   #echo "INSTAN ", fn.name.s, " ", typeToString(result.typ), " ", entry.concreteTypes.len
   if tfTriggersCompileTime in result.typ.flags:
     incl(result, sfCompileTime)
-  var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
+  var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId, c.module)
   if oldPrc == nil:
     if arenaMode == 1 and c.compilesContextId > 0:
       # inside `compiles()` the instance is not canonical (see
@@ -628,6 +644,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
       arenaSaved = enterKeyedArena(c.idgen,
         instanceArenaKey(c.graph, fn, entry.concreteTypes))
       arenaMode = 2
+      c.graph.arenaTag = c.idgen.disambBase
       for s in minted: redisamb(c.idgen, s)
     # The signature has to be instantiated before the cache can be queried,
     # but cache hits don't need a private copy of the generic's full AST.

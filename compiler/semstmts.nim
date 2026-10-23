@@ -2758,6 +2758,8 @@ proc solveCycle(c: PContext; members: seq[int]) =
     let savedFeatures = c.features
     let savedCurrentUnit = c.currentUnit
     let savedArena = reenterUnitArena(c.idgen, order[k].unit, move task.arenaTable)
+    let savedArenaTag = c.graph.arenaTag
+    c.graph.arenaTag = c.idgen.disambBase
     c.currentUnit = order[k].unit
     c.config.options = task.options
     c.config.notes = task.notes
@@ -2768,6 +2770,7 @@ proc solveCycle(c: PContext; members: seq[int]) =
     finally:
       task.arenaTable = move c.idgen.disambTable
       leaveArena(c.idgen, savedArena)
+      c.graph.arenaTag = savedArenaTag
       c.currentUnit = savedCurrentUnit
       c.config.options = savedOptions
       c.config.notes = savedNotes
@@ -2862,8 +2865,10 @@ proc runBodyTask(c: PContext; idx: int) =
   # §4.2: names minted inside the unit come from its own arena, whoever ran
   # before it. Not for a cycle group's units, which keep today's names.
   var savedArena = default(ArenaState)
+  let savedArenaTag = c.graph.arenaTag
   if parSem:
     savedArena = enterUnitArena(c.idgen, idx)
+    c.graph.arenaTag = c.idgen.disambBase
     c.templInstCounter[] = 0
   c.currentScope = t.scope
   c.p = t.procCon
@@ -2959,6 +2964,7 @@ proc runBodyTask(c: PContext; idx: int) =
     c.currentUnit = savedCurrentUnit
     if parSem:
       leaveArena(c.idgen, savedArena)
+      c.graph.arenaTag = savedArenaTag
       c.templInstCounter[] = savedTemplInstCounter
 
 proc keepsForwardSemantics(c: PContext; prc: PSym; idx: int): bool =
