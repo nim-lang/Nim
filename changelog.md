@@ -131,6 +131,13 @@ parameter and result types, not just their source-level shape. Use
   that is slower is disconnected (after a `408 Request Timeout` response once its
   request line was received). The default of 0 keeps waiting indefinitely.
 
+- `std/asynchttpserver.Request` adds a field `headerFields`, every header line
+  of the request in the order it arrived, with its value unsplit. `headers`
+  splits values at commas and keeps only the last of repeated lines, which
+  loses values such as `If-Modified-Since: Thu, 01 Dec 1994 16:00:00 GMT`
+  ([#13514](https://github.com/nim-lang/Nim/issues/13514)). Repeated lines of
+  one name now count towards the limit of header lines.
+
 [//]: # "Changes:"
 
 - `uri.decodeQuery` now honours a non-default `sep` when splitting keys. Previously
