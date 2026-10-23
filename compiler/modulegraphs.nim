@@ -31,6 +31,7 @@ type
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
     module*: PSym       ## module this "Iface" belongs to
+    idgen*: IdGenerator ## of the module's last compilation, see `moduleIdgen`
     converters*: seq[PSym]
     patterns*: seq[PSym]
     pureEnums*: seq[PSym]
@@ -990,6 +991,20 @@ proc resetAllModules*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
   g.exposed = initStrTable()
   initModuleGraphFields(g)
+
+proc moduleIdgen*(g: ModuleGraph; m: PSym): IdGenerator =
+  ## The id generator for compiling `m`. A recompilation (nimsuggest) continues
+  ## where the previous one stopped: symbols and types of the old compilation
+  ## can still be alive, for example as generic instances or lifted hooks
+  ## cached by other modules or by the VM, so new ones must not reuse their ids.
+  result = idGeneratorFromModule(m)
+  let i = m.position
+  if i >= 0 and i < g.ifaces.len:
+    let old = g.ifaces[i].idgen
+    if old != nil:
+      result.symId = max(result.symId, old.symId)
+      result.typeId = max(result.typeId, old.typeId)
+    g.ifaces[i].idgen = result
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   if fileIdx.int32 >= 0 and fileIdx.int32 < g.ifaces.len:
