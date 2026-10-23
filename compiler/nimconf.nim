@@ -128,8 +128,9 @@ proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: 
   of wEnd: doEnd(L, tok, condStack)
   of wWrite:
     ppGetTok(L, tok)
-    msgs.msgWriteln(config, strtabs.`%`($tok, config.configVars,
-                                {useEnvironment, useKey}))
+    if not config.skipParentDetectionMode:
+      msgs.msgWriteln(config, strtabs.`%`($tok, config.configVars,
+                                  {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
     case tok.ident.s.normalize
@@ -137,19 +138,22 @@ proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: 
       ppGetTok(L, tok)
       var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, $tok)
+      if not config.skipParentDetectionMode:
+        os.putEnv(key, $tok)
       ppGetTok(L, tok)
     of "prependenv":
       ppGetTok(L, tok)
       var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, $tok & os.getEnv(key))
+      if not config.skipParentDetectionMode:
+        os.putEnv(key, $tok & os.getEnv(key))
       ppGetTok(L, tok)
     of "appendenv":
       ppGetTok(L, tok)
       var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, os.getEnv(key) & $tok)
+      if not config.skipParentDetectionMode:
+        os.putEnv(key, os.getEnv(key) & $tok)
       ppGetTok(L, tok)
     else:
       lexMessage(L, errGenerated, "invalid directive: '$1'" % $tok)
@@ -214,11 +218,14 @@ proc parseAssignment(L: var Lexer, tok: var Token;
     processSwitch(s, val, passPP, info, config)
 
 proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
-                    config: ConfigRef): bool =
+                    config: ConfigRef, dryrun=false): bool =
   var
     L: Lexer = default(Lexer)
     tok: Token
     stream: PLLStream
+  if dryrun:
+    L.errorHandler = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
+      discard
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     openLexer(L, filename, stream, cache, config)
@@ -243,6 +250,21 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
   when defined(unix):
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
+
+proc configEnablesSkipParent(conf: ConfigRef; cache: IdentCache;
+                             cfgPath: AbsoluteFile): bool =
+  let prevMode = conf.skipParentDetectionMode
+  let prevSkip = optSkipParentConfigFiles in conf.globalOptions
+  conf.skipParentDetectionMode = true
+  try:
+    result = readConfigFile(cfgPath, cache, conf, dryrun=true) and
+             optSkipParentConfigFiles in conf.globalOptions
+  finally:
+    conf.skipParentDetectionMode = prevMode
+    if prevSkip:
+      incl(conf.globalOptions, optSkipParentConfigFiles)
+    else:
+      excl(conf.globalOptions, optSkipParentConfigFiles)
 
 proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
@@ -285,27 +307,47 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
 
     if cfg == DefaultConfig:
       runNimScriptIfExists(getUserConfigPath(DefaultConfigNims))
-
-  let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
-  if optSkipParentConfigFiles notin conf.globalOptions:
-    for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
-      readConfigFile(AbsoluteDir(dir) / cfg)
-
+  
+  var
+    hasProjectCfg = conf.projectName.len != 0
+    projectConfig = AbsoluteFile ""
+  if hasProjectCfg:
+    projectConfig = changeFileExt(conf.projectFull, "nimcfg")
+    if not fileExists(projectConfig):
+      projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
+      if not fileExists(projectConfig):
+        hasProjectCfg = false
+  
+  let pd = if conf.projectPath.isEmpty: AbsoluteDir(getCurrentDir()) else: conf.projectPath
+  if optSkipParentConfigFiles notin conf.globalOptions and
+      not configEnablesSkipParent(conf, cache, pd / cfg) and
+      not(hasProjectCfg and configEnablesSkipParent(conf, cache, projectConfig)):
+    var parentDirs: seq[tuple[path: AbsoluteDir, hasNs: bool]] = @[]
+    for dir in parentDirs(pd.string, inclusive=false):
+      var thisReg = (path: AbsoluteDir(dir), hasNs: false)
+      let cfgPath = thisReg.path / cfg
       if cfg == DefaultConfig:
-        runNimScriptIfExists(AbsoluteDir(dir) / DefaultConfigNims)
+        thisReg.hasNs = fileExists(thisReg.path / DefaultConfigNims)
+      if not (thisReg.hasNs or fileExists(cfgPath)):
+        continue
+      parentDirs.add thisReg
+      if configEnablesSkipParent(conf, cache, cfgPath):
+        break
+    
+    for i in countdown(parentDirs.len - 1, 0):
+      let thisReg = parentDirs[i]
+      readConfigFile(thisReg.path / cfg)
+      if thisReg.hasNs:
+        runNimScriptIfExists(thisReg.path / DefaultConfigNims)
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
     if cfg == DefaultConfig:
       runNimScriptIfExists(pd / DefaultConfigNims)
 
-    if conf.projectName.len != 0:
+    if hasProjectCfg:
       # new project wide config file:
-      var projectConfig = changeFileExt(conf.projectFull, "nimcfg")
-      if not fileExists(projectConfig):
-        projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
       readConfigFile(projectConfig)
-
 
   let scriptFile = conf.projectFull.changeFileExt("nims")
   let scriptIsProj = scriptFile == conf.projectFull
