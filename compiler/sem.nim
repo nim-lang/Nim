@@ -897,6 +897,7 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   # module's hooks and put them back in `closePContext`.
   result.currentUnit = -1
   if optParSem in graph.config.globalOptions:
+    canonicalIntLits = true
     result.prevDemandRoutineBody = graph.demandRoutineBody
     result.prevDemandReachableBodies = graph.demandReachableBodies
     result.unitErrorMax = graph.config.errorMax

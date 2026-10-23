@@ -511,6 +511,28 @@ proc getLocalPassC(c: PContext, s: PSym): string =
     for p in n:
       extractPassc(p)
 
+proc canonicalBindings(c: PContext; pt: LayeredIdTable): LayeredIdTable =
+  ## `--parsem:on`: a generic parameter bound to the type of a LITERAL -- an
+  ## int literal's `int literal(5)`, a set constructor's fresh `set[E]` --
+  ## is bound to the type itself instead. The instance is shared by every
+  ## call site whose argument has the same type (`sameType` does not care), so
+  ## otherwise whichever call site instantiated first decided what the
+  ## instance's signature and body refer to.
+  result = pt
+  var seen = initIntSet()
+  for k, _ in pt:
+    if containsOrIncl(seen, toId(k)): continue
+    let t = lookupById(pt, k)
+    var canon = t
+    if t != nil and t.kind in {tyInt, tyFloat} and t.n != nil:
+      canon = skipIntLit(t, c.idgen)
+    elif t != nil and t.kind == tySet and tfIsConstructor in t.flags:
+      canon = copyType(t, c.idgen, t.owner)
+      canon.excl tfIsConstructor
+    if canon != t:
+      if result == pt: result = newTypeMapLayer(pt)
+      result.topLayer[k] = canon
+
 proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
@@ -526,6 +548,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   if c.graph.demandRoutineBody != nil:
     # `--parsem:on`: the generic body may still be a pending unit
     discard c.graph.demandRoutineBody(fn, forEffects = false)
+  let pt = if optParSem in c.config.globalOptions: canonicalBindings(c, pt) else: pt
   let canUseBindingCache = c.inGenericContext == 0 and c.matchedConcept == nil
   if canUseBindingCache:
     result = genericCacheGetFromBindings(c.graph, fn, pt, c.compilesContextId,

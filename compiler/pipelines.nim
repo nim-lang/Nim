@@ -297,8 +297,11 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         # recorded as bodies were checked, i.e. in the order units ran in;
         # the records are an index for IDE queries, so the canonical order
         # is the source position (doc/parallel_compiler.md §2.6 rule 5)
+        # (by path, not `fileIndex`: files are numbered as they are first
+        # seen, and that can be in the middle of a body)
         expansions.sort(proc (a, b: (PSym, TLineInfo)): int =
-          result = cmp(a[1].fileIndex.int32, b[1].fileIndex.int32)
+          result = cmp(toFullPath(graph.config, a[1].fileIndex),
+                       toFullPath(graph.config, b[1].fileIndex))
           if result == 0: result = cmp(a[1].line, b[1].line)
           if result == 0: result = cmp(a[1].col, b[1].col)
           if result == 0: result = cmp(a[0].name.s, b[0].name.s)

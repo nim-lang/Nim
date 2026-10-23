@@ -1302,7 +1302,18 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     fillBody(c, skipModifier(t), body, x, y)
   of tyConcept, tyIterable: raiseAssert "unreachable"
 
-proc canonicalType(g: ModuleGraph; t: PType): PType =
+proc cleanForCanon(t: PType; idgen: IdGenerator): PType =
+  ## `--parsem:on`: the type a literal's or a set constructor's type stands
+  ## for, so that which of them registered first does not show in the hooks'
+  ## signatures (see `seminst.canonicalBindings`)
+  result = t
+  if t.kind in {tyInt, tyFloat} and t.n != nil:
+    result = skipIntLit(t, idgen)
+  elif t.kind == tySet and tfIsConstructor in t.flags:
+    result = copyType(t, idgen, t.owner)
+    result.excl tfIsConstructor
+
+proc canonicalType(g: ModuleGraph; t: PType; idgen: IdGenerator): PType =
   ## The type whose hooks every type equal to `t` shares.
   ##
   ## Under `--parsem:on`, two types that are one by the content key the hooks
@@ -1318,7 +1329,9 @@ proc canonicalType(g: ModuleGraph; t: PType): PType =
     if optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
       let k = typeContentHash(g, t)
       let other = g.canonTypes.getOrDefault(k)
-      if other == nil: g.canonTypes[k] = t
+      if other == nil:
+        result = cleanForCanon(t, idgen)
+        g.canonTypes[k] = result
       elif sameType(other, t): result = other
     if result == nil: result = t
     g.canonTypes[h] = result
@@ -1333,7 +1346,7 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
     # the base's hook is the one of its canonical type, as for any other
     # use (`createTypeBoundOps`), not one of its own that merely shares the
     # canonical type's name
-    let canon = canonicalType(g, baseType.skipTypes({tyGenericInst, tyAlias, tySink}))
+    let canon = canonicalType(g, baseType.skipTypes({tyGenericInst, tyAlias, tySink}), idgen)
     if getAttachedOp(g, canon, kind) == nil:
       discard produceSym(g, c, canon, kind, info, idgen)
     setAttachedOp(g, idgen.module, baseType, kind, getAttachedOp(g, canon, kind))
@@ -1661,7 +1674,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
 
-  let canon = canonicalType(g, skipped)
+  let canon = canonicalType(g, skipped, idgen)
 
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.

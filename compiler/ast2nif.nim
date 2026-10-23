@@ -10,6 +10,9 @@
 ## AST to NIF bridge.
 
 import std / [assertions, tables, sets]
+when defined(icCanonKeyDbg):
+  from std / os import getEnv
+  from std / syncio import File, open, close, writeLine, fmAppend
 from std / strutils import startsWith, endsWith, contains
 from std / os import fileExists, dirExists, walkFiles, existsEnv,
   commandLineParams, getCurrentProcessId
@@ -678,7 +681,7 @@ var canonSigOwners: Table[string, ItemId]
 
 proc canonicalTypeItem(w: var Writer; typ: PType): int32
 proc nifTypeName(w: var Writer; typ: PType): string
-proc addNodeKey(w: var Writer; key: var string; n: PNode)
+proc bindingIdItem(w: var Writer; typ: PType): int32
 
 proc claimCanonId(typ: PType; key: string; h: int32): int32 =
   ## Hand out `h` unless another key already holds it in this module.
@@ -704,66 +707,72 @@ proc sigRoutineOf(typ: PType): PSym =
   if o != nil and o.kindImpl in routineKinds and o.typImpl == typ:
     result = o
 
+var loadedTypeIds*: HashSet[ItemId]
+  ## Types this process LOADED from a NIF file (`tryCreateTypeStub`): their
+  ## name came with them and must never be recomputed.
+
 proc isCanonType(w: Writer; typ: PType): bool =
-  ## True only when the id must be OVERRIDDEN, i.e. for a wrapper minted in THIS
-  ## process. Note what is deliberately absent: any test against
-  ## `w.currentModule`. An `--icGroup` cycle compiles several modules from source
-  ## in one process and writes a NIF for each, so while writing member A a type
-  ## owned by member B is minted, not loaded -- keying on `currentModule` would
-  ## have A reference `B`'s type by its mint counter while B's own NIF def'd it
-  ## under the content id, leaving a dangling `symbol has no offset`.
+  ## Whether `typ`'s NIF id is computed here (`canonicalTypeItem`) instead of
+  ## taken from `itemId.item`: for every type MINTED in this process.
   ##
-  ## The three other cases need no override and are excluded here, each landing
-  ## on `typeToNifSym`, which reproduces the owner's name byte for byte:
-  ##  * loaded and content-named  -> `itemId.item` already IS the content id
-  ##    (>= CanonIdBias), which is exactly what `typeToNifSym` prints;
-  ##  * loaded `exactReplica`     -> `bindingId != itemId` marks it a replica,
-  ##    which is never content-named (see CanonTypeKinds), so it keeps its counter;
-  ##  * a `Partial` stub          -> its id is already final; for a wrapper the
-  ##    `sonsImpl` test below rejects it, and a literal copy is decided purely
-  ##    from the two module ids its NIF name already carries.
+  ## The mint counter is assigned in sem order. Creating one extra type
+  ## renumbers every type minted after it, which rewrote the `.s.bif` of
+  ## modules that had not changed (inserting a private proc at the top of
+  ## `ast.nim` shifted 1362 of its 1800 type names), and under `--parsem:on`
+  ## the order bodies are checked in, and so the counter, depends on
+  ## scheduling. So no NIF name is a counter any more, except where a hash
+  ## collides (`claimCanonId`) or a type's key leads back to itself.
   ##
   ## Depends on nothing that changes during a write -- in particular not on
   ## `typ.state`, which flips to `Sealed` the moment the def is emitted -- so a
-  ## type's def site and every reference to it agree.
-  if typ.itemId.isBackendMinted or typ.itemId.item >= CanonIdBias or
-      typ.bindingId != typ.itemId:   # a replica is never content-named
-    result = false
-  elif typ.kind in CanonTypeKinds:
-    # An anonymous wrapper. A `sym` means the type was DECLARED and is nominal.
-    result = typ.symImpl == nil and typ.sonsImpl.len > 0
-  elif typ.kind in CanonLitCopyKinds:
-    # A per-module literal copy: it wears `system.int`'s `sym` but was minted
-    # into ANOTHER module's id space, so the sym and the type disagree about
-    # which module they belong to. A declaration never does -- `type Off = int`
-    # in posix owns both halves -- and neither does `system.int` itself.
-    #
-    # The obvious test, `typ.sym.typ != typ` ("the sym's own type is the
-    # original, so this is a copy"), is wrong ACROSS THE NIF BOUNDARY and cost a
-    # cold build: a loaded `Off` sym is a stub whose `typImpl` is still nil, so
-    # posix named its `Off` by the counter while `os` read the same type as a
-    # copy and referenced a content id posix never wrote -- `symbol has no
-    # offset: t31.2136968888.pos7l6hwt`. Both halves of this test come off the
-    # NIF name, so a consumer and the owner always agree.
-    result = typ.symImpl != nil and
-      typ.symImpl.itemId.module != typ.itemId.module
-  else:
-    result = false
+  ## type's def site and every reference to it agree. Not on `currentModule`
+  ## either: an `--icGroup` cycle compiles several modules from source in one
+  ## process and writes a NIF for each.
+  result = not typ.itemId.isBackendMinted and typ.itemId.module >= 0 and
+    typ.itemId.item < CanonIdBias and typ.itemId notin loadedTypeIds
+
+var canonKeyStack: seq[ItemId]
+  ## the types whose key `canonicalTypeItem` is building right now
+var canonKeyReach: seq[int]
+  ## per entry of `canonKeyStack`: the lowest entry a back reference from
+  ## within its key reached
+
+proc keyTypeName(w: var Writer; t: PType): string =
+  ## A type as it appears INSIDE another type's key. One that is being keyed
+  ## right now (an int literal type's `n` is a literal OF that type; recursive
+  ## anonymous structures) is a back reference by its depth on the stack --
+  ## never the mint counter the re-entrancy guard would hand out, which would
+  ## make the key, and every name derived from it, depend on the minting order.
+  for i in countdown(canonKeyStack.high, 0):
+    if canonKeyStack[i] == t.itemId:
+      # every key between here and the top now depends on entry `i`
+      for j in i+1 .. canonKeyStack.high:
+        canonKeyReach[j] = min(canonKeyReach[j], i)
+      return "^" & $(canonKeyStack.high - i)
+  result = nifTypeName(w, t)
+
+proc addSymKey(w: var Writer; key: var string; s: PSym)
 
 proc addNodeKey(w: var Writer; key: var string; n: PNode) =
-  ## Structural digest of a type's `n` node, for the kinds whose identity lives
-  ## there: a `tyRange`'s bounds and a `tyProc`'s formal params. A symbol
-  ## contributes its bare NAME -- never its NIF name, whose `disamb` is itself a
-  ## mint counter and would defeat the whole point -- plus the NIF name of its
-  ## TYPE. The type is not optional: a `tyProc`'s parameters live only here, not
-  ## in `sonsImpl`, so hashing names alone collapsed a generic `==[Enum]` onto
-  ## its own `FileInfoKind` instance (both have parameters `x`, `y` returning
-  ## `bool`) and `n.kind == nkSym` stopped compiling.
+  ## Structural digest of a type's `n` node: a tuple's or object's fields, a
+  ## range's bounds, a proc type's formal params and effects, an enum's
+  ## fields. Everything `writeNode` serializes for it has to be in here
+  ## (`canonicalTypeItem`'s soundness rule): the node kinds and flags,
+  ## literals, the TYPE of an `nkType` node (a proc type's effects are
+  ## `nkType` nodes under its `nkEffectList`; without them every effect set
+  ## digested the same and two `proc () {.closure.}` params with different
+  ## `raises` were merged), and of a symbol what its def says.
   if n == nil:
     key.add '~'
     return
   key.add '('
   key.addInt ord(n.kind)
+  for f in n.flags:
+    key.add '!'
+    key.addInt ord(f)
+  if n.kind notin {nkSym, nkType} and n.typField != nil:
+    key.add ':'
+    key.add keyTypeName(w, n.typField)
   case n.kind
   of nkCharLit..nkUInt64Lit:
     key.add ' '
@@ -776,10 +785,10 @@ proc addNodeKey(w: var Writer; key: var string; n: PNode) =
     key.add n.strVal
   of nkSym:
     key.add ' '
-    if n.sym != nil:
-      key.add n.sym.name.s
-      key.add ':'
-      if n.sym.typImpl != nil: key.add nifTypeName(w, n.sym.typImpl)
+    if n.sym != nil: addSymKey(w, key, n.sym)
+  of nkType:
+    key.add ' '
+    if n.typField != nil: key.add keyTypeName(w, n.typField)
   of nkIdent:
     key.add ' '
     if n.ident != nil: key.add n.ident.s
@@ -788,39 +797,99 @@ proc addNodeKey(w: var Writer; key: var string; n: PNode) =
       addNodeKey(w, key, n[i])
   key.add ')'
 
+proc addSymKey(w: var Writer; key: var string; s: PSym) =
+  ## A symbol inside a type's `n`, as far as the type's def serializes it: a
+  ## field's or a param's name, kind, flags, position and type. Not its NIF
+  ## name, whose `disamb` is local to the routine that minted it -- two
+  ## routines' identical anonymous types would never agree on it -- but for a
+  ## module-level symbol (an enum field, a `static` value's const) the NIF
+  ## name, which is what identifies it.
+  key.add s.name.s
+  key.add '/'
+  key.addInt ord(s.kindImpl)
+  for f in s.flagsImpl:
+    key.add ','
+    key.addInt ord(f)
+  key.add '@'
+  key.addInt s.positionImpl
+  if not isLocalSym(s):
+    key.add '='
+    key.add toNifSymName(w, s)
+  key.add ':'
+  if s.typImpl != nil: key.add keyTypeName(w, s.typImpl)
+
+proc writtenOwner(typ: PType): PSym =
+  ## The owner a type's def records. An anonymous type -- no `sym`, and not a
+  ## routine's signature -- is a structure, minted afresh by whatever needed
+  ## `var T` or `set[char]` first: the ROUTINE that did is an accident of
+  ## the order sem ran in, and since identical structures share one name
+  ## (`canonicalTypeItem`), recording it would make the def depend on which
+  ## of them was written first. Such a type records its module.
+  result = typ.ownerFieldImpl
+  if result != nil and typ.symImpl == nil and
+      not (typ.kind == tyProc and sigRoutineOf(typ) != nil):
+    while result != nil and result.kindImpl != skModule:
+      result = result.ownerFieldImpl
+    if result == nil: result = typ.ownerFieldImpl
+
+proc declaringSym(typ: PType): PSym =
+  ## The type symbol `typ` is THE type of, for a declared nominal type (`type
+  ## Foo = object ...`, a generic param `T`), or nil. A replica or a type that
+  ## replaced another as `sym.typ` (a forward declaration's) does not qualify.
+  result = typ.symImpl
+  if result == nil or result.kindImpl notin {skType, skGenericParam} or
+      result.typImpl != typ or typ.bindingId != typ.itemId:
+    result = nil
+
 proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
-  ## Stable id for a type that would otherwise wear the mint counter: its
-  ## CONTENT for a wrapper or a literal copy, and for a proc type that is a
-  ## routine's signature, the routine that owns it.
+  ## The NIF id of a type minted in this process (`isCanonType`), from what it
+  ## IS rather than from when it was minted:
   ##
-  ## SOUNDNESS RULE: the key must cover everything `writeTypeDef` serializes
-  ## except the id itself, so that two types sharing a name would have been
-  ## written identically anyway. Skimping on that is not a missed optimisation,
-  ## it is a miscompile: a key over `eqTypeFlags` alone merged two proc types
-  ## differing only in `tfUnresolved`, and `sizeof(uint64)` stopped resolving.
-  ## The owner is in the key too, which keeps distinct-but-identical wrappers in
-  ## different routines apart -- order-independence is the goal here, merging is
-  ## not, and merging is where every bug in this scheme has come from.
+  ## * a routine's signature: the routine (a signature's identity is the
+  ##   param symbols the body refers to, not its content; see `sigRoutineOf`);
+  ## * a declared type: its declaring symbol, so that changing the declaration
+  ##   does not rename it -- importers keep their references, and only the
+  ##   interface cookie, which reads the def, notices;
+  ## * a generic type instance: the generic and its arguments, not the
+  ##   instantiated body, which can lead back to the instance (`Node[T]` with a
+  ##   `ref Node[T]` field); and an instantiated body: the instance;
+  ## * everything else: its content.
   ##
-  ## Son NIF NAMES are the right currency for the recursive part: they are what
-  ## actually lands in the file, they are already stable for anything declared in
-  ## a `type` section, and recursion bottoms out on nominal types, which keep
-  ## their counter names.
+  ## SOUNDNESS RULE for the content key: it must cover everything
+  ## `writeTypeDef` serializes except the id itself, so that two types sharing
+  ## a name would have been written identically anyway -- the loader could not
+  ## tell them apart. Skimping on that is not a missed optimisation, it is a
+  ## miscompile: a key over `eqTypeFlags` alone merged two proc types differing
+  ## only in `tfUnresolved`, and `sizeof(uint64)` stopped resolving. The owner
+  ## is in the key too, which keeps identical anonymous types in different
+  ## routines apart.
+  ##
+  ## Son NIF NAMES are the currency for the recursive part: they are what
+  ## actually lands in the file.
   canonTypeIds.withValue(typ.itemId, cached):
     return cached[]
   # Re-entrancy guard: a son that leads back here sees the mint counter, and this
   # type still gets a deterministic (if less stable) id.
   canonTypeIds[typ.itemId] = typ.itemId.item
+  canonKeyStack.add typ.itemId
+  canonKeyReach.add canonKeyStack.high
+  defer:
+    if canonKeyReach[^1] < canonKeyStack.high:
+      # the key refers to a type further out that is being keyed: it is only
+      # valid in THAT context, so it is not the type's own id. Use it there,
+      # but do not keep it; written on its own, the type is keyed afresh.
+      canonTypeIds.del typ.itemId
+    discard canonKeyStack.pop()
+    discard canonKeyReach.pop()
 
   # A routine's signature is named after the ROUTINE, not after its content.
-  # Content cannot work here (see CanonTypeKinds): two `=sink` hooks for one type
-  # agree in every serialized byte yet own different param symbols, and the
-  # merged loser's body loses its parameters. The routine's own NIF name is both
-  # unique -- a routine has one signature -- and stable, since `disamb` counts
-  # per identifier rather than per module, which is the whole point. It is also
-  # stable across a signature CHANGE: adding a parameter or an effect no longer
-  # renames the type, so importers keep their references and only the iface
-  # cookie (which reads the signature itself) notices.
+  # Content cannot work here: two `=sink` hooks for one type agree in every
+  # serialized byte yet own different param symbols, and the merged loser's
+  # body loses its parameters. The routine's own NIF name is both unique -- a
+  # routine has one signature -- and stable. It is also stable across a
+  # signature CHANGE: adding a parameter or an effect no longer renames the
+  # type, so importers keep their references and only the iface cookie (which
+  # reads the signature itself) notices.
   let sigRoutine = if typ.kind == tyProc: sigRoutineOf(typ) else: nil
   if sigRoutine != nil:
     var sigKey = "sig|"
@@ -836,64 +905,106 @@ proc canonicalTypeItem(w: var Writer; typ: PType): int32 =
       result = claimCanonId(typ, sigKey, canonHash(sigKey))
       canonTypeIds[typ.itemId] = result
       return result
-    # Someone else is already this routine's signature; keep the mint counter.
-    return typ.itemId.item
-  elif typ.kind == tyProc:
-    # An anonymous proc type -- a parameter's or a variable's `proc (x: int)`.
-    # It keeps the mint counter, and `nifTypeName` then prints exactly what
-    # `typeToNifSym` would. Content-keying it looked harmless and is not: the
-    # `raises`/`tags` effects that separate two otherwise identical proc types
-    # live as `nkType` nodes under `n[0]`'s `nkEffectList`, and `addNodeKey`
-    # hashes a node's kind and children but never its TYPE, so every effect set
-    # digests the same. Enabling it collapsed two `proc () {.closure.}` params in
-    # `seqs_v2.yrcMutatorLock` and `tests/ic/tmeta_async` stopped compiling with
-    # "type mismatch: got <proc (){.closure, gcsafe.}> but expected 'proc
-    # (){.closure, gcsafe.}' .raise effects differ". Teaching `addNodeKey` about
-    # node types would fix that particular merge, but there is nothing to win:
-    # the churn this whole scheme exists to remove is in the SIGNATURES an
-    # importer references, and those are handled above.
-    return typ.itemId.item
+    # Someone else is already this routine's signature: it is an ordinary
+    # proc type now, named by content below.
 
   var key = newStringOfCap(96)
   key.addInt ord(typ.kind)
   key.add '|'
-  for f in typ.flagsImpl:
+  # not `derivedTypeFlags`: bookkeeping that is discovered lazily, possibly
+  # after the type was first named, and never part of a type's identity
+  for f in typ.flagsImpl - derivedTypeFlags:
     key.addInt ord(f)
     key.add ','
   key.add '|'
   key.addInt ord(typ.callConvImpl)
   key.add '|'
-  # size/align/paddingAtEnd are deliberately ABSENT. They are filled in lazily,
-  # so hashing them would make a type's NAME depend on whether anyone had asked
-  # for its `sizeof` yet -- and they are not serialized for these kinds either
-  # (see `hasDerivedSize` in writeTypeDef), so there is nothing to distinguish:
-  # everything they are computed FROM is in this key already.
-  if typ.typeInstImpl != nil: key.add nifTypeName(w, typ.typeInstImpl)
-  # The `sym` is load-bearing for a literal copy and nil for every wrapper, so
-  # adding it leaves the wrapper keys byte-identical. It has to be here: a copy
-  # of plain `int` and a copy of an int-shaped alias such as posix's `Off` agree
-  # on kind, flags and size, and the sym is all that tells them apart.
+  let decl = declaringSym(typ)
+  if decl != nil:
+    key.add "decl="
+    key.add toNifSymName(w, decl)
+    if typ.ownerFieldImpl != nil:
+      key.add '<'
+      key.add toNifSymName(w, typ.ownerFieldImpl)
+    result = claimCanonId(typ, key, canonHash(key))
+    canonTypeIds[typ.itemId] = result
+    return result
+  if typ.kind == tyGenericInst:
+    # the generic and the arguments, without the instantiated body (last son)
+    key.add "inst"
+    for i in 0 ..< typ.sonsImpl.len - 1:
+      key.add '#'
+      let son = typ.sonsImpl[i]
+      if son == nil: key.add '.'
+      else: key.add keyTypeName(w, son)
+    if typ.ownerFieldImpl != nil:
+      key.add '<'
+      key.add toNifSymName(w, writtenOwner(typ))
+    result = claimCanonId(typ, key, canonHash(key))
+    canonTypeIds[typ.itemId] = result
+    return result
+  if not hasDerivedSize(typ):
+    # a measurement is only serialized where it is not derived (see
+    # `writeTypeDef`)
+    key.addInt typ.sizeImpl
+    key.add ','
+    key.addInt typ.alignImpl
+    key.add ','
+    key.addInt typ.paddingAtEndImpl
+    key.add '|'
+  if typ.bindingId != typ.itemId:
+    key.add "bid="
+    key.addInt bindingIdItem(w, typ)
+    key.add '|'
+  if typ.typeInstImpl != nil:
+    key.add "of="
+    key.add keyTypeName(w, typ.typeInstImpl)
   if typ.symImpl != nil:
     key.add '$'
     key.add toNifSymName(w, typ.symImpl)
   if typ.ownerFieldImpl != nil:
     key.add '<'
-    key.add toNifSymName(w, typ.ownerFieldImpl)
-  for son in typ.sonsImpl:
-    key.add '#'
-    if son == nil: key.add '.'
-    else: key.add nifTypeName(w, son)
-  # `n` carries a tuple's field names, a range's bounds and a proc's formal
-  # params -- all of them serialized, so all of them part of the key.
-  addNodeKey(w, key, typ.nImpl)
+    key.add toNifSymName(w, writtenOwner(typ))
+  key.add '['
+  key.addInt ord(typ.locImpl.k)
+  key.add ','
+  key.addInt ord(typ.locImpl.storage)
+  for f in typ.locImpl.flags:
+    key.add ','
+    key.addInt ord(f)
+  key.add ','
+  key.add $typ.locImpl.snippet
+  key.add ']'
+  if typ.typeInstImpl == nil or typ.kind notin {tyObject, tyEnum, tyDistinct}:
+    for son in typ.sonsImpl:
+      key.add '#'
+      if son == nil: key.add '.'
+      else: key.add keyTypeName(w, son)
+    # `n` carries a tuple's or object's fields, a range's bounds and a proc's
+    # formal params and effects -- all of them serialized, so all of them part
+    # of the key.
+    addNodeKey(w, key, typ.nImpl)
+  # else: an instantiated body is determined by its instance (`of=`), and its
+  # fields can lead back to the instance
   result = claimCanonId(typ, key, canonHash(key))
-  when defined(icLitDbg):
-    if typ.kind in CanonLitCopyKinds:
-      stderr.writeLine "[litkey] cur=" & modname(w.currentModule, w.infos.config) &
-        " idmod=" & modname(typ.itemId.module, w.infos.config) &
-        " id=" & $typ.itemId.item & " state=" & $typ.state &
-        " id=" & $result & " key=" & key
+  when defined(icCanonKeyDbg):
+    let logf = getEnv("NIM_CANONKEY_LOG")
+    if logf.len > 0:
+      var f: File
+      if open(f, logf, fmAppend):
+        f.writeLine $result & " " & key
+        close f
   canonTypeIds[typ.itemId] = result
+
+proc bindingIdItem(w: var Writer; typ: PType): int32 =
+  ## What a replica's `bindingId` is written as: the NIF id of its original
+  ## when the original was minted in this process (`ast.bindingOrigins`),
+  ## else the id it already is (a loaded original's id came out of its name).
+  let origin = bindingOrigins.getOrDefault(typ.bindingId)
+  if origin != nil and isCanonType(w, origin):
+    result = canonicalTypeItem(w, origin)
+  else:
+    result = typ.bindingId.item
 
 proc nifTypeName(w: var Writer; typ: PType): string =
   ## NIF name of a type as written by THIS module. A process-local backend env
@@ -968,7 +1079,8 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
       dest.addDotToken
     else:
       dest.buildTree bindingIdTag:
-        dest.addIntLit typ.bindingId.item
+        # the original's NIF id, which the loader rebuilds its `itemId` from
+        dest.addIntLit bindingIdItem(w, typ)
         # a replica of a FOREIGN type: the module half is not in the name either
         if typ.bindingId.module != typ.itemId.module and
             not typ.bindingId.isBackendMinted:
@@ -1000,7 +1112,7 @@ proc writeTypeDef(w: var Writer; dest: var IcBuilder; typ: PType) =
     writeNode(w, dest, typ.nImpl, forAst = typ.kind == tyConcept)
     w.emittedFieldSyms = savedFieldSyms
     dec w.inTypeReclist
-    writeSym(w, dest, typ.ownerFieldImpl)
+    writeSym(w, dest, writtenOwner(typ))
     writeSym(w, dest, typ.symImpl)
 
     # Write TLoc structure
@@ -3016,6 +3128,7 @@ proc tryCreateTypeStub(c: var DecodeContext; name: string): PType =
     if not hasTypeOffset(c, modFi, name):
       return nil
     result = PType(itemId: id, bindingId: id, kind: TTypeKind(k), state: Partial)
+    loadedTypeIds.incl id
     # `loadType` re-resolves the buffer via `typeCursor`, so the cached entry is a
     # don't-care for types — store the primary one if any (else a 0-offset stub).
     c.types[name] = (result, c.mods[modFi].indexEntry(name))
