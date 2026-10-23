@@ -1457,3 +1457,15 @@ proc isClosureEnvParam*(procType: PType; param: PSym): bool {.inline.} =
   ## derives an identity or a C name from the type must skip it, or that
   ## identity differs between processes.
   procType.callConvImpl == ccClosure and param.name.s == closureEnvParamName
+
+var bindingOrigins*: Table[ItemId, PType]
+  ## `bindingId -> the type that carries it as its own itemId`, for the types
+  ## that have replicas. A replica's `bindingId` is written into its NIF def,
+  ## and must be written as its ORIGINAL's NIF id, which is content-derived
+  ## (`ast2nif.canonicalTypeItem`) rather than the mint counter.
+
+proc registerBindingOrigin*(t: PType) {.inline.} =
+  ## `t` is about to lend its `bindingId` to a replica
+  if t.bindingId == t.itemId and not t.itemId.isBackendMinted:
+    bindingOrigins[t.bindingId] = t
+

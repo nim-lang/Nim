@@ -12,7 +12,7 @@
 import
   lineinfos, options, idents, int128, wordrecg
 
-import std/[tables, hashes]
+import std/[tables, hashes, intsets]
 from std/strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
@@ -602,8 +602,10 @@ type
     tailTable*: CountTable[PIdent]
       ## counts of the tail region: arena overflow, and everything minted after
       ## the module's body pass
-    arenaSlots*: ref set[uint16]
+    arenaSlots*: IntSet
       ## instance and hook arenas taken so far in this module
+    arenaCap*: int32
+      ## names per identifier the current arena holds before spilling
     scratch*: bool
       ## inside `enterScratchArena`: mint without counting, into `scratchLog`
     scratchLog*: seq[PSym]
@@ -635,6 +637,13 @@ proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
 const
   ArenaLocalBits = 11
   ArenaSize* = 1'i32 shl ArenaLocalBits
+    ## a unit's arena
+  KeyedArenaLocalBits = 8
+  KeyedArenaSize = 1'i32 shl KeyedArenaLocalBits
+    ## an instance's or a hook's arena: they mint few names each, and the
+    ## smaller they are, the more slots there are for their keys, which makes
+    ## a collision (`enterKeyedArena`) correspondingly rarer
+  KeyedArenaSlots = 1 shl 19
     ## names (per identifier) one arena can mint before it spills to the tail
   HeaderRegionEnd = 1'i32 shl 16
   UnitArenaBase = HeaderRegionEnd
@@ -649,12 +658,15 @@ type
     base: int32
     scratch: bool
     scratchLog: seq[PSym]
+    cap: int32
 
-proc enterArena(idgen: IdGenerator; base: int32): ArenaState =
+proc enterArena(idgen: IdGenerator; base: int32; cap = ArenaSize): ArenaState =
   result = ArenaState(table: move idgen.disambTable, base: idgen.disambBase,
-                      scratch: idgen.scratch, scratchLog: move idgen.scratchLog)
+                      scratch: idgen.scratch, scratchLog: move idgen.scratchLog,
+                      cap: idgen.arenaCap)
   idgen.disambTable = initCountTable[PIdent]()
   idgen.disambBase = base
+  idgen.arenaCap = cap
   idgen.scratch = false
 
 proc enterUnitArena*(idgen: IdGenerator; ordinal: int): ArenaState =
@@ -666,7 +678,7 @@ proc enterUnitArena*(idgen: IdGenerator; ordinal: int): ArenaState =
   ## =================================  ==================================
   ## `[0, 2^16)`                        the header pass, plain counting
   ## `[2^16, 2^16 + 2^16 * 2^11)`       unit `i` at `2^16 + i * 2^11`
-  ## `[2^28, 2^28 + 2^16 * 2^11)`       instance and hook arenas, by key
+  ## `[2^28, 2^28 + 2^19 * 2^8)`        instance and hook arenas, by key
   ## `[2^28 + 2^27, 2^29)`              the tail: after the body pass, and
   ##                                    the overflow of every arena
   ## =================================  ==================================
@@ -682,17 +694,16 @@ proc enterKeyedArena*(idgen: IdGenerator; key: uint32): ArenaState =
   ## unit needs it first, so its base comes from its content key instead.
   ## Two keys of one module that land on the same slot are probed apart in
   ## first-come order, the one place where the order still shows.
-  if idgen.arenaSlots == nil: new idgen.arenaSlots
-  var slot = uint16(key and 0xFFFF'u32)
+  var slot = int(key mod uint32(KeyedArenaSlots))
   var tries = 0
-  while slot in idgen.arenaSlots[] and tries < (1 shl 16):
-    slot = slot + 1  # wraps
+  while slot in idgen.arenaSlots and tries < KeyedArenaSlots:
+    slot = (slot + 1) mod KeyedArenaSlots
     inc tries
-  let base = if tries < (1 shl 16):
-               idgen.arenaSlots[].incl slot
-               KeyedArenaBase + int32(slot) * ArenaSize
+  let base = if tries < KeyedArenaSlots:
+               idgen.arenaSlots.incl slot
+               KeyedArenaBase + int32(slot) * KeyedArenaSize
              else: TailRegionBase
-  result = enterArena(idgen, base)
+  result = enterArena(idgen, base, KeyedArenaSize)
 
 proc reenterUnitArena*(idgen: IdGenerator; ordinal: int;
                        table: sink CountTable[PIdent]): ArenaState =
@@ -703,6 +714,7 @@ proc reenterUnitArena*(idgen: IdGenerator; ordinal: int;
 proc leaveArena*(idgen: IdGenerator; saved: sink ArenaState) =
   idgen.disambTable = move saved.table
   idgen.disambBase = saved.base
+  idgen.arenaCap = saved.cap
   idgen.scratch = saved.scratch
   idgen.scratchLog = move saved.scratchLog
 
@@ -714,7 +726,7 @@ proc enterScratchArena*(idgen: IdGenerator): ArenaState =
   ## or they are dropped with the work. Either way the enclosing arena's
   ## counts do not see them, so they do not depend on whether the work was
   ## needed.
-  result = enterArena(idgen, idgen.disambBase)
+  result = enterArena(idgen, idgen.disambBase, idgen.arenaCap)
   idgen.scratch = true
 
 proc leaveScratchArena*(idgen: IdGenerator; saved: sink ArenaState): seq[PSym] =
@@ -731,11 +743,11 @@ proc nextDisamb(idgen: IdGenerator; name: PIdent): int32 =
     result = getOrDefault(idgen.disambTable, name).int32
     idgen.disambTable.inc name
   else:
-    result = ArenaSize
+    result = idgen.arenaCap
     if idgen.disambBase != TailRegionBase:
       result = getOrDefault(idgen.disambTable, name).int32
       idgen.disambTable.inc name
-    if result < ArenaSize:
+    if result < idgen.arenaCap:
       result += idgen.disambBase
     else:
       result = TailRegionBase + getOrDefault(idgen.tailTable, name).int32
@@ -1411,6 +1423,7 @@ proc exactReplica*(t: PType; idgen: IdGenerator): PType =
   result = PType(kind: t.kind, ownerFieldImpl: t.owner, sizeImpl: defaultSize,
                  alignImpl: defaultAlignment, itemId: nextTypeId(idgen),
                  bindingId: t.bindingId)
+  registerBindingOrigin(t)
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 

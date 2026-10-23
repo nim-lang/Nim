@@ -876,12 +876,32 @@ bootstraps to a fixed point. What it took:
   content. Ownership was first come in two places: a hook lifted for a type
   made in a body (now owned by the minting module) and an instance shared
   between the modules of an import group compiled in one process (now each
-  module makes its own, as separate processes would). What is left is type
-  identity: NIF names a type by its `itemId`, and type ids are minted first
-  come — by units, by instances' signatures, and in which `PType` an offer
-  happens to reference for `int`. A typeId arena per unit would cover the
-  first; the others need content-addressed names for structural types, a
-  question about the NIF format rather than about scheduling.
+  module makes its own, as separate processes would). Type identity
+  followed: NIF named most types by `itemId.item`, a mint counter. Now every
+  type minted in the process is content-addressed
+  (`ast2nif.canonicalTypeItem`): a routine's signature by the routine, a
+  declared type by its declaring symbol (stable under edits of the
+  declaration), a generic type instance by the generic and its arguments,
+  everything else by a key covering what its def serializes — except the
+  bookkeeping `derivedTypeFlags`, and with an anonymous type's owner recorded
+  as its module, not the routine that minted it first. A key that leads back
+  into a type being keyed uses a back reference by stack depth, and a key
+  that is only valid inside another type's key is not memoized. A replica's
+  `bid` is written as its original's content id (`astdef.bindingOrigins`).
+  This holds for every `--ic:on` build, not just `--parsem:on`: a body edit
+  no longer renames the generic instances it made
+  (`tests/ic/tgeneric_offer_body_edit` rebuilds 1 module instead of 3).
+  Under `--parsem:on` also: a generic parameter bound to a literal's type
+  (`int literal(5)`, a set constructor's type) is bound to the type itself,
+  the canonical type a hook is lifted for is likewise clean, and keyed
+  arenas are smaller and have 2^19 slots. Two things are left. An instance
+  is checked with the options in effect where it is instantiated first
+  (checking it with the generic's declared options instead was tried: then a
+  stdlib generic's `assert` no longer fires in a program that enables
+  assertions, `tests/stdlib/tmath`). And the IC group process: one `nim m`
+  compiles a whole import cycle (system's), and hooks and canonical types
+  are shared by its modules, so which module lifted one first shows in its
+  owner.
 
 Every one of these changes is behind `--parsem:on` (and outside `--ic:on`,
 which places hooks and instances by its own rules). Not started: unit-relative

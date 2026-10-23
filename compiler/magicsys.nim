@@ -91,10 +91,21 @@ proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
   result = newSysType(g, tyFloat, size=8)
   result.n = literal
 
+var canonicalIntLits* = false
+  ## set under `--parsem:on` (`sem.preparePContext`), see `skipIntLit`
+
 proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   if t.n != nil and t.kind in {tyInt, tyFloat}:
-    result = copyType(t, id, t.owner)
-    result.n = nil
+    let named = if canonicalIntLits and t.sym != nil: t.sym.typ else: nil
+    if named != nil and named.kind == t.kind and named.n == nil:
+      # the type the literal is OF (`int`, or an alias of it): a copy would be
+      # a fresh, module-local type, and whether a generic was bound to a
+      # literal or to the type itself first would show in which one an
+      # instance refers to
+      result = named
+    else:
+      result = copyType(t, id, t.owner)
+      result.n = nil
   else:
     result = t
 

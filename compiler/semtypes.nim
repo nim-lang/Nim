@@ -2689,6 +2689,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         # bugfix: keep the fresh id for aliases to integral types:
         if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
                              tyUInt..tyUInt64}:
+          registerBindingOrigin(s.typ)
           prev.bindingId = s.typ.bindingId
         result = prev
   of nkSym:
