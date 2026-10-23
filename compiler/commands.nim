@@ -388,33 +388,29 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   if not known:
     invalidCmdLineOption(conf, passCmd1, switch, info)
 
-proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
-                 notRelativeToProj = false): AbsoluteDir =
-  let base = if notRelativeToProj: getCurrentDir() else: conf.projectPath.string
+proc resolvePath(conf: ConfigRef; path, base, config: string;
+                 info: TLineInfo): AbsoluteDir =
+  ## Substitutes the `$` variables in `path` and makes a relative result
+  ## absolute against `base`, like a path written without `$` (#26296).
   let p = if os.isAbsolute(path) or '$' in path: path
           else: base / path
   try:
-    let s = pathSubs(conf, p, toFullPath(conf, info).splitFile().dir)
-    # `$projectName` and friends can leave the path relative (#26296)
+    let s = pathSubs(conf, p, config)
     result = AbsoluteDir(if '$' in path and not os.isAbsolute(s): base / s else: s)
   except ValueError:
     localError(conf, info, "invalid path: " & p)
     result = AbsoluteDir p
 
+proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
+                 notRelativeToProj = false): AbsoluteDir =
+  let base = if notRelativeToProj: getCurrentDir() else: conf.projectPath.string
+  result = resolvePath(conf, path, base, toFullPath(conf, info).splitFile().dir, info)
+
 proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir =
   let path = if path.len > 0 and path[0] == '"': strutils.unescape(path)
              else: path
   let basedir = toFullPath(conf, info).splitFile().dir
-  let p = if os.isAbsolute(path) or '$' in path:
-            path
-          else:
-            basedir / path
-  try:
-    let s = pathSubs(conf, p, basedir)
-    result = AbsoluteDir(if '$' in path and not os.isAbsolute(s): basedir / s else: s)
-  except ValueError:
-    localError(conf, info, "invalid path: " & p)
-    result = AbsoluteDir p
+  result = resolvePath(conf, path, basedir, basedir, info)
 
 const
   errInvalidNumber = "$1 is not a valid number"
