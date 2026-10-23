@@ -470,7 +470,7 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     c.graph.config.structuredErrorHook = nil
 
   try:
-    result = evalConstExpr(c.module, c.idgen, c.graph, e, c)
+    result = evalConstExpr(c.module, c.idgen, c.graph, e, c, c.templInstCounter)
     if result == nil or result.kind == nkEmpty:
       result = nil
     else:
@@ -505,7 +505,7 @@ proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   result = getConstExpr(c.module, e, c.idgen, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
-    result = evalConstExpr(c.module, c.idgen, c.graph, e, c)
+    result = evalConstExpr(c.module, c.idgen, c.graph, e, c, c.templInstCounter)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(c.config, n.info)

@@ -3650,7 +3650,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   dec c.inStaticContext
   n[0] = a
   if c.config.errorCounter == oldErrorCount:
-    evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner, c)
+    evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner, c, c.templInstCounter)
   when false:
     # for incremental replays, keep the AST as required for replays:
     result = n
