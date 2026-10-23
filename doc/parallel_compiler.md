@@ -925,7 +925,19 @@ options, notes, `warningAsErrors`, `errorMax`, `errorOutputs`, `msgContext`,
 `lastError`, the template/macro recursion guards) one `options.UnitConfig`,
 both embedded and reached through same-named templates, so call sites did not
 change; `runBodyTask` swaps each as a whole. The error/warning/hint counters
-stay global until stage 4 merges per-worker ones.
+stay global until stage 4 merges per-worker ones. The logs bodies append to
+are per unit (`generics` in `PositionalState`, `opsLog`, the replay actions
+and the expansion index in `ModuleGraph.logSink`), handed on when the unit
+is done.
+
+`tests/ic` under `--parsem:on`, run for the first time on 2026-10-23: 78 of
+82. `tmeta_async` failed on a type-instance cache hit that ignored proc
+effects (fixed, a latent bug of every IC build); it now fails because
+`worker.nim` instantiates `system.cmp[MonoTime]` itself instead of reusing
+an offer, and so does not see `monotimes.<`. `tgenericoffer_temp` and
+`ttransitiveoffer_temp` fail the same way (`==` of a type from another
+module), but only in a full category run, not alone or together. Offers
+under `--parsem:on` are the open thread for stage 6.
 
 **Stage 4 — parallel sem.** Workers drain the queue; `trackProc` waits per
 §2.3; the header pass of a module still completes before its bodies start (so
