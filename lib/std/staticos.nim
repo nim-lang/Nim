@@ -26,7 +26,7 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-proc staticWalkDir*(dir: string; relative = false): seq[
+proc staticWalkDir*(dir: string; relative = false, checkDir = false): seq[
                   tuple[kind: PathComponent, path: string]] {.compileTime.} =
   ## Walks over the directory `dir` and returns a seq with each directory or
   ## file in `dir`. The component type and full path for each item are returned.
@@ -35,4 +35,6 @@ proc staticWalkDir*(dir: string; relative = false): seq[
   ## * If `relative` is true (default: false)
   ##   the resulting path is shortened to be relative to ``dir``,
   ##   otherwise the full path is returned.
+  ## * If `checkDir` is true, `OSError` is raised when `dir`
+  ##   doesn't exist.
   raiseAssert "implemented in the vmops"
