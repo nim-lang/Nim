@@ -182,7 +182,7 @@ proc concat(strings: openArray[string]): string =
   for s in strings: result.add s
 
 proc suggestWriteln*(conf: ConfigRef; s: string) =
-  if eStdOut in conf.m.errorOutputs:
+  if eStdOut in conf.errorOutputs:
     if isNil(conf.writelnHook):
       writeLine(stdout, s)
       flushFile(stdout)
@@ -212,19 +212,19 @@ const
   ColOffset*   = 1
   commandLineDesc* = "command line"
 
-proc getInfoContextLen*(conf: ConfigRef): int = return conf.m.msgContext.len
-proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.m.msgContext, L)
+proc getInfoContextLen*(conf: ConfigRef): int = return conf.msgContext.len
+proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.msgContext, L)
 
 proc pushInfoContext*(conf: ConfigRef; info: TLineInfo; detail: string = "") =
-  conf.m.msgContext.add((info, detail))
+  conf.msgContext.add((info, detail))
 
 proc popInfoContext*(conf: ConfigRef) =
-  setLen(conf.m.msgContext, conf.m.msgContext.len - 1)
+  setLen(conf.msgContext, conf.msgContext.len - 1)
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
-  let i = if index < 0: conf.m.msgContext.len + index else: index
-  if i >=% conf.m.msgContext.len: result = unknownLineInfo
-  else: result = conf.m.msgContext[i].info
+  let i = if index < 0: conf.msgContext.len + index else: index
+  if i >=% conf.msgContext.len: result = unknownLineInfo
+  else: result = conf.msgContext[i].info
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
@@ -369,13 +369,13 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s & sep)
   elif optStdout in conf.globalOptions or msgStdout in flags:
-    if eStdOut in conf.m.errorOutputs:
+    if eStdOut in conf.errorOutputs:
       flushDot(conf)
       write stdout, s
       writeLine(stdout, sep)
       flushFile(stdout)
   else:
-    if eStdErr in conf.m.errorOutputs:
+    if eStdErr in conf.errorOutputs:
       flushDot(conf)
       write stderr, s
       writeLine(stderr, sep)
@@ -414,7 +414,7 @@ template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
 
 proc msgWrite(conf: ConfigRef; s: string) =
-  if conf.m.errorOutputs != {}:
+  if conf.errorOutputs != {}:
     let stdOrr =
       if optStdout in conf.globalOptions:
         stdout
@@ -428,11 +428,11 @@ template styledMsgWriteln(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
-    if eStdOut in conf.m.errorOutputs:
+    if eStdOut in conf.errorOutputs:
       flushDot(conf)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
-  elif eStdErr in conf.m.errorOutputs:
+  elif eStdErr in conf.errorOutputs:
     flushDot(conf)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
@@ -500,8 +500,8 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
   const instantiationOfFrom = "template/generic instantiation of `$1` from here"
   var info = lastinfo
-  for i in 0..<conf.m.msgContext.len:
-    let context = conf.m.msgContext[i]
+  for i in 0..<conf.msgContext.len:
+    let context = conf.msgContext[i]
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
         conf.structuredErrorHook(conf, context.info, instantiationFrom,
@@ -570,11 +570,11 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
-  let errorOutputsOld = conf.m.errorOutputs
+  let errorOutputsOld = conf.errorOutputs
   if msg in fatalMsgs:
     # don't gag, refs bug #7080, bug #18278; this can happen with `{.fatal.}`
     # or inside a `tryConstExpr`.
-    conf.m.errorOutputs = {eStdOut, eStdErr}
+    conf.errorOutputs = {eStdOut, eStdErr}
 
   let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
@@ -587,8 +587,8 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       # we try to filter error messages so that not two error message
       # in the same file and line are produced:
       # xxx `lastError` is only used in this disabled code; but could be useful to revive
-      ignoreMsg = conf.m.lastError == info and info != unknownLineInfo and eh != doAbort
-    if info != unknownLineInfo: conf.m.lastError = info
+      ignoreMsg = conf.lastError == info and info != unknownLineInfo and eh != doAbort
+    if info != unknownLineInfo: conf.lastError = info
   of warnMin..warnMax:
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
@@ -634,7 +634,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     handleError(conf, msg, eh, s, ignoreMsg)
   if msg in fatalMsgs:
     # most likely would have died here but just in case, we restore state
-    conf.m.errorOutputs = errorOutputsOld
+    conf.errorOutputs = errorOutputsOld
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let arg = msgKindToString(msg) % args

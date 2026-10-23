@@ -823,7 +823,7 @@ proc importcCondVar*(s: PSym): bool {.inline.} =
     result = false
 
 template cannotEval(c: PCtx; n: PNode) =
-  if c.config.cmd == cmdCheck and c.config.m.errorOutputs != {}:
+  if c.config.cmd == cmdCheck and c.config.errorOutputs != {}:
     # nim check command with no error outputs doesn't need to cascade here,
     # includes `tryConstExpr` case which should not continue generating code
     localError(c.config, n.info, "cannot evaluate at compile time: " & n.renderTree)

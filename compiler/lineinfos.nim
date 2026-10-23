@@ -359,17 +359,13 @@ type
     trackPosAttached*: bool ## whether the tracking position was attached to
                             ## some close token.
 
-    errorOutputs*: TErrorOutputs
-    msgContext*: seq[tuple[info: TLineInfo, detail: string]]
-    lastError*: TLineInfo
     filenameToIndexTbl*: Table[string, FileIndex]
     fileInfos*: seq[TFileInfo]
     systemFileIdx*: FileIndex
 
 
 proc initMsgConfig*(): MsgConfig =
-  result = MsgConfig(msgContext: @[], lastError: unknownLineInfo,
-                     filenameToIndexTbl: initTable[string, FileIndex](),
-                     fileInfos: @[], errorOutputs: {eStdOut, eStdErr}
+  result = MsgConfig(filenameToIndexTbl: initTable[string, FileIndex](),
+                     fileInfos: @[]
   )
   result.filenameToIndexTbl["???"] = FileIndex(-1)

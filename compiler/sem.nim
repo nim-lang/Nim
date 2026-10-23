@@ -459,9 +459,9 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   let oldErrorCount = c.config.errorCounter
   let oldErrorMax = c.config.errorMax
-  let oldErrorOutputs = c.config.m.errorOutputs
+  let oldErrorOutputs = c.config.errorOutputs
 
-  c.config.m.errorOutputs = {}
+  c.config.errorOutputs = {}
   c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   when defined(nimsuggest):
@@ -490,7 +490,7 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
-  c.config.m.errorOutputs = oldErrorOutputs
+  c.config.errorOutputs = oldErrorOutputs
 
 const
   errConstExprExpected = "constant expression expected"

@@ -2662,10 +2662,10 @@ proc genericBodyBindsEarly(c: PContext; n: PNode): bool =
   let
     oldErrorCount = c.config.errorCounter
     oldErrorMax = c.config.errorMax
-    oldErrorOutputs = c.config.m.errorOutputs
+    oldErrorOutputs = c.config.errorOutputs
     oldContextLen = msgs.getInfoContextLen(c.config)
     oldScope = c.currentScope
-  c.config.m.errorOutputs = {}
+  c.config.errorOutputs = {}
   c.config.errorMax = high(int)
   openScope(c)
   try:
@@ -2675,7 +2675,7 @@ proc genericBodyBindsEarly(c: PContext; n: PNode): bool =
     result = false
   c.currentScope = oldScope
   msgs.setInfoContextLen(c.config, oldContextLen)
-  c.config.m.errorOutputs = oldErrorOutputs
+  c.config.errorOutputs = oldErrorOutputs
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
 
@@ -2718,7 +2718,7 @@ proc enqueueBodyTask(c: PContext; s: PSym; n: PNode; resultType: PType;
     options: c.config.options, notes: c.config.notes,
     warningAsErrors: c.config.warningAsErrors, features: c.features,
     friendModules: c.friendModules,
-    errorOutputs: c.config.m.errorOutputs)
+    errorOutputs: c.config.errorOutputs)
 
 proc solveCycle(c: PContext; members: seq[int]) =
   ## The effects of a cycle of units: routines that need each other's bodies,
@@ -2753,9 +2753,7 @@ proc solveCycle(c: PContext; members: seq[int]) =
 
   template asMember(k: int; body: untyped) =
     let task = addr c.bodyTasks[order[k].unit]
-    let savedOptions = c.config.options
-    let savedNotes = c.config.notes
-    let savedWarningAsErrors = c.config.warningAsErrors
+    let savedUnit = c.config.unit
     let savedFeatures = c.features
     let savedCurrentUnit = c.currentUnit
     let savedArena = reenterUnitArena(c.idgen, order[k].unit, move task.arenaTable)
@@ -2773,9 +2771,7 @@ proc solveCycle(c: PContext; members: seq[int]) =
       leaveArena(c.idgen, savedArena)
       c.graph.arenaTag = savedArenaTag
       c.currentUnit = savedCurrentUnit
-      c.config.options = savedOptions
-      c.config.notes = savedNotes
-      c.config.warningAsErrors = savedWarningAsErrors
+      c.config.unit = savedUnit
       c.features = savedFeatures
 
   for k in 0..<order.len:
@@ -2787,10 +2783,10 @@ proc solveCycle(c: PContext; members: seq[int]) =
       let r = task.cycleRoutines[order[k].extra]
       cycle[k] = initCycleMember(c, r.s, r.s.ast[bodyPos],
                                  r.declGcSafe, r.declNoSideEffect)
-  let savedErrorOutputs = c.config.m.errorOutputs
+  let savedErrorOutputs = c.config.errorOutputs
   let savedErrorCounter = c.config.errorCounter
   let savedErrorMax = c.config.errorMax
-  c.config.m.errorOutputs = {}
+  c.config.errorOutputs = {}
   c.config.errorMax = high(int)
   try:
     var changed = true
@@ -2800,7 +2796,7 @@ proc solveCycle(c: PContext; members: seq[int]) =
         asMember(k):
           if retrackMember(c, cycle[k]): changed = true
   finally:
-    c.config.m.errorOutputs = savedErrorOutputs
+    c.config.errorOutputs = savedErrorOutputs
     c.config.errorCounter = savedErrorCounter
     c.config.errorMax = savedErrorMax
     for m in members: c.bodyTasks[m].onStack = false
@@ -2831,14 +2827,12 @@ proc runBodyTask(c: PContext; idx: int) =
     c.bodyTasks[idx].declNoSideEffect = owner.typ != nil and
       tfNoSideEffect in owner.typ.flags
   let
-    savedOptions = c.config.options
-    savedNotes = c.config.notes
-    savedWarningAsErrors = c.config.warningAsErrors
     savedOwnerLen = c.graph.owners.len
-    savedErrorOutputs = c.config.m.errorOutputs
     savedErrorCounter = c.config.errorCounter
-    savedErrorMax = c.config.errorMax
     savedTemplInstCounter = c.templInstCounter[]
+  # the per-unit part of the configuration (§4.1); the message context stays
+  # what the demander had, so errors still show what is being instantiated
+  var savedUnit = c.config.unit
   let t = c.bodyTasks[idx]
   # The unit's own positional state: what the header pass had where the
   # routine was declared (its scope, proc context, option stack, features,
@@ -2864,7 +2858,7 @@ proc runBodyTask(c: PContext; idx: int) =
   c.config.warningAsErrors = t.warningAsErrors
   # Demanded from inside `compiles()`, the unit's errors must still be
   # reported: they are errors of the routine, not of the `compiles` operand.
-  c.config.m.errorOutputs = t.errorOutputs
+  c.config.errorOutputs = t.errorOutputs
   if savedPos.compilesContextId > 0: c.config.errorMax = c.unitErrorMax
   pushOwner(c, t.owner)
   try:
@@ -2904,11 +2898,7 @@ proc runBodyTask(c: PContext; idx: int) =
       inc c.unitErrorsInCompiles, c.config.errorCounter - savedErrorCounter
     setLen(c.graph.owners, savedOwnerLen)
     c.pos = move savedPos
-    c.config.options = savedOptions
-    c.config.notes = savedNotes
-    c.config.warningAsErrors = savedWarningAsErrors
-    c.config.m.errorOutputs = savedErrorOutputs
-    c.config.errorMax = savedErrorMax
+    c.config.unit = move savedUnit
     if parSem:
       leaveArena(c.idgen, savedArena)
       c.graph.arenaTag = savedArenaTag
