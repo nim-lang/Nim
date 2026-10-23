@@ -588,31 +588,55 @@ template id*(a: PSym): int = toId(a.itemId)
 template id*(a: PType): int = toId(a.bindingId)
 
 type
+  ArenaFields* = object
+    ## The `disamb` arena an `IdGenerator` mints into right now (`enterArena`).
+    ## In the parallel body pass every thread has its own (`tlsArena`).
+    table*: CountTable[PIdent]
+    base*: int32
+      ## 0: `disamb` is the plain per-(module, name) count. Otherwise the
+      ## generator is inside an ARENA (`--parsem:on`, see `enterArena`) and
+      ## `table` is the arena's private one.
+    cap*: int32
+      ## names per identifier the current arena holds before spilling
+    scratch*: bool
+      ## inside `enterScratchArena`: mint without counting, into `scratchLog`
+    scratchLog*: seq[PSym]
+
   IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
     module*: int32
     symId*: int32
     typeId*: int32
     sealed*: bool
     backendMinted*: bool
-    disambTable*: CountTable[PIdent]
-    disambBase*: int32
-      ## 0: `disamb` is the plain per-(module, name) count. Otherwise the
-      ## generator is inside an ARENA (`--parsem:on`, see `enterArena`) and
-      ## `disambTable` is the arena's private one.
+    arenaField*: ArenaFields
+      ## the header pass's arena; see `arenaOf`
     tailTable*: CountTable[PIdent]
       ## counts of the tail region: arena overflow, and everything minted after
       ## the module's body pass
     arenaSlots*: IntSet
       ## instance and hook arenas taken so far in this module
-    arenaCap*: int32
-      ## names per identifier the current arena holds before spilling
-    scratch*: bool
-      ## inside `enterScratchArena`: mint without counting, into `scratchLog`
-    scratchLog*: seq[PSym]
+
+when defined(nimParallelSem):
+  var
+    tlsArena* {.threadvar.}: ptr ArenaFields
+      ## the arena of the unit this thread is checking ...
+    tlsArenaIdgen* {.threadvar.}: pointer
+      ## ... for this generator; any other generator's is its own
+  template arenaOf*(x: IdGenerator): ptr ArenaFields =
+    (if tlsArena != nil and tlsArenaIdgen == cast[pointer](x): tlsArena
+     else: addr x.arenaField)
+else:
+  template arenaOf*(x: IdGenerator): ptr ArenaFields = addr x.arenaField
+
+template disambTable*(x: IdGenerator): untyped = arenaOf(x).table
+template disambBase*(x: IdGenerator): untyped = arenaOf(x).base
+template arenaCap*(x: IdGenerator): untyped = arenaOf(x).cap
+template scratch*(x: IdGenerator): untyped = arenaOf(x).scratch
+template scratchLog*(x: IdGenerator): untyped = arenaOf(x).scratchLog
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
-  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, disambTable: initCountTable[PIdent]())
+  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0, arenaField: ArenaFields(table: initCountTable[PIdent]()))
   result.disambTable.inc m.name
 
 proc idGeneratorForBackend*(m: PSym): IdGenerator =
@@ -628,11 +652,11 @@ proc idGeneratorForBackend*(m: PSym): IdGenerator =
   ## disjoint by construction.
   assert m.kind == skModule
   result = IdGenerator(module: m.itemId.module, symId: 0, typeId: 0,
-                       backendMinted: true, disambTable: initCountTable[PIdent]())
+                       backendMinted: true, arenaField: ArenaFields(table: initCountTable[PIdent]()))
   result.disambTable.inc m.name
 
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
-  result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
+  result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, arenaField: ArenaFields(table: initCountTable[PIdent]()))
 
 const
   ArenaLocalBits = 11

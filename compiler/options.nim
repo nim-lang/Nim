@@ -443,7 +443,8 @@ type
     backend*: TBackend # set via `nim x` or `nim --backend:x`
     target*: Target       # (+)
     linesCompiled*: int   # all lines that have been compiled
-    unit*: UnitConfig
+    unitField*: UnitConfig
+      ## the header pass's; see `unit`
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
     arcToExpand*: StringTableRef
@@ -619,6 +620,15 @@ type
 
 
 
+when defined(nimParallelSem):
+  var tlsUnit* {.threadvar.}: ptr UnitConfig
+    ## the `UnitConfig` of the unit this thread is checking, or nil: then it
+    ## is the header pass's, `conf.unitField` (doc/parallel_compiler.md §4.1)
+  template unit*(conf: ConfigRef): untyped =
+    (if tlsUnit != nil: tlsUnit else: addr conf.unitField)[]
+else:
+  template unit*(conf: ConfigRef): untyped = conf.unitField
+
 # `conf.unit.x` as `conf.x`: lvalues, so `incl conf.notes, ...` works too
 template options*(conf: ConfigRef): untyped = conf.unit.options
 template notes*(conf: ConfigRef): untyped = conf.unit.notes
@@ -741,7 +751,7 @@ proc newConfigRef*(): ConfigRef =
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
-    unit: UnitConfig(errorOutputs: {eStdOut, eStdErr}, lastError: unknownLineInfo),
+    unitField: UnitConfig(errorOutputs: {eStdOut, eStdErr}, lastError: unknownLineInfo),
     cppDefines: initHashSet[string](),
     icGroup: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {},

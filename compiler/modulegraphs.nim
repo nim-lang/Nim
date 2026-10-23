@@ -150,7 +150,7 @@ type
     repl*: RootRef # REPL state is shared project-wise.
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
-    owners*: seq[PSym]
+    ownersField*: seq[PSym] # see `owners`
     suggestSymbols*: SuggestSymbolDatabase
     suggestErrors*: Table[FileIndex, seq[Suggest]]
     methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
@@ -238,14 +238,14 @@ type
     procGlobals*: seq[PNode]
     nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
     nifReplayTags*: Table[int32, seq[int32]]     # their `arenaTag`s
-    logSink*: UnitLogs
+    logSinkField*: UnitLogs
       ## `--parsem:on`: the buffer of the unit that is running, or nil in the
       ## header pass. The logs that bodies append to -- `opsLog`, the replay
       ## actions, the expansion index -- go there, and the unit's buffer is
       ## flushed into the enclosing one when the unit is done
       ## (doc/parallel_compiler.md §2.6 rule 5): a worker of the parallel
       ## stages appends to its own task's buffer, never to a shared list.
-    arenaTag*: int32
+    arenaTagField*: int32
       ## `--parsem:on`: the `disamb` base of the arena that is minting right
       ## now (0 in the header pass). Entries of the logs that bodies append to
       ## record it, and the NIF writer orders them by it: the header pass first,
@@ -274,6 +274,28 @@ type
                  process: TPassProcess,
                  close: TPassClose,
                  isFrontend: bool]
+
+
+type
+  GraphUnitState* = object
+    ## the per-thread part of a `ModuleGraph` in the parallel body pass
+    owners*: seq[PSym]
+    logSink*: UnitLogs
+    arenaTag*: int32
+
+when defined(nimParallelSem):
+  var tlsGraph* {.threadvar.}: ptr GraphUnitState
+    ## this thread's, or nil: then the graph's own fields
+  template owners*(g: ModuleGraph): untyped =
+    (if tlsGraph != nil: addr tlsGraph.owners else: addr g.ownersField)[]
+  template logSink*(g: ModuleGraph): untyped =
+    (if tlsGraph != nil: addr tlsGraph.logSink else: addr g.logSinkField)[]
+  template arenaTag*(g: ModuleGraph): untyped =
+    (if tlsGraph != nil: addr tlsGraph.arenaTag else: addr g.arenaTagField)[]
+else:
+  template owners*(g: ModuleGraph): untyped = g.ownersField
+  template logSink*(g: ModuleGraph): untyped = g.logSinkField
+  template arenaTag*(g: ModuleGraph): untyped = g.arenaTagField
 
 proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()

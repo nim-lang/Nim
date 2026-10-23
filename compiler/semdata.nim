@@ -170,6 +170,7 @@ type
     generics*: seq[TInstantiationPair]
       # instances made here, to compile (`addCodeForGenerics`); a unit of the
       # body pass collects its own and hands them on when it is done
+    templInstCounter*: ref int # gives every template instantiation a unique id
     currentScope*: PScope      # current scope
     p*: PProcCon               # procedure context
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
@@ -200,8 +201,8 @@ type
 
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
-    pos*: PositionalState
-      # where in the module sem currently is; see `PositionalState`
+    posField*: PositionalState
+      # where in the module sem currently is; see `PositionalState` and `pos`
     enforceVoidContext*: PType
       # for `if cond: stmt else: foo`, `foo` will be evaluated under
       # enforceVoidContext != nil
@@ -213,7 +214,6 @@ type
     intTypeCache*: array[-5..32, PType] # cache some common integer types
                                         # to avoid type allocations
     nilTypeCache*: PType
-    templInstCounter*: ref int # gives every template instantiation a unique id
     compilesContextIdGenerator*: int
     converters*: seq[PSym]
     patterns*: seq[PSym]       # sequence of pattern matchers
@@ -324,7 +324,20 @@ type
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
 
 
+when defined(nimParallelSem):
+  var
+    tlsPos* {.threadvar.}: ptr PositionalState
+      ## the `PositionalState` of the unit this thread is checking ...
+    tlsPosCtx* {.threadvar.}: pointer
+      ## ... for this context; any other context's is its own `posField`
+  template pos*(c: PContext): untyped =
+    (if tlsPos != nil and tlsPosCtx == cast[pointer](c): tlsPos
+     else: addr c.posField)[]
+else:
+  template pos*(c: PContext): untyped = c.posField
+
 # `c.pos.x` as `c.x`: lvalues, so `inc c.instCounter` and `c.p = x` work too
+template templInstCounter*(c: PContext): untyped = c.pos.templInstCounter
 template generics*(c: PContext): untyped = c.pos.generics
 template currentScope*(c: PContext): untyped = c.pos.currentScope
 template p*(c: PContext): untyped = c.pos.p
@@ -537,9 +550,10 @@ proc popOptionEntry*(c: PContext) =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result = PContext(
-    pos: PositionalState(optionStack: @[newOptionEntry(graph.config)],
-                         friendModules: @[module],
-                         features: graph.config.features),
+    posField: PositionalState(optionStack: @[newOptionEntry(graph.config)],
+                              templInstCounter: new int,
+                              friendModules: @[module],
+                              features: graph.config.features),
     libs: @[],
     module: module,
     converters: @[],

@@ -889,7 +889,6 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs
   result.semAsgnOpr = semAsgnOpr
-  result.templInstCounter = new int
 
   # `--parsem:on`: effect tracking, `auto` and the VM can need a body that the
   # body pass has not run yet, and ask for it through these. Modules nest (an

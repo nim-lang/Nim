@@ -2829,7 +2829,6 @@ proc runBodyTask(c: PContext; idx: int) =
   let
     savedOwnerLen = c.graph.owners.len
     savedErrorCounter = c.config.errorCounter
-    savedTemplInstCounter = c.templInstCounter[]
   # the per-unit part of the configuration (§4.1); the message context stays
   # what the demander had, so errors still show what is being instantiated
   var savedUnit = c.config.unit
@@ -2843,7 +2842,11 @@ proc runBodyTask(c: PContext; idx: int) =
                           optionStack: t.optionStack, features: t.features,
                           friendModules: t.friendModules,
                           lastTLineInfo: savedPos.lastTLineInfo,
-                          currentUnit: idx)
+                          currentUnit: idx,
+                          # §4.2: gensyms are numbered per unit (but a cycle
+                          # group's units keep the module's numbering)
+                          templInstCounter: (if parSem: new int
+                                             else: savedPos.templInstCounter))
   if parSem:
     # the unit's logs are its own (§2.6 rule 5), handed on when it is done
     openLogSink(c.graph)
@@ -2859,7 +2862,6 @@ proc runBodyTask(c: PContext; idx: int) =
   if parSem:
     savedArena = enterUnitArena(c.idgen, idx)
     c.graph.arenaTag = c.idgen.disambBase
-    c.templInstCounter[] = 0
   c.config.options = t.options
   c.config.notes = t.notes
   c.config.warningAsErrors = t.warningAsErrors
@@ -2914,7 +2916,6 @@ proc runBodyTask(c: PContext; idx: int) =
     if parSem:
       leaveArena(c.idgen, savedArena)
       c.graph.arenaTag = savedArenaTag
-      c.templInstCounter[] = savedTemplInstCounter
 
 proc keepsForwardSemantics(c: PContext; prc: PSym; idx: int): bool =
   ## A routine that was forward declared, and whose implementation comes after
