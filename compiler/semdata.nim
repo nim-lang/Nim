@@ -167,6 +167,9 @@ type
     ## (`semstmts.runBodyTask`); a worker of the parallel stages owns one per
     ## task. Every field is reached through a same-named template on
     ## `PContext`, so `c.currentScope` reads as before.
+    generics*: seq[TInstantiationPair]
+      # instances made here, to compile (`addCodeForGenerics`); a unit of the
+      # body pass collects its own and hands them on when it is done
     currentScope*: PScope      # current scope
     p*: PProcCon               # procedure context
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
@@ -241,7 +244,6 @@ type
     evalContext*: PEvalContext
     unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
                                # naming it multiple times
-    generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     topStmts*: int # counts the number of encountered top level statements
     lastGenericIdx*: int      # used for the generics stack
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
@@ -323,6 +325,7 @@ type
 
 
 # `c.pos.x` as `c.x`: lvalues, so `inc c.instCounter` and `c.p = x` work too
+template generics*(c: PContext): untyped = c.pos.generics
 template currentScope*(c: PContext): untyped = c.pos.currentScope
 template p*(c: PContext): untyped = c.pos.p
 template matchedConcept*(c: PContext): untyped = c.pos.matchedConcept
@@ -544,7 +547,6 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     includedFiles: initIntSet(),
     pureEnumFields: initStrTable(),
     userPragmas: initStrTable(),
-    generics: @[],
     unknownIdents: initIntSet(),
     shadowDiscardedDefs: initIntSet(),
     realizedDefs: initIntSet(),
@@ -870,7 +872,7 @@ proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
   if c.config.cmd == cmdM or
       {optCompress, optGenBif} * c.config.globalOptions != {} or
       c.config.ideActive:
-    c.graph.nifExpansions.mgetOrPut(c.module.position.int32, @[]).add (expandedSym, info)
+    c.graph.addExpansion(c.module.position.int32, expandedSym, info)
 
 const
   errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"
