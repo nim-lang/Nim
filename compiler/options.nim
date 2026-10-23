@@ -419,6 +419,23 @@ type
     mfmStd ## standard Nim style: `file(line, col)`
     mfmGcc ## GCC/Emacs style: `file:line:col:`
 
+  UnitConfig* = object
+    ## The part of the configuration that belongs to the code being checked
+    ## rather than to the compilation (doc/parallel_compiler.md §4.1): a
+    ## `{.push.}` changes it, a unit of the body pass runs with its own
+    ## (`semstmts.runBodyTask`), and a worker of the parallel stages will own
+    ## one. Every field is reached through a same-named template on
+    ## `ConfigRef`, so `conf.options` reads as before.
+    options*: TOptions    # (+)
+    notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
+    warningAsErrors*: TNoteKinds
+    errorMax*: int
+    errorOutputs*: TErrorOutputs
+    msgContext*: seq[tuple[info: TLineInfo, detail: string]]
+    lastError*: TLineInfo
+    evalTemplateCounter*: int
+    evalMacroCounter*: int
+
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -426,7 +443,7 @@ type
     backend*: TBackend # set via `nim x` or `nim --backend:x`
     target*: Target       # (+)
     linesCompiled*: int   # all lines that have been compiled
-    options*: TOptions    # (+)
+    unit*: UnitConfig
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
     arcToExpand*: StringTableRef
@@ -434,8 +451,6 @@ type
     filenameOption*: FilenameOption # how to render paths in compiler messages
     msgFormat*: MsgFormat # format of the location prefix in compiler messages
     unitSep*: string
-    evalTemplateCounter*: int
-    evalMacroCounter*: int
     exitcode*: int8
     cmd*: Command  # raw command parsed as enum
     ideActive*: bool # serving IDE tooling (nimsuggest): collect suggestions and
@@ -523,14 +538,11 @@ type
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
-    notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
-    warningAsErrors*: TNoteKinds
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int
     hintCounter*: int
     warnCounter*: int
-    errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
     maxCallDepthVM*: int ## VM: max call depth
     isVmTrace*: bool
@@ -605,6 +617,18 @@ type
     clientProcessId*: int
 
 
+
+
+# `conf.unit.x` as `conf.x`: lvalues, so `incl conf.notes, ...` works too
+template options*(conf: ConfigRef): untyped = conf.unit.options
+template notes*(conf: ConfigRef): untyped = conf.unit.notes
+template warningAsErrors*(conf: ConfigRef): untyped = conf.unit.warningAsErrors
+template errorMax*(conf: ConfigRef): untyped = conf.unit.errorMax
+template errorOutputs*(conf: ConfigRef): untyped = conf.unit.errorOutputs
+template msgContext*(conf: ConfigRef): untyped = conf.unit.msgContext
+template lastError*(conf: ConfigRef): untyped = conf.unit.lastError
+template evalTemplateCounter*(conf: ConfigRef): untyped = conf.unit.evalTemplateCounter
+template evalMacroCounter*(conf: ConfigRef): untyped = conf.unit.evalMacroCounter
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
@@ -717,6 +741,7 @@ proc newConfigRef*(): ConfigRef =
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
+    unit: UnitConfig(errorOutputs: {eStdOut, eStdErr}, lastError: unknownLineInfo),
     cppDefines: initHashSet[string](),
     icGroup: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {},
