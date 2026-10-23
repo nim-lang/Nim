@@ -918,6 +918,15 @@ publish-once for effects, `transformedBody`, lazy bodies and `loadSym`; VM
 ownership step 1. Still one worker, but the code is now shaped for N. Gate:
 byte-identical to stage 2.
 
+*In progress (2026-10-23).* Done, each byte-identical with and without
+`--parsem:on`: the positional fields of `TContext` (§3 (a)) are one
+`semdata.PositionalState`, and the per-unit fields of `ConfigRef` (§4.1:
+options, notes, `warningAsErrors`, `errorMax`, `errorOutputs`, `msgContext`,
+`lastError`, the template/macro recursion guards) one `options.UnitConfig`,
+both embedded and reached through same-named templates, so call sites did not
+change; `runBodyTask` swaps each as a whole. The error/warning/hint counters
+stay global until stage 4 merges per-worker ones.
+
 **Stage 4 — parallel sem.** Workers drain the queue; `trackProc` waits per
 §2.3; the header pass of a module still completes before its bodies start (so
 the write lock is uncontended). transf/cgen still run sequentially after the
