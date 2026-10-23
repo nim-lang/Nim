@@ -869,6 +869,20 @@ bootstraps to a fixed point. What it took:
   #1055 protects against. A fix would make the kept result's own instances
   ordinary only after re-checking them outside the context.
 
+* 2026-10-23, the grinder on `nim ic --parsem:on koch.nim`, comparing the
+  cache artifacts. The writer's lists (opsLog, replay actions, offers, the
+  expansion index, the instance code appended to the module) were in the
+  order units ran in; they are now ordered by arena (`arenaTag`) or by
+  content. Ownership was first come in two places: a hook lifted for a type
+  made in a body (now owned by the minting module) and an instance shared
+  between the modules of an import group compiled in one process (now each
+  module makes its own, as separate processes would). What is left is type
+  identity: NIF names a type by its `itemId`, and type ids are minted first
+  come — by units, by instances' signatures, and in which `PType` an offer
+  happens to reference for `int`. A typeId arena per unit would cover the
+  first; the others need content-addressed names for structural types, a
+  question about the NIF format rather than about scheduling.
+
 Every one of these changes is behind `--parsem:on` (and outside `--ic:on`,
 which places hooks and instances by its own rules). Not started: unit-relative
 names for body-local types in `ast2nif`, content-addressed literal names (not
