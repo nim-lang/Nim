@@ -1197,6 +1197,8 @@ type
     module*: int  # Which module this entry belongs to
     key*: string
     sym*: PSym
+    arenaTag*: int32 # `--parsem:on`: the arena the entry was made in, see
+                     # `modulegraphs.arenaTag`
 
 
 proc forcePartial*(s: PSym) =

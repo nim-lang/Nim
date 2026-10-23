@@ -230,6 +230,15 @@ type
 
     procGlobals*: seq[PNode]
     nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
+    nifReplayTags*: Table[int32, seq[int32]]     # their `arenaTag`s
+    arenaTag*: int32
+      ## `--parsem:on`: the `disamb` base of the arena that is minting right
+      ## now (0 in the header pass). Entries of the logs that bodies append to
+      ## record it, and the NIF writer orders them by it: the header pass first,
+      ## then the units in key order, then instances and hooks by their keys —
+      ## an order that does not depend on the order units ran in
+      ## (doc/parallel_compiler.md §2.6 rule 5). Within one arena the order is
+      ## that of the code.
     nifExpansions*: Table[int32, seq[(PSym, TLineInfo)]]
       # module position -> (template/macro/generic proc sym, call-site info) for every
       # expansion in that module. Templates/macros leave no trace in the sem'checked AST
@@ -350,7 +359,7 @@ proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
   strTableAdd(semtab(g, m), s)
   strTableAdd(semtabAll(g, m), s)
 
-proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
+proc isCachedModule*(g: ModuleGraph; module: int): bool {.inline.} =
   result = module in g.cachedMods
 
 proc isCachedModule*(g: ModuleGraph; m: PSym): bool {.inline.} =
@@ -476,6 +485,11 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   else:
     result = nil
 
+proc addLog*(g: ModuleGraph; e: sink LogEntry) {.inline.} =
+  var e = e
+  e.arenaTag = g.arenaTag
+  g.opsLog.add e
+
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   # Key-based deduplication for opsLog: different type objects (e.g. canon vs
@@ -504,7 +518,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # types as much as for generic/structural instances. Duplicate
     # registrations across lifting modules are reconciled deterministically
     # at load time (see the HookEntry replay in `replayStateChanges`).
-    g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
+    g.addLog LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
     g.loadedOps[op][key] = value
   elif existing != value:
     # Re-registration replacing an earlier sym for the same key. This happens
@@ -525,7 +539,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
         updated = true
         break
     if not updated:
-      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
+      g.addLog LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
   g.attachedOps[op][t.bindingId] = value
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
@@ -554,6 +568,7 @@ proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[PSym]) =
 proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
   ## Stores a replay action for NIF-based incremental compilation.
   g.nifReplayActions.mgetOrPut(module, @[]).add n
+  g.nifReplayTags.mgetOrPut(module, @[]).add g.arenaTag
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
   if g.methodsPerType.contains(t.bindingId):
@@ -573,7 +588,7 @@ proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   # Stamp with the module that owns the generated proc, not the enum's def
   # module: the def module's process may never have generated it (same
   # "written by nobody" failure as hook entries, see setAttachedOp).
-  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: value.itemId.module.int, key: key, sym: value)
+  g.addLog LogEntry(kind: EnumToStrEntry, module: value.itemId.module.int, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerGenericType.contains(t.bindingId):
@@ -584,7 +599,7 @@ proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSy
   g.methodsPerGenericType.mgetOrPut(t.bindingId, @[]).add (col, m)
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
   let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
-  g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
+  g.addLog LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
 
 proc logMethodDef*(g: ModuleGraph; s: PSym) =
   ## Log a method registration (`cgmeth.methodDef`) so that importers and
@@ -593,7 +608,7 @@ proc logMethodDef*(g: ModuleGraph; s: PSym) =
   ## at `dispatcherPos`, so replay reuses the original dispatcher that all
   ## call sites reference by name (see `registerLoadedMethod`).
   if g.config.cmd in {cmdNifC, cmdM}:
-    g.opsLog.add LogEntry(kind: MethodEntry, module: s.itemId.module.int,
+    g.addLog LogEntry(kind: MethodEntry, module: s.itemId.module.int,
                           key: "", sym: s)
 
 proc logCppMember*(g: ModuleGraph; s: PSym) =
@@ -608,7 +623,7 @@ proc logCppMember*(g: ModuleGraph; s: PSym) =
   ## signature exactly as `semCppMember` does, so nothing has to survive the
   ## round trip except the routine itself.
   if g.config.cmd in {cmdNifC, cmdM}:
-    g.opsLog.add LogEntry(kind: CppMemberEntry, module: s.itemId.module.int,
+    g.addLog LogEntry(kind: CppMemberEntry, module: s.itemId.module.int,
                           key: "", sym: s)
 
 proc replayCppMember*(g: ModuleGraph; s: PSym) =
@@ -678,7 +693,7 @@ proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
   ## evaluation and may be referenced from other modules compiled in the same run.
   if g.config.cmd in {cmdNifC, cmdM}:
     let ownerModule = inst.itemId.module.int
-    g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
+    g.addLog LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
 
 
 proc hookKey(g: ModuleGraph; opName: string; typ: PType): string =
@@ -749,6 +764,12 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
     let probe = (inst.name.id, h)
     if g.instDisambs.hasKey(probe):
       if g.instDisambs[probe] == inst.itemId: break
+      if optParSem in g.config.globalOptions and
+          g.instDisambs[probe].module != inst.itemId.module:
+        # `--parsem:on`: the modules of an import group make their own copy
+        # of an instance (`seminst.sharesInstanceWith`); the names differ in
+        # the module suffix, so another module's claim is no collision
+        break
       h = if h == high(int32): InstanceDisambBit else: h + 1
     else:
       g.instDisambs[probe] = inst.itemId

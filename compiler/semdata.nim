@@ -558,7 +558,7 @@ proc addConverter*(c: PContext, conv: PSym) =
     # converter only through this module's re-export chain (e.g. faststreams'
     # `InputStreamHandle -> InputStream` via ssz_serialization, breaking
     # `SSZ.decode`/`encode`). `inclSym` guards against duplicate log entries.
-    c.graph.opsLog.add LogEntry(kind: ConverterEntry, module: c.module.position,
+    c.graph.addLog LogEntry(kind: ConverterEntry, module: c.module.position,
                                 key: "", sym: conv)
 
 proc addConverterDef*(c: PContext, conv: PSym) =
@@ -572,7 +572,7 @@ proc addPureEnum*(c: PContext, e: PSym) =
   # invisible to importers, so `importPureEnumFields` never offered their fields
   # and unqualified pure-enum values stopped resolving. (Same pattern as
   # `addConverterDef`.)
-  c.graph.opsLog.add LogEntry(kind: PureEnumEntry, module: c.module.position,
+  c.graph.addLog LogEntry(kind: PureEnumEntry, module: c.module.position,
                               key: "", sym: e)
 
 proc addPattern*(c: PContext, p: PSym) =

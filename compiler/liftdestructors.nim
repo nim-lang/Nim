@@ -1315,7 +1315,7 @@ proc canonicalType(g: ModuleGraph; t: PType): PType =
   let h = sighashes.hashType(t, g.config, {CoType, CoConsiderOwned, CoDistinct})
   result = g.canonTypes.getOrDefault(h)
   if result == nil:
-    if optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
+    if optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
       let k = typeContentHash(g, t)
       let other = g.canonTypes.getOrDefault(k)
       if other == nil: g.canonTypes[k] = t
@@ -1329,7 +1329,7 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
   assert typ.kind == tyDistinct
   let baseType = typ.elementType
   if getAttachedOp(g, baseType, kind) == nil and
-      optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
+      optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
     # the base's hook is the one of its canonical type, as for any other
     # use (`createTypeBoundOps`), not one of its own that merely shares the
     # canonical type's name
@@ -1453,32 +1453,35 @@ proc homeTypeSym(t: PType; depth: int): PSym =
       result = homeTypeSym(k, depth + 1)
       if result != nil: return
 
-proc hookOwner(g: ModuleGraph; typ: PType): PSym =
+proc hookOwner(g: ModuleGraph; typ: PType; idgen: IdGenerator): PSym =
   ## A lifted hook is owned by the owner of the type it was lifted for, and
   ## the classic backend defines it in that module's translation unit. But
   ## `seq[Foo]` is many `PType`s, owned by wherever each was made, and which
   ## one is lifted first depends on which unit needs one first. Under
   ## `--parsem:on` the owner is derived from the type's content instead: the
-  ## module of its first nominal type, else `system`. (IC places hooks by
-  ## its own rules and keeps the type's owner.)
+  ## module of its first nominal type, else `system`. Under `--ic:on` the
+  ## hook is written into the module that mints it, so that module owns it.
   result = typ.owner
-  if optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
+  if optParSem in g.config.globalOptions and g.config.cmd == cmdM:
+    let m = g.getModule(idgen.module.FileIndex)
+    if m != nil: result = m
+  elif optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
     let home = homeTypeSym(typ, 0)
     result = if home != nil: getModule(home) else: g.systemModule
     if result == nil: result = typ.owner
 
-proc hookInfo(g: ModuleGraph; typ: PType; info: TLineInfo): TLineInfo =
+proc hookInfo(g: ModuleGraph; typ: PType; info: TLineInfo; idgen: IdGenerator): TLineInfo =
   ## Under `--parsem:on`, the line info a lifted hook and its body get: not
   ## the use that lifted it first, which depends on the order units ran in
   ## (and shows in every call of the hook, `newSymNode(op)` takes the hook's
   ## info), but the declaration of the type's first nominal component, or the
   ## owning module.
   result = info
-  if optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
+  if optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
     let home = homeTypeSym(typ, 0)
     if home != nil: result = home.info
     else:
-      let m = hookOwner(g, typ)
+      let m = hookOwner(g, typ, idgen)
       if m != nil: result = m.info
 
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
@@ -1487,10 +1490,13 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     # `--parsem:on` (doc/parallel_compiler.md §4.2): a hook is lifted by
     # whichever unit needs it first, so it mints from an arena of its own
     let saved = enterKeyedArena(idgen, hookArenaKey(g, AttachedOpToStr[kind], typ))
+    let savedTag = g.arenaTag
+    g.arenaTag = idgen.disambBase
     try:
-      result = produceSymImpl(g, c, typ, kind, hookInfo(g, typ, info), idgen)
+      result = produceSymImpl(g, c, typ, kind, hookInfo(g, typ, info, idgen), idgen)
     finally:
       leaveArena(idgen, saved)
+      g.arenaTag = savedTag
   else:
     result = produceSymImpl(g, c, typ, kind, info, idgen)
 
@@ -1511,7 +1517,7 @@ proc produceSymImpl(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttached
 
   result = getAttachedOp(g, typ, kind)
   if result == nil:
-    result = symPrototype(g, typ, hookOwner(g, typ), kind, info, idgen)
+    result = symPrototype(g, typ, hookOwner(g, typ, idgen), kind, info, idgen)
 
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType: typ, idgen: idgen,
                    fn: result)
@@ -1579,7 +1585,7 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
                                         info: TLineInfo; idgen: IdGenerator): PSym =
   assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
   # discrimantor assignments needs pointers to destroy fields; alas, we cannot use non-var destructor here
-  result = symPrototype(g, field.typ, hookOwner(g, typ), attachedDestructor, info, idgen, isDiscriminant = true)
+  result = symPrototype(g, field.typ, hookOwner(g, typ, idgen), attachedDestructor, info, idgen, isDiscriminant = true)
   setHookDisamb(g, result, "=destroy¦" & field.name.s & "¦" & $field.position, typ)
   var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen,
                    fn: result)
@@ -1679,11 +1685,14 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
       if optParSem in g.config.globalOptions:
         # minted in the hook's own arena, as its body will be (`produceSym`)
         let saved = enterKeyedArena(idgen, hookArenaKey(g, AttachedOpToStr[k], canon))
+        let savedTag = g.arenaTag
+        g.arenaTag = idgen.disambBase
         try:
           setAttachedOp(g, idgen.module, canon, k,
-              symPrototype(g, canon, hookOwner(g, canon), k, hookInfo(g, canon, info), idgen))
+              symPrototype(g, canon, hookOwner(g, canon, idgen), k, hookInfo(g, canon, info, idgen), idgen))
         finally:
           leaveArena(idgen, saved)
+          g.arenaTag = savedTag
       else:
         setAttachedOp(g, idgen.module, canon, k,
             symPrototype(g, canon, canon.owner, k, info, idgen))
@@ -1697,7 +1706,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     if canon != orig:
       setAttachedOp(g, idgen.module, orig, k, getAttachedOp(g, canon, k))
     if skipped != canon and skipped != orig and
-        optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
+        optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
       # `injectdestructors` looks the ops up on the skipped type; whether
       # that one is the canonical type depends on which was registered first
       setAttachedOp(g, idgen.module, skipped, k, getAttachedOp(g, canon, k))
