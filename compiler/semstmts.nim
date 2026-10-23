@@ -2844,6 +2844,13 @@ proc runBodyTask(c: PContext; idx: int) =
                           friendModules: t.friendModules,
                           lastTLineInfo: savedPos.lastTLineInfo,
                           currentUnit: idx)
+  if parSem:
+    # the unit's logs are its own (§2.6 rule 5), handed on when it is done
+    openLogSink(c.graph)
+  else:
+    # a cycle group's units keep appending to the module's list: its order
+    # is the order the instances are emitted in
+    c.pos.generics = move savedPos.generics
   c.p.next = savedPos.p
   # §4.2: names minted inside the unit come from its own arena, whoever ran
   # before it. Not for a cycle group's units, which keep today's names.
@@ -2897,6 +2904,11 @@ proc runBodyTask(c: PContext; idx: int) =
       # build all the same (`closePContext` adds them back).
       inc c.unitErrorsInCompiles, c.config.errorCounter - savedErrorCounter
     setLen(c.graph.owners, savedOwnerLen)
+    if parSem:
+      closeLogSink(c.graph)
+      savedPos.generics.add c.pos.generics
+    else:
+      savedPos.generics = move c.pos.generics
     c.pos = move savedPos
     c.config.unit = move savedUnit
     if parSem:

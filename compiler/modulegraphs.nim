@@ -57,6 +57,13 @@ type
     Docgen2JsonPass
     Docgen2Pass
 
+  UnitLogs* = ref object
+    ## what one unit appended to the module's logs (`ModuleGraph.logSink`)
+    parent*: UnitLogs
+    opsLog*: seq[LogEntry]
+    replay*: seq[tuple[module: int32; action: PNode; tag: int32]]
+    expansions*: seq[tuple[module: int32; sym: PSym; info: TLineInfo]]
+
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
 
@@ -231,6 +238,13 @@ type
     procGlobals*: seq[PNode]
     nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
     nifReplayTags*: Table[int32, seq[int32]]     # their `arenaTag`s
+    logSink*: UnitLogs
+      ## `--parsem:on`: the buffer of the unit that is running, or nil in the
+      ## header pass. The logs that bodies append to -- `opsLog`, the replay
+      ## actions, the expansion index -- go there, and the unit's buffer is
+      ## flushed into the enclosing one when the unit is done
+      ## (doc/parallel_compiler.md §2.6 rule 5): a worker of the parallel
+      ## stages appends to its own task's buffer, never to a shared list.
     arenaTag*: int32
       ## `--parsem:on`: the `disamb` base of the arena that is minting right
       ## now (0 in the header pass). Entries of the logs that bodies append to
@@ -488,7 +502,41 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 proc addLog*(g: ModuleGraph; e: sink LogEntry) {.inline.} =
   var e = e
   e.arenaTag = g.arenaTag
-  g.opsLog.add e
+  if g.logSink != nil: g.logSink.opsLog.add e
+  else: g.opsLog.add e
+
+proc addExpansion*(g: ModuleGraph; module: int32; sym: PSym; info: TLineInfo) =
+  if g.logSink != nil: g.logSink.expansions.add (module, sym, info)
+  else: g.nifExpansions.mgetOrPut(module, @[]).add (sym, info)
+
+proc openLogSink*(g: ModuleGraph) =
+  ## a unit starts: what it logs is buffered
+  g.logSink = UnitLogs(parent: g.logSink)
+
+proc closeLogSink*(g: ModuleGraph) =
+  ## the unit is done: its buffer goes to the enclosing unit's, or to the
+  ## module's logs in the header pass
+  let mine = g.logSink
+  g.logSink = mine.parent
+  if g.logSink != nil:
+    g.logSink.opsLog.add mine.opsLog
+    g.logSink.replay.add mine.replay
+    g.logSink.expansions.add mine.expansions
+  else:
+    g.opsLog.add mine.opsLog
+    for r in mine.replay:
+      g.nifReplayActions.mgetOrPut(r.module, @[]).add r.action
+      g.nifReplayTags.mgetOrPut(r.module, @[]).add r.tag
+    for e in mine.expansions:
+      g.nifExpansions.mgetOrPut(e.module, @[]).add (e.sym, e.info)
+
+iterator mlogEntries(g: ModuleGraph): var LogEntry =
+  ## every log entry, buffered or not, innermost buffer first
+  var sink = g.logSink
+  while sink != nil:
+    for e in mitems(sink.opsLog): yield e
+    sink = sink.parent
+  for e in mitems(g.opsLog): yield e
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
@@ -532,7 +580,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # ended up empty: "cannot open '/'").
     g.loadedOps[op][key] = value
     var updated = false
-    for e in mitems(g.opsLog):
+    for e in mlogEntries(g):
       if e.kind == HookEntry and e.op == op and e.key == key:
         e.sym = value
         e.module = module
@@ -567,8 +615,11 @@ proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[PSym]) =
 
 proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
   ## Stores a replay action for NIF-based incremental compilation.
-  g.nifReplayActions.mgetOrPut(module, @[]).add n
-  g.nifReplayTags.mgetOrPut(module, @[]).add g.arenaTag
+  if g.logSink != nil:
+    g.logSink.replay.add (module, n, g.arenaTag)
+  else:
+    g.nifReplayActions.mgetOrPut(module, @[]).add n
+    g.nifReplayTags.mgetOrPut(module, @[]).add g.arenaTag
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
   if g.methodsPerType.contains(t.bindingId):
