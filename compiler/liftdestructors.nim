@@ -1437,20 +1437,20 @@ proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc produceSymImpl(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym
 
-proc homeModule(g: ModuleGraph; t: PType; depth: int): PSym =
-  ## the module of the first nominal type in `t`, depth first
+proc homeTypeSym(t: PType; depth: int): PSym =
+  ## the symbol of the first nominal type in `t`, depth first
   result = nil
   if t == nil or depth > 20: return
   case t.kind
   of tyGenericInst:
-    result = homeModule(g, t.genericHead, depth + 1)
+    result = homeTypeSym(t.genericHead, depth + 1)
   of tyObject, tyEnum, tyDistinct, tyGenericBody:
-    if t.sym != nil: result = getModule(t.sym)
+    result = t.sym
   else:
     discard
   if result == nil:
     for k in t.kids:
-      result = homeModule(g, k, depth + 1)
+      result = homeTypeSym(k, depth + 1)
       if result != nil: return
 
 proc hookOwner(g: ModuleGraph; typ: PType): PSym =
@@ -1463,9 +1463,23 @@ proc hookOwner(g: ModuleGraph; typ: PType): PSym =
   ## its own rules and keeps the type's owner.)
   result = typ.owner
   if optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
-    result = homeModule(g, typ, 0)
-    if result == nil: result = g.systemModule
+    let home = homeTypeSym(typ, 0)
+    result = if home != nil: getModule(home) else: g.systemModule
     if result == nil: result = typ.owner
+
+proc hookInfo(g: ModuleGraph; typ: PType; info: TLineInfo): TLineInfo =
+  ## Under `--parsem:on`, the line info a lifted hook and its body get: not
+  ## the use that lifted it first, which depends on the order units ran in
+  ## (and shows in every call of the hook, `newSymNode(op)` takes the hook's
+  ## info), but the declaration of the type's first nominal component, or the
+  ## owning module.
+  result = info
+  if optParSem in g.config.globalOptions and g.config.cmd notin {cmdNifC, cmdM}:
+    let home = homeTypeSym(typ, 0)
+    if home != nil: result = home.info
+    else:
+      let m = hookOwner(g, typ)
+      if m != nil: result = m.info
 
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
@@ -1474,7 +1488,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     # whichever unit needs it first, so it mints from an arena of its own
     let saved = enterKeyedArena(idgen, hookArenaKey(g, AttachedOpToStr[kind], typ))
     try:
-      result = produceSymImpl(g, c, typ, kind, info, idgen)
+      result = produceSymImpl(g, c, typ, kind, hookInfo(g, typ, info), idgen)
     finally:
       leaveArena(idgen, saved)
   else:
@@ -1667,7 +1681,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
         let saved = enterKeyedArena(idgen, hookArenaKey(g, AttachedOpToStr[k], canon))
         try:
           setAttachedOp(g, idgen.module, canon, k,
-              symPrototype(g, canon, hookOwner(g, canon), k, info, idgen))
+              symPrototype(g, canon, hookOwner(g, canon), k, hookInfo(g, canon, info), idgen))
         finally:
           leaveArena(idgen, saved)
       else:

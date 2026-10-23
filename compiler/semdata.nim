@@ -954,6 +954,14 @@ proc analyseIfAddressTakenInCall*(c: PContext, n: PNode, isConverter = false) =
         n[i] = analyseIfAddressTaken(c, n[i].skipAddr(), isOutParam(skipTypes(t[i], abstractInst-{tyTypeDesc})))
 
 
+proc useHook(c: PContext; op: PSym): bool {.inline.} =
+  ## Whether `wasMoved` is replaced by `op` at sem time. Under `--parsem:on`
+  ## only by a hook the programmer declared: whether a LIFTED one exists yet
+  ## depends on which unit lifted it first, and for `wasMoved` the backend
+  ## treats the magic and a lifted hook alike (`ccgexprs`). The other hook
+  ## magics are not lowered to the same thing, so they keep the old rule.
+  op != nil and (optParSem notin c.config.globalOptions or sfOverridden in op.flags)
+
 proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
   ## Replaces builtin generic hooks with lifted hooks.
   case kind
@@ -989,7 +997,7 @@ proc replaceHookMagic*(c: PContext, n: PNode, kind: TTypeAttachedOp): PNode =
     result = n
     let t = n[1].typ.skipTypes({tyAlias, tyVar, tySink})
     let op = getAttachedOp(c.graph, t, attachedWasMoved)
-    if op != nil:
+    if useHook(c, op):
       result[0] = newSymNode(op)
       analyseIfAddressTakenInCall(c, result, false)
   of attachedSink:
