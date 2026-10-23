@@ -8,6 +8,30 @@ discard """
 import std/[xmlparser, xmltree, strutils, streams, assertions]
 import std/htmlparser {.all.}
 
+# The parsers report failures as `XmlError`, `IOError`, `OSError` or
+# `ValueError` only, so callers can list exactly those instead of `Exception`.
+# Too deep nesting is one of them for XML: the `errors` variants record it.
+proc xmlFromString(s: string): XmlNode {.raises: [XmlError, IOError, OSError, ValueError].} =
+  parseXml(s)
+proc xmlFromStream(s: Stream): XmlNode {.raises: [XmlError, IOError, OSError, ValueError].} =
+  parseXml(s)
+proc xmlCollecting(s: Stream, errors: var seq[string]): XmlNode {.raises: [IOError, OSError, ValueError].} =
+  parseXml(s, "input", errors)
+proc xmlFromFile(path: string): XmlNode {.raises: [XmlError, IOError, OSError, ValueError].} =
+  loadXml(path)
+proc xmlCollectingFromFile(path: string, errors: var seq[string]): XmlNode {.raises: [IOError, OSError, ValueError].} =
+  loadXml(path, errors)
+proc htmlFromString(s: string): XmlNode {.raises: [IOError, OSError, ValueError].} =
+  parseHtml(s)
+proc htmlFromStream(s: Stream): XmlNode {.raises: [IOError, OSError, ValueError].} =
+  parseHtml(s)
+proc htmlCollecting(s: Stream, errors: var seq[string]): XmlNode {.raises: [IOError, OSError, ValueError].} =
+  parseHtml(s, "input", errors)
+proc htmlFromFile(path: string): XmlNode {.raises: [IOError, OSError, ValueError].} =
+  loadHtml(path)
+proc htmlCollectingFromFile(path: string, errors: var seq[string]): XmlNode {.raises: [IOError, OSError, ValueError].} =
+  loadHtml(path, errors)
+
 const n = 500_000
 
 block: # XML

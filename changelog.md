@@ -164,6 +164,10 @@ parameter and result types, not just their source-level shape. Use
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
+- `xmlparser.parseXml` and `xmlparser.loadXml` no longer have the effect `Exception`;
+  they raise `XmlError`, `IOError`, `OSError` and `ValueError`.
+- `htmlparser.parseHtml` and `htmlparser.loadHtml` no longer have the effect
+  `Exception`; they raise `IOError`, `OSError` and `ValueError`.
 - `os.moveFile`, `os.copyFileWithPermissions` and `os.copyDirWithPermissions`
   no longer have the effect `Exception`; they raise `OSError` and `IOError`.
 - `dynlib.loadLibPattern` and `dynlib.checkedSymAddr` no longer have the
