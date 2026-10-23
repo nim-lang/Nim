@@ -2122,7 +2122,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if result != isNone and f.n != nil:
             var r = tryResolvingStaticExpr(c, f.n)
             if r == nil: r = f.n
-            if not exprStructuralEquivalent(r, aOrig.n) and
+            if not exprStructuralEquivalent(r, aOrig.n, ignoreIntLitWidth = true) and
                 not (aOrig.n != nil and aOrig.n.kind == nkIntLit and
                   inferStaticParam(c, r, aOrig.n.intVal)):
               result = isNone
@@ -2165,7 +2165,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if aOrig.kind == tyStatic:
         result = typeRel(c, prev.last, a, flags)
         if result != isNone and prev.n != nil:
-          if not exprStructuralEquivalent(prev.n, aOrig.n):
+          if not exprStructuralEquivalent(prev.n, aOrig.n, ignoreIntLitWidth = true):
             result = isNone
       else: result = isNone
     else:
@@ -2242,13 +2242,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyStatic:
       result = typeRel(c, reevaluated.base, a, flags)
       if result != isNone and reevaluated.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n,
+                                        ignoreIntLitWidth = true):
           result = isNone
     else:
       # bug #14136: other types are just like 'tyStatic' here:
       result = typeRel(c, reevaluated, a, flags)
       if result != isNone and reevaluated.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n,
+                                        ignoreIntLitWidth = true):
           result = isNone
   of tyNone:
     if a.kind == tyNone: result = isEqual

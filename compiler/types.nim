@@ -1012,7 +1012,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       compareCAliases(a.id == b.id)
 
   of tyStatic, tyFromExpr:
-    result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
+    result = exprStructuralEquivalent(a.n, b.n, ignoreIntLitWidth = true) and
+      sameFlags(a, b)
     if result and sameTupleLengths(a, b) and a.hasElementType:
       cycleCheck()
       result = sameTypeAux(a.skipModifier, b.skipModifier, c)
