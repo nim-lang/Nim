@@ -82,6 +82,17 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
         if not compareTypes(inst[j], key[j],
                             flags = {ExactGenericParams, PickyCAliases}):
           break matchType
+        # `compareTypes` does not look at a proc type's effects, but an
+        # instance's fields carry them: `seq[proc () {.raises: [].}]` must
+        # not stand in for `seq[proc ()]`, an assignment to its element then
+        # fails with "raise effects differ" -- and which of the two was found
+        # depended on the order the cache was filled in
+        let a = inst[j].skipTypes(abstractInst)
+        let b = key[j].skipTypes(abstractInst)
+        if a.kind == tyProc and b.kind == tyProc and
+            (compatibleEffects(a, b) != efCompat or
+             compatibleEffects(b, a) != efCompat):
+          break matchType
 
       g.recordIcImplDep(inst)
       return inst
