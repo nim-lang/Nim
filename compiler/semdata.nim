@@ -160,36 +160,60 @@ type
     arenaTable*: CountTable[PIdent] ## the unit's `disamb` arena, kept for
                                     ## `solveCycle`, which mints again
 
-  TContext* = object of TPassContext # a context represents the module
-                                     # that is currently being compiled
-    enforceVoidContext*: PType
-      # for `if cond: stmt else: foo`, `foo` will be evaluated under
-      # enforceVoidContext != nil
-    voidType*: PType # for typeof(stmt)
-    module*: PSym              # the module sym belonging to the context
+  PositionalState* = object
+    ## The POSITIONAL part of a `TContext` (doc/parallel_compiler.md §3 (a)):
+    ## where sem currently is, as opposed to what the module consists of. A
+    ## unit of the body pass runs with a fresh one and puts the outer one back
+    ## (`semstmts.runBodyTask`); a worker of the parallel stages owns one per
+    ## task. Every field is reached through a same-named template on
+    ## `PContext`, so `c.currentScope` reads as before.
     currentScope*: PScope      # current scope
-    moduleScope*: PScope       # scope for modules
-    imports*: seq[ImportedModule] # scope for all imported symbols
-    topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
-    intTypeCache*: array[-5..32, PType] # cache some common integer types
-                                        # to avoid type allocations
-    nilTypeCache*: PType
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
     friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
-    templInstCounter*: ref int # gives every template instantiation a unique id
     inGenericContext*: int     # > 0 if we are in a generic type
     inStaticContext*: int      # > 0 if we are inside a static: block
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
-    compilesContextIdGenerator*: int
     inGenericInst*: int        # > 0 if we are instantiating a generic
+    optionStack*: seq[POptionEntry]
+    inParallelStmt*: int
+    recursiveDep*: string
+    isAmbiguous*: bool # little hack
+    features*: set[Feature]
+    inTypeContext*, inConceptDecl*: int
+    lastTLineInfo*: TLineInfo
+    inUncheckedAssignSection*: int
+    inUncheckedAccess*: int   # inside `{.cast(uncheckedAccess).}`: the fields
+                              # of a sum type are accessible outside of a
+                              # pattern matching `case`
+    inTypeofContext*: int
+    currentUnit*: int
+      # index of the innermost running unit in `bodyTasks`, -1 in the header
+      # pass
+
+  TContext* = object of TPassContext # a context represents the module
+                                     # that is currently being compiled
+    pos*: PositionalState
+      # where in the module sem currently is; see `PositionalState`
+    enforceVoidContext*: PType
+      # for `if cond: stmt else: foo`, `foo` will be evaluated under
+      # enforceVoidContext != nil
+    voidType*: PType # for typeof(stmt)
+    module*: PSym              # the module sym belonging to the context
+    moduleScope*: PScope       # scope for modules
+    imports*: seq[ImportedModule] # scope for all imported symbols
+    topLevelScope*: PScope     # scope for all top-level symbols
+    intTypeCache*: array[-5..32, PType] # cache some common integer types
+                                        # to avoid type allocations
+    nilTypeCache*: PType
+    templInstCounter*: ref int # gives every template instantiation a unique id
+    compilesContextIdGenerator*: int
     converters*: seq[PSym]
     patterns*: seq[PSym]       # sequence of pattern matchers
-    optionStack*: seq[POptionEntry]
     libs*: seq[PLib]           # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode; expectedType: PType = nil): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType = nil): PNode {.nimcall.}
@@ -220,26 +244,16 @@ type
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     topStmts*: int # counts the number of encountered top level statements
     lastGenericIdx*: int      # used for the generics stack
-    inParallelStmt*: int
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
                             op: TTypeAttachedOp; col: int): PSym {.nimcall.}
     cache*: IdentCache
     graph*: ModuleGraph
     signatures*: TStrTable
-    recursiveDep*: string
     suggestionsMade*: bool
-    isAmbiguous*: bool # little hack
-    features*: set[Feature]
-    inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)] # (module.id, symbol.id)
     importModuleMap*: Table[int, int] # (module.id, module.id)
-    lastTLineInfo*: TLineInfo
     sideEffects*: Table[int, seq[(TLineInfo, PSym)]] # symbol.id index
-    inUncheckedAssignSection*: int
-    inUncheckedAccess*: int   # inside `{.cast(uncheckedAccess).}`: the fields
-                              # of a sum type are accessible outside of a
-                              # pattern matching `case`
     importModuleLookup*: Table[int, seq[int]] # (module.ident.id, [module.id])
     forwardTypeUpdates*: seq[(PSym, PType, PNode)]
       # top-level owner, type, and type node for delayed retries inside a
@@ -253,7 +267,6 @@ type
     staleTypeFlags*: IntSet
       # ids of the owners in `forwardFlagUpdates`; their flags are provisional
       # too, so reading them makes the reader provisional in turn
-    inTypeofContext*: int
 
     semAsgnOpr*: proc (c: PContext; n: PNode; k: TNodeKind): PNode {.nimcall.}
     shadowDiscardedDefs*: IntSet
@@ -285,9 +298,6 @@ type
     prevDemandReachableBodies*: proc (n: PNode) {.closure.}
       # the enclosing module's hook, restored by `closePContext`: an import is
       # compiled from inside the importer's pass, so these nest.
-    currentUnit*: int
-      # index of the innermost running unit in `bodyTasks`, -1 in the header
-      # pass
     closedUnits*: IntSet
       # routines (by `id`) whose transitively reachable units are all done; a
       # compile-time evaluation does not have to walk them again
@@ -310,6 +320,31 @@ type
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
+
+
+# `c.pos.x` as `c.x`: lvalues, so `inc c.instCounter` and `c.p = x` work too
+template currentScope*(c: PContext): untyped = c.pos.currentScope
+template p*(c: PContext): untyped = c.pos.p
+template matchedConcept*(c: PContext): untyped = c.pos.matchedConcept
+template friendModules*(c: PContext): untyped = c.pos.friendModules
+template instCounter*(c: PContext): untyped = c.pos.instCounter
+template inGenericContext*(c: PContext): untyped = c.pos.inGenericContext
+template inStaticContext*(c: PContext): untyped = c.pos.inStaticContext
+template inUnrolledContext*(c: PContext): untyped = c.pos.inUnrolledContext
+template compilesContextId*(c: PContext): untyped = c.pos.compilesContextId
+template inGenericInst*(c: PContext): untyped = c.pos.inGenericInst
+template optionStack*(c: PContext): untyped = c.pos.optionStack
+template inParallelStmt*(c: PContext): untyped = c.pos.inParallelStmt
+template recursiveDep*(c: PContext): untyped = c.pos.recursiveDep
+template isAmbiguous*(c: PContext): untyped = c.pos.isAmbiguous
+template features*(c: PContext): untyped = c.pos.features
+template inTypeContext*(c: PContext): untyped = c.pos.inTypeContext
+template inConceptDecl*(c: PContext): untyped = c.pos.inConceptDecl
+template lastTLineInfo*(c: PContext): untyped = c.pos.lastTLineInfo
+template inUncheckedAssignSection*(c: PContext): untyped = c.pos.inUncheckedAssignSection
+template inUncheckedAccess*(c: PContext): untyped = c.pos.inUncheckedAccess
+template inTypeofContext*(c: PContext): untyped = c.pos.inTypeofContext
+template currentUnit*(c: PContext): untyped = c.pos.currentUnit
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -495,12 +530,15 @@ proc popOptionEntry*(c: PContext) =
   c.features = c.optionStack[^1].features
   c.optionStack.setLen(c.optionStack.len - 1)
 
+
+
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result = PContext(
-    optionStack: @[newOptionEntry(graph.config)],
+    pos: PositionalState(optionStack: @[newOptionEntry(graph.config)],
+                         friendModules: @[module],
+                         features: graph.config.features),
     libs: @[],
     module: module,
-    friendModules: @[module],
     converters: @[],
     patterns: @[],
     includedFiles: initIntSet(),
@@ -513,8 +551,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     staleTypeFlags: initIntSet(),
     cache: graph.cache,
     graph: graph,
-    signatures: initStrTable(),
-    features: graph.config.features
+    signatures: initStrTable()
   )
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =

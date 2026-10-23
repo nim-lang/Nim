@@ -2813,8 +2813,8 @@ proc runBodyTask(c: PContext; idx: int) =
   ##
   ## Runs from anywhere: at the module's end, but also on demand from the
   ## middle of a generic instantiation, a template expansion, `compiles()` or
-  ## another unit. So EVERY positional field of `PContext` (§3 (a)) is saved,
-  ## reset to what it is at the top level, and restored — a unit must see
+  ## another unit. So the whole `PositionalState` (§3 (a)) is swapped out and
+  ## back in, and so are the per-unit parts of `ConfigRef` — a unit must see
   ## neither the state of whoever demanded it nor leave any behind.
   if c.bodyTasks[idx].state != btPending: return
   c.bodyTasks[idx].state = btRunning
@@ -2831,38 +2831,26 @@ proc runBodyTask(c: PContext; idx: int) =
     c.bodyTasks[idx].declNoSideEffect = owner.typ != nil and
       tfNoSideEffect in owner.typ.flags
   let
-    savedScope = c.currentScope
-    savedProcCon = c.p
-    savedOptionStack = c.optionStack
     savedOptions = c.config.options
     savedNotes = c.config.notes
     savedWarningAsErrors = c.config.warningAsErrors
-    savedFeatures = c.features
     savedOwnerLen = c.graph.owners.len
     savedErrorOutputs = c.config.m.errorOutputs
     savedErrorCounter = c.config.errorCounter
     savedErrorMax = c.config.errorMax
-    savedMatchedConcept = c.matchedConcept
-    savedFriendModules = c.friendModules
-    savedInstCounter = c.instCounter
-    savedInGenericContext = c.inGenericContext
-    savedInStaticContext = c.inStaticContext
-    savedInUnrolledContext = c.inUnrolledContext
-    savedCompilesContextId = c.compilesContextId
-    savedInGenericInst = c.inGenericInst
-    savedInParallelStmt = c.inParallelStmt
-    savedRecursiveDep = c.recursiveDep
-    savedIsAmbiguous = c.isAmbiguous
-    savedInTypeContext = c.inTypeContext
-    savedInConceptDecl = c.inConceptDecl
-    savedInTypeofContext = c.inTypeofContext
-    savedInUncheckedAssignSection = c.inUncheckedAssignSection
-    savedInUncheckedAccess = c.inUncheckedAccess
-    savedLastTLineInfo = c.lastTLineInfo
-    savedCurrentUnit = c.currentUnit
     savedTemplInstCounter = c.templInstCounter[]
   let t = c.bodyTasks[idx]
-  c.currentUnit = idx
+  # The unit's own positional state: what the header pass had where the
+  # routine was declared (its scope, proc context, option stack, features,
+  # friend modules), everything else as at the top level -- nothing of
+  # whoever demanded it.
+  var savedPos = move c.pos
+  c.pos = PositionalState(currentScope: t.scope, p: t.procCon,
+                          optionStack: t.optionStack, features: t.features,
+                          friendModules: t.friendModules,
+                          lastTLineInfo: savedPos.lastTLineInfo,
+                          currentUnit: idx)
+  c.p.next = savedPos.p
   # §4.2: names minted inside the unit come from its own arena, whoever ran
   # before it. Not for a cycle group's units, which keep today's names.
   var savedArena = default(ArenaState)
@@ -2871,34 +2859,13 @@ proc runBodyTask(c: PContext; idx: int) =
     savedArena = enterUnitArena(c.idgen, idx)
     c.graph.arenaTag = c.idgen.disambBase
     c.templInstCounter[] = 0
-  c.currentScope = t.scope
-  c.p = t.procCon
-  c.p.next = savedProcCon
-  c.optionStack = t.optionStack
   c.config.options = t.options
   c.config.notes = t.notes
   c.config.warningAsErrors = t.warningAsErrors
-  c.features = t.features
   # Demanded from inside `compiles()`, the unit's errors must still be
   # reported: they are errors of the routine, not of the `compiles` operand.
   c.config.m.errorOutputs = t.errorOutputs
-  if savedCompilesContextId > 0: c.config.errorMax = c.unitErrorMax
-  c.matchedConcept = nil
-  c.friendModules = t.friendModules
-  c.instCounter = 0
-  c.inGenericContext = 0
-  c.inStaticContext = 0
-  c.inUnrolledContext = 0
-  c.compilesContextId = 0
-  c.inGenericInst = 0
-  c.inParallelStmt = 0
-  c.recursiveDep = ""
-  c.isAmbiguous = false
-  c.inTypeContext = 0
-  c.inConceptDecl = 0
-  c.inTypeofContext = 0
-  c.inUncheckedAssignSection = 0
-  c.inUncheckedAccess = 0
+  if savedPos.compilesContextId > 0: c.config.errorMax = c.unitErrorMax
   pushOwner(c, t.owner)
   try:
     if t.isGeneric:
@@ -2931,38 +2898,17 @@ proc runBodyTask(c: PContext; idx: int) =
         let m = c.tarjanStack.pop()
         c.bodyTasks[m].onStack = false
         if m == idx: break
-    if savedCompilesContextId > 0 and c.config.errorCounter > savedErrorCounter:
+    if savedPos.compilesContextId > 0 and c.config.errorCounter > savedErrorCounter:
       # `tryExpr` rolls the counter back; keep the unit's errors failing the
       # build all the same (`closePContext` adds them back).
       inc c.unitErrorsInCompiles, c.config.errorCounter - savedErrorCounter
     setLen(c.graph.owners, savedOwnerLen)
-    c.currentScope = savedScope
-    c.p = savedProcCon
-    c.optionStack = savedOptionStack
+    c.pos = move savedPos
     c.config.options = savedOptions
     c.config.notes = savedNotes
     c.config.warningAsErrors = savedWarningAsErrors
-    c.features = savedFeatures
     c.config.m.errorOutputs = savedErrorOutputs
     c.config.errorMax = savedErrorMax
-    c.matchedConcept = savedMatchedConcept
-    c.friendModules = savedFriendModules
-    c.instCounter = savedInstCounter
-    c.inGenericContext = savedInGenericContext
-    c.inStaticContext = savedInStaticContext
-    c.inUnrolledContext = savedInUnrolledContext
-    c.compilesContextId = savedCompilesContextId
-    c.inGenericInst = savedInGenericInst
-    c.inParallelStmt = savedInParallelStmt
-    c.recursiveDep = savedRecursiveDep
-    c.isAmbiguous = savedIsAmbiguous
-    c.inTypeContext = savedInTypeContext
-    c.inConceptDecl = savedInConceptDecl
-    c.inTypeofContext = savedInTypeofContext
-    c.inUncheckedAssignSection = savedInUncheckedAssignSection
-    c.inUncheckedAccess = savedInUncheckedAccess
-    c.lastTLineInfo = savedLastTLineInfo
-    c.currentUnit = savedCurrentUnit
     if parSem:
       leaveArena(c.idgen, savedArena)
       c.graph.arenaTag = savedArenaTag
