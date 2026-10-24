@@ -1145,11 +1145,25 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
   for k, vs in override.table:
     result[k] = vs
 
+proc sameOrigin(a, b: Uri): bool =
+  ## Whether `a` and `b` have the same scheme, host and port.
+  proc effectivePort(u: Uri): string =
+    if u.port != "": u.port
+    elif cmpIgnoreCase(u.scheme, "https") == 0: "443"
+    elif cmpIgnoreCase(u.scheme, "http") == 0: "80"
+    else: ""
+  result = cmpIgnoreCase(a.scheme, b.scheme) == 0 and
+    cmpIgnoreCase(a.hostname, b.hostname) == 0 and
+    effectivePort(a) == effectivePort(b)
+
 proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
                 httpMethod: HttpMethod, body = "", headers: HttpHeaders = nil,
-                multipart: MultipartData = nil): Future[Response | AsyncResponse]
+                multipart: MultipartData = nil,
+                dropCredentials = false): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
+  # `dropCredentials` removes the headers that must not be sent to
+  # another origin than the one the request was originally made to.
   if url.scheme == "":
     raise newException(ValueError, "No uri scheme supplied.")
 
@@ -1177,6 +1191,10 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
         newHeaders["Content-Length"] = $body.len
       elif httpMethod notin {HttpGet, HttpHead}:
         newHeaders["Content-Length"] = "0"
+
+  if dropCredentials:
+    for key in ["Authorization", "Cookie", "Host"]:
+      newHeaders.del(key)
 
   if not newHeaders.hasKey("user-agent") and client.userAgent.len > 0:
     newHeaders["User-Agent"] = client.userAgent
@@ -1220,7 +1238,10 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ## connection can be closed by using the `close` procedure.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in `client.maxRedirects`.
+  ## specified in `client.maxRedirects`. Once a redirect leads to another
+  ## origin (scheme, host or port), the `Authorization`, `Cookie` and `Host`
+  ## headers are not sent anymore, neither those of `headers` nor those of
+  ## `client.headers`.
   ##
   ## You need to make sure that the `url` doesn't contain any newline
   ## characters. Failing to do so will raise `AssertionDefect`.
@@ -1260,6 +1281,12 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
 
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
+  # The redirects below must not modify the caller's `headers`.
+  var headers = if headers.isNil: nil else: override(headers, nil)
+  var multipart = multipart
+  # Once a redirect left the origin of `url`, credentials are not sent
+  # anymore, not even when a later redirect leads back.
+  var crossedOrigin = false
   var lastURL = url
   for i in 1..client.maxRedirects:
     let statusCode = result.code
@@ -1281,6 +1308,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
         redirectMethod = httpMethod
       # The body is stripped away
       redirectBody = ""
+      multipart = nil
       # Delete any header value associated with the body
       if not headers.isNil():
         headers.del("Content-Length")
@@ -1294,19 +1322,14 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
       # Unreachable
       raiseAssert "unreachable"
 
-    # Check if the redirection is to the same domain or a sub-domain (foo.com
-    # -> sub.foo.com)
-    if redirectTo.hostname != lastURL.hostname and
-      not redirectTo.hostname.endsWith("." & lastURL.hostname):
-      # Perform some cleanup of the header values
-      if headers != nil:
-        # Delete the Host header
-        headers.del("Host")
-        # Do not send any sensitive info to a unknown host
-        headers.del("Authorization")
+    # Do not send any sensitive info to another host, not even to a
+    # sub-domain, nor over a different scheme or port. This covers the
+    # credentials in `client.headers` too.
+    if not sameOrigin(redirectTo, url):
+      crossedOrigin = true
 
     result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
-                                     headers, multipart)
+                                     headers, multipart, crossedOrigin)
     lastURL = redirectTo
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
