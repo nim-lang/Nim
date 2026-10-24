@@ -109,6 +109,17 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     hcri.testArgs = cmd.parseCmdLine
     testSpec r, hcri
 
+    # a reload that changes the type of a global must stop instead of reading
+    # the kept memory with the new layout; these rebuild themselves like
+    # nimhcr_integration
+    for name in ["nimhcr_layout", "nimhcr_layout_order"]:
+      var t = makeTest("tests/dll/" & name & ".nim",
+                       options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
+      let tcache = nimcacheDir(t.name, t.options, getTestSpecTarget())
+      t.testArgs = prepareTestCmd(t.spec.getCmd, t.name, t.options, tcache,
+                                  getTestSpecTarget()).parseCmdLine
+      testSpec r, t
+
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()

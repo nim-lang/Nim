@@ -1394,6 +1394,8 @@ proc declareTypeInfoForHcr(m: BModule; name: Rope; typ: string; trailingPointers
         if trailingPointers > 0:
           m.hcrCreateTypeInfosProc.add(" + " & $trailingPointers & " * " & cSizeof(CPointer))
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
+        m.hcrCreateTypeInfosProc.add(makeCString(""))
+      m.hcrCreateTypeInfosProc.addArgument(registerHcr):
         m.hcrCreateTypeInfosProc.add(CNil)
       m.hcrCreateTypeInfosProc.addArgument(registerHcr):
         m.hcrCreateTypeInfosProc.addCast(typ = ptrType(CPointer)):
@@ -1504,6 +1506,8 @@ proc genTNimNodeArray(m: BModule; name: Rope, size: int) =
           m.hcrCreateTypeInfosProc.add(makeCString(name))
         m.hcrCreateTypeInfosProc.addArgument(registerHcr):
           m.hcrCreateTypeInfosProc.addOp(Mul, NimInt, cSizeof(ptrType("TNimNode")), cIntValue(size))
+        m.hcrCreateTypeInfosProc.addArgument(registerHcr):
+          m.hcrCreateTypeInfosProc.add(makeCString(""))
         m.hcrCreateTypeInfosProc.addArgument(registerHcr):
           m.hcrCreateTypeInfosProc.add(CNil)
         m.hcrCreateTypeInfosProc.addArgument(registerHcr):

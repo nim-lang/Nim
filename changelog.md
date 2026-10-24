@@ -253,6 +253,10 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- Hot code reloading no longer keeps a global variable's memory when the
+  global's type changed: the old memory was read with the new layout. Such a
+  reload now stops the program with a message naming the global.
+
 - An import annotated with `{.cyclic.}` (`import b {.cyclic.}`) makes the
   modules of an import cycle a group whose types and leading routines are
   visible to each other regardless of declaration order, so procs of different
