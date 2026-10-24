@@ -30,3 +30,8 @@ discard afterVoid[void, MyAlias](MyAlias())
 # A new type application still needs its concept implementations in scope.
 proc makeIndex[K](): MyIndex[K] = discard
 doAssert not compiles(makeIndex[int]())
+
+# An unconstrained alias must not bypass that lookup for a new application.
+type IndirectIndex[K] = MyIndex[K]
+proc makeIndirectIndex[K](): IndirectIndex[K] = discard
+doAssert not compiles(makeIndirectIndex[int]())

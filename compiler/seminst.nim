@@ -263,6 +263,9 @@ proc checkInstConstraints(c: PContext; t: PType; info: TLineInfo) =
                                 tyOpenArray, tyVarargs, tyAlias}:
     t = t.elementType
   if t == nil or t.kind != tyGenericInst or t.isMetaType: return
+  # Generic aliases can hide a constrained application behind an unconstrained
+  # generic head, e.g. Alias[T] = Box[T] where Box requires SomeInteger.
+  checkInstConstraints(c, t.last, info)
   let body = t.genericHead
   if body.kind != tyGenericBody or body.sym == nil: return
   var hasConstraint = false
@@ -294,7 +297,8 @@ proc checkSignatureConstraints(c: PContext; genericType, procType: PType;
     while original != nil and original.kind in {tyVar, tyLent, tySink, tyPtr,
         tyRef, tySequence, tyOpenArray, tyVarargs, tyAlias}:
       original = original.elementType
-    if original != nil and original.kind in {tyGenericInvocation, tyFromExpr}:
+    if original != nil and (original.kind in {tyGenericInvocation, tyFromExpr} or
+        (original.kind == tyGenericInst and original.isMetaType)):
       checkInstConstraints(c, procType[i], info)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,

@@ -34,4 +34,36 @@ doAssert not compiles(consumeImage[string](nil))
 doAssert not compiles(consumeAfterVoid[void, string](nil))
 consumeImage[int32](nil)
 consumeAfterVoid[void, int64](nil)
+
+# An unconstrained alias must not hide the underlying type's constraint.
+type
+  ImageAlias[T] = Image2[T]
+  ImageAlias2[T] = ImageAlias[T]
+  RefImageAlias[T] = ref Image2[T]
+  SeqImageAlias[T] = seq[Image2[T]]
+  Phantom[T: SomeInteger] = object
+  PhantomAlias[T] = Phantom[T]
+  UnresolvedAlias = Image2[auto]
+
+proc newAlias[T](): ImageAlias[T] = discard
+proc newAlias2[T](): ImageAlias2[T] = discard
+proc newPhantom[T](): PhantomAlias[T] = discard
+proc newRefAlias[T](): RefImageAlias[T] = discard
+proc newSeqAlias[T](): SeqImageAlias[T] = discard
+proc consumeAlias[T](x: ref ImageAlias2[T]) = discard
+proc newUnresolved[T](): UnresolvedAlias = discard
+
+doAssert not compiles(newAlias[string]())
+doAssert not compiles(newAlias2[string]())
+doAssert not compiles(newPhantom[string]())
+doAssert not compiles(newRefAlias[string]())
+doAssert not compiles(newSeqAlias[string]())
+doAssert not compiles(consumeAlias[string](nil))
+doAssert not compiles(newUnresolved[int]())
+discard newAlias[int32]()
+discard newAlias2[int64]()
+discard newPhantom[int]()
+discard newRefAlias[int32]()
+discard newSeqAlias[int64]()
+consumeAlias[int32](nil)
 echo "ok"
