@@ -2478,8 +2478,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         result = newDeref(result)
       if toOpenArray:
         result = implicitConv(nkHiddenStdConv, f, result, m, c)
-
-      inc(m.convMatches)
+      else:
+        inc(m.convMatches)
       if not m.genericConverter:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
