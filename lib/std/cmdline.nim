@@ -81,13 +81,14 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## * `paramStr proc`_
   ## * `commandLineParams proc`_
 
+  const Delims = {' ', '\t', '\l', '\r'}
   result = @[]
   var i = 0
   var a = ""
   while true:
     setLen(a, 0)
     # eat all delimiting whitespace
-    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    while i < c.len and c[i] in Delims: inc(i)
     if i >= c.len: break
     when defined(windows):
       # parse a single argument according to the above rules:
@@ -133,7 +134,9 @@ proc parseCmdLine*(c: string): seq[string] {.
           inc(i)
         if i < c.len: inc(i)
       else:
-        while i < c.len and c[i] > ' ':
+        # Every other character, control characters included, belongs to
+        # the argument; stopping at them would not make progress.
+        while i < c.len and c[i] notin Delims:
           add(a, c[i])
           inc(i)
     add(result, move a)
