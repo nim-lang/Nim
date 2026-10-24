@@ -257,6 +257,9 @@ parameter and result types, not just their source-level shape. Use
   global's type changed: the old memory was read with the new layout. Such a
   reload now stops the program with a message naming the global.
 
+- Hot code reloading works on Linux on arm64 with glibc; before, it was
+  limited to musl there and the HCR runtime did not compile.
+
 - An import annotated with `{.cyclic.}` (`import b {.cyclic.}`) makes the
   modules of an import cycle a group whose types and leading routines are
   visible to each other regardless of declaration order, so procs of different
