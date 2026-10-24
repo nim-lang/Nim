@@ -177,16 +177,57 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
 func hasChunkedEncoding(request: Request): bool =
-  ## Searches for a chunked transfer encoding. The body framing does not
-  ## depend on the request method: a chunked body that is not read would
-  ## be parsed as the next request on the connection.
-  const transferEncoding = "Transfer-Encoding"
+  ## Whether the body uses the chunked transfer encoding. `checkFraming`
+  ## ensures that "chunked" is the only transfer coding. The body framing
+  ## does not depend on the request method: a chunked body that is not read
+  ## would be parsed as the next request on the connection.
+  request.headers.hasKey("Transfer-Encoding")
 
-  if request.headers.hasKey(transferEncoding):
-    for encoding in seq[string](request.headers[transferEncoding]):
-      if cmpIgnoreCase("chunked", encoding.strip) == 0:
-        return true
-  return false
+func isValidHeaderLine(line: string): bool =
+  ## Whether `line` starts with a field name (a token) directly followed by
+  ## a colon. https://www.rfc-editor.org/rfc/rfc9110#section-5.1
+  const tchar = {'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^',
+                 '_', '`', '|', '~'} + Digits + Letters
+  var i = 0
+  while i < line.len and line[i] in tchar: inc i
+  result = i > 0 and i < line.len and line[i] == ':'
+
+type
+  Framing = enum
+    fraOk, fraBad, fraUnsupported
+
+func checkFraming(request: Request): Framing =
+  ## Validates `Transfer-Encoding` and `Content-Length`. After this only one
+  ## of them is present and its value is well-formed.
+  result = fraOk
+  let te = request.headers.hasKey("Transfer-Encoding")
+  if te:
+    if request.headers.hasKey("Content-Length"):
+      # A sender must not send both; a proxy could use either of them.
+      return fraBad
+    if request.protocol == HttpVer10:
+      return fraBad
+    var codings: seq[string] = @[]
+    for coding in seq[string](request.headers["Transfer-Encoding"]):
+      let c = coding.strip(chars = {' ', '\t'})
+      if c.len > 0: codings.add c
+    if codings.len == 0: return fraBad
+    for c in codings:
+      if cmpIgnoreCase(c, "chunked") != 0:
+        # gzip etc. are not decoded, so we cannot know where the body ends
+        return fraUnsupported
+    if codings.len != 1:
+      return fraBad
+  elif request.headers.hasKey("Content-Length"):
+    var first = ""
+    for value in seq[string](request.headers["Content-Length"]):
+      let v = value.strip(chars = {' ', '\t'})
+      if v.len == 0 or not v.allCharsInSet(Digits): return fraBad
+      if first.len == 0: first = v
+      elif v != first: return fraBad
+  if request.headers.hasKey("Host") and
+      seq[string](request.headers["Host"]).len != 1:
+    result = fraBad
 
 func parseChunkSize(line: string; size: var int): bool =
   ## Parses the `chunk-size [ chunk-ext ]` line of a chunked body.
@@ -303,6 +344,7 @@ proc processRequest(
     inc i
 
   # Headers
+  var headerCount = 0
   while true:
     i = 0
     lineFut.mget.setLen(0)
@@ -319,13 +361,33 @@ proc processRequest(
       await request.respondError(Http413)
       client.close(); return false
     if lineFut.mget == "\c\L": break
+    if not isValidHeaderLine(lineFut.mget):
+      # Whitespace before the colon or an obsolete line folding would make
+      # us see different headers than a proxy in front of us.
+      await request.respondError(Http400)
+      client.close(); return false
     let (key, value) = parseHeader(lineFut.mget)
-    request.headers[key] = value
+    # Repeated fields are combined, as if their values were a comma separated
+    # list, instead of letting the last one silently win.
+    for v in value: request.headers.add(key, v)
+    inc headerCount
     # Ensure the client isn't trying to DoS us.
-    if request.headers.len > headerLimit:
+    if headerCount > headerLimit:
       await client.sendStatus("400 Bad Request")
       request.client.close()
       return false
+
+  # Determine the body length the way RFC 9112, section 6.3 does, rejecting
+  # every request whose length a proxy could see differently.
+  # https://www.rfc-editor.org/rfc/rfc9112#section-6.3
+  case checkFraming(request)
+  of fraOk: discard
+  of fraBad:
+    await request.respondError(Http400)
+    return false
+  of fraUnsupported:
+    await request.respondError(Http501)
+    return false
 
   if request.reqMethod == HttpPost:
     # Check for Expect header
@@ -341,7 +403,7 @@ proc processRequest(
   # - Check for Content-length header
   if request.headers.hasKey("Content-Length"):
     var contentLength = 0
-    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
+    if parseSaturatedNatural(request.headers["Content-Length"].strip, contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return false
     else:

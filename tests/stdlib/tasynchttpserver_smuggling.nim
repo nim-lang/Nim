@@ -85,3 +85,60 @@ block: # an invalid Content-Length closes the connection
     "Content-Length: x\r\n\r\n" & smuggled)
   doAssert seen.len == 0, $seen
   doAssert response.count("HTTP/1.1") == 1, response
+
+# Requests whose body length a proxy could determine differently are rejected
+# and the connection is closed.
+
+proc rejected(headers: string; body = "3\r\nabc\r\n0\r\n\r\n";
+              status = "400"): bool =
+  let (seen, response) = waitFor serve("POST /a HTTP/1.1\r\nHost: x\r\n" &
+    headers & "\r\n" & body & smuggled)
+  result = seen.len == 0 and response.startsWith("HTTP/1.1 " & status) and
+    response.count("HTTP/1.1") == 1
+  if not result: echo seen, " ", response
+
+block: # Content-Length together with Transfer-Encoding
+  doAssert rejected("Content-Length: 3\r\nTransfer-Encoding: chunked\r\n")
+  doAssert rejected("Transfer-Encoding: chunked\r\nContent-Length: 3\r\n")
+block: # whitespace between field name and colon, obsolete line folding
+  doAssert rejected("Transfer-Encoding : chunked\r\n")
+  doAssert rejected("Content-Length : 3\r\n", "abc")
+  doAssert rejected("X: y\r\n Transfer-Encoding: chunked\r\n")
+  doAssert rejected("\tX: y\r\n")
+  doAssert rejected("no colon\r\n")
+block: # differing Content-Length values
+  doAssert rejected("Content-Length: 3\r\nContent-Length: 30\r\n", "abc")
+  doAssert rejected("Content-Length: 3, 30\r\n", "abc")
+  doAssert rejected("Content-Length: 3x\r\n", "abc")
+  doAssert rejected("Content-Length: +3\r\n", "abc")
+block: # transfer codings we cannot decode
+  doAssert rejected("Transfer-Encoding: gzip, chunked\r\n", status = "501")
+  doAssert rejected("Transfer-Encoding: chunked, identity\r\n", status = "501")
+  doAssert rejected("Transfer-Encoding: xchunked\r\n", status = "501")
+  doAssert rejected("Transfer-Encoding: chunked\r\nTransfer-Encoding: chunked\r\n")
+block: # several hosts
+  doAssert rejected("Host: y\r\nContent-Length: 3\r\n", "abc")
+
+block: # identical Content-Length values are fine
+  let (seen, _) = waitFor serve("POST /a HTTP/1.1\r\nHost: x\r\n" &
+    "Content-Length: 3\r\nContent-Length: 3 \r\n\r\nabc" & last)
+  doAssert seen == @["POST /a abc", "GET /last "], $seen
+proc repeatedFields() =
+    let server = newAsyncHttpServer()
+    var values: seq[string] = @[]
+    proc handler(request: Request) {.async, gcsafe.} =
+      values = seq[string](request.headers["X-A"])
+      await request.respond(Http200, "ok")
+    server.listen(Port(0), address = "127.0.0.1")
+    let client = newAsyncSocket()
+    let accepted = server.acceptRequest(handler)
+    waitFor client.connect("127.0.0.1", server.getPort())
+    waitFor accepted
+    waitFor client.send("GET / HTTP/1.1\r\nX-A: 1\r\nX-A: 2, 3\r\n" &
+      "Connection: close\r\n\r\n")
+    discard waitFor client.recv(4096)
+    client.close()
+    server.close()
+    doAssert values == @["1", "2", "3"], $values
+
+repeatedFields() # repeated fields are combined
