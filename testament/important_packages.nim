@@ -86,7 +86,7 @@ pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jblindsay/kdtree"
 # temp fix: use PR branch until https://github.com/elijahr/lockfree/pull/3 is merged:
-pkg "lockfreequeues", "nimble install -y https://github.com/Graveflo/lockfree@#fix/typestate-transition-sinks; nimble test -l"
+pkg "lockfreequeues", "nimble install -l -y https://github.com/Graveflo/lockfree@#fix/typestate-transition-sinks; nimble test -l"
 pkg "loopfusion"
 pkg "macroutils"
 pkg "manu"
