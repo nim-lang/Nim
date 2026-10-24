@@ -990,7 +990,7 @@ of stage 1's table fail the same tests at 8 workers as at 1, except
 `tests/iter/t20891`, whose macros keep state in a `{.compileTime.}` table that
 one body fills and another reads: §4.6's "cannot be preserved". The last
 ThreadSanitizer run (`-d:useMalloc --passC:-fsanitize=thread`, compiling the
-compiler; it runs out of memory before the end on a 32 GB machine) reported
+compiler; it runs out of memory before the end with 22 GB) reported
 only the deliberate unlocked reads: identifier chains and the integer literal
 type cache, published with plain stores after a release fence.
 
