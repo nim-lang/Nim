@@ -25,4 +25,13 @@ doAssert not compiles(newImage[string](320, 200))
 doAssert not compiles(newImage2[string](320, 200))
 doAssert newImage2[int64](2, 2).data.len == 4
 doAssert newImage3[int32](3, 2).data.len == 6
+
+# Constraints still apply to newly substituted parameter types, including when
+# a preceding parameter disappears during void erasure.
+proc consumeImage[T](x: ref Image2[T]) = discard
+proc consumeAfterVoid[A, T](a: A, x: ref Image2[T]) = discard
+doAssert not compiles(consumeImage[string](nil))
+doAssert not compiles(consumeAfterVoid[void, string](nil))
+consumeImage[int32](nil)
+consumeAfterVoid[void, int64](nil)
 echo "ok"

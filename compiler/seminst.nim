@@ -283,9 +283,19 @@ proc checkInstConstraints(c: PContext; t: PType; info: TLineInfo) =
     localError(c.config, info, "cannot instantiate " & typeToString(t) &
       "; it does not satisfy the constraints of " & body.sym.name.s)
 
-proc checkSignatureConstraints(c: PContext; procType: PType; info: TLineInfo) =
+proc checkSignatureConstraints(c: PContext; genericType, procType: PType;
+                               info: TLineInfo) =
   for i in 0..<procType.signatureLen:
-    checkInstConstraints(c, procType[i], info)
+    # Only recheck type applications resolved by this substitution. A concrete
+    # type supplied for a bare T was already checked where it was constructed;
+    # e.g. concept implementations need not be visible in the caller's scope.
+    # This runs before void erasure, while both signatures have matching slots.
+    var original = genericType[i]
+    while original != nil and original.kind in {tyVar, tyLent, tySink, tyPtr,
+        tyRef, tySequence, tyOpenArray, tyVarargs, tyAlias}:
+      original = original.elementType
+    if original != nil and original.kind in {tyGenericInvocation, tyFromExpr}:
+      checkInstConstraints(c, procType[i], info)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
@@ -335,7 +345,8 @@ proc referencesAnotherParam(n: PNode, p: PSym): bool =
     return false
 
 proc instantiateProcType(c: PContext, pt: LayeredIdTable,
-                         prc: PSym, info: TLineInfo) =
+                         prc: PSym, info: TLineInfo;
+                         checkConstraints = false) =
   # XXX: Instantiates a generic proc signature, while at the same
   # time adding the instantiated proc params into the current scope.
   # This is necessary, because the instantiation process may refer to
@@ -451,6 +462,8 @@ proc instantiateProcType(c: PContext, pt: LayeredIdTable,
       localError(c.config, originalParams[0].info, "illegal recursion in type '" & typeToString(result[0]) & "'")
     propagateToOwner(result, result[0])
 
+  if checkConstraints:
+    checkSignatureConstraints(c, prc.typ, result, info)
   eraseVoidParams(result)
   skipIntLiteralParams(result, c.idgen)
 
@@ -580,8 +593,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
         entry.bindings.add (key, lookupById(pt, key))
   c.matchedConcept = nil
   pushProcCon(c, result)
-  instantiateProcType(c, pt, result, info)
-  checkSignatureConstraints(c, result.typ, info)
+  instantiateProcType(c, pt, result, info, checkConstraints = true)
   for _, param in paramTypes(result.typ):
     entry.concreteTypes[i] = param
     inc i
