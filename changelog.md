@@ -255,7 +255,9 @@ parameter and result types, not just their source-level shape. Use
 
 - Hot code reloading no longer keeps a global variable's memory when the
   global's type changed: the old memory was read with the new layout. Such a
-  reload now stops the program with a message naming the global.
+  reload is now refused before any module is re-initialized:
+  `performCodeReload` raises `CodeReloadRefusedError` naming the global, and
+  the program goes on with the old code.
 
 - An import annotated with `{.cyclic.}` (`import b {.cyclic.}`) makes the
   modules of an import cycle a group whose types and leading routines are

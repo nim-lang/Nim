@@ -26,11 +26,21 @@ when defined(hotcodereloading):
 
   proc hasAnyModuleChanged*(): bool = hcrReloadNeeded()
 
+  type
+    CodeReloadRefusedError* = object of CatchableError
+      ## A reload would keep the memory of a global whose type the new code
+      ## changed. Nothing was reloaded: the program still runs the old code.
+
   when not defined(js):
     template performCodeReload* =
       when isMainModule:
         {.warning: "Code residing in the main module will not be changed from calling a code-reload".}
-      hcrPerformCodeReload()
+      block:
+        let reason = $hcrCheckCodeReload()
+        if reason.len > 0:
+          raise newException(CodeReloadRefusedError, "hot code reloading: " &
+            reason & "; reloading cannot keep the values, restart the program")
+        hcrPerformCodeReload()
   else:
     template performCodeReload* = discard
 else:

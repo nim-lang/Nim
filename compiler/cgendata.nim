@@ -193,6 +193,8 @@ type
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
     hcrCreateTypeInfosProc*: Builder # type info globals are in here when HCR=on
+    hcrGlobalLayouts*: seq[tuple[name, size, typeKey: Snippet]]
+      # the globals whose type a reload compares before it runs any init
     inHcrInitGuard*: bool     # We are currently within a HCR reloading guard.
     hcrInitGuard*: IfBuilder
     typeStack*: TTypeSeq      # used for type generation

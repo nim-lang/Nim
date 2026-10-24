@@ -705,6 +705,15 @@ proc treatThreadVarDifferentlyForHCR(m: BModule, s: PSym): bool
 include ccgliterals
 include ccgtypes
 
+proc hcrLayoutKey(m: BModule, s: PSym, t: PType, name, size: Snippet): Snippet =
+  ## The layout key of a global registered with HCR. The global is also listed
+  ## for `HcrGetGlobalLayouts`, which a reload reads before it runs any init.
+  ## A global that another module's code registers is not listed (its size
+  ## refers to that module's pointer); `hcrRegisterGlobal` still compares it.
+  result = makeCString($hashTypeLayout(t, m.config))
+  if m.g.mods[s.itemId.module] == m:
+    m.hcrGlobalLayouts.add((name, size, result))
+
 # ------------------------------ Manager of temporaries ------------------
 
 template mapTypeChooser(n: PNode): TSymKind =
@@ -3268,6 +3277,23 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
       rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
     result = true
 
+proc genHcrGlobalLayouts(m: BModule) =
+  ## After the procs of the module: a global declared in a proc is registered
+  ## by that proc's code.
+  var b = newBuilder("")
+  b.addDeclWithVisibility(ExportLib):
+    b.addProcHeaderWithParams(ccNimCall, "HcrGetGlobalLayouts", CVoid):
+      var params: ProcParamBuilder
+      b.addProcParams(params):
+        b.addProcTypedParam(params, ccNimCall, "add", CVoid, cProcParams(
+          (name: "", typ: ptrType(CChar)),
+          (name: "", typ: NimInt),
+          (name: "", typ: ptrType(CChar))))
+    b.finishProcHeaderWithBody():
+      for g in m.hcrGlobalLayouts:
+        b.addCallStmt("add", g.name, cCast(NimInt, g.size), g.typeKey)
+  m.s[cfsInitProc].add(extract(b))
+
 proc genModuleCode(m: BModule; cf: var Cfile): string =
   ## First half of `writeModule`: finalizes the module and produces its code
   ## text. Under cmdNifC the text still carries the cnif marks.
@@ -3277,6 +3303,8 @@ proc genModuleCode(m: BModule; cf: var Cfile): string =
     let sym = m.queue.pop()
     genProcLvl2(m, sym)
 
+  if m.hcrOn:
+    genHcrGlobalLayouts(m)
   finishTypeDescriptions(m)
   if sfMainModule in m.module.flags:
     # generate main file:

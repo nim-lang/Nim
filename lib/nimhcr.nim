@@ -462,6 +462,9 @@ when defined(createNimHcr):
         # The memory kept from before was laid out for the old type; the new
         # code would read it with the new layout. Not an exception: the reload
         # has already started and its state cannot be handed back.
+        # `performCodeReload` asks `hcrCheckCodeReload` first, so this is
+        # reached only for globals that list leaves out or when
+        # `hcrPerformCodeReload` is called directly.
         stderr.writeLine "hot code reloading: the type of global '", name,
           "' in module '", module, "' changed (size ", global.size, " -> ", size,
           "); reloading cannot keep its value, restart the program"
@@ -738,6 +741,56 @@ when defined(createNimHcr):
         return true
     return false
 
+  var layoutsOfLib: seq[tuple[name: string, size: int, typeKey: string]]
+
+  proc addGlobalLayout(name: cstring, size: int, typeKey: cstring) {.nimcall.} =
+    layoutsOfLib.add(($name, size, $typeKey))
+
+  proc collectLayoutChanges(dlls: seq[string], seen: var HashSet[string],
+                            changes: var seq[string]) =
+    # Walks the modules like `recursiveDiscovery`, but loads each rebuilt
+    # library only under a temporary name and runs none of its code except
+    # `HcrGetGlobalLayouts` and `HcrGetImportedModules`.
+    for curr in dlls:
+      if seen.containsOrIncl(curr): continue
+      if modules.contains(curr) and not isNewerOnDisk(curr):
+        collectLayoutChanges(modules[curr].imports, seen, changes)
+        continue
+      let copiedName = curr & ".check." & $generation & "." & dllExt
+      copyFileWithPermissions(curr, copiedName)
+      let lib = loadLib(copiedName)
+      if lib == nil:
+        changes.add "the library '" & curr & "' cannot be loaded"
+        removeFile(copiedName)
+        continue
+      if modules.contains(curr):
+        layoutsOfLib.setLen(0)
+        cast[proc (add: typeof(addGlobalLayout)) {.nimcall.}](
+          checkedSymAddr(lib, "HcrGetGlobalLayouts"))(addGlobalLayout)
+        for (name, size, typeKey) in layoutsOfLib:
+          if modules[curr].globals.hasKey(name):
+            let old = modules[curr].globals[name]
+            if old.typeKey.len > 0 and (old.size != size or old.typeKey != typeKey):
+              changes.add "the type of global '" & name & "' in module '" & curr &
+                "' changed (size " & $old.size & " -> " & $size & ")"
+      let imports = getListOfModules(cast[proc (): ptr pointer {.nimcall.}](
+        checkedSymAddr(lib, "HcrGetImportedModules"))())
+      unloadLib(lib)
+      removeFile(copiedName)
+      collectLayoutChanges(imports, seen, changes)
+
+  var refusal: string
+
+  proc hcrCheckCodeReload*(): cstring {.nimhcr.} =
+    ## Before `hcrPerformCodeReload`: why the reload cannot keep the memory of
+    ## the globals, one reason per line, or "" when it can. Nothing has been
+    ## reloaded yet, so the program can go on with the old code.
+    var seen = initHashSet[string]()
+    var changes: seq[string]
+    collectLayoutChanges(modules[root].imports, seen, changes)
+    refusal = changes.join("\n")
+    result = cstring(refusal)
+
   proc hcrPerformCodeReload*() {.nimhcr.} =
     if not hcrReloadNeeded():
       trace "HCR - no changes"
@@ -849,6 +902,8 @@ elif defined(hotcodereloading) or defined(testNimHcr):
     proc hcrHasModuleChanged*(moduleHash: string): bool {.nimhcr.}
 
     proc hcrReloadNeeded*(): bool {.nimhcr.}
+
+    proc hcrCheckCodeReload*(): cstring {.nimhcr.}
 
     proc hcrPerformCodeReload*() {.nimhcr.}
 
