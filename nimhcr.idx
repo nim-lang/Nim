@@ -1,0 +1,16 @@
+nimTitle	nimhcr	nimhcr.html	module nimhcr		0
+nim	HcrProcGetter	nimhcr.html#HcrProcGetter	type HcrProcGetter		213
+nim	HcrModuleInitializer	nimhcr.html#HcrModuleInitializer	type HcrModuleInitializer		215
+nim	hcrRegisterProc	nimhcr.html#hcrRegisterProc,cstring,cstring,pointer	proc hcrRegisterProc(module: cstring; name: cstring; fn: pointer): pointer		420
+nim	hcrGetProc	nimhcr.html#hcrGetProc,cstring,cstring	proc hcrGetProc(module: cstring; name: cstring): pointer		431
+nim	hcrRegisterGlobal	nimhcr.html#hcrRegisterGlobal,cstring,cstring,Natural,HcrGcMarkerProc,ptr.pointer	proc hcrRegisterGlobal(module: cstring; name: cstring; size: Natural;\n                  gcMarker: HcrGcMarkerProc; outPtr: ptr pointer): bool		440
+nim	hcrGetGlobal	nimhcr.html#hcrGetGlobal,cstring,cstring	proc hcrGetGlobal(module: cstring; name: cstring): pointer		468
+nim	hcrGetThreadVar	nimhcr.html#hcrGetThreadVar,cstring,cstring,int	proc hcrGetThreadVar(module: cstring; name: cstring; size: int): pointer		527
+nim	hcrInit	nimhcr.html#hcrInit,ptr.pointer,cstring,cstring,HcrModuleInitializer,pointer,HcrProcGetter	proc hcrInit(moduleList: ptr pointer; main, sys: cstring;\n        datInit: HcrModuleInitializer; handle: pointer; gpa: HcrProcGetter)		692
+nim	hcrHasModuleChanged	nimhcr.html#hcrHasModuleChanged,string	proc hcrHasModuleChanged(moduleHash: string): bool		713
+nim	hcrReloadNeeded	nimhcr.html#hcrReloadNeeded	proc hcrReloadNeeded(): bool		721
+nim	hcrPerformCodeReload	nimhcr.html#hcrPerformCodeReload	proc hcrPerformCodeReload()		727
+nim	hcrAddEventHandler	nimhcr.html#hcrAddEventHandler,bool,proc)	proc hcrAddEventHandler(isBefore: bool; cb: proc () {.nimcall.})		787
+nim	hcrAddModule	nimhcr.html#hcrAddModule,cstring	proc hcrAddModule(module: cstring)		791
+nim	hcrGeneration	nimhcr.html#hcrGeneration	proc hcrGeneration(): int		795
+nim	hcrMarkGlobals	nimhcr.html#hcrMarkGlobals	proc hcrMarkGlobals()		798
