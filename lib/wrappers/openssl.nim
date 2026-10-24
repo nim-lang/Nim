@@ -866,6 +866,8 @@ when not defined(nimDisableCertificateValidation):
 
   proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLUtilName, importc.}
 
+  proc X509_check_ip_asc*(cert: PX509, address: cstring, flags: cuint): cint {.cdecl, dynlib: DLLUtilName, importc.}
+
   proc X509_free*(cert: PX509) {.cdecl, dynlib: DLLUtilName, importc.}
 
   # Certificates store
