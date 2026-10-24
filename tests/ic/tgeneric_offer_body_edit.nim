@@ -4,9 +4,11 @@ discard """
 
 #? metamorphic
 
-# A private body edit can renumber a generic instance without changing any
+# A private body edit used to renumber a generic instance without changing any
 # public signature or hook registration. Reusing that instance embeds its
-# defining module's type ID, so the consumer needs an implementation edge.
+# defining module's type ID, so the consumer needed an implementation edge and
+# was rebuilt. Type IDs are content-derived now (`ast2nif.canonicalTypeItem`):
+# the edit does not rename the instance, and only the edited module is rebuilt.
 
 #!FLAGS --mm:arc
 
@@ -48,7 +50,7 @@ proc make*(): int =
   discard padding
   let x = Box[int](value: 42)
   x.value
-#!STEP expect: 42 42 42; body-edit; modules: 3
+#!STEP expect: 42 42 42; body-edit; modules: 1
 #!STEP expect: 42 42 42; noop
 
 #!FILE producer.nim
@@ -56,5 +58,5 @@ import types
 proc make*(): int =
   let x = Box[int](value: 42)
   x.value
-#!STEP expect: 42 42 42; body-edit; modules: 3
+#!STEP expect: 42 42 42; body-edit; modules: 1
 #!STEP expect: 42 42 42; noop

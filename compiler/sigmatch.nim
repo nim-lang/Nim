@@ -10,6 +10,7 @@
 ## This module implements the signature matching for resolving
 ## the call to overloaded procs, generic procs and operators.
 
+from concurrency import withSemLock
 import
   ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, idents, lexer, options, parampatterns, trees,
@@ -2452,7 +2453,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         if dest.state == Sealed: dest = copyType(dest, c.idgen, dest.owner)
         dest.incl tfVarIsPtr
       # can't fully mark used yet, may not be used in final call
-      incl(c.converters[i].flagsImpl, sfUsed)
+      inclShared(c.converters[i].flagsImpl, sfUsed)
       markOwnerModuleAsUsed(c, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
@@ -2557,6 +2558,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     arg = argSemantized
     a = a
     c = m.c
+  if arg != nil and arg.kind == nkSym and arg.sym.kind in routineKinds and
+      c.graph.demandRoutineBody != nil and
+      f.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct}).kind == tyProc:
+    # `--parsem:on`: a routine passed as a value; whether it is `.gcsafe` or
+    # `.noSideEffect` is inferred from its body, which may be a pending unit
+    # (or, in the parallel body pass, one that another thread is checking)
+    discard c.graph.demandRoutineBody(arg.sym, forEffects = true)
   let hasStatic = tfHasStatic in f.flags or
     (f.kind == tyDistinct and tfHasStatic in f.skipTypes({tyDistinct}).flags)
   if hasStatic:

@@ -9,6 +9,9 @@
 
 # Built-in types and compilerprocs are registered here.
 
+from concurrency import withSemLock, lockSem
+when defined(nimParallelSem):
+  import std/sysatomics
 import
   ast, msgs, platform, idents,
   modulegraphs, lineinfos, types
@@ -43,9 +46,15 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
   result.typ = newType(tyError, g.idgen, g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
+  let semGuard {.used.} = lockSem()
   result = getSysSym(g, info, name).typ
 
 proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
+  when defined(nimParallelSem):
+    # set once, never changed again: read without the lock
+    result = cast[PType](atomicLoadN(cast[ptr pointer](addr g.sysTypes[kind]), ATOMIC_ACQUIRE))
+    if result != nil: return
+  let semGuard {.used.} = lockSem()
   template sysTypeFromName(s: string): untyped = sysTypeFromName(g, info, s)
   result = g.sysTypes[kind]
   if result == nil:
@@ -91,10 +100,21 @@ proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
   result = newSysType(g, tyFloat, size=8)
   result.n = literal
 
+var canonicalIntLits* = false
+  ## set under `--parsem:on` (`sem.preparePContext`), see `skipIntLit`
+
 proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   if t.n != nil and t.kind in {tyInt, tyFloat}:
-    result = copyType(t, id, t.owner)
-    result.n = nil
+    let named = if canonicalIntLits and t.sym != nil: t.sym.typ else: nil
+    if named != nil and named.kind == t.kind and named.n == nil:
+      # the type the literal is OF (`int`, or an alias of it): a copy would be
+      # a fresh, module-local type, and whether a generic was bound to a
+      # literal or to the type itself first would show in which one an
+      # instance refers to
+      result = named
+    else:
+      result = copyType(t, id, t.owner)
+      result.n = nil
   else:
     result = t
 

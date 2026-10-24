@@ -68,7 +68,7 @@ proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
   if s.state == Partial:
     assert c.sl != nil
     c.sl(s)
-  if sfAnon in s.flagsImpl or s.kindImpl == skGenericParam:
+  if sfAnon in rawFlags(s) or s.kindImpl == skGenericParam:
     c.m.addIdent("´anon")
   else:
     var name = s.name.s
@@ -89,7 +89,7 @@ proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
     let it =
       if s.kindImpl == skModule:
         s
-      elif s.kindImpl in skProcKinds and sfFromGeneric in s.flagsImpl and
+      elif s.kindImpl in skProcKinds and sfFromGeneric in rawFlags(s) and
            owner != nil and owner.kindImpl != skModule:
         forceLoaded(owner.ownerFieldImpl)
       else:
@@ -145,7 +145,7 @@ proc maybeImported(c: var Context; s: PSym; conf: ConfigRef) {.inline.} =
   # of the backend identity for aliases, so load the symbol before testing them.
   if s != nil and s.state == Partial and c.sl != nil:
     c.sl(s)
-  if s != nil and {sfImportc, sfExportc} * s.flagsImpl != {}:
+  if s != nil and {sfImportc, sfExportc} * rawFlags(s) != {}:
     c.symKey(s, conf)
 
 proc emitPreciseFlags(c: var Context; t: PType; flags: set[ConsiderFlag]) {.inline.} =
@@ -157,7 +157,7 @@ proc emitPreciseFlags(c: var Context; t: PType; flags: set[ConsiderFlag]) {.inli
   ## `setAttachedOp` hook key (no CoPrecise) is unaffected, so its byte layout is
   ## unchanged.
   if CoPrecise in flags:
-    let ef = eqTypeFlags * t.flagsImpl
+    let ef = eqTypeFlags * rawFlags(t)
     if ef != {}:
       withTree c.m, "´tflags":
         for f in ef: c.m.addIntLit ord(f)
@@ -210,7 +210,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.m.addEmpty()
     elif CoDistinct in flags:
       if t.symImpl != nil: symKey(c, t.symImpl, conf)
-      if t.symImpl == nil or tfFromGeneric in t.flagsImpl:
+      if t.symImpl == nil or tfFromGeneric in rawFlags(t):
         c.typeKey t.sonsImpl[^1], flags, conf
     elif CoType in flags or t.symImpl == nil:
       c.typeKey t.sonsImpl[^1], flags, conf
@@ -224,7 +224,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     if base.state == Partial:
       assert c.tl != nil
       c.tl(base)
-    if base.symImpl != nil and sfInfixCall in base.symImpl.flagsImpl:
+    if base.symImpl != nil and sfInfixCall in rawFlags(base.symImpl):
       # This is an imported C++ generic type.
       # We cannot trust the `lastSon` to hold a properly populated and unique
       # value for each instantiation, so we hash the generic parameters here:
@@ -339,7 +339,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       # type symbol is anonymous/gensym'd, disambiguate further by keying the
       # field types and names (or `.empty` when there are none).
       template hasFlag(sym: PSym): bool =
-        {sfAnon, sfGenSym} * sym.flagsImpl != {}
+        {sfAnon, sfGenSym} * rawFlags(sym) != {}
       if hasFlag(t.symImpl) or
          (t.kind == tyObject and t.ownerFieldImpl != nil and t.ownerFieldImpl.kindImpl == skType and
           t.ownerFieldImpl.typImpl != nil and t.ownerFieldImpl.typImpl.kind == tyRef and hasFlag(t.ownerFieldImpl)):
@@ -397,7 +397,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
       if t.sonsImpl.len > 0:
         c.typeKey(t.skipModifierB, flags, conf)
   of tyProc:
-    withTree c.m, (if tfIterator in t.flagsImpl: "itertype" else: "proctype"):
+    withTree c.m, (if tfIterator in rawFlags(t): "itertype" else: "proctype"):
       # Proc parameter *types* are part of the type's identity. Under IC the
       # parameters live in `nImpl` (`sonsImpl` holds only the return type), so a
       # loaded proc type has an empty `sonsImpl[1..]`; reading params from there
@@ -428,7 +428,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         c.typeKey(t.sonsImpl[0], flags, conf)
 
       c.m.addIdent toNifTag(t.callConvImpl)
-      if tfVarargs in t.flagsImpl: c.m.addIdent "´varargs"
+      if tfVarargs in rawFlags(t): c.m.addIdent "´varargs"
       # `.gcsafe`/`.noSideEffect` (in eqTypeFlags) distinguish proc types under
       # sameType, so they must distinguish the NIF name too.
       emitPreciseFlags(c, t, flags)
@@ -444,7 +444,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     withTree c.m, toNifTag(t.kind):
       for i in 0..<t.sonsImpl.len:
         c.typeKey t.sonsImpl[i], flags, conf
-      if tfNotNil in t.flagsImpl and CoType notin flags:
+      if tfNotNil in rawFlags(t) and CoType notin flags:
         c.m.addIdent "´notnil"
       # tfNotNil/tfVarIsPtr/tfIsOutParam (eqTypeFlags) part of sameType identity
       # for ref/ptr/var/lent/sink; the hook path (no CoPrecise) keeps its layout.

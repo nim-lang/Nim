@@ -10,11 +10,15 @@
 ## This module implements lifting for type-bound operations
 ## (`=sink`, `=copy`, `=destroy`, `=deepCopy`, `=wasMoved`, `=dup`).
 
+from concurrency import withSemLock, lockSem
+when defined(nimParallelSem):
+  import std/sysatomics
 import modulegraphs, lineinfos, idents, ast, renderer, semdata,
   sighashes, lowerings, options, types, msgs, magicsys, ccgutils
 
-import std/tables
+import std/[tables, intsets]
 from trees import isCaseObj
+from astalgo import getModule
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -40,6 +44,21 @@ template destructor*(t: PType): PSym = getAttachedOp(c.g, t, attachedDestructor)
 template assignment*(t: PType): PSym = getAttachedOp(c.g, t, attachedAsgn)
 template dup*(t: PType): PSym = getAttachedOp(c.g, t, attachedDup)
 template asink*(t: PType): PSym = getAttachedOp(c.g, t, attachedSink)
+
+proc neverRaises(c: var TLiftCtx; op: PSym): bool =
+  ## `sfNeverRaises` is inferred by the tracking of `op`'s body, which under
+  ## `--parsem:on` may still be a pending unit (a user hook declared further
+  ## down): run it first, as `sempass2.trackCall` does for any callee.
+  if c.g.demandRoutineBody != nil:
+    discard c.g.demandRoutineBody(op, forEffects = true)
+  if op.id in c.g.hooksInProduction:
+    # the hooks of a recursive type, lifted inside each other: which one is
+    # entered first depends on who needed one first, so every hook of the
+    # cycle is taken to raise, not just the ones that met an unfinished one
+    # (`produceSym`). `hooksInProduction` is only filled under `--parsem:on`.
+    c.g.hooksInCycle.incl op.id
+    return false
+  result = sfNeverRaises in op.flags
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
@@ -158,7 +177,7 @@ proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
     destroy.add x
   else:
     destroy.add genAddr(c, x)
-  if sfNeverRaises notin op.flags:
+  if not neverRaises(c, op):
     c.canRaise = true
   if c.addMemReset:
     result = newTree(nkStmtList, destroy, genBuiltin(c, mWasMoved,  "wasMoved", x))
@@ -361,7 +380,7 @@ proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
   #  localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
   result = newNodeI(nkCall, x.info)
   result.add newSymNode(op)
-  if sfNeverRaises notin op.flags:
+  if not neverRaises(c, op):
     c.canRaise = true
   if op.typ.firstParamType.kind == tyVar:
     result.add genAddr(c, x)
@@ -381,7 +400,7 @@ proc newOpCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.returnType)
   result.add(newSymNode(op))
   result.add x
-  if sfNeverRaises notin op.flags:
+  if not neverRaises(c, op):
     c.canRaise = true
 
   if c.kind == attachedDup and op.typ.len == 3:
@@ -1286,11 +1305,55 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     fillBody(c, skipModifier(t), body, x, y)
   of tyConcept, tyIterable: raiseAssert "unreachable"
 
+proc cleanForCanon(t: PType; idgen: IdGenerator): PType =
+  ## `--parsem:on`: the type a literal's or a set constructor's type stands
+  ## for, so that which of them registered first does not show in the hooks'
+  ## signatures (see `seminst.canonicalBindings`)
+  result = t
+  if t.kind in {tyInt, tyFloat} and t.n != nil:
+    result = skipIntLit(t, idgen)
+  elif t.kind == tySet and tfIsConstructor in t.flags:
+    result = copyType(t, idgen, t.owner)
+    result.excl tfIsConstructor
+
+proc canonicalType(g: ModuleGraph; t: PType; idgen: IdGenerator): PType =
+  ## The type whose hooks every type equal to `t` shares.
+  ##
+  ## Under `--parsem:on`, two types that are one by the content key the hooks
+  ## are NAMED by (`setHookDisamb`) but two by the signature hash used to get a
+  ## hook each, both claiming one name, and which of them was probed to the
+  ## next number depended on which unit lifted first. So a type that the
+  ## content key finds is taken when it is the same type — the key alone is
+  ## no identity: the lifted environments of two closures are anonymous
+  ## objects that it does not tell apart.
+  let h = sighashes.hashType(t, g.config, {CoType, CoConsiderOwned, CoDistinct})
+  let semGuard {.used.} = lockSem()
+  result = g.canonTypes.getOrDefault(h)
+  if result == nil:
+    if optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
+      let k = typeContentHash(g, t)
+      let other = g.canonTypes.getOrDefault(k)
+      if other == nil:
+        result = cleanForCanon(t, idgen)
+        g.canonTypes[k] = result
+      elif sameType(other, t): result = other
+    if result == nil: result = t
+    g.canonTypes[h] = result
+
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo;
                             idgen: IdGenerator): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ.elementType
+  if getAttachedOp(g, baseType, kind) == nil and
+      optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
+    # the base's hook is the one of its canonical type, as for any other
+    # use (`createTypeBoundOps`), not one of its own that merely shares the
+    # canonical type's name
+    let canon = canonicalType(g, baseType.skipTypes({tyGenericInst, tyAlias, tySink}), idgen)
+    if getAttachedOp(g, canon, kind) == nil:
+      discard produceSym(g, c, canon, kind, info, idgen)
+    setAttachedOp(g, idgen.module, baseType, kind, getAttachedOp(g, canon, kind))
   if getAttachedOp(g, baseType, kind) == nil:
     discard produceSym(g, c, baseType, kind, info, idgen)
   result = getAttachedOp(g, baseType, kind)
@@ -1388,7 +1451,73 @@ proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   yy.typ = xx.typ
   body.add newAsgnStmt(xx, yy)
 
+proc produceSymImpl(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
+              info: TLineInfo; idgen: IdGenerator): PSym
+
+proc homeTypeSym(t: PType; depth: int): PSym =
+  ## the symbol of the first nominal type in `t`, depth first
+  result = nil
+  if t == nil or depth > 20: return
+  case t.kind
+  of tyGenericInst:
+    result = homeTypeSym(t.genericHead, depth + 1)
+  of tyObject, tyEnum, tyDistinct, tyGenericBody:
+    result = t.sym
+  else:
+    discard
+  if result == nil:
+    for k in t.kids:
+      result = homeTypeSym(k, depth + 1)
+      if result != nil: return
+
+proc hookOwner(g: ModuleGraph; typ: PType; idgen: IdGenerator): PSym =
+  ## A lifted hook is owned by the owner of the type it was lifted for, and
+  ## the classic backend defines it in that module's translation unit. But
+  ## `seq[Foo]` is many `PType`s, owned by wherever each was made, and which
+  ## one is lifted first depends on which unit needs one first. Under
+  ## `--parsem:on` the owner is derived from the type's content instead: the
+  ## module of its first nominal type, else `system`. Under `--ic:on` the
+  ## hook is written into the module that mints it, so that module owns it.
+  result = typ.owner
+  if optParSem in g.config.globalOptions and g.config.cmd == cmdM:
+    let m = g.getModule(idgen.module.FileIndex)
+    if m != nil: result = m
+  elif optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
+    let home = homeTypeSym(typ, 0)
+    result = if home != nil: getModule(home) else: g.systemModule
+    if result == nil: result = typ.owner
+
+proc hookInfo(g: ModuleGraph; typ: PType; info: TLineInfo; idgen: IdGenerator): TLineInfo =
+  ## Under `--parsem:on`, the line info a lifted hook and its body get: not
+  ## the use that lifted it first, which depends on the order units ran in
+  ## (and shows in every call of the hook, `newSymNode(op)` takes the hook's
+  ## info), but the declaration of the type's first nominal component, or the
+  ## owning module.
+  result = info
+  if optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
+    let home = homeTypeSym(typ, 0)
+    if home != nil: result = home.info
+    else:
+      let m = hookOwner(g, typ, idgen)
+      if m != nil: result = m.info
+
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
+              info: TLineInfo; idgen: IdGenerator): PSym =
+  if optParSem in g.config.globalOptions and typ.kind != tyDistinct:
+    # `--parsem:on` (doc/parallel_compiler.md §4.2): a hook is lifted by
+    # whichever unit needs it first, so it mints from an arena of its own
+    let saved = enterKeyedArena(idgen, hookArenaKey(g, AttachedOpToStr[kind], typ))
+    let savedTag = g.arenaTag
+    g.arenaTag = idgen.disambBase
+    try:
+      result = produceSymImpl(g, c, typ, kind, hookInfo(g, typ, info, idgen), idgen)
+    finally:
+      leaveArena(idgen, saved)
+      g.arenaTag = savedTag
+  else:
+    result = produceSymImpl(g, c, typ, kind, info, idgen)
+
+proc produceSymImpl(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
   if typ.kind == tyDistinct:
     # For =dup, if the distinct type has a user-defined =copy, don't delegate
@@ -1405,7 +1534,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
 
   result = getAttachedOp(g, typ, kind)
   if result == nil:
-    result = symPrototype(g, typ, typ.owner, kind, info, idgen)
+    result = symPrototype(g, typ, hookOwner(g, typ, idgen), kind, info, idgen)
 
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType: typ, idgen: idgen,
                    fn: result)
@@ -1419,6 +1548,8 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
 
   # register this operation already:
   setAttachedOpPartial(g, idgen.module, typ, kind, result)
+  if optParSem in g.config.globalOptions: g.hooksInProduction.incl result.id
+  defer: g.hooksInProduction.excl result.id
 
   if kind == attachedSink and destructorOverridden(g, typ):
     ## compiler can use a combination of `=destroy` and memCopy for sink op
@@ -1454,7 +1585,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
         # bug #19205: Do not forget to also copy the hidden type field:
         genTypeFieldCopy(a, typ, result.ast[bodyPos], d, src)
 
-  if not a.canRaise:
+  if not a.canRaise and result.id notin g.hooksInCycle:
     ensureMutable result
     incl result.flagsImpl, sfNeverRaises
     result.ast[pragmasPos] = newNodeI(nkPragma, info)
@@ -1471,7 +1602,7 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
                                         info: TLineInfo; idgen: IdGenerator): PSym =
   assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
   # discrimantor assignments needs pointers to destroy fields; alas, we cannot use non-var destructor here
-  result = symPrototype(g, field.typ, typ.owner, attachedDestructor, info, idgen, isDiscriminant = true)
+  result = symPrototype(g, field.typ, hookOwner(g, typ, idgen), attachedDestructor, info, idgen, isDiscriminant = true)
   setHookDisamb(g, result, "=destroy¦" & field.name.s & "¦" & $field.position, typ)
   var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen,
                    fn: result)
@@ -1529,11 +1660,12 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
 proc isTrivial*(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
-proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
-                        idgen: IdGenerator) =
-  ## In the semantic pass this is called in strategic places
-  ## to ensure we lift assignment, destructors and moves properly.
-  ## The later 'injectdestructors' pass depends on it.
+when defined(nimParallelSem):
+  var hookProductions: int
+    ## how many `createTypeBoundOps` run right now (nested ones included)
+
+proc createTypeBoundOpsImpl(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
+                            idgen: IdGenerator) =
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
 
   # IC: review this solution again later
@@ -1547,11 +1679,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
   if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
 
-  let h = sighashes.hashType(skipped, g.config, {CoType, CoConsiderOwned, CoDistinct})
-  var canon = g.canonTypes.getOrDefault(h)
-  if canon == nil:
-    g.canonTypes[h] = skipped
-    canon = skipped
+  let canon = canonicalType(g, skipped, idgen)
 
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
@@ -1572,8 +1700,20 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   for k in attachedWasMoved..lastAttached:
     generics[k] = getAttachedOp(g, canon, k) != nil
     if not generics[k]:
-      setAttachedOp(g, idgen.module, canon, k,
-          symPrototype(g, canon, canon.owner, k, info, idgen))
+      if optParSem in g.config.globalOptions:
+        # minted in the hook's own arena, as its body will be (`produceSym`)
+        let saved = enterKeyedArena(idgen, hookArenaKey(g, AttachedOpToStr[k], canon))
+        let savedTag = g.arenaTag
+        g.arenaTag = idgen.disambBase
+        try:
+          setAttachedOp(g, idgen.module, canon, k,
+              symPrototype(g, canon, hookOwner(g, canon, idgen), k, hookInfo(g, canon, info, idgen), idgen))
+        finally:
+          leaveArena(idgen, saved)
+          g.arenaTag = savedTag
+      else:
+        setAttachedOp(g, idgen.module, canon, k,
+            symPrototype(g, canon, canon.owner, k, info, idgen))
 
   # we generate the destructor first so that other operators can depend on it:
   for k in attachedWasMoved..lastAttached:
@@ -1583,6 +1723,11 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
       inst(g, c, canon, k, idgen, info)
     if canon != orig:
       setAttachedOp(g, idgen.module, orig, k, getAttachedOp(g, canon, k))
+    if skipped != canon and skipped != orig and
+        optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
+      # `injectdestructors` looks the ops up on the skipped type; whether
+      # that one is the canonical type depends on which was registered first
+      setAttachedOp(g, idgen.module, skipped, k, getAttachedOp(g, canon, k))
 
   if not isTrivial(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrivial(orig.assignment) or
@@ -1592,6 +1737,33 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     # on a possibly-`Sealed` foreign type (it used to write `flagsImpl` behind
     # the accessor's back precisely to dodge the seal assert).
     orig.inclDerived {tfHasAsgn}
+
+
+proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
+                        idgen: IdGenerator) =
+  ## In the semantic pass this is called in strategic places
+  ## to ensure we lift assignment, destructors and moves properly.
+  ## The later 'injectdestructors' pass depends on it.
+  if orig == nil: return
+  when defined(nimParallelSem):
+    # the frequent case, a type already done, needs no lock -- unless some
+    # thread is producing hooks right now: `tfCheckedForDestructor` is set
+    # when a production starts, not when it is complete
+    if {tfCheckedForDestructor, tfHasMeta} * orig.flags != {} and
+        atomicLoadN(addr hookProductions, ATOMIC_ACQUIRE) == 0:
+      return
+  # one thread at a time: the hooks of a type are produced once, and a type's
+  # partial hooks are seen only by the recursion that produces them
+  withSemLock:
+    when defined(nimParallelSem):
+      discard atomicFetchAdd(addr hookProductions, 1, ATOMIC_ACQ_REL)
+      try:
+        createTypeBoundOpsImpl(g, c, orig, info, idgen)
+      finally:
+        discard atomicFetchSub(addr hookProductions, 1, ATOMIC_ACQ_REL)
+    else:
+      createTypeBoundOpsImpl(g, c, orig, info, idgen)
+
 
 proc liftNimNodeHooks*(g: ModuleGraph; c: PContext; info: TLineInfo; idgen: IdGenerator) =
   ## The hooks of NimNode count the VM's handles. Every routine that uses

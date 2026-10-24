@@ -7,12 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
+from concurrency import withSemLock, lockSem
+when defined(nimParallelSem):
+  from concurrency import parallelSemActive
 import
   std/[strutils, os, tables, terminal, macros, times],
   std/private/[miscdollars, digitsutils],
   options, lineinfos, pathutils
 
 import ropes except `%`
+import std/algorithm
 
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
@@ -93,6 +97,7 @@ proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   result = conf.m.filenameToIndexTbl.hasKey(canon.string)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex =
+  let semGuard {.used.} = lockSem()
   var
     canon: AbsoluteFile
     pseudoPath = false
@@ -182,7 +187,7 @@ proc concat(strings: openArray[string]): string =
   for s in strings: result.add s
 
 proc suggestWriteln*(conf: ConfigRef; s: string) =
-  if eStdOut in conf.m.errorOutputs:
+  if eStdOut in conf.errorOutputs:
     if isNil(conf.writelnHook):
       writeLine(stdout, s)
       flushFile(stdout)
@@ -212,19 +217,19 @@ const
   ColOffset*   = 1
   commandLineDesc* = "command line"
 
-proc getInfoContextLen*(conf: ConfigRef): int = return conf.m.msgContext.len
-proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.m.msgContext, L)
+proc getInfoContextLen*(conf: ConfigRef): int = return conf.msgContext.len
+proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.msgContext, L)
 
 proc pushInfoContext*(conf: ConfigRef; info: TLineInfo; detail: string = "") =
-  conf.m.msgContext.add((info, detail))
+  conf.msgContext.add((info, detail))
 
 proc popInfoContext*(conf: ConfigRef) =
-  setLen(conf.m.msgContext, conf.m.msgContext.len - 1)
+  setLen(conf.msgContext, conf.msgContext.len - 1)
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
-  let i = if index < 0: conf.m.msgContext.len + index else: index
-  if i >=% conf.m.msgContext.len: result = unknownLineInfo
-  else: result = conf.m.msgContext[i].info
+  let i = if index < 0: conf.msgContext.len + index else: index
+  if i >=% conf.msgContext.len: result = unknownLineInfo
+  else: result = conf.msgContext[i].info
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
@@ -356,6 +361,50 @@ type
     msgNoUnitSep  ## the message is a complete "paragraph".
   MsgFlags* = set[MsgFlag]
 
+# ------------------------------------------------- per-unit message buffers --
+# `--parsem:on`: what a unit of the body pass reports is buffered and written
+# in key order once the pass is over (`semstmts.flushUnitMessages`), so that
+# the output does not depend on which thread ran which unit, or when.
+
+type
+  BufferedMsgKind* = enum
+    bmStdout, bmStderr, bmHook
+    bmError ## an error was counted here: `--errorMax` applies when writing
+    bmAbort ## a fatal error or `globalError`: the compilation ends here
+  BufferedMsg* = object
+    kind*: BufferedMsgKind
+    text*: string
+  MsgBuffer* = ref object
+    module*, unit*: int
+    entries*: seq[BufferedMsg]
+  ESemAbort* = object of Defect
+    ## a unit of the parallel body pass hit a fatal error: its thread stops
+
+when defined(nimParallelSem):
+  var tlsMsgBuffer* {.threadvar.}: MsgBuffer
+    ## the buffer of the unit this thread checks, or nil: write directly
+  var tlsAbortUnit* {.threadvar.}: int
+    ## the unit whose error ended the compilation, when `ESemAbort` is raised
+  var tlsInDrain* {.threadvar.}: bool
+    ## a body pass loop runs on this thread and catches `ESemAbort`
+else:
+  var tlsMsgBuffer*: MsgBuffer
+  var tlsAbortUnit*: int
+  var tlsInDrain*: bool
+var pendingBuffers: seq[MsgBuffer]
+  ## buffers not written yet; guarded by the sem lock
+
+proc registerMsgBuffer*(b: MsgBuffer) =
+  withSemLock:
+    {.cast(gcsafe).}: pendingBuffers.add b
+
+proc bufferMsg(kind: BufferedMsgKind; text: string) {.inline.} =
+  {.cast(gcsafe).}: tlsMsgBuffer.entries.add BufferedMsg(kind: kind, text: text)
+
+proc concatArgs(args: varargs[string, `$`]): string =
+  result = ""
+  for a in args: result.add a
+
 proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## Writes given message string to stderr by default.
   ## If ``--stdout`` option is given, writes to stdout instead. If message hook
@@ -366,16 +415,25 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## support.
   #if conf.ideActive and optCDebug notin gGlobalOptions: return
   let sep = if msgNoUnitSep notin flags: conf.unitSep else: ""
+  {.cast(gcsafe).}:
+    if tlsMsgBuffer != nil:
+      if not isNil(conf.writelnHook) and msgSkipHook notin flags:
+        bufferMsg(bmHook, s & sep)
+      elif optStdout in conf.globalOptions or msgStdout in flags:
+        if eStdOut in conf.errorOutputs: bufferMsg(bmStdout, s & sep)
+      elif eStdErr in conf.errorOutputs:
+        bufferMsg(bmStderr, s & sep)
+      return
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s & sep)
   elif optStdout in conf.globalOptions or msgStdout in flags:
-    if eStdOut in conf.m.errorOutputs:
+    if eStdOut in conf.errorOutputs:
       flushDot(conf)
       write stdout, s
       writeLine(stdout, sep)
       flushFile(stdout)
   else:
-    if eStdErr in conf.m.errorOutputs:
+    if eStdErr in conf.errorOutputs:
       flushDot(conf)
       write stderr, s
       writeLine(stderr, sep)
@@ -414,7 +472,7 @@ template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
 
 proc msgWrite(conf: ConfigRef; s: string) =
-  if conf.m.errorOutputs != {}:
+  if conf.errorOutputs != {}:
     let stdOrr =
       if optStdout in conf.globalOptions:
         stdout
@@ -424,15 +482,24 @@ proc msgWrite(conf: ConfigRef; s: string) =
     flushFile(stdOrr)
     conf.lastMsgWasDot.incl stdOrr.toStdOrrKind() # subsequent writes need `flushDot`
 
+proc buffering(): bool {.inline.} =
+  {.cast(gcsafe).}: result = tlsMsgBuffer != nil
+
 template styledMsgWriteln(args: varargs[typed]) =
-  if not isNil(conf.writelnHook):
+  if buffering():
+    let line = callIgnoringStyle(concatArgs, nil, args)
+    if not isNil(conf.writelnHook): bufferMsg(bmHook, line)
+    elif optStdout in conf.globalOptions:
+      if eStdOut in conf.errorOutputs: bufferMsg(bmStdout, line)
+    elif eStdErr in conf.errorOutputs: bufferMsg(bmStderr, line)
+  elif not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
-    if eStdOut in conf.m.errorOutputs:
+    if eStdOut in conf.errorOutputs:
       flushDot(conf)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
-  elif eStdErr in conf.m.errorOutputs:
+  elif eStdErr in conf.errorOutputs:
     flushDot(conf)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
@@ -468,25 +535,110 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
           [conf.command, "intern.html#debugging-the-compiler".createDocLink], conf.unitSep)
   quit 1
 
+proc writeBufferedMsg(conf: ConfigRef; m: BufferedMsg) =
+  case m.kind
+  of bmStdout:
+    flushDot(conf)
+    writeLine(stdout, m.text)
+    flushFile(stdout)
+  of bmStderr:
+    flushDot(conf)
+    writeLine(stderr, m.text)
+    when defined(windows):
+      flushFile(stderr)
+  of bmHook:
+    conf.writelnHook(m.text)
+  of bmError, bmAbort: discard
+
+proc flushMsgBuffers*(conf: ConfigRef; module: int) =
+  ## writes `module`'s buffered unit messages in key order; ends the
+  ## compilation where `--errorMax` (counting the errors reported before)
+  ## or a fatal error would have ended it had the units reported directly
+  var mine: seq[MsgBuffer] = @[]
+  withSemLock:
+    {.cast(gcsafe).}:
+      var rest: seq[MsgBuffer] = @[]
+      for b in pendingBuffers:
+        if b.module == module: mine.add b else: rest.add b
+      pendingBuffers = rest
+  mine.sort(proc (a, b: MsgBuffer): int = cmp(a.unit, b.unit))
+  let saved = tlsMsgBuffer
+  tlsMsgBuffer = nil
+  var errors = conf.errorCounter
+  for b in mine:
+    for m in b.entries:
+      if m.kind == bmError: dec errors
+  for b in mine:
+    for m in b.entries:
+      case m.kind
+      of bmError:
+        inc errors
+        if errors >= conf.errorMax and conf.ideCmd == ideNone:
+          quit(conf, errGenerated)
+      of bmAbort:
+        quit(conf, errGenerated)
+      else:
+        writeBufferedMsg(conf, m)
+  tlsMsgBuffer = saved
+
+proc flushAllMsgBuffers(conf: ConfigRef) =
+  ## before the compilation ends: nothing that was reported may be lost
+  var all: seq[MsgBuffer] = @[]
+  withSemLock:
+    {.cast(gcsafe).}:
+      all = move pendingBuffers
+      pendingBuffers = @[]
+  all.sort(proc (a, b: MsgBuffer): int =
+    result = cmp(a.module, b.module)
+    if result == 0: result = cmp(a.unit, b.unit))
+  tlsMsgBuffer = nil
+  for b in all:
+    for m in b.entries: writeBufferedMsg(conf, m)
+
+proc abortCompilation(conf: ConfigRef; msg: TMsgKind; s: string) =
+  ## quits -- unless the message is buffered: then the unit ends here, the
+  ## body pass still checks the units before it in key order, and the
+  ## compilation ends once they have been reported (`flushMsgBuffers`)
+  {.cast(gcsafe).}:
+    if tlsMsgBuffer != nil and tlsInDrain and conf.errorOutputs != {}:
+      bufferMsg(bmAbort, "")
+      tlsAbortUnit = tlsMsgBuffer.unit
+      raise newException(ESemAbort, s)
+    flushAllMsgBuffers(conf)
+  quit(conf, msg)
+
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string, ignoreMsg: bool) =
   if msg in fatalMsgs:
     if conf.ideActive: log(s)
     if not conf.ideActive or msg != errFatal:
-      quit(conf, msg)
+      abortCompilation(conf, msg, s)
   if msg >= errMin and msg <= errMax or
       (msg in warnMin..hintMax and msg in conf.warningAsErrors and not ignoreMsg):
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
-    if conf.errorCounter >= conf.errorMax:
+    var buffered = false
+    {.cast(gcsafe).}:
+      if tlsMsgBuffer != nil and conf.errorOutputs != {}:
+        # `--errorMax` is applied when the buffer is written (an error of a
+        # `compiles()` context is no error of the unit)
+        bufferMsg(bmError, "")
+        buffered = true
+    if buffered:
+      if (conf.errorCounter >= conf.errorMax and conf.ideCmd == ideNone) or
+          (eh == doAbort and not conf.ideActive):
+        abortCompilation(conf, msg, s)
+      elif eh == doRaise:
+        raiseRecoverableError(s)
+    elif conf.errorCounter >= conf.errorMax:
       # only really quit when we're not in the new 'nim check --def' mode:
       if conf.ideCmd == ideNone:
         when defined(nimsuggest):
           #we need to inform the user that something went wrong when initializing NimSuggest
           raiseRecoverableError(s)
         else:
-          quit(conf, msg)
+          abortCompilation(conf, msg, s)
     elif eh == doAbort and not conf.ideActive:
-      quit(conf, msg)
+      abortCompilation(conf, msg, s)
     elif eh == doRaise:
       raiseRecoverableError(s)
 
@@ -500,8 +652,8 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
   const instantiationOfFrom = "template/generic instantiation of `$1` from here"
   var info = lastinfo
-  for i in 0..<conf.m.msgContext.len:
-    let context = conf.m.msgContext[i]
+  for i in 0..<conf.msgContext.len:
+    let context = conf.msgContext[i]
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
         conf.structuredErrorHook(conf, context.info, instantiationFrom,
@@ -565,16 +717,17 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling, info2: InstantiationInfo, isRaw = false,
                ignoreError = false) {.gcsafe, noinline.} =
+  let semGuard {.used.} = lockSem()
   var
     title: string
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
-  let errorOutputsOld = conf.m.errorOutputs
+  let errorOutputsOld = conf.errorOutputs
   if msg in fatalMsgs:
     # don't gag, refs bug #7080, bug #18278; this can happen with `{.fatal.}`
     # or inside a `tryConstExpr`.
-    conf.m.errorOutputs = {eStdOut, eStdErr}
+    conf.errorOutputs = {eStdOut, eStdErr}
 
   let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
@@ -587,8 +740,8 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       # we try to filter error messages so that not two error message
       # in the same file and line are produced:
       # xxx `lastError` is only used in this disabled code; but could be useful to revive
-      ignoreMsg = conf.m.lastError == info and info != unknownLineInfo and eh != doAbort
-    if info != unknownLineInfo: conf.m.lastError = info
+      ignoreMsg = conf.lastError == info and info != unknownLineInfo and eh != doAbort
+    if info != unknownLineInfo: conf.lastError = info
   of warnMin..warnMax:
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
@@ -634,7 +787,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     handleError(conf, msg, eh, s, ignoreMsg)
   if msg in fatalMsgs:
     # most likely would have died here but just in case, we restore state
-    conf.m.errorOutputs = errorOutputsOld
+    conf.errorOutputs = errorOutputsOld
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let arg = msgKindToString(msg) % args
