@@ -567,6 +567,12 @@ proc getNewLocation(lastURL: Uri, headers: HttpHeaders): Uri =
   else:
     result = parsedLocation
 
+proc checkLineSafe(s, what: string) =
+  ## Raises `ValueError` if `s` could end the line it is placed in, which
+  ## would let it inject headers or whole requests.
+  if s.contains({'\c', '\L', '\0'}):
+    raise newException(ValueError, what & " contains a newline or NUL character")
+
 proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeaders,
                      proxy: Proxy): string =
   # GET
@@ -585,11 +591,16 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     if requestUrl.scheme == "https": modifiedUrl.scheme = ""
     result.add($modifiedUrl)
 
+  # The request target comes from a `Uri` whose fields can contain anything.
+  checkLineSafe(result, "url")
+
   # HTTP/1.1\c\l
   result.add(" HTTP/1.1" & httpNewLine)
 
   # Host header.
   if not headers.hasKey("Host"):
+    checkLineSafe(requestUrl.hostname, "url hostname")
+    checkLineSafe(requestUrl.port, "url port")
     if requestUrl.port == "":
       add(result, "Host: " & requestUrl.hostname & httpNewLine)
     else:
@@ -605,6 +616,8 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
+    checkLineSafe(key, "header name")
+    checkLineSafe(val, "value of header '" & key & "'")
     add(result, key & ": " & val & httpNewLine)
 
   add(result, httpNewLine)
@@ -1244,7 +1257,9 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ## `client.headers`.
   ##
   ## You need to make sure that the `url` doesn't contain any newline
-  ## characters. Failing to do so will raise `AssertionDefect`.
+  ## characters. Failing to do so will raise `AssertionDefect` for a string
+  ## `url` and `ValueError` for a `Uri`. A header name or value that contains
+  ## a newline or NUL character raises `ValueError` too.
   ##
   ## `headers` are HTTP headers that override the `client.headers` for
   ## this specific request only and will not be persisted.
