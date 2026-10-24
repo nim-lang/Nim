@@ -172,3 +172,15 @@ block: # bug #25462
   doAssert y[2].text == " "
   doAssert y[3].kind == xnText
   doAssert y[3].text == "y"
+
+block: # the output size is linear in the nesting depth, not quadratic
+  proc deep(d: int): XmlNode =
+    result = newElement("a")
+    var it = result
+    for i in 1..d:
+      let c = newElement("a")
+      it.add c
+      it = c
+  doAssert ($deep(400)).len < 400 * 200
+  # the indentation is unchanged for shallow trees
+  doAssert $deep(2) == "<a>\n  <a>\n    <a />\n  </a>\n</a>"
