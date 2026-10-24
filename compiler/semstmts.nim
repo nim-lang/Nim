@@ -75,7 +75,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
       if s.kind == skLabel and s.owner.id == c.p.owner.id:
         var x = newSymNode(s)
         x.info = n.info
-        incl(s.flagsImpl, sfUsed)
+        inclShared(s.flagsImpl, sfUsed)
         n[0] = x
         suggestSym(c.graph, x.info, s, c.graph.usageSym)
         onUse(x.info, s)
@@ -2160,7 +2160,7 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
     var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen,
                    getCurrOwner(c), n.info)
     s.typ = t
-    incl(s.flagsImpl, sfUsed)
+    inclShared(s.flagsImpl, sfUsed)
 
   if owner == skMacro or t != nil:
     if n.len > resultPos and n[resultPos] != nil:
@@ -2372,7 +2372,7 @@ proc bindDupHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     localError(c.config, n.info, errGenerated,
       "signature for '=dup' must be proc[T: object](x: T): T")
 
-  incl(s.flagsImpl, sfUsed)
+  inclShared(s.flagsImpl, sfUsed)
   incl(s, sfOverridden)
 
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
@@ -2413,7 +2413,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
     else:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
-  incl(s.flagsImpl, sfUsed)
+  inclShared(s.flagsImpl, sfUsed)
   incl(s, sfOverridden)
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
@@ -2454,11 +2454,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     else:
       localError(c.config, n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
-    incl(s.flagsImpl, sfUsed)
+    inclShared(s.flagsImpl, sfUsed)
     incl(s, sfOverridden)
   of "=", "=copy", "=sink":
     if s.magic == mAsgn: return
-    incl(s.flagsImpl, sfUsed)
+    inclShared(s.flagsImpl, sfUsed)
     incl(s, sfOverridden)
     if name == "=":
       message(c.config, n.info, warnDeprecated, "Overriding `=` hook is deprecated; Override `=copy` hook instead")
@@ -2720,6 +2720,32 @@ proc enqueueBodyTask(c: PContext; s: PSym; n: PNode; resultType: PType;
     friendModules: c.friendModules,
     errorOutputs: c.config.errorOutputs)
 
+when defined(nimParallelSem):
+  template workerId: untyped = tlsWorkerId
+    ## 1.. for the threads of a parallel body pass, 0 otherwise
+  var waitingFor: array[MaxSemWorkers + 1, ptr BodyTask]
+  var semAbortAt = high(int)
+    ## the lowest unit whose error ends the compilation: the units after it
+    ## are not checked any more, and nobody waits for the units it left
+    ## per worker: the unit it is waiting for (deadlock check)
+  template parallelOn(): bool = parallelSemActive
+  proc claimTask(c: PContext; idx: int): bool =
+    var expected = int32(btPending)
+    result = atomicCompareExchangeN(cast[ptr int32](addr c.bodyTasks[idx].state),
+      addr expected, int32(btRunning), false, ATOMIC_ACQ_REL, ATOMIC_ACQUIRE)
+    if result: atomicStoreN(addr c.bodyTasks[idx].runner, workerId, ATOMIC_RELEASE)
+  proc taskState(c: PContext; idx: int): BodyTaskState {.inline.} =
+    BodyTaskState(atomicLoadN(cast[ptr int32](addr c.bodyTasks[idx].state), ATOMIC_ACQUIRE))
+  template currentWorker(): int32 = workerId
+  proc markDone(c: PContext; idx: int) =
+    if parallelOn():
+      atomicStoreN(cast[ptr int32](addr c.bodyTasks[idx].state), int32(btDone),
+                   ATOMIC_RELEASE)
+else:
+  template parallelOn(): bool = false
+  template currentWorker(): int32 = 0
+  template markDone(c: PContext; idx: int) = discard
+
 proc solveCycle(c: PContext; members: seq[int]) =
   ## The effects of a cycle of units: routines that need each other's bodies,
   ## mutual recursion without forward declarations, typically. Whichever of
@@ -2747,7 +2773,9 @@ proc solveCycle(c: PContext; members: seq[int]) =
     if c.bodyTasks[u].effectsDeferred: order.add (u, -1)
     for e in 0..<c.bodyTasks[u].cycleRoutines.len: order.add (u, e)
   if order.len == 0:
-    for m in members: c.bodyTasks[m].onStack = false
+    for m in members:
+      c.bodyTasks[m].onStack = false
+      if m != members[^1]: markDone(c, m)
     return
   var cycle = newSeq[CycleMember](order.len)
 
@@ -2803,6 +2831,27 @@ proc solveCycle(c: PContext; members: seq[int]) =
   for k in 0..<order.len:
     asMember(k):
       publishMember(c, cycle[k])
+  for m in members:
+    # the root is marked by `runBodyTask`
+    if m != members[^1]: markDone(c, m)
+
+when defined(nimSemLockStats):
+  var bodyPassNs, bodyPassUnits, bodyPassModules: int64
+  var perModule: seq[(int64, string, int, int64)]
+    # wall, module, units, longest unit
+  var longestUnit {.threadvar.}: int64
+  var longestUnitAll: int64
+  proc reportBodyPass() {.noconv.} =
+    echo "body pass: ", bodyPassModules, " modules, ", bodyPassUnits, " units, ",
+      formatFloat(bodyPassNs.float / 1e6, ffDecimal, 1), " ms wall"
+    perModule.sort(proc (a, b: (int64, string, int, int64)): int = cmp(b[0], a[0]))
+    for i in 0..<min(20, perModule.len):
+      let m = perModule[i]
+      echo "  ", m[1], " ", m[2], " units ", formatFloat(m[0].float / 1e6, ffDecimal, 1),
+        " ms, longest unit ", formatFloat(m[3].float / 1e6, ffDecimal, 1), " ms"
+  addExitProc(reportBodyPass)
+
+proc runBodyTaskImpl(c: PContext; idx: int)
 
 proc runBodyTask(c: PContext; idx: int) =
   ## Re-attaches one unit's positional state, sems it, and detaches again.
@@ -2812,8 +2861,47 @@ proc runBodyTask(c: PContext; idx: int) =
   ## another unit. So the whole `PositionalState` (§3 (a)) is swapped out and
   ## back in, and so are the per-unit parts of `ConfigRef` — a unit must see
   ## neither the state of whoever demanded it nor leave any behind.
+  when defined(nimParallelSem):
+    if parallelOn():
+      if not claimTask(c, idx): return
+      # a unit of another context (a demand that chains out to an enclosing
+      # module): this thread runs it on its own copy of that context's state
+      let savedTlsPos = tlsPos
+      let savedTlsPosCtx = tlsPosCtx
+      let savedTlsArena = tlsArena
+      let savedTlsArenaIdgen = tlsArenaIdgen
+      var foreignPos: PositionalState
+      var foreignArena: ArenaFields
+      let foreign = tlsPosCtx != cast[pointer](c)
+      if foreign:
+        withSemLock:
+          foreignPos = c.posField
+          foreignArena = c.idgen.arenaField
+        tlsPos = addr foreignPos
+        tlsPosCtx = cast[pointer](c)
+        tlsArena = addr foreignArena
+        tlsArenaIdgen = cast[pointer](c.idgen)
+      try:
+        runBodyTaskImpl(c, idx)
+      finally:
+        if foreign:
+          if foreignPos.generics.len > 0:
+            withSemLock: c.posField.generics.add foreignPos.generics
+          tlsPos = savedTlsPos
+          tlsPosCtx = savedTlsPosCtx
+          tlsArena = savedTlsArena
+          tlsArenaIdgen = savedTlsArenaIdgen
+        if not c.bodyTasks[idx].onStack:
+          # done means: effects final. A unit of a cycle that is still open
+          # is done when the cycle is solved (`solveCycle`)
+          atomicStoreN(cast[ptr int32](addr c.bodyTasks[idx].state), int32(btDone),
+                       ATOMIC_RELEASE)
+      return
   if c.bodyTasks[idx].state != btPending: return
   c.bodyTasks[idx].state = btRunning
+  runBodyTaskImpl(c, idx)
+
+proc runBodyTaskImpl(c: PContext; idx: int) =
   let parSem = optParSem in c.config.globalOptions
   if parSem:
     # a new node of the demand graph (`solveCycle`)
@@ -2870,6 +2958,12 @@ proc runBodyTask(c: PContext; idx: int) =
   c.config.errorOutputs = t.errorOutputs
   if savedPos.compilesContextId > 0: c.config.errorMax = c.unitErrorMax
   pushOwner(c, t.owner)
+  # what the unit reports is written in key order when the pass is over
+  let savedMsgBuffer = tlsMsgBuffer
+  if parSem:
+    let buf = MsgBuffer(module: c.module.position, unit: idx)
+    registerMsgBuffer(buf)
+    tlsMsgBuffer = buf
   try:
     if t.isGeneric:
       semGenericRoutineBody(c, t.owner, t.def)
@@ -2893,7 +2987,8 @@ proc runBodyTask(c: PContext; idx: int) =
           if m == idx: break
         solveCycle(c, members)
   finally:
-    c.bodyTasks[idx].state = btDone
+    tlsMsgBuffer = savedMsgBuffer
+    if not parallelOn(): c.bodyTasks[idx].state = btDone
     if parSem and c.bodyTasks[idx].onStack and
         c.bodyTasks[idx].lowlink == c.bodyTasks[idx].tarjanIndex:
       # left by an error: close the cycle without solving it
@@ -2901,10 +2996,12 @@ proc runBodyTask(c: PContext; idx: int) =
         let m = c.tarjanStack.pop()
         c.bodyTasks[m].onStack = false
         if m == idx: break
+        markDone(c, m)
     if savedPos.compilesContextId > 0 and c.config.errorCounter > savedErrorCounter:
       # `tryExpr` rolls the counter back; keep the unit's errors failing the
       # build all the same (`closePContext` adds them back).
-      inc c.unitErrorsInCompiles, c.config.errorCounter - savedErrorCounter
+      withSemLock:
+        inc c.unitErrorsInCompiles, c.config.errorCounter - savedErrorCounter
     setLen(c.graph.owners, savedOwnerLen)
     if parSem:
       closeLogSink(c.graph)
@@ -2928,6 +3025,92 @@ proc keepsForwardSemantics(c: PContext; prc: PSym; idx: int): bool =
   result = sfWasForwarded in prc.flags and c.currentUnit >= 0 and
     idx > c.currentUnit
 
+when defined(nimParallelSem):
+  var waitGraphLock: int
+    ## makes "is there a cycle?" and "this thread waits now" one step: two
+    ## threads that each find the other not waiting yet would both wait
+
+  proc startWaiting(target: ptr BodyTask): bool =
+    ## publishes that this thread waits for `target`'s runner -- unless that
+    ## runner waits (transitively) for this thread: then `false`, a cycle
+    var zero = 0
+    while not atomicCompareExchangeN(addr waitGraphLock, addr zero, 1, false,
+                                     ATOMIC_ACQUIRE, ATOMIC_RELAXED):
+      zero = 0
+      cpuRelax()
+    result = true
+    var w = atomicLoadN(addr target.runner, ATOMIC_ACQUIRE)
+    var hops = 0
+    while w != 0 and hops <= MaxSemWorkers:
+      if w == workerId:
+        result = false
+        break
+      let t = atomicLoadN(addr waitingFor[w], ATOMIC_ACQUIRE)
+      if t == nil: break
+      w = atomicLoadN(addr t.runner, ATOMIC_ACQUIRE)
+      inc hops
+    if result: atomicStoreN(addr waitingFor[workerId], target, ATOMIC_RELEASE)
+    atomicStoreN(addr waitGraphLock, 0, ATOMIC_RELEASE)
+
+  proc reportLongWait(what: string; spins: var int) =
+    ## a wait that does not end is a bug of the waiting protocol: say who
+    ## waits for whom, once
+    if spins == 100_000:
+      var msg = "[parallelSem] worker " & $workerId & " waits for " & what & "; waits:"
+      for w in 1..semWorkers:
+        let t = atomicLoadN(addr waitingFor[w], ATOMIC_ACQUIRE)
+        if t != nil:
+          msg.add " " & $w & "->" & $atomicLoadN(addr t.runner, ATOMIC_ACQUIRE) &
+            (if t.owner != nil: "(" & t.owner.name.s & ")" else: "(instance)")
+      echo msg
+
+  proc waitForTask(c: PContext; idx: int): bool =
+    ## The unit is running on another thread: wait until it is done -- with the
+    ## sem lock released, or that thread may block on it. Unless it is waiting
+    ## (transitively) for a unit this thread runs: that is a recursion across
+    ## threads, which is treated as a recursion (the unit's effects are not
+    ## known yet; a prototype limitation, the cycle is not solved).
+    result = true
+    let me = addr c.bodyTasks[idx]
+    if taskState(c, idx) == btDone: return
+    let w = atomicLoadN(addr c.bodyTasks[idx].runner, ATOMIC_ACQUIRE)
+    if w == workerId: return  # a recursion on this thread: Tarjan's business
+    if not startWaiting(me): return false
+    let depth = releaseSemLockFully()
+    var spins = 0
+    while taskState(c, idx) != btDone and atomicLoadN(addr semAbortAt, ATOMIC_ACQUIRE) == high(int):
+      inc spins
+      reportLongWait("unit " & c.bodyTasks[idx].owner.name.s & " of worker " &
+                     $atomicLoadN(addr c.bodyTasks[idx].runner, ATOMIC_ACQUIRE), spins)
+      if spins < 100: cpuRelax()
+      else: sleep(0)
+    reacquireSemLock(depth)
+    atomicStoreN(addr waitingFor[workerId], nil, ATOMIC_RELEASE)
+
+when defined(nimParallelSem):
+  var instanceWaits: array[MaxSemWorkers + 1, BodyTask]
+    ## what a thread waiting for an instance shows `waitForTask`'s cycle check:
+    ## a task run by the instance's producer
+
+  proc waitForInstance(s: PSym) =
+    ## Before the VM compiles `s`: if another thread is still producing the
+    ## instance, wait for it, with the sem lock released. Unless that thread
+    ## waits (transitively) for this one: then what is there is all there is,
+    ## as for a recursion on one thread.
+    let p = instanceProducer(s)
+    if p == 0: return
+    atomicStoreN(addr instanceWaits[workerId].runner, p, ATOMIC_RELEASE)
+    if not startWaiting(addr instanceWaits[workerId]): return
+    let depth = releaseSemLockFully()
+    var spins = 0
+    while instanceProducer(s) != 0 and atomicLoadN(addr semAbortAt, ATOMIC_ACQUIRE) == high(int):
+      inc spins
+      reportLongWait("instance " & s.name.s & " of worker " & $instanceProducer(s), spins)
+      if spins < 100: cpuRelax()
+      else: sleep(0)
+    reacquireSemLock(depth)
+    atomicStoreN(addr waitingFor[workerId], nil, ATOMIC_RELEASE)
+
 proc demandRoutineBody(c: PContext; prc: PSym; forEffects: bool): bool =
   ## §2.3's "run it inline": something needs a unit's body before the body pass
   ## would have got to it. `btRunning` means genuine recursion and is left
@@ -2945,9 +3128,13 @@ proc demandRoutineBody(c: PContext; prc: PSym; forEffects: bool): bool =
   if idx >= 0:
     result = forEffects and keepsForwardSemantics(c, prc, idx)
     if not result: runBodyTask(c, idx)
+    when defined(nimParallelSem):
+      if not result and parallelOn() and not waitForTask(c, idx):
+        tlsCrossCycle = true
     let cur = c.currentUnit
     if not result and cur >= 0 and c.bodyTasks[idx].onStack and
-        optParSem in c.config.globalOptions:
+        optParSem in c.config.globalOptions and
+        (not parallelOn() or c.bodyTasks[idx].runner == currentWorker()):
       # an edge of the demand graph into a cycle that is not closed yet: the
       # demanding unit is part of it (`solveCycle`). A forward declaration
       # that keeps its semantics is no edge: it is what cuts a cycle at the
@@ -2977,6 +3164,8 @@ proc demandReachable(c: PContext; n: PNode; visited: var IntSet;
     let s = n.sym
     if s.kind in routineKinds and s.id notin c.closedUnits and
         not visited.containsOrIncl(s.id):
+      when defined(nimParallelSem):
+        if parallelOn(): waitForInstance(s)
       discard c.graph.demandRoutineBody(s, forEffects = false)
       if ownsUnits(c, s) and s.ast != nil and s.ast.len > bodyPos:
         let idx = c.bodyTaskIndex.getOrDefault(s.itemId, -1)
@@ -3005,7 +3194,163 @@ proc demandReachableBodies(c: PContext; n: PNode) =
     # no later walk has to look at it again
     for id in visited: c.closedUnits.incl id
 
+when defined(nimParallelSem):
+  type WorkerArgs = object
+    c: PContext
+    next: ptr int
+    id: int32
+    generics: ptr seq[seq[TInstantiationPair]]
+    usedImports: ptr seq[IntSet]
+
+  proc bodyWorker(a: ptr WorkerArgs) {.thread.} =
+    ## one thread of the parallel body pass: its own copies of everything a
+    ## unit changes, then units in key order until none is left
+    {.cast(gcsafe).}:
+      let c = a.c
+      workerId = a.id
+      var unitCfg = c.config.unitField
+      tlsUnit = addr unitCfg
+      var errorsBefore = 0
+      withSemLock: errorsBefore = c.config.errorCounterField
+      var errors = errorsBefore
+      tlsErrorCounter = addr errors
+      var gstate = GraphUnitState(owners: @[c.module])
+      tlsGraph = addr gstate
+      var pos = c.posField
+      pos.generics = @[]
+      tlsPos = addr pos
+      tlsPosCtx = cast[pointer](c)
+      var arena = c.idgen.arenaField
+      tlsArena = addr arena
+      tlsArenaIdgen = cast[pointer](c.idgen)
+      var usedImports = initIntSet()
+      tlsUsedImports = addr usedImports
+      tlsUsedImportsCtx = cast[pointer](c)
+      tlsInDrain = true
+      while true:
+        let i = atomicFetchAdd(a.next, 1, ATOMIC_ACQ_REL)
+        if i >= c.bodyTasks.len: break
+        if i >= atomicLoadN(addr semAbortAt, ATOMIC_ACQUIRE): continue
+        try:
+          when defined(nimSemLockStats):
+            let u0 = nowNs()
+            runBodyTask(c, i)
+            let du = nowNs() - u0
+            if du > longestUnitAll: longestUnitAll = du
+          else:
+            runBodyTask(c, i)
+        except ERecoverableError:
+          # as `semStmtAndGenerateGenerics` does for a top-level statement:
+          # the unit ends, the others go on
+          discard
+        except ESemAbort:
+          # the compilation ends with this unit's error: the units after it
+          # are not checked any more, the ones before it are, and reported
+          # first (`flushMsgBuffers`)
+          var cur = atomicLoadN(addr semAbortAt, ATOMIC_ACQUIRE)
+          while tlsAbortUnit < cur and not atomicCompareExchangeN(addr semAbortAt,
+              addr cur, tlsAbortUnit, false, ATOMIC_ACQ_REL, ATOMIC_ACQUIRE):
+            discard
+      tlsInDrain = false
+      a.generics[a.id - 1] = move pos.generics
+      a.usedImports[a.id - 1] = move usedImports
+      tlsUsedImports = nil; tlsUsedImportsCtx = nil
+      withSemLock:
+        inc c.config.errorCounterField, errors - errorsBefore
+      tlsErrorCounter = nil
+      tlsUnit = nil; tlsGraph = nil; tlsPos = nil; tlsPosCtx = nil
+      tlsArena = nil; tlsArenaIdgen = nil
+      workerId = 0
+
+  proc solveCrossThread(c: PContext) =
+    ## After the parallel body pass, on one thread: the routines whose effects
+    ## depended on a cycle across threads (`deferCrossThread`) are solved like
+    ## a cycle of units (`solveCycle`): from no effects, tracked again until
+    ## nothing grows, then checked and published -- in the order of their
+    ## ids, not the order the threads found them in.
+    c.crossDeferred.sort(proc (a, b: typeof(c.crossDeferred[0])): int = cmp(a.s.id, b.s.id))
+    var cycle: seq[CycleMember] = @[]
+    for r in c.crossDeferred:
+      cycle.add initCycleMember(c, r.s, r.s.ast[bodyPos], r.declGcSafe,
+                                r.declNoSideEffect)
+    let savedErrorOutputs = c.config.errorOutputs
+    let savedErrorCounter = c.config.errorCounter
+    let savedErrorMax = c.config.errorMax
+    c.config.errorOutputs = {}
+    c.config.errorMax = high(int)
+    try:
+      var changed = true
+      while changed:
+        changed = false
+        for k in 0..<cycle.len:
+          if retrackMember(c, cycle[k]): changed = true
+    finally:
+      c.config.errorOutputs = savedErrorOutputs
+      c.config.errorCounter = savedErrorCounter
+      c.config.errorMax = savedErrorMax
+    c.crossProvisional = initIntSet()
+    c.crossCount = 0
+    let savedOptions = c.config.options
+    let savedNotes = c.config.notes
+    for k in 0..<cycle.len:
+      # checked and reported under the options of the unit that deferred it
+      c.config.options = c.crossDeferred[k].options
+      c.config.notes = c.crossDeferred[k].notes
+      publishMember(c, cycle[k])
+    c.config.options = savedOptions
+    c.config.notes = savedNotes
+    c.crossDeferred.setLen 0
+
+  proc drainParallel(c: PContext; n: int) =
+    ## the body pass on `n` threads (`--parallelSem:N`), this one included
+    var next = 0
+    var generics = newSeq[seq[TInstantiationPair]](n)
+    var usedImports = newSeq[IntSet](n)
+    var args = newSeq[WorkerArgs](n)
+    var threads = newSeq[Thread[ptr WorkerArgs]](n - 1)
+    for k in 0 ..< n:
+      args[k] = WorkerArgs(c: c, next: addr next, id: int32(k + 1),
+                           generics: addr generics, usedImports: addr usedImports)
+    semWorkers = n
+    parallelSemActive = true
+    try:
+      for k in 1 ..< n: createThread(threads[k - 1], bodyWorker, addr args[k])
+      bodyWorker(addr args[0])
+      joinThreads(threads)
+    finally:
+      parallelSemActive = false
+      resetProvisional()
+    for g in generics: c.posField.generics.add g
+    semAbortAt = high(int)
+    flushMsgBuffers(c.config, c.module.position)
+    var used = initIntSet()
+    for u in usedImports: used.incl u
+    if used.len > 0:
+      var rest: seq[(PSym, TLineInfo)] = @[]
+      for i in 0..high(c.unusedImports):
+        if i notin used: rest.add c.unusedImports[i]
+      c.unusedImports = rest
+    if c.crossDeferred.len > 0: solveCrossThread(c)
+
+proc drainBodyTasksImpl(c: PContext)
+
 proc drainBodyTasks*(c: PContext) =
+  when defined(nimSemLockStats):
+    let outermost = not parallelSemActive
+    let t0 = nowNs()
+    let units = c.bodyTasks.len
+    drainBodyTasksImpl(c)
+    if outermost and units > 0:
+      let dt = nowNs() - t0
+      bodyPassNs += dt
+      bodyPassUnits += units
+      inc bodyPassModules
+      perModule.add (dt, c.module.name.s, units, longestUnitAll)
+      longestUnitAll = 0
+  else:
+    drainBodyTasksImpl(c)
+
+proc drainBodyTasksImpl(c: PContext) =
   ## The body pass. In key order, which is simply front to back: the header
   ## pass appended in source order and the on-demand path only ever marks
   ## entries done early, never reorders them.
@@ -3013,6 +3358,13 @@ proc drainBodyTasks*(c: PContext) =
   ## `-d:nimParsemGrind` drains back to front instead: a schedule that differs
   ## from the reference one as much as possible, for checking that the output
   ## does not depend on the order units run in (§5's grinder, one worker).
+  when defined(nimParallelSem):
+    if c.config.parallelSem > 1 and optParSem in c.config.globalOptions and
+        not parallelSemActive and c.bodyTasks.len > 1 and
+        c.config.cmd notin {cmdM, cmdNifC} and c.config.symbolFiles == disabledSf:
+      # (not with IC yet: symbols are loaded from NIF files lazily, on one thread)
+      drainParallel(c, min(c.config.parallelSem, MaxSemWorkers))
+      return
   when defined(nimParsemGrind):
     var j = c.bodyTasks.len - 1
     while j >= 0:
@@ -3020,12 +3372,34 @@ proc drainBodyTasks*(c: PContext) =
       dec j
     # a unit can enqueue nothing today; if one ever does, finish in key order
   var i = 0
+  var abortAt = high(int)
+  let wasInDrain = tlsInDrain
+  tlsInDrain = true
   while i < c.bodyTasks.len:
     # not a `for`: a unit's body can enqueue nothing (nested routines are not
     # units) but CAN mark later ones done through `demandRoutineBody`, and the
     # length is re-read so a future stage that does enqueue still terminates.
-    runBodyTask(c, i)
+    if i < abortAt:
+      try:
+        when defined(nimSemLockStats):
+          let u0 = nowNs()
+          runBodyTask(c, i)
+          let du = nowNs() - u0
+          if du > longestUnitAll: longestUnitAll = du
+        else:
+          runBodyTask(c, i)
+      except ERecoverableError:
+        # as `semStmtAndGenerateGenerics` does for a top-level statement:
+        # the unit ends, the others go on
+        discard
+      except ESemAbort:
+        # the compilation ends with this unit's error; the units before it
+        # are still checked, so the first error does not depend on the order
+        abortAt = min(abortAt, tlsAbortUnit)
     inc i
+  tlsInDrain = wasInDrain
+  if optParSem in c.config.globalOptions:
+    flushMsgBuffers(c.config, c.module.position)
 
 const
   DeferrableNeighbours = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
@@ -3072,7 +3446,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   case n[namePos].kind
   of nkEmpty:
     s = newSym(kind, c.cache.idAnon, c.idgen, c.getCurrOwner, n.info)
-    s.flagsImpl.incl sfUsed
+    inclShared(s.flagsImpl, sfUsed)
     s.incl sfGenSym
     n[namePos] = newSymNode(s)
   of nkSym:

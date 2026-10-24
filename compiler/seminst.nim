@@ -24,7 +24,7 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
     let f = n.sym
     if f.kind == skField and fieldVisible(c, f):
       c.currentScope.symbols.strTableIncl(f, onConflictKeepOld=true)
-      incl(f.flagsImpl, sfUsed)
+      inclShared(f.flagsImpl, sfUsed)
       # it is not an error to shadow fields via parameters
   else: discard
 
@@ -102,6 +102,7 @@ proc sharesInstanceWith(g: ModuleGraph; inst: PInstantiation; module: PSym): boo
 proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
                      id: CompilesId; module: PSym): PSym =
   result = nil
+  let semGuard {.used.} = lockSem()
   for inst in procInstCacheItems(g, genericSym):
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]) and
         sharesInstanceWith(g, inst, module):
@@ -132,6 +133,7 @@ proc genericCacheGetFromBindings(g: ModuleGraph; genericSym: PSym,
                                  pt: LayeredIdTable; id: CompilesId;
                                  module: PSym): PSym =
   result = nil
+  let semGuard {.used.} = lockSem()
   for inst in procInstCacheItems(g, genericSym):
     if inst.sym != nil and inst.sym.itemId.module == module.position and
         (inst.compilesId == 0 or inst.compilesId == id) and
@@ -334,7 +336,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
 
     # this scope was not created by the user,
     # unused params shouldn't be reported.
-    param.flagsImpl.incl sfUsed
+    inclShared(param.flagsImpl, sfUsed)
     addDecl(c, param)
 
   result = replaceTypeVarsT(cl, header)
@@ -538,6 +540,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   ## Generates a new instance of a generic procedure.
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.
+  let semGuard {.used.} = lockSem()
   # no need to instantiate generic templates/macros:
   internalAssert c.config, fn.kind notin {skMacro, skTemplate}
   # IC: instantiating `fn` consumes its generic body in the current module's
@@ -695,14 +698,33 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     # bug #12985 bug #22913
     # TODO: use the context of the declaration of generic functions instead
     # TODO: consider fixing options as well
-    let otherPragmas = c.optionStack[^1].otherPragmas
-    c.optionStack[^1].otherPragmas = nil
+    # The entry is replaced, not mutated: it is shared with every unit
+    # whose option stack was copied from this one, on other threads too.
+    let outerEntry = c.optionStack[^1]
+    var optEntry = POptionEntry()
+    optEntry[] = outerEntry[]
+    optEntry.otherPragmas = nil
+    c.optionStack[^1] = optEntry
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
       n[bodyPos] = copyTree(getBody(c.graph, fn))
-    instantiateBody(c, n, fn.typ.n, result, fn)
-    c.optionStack[^1].otherPragmas = otherPragmas
+    beginInstanceEffects(result)
+    try:
+      let rt = result.typ.returnType
+      if rt != nil and rt.kind in {tyAnything, tyUntyped}:
+        # the signature is only complete once the body is: whoever finds
+        # the instance in the cache must not see it before
+        instantiateBody(c, n, fn.typ.n, result, fn)
+      else:
+        # the instance is in the cache: the body is checked without the
+        # lock, other threads wait for it where they need it
+        # (`instanceProducer`)
+        withoutSemLock:
+          instantiateBody(c, n, fn.typ.n, result, fn)
+    finally:
+      endInstanceEffects(result)
+    c.optionStack[^1] = outerEntry
     sideEffectsCheck(c, result)
     if result.magic notin {mSlice, mTypeOf}:
       # 'toOpenArray' is special and it is allowed to return 'openArray':

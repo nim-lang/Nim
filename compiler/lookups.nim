@@ -18,6 +18,7 @@ import
   renderer, lineinfos, modulegraphs, astmsgs, wordrecg
 
 import std/[intsets, sets]
+from concurrency import withSemLock
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -494,7 +495,7 @@ proc rememberShadowDefs*(c: PContext) =
   ## can be detected as a redefinition rather than silently miscompiled.
   for s in c.currentScope.symbols:
     if s.kind in {skVar, skLet, skForVar} and {sfGenSym, sfWasGenSym} * s.flags == {}:
-      c.shadowDiscardedDefs.incl s.id
+      withSemLock: c.shadowDiscardedDefs.incl s.id
 
 proc closeShadowScope*(c: PContext) =
   ## closes the shadow scope, but doesn't merge any of the symbols

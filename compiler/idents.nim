@@ -11,6 +11,12 @@
 # An identifier is a shared immutable string that can be compared by its
 # id. This module is essential for the compiler's performance.
 
+from concurrency import withSemLock
+when defined(nimParallelSem):
+  from concurrency import parallelSemActive
+  import std/sysatomics
+else:
+  const parallelSemActive = false
 import wordrecg
 import std/hashes
 
@@ -66,15 +72,16 @@ proc cmpExact(a, b: cstring, blen: int): int =
   if result == 0:
     if a[i] != '\0': result = 1
 
-proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIdent =
+proc getIdentLocked(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIdent =
   var idx = h and high(ic.buckets)
   result = ic.buckets[idx]
   var last: PIdent = nil
   var id = 0
   while result != nil:
     if cmpExact(cstring(result.s), identifier, length) == 0:
-      if last != nil:
-        # make access to last looked up identifier faster:
+      if last != nil and not parallelSemActive:
+        # make access to last looked up identifier faster (not while other
+        # threads walk the chains):
         last.next = result.next
         result.next = ic.buckets[idx]
         ic.buckets[idx] = result
@@ -89,12 +96,29 @@ proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIden
   result.s = newString(length)
   for i in 0..<length: result.s[i] = identifier[i]
   result.next = ic.buckets[idx]
-  ic.buckets[idx] = result
   if id == 0:
     inc(ic.wordCounter)
     result.id = -ic.wordCounter
   else:
     result.id = id
+  when defined(nimParallelSem):
+    # published complete: readers walk the chains without the lock
+    atomicThreadFence(ATOMIC_RELEASE)
+  ic.buckets[idx] = result
+
+proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIdent =
+  when defined(nimParallelSem):
+    if parallelSemActive:
+      # the frequent case, a known identifier: found without the lock. During
+      # the parallel body pass chains only grow at their head.
+      let idx = h and high(ic.buckets)
+      var it = ic.buckets[idx]
+      atomicThreadFence(ATOMIC_ACQUIRE)
+      while it != nil:
+        if cmpExact(cstring(it.s), identifier, length) == 0: return it
+        it = it.next
+  withSemLock:
+    result = getIdentLocked(ic, identifier, length, h)
 
 proc getIdent*(ic: IdentCache; identifier: string): PIdent =
   result = getIdent(ic, cstring(identifier), identifier.len,

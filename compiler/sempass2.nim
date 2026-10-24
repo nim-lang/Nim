@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+from concurrency import withSemLock
 import
   ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, options, guards, lineinfos, semfold, semdata,
@@ -96,6 +97,8 @@ type
     escapingParams: IntSet
     inNimvmBranch: int
     metOpenCycle: bool # `--parsem:on`: called a unit of an open cycle
+    metCrossCycle: bool # `-d:nimParallelSem`: depends on effects that are
+                        # final only after the parallel body pass
   PEffects = var TEffects
 
 const
@@ -364,7 +367,8 @@ proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo) =
           sym = newSym(kind, a.owner.name, a.c.idgen, a.owner, reason.info, {})
       else:
         sym = reason
-      a.c.sideEffects.mgetOrPut(a.owner.id, @[]).add (useLoc, sym)
+      withSemLock:
+        a.c.sideEffects.mgetOrPut(a.owner.id, @[]).add (useLoc, sym)
     when false: markGcUnsafe(a, reason)
 
 proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
@@ -409,8 +413,11 @@ proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet;
                      conf: ConfigRef; context: PContext; indentLevel: int) =
   template addHint(msg; lineInfo; sym; level = indentLevel) =
     result.addf("$# $# Hint: '$#' $#\n", repeat(">", level), conf $ lineInfo, sym, msg)
-  if context.sideEffects.hasKey(s.id):
-    for (useLineInfo, u) in context.sideEffects[s.id]:
+  var entries: seq[(TLineInfo, PSym)] = @[]
+  withSemLock:
+    entries = context.sideEffects.getOrDefault(s.id)
+  if entries.len > 0:
+    for (useLineInfo, u) in entries:
       if u != nil and not cycleCheck.containsOrIncl(u.id):
         case u.kind
         of skLet, skVar:
@@ -1174,6 +1181,19 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # its body's tracking sets. `true`: the unit keeps forward-declaration
       # semantics, its declaration is the contract (`keepsForwardSemantics`).
       keepsForward = tracked.graph.demandRoutineBody(callee.sym, forEffects = true)
+  var crossed = false
+  when defined(nimParallelSem):
+    if tlsCrossCycle:
+      # the callee runs on a thread that waits for this one: its effects are
+      # not there yet, and this routine is solved with it after the join
+      tlsCrossCycle = false
+      crossed = true
+      tracked.metCrossCycle = true
+    elif a.kind == nkSym and instanceInProgressElsewhere(a.sym):
+      # an instance another thread is still producing: its effect list is
+      # not there yet (and not to be read while it is written)
+      crossed = true
+      tracked.metCrossCycle = true
   if a.kind == nkSym:
     let s = a.sym
     case s.magic
@@ -1280,18 +1300,23 @@ proc trackCall(tracked: PEffects; n: PNode) =
       else:
         discard
       let asForward = keepsForward or isForwardedProc(a)
-      if a.kind == nkSym and isProvisionalUnit(tracked.c, a.sym):
+      if a.kind == nkSym and isForeignProvisional(tracked.c, a.sym):
+        # provisional because of another thread: settled after the join
+        tracked.metCrossCycle = true
+      elif a.kind == nkSym and isProvisionalUnit(tracked.c, a.sym):
         # `--parsem:on`: a unit of a cycle that is still open has provisional
         # effects only; whoever reads them is tracked again until they settle
         # (`trackProc`, `semstmts.solveCycle`)
         tracked.metOpenCycle = true
       var effectList = op.n[0]
-      if a.kind == nkSym and isNoEffectList(effectList) and
+      if not crossed and a.kind == nkSym and isNoEffectList(effectList) and
           tracked.graph.demandCycleBody != nil:
         # possibly a routine of the cycle group whose body is still deferred:
         tracked.graph.demandCycleBody(a.sym)
         effectList = op.n[0]
-      if keepsForward:
+      if crossed:
+        discard "solved after the join"
+      elif keepsForward:
         propagateDeclared(tracked, n, a.sym)
       elif a.kind == nkSym and a.sym.kind == skMethod:
         if {sfBase, sfThread} * a.sym.flags == {sfBase}:
@@ -1977,6 +2002,7 @@ proc inferEffects(c: PContext; s: PSym; body: PNode): TEffects =
 proc publishEffects(c: PContext; s: PSym; body: PNode; t: var TEffects) =
   ## checks the inferred effects against the routine's declared ones and
   ## makes them the routine's
+  defer: clearProvisional(s)  # once everything below is final
   let g = c.graph
   var effects = s.typ.n[0]
   if t.exc.len == 0 and not t.canRaiseDefect:
@@ -2087,6 +2113,7 @@ proc provisionalEffects(s: PSym; t: TEffects; declGcSafe, declNoSideEffect: bool
   ## callers in the meantime (`trackProc`, `retrackMember`). A declared
   ## `.raises`, `.tags`, `.gcsafe` or `.noSideEffect` is the contract, as
   ## after `publishEffects`.
+  markProvisional(s)  # other threads must not take these as final
   let effects = s.typ.n[0]
   let p = s.ast[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
@@ -2117,11 +2144,15 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let declNoSideEffect = tfNoSideEffect in s.typ.flags
   rawInitEffects g, effects
   var t = inferEffects(c, s, body)
-  if deferEffects(c, s) or
-      (t.metOpenCycle and deferRoutineEffects(c, s, declGcSafe, declNoSideEffect)):
-    # a unit of a cycle of units that is still open, or a routine that read
-    # the provisional effects of one: its effects depend on those of the
-    # cycle, so they are solved with it when it closes (`semstmts.solveCycle`)
+  # a unit of a cycle of units that is still open, or a routine that read
+  # the provisional effects of one: its effects depend on those of the
+  # cycle, so they are solved with it when it closes (`semstmts.solveCycle`)
+  let local = deferEffects(c, s) or
+    (t.metOpenCycle and deferRoutineEffects(c, s, declGcSafe, declNoSideEffect))
+  # and/or on effects of another thread that are not final yet: solved again
+  # after the parallel body pass (`semstmts.solveCrossThread`)
+  let cross = t.metCrossCycle and deferCrossThread(c, s, declGcSafe, declNoSideEffect)
+  if local or cross:
     provisionalEffects(s, t, declGcSafe, declNoSideEffect)
     return
   publishEffects(c, s, body, t)
@@ -2162,6 +2193,9 @@ proc retrackMember*(c: PContext; m: var CycleMember): bool =
      t.canRaiseDefect, t.unknownRaises.len)
   let old = summary(m.t)
   m.t = inferEffects(c, m.owner, m.body)
+  if m.t.metCrossCycle:
+    # the cycle is published when it closes, but solved again after the join
+    discard deferCrossThread(c, m.owner, m.declGcSafe, m.declNoSideEffect)
   provisionalEffects(m.owner, m.t, m.declGcSafe, m.declNoSideEffect)
   result = old != summary(m.t)
 

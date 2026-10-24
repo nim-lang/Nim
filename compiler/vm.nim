@@ -10,6 +10,7 @@
 ## This file implements the evaluation engine for Nim code.
 ## It is a register based VM that works on packed data, see vmdef.
 
+from concurrency import withSemLock, lockSem
 import semmacrosanity
 import ic/sharedcounters
 import
@@ -2410,6 +2411,7 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode; semCtx: PPassContext;
                       templInstCounter: ref int): PNode =
+  let semGuard {.used.} = lockSem()
   when defined(nimsuggest):
     if g.config.expandDone():
       return n
@@ -2466,6 +2468,7 @@ proc evalStaticStmt*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode,
 
 proc setupCompileTimeVar*(module: PSym; idgen: IdGenerator; g: ModuleGraph; n: PNode;
                           semCtx: PPassContext = nil) =
+  let semGuard {.used.} = lockSem()
   discard evalConstExprAux(module, idgen, g, nil, n, emStaticStmt, semCtx, nil)
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
@@ -2512,6 +2515,7 @@ proc unshareTree(n: PNode; seen: var IntSet): PNode =
 
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym; semCtx: PPassContext = nil): PNode =
+  let semGuard {.used.} = lockSem()
   #if g.config.errorCounter > 0: return errorNode(idgen, module, n)
 
   # XXX globalError() is ugly here, but I don't know a better solution for now

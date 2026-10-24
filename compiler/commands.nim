@@ -852,6 +852,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optGenBif}, arg, pass, info)
   of "parsem":
     processOnOffSwitchG(conf, {optParSem}, arg, pass, info)
+  of "parallelsem":
+    # worker threads for the body pass of `--parsem:on`; only a compiler
+    # built with `-d:nimParallelSem --mm:atomicArc` has more than one
+    expectArg(conf, switch, arg, pass, info)
+    conf.parallelSem = parseInt(arg)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir

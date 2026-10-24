@@ -1,6 +1,6 @@
 # A concurrent compiler: routine bodies as the unit of parallelism
 
-Status: PLAN (2026-09-01); stage 1 revised 2026-10-22 (`--parsem:on`, §2.4); stage 2: grinder clean for the compiler. Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
+Status: PLAN (2026-09-01); stage 1 revised 2026-10-22 (`--parsem:on`, §2.4); stage 2: grinder clean for the compiler; stage 4 prototype (parallel body pass) 2026-10-24. Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
 Companion to `doc/ic.md` (the IC design this sits on top of). Line numbers below
 are from that commit; the measurements are from a 32-core machine.
 
@@ -945,6 +945,68 @@ the write lock is uncontended). transf/cgen still run sequentially after the
 module latch. Gate: grinder + the full bar. Measure: `nim m` of `cgen`/`sem`
 should drop from ~0.9 s to ~0.5 s; the compiler's classic build from 5.4 s to
 ~3 s.
+
+*Prototype (2026-10-24).* Built with `-d:nimParallelSem --mm:atomicArc`,
+enabled with `--parsem:on --parallelSem:N`; without the define every lock
+below is a no-op and the default build's output is byte-identical. A module's
+body pass runs on N threads (this one included), each claiming the next unit
+in key order (a CAS on its state) with its own `PositionalState`,
+`UnitConfig`, error counter, owner stack, log sink and naming arena (all
+thread-local through the stage 3 accessors). Shared state is guarded by ONE
+recursive lock (`concurrency.withSemLock`), on purpose: it cannot deadlock on
+lock order, and `-d:nimSemLockStats` prints per call site how often it was
+taken, contended, waited for and held, which is how the parts below got off
+it. Lock-free: identifier lookup (chains only grow at their head during the
+pass), hook lookup (a readers/writer spin lock, `attachedOpsRw`), cached
+system and literal types, `sfUsed`/`sfAddrTaken` and the derived type flags
+(atomic), used imports (per thread, merged after the join). `generateInstance` holds the lock for the signature and the cache
+only; the body is checked without it, and whoever needs the instance meanwhile
+waits for it (`waitForInstance`, for the VM) or treats it like a unit of
+another thread (effects).
+
+Waiting is §2.3's: a thread that needs a unit another thread runs waits for
+it with the lock released, unless that thread waits for it (transitively,
+through `waitingFor`; the check and "I wait now" are one step under a spin
+lock, or two threads find each other not waiting yet and both wait): a cycle
+across threads. Its routines, and every
+routine that read a provisional effect of another thread (a unit of a cycle
+still open there, an instance in production, a routine registered by
+`markProvisional`), are solved once more after the join, on one thread, in id
+order (`solveCrossThread`, the `solveCycle` fixpoint). Messages of a unit are
+buffered per unit and written in key order after the join; `--errorMax` and
+fatal errors end the unit, the units before it in key order are still
+checked, so the first error reported does not depend on the schedule
+(`msgs.flushMsgBuffers`). With one thread `--parsem:on` now reports in key
+order too.
+
+Not with IC (`nim m`): symbols are loaded from NIF files lazily, and that is
+not done under the lock yet. A routine used as a value (`gcsafe`/`noSideEffect`
+are inferred) now demands its body, like a call does (`paramTypesMatchAux`).
+
+Validated: the C of `compiler/nim.nim` at 8 workers byte-identical to 1
+worker over repeated runs; a compiler built that way produces C identical to
+the normal one; `tests/parsem` passes at 1 and 8 workers, and the categories
+of stage 1's table fail the same tests at 8 workers as at 1, except
+`tests/iter/t20891`, whose macros keep state in a `{.compileTime.}` table that
+one body fills and another reads: §4.6's "cannot be preserved". The last
+ThreadSanitizer run (`-d:useMalloc --passC:-fsanitize=thread`, compiling the
+compiler; it runs out of memory before the end on a 32 GB machine) reported
+only the deliberate unlocked reads: identifier chains and the integer literal
+type cache, published with plain stores after a release fence.
+
+Numbers (16 cores, `compiler/nim.nim --compileOnly`): default 7.81 s;
+`--parsem:on` 8.18 s; the parallel build at 1/2/4/8/16 workers 8.29 / 7.49 /
+6.81 / 6.58 / 6.69 s; the body pass alone 5.2 s at 1 worker, ~3.8 s at 8.
+Inside a large module units scale 1.5-2x (`sem` 651 -> 314 ms, `cgen` 607 ->
+383 ms). What limits it, in order: the time the lock is *held*, which is
+serial (most of it the parts of `generateInstance`, type instantiation and
+hook lifting that still need it); modules are processed one after another,
+and most have few units; one long unit at a module's end (the VM's
+`rawExecute`) is a tail no schedule removes. Known gaps: a thread whose wait
+was cut by a cycle sees what the other thread has so far (a hook in
+production, the partial body of an instance under the VM); with many errors a
+thread that waited on a unit of an aborted thread may report a follow-up
+error.
 
 **Stage 5 — the whole pipeline in the task.** `transformBody` +
 `injectDestructorCalls` + cgen fragment per task; `BModule` shadow; `cdef`

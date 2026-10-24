@@ -11,6 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
+from concurrency import withSemLock, lockSem, withOpsRead, withOpsWrite
 import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
@@ -503,6 +504,12 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
+  if g.config.cmd notin {cmdNifC, cmdM}:
+    # the frequent case: a lookup, under the readers' lock only
+    withOpsRead:
+      result = g.attachedOps[op].getOrDefault(t.bindingId)
+    return
+  let semGuard {.used.} = lockSem()
   if g.attachedOps[op].contains(t.bindingId):
     result = g.attachedOps[op][t.bindingId]
   elif g.config.cmd in {cmdNifC, cmdM}:
@@ -525,11 +532,13 @@ proc addLog*(g: ModuleGraph; e: sink LogEntry) {.inline.} =
   var e = e
   e.arenaTag = g.arenaTag
   if g.logSink != nil: g.logSink.opsLog.add e
-  else: g.opsLog.add e
+  else:
+    withSemLock: g.opsLog.add e
 
 proc addExpansion*(g: ModuleGraph; module: int32; sym: PSym; info: TLineInfo) =
   if g.logSink != nil: g.logSink.expansions.add (module, sym, info)
-  else: g.nifExpansions.mgetOrPut(module, @[]).add (sym, info)
+  else:
+    withSemLock: g.nifExpansions.mgetOrPut(module, @[]).add (sym, info)
 
 proc openLogSink*(g: ModuleGraph) =
   ## a unit starts: what it logs is buffered
@@ -545,12 +554,13 @@ proc closeLogSink*(g: ModuleGraph) =
     g.logSink.replay.add mine.replay
     g.logSink.expansions.add mine.expansions
   else:
-    g.opsLog.add mine.opsLog
-    for r in mine.replay:
-      g.nifReplayActions.mgetOrPut(r.module, @[]).add r.action
-      g.nifReplayTags.mgetOrPut(r.module, @[]).add r.tag
-    for e in mine.expansions:
-      g.nifExpansions.mgetOrPut(e.module, @[]).add (e.sym, e.info)
+    withSemLock:
+      g.opsLog.add mine.opsLog
+      for r in mine.replay:
+        g.nifReplayActions.mgetOrPut(r.module, @[]).add r.action
+        g.nifReplayTags.mgetOrPut(r.module, @[]).add r.tag
+      for e in mine.expansions:
+        g.nifExpansions.mgetOrPut(e.module, @[]).add (e.sym, e.info)
 
 iterator mlogEntries(g: ModuleGraph): var LogEntry =
   ## every log entry, buffered or not, innermost buffer first
@@ -562,6 +572,7 @@ iterator mlogEntries(g: ModuleGraph): var LogEntry =
 
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
+  let semGuard {.used.} = lockSem()
   # Key-based deduplication for opsLog: different type objects (e.g. canon vs
   # orig) can have different itemIds but the same structural key.
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
@@ -572,7 +583,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # references derived env-field syms that no module's NIF defines
     if g.loadedOps[op].getOrDefault(key) == nil:
       g.loadedOps[op][key] = value
-    g.attachedOps[op][t.bindingId] = value
+    withOpsWrite: g.attachedOps[op][t.bindingId] = value
     return
   let existing = g.loadedOps[op].getOrDefault(key)
   if existing == nil:
@@ -610,15 +621,17 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
         break
     if not updated:
       g.addLog LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
-  g.attachedOps[op][t.bindingId] = value
+  withOpsWrite: g.attachedOps[op][t.bindingId] = value
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
   ## Overload that takes ItemId directly, useful for registering hooks from NIF index.
-  g.attachedOps[op][typeId] = value
+  let semGuard {.used.} = lockSem()
+  withOpsWrite: g.attachedOps[op][typeId] = value
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
-  g.attachedOps[op][t.bindingId] = value
+  let semGuard {.used.} = lockSem()
+  withOpsWrite: g.attachedOps[op][t.bindingId] = value
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) {.inline.} =
   discard
@@ -833,20 +846,21 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
   # Same-name hash collisions inside this process get probed to the next
   # free value; the loser stays correct (its name keeps the module suffix),
   # it merely won't merge cross-module.
-  while true:
-    let probe = (inst.name.id, h)
-    if g.instDisambs.hasKey(probe):
-      if g.instDisambs[probe] == inst.itemId: break
-      if optParSem in g.config.globalOptions and
-          g.instDisambs[probe].module != inst.itemId.module:
-        # `--parsem:on`: the modules of an import group make their own copy
-        # of an instance (`seminst.sharesInstanceWith`); the names differ in
-        # the module suffix, so another module's claim is no collision
+  withSemLock:
+    while true:
+      let probe = (inst.name.id, h)
+      if g.instDisambs.hasKey(probe):
+        if g.instDisambs[probe] == inst.itemId: break
+        if optParSem in g.config.globalOptions and
+            g.instDisambs[probe].module != inst.itemId.module:
+          # `--parsem:on`: the modules of an import group make their own copy
+          # of an instance (`seminst.sharesInstanceWith`); the names differ in
+          # the module suffix, so another module's claim is no collision
+          break
+        h = if h == high(int32): InstanceDisambBit else: h + 1
+      else:
+        g.instDisambs[probe] = inst.itemId
         break
-      h = if h == high(int32): InstanceDisambBit else: h + 1
-    else:
-      g.instDisambs[probe] = inst.itemId
-      break
   inst.disamb = h
 
 proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
@@ -867,14 +881,15 @@ proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
   # Same-name hash collisions inside this process get probed to the next
   # free value (staying below InstanceDisambBit); the loser merely loses
   # cross-run name stability.
-  while true:
-    let probe = (hook.name.id, h)
-    if g.instDisambs.hasKey(probe):
-      if g.instDisambs[probe] == hook.itemId: break
-      h = if h == InstanceDisambBit - 1'i32: HookDisambBit else: h + 1
-    else:
-      g.instDisambs[probe] = hook.itemId
-      break
+  withSemLock:
+    while true:
+      let probe = (hook.name.id, h)
+      if g.instDisambs.hasKey(probe):
+        if g.instDisambs[probe] == hook.itemId: break
+        h = if h == InstanceDisambBit - 1'i32: HookDisambBit else: h + 1
+      else:
+        g.instDisambs[probe] = hook.itemId
+        break
   hook.disamb = h
 
 proc hasDisabledOp(g: ModuleGraph; t: PType; kind: TTypeAttachedOp): bool =

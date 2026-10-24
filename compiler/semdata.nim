@@ -9,6 +9,10 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
+from concurrency import withSemLock, lockSem
+when defined(nimParallelSem):
+  from concurrency import parallelSemActive
+  import std/sysatomics
 import std/[tables, intsets, sets, strutils]
 
 when defined(nimPreviewSlimSystem):
@@ -102,7 +106,7 @@ type
       exceptSet*: IntSet         # of PIdent.id
 
   PContext* = ref TContext
-  BodyTaskState* = enum
+  BodyTaskState* {.size: 4.} = enum
     btPending,   ## enqueued by the header pass, not started
     btRunning,   ## being semmed right now (recursion guard, §2.3)
     btDone
@@ -146,6 +150,7 @@ type
                                 ## the expanding module, as at its declaration
     errorOutputs*: TErrorOutputs ## the module's, so that a unit demanded
                                  ## inside `compiles()` still reports
+    runner*: int32               ## the worker running it (parallel body pass)
     tarjanIndex*, lowlink*: int  ## the cycles of units (`solveCycle`) are the
                                  ## strongly connected components of the
                                  ## demands, found by Tarjan's algorithm
@@ -304,8 +309,17 @@ type
       # routines (by `id`) whose transitively reachable units are all done; a
       # compile-time evaluation does not have to walk them again
       # (`demandReachableBodies`).
-    tarjanCounter*: int
-    tarjanStack*: seq[int]
+    crossDeferred*: seq[tuple[s: PSym; declGcSafe, declNoSideEffect: bool;
+                              options: TOptions; notes: TNoteKinds]]
+      # parallel body pass: routines whose tracking met a cycle across threads
+      # or read such a routine's provisional effects; solved after the join
+      # (`semstmts.solveCrossThread`)
+    crossProvisional*: IntSet
+      # their ids, while their effects are provisional
+    crossCount*: int
+      # `crossDeferred.len`, read without the sem lock
+    tarjanCounterField*: int
+    tarjanStackField*: seq[int]
       # units whose cycle is not closed yet (`solveCycle`)
     unitErrorsInCompiles*: int
       # errors of units that were demanded inside `compiles()`, whose
@@ -335,6 +349,21 @@ when defined(nimParallelSem):
      else: addr c.posField)[]
 else:
   template pos*(c: PContext): untyped = c.posField
+
+when defined(nimParallelSem):
+  type TarjanState = object
+    counter: int
+    stack: seq[int]
+  var tlsTarjan {.threadvar.}: Table[pointer, TarjanState]
+    ## The cycles of units are found per THREAD: the stack is the nest of
+    ## units one thread runs inline (`semstmts.solveCycle`).
+  template tarjanStack*(c: PContext): untyped =
+    tlsTarjan.mgetOrPut(cast[pointer](c), TarjanState()).stack
+  template tarjanCounter*(c: PContext): untyped =
+    tlsTarjan.mgetOrPut(cast[pointer](c), TarjanState()).counter
+else:
+  template tarjanStack*(c: PContext): untyped = c.tarjanStackField
+  template tarjanCounter*(c: PContext): untyped = c.tarjanCounterField
 
 # `c.pos.x` as `c.x`: lvalues, so `inc c.instCounter` and `c.p = x` work too
 template templInstCounter*(c: PContext): untyped = c.pos.templInstCounter
@@ -370,10 +399,164 @@ proc isProvisionalUnit*(c: PContext; s: PSym): bool =
   let idx = c.bodyTaskIndex.getOrDefault(s.itemId, -1)
   result = idx >= 0 and c.bodyTasks[idx].onStack
 
+when defined(nimParallelSem):
+  var tlsCrossCycle* {.threadvar.}: bool
+    ## set by `demandRoutineBody` when it did not wait for a unit running on
+    ## another thread because that thread waits for this one
+  var tlsWorkerId* {.threadvar.}: int32
+    ## the parallel body pass's number of this thread, 0 outside of it
+  var
+    tlsUsedImports* {.threadvar.}: ptr IntSet
+      ## indexes into `tlsUsedImportsCtx.unusedImports` this thread found
+      ## used; the list stays as it is until the parallel body pass is over
+    tlsUsedImportsCtx* {.threadvar.}: pointer
+      ## the context whose body pass runs in parallel
+
+proc isCrossProvisional*(c: PContext; s: PSym): bool =
+  when defined(nimParallelSem):
+    if parallelSemActive and atomicLoadN(addr c.crossCount, ATOMIC_ACQUIRE) > 0:
+      withSemLock:
+        result = s.id in c.crossProvisional
+    else:
+      result = false
+  else:
+    result = false
+
+
+when defined(nimParallelSem):
+  const
+    MaxSemWorkers* = 256
+    MaxInstanceNesting = 128
+  var
+    instancesInProgress: array[MaxSemWorkers + 1, array[MaxInstanceNesting, int]]
+      ## per worker, the generic instances whose body and effects it is
+      ## producing right now (it may wait for a unit meanwhile, with the sem
+      ## lock released): a stack of symbol ids
+    instancesNesting: array[MaxSemWorkers + 1, int]
+    semWorkers*: int
+      ## the number of threads of the running parallel body pass
+
+proc beginInstanceEffects*(s: PSym) {.inline.} =
+  when defined(nimParallelSem):
+    if parallelSemActive:
+      {.cast(gcsafe).}:
+        let w = tlsWorkerId
+        let d = instancesNesting[w]
+        if d < MaxInstanceNesting:
+          atomicStoreN(addr instancesInProgress[w][d], s.id, ATOMIC_RELAXED)
+        atomicStoreN(addr instancesNesting[w], d + 1, ATOMIC_RELEASE)
+
+proc endInstanceEffects*(s: PSym) {.inline.} =
+  when defined(nimParallelSem):
+    if parallelSemActive:
+      {.cast(gcsafe).}:
+        let w = tlsWorkerId
+        atomicStoreN(addr instancesNesting[w], instancesNesting[w] - 1, ATOMIC_RELEASE)
+
+proc instanceProducer*(s: PSym): int32 =
+  ## the worker producing the instance `s` right now, if not this one; or 0
+  result = 0
+  when defined(nimParallelSem):
+    if parallelSemActive and sfFromGeneric in s.flags:
+      {.cast(gcsafe).}:
+        for w in 1..semWorkers:
+          if w != tlsWorkerId:
+            let d = min(atomicLoadN(addr instancesNesting[w], ATOMIC_ACQUIRE),
+                        MaxInstanceNesting)
+            for k in 0..<d:
+              if atomicLoadN(addr instancesInProgress[w][k], ATOMIC_RELAXED) == s.id:
+                return int32(w)
+
+proc instanceInProgressElsewhere*(s: PSym): bool =
+  result = instanceProducer(s) != 0
+
+when defined(nimParallelSem):
+  var
+    provisionalRoutines: Table[int, int32]
+      ## routines whose effects are provisional (a cycle not solved yet):
+      ## symbol id -> the worker solving them. Guarded by the sem lock.
+    provisionalCount: int
+      ## `provisionalRoutines.len`, read without the lock
+
+proc markProvisional*(s: PSym) =
+  ## `s`'s effects are provisional until `clearProvisional`; other threads
+  ## must not take them as final
+  when defined(nimParallelSem):
+    if parallelSemActive:
+      withSemLock:
+        {.cast(gcsafe).}:
+          if not provisionalRoutines.hasKeyOrPut(s.id, tlsWorkerId):
+            atomicStoreN(addr provisionalCount, provisionalRoutines.len, ATOMIC_RELEASE)
+
+proc clearProvisional*(s: PSym) =
+  when defined(nimParallelSem):
+    if parallelSemActive and atomicLoadN(addr provisionalCount, ATOMIC_ACQUIRE) > 0:
+      withSemLock:
+        {.cast(gcsafe).}:
+          provisionalRoutines.del s.id
+          atomicStoreN(addr provisionalCount, provisionalRoutines.len, ATOMIC_RELEASE)
+
+proc resetProvisional*() =
+  ## after the join: what is left is solved on one thread
+  when defined(nimParallelSem):
+    {.cast(gcsafe).}:
+      provisionalRoutines.clear()
+      provisionalCount = 0
+
+proc provisionalElsewhere(s: PSym): bool =
+  when defined(nimParallelSem):
+    if atomicLoadN(addr provisionalCount, ATOMIC_ACQUIRE) > 0:
+      withSemLock:
+        {.cast(gcsafe).}:
+          let w = provisionalRoutines.getOrDefault(s.id, 0'i32)
+          result = w != 0 and w != tlsWorkerId
+    else:
+      result = false
+  else:
+    result = false
+
+proc isForeignProvisional*(c: PContext; s: PSym): bool =
+  ## `s` is a unit of a cycle that is still open on ANOTHER thread, or a
+  ## routine whose effects wait for `solveCrossThread`: whoever reads its
+  ## effects is solved after the parallel body pass, not with a cycle of
+  ## its own thread
+  when defined(nimParallelSem):
+    if parallelSemActive:
+      let idx = c.bodyTaskIndex.getOrDefault(s.itemId, -1)
+      result = (idx >= 0 and c.bodyTasks[idx].onStack and
+                atomicLoadN(addr c.bodyTasks[idx].runner, ATOMIC_ACQUIRE) != tlsWorkerId) or
+               isCrossProvisional(c, s) or provisionalElsewhere(s)
+    else:
+      result = false
+  else:
+    result = false
+
+proc deferCrossThread*(c: PContext; s: PSym; declGcSafe, declNoSideEffect: bool): bool =
+  ## A routine whose effects depend on a cycle across threads: provisional
+  ## until `solveCrossThread` runs after the parallel body pass.
+  when defined(nimParallelSem):
+    result = parallelSemActive
+    if result:
+      withSemLock:
+        if not c.crossProvisional.containsOrIncl(s.id):
+          c.crossDeferred.add (s, declGcSafe, declNoSideEffect,
+                               c.config.options, c.config.notes)
+          atomicStoreN(addr c.crossCount, c.crossDeferred.len, ATOMIC_RELEASE)
+  else:
+    result = false
+
+proc taskStateOf*(c: PContext; idx: int): BodyTaskState {.inline.} =
+  ## a unit's state; under `-d:nimParallelSem` other threads claim units
+  when defined(nimParallelSem):
+    BodyTaskState(atomicLoadN(cast[ptr int32](addr c.bodyTasks[idx].state),
+                              ATOMIC_ACQUIRE))
+  else:
+    c.bodyTasks[idx].state
+
 proc declaredUnitFlags*(c: PContext; s: PSym): (bool, bool) =
   ## `.gcsafe` and `.noSideEffect` of `s` as declared, before inference
   let idx = c.bodyTaskIndex.getOrDefault(s.itemId, -1)
-  if idx >= 0 and c.bodyTasks[idx].state != btPending:
+  if idx >= 0 and taskStateOf(c, idx) != btPending:
     result = (c.bodyTasks[idx].declGcSafe, c.bodyTasks[idx].declNoSideEffect)
   else:
     result = (tfGcSafe in s.typ.flags, tfNoSideEffect in s.typ.flags)
@@ -385,7 +568,7 @@ proc deferEffects*(c: PContext; s: PSym): bool =
   ## `solveCycle`.
   let idx = c.currentUnit
   result = idx >= 0 and c.bodyTasks[idx].owner == s and
-    c.bodyTasks[idx].state == btRunning and c.bodyTasks[idx].onStack and
+    taskStateOf(c, idx) == btRunning and c.bodyTasks[idx].onStack and
     (c.bodyTasks[idx].lowlink < c.bodyTasks[idx].tarjanIndex or
      c.tarjanStack[^1] != idx)
   if result:
@@ -400,6 +583,14 @@ proc deferRoutineEffects*(c: PContext; s: PSym; declGcSafe, declNoSideEffect: bo
     c.bodyTasks[idx].cycleRoutines.add (s, declGcSafe, declNoSideEffect)
 
 proc getIntLitType*(c: PContext; literal: PNode): PType =
+  when defined(nimParallelSem):
+    # a filled slot never changes: read without the lock
+    let v = literal.intVal
+    if v >= low(c.intTypeCache) and v <= high(c.intTypeCache):
+      result = c.intTypeCache[v.int]
+      atomicThreadFence(ATOMIC_ACQUIRE)
+      if result != nil: return
+  let semGuard {.used.} = lockSem()
   # we cache some common integer literal types for performance:
   let value = literal.intVal
   if value >= low(c.intTypeCache) and value <= high(c.intTypeCache):
@@ -408,6 +599,7 @@ proc getIntLitType*(c: PContext; literal: PNode): PType =
       let ti = getSysType(c.graph, literal.info, tyInt)
       result = copyType(ti, c.idgen, ti.owner)
       result.n = literal
+      when defined(nimParallelSem): atomicThreadFence(ATOMIC_RELEASE)
       c.intTypeCache[value.int] = result
   else:
     let ti = getSysType(c.graph, literal.info, tyInt)
@@ -488,7 +680,11 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
   # `c.hasSymRedefs` additionally routes ordinary (non-gensym) symbols through
   # the mapping so a re-emitted definition can redirect them to its fresh copy,
   # see bug #25693 and `newSymG`.
-  if sfGenSym notin s.flags and not c.hasSymRedefs: return s
+  when defined(nimParallelSem):
+    let redefs = atomicLoadN(addr c.hasSymRedefs, ATOMIC_RELAXED)
+  else:
+    let redefs = c.hasSymRedefs
+  if sfGenSym notin s.flags and not redefs: return s
   var it = c.p
   while it != nil:
     result = get(it, s)
@@ -822,7 +1018,7 @@ proc symNodeFromType*(c: PContext, t: PType, info: TLineInfo): PNode =
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:
-    incl(s.flagsImpl, sfAddrTaken)
+    inclShared(s.flagsImpl, sfAddrTaken)
     # XXX add to 'c' for global analysis
 
 proc illFormedAst*(n: PNode; conf: ConfigRef) =
@@ -858,9 +1054,11 @@ template addExport*(c: PContext; s: PSym) =
   addExport(c.graph, c.module, s)
 
 proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
+  let semGuard {.used.} = lockSem()
   c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add inst
 
 proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
+  let semGuard {.used.} = lockSem()
   c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add inst
 
 proc sealRodFile*(c: PContext) =
@@ -934,7 +1132,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
     # n.sym.typ can be nil in 'check' mode ...
     if n.sym.typ != nil and
         skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      incl(n.sym.flagsImpl, sfAddrTaken)
+      inclShared(n.sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   of nkDotExpr:
     checkSonsLen(n, 2, c.config)
@@ -942,12 +1140,12 @@ proc analyseIfAddressTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
       internalError(c.config, n.info, "analyseIfAddressTaken")
       return
     if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      incl(n[1].sym.flagsImpl, sfAddrTaken)
+      inclShared(n[1].sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   of nkBracketExpr:
     checkMinSonsLen(n, 1, c.config)
     if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
-      if n[0].kind == nkSym: incl(n[0].sym.flagsImpl, sfAddrTaken)
+      if n[0].kind == nkSym: inclShared(n[0].sym.flagsImpl, sfAddrTaken)
       result = newHiddenAddrTaken(c, n, isOutParam)
   else:
     result = newHiddenAddrTaken(c, n, isOutParam)

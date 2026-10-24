@@ -9,6 +9,11 @@
 
 # This module implements the semantic checking pass.
 
+from concurrency import withSemLock, withoutSemLock, lockSem
+when defined(nimParallelSem):
+  import concurrency
+  when defined(nimSemLockStats): import std/exitprocs
+  import std/[sysatomics, typedthreads, os, cpuinfo]
 import
   ast, options, astalgo, trees,
   wordrecg, ropes, msgs, idents, renderer, types, platform,
@@ -99,7 +104,7 @@ proc declareResult(c: PContext, n: PNode): tuple[resultDeclared: bool, savedResu
 
   var res = newSym(skResult, getIdent(c.cache, "result"), c.idgen, owner, n.info)
   res.typ = resultType
-  incl(res.flagsImpl, sfUsed)
+  inclShared(res.flagsImpl, sfUsed)
   c.p.resultSym = res
   addDecl(c, res)
   result.resultDeclared = true
@@ -323,14 +328,18 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # excluded: the gensym machinery already keeps their names unique, and a
     # fresh copy would reuse the unique name and clash in the same scope.
     if kind in {skVar, skLet, skForVar} and
-        {sfGenSym, sfWasGenSym} * result.flags == {} and
-        result.id in c.shadowDiscardedDefs:
-      if containsOrIncl(c.realizedDefs, result.id):
-        let fresh = copySym(result, c.idgen)
-        fresh.ast = result.ast
-        put(c.p, result, fresh)
-        c.hasSymRedefs = true
-        result = fresh
+        {sfGenSym, sfWasGenSym} * result.flags == {}:
+      withSemLock:
+        if result.id in c.shadowDiscardedDefs and
+            containsOrIncl(c.realizedDefs, result.id):
+          let fresh = copySym(result, c.idgen)
+          fresh.ast = result.ast
+          put(c.p, result, fresh)
+          when defined(nimParallelSem):
+            atomicStoreN(addr c.hasSymRedefs, true, ATOMIC_RELAXED)
+          else:
+            c.hasSymRedefs = true
+          result = fresh
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:

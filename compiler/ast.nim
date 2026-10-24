@@ -43,6 +43,9 @@ export astdef
 # sentence rather than as a template instantiation error.
 when defined(nimParallelSem):
   import concurrency
+  import std/sysatomics
+else:
+  from concurrency import withSemLock
 
 when not defined(nimKochBootstrap):
   import ast2nif
@@ -241,7 +244,11 @@ when defined(nimsuggest):
 
 proc flags*(s: PSym): TSymFlags {.inline.} =
   if s.state == Partial: loadSym(s)
-  result = s.flagsImpl
+  when defined(nimParallelSem):
+    # `markUsed` and friends set flags of shared symbols from other threads
+    result = atomicRead(s.flagsImpl)
+  else:
+    result = s.flagsImpl
 
 proc `flags=`*(s: PSym, val: TSymFlags) {.inline.} =
   assert s.state != Sealed
@@ -387,7 +394,10 @@ proc `callConv=`*(t: PType, val: TCallingConvention) {.inline.} =
 
 proc flags*(t: PType): TTypeFlags {.inline.} =
   if t.state == Partial: loadType(t)
-  result = t.flagsImpl
+  when defined(nimParallelSem):
+    result = atomicRead(t.flagsImpl)  # see `inclDerived`
+  else:
+    result = t.flagsImpl
 
 proc `flags=`*(t: PType, val: TTypeFlags) {.inline.} =
   assert t.state != Sealed
@@ -513,14 +523,20 @@ proc inclDerived*(t: PType; flags: TTypeFlags) {.inline.} =
       echo "[derived-barrier] +", flags - t.flagsImpl, " on sealed ", t.kind,
         (if t.symImpl != nil: "/" & t.symImpl.name.s else: ""),
         " @", t.itemId.module, ".", t.itemId.item
-  t.flagsImpl.incl(flags)
+  when defined(nimParallelSem):
+    atomicIncl(t.flagsImpl, flags)
+  else:
+    t.flagsImpl.incl(flags)
 
 proc exclDerived*(t: PType; flags: TTypeFlags) {.inline.} =
   ## Counterpart of `inclDerived`. Same reasoning; `tfCheckedForDestructor` is
   ## genuinely cleared again (`injectdestructors`), so this is not monotone.
   assert flags <= derivedTypeFlags
   if t.state == Partial: loadType(t)
-  t.flagsImpl.excl(flags)
+  when defined(nimParallelSem):
+    atomicExcl(t.flagsImpl, flags)
+  else:
+    t.flagsImpl.excl(flags)
 
 proc typ*(n: PNode): lent PType {.inline.} =
   result = n.typField
@@ -720,13 +736,14 @@ proc enterKeyedArena*(idgen: IdGenerator; key: uint32): ArenaState =
   ## first-come order, the one place where the order still shows.
   var slot = int(key mod uint32(KeyedArenaSlots))
   var tries = 0
-  while slot in idgen.arenaSlots and tries < KeyedArenaSlots:
-    slot = (slot + 1) mod KeyedArenaSlots
-    inc tries
-  let base = if tries < KeyedArenaSlots:
-               idgen.arenaSlots.incl slot
-               KeyedArenaBase + int32(slot) * KeyedArenaSize
-             else: TailRegionBase
+  var base = TailRegionBase
+  withSemLock:
+    while slot in idgen.arenaSlots and tries < KeyedArenaSlots:
+      slot = (slot + 1) mod KeyedArenaSlots
+      inc tries
+    if tries < KeyedArenaSlots:
+      idgen.arenaSlots.incl slot
+      base = KeyedArenaBase + int32(slot) * KeyedArenaSize
   result = enterArena(idgen, base, KeyedArenaSize)
 
 proc reenterUnitArena*(idgen: IdGenerator; ordinal: int;
@@ -774,8 +791,9 @@ proc nextDisamb(idgen: IdGenerator; name: PIdent): int32 =
     if result < idgen.arenaCap:
       result += idgen.disambBase
     else:
-      result = TailRegionBase + getOrDefault(idgen.tailTable, name).int32
-      idgen.tailTable.inc name
+      withSemLock:
+        result = TailRegionBase + getOrDefault(idgen.tailTable, name).int32
+        idgen.tailTable.inc name
 
 proc redisamb*(idgen: IdGenerator; s: PSym) =
   ## gives a symbol minted in a scratch arena its `disamb` in the current one
@@ -791,9 +809,13 @@ proc nextSymId(x: IdGenerator): ItemId {.inline.} =
       let it = nextBackendSymItem(program, x.module)
       if it >= 0'i32:
         return backendItemId(x.module, it)
-  inc x.symId
-  result = if x.backendMinted: backendItemId(x.module, x.symId)
-           else: itemId(x.module, x.symId)
+  when defined(nimParallelSem):
+    let id = atomicAddFetch(addr x.symId, 1'i32, ATOMIC_RELAXED)
+  else:
+    inc x.symId
+    let id = x.symId
+  result = if x.backendMinted: backendItemId(x.module, id)
+           else: itemId(x.module, id)
 
 proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
@@ -807,9 +829,13 @@ proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
       let it = nextBackendTypeItem(program, x.module)
       if it >= 0'i32:
         return backendItemId(x.module, it)
-  inc x.typeId
-  result = if x.backendMinted: backendItemId(x.module, x.typeId)
-           else: itemId(x.module, x.typeId)
+  when defined(nimParallelSem):
+    let id = atomicAddFetch(addr x.typeId, 1'i32, ATOMIC_RELAXED)
+  else:
+    inc x.typeId
+    let id = x.typeId
+  result = if x.backendMinted: backendItemId(x.module, id)
+           else: itemId(x.module, id)
 
 when false:
   proc nextId*(x: IdGenerator): ItemId {.inline.} =

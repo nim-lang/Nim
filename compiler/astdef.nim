@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+from concurrency import withSemLock, lockSem
+when defined(nimParallelSem):
+  from concurrency import atomicIncl, atomicRead
 import
   lineinfos, options, ropes, idents, int128
 
@@ -989,6 +992,17 @@ var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.
   ## Materialization is a pure in-memory buffer transform; a corrupt buffer is a
   ## `Defect` (`raiseAssert`), which is outside exception tracking.
 
+template inclShared*[T](flags: var set[T]; f: T) =
+  ## sets a flag of a symbol or type that units on other threads may share
+  ## (`sfUsed`, `sfAddrTaken`): `-d:nimParallelSem` sets it atomically
+  when defined(nimParallelSem): atomicIncl(flags, f)
+  else: incl(flags, f)
+
+template rawFlags*(x: PSym|PType): untyped =
+  ## `x.flagsImpl` without loading, read atomically under `-d:nimParallelSem`
+  when defined(nimParallelSem): atomicRead(x.flagsImpl)
+  else: x.flagsImpl
+
 proc len*(n: PNode): int {.inline.} =
   if nfLazyBody in n.flags and forceLazyBodyHook != nil:
     forceLazyBodyHook(n)
@@ -1464,6 +1478,7 @@ var bindingOrigins*: Table[ItemId, PType]
 
 proc registerBindingOrigin*(t: PType) {.inline.} =
   ## `t` is about to lend its `bindingId` to a replica
+  let semGuard {.used.} = lockSem()
   if t.bindingId == t.itemId and not t.itemId.isBackendMinted:
     bindingOrigins[t.bindingId] = t
 

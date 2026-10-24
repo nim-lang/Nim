@@ -2202,7 +2202,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
                             dummyName.ident, c.idgen, owner, param.info)
     dummyParam.typ = dummyType
-    incl dummyParam.flagsImpl, sfUsed
+    inclShared(dummyParam.flagsImpl, sfUsed)
     addDecl(c, dummyParam)
 
   result.n[3] = semConceptBody(c, n[3])

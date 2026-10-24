@@ -373,3 +373,204 @@ proc len*[T](q: var TaskQueue[T]): int =
     release q.L
   else:
     result = q.heap.len
+
+# ----------------------------------------------------------- the sem lock --
+
+when defined(nimParallelSem) and hasThreads:
+  import std/[rlocks, sysatomics]
+
+  var
+    parallelSemActive*: bool
+      ## set while a module's body pass runs on several threads; outside of it
+      ## `withSemLock` costs nothing
+    semLock: RLock
+    semLockDepth {.threadvar.}: int
+      ## how often THIS thread holds `semLock`, for `releaseSemLockFully`
+
+  initRLock(semLock)
+
+  when defined(nimSemLockStats):
+    # `-d:nimSemLockStats`: per call site of `withSemLock`, how often the lock
+    # was taken from the outside, how often a thread had to wait for it, and
+    # the time spent waiting and holding it; `semLockReport` prints them
+    import std/[monotimes, tables, algorithm, strutils, exitprocs]
+    type SiteStats = object
+      taken, contended: int
+      waitNs, holdNs: int64
+    var
+      statsLock: Lock
+      siteStats: Table[string, SiteStats]
+    initLock(statsLock)
+
+    proc nowNs*(): int64 = getMonoTime().ticks
+
+    proc recordSite*(site: string; contended: bool; waitNs, holdNs: int64) =
+      {.cast(gcsafe).}:
+        locks.acquire statsLock
+        let st = addr siteStats.mgetOrPut(site, SiteStats())
+        inc st.taken
+        if contended: inc st.contended
+        st.waitNs += waitNs
+        st.holdNs += holdNs
+        locks.release statsLock
+
+    proc semLockReport*() =
+      {.cast(gcsafe).}:
+        var rows: seq[(string, SiteStats)] = @[]
+        for k, v in siteStats: rows.add (k, v)
+        rows.sort(proc (a, b: (string, SiteStats)): int = cmp(b[1].waitNs + b[1].holdNs, a[1].waitNs + a[1].holdNs))
+        echo "sem lock: site, taken, contended, wait ms, hold ms"
+        for r in rows[0 ..< min(rows.len, 30)]:
+          echo "  ", r[0], " ", r[1].taken, " ", r[1].contended, " ",
+            formatFloat(r[1].waitNs.float / 1e6, ffDecimal, 1), " ",
+            formatFloat(r[1].holdNs.float / 1e6, ffDecimal, 1)
+
+    addExitProc(semLockReport)
+
+  template withSemLock*(body: untyped) =
+    ## Prototype of the parallel body pass (doc/parallel_compiler.md §3): ONE
+    ## recursive lock around every operation on state the threads share --
+    ## identifiers, the instance and hook caches, the VM, messages. Coarse on
+    ## purpose: a single lock cannot deadlock on lock order, and the numbers
+    ## will show which parts to split off first.
+    if parallelSemActive:
+      when defined(nimSemLockStats):
+        let outermost = semLockDepth == 0
+        let t0 = nowNs()
+        let contended = not rlocks.tryAcquire(semLock)
+        if contended: rlocks.acquire(semLock)
+        let t1 = nowNs()
+      else:
+        rlocks.acquire(semLock)
+      inc semLockDepth
+      try:
+        body
+      finally:
+        dec semLockDepth
+        when defined(nimSemLockStats):
+          if outermost:
+            const site = instantiationInfo(-1)
+            recordSite(site.filename & ":" & $site.line, contended,
+                       t1 - t0, nowNs() - t1)
+        rlocks.release(semLock)
+    else:
+      body
+
+  type SpinRw* = object
+    ## readers/writer spin lock for read-mostly tables whose critical sections
+    ## are a lookup: `state` is the number of readers, -1 while written
+    state: int
+
+  proc acquireRead*(rw: var SpinRw) {.inline.} =
+    while true:
+      let s = atomicLoadN(addr rw.state, ATOMIC_RELAXED)
+      if s >= 0 and atomicCompareExchangeN(addr rw.state, unsafeAddr s, s + 1,
+                                           false, ATOMIC_ACQUIRE, ATOMIC_RELAXED):
+        break
+      cpuRelax()
+
+  proc releaseRead*(rw: var SpinRw) {.inline.} =
+    discard atomicFetchSub(addr rw.state, 1, ATOMIC_RELEASE)
+
+  proc acquireWrite*(rw: var SpinRw) {.inline.} =
+    var zero = 0
+    while not atomicCompareExchangeN(addr rw.state, addr zero, -1,
+                                     false, ATOMIC_ACQUIRE, ATOMIC_RELAXED):
+      zero = 0
+      cpuRelax()
+
+  proc releaseWrite*(rw: var SpinRw) {.inline.} =
+    atomicStoreN(addr rw.state, 0, ATOMIC_RELEASE)
+
+  var attachedOpsRw: SpinRw
+    ## `ModuleGraph.attachedOps`: looked up without the sem lock
+
+  template withOpsRead*(body: untyped) =
+    ## a lookup in `ModuleGraph.attachedOps`
+    if parallelSemActive:
+      acquireRead(attachedOpsRw)
+      try: body
+      finally: releaseRead(attachedOpsRw)
+    else:
+      body
+
+  template withOpsWrite*(body: untyped) =
+    ## a change of `ModuleGraph.attachedOps`
+    if parallelSemActive:
+      acquireWrite(attachedOpsRw)
+      try: body
+      finally: releaseWrite(attachedOpsRw)
+    else:
+      body
+
+  type SemLockGuard* = object
+    ## `let semGuard = lockSem()`: the sem lock until the end of the scope,
+    ## without indenting the scope (the routines that are one critical
+    ## section from their first statement to their last)
+    held: bool
+    when defined(nimSemLockStats):
+      site: string
+      contended: bool
+      t0, t1: int64
+
+  proc `=destroy`*(g: SemLockGuard) =
+    if g.held:
+      {.cast(gcsafe).}:
+        dec semLockDepth
+        when defined(nimSemLockStats):
+          if semLockDepth == 0:
+            recordSite(g.site, g.contended, g.t1 - g.t0, nowNs() - g.t1)
+        rlocks.release(semLock)
+
+  proc `=copy`*(a: var SemLockGuard; b: SemLockGuard) {.error.}
+
+  template lockSem*(): SemLockGuard =
+    var g = SemLockGuard()
+    if parallelSemActive:
+      when defined(nimSemLockStats):
+        const site = instantiationInfo(-1)
+        g.site = site.filename & ":" & $site.line
+        g.t0 = nowNs()
+        g.contended = not rlocks.tryAcquire(semLock)
+        if g.contended: rlocks.acquire(semLock)
+        g.t1 = nowNs()
+      else:
+        rlocks.acquire(semLock)
+      inc semLockDepth
+      g.held = true
+    g
+
+  template withoutSemLock*(body: untyped) =
+    ## `body` without the sem lock, if this thread holds it exactly once --
+    ## nested inside another critical section it stays held, that one may
+    ## rely on it
+    if parallelSemActive and semLockDepth == 1:
+      dec semLockDepth
+      rlocks.release(semLock)
+      try:
+        body
+      finally:
+        rlocks.acquire(semLock)
+        inc semLockDepth
+    else:
+      body
+
+  proc releaseSemLockFully*(): int =
+    ## before waiting for another thread: give the lock up entirely, or the
+    ## thread waited for may block on it. Returns the depth to restore.
+    result = semLockDepth
+    for i in 0 ..< result: rlocks.release(semLock)
+    semLockDepth = 0
+
+  proc reacquireSemLock*(depth: int) =
+    for i in 0 ..< depth: rlocks.acquire(semLock)
+    semLockDepth = depth
+else:
+  template withSemLock*(body: untyped) = body
+  template withoutSemLock*(body: untyped) = body
+  template withOpsRead*(body: untyped) = body
+  template withOpsWrite*(body: untyped) = body
+  type SemLockGuard* = object
+  template lockSem*(): SemLockGuard = SemLockGuard()
+when not (defined(nimParallelSem) and hasThreads and defined(nimSemLockStats)):
+  proc semLockReport*() = discard

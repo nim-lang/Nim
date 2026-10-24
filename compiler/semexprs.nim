@@ -2548,8 +2548,9 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # if this is a nested 'when compiles', do not increase the ID so that
   # generic instantiations can still be cached for this level.
   if c.compilesContextId == 0:
-    inc c.compilesContextIdGenerator
-    c.compilesContextId = c.compilesContextIdGenerator
+    withSemLock:
+      inc c.compilesContextIdGenerator
+      c.compilesContextId = c.compilesContextIdGenerator
   c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   # open a scope for temporary symbol inclusions:
@@ -3336,6 +3337,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
       hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
 
 proc getNilType(c: PContext): PType =
+  let semGuard {.used.} = lockSem()
   result = c.nilTypeCache
   if result == nil:
     result = newTypeS(tyNil, c)
@@ -3365,7 +3367,7 @@ proc enumFieldSymChoice(c: PContext, n: PNode, s: PSym; flags: TExprFlags): PNod
     a = initOverloadIter(o, c, n)
     while a != nil:
       if a.kind == skEnumField:
-        incl(a.flagsImpl, sfUsed)
+        inclShared(a.flagsImpl, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
         onUse(info, a)
@@ -3803,7 +3805,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
   else:
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))
-  if result != nil: incl(result.flags, nfSem)
+  if result != nil and nfSem notin result.flags:
+    # not written when set: the node may be shared with other units' threads
+    incl(result.flags, nfSem)
 
   when defined(nimsuggest):
     if expandStarted:

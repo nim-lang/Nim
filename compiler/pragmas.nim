@@ -146,7 +146,7 @@ proc pragmaEnsures(c: PContext, n: PNode) =
     if o.kind in routineKinds and o.typ != nil and o.typ.returnType != nil:
       var s = newSym(skResult, getIdent(c.cache, "result"), c.idgen, o, n.info)
       s.typ = o.typ.returnType
-      incl(s.flagsImpl, sfUsed)
+      inclShared(s.flagsImpl, sfUsed)
       addDecl(c, s)
     n[1] = c.semExpr(c, n[1])
     closeScope(c)
@@ -634,7 +634,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(con.cache, sub), amb)
         # XXX what to do here if 'amb' is true?
         if e != nil:
-          incl(e.flagsImpl, sfUsed)
+          inclShared(e.flagsImpl, sfUsed)
           if isDefined(con.config, "nimPreviewAsmSemSymbol") and
               not (e.kind == skParam and e.typ.kind == tyStatic):
             # (the value of a `static` param would end up as verbatim text)
@@ -765,7 +765,7 @@ proc markCompilerProc(c: PContext; s: PSym) =
   if s.kind != skType or s.name.s != "FlowVar":
     makeExternExport(c, s, "$1", s.info)
   incl(s, sfCompilerProc)
-  incl(s.flagsImpl, sfUsed)
+  inclShared(s.flagsImpl, sfUsed)
   registerCompilerProc(c.graph, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
@@ -907,7 +907,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
             localError(c.config, it.info, "exportcpp requires `cpp` backend, got: " & $c.config.backend)
           else:
             incl(sym, sfMangleCpp)
-        incl(sym.flagsImpl, sfUsed) # avoid wrong hints
+        inclShared(sym.flagsImpl, sfUsed) # avoid wrong hints
       of wImportc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
@@ -1150,18 +1150,18 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wUndef: processUndef(c, it)
       of wCompile:
         let m = sym.getModule()
-        incl(m.flagsImpl, sfUsed)
+        inclShared(m.flagsImpl, sfUsed)
         processCompile(c, it)
       of wLink: processLink(c, it)
       of wPassl:
         let m = sym.getModule()
-        incl(m.flagsImpl, sfUsed)
+        inclShared(m.flagsImpl, sfUsed)
         let s = expectStrLit(c, it)
         extccomp.addLinkOption(c.config, s)
         recordPragma(c, it, "passl", s)
       of wPassc:
         let m = sym.getModule()
-        incl(m.flagsImpl, sfUsed)
+        inclShared(m.flagsImpl, sfUsed)
         let s = expectStrLit(c, it)
         extccomp.addCompileOption(c.config, s)
         recordPragma(c, it, "passc", s)

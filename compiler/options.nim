@@ -443,6 +443,8 @@ type
     backend*: TBackend # set via `nim x` or `nim --backend:x`
     target*: Target       # (+)
     linesCompiled*: int   # all lines that have been compiled
+    parallelSem*: int
+      ## `--parallelSem:N`: worker threads for the body pass (0 and 1: none)
     unitField*: UnitConfig
       ## the header pass's; see `unit`
     globalOptions*: TGlobalOptions # (+)
@@ -541,7 +543,7 @@ type
     foreignPackageNotes*: TNoteKinds
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
-    errorCounter*: int
+    errorCounterField*: int # see `errorCounter`
     hintCounter*: int
     warnCounter*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
@@ -619,6 +621,15 @@ type
 
 
 
+
+when defined(nimParallelSem):
+  var tlsErrorCounter* {.threadvar.}: ptr int
+    ## this thread's error count in the parallel body pass: `compiles()`
+    ## decides by whether IT changed, so other threads' errors must not show
+  template errorCounter*(conf: ConfigRef): untyped =
+    (if tlsErrorCounter != nil: tlsErrorCounter else: addr conf.errorCounterField)[]
+else:
+  template errorCounter*(conf: ConfigRef): untyped = conf.errorCounterField
 
 when defined(nimParallelSem):
   var tlsUnit* {.threadvar.}: ptr UnitConfig
@@ -737,12 +748,14 @@ proc initConfigRefCommon(conf: ConfigRef) =
   conf.selectedGC = gcUnselected
   conf.verbosity = 1
   conf.hintProcessingDots = true
-  conf.options = DefaultOptions
+  # the new configuration's own header state, not the unit this thread is
+  # checking (`conf.options` is `tlsUnit`'s under `-d:nimParallelSem`)
+  conf.unitField.options = DefaultOptions
   conf.globalOptions = DefaultGlobalOptions
   conf.filenameOption = foAbs
   conf.msgFormat = mfmStd
   conf.foreignPackageNotes = foreignPackageNotesDefault
-  conf.notes = NotesVerbosity[1]
+  conf.unitField.notes = NotesVerbosity[1]
   conf.mainPackageNotes = NotesVerbosity[1]
 
 proc newConfigRef*(): ConfigRef =

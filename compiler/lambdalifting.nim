@@ -156,7 +156,7 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
     # XXX a bit hacky:
     result = newSym(skResult, getIdent(g.cache, ":result"), idgen, iter, iter.info, {})
     result.typ = iter.typ.returnType
-    incl(result.flagsImpl, sfUsed)
+    inclShared(result.flagsImpl, sfUsed)
     iter.ast.add newSymNode(result)
 
 proc closureParams(routine: PSym): PNode =

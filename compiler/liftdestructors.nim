@@ -10,6 +10,9 @@
 ## This module implements lifting for type-bound operations
 ## (`=sink`, `=copy`, `=destroy`, `=deepCopy`, `=wasMoved`, `=dup`).
 
+from concurrency import withSemLock, lockSem
+when defined(nimParallelSem):
+  import std/sysatomics
 import modulegraphs, lineinfos, idents, ast, renderer, semdata,
   sighashes, lowerings, options, types, msgs, magicsys, ccgutils
 
@@ -1324,6 +1327,7 @@ proc canonicalType(g: ModuleGraph; t: PType; idgen: IdGenerator): PType =
   ## no identity: the lifted environments of two closures are anonymous
   ## objects that it does not tell apart.
   let h = sighashes.hashType(t, g.config, {CoType, CoConsiderOwned, CoDistinct})
+  let semGuard {.used.} = lockSem()
   result = g.canonTypes.getOrDefault(h)
   if result == nil:
     if optParSem in g.config.globalOptions and g.config.cmd != cmdNifC:
@@ -1656,11 +1660,12 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
 proc isTrivial*(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
-proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
-                        idgen: IdGenerator) =
-  ## In the semantic pass this is called in strategic places
-  ## to ensure we lift assignment, destructors and moves properly.
-  ## The later 'injectdestructors' pass depends on it.
+when defined(nimParallelSem):
+  var hookProductions: int
+    ## how many `createTypeBoundOps` run right now (nested ones included)
+
+proc createTypeBoundOpsImpl(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
+                            idgen: IdGenerator) =
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
 
   # IC: review this solution again later
@@ -1732,6 +1737,33 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     # on a possibly-`Sealed` foreign type (it used to write `flagsImpl` behind
     # the accessor's back precisely to dodge the seal assert).
     orig.inclDerived {tfHasAsgn}
+
+
+proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
+                        idgen: IdGenerator) =
+  ## In the semantic pass this is called in strategic places
+  ## to ensure we lift assignment, destructors and moves properly.
+  ## The later 'injectdestructors' pass depends on it.
+  if orig == nil: return
+  when defined(nimParallelSem):
+    # the frequent case, a type already done, needs no lock -- unless some
+    # thread is producing hooks right now: `tfCheckedForDestructor` is set
+    # when a production starts, not when it is complete
+    if {tfCheckedForDestructor, tfHasMeta} * orig.flags != {} and
+        atomicLoadN(addr hookProductions, ATOMIC_ACQUIRE) == 0:
+      return
+  # one thread at a time: the hooks of a type are produced once, and a type's
+  # partial hooks are seen only by the recursion that produces them
+  withSemLock:
+    when defined(nimParallelSem):
+      discard atomicFetchAdd(addr hookProductions, 1, ATOMIC_ACQ_REL)
+      try:
+        createTypeBoundOpsImpl(g, c, orig, info, idgen)
+      finally:
+        discard atomicFetchSub(addr hookProductions, 1, ATOMIC_ACQ_REL)
+    else:
+      createTypeBoundOpsImpl(g, c, orig, info, idgen)
+
 
 proc liftNimNodeHooks*(g: ModuleGraph; c: PContext; info: TLineInfo; idgen: IdGenerator) =
   ## The hooks of NimNode count the VM's handles. Every routine that uses
