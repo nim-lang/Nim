@@ -834,8 +834,13 @@ when defineSsl:
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
+    ## If `hostname` is an IP address, the certificate must list that address
+    ## as an IP SAN.
+    ## Does nothing when the context does not verify the peer.
     when not defined(nimDisableCertificateValidation):
       assert socket.isSsl
+      if SSL_get_verify_mode(socket.sslHandle) == SSL_VERIFY_NONE:
+        return
       try:
         let certificate = socket.sslHandle.SSL_get_peer_certificate()
         if certificate.isNil:
@@ -843,8 +848,12 @@ when defineSsl:
 
         const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
         # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
-        let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-          X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+        let match =
+          if isIpAddress(hostname):
+            certificate.X509_check_ip_asc(hostname.cstring, 0)
+          else:
+            certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+              X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
         # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
         X509_free(certificate)
         if match != 1:
@@ -878,8 +887,7 @@ when defineSsl:
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation):
-        # FIXME: this should be skipped on CVerifyNone
-        if hostname.len > 0 and not isIpAddress(hostname):
+        if hostname.len > 0:
           socket.checkCertName(hostname)
     of handshakeAsServer:
       ErrClearError()
@@ -2084,8 +2092,7 @@ proc connect*(socket: Socket, address: string,
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation):
-        if not isIpAddress(address):
-          socket.checkCertName(address)
+        socket.checkCertName(address)
 
 proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
@@ -2152,8 +2159,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
         let ret = SSL_connect(socket.sslHandle)
         socketError(socket, ret)
         when not defined(nimDisableCertificateValidation):
-          if not isIpAddress(address):
-            socket.checkCertName(address)
+          socket.checkCertName(address)
   socket.fd.setBlocking(true)
 
 proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
