@@ -548,10 +548,10 @@ proc ERR_peek_last_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLUtilName, importc.}
 
-proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
+proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 
 proc d2i_X509*(px: ptr PX509, i: ptr ptr uint8, len: cint): PX509 {.cdecl,
     dynlib: DLLUtilName, importc.}
