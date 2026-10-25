@@ -1637,9 +1637,11 @@ proc dotTransformation(c: PContext, n: PNode, initialDerefs: int): PNode =
   # an operand that was resolved to a concrete type must not be semchecked
   # again by overload resolution: that is not idempotent and can turn a `var`
   # argument into a by-value one (#26521). `copyTree` does not keep `nfSem`.
-  # Symchoices etc. still need to be resolved (and reported as ambiguous):
+  # Symchoices etc. still need to be resolved (and reported as ambiguous).
+  # `tyIterable` is only the speculative `efWantIterable` typing of the LHS,
+  # the call itself must decide what it wants (#26547):
   let keepSem = nfSem in root.flags and root.kind notin nkSymChoices and
-    root.typ != nil and root.typ.kind notin {tyNone, tyError, tyFromExpr}
+    root.typ != nil and root.typ.kind notin {tyNone, tyError, tyFromExpr, tyIterable}
   root = copyTree(root)
   if keepSem: root.flags.incl nfSem
   if isSymChoice(n[1]) or
