@@ -1,6 +1,6 @@
 # A concurrent compiler: routine bodies as the unit of parallelism
 
-Status: PLAN (2026-09-01); stage 1 revised 2026-10-22 (`--parsem:on`, §2.4); stage 2: grinder clean for the compiler. Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
+Status: PLAN (2026-09-01); stage 1 revised 2026-10-22 (`--parsem:on`, §2.4); stage 2: grinder clean for the compiler; stage 4 prototyped 2026-10-24 and NOT pursued (see there). Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
 Companion to `doc/ic.md` (the IC design this sits on top of). Line numbers below
 are from that commit; the measurements are from a 32-core machine.
 
@@ -945,6 +945,40 @@ the write lock is uncontended). transf/cgen still run sequentially after the
 module latch. Gate: grinder + the full bar. Measure: `nim m` of `cgen`/`sem`
 should drop from ~0.9 s to ~0.5 s; the compiler's classic build from 5.4 s to
 ~3 s.
+
+*Prototype (2026-10-24), not pursued.* Branch `araq-parsem` @ `e35ad7dc5`
+(`-d:nimParallelSem --mm:atomicArc`, `--parsem:on --parallelSem:N`): a
+module's body pass on N threads, each claiming the next unit in key order
+with its own positional state, unit configuration, error counter, owner
+stack, log sink and naming arena; shared state under ONE recursive lock,
+with identifier lookup, hook lookup, cached system and literal types, the
+shared symbol and type flags and used imports taken off it; waits across
+threads as in §2.3, cycles across threads and every routine that read a
+provisional effect of another thread solved once more after the join;
+messages buffered per unit and written in key order. About 1400 lines in
+29 files.
+
+It works: the C of `compiler/nim.nim` at 8 workers is byte-identical to 1
+worker, a compiler built that way produces identical C, `tests/parsem`
+passes at 1 and 8 workers, and the categories of stage 1's table fail the
+same tests at 8 workers as at 1, except `tests/iter/t20891` (a
+`{.compileTime.}` table one body fills and another reads, §4.6).
+
+It does not pay. Numbers (16 cores, `compiler/nim.nim --compileOnly`):
+default 7.81 s; `--parsem:on` 8.18 s; the parallel build at 1/2/4/8/16
+workers 8.29 / 7.49 / 6.81 / 6.58 / 6.69 s, the body pass 5.2 s at 1 worker
+and ~3.8 s at 8. That is 16 % over the default build with 8 cores. The rest
+of the compilation (~3.1 s) is serial, so even a perfectly scaling body pass
+ends near 3.75 s; what keeps it far from that is the time the lock is
+*held* (`generateInstance`, type instantiation, hook lifting -- the most
+shared parts of sem, whose concurrent versions would cost more than the
+whole prototype), modules processed one after another, and long tail units
+(the VM's `rawExecute`). Against that: lock discipline every sem change has
+to keep and nothing checks, races that show as a percent-level hang or a
+never reproduced `RangeDefect`, a ThreadSanitizer run that does not fit in
+22 GB, and the observable change for compile-time state shared between
+bodies. Parallelism across modules, as separate processes over IC (§1.2, §1.3), has
+none of these costs and scales with the number of modules.
 
 **Stage 5 — the whole pipeline in the task.** `transformBody` +
 `injectDestructorCalls` + cgen fragment per task; `BModule` shadow; `cdef`
