@@ -1056,7 +1056,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       discard considerUserDefinedOp(c, t, body, x, y)
     elif tfHasAsgn in t.flags:
       # seqs with elements using custom hooks in refc
-      if c.kind in {attachedAsgn, attachedSink, attachedDeepCopy}:
+      if c.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup}:
         body.add newSeqCall(c, x, y)
       if c.kind == attachedWasMoved:
         body.add genBuiltin(c, mWasMoved, "wasMoved", x)
