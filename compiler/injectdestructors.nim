@@ -1357,6 +1357,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       # module's TOP-LEVEL statements (the loader prepends the `(replay ...)`
       # entries there); cgen discards it, so pass it through untouched.
       result = n
+    of nkYieldStmt:
+      # `tryConstExpr` can hand an iterator's expression containing a
+      # `yield` to the VM; leave it to vmgen to reject it (recoverably).
+      if not c.graph.vmInjecting:
+        internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
+      result = n
     else:
       result = nil
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
