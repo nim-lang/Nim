@@ -19,29 +19,26 @@ when defined(windows):
     RwLock* {.importc: "SRWLOCK", header: "<synchapi.h>", final, pure, byref.} = object
       p: pointer
 
-  proc initializeSRWLock(L: var RwLock) {.importc: "InitializeSRWLock",
-    header: "<synchapi.h>".}
-  proc acquireSRWLockShared(L: var RwLock) {.importc: "AcquireSRWLockShared",
-    header: "<synchapi.h>".}
-  proc releaseSRWLockShared(L: var RwLock) {.importc: "ReleaseSRWLockShared",
-    header: "<synchapi.h>".}
-  proc acquireSRWLockExclusive(L: var RwLock) {.importc: "AcquireSRWLockExclusive",
-    header: "<synchapi.h>".}
-  proc releaseSRWLockExclusive(L: var RwLock) {.importc: "ReleaseSRWLockExclusive",
-    header: "<synchapi.h>".}
+  # Older MinGW targets hide these declarations behind _WIN32_WINNT >= 0x0600.
+  # Emit the prototypes ourselves, including the Windows calling convention.
+  proc initializeSRWLock(L: ptr RwLock) {.stdcall, importc: "InitializeSRWLock".}
+  proc acquireSRWLockShared(L: ptr RwLock) {.stdcall, importc: "AcquireSRWLockShared".}
+  proc releaseSRWLockShared(L: ptr RwLock) {.stdcall, importc: "ReleaseSRWLockShared".}
+  proc acquireSRWLockExclusive(L: ptr RwLock) {.stdcall, importc: "AcquireSRWLockExclusive".}
+  proc releaseSRWLockExclusive(L: ptr RwLock) {.stdcall, importc: "ReleaseSRWLockExclusive".}
 
   proc initRwLock*(L: var RwLock) {.inline.} =
-    initializeSRWLock(L)
+    initializeSRWLock(addr L)
   proc deinitRwLock*(L: var RwLock) {.inline.} =
     discard
   proc acquireRead*(L: var RwLock) {.inline.} =
-    acquireSRWLockShared(L)
+    acquireSRWLockShared(addr L)
   proc releaseRead*(L: var RwLock) {.inline.} =
-    releaseSRWLockShared(L)
+    releaseSRWLockShared(addr L)
   proc acquireWrite*(L: var RwLock) {.inline.} =
-    acquireSRWLockExclusive(L)
+    acquireSRWLockExclusive(addr L)
   proc releaseWrite*(L: var RwLock) {.inline.} =
-    releaseSRWLockExclusive(L)
+    releaseSRWLockExclusive(addr L)
 
 elif defined(genode):
   {.error: "RwLock is not implemented for Genode".}

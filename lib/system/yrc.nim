@@ -162,6 +162,17 @@ const
   # marking; colorMask survives only for the debug printout.
   maybeCycle = 0b100
   inRootsFlag = 0b1000
+  regLostFlag = 0b001
+    ## A registration attempt found `inRootsFlag` held by a slice in flight
+    ## (`inSliceFlag`): the slice keeps the flag only until its capture ends,
+    ## and its capture may have read the rc from before the change this
+    ## registration reports. The slice's owner turns the mark back into a
+    ## registration (see `releaseSliceFlags`).
+  inSliceFlag = 0b010
+    ## `inRootsFlag` is held by a stolen slice whose capture has not ended.
+    ## A resting buffer loses nothing to a failed registration: its cells
+    ## are captured with a fresh rc later. Marking those too made a kept
+    ## cell re-mark itself every round, and GC_runOrc never went quiet.
   colorMask = 0b011
   logOrc = defined(nimArcIds)
 
@@ -208,6 +219,40 @@ when useAtomicRc:
           won = true
           break
       won
+  template rcSetFlag(c: Cell; flag: int) =
+    discard atomicFetchOr(addr c.rc, flag, ATOMIC_ACQ_REL)
+  template rcRegisterOrMarkLost(c: Cell): bool =
+    ## `rcTestSetFlag(c, inRootsFlag)`, except that losing the race to a
+    ## slice in flight sets `regLostFlag` in the SAME CAS: a separate store
+    ## could land after the slice released the flag, losing the mark too.
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      var won = false
+      while true:
+        let desired = if (expected and inRootsFlag) == 0: expected or inRootsFlag
+                      elif (expected and inSliceFlag) != 0: expected or regLostFlag
+                      else: expected
+        if desired == expected: break
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          won = (expected and inRootsFlag) == 0
+          break
+      won
+  template rcReleaseSliceFlag(c: Cell): bool =
+    ## Give up a slice entry's `inRootsFlag` unless a registration was lost
+    ## to it meanwhile; then keep the flag (true) and only drop the mark.
+    ## ONE CAS: a registration landing between two separate stores would
+    ## find the flag still set, mark the cell, and then lose that mark too.
+    block:
+      var expected = atomicLoadN(addr c.rc, ATOMIC_RELAXED)
+      while true:
+        let desired = if (expected and regLostFlag) != 0:
+                        expected and not (regLostFlag or inSliceFlag)
+                      else: expected and not (inRootsFlag or inSliceFlag)
+        if atomicCompareExchangeN(addr c.rc, addr expected, desired, true,
+                                   ATOMIC_ACQ_REL, ATOMIC_RELAXED):
+          break
+      (expected and regLostFlag) != 0
 else:
   template color(c: Cell): int = c.rc and colorMask
   template loadRc(c: Cell): int = c.rc
@@ -219,6 +264,18 @@ else:
       let won = (c.rc and flag) == 0
       if won: c.rc = c.rc or flag
       won
+  template rcSetFlag(c: Cell; flag: int) = c.rc = c.rc or flag
+  template rcRegisterOrMarkLost(c: Cell): bool =
+    block:
+      let won = (c.rc and inRootsFlag) == 0
+      if won: c.rc = c.rc or inRootsFlag
+      elif (c.rc and inSliceFlag) != 0: c.rc = c.rc or regLostFlag
+      won
+  template rcReleaseSliceFlag(c: Cell): bool =
+    block:
+      let kept = (c.rc and regLostFlag) != 0
+      c.rc = c.rc and not (inSliceFlag or (if kept: regLostFlag else: inRootsFlag))
+      kept
 
 const
   optimizedOrc = false
@@ -335,7 +392,7 @@ type
     sccs: RawSeq[SccRec]
     sccMembers: RawSeq[int32]
     crossTgt: RawSeq[int32]
-    crossPend: CellSeq[Cell]  # edge targets owned by other active collections
+    crossPend: CellSeq[Cell]  # our cells with an edge into another active collection
     prunedSrc: RawSeq[int32]  # dense indices of cells with pruned out-edges
     prunedTgt: CellSeq[Cell]  # epoch-stamped targets we did not descend into
     ages: RawSeq[int32]       # per captured cell: captures survived so far
@@ -701,8 +758,10 @@ proc registerLocal(c: Cell; desc: PNimTypeV2) {.inline.} =
   ## keeps the invariant that a cell sits in at most one candidate buffer:
   ## whoever wins the flag owns the registration. Buffered cells are forced
   ## live by every collection (deadness checks the flag), so no buffer
-  ## entry can ever dangle.
-  if rcTestSetFlag(c, inRootsFlag):
+  ## entry can ever dangle. Losing the race marks the cell `regLostFlag`:
+  ## the flag's owner may be a collection that already captured `c` with
+  ## the rc this registration was meant to report as changed.
+  if rcRegisterOrMarkLost(c):
     when defined(nimOrcStats):
       let st = atomicLoadN(addr c.rootIdx, ATOMIC_RELAXED)
       if st == 0: bumpStat gStatRegFresh
@@ -725,7 +784,7 @@ proc rememberGenSuspect(c: Cell; desc: PNimTypeV2;
   ## whole word to its tag when a later collection captures the cell, so
   ## the mark is lost while the list entry survives — and the cell is then
   ## freed under a list that still points at it.
-  if rcTestSetFlag(c, inRootsFlag):
+  if rcRegisterOrMarkLost(c):
     if ctx.genSuspects.d == nil: init(ctx.genSuspects)
     add(ctx.genSuspects, c, desc)
 
@@ -795,8 +854,11 @@ proc drainStripe(i: int) {.requires: (0 <= i and i < NumStripes).} =
         while desc == nil:
           desc = atomicLoadN(addr stripes[i].toDec[j][1], ATOMIC_ACQUIRE)
         let c = stripes[i].toDec[j][0]
-        trialDec(c)
+        # register BEFORE the dec: once the dec lands, `c` may be garbage,
+        # and only the flag keeps a concurrent collection from freeing it
+        # under the registration
         registerLocal(c, desc)
+        trialDec(c)
         atomicStoreN(addr stripes[i].toDec[j][1], PNimTypeV2(nil),
                      ATOMIC_RELAXED)
       consumed = n
@@ -1137,9 +1199,16 @@ proc capture(s: Cell; desc: PNimTypeV2; j: var GcEnv; cap: ptr CaptureBufs) =
         let v = claimCell(t, tdesc, cap, ctx, pruneLive = true, old0 = cw)
         if v == -1:
           # cross-collection edge: the owner sees our reference in the rc
-          # word and classifies the target live; we re-register it as a
-          # candidate before our commit so it is re-examined later
-          cap.crossPend.add(t, tdesc)
+          # word and classifies the target live. A garbage cycle split
+          # across two concurrent collections survives both, so the SOURCE
+          # is re-registered at commit (if it survives; a dead source decs
+          # and registers the target itself). Never keep `t`: it is not
+          # ours, and once our capture ends the grace period no longer
+          # protects a bare pointer to it from its owner's next collection.
+          let src = cap.recs.d[u].cell
+          if cap.crossPend.len == 0 or
+              cap.crossPend.d[cap.crossPend.len -% 1][0] != src:
+            cap.crossPend.add(src, cap.recs.d[u].desc)
         elif v == -2:
           # target proven live this epoch: opaque live external, no descent.
           # Taint u's SCC — its own "live" verdict may lean on the stamp.
@@ -1312,7 +1381,13 @@ proc demoteTouchedDead(j: var GcEnv; cap: ptr CaptureBufs) =
       if ok:
         for mi in cap.sccs.d[s].memStart ..< cap.sccs.d[s+1].memStart:
           let m = cap.sccMembers.d[mi]
-          if (loadRc(cap.recs.d[m].cell) and not rcMask) != cap.recs.d[m].rcWord:
+          let w = loadRc(cap.recs.d[m].cell)
+          # A registration since computeDeadness is a change as well: the
+          # drain that made it consumed its queue entry, so the peek cannot
+          # see it, and the matching incRef may have restored the rc word
+          # (incRef + store, store nil + drained dec = same rc, ABA).
+          if (w and not rcMask) != cap.recs.d[m].rcWord or
+              (w and inRootsFlag) != 0:
             ok = false
             break
       if not ok:
@@ -1367,17 +1442,19 @@ proc validateDead(j: var GcEnv; cap: ptr CaptureBufs) =
   ## (rc word changed before the recheck). New entries after the peek
   ## carry no new information about X's deadness. See "Why No Lost
   ## Objects" above and yrc_proof.lean §3–§4.
+  ##
+  ## The one gap in that chain is a DRAINED dec whose incRef restored the
+  ## rc word (rc read, `x.f = x`, slot read, `x.f = nil`, drain): queue and
+  ## rc word are both back to their capture-time state. The drain still
+  ## registered X, so the recheck also treats a set `inRootsFlag` as a
+  ## change; a drain that ran before the slice flags were released left
+  ## `regLostFlag` instead, which became a registration there.
   markDirtyFromQueues(j, cap)
   demoteTouchedDead(j, cap)
 
 proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
   validateDead(j, cap)
   let ctx = addr gCtx
-  # publish cross-collection edge targets as candidate roots BEFORE any of
-  # our commit decs could make them collectible: they are owner-live this
-  # round, and the registration keeps them examinable in a later round
-  for i in 0 ..< cap.crossPend.len:
-    registerLocal(cap.crossPend.d[i][0], cap.crossPend.d[i][1])
   # pruned (epoch-stamped) targets: roots bypass stamps, so a later
   # collection will capture a target that has since died and clear the
   # phantom edges that would otherwise pin unrelated survivors. Capture
@@ -1392,6 +1469,14 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
     ## `w` is the target's claim word, read once by the caller
     (w shr 32) == ctx.tag and
       (cap.sccs.d[cap.sccIdx.d[int32(loWord(w))]].flags and flagDead) != 0
+  # cells of ours with an edge into another active collection: a garbage
+  # cycle split across the two partitions survives both of them, so the
+  # surviving sources are re-examined later. Dead sources need nothing:
+  # their commit re-trace decrements and registers the foreign target.
+  for i in 0 ..< cap.crossPend.len:
+    let src = cap.crossPend.d[i][0]
+    if not deadCell(atomicLoadN(addr src.rootIdx, ATOMIC_RELAXED)):
+      registerLocal(src, cap.crossPend.d[i][1])
   # Grace period: a collection still in its CAPTURE phase may hold stale
   # (slot, value) snapshots referencing our dead cells; disposing them now
   # could hand reused memory to its traversal. This used to BLOCK here until
@@ -1464,6 +1549,12 @@ proc commitDead(j: var GcEnv; cap: ptr CaptureBufs) =
             entry.slot[] = nil
             let tw = atomicLoadN(addr t.rootIdx, ATOMIC_RELAXED)
             if not deadCell(tw):
+              if not isEpochStamp(tw):
+                # A survivor losing a reference may now be garbage, and its
+                # verdict may rest on an rc captured before this dec (another
+                # collection's capture, or ours from a stale slot read):
+                # register it, BEFORE the dec, as a drain would.
+                registerLocal(t, tdesc)
               trialDec(t)
               # Stamped target: not analyzed by THIS collection. Generational
               # young→old — re-root immediately only on a true RC death blow
@@ -1595,6 +1686,10 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
         for i in keepBelow ..< gLocalRoots.len:
           slice.add(gLocalRoots.d[i][0], gLocalRoots.d[i][1])
         gLocalRoots.len = keepBelow
+      # the slice is in flight from here until releaseSliceFlags: a
+      # registration that loses to it now leaves a mark (before any rc read)
+      for i in 0 ..< slice.len:
+        rcSetFlag(slice.d[i][0], inSliceFlag)
       result = true
       break
 
@@ -1621,6 +1716,26 @@ proc finishCollection() =
   gCtx.amSolo = false
   gCtx.parked = false
   collectorEvent()   # wake backpressure and grace waiters
+
+proc releaseSliceFlags(slice: var CellSeq[Cell]) =
+  ## From steal to here the slice owns its cells' `inRootsFlag`, so every
+  ## registration attempt in between FAILED — a drain that took the last
+  ## reference, a commit dec of another collection — while our capture may
+  ## have read the rc from before it. Such cells (`regLostFlag`) stay
+  ## registered: forced live now, re-examined by our next collection.
+  ## Roots another active collection owned were not captured at all: that
+  ## owner merely sees them flagged (forced live) and will not re-register
+  ## them, so they stay registered as well.
+  let tag = gCtx.tag
+  for i in 0 ..< slice.len:
+    let c = slice.d[i][0]
+    if (atomicLoadN(addr c.rootIdx, ATOMIC_ACQUIRE) shr 32) != tag:
+      rcClearFlag(c, regLostFlag or inSliceFlag)
+      if gLocalRoots.d == nil: init(gLocalRoots)
+      add(gLocalRoots, c, slice.d[i][1])
+    elif rcReleaseSliceFlag(c):
+      if gLocalRoots.d == nil: init(gLocalRoots)
+      add(gLocalRoots, c, slice.d[i][1])
 
 proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
   # All destruction is deferred to collection time: plain rc==0 garbage in
@@ -1651,8 +1766,7 @@ proc collectCyclesImpl(j: var GcEnv; slice: var CellSeq[Cell]) =
   # cells that STAY registered count as externally referenced by the roots
   # buffer. Doing this before freeing anything also ensures a nested
   # collectCycles() (triggered from a destructor) cannot access freed cells.
-  for i in 0 ..< slice.len:
-    rcClearFlag(slice.d[i][0], inRootsFlag)
+  releaseSliceFlags(slice)
 
   computeDeadness(j, cap)
   commitDead(j, cap)
@@ -1786,6 +1900,10 @@ proc GC_runOrc* =
     when defined(nimOrcStats):
       # collectCycles updates this; GC_runOrc must too (tests/benches read it)
       inc freedCyclicObjects, j.freed
+    # every root was owned by another active collection and stays
+    # registered (releaseSliceFlags): retrying cannot progress while that
+    # collection, possibly a parked batch of an idle thread, holds its tag
+    if j.touched == 0: break
   releasePending(all = true)   # GC_fullCollect must not leave a batch parked
   # A single large capture (e.g. reclaiming an 80k-node stamped web after
   # epoch advance) otherwise leaves tens of MB of TLS RawSeq capacity
