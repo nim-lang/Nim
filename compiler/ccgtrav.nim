@@ -37,6 +37,9 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if disc.loc.snippet == "": fillObjectFields(c.p.module, typ)
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
+    var oldCode = p.s(cpsStmts)
+    freeze oldCode
+    var hasCode = false
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.snippet])
     for i in 1..<n.len:
       let branch = n[i]
@@ -45,9 +48,15 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
         genCaseRange(c.p, branch)
       else:
         lineF(p, cpsStmts, "default:$n", [])
+      let oldLen = p.s(cpsStmts).len
       genTraverseProc(c, accessor, lastSon(branch), typ)
+      if p.s(cpsStmts).len != oldLen: hasCode = true
       lineF(p, cpsStmts, "break;$n", [])
     lineF(p, cpsStmts, "} $n", [])
+    if not hasCode:
+      # no branch contains GC'ed memory: do not read the discriminator at all,
+      # it might be uninitialized (#26539)
+      p.s(cpsStmts) = oldCode
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
