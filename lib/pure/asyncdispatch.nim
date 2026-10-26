@@ -319,7 +319,7 @@ template implementSetInheritable() {.dirty.} =
       fd.FileHandle.setInheritable(inheritable)
 
 when defined(windows) or defined(nimdoc):
-  import std/[winlean, sets, hashes]
+  import std/[winlean, sets, hashes, sysatomics]
   type
     CompletionKey = ULONG_PTR
 
@@ -347,6 +347,11 @@ when defined(windows) or defined(nimdoc):
       handleFd: AsyncFD
       waitFd: Handle
       ovl: owned CustomRef
+      # Notifications posted by the native wait thread but not yet consumed
+      # by the dispatcher. Incremented on every post, decremented on every
+      # consume; the registration context is released only once the last
+      # queued notification is consumed after removal.
+      outstanding: int
     PostCallbackDataPtr = ptr PostCallbackData
 
     AsyncEventImpl = object
@@ -897,6 +902,12 @@ when defined(windows) or defined(nimdoc):
   proc waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL) {.stdcall.} =
     var p = cast[PostCallbackDataPtr](param)
+    # Count the post before queueing it: every queued notification is
+    # consumed exactly once, and the count keeps the registration context
+    # alive until the last consume after removal. Only an atomic operation
+    # is safe here; this runs on a native wait thread with no Nim heap
+    # access. Compiler builtins need no DLL import.
+    discard atomicInc(p.outstanding)
     discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
                                        ULONG_PTR(p.handleFd),
                                        cast[pointer](p.ovl))
@@ -1158,21 +1169,26 @@ when defined(windows) or defined(nimdoc):
     var flags = WT_EXECUTEINWAITTHREAD.DWORD
 
     proc eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
-      if ev.hWaiter != 0:
-        if cb(fd):
-          # we need this check to avoid exception, if `unregister(event)` was
-          # called in callback.
-          deallocShared(cast[pointer](pcd))
-          if ev.hWaiter != 0:
-            unregister(ev)
-        else:
-          # if callback returned `false`, then it wants to be called again, so
-          # we need to ref and protect `pcd.ovl` again, because it will be
-          # unrefed and disposed in `poll()`.
-          GC_ref(pcd.ovl)
-          pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
-      else:
-        # if ev.hWaiter == 0, then event was unregistered before `poll()` call.
+      # `poll()` disposes `pcd.ovl` after every call of this proc, but each
+      # notification the wait thread posted carries the same pointer. Take a
+      # reference and protect the callback environment again for every
+      # notification consumed, so the next queued notification finds `pcd.ovl`
+      # alive.
+      GC_ref(pcd.ovl)
+      pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+      # Notifications posted before `unregister(ev)` (or before a newer
+      # registration replaced this one) are still queued: they are stale and
+      # must not call `cb`.
+      if ev.hWaiter == pcd.waitFd:
+        # `cb` may call `unregister(ev)` itself, which is why we check again.
+        if cb(fd) and ev.hWaiter == pcd.waitFd:
+          unregister(ev)
+      # `pcd` is shared with the wait thread and with every queued
+      # notification, so it is released once, by the last queued notification
+      # consumed after removal. While registered, more notifications may still
+      # be posted, so it stays alive even when none are outstanding.
+      if atomicDec(pcd.outstanding) == 0 and ev.hWaiter != pcd.waitFd:
+        GC_unref(pcd.ovl)
         deallocShared(cast[pointer](pcd))
 
     registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
