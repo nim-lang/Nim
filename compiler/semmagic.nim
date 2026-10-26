@@ -569,7 +569,7 @@ proc semNewFinalize(c: PContext; n: PNode): PNode =
           let wrapperSym = newSym(skProc, getIdent(c.graph.cache, fin.name.s & "FinalizerWrapper"), c.idgen, fin.owner, fin.info)
           let selfSymNode = newSymNode(copySym(fin.ast[paramsPos][1][0].sym, c.idgen))
           selfSymNode.typ = fin.typ.firstParamType
-          wrapperSym.flagsImpl.incl sfUsed
+          inclShared(wrapperSym.flagsImpl, sfUsed)
 
           let wrapper = c.semExpr(c, newProcNode(nkProcDef, fin.info, body = newTree(nkCall, newSymNode(fin), selfSymNode),
             params = nkFormalParams.newTree(c.graph.emptyNode,

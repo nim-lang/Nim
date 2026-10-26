@@ -177,6 +177,9 @@ Advanced options:
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --incremental:on|off      only recompile the changed modules (experimental!)
+  --parsem:on|off           check routine bodies after the module's top-level
+                            declarations; bodies need no forward declarations
+                            (experimental!)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --maxLoopIterationsVM:N   set max iterations for all VM loops

@@ -9,6 +9,7 @@
 
 # This module does the instantiation of generic types.
 
+from concurrency import withSemLock, lockSem
 import std / tables
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
@@ -63,6 +64,7 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   if not (genericTyp.kind == tyGenericBody and
       genericTyp.sym != nil): return
 
+  let semGuard {.used.} = lockSem()
   for inst in typeInstCacheItems(g, genericTyp.sym):
     if inst.id == key.id:
       g.recordIcImplDep(inst)
@@ -81,6 +83,17 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
         # XXX sameType is not really correct for nested generics?
         if not compareTypes(inst[j], key[j],
                             flags = {ExactGenericParams, PickyCAliases}):
+          break matchType
+        # `compareTypes` does not look at a proc type's effects, but an
+        # instance's fields carry them: `seq[proc () {.raises: [].}]` must
+        # not stand in for `seq[proc ()]`, an assignment to its element then
+        # fails with "raise effects differ" -- and which of the two was found
+        # depended on the order the cache was filled in
+        let a = inst[j].skipTypes(abstractInst)
+        let b = key[j].skipTypes(abstractInst)
+        if a.kind == tyProc and b.kind == tyProc and
+            (compatibleEffects(a, b) != efCompat or
+             compatibleEffects(b, a) != efCompat):
           break matchType
 
       g.recordIcImplDep(inst)
@@ -237,7 +250,10 @@ proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
       result = newNodeI(nkRecList, n.info)
   else:
     for i in 0..<n.len:
-      n[i] = replaceObjBranches(cl, n[i])
+      # written only when it changes: a module's object types are read by
+      # units on other threads (`-d:nimParallelSem`)
+      let x = replaceObjBranches(cl, n[i])
+      if x != n[i]: n[i] = x
 
 proc hasValuelessStatics(n: PNode): bool =
   # We should only attempt to call an expression that has no tyStatics
@@ -490,7 +506,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
       result.destructor = nil
       result.sink = nil
 
-proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
+proc handleGenericInvocationImpl(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
   var body = t.genericHead
@@ -641,13 +657,20 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:
-      incl mm.flagsImpl, tfFromGeneric
+      inclShared(mm.flagsImpl, tfFromGeneric)
       for col, meth in methodsForGeneric(cl.c.graph, mm):
         # we instantiate the known methods belonging to that type, this causes
         # them to be registered and that's enough, so we 'discard' the result.
         discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
           attachedAsgn, col)
       excl mm.flagsImpl, tfFromGeneric
+
+
+proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
+  # the instance is cached before it is complete (a type may refer to
+  # itself), so one thread at a time builds instances
+  withSemLock:
+    result = handleGenericInvocationImpl(cl, t)
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
@@ -930,13 +953,15 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType, isInstValue = false): 
       # `Complete`, not `Sealed` (`Sealed` only means "already re-written to a NIF").
       if t.kind == tyRef and t.hasElementType and t.elementType.kind == tyObject and
           t.elementType.n != nil and t.elementType.itemId.module == cl.c.idgen.module.int:
-        discard replaceObjBranches(cl, t.elementType.n)
+        withSemLock: discard replaceObjBranches(cl, t.elementType.n)
 
       elif result.n != nil and t.kind == tyObject and result.state != Sealed and
           result.itemId.module == cl.c.idgen.module.int:
         # Invalidate the type size as we may alter its structure
-        result.size = -1
-        result.n = replaceObjBranches(cl, result.n)
+        withSemLock:
+          result.size = -1
+          let x = replaceObjBranches(cl, result.n)
+          if x != result.n: result.n = x
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
@@ -996,6 +1021,7 @@ proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
 
 proc generateTypeInstance*(p: PContext, pt: LayeredIdTable, info: TLineInfo,
                            t: PType): PType =
+  let semGuard {.used.} = lockSem()
   # Given `t` like Foo[T]
   # pt: Table with type mappings: T -> int
   # Desired result: Foo[int]

@@ -9,6 +9,11 @@
 
 # This module implements the semantic checking pass.
 
+from concurrency import withSemLock, withoutSemLock, lockSem
+when defined(nimParallelSem):
+  import concurrency
+  when defined(nimSemLockStats): import std/exitprocs
+  import std/[sysatomics, typedthreads, os, cpuinfo]
 import
   ast, options, astalgo, trees,
   wordrecg, ropes, msgs, idents, renderer, types, platform,
@@ -23,6 +28,7 @@ import
 import vtables
 import icprof
 import std/[strtabs, math, tables, intsets, strutils, packedsets]
+from std/algorithm import sort
 
 when not defined(leanCompiler):
   import spawn
@@ -98,7 +104,7 @@ proc declareResult(c: PContext, n: PNode): tuple[resultDeclared: bool, savedResu
 
   var res = newSym(skResult, getIdent(c.cache, "result"), c.idgen, owner, n.info)
   res.typ = resultType
-  incl(res.flagsImpl, sfUsed)
+  inclShared(res.flagsImpl, sfUsed)
   c.p.resultSym = res
   addDecl(c, res)
   result.resultDeclared = true
@@ -322,14 +328,18 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # excluded: the gensym machinery already keeps their names unique, and a
     # fresh copy would reuse the unique name and clash in the same scope.
     if kind in {skVar, skLet, skForVar} and
-        {sfGenSym, sfWasGenSym} * result.flags == {} and
-        result.id in c.shadowDiscardedDefs:
-      if containsOrIncl(c.realizedDefs, result.id):
-        let fresh = copySym(result, c.idgen)
-        fresh.ast = result.ast
-        put(c.p, result, fresh)
-        c.hasSymRedefs = true
-        result = fresh
+        {sfGenSym, sfWasGenSym} * result.flags == {}:
+      withSemLock:
+        if result.id in c.shadowDiscardedDefs and
+            containsOrIncl(c.realizedDefs, result.id):
+          let fresh = copySym(result, c.idgen)
+          fresh.ast = result.ast
+          put(c.p, result, fresh)
+          when defined(nimParallelSem):
+            atomicStoreN(addr c.hasSymRedefs, true, ATOMIC_RELAXED)
+          else:
+            c.hasSymRedefs = true
+          result = fresh
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:
@@ -458,9 +468,9 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   let oldErrorCount = c.config.errorCounter
   let oldErrorMax = c.config.errorMax
-  let oldErrorOutputs = c.config.m.errorOutputs
+  let oldErrorOutputs = c.config.errorOutputs
 
-  c.config.m.errorOutputs = {}
+  c.config.errorOutputs = {}
   c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   when defined(nimsuggest):
@@ -469,7 +479,7 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
     c.graph.config.structuredErrorHook = nil
 
   try:
-    result = evalConstExpr(c.module, c.idgen, c.graph, e, c)
+    result = evalConstExpr(c.module, c.idgen, c.graph, e, c, c.templInstCounter)
     if result == nil or result.kind == nkEmpty:
       result = nil
     else:
@@ -489,7 +499,7 @@ proc tryConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
 
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
-  c.config.m.errorOutputs = oldErrorOutputs
+  c.config.errorOutputs = oldErrorOutputs
 
 const
   errConstExprExpected = "constant expression expected"
@@ -504,7 +514,7 @@ proc semConstExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   result = getConstExpr(c.module, e, c.idgen, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
-    result = evalConstExpr(c.module, c.idgen, c.graph, e, c)
+    result = evalConstExpr(c.module, c.idgen, c.graph, e, c, c.templInstCounter)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(c.config, n.info)
@@ -845,7 +855,17 @@ proc isSumTypePattern(c: PContext; n: PNode): bool =
 include semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
-  for i in c.lastGenericIdx..<c.generics.len:
+  var order = newSeq[int](c.generics.len - c.lastGenericIdx)
+  for i in 0..<order.len: order[i] = c.lastGenericIdx + i
+  if optParSem in c.config.globalOptions:
+    # created in the order units ran in; their names are content-derived
+    # (`setInstanceDisamb`), so that is the canonical order
+    order.sort(proc (a, b: int): int =
+      let x = c.generics[a].inst.sym
+      let y = c.generics[b].inst.sym
+      result = cmp(x.name.s, y.name.s)
+      if result == 0: result = cmp(x.disamb, y.disamb))
+  for i in order:
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast[bodyPos] == nil:
@@ -878,16 +898,21 @@ proc preparePContext*(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PCo
   result.instTypeBoundOp = sigmatch.instTypeBoundOp
   result.hasUnresolvedArgs = hasUnresolvedArgs
   result.semAsgnOpr = semAsgnOpr
-  result.templInstCounter = new int
 
-  # `--deferBodies:on`: a top-level `const`/`static:` can reach a body that the
-  # body pass has not run yet, and `transformBody` asks for it here. Modules
-  # nest (an import is compiled from inside the importer's pass), so keep the
-  # enclosing module's hook and put it back in `closePContext`.
-  if optDeferBodies in graph.config.globalOptions:
+  # `--parsem:on`: effect tracking, `auto` and the VM can need a body that the
+  # body pass has not run yet, and ask for it through these. Modules nest (an
+  # import is compiled from inside the importer's pass), so keep the enclosing
+  # module's hooks and put them back in `closePContext`.
+  result.currentUnit = -1
+  if optParSem in graph.config.globalOptions:
+    canonicalIntLits = true
     result.prevDemandRoutineBody = graph.demandRoutineBody
+    result.prevDemandReachableBodies = graph.demandReachableBodies
+    result.unitErrorMax = graph.config.errorMax
     let ctx = result
-    graph.demandRoutineBody = proc (prc: PSym) = demandRoutineBody(ctx, prc)
+    graph.demandRoutineBody = proc (prc: PSym; forEffects: bool): bool =
+      demandRoutineBody(ctx, prc, forEffects)
+    graph.demandReachableBodies = proc (n: PNode) = demandReachableBodies(ctx, n)
 
   pushProcCon(result, module)
   pushOwner(result, result.module)
@@ -957,6 +982,10 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   # bigger change than this stage is trying to make.
   if c.bodyTasks.len > 0:
     drainBodyTasks(c)
+  if optParSem in c.config.globalOptions:
+    # what follows (the top-level statements' tracking, the backend of a
+    # classic build) mints in the tail region, clear of every unit's arena
+    enterTail(c.idgen)
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
     # steps are not required anymore and actually harmful for the upcoming
@@ -1125,8 +1154,10 @@ proc closePContext*(graph: ModuleGraph; c: PContext, n: PNode): PNode =
   # ever close them.
   if c.bodyTasks.len > 0:
     drainBodyTasks(c)
-  if optDeferBodies in c.config.globalOptions:
+  if optParSem in c.config.globalOptions:
     graph.demandRoutineBody = c.prevDemandRoutineBody
+    graph.demandReachableBodies = c.prevDemandReachableBodies
+    inc c.config.errorCounter, c.unitErrorsInCompiles
   if c.config.ideActive and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope

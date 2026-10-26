@@ -68,7 +68,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     if not isField or sfGenSym notin s.flags:
       result = newSymNode(s, info)
       # possibly not final field sym
-      incl(s.flagsImpl, sfUsed)
+      inclShared(s.flagsImpl, sfUsed)
       markOwnerModuleAsUsed(c, s)
       onUse(info, s)
     else:
@@ -85,7 +85,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     a = initOverloadIter(o, c, n)
     while a != nil:
       if a.kind != skModule and (not isField or sfGenSym notin a.flags):
-        incl(a.flagsImpl, sfUsed)
+        inclShared(a.flagsImpl, sfUsed)
         markOwnerModuleAsUsed(c, a)
         result.add newSymNode(a, info)
         onUse(info, a)
@@ -223,7 +223,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
           local.incl sfTemplateParam
 
 proc semTemplSymbol(c: var TemplCtx, n: PNode, s: PSym; isField, isAmbiguous: bool): PNode =
-  incl(s.flagsImpl, sfUsed)
+  inclShared(s.flagsImpl, sfUsed)
   # bug #12885; ideally sem'checking is performed again afterwards marking
   # the symbol as used properly, but the nfSem mechanism currently prevents
   # that from happening, so we mark the module as used here already:
@@ -300,7 +300,7 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode, explicitInject: bool): PNo
     if s != nil:
       if s.owner == c.owner and (s.kind == skParam or
           (sfGenSym in s.flags and not explicitInject)):
-        incl(s.flagsImpl, sfUsed)
+        inclShared(s.flagsImpl, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
   else:
@@ -386,7 +386,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
-        incl(s.flagsImpl, sfUsed)
+        inclShared(s.flagsImpl, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       elif contains(c.toBind, s.id):
@@ -396,7 +396,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       elif s.owner == c.owner and sfGenSym in s.flags and c.noGenSym == 0:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
-        incl(s.flagsImpl, sfUsed)
+        inclShared(s.flagsImpl, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
@@ -619,7 +619,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       # do not symchoice a quoted template parameter (bug #2390):
       if s.owner == c.owner and s.kind == skParam and
           n.kind == nkAccQuoted and n.len == 1:
-        incl(s.flagsImpl, sfUsed)
+        inclShared(s.flagsImpl, sfUsed)
         onUse(n.info, s)
         return newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
@@ -812,7 +812,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     # macros because they have a shadowed param of type 'PNimNode' (see
     # semtypes.addParamOrResult). Within the pattern we have to ensure
     # to use the param with the proper type though:
-    incl(s.flagsImpl, sfUsed)
+    inclShared(s.flagsImpl, sfUsed)
     onUse(n.info, s)
     let x = c.owner.typ.n[s.position+1].sym
     assert x.name == s.name

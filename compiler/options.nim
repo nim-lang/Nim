@@ -163,12 +163,12 @@ type                          # please make sure we have under 32 options
     optCompress               # turn on AST compression by converting it to NIF
     optGenBif                 # generate semantic BIF alongside ordinary code generation
     optWithinConfigSystem     # we still compile within the configuration system
-    optDeferBodies            # stage 1 of doc/parallel_compiler.md: sem a top-level
-                              # routine's BODY after the module's header pass rather
-                              # than where it is declared. One worker, drained in key
-                              # order -- no threads, no scheduling, only the order
-                              # change, which is the part that has to be reviewed
-                              # before any of it runs concurrently.
+    optParSem                 # `--parsem:on`, doc/parallel_compiler.md: sem a
+                              # top-level routine's BODY after the module's header
+                              # pass rather than where it is declared, against the
+                              # complete top-level scope -- so a body can call a
+                              # routine declared further down without a forward
+                              # declaration. One worker for now.
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -419,6 +419,23 @@ type
     mfmStd ## standard Nim style: `file(line, col)`
     mfmGcc ## GCC/Emacs style: `file:line:col:`
 
+  UnitConfig* = object
+    ## The part of the configuration that belongs to the code being checked
+    ## rather than to the compilation (doc/parallel_compiler.md §4.1): a
+    ## `{.push.}` changes it, a unit of the body pass runs with its own
+    ## (`semstmts.runBodyTask`), and a worker of the parallel stages will own
+    ## one. Every field is reached through a same-named template on
+    ## `ConfigRef`, so `conf.options` reads as before.
+    options*: TOptions    # (+)
+    notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
+    warningAsErrors*: TNoteKinds
+    errorMax*: int
+    errorOutputs*: TErrorOutputs
+    msgContext*: seq[tuple[info: TLineInfo, detail: string]]
+    lastError*: TLineInfo
+    evalTemplateCounter*: int
+    evalMacroCounter*: int
+
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -426,7 +443,10 @@ type
     backend*: TBackend # set via `nim x` or `nim --backend:x`
     target*: Target       # (+)
     linesCompiled*: int   # all lines that have been compiled
-    options*: TOptions    # (+)
+    parallelSem*: int
+      ## `--parallelSem:N`: worker threads for the body pass (0 and 1: none)
+    unitField*: UnitConfig
+      ## the header pass's; see `unit`
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
     arcToExpand*: StringTableRef
@@ -434,8 +454,6 @@ type
     filenameOption*: FilenameOption # how to render paths in compiler messages
     msgFormat*: MsgFormat # format of the location prefix in compiler messages
     unitSep*: string
-    evalTemplateCounter*: int
-    evalMacroCounter*: int
     exitcode*: int8
     cmd*: Command  # raw command parsed as enum
     ideActive*: bool # serving IDE tooling (nimsuggest): collect suggestions and
@@ -523,14 +541,11 @@ type
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
-    notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
-    warningAsErrors*: TNoteKinds
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
-    errorCounter*: int
+    errorCounterField*: int # see `errorCounter`
     hintCounter*: int
     warnCounter*: int
-    errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
     maxCallDepthVM*: int ## VM: max call depth
     isVmTrace*: bool
@@ -605,6 +620,36 @@ type
     clientProcessId*: int
 
 
+
+
+when defined(nimParallelSem):
+  var tlsErrorCounter* {.threadvar.}: ptr int
+    ## this thread's error count in the parallel body pass: `compiles()`
+    ## decides by whether IT changed, so other threads' errors must not show
+  template errorCounter*(conf: ConfigRef): untyped =
+    (if tlsErrorCounter != nil: tlsErrorCounter else: addr conf.errorCounterField)[]
+else:
+  template errorCounter*(conf: ConfigRef): untyped = conf.errorCounterField
+
+when defined(nimParallelSem):
+  var tlsUnit* {.threadvar.}: ptr UnitConfig
+    ## the `UnitConfig` of the unit this thread is checking, or nil: then it
+    ## is the header pass's, `conf.unitField` (doc/parallel_compiler.md §4.1)
+  template unit*(conf: ConfigRef): untyped =
+    (if tlsUnit != nil: tlsUnit else: addr conf.unitField)[]
+else:
+  template unit*(conf: ConfigRef): untyped = conf.unitField
+
+# `conf.unit.x` as `conf.x`: lvalues, so `incl conf.notes, ...` works too
+template options*(conf: ConfigRef): untyped = conf.unit.options
+template notes*(conf: ConfigRef): untyped = conf.unit.notes
+template warningAsErrors*(conf: ConfigRef): untyped = conf.unit.warningAsErrors
+template errorMax*(conf: ConfigRef): untyped = conf.unit.errorMax
+template errorOutputs*(conf: ConfigRef): untyped = conf.unit.errorOutputs
+template msgContext*(conf: ConfigRef): untyped = conf.unit.msgContext
+template lastError*(conf: ConfigRef): untyped = conf.unit.lastError
+template evalTemplateCounter*(conf: ConfigRef): untyped = conf.unit.evalTemplateCounter
+template evalMacroCounter*(conf: ConfigRef): untyped = conf.unit.evalMacroCounter
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
@@ -703,12 +748,14 @@ proc initConfigRefCommon(conf: ConfigRef) =
   conf.selectedGC = gcUnselected
   conf.verbosity = 1
   conf.hintProcessingDots = true
-  conf.options = DefaultOptions
+  # the new configuration's own header state, not the unit this thread is
+  # checking (`conf.options` is `tlsUnit`'s under `-d:nimParallelSem`)
+  conf.unitField.options = DefaultOptions
   conf.globalOptions = DefaultGlobalOptions
   conf.filenameOption = foAbs
   conf.msgFormat = mfmStd
   conf.foreignPackageNotes = foreignPackageNotesDefault
-  conf.notes = NotesVerbosity[1]
+  conf.unitField.notes = NotesVerbosity[1]
   conf.mainPackageNotes = NotesVerbosity[1]
 
 proc newConfigRef*(): ConfigRef =
@@ -717,6 +764,7 @@ proc newConfigRef*(): ConfigRef =
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
+    unitField: UnitConfig(errorOutputs: {eStdOut, eStdErr}, lastError: unknownLineInfo),
     cppDefines: initHashSet[string](),
     icGroup: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {},

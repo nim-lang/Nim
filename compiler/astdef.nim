@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+from concurrency import withSemLock, lockSem
+when defined(nimParallelSem):
+  from concurrency import atomicIncl, atomicRead
 import
   lineinfos, options, ropes, idents, int128
 
@@ -991,6 +994,17 @@ var forceLazyBodyHook*: proc (n: PNode) {.nimcall, raises: [], tags: [], gcsafe.
   ## Materialization is a pure in-memory buffer transform; a corrupt buffer is a
   ## `Defect` (`raiseAssert`), which is outside exception tracking.
 
+template inclShared*[T](flags: var set[T]; f: T) =
+  ## sets a flag of a symbol or type that units on other threads may share
+  ## (`sfUsed`, `sfAddrTaken`): `-d:nimParallelSem` sets it atomically
+  when defined(nimParallelSem): atomicIncl(flags, f)
+  else: incl(flags, f)
+
+template rawFlags*(x: PSym|PType): untyped =
+  ## `x.flagsImpl` without loading, read atomically under `-d:nimParallelSem`
+  when defined(nimParallelSem): atomicRead(x.flagsImpl)
+  else: x.flagsImpl
+
 proc len*(n: PNode): int {.inline.} =
   if nfLazyBody in n.flags and forceLazyBodyHook != nil:
     forceLazyBodyHook(n)
@@ -1199,6 +1213,8 @@ type
     module*: int  # Which module this entry belongs to
     key*: string
     sym*: PSym
+    arenaTag*: int32 # `--parsem:on`: the arena the entry was made in, see
+                     # `modulegraphs.arenaTag`
 
 
 proc forcePartial*(s: PSym) =
@@ -1455,3 +1471,16 @@ proc isClosureEnvParam*(procType: PType; param: PSym): bool {.inline.} =
   ## derives an identity or a C name from the type must skip it, or that
   ## identity differs between processes.
   procType.callConvImpl == ccClosure and param.name.s == closureEnvParamName
+
+var bindingOrigins*: Table[ItemId, PType]
+  ## `bindingId -> the type that carries it as its own itemId`, for the types
+  ## that have replicas. A replica's `bindingId` is written into its NIF def,
+  ## and must be written as its ORIGINAL's NIF id, which is content-derived
+  ## (`ast2nif.canonicalTypeItem`) rather than the mint counter.
+
+proc registerBindingOrigin*(t: PType) {.inline.} =
+  ## `t` is about to lend its `bindingId` to a replica
+  let semGuard {.used.} = lockSem()
+  if t.bindingId == t.itemId and not t.itemId.isBackendMinted:
+    bindingOrigins[t.bindingId] = t
+

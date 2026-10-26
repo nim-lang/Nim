@@ -693,23 +693,34 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
   var module = s
   while module != nil and module.kind != skModule:
     module = module.owner
-  if module != nil and module != c.module:
+  if module == nil or module == c.module: return
+  template usedBy(candidate: PSym): bool =
+    candidate == module or c.importModuleMap.getOrDefault(candidate.id, int.low) == module.id or
+      c.exportIndirections.contains((candidate.id, s.id))
+  when defined(nimParallelSem):
+    if tlsUsedImports != nil and tlsUsedImportsCtx == cast[pointer](c):
+      # the parallel body pass: noted per thread, removed after the join
+      for i in 0..high(c.unusedImports):
+        if i notin tlsUsedImports[] and usedBy(c.unusedImports[i][0]):
+          tlsUsedImports[].incl i
+      return
+  withSemLock:
     var i = 0
     while i <= high(c.unusedImports):
-      let candidate = c.unusedImports[i][0]
-      if candidate == module or c.importModuleMap.getOrDefault(candidate.id, int.low) == module.id or
-        c.exportIndirections.contains((candidate.id, s.id)):
-        # mark it as used:
-        c.unusedImports.del(i)
+      if usedBy(c.unusedImports[i][0]):
+        # mark it as used; `--parsem:on` keeps the order of the others, which
+        # must not depend on the order the units ran in
+        if optParSem in c.config.globalOptions: c.unusedImports.delete(i)
+        else: c.unusedImports.del(i)
       else:
         inc i
 
 proc markUsed(c: PContext; info: TLineInfo; s: PSym; checkStyle = true; isGenericInstance = false) =
   if not isGenericInstance:
     let conf = c.config
-    incl(s.flagsImpl, sfUsed)
+    inclShared(s.flagsImpl, sfUsed)
     if s.kind == skEnumField and s.owner != nil:
-      incl(s.owner.flagsImpl, sfUsed)
+      inclShared(s.owner.flagsImpl, sfUsed)
       if sfDeprecated in s.owner.flags:
         warnAboutDeprecated(conf, info, s)
     if {sfDeprecated, sfError} * s.flags != {}:

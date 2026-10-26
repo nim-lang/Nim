@@ -10,6 +10,7 @@
 ## This file implements the evaluation engine for Nim code.
 ## It is a register based VM that works on packed data, see vmdef.
 
+from concurrency import withSemLock, lockSem
 import semmacrosanity
 import ic/sharedcounters
 import
@@ -2408,18 +2409,29 @@ proc interpreterCode*(c: PPassContext, n: PNode): PNode =
 
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
-                      mode: TEvalMode; semCtx: PPassContext): PNode =
+                      mode: TEvalMode; semCtx: PPassContext;
+                      templInstCounter: ref int): PNode =
+  let semGuard {.used.} = lockSem()
   when defined(nimsuggest):
     if g.config.expandDone():
       return n
   #if g.config.errorCounter > 0: return n
+  # `--parsem:on`: no deferred body may be pending once the session starts
+  if g.demandReachableBodies != nil: g.demandReachableBodies(n)
   let n = transformExpr(g, idgen, module, n)
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode
   let oldLocals = c.locals
   let oldSemCtx = c.semCtx
+  let oldTemplInstCounter = c.templInstCounter
   if semCtx != nil: c.semCtx = semCtx
+  if templInstCounter != nil and optParSem in g.config.globalOptions:
+    # `--parsem:on`: a `getAst` evaluated here names its gensyms from the
+    # counter of the caller's arena, not from whichever counter the last
+    # macro call left installed (doc/parallel_compiler.md §4.2)
+    c.templInstCounter = templInstCounter
+  defer: c.templInstCounter = oldTemplInstCounter
   c.mode = mode
   c.locals = initIntSet()
   c.cannotEval = false
@@ -2443,20 +2455,21 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   c.semCtx = oldSemCtx
 
 proc evalConstExpr*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode;
-                    semCtx: PPassContext = nil): PNode =
-  result = evalConstExprAux(module, idgen, g, nil, e, emConst, semCtx)
+                    semCtx: PPassContext = nil; templInstCounter: ref int = nil): PNode =
+  result = evalConstExprAux(module, idgen, g, nil, e, emConst, semCtx, templInstCounter)
 
 proc evalStaticExpr*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode, prc: PSym;
-                     semCtx: PPassContext = nil): PNode =
-  result = evalConstExprAux(module, idgen, g, prc, e, emStaticExpr, semCtx)
+                     semCtx: PPassContext = nil; templInstCounter: ref int = nil): PNode =
+  result = evalConstExprAux(module, idgen, g, prc, e, emStaticExpr, semCtx, templInstCounter)
 
 proc evalStaticStmt*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode, prc: PSym;
-                     semCtx: PPassContext = nil) =
-  discard evalConstExprAux(module, idgen, g, prc, e, emStaticStmt, semCtx)
+                     semCtx: PPassContext = nil; templInstCounter: ref int = nil) =
+  discard evalConstExprAux(module, idgen, g, prc, e, emStaticStmt, semCtx, templInstCounter)
 
 proc setupCompileTimeVar*(module: PSym; idgen: IdGenerator; g: ModuleGraph; n: PNode;
                           semCtx: PPassContext = nil) =
-  discard evalConstExprAux(module, idgen, g, nil, n, emStaticStmt, semCtx)
+  let semGuard {.used.} = lockSem()
+  discard evalConstExprAux(module, idgen, g, nil, n, emStaticStmt, semCtx, nil)
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
@@ -2502,6 +2515,7 @@ proc unshareTree(n: PNode; seen: var IntSet): PNode =
 
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym; semCtx: PPassContext = nil): PNode =
+  let semGuard {.used.} = lockSem()
   #if g.config.errorCounter > 0: return errorNode(idgen, module, n)
 
   # XXX globalError() is ugly here, but I don't know a better solution for now
@@ -2516,6 +2530,10 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
     globalError(g.config, n.info, "in call '$#' got $#, but expected $# argument(s)" % [
         n.renderTree, $(n.safeLen-1), $(sym.typ.paramsLen)])
 
+  # `--parsem:on`: no deferred body may be pending once the session starts
+  if g.demandReachableBodies != nil:
+    g.demandReachableBodies(newSymNode(sym))
+    g.demandReachableBodies(n)
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode
@@ -2524,7 +2542,11 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
   c.mode = emStaticStmt
   c.comesFromHeuristic.line = 0'u16
   c.callsite = nOrig
+  let oldTemplInstCounter = c.templInstCounter
   c.templInstCounter = templInstCounter
+  defer:
+    if optParSem in g.config.globalOptions:
+      c.templInstCounter = oldTemplInstCounter
   c.cannotEval = false
   let start = genProc(c, sym)
   if c.cannotEval:
