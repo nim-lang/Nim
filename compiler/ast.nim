@@ -12,7 +12,7 @@
 import
   lineinfos, options, idents, int128, wordrecg
 
-import std/[tables, hashes]
+import std/[tables, hashes, intsets]
 from std/strutils import toLowerAscii
 
 when defined(nimPreviewSlimSystem):
@@ -595,6 +595,20 @@ type
     sealed*: bool
     backendMinted*: bool
     disambTable*: CountTable[PIdent]
+    disambBase*: int32
+      ## 0: `disamb` is the plain per-(module, name) count. Otherwise the
+      ## generator is inside an ARENA (`--parsem:on`, see `enterArena`) and
+      ## `disambTable` is the arena's private one.
+    tailTable*: CountTable[PIdent]
+      ## counts of the tail region: arena overflow, and everything minted after
+      ## the module's body pass
+    arenaSlots*: IntSet
+      ## instance and hook arenas taken so far in this module
+    arenaCap*: int32
+      ## names per identifier the current arena holds before spilling
+    scratch*: bool
+      ## inside `enterScratchArena`: mint without counting, into `scratchLog`
+    scratchLog*: seq[PSym]
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
@@ -619,6 +633,129 @@ proc idGeneratorForBackend*(m: PSym): IdGenerator =
 
 proc idGeneratorForPackage*(nextIdWillBe: int32): IdGenerator =
   result = IdGenerator(module: PackageModuleId, symId: nextIdWillBe - 1'i32, typeId: 0, disambTable: initCountTable[PIdent]())
+
+const
+  ArenaLocalBits = 11
+  ArenaSize* = 1'i32 shl ArenaLocalBits
+    ## a unit's arena
+  KeyedArenaLocalBits = 8
+  KeyedArenaSize = 1'i32 shl KeyedArenaLocalBits
+    ## an instance's or a hook's arena: they mint few names each, and the
+    ## smaller they are, the more slots there are for their keys, which makes
+    ## a collision (`enterKeyedArena`) correspondingly rarer
+  KeyedArenaSlots = 1 shl 19
+    ## names (per identifier) one arena can mint before it spills to the tail
+  HeaderRegionEnd = 1'i32 shl 16
+  UnitArenaBase = HeaderRegionEnd
+  KeyedArenaBase = 1'i32 shl 28
+  TailRegionBase* = KeyedArenaBase + (1'i32 shl 27)
+    ## all below `HookDisambBit`: content-derived `disamb`s stay disjoint
+
+type
+  ArenaState* = object
+    ## what `enterArena` saved, for `leaveArena`
+    table: CountTable[PIdent]
+    base: int32
+    scratch: bool
+    scratchLog: seq[PSym]
+    cap: int32
+
+proc enterArena(idgen: IdGenerator; base: int32; cap = ArenaSize): ArenaState =
+  result = ArenaState(table: move idgen.disambTable, base: idgen.disambBase,
+                      scratch: idgen.scratch, scratchLog: move idgen.scratchLog,
+                      cap: idgen.arenaCap)
+  idgen.disambTable = initCountTable[PIdent]()
+  idgen.disambBase = base
+  idgen.arenaCap = cap
+  idgen.scratch = false
+
+proc enterUnitArena*(idgen: IdGenerator; ordinal: int): ArenaState =
+  ## `--parsem:on` (doc/parallel_compiler.md §4.2): the `disamb` of a symbol
+  ## minted inside a unit must not depend on which units ran before it, so
+  ## each unit counts from a base derived from its key. The module's
+  ## `disamb` space (below `HookDisambBit`) is cut into regions:
+  ##
+  ## =================================  ==================================
+  ## `[0, 2^16)`                        the header pass, plain counting
+  ## `[2^16, 2^16 + 2^16 * 2^11)`       unit `i` at `2^16 + i * 2^11`
+  ## `[2^28, 2^28 + 2^19 * 2^8)`        instance and hook arenas, by key
+  ## `[2^28 + 2^27, 2^29)`              the tail: after the body pass, and
+  ##                                    the overflow of every arena
+  ## =================================  ==================================
+  ##
+  ## Overflow keeps names unique but makes them depend on the order again;
+  ## a routine needs `ArenaSize` symbols of ONE name to get there.
+  let base = if ordinal < (1 shl 16): UnitArenaBase + int32(ordinal) * ArenaSize
+             else: TailRegionBase
+  result = enterArena(idgen, base)
+
+proc enterKeyedArena*(idgen: IdGenerator; key: uint32): ArenaState =
+  ## The arena of a generic instance or a lifted hook: created by whichever
+  ## unit needs it first, so its base comes from its content key instead.
+  ## Two keys of one module that land on the same slot are probed apart in
+  ## first-come order, the one place where the order still shows.
+  var slot = int(key mod uint32(KeyedArenaSlots))
+  var tries = 0
+  while slot in idgen.arenaSlots and tries < KeyedArenaSlots:
+    slot = (slot + 1) mod KeyedArenaSlots
+    inc tries
+  let base = if tries < KeyedArenaSlots:
+               idgen.arenaSlots.incl slot
+               KeyedArenaBase + int32(slot) * KeyedArenaSize
+             else: TailRegionBase
+  result = enterArena(idgen, base, KeyedArenaSize)
+
+proc reenterUnitArena*(idgen: IdGenerator; ordinal: int;
+                       table: sink CountTable[PIdent]): ArenaState =
+  ## back into a unit's arena, with the counts it left with
+  result = enterUnitArena(idgen, ordinal)
+  idgen.disambTable = table
+
+proc leaveArena*(idgen: IdGenerator; saved: sink ArenaState) =
+  idgen.disambTable = move saved.table
+  idgen.disambBase = saved.base
+  idgen.arenaCap = saved.cap
+  idgen.scratch = saved.scratch
+  idgen.scratchLog = move saved.scratchLog
+
+proc enterScratchArena*(idgen: IdGenerator): ArenaState =
+  ## For work that mints before its arena's key is known (a generic instance's
+  ## signature has to be instantiated before the cache can tell whether the
+  ## instance exists). The symbols minted get no `disamb` yet and are logged;
+  ## `leaveScratchArena` hands them back for `redisamb` once the key is known,
+  ## or they are dropped with the work. Either way the enclosing arena's
+  ## counts do not see them, so they do not depend on whether the work was
+  ## needed.
+  result = enterArena(idgen, idgen.disambBase, idgen.arenaCap)
+  idgen.scratch = true
+
+proc leaveScratchArena*(idgen: IdGenerator; saved: sink ArenaState): seq[PSym] =
+  result = move idgen.scratchLog
+  leaveArena(idgen, saved)
+
+proc enterTail*(idgen: IdGenerator) =
+  ## The module's body pass is over: what is minted from now on (the backend
+  ## of a classic build) must not land on a unit's region.
+  idgen.disambBase = TailRegionBase
+
+proc nextDisamb(idgen: IdGenerator; name: PIdent): int32 =
+  if idgen.disambBase == 0'i32:
+    result = getOrDefault(idgen.disambTable, name).int32
+    idgen.disambTable.inc name
+  else:
+    result = idgen.arenaCap
+    if idgen.disambBase != TailRegionBase:
+      result = getOrDefault(idgen.disambTable, name).int32
+      idgen.disambTable.inc name
+    if result < idgen.arenaCap:
+      result += idgen.disambBase
+    else:
+      result = TailRegionBase + getOrDefault(idgen.tailTable, name).int32
+      idgen.tailTable.inc name
+
+proc redisamb*(idgen: IdGenerator; s: PSym) =
+  ## gives a symbol minted in a scratch arena its `disamb` in the current one
+  s.disamb = nextDisamb(idgen, s.name)
 
 proc nextSymId(x: IdGenerator): ItemId {.inline.} =
   assert(not x.sealed)
@@ -869,8 +1006,8 @@ proc newSym*(symKind: TSymKind, name: PIdent, idgen: IdGenerator; owner: PSym,
   let id = nextSymId idgen
   result = PSym(name: name, kindImpl: symKind, flagsImpl: {}, infoImpl: info, itemId: id,
                 optionsImpl: options, ownerFieldImpl: owner, offsetImpl: defaultOffset,
-                disamb: getOrDefault(idgen.disambTable, name).int32)
-  idgen.disambTable.inc name
+                disamb: (if idgen.scratch: 0'i32 else: nextDisamb(idgen, name)))
+  if idgen.scratch: idgen.scratchLog.add result
   when false:
     if id.module == 48 and id.item == 39:
       writeStackTrace()
@@ -1286,6 +1423,7 @@ proc exactReplica*(t: PType; idgen: IdGenerator): PType =
   result = PType(kind: t.kind, ownerFieldImpl: t.owner, sizeImpl: defaultSize,
                  alignImpl: defaultAlignment, itemId: nextTypeId(idgen),
                  bindingId: t.bindingId)
+  registerBindingOrigin(t)
   assignType(result, t)
   result.symImpl = t.sym          # backend-info should not be copied
 

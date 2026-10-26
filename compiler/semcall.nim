@@ -506,7 +506,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverloadedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.config.m.errorOutputs == {}:
+  if c.config.errorOutputs == {}:
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
     return
@@ -652,7 +652,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert c.config, result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if c.config.m.errorOutputs == {}:
+    if c.config.errorOutputs == {}:
       # quick error message for performance of 'compiles' built-in:
       globalError(c.config, n.info, errGenerated, "ambiguous call")
     elif c.config.errorCounter == 0:
@@ -956,6 +956,12 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   if finalCallee.magic notin {mArrGet, mArrPut}:
     result.typ = finalCallee.typ.returnType
+    if result.typ != nil and result.typ.kind == tyAnything and
+        c.graph.demandRoutineBody != nil:
+      # `--parsem:on`: the callee's body, which infers the type, may still be
+      # a pending unit
+      discard c.graph.demandRoutineBody(finalCallee, forEffects = false)
+      result.typ = finalCallee.typ.returnType
     if result.typ != nil and result.typ.kind == tyAnything and
         finalCallee.kind in {skProc, skFunc, skMethod, skConverter} and
         c.inGenericContext == 0:

@@ -86,11 +86,25 @@ proc sameInstantiation(a, b: TInstantiation): bool =
   else:
     result = false
 
+proc sharesInstanceWith(g: ModuleGraph; inst: PInstantiation; module: PSym): bool =
+  ## `nim m --parsem:on`: one process compiles a whole import group, and an
+  ## instance made by one module of the group was shared with the others —
+  ## whichever instantiated first owned it, and that depends on the order
+  ## units ran in. Like separate processes, each module of the group makes its
+  ## own (the backend merges them); only an instance of a module loaded from
+  ## its NIF file, or the module's own, is shared.
+  result = true
+  if g.config.cmd == cmdM and optParSem in g.config.globalOptions and
+      inst.sym != nil:
+    let m = inst.sym.itemId.module
+    result = m == module.position or isCachedModule(g, m)
+
 proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
-                     id: CompilesId): PSym =
+                     id: CompilesId; module: PSym): PSym =
   result = nil
   for inst in procInstCacheItems(g, genericSym):
-    if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
+    if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]) and
+        sharesInstanceWith(g, inst, module):
       return inst.sym
 
 proc sameBindingSnapshot(pt: LayeredIdTable; inst: PInstantiation): bool =
@@ -497,6 +511,28 @@ proc getLocalPassC(c: PContext, s: PSym): string =
     for p in n:
       extractPassc(p)
 
+proc canonicalBindings(c: PContext; pt: LayeredIdTable): LayeredIdTable =
+  ## `--parsem:on`: a generic parameter bound to the type of a LITERAL -- an
+  ## int literal's `int literal(5)`, a set constructor's fresh `set[E]` --
+  ## is bound to the type itself instead. The instance is shared by every
+  ## call site whose argument has the same type (`sameType` does not care), so
+  ## otherwise whichever call site instantiated first decided what the
+  ## instance's signature and body refer to.
+  result = pt
+  var seen = initIntSet()
+  for k, _ in pt:
+    if containsOrIncl(seen, toId(k)): continue
+    let t = lookupById(pt, k)
+    var canon = t
+    if t != nil and t.kind in {tyInt, tyFloat} and t.n != nil:
+      canon = skipIntLit(t, c.idgen)
+    elif t != nil and t.kind == tySet and tfIsConstructor in t.flags:
+      canon = copyType(t, c.idgen, t.owner)
+      canon.excl tfIsConstructor
+    if canon != t:
+      if result == pt: result = newTypeMapLayer(pt)
+      result.topLayer[k] = canon
+
 proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
@@ -509,6 +545,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   # hashes only signatures now, so a generic body edit moves only the impl
   # cookie, and just the modules that instantiated it re-sem.
   recordIcImplDep(c.graph, fn)
+  if c.graph.demandRoutineBody != nil:
+    # `--parsem:on`: the generic body may still be a pending unit
+    discard c.graph.demandRoutineBody(fn, forEffects = false)
+  let pt = if optParSem in c.config.globalOptions: canonicalBindings(c, pt) else: pt
   let canUseBindingCache = c.inGenericContext == 0 and c.matchedConcept == nil
   if canUseBindingCache:
     result = genericCacheGetFromBindings(c.graph, fn, pt, c.compilesContextId,
@@ -525,6 +565,33 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   defer:
     dec c.instCounter
     c.inTypeofContext = currentTypeofContext
+  # `--parsem:on` (doc/parallel_compiler.md §4.2): what the instance mints is
+  # named from its own arena, keyed by the instantiation, not from the arena of
+  # the unit that happened to need it first. The key needs the concrete types,
+  # so everything up to the cache lookup mints into a scratch arena first.
+  var arenaSaved = default(ArenaState)
+  var arenaMode = 0 # 0: none, 1: scratch, 2: the instance's own
+  var savedTemplInstCounter = 0
+  let savedArenaTag = c.graph.arenaTag
+  let parSem = optParSem in c.config.globalOptions
+  if parSem:
+    arenaSaved = enterScratchArena(c.idgen)
+    arenaMode = 1
+    # the instance's own gensym numbering, from the signature on: a cache
+    # hit must leave the enclosing counter where it was
+    savedTemplInstCounter = c.templInstCounter[]
+    c.templInstCounter[] = 0
+  defer:
+    case arenaMode
+    of 1:
+      # a cache hit (or an error): the symbols minted are counted where they
+      # would have been without arenas
+      for s in leaveScratchArena(c.idgen, arenaSaved): redisamb(c.idgen, s)
+    of 2:
+      leaveArena(c.idgen, arenaSaved)
+      c.graph.arenaTag = savedArenaTag
+    else: discard
+    if parSem: c.templInstCounter[] = savedTemplInstCounter
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   let producer = getModule(fn)
@@ -588,8 +655,20 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   #echo "INSTAN ", fn.name.s, " ", typeToString(result.typ), " ", entry.concreteTypes.len
   if tfTriggersCompileTime in result.typ.flags:
     incl(result, sfCompileTime)
-  var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
+  var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId, c.module)
   if oldPrc == nil:
+    if arenaMode == 1 and c.compilesContextId > 0:
+      # inside `compiles()` the instance is not canonical (see
+      # `setInstanceDisamb`): counted where it would be without arenas
+      for s in leaveScratchArena(c.idgen, arenaSaved): redisamb(c.idgen, s)
+      arenaMode = 0
+    elif arenaMode == 1:
+      let minted = leaveScratchArena(c.idgen, arenaSaved)
+      arenaSaved = enterKeyedArena(c.idgen,
+        instanceArenaKey(c.graph, fn, entry.concreteTypes))
+      arenaMode = 2
+      c.graph.arenaTag = c.idgen.disambBase
+      for s in minted: redisamb(c.idgen, s)
     # The signature has to be instantiated before the cache can be queried,
     # but cache hits don't need a private copy of the generic's full AST.
     var n = copyTree(fn.ast)
@@ -611,7 +690,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
     # Under IC the instance's NIF name must be canonical across modules:
     # derive its `disamb` from the instantiation identity (generic +
     # concrete types) instead of the per-module counter.
-    setInstanceDisamb(c.graph, result, fn, entry.concreteTypes)
+    setInstanceDisamb(c.graph, result, fn, entry.concreteTypes,
+                      inCompiles = c.compilesContextId > 0)
     # bug #12985 bug #22913
     # TODO: use the context of the declaration of generic functions instead
     # TODO: consider fixing options as well

@@ -1,6 +1,6 @@
 # A concurrent compiler: routine bodies as the unit of parallelism
 
-Status: PLAN (2026-09-01). Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
+Status: PLAN (2026-09-01); stage 1 revised 2026-10-22 (`--parsem:on`, §2.4); stage 2: grinder clean for the compiler; stage 4 prototyped 2026-10-24 and NOT pursued (see there). Written against branch `araq-ic-fixes3` @ `b2ecde1f2`.
 Companion to `doc/ic.md` (the IC design this sits on top of). Line numbers below
 are from that commit; the measurements are from a 32-core machine.
 
@@ -208,21 +208,124 @@ the caller (§4.10); there the caller must not run it inline — it gets the
 signature (which never needs the body) and pessimistic effects, and the instance
 body becomes a task of its own.
 
-### 2.4 Declare-before-use on a scope that is complete
+### 2.4 Bodies see the complete scope (`--parsem:on`)
 
-When body tasks run, the module's top-level scope already contains *every*
-top-level symbol, including ones declared after the routine. Nim requires
-declare-before-use, and overload resolution must not see later overloads, so
-lookups filter. There is no declaration-order field on `TSym` (`position`,
-`offset`, `disamb` are all overloaded — `astdef.nim:744-754`), but there does
-not need to be one: **`itemId.item` is today a per-module monotone creation
-counter** (`ast.nim:560`, `newSym` `:802`), and body-minted ids will live in
-disjoint high arenas (§4.2). So a task records `visibleUpTo = idgen.symId` at
-its declaration and `lookups.nim` (`searchInScopes :205`, `initOverloadIter
-:~680`, `someSymFromImportTable :192`) skips a symbol of *this* module whose
-`item` is a header-pass id greater than `visibleUpTo`. Imports declared later
-in the file are skipped the same way (`ImportedModule` gets a `visibleFrom`
-index; `c.imports` is append-only). Cost: one compare per candidate.
+*Superseded (2026-10-22).* The original plan kept declare-before-use for
+bodies and filtered lookups by a `visibleUpTo` id. The switch that enables
+deferred bodies, `--parsem:on`, takes the opposite decision: a body is checked
+against the module's **complete** top-level scope, so a routine body can call a
+routine, use a template or instantiate a generic declared further down without
+a forward declaration. That removes the filter, the order-sensitive half of
+§4.10.3 (instantiation now always binds against the complete scope, like a body)
+and, for new code, forward-declaration reconciliation (§4.4).
+
+What stays sequential is the header pass: a top-level statement — a `const`,
+a `static:` block, a type, a signature, a top-level call — still only sees what
+is declared above it.
+
+A unit can be needed before the body pass reaches it. It is then run on demand
+by exactly the consumer that needs it, never by draining the queue at a
+statement boundary (which would check bodies against an incomplete scope):
+
+| consumer | demands |
+|---|---|
+| a compile-time evaluation (`vm.evalConstExprAux`, `evalMacroCall`) | every unit reachable from the code to evaluate, *before* the VM session starts (`demandReachableBodies`); the VM never meets a pending unit (§4.6 step 2 does not arise) |
+| `sempass2.trackCall`, and a routine passed as an `effectsOf` argument | the callee's unit, for its inferred effects |
+| `semexprs.semSym` of a routine used as a value | the routine's unit, for its inferred effects (rule 3) |
+| `semcall.semResolvedCall` | a callee with an `auto` return type |
+| `seminst.generateInstance` | the generic's unit (its `semGenericStmt`) |
+
+A unit demanded early is checked against the scope as it is at that moment,
+which is never smaller than the scope at its declaration, so code that compiles
+without the switch compiles with it. Two rules keep that exact:
+
+1. A routine that **was forward declared**, and whose implementation comes
+   after the unit that is asking, keeps forward-declaration semantics for it:
+   effect tracking (and a use as a proc value) goes by its declaration and does
+   not run it early (`keepsForwardSemantics`). That is what breaks a cycle of
+   mutually recursive routines today, at the place the programmer chose
+   (`rstast.renderRstToRst` is the case in the compiler's own import closure).
+   The header pass asking is past every pending unit's implementation, so
+   for it the unit is run.
+2. A demand for a unit that is **running**, or done but part of a cycle that
+   is not closed yet, is a recursion. The units form the nodes of a *demand
+   graph* and the cycles are its strongly connected components, found by
+   Tarjan's algorithm as the units run (`runBodyTask`, `demandRoutineBody`).
+   A unit whose cycle is still open when its body has been tracked does not
+   publish its effects (`deferEffects`); when the cycle's root finishes, its
+   units start again from *no* effects and are tracked again, in key order and
+   with messages silenced, until nothing grows; then each checks its declared
+   effects and publishes (`solveCycle`). That is the least solution — what
+   each member would get if the others' effects had been known up front — and
+   it does not depend on which member ran first. A plain union of the members'
+   effects would not do: a `try` around a call inside the cycle filters what
+   comes back (`tests/parsem/tcycleeffects`). A routine that is not a unit —
+   an instance or a nested routine — and reads the provisional effects of a
+   unit of an open cycle joins the cycle the same way (`deferRoutineEffects`):
+   going by the unit's declaration instead made the instantiated `==` of
+   `seq[Foo]`, a `func` that recurses into `Foo`'s `==`, "have side effects"
+   (`tests/effects/tlaxeffects`). A call that rule 1 applies to goes by the
+   declaration only (`propagateDeclared`), whatever the target's body has
+   inferred by then; it is no edge of the demand graph, it cuts the cycle.
+
+   The first version left a running unit alone and let the caller take the
+   path of a recursive call without `--parsem` (an empty effect list). That
+   was unsound for mutual recursion without forward declarations: the member
+   entered second saw the first's effects as empty, so an exception raised
+   by the first escaped a `.raises: []` caller (`tests/parsem/tcycleraises`);
+   and it made every member of such a cycle GC-unsafe and side-effecting.
+   Treating a running unit as a forward declaration instead broke
+   `tests/effects/tlaxeffects` (`==` of an object recursing through the
+   instantiated `==` of `seq`).
+3. A routine **used as a value** is matched against proc types by its inferred
+   effects, so `semSym` demands it too (`tests/async/t7192`: a top-level
+   `callSoon(testCallback)` needs `testCallback` to be inferred `gcsafe`).
+4. A **generic** body binds at its declaration whenever it can, exactly as
+   without the switch; only one that would not (it uses a routine declared
+   further down) becomes a unit and binds against the complete scope
+   (`genericBodyBindsEarly`, a silenced trial run of `semGenericStmt` on a
+   copy). Binding a generic body is observable in a way a routine body's sem is
+   not: an identifier not declared yet stays unbound and is looked up at
+   instantiation, where builtins come first; bound to a later declaration it
+   becomes an overloaded call. `system`'s generics are full of these —
+   `comparisons.==` for arrays bound `x[f]` to `system`'s later `[]` overloads
+   and broke `tests/overload/tgenericrangedisamb`.
+5. Only routines declared **directly at the top level** are units, not ones in
+   a top-level `block:` (owned by the module all the same): a block-local proc
+   seeing every later top-level overload made `tests/template/template_issues`
+   ambiguous.
+
+`friendModules` is positional state too: a routine generated by a template or
+macro expansion may access the private symbols of the expanding module, and
+its body now runs after the expansion has popped them, so the task captures
+them (`tests/parsem/tprivatetemplate`).
+
+What still changes, by design (the test-suite diff of 2026-10-22, every other
+failure with the switch also fails without it):
+
+| class | tests |
+|---|---|
+| the first error is a header-pass one where it used to be a body's (§4.10.7) | `async/tasync_noasync`, `async/tasync_nofuture`, `effects/teffects5`, `effects/teffects9`, `effects/tsidee4` |
+| compile-time side effects of bodies (`static:` echo, `{.compileTime.}` tables filled by macros in bodies) run later (§4.10.5) | `generics/tnullary_generics`, `macros/tincremental` |
+| a body no longer lifts a hook implicitly before the explicit one further down is declared — the explicit one wins instead of "cannot bind another `=destroy`" | `destructor/tdestructor_too_late`, `destructor/tinvalid_rebind`, `destructor/tinvalid_rebind_nonempty` |
+| a later top-level overload of a nested routine's name makes a proc value a symchoice; under the deprecated `--newruntime`, `owned` of a symchoice is typed `owned None` (a latent bug) | `destructor/twidgets`, `destructor/twidgets_unown`, `destructor/tuse_ownedref_after_move` |
+| mutual recursion without forward declarations is inferred precisely (§2.4 rule 2): a nested `.noSideEffect` routine that only calls back into its pure outer routine no longer "can have side effects" | `effects/tnestedprocs` (variant `tests/parsem/tnestedprocs_parsem`) |
+| a method dispatcher is created from its base method before the base is tracked, so it lacks `sfInjectDestructors` and `--expandArc` does not show it; its body is `nkFastAsgn` only, so nothing is lost | `arc/topt_no_cursor` |
+
+
+`runBodyTask` saves, resets and restores every positional field of `PContext`
+(§3 (a)), so running a unit from inside an instantiation, a template expansion,
+`compiles()` or another unit is safe. A unit demanded inside `compiles()`
+reports its errors normally and they fail the build even though `tryExpr`
+rolls the error counter back.
+
+Consequence for §2.3: a unit may now *demand* one with a larger key. In the
+sequential implementation that is plain recursion with a `btRunning` guard. For
+the parallel stages, the deadlock-freedom argument has to move from "keys
+decrease along waits" to "a wait on a unit that is (transitively) waiting on
+the waiter is answered by rule 2": a wait-for-graph cycle is exactly an open
+cycle of the demand graph, whose members do not wait for each other's effects
+but are solved together — see §6, question 6.
 
 ### 2.5 The per-body pipeline and its outputs
 
@@ -660,65 +763,36 @@ What landed, and the two things it settled:
   63% / 72 ms on a different day, so the premise holds and the numbers are now
   reproducible from a committed build rather than a scratch patch.
 
-**Stage 1 — deferred bodies, one worker. LANDED behind `--deferBodies:on`
-(2026-09-04), not yet green.** `semProcAux` enqueues; the queue is drained
-*inline in key order* at module close, before `closePContext`. The
-`visibleUpTo` filter (§2.4) goes in here and must keep every declare-before-use
-test failing as before. Instances, hooks and inferred lambdas keep running
-inline (their keys are recorded but not yet enforced). This stage flushes out
-every order dependency of §4.10 with zero threads: the diff against today's
-compiler on `koch bootic` + the external packages is the review artifact.
-Expected: nearly empty.
+**Stage 1 — deferred bodies, one worker. LANDED behind `--parsem:on`
+(2026-10-22; first version as `--deferBodies:on`, 2026-09-04).** `semProcAux`
+enqueues; the queue is drained *inline in key order* at the end of the header
+pass, before `closePContext`; units needed earlier are demanded (§2.4).
+Instances, hooks and inferred lambdas keep running inline.
 
-Landed so far: the `BodyTask` record of §2.2, the enqueue/drain, and the
-on-demand path. `--deferBodies:on` is off by default and the default build is
-byte-identical, so this is a reviewable A/B rather than a change of behaviour.
-`visibleUpTo` is NOT in yet — a deferred body currently sees the whole
-top-level scope, which is §4.10.3's rule applied to every unit rather than only
-to instantiation, and is one source of the diff below.
+The `--deferBodies:on` version flushed pending units at every top-level
+statement that could observe one (a `const`, `static:`, a `var` initialiser,
+an `import` of a module that calls back) and drained "every smaller key first"
+on demand. Both checked bodies against an incomplete scope, which is
+incompatible with "no forward declarations", and both are gone: the VM gets the
+closure of reachable units run before its session instead, effect tracking
+demands callees, and generic bodies became units so that they bind against the
+complete scope as well. The importee case (`system` imports `std/syncio` from
+its last statements and syncio calls system's routines) is covered by the
+demand hooks chaining outward through the nested modules.
 
-Status: `koch boot -d:release --deferBodies:on` reaches its fixed point, and a
-compiler *built* that way emits C byte-identical to a normally built one over
-all 217 modules — so the order change does not change what the compiler
-computes, only what it names things. `tests/compiler` and `tests/template`
-compiled with the switch match the default. `tests/async` does not (below).
+Status: `--parsem:on` bootstraps: a compiler built with the switch builds
+itself to a byte-identical binary, and the C it emits for `compiler/nim.nim`
+(no switch) is byte-identical to that of a normally built compiler over all
+221 files. With the switch on, 184 of 221 `.c` differ from the default, 170
+after normalising `_u<n>__`: the residue is type-bound hooks materialising in a
+different module (`=destroy` of `string` first lifted from `std/assertions`
+rather than `system`, because system's bodies now run after its imports) and
+gensym counters — §4.2 and §4.5's "instance emission order is C output order",
+which stage 2 exists to make canonical.
 
-The diff, measured on `compiler/nim.nim`: 106 of 217 `.c` differ, 37 of them
-after normalising the `_u<n>__` suffix away. So two thirds of the diff is
-`disamb` renaming — §4.2 exactly, and what stage 2 exists to make canonical.
-The residue is type-bound hooks and inline procs materialising in a different
-module, which is §4.5's "instance emission order is C output order".
-
-Three order dependencies found, each fixed here:
-
-1. **An importee needs the importer's units.** `system` imports `std/syncio`
-   from its own last statements and syncio's routines call system's, so
-   draining only at module close left syncio inferring `RootEffect` for every
-   call into system. Fixed by draining before a statement that starts another
-   module's pass; in practice imports sit at the top and this drains nothing.
-2. **An on-demand unit must not overtake smaller keys.** `asyncdispatch`'s
-   `{.async.}` machinery transforms `runOnce` (declared at the bottom) during
-   the header pass; running that unit alone tracked it before
-   `processCallbacksAndTimers` 1100 lines above, which then had no effect list,
-   so `runOnce` was inferred GC-unsafe against its own `{.gcsafe.}` forward
-   declaration. A demand now runs every smaller key first — which is what §2.3
-   says a unit may block on, and what a body semmed at its declaration point
-   sees today.
-3. **The VM must never meet a pending unit** (§4.6 step 2). `vmgen` reaches
-   `transformBody` from inside a session, so answering a demand there runs sem
-   and a nested VM session on the graph's single `PCtx`: `tests/compiler` dies
-   with a `TFullReg` `FieldDefect`. Draining at `vm.setupGlobalCtx` does not
-   work — it is reached from inside generic instantiations and template
-   expansions, where running a unit corrupts the instantiation. What does work
-   is flushing at a top-level STATEMENT boundary: a run of declarations defers
-   as a batch and a `const`, `static:`, `var` initialiser or plain expression
-   ends one. Modules are long runs of routine definitions, so little is lost,
-   and this is the restriction §4.6 allows in place of VM handoff.
-
-Open, and the reason this is not the default: `tests/async` still fails with
-`'runOnce' is not GC-safe as it calls 'processCallbacksAndTimers'`, and with it
-`tests/ic/tmeta_async`. Finding (2) fixed the demand path but not this, so the
-remaining cause is elsewhere in the same file — the next thing to chase.
+Tests: `tests/parsem` (bodies calling later routines, `auto`, templates, generics,
+iterators, methods, `compiles`, compile-time evaluation, effect inference and
+its soundness, the forward-declaration cycle rule, and the early-demand error).
 
 **Stage 2 — canonical identity.** Unit arenas for `IdGenerator`, `disambTable`
 and `templInstCounter`; unit-relative names for body-local nominal types and
@@ -728,6 +802,115 @@ anonymous proc types in `ast2nif`; content-addressed string literal names in
 from the cold-build analysis ("process-independent serialized ids") falls out of
 this stage for free.
 
+*Grinder clean for the compiler (2026-10-22).* The measuring instrument came
+first: `-d:nimParsemGrind` builds a compiler whose body pass drains back to
+front, the schedule furthest from the reference one. The C output of
+`compiler/nim.nim --parsem:on` built by it is diffed against the reference
+compiler's: 181 of 221 files differed at the start, **none** now. Without the
+switch the output is byte-identical to before, and the switch still
+bootstraps to a fixed point. What it took:
+
+* `disamb` arenas (`ast.enterUnitArena`, `enterKeyedArena`,
+  `enterScratchArena`). The module's `disamb` space below `HookDisambBit` is
+  cut into regions: the header pass counts in `[0, 2^16)`, unit `i` in
+  `2^16 + i * 2^11`, a generic instance or lifted hook in an arena keyed by
+  the hash of its identity in `[2^28, 2^28 + 2^27)`, and everything after the
+  body pass (the classic backend) plus the overflow of any arena in a tail
+  region. An instance's key is only known once its signature is instantiated,
+  so it mints into a scratch arena until the cache lookup and gives those
+  symbols their numbers afterwards (`redisamb`); a cache hit (or an instance
+  inside `compiles()`, which is cached for that `compiles` only) counts them
+  where they would have been counted without arenas. `templInstCounter`
+  restarts per arena. Instances and hooks also get the content-derived
+  `disamb` that `--ic:on` already gave them (`setInstanceDisamb`,
+  `setHookDisamb`). 181 → 21 files.
+* Effects that depended on the order. `trackCall` read `sfNeverRaises` before
+  demanding the callee, and so did hook lifting. Mutually recursive units
+  were inferred depending on who ran first, and unsoundly so: now a fixpoint
+  per cycle (§2.4 rule 2). A call that keeps forward-declaration semantics
+  goes by the declaration only. 21 → 17 files.
+* Hooks. A type has many `PType`s, and which of them a hook was lifted for,
+  first, decided three things: the hook's owner (and with it the translation
+  unit the classic backend defines it in), the canonical type the others
+  share the hook with (`canonTypes`, first come), and whether the type that
+  `injectdestructors` looks a hook up on has one at all. Now the owner is the
+  module of the type's first nominal component (`liftdestructors.hookOwner`),
+  the canonical type is found by the content key the hook is named by
+  (`typeContentHash`, also for a `distinct` type's base), the prototypes are
+  minted in the hook's arena too, the ops are attached to the skipped type as
+  well, and a cycle of hooks of a recursive type is uniformly "can raise".
+  17 → 0 files.
+
+* 2026-10-23, the grinder over 653 test programs (debug builds, which carry
+  line tracing) instead of only the compiler: a call of a lifted hook took
+  its line info from the hook, i.e. from the use that lifted it first; hooks
+  now get the declaration of the type's first nominal component
+  (`liftdestructors.hookInfo`). The
+  signature phase of an instance counted gensyms on the enclosing unit's
+  counter, which a cache hit then did not advance. `wasMoved(x)` was
+  replaced by a LIFTED hook at sem time if one existed already; now only by
+  a declared one (the backend lowers the magic and a lifted `=wasMoved`
+  alike). The other hook magics keep the old rule: an explicit `=sink`
+  left as a magic is lowered with an extra `=dup`, so for them the
+  replacement is not cosmetic. A `getAst` in a compile-time
+  evaluation used whichever gensym counter the last macro left in the VM.
+  Two known cases are left. A user `=destroy` whose body lifts the hooks of
+  its own recursive type (`tests/destructor/tselect`): whether it has
+  finished when the lifted hook asks whether it raises depends on the order;
+  the fix is to make hook raise analysis part of `solveCycle`. And a
+  successful `tryExpr` whose result is kept (overload resolution, not
+  `compiles()`): what it instantiates is private to its `compiles` context
+  (bug #1055), but an ordinary instance made earlier is shared into it, so
+  whether the kept code uses one instance or two depends on the order
+  (`tests/iter/titer10`, `tpermutations`). Promoting the context's instances when it succeeds
+  was tried and is wrong: instances made in a `compiles` context can be
+  incomplete in ways neither the error counter nor the body shows (a call of
+  the uninstantiated generic, `tests/generics/tgeneric0`) — which is what
+  #1055 protects against. A fix would make the kept result's own instances
+  ordinary only after re-checking them outside the context.
+
+* 2026-10-23, the grinder on `nim ic --parsem:on koch.nim`, comparing the
+  cache artifacts. The writer's lists (opsLog, replay actions, offers, the
+  expansion index, the instance code appended to the module) were in the
+  order units ran in; they are now ordered by arena (`arenaTag`) or by
+  content. Ownership was first come in two places: a hook lifted for a type
+  made in a body (now owned by the minting module) and an instance shared
+  between the modules of an import group compiled in one process (now each
+  module makes its own, as separate processes would). Type identity
+  followed: NIF named most types by `itemId.item`, a mint counter. Now every
+  type minted in the process is content-addressed
+  (`ast2nif.canonicalTypeItem`): a routine's signature by the routine, a
+  declared type by its declaring symbol (stable under edits of the
+  declaration), a generic type instance by the generic and its arguments,
+  everything else by a key covering what its def serializes — except the
+  bookkeeping `derivedTypeFlags`, and with an anonymous type's owner recorded
+  as its module, not the routine that minted it first. A key that leads back
+  into a type being keyed uses a back reference by stack depth, and a key
+  that is only valid inside another type's key is not memoized. A replica's
+  `bid` is written as its original's content id (`astdef.bindingOrigins`).
+  This holds for every `--ic:on` build, not just `--parsem:on`: a body edit
+  no longer renames the generic instances it made
+  (`tests/ic/tgeneric_offer_body_edit` rebuilds 1 module instead of 3).
+  Under `--parsem:on` also: a generic parameter bound to a literal's type
+  (`int literal(5)`, a set constructor's type) is bound to the type itself,
+  the canonical type a hook is lifted for is likewise clean, and keyed
+  arenas are smaller and have 2^19 slots. Two things are left. An instance
+  is checked with the options in effect where it is instantiated first
+  (checking it with the generic's declared options instead was tried: then a
+  stdlib generic's `assert` no longer fires in a program that enables
+  assertions, `tests/stdlib/tmath`). And the IC group process: one `nim m`
+  compiles a whole import cycle (system's), and hooks and canonical types
+  are shared by its modules, so which module lifted one first shows in its
+  owner.
+
+Every one of these changes is behind `--parsem:on` (and outside `--ic:on`,
+which places hooks and instances by its own rules). Not started: unit-relative
+names for body-local types in `ast2nif`, content-addressed literal names (not
+needed with one worker: codegen order does not depend on the order units ran
+in; stage 5 needs them), and the grinder on `.s.bif` under `--ic:on`. Open: an arena whose instance key collides with
+another's in the same module is probed first-come, and so is a hook or instance
+`disamb` collision (`instDisambs`); neither has shown up in the grinder.
+
 **Stage 3 — worker-private state.** The §3 split; `WorkerConfig`; per-task
 containers of §4.5 with key-ordered merge; `hlo` pattern copy; message
 buffering; `program`/pools/`IdentCache` locking; `sysTypes` pre-warm;
@@ -735,12 +918,67 @@ publish-once for effects, `transformedBody`, lazy bodies and `loadSym`; VM
 ownership step 1. Still one worker, but the code is now shaped for N. Gate:
 byte-identical to stage 2.
 
+*In progress (2026-10-23).* Done, each byte-identical with and without
+`--parsem:on`: the positional fields of `TContext` (§3 (a)) are one
+`semdata.PositionalState`, and the per-unit fields of `ConfigRef` (§4.1:
+options, notes, `warningAsErrors`, `errorMax`, `errorOutputs`, `msgContext`,
+`lastError`, the template/macro recursion guards) one `options.UnitConfig`,
+both embedded and reached through same-named templates, so call sites did not
+change; `runBodyTask` swaps each as a whole. The error/warning/hint counters
+stay global until stage 4 merges per-worker ones. The logs bodies append to
+are per unit (`generics` in `PositionalState`, `opsLog`, the replay actions
+and the expansion index in `ModuleGraph.logSink`), handed on when the unit
+is done.
+
+`tests/ic` under `--parsem:on`, run for the first time on 2026-10-23: 78 of
+82. `tmeta_async` failed on a type-instance cache hit that ignored proc
+effects (fixed, a latent bug of every IC build); it now fails because
+`worker.nim` instantiates `system.cmp[MonoTime]` itself instead of reusing
+an offer, and so does not see `monotimes.<`. `tgenericoffer_temp` and
+`ttransitiveoffer_temp` fail the same way (`==` of a type from another
+module), but only in a full category run, not alone or together. Offers
+under `--parsem:on` are the open thread for stage 6.
+
 **Stage 4 — parallel sem.** Workers drain the queue; `trackProc` waits per
 §2.3; the header pass of a module still completes before its bodies start (so
 the write lock is uncontended). transf/cgen still run sequentially after the
 module latch. Gate: grinder + the full bar. Measure: `nim m` of `cgen`/`sem`
 should drop from ~0.9 s to ~0.5 s; the compiler's classic build from 5.4 s to
 ~3 s.
+
+*Prototype (2026-10-24), not pursued.* Branch `araq-parsem` @ `e35ad7dc5`
+(`-d:nimParallelSem --mm:atomicArc`, `--parsem:on --parallelSem:N`): a
+module's body pass on N threads, each claiming the next unit in key order
+with its own positional state, unit configuration, error counter, owner
+stack, log sink and naming arena; shared state under ONE recursive lock,
+with identifier lookup, hook lookup, cached system and literal types, the
+shared symbol and type flags and used imports taken off it; waits across
+threads as in §2.3, cycles across threads and every routine that read a
+provisional effect of another thread solved once more after the join;
+messages buffered per unit and written in key order. About 1400 lines in
+29 files.
+
+It works: the C of `compiler/nim.nim` at 8 workers is byte-identical to 1
+worker, a compiler built that way produces identical C, `tests/parsem`
+passes at 1 and 8 workers, and the categories of stage 1's table fail the
+same tests at 8 workers as at 1, except `tests/iter/t20891` (a
+`{.compileTime.}` table one body fills and another reads, §4.6).
+
+It does not pay. Numbers (16 cores, `compiler/nim.nim --compileOnly`):
+default 7.81 s; `--parsem:on` 8.18 s; the parallel build at 1/2/4/8/16
+workers 8.29 / 7.49 / 6.81 / 6.58 / 6.69 s, the body pass 5.2 s at 1 worker
+and ~3.8 s at 8. That is 16 % over the default build with 8 cores. The rest
+of the compilation (~3.1 s) is serial, so even a perfectly scaling body pass
+ends near 3.75 s; what keeps it far from that is the time the lock is
+*held* (`generateInstance`, type instantiation, hook lifting -- the most
+shared parts of sem, whose concurrent versions would cost more than the
+whole prototype), modules processed one after another, and long tail units
+(the VM's `rawExecute`). Against that: lock discipline every sem change has
+to keep and nothing checks, races that show as a percent-level hang or a
+never reproduced `RangeDefect`, a ThreadSanitizer run that does not fit in
+22 GB, and the observable change for compile-time state shared between
+bodies. Parallelism across modules, as separate processes over IC (§1.2, §1.3), has
+none of these costs and scales with the number of modules.
 
 **Stage 5 — the whole pipeline in the task.** `transformBody` +
 `injectDestructorCalls` + cgen fragment per task; `BModule` shadow; `cdef`
@@ -790,3 +1028,11 @@ contention), VM ownership step 2 (handoff). Optional; measure first.
    is that acceptable for `nim check` (it is where most latency complaints come
    from)? The header/body split helps `check` even sequentially: errors in
    bodies are found per body, so `--errorMax` can stop earlier.
+6. **Waits on larger keys** (§2.4). *Answered for effects (2026-10-22):* the
+   SCCs are found as the units run, not in a pass afterwards, and each is
+   solved by a fixpoint (§2.4 rule 2). Open for stage 4: a member of an open
+   cycle is `onStack` on the thread that entered the cycle; a demand from
+   another worker for it has to wait for the cycle's root, which needs the
+   wait-for check this question asked about. `auto` and a generic body have no
+   fixpoint: a cycle through them is an error or a recursion guard, as it is
+   sequentially.

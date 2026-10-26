@@ -1034,14 +1034,14 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #echo "NOW evaluating at compile time: ", call.renderTree
     if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
       if sfCompileTime in callee.flags:
-        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner, c)
+        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner, c, c.templInstCounter)
         if result.isNil:
           localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
         else:
           var producedClosure = false
           result = fixupTypeAfterEval(c, result, n, producedClosure)
       else:
-        result = evalConstExpr(c.module, c.idgen, c.graph, call, c)
+        result = evalConstExpr(c.module, c.idgen, c.graph, call, c, c.templInstCounter)
         if result.isNil: result = n
         else:
           var producedClosure = false
@@ -1061,7 +1061,7 @@ proc semStaticExpr(c: PContext, n: PNode; expectedType: PType = nil): PNode =
   if a.findUnresolvedStatic != nil or
       c.config.errorCounter != oldErrorCount:
     return a
-  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner, c)
+  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner, c, c.templInstCounter)
   if result.isNil:
     localError(c.config, n.info, errCannotInterpretNodeX % renderTree(n))
     result = c.graph.emptyNode
@@ -1215,7 +1215,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
-      if c.config.m.errorOutputs == {}:
+      if c.config.errorOutputs == {}:
         # speed up error generation:
         globalError(c.config, n.info, "type mismatch")
         return c.graph.emptyNode
@@ -2566,8 +2566,8 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   openScope(c)
   let oldOwnerLen = c.graph.owners.len
   let oldGenerics = c.generics
-  let oldErrorOutputs = c.config.m.errorOutputs
-  if efExplain notin flags: c.config.m.errorOutputs = {}
+  let oldErrorOutputs = c.config.errorOutputs
+  if efExplain notin flags: c.config.errorOutputs = {}
   let oldContextLen = msgs.getInfoContextLen(c.config)
 
   let oldInGenericContext = c.inGenericContext
@@ -2595,7 +2595,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   msgs.setInfoContextLen(c.config, oldContextLen)
   setLen(c.graph.owners, oldOwnerLen)
   c.currentScope = oldScope
-  c.config.m.errorOutputs = oldErrorOutputs
+  c.config.errorOutputs = oldErrorOutputs
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
   when defined(nimsuggest):
@@ -3481,6 +3481,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     of skProc, skFunc, skMethod, skConverter, skIterator:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
+      if c.graph.demandRoutineBody != nil:
+        # `--parsem:on`: a routine used as a value is matched against proc
+        # types by its inferred effects (`gcsafe`, `noSideEffect`, ...)
+        if result.kind == nkSym:
+          discard c.graph.demandRoutineBody(result.sym, forEffects = true)
+        else:
+          for x in result:
+            if x.kind == nkSym:
+              discard c.graph.demandRoutineBody(x.sym, forEffects = true)
       if result.kind == nkSym:
         markUsed(c, n.info, s)
         markIndirect(c, result.sym)

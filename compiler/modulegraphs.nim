@@ -57,6 +57,13 @@ type
     Docgen2JsonPass
     Docgen2Pass
 
+  UnitLogs* = ref object
+    ## what one unit appended to the module's logs (`ModuleGraph.logSink`)
+    parent*: UnitLogs
+    opsLog*: seq[LogEntry]
+    replay*: seq[tuple[module: int32; action: PNode; tag: int32]]
+    expansions*: seq[tuple[module: int32; sym: PSym; info: TLineInfo]]
+
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
 
@@ -163,6 +170,10 @@ type
     packageTypes*: TStrTable
     emptyNode*: PNode
     canonTypes*: Table[SigHash, PType]
+    hooksInProduction*: IntSet
+      # `--parsem:on`: lifted hooks whose body is being filled (by sym id)
+    hooksInCycle*: IntSet
+      # ... and those that another hook met while they were (`liftdestructors`)
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
@@ -198,19 +209,22 @@ type
       ## tracking asks for the deferred body of a routine of the group before it
       ## falls back to the pessimistic assumptions about a routine without
       ## effects.
-    demandRoutineBody*: proc (prc: PSym) {.closure.}
-      ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
-      ## is needed NOW". A deferred unit's body is unsemmed until the module's
-      ## body pass runs, but the header pass can reach one before then — a
-      ## top-level `const x = f()` or `static:` block makes the VM compile `f`,
-      ## and `vmgen` goes through `transformBody`. That is the one place every
-      ## consumer of a semmed body passes through, so the demand is asked for
-      ## there rather than at each of sem's compile-time-evaluation entries,
-      ## where a missed one would be a miscompile.
+    demandRoutineBody*: proc (prc: PSym; forEffects: bool): bool {.closure.}
+      ## `--parsem:on` (doc/parallel_compiler.md §2.4): "this body is needed
+      ## NOW". A deferred unit's body is unsemmed until the module's body pass
+      ## runs, but effect tracking, an `auto` return type, an instantiation or
+      ## a compile-time evaluation can need it before then. Runs `prc` if it is
+      ## a pending unit — except, `forEffects`, when it keeps the semantics of a
+      ## forward declaration: then the result is true and the declaration is
+      ## all the caller may go by. A unit that is running (a recursion) is left
+      ## alone and answered `false`, like a recursion without `--parsem`.
       ##
       ## A closure, not the `{.nimcall.}` the hooks below are: running a unit
       ## needs the module's `PContext`, and it nests, so `preparePContext` sets
       ## it and `closePContext` puts the enclosing module's back.
+    demandReachableBodies*: proc (n: PNode) {.closure.}
+      ## `--parsem:on`: called before the VM evaluates `n`. Runs every pending
+      ## unit the VM could reach from `n`, so that `vmgen` never meets one.
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
@@ -223,6 +237,22 @@ type
 
     procGlobals*: seq[PNode]
     nifReplayActions*: Table[int32, seq[PNode]]  # module position -> replay actions for NIF
+    nifReplayTags*: Table[int32, seq[int32]]     # their `arenaTag`s
+    logSink*: UnitLogs
+      ## `--parsem:on`: the buffer of the unit that is running, or nil in the
+      ## header pass. The logs that bodies append to -- `opsLog`, the replay
+      ## actions, the expansion index -- go there, and the unit's buffer is
+      ## flushed into the enclosing one when the unit is done
+      ## (doc/parallel_compiler.md §2.6 rule 5): a worker of the parallel
+      ## stages appends to its own task's buffer, never to a shared list.
+    arenaTag*: int32
+      ## `--parsem:on`: the `disamb` base of the arena that is minting right
+      ## now (0 in the header pass). Entries of the logs that bodies append to
+      ## record it, and the NIF writer orders them by it: the header pass first,
+      ## then the units in key order, then instances and hooks by their keys —
+      ## an order that does not depend on the order units ran in
+      ## (doc/parallel_compiler.md §2.6 rule 5). Within one arena the order is
+      ## that of the code.
     nifExpansions*: Table[int32, seq[(PSym, TLineInfo)]]
       # module position -> (template/macro/generic proc sym, call-site info) for every
       # expansion in that module. Templates/macros leave no trace in the sem'checked AST
@@ -343,7 +373,7 @@ proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
   strTableAdd(semtab(g, m), s)
   strTableAdd(semtabAll(g, m), s)
 
-proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
+proc isCachedModule*(g: ModuleGraph; module: int): bool {.inline.} =
   result = module in g.cachedMods
 
 proc isCachedModule*(g: ModuleGraph; m: PSym): bool {.inline.} =
@@ -469,6 +499,45 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   else:
     result = nil
 
+proc addLog*(g: ModuleGraph; e: sink LogEntry) {.inline.} =
+  var e = e
+  e.arenaTag = g.arenaTag
+  if g.logSink != nil: g.logSink.opsLog.add e
+  else: g.opsLog.add e
+
+proc addExpansion*(g: ModuleGraph; module: int32; sym: PSym; info: TLineInfo) =
+  if g.logSink != nil: g.logSink.expansions.add (module, sym, info)
+  else: g.nifExpansions.mgetOrPut(module, @[]).add (sym, info)
+
+proc openLogSink*(g: ModuleGraph) =
+  ## a unit starts: what it logs is buffered
+  g.logSink = UnitLogs(parent: g.logSink)
+
+proc closeLogSink*(g: ModuleGraph) =
+  ## the unit is done: its buffer goes to the enclosing unit's, or to the
+  ## module's logs in the header pass
+  let mine = g.logSink
+  g.logSink = mine.parent
+  if g.logSink != nil:
+    g.logSink.opsLog.add mine.opsLog
+    g.logSink.replay.add mine.replay
+    g.logSink.expansions.add mine.expansions
+  else:
+    g.opsLog.add mine.opsLog
+    for r in mine.replay:
+      g.nifReplayActions.mgetOrPut(r.module, @[]).add r.action
+      g.nifReplayTags.mgetOrPut(r.module, @[]).add r.tag
+    for e in mine.expansions:
+      g.nifExpansions.mgetOrPut(e.module, @[]).add (e.sym, e.info)
+
+iterator mlogEntries(g: ModuleGraph): var LogEntry =
+  ## every log entry, buffered or not, innermost buffer first
+  var sink = g.logSink
+  while sink != nil:
+    for e in mitems(sink.opsLog): yield e
+    sink = sink.parent
+  for e in mitems(g.opsLog): yield e
+
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   # Key-based deduplication for opsLog: different type objects (e.g. canon vs
@@ -497,7 +566,7 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # types as much as for generic/structural instances. Duplicate
     # registrations across lifting modules are reconciled deterministically
     # at load time (see the HookEntry replay in `replayStateChanges`).
-    g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
+    g.addLog LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
     g.loadedOps[op][key] = value
   elif existing != value:
     # Re-registration replacing an earlier sym for the same key. This happens
@@ -511,14 +580,14 @@ proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; 
     # ended up empty: "cannot open '/'").
     g.loadedOps[op][key] = value
     var updated = false
-    for e in mitems(g.opsLog):
+    for e in mlogEntries(g):
       if e.kind == HookEntry and e.op == op and e.key == key:
         e.sym = value
         e.module = module
         updated = true
         break
     if not updated:
-      g.opsLog.add LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
+      g.addLog LogEntry(kind: HookEntry, op: op, module: module, key: key, sym: value)
   g.attachedOps[op][t.bindingId] = value
 
 proc setAttachedOp*(g: ModuleGraph; module: int; typeId: ItemId; op: TTypeAttachedOp; value: PSym) =
@@ -546,7 +615,11 @@ proc setMethodsPerType*(g: ModuleGraph; id: ItemId, methods: seq[PSym]) =
 
 proc addNifReplayAction*(g: ModuleGraph; module: int32; n: PNode) =
   ## Stores a replay action for NIF-based incremental compilation.
-  g.nifReplayActions.mgetOrPut(module, @[]).add n
+  if g.logSink != nil:
+    g.logSink.replay.add (module, n, g.arenaTag)
+  else:
+    g.nifReplayActions.mgetOrPut(module, @[]).add n
+    g.nifReplayTags.mgetOrPut(module, @[]).add g.arenaTag
 
 iterator getMethodsPerType*(g: ModuleGraph; t: PType): PSym =
   if g.methodsPerType.contains(t.bindingId):
@@ -566,7 +639,7 @@ proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
   # Stamp with the module that owns the generated proc, not the enum's def
   # module: the def module's process may never have generated it (same
   # "written by nobody" failure as hook entries, see setAttachedOp).
-  g.opsLog.add LogEntry(kind: EnumToStrEntry, module: value.itemId.module.int, key: key, sym: value)
+  g.addLog LogEntry(kind: EnumToStrEntry, module: value.itemId.module.int, key: key, sym: value)
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerGenericType.contains(t.bindingId):
@@ -577,7 +650,7 @@ proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSy
   g.methodsPerGenericType.mgetOrPut(t.bindingId, @[]).add (col, m)
   let key = typeKey(t, g.config, loadTypeCallback, loadSymCallback)
   let ownerModule = if t.sym != nil: t.sym.itemId.module.int else: module
-  g.opsLog.add LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
+  g.addLog LogEntry(kind: MethodEntry, module: ownerModule, key: key, sym: m)
 
 proc logMethodDef*(g: ModuleGraph; s: PSym) =
   ## Log a method registration (`cgmeth.methodDef`) so that importers and
@@ -586,7 +659,7 @@ proc logMethodDef*(g: ModuleGraph; s: PSym) =
   ## at `dispatcherPos`, so replay reuses the original dispatcher that all
   ## call sites reference by name (see `registerLoadedMethod`).
   if g.config.cmd in {cmdNifC, cmdM}:
-    g.opsLog.add LogEntry(kind: MethodEntry, module: s.itemId.module.int,
+    g.addLog LogEntry(kind: MethodEntry, module: s.itemId.module.int,
                           key: "", sym: s)
 
 proc logCppMember*(g: ModuleGraph; s: PSym) =
@@ -601,7 +674,7 @@ proc logCppMember*(g: ModuleGraph; s: PSym) =
   ## signature exactly as `semCppMember` does, so nothing has to survive the
   ## round trip except the routine itself.
   if g.config.cmd in {cmdNifC, cmdM}:
-    g.opsLog.add LogEntry(kind: CppMemberEntry, module: s.itemId.module.int,
+    g.addLog LogEntry(kind: CppMemberEntry, module: s.itemId.module.int,
                           key: "", sym: s)
 
 proc replayCppMember*(g: ModuleGraph; s: PSym) =
@@ -671,11 +744,48 @@ proc logGenericInstance*(g: ModuleGraph; inst: PSym) =
   ## evaluation and may be referenced from other modules compiled in the same run.
   if g.config.cmd in {cmdNifC, cmdM}:
     let ownerModule = inst.itemId.module.int
-    g.opsLog.add LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
+    g.addLog LogEntry(kind: GenericInstEntry, module: ownerModule, sym: inst)
 
+
+proc hookKey(g: ModuleGraph; opName: string; typ: PType): string =
+  result = opName
+  result.add '|'
+  result.add typeKey(typ, g.config, loadTypeCallback, loadSymCallback)
+
+proc typeContentHash*(g: ModuleGraph; t: PType): SigHash =
+  ## `--parsem:on`: the identity of a type for its lifted hooks, the same one
+  ## `setHookDisamb` names them by (`liftdestructors.createTypeBoundOps`)
+  SigHash(toMD5(typeKey(t, g.config, loadTypeCallback, loadSymCallback)))
+
+proc instanceKey(g: ModuleGraph; generic: PSym;
+                 concreteTypes: openArray[PType]): string =
+  ## the instantiation identity: the generic plus the `typeKey` of every
+  ## concrete type argument — exactly what the instantiation cache compares
+  result = generic.name.s
+  result.add '.'
+  result.addInt generic.disamb
+  result.add '.'
+  result.add modname(generic.itemId.module, g.config)
+  for t in concreteTypes:
+    result.add '|'
+    result.add typeKey(t, g.config, loadTypeCallback, loadSymCallback)
+
+proc arenaKey(key: string): uint32 =
+  let d = toMD5(key)
+  result = uint32(d[4]) or (uint32(d[5]) shl 8) or (uint32(d[6]) shl 16) or
+           (uint32(d[7]) shl 24)
+
+proc instanceArenaKey*(g: ModuleGraph; generic: PSym;
+                       concreteTypes: openArray[PType]): uint32 =
+  ## for `ast.enterKeyedArena`
+  arenaKey(instanceKey(g, generic, concreteTypes))
+
+proc hookArenaKey*(g: ModuleGraph; opName: string; typ: PType): uint32 =
+  ## for `ast.enterKeyedArena`
+  arenaKey(hookKey(g, opName, typ))
 
 proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
-                        concreteTypes: openArray[PType]) =
+                        concreteTypes: openArray[PType]; inCompiles = false) =
   ## Under IC, replace a fresh routine instance's counter-based `disamb` with
   ## a content-derived one: a hash of the generic's identity plus the
   ## `typeKey` of every concrete type argument — exactly the identity the
@@ -685,17 +795,17 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
   ## prerequisite for cross-module generic-instance merging (and gives the
   ## dce analysis its `offers` keys). The hash is computed once, here; it is
   ## never recomputed — the value travels in the serialized `disamb` field.
-  if g.config.cmd notin {cmdNifC, cmdM}: return
+  ##
+  ## `--parsem:on` needs the same for a classic build: which unit instantiates
+  ## first must not show in the instance's name (doc/parallel_compiler.md §4.2).
+  ## Except inside `compiles()`: such an instance is cached for its `compiles`
+  ## only, so the same identity can be instantiated again outside, and two
+  ## claimants of one key would be told apart by the order they came in.
+  if g.config.cmd notin {cmdNifC, cmdM} and
+      (optParSem notin g.config.globalOptions or inCompiles):
+    return
   if isDefined(g.config, "icNoInstKey"): return
-  var key = generic.name.s
-  key.add '.'
-  key.addInt generic.disamb
-  key.add '.'
-  key.add modname(generic.itemId.module, g.config)
-  for t in concreteTypes:
-    key.add '|'
-    key.add typeKey(t, g.config, loadTypeCallback, loadSymCallback)
-  let d = toMD5(key)
+  let d = toMD5(instanceKey(g, generic, concreteTypes))
   var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
            (int32(d[3] and 0x3F'u8) shl 24)) or InstanceDisambBit
   # Same-name hash collisions inside this process get probed to the next
@@ -705,6 +815,12 @@ proc setInstanceDisamb*(g: ModuleGraph; inst, generic: PSym;
     let probe = (inst.name.id, h)
     if g.instDisambs.hasKey(probe):
       if g.instDisambs[probe] == inst.itemId: break
+      if optParSem in g.config.globalOptions and
+          g.instDisambs[probe].module != inst.itemId.module:
+        # `--parsem:on`: the modules of an import group make their own copy
+        # of an instance (`seminst.sharesInstanceWith`); the names differ in
+        # the module suffix, so another module's claim is no collision
+        break
       h = if h == high(int32): InstanceDisambBit else: h + 1
     else:
       g.instDisambs[probe] = inst.itemId
@@ -720,12 +836,10 @@ proc setHookDisamb*(g: ModuleGraph; hook: PSym; opName: string; typ: PType) =
   ## defines a new one — the hook flavor of the backend def-migration hole.
   ## With a content-derived value the hook's NIF name (and hence its C name)
   ## is stable as long as the type itself is unchanged.
-  if g.config.cmd notin {cmdNifC, cmdM}: return
+  if g.config.cmd notin {cmdNifC, cmdM} and optParSem notin g.config.globalOptions:
+    return
   if isDefined(g.config, "icNoHookKey"): return
-  var key = opName
-  key.add '|'
-  key.add typeKey(typ, g.config, loadTypeCallback, loadSymCallback)
-  let d = toMD5(key)
+  let d = toMD5(hookKey(g, opName, typ))
   var h = (int32(d[0]) or (int32(d[1]) shl 8) or (int32(d[2]) shl 16) or
            (int32(d[3] and 0x1F'u8) shl 24)) or HookDisambBit
   # Same-name hash collisions inside this process get probed to the next
