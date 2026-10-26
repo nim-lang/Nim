@@ -12,15 +12,15 @@
 ## Code specialization instead of the old, incredibly slow 'genericReset'
 ## implementation.
 
-proc specializeResetT(p: BProc, accessor: Rope, typ: PType)
+proc specializeResetT(p: BProc, accessor: Rope, typ: PType; zeroedLater = false)
 
 proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
-                     typ: PType) =
+                     typ: PType; zeroedLater: bool) =
   if n == nil: return
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
-      specializeResetN(p, accessor, n[i], typ)
+      specializeResetN(p, accessor, n[i], typ, zeroedLater)
   of nkRecCase:
     if (n[0].kind != nkSym): internalError(p.config, n.info, "specializeResetN")
     let disc = n[0].sym
@@ -35,45 +35,53 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
         genCaseRange(p, branch)
       else:
         lineF(p, cpsStmts, "default:$n", [])
-      specializeResetN(p, accessor, lastSon(branch), typ)
+      specializeResetN(p, accessor, lastSon(branch), typ, zeroedLater)
       lineF(p, cpsStmts, "break;$n", [])
     lineF(p, cpsStmts, "} $n", [])
-    specializeResetT(p, "$1.$2" % [accessor, disc.loc.snippet], disc.loc.t)
+    specializeResetT(p, "$1.$2" % [accessor, disc.loc.snippet], disc.loc.t, zeroedLater)
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
     if field.loc.snippet == "": fillObjectFields(p.module, typ)
     if field.loc.t == nil:
       internalError(p.config, n.info, "specializeResetN()")
-    specializeResetT(p, "$1.$2" % [accessor, field.loc.snippet], field.loc.t)
+    specializeResetT(p, "$1.$2" % [accessor, field.loc.snippet], field.loc.t, zeroedLater)
   else: internalError(p.config, n.info, "specializeResetN()")
 
-proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
+proc specializeResetT(p: BProc, accessor: Rope, typ: PType; zeroedLater = false) =
+  ## `zeroedLater` means the enclosing case object is cleared with `nimZeroMem`
+  ## afterwards, so only the GC'd parts need to be released here.
   if typ == nil: return
+  if zeroedLater and not containsGarbageCollectedRef(typ): return
 
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
      tySink, tyOwned:
-    specializeResetT(p, accessor, skipModifier(typ))
+    specializeResetT(p, accessor, skipModifier(typ), zeroedLater)
   of tyArray:
+    if not containsGarbageCollectedRef(typ):
+      linefmt(p, cpsStmts, "#nimZeroMem((void*)&$1, sizeof($2));$n",
+        [accessor, getTypeDesc(p.module, typ)])
+      return
     let arraySize = lengthOrd(p.config, typ.indexType)
     var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.snippet, arraySize])
-    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.snippet]), typ.elementType)
+    specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.snippet]), typ.elementType, zeroedLater)
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     var x = typ.baseClass
     if x != nil: x = x.skipTypes(skipPtrs)
-    specializeResetT(p, accessor.parentObj(p.module), x)
+    let wiped = zeroedLater or (typ.n != nil and isCaseObj(typ.n))
+    specializeResetT(p, accessor.parentObj(p.module), x, wiped)
     if typ.n != nil:
       if typ.sym != nil and sfImportc in typ.sym.flags:
         # imported C struct, nimZeroMem
         lineCg(p, cpsStmts, "#nimZeroMem((void**)&$1, sizeof($2));$n",
             [accessor, getTypeDesc(p.module, typ)])
       else:
-        specializeResetN(p, accessor, typ.n, typ)
-        if isCaseObj(typ.n):
+        specializeResetN(p, accessor, typ.n, typ, wiped)
+        if isCaseObj(typ.n) and not zeroedLater:
           # The active branch was released above. Clear the complete object so
           # stale bytes from overlapping branches cannot be traced by the GC.
           # type
@@ -92,7 +100,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
   of tyTuple:
     let typ = getUniqueType(typ)
     for i, a in typ.ikids:
-      specializeResetT(p, ropecg(p.module, "$1.Field$2", [accessor, i]), a)
+      specializeResetT(p, ropecg(p.module, "$1.Field$2", [accessor, i]), a, zeroedLater)
 
   of tyString, tyRef, tySequence:
     lineCg(p, cpsStmts, "#unsureAsgnRef((void**)&$1, NIM_NIL);$n", [accessor])
