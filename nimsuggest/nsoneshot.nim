@@ -740,12 +740,16 @@ proc oneShot*() =
   conf.ideActive = true
   # A config that moves the nimcache would have to be evaluated to find the
   # report and replay its precompiled config instead, so the nimcache it moves
-  # to is noted in the one without config (`moved`).
+  # to is noted in the one without config (`moved`), which a report left there
+  # from before the move must not shadow.
   let cmdLineCache = getNimcacheDir(conf).string
   let moved = cmdLineCache / "nimsuggest.nimcache"
-  var preReport = nsReport(conf)
-  if not fileExists(preReport) and fileExists(moved):
-    preReport = readFile(moved) / "nimsuggest.txt"
+  let movedTo =
+    try: readFile(moved)
+    except IOError: ""
+  let preReport =
+    if movedTo.len > 0: movedTo / "nimsuggest.txt"
+    else: nsReport(conf)
   var configChanged = false
   if fileExists(preReport):
     for line in readFile(preReport).splitLines:
@@ -772,13 +776,16 @@ proc oneShot*() =
   add(conf.searchPaths, conf.libpath)
 
   let cacheDir = getNimcacheDir(conf).string
-  if cacheDir != cmdLineCache and
-      (not fileExists(moved) or readFile(moved) != cacheDir):
+  let moveTo = if cacheDir == cmdLineCache: "" else: cacheDir
+  if moveTo != movedTo:
     try:
-      createDir(cmdLineCache)
-      writeFile(moved, cacheDir)
+      if moveTo.len == 0:
+        removeFile(moved)
+      else:
+        createDir(cmdLineCache)
+        writeFile(moved, moveTo)
     except OSError, IOError:
-      myLog "cannot write " & moved & ": " & getCurrentExceptionMsg()
+      myLog "cannot update " & moved & ": " & getCurrentExceptionMsg()
 
   let line = stdin.readLine()
   myLog "one-shot: " & line
