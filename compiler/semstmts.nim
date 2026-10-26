@@ -1452,11 +1452,18 @@ proc sumTypeDeclBranch(rc: PNode; e: PSym): PNode =
     for j in 0..<b.len-1:
       if b[j].kind in nkIntLit..nkUInt64Lit and b[j].intVal == e.position: return b
 
-proc collectBranchFields(n: PNode; result: var seq[PSym]) =
+proc collectBranchFields(n: PNode; result: var seq[PSym]; nested: var bool) =
+  ## The fields of a branch in declaration order. A nested `case` ends them
+  ## after its discriminator: the fields of its branches and the fields
+  ## after it have no fixed position.
+  if nested: return
   case n.kind
   of nkSym: result.add n.sym
   of nkRecList:
-    for it in n: collectBranchFields(it, result)
+    for it in n: collectBranchFields(it, result, nested)
+  of nkRecCase:
+    collectBranchFields(n[0], result, nested)
+    nested = true
   else: discard
 
 proc isUnderscore(n: PNode): bool {.inline.} =
@@ -1533,10 +1540,12 @@ proc semSumTypeCase(c: PContext; n: PNode; objType: PType;
             "bindings require a single pattern in an `of` branch")
           continue
         var fields: seq[PSym] = @[]
-        collectBranchFields(declBranch[^1], fields)
+        var nested = false
+        collectBranchFields(declBranch[^1], fields, nested)
         if p.len-1 > fields.len:
           localError(c.config, p[fields.len+1].info,
-            "too many bindings for sum type branch")
+            if nested: "cannot bind the fields of a nested `case` or the fields after it"
+            else: "too many bindings for sum type branch")
         for k in 1..min(p.len-1, fields.len):
           let a = p[k]
           if isUnderscore(a): continue
