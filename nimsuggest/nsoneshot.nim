@@ -661,18 +661,23 @@ proc isKnown(graph: ModuleGraph; fileIdx: FileIndex): bool =
   toFullPath(graph.config, fileIdx) in gNsModules or
     graph.inclToMod.hasKey(fileIdx) or graph.registerIncluderFromNif(fileIdx)
 
-proc queryRoot(graph: ModuleGraph; q: Query): FileIndex =
-  ## The module a command compiles: the project's main file for the commands
-  ## about the whole project (`chk`, `globalSymbols`, `recompile`) or when it
-  ## names no file; otherwise the file it names or the module including it.
+proc moduleOf(graph: ModuleGraph; file: string): FileIndex =
+  ## `file`, or the module including it.
   let conf = graph.config
-  if q.cmd in {ideChk, ideGlobalSymbols, ideRecompile} or q.file.len == 0:
-    return fileInfoIdx(conf, conf.projectFull)
-  let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
+  let fileIdx = fileInfoIdx(conf, AbsoluteFile file)
   if not graph.isIcVerified(toFullPath(conf, fileIdx)) and
       graph.needsIncludeScan(fileIdx):
     discard graph.registerIncluderFromNif(fileIdx)
   result = if graph.inclToMod.hasKey(fileIdx): graph.parentModule(fileIdx) else: fileIdx
+
+proc queryRoot(graph: ModuleGraph; q: Query): FileIndex =
+  ## The module a command compiles: the project's main file for the commands
+  ## about the whole project (`chk`, `globalSymbols`, `recompile`) or when it
+  ## names no file; otherwise the file it names or the module including it.
+  if q.cmd in {ideChk, ideGlobalSymbols, ideRecompile} or q.file.len == 0:
+    result = fileInfoIdx(graph.config, graph.config.projectFull)
+  else:
+    result = graph.moduleOf(q.file)
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
@@ -797,7 +802,7 @@ proc oneShot*() =
   if q.cmd == ideNone:
     echo Help
     quit 0
-  if q.cmd notin {ideChk, ideGlobalSymbols, ideRecompile, ideOutline2} and
+  if q.cmd notin {ideGlobalSymbols, ideRecompile, ideOutline2} and
       q.file.endsWith(".nim") and fileExists(q.file):
     let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
     if not graph.isKnown(fileIdx):
@@ -837,5 +842,10 @@ proc oneShot*() =
     msgs.setDirtyFile(conf, fileIndex, AbsoluteFile q.dirty)
   if q.cmd != ideOutline2:
     graph.compileRoot()
+  if q.cmd == ideChk and q.file.len > 0:
+    let fileRoot = graph.moduleOf(q.file)
+    if graph.getModule(fileRoot) == nil:
+      gRoot = fileRoot
+      graph.compileRoot()
   graph.answer(q.cmd, q.file, fileIndex, q.line, q.col, q.tag)
   quit 0
