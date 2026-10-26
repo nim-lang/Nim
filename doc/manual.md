@@ -7209,7 +7209,8 @@ The modules connected by such imports form a *cycle group* that is checked
 together, phase by phase; every phase runs for all modules of the group before
 the next one starts:
 
-1. The imports of every module.
+1. The imports of every module, preceded by the pragma statements before
+   the first import of every module (like `{.deprecated.}`).
 2. The type sections of every module.
 3. The *leading declarations* of every module: the routines, constants and
    pragmas up to the first statement of a different kind (like a `var`

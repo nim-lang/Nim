@@ -368,6 +368,9 @@ type
     code: PNode
     topLevelStmts: PNode
     options: TOptions
+    notes, warningAsErrors: TNoteKinds
+      # like `options`: the module's `{.warning[X]: off.}` and the like
+      # survive the phases of the other modules
 
 proc parseModuleFile(graph: ModuleGraph; fileIdx: FileIndex): PNode =
   result = newNodeI(nkStmtList, newLineInfo(fileIdx, 1, 1))
@@ -411,6 +414,8 @@ proc openCycleMember(graph: ModuleGraph; fileIdx: FileIndex; fromModule: PSym): 
   prePass(result.ctx, result.code)
   if sfReorder in module.flags or codeReordering in graph.config.features:
     result.code = reorder(graph, result.code, module)
+  result.notes = graph.config.notes
+  result.warningAsErrors = graph.config.warningAsErrors
 
 proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   ## `root` contains `import m {.cyclic.}` statements: it and the modules that
@@ -420,6 +425,8 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   ## recursive import would finish them: the root comes last and its
   ## remaining statements are returned to the caller.
   var members = @[move root]
+  members[0].notes = graph.config.notes
+  members[0].warningAsErrors = graph.config.warningAsErrors
   let rootIdx = members[0].module.fileIdx
   graph.cycleGroups[rootIdx] = rootIdx
   var memberIdx = initTable[FileIndex, int]()
@@ -463,13 +470,16 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
     # the owner stack is shared by all contexts and the last opened member
     # is on top of it:
     pushOwner(m.ctx, m.module)
-    prepareConfigNotes(graph, m.module)
     graph.config.options = m.options
+    graph.config.notes = m.notes
+    graph.config.warningAsErrors = m.warningAsErrors
     let chain = importChain[memberIdx[m.module.fileIdx]]
     graph.importStack.add chain
     body
     graph.importStack.setLen(graph.importStack.len - chain.len)
     m.options = graph.config.options
+    m.notes = graph.config.notes
+    m.warningAsErrors = graph.config.warningAsErrors
     popOwner(m.ctx)
 
   var ctxs: seq[PContext] = @[]
@@ -480,7 +490,7 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   let prevDemand = graph.demandCycleBody
   graph.demandCycleBody = proc (prc: PSym): bool = demandCycleBody(ctxs, prc)
 
-  for phase in [cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
+  for phase in [cpHeaderPragmas, cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
                 cpUnnamedImports, cpDecls, cpExports, cpUnnamedImports, cpFromImports]:
     for m in mitems(members):
       withMember m:

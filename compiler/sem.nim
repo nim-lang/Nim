@@ -1018,6 +1018,9 @@ type
     ## Every phase runs for all modules of the group before the next phase
     ## starts, so the modules see each other's declarations regardless of
     ## their order.
+    cpHeaderPragmas ## the pragma statements before the module's first import,
+                    ## like `{.deprecated.}` or `{.warning[X]: off.}`: they
+                    ## concern the imports of every module of the group
     cpImports      ## the module's top-level imports
     cpTypesLeft    ## registers the names of all top-level types
     cpTypesRight   ## the type definitions themselves
@@ -1075,8 +1078,20 @@ proc isCycleDecl(c: PContext; n: PNode): bool =
 
 proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
   case phase
-  of cpImports:
+  of cpHeaderPragmas:
     importSystemOnce(c, n)
+    for i in 0..<n.len:
+      case n[i].kind
+      of nkPragma:
+        n[i] = semStmt(c, n[i], {})
+        n[i].flags.incl nfSem
+      of nkCommentStmt, nkEmpty: discard
+      of nkDiscardStmt:
+        # a `discard """..."""` comment:
+        if not (n[i].len == 0 or n[i][0].kind in {nkEmpty, nkStrLit..nkTripleStrLit}):
+          break
+      else: break
+  of cpImports:
     for i in 0..<n.len:
       if n[i].kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
         # the result is flagged with `nfSem`, so the final pass skips it:
