@@ -1272,6 +1272,21 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
 
+proc hasNamedFieldArgs(n: PNode): bool =
+  ## `Branch(field: value, ...)`: the syntax of an object constructor.
+  result = n.len > 1
+  for i in 1..<n.len:
+    if n[i].kind != nkExprColonExpr: return false
+
+proc hasRoutineOverload(c: PContext; n: PNode): bool =
+  ## Some routine is visible under the name `n`.
+  result = false
+  var o: TOverloadIter = default(TOverloadIter)
+  var x = initOverloadIter(o, c, n)
+  while x != nil:
+    if x.kind in routineKinds: return true
+    x = nextOverloadIter(o, c, n)
+
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
@@ -3622,7 +3637,18 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       of skEnumField:
         # `Branch()` or `Branch(field: value)` of a sum type:
         let branches = sumTypeBranchCandidates(c, n[0])
-        if branches.len > 0:
+        result = nil
+        if branches.len > 0 and not hasNamedFieldArgs(n) and
+            hasRoutineOverload(c, n[0]):
+          # branch names are overloadable: a routine of the same name
+          # can be called with positional arguments or none:
+          let nOrig = n.copyTree
+          result = semOverloadedCallAnalyseEffects(c, n, nOrig,
+            flags + {efNoUndeclared}, expectedType)
+          if result != nil:
+            result = afterCallActions(c, result, nOrig, flags, expectedType)
+        if result != nil: discard
+        elif branches.len > 0:
           result = semSumTypeConstr(c, n, branches, flags, expectedType)
         else:
           result = semIndirectOp(c, n, flags, expectedType)
