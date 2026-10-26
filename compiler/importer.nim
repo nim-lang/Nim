@@ -172,6 +172,7 @@ proc addImport(c: PContext; im: sink ImportedModule) =
         of importSet:
           # merge the import sets:
           c.imports[i].imported.incl im.imported
+          c.imports[i].importedNames.incl im.importedNames
       of importExcept:
         case im.mode
         of importAll:
@@ -424,11 +425,44 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
     addDecl(c, m)               # add symbol to symbol table of module
 
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet())
-    for i in 1..<n.len:
-      if n[i].kind != nkNilLit:
-        importSymbol(c, n[i], m, im.imported)
+    var isPartner = false
+    for p in c.cyclePartners:
+      if p.module.position == m.position: isPartner = true
+    if isPartner:
+      # a module of the cycle group: it has not declared anything yet, so the
+      # names are imported as names; `resolveCycleFromImports` imports the
+      # symbols once they exist.
+      im.importedNames = initIntSet()
+      for i in 1..<n.len:
+        if n[i].kind != nkNilLit:
+          let (x, kws) = splitPragmas(c, n[i])
+          if kws.len > 0:
+            globalError(c.config, x.info, "unexpected pragma")
+          im.importedNames.incl considerQuotedIdent(c, x).id
+      c.cycleFromImports.add n
+    else:
+      for i in 1..<n.len:
+        if n[i].kind != nkNilLit:
+          importSymbol(c, n[i], m, im.imported)
     c.addImport im
     afterImport(c, m)
+
+proc resolveCycleFromImports*(c: PContext; final: bool) =
+  ## Imports the symbols of the `from m {.cyclic.} import x` statements whose
+  ## module `m` belongs to the cycle group, after `m` declared its types and
+  ## again after its leading declarations: this imports the fields of enums
+  ## and registers converters. `final` reports names that do not exist.
+  for n in c.cycleFromImports:
+    let m = n[0].sym
+    var idx = -1
+    for i in 0..high(c.imports):
+      if c.imports[i].m == m and c.imports[i].mode == importSet: idx = i
+    if idx < 0: continue
+    for i in 1..<n.len:
+      if n[i].kind != nkNilLit:
+        let (x, _) = splitPragmas(c, n[i])
+        if final or someSym(c.graph, m, considerQuotedIdent(c, x)) != nil:
+          importSymbol(c, x, m, c.imports[idx].imported)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)

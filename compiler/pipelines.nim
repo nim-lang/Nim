@@ -320,24 +320,44 @@ proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
   else:
     result = n
 
+proc cyclicImportTarget(c: PContext; x: PNode; result: var seq[FileIndex]) =
+  var x = x
+  if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and
+      x[0].ident.s == "as":
+    x = x[1] # `m {.cyclic.} as alias`
+  var cyclic = false
+  let path = withoutCyclicPragma(x, cyclic)
+  if cyclic:
+    let f = checkModuleName(c.config, path, doLocalError = false)
+    if f != InvalidFileIdx and f != c.module.fileIdx:
+      result.add f
+
 proc cyclicImportTargets(c: PContext; n: PNode): seq[FileIndex] =
   ## The modules that `n`'s top-level `import m {.cyclic.}` statements refer to.
   ## Only these are considered for a cycle group; an `import` produced by a
   ## macro or nested in a `when` is checked in order like any other statement.
   result = @[]
   for it in n:
-    if it.kind != nkImportStmt: continue
-    for x in it:
-      var x = x
-      if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and
-          x[0].ident.s == "as":
-        x = x[1] # `m {.cyclic.} as alias`
-      var cyclic = false
-      let path = withoutCyclicPragma(x, cyclic)
-      if cyclic:
-        let f = checkModuleName(c.config, path, doLocalError = false)
-        if f != InvalidFileIdx and f != c.module.fileIdx:
-          result.add f
+    case it.kind
+    of nkImportStmt:
+      for x in it:
+        if x.kind in {nkInfix, nkPrefix} and x[^1].kind == nkBracket:
+          # `dir/[a {.cyclic.}, b as c]`, see `importer.evalImport`:
+          var imp = copyNode(x)
+          for i in 0..<x.len-1: imp.add x[i]
+          imp.add newNode(nkEmpty)
+          for y in x[^1]:
+            if y.kind == nkInfix and y.len == 3 and y[0].kind == nkIdent and
+                y[0].ident.s == "as":
+              imp[^1] = y[1]
+            else:
+              imp[^1] = y
+            cyclicImportTarget(c, imp, result)
+        else:
+          cyclicImportTarget(c, x, result)
+    of nkFromStmt, nkImportExceptStmt:
+      if it.len > 0: cyclicImportTarget(c, it[0], result)
+    else: discard
 
 type
   CycleMember = object
@@ -431,7 +451,7 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   graph.demandCycleBody = proc (prc: PSym): bool = demandCycleBody(ctxs, prc)
 
   for phase in [cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
-                cpUnnamedImports, cpDecls, cpUnnamedImports]:
+                cpUnnamedImports, cpDecls, cpUnnamedImports, cpFromImports]:
     for m in mitems(members):
       withMember m:
         semCyclePhase(m.ctx, m.code, phase)

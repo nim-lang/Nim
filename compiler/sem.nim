@@ -1027,6 +1027,8 @@ type
                      ## were declared
     cpDecls        ## the leading declarations of the module; their routine
                    ## bodies are deferred
+    cpFromImports  ## reports the names of `from m {.cyclic.} import x` that
+                   ## `m` did not declare
 
 proc demandCycleBody*(group: seq[PContext]; prc: PSym): bool =
   ## Runs the deferred body of `prc` if it belongs to a module of the group.
@@ -1093,6 +1095,9 @@ proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
     var partners: seq[PSym] = @[]
     for p in c.cyclePartners: partners.add p.module
     reimportUnnamed(c, partners)
+    resolveCycleFromImports(c, final = false)
+  of cpFromImports:
+    resolveCycleFromImports(c, final = true)
   of cpDecls:
     c.deferAllBodies = true
     for i in 0..<n.len:

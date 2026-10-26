@@ -97,7 +97,9 @@ type
     case mode*: ImportMode
     of importAll: discard
     of importSet:
-      imported*: IntSet          # of PIdent.id
+      imported*: IntSet          # of PSym.id
+      importedNames*: IntSet     # of PIdent.id; `from m {.cyclic.} import x`
+                                 # names symbols that do not exist yet
     of importExcept:
       exceptSet*: IntSet         # of PIdent.id
 
@@ -270,6 +272,9 @@ type
     cyclePartners*: seq[PContext]
       # the other modules of this module's cycle group; their deferred bodies
       # are drained before a statement that could observe them.
+    cycleFromImports*: seq[PNode]
+      # the `from m import x` statements of this module that import from a
+      # module of its cycle group; `x` is resolved once `m` declared it.
 
   TBorrowState* = enum
     bsNone, bsReturnNotMatch, bsNoDistinct, bsGeneric, bsNotSupported, bsMatch
