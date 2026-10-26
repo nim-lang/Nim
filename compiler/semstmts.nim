@@ -2666,6 +2666,21 @@ proc runBodyTask(c: PContext; idx: int) =
     savedWarningAsErrors = c.config.warningAsErrors
     savedFeatures = c.features
     savedOwnerLen = c.graph.owners.len
+    # a unit can be demanded from anywhere, e.g. by the VM evaluating an array
+    # bound in the signature of a generic instance; the body is checked in
+    # the context it was declared in, at the top level:
+    savedCounters = (c.inGenericContext, c.inStaticContext, c.inUnrolledContext,
+      c.compilesContextId, c.inGenericInst, c.inTypeContext, c.inTypeofContext,
+      c.inConceptDecl, c.inParallelStmt)
+  c.inGenericContext = 0
+  c.inStaticContext = 0
+  c.inUnrolledContext = 0
+  c.compilesContextId = 0
+  c.inGenericInst = 0
+  c.inTypeContext = 0
+  c.inTypeofContext = 0
+  c.inConceptDecl = 0
+  c.inParallelStmt = 0
   let t = c.bodyTasks[idx]
   c.currentScope = t.scope
   c.p = t.procCon
@@ -2693,6 +2708,9 @@ proc runBodyTask(c: PContext; idx: int) =
     c.config.notes = savedNotes
     c.config.warningAsErrors = savedWarningAsErrors
     c.features = savedFeatures
+    (c.inGenericContext, c.inStaticContext, c.inUnrolledContext,
+      c.compilesContextId, c.inGenericInst, c.inTypeContext, c.inTypeofContext,
+      c.inConceptDecl, c.inParallelStmt) = savedCounters
 
 proc demandRoutineBody(c: PContext; prc: PSym) =
   ## §2.3's "run it inline": something needs a unit's body before the body pass
