@@ -781,34 +781,11 @@ proc atom(g: TSrcGen; n: PNode): string =
       result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f128"
   of nkNilLit: result = "nil"
   of nkType:
-    var t = n.typ
-    while t != nil and t.kind == tyTypeDesc and t.len > 0: t = t.elementType
-    if (t != nil) and (t.sym != nil): result = t.sym.name.s
+    if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
   else:
     internalError(g.config, "renderer.atom " & $n.kind)
     result = ""
-
-proc isSumTypeConstrDetail(n: PNode): bool =
-  ## The hidden discriminator of a sum type or a field that sem filled in
-  ## with `zeroDefault`, in an object constructor.
-  result = n.kind == nkExprColonExpr and n[0].kind == nkSym and
-    ((sfDiscriminant in n[0].sym.flags and n[0].sym.name.s == "`kind") or
-     (n[1].kind == nkCall and n[1][0].kind == nkSym and
-      n[1][0].sym.magic == mZeroDefault))
-
-proc sumTypeBranchName(n: PNode): string =
-  ## The branch name if `n` is the object constructor of a sum type.
-  result = ""
-  for i in 1..<n.len:
-    let it = n[i]
-    if it.kind == nkExprColonExpr and it[0].kind == nkSym and
-        sfDiscriminant in it[0].sym.flags and it[0].sym.name.s == "`kind" and
-        it[1].kind in nkCharLit..nkUInt64Lit and it[0].sym.typ != nil and
-        it[0].sym.typ.n != nil:
-      for e in it[0].sym.typ.n:
-        if e.kind == nkSym and e.sym.position == it[1].intVal:
-          return e.sym.name.s
 
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
@@ -1540,20 +1517,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   of nkCharLit: put(g, tkCharLit, atom(g, n))
   of nkNilLit: put(g, tkNil, atom(g, n))    # complex expressions
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
-    let branch = if n.kind == nkObjConstr: sumTypeBranchName(n) else: ""
-    if branch.len > 0:
-      # a sum type is constructed by its branch name; its hidden
-      # discriminator and the fields that sem filled in are not shown:
-      put(g, tkSymbol, branch)
-      put(g, tkParLe, "(")
-      var first = true
-      for i in 1..<n.len:
-        if isSumTypeConstrDetail(n[i]): continue
-        if not first: putWithSpace(g, tkComma, ",")
-        gsub(g, n[i])
-        first = false
-      put(g, tkParRi, ")")
-    elif n.len > 1 and n.lastSon.kind in postExprBlocks:
+    if n.len > 1 and n.lastSon.kind in postExprBlocks:
       accentedName(g, n[0])
       var i = 1
       while i < n.len and n[i].kind notin postExprBlocks: i.inc
