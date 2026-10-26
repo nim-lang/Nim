@@ -422,15 +422,36 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   var members = @[move root]
   let rootIdx = members[0].module.fileIdx
   graph.cycleGroups[rootIdx] = rootIdx
+  var memberIdx = initTable[FileIndex, int]()
+  memberIdx[rootIdx] = 0
+  var imports: seq[seq[int]] = @[] # the members a member imports, in order
   var i = 0
   while i < members.len:
+    imports.add @[]
     for f in cyclicImportTargets(members[i].ctx, members[i].code):
+      let k = memberIdx.getOrDefault(f, -1)
+      if k >= 0:
+        imports[i].add k
       # a module that exists already is not part of this group; it is
       # imported like any other module, and so is a precompiled one:
-      if graph.getModule(f) == nil and not loadsFromNif(graph, f):
+      elif graph.getModule(f) == nil and not loadsFromNif(graph, f):
         graph.cycleGroups[f] = rootIdx
+        memberIdx[f] = members.len
+        imports[i].add members.len
         members.add openCycleMember(graph, f, members[i].module)
     inc i
+
+  # the order in which a recursive import would finish the modules: depth
+  # first, a module after the modules it imports; the root comes last.
+  var finishOrder: seq[int] = @[]
+  var visited = newSeq[bool](members.len)
+  proc visit(k: int; imports: seq[seq[int]]; visited: var seq[bool];
+             finishOrder: var seq[int]) =
+    visited[k] = true
+    for j in imports[k]:
+      if not visited[j]: visit(j, imports, visited, finishOrder)
+    finishOrder.add k
+  visit(0, imports, visited, finishOrder)
 
   template withMember(m: var CycleMember; body: untyped) =
     # the owner stack is shared by all contexts and the last opened member
@@ -456,7 +477,8 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
       withMember m:
         semCyclePhase(m.ctx, m.code, phase)
 
-  for k in countdown(members.high, 1):
+  for k in finishOrder:
+    if k == 0: continue # the root's statements are returned to the caller
     let m = addr members[k]
     withMember m[]:
       let semNode = semWithPContext(m.ctx, m.code)
