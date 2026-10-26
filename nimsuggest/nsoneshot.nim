@@ -20,7 +20,7 @@ when not defined(nimcore):
 
 import compiler / [options, commands, modules, msgs, pipelines, sigmatch, ast, idents,
   modulegraphs, prefixmatches, lineinfos, cmdlinehelper, pathutils, condsyms,
-  syntaxes, suggestsymdb, lexer, ast2nif, idetools, icconfig]
+  syntaxes, suggestsymdb, lexer, ast2nif, idetools, icconfig, icmodnames]
 
 const HighestSuggestProtocolVersion = 4
 const Usage = """
@@ -470,7 +470,7 @@ proc useNsReport(graph: ModuleGraph; output: string) =
 
 proc nsReport(conf: ConfigRef): string =
   ## Where `nim ns` leaves its report (see `useNsReport`).
-  getNimcacheDir(conf).string / "nimsuggest.txt"
+  getNimcacheDir(conf).string / nsReportName(conf.projectFull.string)
 
 proc changedSince(report: string): bool =
   ## Whether a module or include file `nim ns` read was saved after that run
@@ -743,12 +743,13 @@ proc oneShot*() =
   # to is noted in the one without config (`moved`), which a report left there
   # from before the move must not shadow.
   let cmdLineCache = getNimcacheDir(conf).string
-  let moved = cmdLineCache / "nimsuggest.nimcache"
+  let moved = cmdLineCache /
+    nsReportName(conf.projectFull.string).changeFileExt("nimcache")
   let movedTo =
     try: readFile(moved)
     except IOError: ""
   let preReport =
-    if movedTo.len > 0: movedTo / "nimsuggest.txt"
+    if movedTo.len > 0: movedTo / nsReportName(conf.projectFull.string)
     else: nsReport(conf)
   var configChanged = false
   if fileExists(preReport):
