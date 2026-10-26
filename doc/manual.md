@@ -7215,7 +7215,8 @@ the next one starts:
    pragmas up to the first statement of a different kind (like a `var`
    section, a `when` statement or a call). The bodies of these routines are
    checked later, so they can refer to the declarations of all modules in the
-   group.
+   group. The `export` statements among the leading declarations run after
+   the leading declarations of every module.
 4. The remaining statements, module by module, in the order an ordinary
    recursive import would check them. This also determines the order in which
    the modules' top-level code runs.

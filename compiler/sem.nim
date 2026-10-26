@@ -1027,6 +1027,8 @@ type
                      ## were declared
     cpDecls        ## the leading declarations of the module; their routine
                    ## bodies are deferred
+    cpExports      ## the `export` statements among the leading declarations:
+                   ## they see the leading declarations of every module
     cpFromImports  ## reports the names of `from m {.cyclic.} import x` that
                    ## `m` did not declare
 
@@ -1053,7 +1055,7 @@ proc isCycleDecl(c: PContext; n: PNode): bool =
   ## at the first statement that does something else, as that statement could
   ## depend on the order in which the modules of the group are checked.
   case n.kind
-  of nkCommentStmt, nkEmpty, nkPragma, nkExportStmt,
+  of nkCommentStmt, nkEmpty, nkPragma, nkExportStmt, nkExportExceptStmt,
      nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef,
      nkTemplateDef, nkMacroDef:
     result = true
@@ -1102,10 +1104,20 @@ proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
     c.deferAllBodies = true
     for i in 0..<n.len:
       if not isCycleDecl(c, n[i]): break
-      if nfSem notin n[i].flags:
+      if nfSem notin n[i].flags and
+          n[i].kind notin {nkExportStmt, nkExportExceptStmt}:
         n[i] = semStmt(c, n[i], {})
         n[i].flags.incl nfSem
     c.deferAllBodies = false
+  of cpExports:
+    # every statement of the leading declarations is flagged with `nfSem`
+    # now, except for the exports:
+    for i in 0..<n.len:
+      if nfSem in n[i].flags: discard
+      elif n[i].kind in {nkExportStmt, nkExportExceptStmt}:
+        n[i] = semStmt(c, n[i], {})
+        n[i].flags.incl nfSem
+      else: break
 
 proc semCyclePhase*(c: PContext; n: PNode; phase: CyclePhase) =
   if c.config.errorMax <= 1:

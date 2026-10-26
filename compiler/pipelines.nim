@@ -451,7 +451,7 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   graph.demandCycleBody = proc (prc: PSym): bool = demandCycleBody(ctxs, prc)
 
   for phase in [cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
-                cpUnnamedImports, cpDecls, cpUnnamedImports, cpFromImports]:
+                cpUnnamedImports, cpDecls, cpExports, cpUnnamedImports, cpFromImports]:
     for m in mitems(members):
       withMember m:
         semCyclePhase(m.ctx, m.code, phase)
