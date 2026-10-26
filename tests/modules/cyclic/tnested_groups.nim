@@ -1,7 +1,7 @@
 discard """
   joinable: false
   matrix: "--warning:ImplicitCyclicImport:on"
-  nimout: "nested/mnested_d.nim(2, 8) Warning: import cycle without '.cyclic'; this is deprecated, use 'import mnested_a {.cyclic.}':"
+  nimout: "nested/mnested_d.nim(2, 8) Warning: import cycle without '.cyclic'; this is deprecated, annotate the imports on both sides of the cycle, like 'import mnested_a {.cyclic.}':"
   output: "1111"
 """
 

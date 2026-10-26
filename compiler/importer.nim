@@ -292,7 +292,8 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden, 
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     ret.node = newNodeI(nkImportAs, n.info)
     ret.node.add n[1].processPragma
-    ret.node.add n[2]
+    # `import m as alias {.all.}` is `import m {.all.} as alias`:
+    ret.node.add n[2].processPragma
   else:
     ret.node = n.processPragma
   return ret
@@ -301,6 +302,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   let transf = transformImportAs(c, n)
   n = transf.node
   let f = checkModuleName(c.config, n)
+  if f != InvalidFileIdx and f == c.module.fileIdx:
+    localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
+    return nil
   if f != InvalidFileIdx and transf.cyclic and c.graph.getModule(f) == nil and
       not c.graph.loadsFromNif(f):
     # the cycle group is formed before sem runs (see `pipelines.cyclicImportTargets`),
@@ -343,7 +347,8 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
           "module without '.cyclic'; annotate that import with '{.cyclic.}' too:\n" & err)
       else:
         message(c.config, n.info, warnImplicitCyclicImport,
-          "import cycle without '.cyclic'; this is deprecated, use 'import " &
+          "import cycle without '.cyclic'; this is deprecated, annotate the " &
+          "imports on both sides of the cycle, like 'import " &
           n.renderTree & " {.cyclic.}':\n" & err)
 
     let trackUnusedImport = warnUnusedImportX in c.config.notes

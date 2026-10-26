@@ -322,10 +322,11 @@ proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
 
 proc cyclicImportTarget(c: PContext; x: PNode; result: var seq[FileIndex]) =
   var x = x
+  var cyclic = false
   if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and
       x[0].ident.s == "as":
+    discard withoutCyclicPragma(x[2], cyclic) # `m as alias {.cyclic.}`
     x = x[1] # `m {.cyclic.} as alias`
-  var cyclic = false
   let path = withoutCyclicPragma(x, cyclic)
   if cyclic:
     let f = checkModuleName(c.config, path, doLocalError = false)
@@ -350,9 +351,10 @@ proc cyclicImportTargets(c: PContext; n: PNode): seq[FileIndex] =
             if y.kind == nkInfix and y.len == 3 and y[0].kind == nkIdent and
                 y[0].ident.s == "as":
               imp[^1] = y[1]
+              cyclicImportTarget(c, newTreeI(nkInfix, y.info, y[0], imp, y[2]), result)
             else:
               imp[^1] = y
-            cyclicImportTarget(c, imp, result)
+              cyclicImportTarget(c, imp, result)
         else:
           cyclicImportTarget(c, x, result)
     of nkFromStmt, nkImportExceptStmt:
