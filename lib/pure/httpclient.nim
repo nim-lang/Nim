@@ -939,12 +939,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         # Check if it's a multiline header value, if so, append to the header we're currently parsing
         # This works because a line with a header must start with the header name without any leading space
         # See https://datatracker.ietf.org/doc/html/rfc7230, section 3.2 and 3.2.4
-        # Multiline headers are deprecated in the spec, but it's better to parse them than crash
+        # Multiline headers are deprecated in the spec, but it's better to parse them than crash.
+        # A user agent replaces each line break of such a value with spaces
+        # (RFC 9112, section 5.2).
         if lastHeaderName == "":
           # Some extra unparsable lines in the HTTP output - we ignore them
           discard
         else:
-          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add "\n" & line
+          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add " " & line.strip(trailing = false)
       else:
         var name = ""
         var le = parseUntil(line, name, ':', linei)
