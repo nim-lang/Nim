@@ -1949,13 +1949,13 @@ proc allSemmed(c: DepContext): bool =
       return false
 
 proc reportToNimsuggest(c: DepContext; cacheDir: string; started: Time) =
-  ## `nim ns`: writes `cacheDir/nimsuggest.txt`, one line each for where the
-  ## semantic NIFs are, the precompiled config, every module this run checked
-  ## (`icmodule:`) or could not (`icdeferred:`), so nimsuggest2 loads only NIFs
-  ## nifmake checked, the files those modules include (`icinclude:`) and the
-  ## `--nsRoot` modules (`icroot:`), so the next run builds them again. Its
-  ## modification time is when this run started: a source newer than it changed
-  ## after this run read it.
+  ## `nim ns`: writes the project's `nsReportName` in `cacheDir`, one line each
+  ## for where the semantic NIFs are, the precompiled config, every module this
+  ## run checked (`icmodule:`) or could not (`icdeferred:`), so nimsuggest2
+  ## loads only NIFs nifmake checked, the files those modules include
+  ## (`icinclude:`) and the `--nsRoot` modules (`icroot:`), so the next run
+  ## builds them again. Its modification time is when this run started: a
+  ## source newer than it changed after this run read it.
   var lines = @["icsemdir:" & c.config.icSemDir.string,
     "icconfig:" & c.config.icPreparsedConfig]
   for node in c.nodes:
@@ -1964,7 +1964,7 @@ proc reportToNimsuggest(c: DepContext; cacheDir: string; started: Time) =
       lines.add "icinclude:" & node.files[i].nimFile
   for root in c.config.nsRoots:
     if fileExists(root): lines.add "icroot:" & root
-  let report = cacheDir / "nimsuggest.txt"
+  let report = cacheDir / nsReportName(c.config.projectFull.string)
   writeFile(report & ".tmp", lines.join("\n"))
   setLastModificationTime(report & ".tmp", started)
   moveFile(report & ".tmp", report)
