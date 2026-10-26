@@ -1420,8 +1420,10 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
     if covered == toCover(c, n[0].typ):
       hasElse = true
     elif n[0].typ.skipTypes(abstractRange).kind in {tyEnum, tyChar}:
-      localError(c.config, n.info, "not all cases are covered; missing: $1" %
-                 formatMissingEnums(c, n))
+      let missing = formatMissingEnums(c, n)
+      # nothing is missing if a duplicate label inflated `covered`:
+      if missing != "{}":
+        localError(c.config, n.info, "not all cases are covered; missing: $1" % missing)
     else:
       localError(c.config, n.info, "not all cases are covered")
   popCaseContext(c)
