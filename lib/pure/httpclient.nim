@@ -808,6 +808,8 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
     while i < chunkSizeStr.len:
+      if chunkSizeStr[i] in HexDigits and chunkSize > high(int) shr 4:
+        httpError("Invalid chunk size: " & chunkSizeStr)
       case chunkSizeStr[i]
       of '0'..'9':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
