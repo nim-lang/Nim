@@ -309,7 +309,17 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
     let L = c.graph.importStack.len
-    let recursion = c.graph.importStack.find(f)
+    var recursion = c.graph.importStack.find(f)
+    var viaGroup = false
+    if recursion < 0 and f in c.graph.cycleGroups:
+      # all modules of a cycle group are checked together, but only the one
+      # whose phase is running is on the import stack: an import of another
+      # module of a group that is being checked is a recursion too.
+      for i in 0..<L:
+        if c.graph.inSameCycleGroup(c.graph.importStack[i], f):
+          recursion = i
+          viaGroup = true
+          break
     c.graph.importStack.add f
     #echo "adding ", toFullPath(f), " at ", L+1
     if recursion >= 0:
@@ -318,6 +328,10 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
         if i > recursion: err.add "\n"
         err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
                 toFullPath(c.config, c.graph.importStack[i+1])
+      if viaGroup:
+        err.add "\n" & toFullPath(c.config, f) & " and " &
+          toFullPath(c.config, c.graph.importStack[recursion]) &
+          " belong to the same cycle group"
       if not transf.cyclic:
         c.recursiveDep = err
       if c.graph.inSameCycleGroup(c.module.fileIdx, f):

@@ -425,6 +425,9 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   var memberIdx = initTable[FileIndex, int]()
   memberIdx[rootIdx] = 0
   var imports: seq[seq[int]] = @[] # the members a member imports, in order
+  # the import chain from the root to a member, for the import stack
+  # (`importer.myImportModule` reports import cycles with it):
+  var importChain: seq[seq[FileIndex]] = @[@[]]
   var i = 0
   while i < members.len:
     imports.add @[]
@@ -438,7 +441,10 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
         graph.cycleGroups[f] = rootIdx
         memberIdx[f] = members.len
         imports[i].add members.len
+        importChain.add importChain[i] & f
+        graph.importStack.add importChain[^1]
         members.add openCycleMember(graph, f, members[i].module)
+        graph.importStack.setLen(graph.importStack.len - importChain[^1].len)
     inc i
 
   # the order in which a recursive import would finish the modules: depth
@@ -459,7 +465,10 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
     pushOwner(m.ctx, m.module)
     prepareConfigNotes(graph, m.module)
     graph.config.options = m.options
+    let chain = importChain[memberIdx[m.module.fileIdx]]
+    graph.importStack.add chain
     body
+    graph.importStack.setLen(graph.importStack.len - chain.len)
     m.options = graph.config.options
     popOwner(m.ctx)
 
