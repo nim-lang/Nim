@@ -428,7 +428,7 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
     for p in members:
       if p.ctx != m.ctx: m.ctx.cyclePartners.add p.ctx
   let prevDemand = graph.demandCycleBody
-  graph.demandCycleBody = proc (prc: PSym) = demandCycleBody(ctxs, prc)
+  graph.demandCycleBody = proc (prc: PSym): bool = demandCycleBody(ctxs, prc)
 
   for phase in [cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
                 cpUnnamedImports, cpDecls, cpUnnamedImports]:

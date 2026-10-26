@@ -1028,14 +1028,17 @@ type
     cpDecls        ## the leading declarations of the module; their routine
                    ## bodies are deferred
 
-proc demandCycleBody*(group: seq[PContext]; prc: PSym) =
+proc demandCycleBody*(group: seq[PContext]; prc: PSym): bool =
   ## Runs the deferred body of `prc` if it belongs to a module of the group.
-  ## A body that is already running is left alone: that is a recursion via the
-  ## modules of the group, which effect tracking treats pessimistically.
+  ## A body that is already running is left alone and the result is true:
+  ## that is a recursion via the modules of the group, which effect tracking
+  ## treats like a call of a forward declared routine.
+  result = false
   for c in group:
     let idx = c.bodyTaskIndex.getOrDefault(prc.itemId, -1)
     if idx >= 0:
       runBodyTask(c, idx)
+      result = c.bodyTasks[idx].state == btRunning
       break
 
 proc hasPendingBodies(c: PContext): bool =
