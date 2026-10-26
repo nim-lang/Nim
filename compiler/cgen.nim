@@ -2221,6 +2221,13 @@ proc genProc(m: BModule, prc: PSym) =
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
     fillProcLoc(m, son(prc.ast, namePos))
+    if prc.itemId.module != m.module.position and prc.typ.callConv != ccInline and
+        sfImportc notin prc.flags and m.config.cmd != cmdNifC:
+      # the body is generated later in the module that declares `prc`, but
+      # this module uses it already: that happens when the implementation
+      # of a forward declared routine of another module of a cycle group
+      # (`import m {.cyclic.}`) is not checked yet:
+      genProcPrototype(m, prc)
   else:
     genProcLvl2(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
