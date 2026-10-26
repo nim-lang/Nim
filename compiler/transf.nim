@@ -1411,6 +1411,18 @@ template liftDefer(c, root) =
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: TransformFlags): PNode =
   assert prc.kind in routineKinds
 
+  # The body of `prc` may still be deferred: by `--deferBodies:on`
+  # (doc/parallel_compiler.md §2.3 / §4.6 step 2) or by the declaration phase
+  # of a cycle group (`import m {.cyclic.}`). This is the single gate every
+  # consumer of a semmed body passes through, the VM compiling a routine that
+  # a constant expression or a signature (`array[f(), int]`) calls included.
+  # Nil, hence free, in every other build.
+  if prc.transformedBody == nil:
+    if g.demandCycleBody != nil:
+      discard g.demandCycleBody(prc, false)
+    if g.demandRoutineBody != nil:
+      g.demandRoutineBody(prc)
+
   if prc.transformedBody != nil:
     result = prc.transformedBody
   elif nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:

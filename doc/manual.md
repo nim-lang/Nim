@@ -7209,13 +7209,19 @@ The modules connected by such imports form a *cycle group* that is checked
 together, phase by phase; every phase runs for all modules of the group before
 the next one starts:
 
-1. The imports of every module.
-2. The type sections of every module.
+1. The imports of every module, preceded by the pragma statements before
+   the first import of every module (like `{.deprecated.}`). A `when`
+   statement that only imports modules belongs to the imports.
+2. The type sections of every module. The statements that precede a type
+   section and declare something the module's types use, like a constant,
+   a template or a user defined pragma, are checked first, in their order;
+   so a type section can refer to them as it could outside of a group.
 3. The *leading declarations* of every module: the routines, constants and
    pragmas up to the first statement of a different kind (like a `var`
    section, a `when` statement or a call). The bodies of these routines are
    checked later, so they can refer to the declarations of all modules in the
-   group.
+   group. The `export` statements among the leading declarations run after
+   the leading declarations of every module.
 4. The remaining statements, module by module, in the order an ordinary
    recursive import would check them. This also determines the order in which
    the modules' top-level code runs.

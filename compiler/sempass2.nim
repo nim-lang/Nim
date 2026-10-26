@@ -1240,12 +1240,20 @@ proc trackCall(tracked: PEffects; n: PNode) =
       else:
         discard
       var effectList = op.n[0]
-      if a.kind == nkSym and isNoEffectList(effectList) and
+      var cycleRecursion = false
+      if a.kind == nkSym and a.sym != tracked.owner and
           tracked.graph.demandCycleBody != nil:
-        # possibly a routine of the cycle group whose body is still deferred:
-        tracked.graph.demandCycleBody(a.sym)
+        # possibly a routine of the cycle group whose body is still deferred.
+        # If its body is being checked right now, this is a recursion via the
+        # modules of the group and its effect list is incomplete: treat it
+        # like a call of a forward declared routine.
+        cycleRecursion = tracked.graph.demandCycleBody(a.sym, true)
         effectList = op.n[0]
-      if a.kind == nkSym and a.sym.kind == skMethod:
+      if cycleRecursion:
+        if effectSpec(a.sym.ast[pragmasPos], wRaises).isNil:
+          tracked.unknownRaises.add (a.sym, n.info)
+        propagateEffects(tracked, n, a.sym)
+      elif a.kind == nkSym and a.sym.kind == skMethod:
         if {sfBase, sfThread} * a.sym.flags == {sfBase}:
           if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
           markGcUnsafe(tracked, a)

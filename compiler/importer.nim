@@ -172,6 +172,7 @@ proc addImport(c: PContext; im: sink ImportedModule) =
         of importSet:
           # merge the import sets:
           c.imports[i].imported.incl im.imported
+          c.imports[i].importedNames.incl im.importedNames
       of importExcept:
         case im.mode
         of importAll:
@@ -291,7 +292,8 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden, 
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     ret.node = newNodeI(nkImportAs, n.info)
     ret.node.add n[1].processPragma
-    ret.node.add n[2]
+    # `import m as alias {.all.}` is `import m {.all.} as alias`:
+    ret.node.add n[2].processPragma
   else:
     ret.node = n.processPragma
   return ret
@@ -300,6 +302,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   let transf = transformImportAs(c, n)
   n = transf.node
   let f = checkModuleName(c.config, n)
+  if f != InvalidFileIdx and f == c.module.fileIdx:
+    localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
+    return nil
   if f != InvalidFileIdx and transf.cyclic and c.graph.getModule(f) == nil and
       not c.graph.loadsFromNif(f):
     # the cycle group is formed before sem runs (see `pipelines.cyclicImportTargets`),
@@ -308,7 +313,17 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
     let L = c.graph.importStack.len
-    let recursion = c.graph.importStack.find(f)
+    var recursion = c.graph.importStack.find(f)
+    var viaGroup = false
+    if recursion < 0 and f in c.graph.cycleGroups:
+      # all modules of a cycle group are checked together, but only the one
+      # whose phase is running is on the import stack: an import of another
+      # module of a group that is being checked is a recursion too.
+      for i in 0..<L:
+        if c.graph.inSameCycleGroup(c.graph.importStack[i], f):
+          recursion = i
+          viaGroup = true
+          break
     c.graph.importStack.add f
     #echo "adding ", toFullPath(f), " at ", L+1
     if recursion >= 0:
@@ -317,6 +332,10 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
         if i > recursion: err.add "\n"
         err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
                 toFullPath(c.config, c.graph.importStack[i+1])
+      if viaGroup:
+        err.add "\n" & toFullPath(c.config, f) & " and " &
+          toFullPath(c.config, c.graph.importStack[recursion]) &
+          " belong to the same cycle group"
       if not transf.cyclic:
         c.recursiveDep = err
       if c.graph.inSameCycleGroup(c.module.fileIdx, f):
@@ -328,7 +347,8 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
           "module without '.cyclic'; annotate that import with '{.cyclic.}' too:\n" & err)
       else:
         message(c.config, n.info, warnImplicitCyclicImport,
-          "import cycle without '.cyclic'; this is deprecated, use 'import " &
+          "import cycle without '.cyclic'; this is deprecated, annotate the " &
+          "imports on both sides of the cycle, like 'import " &
           n.renderTree & " {.cyclic.}':\n" & err)
 
     let trackUnusedImport = warnUnusedImportX in c.config.notes
@@ -424,11 +444,44 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
     addDecl(c, m)               # add symbol to symbol table of module
 
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet())
-    for i in 1..<n.len:
-      if n[i].kind != nkNilLit:
-        importSymbol(c, n[i], m, im.imported)
+    var isPartner = false
+    for p in c.cyclePartners:
+      if p.module.position == m.position: isPartner = true
+    if isPartner:
+      # a module of the cycle group: it has not declared anything yet, so the
+      # names are imported as names; `resolveCycleFromImports` imports the
+      # symbols once they exist.
+      im.importedNames = initIntSet()
+      for i in 1..<n.len:
+        if n[i].kind != nkNilLit:
+          let (x, kws) = splitPragmas(c, n[i])
+          if kws.len > 0:
+            globalError(c.config, x.info, "unexpected pragma")
+          im.importedNames.incl considerQuotedIdent(c, x).id
+      c.cycleFromImports.add n
+    else:
+      for i in 1..<n.len:
+        if n[i].kind != nkNilLit:
+          importSymbol(c, n[i], m, im.imported)
     c.addImport im
     afterImport(c, m)
+
+proc resolveCycleFromImports*(c: PContext; final: bool) =
+  ## Imports the symbols of the `from m {.cyclic.} import x` statements whose
+  ## module `m` belongs to the cycle group, after `m` declared its types and
+  ## again after its leading declarations: this imports the fields of enums
+  ## and registers converters. `final` reports names that do not exist.
+  for n in c.cycleFromImports:
+    let m = n[0].sym
+    var idx = -1
+    for i in 0..high(c.imports):
+      if c.imports[i].m == m and c.imports[i].mode == importSet: idx = i
+    if idx < 0: continue
+    for i in 1..<n.len:
+      if n[i].kind != nkNilLit:
+        let (x, _) = splitPragmas(c, n[i])
+        if final or someSym(c.graph, m, considerQuotedIdent(c, x)) != nil:
+          importSymbol(c, x, m, c.imports[idx].imported)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)

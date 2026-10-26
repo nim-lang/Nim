@@ -1018,6 +1018,9 @@ type
     ## Every phase runs for all modules of the group before the next phase
     ## starts, so the modules see each other's declarations regardless of
     ## their order.
+    cpHeaderPragmas ## the pragma statements before the module's first import,
+                    ## like `{.deprecated.}` or `{.warning[X]: off.}`: they
+                    ## concern the imports of every module of the group
     cpImports      ## the module's top-level imports
     cpTypesLeft    ## registers the names of all top-level types
     cpTypesRight   ## the type definitions themselves
@@ -1027,15 +1030,29 @@ type
                      ## were declared
     cpDecls        ## the leading declarations of the module; their routine
                    ## bodies are deferred
+    cpExports      ## the `export` statements among the leading declarations:
+                   ## they see the leading declarations of every module
+    cpFromImports  ## reports the names of `from m {.cyclic.} import x` that
+                   ## `m` did not declare
 
-proc demandCycleBody*(group: seq[PContext]; prc: PSym) =
+proc demandCycleBody*(group: seq[PContext]; prc: PSym; forEffects: bool): bool =
   ## Runs the deferred body of `prc` if it belongs to a module of the group.
-  ## A body that is already running is left alone: that is a recursion via the
-  ## modules of the group, which effect tracking treats pessimistically.
+  ## A body that is already running is left alone and the result is true:
+  ## that is a recursion via the modules of the group, which effect tracking
+  ## treats like a call of a forward declared routine.
+  ## For effect tracking (`forEffects`) a routine with a forward declaration
+  ## is not run either while a preceding body of its module is checked: there
+  ## it is known by its forward declaration, like outside of a group.
+  result = false
   for c in group:
     let idx = c.bodyTaskIndex.getOrDefault(prc.itemId, -1)
     if idx >= 0:
+      if forEffects and sfWasForwarded in prc.flags and
+          c.bodyTasks[idx].state == btPending:
+        for j in 0..<idx:
+          if c.bodyTasks[j].state == btRunning: return true
       runBodyTask(c, idx)
+      result = c.bodyTasks[idx].state == btRunning
       break
 
 proc hasPendingBodies(c: PContext): bool =
@@ -1047,8 +1064,11 @@ proc isCycleDecl(c: PContext; n: PNode): bool =
   ## The declaration phase covers the module's leading declarations. It stops
   ## at the first statement that does something else, as that statement could
   ## depend on the order in which the modules of the group are checked.
+  ## A statement that was checked already, like a prerequisite of the
+  ## module's types, does not end them.
+  if nfSem in n.flags: return true
   case n.kind
-  of nkCommentStmt, nkEmpty, nkPragma, nkExportStmt,
+  of nkCommentStmt, nkEmpty, nkPragma, nkExportStmt, nkExportExceptStmt,
      nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef,
      nkTemplateDef, nkMacroDef:
     result = true
@@ -1066,18 +1086,173 @@ proc isCycleDecl(c: PContext; n: PNode): bool =
   else:
     result = false
 
+proc isImportOnly(n: PNode): bool =
+  ## A statement that only imports modules, like
+  ## `when defined(windows): import winlean else: import posix`. The imports
+  ## of the modules of a cycle group precede their types, so such a `when`
+  ## statement belongs to them.
+  case n.kind
+  of nkImportStmt, nkImportExceptStmt, nkFromStmt, nkCommentStmt, nkEmpty:
+    result = true
+  of nkWhenStmt:
+    result = true
+    for b in n:
+      if not isImportOnly(b[^1]): return false
+  of nkStmtList:
+    result = n.len > 0
+    for it in n:
+      if not isImportOnly(it): return false
+  else: result = false
+
+proc collectIdents(c: PContext; n: PNode; result: var IntSet) =
+  case n.kind
+  of nkIdent: result.incl n.ident.id
+  of nkSym: result.incl n.sym.name.id
+  of nkAccQuoted: result.incl considerQuotedIdent(c, n).id
+  of nkCharLit..nkNilLit, nkEmpty, nkCommentStmt: discard
+  else:
+    for it in n: collectIdents(c, it, result)
+
+proc collectTypeUses(c: PContext; n: PNode; result: var IntSet) =
+  ## The identifiers a type section refers to; the names it declares (of
+  ## types, fields, parameters and enum values) are left out.
+  template name(x: PNode) =
+    # `x`, `x*`, `x {.p.}`: only the pragmas are uses
+    var it = x
+    if it.kind == nkPragmaExpr:
+      collectIdents(c, it[1], result)
+      it = it[0]
+  case n.kind
+  of nkTypeDef:
+    name(n[0])
+    for i in 1..<n.len: collectTypeUses(c, n[i], result)
+  of nkIdentDefs, nkConstDef:
+    for i in 0..<n.len-2: name(n[i])
+    collectTypeUses(c, n[^2], result)
+    collectTypeUses(c, n[^1], result)
+  of nkEnumTy:
+    for it in n:
+      if it.kind == nkEnumFieldDef:
+        name(it[0])
+        collectTypeUses(c, it[1], result)
+      else: name(it)
+  of nkIdent, nkSym, nkAccQuoted: collectIdents(c, n, result)
+  of nkCharLit..nkNilLit, nkEmpty, nkCommentStmt: discard
+  else:
+    for it in n: collectTypeUses(c, it, result)
+
+proc declaredNames(c: PContext; n: PNode; result: var IntSet) =
+  ## The names that the top-level statement `n` declares.
+  proc nameId(c: PContext; x: PNode; result: var IntSet) =
+    var x = x
+    if x.kind == nkPragmaExpr: x = x[0]
+    if x.kind == nkPostfix: x = x[1]
+    if x.kind in {nkIdent, nkSym, nkAccQuoted}:
+      result.incl considerQuotedIdent(c, x).id
+  case n.kind
+  of nkConstSection, nkVarSection, nkLetSection, nkTypeSection:
+    for d in n:
+      case d.kind
+      of nkConstDef, nkIdentDefs, nkTypeDef:
+        for i in 0..<max(1, d.len-2): nameId(c, d[i], result)
+      of nkVarTuple:
+        for i in 0..<d.len-2: nameId(c, d[i], result)
+      else: discard
+  of nkProcDef, nkFuncDef, nkIteratorDef, nkConverterDef, nkTemplateDef,
+     nkMacroDef:
+    nameId(c, n[namePos], result)
+  of nkPragma:
+    # `{.pragma: name.}`
+    for it in n:
+      if it.kind in {nkExprColonExpr, nkExprEqExpr} and
+          whichPragma(it) == wPragma:
+        nameId(c, it[1], result)
+  of nkWhenStmt:
+    for b in n: declaredNames(c, b[^1], result)
+  of nkStmtList, nkStmtListExpr:
+    for it in n: declaredNames(c, it, result)
+  else: discard
+
+proc prerequisites(c: PContext; n: PNode; forImports: bool): IntSet =
+  ## The indexes of the top-level statements that precede a type section and
+  ## declare something the module's type sections need: a constant, a
+  ## template, a user defined pragma, a `when` statement that declares a
+  ## type, etc. They are checked right before the type sections, in their
+  ## order, so that a type section can refer to them as it could outside
+  ## of a cycle group. Other statements keep their place.
+  ## With `forImports` the same for the conditions of the `when` statements
+  ## that only import modules.
+  result = initIntSet()
+  var used = initIntSet()
+  var last = -1
+  for i in 0..<n.len:
+    if forImports:
+      if n[i].kind == nkWhenStmt and isImportOnly(n[i]):
+        collectIdents(c, n[i], used)
+        last = i
+    elif n[i].kind == nkTypeSection:
+      collectTypeUses(c, n[i], used)
+      last = i
+  for i in countdown(last-1, 0):
+    let it = n[i]
+    if nfSem in it.flags: continue
+    case it.kind
+    of nkConstSection, nkVarSection, nkLetSection, nkPragma, nkWhenStmt,
+       nkProcDef, nkFuncDef, nkIteratorDef, nkConverterDef, nkTemplateDef,
+       nkMacroDef:
+      var decl = initIntSet()
+      declaredNames(c, it, decl)
+      for id in decl:
+        if id in used:
+          result.incl i
+          collectIdents(c, it, used)
+          break
+    else: discard
+
+proc semPrerequisite(c: PContext; n: var PNode) =
+  if nfSem notin n.flags:
+    c.deferAllBodies = true
+    n = semStmt(c, n, {})
+    n.flags.incl nfSem
+    c.deferAllBodies = false
+
 proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
   case phase
-  of cpImports:
+  of cpHeaderPragmas:
     importSystemOnce(c, n)
     for i in 0..<n.len:
-      if n[i].kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+      case n[i].kind
+      of nkPragma:
+        n[i] = semStmt(c, n[i], {})
+        n[i].flags.incl nfSem
+      of nkCommentStmt, nkEmpty: discard
+      of nkDiscardStmt:
+        # a `discard """..."""` comment:
+        if not (n[i].len == 0 or n[i][0].kind in {nkEmpty, nkStrLit..nkTripleStrLit}):
+          break
+      else: break
+  of cpImports:
+    let prereqs = prerequisites(c, n, true)
+    for i in 0..<n.len:
+      if i in prereqs:
+        semPrerequisite(c, n[i])
+      elif n[i].kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt} or
+          (n[i].kind == nkWhenStmt and isImportOnly(n[i])):
         # the result is flagged with `nfSem`, so the final pass skips it:
         n[i] = semStmt(c, n[i], {})
         n[i].flags.incl nfSem
   of cpTypesLeft, cpTypesRight, cpTypesFinal:
+    let prereqs = if phase == cpTypesFinal: initIntSet() else: prerequisites(c, n, false)
+    var seenTypes = false
     for i in 0..<n.len:
-      if n[i].kind == nkTypeSection:
+      if i in prereqs:
+        # before the module's first type section the prerequisites run with
+        # the names of the types, which can use a user defined pragma; the
+        # others run with the type definitions that precede them:
+        if (phase == cpTypesLeft) == not seenTypes:
+          semPrerequisite(c, n[i])
+      elif n[i].kind == nkTypeSection:
+        seenTypes = true
         inc c.inTypeContext
         case phase
         of cpTypesLeft:
@@ -1090,14 +1265,27 @@ proc semCyclePhaseImpl(c: PContext; n: PNode; phase: CyclePhase) =
     var partners: seq[PSym] = @[]
     for p in c.cyclePartners: partners.add p.module
     reimportUnnamed(c, partners)
+    resolveCycleFromImports(c, final = false)
+  of cpFromImports:
+    resolveCycleFromImports(c, final = true)
   of cpDecls:
     c.deferAllBodies = true
     for i in 0..<n.len:
       if not isCycleDecl(c, n[i]): break
-      if nfSem notin n[i].flags:
+      if nfSem notin n[i].flags and
+          n[i].kind notin {nkExportStmt, nkExportExceptStmt}:
         n[i] = semStmt(c, n[i], {})
         n[i].flags.incl nfSem
     c.deferAllBodies = false
+  of cpExports:
+    # every statement of the leading declarations is flagged with `nfSem`
+    # now, except for the exports:
+    for i in 0..<n.len:
+      if nfSem in n[i].flags: discard
+      elif n[i].kind in {nkExportStmt, nkExportExceptStmt}:
+        n[i] = semStmt(c, n[i], {})
+        n[i].flags.incl nfSem
+      else: break
 
 proc semCyclePhase*(c: PContext; n: PNode; phase: CyclePhase) =
   if c.config.errorMax <= 1:
