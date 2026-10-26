@@ -1272,11 +1272,10 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
 
-proc hasNamedFieldArgs(n: PNode): bool =
-  ## `Branch(field: value, ...)`: the syntax of an object constructor.
-  result = n.len > 1
+proc hasPositionalArgs(n: PNode): bool =
+  result = false
   for i in 1..<n.len:
-    if n[i].kind != nkExprColonExpr: return false
+    if n[i].kind != nkExprColonExpr: return true
 
 proc hasRoutineOverload(c: PContext; n: PNode): bool =
   ## Some routine is visible under the name `n`.
@@ -3137,18 +3136,14 @@ include semobjconstr
 
 proc semBranchCall(c: PContext; n: PNode; branches: seq[PSym];
                    flags: TExprFlags; expectedType: PType): PNode =
-  ## `Branch()` or `Branch(field: value)` of a sum type, or a call of a
-  ## routine named like the branch.
-  result = nil
-  if not hasNamedFieldArgs(n) and hasRoutineOverload(c, n[0]):
-    # branch names are overloadable: a routine of the same name
-    # can be called with positional arguments or none:
+  ## `Branch()` and `Branch(field: value)` construct a sum type; a call
+  ## with positional arguments calls a routine named like the branch.
+  if hasPositionalArgs(n) and hasRoutineOverload(c, n[0]):
     let nOrig = n.copyTree
-    result = semOverloadedCallAnalyseEffects(c, n, nOrig,
-      flags + {efNoUndeclared}, expectedType)
-    if result != nil:
-      result = afterCallActions(c, result, nOrig, flags, expectedType)
-  if result == nil:
+    result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags, expectedType)
+    if result == nil: result = errorNode(c, n)
+    else: result = afterCallActions(c, result, nOrig, flags, expectedType)
+  else:
     result = semSumTypeConstr(c, n, branches, flags, expectedType)
 
 proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =

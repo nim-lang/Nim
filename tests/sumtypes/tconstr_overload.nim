@@ -2,12 +2,14 @@ discard """
   output: '''
 5
 3
-called A
+A()
+called A with 1
 Red(duration: 2)
 '''
 """
 
-# branch names are overloadable: routines of the same name stay callable
+# a branch name with positional arguments calls a routine of that name;
+# `Branch()` and `Branch(field: value)` always construct
 
 type
   Light = object
@@ -28,8 +30,10 @@ type
     case
     of A: discard
     of B: x: int
-proc A() = echo "called A"
-A()
+proc A() = echo "not called"
+proc A(x: int) = echo "called A with ", x
+echo A()
+A(1)
 echo Red(duration: 2)
 let o: Light = Off()
 let k = B(x: 1)
