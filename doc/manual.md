@@ -2096,8 +2096,11 @@ assert eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) == 42
   of the declaration so that they share their fields.
 - The `case` must cover all branches or have an `else` branch.
 
-A binding is not a copy but a view of the field: if the matched value is
-mutable, assigning to the binding changes the field.
+If the matched expression is a mutable location, a binding is not a copy but
+a view of the field: assigning to the binding changes the field. Like other
+views, such a binding cannot be captured by a closure or escape its routine.
+Otherwise the fields are bound by value and the bindings cannot be assigned
+to.
 
 ```nim test
 type

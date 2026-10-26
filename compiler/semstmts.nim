@@ -1467,7 +1467,8 @@ proc semSumTypeCase(c: PContext; n: PNode; objType: PType;
   ## `case x of Branch(a, b): body` is rewritten to an ordinary `case` over
   ## the hidden discriminator of `x`. The bindings `a` and `b` become
   ## templates that expand to the (otherwise inaccessible) fields of the
-  ## branch, so they are views and mutable if `x` is.
+  ## branch. If `x` is a mutable location they are views of the fields,
+  ## otherwise the fields are bound by value.
   let rc = sumTypeCase(objType.n)
   let enumType = rc[0].sym.typ
   var sel = n[0]
@@ -1475,17 +1476,22 @@ proc semSumTypeCase(c: PContext; n: PNode; objType: PType;
   if not (sel.kind == nkSym or
       (sel.kind == nkHiddenDeref and sel[0].kind == nkSym)):
     # evaluate the selector only once:
-    let tmp = newSym(skLet, getIdent(c.cache, ":case"), c.idgen, getCurrOwner(c), sel.info)
-    tmp.incl sfGenSym
+    # named after the selector so that error messages about the bindings
+    # read like the field access they stand for; it is never added to a scope:
+    let tmp = newSym(skLet, getIdent(c.cache, renderTree(sel, {renderNoComments})),
+                     c.idgen, getCurrOwner(c), sel.info)
     var val = sel
     let selType = sel.typ.skipTypes({tyVar, tyLent})
     if selType.skipTypes(abstractInst).kind notin {tyRef, tyPtr} and
-        isAssignable(c.p.owner, sel) in {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
-      # a location: refer to it, the bindings are views
-      tmp.typ = makePtrType(c, selType)
-      val = newTreeIT(nkAddr, sel.info, tmp.typ, sel)
+        isAssignable(c.p.owner, sel) in {arLValue, arLocalLValue}:
+      # a mutable location: refer to it, the bindings are views. The
+      # temporary is a `var T` so that the views can neither be captured
+      # nor escape:
+      tmp.typ = makeVarType(c, selType)
+      val = newTreeIT(nkHiddenAddr, sel.info, tmp.typ, sel)
       sel = newTreeIT(nkHiddenDeref, sel.info, selType, newSymNode(tmp))
     else:
+      # an immutable location or a value: the bindings are bound by value
       tmp.typ = selType
       sel = newSymNode(tmp)
     tmpDecl = newTreeI(nkLetSection, n.info,
