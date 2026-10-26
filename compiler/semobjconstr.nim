@@ -549,7 +549,7 @@ proc inferSumTypeInstance(c: PContext; n: PNode; owner: PSym): PType =
   inst.add newSymNode(owner, n[0].info)
   for i in 0..<body.kidsLen-1:
     let b = m.bindings.lookup(body[i])
-    if b == nil:
+    if b == nil or b.kind in {tyNil, tyEmpty} or isEmptyContainer(b):
       localError(c.config, n.info,
         "cannot infer generic type for sum type constructor; " &
         "use a type conversion: " & owner.name.s & "[...](...)")
