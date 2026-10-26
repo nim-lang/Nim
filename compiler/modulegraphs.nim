@@ -78,6 +78,8 @@ type
     icCnifFiles*: seq[string]     # `.c.nif` artifacts written by this run
     icFromSource: IntSet          # `ideNsNifs`: modules compiled from source
     icStale: Table[int32, bool]   # `ideNsNifs`: memoized `icNifIsStale`
+    icStaleImporters: Table[int32, seq[int32]] # `ideNsNifs`: module ->
+                                  # its importers in `icStale`
     icVerified: HashSet[string]   # `ideNsNifs`: modules `nim ns` checked
     pendingMethodReplays*: seq[PSym] # method registrations loaded under
                                   # `nim nifc`, bucketed only after every
@@ -927,15 +929,25 @@ when not defined(nimKochBootstrap):
           break
     if not result:
       for dep in collectBifStrLits(semanticFile(g.config, suffix, ".s.deps.bif").string):
-        if icNifIsStale(g, fileInfoIdx(g.config, AbsoluteFile dep)):
+        let depIdx = fileInfoIdx(g.config, AbsoluteFile dep)
+        g.icStaleImporters.mgetOrPut(depIdx.int32, @[]).add k
+        if icNifIsStale(g, depIdx):
           result = true
           break
     g.icStale[k] = result
 
 proc icNoteFromSource*(g: ModuleGraph; fileIdx: FileIndex) =
-  if g.config.ideNsNifs and not g.config.isDefined("nimscript"):
-    g.icFromSource.incl fileIdx.int
-    g.icStale.clear()
+  ## Only the memoized staleness of `fileIdx`'s importers changes: they are
+  ## stale now.
+  if g.config.ideNsNifs and not g.config.isDefined("nimscript") and
+      not g.icFromSource.containsOrIncl(fileIdx.int):
+    var todo = @[fileIdx.int32]
+    while todo.len > 0:
+      for importer in g.icStaleImporters.getOrDefault(todo.pop):
+        g.icStale.withValue(importer, stale):
+          if not stale[]:
+            stale[] = true
+            todo.add importer
 
 proc loadsFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
   ## `nim m` loads an import from its precompiled NIF file. The members of the
