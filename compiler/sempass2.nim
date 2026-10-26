@@ -1247,7 +1247,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         # If its body is being checked right now, this is a recursion via the
         # modules of the group and its effect list is incomplete: treat it
         # like a call of a forward declared routine.
-        cycleRecursion = tracked.graph.demandCycleBody(a.sym)
+        cycleRecursion = tracked.graph.demandCycleBody(a.sym, true)
         effectList = op.n[0]
       if cycleRecursion:
         if effectSpec(a.sym.ast[pragmasPos], wRaises).isNil:

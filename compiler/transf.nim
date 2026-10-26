@@ -1419,7 +1419,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: Transf
   # Nil, hence free, in every other build.
   if prc.transformedBody == nil:
     if g.demandCycleBody != nil:
-      discard g.demandCycleBody(prc)
+      discard g.demandCycleBody(prc, false)
     if g.demandRoutineBody != nil:
       g.demandRoutineBody(prc)
 

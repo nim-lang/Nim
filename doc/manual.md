@@ -7210,8 +7210,12 @@ together, phase by phase; every phase runs for all modules of the group before
 the next one starts:
 
 1. The imports of every module, preceded by the pragma statements before
-   the first import of every module (like `{.deprecated.}`).
-2. The type sections of every module.
+   the first import of every module (like `{.deprecated.}`). A `when`
+   statement that only imports modules belongs to the imports.
+2. The type sections of every module. The statements that precede a type
+   section and declare something the module's types use, like a constant,
+   a template or a user defined pragma, are checked first, in their order;
+   so a type section can refer to them as it could outside of a group.
 3. The *leading declarations* of every module: the routines, constants and
    pragmas up to the first statement of a different kind (like a `var`
    section, a `when` statement or a call). The bodies of these routines are
