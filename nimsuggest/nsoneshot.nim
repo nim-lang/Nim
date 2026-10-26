@@ -608,6 +608,8 @@ proc answerFromNif(graph: ModuleGraph; q: Query): bool =
   ## Answers `highlight`, `def`, `use` and `dus` about a saved file whose NIF
   ## is fresh from the NIFs, without compiling or loading the import closure:
   ## the loader opens the NIFs the symbols need. False when they cannot.
+  ## A field's NIF name is only its name and position, so a `highlight` of one
+  ## also lists the same-named field at that position of another type.
   let conf = graph.config
   let cmd = q.cmd
   if cmd notin {ideHighlight, ideDef, ideUse, ideDus} or q.dirty.len > 0 or
@@ -620,7 +622,8 @@ proc answerFromNif(graph: ModuleGraph; q: Query): bool =
   let target = newLineInfo(fileIdx, q.line, q.col)
   let bif = toNifFilename(conf, gRoot)
   let at = ideSymAt(conf, bif, target, ident)
-  if at.name.len == 0 or (cmd != ideDef and isFieldNifName(at.name)): return false
+  if at.name.len == 0 or (cmd in {ideUse, ideDus} and isFieldNifName(at.name)):
+    return false
   var sym = resolveHookSym(ast.program, at.name)
   if sym == nil:
     for r in at.routines:
@@ -730,7 +733,14 @@ proc oneShot*() =
   self.initDefinesProg(conf, "nimsuggest")
   self.processCmdLineAndProjectPath(conf)
   conf.ideActive = true
-  let preReport = nsReport(conf)
+  # A config that moves the nimcache would have to be evaluated to find the
+  # report and replay its precompiled config instead, so the nimcache it moves
+  # to is noted in the one without config (`moved`).
+  let cmdLineCache = getNimcacheDir(conf).string
+  let moved = cmdLineCache / "nimsuggest.nimcache"
+  var preReport = nsReport(conf)
+  if not fileExists(preReport) and fileExists(moved):
+    preReport = readFile(moved) / "nimsuggest.txt"
   var configChanged = false
   if fileExists(preReport):
     for line in readFile(preReport).splitLines:
@@ -755,6 +765,15 @@ proc oneShot*() =
   if not fileExists(conf.projectFull):
     quit "cannot find file: " & conf.projectFull.string
   add(conf.searchPaths, conf.libpath)
+
+  let cacheDir = getNimcacheDir(conf).string
+  if cacheDir != cmdLineCache and
+      (not fileExists(moved) or readFile(moved) != cacheDir):
+    try:
+      createDir(cmdLineCache)
+      writeFile(moved, cacheDir)
+    except OSError, IOError:
+      myLog "cannot write " & moved & ": " & getCurrentExceptionMsg()
 
   let line = stdin.readLine()
   myLog "one-shot: " & line
