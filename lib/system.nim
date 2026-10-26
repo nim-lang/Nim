@@ -1250,23 +1250,8 @@ else:
 
     {.noSideEffect.}:
       let xl = x.len
-      let yl = y.len
-      when not defined(js):
-        # `y` can be a view into `x`, as in `s.add s`, and `setLen` can
-        # move the elements of `x`:
-        when nimvm:
-          discard
-        else:
-          if xl > 0 and yl > 0 and
-              cast[uint](addr y[0]) >= cast[uint](addr x[0]) and
-              cast[uint](addr y[0]) <= cast[uint](addr x[xl-1]):
-            var tmp = newSeq[T](yl)
-            for i in 0..yl-1: tmp[i] = y[i]
-            setLen(x, xl + yl)
-            for i in 0..yl-1: x[xl+i] = move(tmp[i])
-            return
-      setLen(x, xl + yl)
-      for i in 0..yl-1: x[xl+i] = y[i]
+      setLen(x, xl + y.len)
+      for i in 0..high(y): x[xl+i] = y[i]
 
 
 when defined(nimSeqsV2):
