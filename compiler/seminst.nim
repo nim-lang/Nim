@@ -522,9 +522,16 @@ proc generateInstance(c: PContext, fn: PSym, pt: LayeredIdTable,
   inc c.instCounter
   let currentTypeofContext = c.inTypeofContext
   c.inTypeofContext = 0
+  # the `cast` sections of the call site do not apply to the instance:
+  let oldUncheckedAccess = c.inUncheckedAccess
+  let oldUncheckedAssign = c.inUncheckedAssignSection
+  c.inUncheckedAccess = 0
+  c.inUncheckedAssignSection = 0
   defer:
     dec c.instCounter
     c.inTypeofContext = currentTypeofContext
+    c.inUncheckedAccess = oldUncheckedAccess
+    c.inUncheckedAssignSection = oldUncheckedAssign
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   let producer = getModule(fn)

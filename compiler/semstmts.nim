@@ -3090,6 +3090,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         openScope(c)
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
         closeScope(c)
+        # an instance is checked outside of the `cast` sections that
+        # surround the generic routine, so they become part of its body:
+        var casts = newNodeI(nkPragma, n[bodyPos].info)
+        if c.inUncheckedAccess > 0:
+          casts.add newTreeI(nkCast, n.info, c.graph.emptyNode,
+            newIdentNode(getIdent(c.cache, "uncheckedAccess"), n.info))
+        if c.inUncheckedAssignSection > 0:
+          casts.add newTreeI(nkCast, n.info, c.graph.emptyNode,
+            newIdentNode(getIdent(c.cache, "uncheckedAssign"), n.info))
+        if casts.len > 0:
+          n[bodyPos] = newTreeI(nkPragmaBlock, n[bodyPos].info, casts, n[bodyPos])
         if s.magic == mNone:
           fixupInstantiatedSymbols(c, s)
       if s.kind == skMethod: semMethodPrototype(c, s, n)
