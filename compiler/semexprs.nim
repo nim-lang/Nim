@@ -1272,19 +1272,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
 
-proc hasPositionalArgs(n: PNode): bool =
-  result = false
+proc isObjConstrSyntax(n: PNode): bool =
+  ## `Branch()` or `Branch(field: value, ...)`.
+  result = true
   for i in 1..<n.len:
-    if n[i].kind != nkExprColonExpr: return true
-
-proc hasRoutineOverload(c: PContext; n: PNode): bool =
-  ## Some routine is visible under the name `n`.
-  result = false
-  var o: TOverloadIter = default(TOverloadIter)
-  var x = initOverloadIter(o, c, n)
-  while x != nil:
-    if x.kind in routineKinds: return true
-    x = nextOverloadIter(o, c, n)
+    if n[i].kind != nkExprColonExpr: return false
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
@@ -3136,9 +3128,9 @@ include semobjconstr
 
 proc semBranchCall(c: PContext; n: PNode; branches: seq[PSym];
                    flags: TExprFlags; expectedType: PType): PNode =
-  ## `Branch()` and `Branch(field: value)` construct a sum type; a call
-  ## with positional arguments calls a routine named like the branch.
-  if hasPositionalArgs(n) and hasRoutineOverload(c, n[0]):
+  ## `Branch()` and `Branch(field: value)` construct a sum type, any other
+  ## call of a branch name is an ordinary call.
+  if not isObjConstrSyntax(n):
     let nOrig = n.copyTree
     result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags, expectedType)
     if result == nil: result = errorNode(c, n)

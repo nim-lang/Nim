@@ -2065,9 +2065,9 @@ let c = Opt[float](None())    # a type conversion provides the expected type
 If a branch name belongs to several sum types, the expected type, a type
 conversion or a module qualifier (`module.Branch(...)`) selects one.
 
-`Branch()` and `Branch(field: value, ...)` always construct. A call of a
-branch name with positional arguments, like `Branch(x)` or `a Branch b` for a
-branch named by an operator, calls a routine of that name instead.
+`Branch()` and `Branch(field: value, ...)` always construct. Any other call
+of a branch name, like `Branch(x)` or `a Branch b` for a branch named by an
+operator, is an ordinary call of a routine of that name.
 
 
 ### Pattern matching
