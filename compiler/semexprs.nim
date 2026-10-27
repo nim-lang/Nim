@@ -1272,6 +1272,12 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
 
+proc isObjConstrSyntax(n: PNode): bool =
+  ## `Branch()` or `Branch(field: value, ...)`.
+  result = true
+  for i in 1..<n.len:
+    if n[i].kind != nkExprColonExpr: return false
+
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
@@ -3120,6 +3126,18 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
 
 include semobjconstr
 
+proc semBranchCall(c: PContext; n: PNode; branches: seq[PSym];
+                   flags: TExprFlags; expectedType: PType): PNode =
+  ## `Branch()` and `Branch(field: value)` construct a sum type, any other
+  ## call of a branch name is an ordinary call.
+  if not isObjConstrSyntax(n):
+    let nOrig = n.copyTree
+    result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags, expectedType)
+    if result == nil: result = errorNode(c, n)
+    else: result = afterCallActions(c, result, nOrig, flags, expectedType)
+  else:
+    result = semSumTypeConstr(c, n, branches, flags, expectedType)
+
 proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
   inc(c.p.nestedBlockCounter)
@@ -3620,10 +3638,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skEnumField:
-        # `Branch()` or `Branch(field: value)` of a sum type:
         let branches = sumTypeBranchCandidates(c, n[0])
         if branches.len > 0:
-          result = semSumTypeConstr(c, n, branches, flags, expectedType)
+          result = semBranchCall(c, n, branches, flags, expectedType)
         else:
           result = semIndirectOp(c, n, flags, expectedType)
       else:
@@ -3633,6 +3650,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags, expectedType)
+    elif isSymChoice(n[0]) and sumTypeBranchCandidates(c, n[0]).len > 0:
+      # an ambiguous branch name bound by a template:
+      result = semBranchCall(c, n, sumTypeBranchCandidates(c, n[0]), flags, expectedType)
     elif isSymChoice(n[0]):
       let b = asBracketExpr(c, n)
       if b != nil:

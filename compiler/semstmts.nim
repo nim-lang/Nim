@@ -1379,6 +1379,14 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
     of nkOfBranch:
       if hasElse: invalidOrderOfBranches(x)
       checkMinSonsLen(x, 2, c.config)
+      for j in 0..<x.len-1:
+        if isSumTypePattern(c, x[j]):
+          localError(c.config, x[j].info,
+            "a pattern requires a sum type, but the selector is of type '$1'" %
+              typeToString(n[0].typ))
+          popCaseContext(c)
+          closeScope(c)
+          return errorNode(c, n)
       semCaseBranch(c, n, x, i, covered)
       var last = x.len-1
       x[last] = semExprBranchScope(c, x[last], expectedType)
@@ -1412,8 +1420,10 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil
     if covered == toCover(c, n[0].typ):
       hasElse = true
     elif n[0].typ.skipTypes(abstractRange).kind in {tyEnum, tyChar}:
-      localError(c.config, n.info, "not all cases are covered; missing: $1" %
-                 formatMissingEnums(c, n))
+      let missing = formatMissingEnums(c, n)
+      # nothing is missing if a duplicate label inflated `covered`:
+      if missing != "{}":
+        localError(c.config, n.info, "not all cases are covered; missing: $1" % missing)
     else:
       localError(c.config, n.info, "not all cases are covered")
   popCaseContext(c)
@@ -1452,11 +1462,18 @@ proc sumTypeDeclBranch(rc: PNode; e: PSym): PNode =
     for j in 0..<b.len-1:
       if b[j].kind in nkIntLit..nkUInt64Lit and b[j].intVal == e.position: return b
 
-proc collectBranchFields(n: PNode; result: var seq[PSym]) =
+proc collectBranchFields(n: PNode; result: var seq[PSym]; nested: var bool) =
+  ## The fields of a branch in declaration order. A nested `case` ends them
+  ## after its discriminator: the fields of its branches and the fields
+  ## after it have no fixed position.
+  if nested: return
   case n.kind
   of nkSym: result.add n.sym
   of nkRecList:
-    for it in n: collectBranchFields(it, result)
+    for it in n: collectBranchFields(it, result, nested)
+  of nkRecCase:
+    collectBranchFields(n[0], result, nested)
+    nested = true
   else: discard
 
 proc isUnderscore(n: PNode): bool {.inline.} =
@@ -1467,7 +1484,8 @@ proc semSumTypeCase(c: PContext; n: PNode; objType: PType;
   ## `case x of Branch(a, b): body` is rewritten to an ordinary `case` over
   ## the hidden discriminator of `x`. The bindings `a` and `b` become
   ## templates that expand to the (otherwise inaccessible) fields of the
-  ## branch, so they are views and mutable if `x` is.
+  ## branch. If `x` is a mutable location they are views of the fields,
+  ## otherwise the fields are bound by value.
   let rc = sumTypeCase(objType.n)
   let enumType = rc[0].sym.typ
   var sel = n[0]
@@ -1475,17 +1493,22 @@ proc semSumTypeCase(c: PContext; n: PNode; objType: PType;
   if not (sel.kind == nkSym or
       (sel.kind == nkHiddenDeref and sel[0].kind == nkSym)):
     # evaluate the selector only once:
-    let tmp = newSym(skLet, getIdent(c.cache, ":case"), c.idgen, getCurrOwner(c), sel.info)
-    tmp.incl sfGenSym
+    # named after the selector so that error messages about the bindings
+    # read like the field access they stand for; it is never added to a scope:
+    let tmp = newSym(skLet, getIdent(c.cache, renderTree(sel, {renderNoComments})),
+                     c.idgen, getCurrOwner(c), sel.info)
     var val = sel
     let selType = sel.typ.skipTypes({tyVar, tyLent})
     if selType.skipTypes(abstractInst).kind notin {tyRef, tyPtr} and
-        isAssignable(c.p.owner, sel) in {arLValue, arLocalLValue, arAddressableConst, arLentValue}:
-      # a location: refer to it, the bindings are views
-      tmp.typ = makePtrType(c, selType)
-      val = newTreeIT(nkAddr, sel.info, tmp.typ, sel)
+        isAssignable(c.p.owner, sel) in {arLValue, arLocalLValue}:
+      # a mutable location: refer to it, the bindings are views. The
+      # temporary is a `var T` so that the views can neither be captured
+      # nor escape:
+      tmp.typ = makeVarType(c, selType)
+      val = newTreeIT(nkHiddenAddr, sel.info, tmp.typ, sel)
       sel = newTreeIT(nkHiddenDeref, sel.info, selType, newSymNode(tmp))
     else:
+      # an immutable location or a value: the bindings are bound by value
       tmp.typ = selType
       sel = newSymNode(tmp)
     tmpDecl = newTreeI(nkLetSection, n.info,
@@ -1505,10 +1528,16 @@ proc semSumTypeCase(c: PContext; n: PNode; objType: PType;
       let hasArgs = p.kind in nkCallKinds
       let head = if hasArgs: p[0] else: p
       let names = if head.kind == nkCurly: head.sons else: @[head]
+      if names.len == 0:
+        localError(c.config, head.info, "a set pattern needs at least one branch")
       var declBranch: PNode = nil
       for nameNode in names:
         let ident = sumTypeBranchIdent(c, nameNode)
-        let e = if ident != nil: getSymFromList(enumType.n, ident) else: nil
+        var e = if ident != nil: getSymFromList(enumType.n, ident) else: nil
+        if e != nil and nameNode.kind == nkDotExpr:
+          # `module.Branch`: the module must provide this very branch
+          let q = qualifiedLookUp(c, nameNode, {checkModule})
+          if q == nil or q.id != e.id: e = nil
         if e == nil:
           localError(c.config, nameNode.info, "undeclared sum type branch: " &
             renderTree(nameNode, {renderNoComments}))
@@ -1527,15 +1556,22 @@ proc semSumTypeCase(c: PContext; n: PNode; objType: PType;
             "bindings require a single pattern in an `of` branch")
           continue
         var fields: seq[PSym] = @[]
-        collectBranchFields(declBranch[^1], fields)
+        var nested = false
+        collectBranchFields(declBranch[^1], fields, nested)
         if p.len-1 > fields.len:
           localError(c.config, p[fields.len+1].info,
-            "too many bindings for sum type branch")
+            if nested: "cannot bind the fields of a nested `case` or the fields after it"
+            else: "too many bindings for sum type branch")
+        var bound = initIntSet()
         for k in 1..min(p.len-1, fields.len):
           let a = p[k]
           if isUnderscore(a): continue
           if a.kind notin {nkIdent, nkAccQuoted, nkSym}:
             localError(c.config, a.info, "identifier expected, but found: " &
+              renderTree(a, {renderNoComments}))
+            continue
+          if bound.containsOrIncl(considerQuotedIdent(c, a).id):
+            localError(c.config, a.info, "duplicate binding: " &
               renderTree(a, {renderNoComments}))
             continue
           if not fieldVisible(c, fields[k-1]):
@@ -3093,6 +3129,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         openScope(c)
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
         closeScope(c)
+        # an instance is checked outside of the `cast` sections that
+        # surround the generic routine, so they become part of its body:
+        var casts = newNodeI(nkPragma, n[bodyPos].info)
+        if c.inUncheckedAccess > 0:
+          casts.add newTreeI(nkCast, n.info, c.graph.emptyNode,
+            newIdentNode(getIdent(c.cache, "uncheckedAccess"), n.info))
+        if c.inUncheckedAssignSection > 0:
+          casts.add newTreeI(nkCast, n.info, c.graph.emptyNode,
+            newIdentNode(getIdent(c.cache, "uncheckedAssign"), n.info))
+        if casts.len > 0:
+          n[bodyPos] = newTreeI(nkPragmaBlock, n[bodyPos].info, casts, n[bodyPos])
         if s.magic == mNone:
           fixupInstantiatedSymbols(c, s)
       if s.kind == skMethod: semMethodPrototype(c, s, n)
