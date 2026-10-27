@@ -742,6 +742,13 @@ proc inSeconds*(dur: Duration): int64 =
     doAssert dur.inSeconds == 2 * 60 * 60
   dur.convert(Seconds)
 
+proc fseconds*(dur: Duration): float =
+  ## Converts the duration to seconds as a floating-point number.
+  runnableExamples:
+    doAssert initDuration(seconds = 1, milliseconds = 500).fseconds == 1.5
+    doAssert initDuration(milliseconds = -500).fseconds == -0.5
+  dur.seconds.float + dur.nanosecond.float / 1_000_000_000.0
+
 proc inMilliseconds*(dur: Duration): int64 =
   ## Converts the duration to the number of whole milliseconds.
   runnableExamples:
