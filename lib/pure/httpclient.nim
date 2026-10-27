@@ -913,6 +913,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.close()
       break
     if line == httpNewLine:
+      if parsedStatus and result.code.is1xx and result.code != Http101:
+        # An informational response (e.g. 100 Continue, 103 Early Hints) has
+        # no body and comes before the final response, which follows it on
+        # the same connection: skip it (RFC 9110, section 15.2).
+        parsedStatus = false
+        lastHeaderName = ""
+        result.headers = newHttpHeaders()
+        continue
       fullyRead = true
       break
     if not parsedStatus:
