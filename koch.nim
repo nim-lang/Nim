@@ -17,12 +17,12 @@ const
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
   NimonyRepo = "https://github.com/nitely/nimony.git"
-  NimonyStableCommit = "87ddd40e904cb5cb312495779e64a3a02f87f86f" # unversioned \
+  NimonyStableCommit = "c0709ffff0d0dd0fa3e7fff21bb76df7c93d6084" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
     # TODO: back to nim-lang/nimony once `nifmake --keep-going` is merged; this
-    # is the `nifmake_keep_going` branch of a fork, which `nim ns` needs.
+    # is the `nifmake_keep_going2` branch of a fork, which `nim ns` needs.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
