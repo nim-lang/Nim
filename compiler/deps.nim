@@ -2283,7 +2283,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         if progress: " --progress:" & $frontendLo & ":" & $frontendHi
         else: ""
       inc round
-      let cmd = quoteShell(nifmake) & " run" & parallel & frontendProgress & " " &
+      let keepGoing = if conf.cmd == cmdNs: " --keepgoing" else: ""
+      let cmd = quoteShell(nifmake) & " run" & parallel & keepGoing & frontendProgress & " " &
         quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
