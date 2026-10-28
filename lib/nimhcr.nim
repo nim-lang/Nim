@@ -216,6 +216,8 @@ when defined(createNimHcr):
     {.error: "This file has to be compiled as a library!".}
 
   import std/[os, tables, sets, times, strutils, reservedmem, dynlib]
+  when defined(nimPreviewSlimSystem):
+    import std/syncio
 
   template trace(args: varargs[untyped]) =
     when defined(testNimHcr) or defined(traceHcr):
