@@ -168,6 +168,9 @@ proc matchGenericParam(m: var TCandidate, formal: PType, n: PNode) =
     if evaluated != nil:
       arg = newTypeS(tyStatic, m.c, son = evaluated.typ)
       arg.n = evaluated
+    elif arg.n != nil:
+      # not a constant, see bug #26556:
+      arg = arg.skipIntLit(m.c.idgen)
   elif formalBase.kind == tyTypeDesc:
     discard # if arg is not tyTypeDesc, typeRel will report the mismatch
   else:
@@ -2597,6 +2600,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         arg.typ = typ
         a = typ
       else:
+        # bug #26556: `(; yield 0; 5)` has the literal type of its last
+        # expression but is not a constant, so its value must not bind
+        # to a `static` parameter:
+        if f.kind == tyStatic and a.n != nil:
+          a = a.skipIntLit(c.idgen)
         if m.callee.kind == tyGenericBody:
           if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
             result = makeStaticExpr(m.c, arg)
