@@ -2178,7 +2178,11 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
           rawMessage(conf, hintSuccess, "generated: " & backendFile)
           rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
         return
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
+      # `nim ns`: a module that fails, such as a broken `--nsRoot`, must not keep
+      # unrelated modules from being built.
+      let keepGoing = if conf.cmd == cmdNs: " --keep-going" else: ""
+      let cmd = quoteShell(nifmake) & " run" & parallel & keepGoing & " " &
+        quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       # A child that met an import no rule produced yet records it in its
