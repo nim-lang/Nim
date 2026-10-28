@@ -144,6 +144,16 @@ Advanced options:
   --skipUserCfg:on|off      do not read the user's configuration file
   --skipParentCfg:on|off    do not read the parent dirs' configuration files
   --skipProjCfg:on|off      do not read the project's configuration file
+  --compileTime:normal|restricted
+                            restricted: compile-time code runs only the commands
+                            given with --staticExecWhitelist, reads only below the
+                            project, --path, nimble package and lib directories,
+                            and cannot change files or the environment; the
+                            project's and parent dirs' configuration files are
+                            not read. Default: normal
+  --staticExecWhitelist:"CMD"
+                            with --compileTime:restricted, let compile-time code
+                            run exactly the command line CMD; can be repeated
   --mm:orc|arc|refc|markAndSweep|boehm|go|none|regions
                             select which memory management to use; default is 'orc'
   --exceptions:setjmp|cpp|goto|quirky
