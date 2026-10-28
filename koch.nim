@@ -16,15 +16,13 @@ const
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "668edddcaa5651051e7683a38a04f31fba778f35" # unversioned \
+  NimonyRepo = "https://github.com/nitely/nimony.git"
+  NimonyStableCommit = "87ddd40e904cb5cb312495779e64a3a02f87f86f" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-09-11 -- nifmake names the command that failed. Its
-    # parallel path marked every child `Finished` whatever the exit code was,
-    # so a build that fanned out left the crash in the log and the command that
-    # produced it nowhere: a Windows CI `nim ic` run reported a bare SIGSEGV
-    # with no way to tell whether the child was `nifler` or `nim m`.
+    # TODO: back to nim-lang/nimony once `nifmake --keep-going` is merged; this
+    # is the `nifmake_keep_going` branch of a fork, which `nim ns` needs.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
@@ -192,7 +190,7 @@ proc bundleChecksums(latest: bool) =
   cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", checksumsCommit, allowBundled = true)
 
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
+  cloneDependency(distDir, NimonyRepo, nimonyCommit, allowBundled = true)
 
   # These are host tools: their build must not be affected by whatever
   # `nim.cfg`/`config.nims` happens to live above the Nim checkout. Projects that
