@@ -698,6 +698,10 @@ block isRelativeTo:
     doAssert not isRelativeTo(r"\\srv\b\x", r"\\srv\a")
     doAssert not isRelativeTo(r"\\srv\a\x", r"C:\a")
     doAssert not isRelativeTo(r"C:\a\x", r"\\srv\a")
+    # these used to return true
+    doAssert not isRelativeTo(r"\foo\bar", r"D:\foo")
+    doAssert not isRelativeTo(r"\unrelated\x", r"D:\foo")
+    doAssert not isRelativeTo(r"D:\foo\bar", r"\foo")
 
 block: # quoteShellWindows
   doAssert quoteShellWindows("aaa") == "aaa"
