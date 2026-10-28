@@ -690,6 +690,14 @@ block isRelativeTo:
   doAssert isRelativeTo("foo/bar", ".")
   doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
   doAssert not isRelativeTo("/foo2", "/foo")
+  when doslikeFileSystem:
+    doAssert isRelativeTo(r"c:\foo\bar", r"C:\foo")
+    doAssert not isRelativeTo(r"D:\foo\bar", r"C:\foo")
+    doAssert isRelativeTo(r"\\srv\a\x", r"\\SRV\A")
+    doAssert not isRelativeTo(r"\\srv1\a\x", r"\\srv2\a")
+    doAssert not isRelativeTo(r"\\srv\b\x", r"\\srv\a")
+    doAssert not isRelativeTo(r"\\srv\a\x", r"C:\a")
+    doAssert not isRelativeTo(r"C:\a\x", r"\\srv\a")
 
 block: # quoteShellWindows
   doAssert quoteShellWindows("aaa") == "aaa"
