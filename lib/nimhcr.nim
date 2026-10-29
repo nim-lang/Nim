@@ -156,12 +156,9 @@ batchable: false
 #     - in a non-reloadable part (the main binary) that call the function pointers
 #     - parameter passing/forwarding - how? use the same trampoline jumping?
 #     - extracting the dependencies for these stubs/proxies will be hard...
-# - changing memory layout of types - detecting this..?
-#   - implement with registerType() call to HCR runtime...?
-#     - and checking if a previously registered type matches
-#   - issue an error
-#     - or let the user handle this by transferring the state properly
-#       - perhaps in the before/afterCodeReload handlers
+# - changing memory layout of types: a global whose type layout changed stops
+#   the reload with a message (hcrRegisterGlobal compares the compiler's layout
+#   hash). Transferring the state to the new layout is still not supported.
 # - implement executeOnReload for global vars too - not just statements (and document!)
 # - cleanup at shutdown - freeing all globals
 # - fallback mechanism if the program crashes (the program should detect crashes
@@ -219,6 +216,8 @@ when defined(createNimHcr):
     {.error: "This file has to be compiled as a library!".}
 
   import std/[os, tables, sets, times, strutils, reservedmem, dynlib]
+  when defined(nimPreviewSlimSystem):
+    import std/syncio
 
   template trace(args: varargs[untyped]) =
     when defined(testNimHcr) or defined(traceHcr):
@@ -365,6 +364,9 @@ when defined(createNimHcr):
       p: pointer
       markerProc: HcrGcMarkerProc
       gen: int
+      size: int
+      typeKey: string ## The compiler's hash of the global's type layout; "" for
+                      ## the runtime's own globals, whose size may change.
 
     ModuleDesc = object
       procs: Table[string, ProcSym]
@@ -440,6 +442,7 @@ when defined(createNimHcr):
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
                           size: Natural,
+                          typeKey: cstring,
                           gcMarker: HcrGcMarkerProc,
                           outPtr: ptr pointer): bool {.nimhcr.} =
     trace "  register global: ", module.sanitize, " ", name
@@ -451,9 +454,18 @@ when defined(createNimHcr):
     # to void*& since the casting yields an rvalue and references bind only to lvalues.
     let name = $name
     let module = $module
+    let typeKey = $typeKey
 
     modules[module].globals.withValue(name, global):
       trace "    update global: ", name
+      if global.typeKey.len > 0 and (global.size != size or global.typeKey != typeKey):
+        # The memory kept from before was laid out for the old type; the new
+        # code would read it with the new layout. Not an exception: the reload
+        # has already started and its state cannot be handed back.
+        stderr.writeLine "hot code reloading: the type of global '", name,
+          "' in module '", module, "' changed (size ", global.size, " -> ", size,
+          "); reloading cannot keep its value, restart the program"
+        quit(QuitFailure)
       outPtr[] = global.p
       global.gen = generation
       global.markerProc = gcMarker
@@ -462,7 +474,9 @@ when defined(createNimHcr):
       outPtr[] = alloc0(size)
       modules[module].globals[name] = GlobalVarSym(p: outPtr[],
                                                    gen: generation,
-                                                   markerProc: gcMarker)
+                                                   markerProc: gcMarker,
+                                                   size: size,
+                                                   typeKey: typeKey)
       return true
 
   proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.} =
@@ -818,7 +832,8 @@ elif defined(hotcodereloading) or defined(testNimHcr):
     proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.}
 
     proc hcrRegisterGlobal*(module: cstring, name: cstring, size: Natural,
-                            gcMarker: HcrGcMarkerProc, outPtr: ptr pointer): bool {.nimhcr.}
+                            typeKey: cstring, gcMarker: HcrGcMarkerProc,
+                            outPtr: ptr pointer): bool {.nimhcr.}
     proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
 
     proc hcrGetThreadVar*(module: cstring, name: cstring, size: int): pointer {.nimhcr.}

@@ -235,7 +235,9 @@ is a suitable place for implementing a program loop capable of calling
 `performCodeReload`.
 
 Please note that reloading won't be possible when any of the type definitions
-in the program has been changed. When closure iterators are used (directly or
+in the program has been changed. When the type of a global variable changed,
+the reload stops the program with a message naming the global, since the
+memory kept for it was laid out for the old type. When closure iterators are used (directly or
 through async code), the reloaded definitions will affect only newly created
 instances. Existing iterator instances will execute their original code to
 completion.
