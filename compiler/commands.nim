@@ -390,14 +390,13 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
                  notRelativeToProj = false): AbsoluteDir =
+  let base = if notRelativeToProj: getCurrentDir() else: conf.projectPath.string
   let p = if os.isAbsolute(path) or '$' in path:
             path
-          elif notRelativeToProj:
-            getCurrentDir() / path
           else:
-            conf.projectPath.string / path
+            base / path
   try:
-    result = AbsoluteDir pathSubs(conf, p, toFullPath(conf, info).splitFile().dir)
+    result = AbsoluteDir pathSubs(conf, p, toFullPath(conf, info).splitFile().dir, base)
   except ValueError:
     localError(conf, info, "invalid path: " & p)
     result = AbsoluteDir p
@@ -411,7 +410,7 @@ proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir
           else:
             basedir / path
   try:
-    result = AbsoluteDir pathSubs(conf, p, basedir)
+    result = AbsoluteDir pathSubs(conf, p, basedir, basedir)
   except ValueError:
     localError(conf, info, "invalid path: " & p)
     result = AbsoluteDir p
