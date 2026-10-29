@@ -1207,8 +1207,8 @@ proc mainCommand(graph: ModuleGraph) =
   if conf.errorCounter == 0:
     genSuccessX(graph.config)
 
-proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
-  var p = parseopt.initOptParser(cmd)
+proc processCmdLine(pass: TCmdLinePass; config: ConfigRef) =
+  var p = parseopt.initOptParser()
   var argsCount = 1
 
   config.commandLine.setLen 0
