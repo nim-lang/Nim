@@ -894,14 +894,12 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     discard getTypeDesc(p.module, t.firstSon.typ)
     var typ = skipTypes(t.firstSon.typ, abstractPtrs)
-    case p.config.exc
-    of excCpp:
-      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
-    of excGoto:
+    # the C++ and setjmp based handlers drop the exceptions abandoned by
+    # `except` sections via `nimCatchException`; popping here would be wrong
+    # for a raise that a try statement inside the `except` section handles.
+    if p.config.exc == excGoto:
       blockLeaveActions(p, howManyTrys = 0,
         howManyExcepts = (if leavesExceptBlock(p): 1 else: 0))
-    else:
-      discard
     genLineDir(p, t)
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
@@ -1201,6 +1199,14 @@ proc borrowCurrentException(p: BProc): Snippet =
   discard getTypeDesc(p.module, prc.typ.returnType.elementType)
   result = cCall(cgsymValue(p.module, "nimBorrowCurrentException"))
 
+proc saveCurrentException(p: BProc): Rope =
+  # remembers the current exception so that `nimCatchException` can drop the
+  # exceptions abandoned by `except` and `finally` sections that raised
+  result = getTempName(p.module)
+  p.s(cpsLocals).addVar(name = result, typ = CPointer)
+  p.s(cpsStmts).addAssignment(result,
+    cCall(cgsymValue(p.module, "nimCurrentExceptionRaw")))
+
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #[ code to generate:
 
@@ -1239,6 +1245,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
   let fin = if t.lastSon.kind == nkFinally: t.lastSon else: nil
   p.nestedTryStmts.add((fin, false, hasExceptBranches(t), 0.Natural))
+  let prevExc = if hasExceptBranches(t): saveCurrentException(p) else: ""
 
   if fin != nil:
     # C++ does not let sibling catch clauses catch each other's throws, so an
@@ -1262,6 +1269,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # First pass: handle Nim based exceptions:
   p.s(cpsStmts).addLineEndIndent(ropecg(p.module, "catch (#Exception* T$1_) {", [etmp+1]))
   genRestoreFrameAfterException(p)
+  if prevExc != "":
+    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimCatchException"), prevExc)
   # an unhandled exception happened!
   lineCg(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
   p.nestedTryStmts[^1].inExcept = true
@@ -1343,6 +1352,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # Second pass: handle C++ based exceptions:
   template genExceptBranchBody(body: PNode) {.dirty.} =
     genRestoreFrameAfterException(p)
+    if prevExc != "":
+      p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimCatchForeignException"), prevExc)
     #linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
     expr(p, body, d)
 
@@ -1453,6 +1464,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   if not isEmptyType(t.typ) and d.k == locNone:
     d = getTemp(p, t.typ)
 
+  let prevExc = if hasExcept: saveCurrentException(p) else: ""
   genTryBody(p, t, d)
 
   var ifStmt = default(IfBuilder)
@@ -1467,6 +1479,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     startBlockWith(p):
       scope = initScope(p.s(cpsStmts))
   p.s(cpsStmts).addLabel("LA" & $lab & "_")
+  if hasExcept:
+    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimCatchException"), prevExc)
 
   p.nestedTryStmts[^1].inExcept = true
   var i = 1
@@ -1616,8 +1630,10 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
     p.flags.incl noSafePoints
   genLineDir(p, t)
   var safePoint: Rope = ""
+  var prevExc: Rope = ""
   var nonQuirkyIf = default(IfBuilder)
   if not quirkyExceptions:
+    if hasExceptBranches(t): prevExc = saveCurrentException(p)
     safePoint = getTempName(p.module)
     p.s(cpsLocals).addVar(name = safePoint, typ = cgsymValue(p.module, "TSafePoint"))
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "pushSafePoint"), cAddr(safePoint))
@@ -1668,6 +1684,8 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       initElseBranch(p.s(cpsStmts), nonQuirkyIf)
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "popSafePoint"))
     genRestoreFrameAfterException(p)
+    if prevExc != "":
+      p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimCatchException"), prevExc)
   elif 1 < t.len and t.secondSon.kind == nkExceptBranch:
     startBlockWith(p):
       quirkyIf = initIfStmt(p.s(cpsStmts))
