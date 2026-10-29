@@ -27,7 +27,7 @@ proc popCurrentException {.compilerRtl, inl.} = discard
 proc closureIterSetExc(e: ref Exception) {.compilerRtl, inl.} = discard
 proc nimCurrentExceptionRaw(): pointer {.compilerRtl, inl.} = nil
 proc nimCatchException(prev: pointer) {.compilerRtl, inl.} = discard
-proc nimCatchForeignException(prev: pointer) {.compilerRtl, inl.} = discard
+proc nimLeaveExcept(handled: pointer; foreign: bool) {.compilerRtl.} = discard
 
 # some platforms have native support for stack traces:
 const
