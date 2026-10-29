@@ -367,6 +367,7 @@ type
     shape*: ptr CallShape
     currentException*: Address
     currentLineInfo*: TLineInfo
+    tos*: PStackFrame
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx

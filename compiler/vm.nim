@@ -1491,7 +1491,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
             VmArgs(ctxp: cast[pointer](c), args: slotAddr(rb + 2 + shape.resultSlots),
                    res: slotAddr(rb + 2), shape: addr shape,
                    currentException: c.currentExceptionA,
-                   currentLineInfo: c.debug[pc]))
+                   currentLineInfo: c.debug[pc], tos: tos))
         except IOError, OSError:
           # a host proc like `readFile` failed; report it like an unhandled
           # VM exception instead of crashing the compiler (#22558, #24530)
@@ -1783,7 +1783,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         VmArgs(ctxp: cast[pointer](c), args: slotAddr(instr.regB),
                res: slotAddr(ra), shape: addr shape,
                currentException: c.currentExceptionA,
-               currentLineInfo: c.debug[pc]))
+               currentLineInfo: c.debug[pc], tos: tos))
       let n = node(ra)
       if n != nil: n.flags.incl nfIsRef
     of opcNChild:
