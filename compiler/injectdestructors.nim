@@ -1204,7 +1204,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
                 result.add value
             elif ri.kind == nkEmpty and c.inLoop > 0:
               let skipInit = v.kind == nkDotExpr and # Closure var
-                             sfNoInit in v[1].sym.flags
+                             sfNoInit in v[1].sym.flags or
+                             # `{.global.}` in a proc: initialized only once
+                             v.kind == nkSym and {sfPure, sfGlobal} <= v.sym.flags
               if not skipInit:
                 result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, if v.kind == nkSym: {IsDecl} else: {})
         elif it.kind == nkIdentDefs and it.len == 3 and it[0].kind == nkSym and
