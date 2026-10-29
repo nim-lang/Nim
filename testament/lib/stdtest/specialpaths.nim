@@ -47,7 +47,7 @@ proc splitTestFile*(file: string): tuple[cat: string, path: string] =
       if file.isRelativeTo(dir):
         result.path = file.relativePath(dir)
       else:
-        result.path = file
+        result.path = file.normalizedPath
       return result
   raiseAssert "file must match this pattern: '/pathto/tests/dir/**/tfile.nim', got: '" & file & "'"
 
