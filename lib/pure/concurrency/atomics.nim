@@ -253,17 +253,29 @@ else:
       discard interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired))
 
     proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedExchange(addr(location.value), cast[int64](desired)))
+      cast[T](interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired)))
     proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-      cast[T](interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
+      let
+        expectedBits = cast[nonAtomicType(T)](expected)
+        previous = interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), expectedBits)
+      result = previous == expectedBits
+      if not result:
+        expected = cast[T](previous)
     proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       compareExchange(location, expected, desired, success, failure)
 
     proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       var currentValue = location.load()
-      while not compareExchangeWeak(location, currentValue, currentValue + value): discard
+      while true:
+        let desired = when T is SomeUnsignedInt: currentValue + value else: currentValue +% value
+        if compareExchangeWeak(location, currentValue, desired, order, moRelaxed):
+          return currentValue
     proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      fetchAdd(location, -value, order)
+      var currentValue = location.load()
+      while true:
+        let desired = when T is SomeUnsignedInt: currentValue - value else: currentValue -% value
+        if compareExchangeWeak(location, currentValue, desired, order, moRelaxed):
+          return currentValue
     proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedAnd(addr(location.value), cast[nonAtomicType(T)](value)))
     proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
