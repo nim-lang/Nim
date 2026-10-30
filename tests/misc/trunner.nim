@@ -433,6 +433,19 @@ running: v2
     let output = runNimCmdChk("tnolinking_fakefile", fmt"""--noLinking:on --nimcache:{nimcache4.quoteShell} -o:{exe.quoteShell} --eval:"echo(12345)" """)
     doAssert not fileExists(exe), output
 
+  block: # `nim c --run` of stdin with spawned codegen, bug #26572
+    let cmd = fmt"""{nim} {mode} --run --hints:off - """
+    let p = startProcess(cmd, options = {poEvalCommand})
+    p.inputStream.write("echo 12345")
+    p.inputStream.close
+    var output = p.outputStream.readAll
+    let error = p.errorStream.readAll
+    doAssert p.waitForExit == 0, error
+    output.stripLineEnd
+    doAssert output == "12345", output
+    p.errorStream.close
+    p.outputStream.close
+
   block: # nim dump
     let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
     let (ret, status) = execCmdEx(cmd)
