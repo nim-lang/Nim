@@ -2097,7 +2097,17 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       rawMessage(conf, errGenerated,
         "precompiled config missing: " & conf.icPreparsedConfig)
       return
-    let nifmake = findNifmake()
+    let nifmake = block:
+      when not defined(windows):
+        if isDefined(conf, "icBifDedup"):
+          let tool = getAppDir() / "nifmake_biflinks"
+          if not fileExists(tool):
+            quit "icBifDedup requires bin/nifmake_biflinks; build tools/nifmake_biflinks.nim"
+          tool
+        else:
+          findNifmake()
+      else:
+        findNifmake()
     # Build the per-module rules concurrently: nifmake fans out all commands at
     # each DAG depth via execProcesses (defaults to all cores). Cold builds are
     # otherwise serial (one child at a time) and leave the machine idle. An

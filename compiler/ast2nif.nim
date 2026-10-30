@@ -2438,7 +2438,14 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # text `.s.nif` twin — writing two files per module only slows the build; debug
   # a `.bif` via `tools/bif2nif`). Re-homed into a private fresh pool
   # so the file holds only THIS module's literals.
-  storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath))
+  when not defined(windows):
+    if isDefined(config, "icBifDedup") and not config.icSemDir.isEmpty:
+      storeBifShared(dest, bifPath, "." & extractModuleSuffix(bifPath),
+                     config.icSemDir.string, onlyIfChanged = true)
+    else:
+      storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath))
+  else:
+    storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath))
   if not isDefined(config, "icNoIfaceGate"):
     var flat = flattenForCookie(dest)
     let ifaceHex = writeIfaceCookie(config, thisModule, flat)
@@ -4820,7 +4827,13 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
   dest.addParRi()
   # Step 3: the lowered whole-module artifact is binary NIF (`.t.bif`) too — the
   # cg/emit stages load it via `toNifFilename`. No text twin (debug via bif2nif).
-  storeBif(dest, outfile, "." & extractModuleSuffix(outfile))
+  when not defined(windows):
+    if isDefined(config, "icBifDedup") and not config.icSemDir.isEmpty:
+      storeBifShared(dest, outfile, "." & extractModuleSuffix(outfile), config.icSemDir.string)
+    else:
+      storeBif(dest, outfile, "." & extractModuleSuffix(outfile))
+  else:
+    storeBif(dest, outfile, "." & extractModuleSuffix(outfile))
 
 when isMainModule:
   import std / syncio
