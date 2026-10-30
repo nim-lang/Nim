@@ -426,6 +426,13 @@ running: v2
 running: v2
 """, ret
 
+  block: # --noLinking with spawned codegen, bug #26580
+    let nimcache4 = buildDir / ("D20261030T120000_" & mode)
+    removeDir nimcache4
+    let exe = nimcache4 / "tnolinking_fakefile".addFileExt(ExeExt)
+    let output = runNimCmdChk("tnolinking_fakefile", fmt"""--noLinking:on --nimcache:{nimcache4.quoteShell} -o:{exe.quoteShell} --eval:"echo(12345)" """)
+    doAssert not fileExists(exe), output
+
   block: # nim dump
     let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
     let (ret, status) = execCmdEx(cmd)

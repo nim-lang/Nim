@@ -1265,8 +1265,9 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     cmds.add cmd
     prettyCmds.add displayProgressCC(conf, name, cmd)
   execCmdsInParallel(conf, cmds, prettyCb)
-  preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
-  for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
+  if optNoLinking notin conf.globalOptions:
+    preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
+    for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
   if conf.errorCounter == errorsBeforeBuild:
     writeBuildState(conf, bcache)
 
