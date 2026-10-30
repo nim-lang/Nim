@@ -48,10 +48,23 @@ with tempfile.TemporaryDirectory(prefix="nim-bif-links-") as tmp:
     assert build('-d:unusedExample') == '3', 'missing object must trigger rebuild'
     assert active_link.exists(), 'the active configuration must restore the link target'
 
-    scheduler = nim.parent / 'nifmake_biflinks'
-    forced = subprocess.run([str(scheduler), 'run', '--force', 'unused.nif'],
-                            capture_output=True, text=True)
-    assert forced.returncode != 0 and 'does not support --force' in forced.stderr
+    scheduler = nim.parent / 'nifmake'
+    assert subprocess.check_output([str(scheduler), '--nimBifLinksSupport'],
+                                   text=True).strip() == 'nim-bif-links-v1'
+    force_dir = root / 'force'
+    force_dir.mkdir()
+    force_target = force_dir / 'object'
+    force_target.write_text('object')
+    os.utime(force_target, (10, 10))
+    force_link = force_dir / 'test.s.bif'
+    force_link.symlink_to(force_target)
+    os.utime(force_link, (20, 20), follow_symlinks=False)
+    graph = force_dir / 'build.nif'
+    graph.write_text('(stmts (cmd :run "/usr/bin/true" (input) (output)) '
+                     f'(do run (input) (output "{force_link}")))\n')
+    subprocess.run([str(scheduler), 'run', '--force', str(graph)], check=True)
+    assert force_link.lstat().st_mtime_ns > 20_000_000_000
+    assert force_target.stat().st_mtime_ns == 10_000_000_000
 
     # Isolate object publication from the IC driver's concurrency limitations.
     fixture = root / 'writer.nim'

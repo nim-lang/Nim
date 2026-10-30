@@ -2100,17 +2100,17 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       rawMessage(conf, errGenerated,
         "precompiled config missing: " & conf.icPreparsedConfig)
       return
-    let nifmake = block:
-      when not defined(windows):
-        if conf.icBifLinks:
-          let tool = getAppDir() / "nifmake_biflinks"
-          if not fileExists(tool):
-            quit "icBifDedup requires bin/nifmake_biflinks; build tools/nifmake_biflinks.nim"
-          tool
-        else:
-          findNifmake()
-      else:
-        findNifmake()
+    let nifmake = findNifmake()
+    when not defined(windows):
+      if conf.icBifLinks:
+        if nifmake.len == 0:
+          rawMessage(conf, errGenerated, "icBifDedup requires Nim's link-aware nifmake")
+          return
+        let (output, exitCode) = execCmdEx(quoteShell(nifmake) & " --nimBifLinksSupport")
+        if exitCode != 0 or output.strip != "nim-bif-links-v1":
+          rawMessage(conf, errGenerated,
+            "icBifDedup requires the updated nifmake; rebuild Nim's tools with koch")
+          return
     # Build the per-module rules concurrently: nifmake fans out all commands at
     # each DAG depth via execProcesses (defaults to all cores). Cold builds are
     # otherwise serial (one child at a time) and leave the machine idle. An
