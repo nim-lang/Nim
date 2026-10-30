@@ -26,6 +26,9 @@ import std / [syncio, algorithm]
 from std / os import removeFile, moveFile
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
+when defined(icCompressBif):
+  import std/strutils
+  import icbifcompression
 
 # One shared literals pool + tag pool for the whole process — the nifcore
 # analogue of the old global `nifstreams.pool`. A single shared pool keeps
@@ -114,7 +117,13 @@ proc freshModuleCopy(b: var IcBuilder): TokenBuf =
 proc storeBif*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## Persist the buffer as a compact, self-contained binary NIF (`.bif`).
   var fresh = freshModuleCopy(b)
-  bif.store(fresh, path, dottedSuffix)
+  when defined(icCompressBif):
+    if path.endsWith(".s.bif") or path.endsWith(".t.bif"):
+      writeFile(path, compressBif(bif.storeToString(fresh, dottedSuffix)))
+    else:
+      bif.store(fresh, path, dottedSuffix)
+  else:
+    bif.store(fresh, path, dottedSuffix)
 
 proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## Content-stable `bif` write — the binary analogue of `writeFileStable`'s
@@ -125,7 +134,13 @@ proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## under fresh pools, so equal content ⇒ equal bytes.)
   var fresh = freshModuleCopy(b)
   let tmp = path & ".tmp"
-  bif.store(fresh, tmp, dottedSuffix)
+  when defined(icCompressBif):
+    if path.endsWith(".s.bif") or path.endsWith(".t.bif"):
+      writeFile(tmp, compressBif(bif.storeToString(fresh, dottedSuffix)))
+    else:
+      bif.store(fresh, tmp, dottedSuffix)
+  else:
+    bif.store(fresh, tmp, dottedSuffix)
   let newBytes = readFile(tmp)
   let oldBytes =
     try: readFile(path)

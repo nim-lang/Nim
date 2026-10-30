@@ -4228,7 +4228,7 @@ proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes:
   # The primary module artifacts are `<suffix>.s.bif` (the sidecars are
   # `.iface.nif`/`.impl.nif`/`.edges.nif`/`.s.deps.nif`, which this glob excludes).
   for f in semanticFiles(config):
-    var m = bif.load(f)
+    var m = icbif.load(f)
     var includer = ""
     var includes: seq[string] = @[]
     var c = m.buf.beginRead()
@@ -4265,7 +4265,7 @@ proc nifModuleHasIncludes*(config: ConfigRef; fileIdx: FileIndex): bool =
   ## owner/line-info on reload).
   let f = toNifFilename(config, fileIdx)
   if not fileExists(f): return false
-  var m = bif.load(f)
+  var m = icbif.load(f)
   result = false
   var c = m.buf.beginRead()
   if c.kind == TagLit and tagIs(c, toNifTag(nkStmtList)):

@@ -267,7 +267,8 @@ proc runIdeQuery*(conf: ConfigRef) =
   var seen = initHashSet[string]()
   if isGlobalName(foundName):
     for f in semanticFiles(conf):
-      if not containsSym(f, foundName): continue
+      when not defined(icCompressBif):
+        if not containsSym(f, foundName): continue
       var m = load(f)
       let tid = findSym(m.buf.pool, foundName)
       if tid != SymId(0):

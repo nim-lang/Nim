@@ -35,12 +35,15 @@
 ## placeholders. `fillSym` puts the spelling back whole instead — see there.
 ##
 ## `-d:icEagerPools` makes `load` the plain `bif.load`, for an A/B; the
-## accessors work on an eager pool as they do on any other.
+## accessors work on an eager pool as they do on any other. The experimental
+## compressed format requires this loader and therefore uses lazy pools.
 
 import std / [assertions, hashes, tables, varints]
 import "../dist/nimony/src/lib" / [bitabs, lineinfos, vfs]
 import "../dist/nimony/src/lib/nifcore" except symName, strVal, poolSym, poolStr, lineInfoFile
 from "../dist/nimony/src/lib" / bif import BifModule, IndexEntry, IndexVis
+when defined(icCompressBif):
+  import icbifcompression
 
 type
   LazyNames = object
@@ -249,11 +252,19 @@ proc rNames[Id, T](r: var Reader; t: var BiTable[Id, T]; n: int; empty: T): Lazy
 proc load*(filename: string): BifModule =
   ## `bif.load`, with the string, symbol and filename pools left in the
   ## mapping. Tags are few and always read, and stay eager.
-  when defined(icEagerPools):
+  when defined(icEagerPools) and not defined(icCompressBif):
     result = bif.load(filename)
   else:
     let blob = vfsOpenMmap(filename)      # left mapped for the buffer's lifetime
-    var r = Reader(base: cast[ptr UncheckedArray[char]](blob.data), pos: 0, size: blob.size)
+    var data = blob.data
+    var size = blob.size
+    when defined(icCompressBif):
+      if isCompressedBif(data, size):
+        let expanded = decompressBif(data, size)
+        data = expanded.data
+        size = expanded.size
+        # Like the mapped tokens, expanded storage outlives every cursor.
+    var r = Reader(base: cast[ptr UncheckedArray[char]](data), pos: 0, size: size)
     assert r.size >= Magic.len, "bif: file too small"
     for i in 0 ..< Magic.len:
       if r.base[i] != Magic[i]:
