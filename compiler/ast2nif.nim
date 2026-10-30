@@ -2439,7 +2439,7 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # a `.bif` via `tools/bif2nif`). Re-homed into a private fresh pool
   # so the file holds only THIS module's literals.
   when not defined(windows):
-    if isDefined(config, "icBifDedup") and not config.icSemDir.isEmpty:
+    if config.icBifLinks and not config.icSemDir.isEmpty:
       storeBifShared(dest, bifPath, "." & extractModuleSuffix(bifPath),
                      config.icSemDir.string, onlyIfChanged = true)
     else:
@@ -4828,7 +4828,7 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
   # Step 3: the lowered whole-module artifact is binary NIF (`.t.bif`) too — the
   # cg/emit stages load it via `toNifFilename`. No text twin (debug via bif2nif).
   when not defined(windows):
-    if isDefined(config, "icBifDedup") and not config.icSemDir.isEmpty:
+    if config.icBifLinks and not config.icSemDir.isEmpty:
       storeBifShared(dest, outfile, "." & extractModuleSuffix(outfile), config.icSemDir.string)
     else:
       storeBif(dest, outfile, "." & extractModuleSuffix(outfile))

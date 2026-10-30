@@ -457,6 +457,7 @@ type
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
     ic*: bool # whether ic is enabled
+    icBifLinks*: bool # immutable per-child BIF storage mode selected by the IC driver
     icParsedDir*: AbsoluteDir # shared source/dependency scans, selected by the IC driver
     icSemDir*: AbsoluteDir    # imported-module semantics for the effective configuration
     icMainSemDir*: AbsoluteDir # semantics for this entry point's import-cycle group

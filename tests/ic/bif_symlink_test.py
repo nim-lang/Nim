@@ -39,6 +39,92 @@ with tempfile.TemporaryDirectory(prefix="nim-bif-links-") as tmp:
     paths = list(cache.rglob('*.s.bif')) + list(cache.rglob('*.t.bif'))
     targets = [os.readlink(p) for p in paths]
     assert len(set(targets)) < len(targets), 'configurations should share content'
-    paths[0].resolve().unlink()
+    active = next(d for d in (cache / 'configs').iterdir()
+                  if 'unusedexample' in (d / 'ic_build_args.txt').read_text().lower())
+    active_link = next(active.rglob('*.s.bif'))
+    missing_object = active_link.resolve()
+    missing_object.unlink()
+    assert active_link.is_symlink() and not active_link.exists()
     assert build('-d:unusedExample') == '3', 'missing object must trigger rebuild'
+    assert active_link.exists(), 'the active configuration must restore the link target'
+
+    scheduler = nim.parent / 'nifmake_biflinks'
+    forced = subprocess.run([str(scheduler), 'run', '--force', 'unused.nif'],
+                            capture_output=True, text=True)
+    assert forced.returncode != 0 and 'does not support --force' in forced.stderr
+
+    # Isolate object publication from the IC driver's concurrency limitations.
+    fixture = root / 'writer.nim'
+    fixture.write_text("""import std/os
+import compiler/[ast, icnifcore]
+let semDir = paramStr(1)
+createDir(semDir)
+var b = newIcBuilder()
+b.openTag(\"payload\")
+b.addStrLit(\"shared content\")
+b.closeTag()
+storeBifShared(b, semDir / \"demo.s.bif\", \".demo\", semDir)
+""")
+    writer = root / 'writer'
+    repo = Path(__file__).resolve().parents[2]
+    subprocess.run([str(nim), 'c', '--hints:off', '--warnings:off', '--path:' + str(repo),
+                    '--out:' + str(writer), str(fixture)], check=True)
+    publication = root / 'publication'
+    sem_dirs = [publication / 'configs' / str(i) / 'sem' for i in range(8)]
+    procs = [subprocess.Popen([str(writer), str(d)]) for d in sem_dirs]
+    statuses = [p.wait() for p in procs]
+    assert all(status == 0 for status in statuses), 'concurrent publication failed'
+    links = [d / 'demo.s.bif' for d in sem_dirs]
+    assert all(p.is_symlink() and p.exists() for p in links)
+    targets = {p.resolve() for p in links}
+    assert len(targets) == 1, 'concurrent publishers must share one object'
+    target = targets.pop()
+    target.write_bytes(b'corrupt')
+    corrupt_dir = publication / 'configs' / 'corrupt' / 'sem'
+    failed = subprocess.run([str(writer), str(corrupt_dir)], capture_output=True, text=True)
+    assert failed.returncode != 0 and 'corruption' in failed.stderr
+    assert not (corrupt_dir / 'demo.s.bif').exists()
+    # Source pragmas must not change the storage mode selected by the driver.
+    pragma_dir = root / 'pragma'
+    pragma_dir.mkdir()
+    pragma_main = pragma_dir / 'main.nim'
+    pragma_cache = pragma_dir / 'cache'
+    pragma_binary = pragma_dir / 'main'
+
+    def build_pragma(value, enabled=False, internal=False):
+        pragma = 'undef' if enabled else 'define'
+        pragma_main.write_text(f'{{. {pragma}: icBifDedup .}}\necho {value}\n')
+        args = [str(nim), 'ic', '--hints:off', '-d:icJobs=2',
+                '--nimcache:' + str(pragma_cache), '--out:' + str(pragma_binary)]
+        if enabled:
+            args.append('-d:icBifDedup')
+        if internal:
+            args.append('--icBifLinks')
+        subprocess.run(args + [str(pragma_main)], check=True)
+        return subprocess.check_output([str(pragma_binary)], text=True).strip()
+
+    for value in (3, 4, 3):
+        assert build_pragma(value) == str(value)
+    assert all(not p.is_symlink() for p in pragma_cache.rglob('*.s.bif'))
+    assert build_pragma(6, internal=True) == '6'
+    assert all(not p.is_symlink() for p in pragma_cache.rglob('*.s.bif'))
+    for value in (5, 6, 5):
+        assert build_pragma(value, enabled=True) == str(value)
+    main_links = list(pragma_cache.glob('configs/*/sem/main/*/*.s.bif'))
+    assert any(p.is_symlink() for p in main_links)
+
+    # A replayed config file cannot enable the driver's private child switch.
+    config_dir = root / 'config-switch'
+    config_dir.mkdir()
+    (config_dir / 'nim.cfg').write_text('--icBifLinks\n')
+    config_main = config_dir / 'main.nim'
+    config_cache = config_dir / 'cache'
+    config_binary = config_dir / 'main'
+    for value in (11, 12, 11):
+        config_main.write_text(f'echo {value}\n')
+        subprocess.run([str(nim), 'ic', '--hints:off', '-d:icJobs=2',
+                        '--nimcache:' + str(config_cache), '--out:' + str(config_binary),
+                        str(config_main)], check=True)
+        assert subprocess.check_output([str(config_binary)], text=True).strip() == str(value)
+    assert all(not p.is_symlink() for p in config_cache.rglob('*.s.bif'))
 print('BIF symlink incremental test passed')

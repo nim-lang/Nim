@@ -1053,6 +1053,7 @@ proc selectMainSemanticModules(c: DepContext) =
 proc semanticArgs(conf: ConfigRef): seq[string] =
   result = @["--icSemDir:" & conf.icSemDir.string,
              "--icMainSemDir:" & conf.icMainSemDir.string]
+  if conf.icBifLinks: result.add "--icBifLinks"
   for suffix in conf.icMainModules:
     result.add "--icMainModule:" & suffix
 
@@ -1137,7 +1138,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "nimcache", "out", "o", "outdir", "usenimcache", "run", "r",
     "incremental", "ic", "symbolfiles", "genbif",
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
-    "icsemdir", "icmainsemdir", "icmainmodule",
+    "icsemdir", "icmainsemdir", "icmainmodule", "icbiflinks",
     "icbackendstage", "icbackendmodule", "ismainmodule",
     "help", "h", "fullhelp", "version", "v", "advanced"]
   var positionalArgs = 0
@@ -1994,6 +1995,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       writeFile(activeSignature, signature)
     let configDir = cacheDir / "configs" / $secureHash(signature)
     let mainSuffix = moduleSuffix(projectFile, cast[seq[string]](conf.searchPaths))
+    when not defined(windows):
+      conf.icBifLinks = isDefined(conf, "icBifDedup")
     conf.icParsedDir = AbsoluteDir(cacheDir / "parsed")
     conf.icSemDir = AbsoluteDir(configDir / "sem")
     conf.icMainSemDir = AbsoluteDir(configDir / "sem" / "main" / mainSuffix)
@@ -2099,7 +2102,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       return
     let nifmake = block:
       when not defined(windows):
-        if isDefined(conf, "icBifDedup"):
+        if conf.icBifLinks:
           let tool = getAppDir() / "nifmake_biflinks"
           if not fileExists(tool):
             quit "icBifDedup requires bin/nifmake_biflinks; build tools/nifmake_biflinks.nim"

@@ -156,11 +156,12 @@ when not defined(windows):
       let profileStart = getMonoTime()
       var mark = profileStart
       var freshNs, renderNs, hashNs, checkNs, publishNs, linkNs = 0'i64
+      var profileSize = 0
       template lap(slot: untyped) =
         slot += (getMonoTime() - mark).inNanoseconds
         mark = getMonoTime()
       defer:
-        stderr.writeLine "BIFPROFILE size=" & $getFileSize(path) &
+        stderr.writeLine "BIFPROFILE size=" & $profileSize &
           " fresh=" & $freshNs & " render=" & $renderNs & " hash=" & $hashNs &
           " check=" & $checkNs & " publish=" & $publishNs & " link=" & $linkNs &
           " total=" & $(getMonoTime() - profileStart).inNanoseconds
@@ -174,11 +175,13 @@ when not defined(windows):
     # The BIF serializer already renders a complete buffer before writing.
     # Hash it directly, without writing and rereading a temporary BIF.
     let bytes = bif.storeToString(fresh, dottedSuffix)
+    when defined(nimIcBifProfile): profileSize = bytes.len
     lap(renderNs)
     let obj = store / $secureHash(bytes)
     lap(hashNs)
     if onlyIfChanged and symlinkExists(path) and fileExists(path) and
         readFile(path) == bytes:
+      lap(checkNs)
       return
     lap(checkNs)
     if fileExists(obj):
