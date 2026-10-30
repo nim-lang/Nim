@@ -682,7 +682,10 @@ proc parseAttribute(my: var XmlParser) =
     # error corrections: guess what was meant
     while my.buf[pos] != '>' and my.buf[pos] > ' ':
       add(my.b, my.buf[pos])
-      inc pos
+      if my.buf[pos] == '/':
+        pos = lexbase.handleRefillChar(my, pos)
+      else:
+        inc pos
   my.bufpos = pos
   parseWhitespace(my, skip = true)
 
