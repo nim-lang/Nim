@@ -1797,13 +1797,16 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
   var used = initIntSet()
   for r in items(real):
     block search:
+      var forbidden = false
       for s in 0..<spec.len:
         if effectPredicate(g, spec[s], r):
-          if isForbids: break
+          if isForbids:
+            forbidden = true
+            break
           used.incl(s)
           break search
-        if isForbids:
-          break search
+      if isForbids and not forbidden:
+        break search
       # XXX call graph analysis would be nice here!
       var rr = if r.kind == nkRaiseStmt: r[0] else: r
       while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
