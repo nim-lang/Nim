@@ -3592,7 +3592,8 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
         q.initProc.procSec(cpsLocals).addArgument(registerCall):
           q.initProc.procSec(cpsLocals).addSizeof(rdLoc(sym.loc))
         q.initProc.procSec(cpsLocals).addArgument(registerCall):
-          q.initProc.procSec(cpsLocals).add(makeCString($hashTypeLayout(sym.loc.t, q.config)))
+          q.initProc.procSec(cpsLocals).add(hcrLayoutKey(q, sym, sym.loc.t,
+            '"' & sym.loc.snippet & '"', cSizeof(rdLoc(sym.loc))))
         q.initProc.procSec(cpsLocals).addArgument(registerCall):
           q.initProc.procSec(cpsLocals).add(CNil)
         q.initProc.procSec(cpsLocals).addArgument(registerCall):
