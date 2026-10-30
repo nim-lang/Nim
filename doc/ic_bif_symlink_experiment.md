@@ -49,7 +49,7 @@ On Unix, build the experimental scheduler and compiler, then enable the
 experiment with `-d:icBifDedup` on `nim ic` or `nim track`:
 
 ```sh
-bin/nim c -o:bin/nifmake_biflinks tools/nifmake_biflinks.nim
+bin/nim c -d:release -o:bin/nifmake_biflinks tools/nifmake_biflinks.nim
 bin/nim c -o:bin/nim_biflinks compiler/nim.nim
 bin/nim_biflinks ic -d:icBifDedup yourproject.nim
 python3 tests/ic/bif_symlink_test.py bin/nim_biflinks
@@ -146,3 +146,48 @@ built with the documented default compilation command. The measurements do not
 isolate scheduler overhead from hashing, filesystem operations, or byte
 comparison. This is a frontend-only experiment, with three fresh-cache samples
 per variant and no drawing test.
+
+### Writer profile and release scheduler
+
+An opt-in compiler build with `-d:nimIcBifProfile` prints `BIFPROFILE` records
+for semantic or lowered shared-object writes. Each record reports size and
+nanoseconds spent in fresh-pool copying (`fresh`), BIF rendering (`render`),
+hashing (`hash`), checking the current path (`check`), publishing or checking
+an object (`publish`), and publishing the symlink (`link`). These are elapsed
+intervals summed across compiler processes, not CPU time or build wall time;
+parallel intervals can overlap. The profile itself adds timing and logging cost.
+
+In two FigDraw frontend configurations with eight jobs, each produced 328
+profiled writes totaling 82.8 MB. Summed elapsed times were:
+
+| Phase | First configuration | Second configuration |
+| --- | ---: | ---: |
+| Fresh-pool copy and setup | 1.085 s | 1.095 s |
+| Render | 0.111 s | 0.110 s |
+| SHA-1 | 0.112 s | 0.111 s |
+| Publish or compare object | 0.198 s | 0.119 s |
+| Publish symlink | 0.067 s | 0.075 s |
+| Whole shared writer | 1.580 s | 1.518 s |
+
+The normal writer also copies pools and renders BIFs, so these totals are not
+the incremental cost of deduplication. In this workload, hash, object and link
+phases alone cannot explain the previously reported multi-second wall gap.
+
+The earlier measurements used an unoptimized build of the experimental
+scheduler. Rebuilding it with `-d:release` reduced the gap. Two fresh-cache
+pairs were run in alternating order, using the same release-built compiler and
+the existing regular scheduler for baseline. The regular scheduler's exact
+build flags were not verified; `koch` normally builds it in release mode.
+Filesystem caches were not cleared. This table shows both wall-time samples,
+not a statistical estimate:
+
+| Build | Baseline | Symlink, release scheduler |
+| --- | ---: | ---: |
+| First configuration | 69.56, 70.31 s | 71.30, 75.07 s |
+| Second configuration | 67.57, 68.14 s | 71.54, 68.93 s |
+| Cache after both | 189,728 KiB | 108,176 KiB |
+
+The means were 69.93 vs 73.19 s for the first configuration and 67.85 vs
+70.24 s for the second. This is a smaller difference than the earlier
+unoptimized-scheduler results, but the two samples vary and do not establish
+how much of the remaining difference comes from any particular component.

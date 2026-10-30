@@ -26,6 +26,8 @@ import std / [syncio, algorithm]
 from std / os import removeFile, moveFile
 when not defined(windows):
   import std / [os, tempfiles, sha1, posix]
+when defined(nimIcBifProfile):
+  import std / [monotimes, times]
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
 
@@ -150,17 +152,35 @@ when not defined(windows):
   proc storeBifShared*(b: var IcBuilder; path, dottedSuffix, semDir: string;
                        onlyIfChanged = false) =
     ## Publish immutable content and give each output its own symlink timestamp.
+    when defined(nimIcBifProfile):
+      let profileStart = getMonoTime()
+      var mark = profileStart
+      var freshNs, renderNs, hashNs, checkNs, publishNs, linkNs = 0'i64
+      template lap(slot: untyped) =
+        slot += (getMonoTime() - mark).inNanoseconds
+        mark = getMonoTime()
+      defer:
+        stderr.writeLine "BIFPROFILE size=" & $getFileSize(path) &
+          " fresh=" & $freshNs & " render=" & $renderNs & " hash=" & $hashNs &
+          " check=" & $checkNs & " publish=" & $publishNs & " link=" & $linkNs &
+          " total=" & $(getMonoTime() - profileStart).inNanoseconds
+    else:
+      template lap(slot: untyped) = discard
     let cacheRoot = semDir.parentDir.parentDir.parentDir
     let store = cacheRoot / "bif-objects-v1"
     createDir(store)
     var fresh = freshModuleCopy(b)
+    lap(freshNs)
     # The BIF serializer already renders a complete buffer before writing.
     # Hash it directly, without writing and rereading a temporary BIF.
     let bytes = bif.storeToString(fresh, dottedSuffix)
+    lap(renderNs)
     let obj = store / $secureHash(bytes)
+    lap(hashNs)
     if onlyIfChanged and symlinkExists(path) and fileExists(path) and
         readFile(path) == bytes:
       return
+    lap(checkNs)
     if fileExists(obj):
       if readFile(obj) != bytes:
         raise newException(IOError, "BIF object hash collision or corruption: " & obj)
@@ -173,6 +193,7 @@ when not defined(windows):
       if posix.link(tmpObject.cstring, obj.cstring) != 0:
         if not fileExists(obj) or readFile(obj) != bytes:
           raise newException(IOError, "BIF object publication failed: " & obj)
+    lap(publishNs)
     let (linkFile, tmpLink) = createTempFile(".bif-link-", "", path.parentDir)
     linkFile.close()
     removeFile(tmpLink)
@@ -180,6 +201,7 @@ when not defined(windows):
       if symlinkExists(tmpLink): removeFile(tmpLink)
     createSymlink(obj, tmpLink)
     moveFile(tmpLink, path)
+    lap(linkNs)
 
 # --- subtree splicing (shared pool, so a raw subtree copy is exact) ----------
 
