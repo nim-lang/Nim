@@ -1789,27 +1789,6 @@ proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   else:
     return safeInheritanceDiff(g.excType(real), spec.typ) <= 0
 
-proc traceForbidsOrigin(g: ModuleGraph; r: PNode; conf: ConfigRef) =
-  var current = r
-  var visited = initIntSet()
-  while current.kind in nkCallKinds and current[0].kind == nkSym:
-    let s = current[0].sym
-    if s.id in visited: break
-    visited.incl(s.id)
-    if s.typ == nil or s.typ.n == nil or s.typ.n[0].kind != nkEffectList: break
-    let effectList = s.typ.n[0]
-    if effectList.len == 0: break
-    let tags = effectList[tagEffects]
-    if tags == nil: break
-    var next: PNode = nil
-    for tag in items(tags):
-      if tag.typ != nil and sameType(tag.typ.skipTypes(skipPtrs), r.typ.skipTypes(skipPtrs)):
-        next = tag
-        break
-    if next == nil or next.info == current.info: break
-    message(conf, next.info, hintUser, "effect propagated from here")
-    current = next
-
 proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg: string, hints: bool;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.};
                      hintsArg: PNode = nil; isForbids: bool = false; unknownRaises: seq[(PSym, TLineInfo)] = @[]) =
@@ -1832,7 +1811,8 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
         message(g.config, info, hintUnknownRaises, s.name.s)
       if isForbids:
         message(g.config, spec.info, hintUser, ".forbids spec declared here")
-        traceForbidsOrigin(g, r, g.config)
+        for hop in effectOrigin(r):
+          message(g.config, hop.info, hintUser, "effect propagated from here")
         message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
                 renderTree(rr) & " " & msg & typeToString(r.typ))
       else:
