@@ -117,3 +117,32 @@ prototype's corresponding wall times were 94.140 s, 90.348 s and 0.174 s.
 These unpaired single runs were made at different times, so changing filesystem
 caches or machine load could explain part of the difference; they do not isolate
 the optimization's speedup.
+
+### Repeated in-memory hashing benchmark
+
+Three fresh-cache trials per variant were run sequentially on the same macOS
+host, with eight jobs and the same release-built compiler. Variant order was
+baseline then symlink, symlink then baseline, and baseline then symlink. Each
+trial built FigDraw's frontend in two configurations differing by the unused
+`bifUnusedProbe` define, then ran the second configuration three more times.
+OS filesystem caches were not cleared. Times below are wall-clock medians with
+minimum–maximum in parentheses; no-op values cover nine runs per variant.
+
+| Build | Baseline | Symlink |
+| --- | ---: | ---: |
+| First configuration (3 runs) | 70.60 s (69.70–70.88) | 76.00 s (75.71–76.04) |
+| Second configuration (3 runs) | 67.82 s (66.89–67.96) | 73.36 s (72.24–73.45) |
+| No-op (9 runs) | 91.9 ms (86.2–93.5) | 138.1 ms (133.9–157.5) |
+| Cache after both configurations | 189,616 KiB | 108,064 KiB |
+
+The median first and second builds were respectively 7.7% and 8.2% slower
+with symlinks. The median no-op added 46 ms. The combined cache saved
+81,552 KiB (43.0%). Each variant produced 652 semantic BIFs totaling
+165,637,780 logical bytes; the symlink variant pointed to 326 distinct objects.
+
+Both variants used the same compiler, but used different scheduler binaries:
+the regular nifmake and the experimental link-aware nifmake. The latter was
+built with the documented default compilation command. The measurements do not
+isolate scheduler overhead from hashing, filesystem operations, or byte
+comparison. This is a frontend-only experiment, with three fresh-cache samples
+per variant and no drawing test.
