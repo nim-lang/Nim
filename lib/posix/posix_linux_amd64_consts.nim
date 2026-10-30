@@ -537,6 +537,9 @@ const WEXITED* = cint(4)
 const WSTOPPED* = cint(2)
 const WCONTINUED* = cint(8)
 const WNOWAIT* = cint(16777216)
+const P_ALL* = cint(0)
+const P_PID* = cint(1)
+const P_PGID* = cint(2)
 
 # <spawn.h>
 const POSIX_SPAWN_RESETIDS* = cint(1)

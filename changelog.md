@@ -80,6 +80,14 @@ parameter and result types, not just their source-level shape. Use
   Windows. Before, the check was skipped there because `X509_check_host` was
   imported from the wrong DLL (libssl instead of libcrypto).
 
+- On Linux 5.3 and later, `registerProcess` in `std/selectors` (and with it
+  `addProcess` in `std/asyncdispatch`) waits for the process with a pidfd
+  instead of a signalfd for `SIGCHLD`. It now reports a child that ended
+  before it was registered, which before was never reported, and a process
+  that is not a child. It raises `IOSelectorsException` for a pid that does
+  not exist, as on the BSDs and macOS. Older kernels use the signalfd as
+  before.
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
