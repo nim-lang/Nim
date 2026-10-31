@@ -164,7 +164,10 @@ proc commandCompileToC(graph: ModuleGraph) =
   # optHotCodeReloading is mostly broken in general
   # optUseNimcache requires changes to how command lines are hashed to avoid rebuild detection errors
   # optGenStaticLib isn't supported by the JSON build script machinery
-  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache, optGenStaticLib} * conf.globalOptions == {optSpawnCodegen}:
+  # a project read from stdin has been read already; the subprocess would find
+  # stdin empty
+  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache, optGenStaticLib} * conf.globalOptions == {optSpawnCodegen} and
+      not conf.projectIsStdin:
     extccomp.spawnCodegenSubprocess(conf)
     return # Subprocess handled everything; skip in-process compilation
 
