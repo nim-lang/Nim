@@ -521,6 +521,7 @@ proc parseCommand*(command: string): Command =
   of "ic": cmdIc  # generate .build.nif for nifmake
   of "icconfig": cmdIcConfig  # produce the precompiled config artifact
   of "track": cmdTrack  # IDE goto-def / find-usages over `nim ic`'s NIF output
+  of "ns": cmdNs  # IC frontend for nimsuggest2
   else: cmdUnknown
 
 proc setCmd*(conf: ConfigRef, cmd: Command) =
@@ -1003,6 +1004,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     let dir = processPath(conf, arg, info, notRelativeToProj=true)
     if switch.normalize == "icsemdir": conf.icSemDir = dir
     else: conf.icMainSemDir = dir
+  of "nsroot":
+    # `nim ns` only: another module to build as a root (ie: unknow file), like the project file.
+    # One that no longer exists is dropped.
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP} and fileExists(arg):
+      let root = canonicalizePath(conf, AbsoluteFile arg).string
+      if root notin conf.nsRoots: conf.nsRoots.add root
   of "icmainmodule":
     expectArg(conf, switch, arg, pass, info)
     if arg notin conf.icMainModules: conf.icMainModules.add arg

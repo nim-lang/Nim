@@ -235,6 +235,7 @@ type
     cmdIc  # generate .build.nif for nifmake
     cmdIcConfig # `nim ic`'s precompiled-config producer (writes config snapshots)
     cmdTrack # `nim track --def/--usages`: IC frontend build + NIF scan for IDE queries
+    cmdNs # `nim ns`: IC frontend build for nimsuggest2
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -445,6 +446,11 @@ type
                      # precompiled NIF (run under cmdM) instead of recompiling it
                      # from source (cmdCheck). IC is opt-in: default off (cmdCheck);
                      # `--ideImports:nif` opts in.
+    ideNsNifs*: bool # nimsuggest2's one-shot: read only the NIFs `nim ns` built
+                     # and verified, never write any.
+    nsRoots*: seq[string] # `nim ns`: modules built as roots besides the project
+                          # (`--nsRoot`), so nimsuggest2 has NIFs for files the
+                          # project does not import (unknown files).
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`

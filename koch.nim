@@ -15,15 +15,13 @@ const
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "668edddcaa5651051e7683a38a04f31fba778f35" # unversioned \
+  NimonyRepo = "https://github.com/nitely/nimony.git"
+  NimonyStableCommit = "c0709ffff0d0dd0fa3e7fff21bb76df7c93d6084" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-09-11 -- nifmake names the command that failed. Its
-    # parallel path marked every child `Finished` whatever the exit code was,
-    # so a build that fanned out left the crash in the log and the command that
-    # produced it nowhere: a Windows CI `nim ic` run reported a bare SIGSEGV
-    # with no way to tell whether the child was `nifler` or `nim m`.
+    # TODO: back to nim-lang/nimony once `nifmake --keep-going` is merged; this
+    # is the `nifmake_keep_going2` branch of a fork, which `nim ns` needs.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
@@ -199,7 +197,7 @@ proc bundleChecksums(latest: bool) =
   cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", checksumsCommit, allowBundled = true)
 
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
+  cloneDependency(distDir, NimonyRepo, nimonyCommit, allowBundled = true)
 
   # These are host tools: their build must not be affected by whatever
   # `nim.cfg`/`config.nims` happens to live above the Nim checkout. Projects that
@@ -238,6 +236,11 @@ proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
                  options = "-d:danger " & args)
 
+proc bundleNimsuggest2(args: string) =
+  bundleChecksums(false)
+  nimCompileFold("Compile nimsuggest2", "nimsuggest/nimsuggest2.nim",
+                 options = "-d:danger " & args)
+
 proc buildVccTool(args: string) =
   let input = "tools/vccexe/vccexe.nim"
   if contains(args, "--cc:vcc"):
@@ -268,6 +271,7 @@ proc zip(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
+  bundleNimsuggest2(args)
   bundleNimpretty(args)
   bundleWinTools(args)
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
@@ -295,6 +299,7 @@ proc buildTool(toolname, args: string) =
 
 proc buildTools(args: string = "") =
   bundleNimsuggest(args)
+  bundleNimsuggest2(args)
   nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
@@ -322,6 +327,7 @@ proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
   bundleAtlasExe(latest, args)
   bundleNimsuggest(args)
+  bundleNimsuggest2(args)
   bundleWinTools(args)
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
@@ -781,6 +787,7 @@ proc runCI(cmd: string) =
       # in bundleNimsuggest depending on some environment variable when we are in CI. One advantage
       # of rebuilding is this won't affect bin/nimsuggest when running runCI locally
       execFold("build nimsuggest_testing", "nim c -o:bin/nimsuggest_testing -d:release nimsuggest/nimsuggest")
+      execFold("build nimsuggest2_testing", "nim c -o:bin/nimsuggest2_testing -d:release nimsuggest/nimsuggest2")
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
 
@@ -897,6 +904,7 @@ when isMainModule:
       of "nimble": bundleNimbleExe(latest, op.cmdLineRest)
       of "atlas": bundleAtlasExe(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
+      of "nimsuggest2": bundleNimsuggest2(op.cmdLineRest)
       # toolsNoNimble is kept for backward compatibility with build scripts
       of "toolsnonimble", "toolsnoexternal":
         buildTools(op.cmdLineRest)
