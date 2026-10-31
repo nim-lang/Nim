@@ -448,10 +448,7 @@ proc transformAsgn(c: PTransf, n: PNode): PNode =
 template assignTupleUnpacking(c: PTransf, e: PNode) =
   for i in 0..<c.transCon.forStmt.len - 2:
     if c.transCon.forStmt[i].kind == nkVarTuple:
-      for j in 0..<c.transCon.forStmt[i].len-1:
-        let lhs = c.transCon.forStmt[i][j]
-        let rhs = transform(c, newTupleAccess(c.graph, newTupleAccess(c.graph, e, i), j))
-        result.add(asgnTo(lhs, rhs))
+      unpackVarTuple(result, c.transCon.forStmt[i], newTupleAccess(c.graph, e, i))
     else:
       let lhs = c.transCon.forStmt[i]
       let rhs = transform(c, newTupleAccess(c.graph, e, i))
@@ -472,6 +469,14 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     else:
       result = nil
       internalAssert c.graph.config, false
+  proc unpackVarTuple(dest, pattern, tup: PNode) =
+    # `pattern` is a (possibly nested) tuple of for loop variables
+    for j in 0..<pattern.len-1:
+      let access = newTupleAccess(c.graph, tup, j)
+      if pattern[j].kind == nkVarTuple:
+        unpackVarTuple(dest, pattern[j], access)
+      else:
+        dest.add(asgnTo(pattern[j], transform(c, access)))
   result = newTransNode(nkStmtList, n.info, 0)
   var e = n[0]
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
@@ -484,10 +489,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         var v = e[i]
         if v.kind == nkExprColonExpr: v = v[1]
         if c.transCon.forStmt[i].kind == nkVarTuple:
-          for j in 0..<c.transCon.forStmt[i].len-1:
-            let lhs = c.transCon.forStmt[i][j]
-            let rhs = transform(c, newTupleAccess(c.graph, v, j))
-            result.add(asgnTo(lhs, rhs))
+          unpackVarTuple(result, c.transCon.forStmt[i], v)
         else:
           let lhs = c.transCon.forStmt[i]
           let rhs = transform(c, v)
@@ -524,15 +526,9 @@ proc transformYield(c: PTransf, n: PNode): PNode =
         v.addVar(tmp, e)
 
         result.add transform(c, v)
-        for i in 0..<c.transCon.forStmt[0].len-1:
-          let lhs = c.transCon.forStmt[0][i]
-          let rhs = transform(c, newTupleAccess(c.graph, tmp, i))
-          result.add(asgnTo(lhs, rhs))
+        unpackVarTuple(result, c.transCon.forStmt[0], tmp)
       else:
-        for i in 0..<c.transCon.forStmt[0].len-1:
-          let lhs = c.transCon.forStmt[0][i]
-          let rhs = transform(c, newTupleAccess(c.graph, e, i))
-          result.add(asgnTo(lhs, rhs))
+        unpackVarTuple(result, c.transCon.forStmt[0], e)
     else:
       let lhs = c.transCon.forStmt[0]
       let rhs = transform(c, e)
@@ -840,6 +836,13 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
 
 template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
+proc addForVarTupleVars(v, pattern: PNode) =
+  for j in 0..<pattern.len-1:
+    if pattern[j].kind == nkVarTuple:
+      addForVarTupleVars(v, pattern[j])
+    else:
+      addVar(v, copyTree(pattern[j]))
+
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
@@ -879,8 +882,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
     if n[i].kind == nkVarTuple:
-      for j in 0..<n[i].len-1:
-        addVar(v, copyTree(n[i][j])) # declare new vars
+      addForVarTupleVars(v, n[i]) # declare new vars
     else:
       if n[i].kind == nkSym and isSimpleIteratorVar(c, iter, call, n[i].sym.owner):
         # IC: review this solution again later
