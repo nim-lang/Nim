@@ -240,7 +240,9 @@ when defined(createNimHcr):
       ## it was mapped with `MAP_JIT`, and then a thread has it either
       ## writable or executable, never both.
 
-  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps:
+  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps and
+      not defined(nimdoc):
+    # `koch docs` runs on the host, so the docs must build for any CPU.
     {.error: "hot code reloading has no jump table for " & hostCPU & " on " &
       hostOS & (when hostCPU == "arm64" and defined(linux):
         "; with musl, pass -d:musl" else: "").}
