@@ -1240,12 +1240,20 @@ proc trackCall(tracked: PEffects; n: PNode) =
       else:
         discard
       var effectList = op.n[0]
-      if a.kind == nkSym and isNoEffectList(effectList) and
+      var cycleRecursion = false
+      if a.kind == nkSym and a.sym != tracked.owner and
           tracked.graph.demandCycleBody != nil:
-        # possibly a routine of the cycle group whose body is still deferred:
-        tracked.graph.demandCycleBody(a.sym)
+        # possibly a routine of the cycle group whose body is still deferred.
+        # If its body is being checked right now, this is a recursion via the
+        # modules of the group and its effect list is incomplete: treat it
+        # like a call of a forward declared routine.
+        cycleRecursion = tracked.graph.demandCycleBody(a.sym, true)
         effectList = op.n[0]
-      if a.kind == nkSym and a.sym.kind == skMethod:
+      if cycleRecursion:
+        if effectSpec(a.sym.ast[pragmasPos], wRaises).isNil:
+          tracked.unknownRaises.add (a.sym, n.info)
+        propagateEffects(tracked, n, a.sym)
+      elif a.kind == nkSym and a.sym.kind == skMethod:
         if {sfBase, sfThread} * a.sym.flags == {sfBase}:
           if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
           markGcUnsafe(tracked, a)
@@ -1781,27 +1789,6 @@ proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   else:
     return safeInheritanceDiff(g.excType(real), spec.typ) <= 0
 
-proc traceForbidsOrigin(g: ModuleGraph; r: PNode; conf: ConfigRef) =
-  var current = r
-  var visited = initIntSet()
-  while current.kind in nkCallKinds and current[0].kind == nkSym:
-    let s = current[0].sym
-    if s.id in visited: break
-    visited.incl(s.id)
-    if s.typ == nil or s.typ.n == nil or s.typ.n[0].kind != nkEffectList: break
-    let effectList = s.typ.n[0]
-    if effectList.len == 0: break
-    let tags = effectList[tagEffects]
-    if tags == nil: break
-    var next: PNode = nil
-    for tag in items(tags):
-      if tag.typ != nil and sameType(tag.typ.skipTypes(skipPtrs), r.typ.skipTypes(skipPtrs)):
-        next = tag
-        break
-    if next == nil or next.info == current.info: break
-    message(conf, next.info, hintUser, "effect propagated from here")
-    current = next
-
 proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg: string, hints: bool;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.};
                      hintsArg: PNode = nil; isForbids: bool = false; unknownRaises: seq[(PSym, TLineInfo)] = @[]) =
@@ -1810,13 +1797,16 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
   var used = initIntSet()
   for r in items(real):
     block search:
+      var forbidden = false
       for s in 0..<spec.len:
         if effectPredicate(g, spec[s], r):
-          if isForbids: break
+          if isForbids:
+            forbidden = true
+            break
           used.incl(s)
           break search
-        if isForbids:
-          break search
+      if isForbids and not forbidden:
+        break search
       # XXX call graph analysis would be nice here!
       var rr = if r.kind == nkRaiseStmt: r[0] else: r
       while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
@@ -1824,7 +1814,8 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
         message(g.config, info, hintUnknownRaises, s.name.s)
       if isForbids:
         message(g.config, spec.info, hintUser, ".forbids spec declared here")
-        traceForbidsOrigin(g, r, g.config)
+        for hop in effectOrigin(r):
+          message(g.config, hop.info, hintUser, "effect propagated from here")
         message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
                 renderTree(rr) & " " & msg & typeToString(r.typ))
       else:

@@ -906,6 +906,17 @@ proc addSumTypeBranchNames(c: PContext; scope: PScope; enumType: PType) =
   for f in enumType.n:
     addInterfaceOverloadableSymAt(c, scope, f.sym)
 
+proc inheritsFromSumType(t: PType): bool =
+  ## The base types have an empty `case` section already.
+  result = false
+  var b = t.baseClass
+  while b != nil:
+    b = b.skipTypes(skipPtrs)
+    if b.kind == tyGenericInvocation: b = b.genericHead.last
+    if b.kind != tyObject: break
+    if tfSumType in b.flags: return true
+    b = b.baseClass
+
 proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                     father: PNode, rectype: PType, hasCaseFields: bool) =
   ## Lowers `case` / `of A, B: fields` / `of C: fields` to a case object
@@ -916,7 +927,7 @@ proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   if owner.kind != skType:
     localError(c.config, n.info, "a sum type must be declared in a type section")
     return
-  if tfSumType in rectype.flags:
+  if tfSumType in rectype.flags or inheritsFromSumType(rectype):
     localError(c.config, n.info, "only one empty `case` section is allowed in an object type")
     return
   if hasCaseFields:

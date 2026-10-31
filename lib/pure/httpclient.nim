@@ -567,6 +567,12 @@ proc getNewLocation(lastURL: Uri, headers: HttpHeaders): Uri =
   else:
     result = parsedLocation
 
+proc checkLineSafe(s, what: string) =
+  ## Raises `ValueError` if `s` could end the line it is placed in, which
+  ## would let it inject headers or whole requests.
+  if s.contains({'\c', '\L', '\0'}):
+    raise newException(ValueError, what & " contains a newline or NUL character")
+
 proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeaders,
                      proxy: Proxy): string =
   # GET
@@ -585,11 +591,16 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     if requestUrl.scheme == "https": modifiedUrl.scheme = ""
     result.add($modifiedUrl)
 
+  # The request target comes from a `Uri` whose fields can contain anything.
+  checkLineSafe(result, "url")
+
   # HTTP/1.1\c\l
   result.add(" HTTP/1.1" & httpNewLine)
 
   # Host header.
   if not headers.hasKey("Host"):
+    checkLineSafe(requestUrl.hostname, "url hostname")
+    checkLineSafe(requestUrl.port, "url port")
     if requestUrl.port == "":
       add(result, "Host: " & requestUrl.hostname & httpNewLine)
     else:
@@ -605,6 +616,8 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
+    checkLineSafe(key, "header name")
+    checkLineSafe(val, "value of header '" & key & "'")
     add(result, key & ": " & val & httpNewLine)
 
   add(result, httpNewLine)
@@ -795,6 +808,8 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
     while i < chunkSizeStr.len:
+      if chunkSizeStr[i] in HexDigits and chunkSize > high(int) shr 4:
+        httpError("Invalid chunk size: " & chunkSizeStr)
       case chunkSizeStr[i]
       of '0'..'9':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
@@ -898,6 +913,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.close()
       break
     if line == httpNewLine:
+      if parsedStatus and result.code.is1xx and result.code != Http101:
+        # An informational response (e.g. 100 Continue, 103 Early Hints) has
+        # no body and comes before the final response, which follows it on
+        # the same connection: skip it (RFC 9110, section 15.2).
+        parsedStatus = false
+        lastHeaderName = ""
+        result.headers = newHttpHeaders()
+        continue
       fullyRead = true
       break
     if not parsedStatus:
@@ -924,12 +947,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         # Check if it's a multiline header value, if so, append to the header we're currently parsing
         # This works because a line with a header must start with the header name without any leading space
         # See https://datatracker.ietf.org/doc/html/rfc7230, section 3.2 and 3.2.4
-        # Multiline headers are deprecated in the spec, but it's better to parse them than crash
+        # Multiline headers are deprecated in the spec, but it's better to parse them than crash.
+        # A user agent replaces each line break of such a value with spaces
+        # (RFC 9112, section 5.2).
         if lastHeaderName == "":
           # Some extra unparsable lines in the HTTP output - we ignore them
           discard
         else:
-          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add "\n" & line
+          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add " " & line.strip(trailing = false)
       else:
         var name = ""
         var le = parseUntil(line, name, ':', linei)
@@ -1145,11 +1170,25 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
   for k, vs in override.table:
     result[k] = vs
 
+proc sameOrigin(a, b: Uri): bool =
+  ## Whether `a` and `b` have the same scheme, host and port.
+  proc effectivePort(u: Uri): string =
+    if u.port != "": u.port
+    elif cmpIgnoreCase(u.scheme, "https") == 0: "443"
+    elif cmpIgnoreCase(u.scheme, "http") == 0: "80"
+    else: ""
+  result = cmpIgnoreCase(a.scheme, b.scheme) == 0 and
+    cmpIgnoreCase(a.hostname, b.hostname) == 0 and
+    effectivePort(a) == effectivePort(b)
+
 proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
                 httpMethod: HttpMethod, body = "", headers: HttpHeaders = nil,
-                multipart: MultipartData = nil): Future[Response | AsyncResponse]
+                multipart: MultipartData = nil,
+                dropCredentials = false): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
+  # `dropCredentials` removes the headers that must not be sent to
+  # another origin than the one the request was originally made to.
   if url.scheme == "":
     raise newException(ValueError, "No uri scheme supplied.")
 
@@ -1177,6 +1216,10 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
         newHeaders["Content-Length"] = $body.len
       elif httpMethod notin {HttpGet, HttpHead}:
         newHeaders["Content-Length"] = "0"
+
+  if dropCredentials:
+    for key in ["Authorization", "Cookie", "Host"]:
+      newHeaders.del(key)
 
   if not newHeaders.hasKey("user-agent") and client.userAgent.len > 0:
     newHeaders["User-Agent"] = client.userAgent
@@ -1220,10 +1263,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ## connection can be closed by using the `close` procedure.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in `client.maxRedirects`.
+  ## specified in `client.maxRedirects`. Once a redirect leads to another
+  ## origin (scheme, host or port), the `Authorization`, `Cookie` and `Host`
+  ## headers are not sent anymore, neither those of `headers` nor those of
+  ## `client.headers`.
   ##
   ## You need to make sure that the `url` doesn't contain any newline
-  ## characters. Failing to do so will raise `AssertionDefect`.
+  ## characters. Failing to do so will raise `AssertionDefect` for a string
+  ## `url` and `ValueError` for a `Uri`. A header name or value that contains
+  ## a newline or NUL character raises `ValueError` too.
   ##
   ## `headers` are HTTP headers that override the `client.headers` for
   ## this specific request only and will not be persisted.
@@ -1260,6 +1308,12 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
 
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
+  # The redirects below must not modify the caller's `headers`.
+  var headers = if headers.isNil: nil else: override(headers, nil)
+  var multipart = multipart
+  # Once a redirect left the origin of `url`, credentials are not sent
+  # anymore, not even when a later redirect leads back.
+  var crossedOrigin = false
   var lastURL = url
   for i in 1..client.maxRedirects:
     let statusCode = result.code
@@ -1281,6 +1335,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
         redirectMethod = httpMethod
       # The body is stripped away
       redirectBody = ""
+      multipart = nil
       # Delete any header value associated with the body
       if not headers.isNil():
         headers.del("Content-Length")
@@ -1294,19 +1349,14 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
       # Unreachable
       raiseAssert "unreachable"
 
-    # Check if the redirection is to the same domain or a sub-domain (foo.com
-    # -> sub.foo.com)
-    if redirectTo.hostname != lastURL.hostname and
-      not redirectTo.hostname.endsWith("." & lastURL.hostname):
-      # Perform some cleanup of the header values
-      if headers != nil:
-        # Delete the Host header
-        headers.del("Host")
-        # Do not send any sensitive info to a unknown host
-        headers.del("Authorization")
+    # Do not send any sensitive info to another host, not even to a
+    # sub-domain, nor over a different scheme or port. This covers the
+    # credentials in `client.headers` too.
+    if not sameOrigin(redirectTo, url):
+      crossedOrigin = true
 
     result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
-                                     headers, multipart)
+                                     headers, multipart, crossedOrigin)
     lastURL = redirectTo
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =

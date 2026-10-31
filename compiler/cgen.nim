@@ -2221,6 +2221,13 @@ proc genProc(m: BModule, prc: PSym) =
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
     fillProcLoc(m, son(prc.ast, namePos))
+    if prc.itemId.module != m.module.position and prc.typ.callConv != ccInline and
+        sfImportc notin prc.flags and m.config.cmd != cmdNifC:
+      # the body is generated later in the module that declares `prc`, but
+      # this module uses it already: that happens when the implementation
+      # of a forward declared routine of another module of a cycle group
+      # (`import m {.cyclic.}`) is not checked yet:
+      genProcPrototype(m, prc)
   else:
     genProcLvl2(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
@@ -2673,12 +2680,14 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
           cmdLineModulePath,
           "\"cmdCount\"",
           cSizeof(cmdCountTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_count")))
         g.mainDatInit.addCallStmt("hcrRegisterGlobal",
           cmdLineModulePath,
           "\"cmdLine\"",
           cSizeof(cmdLineTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_line")))
         g.mainDatInit.addAssignment(cDeref("cmd_count"), "cmdCount")
@@ -2809,6 +2818,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         '"' & m.typeNodesName & '_' & $m.typeNodes & '"',
         cOp(Mul, NimInt, cSizeof("TNimNode"), cIntValue(m.typeNodes)),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr(m.typeNodesName)))
     else:
@@ -2825,6 +2835,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         "\"module_initialized_\"",
         cIntValue(1),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr("nim_hcr_dummy_"))))
 

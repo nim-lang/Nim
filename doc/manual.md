@@ -2065,6 +2065,10 @@ let c = Opt[float](None())    # a type conversion provides the expected type
 If a branch name belongs to several sum types, the expected type, a type
 conversion or a module qualifier (`module.Branch(...)`) selects one.
 
+`Branch()` and `Branch(field: value, ...)` always construct. Any other call
+of a branch name, like `Branch(x)` or `a Branch b` for a branch named by an
+operator, is an ordinary call of a routine of that name.
+
 
 ### Pattern matching
 
@@ -2096,8 +2100,11 @@ assert eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) == 42
   of the declaration so that they share their fields.
 - The `case` must cover all branches or have an `else` branch.
 
-A binding is not a copy but a view of the field: if the matched value is
-mutable, assigning to the binding changes the field.
+If the matched expression is a mutable location, a binding is not a copy but
+a view of the field: assigning to the binding changes the field. Like other
+views, such a binding cannot be captured by a closure or escape its routine.
+Otherwise the fields are bound by value and the bindings cannot be assigned
+to.
 
 ```nim test
 type
@@ -7209,13 +7216,19 @@ The modules connected by such imports form a *cycle group* that is checked
 together, phase by phase; every phase runs for all modules of the group before
 the next one starts:
 
-1. The imports of every module.
-2. The type sections of every module.
+1. The imports of every module, preceded by the pragma statements before
+   the first import of every module (like `{.deprecated.}`). A `when`
+   statement that only imports modules belongs to the imports.
+2. The type sections of every module. The statements that precede a type
+   section and declare something the module's types use, like a constant,
+   a template or a user defined pragma, are checked first, in their order;
+   so a type section can refer to them as it could outside of a group.
 3. The *leading declarations* of every module: the routines, constants and
    pragmas up to the first statement of a different kind (like a `var`
    section, a `when` statement or a call). The bodies of these routines are
    checked later, so they can refer to the declarations of all modules in the
-   group.
+   group. The `export` statements among the leading declarations run after
+   the leading declarations of every module.
 4. The remaining statements, module by module, in the order an ordinary
    recursive import would check them. This also determines the order in which
    the modules' top-level code runs.

@@ -180,6 +180,7 @@ proc genVarTuple(p: BProc, n: PNode) =
           getModuleDllPath(p.module, n.firstSon.sym),
           '"' & curr.loc.snippet & '"',
           cSizeof(rc),
+          makeCString($hashTypeLayout(curr.loc.t, p.config)),
           curr.tp,
           cCast(ptrType(CPointer), cAddr(curr.loc.snippet))))
 
@@ -455,6 +456,7 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
       getModuleDllPath(p.module, v),
       '"' & v.loc.snippet & '"',
       cSizeof(rv),
+      makeCString($hashTypeLayout(v.loc.t, p.config)),
       traverseProc,
       cCast(ptrType(CPointer), cAddr(v.loc.snippet)))
     # nothing special left to do later on - let's avoid closing and reopening blocks
@@ -471,6 +473,7 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
         getModuleDllPath(p.module, v),
         '"' & v.loc.snippet & '"',
         cSizeof(rdLoc(v.loc)),
+        makeCString($hashTypeLayout(v.loc.t, p.config)),
         traverseProc,
         cCast(ptrType(CPointer), cAddr(v.loc.snippet))))
   if value.kind != nkEmpty and valueAsRope.len == 0:

@@ -482,10 +482,12 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   result = conf.globalOptions * options != {}
 
 proc targetOptions(conf: ConfigRef): string =
-  # Solaris/illumos toolchains can default to 32-bit output on amd64.
+  # Solaris/illumos toolchains can default to 32-bit output on amd64/sparc64.
+  # These are target ABI flags, not a temporary bootstrap workaround: keep them
+  # while supported toolchains need -m64 to select 64-bit output.
   # Inspect the target, not the host, so cross-compilation works too.
   if conf.target.targetOS in {osSolaris, osIllumos} and
-      conf.target.targetCPU == cpuAmd64 and
+      conf.target.targetCPU in {cpuAmd64, cpuSparc64} and
       conf.cCompiler in {ccGcc, ccCLang}:
     result = "-m64"
   else:
@@ -1265,8 +1267,9 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     cmds.add cmd
     prettyCmds.add displayProgressCC(conf, name, cmd)
   execCmdsInParallel(conf, cmds, prettyCb)
-  preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
-  for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
+  if optNoLinking notin conf.globalOptions:
+    preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
+    for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
   if conf.errorCounter == errorsBeforeBuild:
     writeBuildState(conf, bcache)
 

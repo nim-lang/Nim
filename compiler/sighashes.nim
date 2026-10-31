@@ -12,7 +12,7 @@
 import ast, ropes, modulegraphs, options, msgs, pathutils
 from lineinfos import FileIndex
 from std/hashes import Hash
-import std/tables
+import std/[tables, intsets]
 import types
 import ../dist/checksums/src/checksums/md5
 
@@ -609,3 +609,59 @@ proc idOrSig*(s: PSym, currentModule: string,
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)
+
+proc hashLayout(c: var MD5Context; t: PType; conf: ConfigRef; seen: var IntSet)
+
+proc hashLayoutFields(c: var MD5Context; n: PNode; conf: ConfigRef; seen: var IntSet) =
+  case n.kind
+  of nkRecList:
+    for child in n: hashLayoutFields(c, child, conf, seen)
+  of nkRecCase:
+    c &= ".case"
+    for child in n: hashLayoutFields(c, child, conf, seen) # the first is the discriminator
+  of nkOfBranch, nkElse:
+    c &= ".branch"
+    hashLayoutFields(c, n[^1], conf, seen)
+  of nkSym:
+    c &= n.sym.name.s
+    c &= ':'
+    hashLayout(c, n.sym.typ, conf, seen)
+  else:
+    discard
+
+proc hashLayout(c: var MD5Context; t: PType; conf: ConfigRef; seen: var IntSet) =
+  if t == nil:
+    c &= ".nil"
+    return
+  let t = t.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned, tyDistinct, tyInferred})
+  c &= char(t.kind)
+  # A type reached again is a cycle through a ref or ptr; its layout is
+  # already part of the hash.
+  if seen.containsOrIncl(t.id): return
+  case t.kind
+  of tyObject:
+    if t.baseClass != nil: hashLayout(c, t.baseClass, conf, seen)
+    if t.n != nil: hashLayoutFields(c, t.n, conf, seen)
+  of tyTuple:
+    for a in t.kids: hashLayout(c, a, conf, seen)
+  of tyArray:
+    c &= getSize(conf, t)
+    hashLayout(c, t.elementType, conf, seen)
+  of tyRef, tyPtr, tyVar, tyLent, tySequence, tyOpenArray, tyVarargs, tyUncheckedArray:
+    hashLayout(c, t.elementType, conf, seen)
+  of tyProc:
+    c &= char(t.callConv)
+  else:
+    c &= getSize(conf, t)
+
+proc hashTypeLayout*(t: PType; conf: ConfigRef): SigHash =
+  ## The memory layout of `t` and of everything a value of `t` points to.
+  ## Unlike `hashType`, an object is hashed by its fields rather than its
+  ## name: hot code reloading keeps a global's memory across reloads, and a
+  ## new field in a named object must make that memory unusable.
+  result = default(SigHash)
+  var c: MD5Context = default(MD5Context)
+  md5Init c
+  var seen = initIntSet()
+  hashLayout(c, t, conf, seen)
+  md5Final c, result.MD5Digest
