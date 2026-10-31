@@ -1,5 +1,5 @@
 discard """
-  action: compile
+  action: run
 """
 type
   LP[S, T] = object
@@ -42,7 +42,25 @@ type
 
 proc a(v: varargs[Base]) = discard
 
-proc a[T](v: varargs[Inher[T]]) = 
+proc a[T](v: varargs[Inher[T]]) =
   doAssert false
 
 a()
+
+# Exercise the openArray overload at runtime as well.
+oneC(@[])
+
+# A failed probe must also be rejected inside compiles, without leaking
+# diagnostics or preventing later, fully bound instantiations.
+proc constrainedOnly[S: SomeInteger; T](x: ref LP[S, T]) = discard
+
+static:
+  doAssert not compiles(constrainedOnly(nil))
+  doAssert compiles(constrainedOnly(cast[ref LP[int, string]](nil)))
+
+# Default nil arguments and empty varargs use the same probing path.
+proc withDefault[S: SomeInteger; T](x: ref LP[S, T] = nil) =
+  doAssert false
+proc withDefault(x: pointer = nil) = discard
+
+withDefault()
