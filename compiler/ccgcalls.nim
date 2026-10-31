@@ -343,7 +343,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
         let ra = a.rdLoc
         var t = TLoc(snippet: cDeref(ra))
         let lt = lenExpr(p, t)
-        if p.config.usesSso():
+        if p.config.usesSso() and elementType(a.t).kind == tyString:
           result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
           result.addArgumentSeparator()
           result.add(cCall(cgsymValue(p.module, "nimStrLen"), t.snippet))

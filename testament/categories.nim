@@ -84,6 +84,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # with refc, a thread of a program that uses nimrtl does not set up its
     # GC heap either, and hangs on its first allocation; not fixed yet
     testSpec r, makeTest("tests/dll/nimrtl_threads.nim", options & " --threads:on" & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimrtl_thread_exception.nim", options & " --threads:on" & rpath, cat)
     if "boehm" notin options:
       # Boehm's GC has no setupForeignThreadGc
       testSpec r, makeTest("tests/dll/nimrtl_foreign_thread.nim", options & " --threads:on" & rpath, cat)
@@ -99,6 +100,8 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest("tests/dll/nimhcr_threadvar.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
     testSpec r, makeTest("tests/dll/nimhcr_logging.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
     testSpec r, makeTest("tests/dll/nimhcr_async.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_exception_msg.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_unhandled.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
 
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",

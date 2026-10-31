@@ -84,6 +84,11 @@ parameter and result types, not just their source-level shape. Use
 
 [//]: # "Additions:"
 
+- On Windows, `osproc.startProcess` now raises `OSError` when `command` is a
+  `.bat` or `.cmd` file and an argument contains a character that `cmd.exe`
+  would interpret (``& | < > ^ % ! "`` or a line break). Previously such
+  arguments allowed command injection (the "BatBadBut" issue, CVE-2024-24576).
+
 - Added `system.readRawDataStable`, a companion to `readRawData` that returns a
   raw `ptr UncheckedArray[char]` into a string's character data which stays valid
   across moves and copies of the string value. It is available under every string

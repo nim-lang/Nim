@@ -240,7 +240,7 @@ when defined(createNimHcr):
       ## it was mapped with `MAP_JIT`, and then a thread has it either
       ## writable or executable, never both.
 
-  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps:
+  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps and not defined(nimdoc):
     {.error: "hot code reloading has no jump table for " & hostCPU & " on " &
       hostOS.}
   type

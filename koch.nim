@@ -11,8 +11,7 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "5798d2385808f6593afe77e4c36250c6ec63e53c"    # 0.26.2
-  AtlasStableCommit = "aa6fb162006f3015aa84c4305e15cb4d230f5ad6"     # 0.14.7
+  AtlasStableCommit = "fa19ace5c5d176d0e19f9b6ad08239ce2ceea676"     # 0.16.4
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
@@ -29,6 +28,14 @@ const
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
+
+# Nimble 0.26.2 lacks illumos support; use a supporting commit on illumos.
+# Remove this override once the common Nimble pin includes illumos support.
+when defined(illumos):
+  const NimbleStableCommit = "302a71139254b43b1488d65de111b6734d1a7490"
+else:
+  const NimbleStableCommit = "5798d2385808f6593afe77e4c36250c6ec63e53c"    # 0.26.2
+
 when not defined(windows):
   const
     Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
