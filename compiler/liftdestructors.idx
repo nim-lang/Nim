@@ -1,0 +1,13 @@
+nimTitle	liftdestructors	liftdestructors.html	module liftdestructors		0
+nim	destructor	liftdestructors.html#destructor.t,PType	template destructor(t: PType): PSym		39
+nim	assignment	liftdestructors.html#assignment.t,PType	template assignment(t: PType): PSym		40
+nim	dup	liftdestructors.html#dup.t,PType	template dup(t: PType): PSym		41
+nim	asink	liftdestructors.html#asink.t,PType	template asink(t: PType): PSym		42
+nim	createTypeBoundOps	liftdestructors.html#createTypeBoundOps,ModuleGraph,PContext,PType,TLineInfo,IdGenerator	proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;\n                   idgen: IdGenerator)		48
+nim	genBuiltin	liftdestructors.html#genBuiltin,ModuleGraph,IdGenerator,TMagic,string,PNode	proc genBuiltin(g: ModuleGraph; idgen: IdGenerator; magic: TMagic; name: string;\n           i: PNode): PNode		81
+nim	boolLit	liftdestructors.html#boolLit,ModuleGraph,TLineInfo,bool	proc boolLit(g: ModuleGraph; info: TLineInfo; value: bool): PNode		346
+nim	cyclicType	liftdestructors.html#cyclicType,ModuleGraph,PType	proc cyclicType(g: ModuleGraph; t: PType): bool		787
+nim	produceDestructorForDiscriminator	liftdestructors.html#produceDestructorForDiscriminator,ModuleGraph,PType,PSym,TLineInfo,IdGenerator	proc produceDestructorForDiscriminator(g: ModuleGraph; typ: PType; field: PSym;\n                                  info: TLineInfo; idgen: IdGenerator): PSym		1470
+nim	liftTypeBoundOps	liftdestructors.html#liftTypeBoundOps.t,PContext,PType,TLineInfo	template liftTypeBoundOps(c: PContext; typ: PType; info: TLineInfo)		1497
+nim	isTrivial	liftdestructors.html#isTrivial,PSym	proc isTrivial(s: PSym): bool		1529
+nim	liftNimNodeHooks	liftdestructors.html#liftNimNodeHooks,ModuleGraph,PContext,TLineInfo,IdGenerator	proc liftNimNodeHooks(g: ModuleGraph; c: PContext; info: TLineInfo;\n                 idgen: IdGenerator)		1596

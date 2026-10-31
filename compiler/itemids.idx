@@ -1,0 +1,14 @@
+nimTitle	itemids	itemids.html	module itemids		0
+nim	PackageModuleId	itemids.html#PackageModuleId	const PackageModuleId		38
+nim	ItemId	itemids.html#ItemId	object ItemId		41
+nim	itemId	itemids.html#itemId,int32,int32	proc itemId(module, item: int32): ItemId		45
+nim	backendItemId	itemids.html#backendItemId,int32,int32	proc backendItemId(module, item: int32): ItemId		49
+nim	module	itemids.html#module,ItemId	proc module(x: ItemId): int32		56
+nim	item	itemids.html#item,ItemId	proc item(x: ItemId): int32		60
+nim	isBackendMinted	itemids.html#isBackendMinted,ItemId	proc isBackendMinted(x: ItemId): bool		62
+nim	derivedFieldId	itemids.html#derivedFieldId,ItemId	proc derivedFieldId(source: ItemId): ItemId		65
+nim	matchesDerivedFieldId	itemids.html#matchesDerivedFieldId,ItemId,ItemId	proc matchesDerivedFieldId(field, source: ItemId): bool		71
+nim	`==`	itemids.html#==,ItemId,ItemId	proc `==`(a, b: ItemId): bool		77
+nim	hash	itemids.html#hash,ItemId	proc hash(x: ItemId): Hash		81
+nim	`$`	itemids.html#$,ItemId	proc `$`(x: ItemId): string		86
+nim	toId	itemids.html#toId,ItemId	proc toId(a: ItemId): int		94

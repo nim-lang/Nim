@@ -1,0 +1,28 @@
+nimTitle	dollars	dollars.html	module system/dollars		0
+nim	`$`	dollars.html#$,int	proc `$`(x`gensym0: int): string		26
+nim	`$`	dollars.html#$,int8	proc `$`(x`gensym1: int8): string		27
+nim	`$`	dollars.html#$,int16	proc `$`(x`gensym2: int16): string		28
+nim	`$`	dollars.html#$,int32	proc `$`(x`gensym3: int32): string		29
+nim	`$`	dollars.html#$,int64	proc `$`(x`gensym4: int64): string		30
+nim	`$`	dollars.html#$,uint	proc `$`(x`gensym5: uint): string		32
+nim	`$`	dollars.html#$,uint8	proc `$`(x`gensym6: uint8): string		33
+nim	`$`	dollars.html#$,uint16	proc `$`(x`gensym7: uint16): string		34
+nim	`$`	dollars.html#$,uint32	proc `$`(x`gensym8: uint32): string		35
+nim	`$`	dollars.html#$,uint64	proc `$`(x`gensym9: uint64): string		36
+nim	`$`	dollars.html#$	proc `$`(x`gensym10: `{}`(int, lit)): string		44
+nim	`$`	dollars.html#$_2	proc `$`(x`gensym11: `{}`(uint64, lit)): string		45
+nim	`$`	dollars.html#$_3	proc `$`(x`gensym12: `{}`(int64, lit)): string		46
+nim	`$`	dollars.html#$,bool	proc `$`(x: bool): string		49
+nim	`$`	dollars.html#$,char	proc `$`(x: char): string		53
+nim	`$`	dollars.html#$,cstring	proc `$`(x: cstring): string		60
+nim	`$`	dollars.html#$,string	proc `$`(x: string): string		64
+nim	`$`	dollars.html#$,Enum	proc `$`[Enum: enum](x: Enum): string		69
+nim	`$`	dollars.html#$,typedesc	proc `$`(t: typedesc): string		76
+nim	`$`	dollars.html#$,T	proc `$`[T: tuple](x: T): string		88
+nim	`$`	dollars.html#$,set[T]	proc `$`[T](x: set[T]): string		121
+nim	`$`	dollars.html#$,seq[T]	proc `$`[T](x: seq[T]): string		129
+nim	`$`	dollars.html#$,HSlice[T,U]	proc `$`[T, U](x: HSlice[T, U]): string		137
+nim	`$`	dollars.html#$,array[IDX,T]	proc `$`[T, IDX](x: array[IDX, T]): string		149
+nim	`$`	dollars.html#$,openArray[T]	proc `$`[T](x: openArray[T]): string		153
+idx	toString	dollars.html#tostring_1	Module dollars		0
+nimgrp	$	dollars.html#$-procs-all	proc		20

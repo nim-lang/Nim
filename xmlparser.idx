@@ -1,0 +1,10 @@
+nimTitle	xmlparser	xmlparser.html	module std/xmlparser		0
+nim	xmlMaxDepth	xmlparser.html#xmlMaxDepth	const xmlMaxDepth		18
+nim	XmlError	xmlparser.html#XmlError	object XmlError		23
+nim	parseXml	xmlparser.html#parseXml,Stream,string,seq[string],set[XmlParseOption]	proc parseXml(s: Stream; filename: string; errors: var seq[string];\n         options: set[XmlParseOption] = {reportComments}): XmlNode		114
+nim	parseXml	xmlparser.html#parseXml,Stream,set[XmlParseOption]	proc parseXml(s: Stream; options: set[XmlParseOption] = {reportComments}): XmlNode		142
+nim	parseXml	xmlparser.html#parseXml,string,set[XmlParseOption]	proc parseXml(str: string; options: set[XmlParseOption] = {reportComments}): XmlNode		149
+nim	loadXml	xmlparser.html#loadXml,string,seq[string],set[XmlParseOption]	proc loadXml(path: string; errors: var seq[string];\n        options: set[XmlParseOption] = {reportComments}): XmlNode		154
+nim	loadXml	xmlparser.html#loadXml,string,set[XmlParseOption]	proc loadXml(path: string; options: set[XmlParseOption] = {reportComments}): XmlNode		162
+nimgrp	loadxml	xmlparser.html#loadXml-procs-all	proc		154
+nimgrp	parsexml	xmlparser.html#parseXml-procs-all	proc		114

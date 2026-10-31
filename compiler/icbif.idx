@@ -1,0 +1,9 @@
+nimTitle	icbif	icbif.html	module icbif		0
+nim	poolSym	icbif.html#poolSym,Pool,SymId	proc poolSym(p: Pool; id: SymId): string		142
+nim	poolStr	icbif.html#poolStr,Pool,StrId	proc poolStr(p: Pool; id: StrId): string		155
+nim	poolFile	icbif.html#poolFile,Pool,FileId	proc poolFile(p: Pool; id: FileId): string		164
+nim	symName	icbif.html#symName,Cursor	proc symName(c: Cursor): string		173
+nim	strVal	icbif.html#strVal,Cursor	proc strVal(c: Cursor): string		181
+nim	lineInfoFile	icbif.html#lineInfoFile,Cursor	proc lineInfoFile(c: Cursor): string		189
+nim	findSym	icbif.html#findSym,Pool,string	proc findSym(p: Pool; name: string): SymId		196
+nim	load	icbif.html#load,string	proc load(filename: string): BifModule		249
