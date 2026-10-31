@@ -480,6 +480,10 @@ proc captureVar(c: var Ctx, s: PSym) =
     discard addField(e.typ.elementType, s, c.g.cache, c.idgen)
 
 proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
+  if isDerefOfLentConstruct(n) and n[0].hasYields:
+    # the construct is lowered to a temporary that lives across the yields;
+    # it must own a copy of the borrowed value (bug #26567):
+    return ctx.lowerStmtListExprs(derefLeaves(n[0], n.typ), needsSplit)
   result = n
   case n.kind
   of nkSkip:
