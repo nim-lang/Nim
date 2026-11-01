@@ -11,8 +11,7 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "5798d2385808f6593afe77e4c36250c6ec63e53c"    # 0.26.2
-  AtlasStableCommit = "aa6fb162006f3015aa84c4305e15cb4d230f5ad6"     # 0.14.7
+  AtlasStableCommit = "fa19ace5c5d176d0e19f9b6ad08239ce2ceea676"     # 0.16.4
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
@@ -29,6 +28,14 @@ const
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
+
+# Nimble 0.26.2 lacks illumos support; use a supporting commit on illumos.
+# Remove this override once the common Nimble pin includes illumos support.
+when defined(illumos):
+  const NimbleStableCommit = "302a71139254b43b1488d65de111b6734d1a7490"
+else:
+  const NimbleStableCommit = "5798d2385808f6593afe77e4c36250c6ec63e53c"    # 0.26.2
+
 when not defined(windows):
   const
     Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
@@ -398,11 +405,6 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     installDeps("libffi")
 
   let nimStart = findStartNim().quoteShell()
-  # Old bootstrap compilers identify illumos as Solaris and cannot accept
-  # --os:illumos. Switch targets only after building the first new compiler.
-  let bootIllumos = when defined(sunos):
-                      execCmdEx("uname -o 2>/dev/null").output.strip.toLowerAscii == "illumos"
-                    else: false
   let times = 2 - ord(skipIntegrityCheck)
   for i in 0..times:
     let defaultCommand = if useCpp: "cpp" else: "c"
@@ -424,9 +426,6 @@ proc boot(args: string, skipIntegrityCheck: bool) =
       let version = ret.output.splitLines[0]
       if version.startsWith "Nim Compiler Version 0.20.0":
         extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
-
-    if i > 0 and bootIllumos:
-      extraOption.add " --os:illumos"
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.

@@ -390,7 +390,7 @@ proc runeStrAtPos*(s: openArray[char], pos: Natural): string =
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  substr(s.toOpenArray(o,  (o+runeLenAt(s, o)-1)))
+  substr(s.toOpenArray(o, min(o+runeLenAt(s, o), s.len) - 1))
 
 proc runeSubStr*(s: openArray[char], pos: int, len: int = int.high): string =
   ## Returns the UTF-8 substring starting at code point ``pos``
@@ -926,8 +926,14 @@ proc lastRune*(s: openArray[char]; last: int): (Rune, int) =
     var L = 0
     while last-L >= 0 and uint(s[last-L]) shr 6 == 0b10: inc(L)
     var r: Rune
-    fastRuneAt(s, last-L, r, false)
-    result = (r, L+1)
+    if last-L < 0:
+      # only continuation bytes in s[0..last]; the byte at ``last`` is a rune
+      # of its own, like `runeAt` and `getRuneHeadIdx` treat malformed UTF-8
+      fastRuneAt(s, last, r, false)
+      result = (r, 1)
+    else:
+      fastRuneAt(s, last-L, r, false)
+      result = (r, L+1)
 
 proc size*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes.
@@ -1281,7 +1287,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string {.inline.} =
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  substr(s.toOpenArray(o, (o+runeLenAt(s, o)-1)))
+  substr(s.toOpenArray(o, min(o+runeLenAt(s, o), s.len) - 1))
 
 proc runeSubStr*(s: string, pos: int, len: int = int.high): string {.inline.} =
   ## Returns the UTF-8 substring starting at code point ``pos``

@@ -259,3 +259,19 @@ proc main() =
 
 static: main()
 main()
+
+when not defined(js):
+  block: # bug #26593; `[^1]` through a `ptr seq` with --strings:sso
+    type Entry = object
+      name: string
+
+    var entries: seq[Entry]
+    let entriesPtr = addr entries
+    entriesPtr[].add Entry()
+    let last = addr entriesPtr[][^1]
+    last[].name = "main"
+    doAssert entries[0].name == "main"
+
+    var s = "abc"
+    let sp = addr s
+    doAssert sp[][^1] == 'c'

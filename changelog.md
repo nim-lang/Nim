@@ -84,6 +84,11 @@ parameter and result types, not just their source-level shape. Use
 
 [//]: # "Additions:"
 
+- On Windows, `osproc.startProcess` now raises `OSError` when `command` is a
+  `.bat` or `.cmd` file and an argument contains a character that `cmd.exe`
+  would interpret (``& | < > ^ % ! "`` or a line break). Previously such
+  arguments allowed command injection (the "BatBadBut" issue, CVE-2024-24576).
+
 - Added `system.readRawDataStable`, a companion to `readRawData` that returns a
   raw `ptr UncheckedArray[char]` into a string's character data which stays valid
   across moves and copies of the string value. It is available under every string
@@ -252,6 +257,13 @@ parameter and result types, not just their source-level shape. Use
   for more information.
 
 ## Compiler changes
+
+- Hot code reloading no longer keeps a global variable's memory when the
+  global's type changed: the old memory was read with the new layout. Such a
+  reload now stops the program with a message naming the global.
+
+- Hot code reloading works on Linux on arm64 with glibc; before, it was
+  limited to musl there and the HCR runtime did not compile.
 
 - An import annotated with `{.cyclic.}` (`import b {.cyclic.}`) makes the
   modules of an import cycle a group whose types and leading routines are

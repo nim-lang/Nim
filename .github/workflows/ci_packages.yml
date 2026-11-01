@@ -21,12 +21,16 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         batch: ["0_3", "1_3", "2_3"] # list of `index_num`
         include:
+          # ubuntu-latest is Ubuntu 26.04, which has no libpcre3; run on the
+          # same image as ci_main.yml without renaming the jobs
           - os: ubuntu-latest
+            image: ubuntu-24.04
             cpu: amd64
           - os: macos-latest
+            image: macos-latest
             cpu: arm64
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.image }}
     timeout-minutes: 60 # refs bug #18178
     env:
       NIM_TEST_PACKAGES: "1"

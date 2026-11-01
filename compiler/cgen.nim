@@ -2680,12 +2680,14 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
           cmdLineModulePath,
           "\"cmdCount\"",
           cSizeof(cmdCountTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_count")))
         g.mainDatInit.addCallStmt("hcrRegisterGlobal",
           cmdLineModulePath,
           "\"cmdLine\"",
           cSizeof(cmdLineTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_line")))
         g.mainDatInit.addAssignment(cDeref("cmd_count"), "cmdCount")
@@ -2816,6 +2818,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         '"' & m.typeNodesName & '_' & $m.typeNodes & '"',
         cOp(Mul, NimInt, cSizeof("TNimNode"), cIntValue(m.typeNodes)),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr(m.typeNodesName)))
     else:
@@ -2832,6 +2835,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         "\"module_initialized_\"",
         cIntValue(1),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr("nim_hcr_dummy_"))))
 

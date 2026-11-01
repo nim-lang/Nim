@@ -2383,12 +2383,12 @@ when notJSnotNims and hostOS != "standalone":
     # C codegen only uses it in a borrowed way:
     result = currException
 
-  proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
+  proc getCurrentExceptionMsg*(): string {.rtl, inl, gcsafe.} =
     ## Retrieves the error message that was attached to the current
     ## exception; if there is none, `""` is returned.
     return if currException == nil: "" else: currException.msg
 
-  proc setCurrentException*(exc: ref Exception) {.inline, gcsafe.} =
+  proc setCurrentException*(exc: ref Exception) {.rtl, inl, gcsafe.} =
     ## Sets the current exception.
     ##
     ## .. warning:: Only use this if you know what you are doing.
