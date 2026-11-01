@@ -606,23 +606,31 @@ proc unregisterArcOrc*(conf: ConfigRef) =
   excl conf.globalOptions, optSeqDestructors
   excl conf.globalOptions, optTinyRtti
 
+proc unregisterNonArcMms(conf: ConfigRef) =
+  undefSymbol(conf.symbols, "boehmgc")
+  undefSymbol(conf.symbols, "gcrefc")
+  undefSymbol(conf.symbols, "gcmarkandsweep")
+  undefSymbol(conf.symbols, "gchooks")
+  undefSymbol(conf.symbols, "gogc")
+  undefSymbol(conf.symbols, "nogc")
+  undefSymbol(conf.symbols, "gcregions")
+
 proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
                 info: TLineInfo; conf: ConfigRef) =
   if conf.backend == backendJs: return # for: bug #16033
   expectArg(conf, switch, arg, pass, info)
   if pass in {passCmd2, passPP}:
+    unregisterArcOrc(conf)
+    unregisterNonArcMms(conf)
     case arg.normalize
     of "boehm":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcBoehm
       defineSymbol(conf.symbols, "boehmgc")
       incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
     of "refc":
-      unregisterArcOrc(conf)
       defineSymbol(conf.symbols, "gcrefc")
       conf.selectedGC = gcRefc
     of "markandsweep":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
     of "destructors", "arc":
@@ -653,15 +661,12 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       if pass in {passCmd2, passPP}:
         defineSymbol(conf.symbols, "nimSeqsV2")
     of "go":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcGo
       defineSymbol(conf.symbols, "gogc")
     of "none":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcNone
       defineSymbol(conf.symbols, "nogc")
     of "stack", "regions":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcRegions
       defineSymbol(conf.symbols, "gcregions")
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
