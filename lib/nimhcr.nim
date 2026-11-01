@@ -234,16 +234,15 @@ when defined(createNimHcr):
   {.pragma: nimhcr, compilerproc, exportc, dynlib.}
 
   const
-    Arm64Jumps = hostCPU == "arm64" and (defined(musl) or defined(macosx))
+    Arm64Jumps = hostCPU == "arm64" and (defined(linux) or defined(macosx))
     JitJumpTable = defined(macosx) and hostCPU == "arm64"
       ## macOS on arm64 refuses memory that is writable and executable unless
       ## it was mapped with `MAP_JIT`, and then a thread has it either
       ## writable or executable, never both.
 
-  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps:
+  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps and not defined(nimdoc):
     {.error: "hot code reloading has no jump table for " & hostCPU & " on " &
-      hostOS & (when hostCPU == "arm64" and defined(linux):
-        "; with musl, pass -d:musl" else: "").}
+      hostOS.}
   type
     ShortJumpInstruction {.packed.} = object
       opcode: byte
