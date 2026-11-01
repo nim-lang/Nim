@@ -267,6 +267,13 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   styleCheckDef(c, n.info, s, kind)
   onDef(n.info, s)
 
+proc addForVarTupleTempDecls(c: PContext; n: PNode) =
+  for s in n:
+    if s.kind == nkIdent:
+      addTempDecl(c, s, skForVar)
+    elif s.kind == nkVarTuple:
+      addForVarTupleTempDecls(c, s)
+
 proc addTempDeclToIdents(c: PContext; n: PNode; kind: TSymKind; inCall: bool) =
   case n.kind
   of nkIdent:
@@ -500,9 +507,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     n[^2] = semGenericStmt(c, n[^2], flags, ctx)
     for i in 0..<n.len - 2:
       if (n[i].kind == nkVarTuple):
-        for s in n[i]:
-          if (s.kind == nkIdent):
-            addTempDecl(c,s,skForVar)
+        addForVarTupleTempDecls(c, n[i])
       else:
         addTempDecl(c, n[i], skForVar)
     openScope(c)
