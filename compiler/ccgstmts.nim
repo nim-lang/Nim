@@ -1428,6 +1428,47 @@ proc bodyCanRaise(p: BProc; n: PNode): bool =
     for it in sons(n):
       if bodyCanRaise(p, it): return true
 
+var readsErrFlagCache: Table[int, bool] = initTable[int, bool]()
+  ## routine id -> "may test `nimErr_` on entry (an `except` branch somewhere below it)"
+
+proc mayTestErrFlag(g: ModuleGraph; n: PNode; depth: int): bool =
+  ## Conservative: true if running `n` could execute an `except` branch, which
+  ## tests `nimErr_` even when its `try` body cannot raise. Calls are followed
+  ## into the callee's body.
+  case n.kind
+  of nkExceptBranch:
+    result = true
+  of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
+      nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    result = false
+  of nkCallKinds:
+    result = false
+    let callee = n.firstSon
+    if callee.kind == nkSym:
+      let s = callee.sym
+      if s.kind in routineKinds and s.magic == mNone and
+          {sfImportc, sfCompilerProc} * s.flags == {}:
+        if s.ast == nil or s.ast.len <= bodyPos or s.ast[bodyPos].kind == nkEmpty:
+          result = true # no body to inspect (e.g. forward or generic)
+        elif depth > 8:
+          result = true
+        else:
+          let cached = readsErrFlagCache.getOrDefault(s.id, false)
+          if cached: result = true
+          elif s.id notin readsErrFlagCache:
+            readsErrFlagCache[s.id] = false # guards recursion
+            result = mayTestErrFlag(g, getBody(g, s), depth + 1)
+            readsErrFlagCache[s.id] = result
+    else:
+      result = true # indirect call: unknown callee
+    if not result:
+      for it in sonsFrom(n, 1):
+        if mayTestErrFlag(g, it, depth): return true
+  else:
+    result = false
+    for it in sons(n):
+      if mayTestErrFlag(g, it, depth): return true
+
 proc hasExceptBranch(n: PNode): bool =
   case n.kind
   of nkExceptBranch:
@@ -1554,11 +1595,13 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     var finallyScope: ScopeBuilder
     startSimpleBlock(p, finallyScope)
     if not bodyCanRaise(p, finallyBranch.firstSon) and
-        not hasExceptBranch(finallyBranch.firstSon):
+        not hasExceptBranch(finallyBranch.firstSon) and
+        not mayTestErrFlag(p.module.g.graph, finallyBranch.firstSon, 0):
       # this is an important optimization; most destroy blocks are detected not to raise an
       # exception and so we help the C optimizer by not mutating nimErr_ pointlessly.
       # An 'except' branch tests nimErr_ even when its 'try' body cannot raise, so it
-      # would catch the exception that passes through this 'finally':
+      # would catch the exception that passes through this 'finally' (also when the
+      # 'except' lives in a routine called by the 'finally' body; bug #26623):
       genStmts(p, finallyBranch.firstSon)
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
