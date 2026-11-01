@@ -1428,13 +1428,11 @@ proc bodyCanRaise(p: BProc; n: PNode): bool =
     for it in sons(n):
       if bodyCanRaise(p, it): return true
 
-var readsErrFlagCache: Table[int, bool] = initTable[int, bool]()
-  ## routine id -> "may test `nimErr_` on entry (an `except` branch somewhere below it)"
-
-proc mayTestErrFlag(g: ModuleGraph; n: PNode; depth: int): bool =
+proc mayTestErrFlag(g: ModuleGraph; n: PNode; seen: var IntSet; depth: int): bool =
   ## Conservative: true if running `n` could execute an `except` branch, which
   ## tests `nimErr_` even when its `try` body cannot raise. Calls are followed
-  ## into the callee's body.
+  ## into the callee's body; `seen` holds the routines already inspected (a
+  ## `true` result ends the whole walk, so every entry is "no except branch").
   case n.kind
   of nkExceptBranch:
     result = true
@@ -1453,21 +1451,17 @@ proc mayTestErrFlag(g: ModuleGraph; n: PNode; depth: int): bool =
         elif depth > 8:
           result = true
         else:
-          let cached = readsErrFlagCache.getOrDefault(s.id, false)
-          if cached: result = true
-          elif s.id notin readsErrFlagCache:
-            readsErrFlagCache[s.id] = false # guards recursion
-            result = mayTestErrFlag(g, getBody(g, s), depth + 1)
-            readsErrFlagCache[s.id] = result
+          if not seen.containsOrIncl(s.id):
+            result = mayTestErrFlag(g, getBody(g, s), seen, depth + 1)
     else:
       result = true # indirect call: unknown callee
     if not result:
       for it in sonsFrom(n, 1):
-        if mayTestErrFlag(g, it, depth): return true
+        if mayTestErrFlag(g, it, seen, depth): return true
   else:
     result = false
     for it in sons(n):
-      if mayTestErrFlag(g, it, depth): return true
+      if mayTestErrFlag(g, it, seen, depth): return true
 
 proc hasExceptBranch(n: PNode): bool =
   case n.kind
@@ -1594,9 +1588,10 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     let finallyBranch = son(t, i)
     var finallyScope: ScopeBuilder
     startSimpleBlock(p, finallyScope)
+    var seenRoutines = initIntSet()
     if not bodyCanRaise(p, finallyBranch.firstSon) and
         not hasExceptBranch(finallyBranch.firstSon) and
-        not mayTestErrFlag(p.module.g.graph, finallyBranch.firstSon, 0):
+        not mayTestErrFlag(p.module.g.graph, finallyBranch.firstSon, seenRoutines, 0):
       # this is an important optimization; most destroy blocks are detected not to raise an
       # exception and so we help the C optimizer by not mutating nimErr_ pointlessly.
       # An 'except' branch tests nimErr_ even when its 'try' body cannot raise, so it
