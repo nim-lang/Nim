@@ -1003,6 +1003,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     let dir = processPath(conf, arg, info, notRelativeToProj=true)
     if switch.normalize == "icsemdir": conf.icSemDir = dir
     else: conf.icMainSemDir = dir
+  of "icbiflinks":
+    # Driver-selected storage mode; source-level define pragmas cannot alter it.
+    expectNoArg(conf, switch, arg, pass, info)
+    if pass == passCmd2: conf.icBifLinks = true
   of "icmainmodule":
     expectArg(conf, switch, arg, pass, info)
     if arg notin conf.icMainModules: conf.icMainModules.add arg
