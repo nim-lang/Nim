@@ -250,3 +250,23 @@ proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string
   dest.closeTag()
   let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.deps.bif").string
   storeBifStable(dest, path, "." & extractModuleSuffix(path))
+
+proc writeReadDeps*(config: ConfigRef; thisModule: int32; readPaths: seq[string]) =
+  ## The `.s.reads` sidecar: the files this module read at compile time
+  ## (`staticRead`/`slurp`, recorded by `vmdeps.opSlurp` into
+  ## `ModuleGraph.readDeps`), serialized as `(readdeps "path" ...)`. `nim ic`
+  ## reads it when deriving the frontend build graph and declares each file an
+  ## input of the module's `nim m` rule, so an edit re-fires the sem that baked
+  ## the file's bytes into its `.s.bif` (fixes #26614). Written unconditionally
+  ## like `.s.deps`: an emptied set rewrites the sidecar empty so a dropped
+  ## `staticRead` removes the input on the next derivation.
+  let selfSuffix = modname(thisModule, config)
+  var paths = readPaths
+  sort paths
+  var dest = newIcBuilder(4 + 2*paths.len)
+  dest.openTag "readdeps"
+  for p in paths:
+    dest.addStrLit p
+  dest.closeTag()
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.reads.bif").string
+  storeBifStable(dest, path, "." & extractModuleSuffix(path))

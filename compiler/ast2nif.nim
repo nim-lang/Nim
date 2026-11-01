@@ -2213,6 +2213,15 @@ proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string
   ## to the previous `nifstreams` writer.
   icnifcore.writeSemDeps(config, thisModule, importPaths)
 
+proc writeReadDeps*(config: ConfigRef; thisModule: int32; readPaths: seq[string]) =
+  ## The files this module read at compile time (`staticRead`/`slurp`), recorded
+  ## by `vmdeps.opSlurp`. `nim ic` reads this `.s.reads` sidecar when deriving
+  ## the frontend build graph and declares each file an input of the module's
+  ## `nim m` rule, so an edit re-fires the sem that baked the file's bytes into
+  ## its `.s.bif` (fixes #26614). Always written so it is current after every
+  ## successful sem. Delegates to `icnifcore.writeReadDeps`.
+  icnifcore.writeReadDeps(config, thisModule, readPaths)
+
 proc writeInterface(w: var Writer; dest: var IcBuilder; syms: openArray[PSym];
                     hidden: bool) =
   ## The sequence is authoritative; the definition index only supplies offsets.

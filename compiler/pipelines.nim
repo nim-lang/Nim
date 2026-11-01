@@ -305,6 +305,11 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       for f in resolvedImportDeps:
         semDepPaths.add toFullPath(graph.config, f)
       writeSemDeps(graph.config, module.position.int32, semDepPaths)
+      # Compile-time file reads (`staticRead`/`slurp`) this sem performed,
+      # recorded by vmdeps.opSlurp: `nim ic` makes them inputs of this module's
+      # `nim m` rule so editing a read file re-fires the sem (fixes #26614).
+      writeReadDeps(graph.config, module.position.int32,
+                    graph.readDeps.getOrDefault(module.position.FileIndex))
 
 proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
   ## The module path of an import, without its pragmas. Like
@@ -716,6 +721,11 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
               var paths: seq[string] = @[]
               for f in deps: paths.add toFullPath(graph.config, f)
               writeSemDeps(graph.config, importer.int32, paths)
+            # Compile-time reads recorded so far are flushed for the same
+            # reason: this sem is aborting early, so its `.s.reads` would
+            # otherwise never reach the driver's rule inputs.
+            for reader, paths in graph.readDeps.pairs:
+              writeReadDeps(graph.config, reader.int32, paths)
             if graph.config.icProject.len > 0:
               # Run by the `nim ic` driver: this process cannot finish sem
               # without the import, but the import is recorded now, so the

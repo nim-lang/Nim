@@ -116,6 +116,18 @@ proc readNeedsImpl(c: DepContext; f: FilePair): seq[string] =
 proc semDepsFile(c: DepContext; f: FilePair): string =
   semanticFile(c.config, f.modname, ".s.deps.bif").string
 
+proc readDepsFile(c: DepContext; f: FilePair): string =
+  semanticFile(c.config, f.modname, ".s.reads.bif").string
+
+proc readReadDeps(c: DepContext; f: FilePair): seq[string] =
+  ## The files the module's last sem read at compile time (`staticRead`/`slurp`),
+  ## recorded in its `.s.reads` sidecar (ast2nif.writeReadDeps). Missing file
+  ## (never semmed yet) -> empty: the read is only discovered by running the
+  ## sem once, exactly like the `.s.deps`/`NeedsImpl` recordings.
+  result = @[]
+  if fileExists(c.readDepsFile(f)):
+    result = collectBifStrLits(c.readDepsFile(f))
+
 proc readSemDeps(c: DepContext; f: FilePair): seq[string] =
   ## The module's REAL direct imports (full source paths) as sem resolved them,
   ## including macro-generated imports the static scanner missed
@@ -1388,6 +1400,26 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
         b.addTree "input"
         b.addStrLit c.implFile(suffix)
         b.endTree()
+    # Compile-time file reads (`staticRead`/`slurp`) recorded by each member's
+    # last sem in its `.s.reads` sidecar: the file's bytes are baked into the
+    # module's `.s.bif`, so an edit to it must re-fire the rule even though no
+    # `.nim` or module-cookie input changed (fixes #26614). A recording gone
+    # stale (the module dropped its `staticRead`) costs one spurious re-fire:
+    # that sem rewrites the sidecar empty and the input disappears.
+    var seenRead = initHashSet[string]()
+    for m in members:
+      for readFile in c.readReadDeps(c.nodes[m].files[0]):
+        # nifmake ignores a MISSING input, but a deleted `staticRead` target is
+        # not an ignorable event: `nim c` re-sems and reports "cannot open
+        # file". Drop the stale `.s.bif` — a missing output is the rule's
+        # unconditional re-fire — so the read failure surfaces instead of the
+        # old bytes silently serving forever.
+        if not fileExists(readFile):
+          removeFile(c.semmedFile(c.nodes[m].files[0]))
+        elif not seenRead.containsOrIncl(readFile):
+          b.addTree "input"
+          b.addStrLit readFile
+          b.endTree()
     # Output: one semmed NIF (plus its cookie/edge sidecars) per member.
     for m in members:
       b.addTree "output"
