@@ -11,13 +11,14 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets]
+import std/[algorithm, intsets, tables, hashes, strtabs, os, strutils, parseutils, sets, times]
 import ../dist/checksums/src/checksums/md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils, packages, suggestsymdb
 
 when not defined(nimKochBootstrap):
   import ast2nif
   import nifstreams
+  import icnifcore
   import "../dist/nimony/src/lib" / bitabs
 
 import typekeys
@@ -75,6 +76,11 @@ type
                                   # instance, for collision probing in
                                   # `setInstanceDisamb`
     icCnifFiles*: seq[string]     # `.c.nif` artifacts written by this run
+    icFromSource: IntSet          # `ideNsNifs`: modules compiled from source
+    icStale: Table[int32, bool]   # `ideNsNifs`: memoized `icNifIsStale`
+    icStaleImporters: Table[int32, seq[int32]] # `ideNsNifs`: module ->
+                                  # its importers in `icStale`
+    icVerified: HashSet[string]   # `ideNsNifs`: modules `nim ns` checked
     pendingMethodReplays*: seq[PSym] # method registrations loaded under
                                   # `nim nifc`, bucketed only after every
                                   # module is loaded (`flushMethodReplays`)
@@ -106,9 +112,11 @@ type
     icOfferedInstances*: HashSet[string] # backend: NIF names of the generic
                                   # instances some loaded module `(offer)`s
                                   # (see `cgen.homeEmitsInstance`)
-    icQualIfaces*: IntSet         # module positions whose interface tables were
-                                  # populated ONLY for qualified access through a
-                                  # module re-export (`import x; export x`); the
+    icQualModules*: Table[int, seq[PSym]] # module positions whose interface
+                                  # tables were populated ONLY for qualified
+                                  # access through a module re-export (`import
+                                  # x; export x`), and the module symbol made
+                                  # for each name it is re-exported as; the
                                   # Iface.module stays nil so a later direct
                                   # import still takes the full load path
     vmInjecting*: bool            # the VM injects destructors: hooks that
@@ -892,6 +900,82 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
 proc uniqueModuleName*(conf: ConfigRef; m: PSym): string =
   uniqueModuleName(conf, m, AbsoluteFile toFullPath(conf, FileIndex(m.position)))
 
+when not defined(nimKochBootstrap):
+  proc icVerify*(g: ModuleGraph; module: string) =
+    ## Records a module `nim ns` just brought up to date.
+    g.icVerified.incl module
+
+  proc isIcVerified*(g: ModuleGraph; module: string): bool =
+    module in g.icVerified
+
+  proc importsTransitively(g: ModuleGraph; importer, module: FileIndex): bool =
+    ## Whether `importer` imports `module`, directly or not.
+    var seen = initHashSet[int32]()
+    var todo = @[importer]
+    while todo.len > 0:
+      let m = todo.pop()
+      if seen.containsOrIncl(m.int32): continue
+      let deps = semanticFile(g.config, cachedModuleSuffix(g.config, m), ".s.deps.bif").string
+      if not fileExists(deps): continue
+      for dep in collectBifStrLits(deps):
+        let depIdx = fileInfoIdx(g.config, AbsoluteFile dep)
+        if depIdx == module: return true
+        todo.add depIdx
+    false
+
+  proc icNifIsStale*(g: ModuleGraph; fileIdx: FileIndex): bool =
+    ## Under `ideNsNifs` only NIFs that `nim ns` checked are read. A NIF is
+    ## stale when its module failed to compile there (its source or an include
+    ## is newer), when an import is stale or was compiled from source, or when
+    ## an import changed after it was written: its interface, or its bodies when
+    ## this module used them at compile time (the `.edges.bif`, as for nifmake).
+    if g.icFromSource.contains(fileIdx.int): return true
+    let k = fileIdx.int32
+    g.icStale.withValue(k, known):
+      return known[]
+    g.icStale[k] = false
+    let src = toFullPath(g.config, fileIdx)
+    let suffix = cachedModuleSuffix(g.config, fileIdx)
+    let stamp = semanticFile(g.config, suffix, ".edges.bif").string
+    result = src notin g.icVerified or not fileExists(stamp)
+    if not result:
+      let written = getLastModificationTime(stamp)
+      for f in src & nifIncludes(g.config, fileIdx):
+        if fileExists(f) and written < getLastModificationTime(f):
+          result = true
+          break
+      if not result:
+        for dep in collectBifStrLits(semanticFile(g.config, suffix, ".s.deps.bif").string):
+          let depIdx = fileInfoIdx(g.config, AbsoluteFile dep)
+          g.icStaleImporters.mgetOrPut(depIdx.int32, @[]).add k
+          let depIface = semanticFile(g.config, cachedModuleSuffix(g.config, depIdx),
+            ".iface.bif").string
+          if icNifIsStale(g, depIdx) or
+              (fileExists(depIface) and written < getLastModificationTime(depIface) and
+                not g.importsTransitively(depIdx, fileIdx)):
+            result = true
+            break
+      if not result:
+        for implDep in collectBifStrLits(stamp):
+          let depImpl = semanticFile(g.config, implDep, ".impl.bif").string
+          if fileExists(depImpl) and written < getLastModificationTime(depImpl):
+            result = true
+            break
+    g.icStale[k] = result
+
+proc icNoteFromSource*(g: ModuleGraph; fileIdx: FileIndex) =
+  ## Only the memoized staleness of `fileIdx`'s importers changes: they are
+  ## stale now.
+  if g.config.ideNsNifs and not g.config.isDefined("nimscript") and
+      not g.icFromSource.containsOrIncl(fileIdx.int):
+    var todo = @[fileIdx.int32]
+    while todo.len > 0:
+      for importer in g.icStaleImporters.getOrDefault(todo.pop):
+        g.icStale.withValue(importer, stale):
+          if not stale[]:
+            stale[] = true
+            todo.add importer
+
 proc loadsFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
   ## `nim m` loads an import from its precompiled NIF file. The members of the
   ## current strongly-connected import group (`--icGroup`) are mutually
@@ -904,7 +988,8 @@ proc loadsFromNif*(g: ModuleGraph; fileIdx: FileIndex): bool =
       not g.withinSystem and
       not g.config.isDefined("nimscript") and
       (g.config.icGroup.len == 0 or
-       toFullPath(g.config, fileIdx) notin g.config.icGroup)
+       toFullPath(g.config, fileIdx) notin g.config.icGroup) and
+      not (g.config.ideNsNifs and icNifIsStale(g, fileIdx))
 
 proc inSameCycleGroup*(g: ModuleGraph; a, b: FileIndex): bool =
   let ga = g.cycleGroups.getOrDefault(a, InvalidFileIdx)
@@ -1216,13 +1301,19 @@ when not defined(nimKochBootstrap):
         g.ifaces[fIdx.int].module.name.s == mname:
       # properly registered already (directly imported earlier): reuse it
       return g.ifaces[fIdx.int].module
+    # Interfaces name a re-exported module once per re-export, which on a
+    # project re-exporting much is thousands of times per module.
+    g.icQualModules.withValue(fIdx.int, aliases):
+      for m in aliases[]:
+        if m.name.s == mname: return m
+    let firstAlias = not g.icQualModules.hasKey(fIdx.int)
     result = PSym(kindImpl: skModule, itemId: itemId(int32(fIdx), 0'i32),
                   name: getIdent(g.cache, mname),
                   infoImpl: newLineInfo(fIdx, 1, 1),
                   positionImpl: int(fIdx))
     setOwner(result, getPackage(g.config, g.cache, fIdx))
-    if g.ifaces[fIdx.int].module == nil and
-        not g.icQualIfaces.containsOrIncl(fIdx.int):
+    g.icQualModules.mgetOrPut(fIdx.int, @[]).add result
+    if firstAlias and g.ifaces[fIdx.int].module == nil:
       var interf = initStrTable()
       var interfHidden = initStrTable()
       let precomp = loadNifModule(ast.program, ModuleSuffix(msuffix),

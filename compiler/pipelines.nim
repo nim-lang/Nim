@@ -217,7 +217,9 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         # later queries load them instead of recompiling. Never persist the
         # actively edited buffer (it may hold unsaved/incomplete code) nor a
         # module that failed to compile — that would poison the cache.
-        graph.config.cmd == cmdM and graph.config.errorCounter == 0 and
+        # nimsuggest2's one-shot only reads the NIFs `nim ns` writes.
+        not graph.config.ideNsNifs and
+          graph.config.cmd == cmdM and graph.config.errorCounter == 0 and
           graph.config.m.fileInfos[module.position].dirtyFile.isEmpty
       else:
         ({optCompress, optGenBif} * graph.config.globalOptions != {}) or
@@ -677,6 +679,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
           " optCompress=" & $(optCompress in graph.config.globalOptions) &
           " cmd=" & $graph.config.cmd
         dbgf.close()
+    graph.icNoteFromSource(fileIdx)
     onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
     var s: PLLStream = nil
     if sfMainModule in flags:
@@ -801,16 +804,20 @@ proc compilePipelineSystemModule*(graph: ModuleGraph) =
     graph.withinSystem = false
 
 proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
+  ## Under `ideNsNifs` (nimsuggest2's one-shot) `projectFileIdx` is compiled the
+  ## way an import of the main module is compiled: no module is the main module.
   connectPipelineCallbacks(graph)
   let conf = graph.config
+  let asMain = not conf.ideNsNifs
   wantMainModule(conf)
   configComplete(graph)
 
   let systemFileIdx = fileInfoIdx(conf, conf.libpath / RelativeFile"system.nim")
   let projectFile = if projectFileIdx == InvalidFileIdx: conf.projectMainIdx else: projectFileIdx
-  conf.projectMainIdx2 = projectFile
+  let mainFlags = if asMain: {sfMainModule} else: {}
+  conf.projectMainIdx2 = if asMain: projectFile else: InvalidFileIdx
 
-  var packSym = getPackage(graph, projectFile)
+  var packSym = getPackage(graph, if asMain: projectFile else: conf.projectMainIdx)
   if graph.config.cmd in {cmdM, cmdNifC} and graph.config.icProject.len > 0:
     # per-module IC children: the process' project file is the MODULE being
     # compiled, which would make its package the "main package" and unfilter
@@ -830,13 +837,14 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
     connectPipelineCallbacks(graph)
     # Record the main module so the IC loader won't materialise duplicate stubs
     # for its own symbols when a dependency (e.g. system) re-exports them.
-    setIcMainModule(projectFile)
+    if asMain: setIcMainModule(projectFile)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
         graph.config.libpath / RelativeFile"system.nim")
     when not defined(nimKochBootstrap):
       # Don't clobber an already-compiled system: nimsuggest's NimScript config
       # evaluation compiles `system` into this same graph before we get here.
-      if graph.systemModule == nil:
+      if graph.systemModule == nil and not (graph.config.ideNsNifs and
+          graph.icNifIsStale(graph.config.m.systemFileIdx)):
         let precomp = moduleFromNifFile(graph, graph.config.m.systemFileIdx)
         graph.systemModule = precomp.module
       if graph.systemModule == nil:
@@ -854,7 +862,7 @@ proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx
       # system, so without this its macro-cache / CT globals would wait until the
       # first NIF import is processed. See finalizeLoadedModules.
       finalizeLoadedModules(graph)
-    discard graph.compilePipelineModule(projectFile, {sfMainModule})
+    discard graph.compilePipelineModule(projectFile, mainFlags)
   else:
     graph.compilePipelineSystemModule()
-    discard graph.compilePipelineModule(projectFile, {sfMainModule})
+    discard graph.compilePipelineModule(projectFile, mainFlags)
