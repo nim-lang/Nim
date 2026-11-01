@@ -124,6 +124,10 @@ type
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
+    readDeps*: Table[FileIndex, seq[string]] # files a module read at compile
+      # time (staticRead/slurp), per module file index; recorded under `nim m`
+      # and flushed to the module's `.s.reads` sidecar so `nim ic` can make
+      # them inputs of the module's build rule (fixes #26614)
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
     interactive*: bool
@@ -951,6 +955,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.packageSyms = initStrTable()
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
+  result.readDeps = initTable[FileIndex, seq[string]]()
   result.ifaces = @[]
   result.importStack = @[]
   result.cycleGroups = initTable[FileIndex, FileIndex]()

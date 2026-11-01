@@ -7,15 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, options, idents, lineinfos
+import ast, types, msgs, options, idents, lineinfos, modulegraphs
 from pathutils import AbsoluteFile
 
-import std/os
+import std/[os, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
-proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
+proc opSlurp*(file: string, info: TLineInfo, module: PSym; g: ModuleGraph): string =
+  let conf = g.config
   try:
     var filename = parentDir(toFullPath(conf, info)) / file
     if not fileExists(filename):
@@ -25,6 +26,14 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     # the module dependencies are accurate:
     discard conf.fileInfoIdx(AbsoluteFile filename)
     appendToModule(module, newTreeI(nkIncludeStmt, info, newStrNode(nkStrLit, filename)))
+    if conf.cmd == cmdM:
+      # `nim ic` derives a module's build inputs from its imports; a file it
+      # reads at compile time is an input too, otherwise editing it never
+      # re-fires this module's `nim m` (fixes #26614). Recorded per module and
+      # flushed to its `.s.reads` sidecar at pass close; the driver makes it a
+      # rule input on the next graph derivation (one-run lag, like `.s.deps`).
+      let deps = addr g.readDeps.mgetOrPut(module.position.FileIndex, @[])
+      if filename notin deps[]: deps[].add filename
   except IOError:
     localError(conf, info, "cannot open file: " & file)
     result = ""

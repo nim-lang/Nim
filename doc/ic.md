@@ -68,6 +68,7 @@ under the nimcache directory:
 | ``<s>.p.nif`` | nifler | parsed AST (syntactic) |
 | ``<s>.deps.nif`` | nifler | **static** import list (syntactic `import`s) |
 | ``<s>.s.deps.nif`` | `nim m` | **real** post-sem imports (incl. macro-generated); see *Discovery* |
+| ``<s>.s.reads.bif`` | `nim m` | files read at compile time (`staticRead`/`slurp`); become inputs of the module's rule |
 | ``<s>.nif`` | `nim m` | semmed module (symbols resolved, typed) |
 | ``<s>.iface.nif`` | `nim m` | **iface cookie**: hash of the importer-visible surface |
 | ``<s>.impl.nif`` | `nim m` | **impl cookie**: hash of the entire content (bodies included) |
