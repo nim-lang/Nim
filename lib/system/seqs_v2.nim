@@ -127,13 +127,33 @@ type
 
 const nimSeqVersion {.core.} = 2
 
-# XXX make code memory safe for overflows in '*'
+proc seqSizeOverflow() {.noinline, noreturn.} =
+  # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code
+  # generator assumes never raise, so under `--exceptions:goto` the raise
+  # would be ignored and execution would continue with the bogus size.
+  # A seq that cannot even be measured can never be allocated either, so
+  # handle it like an out of memory situation.
+  cstderr.rawWrite("fatal error: seq size overflows the address space\n")
+  rawQuit(1)
+
+proc payloadSize(cap, elemSize, elemAlign: int): int {.inline.} =
+  ## `headerSize + cap * elemSize`; checked even under `--overflowChecks:off`
+  ## as a wrapped around result means a too small block that is then
+  ## written to.
+  let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
+  if elemSize > 0 and cap > (high(int) - headerSize) div elemSize:
+    seqSizeOverflow()
+  result = headerSize + cap * elemSize
+
+proc addLen(len, addlen: int): int {.inline.} =
+  if addlen > high(int) - len: seqSizeOverflow()
+  result = len + addlen
 
 proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
-    var p = cast[ptr NimSeqPayloadBase](alignedAlloc0(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize, elemAlign))
+    var p = cast[ptr NimSeqPayloadBase](alignedAlloc0(payloadSize(cap, elemSize, elemAlign), elemAlign))
     p.cap = cap
     result = p
   else:
@@ -142,7 +162,7 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
 proc newSeqPayloadUninit(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
   # Used in `newSeqOfCap()`.
   if cap > 0:
-    var p = cast[ptr NimSeqPayloadBase](alignedAlloc(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize, elemAlign))
+    var p = cast[ptr NimSeqPayloadBase](alignedAlloc(payloadSize(cap, elemSize, elemAlign), elemAlign))
     p.cap = cap
     result = p
   else:
@@ -155,20 +175,20 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
     if addlen <= 0:
       result = p
     elif p == nil:
-      result = newSeqPayload(len+addlen, elemSize, elemAlign)
+      result = newSeqPayload(addLen(len, addlen), elemSize, elemAlign)
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
       var p = cast[ptr NimSeqPayloadBase](p)
       let oldCap = p.cap and not strlitFlag
-      let newCap = max(resize(oldCap), len+addlen)
+      let newCap = max(resize(oldCap), addLen(len, addlen))
       var q: ptr NimSeqPayloadBase
       if (p.cap and strlitFlag) == strlitFlag:
-        q = cast[ptr NimSeqPayloadBase](alignedAlloc(headerSize + elemSize * newCap, elemAlign))
+        q = cast[ptr NimSeqPayloadBase](alignedAlloc(payloadSize(newCap, elemSize, elemAlign), elemAlign))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
       else:
         let oldSize = headerSize + elemSize * oldCap
-        let newSize = headerSize + elemSize * newCap
+        let newSize = payloadSize(newCap, elemSize, elemAlign)
         q = cast[ptr NimSeqPayloadBase](alignedRealloc(p, oldSize, newSize, elemAlign))
 
       zeroMem(q +! headerSize +! len * elemSize, addlen * elemSize)
@@ -188,21 +208,21 @@ proc prepareSeqAddUninit(len: int; p: pointer; addlen, elemSize, elemAlign: int)
     if addlen <= 0:
       result = p
     elif p == nil:
-      result = newSeqPayloadUninit(len+addlen, elemSize, elemAlign)
+      result = newSeqPayloadUninit(addLen(len, addlen), elemSize, elemAlign)
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
       var p = cast[ptr NimSeqPayloadBase](p)
       let oldCap = p.cap and not strlitFlag
-      let newCap = max(resize(oldCap), len+addlen)
+      let newCap = max(resize(oldCap), addLen(len, addlen))
       if (p.cap and strlitFlag) == strlitFlag:
-        var q = cast[ptr NimSeqPayloadBase](alignedAlloc(headerSize + elemSize * newCap, elemAlign))
+        var q = cast[ptr NimSeqPayloadBase](alignedAlloc(payloadSize(newCap, elemSize, elemAlign), elemAlign))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
         q.cap = newCap
         result = q
       else:
         let oldSize = headerSize + elemSize * oldCap
-        let newSize = headerSize + elemSize * newCap
+        let newSize = payloadSize(newCap, elemSize, elemAlign)
         var q = cast[ptr NimSeqPayloadBase](alignedRealloc(p, oldSize, newSize, elemAlign))
         q.cap = newCap
         result = q
