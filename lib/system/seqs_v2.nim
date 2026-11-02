@@ -127,26 +127,17 @@ type
 
 const nimSeqVersion {.core.} = 2
 
-proc seqSizeOverflow() {.noinline, noreturn.} =
-  # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code
-  # generator assumes never raise, so under `--exceptions:goto` the raise
-  # would be ignored and execution would continue with the bogus size.
-  # A seq that cannot even be measured can never be allocated either, so
-  # handle it like an out of memory situation.
-  cstderr.rawWrite("fatal error: seq size overflows the address space\n")
-  rawQuit(1)
-
 proc payloadSize(cap, elemSize, elemAlign: int): int {.inline.} =
   ## `headerSize + cap * elemSize`; checked even under `--overflowChecks:off`
   ## as a wrapped around result means a too small block that is then
   ## written to.
   let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
   if elemSize > 0 and cap > (high(int) - headerSize) div elemSize:
-    seqSizeOverflow()
+    nimSizeOverflow()
   result = headerSize + cap * elemSize
 
 proc addLen(len, addlen: int): int {.inline.} =
-  if addlen > high(int) - len: seqSizeOverflow()
+  if addlen > high(int) - len: nimSizeOverflow()
   result = len + addlen
 
 proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =

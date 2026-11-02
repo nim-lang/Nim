@@ -1,7 +1,7 @@
 discard """
   matrix: "--mm:arc; --mm:orc; --mm:orc -d:danger"
   exitcode: 1
-  outputsub: "fatal error: seq size overflows the address space"
+  outputsub: "fatal error: string or seq size overflows the address space"
 """
 
 # The size computations of the ARC/ORC seq implementation must not wrap
