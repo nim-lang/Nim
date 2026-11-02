@@ -131,14 +131,13 @@ proc payloadSize(cap, elemSize, elemAlign: int): int {.inline.} =
   ## `headerSize + cap * elemSize`; checked even under `--overflowChecks:off`
   ## as a wrapped around result means a too small block that is then
   ## written to.
-  let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
-  if elemSize > 0 and cap > (high(int) - headerSize) div elemSize:
+  var bytes: int
+  if nimMulInt(cap, elemSize, addr bytes) or
+      nimAddInt(bytes, align(sizeof(NimSeqPayloadBase), elemAlign), addr result):
     nimSizeOverflow()
-  result = headerSize + cap * elemSize
 
 proc addLen(len, addlen: int): int {.inline.} =
-  if addlen > high(int) - len: nimSizeOverflow()
-  result = len + addlen
+  if nimAddInt(len, addlen, addr result): nimSizeOverflow()
 
 proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic

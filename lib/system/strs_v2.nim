@@ -60,8 +60,8 @@ proc resize(old: int): int {.inline.} =
   else: result = old div 2 + old # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addLen: int) {.compilerRtl.} =
-  if addLen > high(int) - s.len: nimSizeOverflow()
-  let newLen = s.len + addLen
+  var newLen: int
+  if nimAddInt(s.len, addLen, addr newLen): nimSizeOverflow()
   if isLiteral(s):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:

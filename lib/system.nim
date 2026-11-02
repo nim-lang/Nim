@@ -1736,6 +1736,13 @@ when not defined(nimIcIntegrityChecks):
   import system/exceptions
   export exceptions
 
+when notJSnotNims:
+  # we cannot compile this with stack tracing or overflow checks on
+  # as it would recurse endlessly!
+  {.push stackTrace: off, profiler: off, checks: off.}
+  include "system/integerprims"
+  {.pop.}
+
 when notJSnotNims and defined(nimSeqsV2):
   proc nimSizeOverflow() {.noinline, noreturn.} =
     # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code

@@ -398,8 +398,8 @@ proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
   ## Ensure s has room for addLen more characters without changing its length.
   let slen = ssLen(s)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
-  if addLen > high(int) - curLen: nimSizeOverflow()
-  let newLen = curLen + addLen
+  var newLen: int
+  if nimAddInt(curLen, addLen, addr newLen): nimSizeOverflow()
   if slen <= PayloadSize:
     if newLen > PayloadSize:
       # transition to long: allocate, copy existing data
