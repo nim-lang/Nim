@@ -64,7 +64,8 @@ proc posReadData[T](s: Stream, buffer: pointer, bufLen: int): int =
     result += s.baseReadDataImpl(s, addr dest[n], bufLen - n)
 
 proc posReadDataStr[T](s: Stream, buffer: var string, slice: Slice[int]): int =
-  posReadData[T](s, addr buffer[slice.a], slice.len)
+  result = posReadData[T](s, beginStore(buffer, buffer.len, slice.a), slice.len)
+  endStore(buffer)
 
 proc posPeekData[T](s: Stream, buffer: pointer, bufLen: int): int =
   var s = PipeOutStream[T](s)

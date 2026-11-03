@@ -46,7 +46,7 @@ when defined(gcYrc):
     ## getThreadId() is already cached thread-locally in threadids.nim.
     getThreadId() and (NumLockStripes - 1)
 
-  proc acquireMutatorLock() {.compilerRtl, inl.} =
+  proc acquireMutatorLockImpl() {.inline.} =
     if lockState == HasNoLock:
       let s = getYrcStripe()
       while true:
@@ -59,10 +59,22 @@ when defined(gcYrc):
           discard
       lockState = HasMutatorLock
 
-  proc releaseMutatorLock() {.compilerRtl, inl.} =
+  proc releaseMutatorLockImpl() {.inline.} =
     if lockState == HasMutatorLock:
       lockState = HasNoLock
       discard atomicFetchSub(addr gSeqActive[getYrcStripe()].c, 1, ATOMIC_SEQ_CST)
+
+  proc acquireMutatorLock() {.compilerRtl, inl.} =
+    when nimvm:
+      discard "the VM is single threaded and runs no collector"
+    else:
+      acquireMutatorLockImpl()
+
+  proc releaseMutatorLock() {.compilerRtl, inl.} =
+    when nimvm:
+      discard
+    else:
+      releaseMutatorLockImpl()
 
   proc yrcGcFenceEnter() =
     ## A collection announces itself and waits for in-flight seq structure
