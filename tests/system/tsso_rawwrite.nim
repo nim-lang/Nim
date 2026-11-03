@@ -35,9 +35,11 @@ let strm = newStringStream("The first line\nthe second line\nthe third line")
 check strm.readAll() == "The first line\nthe second line\nthe third line"
 check parseJson(newStringStream("""{"key": "a long string value"}""").readAll())["key"].getStr == "a long string value"
 
-let f = getTempDir() / "tsso_rawwrite.txt"
+let f = getTempDir() / ("tsso_rawwrite_" & $getCurrentProcessId() & ".txt")
 writeFile(f, "a file with more than fifteen chars")
-check newFileStream(f).readAll() == "a file with more than fifteen chars"
+let fs = newFileStream(f)
+check fs.readAll() == "a file with more than fifteen chars"
+fs.close()
 removeFile(f)
 
 echo ok
