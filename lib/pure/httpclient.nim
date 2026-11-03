@@ -573,6 +573,15 @@ proc checkLineSafe(s, what: string) =
   if s.contains({'\c', '\L', '\0'}):
     raise newException(ValueError, what & " contains a newline or NUL character")
 
+const headerNameChars = {'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.',
+                         '^', '_', '`', '|', '~', '0'..'9', 'a'..'z', 'A'..'Z'}
+  ## The `tchar` set of RFC 9110, section 5.6.2.
+
+proc checkHeaderName(s: string) =
+  ## Raises `ValueError` unless `s` is a valid RFC 9110 field name (a token).
+  if s.len == 0 or not s.allCharsInSet(headerNameChars):
+    raise newException(ValueError, "invalid header name: " & s.escape)
+
 proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeaders,
                      proxy: Proxy): string =
   # GET
@@ -616,7 +625,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
-    checkLineSafe(key, "header name")
+    checkHeaderName(key)
     checkLineSafe(val, "value of header '" & key & "'")
     add(result, key & ": " & val & httpNewLine)
 
