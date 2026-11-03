@@ -782,7 +782,10 @@ proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char
 
 proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} =
   ## Syncs the inline cache after bulk writes via `beginStore`. No-op for short/medium strings.
-  {.cast(noSideEffect).}: completeStore(cast[ptr SmallString](addr s)[])
+  when nimvm:
+    discard "VM strings have no inline cache"
+  else:
+    {.cast(noSideEffect).}: completeStore(cast[ptr SmallString](addr s)[])
 
 proc rawDataImpl(ss: ptr SmallString; start: int): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [].} =
   let slen = ssLen(ss[])
