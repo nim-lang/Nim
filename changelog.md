@@ -89,6 +89,10 @@ parameter and result types, not just their source-level shape. Use
   would interpret (``& | < > ^ % ! "`` or a line break). Previously such
   arguments allowed command injection (the "BatBadBut" issue, CVE-2024-24576).
 
+- `httpclient` now rejects header names that are not RFC 9110 tokens (for
+  example names containing `:`, spaces or control characters) with
+  `ValueError` instead of sending a malformed header line.
+
 - Added `system.readRawDataStable`, a companion to `readRawData` that returns a
   raw `ptr UncheckedArray[char]` into a string's character data which stays valid
   across moves and copies of the string value. It is available under every string
