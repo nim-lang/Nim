@@ -2,44 +2,28 @@ discard """
   targets: "c cpp"
   matrix: "--mm:refc; --mm:arc; --mm:orc; --mm:yrc"
   joinable: false
+  disabled: "posix"
 """
 
 import std/asyncdispatch
+import masynceventlifetime
 
-when defined(gcDestructors):
-  type
-    Lifetime = object
-      destroyed: ptr int
-    Token = ref Lifetime
-
-  proc `=destroy`(value: Lifetime) =
-    inc value.destroyed[]
-
-proc watch(ev: AsyncEvent; destroyed: ptr int; cb: Callback) =
-  when defined(gcDestructors):
-    let token = Token(destroyed: destroyed)
-    ev.addEvent(proc(fd: AsyncFD): bool {.gcsafe.} =
-      doAssert token.destroyed != nil
-      cb(fd))
-  else:
-    ev.addEvent(cb)
-
-template checkDestroyed(count, expected: int) =
-  when defined(gcDestructors):
-    GC_fullCollect()
-    doAssert count == expected
-
-block: # Removing an idle registration releases its callback without polling.
+block: # Idle cancellation releases its callback after native retirement.
   var destroyed = 0
   let ev = newAsyncEvent()
   watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
     doAssert false, "unregistered callback")
   ev.unregister()
   ev.close()
+  when defined(windows):
+    doAssert hasPendingOperations()
+  retireAll()
   checkDestroyed(destroyed, 1)
 
 when defined(windows):
-  import std/winlean
+  import std/[winlean, importutils, monotimes, times]
+  when defined(nimPreviewSlimSystem):
+    import std/typedthreads
 
   type Packet = object
     bytes: DWORD
@@ -57,12 +41,20 @@ when defined(windows):
       packet.bytes, packet.key, packet.overlapped)
 
   proc queuePackets(ev: AsyncEvent; count: int) =
+    # Taking each packet before triggering again proves the auto-reset event
+    # consumed that signal. No coalesced signals or sleep-based re-arm guess.
     var packets: seq[Packet]
     for i in 0 ..< count:
       ev.trigger()
       packets.add(takePacket())
     for packet in packets:
       putPacket(packet)
+
+  proc waitUntil(called: var bool) =
+    let deadline = getMonoTime() + initDuration(seconds = 5)
+    while not called:
+      doAssert getMonoTime() < deadline, "event callback did not complete"
+      poll(100)
 
   block: # A live registration survives repeated delivery and collection.
     var destroyed = 0
@@ -78,6 +70,21 @@ when defined(windows):
       checkDestroyed(destroyed, 0)
     ev.unregister()
     ev.close()
+    retireAll()
+    checkDestroyed(destroyed, 1)
+
+  block: # Native retirement does not free a callback still on the stack.
+    var destroyed = 0
+    let ev = newAsyncEvent()
+    watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
+      ev.close()
+      putPacket(takePacket()) # Await and consume the retirement packet only.
+      poll(0)
+      checkDestroyed(destroyed, 0)
+      false)
+    queuePackets(ev, 1)
+    poll(0)
+    retireAll()
     checkDestroyed(destroyed, 1)
 
   for count in [1, 8]:
@@ -92,6 +99,7 @@ when defined(windows):
       checkDestroyed(destroyed, 0)
       for i in 0 ..< count:
         poll(0)
+      retireAll()
       checkDestroyed(destroyed, 1)
 
     block: # Old notifications cannot call or remove a replacement registration.
@@ -107,16 +115,16 @@ when defined(windows):
         true)
       for i in 0 ..< count:
         poll(0)
-      checkDestroyed(destroyed, 1)
       doAssert not called
       ev.trigger()
-      putPacket(takePacket())
-      poll(0)
+      waitUntil(called)
       doAssert called
       ev.close()
+      retireAll()
+      checkDestroyed(destroyed, 1)
 
     for remove in [false, true]:
-      block: # Closing inside the callback is safe regardless of its return value.
+      block: # Closing inside the callback is safe for either return value.
         var destroyed = 0
         var calls = 0
         let ev = newAsyncEvent()
@@ -129,6 +137,7 @@ when defined(windows):
         for i in 0 ..< count:
           poll(0)
         doAssert calls == 1
+        retireAll()
         checkDestroyed(destroyed, 1)
 
     block: # Returning true removes the registration and retires every packet.
@@ -142,8 +151,9 @@ when defined(windows):
       for i in 0 ..< count:
         poll(0)
       doAssert calls == 1
-      checkDestroyed(destroyed, 1)
       ev.close()
+      retireAll()
+      checkDestroyed(destroyed, 1)
 
     block: # A callback can replace itself even when it returns true.
       var destroyed = 0
@@ -159,12 +169,12 @@ when defined(windows):
       queuePackets(ev, count)
       for i in 0 ..< count:
         poll(0)
-      checkDestroyed(destroyed, 1)
       doAssert not called
-      putPacket(takePacket())
-      poll(0)
+      waitUntil(called)
       doAssert called
       ev.close()
+      retireAll()
+      checkDestroyed(destroyed, 1)
 
     block: # Raising after close still releases the consumed notification.
       var destroyed = 0
@@ -183,6 +193,7 @@ when defined(windows):
       doAssert raised
       for i in 1 ..< count:
         poll(0)
+      retireAll()
       checkDestroyed(destroyed, 1)
 
   block: # close also cancels a still-registered event.
@@ -191,6 +202,8 @@ when defined(windows):
     watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
       doAssert false, "closed callback")
     ev.close()
+    doAssert hasPendingOperations()
+    retireAll()
     checkDestroyed(destroyed, 1)
 
   block: # Retirement remains pollable after the last live handle is removed.
@@ -202,7 +215,145 @@ when defined(windows):
     ev.unregister()
     ev.close()
     doAssert hasPendingOperations()
-    drain()
+    retireAll()
     checkDestroyed(destroyed, 1)
+
+  block: # Unregistering may race a wait callback that is still posting.
+    for _ in 0 ..< 200:
+      var destroyed = 0
+      let ev = newAsyncEvent()
+      watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
+        false)
+      ev.trigger()
+      # Native completion and queued-packet retirement must both precede
+      # release, including when the native callback has not posted yet.
+      ev.unregister()
+      ev.close()
+      retireAll()
+      checkDestroyed(destroyed, 1)
+
+  block: # Raising must not retire a registration that is still active.
+    var destroyed = 0
+    var calls = 0
+    let ev = newAsyncEvent()
+    watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
+      inc calls
+      raise newException(ValueError, "live callback"))
+    for expected in 1 .. 2:
+      queuePackets(ev, 1)
+      var raised = false
+      try:
+        poll(0)
+      except ValueError as error:
+        doAssert error.msg == "live callback"
+        raised = true
+      doAssert raised
+      doAssert calls == expected
+      doAssert hasPendingOperations()
+      checkDestroyed(destroyed, 0)
+    ev.close()
+    retireAll()
+    checkDestroyed(destroyed, 1)
+
+  block: # close without unregister also retires already-posted packets.
+    var destroyed = 0
+    let ev = newAsyncEvent()
+    watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
+      doAssert false, "closed callback")
+    queuePackets(ev, 8)
+    ev.close()
+    retireAll()
+    checkDestroyed(destroyed, 1)
+
+  block: # Replacing the global dispatcher cannot redirect retirement credit.
+    let owner = getGlobalDispatcher()
+    let replacement = newDispatcher()
+    var destroyed = 0
+    let ev = newAsyncEvent()
+    watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
+      doAssert false, "retired callback")
+    queuePackets(ev, 8)
+    setGlobalDispatcher(replacement)
+    try:
+      ev.close()
+      doAssert not hasPendingOperations()
+    finally:
+      setGlobalDispatcher(owner)
+    doAssert hasPendingOperations()
+    retireAll()
+    checkDestroyed(destroyed, 1)
+    doAssert closeHandle(getIoHandler(replacement)) != 0
+
+  block: # Failed cancellation preserves the event and registration for retry.
+    var destroyed = 0
+    var called = false
+    let ev = newAsyncEvent()
+    watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
+      called = true
+      false)
+    privateAccess(typeof(ev[]))
+    let registration = ev.registration
+    privateAccess(typeof(registration[]))
+    let waiter = registration.waiter
+    registration.waiter = 0 # Force native cancellation to fail.
+    var raised = false
+    try:
+      ev.close()
+    except OSError:
+      raised = true
+    finally:
+      registration.waiter = waiter
+    doAssert raised
+    doAssert ev.registration == registration
+    checkDestroyed(destroyed, 0)
+    ev.trigger() # The original handle and registration remain usable.
+    waitUntil(called)
+    ev.close()
+    retireAll()
+    checkDestroyed(destroyed, 1)
+
+  when compileOption("threads"):
+    type Attempts = object
+      ev: AsyncEvent
+      unregisterRejected, closeRejected: bool
+
+    proc offThread(attempts: ptr Attempts) {.thread.} =
+      try:
+        attempts.ev.unregister()
+      except ValueError:
+        attempts.unregisterRejected = true
+      try:
+        attempts.ev.close()
+      except ValueError:
+        attempts.closeRejected = true
+
+    proc closeUnregistered(ev: AsyncEvent) {.thread.} =
+      ev.close()
+
+    block: # Unregistered close needs no dispatcher on the closing thread.
+      let ev = newAsyncEvent()
+      var thread: Thread[AsyncEvent]
+      createThread(thread, closeUnregistered, ev)
+      joinThread(thread)
+      doAssert not hasPendingOperations()
+
+    block: # Off-thread teardown rejects without touching the owner or handle.
+      var destroyed = 0
+      var called = false
+      let ev = newAsyncEvent()
+      watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
+        called = true
+        false)
+      var attempts = Attempts(ev: ev)
+      var thread: Thread[ptr Attempts]
+      createThread(thread, offThread, addr attempts)
+      joinThread(thread)
+      doAssert attempts.unregisterRejected
+      doAssert attempts.closeRejected
+      ev.trigger()
+      waitUntil(called)
+      ev.close()
+      retireAll()
+      checkDestroyed(destroyed, 1)
 
 doAssert not hasPendingOperations()

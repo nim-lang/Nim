@@ -969,6 +969,9 @@ proc unregisterWait*(WaitHandle: Handle): DWORD
 proc unregisterWaitEx*(WaitHandle, CompletionEvent: Handle): WINBOOL
      {.stdcall, dynlib: "kernel32", importc: "UnregisterWaitEx".}
 
+proc getCurrentThreadId*(): DWORD
+     {.stdcall, dynlib: "kernel32", importc: "GetCurrentThreadId".}
+
 proc openProcess*(dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                     dwProcessId: DWORD): Handle
      {.stdcall, dynlib: "kernel32", importc: "OpenProcess".}

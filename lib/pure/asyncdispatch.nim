@@ -334,7 +334,7 @@ when defined(windows) or defined(nimdoc):
     PDispatcher* = ref object of PDispatcherBase
       ioPort: Handle
       handles*: HashSet[AsyncFD] # Export handles so that an external library can register them.
-      retiredEvents: int # Registrations whose queued notifications still need polling.
+      retiredRegistrations: int
 
     CustomObj = object of OVERLAPPED
       data*: CompletionData
@@ -348,17 +348,24 @@ when defined(windows) or defined(nimdoc):
       handleFd: AsyncFD
       waitFd: Handle
       ovl: owned CustomRef
-      # Notifications posted by the native wait thread but not yet consumed
-      # by the dispatcher. Incremented on every post, decremented on every
-      # consume; the registration context is released only once the last
-      # queued notification is consumed after removal.
-      outstanding: int
-      active: bool # Accessed only by the dispatcher thread.
     PostCallbackDataPtr = ptr PostCallbackData
+
+    EventRegistration = object
+      ioPort: Handle
+      fd: AsyncFD
+      waiter: Handle
+      completion: CustomRef
+      retirement: CustomRef
+      doneEvent, doneWaiter: Handle
+      owner: PDispatcher
+      threadId: DWORD
+      outstanding: int # Atomic; counts posted event notifications.
+      active, producerDone: bool # Accessed only by the owning thread.
+    EventRegistrationPtr = ptr EventRegistration
 
     AsyncEventImpl = object
       hEvent: Handle
-      pcd: PostCallbackDataPtr
+      registration: EventRegistrationPtr
     AsyncEvent* = ptr AsyncEventImpl
 
     Callback* = proc (fd: AsyncFD): bool {.closure, gcsafe.}
@@ -414,12 +421,12 @@ when defined(windows) or defined(nimdoc):
     ## Returns `true` if the global dispatcher has pending operations.
     let p = getGlobalDispatcher()
     p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0 or
-      p.retiredEvents != 0
+      p.retiredRegistrations != 0
 
   proc runOnce(timeout: int): bool =
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0 and
-        p.retiredEvents == 0:
+        p.retiredRegistrations == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
@@ -510,11 +517,11 @@ when defined(windows) or defined(nimdoc):
     close(dummySock)
 
   proc newCustom*(): CustomRef =
-    result = CustomRef() # 0
-    GC_ref(result) # 1  prevent destructor from doing a premature free.
-    # destructor of newCustom's caller --> 0. This means
-    # Windows holds a ref for us with RC == 0 (single owner).
-    # This is passed back to us in the IO completion port.
+    ## Allocates a completion with an extra reference for raw IOCP submission.
+    ## The returned value also has ordinary Nim ownership. The extra reference
+    ## must be transferred to a consumed packet or released separately.
+    result = CustomRef()
+    GC_ref(result)
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): owned(Future[string]) =
@@ -910,16 +917,9 @@ when defined(windows) or defined(nimdoc):
   proc waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL) {.stdcall.} =
     var p = cast[PostCallbackDataPtr](param)
-    # Count the post before queueing it: every queued notification is
-    # consumed exactly once, and the count keeps the registration context
-    # alive until the last consume after removal. Only an atomic operation
-    # is safe here; this runs on a native wait thread with no Nim heap
-    # access. Compiler builtins need no DLL import.
-    discard atomicInc(p.outstanding)
-    if not postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
-                                     ULONG_PTR(p.handleFd),
-                                     cast[pointer](p.ovl)):
-      discard atomicDec(p.outstanding)
+    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
+                                       ULONG_PTR(p.handleFd),
+                                       cast[pointer](p.ovl))
   {.pop.}
 
   proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: DWORD) =
@@ -1129,102 +1129,182 @@ when defined(windows) or defined(nimdoc):
 
     registerWaitableHandle(p, hProcess, flags, pcd, INFINITE, proccb)
 
+  proc releaseCompletion(completion: var CustomRef) =
+    # Shared registration memory is not scanned by tracing collectors. ARC,
+    # ORC and YRC use the field's ordinary ownership instead of an extra root.
+    when not defined(gcDestructors):
+      if completion != nil:
+        GC_unref(completion)
+    reset(completion)
+
+  proc releaseRegistration(reg: EventRegistrationPtr) =
+    releaseCompletion(reg.completion)
+    releaseCompletion(reg.retirement)
+    when not defined(gcDestructors):
+      GC_unref(reg.owner)
+    reset(reg.owner)
+    deallocShared(reg)
+
+  proc finishRegistration(reg: EventRegistrationPtr) =
+    if not reg.active and reg.producerDone and
+        atomicLoadN(addr reg.outstanding, ATOMIC_ACQUIRE) == 0:
+      dec reg.owner.retiredRegistrations
+      releaseRegistration(reg)
+
+  {.push stackTrace: off.}
+  proc postEvent(param: pointer, timedOut: WINBOOL) {.stdcall.} =
+    let reg = cast[EventRegistrationPtr](param)
+    discard atomicInc(reg.outstanding)
+    if not postQueuedCompletionStatus(reg.ioPort, timedOut.DWORD,
+        ULONG_PTR(reg.fd), cast[pointer](reg.completion)):
+      discard atomicDec(reg.outstanding)
+
+  proc postRetirement(param: pointer, timedOut: WINBOOL) {.stdcall.} =
+    let reg = cast[EventRegistrationPtr](param)
+    # The completion event signals only after every posting callback exits.
+    # Do not access reg after posting: its packet can already be consumed.
+    discard postQueuedCompletionStatus(reg.ioPort, timedOut.DWORD,
+      ULONG_PTR(reg.fd), cast[pointer](reg.retirement))
+  {.pop.}
+
   proc newAsyncEvent*(): AsyncEvent =
-    ## Creates a new thread-safe `AsyncEvent` object.
+    ## Creates a new `AsyncEvent` object.
     ##
-    ## New `AsyncEvent` object is not automatically registered with
-    ## dispatcher like `AsyncSocket`.
+    ## `trigger` may be called from any thread. Registration, unregistration
+    ## and closing a registered event belong to the registering thread.
+    ## The event is not automatically registered with a dispatcher.
     var sa = SECURITY_ATTRIBUTES(
       nLength: sizeof(SECURITY_ATTRIBUTES).cint,
       bInheritHandle: 1
     )
-    var event = createEvent(addr(sa), 0'i32, 0'i32, nil)
-    if event == INVALID_HANDLE_VALUE:
+    let event = createEvent(addr(sa), 0'i32, 0'i32, nil)
+    if event == 0:
       raiseOSError(osLastError())
     result = cast[AsyncEvent](allocShared0(sizeof(AsyncEventImpl)))
     result.hEvent = event
 
   proc trigger*(ev: AsyncEvent) =
-    ## Set event `ev` to signaled state.
+    ## Sets event `ev` to signaled state. May be called from any thread while
+    ## the event remains open; callers must synchronize against closing it.
     if setEvent(ev.hEvent) == 0:
       raiseOSError(osLastError())
 
-  proc releaseEvent(pcd: PostCallbackDataPtr) =
-    system.dispose(pcd.ovl.data.cell)
-    GC_unref(pcd.ovl)
-    reset(pcd.ovl)
-    deallocShared(pcd)
-
   proc unregister*(ev: AsyncEvent) =
-    ## Unregisters event `ev`. Queued notifications no longer invoke its callback.
-    ## Call this on the dispatcher thread that registered the event.
-    let pcd = ev.pcd
-    doAssert(pcd != nil, "Event is not registered in the queue!")
-    # The native callback only posts to the IOCP; it never waits for this
-    # thread. Join it before testing the number of outstanding notifications.
-    if unregisterWaitEx(pcd.waitFd, INVALID_HANDLE_VALUE) == 0:
-      raiseOSError(osLastError())
-    pcd.active = false
-    ev.pcd = nil
-    let p = getGlobalDispatcher()
-    p.handles.excl(AsyncFD(ev.hEvent))
-    if atomicLoadN(addr pcd.outstanding, ATOMIC_ACQUIRE) == 0:
-      releaseEvent(pcd)
-    else:
-      inc p.retiredEvents
+    ## Unregisters event `ev` without waiting for native callbacks to finish.
+    ## Queued notifications no longer invoke its callback. Native retirement
+    ## remains pending work on the dispatcher that registered the event.
+    ## Raises `ValueError` off the registering thread, without changing ev.
+    let reg = ev.registration
+    doAssert(reg != nil, "Event is not registered!")
+    if winlean.getCurrentThreadId() != reg.threadId:
+      raise newException(ValueError, "event belongs to another thread")
+
+    # A real completion event establishes producer quiescence asynchronously.
+    # ERROR_IO_PENDING alone does not rule out a callback that has not posted
+    # yet; neither a zero queue count nor an IOCP consume can establish it.
+    if unregisterWaitEx(reg.waiter, reg.doneEvent) == 0:
+      let error = osLastError()
+      if error.int32 != ERROR_IO_PENDING:
+        # The event and its completion waiter remain owned by this live
+        # registration. A retry reuses them instead of abandoning resources.
+        raiseOSError(error)
+
+    reg.active = false
+    ev.registration = nil
+    reg.owner.handles.excl(reg.fd)
+    inc reg.owner.retiredRegistrations
 
   proc close*(ev: AsyncEvent) =
-    ## Unregisters and closes event `ev`.
-    if ev.pcd != nil:
+    ## Unregisters and closes event `ev`. A registered event must be closed
+    ## on its registering thread. An unregistered event has no dispatcher
+    ## dependency. If cancellation fails, the event remains open for retry;
+    ## closing a handle with an uncanceled native wait would be unsafe.
+    if ev.registration != nil:
       unregister(ev)
     let res = closeHandle(ev.hEvent)
-    deallocShared(cast[pointer](ev))
+    let error = if res == 0: osLastError() else: OSErrorCode(0)
+    deallocShared(ev)
     if res == 0:
-      raiseOSError(osLastError())
+      raiseOSError(error)
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
-    ## Registers callback `cb` to be called when `ev` will be signaled
-    doAssert(ev.pcd == nil, "Event is already registered in the queue!")
+    ## Registers callback `cb` to be called when `ev` is signaled. Subsequent
+    ## unregistration and registered close must use this thread, even if its
+    ## global dispatcher is replaced.
+    doAssert(ev.registration == nil, "Event is already registered!")
+    let owner = getGlobalDispatcher()
+    let reg = cast[EventRegistrationPtr](
+      allocShared0(sizeof(EventRegistration)))
+    reg.owner = owner
+    when not defined(gcDestructors):
+      GC_ref(reg.owner)
+    reg.ioPort = owner.ioPort
+    reg.fd = AsyncFD(ev.hEvent)
+    reg.threadId = winlean.getCurrentThreadId()
+    reg.active = true
 
-    let p = getGlobalDispatcher()
-    let hEvent = ev.hEvent
-
-    var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    var flags = WT_EXECUTEINWAITTHREAD.DWORD
-    pcd.active = true
-
-    proc eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
-      # `poll()` disposes `pcd.ovl` after every call of this proc, but each
-      # notification the wait thread posted carries the same pointer. Take a
-      # reference and protect the callback environment again for every
-      # notification consumed, so the next queued notification finds `pcd.ovl`
-      # alive.
-      GC_ref(pcd.ovl)
-      pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+    proc eventcb(fd: AsyncFD, bytes: DWORD, error: OSErrorCode) =
+      GC_ref(reg.completion) # The reference consumed by runOnce.
       try:
-        # A retired notification owns its registration, not the event, which
-        # may already be closed. The callback can also close or re-register it.
-        if pcd.active and cb(fd) and pcd.active:
+        if reg.active and cb(fd) and reg.active:
           unregister(ev)
       finally:
-        if atomicDec(pcd.outstanding) == 0 and not pcd.active:
-          dec p.retiredEvents
-          releaseEvent(pcd)
+        discard atomicDec(reg.outstanding)
+        finishRegistration(reg)
 
-    pcd.ioPort = p.ioPort
-    pcd.handleFd = AsyncFD(hEvent)
-    var ol = newCustom()
-    ol.data.fd = pcd.handleFd
-    ol.data.cb = eventcb
-    ol.data.cell = system.protect(rawEnv(ol.data.cb))
-    pcd.ovl = ol
-    if not registerWaitForSingleObject(addr pcd.waitFd, hEvent,
-        cast[WAITORTIMERCALLBACK](waitableCallback), pcd, INFINITE, flags):
-      let err = osLastError()
-      releaseEvent(pcd)
-      raiseOSError(err)
-    ev.pcd = pcd
-    p.handles.incl(pcd.handleFd)
+    proc retired(fd: AsyncFD, bytes: DWORD, error: OSErrorCode) =
+      GC_ref(reg.retirement) # The reference consumed by runOnce.
+      # This one-shot wait has fired. Its thunk touches no registration state
+      # after posting this packet, so its remaining return path need not join.
+      let removed = unregisterWait(reg.doneWaiter)
+      let removeError = if removed == 0: osLastError() else: OSErrorCode(0)
+      let closed = closeHandle(reg.doneEvent)
+      let closeError = if closed == 0: osLastError() else: OSErrorCode(0)
+      reg.producerDone = true
+      try:
+        if removed == 0 and removeError.int32 != ERROR_IO_PENDING:
+          raiseOSError(removeError)
+        if closed == 0:
+          raiseOSError(closeError)
+      finally:
+        finishRegistration(reg)
+
+    # Unlike registerWaitableHandle's per-dispatch submission references,
+    # event packets share registration-owned completions.
+    # ForeignCell stays empty: tracing collectors root the whole completion.
+    # Prepare retirement here so unregister/close need no new resources.
+    reg.completion = CustomRef()
+    reg.completion.data.fd = reg.fd
+    reg.completion.data.cb = eventcb
+    reg.retirement = CustomRef()
+    reg.retirement.data.fd = reg.fd
+    reg.retirement.data.cb = retired
+    when not defined(gcDestructors):
+      GC_ref(reg.completion)
+      GC_ref(reg.retirement)
+    reg.doneEvent = createEvent(nil, 1, 0, nil)
+    if reg.doneEvent == 0:
+      let error = osLastError()
+      releaseRegistration(reg)
+      raiseOSError(error)
+    if not registerWaitForSingleObject(addr reg.doneWaiter, reg.doneEvent,
+        cast[WAITORTIMERCALLBACK](postRetirement), reg, INFINITE,
+        (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).DWORD):
+      let error = osLastError()
+      discard closeHandle(reg.doneEvent)
+      releaseRegistration(reg)
+      raiseOSError(error)
+    if not registerWaitForSingleObject(addr reg.waiter, ev.hEvent,
+        cast[WAITORTIMERCALLBACK](postEvent), reg, INFINITE,
+        WT_EXECUTEINWAITTHREAD.DWORD):
+      let error = osLastError()
+      # No cancellation has signaled doneEvent, so its wait has no callbacks.
+      discard unregisterWait(reg.doneWaiter)
+      discard closeHandle(reg.doneEvent)
+      releaseRegistration(reg)
+      raiseOSError(error)
+    ev.registration = reg
+    owner.handles.incl(reg.fd)
 
   initAll()
 else:
