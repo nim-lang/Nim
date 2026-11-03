@@ -334,6 +334,7 @@ when defined(windows) or defined(nimdoc):
     PDispatcher* = ref object of PDispatcherBase
       ioPort: Handle
       handles*: HashSet[AsyncFD] # Export handles so that an external library can register them.
+      retiredEvents: int # Registrations whose queued notifications still need polling.
 
     CustomObj = object of OVERLAPPED
       data*: CompletionData
@@ -352,11 +353,11 @@ when defined(windows) or defined(nimdoc):
       # consume; the registration context is released only once the last
       # queued notification is consumed after removal.
       outstanding: int
+      active: bool # Accessed only by the dispatcher thread.
     PostCallbackDataPtr = ptr PostCallbackData
 
     AsyncEventImpl = object
       hEvent: Handle
-      hWaiter: Handle
       pcd: PostCallbackDataPtr
     AsyncEvent* = ptr AsyncEventImpl
 
@@ -412,11 +413,13 @@ when defined(windows) or defined(nimdoc):
   proc hasPendingOperations*(): bool =
     ## Returns `true` if the global dispatcher has pending operations.
     let p = getGlobalDispatcher()
-    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0 or
+      p.retiredEvents != 0
 
   proc runOnce(timeout: int): bool =
     let p = getGlobalDispatcher()
-    if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
+    if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0 and
+        p.retiredEvents == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
@@ -445,27 +448,30 @@ when defined(windows) or defined(nimdoc):
       # This is useful for ensuring the reliability of the overlapped struct.
       assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
 
-      customOverlapped.data.cb(customOverlapped.data.fd,
-          lpNumberOfBytesTransferred, OSErrorCode(-1))
+      try:
+        customOverlapped.data.cb(customOverlapped.data.fd,
+            lpNumberOfBytesTransferred, OSErrorCode(-1))
+      finally:
+        # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
+        # so we need to dispose our `cb` environment, because it is not needed
+        # anymore.
+        if customOverlapped.data.cell.data != nil:
+          system.dispose(customOverlapped.data.cell)
 
-      # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
-      # so we need to dispose our `cb` environment, because it is not needed
-      # anymore.
-      if customOverlapped.data.cell.data != nil:
-        system.dispose(customOverlapped.data.cell)
-
-      when not defined(gcDestructors):
-        GC_unref(customOverlapped)
+        when not defined(gcDestructors):
+          GC_unref(customOverlapped)
     else:
       let errCode = osLastError()
       if customOverlapped != nil:
         assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
-        customOverlapped.data.cb(customOverlapped.data.fd,
-            lpNumberOfBytesTransferred, errCode)
-        if customOverlapped.data.cell.data != nil:
-          system.dispose(customOverlapped.data.cell)
-        when not defined(gcDestructors):
-          GC_unref(customOverlapped)
+        try:
+          customOverlapped.data.cb(customOverlapped.data.fd,
+              lpNumberOfBytesTransferred, errCode)
+        finally:
+          if customOverlapped.data.cell.data != nil:
+            system.dispose(customOverlapped.data.cell)
+          when not defined(gcDestructors):
+            GC_unref(customOverlapped)
       else:
         if errCode.int32 == WAIT_TIMEOUT:
           # Timed out
@@ -910,9 +916,10 @@ when defined(windows) or defined(nimdoc):
     # is safe here; this runs on a native wait thread with no Nim heap
     # access. Compiler builtins need no DLL import.
     discard atomicInc(p.outstanding)
-    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
-                                       ULONG_PTR(p.handleFd),
-                                       cast[pointer](p.ovl))
+    if not postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
+                                     ULONG_PTR(p.handleFd),
+                                     cast[pointer](p.ovl)):
+      discard atomicDec(p.outstanding)
   {.pop.}
 
   proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: DWORD) =
@@ -1142,19 +1149,34 @@ when defined(windows) or defined(nimdoc):
     if setEvent(ev.hEvent) == 0:
       raiseOSError(osLastError())
 
+  proc releaseEvent(pcd: PostCallbackDataPtr) =
+    system.dispose(pcd.ovl.data.cell)
+    GC_unref(pcd.ovl)
+    reset(pcd.ovl)
+    deallocShared(pcd)
+
   proc unregister*(ev: AsyncEvent) =
-    ## Unregisters event `ev`.
-    doAssert(ev.hWaiter != 0, "Event is not registered in the queue!")
+    ## Unregisters event `ev`. Queued notifications no longer invoke its callback.
+    ## Call this on the dispatcher thread that registered the event.
+    let pcd = ev.pcd
+    doAssert(pcd != nil, "Event is not registered in the queue!")
+    # The native callback only posts to the IOCP; it never waits for this
+    # thread. Join it before testing the number of outstanding notifications.
+    if unregisterWaitEx(pcd.waitFd, INVALID_HANDLE_VALUE) == 0:
+      raiseOSError(osLastError())
+    pcd.active = false
+    ev.pcd = nil
     let p = getGlobalDispatcher()
     p.handles.excl(AsyncFD(ev.hEvent))
-    if unregisterWait(ev.hWaiter) == 0:
-      let err = osLastError()
-      if err.int32 != ERROR_IO_PENDING:
-        raiseOSError(err)
-    ev.hWaiter = 0
+    if atomicLoadN(addr pcd.outstanding, ATOMIC_ACQUIRE) == 0:
+      releaseEvent(pcd)
+    else:
+      inc p.retiredEvents
 
   proc close*(ev: AsyncEvent) =
-    ## Closes event `ev`.
+    ## Unregisters and closes event `ev`.
+    if ev.pcd != nil:
+      unregister(ev)
     let res = closeHandle(ev.hEvent)
     deallocShared(cast[pointer](ev))
     if res == 0:
@@ -1162,13 +1184,14 @@ when defined(windows) or defined(nimdoc):
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Registers callback `cb` to be called when `ev` will be signaled
-    doAssert(ev.hWaiter == 0, "Event is already registered in the queue!")
+    doAssert(ev.pcd == nil, "Event is already registered in the queue!")
 
     let p = getGlobalDispatcher()
     let hEvent = ev.hEvent
 
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
     var flags = WT_EXECUTEINWAITTHREAD.DWORD
+    pcd.active = true
 
     proc eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       # `poll()` disposes `pcd.ovl` after every call of this proc, but each
@@ -1178,23 +1201,30 @@ when defined(windows) or defined(nimdoc):
       # alive.
       GC_ref(pcd.ovl)
       pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
-      # Notifications posted before `unregister(ev)` (or before a newer
-      # registration replaced this one) are still queued: they are stale and
-      # must not call `cb`.
-      if ev.hWaiter == pcd.waitFd:
-        # `cb` may call `unregister(ev)` itself, which is why we check again.
-        if cb(fd) and ev.hWaiter == pcd.waitFd:
+      try:
+        # A retired notification owns its registration, not the event, which
+        # may already be closed. The callback can also close or re-register it.
+        if pcd.active and cb(fd) and pcd.active:
           unregister(ev)
-      # `pcd` is shared with the wait thread and with every queued
-      # notification, so it is released once, by the last queued notification
-      # consumed after removal. While registered, more notifications may still
-      # be posted, so it stays alive even when none are outstanding.
-      if atomicDec(pcd.outstanding) == 0 and ev.hWaiter != pcd.waitFd:
-        GC_unref(pcd.ovl)
-        deallocShared(cast[pointer](pcd))
+      finally:
+        if atomicDec(pcd.outstanding) == 0 and not pcd.active:
+          dec p.retiredEvents
+          releaseEvent(pcd)
 
-    registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
-    ev.hWaiter = pcd.waitFd
+    pcd.ioPort = p.ioPort
+    pcd.handleFd = AsyncFD(hEvent)
+    var ol = newCustom()
+    ol.data.fd = pcd.handleFd
+    ol.data.cb = eventcb
+    ol.data.cell = system.protect(rawEnv(ol.data.cb))
+    pcd.ovl = ol
+    if not registerWaitForSingleObject(addr pcd.waitFd, hEvent,
+        cast[WAITORTIMERCALLBACK](waitableCallback), pcd, INFINITE, flags):
+      let err = osLastError()
+      releaseEvent(pcd)
+      raiseOSError(err)
+    ev.pcd = pcd
+    p.handles.incl(pcd.handleFd)
 
   initAll()
 else:
