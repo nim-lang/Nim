@@ -82,6 +82,11 @@ parameter and result types, not just their source-level shape. Use
   would interpret (``& | < > ^ % ! "`` or a line break). Previously such
   arguments allowed command injection (the "BatBadBut" issue, CVE-2024-24576).
 
+- `httpclient.newHttpClient` and `newAsyncHttpClient` accept a `maxBodySize`
+  parameter (also settable as the `maxBodySize` field). A response whose body
+  exceeds it raises `ProtocolError`, which keeps a hostile server from making
+  the client buffer an unbounded body. The default `-1` means no limit.
+
 - `httpclient` now rejects header names that are not RFC 9110 tokens (for
   example names containing `:`, spaces or control characters) with
   `ValueError` instead of sending a malformed header line.
