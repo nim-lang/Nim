@@ -122,7 +122,16 @@ proc readSemDeps(c: DepContext; f: FilePair): seq[string] =
   ## (ast2nif.writeSemDeps). Missing file (not yet semmed) -> empty.
   result = @[]
   if fileExists(c.semDepsFile(f)):
-    result = collectBifStrLits(c.semDepsFile(f))
+    result = collectSemDeps(c.semDepsFile(f)).imports
+
+proc readSlurps(c: DepContext; f: FilePair): seq[string] =
+  ## The files `staticRead`/`slurp` read during the module's last sem: the
+  ## `slurps` section of its `.s.deps` sidecar (icnifcore.writeSemDeps). Missing
+  ## sidecar (not yet semmed) -> empty: the rule fires anyway on the first build
+  ## and the recording exists from then on.
+  result = @[]
+  if fileExists(c.semDepsFile(f)):
+    result = collectSemDeps(c.semDepsFile(f)).slurps
 
 proc semDepsAreCurrent(c: DepContext; node: Node): bool =
   ## A `.s.deps` sidecar describes the sources it was produced from. Once the
@@ -134,6 +143,10 @@ proc semDepsAreCurrent(c: DepContext; node: Node): bool =
   result = true
   for f in node.files:
     if fileExists(f.nimFile) and getLastModificationTime(f.nimFile) > written:
+      return false
+  # A file read by `staticRead` can steer a `when` that guards an import.
+  for f in collectSemDeps(sidecar).slurps:
+    if fileExists(f) and getLastModificationTime(f) > written:
       return false
 
 proc findNifler(): string =
@@ -1328,6 +1341,14 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
         b.addTree "input"
         b.addStrLit c.parsedFile(f)
         b.endTree()
+    # Files read at compile time via `staticRead`/`slurp` (#26614).
+    var seenSlurp = initHashSet[string]()
+    for m in members:
+      for f in readSlurps(c, c.nodes[m].files[0]):
+        if fileExists(f) and not seenSlurp.containsOrIncl(f):
+          b.addTree "input"
+          b.addStrLit f
+          b.endTree()
     # Depend on the dependencies *outside* this component — on their interface
     # COOKIE sidecars, not the semmed NIFs themselves: the sidecar's mtime only
     # moves when the dep's importer-visible surface (or, via hash chaining, any

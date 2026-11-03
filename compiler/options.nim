@@ -483,6 +483,12 @@ type
                               # `nim icconfig` process (see `cmdIcConfig`).
     icConfigOut*: string      # under `nim icconfig`: the path to write the
                               # precompiled config artifact to (set via `--o`).
+    slurpedFiles*: Table[int32, seq[string]]
+                              # under `nim m`: per module (keyed by its
+                              # position), the files `staticRead`/`slurp` read
+                              # while compiling it. Written to the module's
+                              # `.slurps.bif` sidecar so `nim ic` rebuilds the
+                              # module when such a file changes (#26614).
     icConfigSwitches*: seq[tuple[switch, arg: string]]
                               # the config-file (`passPP`) switches applied while
                               # loading config, in order. Recorded by every nim

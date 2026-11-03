@@ -10,7 +10,7 @@
 import ast, types, msgs, options, idents, lineinfos
 from pathutils import AbsoluteFile
 
-import std/os
+import std/[os, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -24,6 +24,10 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
     discard conf.fileInfoIdx(AbsoluteFile filename)
+    if module != nil:
+      # `nim ic` must rebuild the module when the slurped file changes (#26614).
+      let deps = addr conf.slurpedFiles.mgetOrPut(module.position.int32, @[])
+      if filename notin deps[]: deps[].add filename
     appendToModule(module, newTreeI(nkIncludeStmt, info, newStrNode(nkStrLit, filename)))
   except IOError:
     localError(conf, info, "cannot open file: " & file)
