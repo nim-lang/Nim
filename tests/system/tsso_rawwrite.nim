@@ -1,40 +1,43 @@
 discard """
-  matrix: "--strings:sso --mm:orc; --mm:orc"
-  output: '''
-true 0 true true
-true
-true
-'''
+  matrix: "--strings:sso --mm:orc; --mm:orc; --mm:refc"
+  output: "true"
 """
 
-# bug #26613: long strings filled through a raw pointer must compare equal
-import std/[streams, strutils]
+# bug #26613: stdlib procs that fill long strings via raw pointers must
+# sync the inline prefix of `--strings:sso` (beginStore/endStore)
+import std/[streams, json, os]
 
-proc fill(want: string): string =
-  result = newString(want.len)
-  if want.len > 0:
-    copyMem(addr result[0], addr want[0], want.len)
+var ok = true
+template check(cond: bool) =
+  if not cond:
+    ok = false
+    echo "failed: ", astToStr(cond)
 
-var allOk = true
-for L in 0..40:
+for L in [0, 1, 7, 8, 14, 15, 16, 30, 5000]:
   var want = ""
   for i in 0..<L: want.add char(ord('a') + i mod 26)
-  let s = fill(want)
-  if s != want or cmp(s, want) != 0 or not (s <= want) or s < want:
-    allOk = false
-    echo "mismatch at length ", L
-  if L > 0 and (not s.startsWith(want[0..0]) or not s.endsWith(want) or
-      not want.startsWith(s)):
-    allOk = false
-    echo "startsWith/endsWith mismatch at length ", L
 
-let want = "abcdefghijklmno"
-let s = fill(want)
-var p = newString(want.len)
-prepareMutation(p)
-copyMem(addr p[0], addr want[0], want.len)
-echo s == want, " ", cmp(s, want), " ", p == want, " ", allOk
+  check newStringStream(want).readAll() == want
+  check newStringStream(want).readStr(L) == want
+  check newStringStream(want).peekStr(L) == want
+  var s = "xyz"
+  newStringStream(want).readStr(L, s)
+  check s == want
 
-echo newStringStream(want).readAll() == want
-var strm = newStringStream("The first line\nthe second line\nthe third line")
-echo strm.readAll() == "The first line\nthe second line\nthe third line"
+  var t = ""
+  if L > 0:
+    copyMem(beginStore(t, L), readRawData(want), L)
+    endStore(t)
+  check t == want
+  check cmp(t, want) == 0
+
+let strm = newStringStream("The first line\nthe second line\nthe third line")
+check strm.readAll() == "The first line\nthe second line\nthe third line"
+check parseJson(newStringStream("""{"key": "a long string value"}""").readAll())["key"].getStr == "a long string value"
+
+let f = getTempDir() / "tsso_rawwrite.txt"
+writeFile(f, "a file with more than fifteen chars")
+check newFileStream(f).readAll() == "a file with more than fifteen chars"
+removeFile(f)
+
+echo ok

@@ -224,17 +224,22 @@ proc cmpStringPtrs(a, b: ptr SmallString): int {.inline.} =
         minLen - AlwaysAvail)
     if result == 0: result = aslen - bslen
     return
-  # At least one is long. The inline hot prefix of a long string cannot be
-  # trusted here: writes through a raw pointer (`addr s[i]`, `copyMem`,
-  # `readBuffer`, ...) update only the heap data (#26613). Compare heap data.
+  # At least one is long. Hot prefix mirrors heap data, but only up to fullLen:
+  # shrinking can leave stale bytes in the inline cache past the logical length.
   let la = if aslen > PayloadSize: a.more.fullLen else: aslen
   let lb = if bslen > PayloadSize: b.more.fullLen else: bslen
+  let minLen = min(la, lb)
+  let pfxLen = min(minLen, AlwaysAvail)
+  result = cmpInlineBytes(inlinePtrOf(a), inlinePtrOf(b), pfxLen)
+  if result != 0: return
+  if minLen <= AlwaysAvail:
+    result = la - lb
+    return
   let ap = if aslen > PayloadSize: cast[ptr UncheckedArray[char]](addr a.more.data[0]) else:
     inlinePtrOf(a)
   let bp = if bslen > PayloadSize: cast[ptr UncheckedArray[char]](addr b.more.data[0]) else:
     inlinePtrOf(b)
-  let minLen = min(la, lb)
-  result = if minLen > 0: cmpMem(ap, bp, minLen) else: 0
+  result = cmpMem(addr ap[AlwaysAvail], addr bp[AlwaysAvail], minLen - AlwaysAvail)
   if result == 0: result = la - lb
 
 proc cmp(a, b: SmallString): int {.inline.} =
@@ -272,11 +277,21 @@ proc continuesWith*(s, sub: SmallString; start: int): bool =
   if start < 0: return false
   let subslen = ssLen(sub)
   if subslen == 0: return true
-  # No hot-prefix shortcut: it is stale after raw pointer writes (#26613).
-  let (sLen, sp) = s.guts
-  let (subLen, subp) = sub.guts
+  let sslen = ssLen(s)
+  # Compare via hot prefix first where possible (no heap dereference).
+  let pfxLen = min(subslen, max(0, AlwaysAvail - start))
+  if pfxLen > 0:
+    if cmpMem(cast[pointer](cast[uint](unsafeAddr s.bytes) + 1'u + uint(start)),
+              cast[pointer](cast[uint](unsafeAddr sub.bytes) + 1'u), pfxLen) != 0:
+      return false
+  # Fetch actual lengths and compare the remaining tail via heap/guts.
+  let subLen = if subslen > PayloadSize: sub.more.fullLen else: subslen
+  let sLen = if sslen > PayloadSize: s.more.fullLen else: sslen
   if start + subLen > sLen: return false
-  cmpMem(addr sp[start], addr subp[0], subLen) == 0
+  if pfxLen == subLen: return true
+  let (_, sp) = s.guts
+  let (_, subp) = sub.guts
+  cmpMem(addr sp[start + pfxLen], addr subp[pfxLen], subLen - pfxLen) == 0
 
 proc startsWith*(s, sub: SmallString): bool {.inline.} = continuesWith(s, sub, 0)
 proc endsWith*(s, sub: SmallString): bool {.inline.} = continuesWith(s, sub, s.len - sub.len)

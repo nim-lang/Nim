@@ -531,8 +531,9 @@ proc `==`*(x, y: MemSlice): bool =
 
 proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
-  result = newString(ms.size)
-  copyMem(result.cstring, ms.data, ms.size)
+  result = ""
+  copyMem(beginStore(result, ms.size), ms.data, ms.size)
+  endStore(result)
 
 iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline.} =
   ## Iterates over \[optional `eat`] `delim`-delimited slices in MemFile `mfile`.
@@ -597,9 +598,10 @@ iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
   ##     echo line
   ##   ```
   for ms in memSlices(mfile, delim, eat):
-    setLen(buf, ms.size)
+    let p = beginStore(buf, ms.size)
     if ms.size > 0:
-      copyMem(addr buf[0], ms.data, ms.size)
+      copyMem(p, ms.data, ms.size)
+    endStore(buf)
     yield buf
 
 iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): string {.inline.} =
