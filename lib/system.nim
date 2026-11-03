@@ -1677,7 +1677,24 @@ when not defined(js) and defined(nimV2):
           vTable: UncheckedArray[pointer] # vtable for types
     PNimTypeV2 = ptr TNimTypeV2
 
+
+when notJSnotNims:
+  # we cannot compile this with stack tracing or overflow checks on
+  # as it would recurse endlessly!
+  {.push stackTrace: off, profiler: off, checks: off.}
+  include "system/integerprims"
+  {.pop.}
+
 when notJSnotNims and defined(nimSeqsV2):
+  proc nimSizeOverflow() {.noinline, noreturn.} =
+    # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code
+    # generator assumes never raise, so under `--exceptions:goto` the raise
+    # would be ignored and execution would continue with the bogus size.
+    # A string or seq that cannot even be measured can never be allocated
+    # either, so handle it like an out of memory situation.
+    cstderr.rawWrite("fatal error: string or seq size overflows the address space\n")
+    rawQuit(1)
+
   include "system/strs_v2"
   include "system/seqs_v2"
 
