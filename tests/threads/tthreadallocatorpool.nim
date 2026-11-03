@@ -1,7 +1,8 @@
 discard """
   matrix: "--mm:arc --threads:on; --mm:orc --threads:on"
   output: "ok"
-  timeout: "30"
+  # Includes compilation, which can exceed 30s with TLS emulation on Windows CI.
+  timeout: "120"
 """
 
 import std/[atomics, typedthreads]
