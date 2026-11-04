@@ -89,6 +89,15 @@ parameter and result types, not just their source-level shape. Use
   would interpret (``& | < > ^ % ! "`` or a line break). Previously such
   arguments allowed command injection (the "BatBadBut" issue, CVE-2024-24576).
 
+- `httpclient.newHttpClient` and `newAsyncHttpClient` accept a `maxBodySize`
+  parameter (also settable as the `maxBodySize` field). A response whose body
+  exceeds it raises `ProtocolError`, which keeps a hostile server from making
+  the client buffer an unbounded body. The default `-1` means no limit.
+
+- `httpclient` now rejects header names that are not RFC 9110 tokens (for
+  example names containing `:`, spaces or control characters) with
+  `ValueError` instead of sending a malformed header line.
+
 - Added `system.readRawDataStable`, a companion to `readRawData` that returns a
   raw `ptr UncheckedArray[char]` into a string's character data which stays valid
   across moves and copies of the string value. It is available under every string
@@ -261,6 +270,9 @@ parameter and result types, not just their source-level shape. Use
 - Hot code reloading no longer keeps a global variable's memory when the
   global's type changed: the old memory was read with the new layout. Such a
   reload now stops the program with a message naming the global.
+
+- Hot code reloading works on Linux on arm64 with glibc; before, it was
+  limited to musl there and the HCR runtime did not compile.
 
 - An import annotated with `{.cyclic.}` (`import b {.cyclic.}`) makes the
   modules of an import cycle a group whose types and leading routines are

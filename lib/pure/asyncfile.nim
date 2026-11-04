@@ -220,8 +220,9 @@ proc read*(f: AsyncFile, size: int): Future[string] =
           if errcode == OSErrorCode(-1):
             assert bytesCount > 0
             assert bytesCount <= size
-            var data = newString(bytesCount)
-            copyMem(addr data[0], buffer, bytesCount)
+            var data = ""
+            copyMem(beginStore(data, bytesCount), buffer, bytesCount)
+            endStore(data)
             f.offset.inc bytesCount
             retFuture.complete($data)
           else:
@@ -266,8 +267,9 @@ proc read*(f: AsyncFile, size: int): Future[string] =
       else:
         assert bytesRead > 0
         assert bytesRead <= size
-        var data = newString(bytesRead)
-        copyMem(addr data[0], buffer, bytesRead)
+        var data = ""
+        copyMem(beginStore(data, bytesRead), buffer, bytesRead)
+        endStore(data)
         f.offset.inc bytesRead
         retFuture.complete($data)
   else:
@@ -275,7 +277,8 @@ proc read*(f: AsyncFile, size: int): Future[string] =
 
     proc cb(fd: AsyncFD): bool =
       result = true
-      let res = read(fd.cint, addr readBuffer[0], size.cint)
+      let res = read(fd.cint, beginStore(readBuffer, readBuffer.len), size.cint)
+      endStore(readBuffer)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
