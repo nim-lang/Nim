@@ -5,6 +5,7 @@ discard """
 
 # CR, LF and NUL in the request target or in header fields could inject
 # headers or whole requests; they are rejected before anything is sent.
+# Header names that are not RFC 9110 tokens are rejected as well.
 
 import std/[asynchttpserver, httpclient, asyncdispatch, assertions, uri]
 
@@ -45,6 +46,9 @@ proc main() {.async.} =
   doAssert await rejected(u, newHttpHeaders({"X-A": "v" & injected}))
   doAssert await rejected(u, newHttpHeaders({"X-A\nX-B": "v"}))
   doAssert await rejected(u, newHttpHeaders({"X-A": "v\n"}))
+  # header names must be RFC 9110 tokens
+  for name in ["X-A: injected", "X B", "X\tB", "X\x7fB", "X\xffB", ""]:
+    doAssert await rejected(u, newHttpHeaders({name: "v"})), name
 
   block: # client.headers are checked too
     let client = newAsyncHttpClient(headers = newHttpHeaders({"X-A": "v\r\n"}))
