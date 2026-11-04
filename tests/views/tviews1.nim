@@ -7,7 +7,9 @@ discard """
 3
 3
 15
-(oa: [1, 3, 4])'''
+(oa: [1, 3, 4])
+[1, 2, 3]
+[1, 2, 3]'''
   targets: "c cpp"
 """
 
@@ -134,3 +136,14 @@ block: # bug #20048
 
   let data = Test.init(["123"])
   doAssert @(data.tokens) == @["123"] 
+
+block: # bug #19453
+  let data: seq[byte] = @[1.byte, 2, 3]
+  iterator items[T]: T =
+    yield data.toOpenArray(data.low, data.high)
+  iterator items(T: typedesc): T =
+    yield data.toOpenArray(data.low, data.high)
+  for item in items(openArray[byte]):
+    echo item
+  for item in items[openArray[byte]]():
+    echo item
