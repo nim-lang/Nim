@@ -171,6 +171,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result = mapTypeToAstR(t.typeBodyImpl, info)
     else:
       result = mapTypeToAst(t.typeBodyImpl, info)
+      # keep original type info for getType calls on the output node (bug #26574):
+      result.typ = t
   of tyAlias:
     result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion, skipAlias = skipAlias)
   of tyOrdinal:

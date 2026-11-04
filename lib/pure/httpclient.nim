@@ -573,6 +573,15 @@ proc checkLineSafe(s, what: string) =
   if s.contains({'\c', '\L', '\0'}):
     raise newException(ValueError, what & " contains a newline or NUL character")
 
+const headerNameChars = {'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.',
+                         '^', '_', '`', '|', '~', '0'..'9', 'a'..'z', 'A'..'Z'}
+  ## The `tchar` set of RFC 9110, section 5.6.2.
+
+proc checkHeaderName(s: string) =
+  ## Raises `ValueError` unless `s` is a valid RFC 9110 field name (a token).
+  if s.len == 0 or not s.allCharsInSet(headerNameChars):
+    raise newException(ValueError, "invalid header name: " & s.escape)
+
 proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeaders,
                      proxy: Proxy): string =
   # GET
@@ -616,7 +625,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
-    checkLineSafe(key, "header name")
+    checkHeaderName(key)
     checkLineSafe(val, "value of header '" & key & "'")
     add(result, key & ": " & val & httpNewLine)
 
@@ -653,13 +662,18 @@ type
     else:
       bodyStream: Stream
     getBody: bool         ## When `false`, the body is never read in requestAux.
+    maxBodySize*: int     ## Maximum number of body bytes to accept from a
+                          ## response; `-1` means no limit. A response with a
+                          ## larger body raises `ProtocolError`.
+    bodyLen: int          ## Body bytes received so far for the current response.
 
 type
   HttpClient* = HttpClientBase[Socket]
 
 proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                     sslContext = getDefaultSSL(), proxy: Proxy = nil,
-                    timeout = -1, headers = newHttpHeaders()): HttpClient =
+                    timeout = -1, headers = newHttpHeaders(),
+                    maxBodySize = -1): HttpClient =
   ## Creates a new HttpClient instance.
   ##
   ## `userAgent` specifies the user agent that will be used when making
@@ -678,6 +692,10 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## `TimeoutError` is raised.
   ##
   ## `headers` specifies the HTTP Headers.
+  ##
+  ## `maxBodySize` limits how many bytes of a response body are accepted;
+  ## a larger body raises `ProtocolError`. The default `-1` means no limit,
+  ## so set it when talking to servers you do not trust.
   runnableExamples:
     import std/strutils
 
@@ -694,6 +712,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   result.onProgressChanged = nil
   result.bodyStream = newStringStream()
   result.getBody = true
+  result.maxBodySize = maxBodySize
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -702,7 +721,8 @@ type
 
 proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                          sslContext = getDefaultSSL(), proxy: Proxy = nil,
-                         headers = newHttpHeaders()): AsyncHttpClient =
+                         headers = newHttpHeaders(),
+                         maxBodySize = -1): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
   ## `userAgent` specifies the user agent that will be used when making
@@ -717,6 +737,10 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## connections.
   ##
   ## `headers` specifies the HTTP Headers.
+  ##
+  ## `maxBodySize` limits how many bytes of a response body are accepted;
+  ## a larger body raises `ProtocolError`. The default `-1` means no limit,
+  ## so set it when talking to servers you do not trust.
   runnableExamples:
     import std/[asyncdispatch, strutils]
 
@@ -737,6 +761,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   result.onProgressChanged = nil
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
   result.getBody = true
+  result.maxBodySize = maxBodySize
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -773,6 +798,12 @@ proc reportProgress(client: HttpClient | AsyncHttpClient,
       client.oneSecondProgress = 0
       client.lastProgressReport = getMonoTime()
 
+proc checkBodySize(client: HttpClient | AsyncHttpClient, extra: int) =
+  if client.maxBodySize >= 0 and extra > client.maxBodySize - client.bodyLen:
+    client.close()
+    httpError("Response body exceeds the limit of " & $client.maxBodySize &
+              " bytes")
+
 proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
               keep: bool): Future[int] {.multisync.} =
   ## Ensures that all the data requested is read and returned.
@@ -793,6 +824,8 @@ proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
 
     readLen.inc(data.len)
     if keep:
+      checkBodySize(client, data.len)
+      client.bodyLen.inc(data.len)
       await client.bodyStream.write(data)
 
     await reportProgress(client, data.len)
@@ -827,6 +860,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     if chunkSize <= 0:
       discard await recvFull(client, 2, client.timeout, false) # Skip \c\L
       break
+    checkBodySize(client, chunkSize)
     var bytesRead = await recvFull(client, chunkSize, client.timeout, true)
     if bytesRead != chunkSize:
       httpError("Server terminated connection prematurely")
@@ -845,6 +879,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
   client.contentProgress = 0
   client.oneSecondProgress = 0
   client.lastProgressReport = MonoTime()
+  client.bodyLen = 0
 
   when client is AsyncHttpClient:
     assert(not client.bodyStream.finished)
@@ -858,6 +893,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseInt()
       client.contentTotal = length
+      checkBodySize(client, length)
       if length > 0:
         let recvLen = await client.recvFull(length, client.timeout, true)
         if recvLen == 0:

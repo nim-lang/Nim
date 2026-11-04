@@ -1240,7 +1240,12 @@ proc finishTypeDescriptions(m: BModule) =
   m.typeStack.setLen 0
 
 proc isReloadable(m: BModule; prc: PSym): bool =
-  return m.hcrOn and sfNonReloadable notin prc.flags
+  # an imported C function is called by its name: no module registers it with
+  # the runtime, unless it is loaded from a dynlib. A magic is imported under
+  # the name of a compilerproc instead (see mNewString in genMagicExpr)
+  return m.hcrOn and sfNonReloadable notin prc.flags and
+    (sfImportc notin prc.flags or lfDynamicLib in prc.loc.flags or
+      prc.magic != mNone)
 
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags

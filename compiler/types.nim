@@ -1307,15 +1307,20 @@ proc safeInheritanceDiff*(a, b: PType): int =
   else:
     result = inheritanceDiff(a.skipTypes(skipPtrs), b.skipTypes(skipPtrs))
 
-proc compatibleEffectsAux(se, re: PNode): bool =
-  if re.isNil: return false
+proc unlistedEffect(se, re: PNode): PNode =
+  ## the first effect of `re` that is not covered by the `.tags` list `se`
+  result = nil
+  if re.isNil: return
   for r in items(re):
     block search:
       for s in items(se):
         if safeInheritanceDiff(r.typ, s.typ) <= 0:
           break search
-      return false
-  result = true
+      return r
+
+proc compatibleEffectsAux(se, re: PNode): bool =
+  if re.isNil: return false
+  result = unlistedEffect(se, re) == nil
 
 proc isDefectException*(t: PType): bool
 proc compatibleExceptions(se, re: PNode): bool =
@@ -1330,13 +1335,43 @@ proc compatibleExceptions(se, re: PNode): bool =
       return false
   result = true
 
-proc hasIncompatibleEffect(se, re: PNode): bool =
-  result = false
-  if re.isNil: return false
+proc forbiddenEffect(se, re: PNode): (PNode, PNode) =
+  ## the first effect of `re` that the `.forbids` list `se` rejects, and the
+  ## entry of `se` that rejects it
+  result = (nil, nil)
+  if re.isNil: return
   for r in items(re):
     for s in items(se):
       if safeInheritanceDiff(r.typ, s.typ) != high(int):
-        return true
+        return (r, s)
+
+proc hasIncompatibleEffect(se, re: PNode): bool =
+  result = forbiddenEffect(se, re)[0] != nil
+
+proc effectOrigin*(r: PNode): seq[PNode] =
+  ## The chain of nodes through which the tag effect `r` came in: when `r` is
+  ## a call, the entry of the callee's tag list that has the type of `r`, then
+  ## the entry in that callee's callee, and so on.
+  result = @[]
+  var current = r
+  var visited = initIntSet()
+  while current.kind in nkCallKinds and current[0].kind == nkSym:
+    let s = current[0].sym
+    if s.id in visited: break
+    visited.incl(s.id)
+    if s.typ == nil or s.typ.n == nil or s.typ.n[0].kind != nkEffectList: break
+    let effectList = s.typ.n[0]
+    if effectList.len == 0: break
+    let tags = effectList[tagEffects]
+    if tags == nil: break
+    var next: PNode = nil
+    for tag in items(tags):
+      if tag.typ != nil and sameType(tag.typ.skipTypes(skipPtrs), r.typ.skipTypes(skipPtrs)):
+        next = tag
+        break
+    if next == nil or next.info == current.info: break
+    result.add next
+    current = next
 
 type
   EffectsCompat* = enum
@@ -1551,6 +1586,36 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
     expectedPragmas.setLen(max(0, expectedPragmas.len - 2)) # Remove ", "
     message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [gotPragmas, expectedPragmas]
 
+proc addEffectOrigin(message: var string, effect: PNode, conf: ConfigRef) =
+  for hop in effect & effectOrigin(effect):
+    message.add "\n  $1 effect propagated from here: $2" % [conf $ hop.info, renderTree(hop)]
+
+proc addUnlistedEffect*(message: var string, formal, actual: PType, conf: ConfigRef) =
+  ## names the effect of `actual` that the `.tags` list of `formal` does not
+  ## cover and where it comes from
+  let spec = formal.n[0][tagEffects]
+  let effect = unlistedEffect(spec, actual.n[0][tagEffects])
+  if effect == nil:
+    # the tags of `actual` are not known
+    message.add "\n  The `.tags` requirements differ."
+    return
+  message.add "\n  The effect $1 is not listed in `.tags: $2`" %
+    [typeToString(effect.typ), renderTree(spec)]
+  message.addEffectOrigin(effect, conf)
+
+proc addForbiddenEffect*(message: var string, formal, actual: PType, conf: ConfigRef) =
+  ## names the effect of `actual` that the `.forbids` list of `formal` rejects
+  ## and where it comes from
+  let spec = formal.n[0][forbiddenEffects]
+  let (effect, forbidden) = forbiddenEffect(spec, actual.n[0][tagEffects])
+  message.add "\n  The effect $1 is forbidden by `.forbids: $2`" %
+    [typeToString(effect.typ), renderTree(spec)]
+  if safeInheritanceDiff(effect.typ, forbidden.typ) > 0:
+    # an effect that is broader than a forbidden one may be that one
+    message.add " ($1 is a parent of $2, so it may be $2)" %
+      [typeToString(effect.typ), typeToString(forbidden.typ)]
+  message.addEffectOrigin(effect, conf)
+
 proc processPragmaAndCallConvMismatch(msg: var string, formal, actual: PType, conf: ConfigRef) =
   if formal.kind == tyProc and actual.kind == tyProc:
     msg.addPragmaAndCallConvMismatch(formal, actual, conf)
@@ -1561,13 +1626,13 @@ proc processPragmaAndCallConvMismatch(msg: var string, formal, actual: PType, co
     of efRaisesUnknown:
       msg.add "\n.raise effect is 'can raise any'"
     of efTagsDiffer:
-      msg.add "\n.tag effects differ"
+      msg.addUnlistedEffect(formal, actual, conf)
     of efTagsUnknown:
       msg.add "\n.tag effect is 'any tag allowed'"
     of efEffectsDelayed:
       msg.add "\n.effectsOf annotations differ"
     of efTagsIllegal:
-      msg.add "\n.notTag catched an illegal effect"
+      msg.addForbiddenEffect(formal, actual, conf)
 
 proc typeNameAndDesc*(t: PType): string =
   result = typeToString(t)

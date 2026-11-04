@@ -14,7 +14,7 @@ from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 from std/private/globs import nativeToUnixPath
-from strutils import startsWith, strip, removePrefix
+from strutils import startsWith, strip, removePrefix, `%`
 when defined(musl):
   from strutils import count, replace
 from std/sugar import dup
@@ -426,6 +426,26 @@ running: v2
 running: v2
 """, ret
 
+  block: # --noLinking with spawned codegen, bug #26580
+    let nimcache4 = buildDir / ("D20261030T120000_" & mode)
+    removeDir nimcache4
+    let exe = nimcache4 / "tnolinking_fakefile".addFileExt(ExeExt)
+    let output = runNimCmdChk("tnolinking_fakefile", fmt"""--noLinking:on --nimcache:{nimcache4.quoteShell} -o:{exe.quoteShell} --eval:"echo(12345)" """)
+    doAssert not fileExists(exe), output
+
+  block: # `nim c --run` of stdin with spawned codegen, bug #26572
+    let cmd = fmt"""{nim} {mode} --run --hints:off - """
+    let p = startProcess(cmd, options = {poEvalCommand})
+    p.inputStream.write("echo 12345")
+    p.inputStream.close
+    var output = p.outputStream.readAll
+    let error = p.errorStream.readAll
+    doAssert p.waitForExit == 0, error
+    output.stripLineEnd
+    doAssert output == "12345", output
+    p.errorStream.close
+    p.outputStream.close
+
   block: # nim dump
     let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
     let (ret, status) = execCmdEx(cmd)
@@ -450,6 +470,23 @@ running: v2
     let (outp2, status2) = execCmdEx(nimcache2 / input, options = {poStdErrToStdOut})
     doAssert outp2 == "12345\n", outp2
     doAssert status2 == 0
+
+  when not defined(windows):
+    block: # genscript with hot code reloading, bug #11970
+      const nimcache3 = buildDir / "D20261029T190000"
+      removeDir(nimcache3)
+      let input = "tgenscript_hcr_fakefile"
+      # the compiler must not link anything: the script links each module
+      # into its own library and the main module into the program
+      let output = runNimCmdChk(input, fmt"""--warning:Deprecated:off --genscript --hotCodeReloading:on --threads:off --nimcache:{nimcache3.quoteShell} --eval:"echo(12345)" """)
+      doAssert output.len == 0, output
+      let filename = fmt"compile_{input}.sh"
+      doAssert fileExists(nimcache3/filename), nimcache3/filename
+      doAssert not fileExists(nimcache3/input)
+      let (outp, status) = execCmdEx(genShellCmd(filename), options = {poStdErrToStdOut}, workingDir = nimcache3)
+      doAssert status == 0, outp
+      doAssert fileExists(nimcache3/input)
+      doAssert fileExists(nimcache3 / DynlibFormat % ("@psystem.nim." & mode))
 
   block: # UnusedImport
     proc fn(opt: string, expected: string) =

@@ -2968,6 +2968,7 @@ proc genDestroy(p: BProc; n: PNode) =
     discard "ignore calls to the default destructor"
 
 proc genSlice(p: BProc; e: PNode; d: var TLoc) =
+  let mark = p.strSyncs.len
   let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.elementType,
     prepareForMutation = e.secondSon.kind == nkHiddenDeref and
                          e.secondSon.typ.skipTypes(abstractInst).kind == tyString and
@@ -2976,6 +2977,7 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
   let dest = rdLoc(d)
   p.s(cpsStmts).addFieldAssignment(dest, "Field0", x)
   p.s(cpsStmts).addFieldAssignment(dest, "Field1", y)
+  p.strSyncs.setLen(mark) # not a call argument: nothing to resync
   when false:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       "'toOpenArray' is only valid within a call expression")
