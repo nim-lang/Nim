@@ -102,6 +102,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest("tests/dll/nimhcr_async.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
     testSpec r, makeTest("tests/dll/nimhcr_exception_msg.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
     testSpec r, makeTest("tests/dll/nimhcr_unhandled.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_compile.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
 
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
