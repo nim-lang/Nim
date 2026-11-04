@@ -126,8 +126,8 @@ type
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     readDeps*: Table[FileIndex, seq[string]] # files a module read at compile
       # time (staticRead/slurp), per module file index; recorded under `nim m`
-      # and flushed to the module's `.s.reads` sidecar so `nim ic` can make
-      # them inputs of the module's build rule (fixes #26614)
+      # and flushed to the `dependency` record of the module's `.s.deps` sidecar
+      # so `nim ic` can make them inputs of the module's build rule (fixes #26614)
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
     interactive*: bool

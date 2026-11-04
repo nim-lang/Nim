@@ -23,7 +23,7 @@
 ## still-old-API `ast2nif.nim` during the migration.
 
 import std / [syncio, algorithm]
-from std / os import removeFile, moveFile
+from std / os import removeFile, moveFile, fileExists
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
 
@@ -215,10 +215,12 @@ proc flattenForCookie*(b: var IcBuilder): seq[CookieTok] =
   flattenGo(cur, b.buf, result)
 
 proc collectBifStrLits*(path: string): seq[string] =
-  ## Read a small `(tag "s" "s" …)` bif sidecar (`semdeps`/`edges`) and return every
-  ## string literal it holds, in order — the binary analogue of the old nifstreams
-  ## scan that collected `StrLit`s. Keeps nifcore types out of `deps.nim`, which
-  ## only needs the recorded string list.
+  ## Read a small single-record `(tag "s" "s" …)` bif sidecar (`edges`) and return
+  ## every string literal it holds, in order — the binary analogue of the old
+  ## nifstreams scan that collected `StrLit`s. Keeps nifcore types out of
+  ## `deps.nim`, which only needs the recorded string list. For a multi-record
+  ## sidecar (`.s.deps` carries `semdeps` + `dependency`) use
+  ## `collectBifTagStrLits` to select one record.
   ##
   ## Uses `loadFromFile` (a full read into owned memory) rather than the mmap-backed
   ## `bif.load`, then CLOSES the handle. `bif.load` intentionally leaves the mapping
@@ -236,37 +238,66 @@ proc collectBifStrLits*(path: string): seq[string] =
     if c.kind == StrLit: result.add strVal(c)
     inc c
 
-proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]) =
-  ## Stage 1 spike: the nifcore port of `ast2nif.writeSemDeps`. Serializes the
-  ## module's resolved direct imports as `(semdeps "path" ...)`. Byte-identical
-  ## to the old writer (verified), so `nim ic` build graphs are unaffected.
+proc collectBifTagStrLits*(path: string; wantTag: string): seq[string] =
+  ## `collectBifStrLits` restricted to the top-level `wantTag` record. The
+  ## `.s.deps` sidecar holds two records — `(semdeps "path" …)` and
+  ## `(dependency "path" …)` — and each reader wants exactly one of them, not
+  ## the union (a file the module READ is not an import).
+  result = @[]
+  var f = open(path, fmRead)
+  var m = bif.loadFromFile(f)
+  close(f)
+  var c = m.buf.beginRead()
+  while c.hasMore:
+    if c.kind == TagLit and m.buf.tags.tagName(c.cursorTagId) == wantTag:
+      c.into:
+        while c.hasMore:
+          if c.kind == StrLit: result.add strVal(c)
+          inc c
+    else:
+      skip c
+
+proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths,
+                   readPaths: seq[string]) =
+  ## The `.s.deps` sidecar — the dependencies a module's sem DISCOVERED, as
+  ## two records in one file:
+  ##
+  ## * `(semdeps "path" ...)`: the module's resolved direct imports
+  ##   (Stage 1 spike, byte-identical to the old `nifstreams` writer).
+  ## * `(dependency "path" ...)`: the files it read at compile time
+  ##   (`staticRead`/`slurp`, recorded by `vmdeps.opSlurp` into
+  ##   `ModuleGraph.readDeps`). `nim ic` declares each an input of the
+  ##   module's `nim m` rule, so an edit re-fires the sem that baked the
+  ##   file's bytes into its `.s.bif` (fixes #26614).
+  ##
+  ## Both written unconditionally: an emptied set rewrites its record empty,
+  ## so a dropped `import`/`staticRead` removes the edge/input on the next
+  ## derivation.
   let selfSuffix = modname(thisModule, config)
   var paths = importPaths
   sort paths
-  var dest = newIcBuilder(4 + 2*paths.len)
+  var dest = newIcBuilder(4 + 2*(paths.len + readPaths.len))
   dest.openTag "semdeps"
   for p in paths:
+    dest.addStrLit p
+  dest.closeTag()
+  var reads = readPaths
+  sort reads
+  dest.openTag "dependency"
+  for p in reads:
     dest.addStrLit p
   dest.closeTag()
   let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.deps.bif").string
   storeBifStable(dest, path, "." & extractModuleSuffix(path))
 
-proc writeReadDeps*(config: ConfigRef; thisModule: int32; readPaths: seq[string]) =
-  ## The `.s.reads` sidecar: the files this module read at compile time
-  ## (`staticRead`/`slurp`, recorded by `vmdeps.opSlurp` into
-  ## `ModuleGraph.readDeps`), serialized as `(readdeps "path" ...)`. `nim ic`
-  ## reads it when deriving the frontend build graph and declares each file an
-  ## input of the module's `nim m` rule, so an edit re-fires the sem that baked
-  ## the file's bytes into its `.s.bif` (fixes #26614). Written unconditionally
-  ## like `.s.deps`: an emptied set rewrites the sidecar empty so a dropped
-  ## `staticRead` removes the input on the next derivation.
+proc updateReadDeps*(config: ConfigRef; thisModule: int32; readPaths: seq[string]) =
+  ## Rewrite only the `dependency` record of the module's `.s.deps` sidecar,
+  ## keeping the `semdeps` record its last completed sem resolved. The
+  ## NeedsImpl flush uses it for a module whose aborted pass recorded reads
+  ## but no imports: writing an empty `semdeps` would assert "no imports" and
+  ## prune real edges, so the record is carried over instead. No sidecar yet
+  ## -> no-op; the rerun's completed sem writes both.
   let selfSuffix = modname(thisModule, config)
-  var paths = readPaths
-  sort paths
-  var dest = newIcBuilder(4 + 2*paths.len)
-  dest.openTag "readdeps"
-  for p in paths:
-    dest.addStrLit p
-  dest.closeTag()
-  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.reads.bif").string
-  storeBifStable(dest, path, "." & extractModuleSuffix(path))
+  let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.deps.bif").string
+  if fileExists(path):
+    writeSemDeps(config, thisModule, collectBifTagStrLits(path, "semdeps"), readPaths)

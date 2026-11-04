@@ -304,12 +304,12 @@ proc finishPipelineModule(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       var semDepPaths: seq[string] = @[]
       for f in resolvedImportDeps:
         semDepPaths.add toFullPath(graph.config, f)
-      writeSemDeps(graph.config, module.position.int32, semDepPaths)
-      # Compile-time file reads (`staticRead`/`slurp`) this sem performed,
-      # recorded by vmdeps.opSlurp: `nim ic` makes them inputs of this module's
-      # `nim m` rule so editing a read file re-fires the sem (fixes #26614).
-      writeReadDeps(graph.config, module.position.int32,
-                    graph.readDeps.getOrDefault(module.position.FileIndex))
+      # The compile-time file reads (`staticRead`/`slurp`) this sem performed,
+      # recorded by vmdeps.opSlurp, ride the same sidecar: `nim ic` makes them
+      # inputs of this module's `nim m` rule so editing a read file re-fires
+      # the sem (fixes #26614).
+      writeSemDeps(graph.config, module.position.int32, semDepPaths,
+                   graph.readDeps.getOrDefault(module.position.FileIndex))
 
 proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
   ## The module path of an import, without its pragmas. Like
@@ -717,15 +717,21 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
             # it, re-derives the graph with the missing node + edge, and reruns
             # the frontend. The same happens for an import the scanner deferred
             # because its `when` guard was undecidable before sem.
+            # Compile-time reads recorded so far are flushed the same way:
+            # this sem is aborting early, so its `.s.deps` (imports AND reads)
+            # would otherwise never reach the driver's rule inputs. A module
+            # with reads but no recorded imports keeps its previous `semdeps`
+            # record — writing an empty one would prune its real edges.
+            var flushed = initHashSet[FileIndex]()
             for importer, deps in graph.importDeps.pairs:
               var paths: seq[string] = @[]
               for f in deps: paths.add toFullPath(graph.config, f)
-              writeSemDeps(graph.config, importer.int32, paths)
-            # Compile-time reads recorded so far are flushed for the same
-            # reason: this sem is aborting early, so its `.s.reads` would
-            # otherwise never reach the driver's rule inputs.
+              writeSemDeps(graph.config, importer.int32, paths,
+                           graph.readDeps.getOrDefault(importer))
+              flushed.incl importer
             for reader, paths in graph.readDeps.pairs:
-              writeReadDeps(graph.config, reader.int32, paths)
+              if reader notin flushed:
+                updateReadDeps(graph.config, reader.int32, paths)
             if graph.config.icProject.len > 0:
               # Run by the `nim ic` driver: this process cannot finish sem
               # without the import, but the import is recorded now, so the

@@ -2200,27 +2200,28 @@ proc writeEdgesFile(config: ConfigRef; thisModule: int32; implDeps: seq[int]) =
   # edit was reverted). Nimony's analog is its always-written `.s.bif`.
   storeBif(b, path, "." & extractModuleSuffix(path))
 
-proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]) =
-  ## The module's REAL direct imports as `nim m` sem resolved them — static
-  ## plus any a macro generated — recorded as full source paths. `nim ic` reads
-  ## this `.s.deps.nif` to re-derive the build graph: imports the static scanner
+proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths,
+                   readPaths: seq[string]) =
+  ## The module's REAL dependencies as `nim m` sem resolved them, recorded as
+  ## two records in its `.s.deps` sidecar: the direct imports — static plus
+  ## any a macro generated — as full source paths (`semdeps`), and the files
+  ## it read at compile time (`staticRead`/`slurp`, `dependency`). `nim ic` reads
+  ## this sidecar to re-derive the build graph: imports the static scanner
   ## missed become new nodes (replacing the old build-failure discovery loop),
-  ## and `when false` imports the scanner over-included are pruned. Always
-  ## written so it is current after every successful sem (like `.edges`).
+  ## `when false` imports the scanner over-included are pruned, and each read
+  ## file becomes an input of the module's `nim m` rule so editing it re-fires
+  ## the sem (fixes #26614). Always written so it is current after every
+  ## successful sem (like `.edges`).
   ##
   ## Ported to nifcore: delegates to `icnifcore.writeSemDeps` (Stage 1 of the
-  ## NIF-stack migration; see doc/ic_nifcore_port.md). Output is byte-identical
-  ## to the previous `nifstreams` writer.
-  icnifcore.writeSemDeps(config, thisModule, importPaths)
+  ## NIF-stack migration; see doc/ic_nifcore_port.md). The `semdeps` record is
+  ## byte-identical to the previous `nifstreams` writer.
+  icnifcore.writeSemDeps(config, thisModule, importPaths, readPaths)
 
-proc writeReadDeps*(config: ConfigRef; thisModule: int32; readPaths: seq[string]) =
-  ## The files this module read at compile time (`staticRead`/`slurp`), recorded
-  ## by `vmdeps.opSlurp`. `nim ic` reads this `.s.reads` sidecar when deriving
-  ## the frontend build graph and declares each file an input of the module's
-  ## `nim m` rule, so an edit re-fires the sem that baked the file's bytes into
-  ## its `.s.bif` (fixes #26614). Always written so it is current after every
-  ## successful sem. Delegates to `icnifcore.writeReadDeps`.
-  icnifcore.writeReadDeps(config, thisModule, readPaths)
+proc updateReadDeps*(config: ConfigRef; thisModule: int32; readPaths: seq[string]) =
+  ## Rewrite only the `dependency` record of the module's `.s.deps` sidecar;
+  ## see `icnifcore.updateReadDeps`.
+  icnifcore.updateReadDeps(config, thisModule, readPaths)
 
 proc writeInterface(w: var Writer; dest: var IcBuilder; syms: openArray[PSym];
                     hidden: bool) =

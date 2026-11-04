@@ -30,8 +30,9 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; g: ModuleGraph): stri
       # `nim ic` derives a module's build inputs from its imports; a file it
       # reads at compile time is an input too, otherwise editing it never
       # re-fires this module's `nim m` (fixes #26614). Recorded per module and
-      # flushed to its `.s.reads` sidecar at pass close; the driver makes it a
-      # rule input on the next graph derivation (one-run lag, like `.s.deps`).
+      # flushed to the `dependency` record of its `.s.deps` sidecar at pass
+      # close; the driver makes it a rule input on the next graph derivation
+      # (one-run lag, like the `semdeps` record).
       let deps = addr g.readDeps.mgetOrPut(module.position.FileIndex, @[])
       if filename notin deps[]: deps[].add filename
   except IOError:

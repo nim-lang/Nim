@@ -29,7 +29,11 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "52"
+  icFormatVersion* = "53"
+    ## v53: the `.s.deps` sidecar gains a second record — `(dependency "path"
+    ## ...)` next to `(semdeps "path" ...)`. The new reader selects by tag so
+    ## it parses old single-record files fine, but an OLDER reader would
+    ## collect a read file's path as an import, so the cache is wiped.
     ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v48: track implementation dependencies for reused generic type instances.
