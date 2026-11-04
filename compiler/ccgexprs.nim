@@ -2754,7 +2754,63 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     # C code; plus it's the right thing to do for closures:
     genSomeCast(p, e, d)
 
+proc floatConvSource(n: PNode): PNode =
+  ## `transf` turns `int8(x)` with `x: float` into
+  ## `chckRange(int8(int64(x)), low(int8), high(int8))`. Returns `x` for such
+  ## a conversion chain, nil otherwise.
+  result = n
+  while result.kind in {nkConv, nkHiddenStdConv, nkHiddenSubConv} and
+      result.typ.skipTypes(abstractVarRange).kind in {tyInt..tyInt64}:
+    result = result[1]
+  if result == n or
+      result.typ.skipTypes(abstractVarRange).kind notin {tyFloat..tyFloat128}:
+    result = nil
+
+proc nextFloat(x: float64; up: bool): float64 =
+  # only called for an integral `x` with abs(x) > 2^53, so `x != 0`
+  let bits = cast[uint64](x)
+  if (x > 0) == up: cast[float64](bits + 1) else: cast[float64](bits - 1)
+
+proc floatBoundLit(b: Int128; up: bool): Snippet =
+  ## The exclusive float bound `f` with: trunc(x) <= b iff x < f (`up`), or
+  ## trunc(x) >= b iff x > f (`not up`). `f` is integral, so the C literal
+  ## is exact.
+  let x = if up: b + One else: b - One
+  var f = toFloat64(x)
+  let back = toInt128(f)
+  if (up and back < x) or (not up and x < back):
+    # `x` is not representable and was rounded inwards
+    f = nextFloat(f, up)
+  result = $toInt128(f) & ".0"
+
+proc genFloatToIntRangeChck(p: BProc, n, src: PNode, dest: PType, d: var TLoc) =
+  ## Range check for a float to signed integer conversion. It is done on the
+  ## float so that it covers NaN, infinities and values that do not fit an
+  ## int64: converting those is undefined behaviour in C (bug #20102).
+  var a: TLoc = initLocExpr(p, src)
+  let rca = rdLoc(a)
+  let lo = floatBoundLit(firstOrd(p.config, dest), up = false)
+  let hi = floatBoundLit(lastOrd(p.config, dest), up = true)
+  cgsym(p.module, "raiseRangeErrorF")
+  var first = newBuilder("")
+  genLiteral(p, n.secondSon, dest, first)
+  var last = newBuilder("")
+  genLiteral(p, son(n, 2), dest, last)
+  # `!(lo < x && x < hi)` so that NaN fails the check
+  p.s(cpsStmts).addSingleIfStmt(cOp(Not, cOp(And,
+      cOp(GreaterThan, rca, lo), cOp(LessThan, rca, hi)))):
+    p.s(cpsStmts).addCallStmt("raiseRangeErrorF", rca,
+      cCast(NimFloat, extract(first)), cCast(NimFloat, extract(last)))
+    raiseInstr(p, p.s(cpsStmts))
+  putIntoDest(p, d, n, cCast(getTypeDesc(p.module, dest), wrapPar(rca)), a.storage)
+
 proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
+  if optRangeCheck in p.options and
+      n.typ.skipTypes(abstractVarRange).kind in {tyInt..tyInt64}:
+    let src = floatConvSource(n.firstSon)
+    if src != nil:
+      genFloatToIntRangeChck(p, n, src, skipTypes(n.typ, abstractVar), d)
+      return
   var a: TLoc = initLocExpr(p, n.firstSon)
   var dest = skipTypes(n.typ, abstractVar)
   if optRangeCheck notin p.options or (dest.kind in {tyUInt..tyUInt64} and

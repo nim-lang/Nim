@@ -255,7 +255,8 @@ when not defined(js):
 
     block:
       var f = 751.0
-      let m = f.int8
+      doAssertRaises(RangeDefect):
+        let m = f.int8
 
     block:
       var s2:float = -10
