@@ -110,8 +110,15 @@ proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
   else:
     result = false
 
+proc flushStrSyncs(p: BProc; mark: int) =
+  ## `--strings:sso`: strings passed to a `var openArray[char]` were written
+  ## through a raw pointer; `completeStore` resyncs their inline prefix.
+  for i in mark..<p.strSyncs.len:
+    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "completeStore"), p.strSyncs[i])
+  p.strSyncs.setLen(mark)
+
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
-               result: var Builder, call: var CallBuilder) =
+               result: var Builder, call: var CallBuilder; mark: int) =
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri.firstSon)
   genLineDir(p, ri)
   # getUniqueType() is too expensive here:
@@ -144,11 +151,12 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(result))
         genAssignment(p, d, tmp, {}) # no need for deep copying
+      flushStrSyncs(p, mark)
       if canRaise: raiseExit(p)
     else:
       result.finishCallBuilder(call)
       if p.module.compileToCpp:
-        if lfSingleUse in d.flags:
+        if lfSingleUse in d.flags and p.strSyncs.len <= mark:
           # do not generate spurious temporaries for C++! For C we're better off
           # with them to prevent undefined behaviour and because the codegen
           # is free to emit expressions multiple times!
@@ -158,11 +166,13 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         else:
           if d.k == locNone and p.splitDecls == 0 and p.config.exc != excGoto:
             d = getTempCpp(p, typ.returnType, extract(result))
+            flushStrSyncs(p, mark)
           else:
             if d.k == locNone: d = getTemp(p, typ.returnType)
             var list = initLoc(locCall, d.lode, OnUnknown)
             list.snippet = extract(result)
             genAssignment(p, d, list, {needAssignCall}) # no need for deep copying
+            flushStrSyncs(p, mark)
             if canRaise: raiseExit(p)
 
       elif isHarmlessStore(p, canRaise, d):
@@ -171,18 +181,21 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.snippet = extract(result)
         genAssignment(p, d, list, flags+{needAssignCall}) # no need for deep copying
+        flushStrSyncs(p, mark)
         if canRaise: raiseExit(p)
       else:
         var tmp: TLoc = getTemp(p, typ.returnType, needsInit=true)
         var list = initLoc(locCall, d.lode, OnUnknown)
         list.snippet = extract(result)
         genAssignment(p, tmp, list, flags+{needAssignCall}) # no need for deep copying
+        flushStrSyncs(p, mark)
         if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {})
   else:
     finishCallBuilder(result, call)
     p.s(cpsStmts).addStmt():
       p.s(cpsStmts).add(extract(result))
+    flushStrSyncs(p, mark)
     if canRaise: raiseExit(p)
 
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc; arrTyp: PType)
@@ -238,14 +251,17 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType; prepareF
   of tyString, tySequence:
     let atyp = skipTypes(a.t, abstractInst)
     if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
-        optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
+        optSeqDestructors in p.config.globalOptions:
       let bra = byRefLoc(p, a)
       p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
         bra)
     if p.config.usesSso() and
         skipTypes(a.t, abstractVar + abstractInst).kind == tyString:
-      let strPtr = if atyp.kind in {tyVar} and not compileToCpp(p.module): ra
+      let strPtr = if compileToCpp(p.module): byRefLoc(p, a)
+                   elif atyp.kind in {tyVar}: ra
                    else: addrLoc(p.config, a)
+      if formalType.skipTypes(abstractInst).kind == tyVar:
+        p.strSyncs.add strPtr # see openArrayLoc
       result = (
         cCast(ptrType(dest), cOp(Add, NimInt,
           cCall(cgsymValue(p.module, "nimStrData"), strPtr), rb)),
@@ -304,19 +320,26 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
       if formalType.skipTypes(abstractInst).kind in {tyVar} and ntyp.kind == tyString and
-          optSeqDestructors in p.config.globalOptions and not p.config.usesSso():
+          optSeqDestructors in p.config.globalOptions:
         let bra = byRefLoc(p, a)
         p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimPrepareStrMutationV2"),
           bra)
       if p.config.usesSso() and
           skipTypes(n.typ, abstractVar + abstractInst).kind == tyString:
+        # C++: the compilerprocs take `var SmallString` as a reference
+        let strPtr = if compileToCpp(p.module): byRefLoc(p, a)
+                     elif ntyp.kind in {tyVar}: a.rdLoc
+                     else: addrLoc(p.config, a)
+        if formalType.skipTypes(abstractInst).kind == tyVar:
+          # the callee writes through a raw pointer: resync the inline prefix
+          # of a long string after the call (#26613)
+          p.strSyncs.add strPtr
         if ntyp.kind in {tyVar} and not compileToCpp(p.module):
-          let ra = a.rdLoc
-          result.add(cCall(cgsymValue(p.module, "nimStrData"), ra))
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), strPtr))
           result.addArgumentSeparator()
-          result.add(cCall(cgsymValue(p.module, "nimStrLen"), cDeref(ra)))
+          result.add(cCall(cgsymValue(p.module, "nimStrLen"), cDeref(strPtr)))
         else:
-          result.add(cCall(cgsymValue(p.module, "nimStrData"), addrLoc(p.config, a)))
+          result.add(cCall(cgsymValue(p.module, "nimStrData"), strPtr))
           result.addArgumentSeparator()
           result.add(lenExpr(p, a))
       elif ntyp.kind in {tyVar} and not compileToCpp(p.module):
@@ -523,8 +546,9 @@ proc genPrefixCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
 
   var res = newBuilder("")
   var call = initCallBuilder(res, callee)
+  let mark = p.strSyncs.len
   genParams(p, ri, typ, res, call)
-  fixupCall(p, le, ri, d, res, call)
+  fixupCall(p, le, ri, d, res, call, mark)
 
 proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
 
@@ -559,6 +583,7 @@ proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
 
   var params = newBuilder("")
   var argBuilder = default(CallBuilder) # not initCallBuilder, we just want the params
+  let mark = p.strSyncs.len
   genParams(p, ri, typ, params, argBuilder)
 
   # `rawProc` is bound BEFORE the `{.dirty.}` template that uses it. Inside a
@@ -589,12 +614,14 @@ proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
         params.addArgument(argBuilder):
           params.add(addrLoc(p.config, d))
         genCallPattern()
+        flushStrSyncs(p, mark)
         if canRaise: raiseExit(p)
       else:
         var tmp: TLoc = getResultTemp(p, ri, typ.returnType)
         params.addArgument(argBuilder):
           params.add(addrLoc(p.config, tmp))
         genCallPattern()
+        flushStrSyncs(p, mark)
         if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     elif isHarmlessStore(p, canRaise, d):
@@ -608,6 +635,7 @@ proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
       else:
         list.snippet = callProc(rp, pars, rawProc)
       genAssignment(p, d, list, {}) # no need for deep copying
+      flushStrSyncs(p, mark)
       if canRaise: raiseExit(p)
     else:
       var tmp: TLoc = getTemp(p, typ.returnType)
@@ -620,10 +648,12 @@ proc genClosureCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
       else:
         list.snippet = callProc(rp, pars, rawProc)
       genAssignment(p, tmp, list, {})
+      flushStrSyncs(p, mark)
       if canRaise: raiseExit(p)
       genAssignment(p, d, tmp, {})
   else:
     genCallPattern()
+    flushStrSyncs(p, mark)
     if canRaise: raiseExit(p)
 
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType; result: var Builder;
@@ -801,12 +831,13 @@ proc genInfixCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
   let pat = $ri.firstSon.sym.loc.snippet
   internalAssert p.config, pat.len > 0
   if pat.contains({'#', '(', '@', '\''}):
+    let mark = p.strSyncs.len
     var pl = newBuilder("")
     genPatternCall(p, ri, pat, typ, pl)
     # simpler version of 'fixupCall' that works with the pl+params combination:
     var typ = skipTypes(ri.firstSon.typ, abstractInst)
     if typ.returnType != nil:
-      if p.module.compileToCpp and lfSingleUse in d.flags:
+      if p.module.compileToCpp and lfSingleUse in d.flags and p.strSyncs.len <= mark:
         # do not generate spurious temporaries for C++! For C we're better off
         # with them to prevent undefined behaviour and because the codegen
         # is free to emit expressions multiple times!
@@ -822,7 +853,9 @@ proc genInfixCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
     else:
       p.s(cpsStmts).addStmt():
         p.s(cpsStmts).add(extract(pl))
+    flushStrSyncs(p, mark)
   else:
+    let mark = p.strSyncs.len
     var pl = newBuilder("")
     if 1 < ri.len:
       genThisArg(p, ri, 1, typ, pl)
@@ -831,10 +864,11 @@ proc genInfixCall(p: BProc, le: PNode, ri: PNode, d: var TLoc) =
     var call = initCallBuilder(res, extract(pl))
     for i, _ in isons(ri, 2):
       genOtherArg(p, ri, i, typ, res, call)
-    fixupCall(p, le, ri, d, res, call)
+    fixupCall(p, le, ri, d, res, call, mark)
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
+  let mark = p.strSyncs.len
   var op = initLocExpr(p, ri.firstSon)
   var pl = newBuilder("[")
   # getUniqueType() is too expensive here:
@@ -899,6 +933,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add("]")
     p.s(cpsStmts).addStmt():
       p.s(cpsStmts).add(extract(pl))
+  flushStrSyncs(p, mark)
 
 proc notYetAlive(n: PNode): bool {.inline.} =
   let r = getRoot(n)
