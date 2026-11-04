@@ -23,7 +23,8 @@
 ## still-old-API `ast2nif.nim` during the migration.
 
 import std / [syncio, algorithm, tables]
-from std / os import removeFile, moveFile
+from std / os import removeFile, moveFile, getFileInfo
+import std / times
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
 
@@ -236,13 +237,28 @@ proc collectBifStrLits*(path: string): seq[string] =
     if c.kind == StrLit: result.add strVal(c)
     inc c
 
-proc collectSemDeps*(path: string): tuple[imports, slurps: seq[string]] =
-  ## Read a `.s.deps` sidecar written by `writeSemDeps`: the module's direct
-  ## imports and, separately, the files it slurped at compile time.
-  result = (@[], @[])
-  var f = open(path, fmRead)
-  var m = bif.loadFromFile(f)
-  close(f)
+type
+  SemDeps* = object
+    ## A `.s.deps` sidecar written by `writeSemDeps`.
+    exists*: bool                ## false: no sidecar (module not semmed yet)
+    written*: Time               ## the sidecar's mtime
+    imports*: seq[string]        ## the module's direct imports
+    slurps*: seq[string]         ## files it read via `staticRead`/`slurp`
+
+proc loadSemDeps*(path: string): SemDeps =
+  ## Reads a `.s.deps` sidecar with a single open: no separate existence check,
+  ## and the mtime comes from the open handle. Reads into owned memory and
+  ## closes the handle, like `collectBifStrLits` and for the same Windows reason.
+  result = SemDeps()
+  var f: File = nil
+  if not open(f, path, fmRead): return
+  var m: BifModule = default(BifModule)
+  try:
+    result.written = getFileInfo(f).lastWriteTime
+    m = bif.loadFromFile(f)
+  finally:
+    close(f)
+  result.exists = true
   var c = m.buf.beginRead()
   if not c.hasMore or c.kind != TagLit: return
   c.into:
