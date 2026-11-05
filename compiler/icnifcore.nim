@@ -24,6 +24,10 @@
 
 import std / [syncio, algorithm]
 from std / os import removeFile, moveFile
+when not defined(windows):
+  import std / [os, tempfiles, sha1, posix]
+when defined(nimIcBifProfile):
+  import std / [monotimes, times]
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
 
@@ -114,6 +118,15 @@ proc freshModuleCopy(b: var IcBuilder): TokenBuf =
 proc storeBif*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## Persist the buffer as a compact, self-contained binary NIF (`.bif`).
   var fresh = freshModuleCopy(b)
+  when not defined(windows):
+    if symlinkExists(path):
+      let (f, tmp) = createTempFile(".bif-", "", path.parentDir)
+      f.close()
+      defer:
+        if fileExists(tmp): removeFile(tmp)
+      bif.store(fresh, tmp, dottedSuffix)
+      moveFile(tmp, path)
+      return
   bif.store(fresh, path, dottedSuffix)
 
 proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
@@ -134,6 +147,64 @@ proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
     removeFile(tmp)
   else:
     moveFile(tmp, path)
+
+when not defined(windows):
+  proc storeBifShared*(b: var IcBuilder; path, dottedSuffix, semDir: string;
+                       onlyIfChanged = false) =
+    ## Publish immutable content and give each output its own symlink timestamp.
+    when defined(nimIcBifProfile):
+      let profileStart = getMonoTime()
+      var mark = profileStart
+      var freshNs, renderNs, hashNs, checkNs, publishNs, linkNs = 0'i64
+      var profileSize = 0
+      template lap(slot: untyped) =
+        slot += (getMonoTime() - mark).inNanoseconds
+        mark = getMonoTime()
+      defer:
+        stderr.writeLine "BIFPROFILE size=" & $profileSize &
+          " fresh=" & $freshNs & " render=" & $renderNs & " hash=" & $hashNs &
+          " check=" & $checkNs & " publish=" & $publishNs & " link=" & $linkNs &
+          " total=" & $(getMonoTime() - profileStart).inNanoseconds
+    else:
+      template lap(slot: untyped) = discard
+    let cacheRoot = semDir.parentDir.parentDir.parentDir
+    let store = cacheRoot / "bif-objects-v1"
+    createDir(store)
+    var fresh = freshModuleCopy(b)
+    lap(freshNs)
+    # The BIF serializer already renders a complete buffer before writing.
+    # Hash it directly, without writing and rereading a temporary BIF.
+    let bytes = bif.storeToString(fresh, dottedSuffix)
+    when defined(nimIcBifProfile): profileSize = bytes.len
+    lap(renderNs)
+    let obj = store / $secureHash(bytes)
+    lap(hashNs)
+    if onlyIfChanged and symlinkExists(path) and fileExists(path) and
+        readFile(path) == bytes:
+      lap(checkNs)
+      return
+    lap(checkNs)
+    if fileExists(obj):
+      if readFile(obj) != bytes:
+        raise newException(IOError, "BIF object hash collision or corruption: " & obj)
+    else:
+      let (f, tmpObject) = createTempFile(".bif-object-", "", store)
+      f.close()
+      defer:
+        if fileExists(tmpObject): removeFile(tmpObject)
+      writeFile(tmpObject, bytes)
+      if posix.link(tmpObject.cstring, obj.cstring) != 0:
+        if not fileExists(obj) or readFile(obj) != bytes:
+          raise newException(IOError, "BIF object publication failed: " & obj)
+    lap(publishNs)
+    let (linkFile, tmpLink) = createTempFile(".bif-link-", "", path.parentDir)
+    linkFile.close()
+    removeFile(tmpLink)
+    defer:
+      if symlinkExists(tmpLink): removeFile(tmpLink)
+    createSymlink(obj, tmpLink)
+    moveFile(tmpLink, path)
+    lap(linkNs)
 
 # --- subtree splicing (shared pool, so a raw subtree copy is exact) ----------
 

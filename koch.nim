@@ -51,7 +51,7 @@ when defined(amd64) and defined(windows) and defined(vcc):
 when defined(i386) and defined(windows) and defined(vcc):
   {.link: "icons/koch-i386-windows-vcc.res".}
 
-import std/[os, strutils, parseopt, osproc]
+import std/[os, strutils, parseopt, osproc, hashes]
   # Using `std/os` instead of `os` to fail early if config isn't set up properly.
   # If this fails with: `Error: cannot open file: std/os`, see
   # https://github.com/nim-lang/Nim/pull/14291 for explanation + how to fix.
@@ -222,16 +222,19 @@ proc bundleChecksums(latest: bool) =
       "git -C " & quoteShell(distDir / "nimony") & " rev-parse HEAD")
     if status == 0: outp.strip else: ""
 
-  proc bundleNifTool(name, src: string) =
+  proc bundleNifTool(name, src: string; buildTag = "") =
     let stamp = "bin" / ("." & name & ".nimony-commit")
     let builtFrom = if fileExists(stamp): readFile(stamp).strip else: ""
+    let expected = nimonyHead & buildTag
     if not fileExists(("bin" / name).exe) or
-       (nimonyHead.len > 0 and builtFrom != nimonyHead):
+       ((nimonyHead.len > 0 or buildTag.len > 0) and builtFrom != expected):
       nimCompileFold("Compile " & name, src, options = nifOptions)
-      if nimonyHead.len > 0: writeFile(stamp, nimonyHead)
+      if nimonyHead.len > 0 or buildTag.len > 0: writeFile(stamp, expected)
 
   bundleNifTool("nifler", "dist/nimony/src/nifler/nifler.nim")
-  bundleNifTool("nifmake", "dist/nimony/src/nifmake/nifmake.nim")
+  # Rebuild when either the Nimony pin or Nim's scheduler adapter changes.
+  let nifmakeSource = "tools/nifmake.nim"
+  bundleNifTool("nifmake", nifmakeSource, ":" & $hash(readFile(nifmakeSource)))
 
 proc bundleNimsuggest(args: string) =
   bundleChecksums(false)
