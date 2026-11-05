@@ -331,6 +331,19 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     let cmd = fmt"{nim} check --hints:off {file}"
     check execCmdEx(cmd) == ("", 0)
 
+  block: # bug #26296
+    # relative paths containing `$` are made absolute like those without `$`
+    let file = testsDir / "misc/m26296.nim"
+    let dir = "build/D26296"
+    let nimcacheArg = quoteShell("--nimcache:" & dir & "/nimcache/$projectName")
+    let outdirArg = quoteShell("--outdir:" & dir & "/$projectName")
+    let cmd = fmt"{nim} check --hints:off {nimcacheArg} {outdirArg} {file}"
+    let (outp, exitCode) = execCmdEx(cmd, workingDir = nimRootDir)
+    doAssert exitCode == 0, outp
+    let base = nimRootDir / dir.unixToNativePath
+    let expected = base / "nimcache" / "m26296" & "\n" & base / "m26296" & "\n"
+    doAssert outp == expected, outp
+
   block: # mfoo2.customext
     let filename = testsDir / "newconfig/foo2/mfoo2.customext"
     let cmd = fmt"{nim} e --hint:conf {filename}"

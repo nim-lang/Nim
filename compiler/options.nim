@@ -1055,6 +1055,15 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "projectdir", conf.projectPath.string,
     "nimcache", getNimcacheDir(conf).string]).expandTilde
 
+proc pathSubs*(conf: ConfigRef; p, config, base: string): string =
+  ## Like `pathSubs`, but when `p` contains `$` variables and the
+  ## substitution still yields a relative path (e.g. one built only from
+  ## `$projectname`), the result is resolved against `base`, the same base
+  ## a path written without `$` would be resolved against (#26296).
+  result = pathSubs(conf, p, config)
+  if '$' in p and not isAbsolute(result):
+    result = base / result
+
 iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   let pl = p.toLowerAscii
   if "$nimblepath" in pl or "$nimbledir" in pl:
