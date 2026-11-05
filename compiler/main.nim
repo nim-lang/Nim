@@ -462,6 +462,17 @@ proc mainCommand*(graph: ModuleGraph) =
       runIdeQuery(conf)
     else:
       rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
+  of cmdNs:
+    # `nim ns`: nimsuggest2's IC frontend. Builds the project's NIFs and writes a
+    # report of where they are and which modules it brought up to date.
+    conf.errorMax = high(int)
+    setUseIc(true)
+    wantMainModule(conf)
+    setOutFile(conf)
+    when not defined(nimKochBootstrap):
+      commandIc(conf, frontendOnly = true)
+    else:
+      rawMessage(conf, errGenerated, "nim ns not available in bootstrap build")
   of cmdM:
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
