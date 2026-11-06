@@ -393,7 +393,7 @@ proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
   let p = if os.isAbsolute(path) or '$' in path:
             path
           elif notRelativeToProj:
-            getCurrentDir() / path
+            conf.getCurrentDir() / path
           else:
             conf.projectPath.string / path
   try:
@@ -419,11 +419,11 @@ proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir
 const
   errInvalidNumber = "$1 is not a valid number"
 
-proc makeAbsolute(s: string): AbsoluteFile =
+proc makeAbsolute(conf: ConfigRef; s: string): AbsoluteFile =
   if isAbsolute(s):
     AbsoluteFile pathnorm.normalizePath(s)
   else:
-    AbsoluteFile pathnorm.normalizePath(os.getCurrentDir() / s)
+    AbsoluteFile pathnorm.normalizePath(conf.getCurrentDir() / s)
 
 proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
                      info: TLineInfo) =
@@ -435,13 +435,13 @@ proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
   if parseUtils.parseInt(column, col) <= 0:
     localError(conf, info, errInvalidNumber % column)
 
-  let a = makeAbsolute(file)
+  let a = makeAbsolute(conf, file)
   if dirty == "":
     conf.m.trackPos = newLineInfo(conf, a, ln, col)
   else:
     let dirtyOriginalIdx = fileInfoIdx(conf, a)
     if dirtyOriginalIdx.int32 >= 0:
-      msgs.setDirtyFile(conf, dirtyOriginalIdx, makeAbsolute(dirty))
+      msgs.setDirtyFile(conf, dirtyOriginalIdx, makeAbsolute(conf, dirty))
     conf.m.trackPos = newLineInfo(dirtyOriginalIdx, ln, col)
 
 proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
@@ -474,7 +474,7 @@ proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, in
 
 template handleStdinOrCmdInput =
   conf.projectFull = conf.projectName.AbsoluteFile
-  conf.projectPath = AbsoluteDir getCurrentDir()
+  conf.projectPath = AbsoluteDir conf.getCurrentDir()
   if conf.outDir.isEmpty:
     conf.outDir = getNimcacheDir(conf)
 
@@ -1111,7 +1111,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "stdinfile":
     expectArg(conf, switch, arg, pass, info)
     conf.stdinFile = if os.isAbsolute(arg): AbsoluteFile(arg)
-                     else: AbsoluteFile(getCurrentDir() / arg)
+                     else: AbsoluteFile(conf.getCurrentDir() / arg)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
