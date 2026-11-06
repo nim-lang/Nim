@@ -855,9 +855,9 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
   var rel = ""
   if path.string.startsWith(conf.libpath.string):
     isLib = true
-    rel = relativeTo(path, conf.libpath).string
+    rel = conf.relativeTo(path, conf.libpath).string
   else:
-    rel = relativeTo(path, conf.projectPath).string
+    rel = conf.relativeTo(path, conf.projectPath).string
 
   if not isLib and not belongsToProjectPackage(conf, m):
     # special handlings for nimble packages
