@@ -80,6 +80,13 @@ parameter and result types, not just their source-level shape. Use
   Windows. Before, the check was skipped there because `X509_check_host` was
   imported from the wrong DLL (libssl instead of libcrypto).
 
+- With `--mm:arc` and `--mm:orc`, a variable of a nested scope at module level
+  that a routine declared in that scope names (a closure, for example) is now
+  destroyed at the end of the program instead of at the end of the scope.
+  Before, the routine read freed memory once the scope had ended. Other
+  variables of the scope are destroyed with the scope as before.
+
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
