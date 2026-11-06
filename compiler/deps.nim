@@ -1966,6 +1966,14 @@ proc allSemmed(c: DepContext): bool =
     if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
       return false
 
+proc unsemmedModules(c: DepContext): seq[string] =
+  ## The scheduled modules still lacking their semmed NIF, sorted.
+  result = @[]
+  for node in c.nodes:
+    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
+      result.add node.files[0].modname
+  result.sort()
+
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
   ## IDE queries) it runs only Phase 1 — the incremental nifler + `nim m`
@@ -2145,6 +2153,9 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.
     var frontendOk = false
+    # How many modules were still unsemmed after the previous round that
+    # discovered nothing; see the rescheduling below.
+    var lastPending = high(int)
     while true:
       let buildFile = generateFrontendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & buildFile)
@@ -2181,10 +2192,21 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         frontendOk = true
         break
       if not discovered and exitCode == 0:
-        # Only the deferred-import stops happened, and they taught us nothing.
+        # Only the deferred-import stops happened, and they taught us nothing
+        # new about the graph. That is not necessarily an error: a module can
+        # stop for an import whose node and edge already exist but whose NIF
+        # was missing when the module ran (e.g. the import stopped in the same
+        # round, or it is loaded transitively through another module's NIF).
+        # Just run the round again: nifmake reruns exactly the rules whose
+        # semmed NIF is missing. Only give up when a round leaves at least as
+        # many modules unsemmed as the previous one, so this terminates.
+        let pending = unsemmedModules(c)
+        if pending.len < lastPending:
+          lastPending = pending.len
+          continue
         rawMessage(conf, errGenerated,
           "ic: modules stopped for imports discovered during sem, but " &
-          "rescheduling found no new dependency")
+          "rescheduling made no progress: " & pending.join(", "))
         break
       if not discovered:
         # The children have already printed the real diagnostics. Adding an
