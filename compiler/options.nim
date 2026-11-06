@@ -9,7 +9,7 @@
 
 import
   lineinfos, platform,
-  prefixmatches, pathutils, nimpaths
+  prefixmatches, pathutils, nimpaths, pathcache
 
 import std/[tables, os, strutils, strtabs, sets]
 from std/terminal import isatty
@@ -552,6 +552,7 @@ type
     outDir*: AbsoluteDir
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
+    pathCache: PathCache
     dllOverrides*, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
@@ -928,6 +929,7 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
         result = binParent
     else:
       result = binParent
+    conf.prefixDir = result
 
 proc setDefaultLibpath*(conf: ConfigRef) =
   # set default value (can be overwritten):
@@ -945,8 +947,35 @@ proc setDefaultLibpath*(conf: ConfigRef) =
         fileExists(parentNimLibPath / "system.nim"):
       conf.libpath = AbsoluteDir parentNimLibPath
 
+proc resetPathCache*(conf: ConfigRef) =
+  ## Start a fresh filesystem snapshot after evaluating configuration scripts.
+  conf.pathCache.reset()
+
+proc pathCacheEnabled(conf: ConfigRef): bool =
+  conf.cmd notin {cmdNone, cmdNimscript} and not conf.ideActive and
+    optWithinConfigSystem notin conf.globalOptions
+
+proc getCurrentDir*(conf: ConfigRef): string =
+  ## Use one working-directory lookup during a compilation, preserving config
+  ## scripts' and IDE sessions' ability to change it.
+  if conf.pathCacheEnabled:
+    conf.pathCache.getCurrentDir()
+  else:
+    os.getCurrentDir()
+
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  result = AbsoluteFile path.string.expandFilename
+  if conf.pathCacheEnabled:
+    AbsoluteFile conf.pathCache.expandFilename(path.string)
+  else:
+    AbsoluteFile path.string.expandFilename
+
+proc relativeTo*(conf: ConfigRef; fullPath: AbsoluteFile; base: AbsoluteDir;
+                 sep = DirSep): RelativeFile =
+  ## Convert compiler paths without repeatedly querying the working directory.
+  if conf.pathCacheEnabled:
+    RelativeFile conf.pathCache.relativePath(fullPath.string, base.string, sep)
+  else:
+    relativeTo(fullPath, base, sep)
 
 proc setFromProjectName*(conf: ConfigRef; projectName: string) =
   try:
@@ -954,7 +983,7 @@ proc setFromProjectName*(conf: ConfigRef; projectName: string) =
   except OSError:
     conf.projectFull = AbsoluteFile projectName
   let p = splitFile(conf.projectFull)
-  let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
+  let dir = if p.dir.isEmpty: AbsoluteDir conf.getCurrentDir() else: p.dir
   try:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
   except OSError:
