@@ -27,6 +27,16 @@ H:1:0.1
 (foo: none(seq[Foo]), s: "")
 (foo: some(@[(a: "world", bar: none(Bar))]), s: "hello,")
 @[(a: "hey", bar: none(Bar))]
+-128 .. 127
+-32768 .. 32767
+-2147483648 .. 2147483647
+-9223372036854775808 .. 9223372036854775807
+SomeFloat
+SomeFloat
+SomeFloat
+SomeFloat
+true
+true
 '''
 joinable: false
 """
@@ -914,3 +924,47 @@ block: # issue #25005
   var v: RpcResponse[string]
   testit(v)
 
+
+block: # bug #22806
+  proc printRange[T: Ordinal]()
+  proc printIntRanges() =
+    printRange[int8]()
+    printRange[int16]()
+    printRange[int32]()
+    printRange[int64]()
+  proc printRange[T: Ordinal]() =
+    echo low(T) .. high(T)
+  printIntRanges()
+
+block: # bug #25166
+  type Obj = ref object of RootObj
+  proc foo(s: Obj, x: SomeFloat) = echo "SomeFloat"
+  template foo(s: Obj, x: auto) = echo "auto"
+  foo(Obj(), 1.23)
+  proc bar[T: SomeFloat](s: Obj, x: T) = echo "SomeFloat"
+  proc bar[T](s: Obj, x: T) = echo "any"
+  bar(Obj(), 1.23)
+  proc baz[T: SomeFloat](x: T, s: Obj) = echo "SomeFloat"
+  proc baz[T](x: T, s: Obj) = echo "any"
+  baz(1.23, Obj())
+  type Obj2 = ref object
+  proc quz[T: SomeFloat](s: Obj2, x: T) = echo "SomeFloat"
+  proc quz[T](s: Obj2, x: T) = echo "any"
+  quz(Obj2(), 1.23)
+
+block: # bug #26401
+  template marker() {.pragma.}
+  type
+    Base[T] = object
+      field {.marker.}: T
+    Alias = Base[int]
+  echo Base[int]().field.hasCustomPragma(marker)
+  echo Alias().field.hasCustomPragma(marker)
+
+# bug #16105
+# a converter is only allowed at top level, so this stays at the end of the
+# file, where the generic converter cannot affect any other case
+type Foo16105[T] = object
+  field: T
+converter toFoo16105[T](x: T): Foo16105[T] = Foo16105[T](field: x)
+doAssert $Foo16105(3) == "(field: 3)"

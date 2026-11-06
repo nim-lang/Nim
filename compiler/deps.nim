@@ -116,25 +116,30 @@ proc readNeedsImpl(c: DepContext; f: FilePair): seq[string] =
 proc semDepsFile(c: DepContext; f: FilePair): string =
   semanticFile(c.config, f.modname, ".s.deps.bif").string
 
-proc readSemDeps(c: DepContext; f: FilePair): seq[string] =
-  ## The module's REAL direct imports (full source paths) as sem resolved them,
-  ## including macro-generated imports the static scanner missed
-  ## (ast2nif.writeSemDeps). Missing file (not yet semmed) -> empty.
-  result = @[]
-  if fileExists(c.semDepsFile(f)):
-    result = collectBifStrLits(c.semDepsFile(f))
+proc semDeps(c: DepContext; f: FilePair): SemDeps =
+  ## The module's `.s.deps` sidecar (icnifcore.writeSemDeps): its REAL direct
+  ## imports (full source paths) as sem resolved them, including
+  ## macro-generated imports the static scanner missed, and the files
+  ## `staticRead`/`slurp` read during its last sem. Missing sidecar (not yet
+  ## semmed) -> `exists` is false.
+  loadSemDeps(c.semDepsFile(f))
 
-proc semDepsAreCurrent(c: DepContext; node: Node): bool =
+proc newerThan(path: string; t: Time): bool =
+  ## `path` exists and was modified after `t` (one stat).
+  try: result = getLastModificationTime(path) > t
+  except OSError: result = false
+
+proc semDepsAreCurrent(node: Node; deps: SemDeps): bool =
   ## A `.s.deps` sidecar describes the sources it was produced from. Once the
   ## module or one of its includes has changed, the imports it lists may no
-  ## longer be taken (an edited `when`, a removed `import`).
-  let sidecar = c.semDepsFile(node.files[0])
-  if not fileExists(sidecar): return false
-  let written = getLastModificationTime(sidecar)
-  result = true
+  ## longer be taken (an edited `when`, a removed `import`). A file read by
+  ## `staticRead` can steer a `when` that guards an import, too.
+  if not deps.exists: return false
   for f in node.files:
-    if fileExists(f.nimFile) and getLastModificationTime(f.nimFile) > written:
-      return false
+    if newerThan(f.nimFile, deps.written): return false
+  for f in deps.slurps:
+    if newerThan(f, deps.written): return false
+  result = true
 
 proc findNifler(): string =
   # Look for nifler in common locations
@@ -194,27 +199,39 @@ proc runNifler(c: DepContext; nimFile: string): bool =
     if getLastModificationTime(depsPath) < getLastModificationTime(nimFile):
       setLastModificationTime(depsPath, getTime())
 
+proc expandPathSubs(c: DepContext; origin, path: string): string =
+  ## String-literal import/include paths support `$nim`-style substitutions
+  ## (see modulepaths.getModuleName). Expands them relative to `origin`'s
+  ## directory. Returns `path` unchanged if the substitution fails.
+  try: pathSubs(c.config, path, origin.splitFile().dir)
+  except ValueError: path
+
 proc resolveImport(c: DepContext; origin, toResolve: string): string =
-  ## Resolve an import path using the compiler's normal module lookup rules.
-  var toResolve = toResolve
-  if '$' in toResolve:
-    # string-literal import paths support `$nim`-style substitutions
-    # (see modulepaths.getModuleName)
-    try:
-      toResolve = pathSubs(c.config, toResolve, origin.splitFile().dir)
-    except ValueError:
-      discard
-  result = findModule(c.config, toResolve, origin).string
+  ## Resolves an import path using the compiler's normal module lookup rules,
+  ## after expanding `$`-substitutions.
+  let importPath =
+    if '$' in toResolve: expandPathSubs(c, origin, toResolve)
+    else: toResolve
+  findModule(c.config, importPath, origin).string
 
 proc resolveInclude(c: DepContext; origin, toResolve: string): string =
-  ## Resolve an include path relative to the including file or the search paths.
+  ## Resolves an include path relative to the including file or the search
+  ## paths, after expanding `$`-substitutions (e.g. `$projectpath`).
+  ## A path that becomes absolute through expansion is used as is.
+  var includePath = toResolve
+  if '$' in toResolve:
+    includePath = expandPathSubs(c, origin, toResolve)
+    if isAbsolute(includePath):
+      let absFile = includePath.addFileExt("nim")
+      return (if fileExists(absFile): absFile else: "")
+
   let originDir = parentDir(origin)
-  result = originDir / toResolve.addFileExt("nim")
+  result = originDir / includePath.addFileExt("nim")
   if fileExists(result):
     return result
 
   for searchPath in c.config.searchPaths:
-    result = searchPath.string / toResolve.addFileExt("nim")
+    result = searchPath.string / includePath.addFileExt("nim")
     if fileExists(result):
       return result
 
@@ -970,7 +987,7 @@ proc pruneDeadSpeculative(c: var DepContext) =
     if alive[i] or wasDeferred: continue
     # Preserve current semantics shared by other entry points. A stale module
     # must stop an importer for discovery before it can consume outdated code.
-    if not semDepsAreCurrent(c, c.nodes[i]):
+    if not semDepsAreCurrent(c.nodes[i], semDeps(c, c.nodes[i].files[0])):
       let f = c.nodes[i].files[0]
       removeFile(c.semmedFile(f))
       removeFile(c.ifaceFile(f))
@@ -1328,6 +1345,14 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
         b.addTree "input"
         b.addStrLit c.parsedFile(f)
         b.endTree()
+    # Files read at compile time via `staticRead`/`slurp` (#26614).
+    var seenSlurp = initHashSet[string]()
+    for m in members:
+      for f in semDeps(c, c.nodes[m].files[0]).slurps:
+        if fileExists(f) and not seenSlurp.containsOrIncl(f):
+          b.addTree "input"
+          b.addStrLit f
+          b.endTree()
     # Depend on the dependencies *outside* this component — on their interface
     # COOKIE sidecars, not the semmed NIFs themselves: the sidecar's mtime only
     # moves when the dep's importer-visible surface (or, via hash chaining, any
@@ -1446,7 +1471,7 @@ proc computeLiveBackendNodes(c: DepContext): seq[bool] =
     let ni = stack.pop()
     if ni < 0 or ni >= c.nodes.len or result[ni]: continue
     result[ni] = true
-    for p in readSemDeps(c, c.nodes[ni].files[0]):
+    for p in semDeps(c, c.nodes[ni].files[0]).imports:
       let idx = c.processedModules.getOrDefault(c.toPair(p).modname, -1)
       if idx >= 0: stack.add idx
 
@@ -1907,9 +1932,10 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
     inc nextNode
     # A deferred module was not semmed by the last round.
     if c.nodes[ni].deferred: continue
+    let deps = semDeps(c, c.nodes[ni].files[0])
     let confirmed = (afterRound and ni < scheduledNodes) or
-      semDepsAreCurrent(c, c.nodes[ni])
-    for p in readSemDeps(c, c.nodes[ni].files[0]):
+      semDepsAreCurrent(c.nodes[ni], deps)
+    for p in deps.imports:
       let pair = c.toPair(p)
       var idx = c.processedModules.getOrDefault(pair.modname, -1)
       if idx == -1:

@@ -287,45 +287,54 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # signature still compares effective settings so equivalent configs can
   # share compiled modules.
   let outPath = cacheDir / ("ic_config_" & moduleSuffix(conf.projectFull.string, []) & ".cfg.nif")
-  if not fileExists(outPath) or sourcesChanged(outPath):
+  # Re-invoke ourselves as the config producer: reuse this process's command
+  # line, dropping the command argument (`ic`/`track`) in favour of `icconfig`
+  # and the explicit output path. Every switch must land BEFORE the project
+  # file, because anything after the project is swallowed into
+  # `config.arguments` by `cmdLineRest` (and a non-empty `arguments` without
+  # `--run` is a hard error). Program arguments must not reach the config
+  # producer, even when they look like compiler switches. Only `nim track`
+  # accepts compiler switches after the project; move those before it.
+  # The producer re-reads `nim.cfg` itself.
+  var pargs = @["icconfig", "--icConfigOut:" & outPath]
+  # The command token is dropped below, so `nim cpp --ic:on` would hand the
+  # producer a C-backend config: name the backend explicitly. (`nim ic
+  # --backend:cpp` already carries the switch; the duplicate is harmless.)
+  if conf.backend != backendInvalid:
+    pargs.add "--backend:" & $conf.backend
+  var rest: seq[string] = @[]
+  var droppedCmd = false
+  for a in commandLineParams():
+    if a.len == 0: continue
+    if a[0] == '-':
+      # `--run`/`-r` must not reach the producer: it only serialises the
+      # resolved config, has no output binary, and `nim.nim`'s run step asserts
+      # on the empty `outFile` (`nim cpp --ic:on -r foo.nim`).
+      var name = ""
+      var i = 1
+      if i < a.len and a[i] == '-': inc i
+      while i < a.len and a[i] notin {':', '='}:
+        name.add a[i]
+        inc i
+      if normalize(name) in ["r", "run"]: continue
+      pargs.add a
+    elif not droppedCmd:
+      droppedCmd = true  # drop the original command token (`ic`/`track`)
+    else:
+      rest.add a
+      if conf.cmd != cmdTrack: break # everything after the project is a program argument
+  for a in rest: pargs.add a
+  # The config also depends on the command line: `config.nims` can read
+  # `-d:` values (`const mode {.strdefine.}`) and branch on them. Remember the
+  # producer's arguments next to the artifact and regenerate it whenever they
+  # differ (#26628). A sidecar rather than part of the artifact, so that e.g. a
+  # different `--out:` does not alter the artifact's content (and with it the
+  # config signature that selects the semantic cache directory).
+  let argsPath = outPath & ".args"
+  let argsContent = pargs.join("\n")
+  let argsChanged = not fileExists(argsPath) or readFile(argsPath) != argsContent
+  if not fileExists(outPath) or argsChanged or sourcesChanged(outPath):
     createDir(cacheDir)
-    # Re-invoke ourselves as the config producer: reuse this process's command
-    # line, dropping the command argument (`ic`/`track`) in favour of `icconfig`
-    # and the explicit output path. Every switch must land BEFORE the project
-    # file, because anything after the project is swallowed into
-    # `config.arguments` by `cmdLineRest` (and a non-empty `arguments` without
-    # `--run` is a hard error). Program arguments must not reach the config
-    # producer, even when they look like compiler switches. Only `nim track`
-    # accepts compiler switches after the project; move those before it.
-    # The producer re-reads `nim.cfg` itself.
-    var pargs = @["icconfig", "--icConfigOut:" & outPath]
-    # The command token is dropped below, so `nim cpp --ic:on` would hand the
-    # producer a C-backend config: name the backend explicitly. (`nim ic
-    # --backend:cpp` already carries the switch; the duplicate is harmless.)
-    if conf.backend != backendInvalid:
-      pargs.add "--backend:" & $conf.backend
-    var rest: seq[string] = @[]
-    var droppedCmd = false
-    for a in commandLineParams():
-      if a.len == 0: continue
-      if a[0] == '-':
-        # `--run`/`-r` must not reach the producer: it only serialises the
-        # resolved config, has no output binary, and `nim.nim`'s run step asserts
-        # on the empty `outFile` (`nim cpp --ic:on -r foo.nim`).
-        var name = ""
-        var i = 1
-        if i < a.len and a[i] == '-': inc i
-        while i < a.len and a[i] notin {':', '='}:
-          name.add a[i]
-          inc i
-        if normalize(name) in ["r", "run"]: continue
-        pargs.add a
-      elif not droppedCmd:
-        droppedCmd = true  # drop the original command token (`ic`/`track`)
-      else:
-        rest.add a
-        if conf.cmd != cmdTrack: break # everything after the project is a program argument
-    for a in rest: pargs.add a
     let p = startProcess(getAppFilename(), args = pargs,
                          options = {poStdErrToStdOut})
     let outp = p.outputStream.readAll()
@@ -335,4 +344,5 @@ proc ensureIcConfig*(conf: ConfigRef) =
       rawMessage(conf, errGenerated,
         "failed to produce precompiled config (exit code " & $code & "):\n" & outp)
       return
+    writeFile(argsPath, argsContent)
   conf.icPreparsedConfig = outPath

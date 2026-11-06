@@ -1053,7 +1053,13 @@ proc callCCompiler*(conf: ConfigRef) =
       objfiles.add(quoteShell(
           addFileExt(objFile, CC[conf.cCompiler].objExt)))
 
-    if conf.hcrOn: # lets assume that optCompileOnly isn't on
+    if conf.hcrOn:
+      # the object of a `{.compile.}` file is linked into every binary, like
+      # the `{.link.}` ones: the C code of any module may call its functions
+      for x in conf.toCompile:
+        if CfileFlag.External in x.flags:
+          objfiles.add(' ')
+          objfiles.add(quoteShell(conf.getObjFilePath(x)))
       cmds = @[]
       # a running program reloads a library as soon as it looks newer, so the
       # linker writes each one beside its final name and it is moved into place
@@ -1064,7 +1070,7 @@ proc callCCompiler*(conf: ConfigRef) =
         # don't relink each of the many binaries (one for each source file) if the nim code is
         # cached because that would take too much time for small changes - the only downside to
         # this is that if an external-to-link file changes the final target wouldn't be relinked
-        if CfileFlag.Cached in x.flags: continue
+        if {CfileFlag.Cached, CfileFlag.External} * x.flags != {}: continue
         # we pass each object file as if it is the project file - a .dll will be created for each such
         # object file in the nimcache directory, and only in the case of the main project file will
         # there be probably an executable (if the project is such) which will be copied out of the nimcache
@@ -1076,6 +1082,12 @@ proc callCCompiler*(conf: ConfigRef) =
           else: linkTarget
         if buildDll: linkedLibs.add (linkOutput, linkTarget)
         cmds.add(getLinkCmd(conf, linkOutput, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
+        if optGenScript in conf.globalOptions:
+          # no program runs while the script links, so each library is linked
+          # in place, and the program to the output like without HCR
+          let scriptOutput = if buildDll: linkTarget else: AbsoluteFile(conf.outFile)
+          script.add(getLinkCmd(conf, scriptOutput, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
+          script.add("\n")
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
         if isVSCompatible(conf):
@@ -1083,16 +1095,17 @@ proc callCCompiler*(conf: ConfigRef) =
             discard tryRemoveFile(pdb)
       # execute link commands in parallel - output will be a bit different
       # if it fails than that from execLinkCmd() but that doesn't matter
-      prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
-      execCmdsInParallel(conf, cmds, prettyCb)
-      for lib in linkedLibs:
-        moveFile(lib.linked.string, lib.target.string)
-      # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
-      if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
-        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
-        let src = conf.hcrLinkTargetName(mainObjFile, true)
-        let dst = conf.prepareToWriteOutput
-        copyFileWithPermissions(src.string, dst.string)
+      if optCompileOnly notin conf.globalOptions:
+        prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
+        execCmdsInParallel(conf, cmds, prettyCb)
+        for lib in linkedLibs:
+          moveFile(lib.linked.string, lib.target.string)
+        # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
+        if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
+          let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
+          let src = conf.hcrLinkTargetName(mainObjFile, true)
+          let dst = conf.prepareToWriteOutput
+          copyFileWithPermissions(src.string, dst.string)
     else:
       for x in conf.toCompile:
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string

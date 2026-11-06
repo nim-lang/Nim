@@ -406,6 +406,9 @@ proc parseIPv6Address(addressStr: string): IpAddress =
       separatorValid = false
       break
     elif c in strutils.HexDigits:
+      if i - currentGroupStart >= 4:
+        raise newException(ValueError,
+          "Invalid IP Address. A group consists of more than 4 hexadecimal digits")
       if c in strutils.Digits: # Normal digit
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('0'))
       elif c >= 'a' and c <= 'f': # Lower case hex
