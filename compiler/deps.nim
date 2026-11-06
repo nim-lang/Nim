@@ -320,6 +320,13 @@ proc processImport(c: var DepContext; importPath: string; current: Node; origin:
         if impId != newNode.id: newNode.deps.add impId
     c.processedModules[pair.modname] = newNode.id
     c.nodes.add newNode
+    # The guard belongs to current -> newNode. Imports inside the new module
+    # have their own guards; carrying this depth into them would make even
+    # unconditional dependencies speculative and discover chains one hop per
+    # frontend round. Includes keep the depth because they share this module.
+    let previousSpeculation = c.speculating
+    c.speculating = 0
+    defer: c.speculating = previousSpeculation
     traverseDeps(c, pair, newNode)
   else:
     # Already processed - just add dependency
