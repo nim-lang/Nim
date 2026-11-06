@@ -1959,20 +1959,16 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
         if not confirmed: dec c.speculating
   result = madeProgress
 
+iterator unsemmed(c: DepContext): string =
+  ## The scheduled modules still lacking their semmed NIF.
+  for node in c.nodes:
+    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
+      yield node.files[0].modname
+
 proc allSemmed(c: DepContext): bool =
   ## Whether every scheduled module has its semmed NIF.
   result = true
-  for node in c.nodes:
-    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
-      return false
-
-proc unsemmedModules(c: DepContext): seq[string] =
-  ## The scheduled modules still lacking their semmed NIF, sorted.
-  result = @[]
-  for node in c.nodes:
-    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
-      result.add node.files[0].modname
-  result.sort()
+  for _ in unsemmed(c): return false
 
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
@@ -2200,13 +2196,17 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         # Just run the round again: nifmake reruns exactly the rules whose
         # semmed NIF is missing. Only give up when a round leaves at least as
         # many modules unsemmed as the previous one, so this terminates.
-        let pending = unsemmedModules(c)
-        if pending.len < lastPending:
-          lastPending = pending.len
+        var pending = 0
+        for _ in unsemmed(c): inc pending
+        if pending < lastPending:
+          lastPending = pending
           continue
+        var names: seq[string] = @[]
+        for m in unsemmed(c): names.add m
+        names.sort()
         rawMessage(conf, errGenerated,
           "ic: modules stopped for imports discovered during sem, but " &
-          "rescheduling made no progress: " & pending.join(", "))
+          "rescheduling made no progress: " & names.join(", "))
         break
       if not discovered:
         # The children have already printed the real diagnostics. Adding an
