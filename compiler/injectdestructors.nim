@@ -53,6 +53,8 @@ type
     body: PNode
     needsTry: bool
     parent: ptr Scope
+    namedByRoutines: IntSet # globals that a routine declared in `body` names
+    namedByRoutinesDone: bool
 
   ProcessMode = enum
     normal
@@ -667,16 +669,63 @@ proc isReloadableGlobalWithInit(c: Con; s: Scope; it: PNode): bool =
     {sfGlobal, sfThread, sfCursor, sfCompileTime, sfPure} * it[0].sym.flags == {sfGlobal} and
     hasDestructor(c, it[0].typ)
 
+proc collectNamedByRoutines(n: PNode; inRoutine: bool; found: var IntSet) =
+  ## Adds the globals that a routine (a closure included) declared within `n`
+  ## names. Only the routines declared there are entered, not the ones they
+  ## call: a routine that names a variable of the scope is declared in it.
+  case n.kind
+  of nkSym:
+    let sym = n.sym
+    if inRoutine and sfGlobal in sym.flags:
+      found.incl sym.id
+    elif sym.kind in routineKinds and sym.ast != nil and
+        sym.ast.kind in {nkLambda, nkDo} and sym.ast.len > bodyPos and
+        not found.containsOrIncl(sym.id):
+      # a lambda has been replaced by its symbol by now
+      collectNamedByRoutines(sym.ast[bodyPos], true, found)
+  of routineDefs, nkLambda, nkDo:
+    collectNamedByRoutines(n[bodyPos], true, found)
+  of nkCharLit..nkNilLit, nkEmpty:
+    discard
+  else:
+    for it in n:
+      collectNamedByRoutines(it, inRoutine, found)
+
+proc outlivesScope(v: PSym; s: var Scope): bool =
+  ## A module level variable declared in a nested scope is a global: a routine
+  ## naming it reads that one location, there is no closure environment to
+  ## keep it alive (see `liftLambdasForTopLevel`). Such a variable lives as
+  ## long as the program, unlike a local of the scope.
+  # a `{.global.}` of a routine is initialized once and `pVarTopLevel` already
+  # registers it for destruction at the end of the program
+  result = sfGlobal in v.flags and {sfThread, sfCursor, sfPure} * v.flags == {} and
+    s.parent != nil
+  if result:
+    if not s.namedByRoutinesDone:
+      # one walk of the scope for all of its variables
+      collectNamedByRoutines(s.body, false, s.namedByRoutines)
+      s.namedByRoutinesDone = true
+    result = v.id in s.namedByRoutines
+
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
-  # move the variable declaration to the top of the frame:
-  s.vars.add v.sym
+  let outlives = outlivesScope(v.sym, s) and not isFullyUnpackedTuple(v)
+  if outlives and c.inLoop > 0:
+    # every round of the loop declares the one location again and the backend
+    # resets it there, so the previous value is destroyed first:
+    res.add c.genDestroy(v)
+    res.add newTree(nkVarSection, newTree(nkIdentDefs, v, newNodeI(nkEmpty, v.info),
+                                          newNodeI(nkEmpty, v.info)))
+  else:
+    # move the variable declaration to the top of the frame:
+    s.vars.add v.sym
   if isFullyUnpackedTuple(v):
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
-    if {sfGlobal, sfPure} <= v.sym.flags or sfGlobal in v.sym.flags and s.parent == nil:
+    if {sfGlobal, sfPure} <= v.sym.flags or sfGlobal in v.sym.flags and s.parent == nil or
+        outlives:
       c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
