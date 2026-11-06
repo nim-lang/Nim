@@ -84,3 +84,10 @@ template main() =
 
 static: main()
 main()
+
+block: # bug #19773
+  const s1 = ""
+  var root = false
+  if s1.len == 0 or s1[0] == '/':
+    root = true
+  doAssert root
