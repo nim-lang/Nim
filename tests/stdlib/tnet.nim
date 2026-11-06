@@ -52,6 +52,20 @@ block: # parseIpAddress tests
     expect(ValueError):
       discard parseIpAddress("gggg:cdba:0000:0000:0000:0000:3257:9652")
 
+  block: # ipv6 groups with more than 4 hex digits (bug #26647)
+    discard parseIpAddress("0000::1")
+    discard parseIpAddress("ffff:2:3:4:5:6:7:8")
+    check isIpAddress("0001::1") == true
+    check isIpAddress("00001::1") == false
+    expect(ValueError):
+      discard parseIpAddress("00001::1")
+    expect(ValueError):
+      discard parseIpAddress("000000000000000000001::2")
+    expect(ValueError):
+      discard parseIpAddress("fffff::1")
+    expect(ValueError):
+      discard parseIpAddress("1:2:3:4:5:6:7:0000f")
+
   block: # ipv4-compatible ipv6 address (embedded ipv4 address)
     check parseIpAddress("::ffff:10.0.0.23") == parseIpAddress("::ffff:0a00:0017")
 
