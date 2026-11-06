@@ -177,10 +177,18 @@ proc validateUtf8*(s: openArray[char]): int =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
   ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
   ##
+  ## Follows RFC 3629: overlong encodings, surrogate code points and code
+  ## points above U+10FFFF are rejected, not only malformed bytes.
+  ##
   ## See also:
   ## * `toUTF8 proc <#toUTF8,Rune>`_
   ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
   ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
+  runnableExamples:
+    doAssert validateUtf8("añyóng") == -1
+    doAssert validateUtf8("\xc0\xaf") == 0 # overlong encoding of '/'
+    doAssert validateUtf8("\xed\xa0\x80") == 0 # lone surrogate U+D800
+    doAssert validateUtf8("\xf4\x90\x80\x80") == 0 # above U+10FFFF
   var i = 0
   let L = s.len
   while i < L:
@@ -192,12 +200,19 @@ proc validateUtf8*(s: openArray[char]): int =
       else: return i
     elif uint(s[i]) shr 4 == 0b1110:
       if i+2 < L and uint(s[i+1]) shr 6 == 0b10 and uint(s[i+2]) shr 6 == 0b10:
+        if (uint(s[i]) == 0xe0 and uint(s[i+1]) < 0xa0) or
+           (uint(s[i]) == 0xed and uint(s[i+1]) >= 0xa0):
+          return i # Catch overlong and surrogate (D800..DFFF) representations.
         inc i, 3
       else: return i
     elif uint(s[i]) shr 3 == 0b11110:
+      if uint(s[i]) > 0xf4: return i # Catch lead bytes of code points above U+10FFFF.
       if i+3 < L and uint(s[i+1]) shr 6 == 0b10 and
                      uint(s[i+2]) shr 6 == 0b10 and
                      uint(s[i+3]) shr 6 == 0b10:
+        if (uint(s[i]) == 0xf0 and uint(s[i+1]) < 0x90) or
+           (uint(s[i]) == 0xf4 and uint(s[i+1]) >= 0x90):
+          return i # Catch overlong and out-of-range (> U+10FFFF) representations.
         inc i, 4
       else: return i
     else:
