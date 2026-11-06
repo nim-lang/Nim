@@ -106,3 +106,15 @@ template main() =
 
 static: main()
 main()
+
+block: # bug #16254
+  var untypedHook: proc()
+  var received = 0
+  type Hook = proc(n: int)
+  proc setHook(hook: Hook) =
+    untypedHook = cast[proc()](hook)
+  proc callHook(n: int) =
+    cast[Hook](untypedHook)(n)
+  setHook proc(n: int) = received = n
+  callHook(1234)
+  doAssert received == 1234

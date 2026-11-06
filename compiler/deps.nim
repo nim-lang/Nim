@@ -199,27 +199,39 @@ proc runNifler(c: DepContext; nimFile: string): bool =
     if getLastModificationTime(depsPath) < getLastModificationTime(nimFile):
       setLastModificationTime(depsPath, getTime())
 
+proc expandPathSubs(c: DepContext; origin, path: string): string =
+  ## String-literal import/include paths support `$nim`-style substitutions
+  ## (see modulepaths.getModuleName). Expands them relative to `origin`'s
+  ## directory. Returns `path` unchanged if the substitution fails.
+  try: pathSubs(c.config, path, origin.splitFile().dir)
+  except ValueError: path
+
 proc resolveImport(c: DepContext; origin, toResolve: string): string =
-  ## Resolve an import path using the compiler's normal module lookup rules.
-  var toResolve = toResolve
-  if '$' in toResolve:
-    # string-literal import paths support `$nim`-style substitutions
-    # (see modulepaths.getModuleName)
-    try:
-      toResolve = pathSubs(c.config, toResolve, origin.splitFile().dir)
-    except ValueError:
-      discard
-  result = findModule(c.config, toResolve, origin).string
+  ## Resolves an import path using the compiler's normal module lookup rules,
+  ## after expanding `$`-substitutions.
+  let importPath =
+    if '$' in toResolve: expandPathSubs(c, origin, toResolve)
+    else: toResolve
+  findModule(c.config, importPath, origin).string
 
 proc resolveInclude(c: DepContext; origin, toResolve: string): string =
-  ## Resolve an include path relative to the including file or the search paths.
+  ## Resolves an include path relative to the including file or the search
+  ## paths, after expanding `$`-substitutions (e.g. `$projectpath`).
+  ## A path that becomes absolute through expansion is used as is.
+  var includePath = toResolve
+  if '$' in toResolve:
+    includePath = expandPathSubs(c, origin, toResolve)
+    if isAbsolute(includePath):
+      let absFile = includePath.addFileExt("nim")
+      return (if fileExists(absFile): absFile else: "")
+
   let originDir = parentDir(origin)
-  result = originDir / toResolve.addFileExt("nim")
+  result = originDir / includePath.addFileExt("nim")
   if fileExists(result):
     return result
 
   for searchPath in c.config.searchPaths:
-    result = searchPath.string / toResolve.addFileExt("nim")
+    result = searchPath.string / includePath.addFileExt("nim")
     if fileExists(result):
       return result
 
