@@ -370,7 +370,7 @@ proc condOr(a, b: CondVal): CondVal =
   elif a == cvFalse and b == cvFalse: cvFalse
   else: cvUnknown
 
-proc evalCondIdent(c: DepContext; v: string): CondVal =
+proc evalCondIdent(c: DepContext; v: string; allowConstants: bool): CondVal =
   ## Truth value of a bare identifier appearing in a `when` condition. Unknown
   ## idents are `cvUnknown` (kept), not `true` — so `when not SOMEIDENT:` no
   ## longer drops its import.
@@ -399,8 +399,14 @@ proc evalCondIdent(c: DepContext; v: string): CondVal =
     # symbols at link).
     toCondVal(c.scanningMain)
   else:
-    let value = c.constants.getConstValue(c.constScopeFile, v, c.scanningMain)
-    if value.kind == ckBool: toCondVal(value.boolVal) else: cvUnknown
+    # Bare constant guards need no overload resolution. Source operators must
+    # retain the scanner's previous unknown operands instead of using these
+    # newly known values to decide overloaded expressions before sem.
+    if allowConstants:
+      let value = c.constants.getConstValue(c.constScopeFile, v)
+      if value.kind == ckBool: toCondVal(value.boolVal) else: cvUnknown
+    else:
+      cvUnknown
 
 proc constIdentValue(c: DepContext; ident: string): string =
   ## String value of a compile-time platform constant that appears in `when`
@@ -420,47 +426,28 @@ proc constIdentValue(c: DepContext; ident: string): string =
   of "buildCPU": result = toLowerAscii(platform.CPU[c.config.target.hostCPU].name)
   else: result = ""
 
-proc readOperandValue(c: DepContext; s: var Stream; constant: var bool): ConstValue =
-  ## Read the expanded token so integer values are not lost by the classic
-  ## streaming adapter. Unknown operands still consume their entire subtree.
-  result = ConstValue()
-  var t = default(ExpandedToken)
-  nifreader.next(s.r, t)
-  case t.tk
-  of StringLit: result = stringConst(decodeStr(s.r, t))
-  of IntLit:
-    try: result = intConst(parseBiggestInt(decodeStr(s.r, t)))
-    except ValueError: discard
-  of Ident:
-    let name = decodeStr(s.r, t)
-    let platform = constIdentValue(c, name)
-    if platform.len > 0: result = stringConst(platform)
-    elif name in ["true", "false"]: result = boolConst(name == "true")
-    else:
-      constant = true
-      result = c.constants.getConstValue(c.constScopeFile, name, c.scanningMain)
+proc readOperandValue(c: DepContext; s: var Stream): string =
+  ## Read one operand of an `==`/`!=` infix and return its string value (a string
+  ## literal verbatim, a platform-constant ident resolved, anything else ""), fully
+  ## consuming the operand (subtrees are skipped) so the caller stays in sync.
+  let t = next(s)
+  case t.kind
+  of StringLit: result = pool.strings[t.litId]
+  of Ident: result = constIdentValue(c, pool.strings[t.litId])
   of ParLe:
-    var depth = 1
-    while depth > 0:
-      let child = next(s)
-      if child.kind == ParLe: inc depth
-      elif child.kind == ParRi: dec depth
-      elif child.kind == EofToken: return
-  else: discard
+    result = ""
+    skipSubtree(s, t)
+  else: result = ""
 
-proc evalCondCmp(c: DepContext; s: var Stream; op: string): CondVal =
-  ## Both operands must have a known value of the same kind.
-  var constant = false
-  let v1 = readOperandValue(c, s, constant)
-  let v2 = readOperandValue(c, s, constant)
-  let value = compareConsts(v1, v2, op)
-  if value.kind == ckBool and (constant or op notin ["==", "!="] or v1.kind != ckString or
-                              v1.strVal.len == 0 or
-                              v2.strVal.len == 0):
-    # Non-empty literal/platform strings were already supported. New numeric,
-    # boolean, and empty-string cases also need the constant overload checks.
-    if not c.constants.operationKnown(c.constScopeFile, op, c.scanningMain): return cvUnknown
-  result = if value.kind == ckBool: toCondVal(value.boolVal) else: cvUnknown
+proc evalCondCmp(c: DepContext; s: var Stream; isEq: bool): CondVal =
+  ## Evaluate `a == b` / `a != b`. Both operands known → real result; otherwise
+  ## `cvUnknown` (so a negated comparison keeps, not drops, the dependency).
+  let v1 = readOperandValue(c, s)
+  let v2 = readOperandValue(c, s)
+  if v1.len > 0 and v2.len > 0:
+    result = toCondVal((v1 == v2) == isEq)
+  else:
+    result = cvUnknown
 
 proc readDefinedName(s: var Stream): string =
   result = ""
@@ -477,14 +464,16 @@ proc readDefinedName(s: var Stream): string =
       skipSubtree(s, t)
   else: discard
 
-proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal
+proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken;
+                  allowConstants: bool): CondVal
 
-proc readCond(c: DepContext; s: var Stream): CondVal =
+proc readCond(c: DepContext; s: var Stream; allowConstants = false): CondVal =
   ## Read one full condition subtree (its own opener included) and evaluate it.
   let t = next(s)
-  evalCondExpr(c, s, t)
+  evalCondExpr(c, s, t, allowConstants)
 
-proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
+proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken;
+                  allowConstants: bool): CondVal =
   ## Evaluate the condition whose opening token `t` has ALREADY been read,
   ## consuming the rest of the expression so the caller stays in sync.
   ## Recognises `defined(IDENT)`, `compileOption("NAME")`, `not`/`and`/`or`,
@@ -495,7 +484,7 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
   ## stays in sync regardless of the result.
   case t.kind
   of Ident:
-    result = evalCondIdent(c, pool.strings[t.litId])
+    result = evalCondIdent(c, pool.strings[t.litId], allowConstants)
   of ParLe:
     let tag = pool.tags[t.tagId]
     # For prefix/infix/call nodes the operator name is the first child; for a
@@ -532,11 +521,11 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
       let a = readCond(c, s)
       let b = readCond(c, s)
       result = condOr(a, b)
-    of "==", "!=", "<", "<=", ">", ">=":
-      result = evalCondCmp(c, s, name)
+    of "==", "!=":
+      result = evalCondCmp(c, s, name == "==")
     of "par":
       # a parenthesised grouping such as `(defined(a) or defined(b))`.
-      result = readCond(c, s)
+      result = readCond(c, s, allowConstants)
     else:
       result = cvUnknown
     # Drain whatever remains until the matching ParRi.
@@ -558,7 +547,7 @@ proc whenMarkerHolds(c: DepContext; s: var Stream): CondVal =
     let t = next(s)
     if t.kind == ParRi: return
     if t.kind == EofToken: return
-    result = condAnd(result, evalCondExpr(c, s, t))
+    result = condAnd(result, evalCondExpr(c, s, t, allowConstants = true))
 
 proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
   ## Parse an import path expression and return the list of module paths it
@@ -952,13 +941,13 @@ proc pruneDeadSpeculative(c: var DepContext) =
   ## real frontend takes the branch, its `.s.deps` reports the missing import
   ## and the discovery fixpoint adds it back as a hard dependency.
   ##
-  ## For example, an imported backend setting can still need sem:
+  ## A backend setting compared with a string still needs sem:
   ##
-  ##   from settings import figdrawTextBackend
+  ##   const figdrawTextBackend* {.strdefine.} = "pixie"
   ##   when figdrawTextBackend == "harfbuzzy":
   ##     import ./textrasters/glyphid_raster   # imports `pkg/harfbuzzy`
   ##
-  ## Imported constants need sem, so `evalCondCmp` answers `cvUnknown`.
+  ## Comparisons with ordinary constants need sem, so the guard stays unknown.
   ## Scheduling `glyphid_raster` anyway would fail on `pkg/harfbuzzy` despite
   ## the classic compiler never reading it. The same problem occurs if the
   ## speculative module exists but contains invalid code in this configuration.
