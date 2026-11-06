@@ -894,3 +894,16 @@ block: # bug #25949
 
   doAssert roundTrip()
 
+
+block: # bug #25437
+  func doCompute(a: ptr UncheckedArray[int], len: int): seq[int] =
+    var foo = newSeq[int](len)
+    for i in 0 ..< len:
+      foo[i] = i
+    foo.sort do (x, y: auto) -> int:
+      cmp(a[x], a[y])
+    foo
+  func compute(a: openArray[int]): seq[int] =
+    doCompute(cast[ptr UncheckedArray[int]](unsafeAddr a[0]), a.len)
+  const x = [1, 2, 3]
+  static: doAssert compute(x) == @[0, 1, 2] # works without `static`
