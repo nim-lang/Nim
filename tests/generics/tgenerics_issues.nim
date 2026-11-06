@@ -960,3 +960,11 @@ block: # bug #26401
     Alias = Base[int]
   echo Base[int]().field.hasCustomPragma(marker)
   echo Alias().field.hasCustomPragma(marker)
+
+# bug #16105
+# a converter is only allowed at top level, so this stays at the end of the
+# file, where the generic converter cannot affect any other case
+type Foo16105[T] = object
+  field: T
+converter toFoo16105[T](x: T): Foo16105[T] = Foo16105[T](field: x)
+doAssert $Foo16105(3) == "(field: 3)"

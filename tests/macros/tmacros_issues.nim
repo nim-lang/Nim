@@ -41,6 +41,8 @@ false
 true
 false
 1.0
+ok
+ok
 '''
 """
 
@@ -519,3 +521,41 @@ block double_sem_for_procs:
     result = 10.0
 
   discard exp(5.0)
+
+block: # bug #14373
+  type Container = object
+    n: NimNode
+  proc addLog(n: NimNode, msg: string) =
+    n.add newCall("add", ident"log", newLit(msg))
+  var log: seq[string]
+  var z {.compileTime.}: NimNode
+  macro test() =
+    var a = parseStmt("discard")
+    let c = Container(n: a)
+    let x = a
+    z = a
+    a.add newCall("add", ident"log", newLit("foo"))
+    c.n.add newCall("add", ident"log", newLit("bar"))
+    x.add newCall("add", ident"log", newLit("baz"))
+    x.addLog("bam")
+    z.add newCall("add", ident"log", newLit("bat"))
+    result = a
+  test()
+  doAssert log == @["foo", "bar", "baz", "bam", "bat"]
+
+block: # bug #15157
+  macro g(n: untyped) =
+    doAssert n.lispRepr == """(Ident "echo")"""
+    result = newCall(n, newLit"ok")
+  macro m(n: untyped) =
+    doAssert n.lispRepr == """(Ident "echo")"""
+    proc p(x: NimNode): NimNode = newCall(n, x)
+    result = p(newLit"ok")
+  g echo
+  m echo
+
+block: # bug #23567
+  macro foo(arg: int): int =
+    proc impl(): NimNode = arg
+    impl()
+  doAssert foo(11) == 11

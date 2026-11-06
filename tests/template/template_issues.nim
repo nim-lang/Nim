@@ -310,3 +310,8 @@ block: # bug #23680
   template m(x: untyped, i: int) = echo x
   proc j(n: int | int) = m([0][0], 0)
   j(0)
+
+block: # bug #22881
+  template test[I, T](a: array[I, T]) =
+    static: doAssert $typeof(a) == "array[1..2, int]"
+  test([1: 4, 2: 5])
