@@ -20,6 +20,7 @@ import nifstreams
 import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
 import icmodnames
 import icnifcore
+import icconsteval
 from ic/replayer import BackendActionsExt, BodyDepsExt
 from commands import compileOptionValue
 
@@ -48,6 +49,8 @@ type
 
   DepContext = object
     config: ConfigRef
+    constants: ConstContext
+    constScopeFile: string
     linkArgsFile: string # root-level input: the config/project/output last selected
     argsFile: string     # effective settings, stable within the configuration directory
     backendDir: string  # outputs for this backend and entry point
@@ -395,7 +398,9 @@ proc evalCondIdent(c: DepContext; v: string): CondVal =
     # so the merge stage can pick it as a shared def's owner -> undefined
     # symbols at link).
     toCondVal(c.scanningMain)
-  else: cvUnknown
+  else:
+    let value = c.constants.getConstValue(c.constScopeFile, v, c.scanningMain)
+    if value.kind == ckBool: toCondVal(value.boolVal) else: cvUnknown
 
 proc constIdentValue(c: DepContext; ident: string): string =
   ## String value of a compile-time platform constant that appears in `when`
@@ -415,28 +420,62 @@ proc constIdentValue(c: DepContext; ident: string): string =
   of "buildCPU": result = toLowerAscii(platform.CPU[c.config.target.hostCPU].name)
   else: result = ""
 
-proc readOperandValue(c: DepContext; s: var Stream): string =
-  ## Read one operand of an `==`/`!=` infix and return its string value (a string
-  ## literal verbatim, a platform-constant ident resolved, anything else ""), fully
-  ## consuming the operand (subtrees are skipped) so the caller stays in sync.
+proc readOperandValue(c: DepContext; s: var Stream; constant: var bool): ConstValue =
+  ## Read the expanded token so integer values are not lost by the classic
+  ## streaming adapter. Unknown operands still consume their entire subtree.
+  result = ConstValue()
+  var t = default(ExpandedToken)
+  nifreader.next(s.r, t)
+  case t.tk
+  of StringLit: result = stringConst(decodeStr(s.r, t))
+  of IntLit:
+    try: result = intConst(parseBiggestInt(decodeStr(s.r, t)))
+    except ValueError: discard
+  of Ident:
+    let name = decodeStr(s.r, t)
+    let platform = constIdentValue(c, name)
+    if platform.len > 0: result = stringConst(platform)
+    elif name in ["true", "false"]: result = boolConst(name == "true")
+    else:
+      constant = true
+      result = c.constants.getConstValue(c.constScopeFile, name, c.scanningMain)
+  of ParLe:
+    var depth = 1
+    while depth > 0:
+      let child = next(s)
+      if child.kind == ParLe: inc depth
+      elif child.kind == ParRi: dec depth
+      elif child.kind == EofToken: return
+  else: discard
+
+proc evalCondCmp(c: DepContext; s: var Stream; op: string): CondVal =
+  ## Both operands must have a known value of the same kind.
+  var constant = false
+  let v1 = readOperandValue(c, s, constant)
+  let v2 = readOperandValue(c, s, constant)
+  let value = compareConsts(v1, v2, op)
+  if value.kind == ckBool and (constant or op notin ["==", "!="] or v1.kind != ckString or
+                              v1.strVal.len == 0 or
+                              v2.strVal.len == 0):
+    # Non-empty literal/platform strings were already supported. New numeric,
+    # boolean, and empty-string cases also need the constant overload checks.
+    if not c.constants.operationKnown(c.constScopeFile, op, c.scanningMain): return cvUnknown
+  result = if value.kind == ckBool: toCondVal(value.boolVal) else: cvUnknown
+
+proc readDefinedName(s: var Stream): string =
+  result = ""
   let t = next(s)
   case t.kind
-  of StringLit: result = pool.strings[t.litId]
-  of Ident: result = constIdentValue(c, pool.strings[t.litId])
+  of Ident: result = pool.strings[t.litId]
   of ParLe:
-    result = ""
-    skipSubtree(s, t)
-  else: result = ""
-
-proc evalCondCmp(c: DepContext; s: var Stream; isEq: bool): CondVal =
-  ## Evaluate `a == b` / `a != b`. Both operands known → real result; otherwise
-  ## `cvUnknown` (so a negated comparison keeps, not drops, the dependency).
-  let v1 = readOperandValue(c, s)
-  let v2 = readOperandValue(c, s)
-  if v1.len > 0 and v2.len > 0:
-    result = toCondVal((v1 == v2) == isEq)
-  else:
-    result = cvUnknown
+    if pool.tags[t.tagId] == "dot":
+      let left = readDefinedName(s)
+      let right = readDefinedName(s)
+      if left.len > 0 and right.len > 0: result = left & "." & right
+      discard next(s) # closing dot
+    else:
+      skipSubtree(s, t)
+  else: discard
 
 proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal
 
@@ -471,10 +510,8 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
     else: discard
     case name
     of "defined":
-      let arg = next(s)
-      var sym = ""
-      if arg.kind == Ident: sym = pool.strings[arg.litId]
-      result = toCondVal(sym.len > 0 and isDefined(c.config, sym))
+      let sym = readDefinedName(s)
+      result = if sym.len > 0: toCondVal(isDefined(c.config, sym)) else: cvUnknown
     of "compileOption":
       # Same table the compiler's `compileOption` magic uses, so e.g.
       # `when compileOption("profiler"): import std/nimprof` is decided here
@@ -495,8 +532,8 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
       let a = readCond(c, s)
       let b = readCond(c, s)
       result = condOr(a, b)
-    of "==", "!=":
-      result = evalCondCmp(c, s, name == "==")
+    of "==", "!=", "<", "<=", ">", ">=":
+      result = evalCondCmp(c, s, name)
     of "par":
       # a parenthesised grouping such as `(defined(a) or defined(b))`.
       result = readCond(c, s)
@@ -611,8 +648,12 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
   # `current.id == 0` is the project main (rootNode); restored on exit so the
   # flag is correct for each parent frame between its child recursions.
   let prevScanningMain = c.scanningMain
+  let prevConstScope = c.constScopeFile
   c.scanningMain = current.id == 0
-  defer: c.scanningMain = prevScanningMain
+  c.constScopeFile = current.files[0].nimFile
+  defer:
+    c.scanningMain = prevScanningMain
+    c.constScopeFile = prevConstScope
 
   var s = nifstreams.open(depsPath)
   defer: nifstreams.close(s)
@@ -911,13 +952,13 @@ proc pruneDeadSpeculative(c: var DepContext) =
   ## real frontend takes the branch, its `.s.deps` reports the missing import
   ## and the discovery fixpoint adds it back as a hard dependency.
   ##
-  ## The motivating shape is the ordinary `{.strdefine.}` backend switch:
+  ## For example, an imported backend setting can still need sem:
   ##
-  ##   const figdrawTextBackend* {.strdefine.} = "pixie"
+  ##   from settings import figdrawTextBackend
   ##   when figdrawTextBackend == "harfbuzzy":
   ##     import ./textrasters/glyphid_raster   # imports `pkg/harfbuzzy`
   ##
-  ## The value of that const needs sem, so `evalCondCmp` answers `cvUnknown`.
+  ## Imported constants need sem, so `evalCondCmp` answers `cvUnknown`.
   ## Scheduling `glyphid_raster` anyway would fail on `pkg/harfbuzzy` despite
   ## the classic compiler never reading it. The same problem occurs if the
   ## speculative module exists but contains invalid code in this configuration.
@@ -2002,6 +2043,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     var c = DepContext(
       config: conf,
+      constants: newConstContext(conf),
       linkArgsFile: cacheDir / "ic_link_args.txt",
       nifler: nifler,
       nodes: @[],
