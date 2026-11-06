@@ -81,3 +81,18 @@ block: # issue #9313
       echo "Hi"
       quit(0)
   )
+
+block: # bug #14714
+  proc test() {.gcsafe, async.} =
+    try:
+      await sleepAsync(1)
+      return
+    except CatchableError as err:
+      doAssert false, err.msg
+  var caught = ""
+  try:
+    raise newException(CatchableError, "Not implemented")
+  except CatchableError as err:
+    caught = err.msg
+    waitFor test() # crashed when called from within the `except` block
+  doAssert caught == "Not implemented"
