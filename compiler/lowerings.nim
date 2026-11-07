@@ -432,3 +432,47 @@ proc genLen*(g: ModuleGraph; n: PNode): PNode =
     result[0] = newSymNode(getSysMagic(g, n.info, "len", mLengthSeq))
     result[1] = n
 
+proc isDerefOfLentConstruct*(n: PNode): bool =
+  ## ``deref(construct)`` where ``construct`` is an expression-based control
+  ## flow construct of type ``lent T``. See ``derefLeaves``.
+  result = n.kind == nkHiddenDeref and
+    n[0].kind in {nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt,
+                  nkTryStmt, nkPragmaBlock} and
+    n[0].typ != nil and n[0].typ.kind == tyLent
+
+proc derefLeaves*(n: PNode; typ: PType): PNode =
+  ## Turns ``deref(construct)`` of an expression-based control flow construct
+  ## of type ``lent T`` into ``construct`` of type ``T`` with ``deref(leaf)``
+  ## for every leaf expression. A borrowed leaf can outlive what it borrows
+  ## from, for example a temporary of the branch or a location that a
+  ## ``defer`` frees, so the construct must produce a copy (bug #26567).
+  if n.typ == nil or isEmptyType(n.typ) or n.typ.kind == tyTyped:
+    # a branch that does not produce a value ('raise', 'return' etc.)
+    return n
+  case n.kind
+  of nkStmtListExpr, nkBlockExpr, nkPragmaBlock:
+    result = copyNode(n)
+    for i in 0..<n.len-1: result.add n[i]
+    result.add derefLeaves(n[^1], typ)
+    result.typ = typ
+  of nkIfExpr, nkIfStmt, nkCaseStmt, nkTryStmt:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      let it = n[i]
+      if n.kind == nkCaseStmt and i == 0:
+        result.add it
+      elif n.kind == nkTryStmt and i == 0:
+        result.add derefLeaves(it, typ)
+      elif it.kind in {nkElifBranch, nkElifExpr, nkElse, nkElseExpr, nkOfBranch,
+                       nkExceptBranch}:
+        let b = copyNode(it)
+        for j in 0..<it.len-1: b.add it[j]
+        b.add derefLeaves(it[^1], typ)
+        result.add b
+      else:
+        result.add it
+    result.typ = typ
+  elif n.typ.kind == tyLent:
+    result = newTreeIT(nkHiddenDeref, n.info, typ, n)
+  else:
+    result = n
