@@ -2166,6 +2166,11 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       a = semExprWithType(c, a, {efLValue})
   else:
     a = semExprWithType(c, a, {efLValue})
+  if a.kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr} and
+      a.typ != nil and a.typ.kind == tyVar:
+    # a `var T` field of a tuple like `(var int, var int)` is assigned
+    # through (#14552):
+    a = newDeref(a)
   n[0] = a
   # a = b # both are vars, means: a[] = b[]
   # a = b # b no 'var T' means: a = addr(b)
