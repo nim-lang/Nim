@@ -169,6 +169,10 @@ type
     cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API; IC: implemented
     cacheCounters*: Table[string, BiggestInt] # IC: implemented
     cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
+    macroCacheLog*: seq[tuple[module: PSym; action: PNode]]
+      # suggest mode only: every macrocache mutation in the order it happened,
+      # so that the caches can be rebuilt without the effects of a module that
+      # is about to be recompiled (see `pipelines.resetMacroCacheFor`).
     pendingNifInit*: seq[tuple[module: PSym; topLevel: PNode]]
       # EVERY module loaded from a NIF — whether a direct import (moduleFromNifFile)
       # or only a dep-of-a-dep (loadTransitiveHooks) — is recorded here with its
@@ -966,6 +970,7 @@ proc initModuleGraphFields(result: ModuleGraph) =
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
   result.cacheTables = initTable[string, BTree[string, PNode]]()
+  result.macroCacheLog = @[]
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
   result.operators = initOperators(result)

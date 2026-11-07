@@ -9,10 +9,12 @@
 
 ## This module implements helpers for the macro cache.
 
-import lineinfos, ast, vmdef
+import lineinfos, ast, vmdef, modulegraphs
 
 proc append(c: PCtx; n: PNode) =
   c.vmstateDiff.add((c.module, n))
+  if c.graph.suggestMode:
+    c.graph.macroCacheLog.add((c.module, n))
 
 proc recordInc*(c: PCtx; info: TLineInfo; key: string; by: BiggestInt) =
   var recorded = newNodeI(nkReplayAction, info)
