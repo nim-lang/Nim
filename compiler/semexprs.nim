@@ -506,11 +506,20 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   if isSymChoice(op) and op[0].sym.kind notin routineKinds:
     # T(foo) disambiguation syntax only allowed for routines
     op = semSymChoice(c, op)
+  var inferredTarget = false
   if targetType.kind != tyGenericParam and targetType.isMetaType:
-    let final = inferWithMetatype(c, targetType, op, true)
-    result.add final
-    result.typ = final.typ
-    return
+    # work on a copy: the inference overwrites the type of the node it matched
+    let final = inferWithMetatype(c, targetType, copyTree(op), true)
+    if final.typ == nil or final.typ.isMetaType or final.typ.kind == tyError or
+        isSymChoice(op):
+      result.add final
+      result.typ = final.typ
+      return
+    # continue with the instantiated target so that it is checked and
+    # converted like any other conversion, `GenProcType(nimcallProc)` needs
+    # a closure (#13427):
+    targetType = final.typ
+    inferredTarget = true
 
   result.typ = targetType
   # XXX op is overwritten later on, this is likely added too early
@@ -533,7 +542,7 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
       elif op.kind in {nkPar, nkTupleConstr} and targetType.kind == tyTuple:
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
-      if efNoSem2Check notin flags:
+      if efNoSem2Check notin flags and not inferredTarget:
         message(c.config, n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
       result = fitNode(c, result.typ, result[1], result.info)
@@ -2845,7 +2854,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       if whenNimvm:
         if semCheck:
           it[1] = semNimvmBranch(c, it[1], flags)
-          typ = commonType(c, typ, it[1].typ)
+          typ = commonType(c, typ, it[1])
         result = n # when nimvm is not elimited until codegen
       elif c.inGenericContext > 0:
         let e = semExprWithType(c, it[0])
@@ -2875,11 +2884,14 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
         discard
       elif result == nil or whenNimvm:
         if semCheck:
-          it[0] = if whenNimvm: semNimvmBranch(c, it[0], flags)
-                  else: semExpr(c, it[0], flags)
-          typ = commonType(c, typ, it[0].typ)
-          if typ != nil and typ.kind != tyUntyped:
-            it[0] = fitNode(c, typ, it[0], it[0].info)
+          if whenNimvm:
+            it[0] = semNimvmBranch(c, it[0], flags)
+            typ = commonType(c, typ, it[0])
+          else:
+            it[0] = semExpr(c, it[0], flags)
+            typ = commonType(c, typ, it[0].typ)
+            if typ != nil and typ.kind != tyUntyped:
+              it[0] = fitNode(c, typ, it[0], it[0].info)
         if result == nil:
           result = it[0]
     else: illFormedAst(n, c.config)
@@ -2890,6 +2902,15 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
   if whenNimvm:
+    if semCheck:
+      # type the branches like the branches of an `if` (#13450):
+      if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or n.len == 1:
+        for it in n: discardCheck(c, it.lastSon, flags)
+        typ = nil
+      else:
+        for it in n:
+          if not endsInNoReturn(it.lastSon):
+            it[^1] = fitNode(c, typ, it.lastSon, it.lastSon.info)
     result.typ = typ
     if n.len == 1:
       result.add(newTree(nkElse, newNode(nkStmtList)))

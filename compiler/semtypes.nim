@@ -1539,7 +1539,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyAlias, tyOwned:
     result = recurse(paramType.base)
 
-  of tySequence, tySet, tyArray, tyOpenArray,
+  of tySequence, tySet, tyArray, tyOpenArray, tyVarargs,
      tyVar, tyLent, tyPtr, tyRef, tyProc, tySink:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, tyNone).
@@ -1833,6 +1833,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         a[j][0] = newSymNode(arg)
       else:
         a[j] = newSymNode(arg)
+    if def != nil and def.kind != nkEmpty and def.typ != nil and
+        kind notin {skTemplate, skMacro} and not isCurrentlyGeneric() and
+        not containsGenericType(def.typ):
+      # the routine's AST (`getImpl`) shows the checked default value (#12942):
+      a[^1] = copyTree(def)
 
   var r: PType = nil
   if n[0].kind != nkEmpty:

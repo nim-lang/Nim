@@ -2359,7 +2359,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
 
   case t.kind
   of tyEmpty, tyVoid: result = cIntValue(0)
-  of tyPointer, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
+  of tyPointer, tyNil, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
     genTypeInfoAuxBase(m, t, t, result, cIntValue(0), info)
   of tyStatic:
     if t.n != nil: result = genTypeInfoV1(m, skipModifier t, info)
