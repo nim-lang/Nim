@@ -476,6 +476,10 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   else: discard
 
   maybeLiftType(targetType, c, n[0].info)
+  if targetType.skipTypes({tyAlias, tyGenericInst}).kind == tyVar:
+    # `type V = var T; V(x)` converts to `T`: a conversion that keeps the
+    # l-value is mutable if `x` is (#14482)
+    targetType = targetType.skipTypes({tyAlias, tyGenericInst}).elementType
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
