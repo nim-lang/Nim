@@ -1938,8 +1938,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if x >= result:
           if  c.inheritancePenalty > -1:
             minInheritance = min(minInheritance, c.inheritancePenalty)
+          if x > result or bestBranch == nil or not aOrig.isEmptyContainer:
+            # `[]` and `@[]` take the type of the first branch they match
+            bestBranch = branch
           result = x
-          bestBranch = branch
       c.inheritancePenalty = oldInheritancePenalty
       if result >= isIntConv:
         if minInheritance < maxInheritancePenalty:
@@ -3343,7 +3345,15 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           let existing = lookup(m.bindings, formal.typ)
           if existing == nil or existing.kind == tyTypeDesc:
             # see bug #11600:
-            put(m, formal.typ, defaultValue.typ)
+            if defaultValue.typ != nil and defaultValue.typ.isEmptyContainer:
+              # `@[]` for `seq[string] | seq[bool]` takes the type of the
+              # branch it matches (#13944):
+              let arg = paramTypesMatch(m, formal.typ, defaultValue.typ,
+                                        defaultValue, defaultValue)
+              if arg != nil: defaultValue = arg
+              else: put(m, formal.typ, defaultValue.typ)
+            else:
+              put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
 
