@@ -618,6 +618,15 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       # generics *when the type is constructed*:
       cl.c.graph.setAttachedOp(cl.c.module.position, newbody, attachedDeepCopy,
           cl.c.instTypeBoundOp(cl.c, dc, result, cl.info, attachedDeepCopy, 1))
+    elif dc == nil and bbody.kind in {tyRef, tyPtr} and
+        newbody.kind == bbody.kind and bbody.hasElementType:
+      # `SomeObj[T] = ref object`: the `deepCopy` is bound to the object
+      # (#14573)
+      let dcObj = cl.c.graph.getAttachedOp(bbody.elementType, attachedDeepCopy)
+      if dcObj != nil and sfFromGeneric notin dcObj.flags:
+        cl.c.graph.setAttachedOp(cl.c.module.position, newbody.elementType,
+            attachedDeepCopy,
+            cl.c.instTypeBoundOp(cl.c, dcObj, result, cl.info, attachedDeepCopy, 1))
     if newbody.typeInst == nil and newbody.state != Sealed:
       # doAssert newbody.typeInst == nil
       # An IC-loaded (Sealed) `newbody` keeps whatever `typeInst` its defining
