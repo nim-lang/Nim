@@ -2854,7 +2854,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       if whenNimvm:
         if semCheck:
           it[1] = semNimvmBranch(c, it[1], flags)
-          typ = commonType(c, typ, it[1].typ)
+          typ = commonType(c, typ, it[1])
         result = n # when nimvm is not elimited until codegen
       elif c.inGenericContext > 0:
         let e = semExprWithType(c, it[0])
@@ -2884,11 +2884,14 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
         discard
       elif result == nil or whenNimvm:
         if semCheck:
-          it[0] = if whenNimvm: semNimvmBranch(c, it[0], flags)
-                  else: semExpr(c, it[0], flags)
-          typ = commonType(c, typ, it[0].typ)
-          if typ != nil and typ.kind != tyUntyped:
-            it[0] = fitNode(c, typ, it[0], it[0].info)
+          if whenNimvm:
+            it[0] = semNimvmBranch(c, it[0], flags)
+            typ = commonType(c, typ, it[0])
+          else:
+            it[0] = semExpr(c, it[0], flags)
+            typ = commonType(c, typ, it[0].typ)
+            if typ != nil and typ.kind != tyUntyped:
+              it[0] = fitNode(c, typ, it[0], it[0].info)
         if result == nil:
           result = it[0]
     else: illFormedAst(n, c.config)
@@ -2899,6 +2902,15 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
   if whenNimvm:
+    if semCheck:
+      # type the branches like the branches of an `if` (#13450):
+      if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or n.len == 1:
+        for it in n: discardCheck(c, it.lastSon, flags)
+        typ = nil
+      else:
+        for it in n:
+          if not endsInNoReturn(it.lastSon):
+            it[^1] = fitNode(c, typ, it.lastSon, it.lastSon.info)
     result.typ = typ
     if n.len == 1:
       result.add(newTree(nkElse, newNode(nkStmtList)))
