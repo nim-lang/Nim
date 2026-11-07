@@ -2926,7 +2926,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     incl(s.typ, tfNoSideEffect)
 
   var (proto, comesFromShadowScope) =
-      if isAnon: (nil, false)
+      # a gensym'ed routine is not in a scope, a routine of the same name
+      # that is found there is not its forward declaration (#13973):
+      if isAnon or sfGenSym in s.flags: (nil, false)
       else: searchForProc(c, declarationScope, s)
   if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
