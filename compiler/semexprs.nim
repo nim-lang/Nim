@@ -968,6 +968,25 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
 
 include semmagic
 
+proc capturesOuterLocal(s: PSym): bool =
+  ## Does the body of the inner proc `s` reference a local of an enclosing
+  ## routine? Conservatively answers true when the body is not available yet.
+  proc walk(n: PNode; s: PSym): bool =
+    if n.kind == nkSym:
+      let x = n.sym
+      result = x.kind in skLocalVars + {skTemp} and sfGlobal notin x.flags and
+          x.owner != s and x.owner.kind in routineKinds
+    elif n.kind in {nkNone..nkNilLit}:
+      result = false
+    else:
+      for i in 0..<n.len:
+        if walk(n[i], s): return true
+      result = false
+  if s.ast == nil or s.ast.len <= bodyPos or s.ast[bodyPos].kind == nkEmpty:
+    result = true
+  else:
+    result = walk(s.ast[bodyPos], s)
+
 proc evalAtCompileTime(c: PContext, n: PNode): PNode =
   result = n
   if n.kind notin nkCallKinds or n[0].kind != nkSym: return
@@ -1020,6 +1039,12 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
     if callee.kind notin {skProc, skFunc, skConverter, skConst} or
         callee.isGenericRoutineStrict:
+      return
+
+    # an inner proc that captures locals of its enclosing routine cannot be
+    # evaluated by the VM; lambda lifting runs later, so detect it ourselves
+    if sfCompileTime notin callee.flags and isInnerProc(callee) and
+        capturesOuterLocal(callee):
       return
 
     if n.typ != nil and typeAllowed(n.typ, skConst, c) != nil: return
