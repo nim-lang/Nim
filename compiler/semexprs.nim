@@ -506,11 +506,20 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   if isSymChoice(op) and op[0].sym.kind notin routineKinds:
     # T(foo) disambiguation syntax only allowed for routines
     op = semSymChoice(c, op)
+  var inferredTarget = false
   if targetType.kind != tyGenericParam and targetType.isMetaType:
-    let final = inferWithMetatype(c, targetType, op, true)
-    result.add final
-    result.typ = final.typ
-    return
+    # work on a copy: the inference overwrites the type of the node it matched
+    let final = inferWithMetatype(c, targetType, copyTree(op), true)
+    if final.typ == nil or final.typ.isMetaType or final.typ.kind == tyError or
+        isSymChoice(op):
+      result.add final
+      result.typ = final.typ
+      return
+    # continue with the instantiated target so that it is checked and
+    # converted like any other conversion, `GenProcType(nimcallProc)` needs
+    # a closure (#13427):
+    targetType = final.typ
+    inferredTarget = true
 
   result.typ = targetType
   # XXX op is overwritten later on, this is likely added too early
@@ -533,7 +542,7 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
       elif op.kind in {nkPar, nkTupleConstr} and targetType.kind == tyTuple:
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
-      if efNoSem2Check notin flags:
+      if efNoSem2Check notin flags and not inferredTarget:
         message(c.config, n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
       result = fitNode(c, result.typ, result[1], result.info)
