@@ -2592,7 +2592,17 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       # don't try to evaluate
       discard
     elif arg.kind != nkEmpty:
-      var evaluated = c.semTryConstExpr(c, arg)
+      var evaluated: PNode
+      if m.callee.kind == tyGenericBody and f.kind == tyStatic and
+          c.inGenericContext == 0 and arg.typ != nil and
+          not containsGenericType(arg.typ) and
+          typeRel(m, f.base, a, {trDontBind}) != isNone:
+        # a value for a type's `static` parameter outside of a generic
+        # context: there is no other interpretation of it, so its evaluation
+        # errors (and output) are not to be swallowed (#12749):
+        evaluated = c.semConstExpr(c, arg)
+      else:
+        evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
         # Don't build the type in-place because `evaluated` and `arg` may point
         # to the same object and we'd end up creating recursive types (#9255)
