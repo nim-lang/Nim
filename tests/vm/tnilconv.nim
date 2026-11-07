@@ -30,3 +30,14 @@ doAssert d == nil
 doAssert e == nil
 doAssert f == nil
 doAssert g == nil
+
+# `$cstring(nil)` must fold to "" instead of crashing the compiler
+# ("cannot extract string from invalid AST node"); matches the runtime result.
+const dollarNilCstr = $cstring(nil)
+static:
+  doAssert dollarNilCstr == ""
+  doAssert $cstring(nil) == ""
+doAssert dollarNilCstr == ""
+block:
+  let x: cstring = nil
+  doAssert $x == ""
