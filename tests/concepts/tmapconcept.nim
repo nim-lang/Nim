@@ -39,7 +39,7 @@ static:
   ok seq[int] is Enumerable[int]
   ok seq[string] is Enumerable
   ok seq[int] is Enumerable[SomeNumber]
-  ok SparseSeq.data is Enumerable
+  ok typeof(SparseSeq.data) is Enumerable
   no seq[string] is Enumerable[int]
   no int is Enumerable
   no int is Enumerable[int]
