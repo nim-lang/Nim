@@ -1786,6 +1786,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         elif typ.kind == tyStatic:
           def = semConstExpr(c, def)
           def = fitNode(c, typ, def, def.info)
+      if def.referencesAnotherParam(getCurrOwner(c)):
+        # again: `fitNode` can wrap it into a conversion (#14587)
+        def.flags.incl nfDefaultRefsParam
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
