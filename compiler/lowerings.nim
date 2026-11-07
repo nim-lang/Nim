@@ -93,6 +93,12 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: P
   for i in 0..<n.len-2:
     let val = newTupleAccess(g, tempAsNode, i)
     if n[i].kind == nkSym: v.addVar(n[i], val)
+    elif n[i].kind == nkVarTuple:
+      # nested tuple pattern (for loop variables)
+      var inner = copyNode(n[i])
+      for j in 0..<n[i].len: inner.add n[i][j]
+      inner.add val
+      result.add lowerTupleUnpacking(g, inner, idgen, owner)
     else: result.add newAsgnStmt(n[i], val)
 
 proc evalOnce*(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): PNode =
