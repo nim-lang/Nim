@@ -29,7 +29,9 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "52"
+  icFormatVersion* = "53"
+    ## v53: inline iterator bodies are lowered, so nested closures in them are
+    ## serialized with their capture-rewritten bodies.
     ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v48: track implementation dependencies for reused generic type instances.

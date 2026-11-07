@@ -27,6 +27,7 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen, trees, wordrecg,
   cnif, icmodnames, ropes
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
+from lambdalifting import hasUnliftableCapture
 from injectdestructors import injectDestructorCalls
 import icprof
 import ic / replayer
@@ -405,6 +406,25 @@ proc reownFromTwin(n: PNode; twin, s: PSym) =
 proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
                     seenNested: var IntSet)
 
+proc lowersInlineIteratorBody(g: ModuleGraph; s: PSym; modPos: int): bool =
+  ## An inline iterator has no standalone runtime body, but its AST is copied
+  ## into every importing `for` loop. Any nested closures in that AST are
+  ## module-indexed routines serialized in this module's `.t.bif`; the importer's
+  ## `cg` loads those definitions instead of re-lifting them. Lower the iterator
+  ## here so those nested definitions carry their capture-rewritten bodies.
+  ## (The iterator's own transformed body is also serialized; it is already
+  ## transformed once by `transformBody` for the same reason inline procs are.)
+  s.itemId.module == modPos and s.kind == skIterator and s.typ != nil and
+    s.typ.callConv == ccInline and sfFromGeneric notin s.flags and
+    {sfUsed, sfExported} * s.flags != {} and
+    {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+    s.ast != nil and s.ast.len > bodyPos and
+    son(s.ast, genericParamsPos).kind == nkEmpty and
+    # Classic codegen validates captures only when the iterator is expanded.
+    # An exported iterator may never be used; leave an invalid capture's body
+    # pristine so an actual expansion still reports the normal diagnostic.
+    not hasUnliftableCapture(g, s)
+
 proc writeBodyDeps(g: ModuleGraph; targets: openArray[PrecompiledModule];
                    mods: IntSet; outfile: string) =
   ## The `.bodydeps` sidecar next to a stage output: the suffixes of the modules
@@ -513,7 +533,7 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
   # EXACTLY once (double injection would emit two `=destroy`/`=copy` runs).
   icProfStart(tLowerOwned)
   for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-    if ownsRuntimeRoutine(s, modPos):
+    if ownsRuntimeRoutine(s, modPos) or lowersInlineIteratorBody(g, s, modPos):
       # REUSE path (`icReuseSemLowering` ON): a routine already transformed during
       # sem (CT eval / macro / VM transform) carries its lowered body in the
       # `.s.nif` slot (loaded into `transformedBody`) — don't re-transform it.
