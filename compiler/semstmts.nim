@@ -2462,12 +2462,16 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       s.ast[pragmasPos].add newTree(nkExprColonExpr,
           newIdentNode(c.cache.getIdent("raises"),  s.info), newNodeI(nkBracket, s.info))
   of "deepcopy", "=deepcopy":
-    if s.typ.len == 2 and
-        s.typ.firstParamType.skipTypes(abstractInst).kind in {tyRef, tyPtr} and
+    # `SomeObj[T]` for `SomeObj[T] = ref object` is a `ref` too (#14573):
+    var pt = if s.typ.len == 2: s.typ.firstParamType.skipTypes(abstractInst) else: nil
+    if pt != nil and pt.kind == tyGenericInvocation and
+        pt.genericHead.kind == tyGenericBody:
+      pt = pt.genericHead.typeBodyImpl.skipTypes(abstractInst)
+    if pt != nil and pt.kind in {tyRef, tyPtr} and
         sameType(s.typ.firstParamType, s.typ.returnType):
       # Note: we store the deepCopy in the base of the pointer to mitigate
       # the problem that pointers are structural types:
-      var t = s.typ.firstParamType.skipTypes(abstractInst).elementType.skipTypes(abstractInst)
+      var t = pt.elementType.skipTypes(abstractInst)
       while true:
         if t.kind == tyGenericBody: t = t.typeBodyImpl
         elif t.kind == tyGenericInvocation: t = t.genericHead
