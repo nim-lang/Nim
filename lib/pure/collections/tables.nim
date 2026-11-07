@@ -1648,7 +1648,11 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
       if n[h].hcode == hc and n[h].key == key:
         dec t.counter
       else:
-        var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
+        # probe for a free slot instead of looking the key up: the deprecated
+        # `add` allows duplicate keys (#13500)
+        var j = n[h].hcode and maxHash(t)
+        while isFilled(t.data[j].hcode):
+          j = nextTry(j, maxHash(t))
         rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
 
