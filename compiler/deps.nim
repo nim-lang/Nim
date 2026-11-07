@@ -20,6 +20,7 @@ import nifstreams
 import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
 import icmodnames
 import icnifcore
+import icconsteval
 from ic/replayer import BackendActionsExt, BodyDepsExt
 from commands import compileOptionValue
 
@@ -48,6 +49,8 @@ type
 
   DepContext = object
     config: ConfigRef
+    constants: ConstContext
+    constScopeFile: string
     linkArgsFile: string # root-level input: the config/project/output last selected
     argsFile: string     # effective settings, stable within the configuration directory
     backendDir: string  # outputs for this backend and entry point
@@ -374,7 +377,7 @@ proc condOr(a, b: CondVal): CondVal =
   elif a == cvFalse and b == cvFalse: cvFalse
   else: cvUnknown
 
-proc evalCondIdent(c: DepContext; v: string): CondVal =
+proc evalCondIdent(c: DepContext; v: string; allowConstants: bool): CondVal =
   ## Truth value of a bare identifier appearing in a `when` condition. Unknown
   ## idents are `cvUnknown` (kept), not `true` — so `when not SOMEIDENT:` no
   ## longer drops its import.
@@ -402,7 +405,15 @@ proc evalCondIdent(c: DepContext; v: string): CondVal =
     # so the merge stage can pick it as a shared def's owner -> undefined
     # symbols at link).
     toCondVal(c.scanningMain)
-  else: cvUnknown
+  else:
+    # Bare constant guards need no overload resolution. Source operators must
+    # retain the scanner's previous unknown operands instead of using these
+    # newly known values to decide overloaded expressions before sem.
+    if allowConstants:
+      let value = c.constants.getConstValue(c.constScopeFile, v)
+      if value.kind == ckBool: toCondVal(value.boolVal) else: cvUnknown
+    else:
+      cvUnknown
 
 proc constIdentValue(c: DepContext; ident: string): string =
   ## String value of a compile-time platform constant that appears in `when`
@@ -445,14 +456,31 @@ proc evalCondCmp(c: DepContext; s: var Stream; isEq: bool): CondVal =
   else:
     result = cvUnknown
 
-proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal
+proc readDefinedName(s: var Stream): string =
+  result = ""
+  let t = next(s)
+  case t.kind
+  of Ident: result = pool.strings[t.litId]
+  of ParLe:
+    if pool.tags[t.tagId] == "dot":
+      let left = readDefinedName(s)
+      let right = readDefinedName(s)
+      if left.len > 0 and right.len > 0: result = left & "." & right
+      discard next(s) # closing dot
+    else:
+      skipSubtree(s, t)
+  else: discard
 
-proc readCond(c: DepContext; s: var Stream): CondVal =
+proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken;
+                  allowConstants: bool): CondVal
+
+proc readCond(c: DepContext; s: var Stream; allowConstants = false): CondVal =
   ## Read one full condition subtree (its own opener included) and evaluate it.
   let t = next(s)
-  evalCondExpr(c, s, t)
+  evalCondExpr(c, s, t, allowConstants)
 
-proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
+proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken;
+                  allowConstants: bool): CondVal =
   ## Evaluate the condition whose opening token `t` has ALREADY been read,
   ## consuming the rest of the expression so the caller stays in sync.
   ## Recognises `defined(IDENT)`, `compileOption("NAME")`, `not`/`and`/`or`,
@@ -463,7 +491,7 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
   ## stays in sync regardless of the result.
   case t.kind
   of Ident:
-    result = evalCondIdent(c, pool.strings[t.litId])
+    result = evalCondIdent(c, pool.strings[t.litId], allowConstants)
   of ParLe:
     let tag = pool.tags[t.tagId]
     # For prefix/infix/call nodes the operator name is the first child; for a
@@ -478,10 +506,8 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
     else: discard
     case name
     of "defined":
-      let arg = next(s)
-      var sym = ""
-      if arg.kind == Ident: sym = pool.strings[arg.litId]
-      result = toCondVal(sym.len > 0 and isDefined(c.config, sym))
+      let sym = readDefinedName(s)
+      result = if sym.len > 0: toCondVal(isDefined(c.config, sym)) else: cvUnknown
     of "compileOption":
       # Same table the compiler's `compileOption` magic uses, so e.g.
       # `when compileOption("profiler"): import std/nimprof` is decided here
@@ -506,7 +532,7 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
       result = evalCondCmp(c, s, name == "==")
     of "par":
       # a parenthesised grouping such as `(defined(a) or defined(b))`.
-      result = readCond(c, s)
+      result = readCond(c, s, allowConstants)
     else:
       result = cvUnknown
     # Drain whatever remains until the matching ParRi.
@@ -528,7 +554,7 @@ proc whenMarkerHolds(c: DepContext; s: var Stream): CondVal =
     let t = next(s)
     if t.kind == ParRi: return
     if t.kind == EofToken: return
-    result = condAnd(result, evalCondExpr(c, s, t))
+    result = condAnd(result, evalCondExpr(c, s, t, allowConstants = true))
 
 proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
   ## Parse an import path expression and return the list of module paths it
@@ -618,8 +644,12 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
   # `current.id == 0` is the project main (rootNode); restored on exit so the
   # flag is correct for each parent frame between its child recursions.
   let prevScanningMain = c.scanningMain
+  let prevConstScope = c.constScopeFile
   c.scanningMain = current.id == 0
-  defer: c.scanningMain = prevScanningMain
+  c.constScopeFile = current.files[0].nimFile
+  defer:
+    c.scanningMain = prevScanningMain
+    c.constScopeFile = prevConstScope
 
   var s = nifstreams.open(depsPath)
   defer: nifstreams.close(s)
@@ -918,13 +948,13 @@ proc pruneDeadSpeculative(c: var DepContext) =
   ## real frontend takes the branch, its `.s.deps` reports the missing import
   ## and the discovery fixpoint adds it back as a hard dependency.
   ##
-  ## The motivating shape is the ordinary `{.strdefine.}` backend switch:
+  ## A backend setting compared with a string still needs sem:
   ##
   ##   const figdrawTextBackend* {.strdefine.} = "pixie"
   ##   when figdrawTextBackend == "harfbuzzy":
   ##     import ./textrasters/glyphid_raster   # imports `pkg/harfbuzzy`
   ##
-  ## The value of that const needs sem, so `evalCondCmp` answers `cvUnknown`.
+  ## Comparisons with ordinary constants need sem, so the guard stays unknown.
   ## Scheduling `glyphid_raster` anyway would fail on `pkg/harfbuzzy` despite
   ## the classic compiler never reading it. The same problem occurs if the
   ## speculative module exists but contains invalid code in this configuration.
@@ -2013,6 +2043,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     var c = DepContext(
       config: conf,
+      constants: newConstContext(conf),
       linkArgsFile: cacheDir / "ic_link_args.txt",
       nifler: nifler,
       nodes: @[],
