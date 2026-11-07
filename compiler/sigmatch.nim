@@ -739,6 +739,13 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
     (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})) or
     isOutParam(f) != isOutParam(a)
 
+proc paramsContainMetaType(t: PType): bool =
+  ## the return type of an instance can still be `auto` before its body is
+  ## checked, so only the parameters are considered
+  result = false
+  for i in 1..<t.len:
+    if t[i] != nil and t[i].isMetaType: return true
+
 proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
   ## For example we have:
   ##   ```nim
@@ -2670,6 +2677,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         if arg.sym.ast == nil:
           return nil
         let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
+        if inferred.typ.paramsContainMetaType:
+          # the bindings did not determine the routine's generic parameters,
+          # for example because the routine is passed to itself and so shares
+          # the callee's type variables (#12995):
+          return nil
         result = newSymNode(inferred, arg.info)
       arg = result
       r = typeRel(m, f, arg.typ)
