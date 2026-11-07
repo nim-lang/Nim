@@ -1374,10 +1374,10 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
   {.push stackTrace: off.}
 
   when hasThreadLocalAllocator:
-    proc initThreadAllocator() {.gcsafe, raises: [].} =
+    proc initThreadAllocator() {.rtl, raises: [].} =
       acquireMemRegion(allocator)
 
-    proc releaseThreadAllocator() {.gcsafe, raises: [].} =
+    proc releaseThreadAllocator() {.rtl, raises: [].} =
       releaseMemRegion(allocator)
 
   when defined(nimFulldebug):

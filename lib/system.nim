@@ -1173,11 +1173,19 @@ const
          defined(nogc) or defined(boehmgc) or defined(gogc))
   hasThreadLocalAllocator =
     hasDefaultAllocator and hasThreadSupport and defined(gcDestructors)
+  usesThreadLocalAllocator =
+    hasThreadLocalAllocator or
+    (defined(useNimRtl) and hasAlloc and hasThreadSupport and defined(gcDestructors) and
+     not (defined(useMalloc) or defined(gcRegions) or defined(nogc) or
+          defined(boehmgc) or defined(gogc)))
+    ## Every thread checks out a region of the allocator, which is in this
+    ## module or, with useNimRtl, in nimrtl.
 
-when hasThreadLocalAllocator:
-  # threadimpl is included before mmdisp provides these implementations.
-  proc initThreadAllocator() {.gcsafe, raises: [].}
-  proc releaseThreadAllocator() {.gcsafe, raises: [].}
+when usesThreadLocalAllocator:
+  # threadimpl is included before mmdisp provides these implementations;
+  # with useNimRtl, nimrtl provides them.
+  proc initThreadAllocator() {.rtl, raises: [].}
+  proc releaseThreadAllocator() {.rtl, raises: [].}
 
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, gcsafe.}
@@ -1386,6 +1394,8 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
 when defined(js):
   proc js_abs[T: SomeNumber](x: T): T {.importc: "Math.abs".}
 else:
+  when defined(tcc) and defined(posix) and not defined(genode) and not defined(macosx):
+    {.passL: "-lm".}
   proc c_fabs(x: cdouble): cdouble {.importc: "fabs", header: "<math.h>".}
   proc c_fabsf(x: cfloat): cfloat {.importc: "fabsf", header: "<math.h>".}
 
@@ -1726,7 +1736,23 @@ when not defined(nimIcIntegrityChecks):
   import system/exceptions
   export exceptions
 
+when notJSnotNims:
+  # we cannot compile this with stack tracing or overflow checks on
+  # as it would recurse endlessly!
+  {.push stackTrace: off, profiler: off, checks: off.}
+  include "system/integerprims"
+  {.pop.}
+
 when notJSnotNims and defined(nimSeqsV2):
+  proc nimSizeOverflow() {.noinline, noreturn.} =
+    # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code
+    # generator assumes never raise, so under `--exceptions:goto` the raise
+    # would be ignored and execution would continue with the bogus size.
+    # A string or seq that cannot even be measured can never be allocated
+    # either, so handle it like an out of memory situation.
+    cstderr.rawWrite("fatal error: string or seq size overflows the address space\n")
+    rawQuit(1)
+
   when defined(nimsso):
     include "system/strs_v3"
   else:
@@ -2373,12 +2399,12 @@ when notJSnotNims and hostOS != "standalone":
     # C codegen only uses it in a borrowed way:
     result = currException
 
-  proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
+  proc getCurrentExceptionMsg*(): string {.rtl, inl, gcsafe.} =
     ## Retrieves the error message that was attached to the current
     ## exception; if there is none, `""` is returned.
     return if currException == nil: "" else: currException.msg
 
-  proc setCurrentException*(exc: ref Exception) {.inline, gcsafe.} =
+  proc setCurrentException*(exc: ref Exception) {.rtl, inl, gcsafe.} =
     ## Sets the current exception.
     ##
     ## .. warning:: Only use this if you know what you are doing.

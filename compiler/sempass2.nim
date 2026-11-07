@@ -1240,12 +1240,20 @@ proc trackCall(tracked: PEffects; n: PNode) =
       else:
         discard
       var effectList = op.n[0]
-      if a.kind == nkSym and isNoEffectList(effectList) and
+      var cycleRecursion = false
+      if a.kind == nkSym and a.sym != tracked.owner and
           tracked.graph.demandCycleBody != nil:
-        # possibly a routine of the cycle group whose body is still deferred:
-        tracked.graph.demandCycleBody(a.sym)
+        # possibly a routine of the cycle group whose body is still deferred.
+        # If its body is being checked right now, this is a recursion via the
+        # modules of the group and its effect list is incomplete: treat it
+        # like a call of a forward declared routine.
+        cycleRecursion = tracked.graph.demandCycleBody(a.sym, true)
         effectList = op.n[0]
-      if a.kind == nkSym and a.sym.kind == skMethod:
+      if cycleRecursion:
+        if effectSpec(a.sym.ast[pragmasPos], wRaises).isNil:
+          tracked.unknownRaises.add (a.sym, n.info)
+        propagateEffects(tracked, n, a.sym)
+      elif a.kind == nkSym and a.sym.kind == skMethod:
         if {sfBase, sfThread} * a.sym.flags == {sfBase}:
           if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
           markGcUnsafe(tracked, a)
@@ -1789,22 +1797,32 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
   var used = initIntSet()
   for r in items(real):
     block search:
+      var forbidden = false
       for s in 0..<spec.len:
         if effectPredicate(g, spec[s], r):
-          if isForbids: break
+          if isForbids:
+            forbidden = true
+            break
           used.incl(s)
           break search
-        if isForbids:
-          break search
+      if isForbids and not forbidden:
+        break search
       # XXX call graph analysis would be nice here!
-      pushInfoContext(g.config, spec.info)
       var rr = if r.kind == nkRaiseStmt: r[0] else: r
       while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
       for (s, info) in unknownRaises.items:
         message(g.config, info, hintUnknownRaises, s.name.s)
-      message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
-              renderTree(rr) & " " & msg & typeToString(r.typ))
-      popInfoContext(g.config)
+      if isForbids:
+        message(g.config, spec.info, hintUser, ".forbids spec declared here")
+        for hop in effectOrigin(r):
+          message(g.config, hop.info, hintUser, "effect propagated from here")
+        message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
+                renderTree(rr) & " " & msg & typeToString(r.typ))
+      else:
+        pushInfoContext(g.config, spec.info)
+        message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
+                renderTree(rr) & " " & msg & typeToString(r.typ))
+        popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
     for s in 0..<spec.len:
@@ -1923,6 +1941,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   var inferredEffects = newNodeI(nkEffectList, s.info)
 
+  liftNimNodeHooks(g, c, s.info, c.idgen)
   var t: TEffects = initEffects(g, inferredEffects, s, c)
   rawInitEffects g, effects
 
@@ -1939,7 +1958,11 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if t.exc.len == 0 and not t.canRaiseDefect:
     s.incl sfNeverRaises
 
-  if s.kind != skMacro:
+  if s.kind == skMacro:
+    # the VM manages the NimNodes, strings and seqs of a macro also when it
+    # has no locals with lifted hooks (see `nkVarSection` above):
+    s.incl sfInjectDestructors
+  else:
     let params = s.typ.n
     for i in 1..<params.len:
       let param = params[i].sym

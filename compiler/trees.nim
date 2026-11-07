@@ -31,10 +31,25 @@ proc sameFloatIgnoreNan(a, b: BiggestFloat): bool {.inline.} =
   ## ignores NaN semantics, but ensures 0.0 == -0.0, see #13730
   cast[uint64](a) == cast[uint64](b) or a == b
 
-proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
+proc sameIntLitClass(a, b: TNodeKind): bool {.inline.} =
+  ## Whether `a` and `b` are integer literal kinds of the same signedness.
+  (a in nkSignedIntLiterals and b in nkSignedIntLiterals) or
+    (a in nkUnsignedIntLiterals and b in nkUnsignedIntLiterals)
+
+proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false;
+                               ignoreIntLitWidth=false): bool =
+  ## Structural equality of two expressions.
+  ##
+  ## With `ignoreIntLitWidth`, integer literals of the same signedness are
+  ## equal when their values are, whatever width-specific literal kind each
+  ## carries. The same value reaches a tree as `nkUIntLit` from a folded
+  ## conversion and as `nkUInt16Lit` from a suffix literal or the VM, so a
+  ## comparison of two *values* (a static type argument) has to look through
+  ## the kind; a comparison of two *spellings* (macro nodes) must not.
   if a == b:
     result = true
-  elif (a != nil) and (b != nil) and (a.kind == b.kind):
+  elif (a != nil) and (b != nil) and
+      (a.kind == b.kind or (ignoreIntLitWidth and sameIntLitClass(a.kind, b.kind))):
     case a.kind
     of nkSym:
       if strictSymEquality:
@@ -51,8 +66,8 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     else:
       if a.len == b.len:
         for i in 0..<a.len:
-          if not exprStructuralEquivalent(a[i], b[i],
-                                          strictSymEquality): return
+          if not exprStructuralEquivalent(a[i], b[i], strictSymEquality,
+                                          ignoreIntLitWidth): return
         result = true
       else:
         result = false

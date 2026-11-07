@@ -1896,7 +1896,12 @@ proc entityToUtf8*(entity: string): string =
 proc addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
-proc parse(x: var XmlParser, errors: var seq[string]): XmlNode {.gcsafe.}
+const
+  htmlMaxDepth* {.intdefine.} = 512 ## The maximum nesting depth of elements.
+    ## Elements nested deeper become siblings instead, like in browsers.
+    ## This can be set on the command line via `-d:htmlMaxDepth=N`.
+
+proc parse(x: var XmlParser, errors: var seq[string]; depth: int): XmlNode {.gcsafe.}
 
 proc expected(x: var XmlParser, n: XmlNode): string =
   result = errorMsg(x, "</" & n.tag & "> expected")
@@ -1907,7 +1912,7 @@ template adderr(x: untyped) =
   errors.add(x)
 
 proc untilElementEnd(x: var XmlParser, result: XmlNode,
-                     errors: var seq[string]) =
+                     errors: var seq[string]; depth: int) =
   # we parsed e.g. `<br>` and don't really expect a `</br>`:
   if result.htmlTag in SingleTags:
     if x.kind != xmlElementEnd or cmpIgnoreCase(x.elemName, result.tag) != 0:
@@ -1941,7 +1946,7 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
           adderr(expected(x, result))
           break
       else: discard
-      result.addNode(parse(x, errors))
+      result.addNode(parse(x, errors, depth))
     of xmlElementEnd:
       if cmpIgnoreCase(x.elemName, result.tag) != 0:
         #echo "5; expected: ", result.htmltag, " ", x.elemName
@@ -1958,9 +1963,21 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
       adderr(expected(x, result))
       break
     else:
-      result.addNode(parse(x, errors))
+      result.addNode(parse(x, errors, depth))
 
-proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
+proc childrenOf(x: var XmlParser, result: XmlNode,
+                errors: var seq[string]; depth: int) =
+  ## Parses the children of `result`, unless that is nested too deeply.
+  ## Like browsers do, the children of an element at the maximum depth
+  ## become its siblings then, which keeps the recursion bounded.
+  if depth < htmlMaxDepth:
+    untilElementEnd(x, result, errors, depth+1)
+  else:
+    const msg = "elements nested too deeply"
+    if errors.len == 0 or not errors[^1].endsWith(msg):
+      adderr(errorMsg(x, msg))
+
+proc parse(x: var XmlParser, errors: var seq[string]; depth: int): XmlNode =
   result = nil
   case x.kind
   of xmlComment:
@@ -1978,7 +1995,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   of xmlElementStart:
     result = newElement(toLowerAscii(x.elemName))
     next(x)
-    untilElementEnd(x, result, errors)
+    childrenOf(x, result, errors, depth)
   of xmlElementEnd:
     adderr(errorMsg(x, "unexpected ending tag: " & x.elemName))
   of xmlElementOpen:
@@ -2001,7 +2018,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
         adderr(errorMsg(x, "'>' expected"))
         next(x)
         break
-    untilElementEnd(x, result, errors)
+    childrenOf(x, result, errors, depth)
   of xmlAttribute, xmlElementClose:
     adderr(errorMsg(x, "<some_tag> expected"))
     next(x)
@@ -2026,12 +2043,12 @@ proc parseHtml*(s: Stream, filename: string,
   if x.kind == xmlSpecial: next(x)
 
   result = newElement("document")
-  result.addNode(parse(x, errors))
+  result.addNode(parse(x, errors, 0))
   #if x.kind != xmlEof:
   #  adderr(errorMsg(x, "EOF expected"))
   while x.kind != xmlEof:
     var oldPos = x.bufpos # little hack to see if we made any progress
-    result.addNode(parse(x, errors))
+    result.addNode(parse(x, errors, 0))
     if x.bufpos == oldPos:
       # force progress!
       next(x)

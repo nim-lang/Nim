@@ -390,7 +390,7 @@ proc runeStrAtPos*(s: openArray[char], pos: Natural): string =
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  substr(s.toOpenArray(o,  (o+runeLenAt(s, o)-1)))
+  substr(s.toOpenArray(o, min(o+runeLenAt(s, o), s.len) - 1))
 
 proc runeSubStr*(s: openArray[char], pos: int, len: int = int.high): string =
   ## Returns the UTF-8 substring starting at code point ``pos``
@@ -926,8 +926,14 @@ proc lastRune*(s: openArray[char]; last: int): (Rune, int) =
     var L = 0
     while last-L >= 0 and uint(s[last-L]) shr 6 == 0b10: inc(L)
     var r: Rune
-    fastRuneAt(s, last-L, r, false)
-    result = (r, L+1)
+    if last-L < 0:
+      # only continuation bytes in s[0..last]; the byte at ``last`` is a rune
+      # of its own, like `runeAt` and `getRuneHeadIdx` treat malformed UTF-8
+      fastRuneAt(s, last, r, false)
+      result = (r, 1)
+    else:
+      fastRuneAt(s, last-L, r, false)
+      result = (r, L+1)
 
 proc size*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes.
@@ -969,7 +975,7 @@ template splitCommon(s, sep, maxsplit: untyped) =
       while last < sLen and not stringHasSep(s, last, sep):
         inc(last, runeLenAt(s, last))
       if splits == 0: last = sLen
-      yield substr(s.toOpenArray(first, (last - 1)))
+      yield substr(s.toOpenArray(first, min(last, sLen) - 1))
       if splits == 0: break
       dec(splits)
       inc(last, if last < sLen: runeLenAt(s, last) else: 1)
@@ -1001,8 +1007,21 @@ iterator split*(s: openArray[char], seps: openArray[Rune] = unicodeSpaces,
   splitCommon(s, seps, maxsplit)
 
 iterator splitWhitespace*(s: openArray[char]): string =
-  ## Splits a unicode string at whitespace runes.
-  splitCommon(s, unicodeSpaces, -1)
+  ## Splits a unicode string at whitespace runes. A run of whitespace counts
+  ## as one separator and whitespace at the start and at the end is skipped,
+  ## so no empty strings are yielded.
+  runnableExamples:
+    import std/sequtils
+    assert toSeq(splitWhitespace("  añyóng\u3000 hÃllo\t")) == @["añyóng", "hÃllo"]
+  var last = 0
+  while last < s.len:
+    while last < s.len and stringHasSep(s, last, unicodeSpaces):
+      inc(last, runeLenAt(s, last))
+    let first = last
+    while last < s.len and not stringHasSep(s, last, unicodeSpaces):
+      inc(last, runeLenAt(s, last))
+    if last > first:
+      yield substr(s.toOpenArray(first, min(last, s.len) - 1))
 
 template accResult(iter: untyped) =
   result = @[]
@@ -1038,17 +1057,16 @@ proc split*(s: openArray[char], sep: Rune, maxsplit: int = -1): seq[string] {.no
   accResult(split(s, sep, maxsplit))
 
 func getRuneHeadIdx(s: openArray[char], idx: int): int =
-  ## Given `[idx]` is within a Rune, then `s[result]` is the first byte of that Rune.
+  ## Given `[idx]` is the last byte of a Rune, then `s[result]` is the first
+  ## byte of that Rune. For malformed UTF-8 the byte at `idx` is treated
+  ## as a Rune of its own and `idx` is returned.
   result = idx
-  if s[result] <= '\x7F': # 0b0111_1111
-    return
-  # 0b1...
-  dec result
-  for _ in 0..1:
-    if s[result] >= '\xC0': # 0b11xx_xxxx
-      # 0b110... or 0b1110...
-      return
-    dec result
+  var h = idx
+  # skip continuation bytes (0b10xx_xxxx); a lead byte is preceded by at most 5
+  while h > 0 and idx - h < 5 and (uint(s[h]) shr 6) == 0b10:
+    dec h
+  if h < idx and uint(s[h]) >= 0xC0 and h + runeLenAt(s, h) - 1 == idx:
+    result = h
 
 proc strip*(s: openArray[char], leading = true, trailing = true,
             runes: openArray[Rune] = unicodeSpaces): string {.noSideEffect,
@@ -1269,7 +1287,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string {.inline.} =
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  substr(s.toOpenArray(o, (o+runeLenAt(s, o)-1)))
+  substr(s.toOpenArray(o, min(o+runeLenAt(s, o), s.len) - 1))
 
 proc runeSubStr*(s: string, pos: int, len: int = int.high): string {.inline.} =
   ## Returns the UTF-8 substring starting at code point ``pos``

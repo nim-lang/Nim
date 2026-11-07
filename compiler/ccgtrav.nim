@@ -41,6 +41,8 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     let discField = dotField(accessor, disc.loc.snippet)
+    var oldCode = p.s(cpsStmts)
+    var hasCode = false
     p.s(cpsStmts).addSwitchStmt(discField):
       for branch in sonsFrom(n, 1):
         assert branch.kind in {nkOfBranch, nkElse}
@@ -51,8 +53,14 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
           else:
             p.s(cpsStmts).addCaseElse(caseBuilder)
         do:
+          let oldLen = p.s(cpsStmts).buf.len
           genTraverseProc(c, accessor, lastSon(branch), typ)
+          if p.s(cpsStmts).buf.len != oldLen: hasCode = true
           p.s(cpsStmts).addBreak()
+    if not hasCode:
+      # no branch contains GC'ed memory: do not read the discriminator at all,
+      # it might be uninitialized (#26539)
+      p.s(cpsStmts) = oldCode
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
@@ -136,7 +144,8 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
     # do not emit dummy long loops for faster debug builds:
     p.s(cpsStmts) = oldCode
 
-proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
+proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
+                     rttiMarkers: var Builder): Rope =
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
   let
@@ -170,6 +179,18 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
       headerBuilder.addParam(paramBuilder, name = "op", typ = NimInt)
   let header = extract(headerBuilder)
 
+  if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
+    # The per-module backend gives each V1 type info's init code its own proc,
+    # owned by a single TU (`ccgtypes.beginRttiInit`); the marker is only
+    # referenced from there, so it lives in that proc's definition unit.
+    rttiMarkers.addDeclWithVisibility(StaticProc):
+      rttiMarkers.add(header)
+      rttiMarkers.finishProcHeaderWithBody():
+        rttiMarkers.add(extract(p.s(cpsLocals)))
+        rttiMarkers.add(extract(p.s(cpsInit)))
+        rttiMarkers.add(extract(p.s(cpsStmts)))
+    return
+
   m.s[cfsProcHeaders].addDeclWithVisibility(StaticProc):
     m.s[cfsProcHeaders].add(header)
     m.s[cfsProcHeaders].finishProcHeaderAsProto()
@@ -202,7 +223,8 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
   var sLoc = rdLoc(s.loc)
   result = getTempName(m)
 
-  if sfThread in s.flags and emulatedThreadVars(m.config):
+  if sfThread in s.flags and emulatedThreadVars(m.config) and
+      not treatThreadVarDifferentlyForHCR(m, s):
     accessThreadLocalVar(p, s)
     sLoc = derefField("NimTV_", sLoc)
 

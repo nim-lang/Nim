@@ -201,6 +201,8 @@ type
     # refs and objects:
     opcNewRef,      # regs[A] = a new zeroed ref cell; W = size | align shl 32
     opcIncRef,      # incRef(regs[A]) unless nil
+    opcNodeIncRef,  # counts the NimNode handle regs[A]
+    opcNodeDecRef,  # releases the NimNode handle regs[A]
     opcDecRefIsLast,# regs[A] = decRefIsLast(regs[B]); false for nil
     opcDisposeRef,  # frees the ref cell regs[A]; B is the alignment of the object
     opcDynDestructor, # calls `=destroy` for the dynamic type of the ref cell regs[A], then frees it
@@ -275,6 +277,7 @@ type
     opcTypeTrait,
     opcSymOwner,
     opcSymIsInstantiationOf,
+    opcSymCustomPragmas,
     opcNBindSym,    # regs[A] = copyTree(node regs[B])
     opcNDynBindSym, # regs[A] = dynamic bindSym; the arguments start at B, W indexes `callShapes`
     opcNChild,
@@ -364,6 +367,7 @@ type
     shape*: ptr CallShape
     currentException*: Address
     currentLineInfo*: TLineInfo
+    tos*: PStackFrame
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx

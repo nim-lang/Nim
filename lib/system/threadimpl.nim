@@ -19,7 +19,7 @@ when not defined(useNimRtl):
 
       threadType = ThreadType.NimThread
 
-when hasThreadLocalAllocator and not emulatedThreadVars:
+when usesThreadLocalAllocator and not emulatedThreadVars:
   proc setupForeignThreadGc*() {.gcsafe, raises: [].} =
     initThreadAllocator()
 
@@ -69,7 +69,6 @@ when defined(boehmgc):
       threadTrouble()
     finally:
       afterThreadRuns()
-    boehmGC_unregister_my_thread()
 else:
   proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     try:
@@ -90,7 +89,7 @@ else:
         deallocThreadStorage(thrd.rawStack)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
-  when hasThreadLocalAllocator:
+  when usesThreadLocalAllocator:
     initThreadAllocator()
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
@@ -106,7 +105,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
-    when hasThreadLocalAllocator:
+    when usesThreadLocalAllocator:
       releaseThreadAllocator()
 
 template nimThreadProcWrapperBody*(closure: untyped): untyped =
@@ -124,3 +123,7 @@ template nimThreadProcWrapperBody*(closure: untyped): untyped =
   thrd.core = nil
   thrd.dataFn = nil
   deallocThreadStorage(cast[pointer](core))
+  when defined(boehmgc):
+    # Keep the thread registered while freeing its core: allocShared uses
+    # Boehm's GC_malloc, so the local `core` must remain a GC root until then.
+    boehmGC_unregister_my_thread()

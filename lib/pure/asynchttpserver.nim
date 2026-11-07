@@ -179,15 +179,74 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
 func hasChunkedEncoding(request: Request): bool =
-  ## Searches for a chunked transfer encoding
-  const transferEncoding = "Transfer-Encoding"
+  ## Whether the body uses the chunked transfer encoding. `checkFraming`
+  ## ensures that "chunked" is the only transfer coding. The body framing
+  ## does not depend on the request method: a chunked body that is not read
+  ## would be parsed as the next request on the connection.
+  request.headers.hasKey("Transfer-Encoding")
 
-  if request.headers.hasKey(transferEncoding):
-    for encoding in seq[string](request.headers[transferEncoding]):
-      if "chunked" == encoding.strip:
-        # Returns true if it is both an HttpPost and has chunked encoding
-        return request.reqMethod == HttpPost
-  return false
+func isValidHeaderLine(line: string): bool =
+  ## Whether `line` starts with a field name (a token) directly followed by
+  ## a colon. https://www.rfc-editor.org/rfc/rfc9110#section-5.1
+  const tchar = {'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^',
+                 '_', '`', '|', '~'} + Digits + Letters
+  var i = 0
+  while i < line.len and line[i] in tchar: inc i
+  result = i > 0 and i < line.len and line[i] == ':'
+
+type
+  Framing = enum
+    fraOk, fraBad, fraUnsupported
+
+func checkFraming(request: Request): Framing =
+  ## Validates `Transfer-Encoding` and `Content-Length`. After this only one
+  ## of them is present and its value is well-formed.
+  result = fraOk
+  let te = request.headers.hasKey("Transfer-Encoding")
+  if te:
+    if request.headers.hasKey("Content-Length"):
+      # A sender must not send both; a proxy could use either of them.
+      return fraBad
+    if request.protocol == HttpVer10:
+      return fraBad
+    var codings: seq[string] = @[]
+    for coding in seq[string](request.headers["Transfer-Encoding"]):
+      let c = coding.strip(chars = {' ', '\t'})
+      if c.len > 0: codings.add c
+    if codings.len == 0: return fraBad
+    for c in codings:
+      if cmpIgnoreCase(c, "chunked") != 0:
+        # gzip etc. are not decoded, so we cannot know where the body ends
+        return fraUnsupported
+    if codings.len != 1:
+      return fraBad
+  elif request.headers.hasKey("Content-Length"):
+    var first = ""
+    for value in seq[string](request.headers["Content-Length"]):
+      let v = value.strip(chars = {' ', '\t'})
+      if v.len == 0 or not v.allCharsInSet(Digits): return fraBad
+      if first.len == 0: first = v
+      elif v != first: return fraBad
+  if request.headers.hasKey("Host") and
+      seq[string](request.headers["Host"]).len != 1:
+    result = fraBad
+
+func parseChunkSize(line: string; size: var int): bool =
+  ## Parses the `chunk-size [ chunk-ext ]` line of a chunked body.
+  ## Only hex digits are accepted as the size; extensions are ignored.
+  size = 0
+  var i = 0
+  while i < line.len and line[i] in HexDigits:
+    if size > high(int) div 16: return false
+    let c = line[i]
+    size = size * 16 + (case c
+      of '0'..'9': ord(c) - ord('0')
+      of 'a'..'f': ord(c) - ord('a') + 10
+      else: ord(c) - ord('A') + 10)
+    inc i
+  if i == 0: return false
+  while i < line.len and line[i] in {' ', '\t'}: inc i
+  result = i == line.len or line[i] == ';'
 
 proc processRequest(
   server: AsyncHttpServer,
@@ -265,26 +324,29 @@ proc processRequest(
       of "CONNECT": request.reqMethod = HttpConnect
       of "TRACE": request.reqMethod = HttpTrace
       else:
-        asyncCheck request.respondError(Http400)
-        return true # Retry processing of request
+        # The headers and the body of this request are not read, so the
+        # connection cannot be reused.
+        await request.respondError(Http400)
+        return false
     of 1:
       try:
         parseUri(linePart, request.url)
       except ValueError:
-        asyncCheck request.respondError(Http400)
-        return true
+        await request.respondError(Http400)
+        return false
     of 2:
       try:
         request.protocol = parseProtocol(linePart)
       except ValueError:
-        asyncCheck request.respondError(Http400)
-        return true
+        await request.respondError(Http400)
+        return false
     else:
       await request.respondError(Http400)
-      return true
+      return false
     inc i
 
   # Headers
+  var headerCount = 0
   while true:
     i = 0
     lineFut.mget.setLen(0)
@@ -301,13 +363,33 @@ proc processRequest(
       await request.respondError(Http413)
       client.close(); return false
     if lineFut.mget == "\c\L": break
+    if not isValidHeaderLine(lineFut.mget):
+      # Whitespace before the colon or an obsolete line folding would make
+      # us see different headers than a proxy in front of us.
+      await request.respondError(Http400)
+      client.close(); return false
     let (key, value) = parseHeader(lineFut.mget)
-    request.headers[key] = value
+    # Repeated fields are combined, as if their values were a comma separated
+    # list, instead of letting the last one silently win.
+    for v in value: request.headers.add(key, v)
+    inc headerCount
     # Ensure the client isn't trying to DoS us.
-    if request.headers.len > headerLimit:
+    if headerCount > headerLimit:
       await client.sendStatus("400 Bad Request")
       request.client.close()
       return false
+
+  # Determine the body length the way RFC 9112, section 6.3 does, rejecting
+  # every request whose length a proxy could see differently.
+  # https://www.rfc-editor.org/rfc/rfc9112#section-6.3
+  case checkFraming(request)
+  of fraOk: discard
+  of fraBad:
+    await request.respondError(Http400)
+    return false
+  of fraUnsupported:
+    await request.respondError(Http501)
+    return false
 
   if request.reqMethod == HttpPost:
     # Check for Expect header
@@ -317,13 +399,15 @@ proc processRequest(
       else:
         await client.sendStatus("417 Expectation Failed")
 
-  # Read the body
+  # Read the body. Every error from here on closes the connection: the rest
+  # of the body is not read, and parsing it as the next request would let a
+  # client smuggle a request past a proxy in front of this server.
   # - Check for Content-length header
   if request.headers.hasKey("Content-Length"):
     var contentLength = 0
-    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
+    if parseSaturatedNatural(request.headers["Content-Length"].strip, contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-      return true
+      return false
     else:
       if contentLength > server.maxBody:
         await request.respondError(Http413)
@@ -335,60 +419,76 @@ proc processRequest(
       request.body = await body
       if request.body.len != contentLength:
         await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return true
+        return false
   elif hasChunkedEncoding(request):
     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
-    var sizeOrData = 0
-    var bytesToRead = 0
+    # https://www.rfc-editor.org/rfc/rfc9112#section-7.1
     request.body = ""
 
     while true:
       lineFut.mget.setLen(0)
       lineFut.clean()
+      let reading = client.recvLineInto(lineFut, maxLength = maxLine)
+      if expired(reading):
+        await request.respondError(Http408)
+        return false
+      await reading
+      if lineFut.mget == "":
+        return false # disconnected
+      if lineFut.mget.len > maxLine:
+        await request.respondError(Http413)
+        return false
+      var bytesToRead = 0
+      if not parseChunkSize(lineFut.mget, bytesToRead):
+        await request.respond(Http400, "Bad Request. Invalid chunk size.")
+        return false
+      if bytesToRead > server.maxBody - request.body.len:
+        await request.respondError(Http413)
+        return false
+      if bytesToRead == 0:
+        # Done reading chunked data
+        break
 
-      # The encoding format alternates between specifying a number of bytes to read
-      # and the data to be read, of the previously specified size
-      if sizeOrData mod 2 == 0:
-        # Expect a number of chars to read
-        let reading = client.recvLineInto(lineFut, maxLength = maxLine)
-        if expired(reading):
-          await request.respondError(Http408)
-          return false
-        await reading
-        try:
-          bytesToRead = lineFut.mget.parseHexInt
-        except ValueError:
-          # Malformed request
-          await request.respond(Http411, ("Invalid chunked transfer encoding - " &
-                                          "chunk data size must be hex encoded"))
-          return true
-        if request.body.len > server.maxBody or bytesToRead < 0 or
-            bytesToRead > server.maxBody - request.body.len:
-          await request.respondError(Http413)
-          return false
-      else:
-        if bytesToRead == 0:
-          # Done reading chunked data
-          break
+      # Read bytesToRead and add to body
+      let reading2 = client.recv(bytesToRead)
+      if expired(reading2):
+        await request.respondError(Http408)
+        return false
+      let chunk = await reading2
+      if chunk.len != bytesToRead:
+        return false # disconnected
+      request.body.add(chunk)
+      # Skip \r\n (chunk terminating bytes per spec)
+      let separatorRead = client.recv(2)
+      if expired(separatorRead):
+        await request.respondError(Http408)
+        return false
+      let separator = await separatorRead
+      if separator != "\r\n":
+        await request.respond(Http400, "Bad Request. Encoding separator must be \\r\\n")
+        return false
 
-        # Read bytesToRead and add to body
-        let reading = client.recv(bytesToRead)
-        if expired(reading):
-          await request.respondError(Http408)
-          return false
-        let chunk = await reading
-        request.body.add(chunk)
-        # Skip \r\n (chunk terminating bytes per spec)
-        let separatorRead = client.recv(2)
-        if expired(separatorRead):
-          await request.respondError(Http408)
-          return false
-        let separator = await separatorRead
-        if separator != "\r\n":
-          await request.respond(Http400, "Bad Request. Encoding separator must be \\r\\n")
-          return true
-
-      inc sizeOrData
+    # The last chunk is followed by an optional trailer section and an empty
+    # line. Trailer fields are read and discarded.
+    var trailers = 0
+    while true:
+      lineFut.mget.setLen(0)
+      lineFut.clean()
+      let reading = client.recvLineInto(lineFut, maxLength = maxLine)
+      if expired(reading):
+        await request.respondError(Http408)
+        return false
+      await reading
+      if lineFut.mget == "":
+        return false # disconnected
+      if lineFut.mget.len > maxLine:
+        await request.respondError(Http413)
+        return false
+      if lineFut.mget == "\c\L": break
+      inc trailers
+      if trailers > headerLimit:
+        await request.respondError(Http400)
+        return false
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true

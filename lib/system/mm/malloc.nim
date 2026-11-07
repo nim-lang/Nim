@@ -1,23 +1,22 @@
 
 {.push stackTrace: off.}
 
+# `malloc(0)` and `realloc(p, 0)` may return nil without failing (#26331)
+
 proc allocImpl(size: Natural): pointer =
   result = c_malloc(size.csize_t)
-  when defined(zephyr):
-    if result == nil:
-      raiseOutOfMem()
+  if result == nil and size > 0:
+    raiseOutOfMem()
 
 proc alloc0Impl(size: Natural): pointer =
   result = c_calloc(size.csize_t, 1)
-  when defined(zephyr):
-    if result == nil:
-      raiseOutOfMem()
+  if result == nil and size > 0:
+    raiseOutOfMem()
 
 proc reallocImpl(p: pointer, newSize: Natural): pointer =
   result = c_realloc(p, newSize.csize_t)
-  when defined(zephyr):
-    if result == nil:
-      raiseOutOfMem()
+  if result == nil and newSize > 0:
+    raiseOutOfMem()
 
 proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
   result = realloc(p, newSize.csize_t)

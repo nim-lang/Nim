@@ -499,6 +499,7 @@ proc magicToNifTag(s: TMagic): (string, int) =
   of mNodeId: ("nodeid", NoMagic)
   of mPrivateAccess: ("privateaccess", NoMagic)
   of mZeroDefault: ("zerodefault", NoMagic)
+  of mSymCustomPragmas: ("symcustompragmas", NoMagic)
 
 proc modname(c: var TranslationContext; idx: FileIndex): string =
   result = c.toSuffix.getOrDefault(idx)

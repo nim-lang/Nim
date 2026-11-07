@@ -82,6 +82,7 @@ type
     sym: PSym
     reassignedTo: int
     aliveStart, aliveEnd: AbstractTime # the range for which the variable is alive.
+    declScope: int # scope nesting depth of the variable's declaration
     borrowsFrom: seq[int] # indexes into Partitions.s
 
   MutationInfo* = object
@@ -107,6 +108,7 @@ type
     inAsgnSource, inConstructor, inNoSideEffectSection: int
     inConditional, inLoop: int
     inConvHasDestructor: int
+    scopeDepth: int # nesting depth of scopes that destroy their temporaries
     owner: PSym
     g: ModuleGraph
 
@@ -423,6 +425,20 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
   else:
     discard "nothing to do"
 
+proc isTemporary(n: PNode): bool =
+  ## Is the location 'n' (part of) a temporary produced by a call?
+  var n = n
+  while true:
+    case n.kind
+    of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkHiddenAddr, nkAddr,
+        nkObjUpConv, nkObjDownConv:
+      n = n[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      n = n[1]
+    else: break
+  result = n.kind in nkCallKinds and n.typ != nil and
+    n.typ.skipTypes(abstractInst).kind notin {tyVar, tyLent} and hasDestructor(n.typ)
+
 proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
   ## Analyse if 'n' is an expression that owns the data, if so mark 'dest'
   ## with 'ownsData'.
@@ -505,7 +521,11 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
         # we know the result is derived from the first argument:
         var roots: seq[(PSym, int)] = @[]
         allRoots(n[1], roots, RootEscapes)
-        if roots.len == 0 and c.inConditional > 0:
+        if isTemporary(n[1]) and c.scopeDepth > dest.declScope:
+          # bug #26461: the temporary is destroyed at the end of the current
+          # scope but 'dest' lives longer than that:
+          dest.flags.incl preventCursor
+        elif roots.len == 0 and c.inConditional > 0:
           # when in a conditional expression,
           # to ensure that the first argument isn't outlived
           # by the lvalue, we need find the root, otherwise
@@ -710,6 +730,10 @@ proc traverse(c: var Partitions; n: PNode) =
     for child in n:
       let last = lastSon(child)
       traverse(c, last)
+      for i in 0..<child.len-2:
+        if child[i].kind == nkSym:
+          let vid = variableId(c, child[i].sym)
+          if vid >= 0: c.s[vid].declScope = c.scopeDepth
       if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
         if child.len-2 != last.len: return
         for i in 0..<child.len-2:
@@ -806,6 +830,7 @@ proc traverse(c: var Partitions; n: PNode) =
     traverse(c, n.lastSon)
     dec c.inNoSideEffectSection, enforceNoSideEffects
   of nkWhileStmt, nkForStmt, nkParForStmt:
+    inc c.scopeDepth
     for child in n: traverse(c, child)
     # analyse loops twice so that 'abstractTime' suffices to detect cases
     # like:
@@ -818,9 +843,17 @@ proc traverse(c: var Partitions; n: PNode) =
       traverse(c, n[0])
       # variables in while condition has longer alive time than local variables
       # in the while loop body
+    dec c.scopeDepth
   of nkDefer:
     if c.processDefer:
       for child in n: traverse(c, child)
+  of nkBlockStmt, nkBlockExpr, nkTryStmt, nkElifBranch, nkElifExpr, nkElse,
+      nkElseExpr, nkOfBranch, nkExceptBranch, nkFinally:
+    # these open a new scope in which temporaries are destroyed
+    # (see injectdestructors):
+    inc c.scopeDepth
+    for child in n: traverse(c, child)
+    dec c.scopeDepth
   else:
     for child in n: traverse(c, child)
 

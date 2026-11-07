@@ -336,7 +336,7 @@ proc isVSCompatible*(conf: ConfigRef): bool =
           (conf.cCompiler == ccIcl and conf.target.hostOS in osDos..osWindows)
 
 proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
-  # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
+  # use ``cpu.os.cc`` for cross compilation, unless ``--mergeableCcode`` is given
   # for niminst support
   var fullSuffix = suffix
   case conf.backend
@@ -348,7 +348,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
     return ""
 
   if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
-      optCompileOnly notin conf.globalOptions:
+      optMergeableCcode notin conf.globalOptions:
     let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
@@ -482,10 +482,12 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   result = conf.globalOptions * options != {}
 
 proc targetOptions(conf: ConfigRef): string =
-  # Solaris/illumos toolchains can default to 32-bit output on amd64.
+  # Solaris/illumos toolchains can default to 32-bit output on amd64/sparc64.
+  # These are target ABI flags, not a temporary bootstrap workaround: keep them
+  # while supported toolchains need -m64 to select 64-bit output.
   # Inspect the target, not the host, so cross-compilation works too.
   if conf.target.targetOS in {osSolaris, osIllumos} and
-      conf.target.targetCPU == cpuAmd64 and
+      conf.target.targetCPU in {cpuAmd64, cpuSparc64} and
       conf.cCompiler in {ccGcc, ccCLang}:
     result = "-m64"
   else:
@@ -1051,21 +1053,41 @@ proc callCCompiler*(conf: ConfigRef) =
       objfiles.add(quoteShell(
           addFileExt(objFile, CC[conf.cCompiler].objExt)))
 
-    if conf.hcrOn: # lets assume that optCompileOnly isn't on
+    if conf.hcrOn:
+      # the object of a `{.compile.}` file is linked into every binary, like
+      # the `{.link.}` ones: the C code of any module may call its functions
+      for x in conf.toCompile:
+        if CfileFlag.External in x.flags:
+          objfiles.add(' ')
+          objfiles.add(quoteShell(conf.getObjFilePath(x)))
       cmds = @[]
+      # a running program reloads a library as soon as it looks newer, so the
+      # linker writes each one beside its final name and it is moved into place
+      # complete: written in place, it could be loaded half written or be missing
+      var linkedLibs: seq[tuple[linked, target: AbsoluteFile]] = @[]
       let mainFileIdx = conf.toCompile.len - 1
       for idx, x in conf.toCompile:
         # don't relink each of the many binaries (one for each source file) if the nim code is
         # cached because that would take too much time for small changes - the only downside to
         # this is that if an external-to-link file changes the final target wouldn't be relinked
-        if CfileFlag.Cached in x.flags: continue
+        if {CfileFlag.Cached, CfileFlag.External} * x.flags != {}: continue
         # we pass each object file as if it is the project file - a .dll will be created for each such
         # object file in the nimcache directory, and only in the case of the main project file will
         # there be probably an executable (if the project is such) which will be copied out of the nimcache
         let objFile = conf.getObjFilePath(x)
         let buildDll = idx != mainFileIdx
         let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
-        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
+        let linkOutput =
+          if buildDll: AbsoluteFile(linkTarget.string & ".tmp")
+          else: linkTarget
+        if buildDll: linkedLibs.add (linkOutput, linkTarget)
+        cmds.add(getLinkCmd(conf, linkOutput, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
+        if optGenScript in conf.globalOptions:
+          # no program runs while the script links, so each library is linked
+          # in place, and the program to the output like without HCR
+          let scriptOutput = if buildDll: linkTarget else: AbsoluteFile(conf.outFile)
+          script.add(getLinkCmd(conf, scriptOutput, objfiles & " " & quoteShell(objFile), buildDll, removeStaticFile = true))
+          script.add("\n")
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
         if isVSCompatible(conf):
@@ -1073,14 +1095,17 @@ proc callCCompiler*(conf: ConfigRef) =
             discard tryRemoveFile(pdb)
       # execute link commands in parallel - output will be a bit different
       # if it fails than that from execLinkCmd() but that doesn't matter
-      prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
-      execCmdsInParallel(conf, cmds, prettyCb)
-      # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
-      if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
-        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
-        let src = conf.hcrLinkTargetName(mainObjFile, true)
-        let dst = conf.prepareToWriteOutput
-        copyFileWithPermissions(src.string, dst.string)
+      if optCompileOnly notin conf.globalOptions:
+        prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
+        execCmdsInParallel(conf, cmds, prettyCb)
+        for lib in linkedLibs:
+          moveFile(lib.linked.string, lib.target.string)
+        # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
+        if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
+          let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
+          let src = conf.hcrLinkTargetName(mainObjFile, true)
+          let dst = conf.prepareToWriteOutput
+          copyFileWithPermissions(src.string, dst.string)
     else:
       for x in conf.toCompile:
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
@@ -1255,8 +1280,9 @@ proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
     cmds.add cmd
     prettyCmds.add displayProgressCC(conf, name, cmd)
   execCmdsInParallel(conf, cmds, prettyCb)
-  preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
-  for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
+  if optNoLinking notin conf.globalOptions:
+    preventLinkCmdMaxCmdLen(conf, bcache.linkcmd)
+    for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
   if conf.errorCounter == errorsBeforeBuild:
     writeBuildState(conf, bcache)
 

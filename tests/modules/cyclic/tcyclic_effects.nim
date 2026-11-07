@@ -4,7 +4,9 @@ discard """
 """
 
 # effect tracking runs the deferred bodies of the partner module on demand,
-# so `.raises: []` holds across the cycle:
+# so `.raises: []` holds across the cycle. `fa` and `fb` recurse via the
+# modules of the group, which is treated like a call of a forward declared
+# routine, so they need explicit `.raises` annotations:
 import mcyclic_effects {.cyclic.}
 
 proc fa*(x: int): int {.raises: [].} = (if x > 0: fb(x - 1) else: 0)

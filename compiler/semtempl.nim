@@ -530,9 +530,20 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       else:
         illFormedAst(a, c.c.config)
   of nkRecCase:
-    semTemplIdentDef(c, n[0], skField)
+    let isSumType = n[0].kind == nkIdentDefs and n[0].len > 0 and n[0][0].kind == nkEmpty
+    if not isSumType:
+      semTemplIdentDef(c, n[0], skField)
     for i in 1..<n.len:
-      n[i] = semTemplBody(c, n[i])
+      let b = n[i]
+      if b.kind notin {nkOfBranch, nkElse}: illFormedAst(b, c.c.config)
+      if not isSumType:
+        # the branch names of a sum type are declared by the type
+        for j in 0..<b.len-1:
+          b[j] = semTemplBody(c, b[j])
+      # the fields, possibly a single `nkIdentDefs`:
+      let fields = if b[^1].kind == nkRecList: b[^1] else: newTree(nkRecList, b[^1])
+      discard semTemplBody(c, fields)
+      if b[^1].kind != nkRecList: b[^1] = fields[0]
   of nkProcDef, nkLambdaKinds:
     result = semRoutineInTemplBody(c, n, skProc)
   of nkFuncDef:

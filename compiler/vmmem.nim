@@ -27,6 +27,10 @@
 ##
 ## `NimNode` and `typedesc` values are represented by 32 bit *handles*:
 ## indexes into tables of this module. Handle 0 always means `nil`.
+## NimNode handles are reference counted: the VM code got destructors for
+## them injected (see `liftdestructors`), a handle whose count drops to zero
+## is freed and its slot is reused. A handle that is part of the VM's code
+## (a NimNode literal) is *pinned*: it is never freed.
 ## Procs are represented by addresses within *proc regions*: these
 ## addresses are unique, so they can be told apart from integers that are
 ## cast to a proc type, yet they cannot be read or written.
@@ -78,6 +82,8 @@ type
     consts: BumpArea
     bytesInUse*: int           # heap bytes handed out (excluding headers)
     nodes*: seq[PNode]         # NimNode handles
+    nodeRc: seq[int32]         # reference count of a NimNode handle
+    freeNodes: seq[int32]      # NimNode handles to reuse
     nodeIds: Table[pointer, int32]
     types*: seq[PType]         # typedesc handles
     typeIds: Table[pointer, int32]
@@ -449,21 +455,73 @@ proc disposeRef*(m: var VmMemory; p: Address; align: int): bool =
 proc initHandles(m: var VmMemory) =
   if m.nodes.len == 0:
     m.nodes.add nil
+    m.nodeRc.add 0
     m.types.add nil
     m.procs.add nil
 
-proc nodeHandle*(m: var VmMemory; n: PNode): int32 =
-  if n == nil: return 0
-  initHandles(m)
+const
+  NodePinned = high(int32) ## the count of a handle that is never freed
+
+proc nodeSlot(m: var VmMemory; n: PNode): int32 =
   let k = cast[pointer](n)
   result = m.nodeIds.getOrDefault(k, 0)
   if result == 0:
-    result = int32(m.nodes.len)
-    m.nodes.add n
+    when defined(nimVmNodeRcCheck):
+      # never reuse a handle so that a use after free is detected
+      const reuse = false
+    else:
+      const reuse = true
+    if reuse and m.freeNodes.len > 0:
+      result = m.freeNodes.pop()
+      m.nodes[result] = n
+    else:
+      result = int32(m.nodes.len)
+      m.nodes.add n
+      m.nodeRc.add 0
     m.nodeIds[k] = result
 
+proc nodeHandle*(m: var VmMemory; n: PNode): int32 =
+  ## a new reference to `n`: the caller owns it and has to release it with
+  ## `decNodeRef`, which the VM code's injected destructors do.
+  if n == nil: return 0
+  initHandles(m)
+  result = nodeSlot(m, n)
+  if m.nodeRc[result] != NodePinned: inc m.nodeRc[result]
+
+proc pinnedNodeHandle*(m: var VmMemory; n: PNode): int32 =
+  ## a handle for `n` that is never freed: for NimNode literals in the
+  ## VM's code.
+  if n == nil: return 0
+  initHandles(m)
+  result = nodeSlot(m, n)
+  m.nodeRc[result] = NodePinned
+
+proc validNode(m: VmMemory; h: int64): bool {.inline.} =
+  result = h > 0 and h < m.nodes.len and m.nodeRc[h] > 0
+  when defined(nimVmNodeRcCheck):
+    if h > 0 and h < m.nodes.len and m.nodeRc[h] == 0:
+      raiseAssert "NimNode handle released after it was freed: " & $h
+
+proc incNodeRef*(m: var VmMemory; h: int64) =
+  if validNode(m, h) and m.nodeRc[h] != NodePinned: inc m.nodeRc[h]
+
+proc decNodeRef*(m: var VmMemory; h: int64) =
+  if validNode(m, h) and m.nodeRc[h] != NodePinned:
+    dec m.nodeRc[h]
+    if m.nodeRc[h] == 0:
+      m.nodeIds.del cast[pointer](m.nodes[h])
+      m.nodes[h] = nil
+      m.freeNodes.add int32(h)
+
+proc liveNodes*(m: VmMemory): int =
+  ## the number of NimNode handles that are in use
+  m.nodes.len - 1 - m.freeNodes.len
+
 proc getNode*(m: VmMemory; h: int64): PNode {.inline.} =
-  if h <= 0 or h >= m.nodes.len: nil else: m.nodes[h]
+  if h <= 0 or h >= m.nodes.len: return nil
+  when defined(nimVmNodeRcCheck):
+    if m.nodeRc[h] == 0: raiseAssert "NimNode handle used after it was freed: " & $h
+  result = m.nodes[h]
 
 proc typeHandle*(m: var VmMemory; t: PType): int32 =
   if t == nil: return 0
@@ -505,23 +563,3 @@ proc getProc*(m: var VmMemory; a: Address): PSym =
       let idx = chunk * ProcChunkSize + int(a - start)
       return if idx > 0 and idx < m.procs.len: m.procs[idx] else: nil
   result = nil
-
-proc resetNodeHandles*(m: var VmMemory; keep: openArray[int32]): seq[int32] =
-  ## drops all NimNode handles except `keep`. Returns the new handles for
-  ## `keep`, in the same order; the caller has to patch them into memory.
-  var nodes = @[PNode(nil)]
-  m.nodeIds.clear()
-  result = newSeq[int32](keep.len)
-  for i, h in keep:
-    let n = getNode(m, h)
-    if n == nil:
-      result[i] = 0
-    else:
-      let k = cast[pointer](n)
-      var nh = m.nodeIds.getOrDefault(k, 0)
-      if nh == 0:
-        nh = int32(nodes.len)
-        nodes.add n
-        m.nodeIds[k] = nh
-      result[i] = nh
-  m.nodes = move nodes

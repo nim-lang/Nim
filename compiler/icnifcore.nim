@@ -22,8 +22,9 @@
 ## plain Nim values (config, ids, string lists), so it can coexist with the
 ## still-old-API `ast2nif.nim` during the migration.
 
-import std / [syncio, algorithm]
-from std / os import removeFile, moveFile
+import std / [syncio, algorithm, tables]
+from std / os import removeFile, moveFile, getFileInfo
+import std / times
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
 
@@ -236,17 +237,70 @@ proc collectBifStrLits*(path: string): seq[string] =
     if c.kind == StrLit: result.add strVal(c)
     inc c
 
+type
+  SemDeps* = object
+    ## A `.s.deps` sidecar written by `writeSemDeps`.
+    exists*: bool                ## false: no sidecar (module not semmed yet)
+    written*: Time               ## the sidecar's mtime
+    imports*: seq[string]        ## the module's direct imports
+    slurps*: seq[string]         ## files it read via `staticRead`/`slurp`
+
+proc loadSemDeps*(path: string): SemDeps =
+  ## Reads a `.s.deps` sidecar with a single open: no separate existence check,
+  ## and the mtime comes from the open handle. Reads into owned memory and
+  ## closes the handle, like `collectBifStrLits` and for the same Windows reason.
+  result = SemDeps()
+  var f: File = nil
+  if not open(f, path, fmRead): return
+  var m: BifModule = default(BifModule)
+  try:
+    result.written = getFileInfo(f).lastWriteTime
+    m = bif.loadFromFile(f)
+  finally:
+    close(f)
+  result.exists = true
+  var c = m.buf.beginRead()
+  if not c.hasMore or c.kind != TagLit: return
+  c.into:
+    while c.hasMore:
+      case c.kind
+      of StrLit:
+        result.imports.add strVal(c)
+        inc c
+      of TagLit:
+        if m.buf.tags.tagName(c.cursorTagId) == "slurps":
+          c.into:
+            while c.hasMore:
+              if c.kind == StrLit: result.slurps.add strVal(c)
+              skip c
+        else:
+          skip c
+      else:
+        skip c
+
 proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]) =
   ## Stage 1 spike: the nifcore port of `ast2nif.writeSemDeps`. Serializes the
-  ## module's resolved direct imports as `(semdeps "path" ...)`. Byte-identical
-  ## to the old writer (verified), so `nim ic` build graphs are unaffected.
+  ## module's resolved direct imports as `(semdeps "path" ... (slurps "file" ...))`.
+  ## The `slurps` section lists the files `staticRead`/`slurp` read while semming
+  ## the module (`config.slurpedFiles`); `nim ic` makes them inputs of the
+  ## module's `nim m` rule so editing such a file re-sems it (#26614). It is
+  ## omitted when empty, keeping the sidecar byte-identical for every module
+  ## that slurps nothing.
   let selfSuffix = modname(thisModule, config)
   var paths = importPaths
   sort paths
-  var dest = newIcBuilder(4 + 2*paths.len)
+  var slurps = config.slurpedFiles.getOrDefault(thisModule, @[])
+  sort slurps
+  var dest = newIcBuilder(6 + 2*paths.len + slurps.len)
   dest.openTag "semdeps"
   for p in paths:
     dest.addStrLit p
+  if slurps.len > 0:
+    dest.openTag "slurps"
+    for f in slurps:
+      dest.addStrLit f
+    dest.closeTag()
   dest.closeTag()
   let path = toGeneratedFile(config, AbsoluteFile(selfSuffix), ".s.deps.bif").string
   storeBifStable(dest, path, "." & extractModuleSuffix(path))
+

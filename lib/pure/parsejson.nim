@@ -181,9 +181,9 @@ proc addSpan(dst: var string; src: string; startPos, endPos: int) {.inline.} =
     return
 
   let old = dst.len
-  dst.setLen old + n
 
   template impl =
+    dst.setLen old + n
     for i in 0..<n:
       dst[old + i] = src[startPos + i]
 
@@ -194,7 +194,8 @@ proc addSpan(dst: var string; src: string; startPos, endPos: int) {.inline.} =
       impl
     else:
       {.noSideEffect.}:
-        copyMem dst[old].addr, src[startPos].unsafeAddr, n
+        copyMem beginStore(dst, old + n, old), readRawData(src, startPos), n
+        endStore(dst)
 
 proc parseString(my: var JsonParser): TokKind =
   result = tkString

@@ -1,5 +1,5 @@
 discard """
-  errormsg: "fb(x - 1) can raise an unlisted exception: ref ValueError"
+  errormsg: "fb(x - 1) can raise an unlisted exception: Exception"
   file: "tcyclic_effects_error.nim"
 """
 

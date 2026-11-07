@@ -115,14 +115,14 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
-                                            else: relativeTo(canon, conf.projectPath)))
+                                            else: conf.relativeTo(canon, conf.projectPath)))
     conf.m.filenameToIndexTbl[canon2] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool = false
   result = fileInfoIdx(conf, filename, dummy)
 
-proc expandOrPseudo(filename: string): AbsoluteFile =
+proc expandOrPseudo(conf: ConfigRef; filename: string): AbsoluteFile =
   # `expandFilename` raises OSError when the path does not exist on disk. That is
   # fine for a real source path, but a macro can legitimately set a node's
   # line-info file to a name that has no file behind it — e.g. the `???` sentinel
@@ -131,16 +131,16 @@ proc expandOrPseudo(filename: string): AbsoluteFile =
   # register it as a pseudo-path (like `command line`/`stdin`) instead of crashing
   # the whole `nim m` child with an unhandled OSError.
   try:
-    result = AbsoluteFile expandFilename(filename)
+    result = canonicalizePath(conf, AbsoluteFile filename)
   except OSError:
     result = AbsoluteFile filename
 
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile; isKnownFile: var bool): FileIndex =
-  fileInfoIdx(conf, expandOrPseudo(filename.string), isKnownFile)
+  fileInfoIdx(conf, expandOrPseudo(conf, filename.string), isKnownFile)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: RelativeFile): FileIndex =
   var dummy: bool = false
-  fileInfoIdx(conf, expandOrPseudo(filename.string), dummy)
+  fileInfoIdx(conf, expandOrPseudo(conf, filename.string), dummy)
 
 proc registerNifSuffix*(conf: ConfigRef; suffix: string; isKnownFile: var bool): FileIndex =
   result = conf.m.filenameToIndexTbl.getOrDefault(suffix, InvalidFileIdx)

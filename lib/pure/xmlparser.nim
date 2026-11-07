@@ -14,10 +14,17 @@ import std/[streams, parsexml, strtabs, xmltree]
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
+const
+  xmlMaxDepth* {.intdefine.} = 256 ## The maximum nesting depth of elements, like libxml2.
+    ## Deeper documents are rejected, as they could exhaust the stack.
+    ## This can be set on the command line via `-d:xmlMaxDepth=N`.
+
 type
   XmlError* = object of ValueError ## Exception that is raised
                                    ## for invalid XML.
     errors*: seq[string]           ## All detected parsing errors.
+
+  XmlTooDeep = object of CatchableError
 
 proc raiseInvalidXml(errors: seq[string]) =
   var e: ref XmlError
@@ -29,10 +36,12 @@ proc raiseInvalidXml(errors: seq[string]) =
 proc addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
-proc parse(x: var XmlParser, errors: var seq[string]): XmlNode {.gcsafe.}
+proc parse(x: var XmlParser, errors: var seq[string]; depth: int): XmlNode {.gcsafe.}
 
 proc untilElementEnd(x: var XmlParser, result: XmlNode,
-                     errors: var seq[string]) =
+                     errors: var seq[string]; depth: int) =
+  if depth > xmlMaxDepth:
+    raise newException(XmlTooDeep, "")
   while true:
     case x.kind
     of xmlElementEnd:
@@ -46,9 +55,9 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
       errors.add(errorMsg(x, "</" & result.tag & "> expected"))
       break
     else:
-      result.addNode(parse(x, errors))
+      result.addNode(parse(x, errors, depth))
 
-proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
+proc parse(x: var XmlParser, errors: var seq[string]; depth: int): XmlNode =
   result = nil
   case x.kind
   of xmlComment:
@@ -66,7 +75,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   of xmlElementStart: ## ``<elem>``
     result = newElement(x.elementName)
     next(x)
-    untilElementEnd(x, result, errors)
+    untilElementEnd(x, result, errors, depth+1)
   of xmlElementEnd:
     errors.add(errorMsg(x, "unexpected ending tag: " & x.elementName))
   of xmlElementOpen:
@@ -89,7 +98,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
         errors.add(errorMsg(x, "'>' expected"))
         next(x)
         break
-    untilElementEnd(x, result, errors)
+    untilElementEnd(x, result, errors, depth+1)
   of xmlAttribute, xmlElementClose:
     errors.add(errorMsg(x, "<some_tag> expected"))
     next(x)
@@ -106,6 +115,8 @@ proc parseXml*(s: Stream, filename: string,
                errors: var seq[string], options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Parses the XML from stream ``s`` and returns a ``XmlNode``. Every
   ## occurred parsing error is added to the ``errors`` sequence.
+  ## If elements are nested deeper than `xmlMaxDepth`, parsing stops
+  ## with an error and `nil` is returned.
   result = nil
   var x: XmlParser = default(XmlParser)
   open(x, s, filename, options)
@@ -113,7 +124,12 @@ proc parseXml*(s: Stream, filename: string,
     x.next()
     case x.kind
     of xmlElementOpen, xmlElementStart:
-      result = parse(x, errors)
+      try:
+        result = parse(x, errors, 0)
+      except XmlTooDeep:
+        errors.add(errorMsg(x, "elements nested deeper than " & $xmlMaxDepth &
+          " levels"))
+        result = nil
       break
     of xmlComment, xmlWhitespace, xmlSpecial, xmlPI: discard # just skip it
     of xmlError:

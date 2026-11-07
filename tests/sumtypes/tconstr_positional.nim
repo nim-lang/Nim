@@ -1,5 +1,5 @@
 discard """
-  errormsg: "sum type constructor requires named arguments"
+  errormsg: "attempting to call routine: 'Value'"
   line: 17
 """
 
