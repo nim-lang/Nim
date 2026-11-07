@@ -1854,6 +1854,10 @@ proc genAsmStmt(p: BProc, t: PNode) =
   if p.prc == nil:
     # top level asm statement?
     p.module.s[cfsProcHeaders].add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
+  elif hasGnuAsm in CC[p.config.cCompiler].props:
+    # `asm` inside a proc is meant to run where it stands; `volatile` keeps
+    # the C compiler from merging, hoisting or dropping it (bug #26649)
+    p.s(cpsStmts).add runtimeFormat("__asm__ __volatile__($1);$n", [s])
   else:
     p.s(cpsStmts).add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
 
