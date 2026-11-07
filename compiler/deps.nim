@@ -1966,12 +1966,16 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
         if not confirmed: dec c.speculating
   result = madeProgress
 
+iterator unsemmed(c: DepContext): string =
+  ## The scheduled modules still lacking their semmed NIF.
+  for node in c.nodes:
+    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
+      yield node.files[0].modname
+
 proc allSemmed(c: DepContext): bool =
   ## Whether every scheduled module has its semmed NIF.
   result = true
-  for node in c.nodes:
-    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
-      return false
+  for _ in unsemmed(c): return false
 
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
@@ -2152,6 +2156,9 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.
     var frontendOk = false
+    # How many modules were still unsemmed after the previous round that
+    # discovered nothing; see the rescheduling below.
+    var lastPending = high(int)
     while true:
       let buildFile = generateFrontendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & buildFile)
@@ -2188,10 +2195,25 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         frontendOk = true
         break
       if not discovered and exitCode == 0:
-        # Only the deferred-import stops happened, and they taught us nothing.
+        # Only the deferred-import stops happened, and they taught us nothing
+        # new about the graph. That is not necessarily an error: a module can
+        # stop for an import whose node and edge already exist but whose NIF
+        # was missing when the module ran (e.g. the import stopped in the same
+        # round, or it is loaded transitively through another module's NIF).
+        # Just run the round again: nifmake reruns exactly the rules whose
+        # semmed NIF is missing. Only give up when a round leaves at least as
+        # many modules unsemmed as the previous one, so this terminates.
+        var pending = 0
+        for _ in unsemmed(c): inc pending
+        if pending < lastPending:
+          lastPending = pending
+          continue
+        var names: seq[string] = @[]
+        for m in unsemmed(c): names.add m
+        names.sort()
         rawMessage(conf, errGenerated,
           "ic: modules stopped for imports discovered during sem, but " &
-          "rescheduling found no new dependency")
+          "rescheduling made no progress: " & names.join(", "))
         break
       if not discovered:
         # The children have already printed the real diagnostics. Adding an
