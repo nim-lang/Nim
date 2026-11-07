@@ -23,29 +23,39 @@ type
     ic: IdentCache
     instID: int
     idgen: IdGenerator
+    expandingDefaults: seq[int] # params whose default value is being expanded
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
   if ctx.instLines: setInfoRecursive(result, b.info)
 
 proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
-  template handleParam(param) =
+  template handleParam(param; pos: int; name: string) =
     let x = param
     if x.kind == nkArgList:
       for y in items(x): result.add(y)
     elif nfDefaultRefsParam in x.flags:
-      # value of default param needs to be evaluated like template body
-      # if it contains other template params
-      var res: PNode
-      if isAtom(x):
-        res = newNodeI(nkPar, x.info)
-        evalTemplateAux(x, actual, c, res)
-        if res.len == 1: res = res[0]
+      if pos in c.expandingDefaults:
+        # `template t(color = obj.color)`: the default names its own param,
+        # so expanding it would expand it again, forever
+        localError(c.config, x.info,
+          "the default value of '" & name & "' refers back to '" & name & "'")
+        result.add newNodeI(nkEmpty, x.info)
       else:
-        res = copyNode(x)
-        for i in 0..<x.safeLen:
-          evalTemplateAux(x[i], actual, c, res)
-      result.add res
+        c.expandingDefaults.add pos
+        # value of default param needs to be evaluated like template body
+        # if it contains other template params
+        var res: PNode
+        if isAtom(x):
+          res = newNodeI(nkPar, x.info)
+          evalTemplateAux(x, actual, c, res)
+          if res.len == 1: res = res[0]
+        else:
+          res = copyNode(x)
+          for i in 0..<x.safeLen:
+            evalTemplateAux(x[i], actual, c, res)
+        c.expandingDefaults.setLen(c.expandingDefaults.len - 1)
+        result.add res
     else:
       result.add copyTree(x)
 
@@ -54,10 +64,11 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     var s = templ.sym
     if (s.owner == nil and s.kind == skParam) or s.owner == c.owner:
       if s.kind == skParam and {sfGenSym, sfTemplateParam} * s.flags == {sfTemplateParam}:
-        handleParam actual[s.position]
+        handleParam actual[s.position], s.position, s.name.s
       elif (s.owner != nil) and (s.kind == skGenericParam or
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
-        handleParam actual[s.owner.typ.signatureLen + s.position - 1]
+        let pos = s.owner.typ.signatureLen + s.position - 1
+        handleParam actual[pos], pos, s.name.s
       else:
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = idTableGet(c.mapping, s)
