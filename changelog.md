@@ -301,6 +301,13 @@ parameter and result types, not just their source-level shape. Use
   to dispatch before; `std/logging` works with it now. A thread-local
   variable keeps its value, for each thread, when its module is reloaded.
 
+- A proc with `.forbids` now warns (`Effect`) when its body has an effect that
+  is a parent of a forbidden one, such as `RootEffect` from a call through a
+  proc variable or a method under `{.forbids: [MyEffect].}`: the call may have
+  the forbidden effect. It is a warning so that such code keeps compiling;
+  assigning that proc to a proc type with the same `.forbids` was already an
+  error.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.

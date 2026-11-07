@@ -1335,6 +1335,11 @@ proc compatibleExceptions(se, re: PNode): bool =
       return false
   result = true
 
+proc isParentEffect*(effect, forbidden: PType): bool =
+  ## `effect` is broader than `forbidden`, so it may be `forbidden`
+  let d = safeInheritanceDiff(effect, forbidden)
+  result = d > 0 and d != high(int)
+
 proc forbiddenEffect(se, re: PNode): (PNode, PNode) =
   ## the first effect of `re` that the `.forbids` list `se` rejects, and the
   ## entry of `se` that rejects it
@@ -1610,8 +1615,7 @@ proc addForbiddenEffect*(message: var string, formal, actual: PType, conf: Confi
   let (effect, forbidden) = forbiddenEffect(spec, actual.n[0][tagEffects])
   message.add "\n  The effect $1 is forbidden by `.forbids: $2`" %
     [typeToString(effect.typ), renderTree(spec)]
-  if safeInheritanceDiff(effect.typ, forbidden.typ) > 0:
-    # an effect that is broader than a forbidden one may be that one
+  if isParentEffect(effect.typ, forbidden.typ):
     message.add " ($1 is a parent of $2, so it may be $2)" %
       [typeToString(effect.typ), typeToString(forbidden.typ)]
   message.addEffectOrigin(effect, conf)
