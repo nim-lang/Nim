@@ -101,6 +101,11 @@ block: # parseIpAddress tests
     expect(ValueError):
       discard parseIpAddress("::ffff:127.0.1")
 
+block: # `$` for IPv6 does not compress a single zero group (bug #26658)
+  check $parseIpAddress("1:0:2:3:4:5:6:7") == "1:0:2:3:4:5:6:7"
+  check $parseIpAddress("1:0:0:2:0:0:0:3") == "1:0:0:2::3"
+  check $parseIpAddress("0:0:0:0:0:0:0:1") == "::1"
+
 block: # "IpAddress/Sockaddr conversion"
   proc test(ipaddrstr: string) =
     var ipaddr_1 = parseIpAddress(ipaddrstr)
