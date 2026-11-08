@@ -28,6 +28,13 @@ type
     nimFile: string
     modname: string
 
+  DefineValue = object
+    ## A `{.booldefine.}`/`{.intdefine.}`/`{.strdefine.}` const as nifler
+    ## records it in the deps file. `value` is "" when unknown (a non-literal
+    ## default, or a declaration under an undecidable `when`).
+    isBool: bool
+    value: string
+
   Node = ref object
     files: seq[FilePair]  # main file + includes
     deps: seq[int]        # indices into DepContext.nodes
@@ -40,6 +47,7 @@ type
                               ## real compile would reach this `import`, so it is
                               ## a "cannot open file" error unless it turns out
                               ## to be a `compiles` probe (see isCompilesProbe)
+    defines: Table[string, DefineValue] # module-level `{.*define.}` consts
     id: int
     deferred: bool        # reached only through undecidable `when` guards: no
                           # rules until sem confirms an import of it (see
@@ -62,6 +70,7 @@ type
     scanningMain: bool # currently scanning the project main module's deps;
                        # makes `when isMainModule` conditions evaluate true
                        # only there (every other module is imported)
+    current: Node      # the module whose deps file is being read
     speculating: int   # nesting depth of `when` guards the scanner could not
                        # decide; every import edge added while this is > 0 is
                        # recorded as speculative (see pruneDeadSpeculative)
@@ -402,7 +411,10 @@ proc evalCondIdent(c: DepContext; v: string): CondVal =
     # so the merge stage can pick it as a shared def's owner -> undefined
     # symbols at link).
     toCondVal(c.scanningMain)
-  else: cvUnknown
+  else:
+    let d = c.current.defines.getOrDefault(v)
+    if d.isBool and d.value.len > 0: toCondVal(d.value == "true")
+    else: cvUnknown
 
 proc constIdentValue(c: DepContext; ident: string): string =
   ## String value of a compile-time platform constant that appears in `when`
@@ -420,7 +432,7 @@ proc constIdentValue(c: DepContext; ident: string): string =
   of "hostCPU": result = toLowerAscii(platform.CPU[c.config.target.targetCPU].name)
   of "buildOS": result = toLowerAscii(platform.OS[c.config.target.hostOS].name)
   of "buildCPU": result = toLowerAscii(platform.CPU[c.config.target.hostCPU].name)
-  else: result = ""
+  else: result = c.current.defines.getOrDefault(ident).value
 
 proc readOperandValue(c: DepContext; s: var Stream): string =
   ## Read one operand of an `==`/`!=` infix and return its string value (a string
@@ -429,6 +441,7 @@ proc readOperandValue(c: DepContext; s: var Stream): string =
   let t = next(s)
   case t.kind
   of StringLit: result = pool.strings[t.litId]
+  of IntLit: result = $pool.integers[t.intId]
   of Ident: result = constIdentValue(c, pool.strings[t.litId])
   of ParLe:
     result = ""
@@ -444,6 +457,22 @@ proc evalCondCmp(c: DepContext; s: var Stream; isEq: bool): CondVal =
     result = toCondVal((v1 == v2) == isEq)
   else:
     result = cvUnknown
+
+proc readDefinedName(s: var Stream): string =
+  ## The symbol of `defined(x)` or `defined(pkg.x)`; consumes the operand.
+  result = ""
+  let t = next(s)
+  case t.kind
+  of Ident: result = pool.strings[t.litId]
+  of ParLe:
+    if pool.tags[t.tagId] == "dot":
+      let left = readDefinedName(s)
+      let right = readDefinedName(s)
+      if left.len > 0 and right.len > 0: result = left & "." & right
+      discard next(s) # closing `)` of the dot
+    else:
+      skipSubtree(s, t)
+  else: discard
 
 proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal
 
@@ -478,10 +507,8 @@ proc evalCondExpr(c: DepContext; s: var Stream; t: PackedToken): CondVal =
     else: discard
     case name
     of "defined":
-      let arg = next(s)
-      var sym = ""
-      if arg.kind == Ident: sym = pool.strings[arg.litId]
-      result = toCondVal(sym.len > 0 and isDefined(c.config, sym))
+      let sym = readDefinedName(s)
+      result = if sym.len > 0: toCondVal(isDefined(c.config, sym)) else: cvUnknown
     of "compileOption":
       # Same table the compiler's `compileOption` magic uses, so e.g.
       # `when compileOption("profiler"): import std/nimprof` is decided here
@@ -529,6 +556,53 @@ proc whenMarkerHolds(c: DepContext; s: var Stream): CondVal =
     if t.kind == ParRi: return
     if t.kind == EofToken: return
     result = condAnd(result, evalCondExpr(c, s, t))
+
+proc readDefine(c: var DepContext; s: var Stream; current: Node) =
+  ## `(define (when ...)? name (kind) "defineName" default)`, written by nifler
+  ## for a module-level `{.booldefine/intdefine/strdefine.}` const. Mirrors
+  ## semfold.foldDefine: a `-d:defineName=value` override wins over the
+  ## literal default. Consumes the node including its `)`.
+  var t = next(s)
+  var cond = cvTrue
+  if t.kind == ParLe and pool.tags[t.tagId] == "when":
+    cond = whenMarkerHolds(c, s)
+    t = next(s)
+  if t.kind != Ident:
+    var depth = 1 # not nifler's shape: skip it
+    while depth > 0 and t.kind != EofToken:
+      if t.kind == ParLe: inc depth
+      elif t.kind == ParRi: dec depth
+      if depth > 0: t = next(s)
+    return
+  let name = pool.strings[t.litId]
+  let kindTag = next(s)
+  let kind = if kindTag.kind == ParLe: pool.tags[kindTag.tagId] else: ""
+  if kindTag.kind == ParLe: discard next(s) # ParRi of `(booldefine)`
+  let defineName = pool.strings[next(s).litId]
+  let default = next(s)
+  discard next(s) # ParRi
+  if cond == cvFalse: return
+  var d = DefineValue(isBool: kind == "booldefine")
+  if cond == cvTrue:
+    try:
+      if isDefined(c.config, defineName):
+        let raw = c.config.symbols[defineName]
+        case kind
+        of "booldefine": d.value = $parseBool(raw)
+        of "intdefine": d.value = $parseBiggestInt(raw)
+        else: d.value = raw
+      else:
+        case default.kind
+        of StringLit: d.value = pool.strings[default.litId]
+        of IntLit: d.value = $pool.integers[default.intId]
+        of Ident: d.value = pool.strings[default.litId]
+        else: discard
+    except ValueError:
+      discard "sem reports the bad define"
+  # Declared in several `when` branches: a live branch decides, otherwise the
+  # first undecidable declaration keeps it unknown.
+  if cond == cvTrue or name notin current.defines:
+    current.defines[name] = d
 
 proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
   ## Parse an import path expression and return the list of module paths it
@@ -618,8 +692,12 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
   # `current.id == 0` is the project main (rootNode); restored on exit so the
   # flag is correct for each parent frame between its child recursions.
   let prevScanningMain = c.scanningMain
+  let prevCurrent = c.current
   c.scanningMain = current.id == 0
-  defer: c.scanningMain = prevScanningMain
+  c.current = current
+  defer:
+    c.scanningMain = prevScanningMain
+    c.current = prevCurrent
 
   var s = nifstreams.open(depsPath)
   defer: nifstreams.close(s)
@@ -697,6 +775,8 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
           elif t.kind == ParRi: dec depth
           if depth == 0: break
           t = next(s)
+      of "define":
+        readDefine(c, s, current)
       else:
         # Skip unknown node
         var depth = 1
