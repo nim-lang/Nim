@@ -2,7 +2,7 @@ discard """
   matrix: "--mm:refc; --mm:orc"
 """
 
-import std/[parsexml, streams, strutils, assertions]
+import std/[parsexml, streams, strutils, assertions, xmltree, xmlparser]
 
 block: # unquoted attribute value crossing the 8 KB buffer refill point
   # The '/' in `c=</d>` is the last refill character in the first buffer, so
@@ -22,3 +22,24 @@ block: # unquoted attribute value crossing the 8 KB buffer refill point
     else: discard
   x.close()
   doAssert sawError
+
+block: # whitespace before a '/' in a quoted attribute value
+  # '/' is a refill character with its own branch, which must place the
+  # pending space before the slash rather than after it.
+  var x: XmlParser
+  x.open(newStringStream("""<a b="1 / 2" c=" /x" d="x/ y"/>"""), "test")
+  var values: seq[string]
+  while true:
+    x.next()
+    case x.kind
+    of xmlAttribute: values.add x.attrValue
+    of xmlEof: break
+    else: discard
+  x.close()
+  doAssert values == @["1 / 2", " /x", "x/ y"], $values
+
+block: # an attribute value with " / " survives xmltree's `$` and parseXml
+  let value = "1 / 2"
+  let written = $(<>a(v = value))
+  doAssert written == """<a v="1 / 2" />""", written
+  doAssert parseXml(written).attr("v") == value
