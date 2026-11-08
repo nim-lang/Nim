@@ -23,9 +23,10 @@
 ## still-old-API `ast2nif.nim` during the migration.
 
 import std / [syncio, algorithm, tables]
-from std / os import removeFile, moveFile, getFileInfo, getCurrentProcessId
+from std / os import removeFile, moveFile, getFileInfo
 import std / times
 import options, pathutils, typekeys
+from ic / sharedcounters import tempSibling
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
 
 # One shared literals pool + tag pool for the whole process — the nifcore
@@ -112,18 +113,13 @@ proc freshModuleCopy(b: var IcBuilder): TokenBuf =
     addSubtree(result, c)
     skip c
 
-proc tmpName(path: string): string =
-  # Unique per process: builds sharing the stdlib cache (see `deps.nim`) can
-  # write the same artifact at the same time.
-  path & "." & $getCurrentProcessId() & ".tmp"
-
 proc storeBif*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## Persist the buffer as a compact, self-contained binary NIF (`.bif`).
   ## Written by rename: a reader (another build of the stdlib cache, which
   ## takes no lock to read it) maps either the old file or the new one, never a
   ## half-written one.
   var fresh = freshModuleCopy(b)
-  let tmp = tmpName(path)
+  let tmp = tempSibling(path)
   bif.store(fresh, tmp, dottedSuffix)
   moveFile(tmp, path)
 
@@ -135,7 +131,7 @@ proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## gates incremental builds. (bif encoding is deterministic for a given buffer
   ## under fresh pools, so equal content ⇒ equal bytes.)
   var fresh = freshModuleCopy(b)
-  let tmp = tmpName(path)
+  let tmp = tempSibling(path)
   bif.store(fresh, tmp, dottedSuffix)
   let newBytes = readFile(tmp)
   let oldBytes =

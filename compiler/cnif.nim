@@ -42,6 +42,7 @@
 
 import std / [tables, sets, os, assertions, syncio, algorithm, hashes, strutils]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse, stringviews]
+from ic / sharedcounters import tempSibling
 import "../dist/nimony/src/lib" / nifreader as rd
 
 const
@@ -160,7 +161,7 @@ proc writeCnifArtifact*(code: string; outfile: string;
 
   # Written by rename: a `.c.nif` of the stdlib cache is read by other builds
   # without its lock (see `deps.nim`).
-  let tmp = outfile & "." & $getCurrentProcessId() & ".tmp"
+  let tmp = tempSibling(outfile)
   var b = nifbuilder.open(tmp)
   b.withTree "stmts":
     b.withTree "meta":

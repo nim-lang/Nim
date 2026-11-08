@@ -22,7 +22,7 @@ import icmodnames
 import icnifcore
 from ic/replayer import BackendActionsExt, BodyDepsExt
 from commands import compileOptionValue
-from ic/sharedcounters import lockExclusive, unlock
+from ic/sharedcounters import lockExclusive, unlock, tempSibling
 
 type
   FilePair = object
@@ -1652,7 +1652,7 @@ proc stdBackendProject(c: DepContext): string =
   result = c.config.icStdBackendDir.string / "stdlib.nim"
   if not fileExists(result):
     createDir(c.config.icStdBackendDir.string)
-    let tmp = result & "." & $getCurrentProcessId() & ".tmp"
+    let tmp = tempSibling(result)
     writeFile(tmp, "")
     moveFile(tmp, result)
 
@@ -2218,7 +2218,7 @@ proc runStdPhase(c: var DepContext; forwardedArgs: seq[string];
   result = withStdLock(c):
     # Written once, under the lock: a rewrite would make every module stale.
     if not fileExists(c.stdArgsFile):
-      let tmp = c.stdArgsFile & "." & $getCurrentProcessId() & ".tmp"
+      let tmp = tempSibling(c.stdArgsFile)
       writeFile(tmp, c.stdSignature)
       moveFile(tmp, c.stdArgsFile)
     # Another build may have semmed stdlib modules since this one read the
