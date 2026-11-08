@@ -550,7 +550,7 @@ proc parseSpecial(my: var XmlParser) =
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      add(my.b, '/')
+      add(my.a, '/')
     else:
       add(my.a, my.buf[pos])
       inc(pos)
