@@ -23,7 +23,7 @@
 ## still-old-API `ast2nif.nim` during the migration.
 
 import std / [syncio, algorithm, tables]
-from std / os import removeFile, moveFile, getFileInfo
+from std / os import removeFile, moveFile, getFileInfo, getCurrentProcessId
 import std / times
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
@@ -112,10 +112,20 @@ proc freshModuleCopy(b: var IcBuilder): TokenBuf =
     addSubtree(result, c)
     skip c
 
+proc tmpName(path: string): string =
+  # Unique per process: builds sharing the stdlib cache (see `deps.nim`) can
+  # write the same artifact at the same time.
+  path & "." & $getCurrentProcessId() & ".tmp"
+
 proc storeBif*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## Persist the buffer as a compact, self-contained binary NIF (`.bif`).
+  ## Written by rename: a reader (another build of the stdlib cache, which
+  ## takes no lock to read it) maps either the old file or the new one, never a
+  ## half-written one.
   var fresh = freshModuleCopy(b)
-  bif.store(fresh, path, dottedSuffix)
+  let tmp = tmpName(path)
+  bif.store(fresh, tmp, dottedSuffix)
+  moveFile(tmp, path)
 
 proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## Content-stable `bif` write — the binary analogue of `writeFileStable`'s
@@ -125,7 +135,7 @@ proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
   ## gates incremental builds. (bif encoding is deterministic for a given buffer
   ## under fresh pools, so equal content ⇒ equal bytes.)
   var fresh = freshModuleCopy(b)
-  let tmp = path & ".tmp"
+  let tmp = tmpName(path)
   bif.store(fresh, tmp, dottedSuffix)
   let newBytes = readFile(tmp)
   let oldBytes =

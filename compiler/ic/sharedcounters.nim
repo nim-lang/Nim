@@ -44,7 +44,7 @@ else:
   var LockUn {.importc: "LOCK_UN", header: "<sys/file.h>".}: cint
   var Eintr {.importc: "EINTR", header: "<errno.h>".}: cint
 
-proc lockExclusive(f: File) =
+proc lockExclusive*(f: File) =
   when defined(windows):
     var ov = default(OVERLAPPED)
     if lockFileEx(Handle(getOsFileHandle(f)), LockfileExclusiveLock, 0, 1, 0,
@@ -55,7 +55,7 @@ proc lockExclusive(f: File) =
       let err = osLastError()
       if err != OSErrorCode(Eintr): raiseOSError(err)
 
-proc unlock(f: File) =
+proc unlock*(f: File) =
   when defined(windows):
     var ov = default(OVERLAPPED)
     discard unlockFileEx(Handle(getOsFileHandle(f)), 0, 1, 0, addr ov)

@@ -461,6 +461,10 @@ type
     icSemDir*: AbsoluteDir    # imported-module semantics for the effective configuration
     icMainSemDir*: AbsoluteDir # semantics for this entry point's import-cycle group
     icMainModules*: seq[string] # module suffixes whose semantics live in icMainSemDir
+    icStdSemDir*: AbsoluteDir # the stdlib cache: semantics of the stdlib modules
+                              # this build shares with every other build of the
+                              # same configuration (see `deps.nim`, "stdlib cache")
+    icStdModules*: HashSet[string] # module suffixes whose semantics live in icStdSemDir
     icGroup*: HashSet[string] # under `nim m`: absolute paths of the modules in
                               # this strongly-connected import group. They are all
                               # compiled from source in one process (so mutual
@@ -726,6 +730,7 @@ proc newConfigRef*(): ConfigRef =
     m: initMsgConfig(),
     cppDefines: initHashSet[string](),
     icGroup: initHashSet[string](),
+    icStdModules: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {},
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
@@ -1007,7 +1012,7 @@ proc clearNimblePath*(conf: ConfigRef) =
 
 include packagehandling
 
-proc getOsCacheDir(): string =
+proc getOsCacheDir*(): string =
   when defined(posix):
     result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
   else:
@@ -1063,6 +1068,8 @@ proc semanticFile*(conf: ConfigRef; suffix, ext: string): AbsoluteFile =
   let dir =
     if not conf.icMainSemDir.isEmpty and suffix in conf.icMainModules:
       conf.icMainSemDir
+    elif not conf.icStdSemDir.isEmpty and suffix in conf.icStdModules:
+      conf.icStdSemDir
     else:
       getSemanticCacheDir(conf)
   dir / RelativeFile(suffix & ext)
@@ -1071,8 +1078,13 @@ iterator semanticFiles*(conf: ConfigRef): string =
   ## Scan the active semantic modules, excluding imported versions of main's group.
   for file in walkFiles(getSemanticCacheDir(conf).string / "*.s.bif"):
     let suffix = file.extractFilename.changeFileExt("").changeFileExt("")
-    if conf.icMainSemDir.isEmpty or suffix notin conf.icMainModules:
+    if (conf.icMainSemDir.isEmpty or suffix notin conf.icMainModules) and
+        suffix notin conf.icStdModules:
       yield file
+  if not conf.icStdSemDir.isEmpty:
+    for suffix in conf.icStdModules:
+      let file = semanticFile(conf, suffix, ".s.bif").string
+      if fileExists(file): yield file
   if not conf.icMainSemDir.isEmpty:
     for suffix in conf.icMainModules:
       let file = semanticFile(conf, suffix, ".s.bif").string

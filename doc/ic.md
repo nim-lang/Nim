@@ -76,6 +76,45 @@ under the nimcache directory:
 | ``ic_config.cfg.nif`` | driver | precompiled config replayed by every child (`icconfig.nim`) |
 | ``ic.version`` | driver | format stamp; a mismatch wipes the cache (`icFormatVersion`) |
 
+The stdlib cache
+----------------
+
+The semantic artifacts of the standard library are not in the build's nimcache
+but in a cache every build with the same settings shares, wherever it was
+started from and whatever its main module:
+
+.. code-block::
+
+  <os cache dir>/stdcache/<compiler>/<settings>/
+    <s>.s.bif, <s>.iface.bif, ...   as in a nimcache, stdlib modules only
+    ic_build_args.txt                the settings, an input of every rule
+    lock                             held while a build runs the rules
+
+``<compiler>`` hashes the compiler's path, its ``lib`` directory and
+``icFormatVersion``; ``<settings>`` hashes the build's effective settings
+minus its search paths (``deps.stdSignature``). The compiler binary is an
+input of every rule, so a rebuilt compiler re-sems the stdlib once, and the
+iface cookies stop the cascade there.
+
+A module is shared (``deps.selectStdModules``) when all of its files (includes
+too) are under ``lib/``, it is not the main module, and everything it imports
+is shared: a shared artifact must not depend on one build's sources, such as a
+``$projectpath`` include under ``--os:standalone`` or a module found through
+``--path``. Module suffixes hash the absolute path and the artifacts store
+absolute paths, so a shared module is the same in every build. The children
+learn which suffixes live in the cache from ``--icStdSemDir`` and
+``--icStdModules:<file>``, which ``options.semanticFile`` consults.
+
+Every frontend round first runs the shared modules' rules from a build file
+of their own (``<main>.std.build.nif``) under the cache's lock, then the
+build's own rules without it. Under the lock the driver re-reads the shared
+modules' ``.s.deps`` sidecars: another build may have semmed them already and
+discovered imports this build still defers, and their artifacts name those
+modules. Every artifact is written by rename, so a build that only reads the
+cache (and maps its files) never sees a half-written one. ``-d:icNoStdCache``
+keeps every module in the build's own nimcache. The backend (``.t.bif``, C
+and object files) is per build still.
+
 NIF symbols and ownership
 =========================
 
