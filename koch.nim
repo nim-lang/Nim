@@ -15,15 +15,13 @@ const
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "668edddcaa5651051e7683a38a04f31fba778f35" # unversioned \
+  NimonyStableCommit = "60c0f8919ea7773d46e1de2ce85c6038a662b055" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # Commit from 2026-09-11 -- nifmake names the command that failed. Its
-    # parallel path marked every child `Finished` whatever the exit code was,
-    # so a build that fanned out left the crash in the log and the command that
-    # produced it nowhere: a Windows CI `nim ic` run reported a bare SIGSEGV
-    # with no way to tell whether the child was `nifler` or `nim m`.
+    # Commit from 2026-11-08 -- nifler records module-level `{.*define.}`
+    # consts in the deps file (nim-lang/nimony#2942), which the `nim ic`
+    # dependency scanner uses to decide `when` guards before sem.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
