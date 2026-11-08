@@ -420,6 +420,13 @@ proc constIdentValue(c: DepContext; ident: string): string =
   of "hostCPU": result = toLowerAscii(platform.CPU[c.config.target.targetCPU].name)
   of "buildOS": result = toLowerAscii(platform.OS[c.config.target.hostOS].name)
   of "buildCPU": result = toLowerAscii(platform.CPU[c.config.target.hostCPU].name)
+  of "appType":
+    # semfold.getAppType
+    result =
+      if optGenDynLib in c.config.globalOptions: "lib"
+      elif optGenStaticLib in c.config.globalOptions: "staticlib"
+      elif optGenGuiApp in c.config.globalOptions: "gui"
+      else: "console"
   else: result = ""
 
 proc readOperandValue(c: DepContext; s: var Stream): string =
@@ -1942,6 +1949,30 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
     let deps = semDeps(c, c.nodes[ni].files[0])
     let confirmed = (afterRound and ni < scheduledNodes) or
       semDepsAreCurrent(c.nodes[ni], deps)
+    if confirmed and c.nodes[ni].specDeps.len > 0 and
+        fileExists(c.semmedFile(c.nodes[ni].files[0])):
+      # Sem finished, so the sidecar is the module's complete import set: a
+      # speculative edge it does not list sits behind a guard that was false.
+      # Keeping it can fold the import into this module's cycle group, whose
+      # `nim m` then never compiles it -- every other importer waits forever
+      # (`when defined(windows) and appType == "console": import exitprocs`
+      # in syncio put exitprocs and locks into system's group).
+      var real = initHashSet[int]()
+      for p in deps.imports:
+        real.incl c.processedModules.getOrDefault(c.toPair(p).modname, -1)
+      var i = 0
+      while i < c.nodes[ni].specDeps.len:
+        let d = c.nodes[ni].specDeps[i]
+        if d in real:
+          inc i
+        else:
+          c.nodes[ni].specDeps.delete i
+          c.nodes[ni].deps.delete c.nodes[ni].deps.find(d)
+          # Only a scheduled module that is still missing needs the regrouped
+          # graph; a deferred one was in no group.
+          if not c.nodes[d].deferred and
+              not fileExists(c.semmedFile(c.nodes[d].files[0])):
+            madeProgress = true
     for p in deps.imports:
       let pair = c.toPair(p)
       var idx = c.processedModules.getOrDefault(pair.modname, -1)
