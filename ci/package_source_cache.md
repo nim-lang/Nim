@@ -19,8 +19,9 @@ service outage does not stop the package tests.
 
 ## Why bare repositories
 
-`package_source_cache.py` installs a job-local Git wrapper and remote helper. Git
-URL rewriting sends network reads to bare mirrors, served by `git upload-pack`.
+`package_source_cache.nim` is compiled with the CI bootstrap compiler and installs
+a job-local Git wrapper and remote helper. Git URL rewriting sends network reads
+to bare mirrors, served by `git upload-pack`.
 This supports Nimble's shallow clones and fetches. Atlas's static Git HTTP server
 uses dumb HTTP, which does not support shallow cloning. A smart HTTP server could
 work, but would add a server process and port without helping jobs on separate VMs.
@@ -46,6 +47,12 @@ This is a source download cache, not an offline package environment.
 
 ## Snapshot keys
 
+The `package-sources-v2` namespace uses the standard library's SHA-1 digest of each
+upstream URL for mirror filenames. The stored origin URL is still validated before
+use. The new namespace avoids restoring the Python helper's SHA-256 filenames.
+Only the bare mirrors are cached; the Nim executables and session files are built
+fresh and need no Nimble dependencies.
+
 Actions caches cannot be overwritten. Each saved snapshot includes the workflow
 run ID and attempt. Restore requests use a different, never-saved `lookup` key and
 then these prefix matches, in order:
@@ -63,7 +70,8 @@ package-test driver, `koch.nim` (including the Nimble pin), helper and workflow.
 ## Local checks
 
 ```
-PYTHONDONTWRITEBYTECODE=1 python3 ci/test_package_source_cache.py
+nim c -d:release --out:bin/package_source_cache ci/package_source_cache.nim
+nim c -r --out:bin/test_package_source_cache ci/test_package_source_cache.nim bin/package_source_cache
 actionlint .github/workflows/ci_packages.yml
 ```
 

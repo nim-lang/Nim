@@ -82,14 +82,16 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-      - name: 'Test package source cache'
-        run: PYTHONDONTWRITEBYTECODE=1 python3 ci/test_package_source_cache.py
+      - name: 'Build and test package source cache'
+        run: |
+          nim c -d:release --out:"$RUNNER_TEMP/package_source_cache" ci/package_source_cache.nim
+          nim c -r --out:"$RUNNER_TEMP/test_package_source_cache" ci/test_package_source_cache.nim "$RUNNER_TEMP/package_source_cache"
 
       - name: 'Package source cache key'
         id: source-key
         env:
-          SCOPE: package-sources-v1-${{ runner.os }}-${{ runner.arch }}-${{ matrix.batch }}
-          INPUTS: ${{ hashFiles('testament/important_packages.nim', 'testament/packagebatches.nim', 'testament/categories.nim', 'koch.nim', 'ci/package_source_cache.py', 'ci/test_package_source_cache.py', '.github/workflows/ci_packages.yml') }}
+          SCOPE: package-sources-v2-${{ runner.os }}-${{ runner.arch }}-${{ matrix.batch }}
+          INPUTS: ${{ hashFiles('testament/important_packages.nim', 'testament/packagebatches.nim', 'testament/categories.nim', 'koch.nim', 'ci/package_source_cache.nim', 'ci/test_package_source_cache.nim', '.github/workflows/ci_packages.yml') }}
         run: |
           echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
           echo "revision=$SCOPE-$INPUTS" >> "$GITHUB_OUTPUT"
@@ -114,7 +116,8 @@ jobs:
           # PRs only consume mirrors. Existing devel matrix jobs populate new
           # snapshots when the package list/tooling changes, or on a refresh.
           NIM_CI_GIT_POPULATE: ${{ github.repository == 'nim-lang/Nim' && github.ref == 'refs/heads/devel' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(steps.source-cache.outputs.cache-matched-key, format('{0}-snapshot-', steps.source-key.outputs.revision)))) }}
-        run: python3 ci/package_source_cache.py setup "$RUNNER_TEMP/package-sources" "$RUNNER_TEMP/package-source-session"
+        run: |
+          "$RUNNER_TEMP/package_source_cache" setup "$RUNNER_TEMP/package-sources" "$RUNNER_TEMP/package-source-session"
 
       - name: 'koch, Run CI'
         shell: bash
