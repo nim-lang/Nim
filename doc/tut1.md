@@ -1064,9 +1064,12 @@ Most often integers are used for counting objects that reside in memory, so
 The common operators `+ - * div mod  <  <=  ==  !=  >  >=` are defined for
 integers. The `and or xor not` operators are also defined for integers and
 provide *bitwise* operations. Left bit shifting is done with the `shl`, right
-shifting with the `shr` operator. Bit shifting operators always treat their
-arguments as *unsigned*. For `arithmetic bit shifts`:idx: ordinary
-multiplication or division can be used.
+shifting with the `shr` operator. `shl` fills the vacated bits with zeros.
+For a signed integer, `shr` is an `arithmetic bit shift`:idx:: the vacated
+bits are filled with the sign bit, so `-8 shr 1` is `-4`. For an unsigned
+integer, `shr` is a logical shift: the vacated bits are filled with zeros.
+To shift a signed integer logically, convert it to the unsigned type of the
+same size first.
 
 Unsigned operations all wrap around; they cannot lead to over- or under-flow
 errors.
