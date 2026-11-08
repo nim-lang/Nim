@@ -647,6 +647,9 @@ proc parseAttribute(my: var XmlParser) =
         pos = lexbase.handleLF(my, pos)
         pendingSpace = true
       of '/':
+        if pendingSpace:
+          add(my.b, ' ')
+          pendingSpace = false
         pos = lexbase.handleRefillChar(my, pos)
         add(my.b, '/')
       else:
