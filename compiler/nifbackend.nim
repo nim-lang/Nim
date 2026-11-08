@@ -578,7 +578,7 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
   # routines itself.
   icProfStop(tLowerHooks)
   let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
-  let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.bif").string
+  let wholeArtifact = loweredFile(g.config, suffix)
   timed tLowerWrite:
     writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
   if isDefined(g.config, "icDceCheck"):
@@ -848,7 +848,9 @@ proc cgFinishModule(g: ModuleGraph; target: PrecompiledModule;
         if not visited.containsOrIncl(suffix):
           ordered.add m
     for m in ordered:
-      let heads = readCnifHeads(getCFile(m).string & ".nif")
+      let heads = readCnifHeads(cgArtifactBase(g.config,
+        cachedModuleSuffix(g.config, FileIndex m.module.position),
+        getCFile(m).string) & ".nif")
       registerReusedModuleToMain(bl, m, heads.initRequired, heads.datInitRequired)
       if heads.globalDtor.len > 0: g.icModuleDtors.add heads.globalDtor
       for i in heads.extensionLoaders:
@@ -993,7 +995,9 @@ proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
     else: AbsoluteFile member
   let cfile = changeFileExt(completeCfilePath(g.config,
     mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
-  let artifact = cfile & ".nif"
+  # A module of the stdlib cache has its `.c.nif` there; its `.c` is this
+  # program's, rendered with this program's merge decision.
+  let artifact = (if isMain: cfile else: cgArtifactBase(g.config, member, cfile)) & ".nif"
   if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
       "per-module emit: missing .c.nif artifact for suffix: " & member)
@@ -1063,21 +1067,25 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   ##     `.c.nif`, and the `.c` sits beside it (`emit`'s output);
   ##   * each module's `cg` wrote its directives to a `.cflags` sidecar.
   let nimcache = getNimcacheDir(g.config).string
-  var cfiles: seq[string] = @[]
+  # The artifact bases (`<base>.nif` is the `.c.nif`, `<base>.cflags` its
+  # directives): next to the `.c` in this program's nimcache, or in the stdlib
+  # cache (see `options.cgArtifactDir`). The `.c` is always in the nimcache.
+  var bases: seq[string] = @[]
   let manifest = nimcache / LiveModulesFile
   if fileExists(manifest):
     for line in lines(manifest):
       let p = line.strip()
-      if p.len > 0 and p.endsWith(".nif"): cfiles.add p[0 ..< p.len - ".nif".len]
+      if p.len > 0 and p.endsWith(".nif"): bases.add p[0 ..< p.len - ".nif".len]
   else:
     # A cache written by an older compiler has no manifest; fall back to the
     # `.c` files sitting next to the artifacts.
     for artifact in walkFiles(nimcache / ("*" & icCFileExt(g.config) & ".nif")):
-      cfiles.add artifact[0 ..< artifact.len - ".nif".len]
-  sort cfiles
+      bases.add artifact[0 ..< artifact.len - ".nif".len]
+  sort bases
 
   var addedCFiles = initHashSet[string]()
-  for cpath in cfiles:
+  for base in bases:
+    let cpath = nimcache / extractFilename(base)
     # Only modules that are their own cg/emit target produced a `.c`; the rest
     # had their code emit-everywhere'd into the targets, so there is nothing to
     # compile for them.
@@ -1085,7 +1093,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     addedCFiles.incl extractFilename(cpath)
     # The directives this module recorded (`{.passL: "-lm".}` etc.); without
     # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
-    applyBackendActions(g, cpath)
+    applyBackendActions(g, base)
     # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
     # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
     # `callCCompiler` skips its compile but still links the existing object. This
@@ -1113,7 +1121,11 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         if addedCFiles.containsOrIncl(cbase): continue
         let cfile = AbsoluteFile(nimcache / cbase)
         if not fileExists(cfile.string): continue
-        applyBackendActions(g, cfile.string)
+        let shared = g.config.icStdBackendDir.string / cbase
+        applyBackendActions(g,
+          if fileExists(cfile.string & BackendActionsExt) or
+              g.config.icStdBackendDir.isEmpty: cfile.string
+          else: shared)
         addCFileWithParts(g, cfile.string, cbase)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)

@@ -1001,7 +1001,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passCmd2, passPP}:
       conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
-  of "icsemdir", "icmainsemdir", "icstdsemdir":
+  of "icsemdir", "icmainsemdir", "icstdsemdir", "icstdbackenddir":
     # IC children receive concrete semantic input directories; only the driver
     # chooses configuration and entry-point subdirectories.
     expectArg(conf, switch, arg, pass, info)
@@ -1009,6 +1009,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     case switch.normalize
     of "icsemdir": conf.icSemDir = dir
     of "icstdsemdir": conf.icStdSemDir = dir
+    of "icstdbackenddir": conf.icStdBackendDir = dir
     else: conf.icMainSemDir = dir
   of "icstdmodules":
     # The file the driver writes listing the suffixes of the modules whose

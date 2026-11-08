@@ -158,7 +158,10 @@ proc writeCnifArtifact*(code: string; outfile: string;
     if u notin defs: crefs.add u
   sort crefs
 
-  var b = nifbuilder.open(outfile)
+  # Written by rename: a `.c.nif` of the stdlib cache is read by other builds
+  # without its lock (see `deps.nim`).
+  let tmp = outfile & "." & $getCurrentProcessId() & ".tmp"
+  var b = nifbuilder.open(tmp)
   b.withTree "stmts":
     b.withTree "meta":
       var metaFlags = ""
@@ -235,6 +238,7 @@ proc writeCnifArtifact*(code: string; outfile: string;
     if inDef:
       b.endTree()
   b.close()
+  moveFile(tmp, outfile)
 
 proc renderMarkedC*(code: string; live: HashSet[string]; dropped: var int): string =
   ## Renders the final C text from the marked module text: symbol marks are

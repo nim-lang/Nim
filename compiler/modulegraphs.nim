@@ -853,7 +853,16 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
   ## so that it is useful as a C identifier snippet.
   var isLib = false
   var rel = ""
-  if path.string.startsWith(conf.libpath.string):
+  if not isAbsolute(path.string) and os.DirSep notin path.string and
+      os.AltSep notin path.string:
+    # IC names a module loaded from its NIF by its suffix (a `fikNifModule`'s
+    # `toFullPath`), a name already: made relative to the project it depended
+    # on the working directory and project path, so the C names of the same
+    # module differed between processes (and between the programs sharing the
+    # stdlib cache).
+    rel = path.string
+    isLib = true
+  elif path.string.startsWith(conf.libpath.string):
     isLib = true
     rel = conf.relativeTo(path, conf.libpath).string
   else:

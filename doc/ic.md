@@ -89,6 +89,9 @@ started from and whatever its main module:
     <s>.s.bif, <s>.iface.bif, ...   as in a nimcache, stdlib modules only
     ic_build_args.txt                the settings, an input of every rule
     lock                             held while a build runs the rules
+    backend/
+      <s>.t.bif, @m<s>.nim.c.nif,    the `lower` and `cg` artifacts
+      @m<s>.nim.c.cflags, ...
 
 ``<compiler>`` hashes the compiler's path, its ``lib`` directory and
 ``icFormatVersion``; ``<settings>`` hashes the build's effective settings
@@ -112,8 +115,19 @@ modules' ``.s.deps`` sidecars: another build may have semmed them already and
 discovered imports this build still defers, and their artifacts name those
 modules. Every artifact is written by rename, so a build that only reads the
 cache (and maps its files) never sees a half-written one. ``-d:icNoStdCache``
-keeps every module in the build's own nimcache. The backend (``.t.bif``, C
-and object files) is per build still.
+keeps every module in the build's own nimcache.
+
+The backend shares what does not depend on the program: a shared module's
+``lower`` and ``cg`` load only its own import closure, so their artifacts
+(``options.cgArtifactDir``) are built in the cache, from a build file of their
+own and under the same lock, each module in a batch of its own (what a ``cg``
+emits depends on its batch). ``merge`` decides ownership and liveness over the
+whole program, so ``emit`` (the ``.c``), the C compiler and the linker stay in
+the program's backend directory; a ``{.compile.}`` object of a shared module
+is compiled there too. The C file and C symbol names of a module loaded from
+its NIF derive from its suffix alone (``mangleModuleName``,
+``uniqueModuleName``), not from the working directory or project path, so
+every program agrees on them. ``-d:icNoStdBackend`` shares the frontend only.
 
 NIF symbols and ownership
 =========================

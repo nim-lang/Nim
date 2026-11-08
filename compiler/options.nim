@@ -29,7 +29,9 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "52"
+  icFormatVersion* = "53"
+    ## v53: a module loaded from its NIF has C file and symbol names derived
+    ##   from its suffix alone; the stdlib's `lower`/`cg` artifacts are shared.
     ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v48: track implementation dependencies for reused generic type instances.
@@ -465,6 +467,8 @@ type
                               # this build shares with every other build of the
                               # same configuration (see `deps.nim`, "stdlib cache")
     icStdModules*: HashSet[string] # module suffixes whose semantics live in icStdSemDir
+    icStdBackendDir*: AbsoluteDir # the stdlib cache's backend part: the
+                                  # `lower`/`cg` artifacts of `icStdModules`
     icGroup*: HashSet[string] # under `nim m`: absolute paths of the modules in
                               # this strongly-connected import group. They are all
                               # compiled from source in one process (so mutual
@@ -1073,6 +1077,25 @@ proc semanticFile*(conf: ConfigRef; suffix, ext: string): AbsoluteFile =
     else:
       getSemanticCacheDir(conf)
   dir / RelativeFile(suffix & ext)
+
+proc cgArtifactDir*(conf: ConfigRef; suffix: string): AbsoluteDir =
+  ## Where the `lower`/`cg` artifacts of a module (`.t.bif`, `.c.nif`, and
+  ## their sidecars) live: the stdlib cache for a module in it, else this
+  ## program's backend directory. What `emit` and `link` derive from them
+  ## (`.c`, `.o`) depends on the whole program and is always in the latter.
+  if not conf.icStdBackendDir.isEmpty and suffix in conf.icStdModules:
+    conf.icStdBackendDir
+  else:
+    getNimcacheDir(conf)
+
+proc loweredFile*(conf: ConfigRef; suffix: string): string =
+  ## The `lower` stage's whole-module artifact of `suffix`.
+  (cgArtifactDir(conf, suffix) / RelativeFile(suffix & ".t.bif")).string
+
+proc cgArtifactBase*(conf: ConfigRef; suffix, cfile: string): string =
+  ## `cfile` (a module's `.c`, as `cgen.getCFile` names it) moved to where its
+  ## `cg` artifacts live: `<base>.nif`, `<base>.cflags`, `<base>.bodydeps`.
+  (cgArtifactDir(conf, suffix) / RelativeFile(extractFilename(cfile))).string
 
 iterator semanticFiles*(conf: ConfigRef): string =
   ## Scan the active semantic modules, excluding imported versions of main's group.
