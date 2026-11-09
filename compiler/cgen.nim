@@ -1926,6 +1926,21 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   icProfStart(tGenBody)
   genProcBody(p, procBody)
+  # bug #26661: a 'finally' that only calls procs which cannot raise does not
+  # save and clear the error flag (see `genTryGoto`), so such a proc, e.g. a
+  # `=destroy` hook reached through a lifted seq destructor, runs with the flag
+  # already set while an exception propagates. An 'except' branch in it would
+  # take that exception for one raised in its own 'try' body. So these procs
+  # hide the flag while they run and give it back on exit.
+  let hideErrorFlag = p.config.exc == excGoto and sfPure notin prc.flags and
+      (sfNeverRaises in prc.flags or sfOverridden in prc.flags or
+       raisesNothing(effectsOf(prc.typ))) and
+      nimErrorFlagDeclared in p.flags and hasExceptBranch(procBody)
+  if hideErrorFlag:
+    p.blocks[0].sections[cpsLocals].addVar(kind = Local,
+      name = "oldNimErrProc_", typ = NimBool)
+    p.blocks[0].sections[cpsInit].addAssignment("oldNimErrProc_", cDeref("nimErr_"))
+    p.blocks[0].sections[cpsInit].addAssignment(cDeref("nimErr_"), NimFalse)
   if resultCleanup != nil:
     let body = move(p.s(cpsStmts).buf)
     p.s(cpsStmts).addLineEndIndent("try {")
@@ -1979,6 +1994,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         else:
           generatedProc.add(extract(p.s(cpsInit)))
           generatedProc.add(extract(p.s(cpsStmts)))
+        if hideErrorFlag:
+          generatedProc.addSingleIfStmt("oldNimErrProc_"):
+            generatedProc.addAssignment(cDeref("nimErr_"), NimTrue)
         if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
         generatedProc.add(returnStmt)
   if m.config.cmd == cmdNifC:
