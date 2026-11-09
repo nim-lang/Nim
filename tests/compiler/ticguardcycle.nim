@@ -23,7 +23,12 @@ proc build(main, expected: string; flags: seq[string] = @[]; decided = true) =
   doAssert compiled.exitCode == 0, compiled.output
   if decided:
     doAssert "deferred behind undecidable" notin compiled.output, compiled.output
-  let executed = execCmdEx(quoteShell(output))
+  var exe = output
+  when defined(macosx):
+    # `--app:gui` moves the executable into an app bundle on macOS.
+    if "--app:gui" in flags:
+      exe = output & ".app" / "Contents" / "MacOS" / extractFilename(output)
+  let executed = execCmdEx(quoteShell(exe))
   doAssert executed.exitCode == 0, executed.output
   doAssert executed.output.strip == expected, executed.output
 
