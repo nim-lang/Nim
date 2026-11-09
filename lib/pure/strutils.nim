@@ -1932,7 +1932,7 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
   ## * `initSkipTable func<#initSkipTable,string>`_
   ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
   let
-    last = if last < 0: s.high else: last
+    last = if last < 0: s.high else: min(last, s.high)
     subLast = sub.len - 1
 
   if subLast == -1:
@@ -1973,7 +1973,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
   ## * `rfind func<#rfind,string,char,Natural,int>`_
   ## * `replace func<#replace,string,char,char>`_
   result = -1
-  let last = if last < 0: s.high else: last
+  let last = if last < 0: s.high else: min(last, s.high)
 
   template findImpl =
     for i in int(start)..last:
@@ -2005,7 +2005,7 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
   ## * `rfind func<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   result = -1
-  let last = if last < 0: s.high else: last
+  let last = if last < 0: s.high else: min(last, s.high)
   for i in int(start)..last:
     if s[i] in chars:
       return i
