@@ -261,6 +261,14 @@ proc processInclude(c: var DepContext; includePath: string; current: Node; origi
   traverseDeps(c, c.toPair(resolved), current)
   discard c.includeStack.pop()
 
+proc isStdlibFile(c: DepContext; f: string): bool =
+  # Not `isRelativeTo`: on Windows it calls a file on another drive than `lib/`
+  # relative to it (`relativePath` returns such a path as is), so every module
+  # of a project on `C:` counted as stdlib for a compiler on `D:`.
+  let lib = c.config.libpath.string
+  result = f.len > lib.len and cmpPaths(f.substr(0, lib.len - 1), lib) == 0 and
+    f[lib.len] in {DirSep, AltSep}
+
 proc getsImplicitImports(c: DepContext; nimFile: string): bool =
   ## Mirror the compiler's `belongsToStdlib` guard (pipelines.nim): `--import:X`
   ## (conf.implicitImports) is applied only to NON-stdlib modules. The scanner
@@ -268,7 +276,7 @@ proc getsImplicitImports(c: DepContext; nimFile: string): bool =
   ## actually creates, fabricating a cycle that folds X — and the modules X
   ## claims to produce — into the system SCC (whose `nim m` is driven from
   ## system.nim and never reaches them). Stdlib == under conf.libpath.
-  not isRelativeTo(nimFile, c.config.libpath.string)
+  not isStdlibFile(c, nimFile)
 
 proc addDepEdge(c: DepContext; current: Node; depId: int) =
   ## Record `current -> depId`. While the scanner is inside a `when` guard it
@@ -1075,9 +1083,6 @@ proc computeSCCs(c: DepContext): seq[seq[int]] =
         work.setLen work.len - 1
         if work.len > 0:
           lowlink[work[^1].v] = min(lowlink[work[^1].v], lowlink[v])
-
-proc isStdlibFile(c: DepContext; f: string): bool {.inline.} =
-  isRelativeTo(f, c.config.libpath.string)
 
 proc selectStdModules(c: DepContext) =
   ## The stdlib cache. Builds of the same configuration share the semantics of
