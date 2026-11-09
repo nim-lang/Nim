@@ -22,7 +22,7 @@
 
 import
   std/[os, strutils, enumutils, algorithm, lists, sequtils,
-  tables, strscans]
+  tables, strscans, sugar]
 import dochelpers, rstidx, rstast
 import std/private/miscdollars
 from highlite import SourceLanguage, getSourceLanguage
@@ -3305,6 +3305,12 @@ proc dirInclude(p: var RstParser): PRstNode =
   ##     text (but after any after text) will be included. If text is
   ##     not found inclusion will happen until the end of the file.
   ##
+  ## :skip-prefix: text to find in the external data file
+  ##
+  ##     Lines that start with this prefix will not be included.
+  ##     Useful to exclude anchor comments used for `:start-after:`
+  ##     and `:end-before:`.
+  ##
   ## :literal: flag (empty)
   ##
   ##     The entire included text is inserted into the document as a single
@@ -3327,7 +3333,22 @@ proc dirInclude(p: var RstParser): PRstNode =
     rstMessage(p, meCannotOpenFile, filename)
   else:
     # XXX: error handling; recursive file inclusion!
-    let inputString = readFile(path)
+    let rawInputString = readFile(path)
+
+    let skipPrefix = n.getFieldValue("skip-prefix").strip()
+
+    let inputString =
+      if len(skipPrefix) == 0:
+        rawInputString
+      else:
+        block:
+          let includedLines =
+            collect:
+              for line in rawInputString.splitLines():
+                if not line.startsWith(skipPrefix):
+                  line
+          includedLines.join("\n")
+
     let startPosition =
       block:
         let searchFor = n.getFieldValue("start-after").strip()
