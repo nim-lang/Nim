@@ -9,7 +9,7 @@
 
 # This module does the instantiation of generic types.
 
-import std / tables
+import std / [tables, intsets]
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs, layeredtable, nversion, int128
@@ -22,6 +22,38 @@ const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
+
+proc holdsObjectByValue(t, x: PType; seen: var IntSet): bool
+
+proc recordHoldsObjectByValue(n: PNode; x: PType; seen: var IntSet): bool =
+  result = false
+  if n == nil: return
+  case n.kind
+  of nkSym: result = holdsObjectByValue(n.sym.typ, x, seen)
+  of nkRecList, nkRecCase, nkOfBranch, nkElse:
+    for it in n.sons:
+      if recordHoldsObjectByValue(it, x, seen): return true
+  else: discard
+
+proc holdsObjectByValue(t, x: PType; seen: var IntSet): bool =
+  ## Does a value of type `t` contain a value of the object type `x`, directly
+  ## or through the fields of objects and tuples and the elements of arrays?
+  ## Types behind `ref`, `ptr`, `seq` and so on do not count.
+  result = false
+  if t == nil: return
+  let t = t.skipTypes(abstractInst)
+  if t == x: return true
+  if seen.containsOrIncl(t.id): return
+  case t.kind
+  of tyObject:
+    if t.baseClass != nil and holdsObjectByValue(t.baseClass, x, seen): return true
+    result = recordHoldsObjectByValue(t.n, x, seen)
+  of tyTuple:
+    for a in t.kids:
+      if holdsObjectByValue(a, x, seen): return true
+  of tyArray:
+    result = holdsObjectByValue(t.elementType, x, seen)
+  else: discard
 
 proc typeClassContains*(t, x: PType; depth = 0): bool =
   ## does the type class `t` (`A | B`, `A and B`, `not A`) contain `x` as
@@ -611,6 +643,14 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
+  if newbody.kind == tyObject and not cl.allowMetaTypes:
+    # `Test[T] = object; f: Test[T]`: the instance would hold itself, which
+    # the compiler only noticed (as a crash) when it built the hooks. #14646
+    var seen = initIntSet()
+    seen.incl newbody.id
+    if (newbody.baseClass != nil and holdsObjectByValue(newbody.baseClass, newbody, seen)) or
+        recordHoldsObjectByValue(newbody.n, newbody, seen):
+      localError(cl.c.config, cl.info, "illegal recursion in type '" & typeToString(result) & "'")
   if not cl.allowMetaTypes:
     let dc = cl.c.graph.getAttachedOp(newbody, attachedDeepCopy)
     if dc != nil and sfFromGeneric notin dc.flags:
