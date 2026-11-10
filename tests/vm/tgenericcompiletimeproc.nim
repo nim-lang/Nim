@@ -55,3 +55,7 @@ block: # issue #24228 simplified
       d[string]()
   v()
 
+block: # issue #26475
+  proc f(T: type): string {.compileTime.} = $T
+  doAssert f(seq[int]) == "seq[int]"
+  doAssert f(ptr int) == "ptr int"
