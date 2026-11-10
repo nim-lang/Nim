@@ -376,6 +376,13 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   for i in 0..<n.len:
     result[i] = semTemplBody(c, n[i])
 
+proc addForVarTupleDecls(c: var TemplCtx, n: PNode) =
+  for j in 0..<n.len-1:
+    if n[j].kind == nkVarTuple:
+      addForVarTupleDecls(c, n[j])
+    elif n[j].kind != nkEmpty:
+      addLocalDecl(c, n[j], skForVar)
+
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   semIdeForTemplateOrGenericCheck(c.c.config, n, c.cursorInBody)
@@ -451,8 +458,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     n[^2] = semTemplBody(c, n[^2])
     for i in 0..<n.len - 2:
       if n[i].kind == nkVarTuple:
-        for j in 0..<n[i].len-1:
-          addLocalDecl(c, n[i][j], skForVar)
+        addForVarTupleDecls(c, n[i])
       else:
         addLocalDecl(c, n[i], skForVar)
     openScope(c)
