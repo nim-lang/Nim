@@ -94,8 +94,10 @@ proc applyBackendActions*(g: ModuleGraph; cfile: string) =
     of "compile":
       if f.len == 4:
         let cname = AbsoluteFile f[1]
+        # The object goes into this program's nimcache: the directives of a
+        # module in the stdlib cache were recorded by a `cg` that ran there.
         var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
-                       obj: AbsoluteFile f[2],
+                       obj: getNimcacheDir(g.config) / RelativeFile(extractFilename(f[2])),
                        flags: {CfileFlag.External}, customArgs: f[3])
         extccomp.addExternalFileToCompile(g.config, cf)
     of "link":

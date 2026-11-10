@@ -25,7 +25,7 @@
 ## be contiguous. They are unique, but unlike under `nim c` neither dense nor
 ## ordered by import order.
 
-import std/[algorithm, os, strutils, tables, syncio, assertions]
+import std/[algorithm, os, strutils, tables, syncio, assertions, tempfiles]
 import ../[options, pathutils]
 
 when defined(windows):
@@ -44,7 +44,7 @@ else:
   var LockUn {.importc: "LOCK_UN", header: "<sys/file.h>".}: cint
   var Eintr {.importc: "EINTR", header: "<errno.h>".}: cint
 
-proc lockExclusive(f: File) =
+proc lockExclusive*(f: File) =
   when defined(windows):
     var ov = default(OVERLAPPED)
     if lockFileEx(Handle(getOsFileHandle(f)), LockfileExclusiveLock, 0, 1, 0,
@@ -55,7 +55,7 @@ proc lockExclusive(f: File) =
       let err = osLastError()
       if err != OSErrorCode(Eintr): raiseOSError(err)
 
-proc unlock(f: File) =
+proc unlock*(f: File) =
   when defined(windows):
     var ov = default(OVERLAPPED)
     discard unlockFileEx(Handle(getOsFileHandle(f)), 0, 1, 0, addr ov)
@@ -115,12 +115,22 @@ proc render(): string =
       for s in segs: result.add " " & $s.start & " " & $s.len
       result.add '\n'
 
+proc tempSibling*(path: string): string =
+  ## A fresh temporary name in `path`'s directory, for write-then-rename:
+  ## `moveFile(tempSibling(path), path)` stays on one file system and thus is an
+  ## atomic rename. The name is unique, so processes that write the same file
+  ## at the same time (builds sharing the stdlib cache, see `deps.nim`) do not
+  ## clobber each other's half-written output.
+  let (dir, name) = splitPath(path)
+  genTempPath(name & ".", ".tmp", if dir.len == 0: "." else: dir)
+
 proc store(conf: ConfigRef) =
   # Write-then-rename: a process killed mid-write must not corrupt the file
   # for every later build.
   let path = counterFile(conf)
-  writeFile(path & ".tmp", render())
-  moveFile(path & ".tmp", path)
+  let tmp = tempSibling(path)
+  writeFile(tmp, render())
+  moveFile(tmp, path)
 
 proc usesSharedCounters*(conf: ConfigRef): bool {.inline.} =
   ## Under `nim m` each module is compiled by its own process, so the counters

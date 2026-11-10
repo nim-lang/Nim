@@ -91,6 +91,14 @@ proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
   ##
   ## Example:
   ## `foo-#head/../bar` becomes `@foo-@hhead@s..@sbar`
+  if not isAbsolute(path.string) and DirSep notin path.string and
+      AltSep notin path.string:
+    # IC names a module loaded from its NIF by its suffix (a `fikNifModule`'s
+    # `toFullPath`), which is a name already, not a path: made relative to the
+    # project it came out as `@n@d@s@d@s…` depending on the working directory
+    # and project path, so two processes (or two programs sharing the stdlib
+    # cache) disagreed on the module's C file.
+    return "@m" & path.string.multiReplace({"@": "@@", ":": "@c", "#": "@h"})
   var best = conf.relativeTo(path, conf.projectPath).string
   var selectedBase = FromProject
   for x in conf.searchPaths:

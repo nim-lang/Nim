@@ -22,6 +22,7 @@ import icmodnames
 import icnifcore
 from ic/replayer import BackendActionsExt, BodyDepsExt
 from commands import compileOptionValue
+from ic/sharedcounters import lockExclusive, unlock, tempSibling
 
 type
   FilePair = object
@@ -65,6 +66,9 @@ type
     speculating: int   # nesting depth of `when` guards the scanner could not
                        # decide; every import edge added while this is > 0 is
                        # recorded as speculative (see pruneDeadSpeculative)
+    stdArgsFile: string    # the stdlib cache's settings (see "stdlib cache")
+    stdModulesFile: string # lists `config.icStdModules` for the children
+    stdSignature: string   # the content of `stdArgsFile`
 
 proc toPair(c: DepContext; f: string): FilePair =
   FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
@@ -257,6 +261,14 @@ proc processInclude(c: var DepContext; includePath: string; current: Node; origi
   traverseDeps(c, c.toPair(resolved), current)
   discard c.includeStack.pop()
 
+proc isStdlibFile(c: DepContext; f: string): bool =
+  # Not `isRelativeTo`: on Windows it calls a file on another drive than `lib/`
+  # relative to it (`relativePath` returns such a path as is), so every module
+  # of a project on `C:` counted as stdlib for a compiler on `D:`.
+  let lib = c.config.libpath.string
+  result = f.len > lib.len and cmpPaths(f.substr(0, lib.len - 1), lib) == 0 and
+    f[lib.len] in {DirSep, AltSep}
+
 proc getsImplicitImports(c: DepContext; nimFile: string): bool =
   ## Mirror the compiler's `belongsToStdlib` guard (pipelines.nim): `--import:X`
   ## (conf.implicitImports) is applied only to NON-stdlib modules. The scanner
@@ -264,7 +276,7 @@ proc getsImplicitImports(c: DepContext; nimFile: string): bool =
   ## actually creates, fabricating a cycle that folds X — and the modules X
   ## claims to produce — into the system SCC (whose `nim m` is driven from
   ## system.nim and never reaches them). Stdlib == under conf.libpath.
-  not isRelativeTo(nimFile, c.config.libpath.string)
+  not isStdlibFile(c, nimFile)
 
 proc addDepEdge(c: DepContext; current: Node; depId: int) =
   ## Record `current -> depId`. While the scanner is inside a `when` guard it
@@ -1072,6 +1084,43 @@ proc computeSCCs(c: DepContext): seq[seq[int]] =
         if work.len > 0:
           lowlink[work[^1].v] = min(lowlink[work[^1].v], lowlink[v])
 
+proc selectStdModules(c: DepContext) =
+  ## The stdlib cache. Builds of the same configuration share the semantics of
+  ## the stdlib modules, wherever they were started from and whatever their main
+  ## module: `<os cache>/stdcache/<compiler>/<settings>/` holds what a nimcache
+  ## holds, for those modules only. A module is shared when all of its files are
+  ## under `lib/`, it is not the main module and everything it imports is shared
+  ## too: a shared artifact must not depend on one build's sources (the root's
+  ## import cycle, a `$projectpath` include, a module found via `--path`).
+  ## Module suffixes hash the absolute path, so a shared module has the same
+  ## name in every build; its artifacts store absolute paths only.
+  ##
+  ## The modules' rules run in a build file of their own before the build's
+  ## own ones, under the cache's lock (see `runStdPhase`). Every artifact is
+  ## written by rename, so builds that only read the cache need no lock.
+  c.config.icStdModules.clear()
+  if c.config.icStdSemDir.isEmpty: return
+  var shared = newSeq[bool](c.nodes.len)
+  for i, node in c.nodes:
+    shared[i] = i != 0 and not node.deferred
+    for f in node.files:
+      if not isStdlibFile(c, f.nimFile): shared[i] = false
+  var changed = true
+  while changed:
+    changed = false
+    for i, node in c.nodes:
+      if shared[i]:
+        for d in node.deps:
+          if not c.nodes[d].deferred and not shared[d]:
+            shared[i] = false
+            changed = true
+            break
+  for i, node in c.nodes:
+    if shared[i]: c.config.icStdModules.incl node.files[0].modname
+
+proc isStdNode(c: DepContext; i: int): bool {.inline.} =
+  c.nodes[i].files[0].modname in c.config.icStdModules
+
 proc selectMainSemanticModules(c: DepContext) =
   ## An import cycle containing main is compiled together with its main role.
   ## Keep the whole group separate from imported versions shared by other programs.
@@ -1080,12 +1129,19 @@ proc selectMainSemanticModules(c: DepContext) =
     if 0 in comp:
       for i in comp: c.config.icMainModules.add c.nodes[i].files[0].modname
   c.config.icMainModules.sort()
+  selectStdModules(c)
 
-proc semanticArgs(conf: ConfigRef): seq[string] =
+proc semanticArgs(c: DepContext): seq[string] =
+  let conf = c.config
   result = @["--icSemDir:" & conf.icSemDir.string,
              "--icMainSemDir:" & conf.icMainSemDir.string]
   for suffix in conf.icMainModules:
     result.add "--icMainModule:" & suffix
+  if not conf.icStdSemDir.isEmpty:
+    result.add "--icStdSemDir:" & conf.icStdSemDir.string
+    result.add "--icStdModules:" & c.stdModulesFile
+  if not conf.icStdBackendDir.isEmpty:
+    result.add "--icStdBackendDir:" & conf.icStdBackendDir.string
 
 proc computeForwardedArgs(c: DepContext): seq[string] =
   ## Config/define forwarding shared by the frontend (`nim m`) and backend
@@ -1168,7 +1224,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "nimcache", "out", "o", "outdir", "usenimcache", "run", "r",
     "incremental", "ic", "symbolfiles", "genbif",
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
-    "icsemdir", "icmainsemdir", "icmainmodule",
+    "icsemdir", "icmainsemdir", "icmainmodule", "icstdsemdir", "icstdmodules", "icstdbackenddir",
     "icbackendstage", "icbackendmodule", "ismainmodule",
     "help", "h", "fullhelp", "version", "v", "advanced"]
   var positionalArgs = 0
@@ -1231,7 +1287,17 @@ proc configSignature(c: DepContext; forwardedArgs: seq[string]): string =
 proc configSignatureFile(c: DepContext): string =
   c.argsFile
 
-proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
+proc writeStdModulesFile(c: DepContext) =
+  var content = ""
+  var mods: seq[string] = @[]
+  for m in c.config.icStdModules: mods.add m
+  sort mods
+  for m in mods: content.add m & "\n"
+  if not fileExists(c.stdModulesFile) or readFile(c.stdModulesFile) != content:
+    writeFile(c.stdModulesFile, content)
+
+proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string];
+                               std: bool): string =
   ## Frontend build file: the nifler (parse) and `nim m` (sem) rules only. The
   ## driver runs this to a discovery fixpoint; it produces every module's semmed
   ## NIF plus the cookie/edge sidecars that the backend build file then consumes.
@@ -1240,11 +1306,18 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
   ## something the driver interleaves with the `.s.deps` discovery loop. This
   ## split is also the scaffold for the per-module backend: once the backend is
   ## per-module, its rules slot into the backend file unchanged.
+  ##
+  ## `std`: the rules of the modules in the stdlib cache (see
+  ## `selectStdModules`), else the rules of all the others.
   let nimcache = getNimcacheDir(c.config).string
   createDir(nimcache)
   createDir(c.config.icMainSemDir.string)
   selectMainSemanticModules(c)
-  result = nimcache / c.nodes[0].files[0].modname & ".frontend.build.nif"
+  if not c.config.icStdSemDir.isEmpty:
+    createDir(c.config.icStdSemDir.string)
+    writeStdModulesFile(c)
+  result = nimcache / c.nodes[0].files[0].modname &
+    (if std: ".std.build.nif" else: ".frontend.build.nif")
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -1270,7 +1343,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
   b.addStrLit getAppFilename()
   b.addStrLit "m"
   b.addStrLit "--nimcache:" & nimcache
-  for a in semanticArgs(c.config): b.addStrLit a
+  for a in semanticArgs(c): b.addStrLit a
   # Add search paths
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
@@ -1284,8 +1357,10 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
 
   # Build rules for parsing (nifler)
   var seenFiles = initHashSet[string]()
-  for node in c.nodes:
-    if node.deferred: continue
+  for ni, node in c.nodes:
+    # A stdlib cache rule takes the sources themselves as its inputs: a
+    # `.p.nif` would live in one build's nimcache.
+    if node.deferred or isStdNode(c, ni): continue
     for pair in node.files:
       let parsed = c.parsedFile(pair)
       if not seenFiles.containsOrIncl(parsed):
@@ -1329,6 +1404,9 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
     # component containing the root (node 0) is driven by the root.
     var members = comp
     members.sort()
+    # An import cycle is shared as a whole or not at all: its members reach
+    # one another.
+    if isStdNode(c, members[0]) != std: continue
     let repPair = c.nodes[members[0]].files[0]
     let isGroup = members.len > 1
     b.addTree "do"
@@ -1340,6 +1418,8 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
     if members[0] == 0:
       b.addStrLit "--isMainModule:on"
       b.addStrLit "--nimcache:" & c.config.icMainSemDir.string
+    elif std:
+      b.addStrLit "--nimcache:" & c.config.icStdSemDir.string
     # For a real cycle, tell the compiler which modules form the group so it
     # compiles them all from source and writes each one's NIF.
     if isGroup:
@@ -1351,14 +1431,24 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
       b.addStrLit repPair.nimFile
     # The configuration this child is invoked with (see configSignatureFile).
     b.addTree "input"
-    b.addStrLit argsFile
+    b.addStrLit(if std: c.stdArgsFile else: argsFile)
     b.endTree()
-    # All parsed files of every member (nifler outputs this group consumes).
-    for m in members:
-      for f in c.nodes[m].files:
-        b.addTree "input"
-        b.addStrLit c.parsedFile(f)
-        b.endTree()
+    if std:
+      # Every build of the configuration shares these artifacts, so a rebuilt
+      # compiler must not find them current.
+      b.withTree "input":
+        b.addStrLit getAppFilename()
+      for m in members:
+        for f in c.nodes[m].files:
+          b.withTree "input":
+            b.addStrLit f.nimFile
+    else:
+      # All parsed files of every member (nifler outputs this group consumes).
+      for m in members:
+        for f in c.nodes[m].files:
+          b.addTree "input"
+          b.addStrLit c.parsedFile(f)
+          b.endTree()
     # Files read at compile time via `staticRead`/`slurp` (#26614).
     var seenSlurp = initHashSet[string]()
     for m in members:
@@ -1559,7 +1649,20 @@ proc backendBatches(c: DepContext; live: seq[bool]): seq[seq[int]] =
     result.add batch
     i = j
 
-proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string =
+proc stdBackendProject(c: DepContext): string =
+  ## The project file of the stdlib cache's backend rules. Theirs is not the
+  ## build's main module: a `lower`/`cg` of a module in the cache must not
+  ## depend on which program asked for it, and every file the process knows
+  ## ends up in the `#line` defines of the C it writes.
+  result = c.config.icStdBackendDir.string / "stdlib.nim"
+  if not fileExists(result):
+    createDir(c.config.icStdBackendDir.string)
+    let tmp = tempSibling(result)
+    writeFile(tmp, "")
+    moveFile(tmp, result)
+
+proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string];
+                              std = false): string =
   ## Per-module backend build file. One `nim_nifc` command template (the actual
   ## stage/module switches ride in each rule's `(args …)`), then the stages of
   ## the per-module backend as separate nifmake rules:
@@ -1571,12 +1674,18 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   ## bodies); `link` compiles and links every `.c` in one `callCCompiler`. The
   ## main module's `cg` depends on every other `.c.nif` because it reads their
   ## init/datInit meta heads to wire up NimMain, so it must run last.
+  ##
+  ## `std`: the `lower` and `cg` rules of the stdlib cache's modules, which
+  ## write into the cache (see `options.cgArtifactDir`); else all the others.
+  ## Their `merge`, `emit` and link depend on the whole program and are this
+  ## build's.
   let previousCache = c.config.nimcacheDir
   c.config.nimcacheDir = AbsoluteDir(c.backendDir)
   defer: c.config.nimcacheDir = previousCache
   let nimcache = c.backendDir
   createDir(nimcache)
-  result = nimcache / c.nodes[0].files[0].modname & ".backend.build.nif"
+  result = nimcache / c.nodes[0].files[0].modname &
+    (if std: ".stdbackend.build.nif" else: ".backend.build.nif")
 
   let mainNif = c.nodes[0].files[0].nimFile
   # Honor `--out`/`--outdir`: `cmdIc`'s `setOutFile` populated `conf.outFile`
@@ -1591,13 +1700,21 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   var cnifFiles = newSeq[string](c.nodes.len)
   var cFiles = newSeq[string](c.nodes.len)
   var tFiles = newSeq[string](c.nodes.len)
+  # Where a module's `cg` writes its `.c.nif` (`<base>.nif`) and sidecars:
+  # next to its `.c`, or in the stdlib cache.
+  var cgBase = newSeq[string](c.nodes.len)
+  # Whether the module's `lower`/`cg` artifacts are in the stdlib cache.
+  var shared = newSeq[bool](c.nodes.len)
   # The `lower` stage writes a PROPER module NIF the cg/emit stages load via
   # `toNifFilename`, so its `.t.bif` lives at the suffix base in this program's
-  # backend directory, rather than next to its generated `.c`.
+  # backend directory (or the stdlib cache), rather than next to its `.c`.
   for i, node in c.nodes:
+    let suffix = node.files[0].modname
+    shared[i] = i != 0 and not c.config.icStdBackendDir.isEmpty and isStdNode(c, i)
     cFiles[i] = backendCFile(c, node)
-    cnifFiles[i] = cFiles[i] & ".nif"
-    tFiles[i] = nimcache / node.files[0].modname & ".t.bif"
+    cgBase[i] = if i == 0: cFiles[i] else: cgArtifactBase(c.config, suffix, cFiles[i])
+    cnifFiles[i] = cgBase[i] & ".nif"
+    tFiles[i] = loweredFile(c.config, suffix)
 
   # Only code-generate modules the real program actually reaches; statically
   # over-approximated nodes (e.g. `winlean` on Linux) are sem'd but not emitted.
@@ -1615,8 +1732,10 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       # `fileExists` before remove so we only force a merge recompute (below)
       # when an artifact was actually present — i.e. a build where this module
       # WAS emitted, not the steady state where it never is.
-      if fileExists(cnifFiles[i]) or fileExists(cFiles[i]): prunedStale = true
-      removeFile(cnifFiles[i])
+      if (not shared[i] and fileExists(cnifFiles[i])) or fileExists(cFiles[i]):
+        prunedStale = true
+      # Another program can need what the stdlib cache holds.
+      if not shared[i]: removeFile(cnifFiles[i])
       removeFile(cFiles[i])
       removeFile(cFiles[i] & ".stamp")
       if fileExists(cFiles[i] & CPartsExt): prunedStale = true
@@ -1628,12 +1747,13 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
         removeFile(toObjFile(c.config, pf).string)
         removeFile(cfileHashFile(c.config, pf).string)
         inc k
-      removeFile(cFiles[i] & BackendActionsExt)
-      removeFile(cFiles[i] & BodyDepsExt)
       removeFile(toObjFile(c.config, AbsoluteFile cFiles[i]).string)
       removeFile(cfileHashFile(c.config, AbsoluteFile cFiles[i]).string)
-      removeFile(tFiles[i])
-      removeFile(tFiles[i] & BodyDepsExt)
+      if not shared[i]:
+        removeFile(cFiles[i] & BackendActionsExt)
+        removeFile(cFiles[i] & BodyDepsExt)
+        removeFile(tFiles[i])
+        removeFile(tFiles[i] & BodyDepsExt)
   # The merge decision is a pure function of the set of `.c.nif`s present; if we
   # just removed an over-approximated module's artifacts, a decision computed
   # while they were present is stale — it can name a now-absent module as a
@@ -1641,10 +1761,10 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # undefined at link. nifmake will not re-fire `merge` on its own: dropping an
   # input makes no remaining input newer than the output. Delete the decision so
   # the (now missing) output forces a recompute against the live `.c.nif` set.
-  if prunedStale:
+  if prunedStale and not std:
     removeFile(mergeFile)
 
-  let argsFile = configSignatureFile(c)
+  let argsFile = if std: c.stdArgsFile else: configSignatureFile(c)
 
   var b = nifbuilder.open(result)
   defer: b.close()
@@ -1659,12 +1779,16 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addSymbolDef "nim_nifc"
   b.addStrLit getAppFilename()
   b.addStrLit "nifc"
-  b.addStrLit "--nimcache:" & nimcache
-  for a in semanticArgs(c.config): b.addStrLit a
+  b.addStrLit "--nimcache:" &
+    (if std: c.config.icStdBackendDir.string else: nimcache)
+  for a in semanticArgs(c): b.addStrLit a
   for p in c.config.searchPaths:
     b.addStrLit "--path:" & p.string
   for a in forwardedArgs:
-    b.addStrLit a
+    # The program's project (diagnostics filtering) is one more file the
+    # process knows, see `stdBackendProject`.
+    if not (std and a.startsWith("--icproject:")):
+      b.addStrLit a
   b.addTree "args"
   b.endTree()
   # The project file is a fixed command ARGUMENT, not a tracked input: backend
@@ -1672,7 +1796,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # content cannot change any artifact. Passing it as `(input 0)` made its mtime
   # an input to every rule, so editing the main module's source re-fired the
   # whole backend.
-  b.addStrLit mainNif
+  b.addStrLit(if std: stdBackendProject(c) else: mainNif)
   b.endTree()
 
   template inputStr(s: string) =
@@ -1712,7 +1836,16 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # frontend writes `.s.nif`s content-stably, so an interface change to a
   # dependency re-sems (and re-emits the `.s.nif` of) every transitive importer;
   # a module whose own `.s.nif` is unchanged genuinely needs no re-lowering.
-  let batches = backendBatches(c, live)
+  # A batch's members share one process, and what a `cg` emits depends on its
+  # batch (`findPendingModule`): a module of the stdlib cache is a batch of
+  # its own, so that its artifacts are the same in every program.
+  var ownLive = live
+  var stdBatches: seq[seq[int]] = @[]
+  for i in 0 ..< c.nodes.len:
+    if live[i] and shared[i]:
+      ownLive[i] = false
+      stdBatches.add @[i]
+  let batches = if std: stdBatches else: backendBatches(c, ownLive)
   template suffixList(batch: seq[int]): string =
     var acc = ""
     for k, idx in batch:
@@ -1735,6 +1868,9 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
           seen.add j
           inputStr c.semmedFile(c.nodes[j].files[0])
     inputStr argsFile
+    # Every program of the configuration shares these, so a rebuilt compiler
+    # must not find them current.
+    if std: inputStr getAppFilename()
     for idx in batch:
       outputStr tFiles[idx]
       outputStr tFiles[idx] & BodyDepsExt
@@ -1742,7 +1878,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # The main module is its own rule in every stage: it loads the whole program.
   block:
     let i = 0
-    if live[i]:
+    if live[i] and not std:
       b.addTree "do"
       b.addIdent "nim_nifc"
       b.withTree "args":
@@ -1759,13 +1895,14 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # lowered: the order-only barrier between the stages (see
   # `cnif.LoweredBarrierFile`). Its output never changes, so it orders every
   # `cg` after every `lower` without invalidating any of them.
-  let barrierFile = nimcache / LoweredBarrierFile
+  let barrierFile =
+    (if std: c.config.icStdBackendDir.string else: nimcache) / LoweredBarrierFile
   b.addTree "do"
   b.addIdent "nim_nifc"
   b.withTree "args":
     b.addStrLit "--icBackendStage:lowered"
   for i in 0 ..< c.nodes.len:
-    if live[i]: inputStr tFiles[i]
+    if live[i] and (shared[i] or not std): inputStr tFiles[i]
   outputStr barrierFile
   b.endTree()
 
@@ -1788,20 +1925,25 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       inputStr tFiles[idx]
     var seenCg: seq[int] = @[]
     for idx in batch:
-      for j in bodyDeps(cFiles[idx] & BodyDepsExt, batch):
+      for j in bodyDeps(cgBase[idx] & BodyDepsExt, batch):
         if j notin seenCg:
           seenCg.add j
           inputStr tFiles[j]
     inputStr argsFile
     inputStr barrierFile
+    if std: inputStr getAppFilename()
     for idx in batch:
       outputStr cnifFiles[idx]
-      outputStr cFiles[idx] & BodyDepsExt
+      outputStr cgBase[idx] & BodyDepsExt
       # The module's C compile/link directives (`{.passL.}` etc.), recorded so
       # the `link` stage recovers them without loading the module graph. See
       # `replayer.writeBackendActions`.
-      outputStr cFiles[idx] & BackendActionsExt
+      outputStr cgBase[idx] & BackendActionsExt
     b.endTree()
+  if std:
+    # `merge`, `emit` and link are the program's.
+    b.endTree()  # stmts
+    return
   block:
     let i = 0
     if live[i]:
@@ -1861,7 +2003,9 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   # is every edit that reaches the backend. That now costs one process start.
   #
   # `-d:icBatchSize:N` still splits it, for A/B-ing against the fan-out.
-  for batch in emitBatches(c, live, batches):
+  var emitShared = batches
+  for sb in stdBatches: emitShared.add sb
+  for batch in emitBatches(c, live, emitShared):
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
@@ -1901,7 +2045,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     if live[i]:
       inputStr cFiles[i]
       inputStr cFiles[i] & CPartsExt
-      inputStr cFiles[i] & BackendActionsExt
+      inputStr cgBase[i] & BackendActionsExt
   inputStr argsFile
   outputStr exeFile
   b.endTree()
@@ -2008,6 +2152,95 @@ proc allSemmed(c: DepContext): bool =
   result = true
   for _ in unsemmed(c): return false
 
+proc stdSignature(conf: ConfigRef; signature: string): string =
+  ## The settings that select a stdlib cache: the build's settings minus its
+  ## search paths (a module found through one is not shared, see
+  ## `selectStdModules`), plus what else changes the frontend's artifacts.
+  result = ""
+  for line in signature.splitLines:
+    if line.len > 0 and not line.startsWith("--path:"):
+      result.add line & "\n"
+  result.add "cmd:" & $conf.cmd & " ide:" & $conf.ideActive &
+    " genbif:" & $(optGenBif in conf.globalOptions) & "\n"
+
+proc setupStdCache(c: var DepContext; signature, configDir: string) =
+  ## Selects the stdlib cache this build shares (see `selectStdModules`).
+  ## `-d:icNoStdCache` keeps every module in the build's own nimcache.
+  let conf = c.config
+  if isDefined(conf, "icNoStdCache") or conf.target.targetOS == osStandalone:
+    return
+  # Different compilers (the bootstrap stages, `nim_temp`) produce different
+  # artifacts; so does every other artifact format.
+  let compiler = getAppFilename() & "\n" & conf.libpath.string & "\n" &
+    icFormatVersion
+  c.stdSignature = stdSignature(conf, signature)
+  let dir = getOsCacheDir() / "stdcache" / ($secureHash(compiler))[0..15] /
+    ($secureHash(c.stdSignature))[0..15]
+  conf.icStdSemDir = AbsoluteDir(dir)
+  # The `lower`/`cg` artifacts of the shared modules, see `options.cgArtifactDir`.
+  # `-d:icNoStdBackend` keeps them in the program's backend directory.
+  if not isDefined(conf, "icNoStdBackend"):
+    conf.icStdBackendDir = AbsoluteDir(dir / "backend")
+  c.stdArgsFile = dir / "ic_build_args.txt"
+  c.stdModulesFile = configDir / "ic_std_modules.txt"
+
+template withStdLock(c: DepContext; body: untyped): int =
+  ## Runs `body` (which yields an exit code) under the stdlib cache's lock.
+  let dir = c.config.icStdSemDir.string
+  createDir(dir)
+  var lock: File = nil
+  if not open(lock, dir / "lock", fmAppend):
+    rawMessage(c.config, errGenerated, "cannot open " & dir / "lock")
+    1
+  else:
+    var code = 1
+    try:
+      lockExclusive(lock)
+      code = body
+    finally:
+      unlock(lock)
+      close(lock)
+    code
+
+proc runStdBackendPhase(c: DepContext; forwardedArgs: seq[string];
+                        nifmake, parallel: string): int =
+  ## The `lower`/`cg` rules of the stdlib cache's modules, under its lock (see
+  ## `runStdPhase`). The program's own backend rules read their outputs.
+  result = withStdLock(c):
+    let stdFile = generateBackendBuildFile(c, forwardedArgs, std = true)
+    rawMessage(c.config, hintSuccess, "generated: " & stdFile)
+    let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(stdFile)
+    rawMessage(c.config, hintExecuting, cmd)
+    execShellCmd(cmd)
+
+proc runStdPhase(c: var DepContext; forwardedArgs: seq[string];
+                 nifmake, parallel: string): int =
+  ## Runs the stdlib cache's rules under the cache's lock: builds of the same
+  ## configuration run them at the same time, and nifmake would run a rule
+  ## another build is running too. When nothing is stale the lock is held for
+  ## a no-op nifmake run only. The builds' own rules only read the cache and
+  ## run without the lock (see `selectStdModules`).
+  result = withStdLock(c):
+    # Written once, under the lock: a rewrite would make every module stale.
+    if not fileExists(c.stdArgsFile):
+      let tmp = tempSibling(c.stdArgsFile)
+      writeFile(tmp, c.stdSignature)
+      moveFile(tmp, c.stdArgsFile)
+    # Another build may have semmed stdlib modules since this one read the
+    # sidecars, and found imports this build's graph does not have yet (it
+    # defers a module behind an undecidable `when` until sem confirms it). Its
+    # artifacts name those modules, and its rules are current here: this build
+    # must know the modules before it reads the artifacts. Under the lock the
+    # sidecars describe the cache exactly.
+    if deriveFromSemDeps(c, afterRound = false):
+      selectMainSemanticModules(c)
+      pruneDeadSpeculative(c)
+    let stdFile = generateFrontendBuildFile(c, forwardedArgs, std = true)
+    rawMessage(c.config, hintSuccess, "generated: " & stdFile)
+    let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(stdFile)
+    rawMessage(c.config, hintExecuting, cmd)
+    execShellCmd(cmd)
+
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
   ## IDE queries) it runs only Phase 1 — the incremental nifler + `nim m`
@@ -2073,6 +2306,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     createDir(conf.nimcacheDir.string)
     let argsFile = configSignatureFile(c)
     if not fileExists(argsFile): writeFile(argsFile, signature)
+    setupStdCache(c, signature, configDir)
 
     # The executable can live outside the selected cache and may have been
     # overwritten by another configuration or entry point. Only the link rule
@@ -2191,9 +2425,17 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # discovered nothing; see the rescheduling below.
     var lastPending = high(int)
     while true:
-      let buildFile = generateFrontendBuildFile(c, forwardedArgs)
+      var exitCode = 0
+      if conf.icStdModules.len > 0 and nifmake.len > 0:
+        # The stdlib cache's rules first: the build's own rules read their
+        # outputs (see `selectStdModules`).
+        exitCode = runStdPhase(c, forwardedArgs, nifmake, parallel)
+      let buildFile = generateFrontendBuildFile(c, forwardedArgs, std = false)
       rawMessage(conf, hintSuccess, "generated: " & buildFile)
       if nifmake.len == 0:
+        if conf.icStdModules.len > 0:
+          let stdFile = generateFrontendBuildFile(c, forwardedArgs, std = true)
+          rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & stdFile)
         rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & buildFile)
         # without nifmake we can only print the manual commands; emit the
         # backend's too (best effort — discovery cannot run) and stop. An IDE
@@ -2203,9 +2445,17 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
           rawMessage(conf, hintSuccess, "generated: " & backendFile)
           rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
         return
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
-      rawMessage(conf, hintExecuting, cmd)
-      let exitCode = execShellCmd(cmd)
+      var stdPending = false
+      for m in unsemmed(c):
+        if m in conf.icStdModules:
+          stdPending = true
+          break
+      # A stdlib module that failed, or stopped for an import discovered during
+      # its sem, leaves the build's own modules without an input.
+      if exitCode == 0 and not stdPending:
+        let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
+        rawMessage(conf, hintExecuting, cmd)
+        exitCode = execShellCmd(cmd)
       # A child that met an import no rule produced yet records it in its
       # `.s.deps`, removes its own NIF and exits successfully (see
       # `pipelines.compilePipelineModule`), so a clean exit is not enough.
@@ -2267,11 +2517,15 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # An IDE query (`frontendOnly`) stops after Phase 1: the `.s.bif` it scans
     # are all produced by the frontend; codegen + link would be wasted work.
     if frontendOk and not frontendOnly:
+      var exitCode = 0
+      if not conf.icStdBackendDir.isEmpty and conf.icStdModules.len > 0:
+        exitCode = runStdBackendPhase(c, forwardedArgs, nifmake, parallel)
       let backendFile = generateBackendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & backendFile)
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)
-      rawMessage(conf, hintExecuting, cmd)
-      let exitCode = execShellCmd(cmd)
+      if exitCode == 0:
+        let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)
+        rawMessage(conf, hintExecuting, cmd)
+        exitCode = execShellCmd(cmd)
       if exitCode != 0:
         rawMessage(conf, hintExecuting,
           "nifmake reported backend failures (exit code " & $exitCode & ")")

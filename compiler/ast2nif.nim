@@ -2864,7 +2864,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     let conf = c.infos.config
     let useLowered = conf.cmd == cmdNifC and
                      (conf.icBackendStage == "cg" or conf.icBackendStage == "emit")
-    var modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".t.bif")).string
+    var modFile = loweredFile(conf, suffix)
     let lowered = useLowered and fileExists(modFile)
     if not lowered:
       modFile = semanticFile(conf, suffix, ".s.bif").string
@@ -4090,7 +4090,7 @@ proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
   # now — one file per stage, no text twin (debug via `tools/bif2nif`).
   if conf.cmd == cmdNifC and
      (conf.icBackendStage == "cg" or conf.icBackendStage == "emit"):
-    let t = toGeneratedFile(conf, AbsoluteFile(suffix), ".t.bif").string
+    let t = loweredFile(conf, suffix)
     if fileExists(t):
       return t
   result = semanticFile(conf, suffix, ".s.bif").string

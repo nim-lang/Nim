@@ -34,7 +34,7 @@ import std/pathnorm
 from ast import setUseIc, eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 when defined(nimPreviewSlimSystem):
-  import std/assertions
+  import std/[assertions, syncio]
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -1001,13 +1001,26 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passCmd2, passPP}:
       conf.icProject = canonicalizePath(conf, AbsoluteFile arg).string
-  of "icsemdir", "icmainsemdir":
+  of "icsemdir", "icmainsemdir", "icstdsemdir", "icstdbackenddir":
     # IC children receive concrete semantic input directories; only the driver
     # chooses configuration and entry-point subdirectories.
     expectArg(conf, switch, arg, pass, info)
     let dir = processPath(conf, arg, info, notRelativeToProj=true)
-    if switch.normalize == "icsemdir": conf.icSemDir = dir
+    case switch.normalize
+    of "icsemdir": conf.icSemDir = dir
+    of "icstdsemdir": conf.icStdSemDir = dir
+    of "icstdbackenddir": conf.icStdBackendDir = dir
     else: conf.icMainSemDir = dir
+  of "icstdmodules":
+    # The file the driver writes listing the suffixes of the modules whose
+    # semantics live in the stdlib cache, one per line.
+    expectArg(conf, switch, arg, pass, info)
+    if pass in {passCmd1, passCmd2, passPP}:
+      try:
+        for line in lines(arg):
+          if line.len > 0: conf.icStdModules.incl line
+      except IOError, OSError:
+        localError(conf, info, "cannot read " & arg)
   of "icmainmodule":
     expectArg(conf, switch, arg, pass, info)
     if arg notin conf.icMainModules: conf.icMainModules.add arg

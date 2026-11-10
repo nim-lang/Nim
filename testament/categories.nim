@@ -595,8 +595,11 @@ proc isProvenance(path: string): bool =
   ## only from the cross-build clean==incremental comparison — a *no-op* edit must
   ## still leave even these untouched. The backend build file lists the
   ## body dependencies the previous run discovered (`.bodydeps`), which a clean
-  ## build has not seen yet.
-  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
+  ## build has not seen yet. The stdlib cache's build files (`.std.build.nif`,
+  ## `.stdbackend.build.nif`) list what the cache holds, which outlives the
+  ## nimcache a clean build starts from.
+  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif") or
+    path.endsWith(".std.build.nif") or path.endsWith(".stdbackend.build.nif")
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether
