@@ -51,6 +51,7 @@ var
   gLogging = defined(logging)
   gRoot = InvalidFileIdx # the module a one-shot command compiles
   gNsModules: HashSet[string] # the project's modules, as `nim ns` reported them
+  gNsIncluders: Table[string, string] # included file -> the module including it
   gParallelBuild = "" # `--parallelBuild`'s value, passed on to `nim ns`
 
 proc myLog(s: string) =
@@ -459,14 +460,22 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
 
 proc useNsReport(graph: ModuleGraph; output: string) =
   let conf = graph.config
+  var module = ""
   for line in output.splitLines:
     if line.startsWith("icsemdir:"):
       conf.icSemDir = AbsoluteDir(line.substr("icsemdir:".len))
     elif line.startsWith("icmodule:"):
-      graph.icVerify(line.substr("icmodule:".len))
-      gNsModules.incl line.substr("icmodule:".len)
+      module = line.substr("icmodule:".len)
+      graph.icVerify(module)
+      gNsModules.incl module
+    elif line.startsWith("icfailed:"):
+      module = line.substr("icfailed:".len)
+      gNsModules.incl module
     elif line.startsWith("icdeferred:"):
-      gNsModules.incl line.substr("icdeferred:".len)
+      module = line.substr("icdeferred:".len)
+      gNsModules.incl module
+    elif line.startsWith("icinclude:"):
+      gNsIncluders[line.substr("icinclude:".len)] = module
 
 proc nsReport(conf: ConfigRef): string =
   ## Where `nim ns` leaves its report (see `useNsReport`).
@@ -479,7 +488,7 @@ proc changedSince(report: string): bool =
   let seen = getLastModificationTime(report)
   for line in readFile(report).splitLines:
     let i = line.find(':')
-    if i > 0 and line.substr(0, i) in ["icmodule:", "icdeferred:", "icinclude:"]:
+    if i > 0 and line.substr(0, i) in ["icmodule:", "icfailed:", "icdeferred:", "icinclude:"]:
       let f = line.substr(i + 1)
       if fileExists(f) and getLastModificationTime(f) > seen: return true
 
@@ -658,8 +667,15 @@ proc answerFromNif(graph: ModuleGraph; q: Query): bool =
 
 proc isKnown(graph: ModuleGraph; fileIdx: FileIndex): bool =
   ## Whether `nim ns` built `fileIdx`, or a module including it.
-  toFullPath(graph.config, fileIdx) in gNsModules or
-    graph.inclToMod.hasKey(fileIdx) or graph.registerIncluderFromNif(fileIdx)
+  let path = toFullPath(graph.config, fileIdx)
+  path in gNsModules or path in gNsIncluders or graph.inclToMod.hasKey(fileIdx)
+
+proc registerIncluder(graph: ModuleGraph; fileIdx: FileIndex) =
+  ## Registers the module `nim ns` reported as including `fileIdx`, if any.
+  let conf = graph.config
+  let includer = gNsIncluders.getOrDefault(toFullPath(conf, fileIdx))
+  if includer.len > 0:
+    graph.addIncludeDep(fileInfoIdx(conf, AbsoluteFile includer), fileIdx)
 
 proc moduleOf(graph: ModuleGraph; file: string): FileIndex =
   ## `file`, or the module including it.
@@ -667,7 +683,7 @@ proc moduleOf(graph: ModuleGraph; file: string): FileIndex =
   let fileIdx = fileInfoIdx(conf, AbsoluteFile file)
   if not graph.isIcVerified(toFullPath(conf, fileIdx)) and
       graph.needsIncludeScan(fileIdx):
-    discard graph.registerIncluderFromNif(fileIdx)
+    graph.registerIncluder(fileIdx)
   result = if graph.inclToMod.hasKey(fileIdx): graph.parentModule(fileIdx) else: fileIdx
 
 proc queryRoot(graph: ModuleGraph; q: Query): FileIndex =
