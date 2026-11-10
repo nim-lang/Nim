@@ -624,3 +624,17 @@ change for that, and they are worth knowing because they are the shape of every
   first), and it is not a linker name — every ``salute`` member in every class
   mints the same one, so definitions are keyed by their NIF name in the merge
   stage instead.
+
+### Shared backend lowering
+
+The backend lowers all live modules in one symbol graph, then publishes their
+`.t.bif` files before parallel code generation starts. Lowering a consumer can
+expand an imported inline iterator and rewrite the bodies of nested routines
+owned by its defining module. Publishing that module before consumers finish
+would preserve stale, pre-lambda-lifting bodies. Unused inline iterators remain
+unexpanded, so invalid captures are diagnosed only when used.
+
+The shared lowering rule depends on every live semantic artifact. Consequently,
+a semantic body edit reruns the shared lowering phase; code generation and emit
+remain partitioned. This trades lowering parallelism and fine-grained lowering
+invalidation for a single consistent graph of closure environments and routines.

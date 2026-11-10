@@ -27,7 +27,6 @@ import ast, options, lineinfos, modulegraphs, cgendata, cgen, trees, wordrecg,
   cnif, icmodnames, ropes
 from cgmeth import generateIfMethodDispatchers
 from transf import transformBody
-from lambdalifting import hasUnliftableCapture
 from injectdestructors import injectDestructorCalls
 import icprof
 import ic / replayer
@@ -185,7 +184,7 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   ## The main module is loaded by its source index (its NIF suffix is aliased to
   ## it in `loadModuleDependencies`), so it gets exactly one `BModule`.
   ##
-  ## Only the main module — the codegen target of the stages that use this — is
+  ## Except during shared lowering, only the main module — the codegen target — is
   ## loaded with its full AST; every other module is loaded interface-only so
   ## the whole program's proc bodies are not materialized into this process (that
   ## was ~1.8 GB for the compiler's main `cg`). The `link` stage codegens nothing
@@ -194,7 +193,8 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
   var isKnownFile = false
   let systemFileIdx = registerNifSuffix(g.config, systemNifSuffix(g.config), isKnownFile)
   g.config.m.systemFileIdx = systemFileIdx
-  var precompSys = moduleFromNifFile(g, systemFileIdx, {AlwaysLoadInterface})
+  var precompSys = moduleFromNifFile(g, systemFileIdx,
+    if g.config.icBackendStage == "lower": {LoadFullAst} else: {AlwaysLoadInterface})
   g.systemModule = precompSys.module
   if precompSys.module != nil:
     # The precompiled-load path does not restore `sfSystemModule` (mirror of the
@@ -207,7 +207,8 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
     # init (under refc) scans the stack with a nil bottom and crashes.
     incl precompSys.module.flagsImpl, sfSystemModule
   var nifFiles: seq[string] = @[toNifFilename(g.config, systemFileIdx)]
-  var modules = loadModuleDependencies(g, mainFileIdx, nifFiles, depFlags = {})
+  var modules = loadModuleDependencies(g, mainFileIdx, nifFiles,
+    depFlags = (if g.config.icBackendStage == "lower": {LoadFullAst} else: {}))
   # loadModuleDependencies traverses the project's import closure and stops at
   # system. The whole-program backend then demand-loads system's own closure
   # (locks, allocators, threads, …) during codegen; the per-module backend
@@ -226,7 +227,8 @@ proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
       if not visited.containsOrIncl(suffix.string):
         var isKnown = false
         let fileIdx = registerNifSuffix(g.config, suffix.string, isKnown)
-        let precomp = moduleFromNifFile(g, fileIdx, {})
+        let precomp = moduleFromNifFile(g, fileIdx,
+          if g.config.icBackendStage == "lower": {LoadFullAst} else: {})
         if precomp.module != nil:
           modules.add precomp
           nifFiles.add toNifFilename(g.config, fileIdx)
@@ -404,26 +406,7 @@ proc reownFromTwin(n: PNode; twin, s: PSym) =
     reownFromTwin(n[i], twin, s)
 
 proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
-                    seenNested: var IntSet)
-
-proc lowersInlineIteratorBody(g: ModuleGraph; s: PSym; modPos: int): bool =
-  ## An inline iterator has no standalone runtime body, but its AST is copied
-  ## into every importing `for` loop. Any nested closures in that AST are
-  ## module-indexed routines serialized in this module's `.t.bif`; the importer's
-  ## `cg` loads those definitions instead of re-lifting them. Lower the iterator
-  ## here so those nested definitions carry their capture-rewritten bodies.
-  ## (The iterator's own transformed body is also serialized; it is already
-  ## transformed once by `transformBody` for the same reason inline procs are.)
-  s.itemId.module == modPos and s.kind == skIterator and s.typ != nil and
-    s.typ.callConv == ccInline and sfFromGeneric notin s.flags and
-    {sfUsed, sfExported} * s.flags != {} and
-    {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
-    s.ast != nil and s.ast.len > bodyPos and
-    son(s.ast, genericParamsPos).kind == nkEmpty and
-    # Classic codegen validates captures only when the iterator is expanded.
-    # An exported iterator may never be used; leave an invalid capture's body
-    # pristine so an actual expansion still reports the normal diagnostic.
-    not hasUnliftableCapture(g, s)
+                    seenNested: var IntSet): seq[LogEntry]
 
 proc writeBodyDeps(g: ModuleGraph; targets: openArray[PrecompiledModule];
                    mods: IntSet; outfile: string) =
@@ -447,48 +430,35 @@ proc writeBodyDeps(g: ModuleGraph; targets: openArray[PrecompiledModule];
   writeFile(outfile, content)
 
 proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
-  ## Backend lowering for this invocation's batch
-  ## (`--icBackendStage:lower --icBackendModules:<a,b,c>`):
-  ## enumerate the routines this module OWNS and write them to `<module>.t.nif`.
-  ## Eventually this transforms each owned routine once, in the owner's id space,
-  ## so `cg` reads the result instead of re-deriving it (re-derivation per
-  ## parallel `cg` process is the root of the closure-`:env` identity drift).
-  ## Runs per module in parallel on the shallow backend dep-graph — NOT folded
-  ## into the dense, mostly-serial sem stage.
-  ##
-  ## gate `newSymNode`'s lazy-type marking to the backend (see astdef) — the
-  ## transform builds sym nodes off not-yet-typed stubs, exactly as the `cg`
-  ## stage does.
+  ## Lower the program in one symbol graph before publishing any module.
+  ## Expanding an inline iterator can lift nested routines owned by an import;
+  ## serializing that import first would freeze its pre-lift bodies. Demand-time
+  ## expansion also preserves capture diagnostics for unused iterators.
   nifcBackendActive = true
-  let mainSuffix = cachedModuleSuffix(g.config, mainFileIdx)
-  let batch = backendBatch(g.config, mainSuffix)
   when defined(icBNodeProf):
-    profTag = (if batch.isMain: mainSuffix else: batch.members.join(","))
-  var modules: seq[PrecompiledModule]
-  var precompSys: PrecompiledModule
-  var targets: seq[PrecompiledModule]
-  if batch.isMain:
-    var nifFiles: seq[string]
-    (modules, precompSys, nifFiles) = loadBackendModules(g, mainFileIdx)
-    if modules.len == 0:
-      rawMessage(g.config, errGenerated,
-        "Cannot load NIF file for main module: " & toFullPath(g.config, mainFileIdx))
-      return
-    targets = @[findTargetModule(g, modules, precompSys, mainSuffix)]
-  else:
-    (modules, precompSys, targets) = block:
-      icProfStart(tLoadClosure)
-      let r = loadDepClosure(g, batch.members)
-      icProfStop(tLoadClosure)
-      r
-  # ONE PSym graph for the whole batch, so the guard against transforming a
-  # nested routine twice has to span it: two members reaching the same nested
-  # closure would otherwise inject its destructors twice into the same `PSym`.
-  # (In the one-module-per-process fan-out the two members are two processes
-  # with two copies, and each injects once.)
+    profTag = cachedModuleSuffix(g.config, mainFileIdx)
+  let (modules, precompSys, _) = loadBackendModules(g, mainFileIdx)
+  if modules.len == 0 or precompSys.module == nil:
+    rawMessage(g.config, errGenerated, "Cannot load modules for shared lowering")
+    return
+  var targets = @[precompSys]
+  targets.add modules
+  # A nested routine reached from several consumers needs destructor injection
+  # exactly once in this shared graph.
   var seenNested = initIntSet()
+  var hooks: seq[seq[LogEntry]] = @[]
   for target in targets:
-    lowerOneModule(g, target, seenNested)
+    hooks.add lowerOneModule(g, target, seenNested)
+  # Expansion can rewrite nested routines owned by an earlier module. Publish
+  # only after every consumer has finished lowering in this shared symbol graph.
+  for i, target in targets:
+    let suffix = cachedModuleSuffix(g.config, FileIndex target.module.position)
+    let outfile = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.bif").string
+    timed tLowerWrite:
+      writeLoweredModule(ast.program, g.config, target, hooks[i], outfile)
+    if isDefined(g.config, "icDceCheck"):
+      stderr.writeLine "[icLower] " & extractFilename(outfile) & " " &
+        $hooks[i].len & " hooks"
   for target in targets:
     if target.module != nil:
       writeBodyDeps(g, targets, g.icBodyDeps,
@@ -497,8 +467,8 @@ proc generateLowerStage(g: ModuleGraph; mainFileIdx: FileIndex) =
           ".t.bif" & BodyDepsExt)
 
 proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
-                    seenNested: var IntSet) =
-  ## Lower the routines `target` OWNS and write its `.t.bif`. One batch member.
+                    seenNested: var IntSet): seq[LogEntry] =
+  ## Lower the routines `target` owns and return the hooks lifted here.
   if target.module == nil:
     rawMessage(g.config, errGenerated,
       "per-module lowering: module not found for suffix")
@@ -518,22 +488,21 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
   # This single-writer-per-owner is what keeps closure-`:env` identity stable
   # across the parallel `cg` processes (re-derivation per process was the root of
   # the `:env` identity drift). `transformBody` with flags {} mirrors the cg call
-  # (cgen.nim); `injectDestructorCalls` is NOT run here — it stays in `cg` on the
-  # loaded body.
+  # (cgen.nim). Destructor injection also runs here; cg consumes the fully
+  # lowered body without injecting it again.
   #
   # `transformBody`/lambda-lifting LIFTS the closure env's type-bound ops
   # (`=destroy` etc.) into `g.opsLog`; snapshot its length so we serialize exactly
   # the ops THIS stage created (not those loaded from `.s.nif`).
-  # Per MEMBER, not per batch: each member's `.t.bif` must carry exactly the ops
-  # ITS lowering lifted, the way its own process would have written them.
+  # Keep the hooks lifted while processing each module with its artifact.
   let opsLogStart = g.opsLog.len
-  # `seenNested` comes from the caller and spans the whole batch — see the
+  # `seenNested` comes from the caller and spans the whole program — see the
   # comment at its declaration. Within one module it already served to transform
   # + destructor-inject a nested routine reachable from more than one owner
   # EXACTLY once (double injection would emit two `=destroy`/`=copy` runs).
   icProfStart(tLowerOwned)
   for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-    if ownsRuntimeRoutine(s, modPos) or lowersInlineIteratorBody(g, s, modPos):
+    if ownsRuntimeRoutine(s, modPos):
       # REUSE path (`icReuseSemLowering` ON): a routine already transformed during
       # sem (CT eval / macro / VM transform) carries its lowered body in the
       # `.s.nif` slot (loaded into `transformedBody`) — don't re-transform it.
@@ -593,17 +562,8 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
       if sfInjectDestructors in e.sym.flags:
         e.sym.transformedBody = injectDestructorCalls(g, tb.idgen, e.sym, e.sym.transformedBody)
     inc i
-  # Re-serialize the whole module to its suffix-based `.t.nif` (the path
-  # `toNifFilename` resolves for the cg/emit stages). `writeLoweredModule` seals
-  # routines itself.
   icProfStop(tLowerHooks)
-  let suffix = cachedModuleSuffix(g.config, FileIndex modPos)
-  let wholeArtifact = toGeneratedFile(g.config, AbsoluteFile(suffix), ".t.bif").string
-  timed tLowerWrite:
-    writeLoweredModule(ast.program, g.config, target, hooks, wholeArtifact)
-  if isDefined(g.config, "icDceCheck"):
-    stderr.writeLine "[icLower] " & extractFilename(wholeArtifact) & " " &
-      $hooks.len & " hooks"
+  result = hooks
 
 proc visitDep(suffix: string;
               suffixToMod: Table[string, PrecompiledModule];

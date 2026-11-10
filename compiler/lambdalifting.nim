@@ -214,38 +214,6 @@ proc isInnerProc*(s: PSym): bool =
   else:
     result = false
 
-proc hasUnliftableCapture*(g: ModuleGraph; fn: PSym): bool =
-  ## Speculative lowering must leave invalid captures for demand-time validation.
-  ## Follow referenced nested routines as `detectCapturedVars` does, and inline
-  ## iterators that transformation will expand, without allocating environments.
-  var seen = initIntSet()
-  seen.incl fn.id
-  proc visit(n: PNode; owner: PSym): bool =
-    result = false
-    case n.kind
-    of nkSym:
-      let s = n.sym
-      if interestingVar(s) and s.skipGenericOwner != owner and illegalCapture(s):
-        return true
-      if (isInnerProc(s) or
-          (s.kind == skIterator and s.typ.callConv == ccInline)) and
-          not seen.containsOrIncl(s.id):
-        return visit(getBody(g, s), s)
-    of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
-       nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
-       nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt,
-       nkTypeOfExpr, nkMixinStmt, nkBindStmt:
-      discard
-    of nkLambdaKinds, nkIteratorDef:
-      if n.typ != nil:
-        return visit(n[namePos], owner)
-    of nkIdentDefs:
-      return visit(n[^1], owner)
-    else:
-      for child in n:
-        if visit(child, owner): return true
-  result = visit(getBody(g, fn), fn)
-
 proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   # Bugfix: unfortunately we cannot use 'nkFastAsgn' here as that would
   # mean to be able to capture string literals which have no GC header.

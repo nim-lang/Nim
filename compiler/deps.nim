@@ -1661,18 +1661,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       let j = nodeBySuffix.getOrDefault(line, -1)
       if j >= 0 and j notin batch and j notin result: result.add j
 
-  # lower: one rule per module. Transforms (eventually) the routines the module
-  # OWNS once, in the owner's id space, into `<module>.t.nif`, so the `cg` stage
-  # reads them instead of re-deriving (which makes a closure `:env`'s identity
-  # diverge across the parallel `cg` processes). Runs per module in parallel.
-  #
-  # Input is this module's OWN semmed NIF and nothing else. A module does NOT
-  # depend on its importers, so listing every semmed NIF (or even the import
-  # closure) was wrong: it made e.g. `strutils`'s rule depend on the `finish`
-  # that imports it. nifmake handles the indirect dependency for free — the
-  # frontend writes `.s.nif`s content-stably, so an interface change to a
-  # dependency re-sems (and re-emits the `.s.nif` of) every transitive importer;
-  # a module whose own `.s.nif` is unchanged genuinely needs no re-lowering.
+  # Lower in one shared graph: consumers can lift routines owned by imports.
   let batches = backendBatches(c, live)
   template suffixList(batch: seq[int]): string =
     var acc = ""
@@ -1681,41 +1670,19 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       acc.add c.nodes[idx].files[0].modname
     acc
 
-  for batch in batches:
-    b.addTree "do"
-    b.addIdent "nim_nifc"
-    b.withTree "args":
-      b.addStrLit "--icBackendStage:lower"
-      b.addStrLit "--icBackendModules:" & suffixList(batch)
-    for idx in batch:
-      inputStr c.semmedFile(c.nodes[idx].files[0])
-    var seen: seq[int] = @[]
-    for idx in batch:
-      for j in bodyDeps(tFiles[idx] & BodyDepsExt, batch):
-        if j notin seen:
-          seen.add j
-          inputStr c.semmedFile(c.nodes[j].files[0])
-    inputStr argsFile
-    for idx in batch:
-      outputStr tFiles[idx]
-      outputStr tFiles[idx] & BodyDepsExt
-    b.endTree()
-  # The main module is its own rule in every stage: it loads the whole program.
-  block:
-    let i = 0
+  b.addTree "do"
+  b.addIdent "nim_nifc"
+  b.withTree "args":
+    b.addStrLit "--icBackendStage:lower"
+    b.addStrLit "--icBackendModules:" & c.nodes[0].files[0].modname
+  for i in 0 ..< c.nodes.len:
+    if live[i]: inputStr c.semmedFile(c.nodes[i].files[0])
+  inputStr argsFile
+  for i in 0 ..< c.nodes.len:
     if live[i]:
-      b.addTree "do"
-      b.addIdent "nim_nifc"
-      b.withTree "args":
-        b.addStrLit "--icBackendStage:lower"
-        b.addStrLit "--icBackendModules:" & c.nodes[i].files[0].modname
-      inputStr c.semmedFile(c.nodes[i].files[0])
-      for j in bodyDeps(tFiles[i] & BodyDepsExt, [i]):
-        inputStr c.semmedFile(c.nodes[j].files[0])
-      inputStr argsFile
       outputStr tFiles[i]
       outputStr tFiles[i] & BodyDepsExt
-      b.endTree()
+  b.endTree()
 
   # lowered: the order-only barrier between the stages (see
   # `cnif.LoweredBarrierFile`). Its output never changes, so it orders every
