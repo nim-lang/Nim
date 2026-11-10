@@ -2016,18 +2016,34 @@ proc allSemmed(c: DepContext): bool =
   result = true
   for _ in unsemmed(c): return false
 
+proc failedToBuild(c: DepContext; node: Node): bool =
+  ## Whether the module's rule failed: its `.edges.bif` stamp is missing or
+  ## older than its source or one of the files it includes.
+  let stamp = c.edgesFile(node.files[0])
+  if not fileExists(stamp): return true
+  let written = getLastModificationTime(stamp)
+  for f in node.files:
+    if fileExists(f.nimFile) and written < getLastModificationTime(f.nimFile):
+      return true
+  false
+
 proc reportToNimsuggest(c: DepContext; cacheDir: string; started: Time) =
   ## `nim ns`: writes the project's `nsReportName` in `cacheDir`, one line each
   ## for where the semantic NIFs are, the precompiled config, every module this
-  ## run checked (`icmodule:`) or could not (`icdeferred:`), so nimsuggest2
-  ## loads only NIFs nifmake checked, the files those modules include
-  ## (`icinclude:`) and the `--nsRoot` modules (`icroot:`), so the next run
-  ## builds them again. Its modification time is when this run started: a
-  ## source newer than it changed after this run read it.
+  ## run built (`icmodule:`), failed to build (`icfailed:`) or could not check
+  ## (`icdeferred:`), so nimsuggest2 loads only NIFs nifmake built, the files
+  ## each of those modules includes (`icinclude:`, after the module) and the
+  ## `--nsRoot` modules (`icroot:`), so the next run builds them again. Its
+  ## modification time is when this run started: a source newer than it changed
+  ## after this run read it.
   var lines = @["icsemdir:" & c.config.icSemDir.string,
     "icconfig:" & c.config.icPreparsedConfig]
   for node in c.nodes:
-    lines.add (if node.deferred: "icdeferred:" else: "icmodule:") & node.files[0].nimFile
+    let kind =
+      if node.deferred: "icdeferred:"
+      elif c.failedToBuild(node): "icfailed:"
+      else: "icmodule:"
+    lines.add kind & node.files[0].nimFile
     for i in 1 ..< node.files.len:
       lines.add "icinclude:" & node.files[i].nimFile
   for root in c.config.nsRoots:

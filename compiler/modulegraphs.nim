@@ -924,11 +924,11 @@ when not defined(nimKochBootstrap):
     false
 
   proc icNifIsStale*(g: ModuleGraph; fileIdx: FileIndex): bool =
-    ## Under `ideNsNifs` only NIFs that `nim ns` checked are read. A NIF is
-    ## stale when its module failed to compile there (its source or an include
-    ## is newer), when an import is stale or was compiled from source, or when
-    ## an import changed after it was written: its interface, or its bodies when
-    ## this module used them at compile time (the `.edges.bif`, as for nifmake).
+    ## Under `ideNsNifs` only NIFs of modules that `nim ns` checked and built
+    ## are read. A NIF is stale when an import is stale or was compiled from
+    ## source, or when an import changed after it was written: its interface,
+    ## or its bodies when this module used them at compile time (the
+    ## `.edges.bif`, as for nifmake).
     if g.icFromSource.contains(fileIdx.int): return true
     let k = fileIdx.int32
     g.icStale.withValue(k, known):
@@ -940,21 +940,16 @@ when not defined(nimKochBootstrap):
     result = src notin g.icVerified or not fileExists(stamp)
     if not result:
       let written = getLastModificationTime(stamp)
-      for f in src & nifIncludes(g.config, fileIdx):
-        if fileExists(f) and written < getLastModificationTime(f):
+      for dep in collectBifStrLits(semanticFile(g.config, suffix, ".s.deps.bif").string):
+        let depIdx = fileInfoIdx(g.config, AbsoluteFile dep)
+        g.icStaleImporters.mgetOrPut(depIdx.int32, @[]).add k
+        let depIface = semanticFile(g.config, cachedModuleSuffix(g.config, depIdx),
+          ".iface.bif").string
+        if icNifIsStale(g, depIdx) or
+            (fileExists(depIface) and written < getLastModificationTime(depIface) and
+              not g.importsTransitively(depIdx, fileIdx)):
           result = true
           break
-      if not result:
-        for dep in collectBifStrLits(semanticFile(g.config, suffix, ".s.deps.bif").string):
-          let depIdx = fileInfoIdx(g.config, AbsoluteFile dep)
-          g.icStaleImporters.mgetOrPut(depIdx.int32, @[]).add k
-          let depIface = semanticFile(g.config, cachedModuleSuffix(g.config, depIdx),
-            ".iface.bif").string
-          if icNifIsStale(g, depIdx) or
-              (fileExists(depIface) and written < getLastModificationTime(depIface) and
-                not g.importsTransitively(depIdx, fileIdx)):
-            result = true
-            break
       if not result:
         for implDep in collectBifStrLits(stamp):
           let depImpl = semanticFile(g.config, implDep, ".impl.bif").string

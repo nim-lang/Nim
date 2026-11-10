@@ -4213,43 +4213,13 @@ proc loadInclude(c: var DecodeContext; cur: var Cursor; includes: var seq[string
       includes.add strVal(cur)
       skip cur
 
-proc readHeaderIncludes(m: var BifModule; includer: var string; includes: var seq[string]) =
-  ## Reads the `(include ...)` records and the `(modulesrc ...)` record from the
-  ## NIF's header: the records before the module body, which include `w.deps`,
-  ## where `(sig)` and `(offer)` records sit between the includes.
-  var c = m.buf.beginRead()
-  if c.kind == TagLit and tagIs(c, toNifTag(nkStmtList)):
-    # `into` forbids an early `break`: once the body starts, skip the rest.
-    var done = false
-    c.loopInto:
-      if done or c.kind != TagLit:
-        skip c
-      elif tagIs(c, "include") or tagIs(c, "modulesrc"):
-        let isInc = tagIs(c, "include")
-        var ic = c
-        ic.loopInto:
-          if ic.kind == StrLit:
-            if isInc: includes.add strVal(ic)
-            else: includer = strVal(ic)
-          skip ic
-        skip c
-      elif tagIs(c, "unusedid") or tagIs(c, "modflags") or
-           tagIs(c, "interface") or tagIs(c, "hiddeninterface") or
-           tagIs(c, "import") or tagIs(c, "reexpmod") or
-           tagIs(c, "sig") or tagIs(c, "offer") or tagIs(c, "toffer") or
-           tagIs(c, "expansion") or tagIs(c, toNifTag(nkExportStmt)) or
-           tagIs(c, toNifTag(nkExportExceptStmt)):
-        skip c
-      else:
-        done = true
-        skip c
-
 proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes: seq[string]]] =
   ## Standalone "full table" scan of every `<suffix>.nif` in the nimcache: reads
   ## only each module's header records — `(modulesrc "path")` (the includer's own
   ## source) and `(include . . "path"...)` (resolved included files) — and returns
   ## (includerSource, includedSources) pairs for the modules that `include`
-  ## anything. No `DecodeContext`, no symbol/index loading.
+  ## anything. No `DecodeContext`, no symbol/index loading: it parses the few dep
+  ## tokens at the top of the file and stops at the first non-dep node.
   ##
   ## Used by nimsuggest to answer, for a cold-opened *include* file, "which module
   ## includes me?" without NIF-loading that module — so the includer can be
@@ -4258,21 +4228,34 @@ proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes:
   # The primary module artifacts are `<suffix>.s.bif` (the sidecars are
   # `.iface.nif`/`.impl.nif`/`.edges.nif`/`.s.deps.nif`, which this glob excludes).
   for f in semanticFiles(config):
-    var m = icbif.load(f)
+    var m = bif.load(f)
     var includer = ""
     var includes: seq[string] = @[]
-    readHeaderIncludes(m, includer, includes)
+    var c = m.buf.beginRead()
+    if c.kind == TagLit and tagIs(c, toNifTag(nkStmtList)):
+      # The dep records (import/include/reexpmod/modulesrc) are written first and
+      # contiguously; `done` short-circuits once the first body node is seen
+      # (`into` forbids an early `break`, so we skip the remainder instead).
+      var done = false
+      c.loopInto:
+        if done or c.kind != TagLit:
+          skip c
+        elif tagIs(c, "include") or tagIs(c, "modulesrc"):
+          let isInc = tagIs(c, "include")
+          var ic = c
+          ic.loopInto:
+            if ic.kind == StrLit:
+              if isInc: includes.add strVal(ic)
+              else: includer = strVal(ic)
+            skip ic
+          skip c
+        elif tagIs(c, "import") or tagIs(c, "interface") or tagIs(c, "hiddeninterface"):
+          skip c
+        else:
+          done = true
+          skip c
     if includer.len > 0 and includes.len > 0:
       result.add (includer, includes)
-
-proc nifIncludes*(config: ConfigRef; fileIdx: FileIndex): seq[string] =
-  ## The files the module `include`d when its NIF was written.
-  result = @[]
-  let f = toNifFilename(config, fileIdx)
-  if fileExists(f):
-    var m = icbif.load(f)
-    var includer = ""
-    readHeaderIncludes(m, includer, result)
 
 proc nifModuleHasIncludes*(config: ConfigRef; fileIdx: FileIndex): bool =
   ## Cheap header-only check: does the module's `<suffix>.nif` contain an
@@ -4280,7 +4263,26 @@ proc nifModuleHasIncludes*(config: ConfigRef; fileIdx: FileIndex): bool =
   ## NIF-serve modules that `include` files, so the includer is source-compiled
   ## and the included symbols never round-trip through NIF (which mishandles their
   ## owner/line-info on reload).
-  nifIncludes(config, fileIdx).len > 0
+  let f = toNifFilename(config, fileIdx)
+  if not fileExists(f): return false
+  var m = bif.load(f)
+  result = false
+  var c = m.buf.beginRead()
+  if c.kind == TagLit and tagIs(c, toNifTag(nkStmtList)):
+    var done = false
+    c.loopInto:
+      if done or c.kind != TagLit:
+        skip c
+      elif tagIs(c, "include"):
+        result = true
+        done = true
+        skip c
+      elif tagIs(c, "modulesrc") or tagIs(c, "import") or
+           tagIs(c, "interface") or tagIs(c, "hiddeninterface"):
+        skip c
+      else:
+        done = true
+        skip c
 
 type
   TopTag = enum
