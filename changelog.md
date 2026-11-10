@@ -3,6 +3,15 @@
 
 ## Changes affecting backward compatibility
 
+- On Windows, `AsyncEvent.unregister` and closing a registered `AsyncEvent`
+  must run on the thread that registered it; off-thread calls now raise
+  `ValueError` without changing the event. `trigger` remains thread-safe.
+  `close` automatically unregisters a registered event using its owning
+  dispatcher, even if the thread's global dispatcher has been replaced.
+  Native cancellation is non-blocking; retirement remains pending dispatcher
+  work until native callbacks and queued notifications have completed. If
+  cancellation fails, `close` raises and leaves the event open for retry.
+
 - Solaris and illumos are now separate targets (`--os:solaris` and
   `--os:illumos`). Both define `sunos`, `posix`, and `unix`; illumos no longer
   defines `solaris`. Use `defined(sunos)` for code shared by both systems.
