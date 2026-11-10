@@ -233,6 +233,7 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
     addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
     addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
+  result.info = unknownLineInfo
 
 proc vmManagesItself(c: Con; op: PSym; t: PType): bool {.inline.} =
   ## --mm:refc lifts hooks without memory management for types without user
