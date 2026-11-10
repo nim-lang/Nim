@@ -625,16 +625,18 @@ change for that, and they are worth knowing because they are the shape of every
   mints the same one, so definitions are keyed by their NIF name in the merge
   stage instead.
 
-### Shared backend lowering
+### Private implementations of expanded inline iterators
 
-The backend lowers all live modules in one symbol graph, then publishes their
-`.t.bif` files before parallel code generation starts. Lowering a consumer can
-expand an imported inline iterator and rewrite the bodies of nested routines
-owned by its defining module. Publishing that module before consumers finish
-would preserve stale, pre-lambda-lifting bodies. Unused inline iterators remain
-unexpanded, so invalid captures are diagnosed only when used.
+Backend expansion of an inline iterator copies its mutable implementation graph
+into the consuming module before lambda lifting. Nested routines, their mutable
+procedure signatures, parameters and locals receive backend identities. External
+references and named types retain their original identity. Generated environments
+and destructor hooks are serialized with the consumer's lowered implementation.
+The defining module can therefore publish independently without preserving
+pre-lift nested bodies that an importer later needs to rewrite.
 
-The shared lowering rule depends on every live semantic artifact. Consequently,
-a semantic body edit reruns the shared lowering phase; code generation and emit
-remain partitioned. This trades lowering parallelism and fine-grained lowering
-invalidation for a single consistent graph of closure environments and routines.
+Lowering remains partitioned, with imported body dependencies tracked through
+`.bodydeps`. Unused iterators are not expanded or speculatively validated.
+Each expansion currently gets a private implementation graph; this can duplicate
+closure code for programs using this pattern. Ordinary non-IC transformation
+continues to use the existing expansion path.

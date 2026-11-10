@@ -840,6 +840,59 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym; call: PNode; owner: PSym): bool
 
 template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
+proc privateIterator(c: PTransf; root: PSym): PSym =
+  ## Copy the mutable implementation graph before lambda lifting. Imported
+  ## semantic definitions must remain pristine: another lowering worker owns
+  ## their module, whereas the generated closures belong to this consumer.
+  var syms = initTable[ItemId, PSym]()
+  var signatures = initTable[ItemId, PType]()
+  var typed: seq[(PSym, PType)] = @[]
+  proc local(s: PSym): bool =
+    result = false
+    var owner = s
+    while owner != nil and owner.kind != skModule:
+      if owner == root: return true
+      owner = owner.owner
+  proc node(n: PNode): PNode
+  proc symbol(s: PSym): PSym =
+    if s == nil or not local(s) or s.kind == skType or
+        (s.kind in {skVar, skLet} and sfGlobal in s.flags): return s
+    if syms.hasKey(s.itemId): return syms[s.itemId]
+    result = copySym(s, c.idgen)
+    syms[s.itemId] = result # register before following recursive references
+    typed.add (result, s.typ)
+    setOwner(result, if s == root: c.module else: symbol(s.owner))
+    if s.kind in routineKinds and s.typ != nil:
+      let t = copyType(s.typ, c.idgen, result)
+      signatures[s.typ.itemId] = t
+      result.typ = t
+      t.n = node(s.typ.n)
+    if s.kind in routineKinds: discard getBody(c.graph, s)
+    result.ast = node(s.ast)
+  proc node(n: PNode): PNode =
+    if n == nil: return nil
+    if n.kind == nkSym:
+      let s = symbol(n.sym)
+      result = newSymNode(s, n.info)
+      result.flags = n.flags
+    else:
+      result = shallowCopy(n)
+      for i in 0..<n.safeLen: result[i] = node(n[i])
+    if n.typ != nil and signatures.hasKey(n.typ.itemId):
+      result.typ = signatures[n.typ.itemId]
+  result = symbol(root)
+  # A local may refer to a routine type before its definition is encountered.
+  # Repair those aliases after all private signatures have been allocated.
+  proc fixTypes(n: PNode) =
+    if n == nil: return
+    if n.typ != nil and signatures.hasKey(n.typ.itemId):
+      n.typ = signatures[n.typ.itemId]
+    for child in n: fixTypes(child)
+  for (s, originalType) in typed:
+    if originalType != nil and signatures.hasKey(originalType.itemId):
+      s.typ = signatures[originalType.itemId]
+    fixTypes(s.ast)
+
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
@@ -875,6 +928,9 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   var iter = call[0].sym
   if sfBorrow in iter.flags and iter.kind in routineKinds:
     iter = resolveBorrowedRoutineSym(c, iter, n.info)
+
+  if c.graph.config.cmd == cmdNifC and iter.kind == skIterator:
+    iter = privateIterator(c, iter)
 
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
