@@ -236,8 +236,9 @@ is a suitable place for implementing a program loop capable of calling
 
 Please note that reloading won't be possible when any of the type definitions
 in the program has been changed. When the type of a global variable changed,
-the reload stops the program with a message naming the global, since the
-memory kept for it was laid out for the old type. When closure iterators are used (directly or
+`performCodeReload` refuses the reload before any module is re-initialized and
+raises `CodeReloadRefusedError` naming the global, since the memory kept for it
+was laid out for the old type; the program goes on with the old code. When closure iterators are used (directly or
 through async code), the reloaded definitions will affect only newly created
 instances. Existing iterator instances will execute their original code to
 completion.

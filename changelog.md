@@ -269,7 +269,9 @@ parameter and result types, not just their source-level shape. Use
 
 - Hot code reloading no longer keeps a global variable's memory when the
   global's type changed: the old memory was read with the new layout. Such a
-  reload now stops the program with a message naming the global.
+  reload is now refused before any module is re-initialized:
+  `performCodeReload` raises `CodeReloadRefusedError` naming the global, and
+  the program goes on with the old code.
 
 - Hot code reloading works on Linux on arm64 with glibc; before, it was
   limited to musl there and the HCR runtime did not compile.
