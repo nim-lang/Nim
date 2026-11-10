@@ -1268,6 +1268,7 @@ proc genFlags*(s: set[TSymFlag]; dest: var string) =
     of sfAnon: dest.add "a0"
     of sfAllUntyped: dest.add "a1"
     of sfTemplateRedefinition: dest.add "t1"
+    of sfIteratorImplementation: dest.add "i2"
 
 
 proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
@@ -1370,6 +1371,9 @@ proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
         inc i
       elif i+1 < s.len and s[i+1] == '1':
         result.incl sfInjectDestructors
+        inc i
+      elif i+1 < s.len and s[i+1] == '2':
+        result.incl sfIteratorImplementation
         inc i
       else: result.incl sfImportc
     of 'l': result.incl sfForceLift

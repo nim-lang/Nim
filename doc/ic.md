@@ -637,6 +637,9 @@ pre-lift nested bodies that an importer later needs to rewrite.
 
 Lowering remains partitioned, with imported body dependencies tracked through
 `.bodydeps`. Unused iterators are not expanded or speculatively validated.
-Each expansion currently gets a private implementation graph; this can duplicate
-closure code for programs using this pattern. Ordinary non-IC transformation
-continues to use the existing expansion path.
+Each expansion gets a private implementation graph, while its nested routines
+retain their source linker names. Codegen and the cnif ownership merge emit one
+routine definition per source identity, preserving procedure equality across
+expansion sites and modules. Captured environments remain per execution; global
+storage remains shared. Ordinary non-IC transformation uses the existing path.
+See `ic_selective_lowering.md` for the ownership contract and regression tests.

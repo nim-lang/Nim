@@ -21,8 +21,8 @@ echo 0
 #!STEP expect: 0
 #!STEP expect: 0; noop
 
-# Only the consumer changes: the defining module must be published again after
-# this first expansion has lifted its nested closure.
+# Only the consumer changes: its first expansion must carry the lifted closure
+# even when the defining module is reused.
 #!FILE main.nim
 import minlineiternestedclosure
 

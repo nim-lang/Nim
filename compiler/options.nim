@@ -29,7 +29,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "55"
+  icFormatVersion* = "56"
+    ## v56: private iterator routines retain shared source linkage.
     ## v55: expanded inline iterators carry consumer-owned private routines.
     ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.

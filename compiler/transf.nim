@@ -24,7 +24,7 @@ import
   options, ast, astalgo, trees, msgs,
   idents, renderer, types, semfold, magicsys, cgmeth, parampatterns,
   lowerings, liftlocals,
-  modulegraphs, lineinfos
+  modulegraphs, lineinfos, mangleutils, cnif, ropes
 
 when defined(nimPreviewSlimSystem):
   import std/assertions
@@ -847,6 +847,7 @@ proc privateIterator(c: PTransf; root: PSym): PSym =
   var syms = initTable[ItemId, PSym]()
   var signatures = initTable[ItemId, PType]()
   var typed: seq[(PSym, PType)] = @[]
+  var originals = initTable[ItemId, PSym]()
   proc local(s: PSym): bool =
     result = false
     var owner = s
@@ -860,6 +861,7 @@ proc privateIterator(c: PTransf; root: PSym): PSym =
     if syms.hasKey(s.itemId): return syms[s.itemId]
     result = copySym(s, c.idgen)
     syms[s.itemId] = result # register before following recursive references
+    originals[result.itemId] = s
     typed.add (result, s.typ)
     setOwner(result, if s == root: c.module else: symbol(s.owner))
     if s.kind in routineKinds and s.typ != nil:
@@ -892,6 +894,19 @@ proc privateIterator(c: PTransf; root: PSym): PSym =
     if originalType != nil and signatures.hasKey(originalType.itemId):
       s.typ = signatures[originalType.itemId]
     fixTypes(s.ast)
+
+  # The working graph is private, but its code has source identity. Give every
+  # routine copy the same linker name as its source routine. The existing cnif
+  # ownership merge keeps one definition and emits prototypes in other users.
+  # Environment layouts are determined before call-site parameter substitution,
+  # so copies of the same instantiated iterator have the same closure ABI.
+  for (s, _) in typed:
+    if s.kind in routineKinds and s != result:
+      s.flagsImpl.incl sfIteratorImplementation
+      let original = originals[s.itemId]
+      if s.loc.snippet == "":
+        s.locImpl.snippet = markCName(original.name.s.mangle &
+          mangleProcNameExt(c.graph, original)).rope
 
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)

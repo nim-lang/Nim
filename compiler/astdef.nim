@@ -148,6 +148,7 @@ type
                       # in user messages.
     sfAllUntyped      # macro or template is immediately expanded in a generic context
     sfTemplateRedefinition # symbol is a redefinition of an earlier template
+    sfIteratorImplementation # private backend graph with shared source linkage
 
   TSymFlags* = set[TSymFlag]
 
