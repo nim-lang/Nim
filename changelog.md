@@ -301,6 +301,13 @@ parameter and result types, not just their source-level shape. Use
   to dispatch before; `std/logging` works with it now. A thread-local
   variable keeps its value, for each thread, when its module is reloaded.
 
+- The new warning `TupleTypePragma` reports the pragmas `packed`, `bycopy`,
+  `byref`, `union`, `importc`, `importcpp`, `importobjc`, `importjs`, `header`
+  and `nodecl` on a tuple type. Tuple types are structural, so such a pragma
+  applies to only some of the equal tuple types, which then disagree on the
+  representation. Use an object type instead. The warning will become an
+  error in the future.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.
