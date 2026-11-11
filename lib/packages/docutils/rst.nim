@@ -22,7 +22,7 @@
 
 import
   std/[os, strutils, enumutils, algorithm, lists, sequtils,
-  tables, strscans, sugar]
+  tables, strscans]
 import dochelpers, rstidx, rstast
 import std/private/miscdollars
 from highlite import SourceLanguage, getSourceLanguage
@@ -3334,20 +3334,14 @@ proc dirInclude(p: var RstParser): PRstNode =
   else:
     # XXX: error handling; recursive file inclusion!
     let rawInputString = readFile(path)
+    var inputString = rawInputString
 
     let hidePrefix = n.getFieldValue("hide-lines-starting-with").strip()
-
-    let inputString =
-      if len(hidePrefix) == 0:
-        rawInputString
-      else:
-        block:
-          let includedLines =
-            collect:
-              for line in rawInputString.splitLines(keepEol = true):
-                if not line.startsWith(hidePrefix):
-                  line
-          includedLines.join("")
+    if hidePrefix != "":
+      inputString = ""
+      for line in rawInputString.splitLines(keepEol = true):
+        if not line.startsWith(hidePrefix):
+          inputString.add(line)
 
     let startPosition =
       block:
