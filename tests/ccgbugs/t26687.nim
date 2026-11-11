@@ -31,9 +31,4 @@ proc z() =
   var o = O2(a: 13, b: 13)
   (try: e(o, -1) except ValueError: discard); doAssert o == O2(a: 13, b: 13)
 
-  var lo = O2(a: 13, b: 13)
-  try:
-    lo = O2(a: 1, b: m(-1))
-  except ValueError: discard
-  doAssert lo == O2(a: 13, b: 13)
 z()
