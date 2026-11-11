@@ -292,7 +292,7 @@ proc load*[T](s: Stream, data: var T) =
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
-proc store*[T](s: Stream, data: sink T) =
+proc store*[T](s: Stream, data: T) =
   ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
     import std/streams
@@ -304,17 +304,17 @@ proc store*[T](s: Stream, data: sink T) =
     assert s.readAll() == "[1, 3, 5]"
 
   var stored = initIntSet()
-  var d: T
   when defined(gcArc) or defined(gcOrc)or defined(gcAtomicArc) or defined(gcYrc):
-    d = data
+    storeAny(s, toAny((addr data)[]), stored)
   else:
+    var d: T
     shallowCopy(d, data)
-  storeAny(s, toAny(d), stored)
+    storeAny(s, toAny(d), stored)
 
 proc loadVM[T](typ: typedesc[T], x: T): string =
   raiseAssert "the implementation is in the compiler/vmops"
 
-proc `$$`*[T](x: sink T): string =
+proc `$$`*[T](x: T): string =
   ## Returns a string representation of `x` (serialization, marshalling).
   ##
   ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
@@ -333,13 +333,13 @@ proc `$$`*[T](x: sink T): string =
     result = loadVM(T, x)
   else:
     var stored = initIntSet()
-    var d: T
-    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
-      d = x
-    else:
-      shallowCopy(d, x)
     var s = newStringStream()
-    storeAny(s, toAny(d), stored)
+    when defined(gcArc) or defined(gcOrc) or defined(gcAtomicArc) or defined(gcYrc):
+      storeAny(s, toAny((addr x)[]), stored)
+    else:
+      var d: T
+      shallowCopy(d, x)
+      storeAny(s, toAny(d), stored)
     result = s.data
 
 proc toVM[T](typ: typedesc[T], data: string): T =
