@@ -1100,11 +1100,16 @@ proc callCCompiler*(conf: ConfigRef) =
         execCmdsInParallel(conf, cmds, prettyCb)
         for lib in linkedLibs:
           moveFile(lib.linked.string, lib.target.string)
-        # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
-        if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
-          let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
-          let src = conf.hcrLinkTargetName(mainObjFile, true)
-          let dst = conf.prepareToWriteOutput
+        # copy the resulting main file from the nimcache folder to its
+        # originally intended destination. A cached one is the running program
+        # when it reloads itself, which stays in place; but the destination
+        # can hold the program of another nimcache, which loads that one's
+        # libraries
+        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
+        let src = conf.hcrLinkTargetName(mainObjFile, true)
+        let dst = conf.prepareToWriteOutput
+        if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags or
+            not sameFileContent(src.string, dst.string):
           copyFileWithPermissions(src.string, dst.string)
     else:
       for x in conf.toCompile:

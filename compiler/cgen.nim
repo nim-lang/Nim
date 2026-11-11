@@ -22,6 +22,7 @@ from expanddefaults import caseObjDefaultBranch
 from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions
 from ic/replayer import localTargetOptions
 from typekeys import modname
+from icmodnames import moduleSuffix
 from std/algorithm import sort
 import cnif
 
@@ -429,11 +430,15 @@ proc getModuleDllPath(m: BModule): Rope =
   let filename = strutils.`%`(platform.OS[m.g.config.target.targetOS].dllFrmt, [name & ext])
   result = makeCString(dir.string & "/" & filename)
 
-proc stdlibModule(g: BModuleList, name: string): BModule =
-  ## The module `name` of the standard library, nil when the program does not use it.
+proc stdlibModule(g: BModuleList, path: RelativeFile): BModule =
+  ## The module of the standard library at `path` (relative to `lib`), nil
+  ## when the program does not use it. Compared by module suffix: the
+  ## per-module backend names a module loaded from its NIF by its suffix.
   result = nil
+  let suffix = moduleSuffix((g.config.libpath / path).string,
+                            cast[seq[string]](g.config.searchPaths))
   for m in g.mods:
-    if m != nil and m.module.name.s == name and belongsToStdlib(g.graph, m.module):
+    if m != nil and modname(m.module, g.config) == suffix:
       return m
 
 proc getModuleDllPath(m: BModule, module: int): Rope =
@@ -2198,9 +2203,12 @@ proc genProcLvl2(m: BModule, prc: PSym) =
     fillProcLoc(q, son(prc.ast, namePos))
     # generate a getProc call to initialize the pointer for this
     # externally-to-the-current-module defined proc, also important
-    # to do the declaredProtos check before the call to genProcPrototype
+    # to do the declaredProtos check before the call to genProcPrototype.
+    # Under IC `q` can be `m` while the body is still emitted elsewhere: by
+    # its owner's `cg` (see `emitsBodyInThisModule`).
     if isReloadable(m, prc) and prc.id notin m.declaredProtos and
-      q != nil and not sameModules(q.module, m.module):
+      q != nil and not (sameModules(q.module, m.module) and
+                        emitsBodyInThisModule(q, prc)):
       m.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
         cCast(getProcTypeCast(m, prc),
           cCall("hcrGetProc",
@@ -2686,7 +2694,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       # EDIT: indeed, this hack, in combination with another un-necessary one
       # (`makeCString` was doing line wrap of string litterals) was root cause for
       # bug #16265.
-      let cmdLineModule = stdlibModule(g, "cmdline")
+      let cmdLineModule = stdlibModule(g, RelativeFile"std/cmdline.nim")
       if cmdLineModule != nil:
         let cmdLineModulePath = getModuleDllPath(cmdLineModule)
         g.mainDatInit.addCallStmt("hcrAddModule", cmdLineModulePath)
@@ -2744,8 +2752,12 @@ proc registerReusedModuleToMain*(g: BModuleList; m: BModule;
                                 initRequired, datInitRequired: bool) =
   ## `registerModuleToMain` for a module whose cached translation unit is
   ## reused: the init/datInit presence comes from the artifact's meta head
-  ## instead of the (never generated) sections. Mirrors the non-hcr path of
-  ## `registerModuleToMain` — reuse is disabled when hcr is on.
+  ## instead of the (never generated) sections. Mirrors `registerModuleToMain`.
+  if m.hcrOn:
+    # As in `registerModuleToMain`: with hot code reloading the program only
+    # calls `hcrInit`, which initializes each module through its own library.
+    # The module's translation unit already carries what that needs.
+    return
   let
     init = m.getInitName
     datInit = m.getDatInitName
@@ -3373,6 +3385,11 @@ proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
   ## the heads (like it already does for init/datInit) and calls them.
   result = ""
   if graph.globalDestructors.len == 0: return
+  if m.hcrOn:
+    # globals are not destroyed with hot code reloading; see
+    # `finalCodegenActions`
+    graph.globalDestructors.setLen 0
+    return
   var body = newNodeI(nkStmtList, m.module.info)
   for i in countdown(high(graph.globalDestructors), 0):
     body.add graph.globalDestructors[i]
