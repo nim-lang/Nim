@@ -514,8 +514,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var substituted = false
   for i in FirstGenericParamAt..<t.kidsLen:
     var x = t[i]
-    if x.kind in {tyGenericParam}:
-      x = lookupTypeVar(cl, x)
+    if x.kind == tyGenericParam or (x.kind == tyStatic and x.n == nil):
+      # an unresolved `static` parameter such as `n` in `B[n]` must be
+      # substituted too, otherwise the cache lookup below is skipped and
+      # every instantiation creates a new `B[3]` (bug #26680):
+      x = if x.kind == tyStatic: cl.typeMap.lookup(x) else: lookupTypeVar(cl, x)
       if x != nil:
         if header == t: header = instCopyType(cl, t)
         header[i] = x
