@@ -3334,7 +3334,7 @@ proc dirInclude(p: var RstParser): PRstNode =
   else:
     # XXX: error handling; recursive file inclusion!
     let rawInputString = readFile(path)
-    var inputString = rawInputString
+    var inputString: string
 
     let hidePrefix = n.getFieldValue("hide-lines-starting-with").strip()
     if hidePrefix != "":
@@ -3342,7 +3342,8 @@ proc dirInclude(p: var RstParser): PRstNode =
       for line in rawInputString.splitLines(keepEol = true):
         if not line.startsWith(hidePrefix):
           inputString.add(line)
-
+    else:
+      inputString = rawInputString
     let startPosition =
       block:
         let searchFor = n.getFieldValue("start-after").strip()
