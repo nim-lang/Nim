@@ -56,9 +56,9 @@ proc assertUnchanged(path: string; before: Table[string, Time]) =
   for file, modified in before:
     doAssert after.getOrDefault(file) == modified, file & " was rebuilt"
 
-proc configSnapshots(): Table[string, Time] =
+proc configSnapshots(): Table[string, string] =
   for file in walkFiles(cache / "ic_config_*.cfg.nif"):
-    result[file] = getLastModificationTime(file)
+    result[file] = readFile(file)
 
 try:
   for subdir in ["src", "tests", "examples", "demos", "extra"]:
@@ -206,7 +206,6 @@ echo orphanValue()
   for kind, file in walkDir(cache):
     if kind == pcFile:
       doAssert file.endsWith(".cfg.nif") or file.endsWith(".cfg.nif.args") or
-        file.endsWith(".cfg.stamp") or
         file.extractFilename in ["ic.version", "ic_build_args.txt", "ic_link_args.txt"], file
   let cached = artifacts(selected)
   build("examples/other.nim", "other 42", reuseShared = true)

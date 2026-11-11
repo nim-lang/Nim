@@ -46,10 +46,6 @@ proc writeIcConfig*(conf: ConfigRef; outfile: string) =
   ## Serialise the resolved config (the config-file switches recorded during
   ## `loadConfigs`, the resolved `cppDefines`/`searchPaths`, the nimcache dir, and
   ## the list of config *source* files for staleness detection) into `outfile`.
-  ## `OnlyIfChanged`: when the content is byte-identical to what is already on
-  ## disk the file is left untouched so its mtime does not advance — otherwise
-  ## every `nim ic` run would re-fire the whole nifmake graph (see `nifler`'s
-  ## `produceConfig`, whose model this mirrors).
   var b = nifbuilder.open(outfile, writeMode = OnlyIfChanged)
   b.withTree "stmts":
     b.withTree "meta":
@@ -204,19 +200,14 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
   endRead(c)
   result = sawMeta and version == IcConfigVersion
 
-proc icConfigStamp(configFile: string): string =
-  configFile.changeFileExt("stamp")
-
 proc sourcesChanged*(configFile: string): bool =
   ## True when the precompiled config at `configFile` is missing, malformed,
   ## written by an incompatible version, or any recorded config *source* file is
-  ## newer than its stamp (or has vanished) — i.e. the artifact must be
-  ## regenerated. Mirrors nifler's `sourcesChanged`: the source list lives inside
-  ## the artifact so this needs no out-of-band knowledge of which `nim.cfg`s were
-  ## read.
-  let stamp = icConfigStamp(configFile)
-  if not fileExists(configFile) or not fileExists(stamp): return true
-  let modtime = getLastModificationTime(stamp)
+  ## newer than it (or has vanished) — i.e. the artifact must be regenerated.
+  ## Mirrors nifler's `sourcesChanged`: the source list lives inside the artifact
+  ## so this needs no out-of-band knowledge of which `nim.cfg`s were read.
+  if not fileExists(configFile): return true
+  let modtime = getLastModificationTime(configFile)
   var pool = newPool()
   var tags = newTagPool()
   let
@@ -351,7 +342,5 @@ proc ensureIcConfig*(conf: ConfigRef) =
         "failed to produce precompiled config (exit code " & $code & "):\n" & outp)
       return
     writeFile(argsPath, argsContent)
-    let stamp = icConfigStamp(outPath)
-    writeFile(stamp, "")
-    setLastModificationTime(stamp, started)
+    setLastModificationTime(outPath, started)
   conf.icPreparsedConfig = outPath

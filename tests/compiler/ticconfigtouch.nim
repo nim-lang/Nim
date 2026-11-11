@@ -3,9 +3,8 @@ discard """
 """
 
 # A `nim.cfg` saved without changes must cost one run of the precompiled config
-# producer, not one on every later `nim ic`: the producer writes the config
-# only when its content changes, so its own mtime cannot say when the sources
-# were last read. A real change must still be picked up.
+# producer, not one on every later `nim ic`. A real change must still be picked
+# up.
 import std/[assertions, os, osproc, strutils, tempfiles, times]
 
 const nim = getCurrentCompilerExe()
