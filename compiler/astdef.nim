@@ -148,7 +148,6 @@ type
                       # in user messages.
     sfAllUntyped      # macro or template is immediately expanded in a generic context
     sfTemplateRedefinition # symbol is a redefinition of an earlier template
-    sfIteratorImplementation # private backend graph with shared source linkage
 
   TSymFlags* = set[TSymFlag]
 
@@ -699,6 +698,7 @@ type
                               # ptr array due to C array limitations.
                               # See #1181, #6422, #11171
     lfPrepareForMutation      # string location is about to be mutated (V2)
+    lfSharedDefinition        # distinct symbols share one emitted C definition
   TStorageLoc* = enum
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section

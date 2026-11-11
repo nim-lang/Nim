@@ -1778,7 +1778,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   if m.config.cmd == cmdNifC:
     fillBackendName(m, prc)
     if ((prc.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32 or
-        sfIteratorImplementation in prc.flags) and
+        lfSharedDefinition in prc.loc.flags) and
         containsOrIncl(m.emittedContentDefs, stripCnifMarks(prc.loc.snippet)):
       # A different symbol already emitted a body under this shared
       # C name in this TU (a generic instance, hook, or private iterator

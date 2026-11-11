@@ -902,7 +902,7 @@ proc privateIterator(c: PTransf; root: PSym): PSym =
   # so copies of the same instantiated iterator have the same closure ABI.
   for (s, _) in typed:
     if s.kind in routineKinds and s != result:
-      s.flagsImpl.incl sfIteratorImplementation
+      s.locImpl.flags.incl lfSharedDefinition
       let original = originals[s.itemId]
       if s.loc.snippet == "":
         s.locImpl.snippet = markCName(original.name.s.mangle &

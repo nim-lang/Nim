@@ -1268,7 +1268,6 @@ proc genFlags*(s: set[TSymFlag]; dest: var string) =
     of sfAnon: dest.add "a0"
     of sfAllUntyped: dest.add "a1"
     of sfTemplateRedefinition: dest.add "t1"
-    of sfIteratorImplementation: dest.add "i2"
 
 
 proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
@@ -1371,9 +1370,6 @@ proc parse*(t: typedesc[TSymFlag]; s: string): set[TSymFlag] =
         inc i
       elif i+1 < s.len and s[i+1] == '1':
         result.incl sfInjectDestructors
-        inc i
-      elif i+1 < s.len and s[i+1] == '2':
-        result.incl sfIteratorImplementation
         inc i
       else: result.incl sfImportc
     of 'l': result.incl sfForceLift
@@ -1744,6 +1740,7 @@ proc genFlags*(s: set[TLocFlag]; dest: var string) =
     of lfSingleUse: dest.add "s"
     of lfEnforceDeref: dest.add "e0"
     of lfPrepareForMutation: dest.add "p"
+    of lfSharedDefinition: dest.add "s0"
 
 
 proc parse*(t: typedesc[TLocFlag]; s: string): set[TLocFlag] =
@@ -1763,7 +1760,11 @@ proc parse*(t: typedesc[TLocFlag]; s: string): set[TLocFlag] =
     of 'l': result.incl lfDynamicLib
     of 'n': result.incl lfNoDeepCopy
     of 'p': result.incl lfPrepareForMutation
-    of 's': result.incl lfSingleUse
+    of 's':
+      if i+1 < s.len and s[i+1] == '0':
+        result.incl lfSharedDefinition
+        inc i
+      else: result.incl lfSingleUse
     else: discard
     inc i
 
