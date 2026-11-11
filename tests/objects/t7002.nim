@@ -1,5 +1,6 @@
 discard """
   matrix: "--mm:arc; --mm:orc; --mm:refc"
+  targets: "c cpp"
 """
 
 # bug #7002: assigning an object of a subtype to a location of its base type
@@ -36,10 +37,16 @@ block: # the example of #7002
   doAssertRaises(ObjectAssignmentDefect):
     base = dob
 
-block: # a moved value slices too
-  var base: BaseObj
-  doAssertRaises(ObjectAssignmentDefect):
-    base = makeDerived()
+when defined(cpp) and defined(gcRefc):
+  # The C++ code that refc generates for this case does not compile
+  # (`makeDerived` gets the address of a `BaseObj` as its result), a separate
+  # bug that devel has too.
+  discard
+else:
+  block: # a moved value slices too
+    var base: BaseObj
+    doAssertRaises(ObjectAssignmentDefect):
+      base = makeDerived()
 
 block: # initialization
   var dob = DerivedObj(name: "d", extra: 42)
