@@ -606,6 +606,9 @@ proc handleHexChar(L: var Lexer, xi: var int; position: range[0..4]) =
     if position <= 1: invalid()
     # do not progress the bufpos here.
     if position == 0: inc(L.bufpos)
+  of nimlexbase.EndOfFile, CR, LF:
+    # never step over the end of the buffer or a line end:
+    invalid()
   else:
     invalid()
     # Need to progress for `nim check`
@@ -709,14 +712,24 @@ proc getEscapedChar(L: var Lexer, tok: var Token) =
     if L.buf[L.bufpos] == '{':
       inc(L.bufpos)
       var start = L.bufpos
-      while L.buf[L.bufpos] != '}':
+      # stop at anything that cannot belong to the escape so that an
+      # unterminated `\u{` never runs past the end of the buffer:
+      while L.buf[L.bufpos] notin {'}', '"', '\'', CR, LF, nimlexbase.EndOfFile}:
         handleHexChar(L, xi, 0)
-      if start == L.bufpos:
+        # saturate so that long digit sequences cannot wrap around:
+        if xi > 0x10FFFF: xi = 0x110000
+      let stop = L.bufpos
+      if start == stop:
         lexMessage(L, errGenerated,
           "Unicode codepoint cannot be empty")
-      inc(L.bufpos)
+      if L.buf[L.bufpos] == '}':
+        inc(L.bufpos)
+      else:
+        lexMessage(L, errGenerated,
+          "missing closing '}' for Unicode escape sequence")
       if xi > 0x10FFFF:
-        let hex = ($L.buf)[start..L.bufpos-2]
+        var hex = newStringOfCap(stop - start)
+        for i in start..<stop: hex.add L.buf[i]
         lexMessage(L, errGenerated,
           "Unicode codepoint must be lower than 0x10FFFF, but was: " & hex)
     else:
