@@ -3305,10 +3305,10 @@ proc dirInclude(p: var RstParser): PRstNode =
   ##     text (but after any after text) will be included. If text is
   ##     not found inclusion will happen until the end of the file.
   ##
-  ## :skip-prefix: text to find in the external data file
+  ## :hide-lines-starting-with: text to find in the external data file
   ##
   ##     Lines that start with this prefix will not be included.
-  ##     Useful to exclude anchor comments used for `:start-after:`
+  ##     Useful to hide anchor comments used for `:start-after:`
   ##     and `:end-before:`.
   ##
   ## :literal: flag (empty)
@@ -3335,19 +3335,19 @@ proc dirInclude(p: var RstParser): PRstNode =
     # XXX: error handling; recursive file inclusion!
     let rawInputString = readFile(path)
 
-    let skipPrefix = n.getFieldValue("skip-prefix").strip()
+    let hidePrefix = n.getFieldValue("hide-lines-starting-with").strip()
 
     let inputString =
-      if len(skipPrefix) == 0:
+      if len(hidePrefix) == 0:
         rawInputString
       else:
         block:
           let includedLines =
             collect:
-              for line in rawInputString.splitLines():
-                if not line.startsWith(skipPrefix):
+              for line in rawInputString.splitLines(keepEol = true):
+                if not line.startsWith(hidePrefix):
                   line
-          includedLines.join("\n")
+          includedLines.join("")
 
     let startPosition =
       block:

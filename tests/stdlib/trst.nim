@@ -1592,19 +1592,22 @@ And this should **NOT** be visible in `docs.html`
     doAssert "<em>Visible</em>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
-  test "Skip lines with prefix":
+  test "Hide lines starting with prefix":
     "other.rst".writeFile("""
 #skipped Not included
 Included
 #skippedLine
+Included
+
 #skipped
 """)
 
     let input = """
 .. include:: other.rst
-             :skip-prefix: #skipped
+             :literal:
+             :hide-lines-starting-with: #skipped
 """
-    doAssert "Included" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
+    doAssert "<pre>Included\nIncluded\n\n</pre>" == rstToHtml(input, {roSandboxDisabled}, defaultConfig())
     removeFile("other.rst")
 
   test "Include everything between":
