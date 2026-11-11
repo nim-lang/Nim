@@ -67,6 +67,32 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     for i in 0..<n.len:
       result[i] = instFieldLoopBody(c, n[i], forLoop)
 
+proc withLoopVarDecls(c: TFieldInstCtx, body, forLoop: PNode): PNode =
+  ## The loop variables are replaced in the body, but identifiers that
+  ## macros like `fmt` produce only later are not, so they are declared
+  ## too (#11046).
+  if c.field != nil and isEmptyType(c.field.typ):
+    return instFieldLoopBody(c, body, forLoop)
+  result = newNodeI(nkStmtList, body.info)
+  let info = body.info
+  let used = newTreeI(nkPragma, info, newIdentNode(getIdent(c.c.cache, "used"), info))
+  for i in 0..<forLoop.len-2:
+    let v = forLoop[i]
+    if v.kind notin {nkIdent, nkAccQuoted}: continue
+    let ident = considerQuotedIdent(c.c, v)
+    if ident.id == ord(wUnderscore): continue
+    let value = instFieldLoopBody(c, v, forLoop)
+    let name = newIdentNode(ident, v.info)
+    if value.kind == nkStrLit:
+      result.add newTreeI(nkConstSection, info, newTreeI(nkConstDef, info,
+        newTreeI(nkPragmaExpr, info, name, used), newNodeI(nkEmpty, info), value))
+    else:
+      let e = newNodeI(nkEmpty, info)
+      result.add newTreeI(nkTemplateDef, info, name, e, e,
+        newTreeI(nkFormalParams, info, newSymNode(getSysSym(c.c.graph, info, "untyped"), info)),
+        used, e, newTreeI(nkStmtList, info, value))
+  result.add instFieldLoopBody(c, body, forLoop)
+
 type
   TFieldsCtx = object
     c: PContext
@@ -83,7 +109,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     )
     openScope(c.c)
     inc c.c.inUnrolledContext
-    var body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    var body = withLoopVarDecls(fc, lastSon(forLoop), forLoop)
     # new scope for each field that codegen should know about:
     body = wrapNewScope(c.c, body)
     father.add(semStmt(c.c, body, {}))
@@ -160,7 +186,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
           c: c,
           replaceByFieldName: m == mFieldPairs
       )
-      var body = instFieldLoopBody(fc, loopBody, n)
+      var body = withLoopVarDecls(fc, loopBody, n)
       # new scope for each field that codegen should know about:
       body = wrapNewScope(c, body)
       inc c.inUnrolledContext

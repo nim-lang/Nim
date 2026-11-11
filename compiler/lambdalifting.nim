@@ -844,6 +844,11 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
       if s.typ.callConv == ccClosure:
         result = symToClosure(n, owner, d, c)
 
+    elif s.kind == skIterator and s.typ.callConv == ccClosure and s != owner and
+        isInnerProc(owner):
+      # a top level closure iterator used within an inner routine; `transf`
+      # left it alone as that was too early (#11321):
+      result = liftIterSym(d.graph, n, d.idgen, owner)
     elif s.id in d.capturedVars:
       if s.owner != owner:
         result = accessViaEnvParam(d.graph, n, owner)
