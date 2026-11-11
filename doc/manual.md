@@ -1784,6 +1784,14 @@ trailing comma:
 
 In fact, a trailing comma is allowed for every tuple construction.
 
+Tuples are structural types: the fields alone define the identity of a tuple
+type, so `type A = tuple[x: int]` and `type B = tuple[x: int]` are the same
+type. Pragmas that change how a type is represented or what it is, such as
+`packed`, `bycopy`, `byref` or `importc`, are not supported on tuple types: two
+tuple types with the same fields but different pragmas would still be a single
+type, and the behaviour of the program is not defined. Use an `object` type if
+such a pragma is needed.
+
 The implementation aligns the fields for the best access performance. The alignment
 is compatible with the way the C compiler does it.
 
@@ -9127,7 +9135,7 @@ is available and a literal dollar sign must be written as ``$$``.
 Bycopy pragma
 -------------
 
-The `bycopy` pragma can be applied to an object or tuple type or a proc param. It instructs the compiler to pass the type by value to procs:
+The `bycopy` pragma can be applied to an object type or a proc param. It instructs the compiler to pass the type by value to procs:
 
   ```nim
   type
@@ -9143,7 +9151,7 @@ Notice params marked as `byref` takes precedence over types marked as `bycopy`.
 Byref pragma
 ------------
 
-The `byref` pragma can be applied to an object or tuple type or a proc param.
+The `byref` pragma can be applied to an object type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
 if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
@@ -9231,7 +9239,8 @@ should scan unions conservatively.
 
 Packed pragma
 -------------
-The `packed` pragma can be applied to any `object` type. It ensures
+The `packed` pragma can be applied to any `object` type, but not to a tuple type
+(see [Tuples and object types](#types-tuples-and-object-types)). It ensures
 that the fields of an object are packed back-to-back in memory. It is useful
 to store packets or messages from/to network or hardware drivers, and for
 interoperability with C. Combining packed pragma with inheritance is not
