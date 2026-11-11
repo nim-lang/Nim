@@ -204,14 +204,19 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
   endRead(c)
   result = sawMeta and version == IcConfigVersion
 
+proc icConfigStamp(configFile: string): string =
+  configFile.changeFileExt("stamp")
+
 proc sourcesChanged*(configFile: string): bool =
   ## True when the precompiled config at `configFile` is missing, malformed,
   ## written by an incompatible version, or any recorded config *source* file is
-  ## newer than it (or has vanished) — i.e. the artifact must be regenerated.
-  ## Mirrors nifler's `sourcesChanged`: the source list lives inside the artifact
-  ## so this needs no out-of-band knowledge of which `nim.cfg`s were read.
-  if not fileExists(configFile): return true
-  let modtime = getLastModificationTime(configFile)
+  ## newer than its stamp (or has vanished) — i.e. the artifact must be
+  ## regenerated. Mirrors nifler's `sourcesChanged`: the source list lives inside
+  ## the artifact so this needs no out-of-band knowledge of which `nim.cfg`s were
+  ## read.
+  let stamp = icConfigStamp(configFile)
+  if not fileExists(configFile) or not fileExists(stamp): return true
+  let modtime = getLastModificationTime(stamp)
   var pool = newPool()
   var tags = newTagPool()
   let
@@ -335,6 +340,7 @@ proc ensureIcConfig*(conf: ConfigRef) =
   let argsChanged = not fileExists(argsPath) or readFile(argsPath) != argsContent
   if not fileExists(outPath) or argsChanged or sourcesChanged(outPath):
     createDir(cacheDir)
+    let started = getTime()
     let p = startProcess(getAppFilename(), args = pargs,
                          options = {poStdErrToStdOut})
     let outp = p.outputStream.readAll()
@@ -345,4 +351,7 @@ proc ensureIcConfig*(conf: ConfigRef) =
         "failed to produce precompiled config (exit code " & $code & "):\n" & outp)
       return
     writeFile(argsPath, argsContent)
+    let stamp = icConfigStamp(outPath)
+    writeFile(stamp, "")
+    setLastModificationTime(stamp, started)
   conf.icPreparsedConfig = outPath

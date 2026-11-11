@@ -206,6 +206,7 @@ echo orphanValue()
   for kind, file in walkDir(cache):
     if kind == pcFile:
       doAssert file.endsWith(".cfg.nif") or file.endsWith(".cfg.nif.args") or
+        file.endsWith(".cfg.stamp") or
         file.extractFilename in ["ic.version", "ic_build_args.txt", "ic_link_args.txt"], file
   let cached = artifacts(selected)
   build("examples/other.nim", "other 42", reuseShared = true)
