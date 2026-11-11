@@ -3467,6 +3467,12 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
         cCast(ptrType(destType),
           wrapPar(cAddr(wrapPar(val))))),
       a.storage)
+  elif arg.typ.skipTypes(abstractInstOwned).kind in {tyVar, tyLent} and
+      arg.typ.skipTypes(abstractInstOwned).elementType.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
+    # `var ChildRef` to `var ParentRef`: the location holds a pointer, only
+    # its type changes (#13471, #12841):
+    var a: TLoc = initLocExpr(p, arg)
+    putIntoDest(p, d, n, cCast(getTypeDesc(p.module, n.typ), rdLoc(a)), a.storage)
   elif p.module.compileToCpp or isImportedType(src):
     # C++ implicitly downcasts for us
     expr(p, arg, d)

@@ -1071,6 +1071,24 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
     result.add newAsgnStmt(temp, call[0], body.info)
     call[0] = temp
 
+  # the arguments are passed again on every resumption of the iterator; an
+  # argument that constructs a closure has to do so only once or the iterator
+  # always sees a fresh one (#12848):
+  for i in 1..<call.len:
+    var a = call[i]
+    while a.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} or
+        (a.kind == nkStmtListExpr and a.len > 0):
+      a = a.lastSon
+    if a.kind == nkClosure:
+      let tempSym = newSym(skLet, getIdent(g.cache, ":closureArg"), idgen, owner, body.info)
+      tempSym.typ = call[i].typ
+      let temp = newSymNode(tempSym)
+      var v = newNodeI(nkVarSection, body.info)
+      addVar(v, temp)
+      result.add(v)
+      result.add newAsgnStmt(temp, call[i], body.info)
+      call[i] = temp
+
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
   whileLoop[0] = newIntTypeNode(1, getSysType(g, body.info, tyBool))
