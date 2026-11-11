@@ -106,11 +106,13 @@ type
     icOfferedInstances*: HashSet[string] # backend: NIF names of the generic
                                   # instances some loaded module `(offer)`s
                                   # (see `cgen.homeEmitsInstance`)
-    icQualIfaces*: IntSet         # module positions whose interface tables were
-                                  # populated ONLY for qualified access through a
-                                  # module re-export (`import x; export x`); the
-                                  # Iface.module stays nil so a later direct
-                                  # import still takes the full load path
+    icQualModules: Table[int, seq[PSym]] # module positions whose interface
+                                  # tables were populated for qualified access
+                                  # through a module re-export (`import x;
+                                  # export x`), and the module symbol made for
+                                  # each name the module is re-exported as; the
+                                  # symbols are not registered, so a later
+                                  # direct import still takes the full load path
     vmInjecting*: bool            # the VM injects destructors: hooks that
                                   # are missing are not lifted (that could
                                   # conflict with hooks declared later)
@@ -1216,13 +1218,17 @@ when not defined(nimKochBootstrap):
         g.ifaces[fIdx.int].module.name.s == mname:
       # properly registered already (directly imported earlier): reuse it
       return g.ifaces[fIdx.int].module
+    g.icQualModules.withValue(fIdx.int, aliases):
+      for m in aliases[]:
+        if m.name.s == mname: return m
+    let firstAlias = not g.icQualModules.hasKey(fIdx.int)
     result = PSym(kindImpl: skModule, itemId: itemId(int32(fIdx), 0'i32),
                   name: getIdent(g.cache, mname),
                   infoImpl: newLineInfo(fIdx, 1, 1),
                   positionImpl: int(fIdx))
     setOwner(result, getPackage(g.config, g.cache, fIdx))
-    if g.ifaces[fIdx.int].module == nil and
-        not g.icQualIfaces.containsOrIncl(fIdx.int):
+    g.icQualModules.mgetOrPut(fIdx.int, @[]).add result
+    if firstAlias and g.ifaces[fIdx.int].module == nil:
       var interf = initStrTable()
       var interfHidden = initStrTable()
       let precomp = loadNifModule(ast.program, ModuleSuffix(msuffix),
