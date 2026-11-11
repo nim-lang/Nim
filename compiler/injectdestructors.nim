@@ -241,14 +241,17 @@ proc vmManagesItself(c: Con; op: PSym; t: PType): bool {.inline.} =
     optSeqDestructors notin c.graph.config.globalOptions and
     tfHasAsgn notin t.flags
 
-proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
-  var op = getAttachedOp(c.graph, t, kind)
-  if op == nil or op.ast.isGenericRoutine:
+proc findOp(c: Con; t: PType; kind: TTypeAttachedOp): PSym =
+  result = getAttachedOp(c.graph, t, kind)
+  if result == nil or result.ast.isGenericRoutine:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, c.graph.config, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
-      op = getAttachedOp(c.graph, canon, kind)
+      result = getAttachedOp(c.graph, canon, kind)
+
+proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
+  var op = findOp(c, t, kind)
   if vmManagesItself(c, op, t):
     op = nil
   if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
@@ -329,7 +332,10 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
     result = newTree(nkFastAsgn, dest, ri)
   else:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    let op = getAttachedOp(c.graph, t, attachedSink)
+    # like `genOp`, fall back to the canonical type: a structurally equal
+    # duplicate of `t` may not have its own hooks (bug #26680). Without the
+    # `=sink` the fallback below destroys `dest` before `ri` is evaluated.
+    let op = findOp(c, t, attachedSink)
     if op != nil and sfOverridden notin op.flags and ri.kind == nkObjConstr and
         t.kind == tyObject and sameType(t, ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})):
       # `=sink(dest, T(f: v))` would construct the (potentially huge) object
