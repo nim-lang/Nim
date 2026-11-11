@@ -439,21 +439,28 @@ proc parseEntity(my: var XmlParser, dest: var string) =
   var pos = my.bufpos+1
   my.kind = xmlCharData
   if my.buf[pos] == '#':
+    const maxCodePoint = 0x10FFFF
     var r: int = 0
     inc(pos)
     if my.buf[pos] == 'x':
       inc(pos)
       while true:
+        var d: int
         case my.buf[pos]
-        of '0'..'9': r = (r shl 4) or (ord(my.buf[pos]) - ord('0'))
-        of 'a'..'f': r = (r shl 4) or (ord(my.buf[pos]) - ord('a') + 10)
-        of 'A'..'F': r = (r shl 4) or (ord(my.buf[pos]) - ord('A') + 10)
+        of '0'..'9': d = ord(my.buf[pos]) - ord('0')
+        of 'a'..'f': d = ord(my.buf[pos]) - ord('a') + 10
+        of 'A'..'F': d = ord(my.buf[pos]) - ord('A') + 10
         else: break
+        # saturate so that overlong numbers cannot overflow
+        if r <= maxCodePoint: r = (r shl 4) or d
         inc(pos)
     else:
       while my.buf[pos] in {'0'..'9'}:
-        r = r * 10 + (ord(my.buf[pos]) - ord('0'))
+        if r <= maxCodePoint: r = r * 10 + (ord(my.buf[pos]) - ord('0'))
         inc(pos)
+    if r > maxCodePoint or (r >= 0xD800 and r <= 0xDFFF):
+      # not a Unicode scalar value: use the replacement character
+      r = 0xFFFD
     add(dest, toUTF8(Rune(r)))
   elif my.buf[pos] == 'l' and my.buf[pos+1] == 't' and my.buf[pos+2] == ';':
     add(dest, '<')
