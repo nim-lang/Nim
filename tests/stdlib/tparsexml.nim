@@ -57,3 +57,23 @@ block: # an attribute value with " / " survives xmltree's `$` and parseXml
   let written = $(<>a(v = value))
   doAssert written == """<a v="1 / 2" />""", written
   doAssert parseXml(written).attr("v") == value
+
+block: # bug #26681; overlong numeric character references must not overflow
+  proc charData(xml: string): string =
+    var x: XmlParser
+    x.open(newStringStream(xml), "test")
+    while true:
+      x.next()
+      case x.kind
+      of xmlCharData: result.add x.charData
+      of xmlEof: break
+      else: discard
+    x.close()
+  const repl = "�"
+  doAssert charData("<a>&#99999999999;</a>") == repl
+  doAssert charData("<a>&#99999999999999999999999999;</a>") == repl
+  doAssert charData("<a>&#1114112;</a>") == repl
+  doAssert charData("<a>&#xFFFFFFFFFFFFFFFFFFFFFFFF;</a>") == repl
+  doAssert charData("<a>&#xD800;</a>") == repl
+  doAssert charData("<a>&#1114111;</a>") == "\u{10FFFF}"
+  doAssert charData("<a>&#x41;&#66;</a>") == "AB"
