@@ -2077,10 +2077,15 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # The executable can live outside the selected cache and may have been
     # overwritten by another configuration or entry point. Only the link rule
     # needs this changing input; every module keeps its cached outputs.
+    # Another nimcache's build leaves this one's arguments as they are, so the
+    # program the `link` stage last wrote is compared too (`LinkedProgramFile`).
     if not frontendOnly:
       let linkArgs = c.backendDir & "\n" & projectFile & "\n" &
         conf.absOutFile.string & "\n"
-      if not fileExists(c.linkArgsFile) or readFile(c.linkArgsFile) != linkArgs:
+      let linked = c.backendDir / LinkedProgramFile
+      if not fileExists(c.linkArgsFile) or readFile(c.linkArgsFile) != linkArgs or
+          not fileExists(linked) or
+          readFile(linked) != programStamp(conf.absOutFile.string):
         writeFile(c.linkArgsFile, linkArgs)
 
     # Create root node for main project file

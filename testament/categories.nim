@@ -595,8 +595,10 @@ proc isProvenance(path: string): bool =
   ## only from the cross-build clean==incremental comparison — a *no-op* edit must
   ## still leave even these untouched. The backend build file lists the
   ## body dependencies the previous run discovered (`.bodydeps`), which a clean
-  ## build has not seen yet.
-  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
+  ## build has not seen yet. The link stage records the modification time of the
+  ## program it wrote (`ic.backend.linked.txt`).
+  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif") or
+    path.endsWith("ic.backend.linked.txt")
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether

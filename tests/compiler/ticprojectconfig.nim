@@ -13,14 +13,14 @@ let cache = dir / "nc"
 let binary = dir / "prog".addFileExt(ExeExt)
 
 proc build(project, expected: string, reuseShared = false, rebuildShared = false,
-           options: seq[string] = @[], output = binary) =
+           options: seq[string] = @[], output = binary, nimcache = cache) =
   var args = @[
     nim,
     "ic",
     "--hints:off",
     "--warnings:off",
     "--skipUserCfg",
-    "--nimcache:" & cache,
+    "--nimcache:" & nimcache,
     "--out:" & output,
   ]
   args.add options
@@ -46,8 +46,9 @@ proc activeCache(): string =
   cache / "configs" / $secureHash(readFile(cache / "ic_build_args.txt"))
 
 proc artifacts(path: string): Table[string, Time] =
+  # the link stage's record of the program it wrote changes with each relink
   for file in walkDirRec(path):
-    if not file.endsWith(".build.nif"):
+    if not file.endsWith(".build.nif") and not file.endsWith("ic.backend.linked.txt"):
       result[file] = getLastModificationTime(file)
 
 proc assertUnchanged(path: string; before: Table[string, Time]) =
@@ -229,6 +230,10 @@ echo orphanValue()
   assertUnchanged(activeCache() / "backend", bothBackends)
   let otherOutput = dir / "otherprog".addFileExt(ExeExt)
   build("examples/main.nim", "example 42", reuseShared = true, output = otherOutput)
+  build("examples/main.nim", "example 42", reuseShared = true)
+  # So can a build with another nimcache, which leaves this one's link
+  # arguments as they are.
+  build("examples/second.nim", "second 42", nimcache = dir / "othercache")
   build("examples/main.nim", "example 42", reuseShared = true)
 
   # A module's main role and imported role must coexist under identical settings.

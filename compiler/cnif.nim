@@ -41,6 +41,7 @@
 ##                                    defines (see `renderCPartsFromArtifact`)
 
 import std / [tables, sets, os, assertions, syncio, algorithm, hashes, strutils]
+from std / times import toUnix, nanosecond
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse, stringviews]
 import "../dist/nimony/src/lib" / nifreader as rd
 
@@ -667,6 +668,18 @@ const LiveModulesFile* = "ic.backend.live.txt"
   ## made a shared prebuilt cache unusable: merge picked owners in modules the
   ## program does not import, and the link then wanted their objects).
   ## Fixed name of the merge stage's output in the nimcache, read by `emit`.
+const LinkedProgramFile* = "ic.backend.linked.txt"
+  ## The `programStamp` of the program the `link` stage last wrote. The driver
+  ## compares it with the program found at the output: a build with another
+  ## nimcache that writes the same output does not touch the `link` rule's
+  ## inputs, and a program newer than them would look up to date.
+
+proc programStamp*(file: string): string =
+  ## Modification time and size of `file`; empty when it does not exist.
+  if not fileExists(file): return ""
+  let info = getFileInfo(file)
+  result = $info.lastWriteTime.toUnix & "." & $info.lastWriteTime.nanosecond &
+    " " & $info.size
 
 proc writeMergeDecision*(outfile: string; d: MergeDecision) =
   ## Serializes the merge decision: `(merge (live Symbol*) (owners (own
