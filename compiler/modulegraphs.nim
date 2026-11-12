@@ -257,13 +257,32 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
-proc resetForBackend*(g: ModuleGraph) =
-  g.compilerprocs = initStrTable()
+proc clearInstCaches*(g: ModuleGraph) =
+  ## Forgets all generic instances.
   g.typeInstCache.clear()
   g.procInstCache.clear()
   g.typeInstIndex.clear()
   g.procInstIndex.clear()
   g.procBindingIndex.clear()
+
+proc clearInstCaches*(g: ModuleGraph; module: int) =
+  ## Forgets the instances of the generics that are declared in `module`.
+  template delKeys(tab, keyOf) =
+    var toDelete: seq[typeof(tab.keys)] = @[]
+    for k in tab.keys:
+      if keyOf(k).module == module: toDelete.add k
+    for k in toDelete: tab.del k
+  template id(k: ItemId): ItemId = k
+  template first(k: (ItemId, Hash)): ItemId = k[0]
+  delKeys(g.typeInstCache, id)
+  delKeys(g.procInstCache, id)
+  delKeys(g.typeInstIndex, first)
+  delKeys(g.procInstIndex, first)
+  delKeys(g.procBindingIndex, first)
+
+proc resetForBackend*(g: ModuleGraph) =
+  g.compilerprocs = initStrTable()
+  g.clearInstCaches()
   for a in mitems(g.attachedOps):
     a.clear()
   g.methodsPerGenericType.clear()

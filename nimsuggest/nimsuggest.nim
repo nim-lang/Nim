@@ -231,21 +231,9 @@ template benchmark(benchmarkName: untyped, code: untyped) =
 
 proc clearInstCache(graph: ModuleGraph, projectFileIdx: FileIndex) =
   if projectFileIdx == InvalidFileIdx:
-    graph.typeInstCache.clear()
-    graph.procInstCache.clear()
+    graph.clearInstCaches()
     return
-  var typeIdsToDelete = newSeq[ItemId]()
-  for id in graph.typeInstCache.keys:
-    if id.module == projectFileIdx.int:
-      typeIdsToDelete.add id
-  for id in typeIdsToDelete:
-    graph.typeInstCache.del id
-  var procIdsToDelete = newSeq[ItemId]()
-  for id in graph.procInstCache.keys:
-    if id.module == projectFileIdx.int:
-      procIdsToDelete.add id
-  for id in procIdsToDelete:
-    graph.procInstCache.del id
+  graph.clearInstCaches(projectFileIdx.int)
 
   for tbl in mitems(graph.attachedOps):
     var attachedOpsToDelete = newSeq[ItemId]()
