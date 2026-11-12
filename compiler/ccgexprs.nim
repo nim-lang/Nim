@@ -1937,7 +1937,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     if not useTemp:
       for it in sonsFrom(e, 1):
         let val = it.secondSon
-        if nfPreventCg in it.flags or val.kind in nkLiterals or val.isCompileTimeOnlyNode:
+        if nfPreventCg in it.flags or isInertValue(val):
           hoisted.add default(TLoc)
         else:
           var v = getTemp(p, val.typ)

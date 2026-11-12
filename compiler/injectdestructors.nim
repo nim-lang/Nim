@@ -19,6 +19,8 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions, aliasanalysis, dfa, wordrecg
 
+from aliases import isInertValue
+
 import std/[strtabs, tables, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
@@ -347,8 +349,9 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
       constr.add ri[0]
       for i in 1..<ri.len:
         let it = ri[i]
-        if it.kind == nkExprColonExpr and it[1].kind notin {nkCharLit..nkNilLit} and
-            not (it[1].typ != nil and it[1].typ.isCompileTimeOnly):
+        # an inert value like `default(T)` is constructed in place: a
+        # temporary for a huge field overflows the stack (bug #26707)
+        if it.kind == nkExprColonExpr and not isInertValue(it[1]):
           let tmp = c.getTemp(s, it[1].typ, it[1].info, needsInit = false)
           result.add newTree(nkFastAsgn, tmp, it[1])
           let field = shallowCopy(it)
