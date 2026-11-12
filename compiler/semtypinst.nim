@@ -86,12 +86,14 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
       g.recordIcImplDep(inst)
       return inst
 
-proc cacheTypeInst(c: PContext; inst: PType) =
+proc cacheTypeInst(c: PContext; inst: PType): bool =
+  ## Returns whether `inst` was cached.
   let gt = inst[0]
   let t = if gt.kind == tyGenericBody: gt.typeBodyImpl else: gt
   if t.kind in {tyStatic, tyError, tyGenericParam} + tyTypeClasses:
-    return
+    return false
   addToGenericCache(c, gt.sym, inst)
+  result = true
 
 type
   TReplTypeVars* = object
@@ -559,8 +561,9 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
   # we need to add the candidate here, before it's fully instantiated for
   # recursive instantions:
+  var cached = false
   if not cl.allowMetaTypes:
-    cacheTypeInst(cl.c, result)
+    cached = cacheTypeInst(cl.c, result)
   else:
     cl.localCache[t.bindingId] = result
 
@@ -584,6 +587,9 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header[i], propagateHasAsgn = false)
+  if cached and result.kidsLen > FirstGenericParamAt:
+    # it has its generic arguments now, see `addTypeInst`:
+    indexTypeInst(cl.c.graph, result[0].sym, result)
 
   if body.kind == tyError:
     return
