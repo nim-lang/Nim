@@ -272,6 +272,43 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
   ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
   sfFromGeneric notin s.flags and isSeedableRoutine(s, modPos, exportcOnly)
 
+proc lowersInlineIterator*(s: PSym; modPos: int; g: ModuleGraph): bool =
+  ## A concrete, non-generic INLINE iterator declared by the module at `modPos`.
+  ## It is never emitted (every `for` expands it at its call site), but it is a
+  ## lambda-lifting FRAME of its own: `transformFor` splices the iterator's
+  ## lifted body, and that lift is what rewrites its nested closures to go
+  ## through the iterator's environment. The `lower` stage of the declaring
+  ## module performs this lift, exactly once, so the nested routines are
+  ## serialized lowered and the expansion sites only splice. Without it the
+  ## first expanding consumer would have to mutate a foreign module's nested
+  ## routine — a cross-module side effect no per-module backend can honour.
+  ##
+  ## Deliberately independent of use: the declaration site has no way to know
+  ## whether some importer expands the iterator. An illegal capture in such an
+  ## iterator is therefore reported at its declaration under `--ic:on`, not only
+  ## at its first expansion.
+  ##
+  ## A generic INSTANCE qualifies in its HOME, the module that minted and
+  ## OFFERS it (see `homeEmitsInstance`): every importer reuses that very
+  ## symbol, so its lift belongs to the home's `lower` stage just as a plain
+  ## iterator's belongs to its declaring module. Otherwise each expanding `cg`
+  ## process would lift the shared instance on its own, and the lowered nested
+  ## routines and their `:env` would agree only by the accident of deterministic
+  ## re-derivation. Offered instances are the concrete ones; an instance that is
+  ## not offered (minted inside a `compiles()` probe, for example) is reused by
+  ## nobody and stays with the expanding process.
+  s.itemId.module == modPos and
+  s.kind == skIterator and s.typ != nil and s.typ.callConv != ccClosure and
+  (sfFromGeneric notin s.flags or
+   (sfGeneratedOp notin s.flags and not isBackendMinted(s.itemId) and
+    globalName(s, g.config) in g.icOfferedInstances)) and
+  s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
+  s.magic == mNone and
+  {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+  not signatureHasMetaType(s.typ) and
+  s.ast != nil and s.ast.safeLen > bodyPos and
+  son(s.ast, genericParamsPos).kind == nkEmpty
+
 proc homeEmitsInstance*(s: PSym; modPos: int; g: ModuleGraph;
                         exportcOnly = false): bool =
   ## Whether the `cg` of the module at `modPos` emits the generic instance `s`
