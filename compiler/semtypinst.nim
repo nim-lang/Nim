@@ -63,7 +63,7 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
   if not (genericTyp.kind == tyGenericBody and
       genericTyp.sym != nil): return
 
-  for inst in typeInstCacheItems(g, genericTyp.sym):
+  for inst in typeInstCandidates(g, genericTyp.sym, key):
     if inst.id == key.id:
       g.recordIcImplDep(inst)
       return inst

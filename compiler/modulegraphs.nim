@@ -57,11 +57,25 @@ type
     Docgen2JsonPass
     Docgen2Pass
 
+  InstIndex = object
+    ## Buckets the entries of one generic's instance cache by a hash that is
+    ## equal for entries that the cache lookup could consider the same, so a
+    ## lookup only has to compare against the entries in a single bucket
+    ## instead of against every instance of the generic (bug #26684).
+    indexed: int                     # entries `0..<indexed` have been seen
+    buckets: Table[Hash, seq[int]]   # hash -> positions in the cache
+    pending: seq[int]                # type instances whose arguments were
+                                     # not filled in yet when they were seen
+
   ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
 
     typeInstCache*: Table[ItemId, seq[PType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[PInstantiation]] # A symbol's ItemId.
+    typeInstIndex, procInstIndex, procBindingIndex: Table[ItemId, InstIndex]
+      # hash indexes over `typeInstCache` and `procInstCache`, see
+      # `typeInstCandidates` etc.; built lazily so that every way of filling
+      # the caches (sem, IC loading) is covered.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
     loadedOps: array[TTypeAttachedOp, Table[string, PSym]] # This can later by unified with `attachedOps` once it's stable
     opsLog*: seq[LogEntry]
@@ -254,6 +268,9 @@ proc resetForBackend*(g: ModuleGraph) =
   g.compilerprocs = initStrTable()
   g.typeInstCache.clear()
   g.procInstCache.clear()
+  g.typeInstIndex.clear()
+  g.procInstIndex.clear()
+  g.procBindingIndex.clear()
   for a in mitems(g.attachedOps):
     a.clear()
   g.methodsPerGenericType.clear()
@@ -451,6 +468,103 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
     let x = addr(g.procInstCache[s.itemId])
     for t in mitems(x[]):
       yield t
+
+proc instTypeHash*(t: PType): Hash =
+  ## A hash of `t` that is equal for types that `compareTypes` with `dcEq`
+  ## considers the same: that requires the same kind after skipping aliases,
+  ## and for a static value that is an integer literal, the same value.
+  ## Everything else is deliberately left out of the hash.
+  if t == nil: return 0
+  var a = skipTypes(t, {tyAlias, tyInferred})
+  while a.kind == tyUserTypeClass and tfResolved in a.flags:
+    a = skipTypes(a.last, {tyAlias, tyInferred})
+  result = hash(ord(a.kind))
+  if a.kind == tyStatic and a.n != nil:
+    if a.n.kind in nkSignedIntLiterals:
+      result = result !& hash(1) !& hash(a.n.intVal)
+    elif a.n.kind in nkUnsignedIntLiterals:
+      result = result !& hash(2) !& hash(a.n.intVal)
+  result = !$result
+
+proc concreteTypesHash*(inst: TInstantiation): Hash =
+  ## Equal for instantiations that `sameInstantiation` considers the same.
+  result = hash(inst.concreteTypes.len)
+  for t in inst.concreteTypes:
+    result = result !& instTypeHash(t)
+  result = !$result
+
+proc bindingHash*(key: ItemId; value: PType): Hash {.inline.} =
+  ## The hash of a binding snapshot is the sum of the hashes of its bindings,
+  ## so that it does not depend on the order of the bindings.
+  !$(hash(key) !& instTypeHash(value))
+
+proc bindingsHash(inst: PInstantiation): Hash =
+  result = 0
+  for b in inst.bindings:
+    result = result +% bindingHash(b.key, b.value)
+
+proc typeInstHash(t: PType): Hash {.inline.} =
+  # `searchInstTypes` compares only as many arguments as the searched type
+  # has, so only the first argument can take part in the hash:
+  instTypeHash(t[FirstGenericParamAt])
+
+proc catchUp[T](idx: var InstIndex; list: seq[T]; h: proc (x: T): Hash {.nimcall.}) =
+  if idx.indexed > list.len:
+    # the cache was reset
+    idx = InstIndex()
+  while idx.indexed < list.len:
+    idx.buckets.mgetOrPut(h(list[idx.indexed]), @[]).add idx.indexed
+    inc idx.indexed
+
+iterator typeInstCandidates*(g: ModuleGraph; s: PSym; key: PType): PType =
+  ## Yields the instances of the generic type `s` that may match `key`.
+  if g.typeInstCache.contains(s.itemId):
+    let list = addr(g.typeInstCache[s.itemId])
+    if key.kidsLen <= FirstGenericParamAt:
+      for t in mitems(list[]): yield t
+    else:
+      let idx = addr(g.typeInstIndex.mgetOrPut(s.itemId, InstIndex()))
+      if idx.indexed > list[].len: idx[] = InstIndex()
+      while idx.indexed < list[].len:
+        idx.pending.add idx.indexed
+        inc idx.indexed
+      # An instance is cached before its arguments are added (for recursive
+      # instantiations) and cannot match before that, so it is only put into
+      # its bucket once it has them:
+      var i = 0
+      while i < idx.pending.len:
+        let pos = idx.pending[i]
+        if list[][pos].kidsLen > FirstGenericParamAt:
+          idx.buckets.mgetOrPut(typeInstHash(list[][pos]), @[]).add pos
+          idx.pending.del i
+        else:
+          inc i
+      let h = typeInstHash(key)
+      if idx.buckets.contains(h):
+        let bucket = addr(idx.buckets[h])
+        for pos in bucket[]: yield list[][pos]
+
+iterator procInstCandidates*(g: ModuleGraph; s: PSym; entry: TInstantiation): PInstantiation =
+  ## Yields the instances of the generic `s` that may be the same as `entry`.
+  if g.procInstCache.contains(s.itemId):
+    let list = addr(g.procInstCache[s.itemId])
+    let idx = addr(g.procInstIndex.mgetOrPut(s.itemId, InstIndex()))
+    catchUp(idx[], list[], proc (x: PInstantiation): Hash {.nimcall.} = concreteTypesHash(x[]))
+    let h = concreteTypesHash(entry)
+    if idx.buckets.contains(h):
+      let bucket = addr(idx.buckets[h])
+      for pos in bucket[]: yield list[][pos]
+
+iterator procBindingCandidates*(g: ModuleGraph; s: PSym; h: Hash): PInstantiation =
+  ## Yields the instances of the generic `s` whose binding snapshot has the
+  ## hash `h` (see `bindingHash`).
+  if g.procInstCache.contains(s.itemId):
+    let list = addr(g.procInstCache[s.itemId])
+    let idx = addr(g.procBindingIndex.mgetOrPut(s.itemId, InstIndex()))
+    catchUp(idx[], list[], bindingsHash)
+    if idx.buckets.contains(h):
+      let bucket = addr(idx.buckets[h])
+      for pos in bucket[]: yield list[][pos]
 
 
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
