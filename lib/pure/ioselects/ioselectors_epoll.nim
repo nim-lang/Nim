@@ -63,6 +63,23 @@ when not defined(android):
   proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
        {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
 
+when defined(linux) and not defined(android) and not (defined(mips) or
+    defined(mipsel) or defined(mips64) or defined(mips64el) or
+    defined(alpha) or defined(ia64)):
+  # pidfd_open(2) has this number on every architecture that uses the common
+  # syscall table; it is not taken from <sys/syscall.h> because older headers
+  # do not define it
+  const SYS_pidfd_open = clong(434)
+  proc pidfdOpen(n: clong): cint
+       {.cdecl, importc: "syscall", varargs, header: "<unistd.h>".}
+  const hasPidfd = true
+else:
+  const hasPidfd = false
+
+const pidfdParam = -1
+  ## `param` of a process key whose descriptor is a pidfd; a signalfd keeps
+  ## the pid there
+
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
@@ -244,11 +261,12 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
           var epv = EpollEvent()
           if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
-          var nmask, omask: Sigset
-          discard sigemptyset(nmask)
-          discard sigemptyset(omask)
-          discard sigaddset(nmask, SIGCHLD)
-          unblockSignals(nmask, omask)
+          if pkey.param != pidfdParam:
+            var nmask, omask: Sigset
+            discard sigemptyset(nmask)
+            discard sigemptyset(omask)
+            discard sigaddset(nmask, SIGCHLD)
+            unblockSignals(nmask, omask)
           dec(s.count)
         if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
@@ -346,6 +364,27 @@ when not defined(android):
 
   proc registerProcess*[T](s: Selector, pid: int,
                            data: T): int {.discardable.} =
+    when hasPidfd:
+      # A pidfd becomes readable when the process ends, also when it ended
+      # before this call. With a signalfd, a SIGCHLD that arrives before the
+      # signal is blocked below is lost, and the exit is never reported.
+      let pidfd = pidfdOpen(SYS_pidfd_open, cint(pid), cuint(0))
+      if pidfd != -1:
+        let fdi = pidfd.int
+        s.checkFd(fdi)
+        doAssert(s.fds[fdi].ident == InvalidIdent)
+        var epv = EpollEvent(events: EPOLLIN)
+        epv.data.u64 = fdi.uint
+        if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, pidfd, addr epv) != 0:
+          raiseIOSelectorsError(osLastError())
+        s.setKey(fdi, {Event.Process, Event.Oneshot}, pidfdParam, data)
+        inc(s.count)
+        return fdi
+      let err = osLastError()
+      # ENOSYS: Linux before 5.3; EPERM: seccomp filters that do not know the
+      # syscall yet. Both fall back to the signalfd.
+      if cint(err) != ENOSYS and cint(err) != EPERM:
+        raiseIOSelectorsError(err)
     var
       nmask: Sigset
       omask: Sigset
@@ -444,15 +483,19 @@ proc selectInto*[T](s: Selector[T], timeout: int,
               raiseIOSelectorsError(osLastError())
             rkey.events.incl(Event.Signal)
           elif Event.Process in pkey.events:
-            var data = SignalFdInfo()
-            if posix.read(cint(fdi), addr data,
-                          sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
-              raiseIOSelectorsError(osLastError())
-            if cast[int](data.ssi_pid) == pkey.param:
+            if pkey.param == pidfdParam:
+              # a readable pidfd means the process has ended
               rkey.events.incl(Event.Process)
             else:
-              inc(i)
-              continue
+              var data = SignalFdInfo()
+              if posix.read(cint(fdi), addr data,
+                            sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
+                raiseIOSelectorsError(osLastError())
+              if cast[int](data.ssi_pid) == pkey.param:
+                rkey.events.incl(Event.Process)
+              else:
+                inc(i)
+                continue
           elif Event.User in pkey.events:
             var data: uint64 = 0
             if posix.read(cint(fdi), addr data,
