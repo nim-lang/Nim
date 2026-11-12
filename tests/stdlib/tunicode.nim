@@ -281,3 +281,36 @@ block: # bug #26591
   # valid input is unaffected
   doAssert lastRune("añyóng", 7) == ("g".runeAt(0), 1)
   doAssert runeStrAtPos("Hänsel  ««: 10,00€", 17) == "€"
+
+block: # bug #19333 - validateUtf8 follows RFC 3629
+  # valid inputs are unaffected
+  doAssert validateUtf8("") == -1
+  doAssert validateUtf8("abc") == -1
+  doAssert validateUtf8("\x7f") == -1
+  doAssert validateUtf8("\xc2\x80") == -1 # U+0080
+  doAssert validateUtf8("\xdf\xbf") == -1 # U+07FF
+  doAssert validateUtf8("\xe0\xa0\x80") == -1 # U+0800
+  doAssert validateUtf8("\xef\xbf\xbf") == -1 # U+FFFF
+  doAssert validateUtf8("\xf0\x90\x80\x80") == -1 # U+10000
+  doAssert validateUtf8("\xf4\x8f\xbf\xbf") == -1 # U+10FFFF
+  doAssert validateUtf8("añyóng") == -1
+  # code points above U+10FFFF are rejected
+  doAssert validateUtf8("\xf4\x90\x80\x80") == 0 # U+110000
+  doAssert validateUtf8("\xf7\xbf\xbf\xbf") == 0 # U+1FFFFF
+  doAssert validateUtf8("\xf5\x80\x80\x80") == 0 # lead F5-F7 encodes nothing
+  # overlong encodings are rejected
+  doAssert validateUtf8("\xc0\xaf") == 0 # overlong '/'
+  doAssert validateUtf8("\xc1\xbf") == 0
+  doAssert validateUtf8("\xe0\x80\xaf") == 0 # overlong '/'
+  doAssert validateUtf8("\xe0\x9f\xbf") == 0 # would-be U+07FF in 3 bytes
+  doAssert validateUtf8("\xf0\x8f\xbf\xbf") == 0 # would-be U+FFFF in 4 bytes
+  # surrogate code points are rejected
+  doAssert validateUtf8("\xed\xa0\x80") == 0 # U+D800
+  doAssert validateUtf8("\xed\xbf\xbf") == 0 # U+DFFF
+  # malformed structure: the position of the offending sequence is returned
+  doAssert validateUtf8("\x80") == 0 # stray continuation byte
+  doAssert validateUtf8("a\x80") == 1
+  doAssert validateUtf8("\xc2") == 0 # truncated 2-byte sequence
+  doAssert validateUtf8("\xc2\xff") == 0 # invalid continuation byte
+  doAssert validateUtf8("\xe0\xa0") == 0 # truncated 3-byte sequence
+  doAssert validateUtf8("\xf0\x90\x80") == 0 # truncated 4-byte sequence
