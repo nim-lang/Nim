@@ -550,6 +550,14 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
       # module-indexed nested closure serializes its lifted (capture-rewritten,
       # destructor-injected) body.
       setNestedClosureBodies(g, tb.idgen, s.transformedBody, s, seenNested)
+    elif lowersInlineIterator(s, modPos):
+      # Lambda-lift the inline iterator as its own frame (see
+      # `lowersInlineIterator`). Destructors are NOT injected into the iterator
+      # body: it is spliced into each consumer, whose injection covers it. Its
+      # nested routines are separate routines and are injected here.
+      if icReuseSemLowering(g.config) and s.transformedBody != nil: continue
+      s.transformedBody = transformBody(g, tb.idgen, s, {})
+      setNestedClosureBodies(g, tb.idgen, s.transformedBody, s, seenNested)
   # Collect the hooks this stage lifted, and transform each hook ROUTINE's body
   # too (it is itself lowered into NIFC). The hooks' `(sd)` + transformed body go
   # into the `.t.nif`; `cg` re-attaches them so `injectDestructorCalls` resolves

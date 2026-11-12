@@ -557,7 +557,8 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 # that is not IC-against-IC; without it a consistently wrong IC passes
 # everything. `#!DELETE <file>` removes a module, `#!FLAGS <switches>` changes
 # the compiler switches from that point on, and `fails: <text>` asserts that
-# BOTH compilers reject the program with that text.
+# BOTH compilers reject the program with that text (with `no-oracle`: only
+# `nim ic`, for a deliberate IC-only rejection).
 
 type MetamorphicError = object of CatchableError
   resultKind: TResultEnum
@@ -771,14 +772,17 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         if want.len > 0 and want notin cout:
           mmRaise(reOutputsDiffer, want, where & ": error text did not contain it:\n" & cout)
         # The oracle must reject it too, else the test is asserting an IC-only
-        # error rather than a real one.
-        let (_, refOut, refCode) = compileRef()
-        if refCode == 0:
-          mmRaise(reBuildFailed, "`nim c` to fail too",
-            where & ": `nim ic` failed but `nim c` accepted the program:\n" & cout)
-        if want.len > 0 and want notin refOut:
-          mmRaise(reOutputsDiffer, want,
-            where & ": `nim c` failed differently:\n" & refOut)
+        # error rather than a real one. `no-oracle` declares exactly that: a
+        # deliberate IC-only rejection (e.g. an unused inline iterator's illegal
+        # capture, which `nim c` only diagnoses on expansion).
+        if "no-oracle" notin attrs:
+          let (_, refOut, refCode) = compileRef()
+          if refCode == 0:
+            mmRaise(reBuildFailed, "`nim c` to fail too",
+              where & ": `nim ic` failed but `nim c` accepted the program:\n" & cout)
+          if want.len > 0 and want notin refOut:
+            mmRaise(reOutputsDiffer, want,
+              where & ": `nim c` failed differently:\n" & refOut)
         prevSnap = snapshotDir(nc)
         prevBin = ""
         continue

@@ -624,3 +624,21 @@ change for that, and they are worth knowing because they are the shape of every
   first), and it is not a linker name — every ``salute`` member in every class
   mints the same one, so definitions are keyed by their NIF name in the merge
   stage instead.
+
+### Inline iterators are lowered where they are declared
+
+An inline iterator is never emitted, but it is a lambda-lifting frame of its
+own: `transformFor` splices the iterator's *lifted* body into each `for`, and
+that lift is what rewrites the iterator's nested closures to reach its locals
+through the iterator's environment. Under `--ic:on` the `lower` stage of the
+declaring module performs this lift once, for every concrete inline iterator
+(`cgen.lowersInlineIterator`), and serializes the lifted body together with the
+lowered bodies of its nested routines. Expansion sites only splice; they never
+touch another module's routines. Nested routines keep a single identity, so
+procedure equality across expansions and modules holds without any copying.
+
+The lift does not depend on use. Consequently an illegal capture in an inline
+iterator (say, a nested closure capturing a `var` parameter) is an error at
+its declaration under `--ic:on`, even when nothing expands the iterator. The
+classic backend only diagnoses it on expansion; that laziness is an artifact of
+when it happens to transform, not specified behaviour.
