@@ -951,16 +951,6 @@ proc semResolvedCall(c: PContext, x: var TCandidate,
   onUse(info, finalCallee, isGenericInstance = true)
 
   result = compactVoidArgs(x.call)
-  if gp.isGenericParams and x.calleeSym.kind notin {skMacro, skTemplate} and finalCallee != x.calleeSym:
-    # `foo(nil, x)` for `proc foo[T](a, b: ptr T)`: `nil` was converted to
-    # `ptr T` before the later argument bound `T`; take the type from the
-    # instance, or the generic `T` reaches the backend. #16148
-    for i in 1..<result.len:
-      let a = result[i]
-      if i < finalCallee.typ.signatureLen and a.kind in {nkHiddenSubConv, nkHiddenStdConv} and
-          a.len == 2 and a[1].kind == nkNilLit and a.typ != nil and containsGenericType(a.typ):
-        let pt = finalCallee.typ[i].skipTypes({tySink})
-        if not containsGenericType(pt): a.typ = pt
   instGenericConvertersSons(c, result, x)
   markConvertersUsed(c, result)
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))

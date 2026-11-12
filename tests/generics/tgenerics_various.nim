@@ -252,3 +252,15 @@ block: # issue #9381
 
   var x: GenericObj[int]
   static: doAssert evalCount == 1
+
+block: # issue #23534, `nil` does not bind `T` in `ptr T`
+  var x: ptr int
+  doAssert nil == x
+  proc same[T](a, b: ptr T): bool = a == b
+  doAssert same(nil, x)
+  proc first[T](a: ptr T, b: T): T = b
+  doAssert first(nil, 3) == 3
+  proc second[T](a: ref T, b: T): T = b
+  doAssert second(nil, 4) == 4
+  proc count[T](a: varargs[ptr T]): int = a.len
+  doAssert count(x, nil) == 2
