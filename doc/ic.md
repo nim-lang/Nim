@@ -637,6 +637,12 @@ lowered bodies of its nested routines. Expansion sites only splice; they never
 touch another module's routines. Nested routines keep a single identity, so
 procedure equality across expansions and modules holds without any copying.
 
+A generic inline iterator instance is lowered by its *home*, the module that
+minted it and offers it to importers. Only that module's `lower` stage lifts
+it, wherever the home's own expansion lives: in a lowered proc, at top level, in
+an unused private proc, or in a generic proc instance. Importers reuse the
+instance through the offer and splice the home's lifted body.
+
 The lift does not depend on use. Consequently an illegal capture in an inline
 iterator (say, a nested closure capturing a `var` parameter) is an error at
 its declaration under `--ic:on`, even when nothing expands the iterator. The

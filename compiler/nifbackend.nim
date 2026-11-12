@@ -550,7 +550,7 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
       # module-indexed nested closure serializes its lifted (capture-rewritten,
       # destructor-injected) body.
       setNestedClosureBodies(g, tb.idgen, s.transformedBody, s, seenNested)
-    elif lowersInlineIterator(s, modPos):
+    elif lowersInlineIterator(s, modPos, g):
       # Lambda-lift the inline iterator as its own frame (see
       # `lowersInlineIterator`). Destructors are NOT injected into the iterator
       # body: it is spliced into each consumer, whose injection covers it. Its
