@@ -30,6 +30,26 @@ proc isCompileTimeOnlyNode*(n: PNode): bool {.inline.} =
   ## do not read the runtime location that alias analysis is protecting.
   n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
 
+proc isInertValue*(n: PNode): bool =
+  ## Evaluating `n` reads no location and cannot raise: literals, `default(T)`
+  ## and value constructors built from them. Such a field value needs no
+  ## temporary in `dest = Constr(...)`; it can be constructed in place even
+  ## after `dest` was destroyed (bug #26707).
+  case n.kind
+  of nkCharLit..nkNilLit: result = true
+  of nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
+    result = isInertValue(n[1])
+  of nkCurly, nkRange, nkBracket, nkPar, nkTupleConstr, nkObjConstr:
+    # a `ref` constructor allocates, which can raise
+    if n.typ != nil and n.typ.skipTypes(abstractInst).kind == tyRef: return false
+    for it in sonsFrom(n, ord(n.kind == nkObjConstr)):
+      if not isInertValue(it): return false
+    result = true
+  of nkCallKinds:
+    result = n[0].kind == nkSym and n[0].sym.magic == mDefault
+  else:
+    result = n.isCompileTimeOnlyNode
+
 func sameLocation(a, b: PNode): bool =
   template sameConstIndex(a, b: PNode): bool =
     a.kind in nkLiterals and b.kind in nkLiterals and a.intVal == b.intVal
