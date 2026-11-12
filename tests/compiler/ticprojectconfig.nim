@@ -56,9 +56,9 @@ proc assertUnchanged(path: string; before: Table[string, Time]) =
   for file, modified in before:
     doAssert after.getOrDefault(file) == modified, file & " was rebuilt"
 
-proc configSnapshots(): Table[string, Time] =
+proc configSnapshots(): Table[string, string] =
   for file in walkFiles(cache / "ic_config_*.cfg.nif"):
-    result[file] = getLastModificationTime(file)
+    result[file] = readFile(file)
 
 try:
   for subdir in ["src", "tests", "examples", "demos", "extra"]:

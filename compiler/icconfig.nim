@@ -46,10 +46,6 @@ proc writeIcConfig*(conf: ConfigRef; outfile: string) =
   ## Serialise the resolved config (the config-file switches recorded during
   ## `loadConfigs`, the resolved `cppDefines`/`searchPaths`, the nimcache dir, and
   ## the list of config *source* files for staleness detection) into `outfile`.
-  ## `OnlyIfChanged`: when the content is byte-identical to what is already on
-  ## disk the file is left untouched so its mtime does not advance — otherwise
-  ## every `nim ic` run would re-fire the whole nifmake graph (see `nifler`'s
-  ## `produceConfig`, whose model this mirrors).
   var b = nifbuilder.open(outfile, writeMode = OnlyIfChanged)
   b.withTree "stmts":
     b.withTree "meta":
@@ -335,6 +331,7 @@ proc ensureIcConfig*(conf: ConfigRef) =
   let argsChanged = not fileExists(argsPath) or readFile(argsPath) != argsContent
   if not fileExists(outPath) or argsChanged or sourcesChanged(outPath):
     createDir(cacheDir)
+    let started = getTime()
     let p = startProcess(getAppFilename(), args = pargs,
                          options = {poStdErrToStdOut})
     let outp = p.outputStream.readAll()
@@ -345,4 +342,5 @@ proc ensureIcConfig*(conf: ConfigRef) =
         "failed to produce precompiled config (exit code " & $code & "):\n" & outp)
       return
     writeFile(argsPath, argsContent)
+    setLastModificationTime(outPath, started)
   conf.icPreparsedConfig = outPath
