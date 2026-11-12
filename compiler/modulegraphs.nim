@@ -62,6 +62,13 @@ type
 
     typeInstCache*: Table[ItemId, seq[PType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[PInstantiation]] # A symbol's ItemId.
+    typeInstIndex: Table[(ItemId, Hash), seq[PType]]
+    procInstIndex, procBindingIndex: Table[(ItemId, Hash), seq[PInstantiation]]
+      # Hash indexes over `typeInstCache` and `procInstCache`, keyed by the
+      # generic's ItemId and a hash that is equal for instances that a cache
+      # lookup could consider the same, so a lookup does not have to compare
+      # against every instance of the generic (bug #26684). Only add to the
+      # caches via `addTypeInst` and `addProcInst` so that they stay in sync.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
     loadedOps: array[TTypeAttachedOp, Table[string, PSym]] # This can later by unified with `attachedOps` once it's stable
     opsLog*: seq[LogEntry]
@@ -250,10 +257,32 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
-proc resetForBackend*(g: ModuleGraph) =
-  g.compilerprocs = initStrTable()
+proc clearInstCaches*(g: ModuleGraph) =
+  ## Forgets all generic instances.
   g.typeInstCache.clear()
   g.procInstCache.clear()
+  g.typeInstIndex.clear()
+  g.procInstIndex.clear()
+  g.procBindingIndex.clear()
+
+proc clearInstCaches*(g: ModuleGraph; module: int) =
+  ## Forgets the instances of the generics that are declared in `module`.
+  template delKeys(tab, keyOf) =
+    var toDelete: seq[typeof(tab.keys)] = @[]
+    for k in tab.keys:
+      if keyOf(k).module == module: toDelete.add k
+    for k in toDelete: tab.del k
+  template id(k: ItemId): ItemId = k
+  template first(k: (ItemId, Hash)): ItemId = k[0]
+  delKeys(g.typeInstCache, id)
+  delKeys(g.procInstCache, id)
+  delKeys(g.typeInstIndex, first)
+  delKeys(g.procInstIndex, first)
+  delKeys(g.procBindingIndex, first)
+
+proc resetForBackend*(g: ModuleGraph) =
+  g.compilerprocs = initStrTable()
+  g.clearInstCaches()
   for a in mitems(g.attachedOps):
     a.clear()
   g.methodsPerGenericType.clear()
@@ -452,6 +481,91 @@ iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
     for t in mitems(x[]):
       yield t
 
+proc instTypeHash*(t: PType): Hash =
+  ## A hash of `t` that is equal for types that `compareTypes` with `dcEq`
+  ## considers the same: that requires the same kind after skipping aliases,
+  ## and for a static value that is an integer literal, the same value.
+  ## Everything else is deliberately left out of the hash.
+  if t == nil: return 0
+  var a = skipTypes(t, {tyAlias, tyInferred})
+  while a.kind == tyUserTypeClass and tfResolved in a.flags:
+    a = skipTypes(a.last, {tyAlias, tyInferred})
+  result = hash(ord(a.kind))
+  if a.kind == tyStatic and a.n != nil:
+    if a.n.kind in nkSignedIntLiterals:
+      result = result !& hash(1) !& hash(a.n.intVal)
+    elif a.n.kind in nkUnsignedIntLiterals:
+      result = result !& hash(2) !& hash(a.n.intVal)
+  result = !$result
+
+proc concreteTypesHash*(inst: TInstantiation): Hash =
+  ## Equal for instantiations that `sameInstantiation` considers the same.
+  result = hash(inst.concreteTypes.len)
+  for t in inst.concreteTypes:
+    result = result !& instTypeHash(t)
+  result = !$result
+
+proc bindingHash*(key: ItemId; value: PType): Hash {.inline.} =
+  ## The hash of a binding snapshot is the sum of the hashes of its bindings,
+  ## so that it does not depend on the order of the bindings.
+  !$(hash(key) !& instTypeHash(value))
+
+proc bindingsHash(inst: PInstantiation): Hash =
+  result = 0
+  for b in inst.bindings:
+    result = result +% bindingHash(b.key, b.value)
+
+proc typeInstHash(t: PType): Hash {.inline.} =
+  # `searchInstTypes` compares only as many arguments as the searched type
+  # has, so only the first argument can take part in the hash:
+  instTypeHash(t[FirstGenericParamAt])
+
+proc indexTypeInst*(g: ModuleGraph; generic: PSym; inst: PType) =
+  ## Makes the cached instance `inst` of `generic` visible to
+  ## `typeInstCandidates`; it must have its generic arguments by now.
+  g.typeInstIndex.mgetOrPut((generic.itemId, typeInstHash(inst)), @[]).add inst
+
+proc addTypeInst*(g: ModuleGraph; generic: PSym; inst: PType) =
+  ## Adds `inst` to the instances of the generic type `generic`. An instance
+  ## that does not have its generic arguments yet (it is cached early for
+  ## recursive instantiations) cannot match a lookup yet and has to be passed
+  ## to `indexTypeInst` once it does.
+  g.typeInstCache.mgetOrPut(generic.itemId, @[]).add inst
+  if inst.kidsLen > FirstGenericParamAt:
+    indexTypeInst(g, generic, inst)
+
+proc addProcInst*(g: ModuleGraph; generic: PSym; inst: PInstantiation) =
+  ## Adds the complete instantiation `inst` of the generic `generic`.
+  g.procInstCache.mgetOrPut(generic.itemId, @[]).add inst
+  g.procInstIndex.mgetOrPut((generic.itemId, concreteTypesHash(inst[])), @[]).add inst
+  if inst.bindings.len > 0:
+    # an empty snapshot never matches, see `sameBindingSnapshot`
+    g.procBindingIndex.mgetOrPut((generic.itemId, bindingsHash(inst)), @[]).add inst
+
+iterator typeInstCandidates*(g: ModuleGraph; s: PSym; key: PType): PType =
+  ## Yields the instances of the generic type `s` that may match `key`.
+  if key.kidsLen <= FirstGenericParamAt:
+    for t in typeInstCacheItems(g, s): yield t
+  else:
+    let k = (s.itemId, typeInstHash(key))
+    if g.typeInstIndex.contains(k):
+      let bucket = addr(g.typeInstIndex[k])
+      for t in bucket[]: yield t
+
+iterator procInstCandidates*(g: ModuleGraph; s: PSym; entry: TInstantiation): PInstantiation =
+  ## Yields the instances of the generic `s` that may be the same as `entry`.
+  let k = (s.itemId, concreteTypesHash(entry))
+  if g.procInstIndex.contains(k):
+    let bucket = addr(g.procInstIndex[k])
+    for inst in bucket[]: yield inst
+
+iterator procBindingCandidates*(g: ModuleGraph; s: PSym; h: Hash): PInstantiation =
+  ## Yields the instances of the generic `s` whose binding snapshot has the
+  ## hash `h` (see `bindingHash`).
+  let k = (s.itemId, h)
+  if g.procBindingIndex.contains(k):
+    let bucket = addr(g.procBindingIndex[k])
+    for inst in bucket[]: yield inst
 
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
@@ -1197,11 +1311,11 @@ when not defined(nimKochBootstrap):
         # both `secp` and `secp256k1`, proc offer). Direct-only rebuild left the
         # deep offer invisible when the clean instance lives a transitive hop away.
         for off in precomp.typeOffers:
-          g.typeInstCache.mgetOrPut(off.generic.itemId, @[]).add off.inst
+          g.addTypeInst(off.generic, off.inst)
         for off in precomp.genericOffers:
-          g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
+          g.addProcInst(off.generic, PInstantiation(
             sym: off.inst, concreteTypes: off.concreteTypes,
-            genericParamsCount: off.genericParamsCount, compilesId: 0)
+            genericParamsCount: off.genericParamsCount, compilesId: 0))
         for d in precomp.deps: stack.add d
 
   proc materializeReexportedModule(g: ModuleGraph; mname, msuffix: string): PSym =
@@ -1305,9 +1419,9 @@ when not defined(nimKochBootstrap):
     # `instantiateBody` in its own module scope (which lacks symbols visible only
     # at the generic's definition site — see ast2nif's `(offer …)`).
     for off in result.genericOffers:
-      g.procInstCache.mgetOrPut(off.generic.itemId, @[]).add PInstantiation(
+      g.addProcInst(off.generic, PInstantiation(
         sym: off.inst, concreteTypes: off.concreteTypes,
-        genericParamsCount: off.genericParamsCount, compilesId: 0)
+        genericParamsCount: off.genericParamsCount, compilesId: 0))
 
     # Rebuild `typeInstCache` from this module's generic TYPE-instance OFFERS so a
     # consumer's `searchInstTypes` reuses the baked instance (e.g. an SSZ
@@ -1315,7 +1429,7 @@ when not defined(nimKochBootstrap):
     # rather than re-instantiating it with a divergent bound — see ast2nif's
     # `(toffer …)`. Keyed by the generic body sym's itemId, as `searchInstTypes`.
     for off in result.typeOffers:
-      g.typeInstCache.mgetOrPut(off.generic.itemId, @[]).add off.inst
+      g.addTypeInst(off.generic, off.inst)
 
     # The backend loads offers by name only; `cgen.homeEmitsInstance` asks them.
     for off in result.offeredNames:
