@@ -1,5 +1,5 @@
 discard """
-  errormsg: "illegal recursion in type 'Test[system.int]'"
+  errormsg: "illegal recursion in type 'Test'"
   line: 14
 """
 

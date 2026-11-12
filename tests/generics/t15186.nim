@@ -1,13 +1,13 @@
 discard """
-  errormsg: "illegal recursion in type 'Node[system.int]'"
+  errormsg: "illegal recursion in type 'Node'"
   line: 41
   matrix: "--errorMax:20"
   nimout: '''
-t15186.nim(37, 17) Error: illegal recursion in type 'ViaTuple[system.int]'
-t15186.nim(38, 17) Error: illegal recursion in type 'ViaArray[system.int]'
-t15186.nim(39, 10) Error: illegal recursion in type 'A[system.int]'
-t15186.nim(40, 16) Error: illegal recursion in type 'Derived[system.int]'
-t15186.nim(41, 16) Error: illegal recursion in type 'Node[system.int]'
+t15186.nim(37, 17) Error: illegal recursion in type 'ViaTuple'
+t15186.nim(38, 17) Error: illegal recursion in type 'ViaArray'
+t15186.nim(39, 10) Error: illegal recursion in type 'A'
+t15186.nim(40, 16) Error: illegal recursion in type 'Derived'
+t15186.nim(41, 16) Error: illegal recursion in type 'Node'
 '''
 """
 

@@ -961,6 +961,33 @@ block: # bug #26401
   echo Base[int]().field.hasCustomPragma(marker)
   echo Alias().field.hasCustomPragma(marker)
 
+block: # #14646: generic objects that refer to themselves behind a pointer, a
+        # seq or a base class are fine
+  type
+    Tree[T] = object
+      item: T
+      left, right: ref Tree[T]
+    List[T] = object
+      item: T
+      rest: seq[List[T]]
+    Ptr[T] = object
+      next: ptr Ptr[T]
+    Base[T] = object of RootObj
+      x: T
+    Derived[T] = object of Base[T]
+      y: seq[Derived[T]]
+    Arr[T] = object
+      items: array[2, ref Arr[T]]
+  var a: Tree[int]
+  var b: List[string]
+  var c: Ptr[int]
+  var d: Derived[int]
+  var f: Arr[int]
+  a.item = 1
+  b.item = "x"
+  d.y.add Derived[int]()
+  doAssert a.item == 1 and b.item == "x" and c.next == nil and d.y.len == 1 and f.items[0] == nil
+
 # bug #16105
 # a converter is only allowed at top level, so this stays at the end of the
 # file, where the generic converter cannot affect any other case
