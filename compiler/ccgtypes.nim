@@ -134,8 +134,7 @@ proc fillBackendName(m: BModule; s: PSym) =
         # already, and every `cg` process names the routines it meets in its
         # own order: counting signature collisions would give the owner and a
         # caller of the same routine different names.
-        var noCollisions = initCountTable[SigHash]()
-        result.add(idOrSig(s, m.module.name.s.mangle, noCollisions, m.config))
+        result.add(idOrSig(s, m.module.name.s.mangle, m.config))
       else:
         result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
     backendEnsureMutable s
