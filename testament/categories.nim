@@ -597,16 +597,18 @@ proc changedPaths(prev, cur: Table[string, string]): seq[string] =
   for k in prev.keys:
     if k notin cur: result.add k
 
-proc isProvenance(path: string): bool =
+proc isProvenance(path, before, after: string): bool =
   ## Build-provenance sidecars that legitimately differ between a fresh build and
   ## an edit-accumulated one (they record build history, not codegen). Excluded
   ## only from the cross-build clean==incremental comparison — a *no-op* edit must
   ## still leave even these untouched. The backend build file lists the
   ## body dependencies the previous run discovered (`.bodydeps`), which a clean
-  ## build has not seen yet. The link stage records the modification time of the
-  ## program it wrote (`ic.backend.linked.txt`).
-  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif") or
-    path.endsWith("ic.backend.linked.txt")
+  ## build has not seen yet. The link arguments end with the stamp of the
+  ## program the link wrote; the lines before it must still agree.
+  if path == "ic_link_args.txt":
+    result = before[0 .. before.rfind('\n')] == after[0 .. after.rfind('\n')]
+  else:
+    result = path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether
@@ -876,7 +878,7 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
           let unusedShared = p notin cleanSnap and
             (p.startsWith("parsed" & DirSep) or p.parentDir == activePrefix / "sem")
           if not (inactiveConfig or inactiveBackend or inactiveMain or unusedShared or
-              isProvenance(p)):
+              isProvenance(p, snap.getOrDefault(p), cleanSnap.getOrDefault(p))):
             diff.add p
         if diff.len != 0:
           mmRaise(reOutputsDiffer, "clean cache == incremental cache",

@@ -1140,7 +1140,6 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     addCFileWithParts(g, mainC, splitFile(mainC).name)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)
-  writeFile(nimcache / LinkedProgramFile, programStamp(g.config.absOutFile.string))
 
 proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
   ## Main entry point for NIF-based C code generation.
