@@ -3144,6 +3144,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       # - in the case of hot code-reloading we generate function pointers instead
       #   of forward declarations and in C++ it is an error to redefine a global
       let wasDeclared = containsOrIncl(p.module.declaredProtos, prc.id)
+      if wasDeclared and p.hcrOn:
+        # The other order: the proc behind the magic was declared first (by a
+        # `cgsym` of its own), so the genCall must not declare it again.
+        p.module.declaredProtos.incl opr.id
       # Make the function behind the magic get actually generated - this will
       # not lead to a forward declaration! The genCall will lead to one.
       cgsym(p.module, $opr.loc.snippet)
