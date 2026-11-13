@@ -698,7 +698,13 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
 
 proc cfileHashFile*(conf: ConfigRef; cfile: AbsoluteFile): AbsoluteFile =
   ## Where the footprint of the last compile of `cfile` is kept.
-  toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
+  if cfile.splitFile.dir == getNimcacheDir(conf):
+    # a file generated into the nimcache is unique there by its name; its
+    # mangled path from the project repeats the nimcache's, which under the
+    # IC cache's nested directories is longer than Windows allows
+    result = AbsoluteFile(cfile.string & ".sha1")
+  else:
+    result = toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
