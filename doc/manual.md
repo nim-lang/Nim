@@ -4754,7 +4754,7 @@ in other words, it applies for "big" structures.
 If `p` can raise an exception and `dest` can be observed after the
 exception has been raised (for example because `dest` is a global variable,
 a location accessed through a pointer or `var` parameter, or a local variable
-that is used in an `except` or `finally` section), NRVO is not applied:
+when the assignment is inside a `try` statement), NRVO is not applied:
 the result is computed into a temporary and only copied to `dest` if `p`
 returned normally. Thus `dest` keeps its old value:
 

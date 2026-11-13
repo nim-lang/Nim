@@ -5,9 +5,9 @@ obj.inner.id = 7
 id = 7
 obj = (inner: (kind: Just, id: 7))
 2
-(a: "a", b: "b", c: "")
+(a: "1", b: "2", c: "3")
 caught
-(a: "a", b: "b", c: "")'''
+(a: "1", b: "", c: "3")'''
 """
 
 # bug #6960
@@ -165,8 +165,8 @@ proc ohmanNoNRVO =
     discard
 
   echo x
-  # once NVRO is sorted out, x.c == "3"
-  doAssert x.c == "", "shouldn't modify x if f raises"
+  # bug #26699: x must not be modified if f raises
+  doAssert x.c == "3", "shouldn't modify x if f raises"
 
 ohmanNoNRVO()
 
@@ -181,5 +181,5 @@ try:
 except:
   echo "caught"
 echo xgg
-# once NVRO is sorted out, xgg.c == "3"
-doAssert xgg.c == "", "this assert will fail"
+# bug #26699: xgg must not be modified if f raises
+doAssert xgg.c == "3", "shouldn't modify xgg if f raises"
