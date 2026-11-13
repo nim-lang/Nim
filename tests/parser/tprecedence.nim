@@ -1,4 +1,16 @@
 discard """
+  matrix: "--hints:off --warning:UnusedImport:off"
+  nimoutFull: true
+  nimout: '''
+tprecedence.nim(83, 17) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(84, 17) Warning: `not` binds tighter than '!=': `not a != b` is `(not a) != b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(85, 17) Warning: `not` binds tighter than '<': `not a < b` is `(not a) < b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(86, 17) Warning: `not` binds tighter than '<=': `not a <= b` is `(not a) <= b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(87, 17) Warning: `not` binds tighter than '>': `not a > b` is `(not a) > b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(88, 17) Warning: `not` binds tighter than '>=': `not a >= b` is `(not a) >= b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(89, 17) Warning: `not` binds tighter than 'in': `not a in b` is `(not a) in b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(90, 19) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
+'''
   output: '''holla
 true
 defabc 4
@@ -61,3 +73,27 @@ block:
   template `+=`(a, b): untyped = a * b
 
   doAssert ("abc" => 3 += 5) == ("abc", 15)
+
+# `not` binds tighter than a comparison (`not a == b` is `(not a) == b`,
+# unlike Python), so it warns.
+block:
+  let x = 3
+  let n = 1
+  let s = @[1, 2]
+  discard not x == n
+  discard not x != n
+  discard not x < n
+  discard not x <= n
+  discard not x > n
+  discard not x >= n
+  discard not x in s
+  discard not (x) == n
+
+  # no warning: the meaning is explicit or there is no comparison
+  discard not (x == n)
+  discard (not x) == n
+  discard not(x) == n
+  discard not x
+  discard not x + n
+  discard not true and true
+  discard x == not n

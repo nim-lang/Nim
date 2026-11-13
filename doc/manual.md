@@ -797,6 +797,9 @@ Precedence
 
 Unary operators always bind stronger than any binary
 operator: `$a + b` is `($a) + b` and not `$(a + b)`.
+This includes the comparisons: `not a == b` is `(not a) == b`. The compiler
+warns about this form unless parentheses make the meaning explicit (warning
+`NotCmp`).
 
 If a unary operator's first character is `@` it is a `sigil-like`:idx:
 operator which binds stronger than a `primarySuffix`: `@x.abc` is parsed

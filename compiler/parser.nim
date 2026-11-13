@@ -316,6 +316,21 @@ proc checkBinary(p: Parser) {.inline.} =
     if p.tok.spacing == {tsTrailing}:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
+const
+  CmpPrec = 5 # what `getPrecedence` gives the comparison operators (`==`, `<`, `in`, `is`, ...)
+
+proc checkNotOperand(p: Parser, lhs: PNode) =
+  ## Check if the left operand `lhs` (an `nkPrefix`) of the current comparison
+  ## operator is a `not` expression: `not a == b` is `(not a) == b`.
+  ## `not(a) == b`, with no space before the parenthesis, reads as the call it
+  ## looks like; `not (a) == b` does not, and both parse to the same tree, so
+  ## the parenthesis's position tells them apart.
+  # a keyword's identifier id is its token's offset from `tkSymbol` (`lexer.getSymbol`)
+  if lhs[0].kind == nkIdent and lhs[0].ident.id == ord(tkNot) - ord(tkSymbol) and
+      not (lhs[1].kind == nkPar and lhs[1].info.line == lhs[0].info.line and
+        lhs[1].info.col == lhs[0].info.col + len("not")):
+    parMessage(p, warnNotCmp, p.tok.ident.s)
+
 #| module = complexOrSimpleStmt ^* (';' / IND{=})
 #|
 #| comma = ',' COMMENT?
@@ -967,6 +982,8 @@ proc parseOperators(p: var Parser, headNode: PNode,
   # progress guaranteed
   while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
     checkBinary(p)
+    if opPrec == CmpPrec and result.kind == nkPrefix:
+      checkNotOperand(p, result)
     let leftAssoc = ord(not isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
