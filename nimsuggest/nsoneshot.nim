@@ -507,7 +507,7 @@ proc runNimNs(graph: ModuleGraph; roots: seq[string]) =
   let conf = graph.config
   let nim = getAppDir() / addFileExt("nim", ExeExt)
   let cache = getNimcacheDir(conf).string
-  var args = @[nim, "ns", "--nimcache:" & cache]
+  var args = @[nim, "ns", "--define:nimsuggest", "--nimcache:" & cache]
   for root in roots: args.add "--nsRoot:" & root
   if gParallelBuild.len > 0: args.add "--parallelBuild:" & gParallelBuild
   let cmd = quoteShellCommand(args & conf.projectFull.string)
