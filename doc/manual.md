@@ -4751,8 +4751,12 @@ Let `T`'s be `p`'s return type. NRVO applies for `T`
 if `sizeof(T) >= N` (where `N` is implementation dependent),
 in other words, it applies for "big" structures.
 
-If `p` can raise an exception, NRVO applies regardless. This can produce
-observable differences in behavior:
+If `p` can raise an exception and `dest` can be observed after the
+exception has been raised (for example because `dest` is a global variable,
+a location accessed through a pointer or `var` parameter, or a local variable
+that is used in an `except` or `finally` section), NRVO is not applied:
+the result is computed into a temporary and only copied to `dest` if `p`
+returned normally. Thus `dest` keeps its old value:
 
   ```nim
   type
@@ -4765,25 +4769,17 @@ observable differences in behavior:
 
   proc main =
     var x: BigT
+    x[0] = 42
     try:
       x = p(8)
     except ValueError:
-      doAssert x == [0, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0]
+      doAssert x[0] == 42
 
   main()
   ```
 
-
-The compiler can produce a warning in these cases, however this behavior is
-turned off by default. It can be enabled for a section of code via the
-`warning[ObservableStores]` and `push`/`pop` pragmas. Take the above code
-as an example:
-
-  ```nim
-  {.push warning[ObservableStores]: on.}
-  main()
-  {.pop.}
-  ```
+Defects are not considered for this analysis; a store interrupted by a
+`Defect` can still be observable.
 
 Overloading of the subscript operator
 -------------------------------------
