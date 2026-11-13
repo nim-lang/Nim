@@ -1115,6 +1115,8 @@ proc callCCompiler*(conf: ConfigRef) =
         let src = conf.hcrLinkTargetName(mainObjFile, true)
         let dst = conf.prepareToWriteOutput
         if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags or
+            not fileExists(dst.string) or
+            getFileSize(src.string) != getFileSize(dst.string) or
             not sameFileContent(src.string, dst.string):
           copyFileWithPermissions(src.string, dst.string)
     else:
