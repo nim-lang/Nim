@@ -227,8 +227,13 @@ echo orphanValue()
   let bothBackends = artifacts(activeCache() / "backend")
   build("examples/second.nim", "second 42", reuseShared = true)
   assertUnchanged(activeCache() / "backend", bothBackends)
+  let secondProgram = readFile(binary)
   let otherOutput = dir / "otherprog".addFileExt(ExeExt)
   build("examples/main.nim", "example 42", reuseShared = true, output = otherOutput)
+  build("examples/main.nim", "example 42", reuseShared = true)
+  # So can a program this cache did not link, as a build with another nimcache
+  # leaves: this cache's link arguments are unchanged and the program is newer.
+  writeFile(binary, secondProgram)
   build("examples/main.nim", "example 42", reuseShared = true)
 
   # A module's main role and imported role must coexist under identical settings.

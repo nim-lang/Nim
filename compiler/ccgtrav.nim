@@ -189,6 +189,9 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
         rttiMarkers.add(extract(p.s(cpsLocals)))
         rttiMarkers.add(extract(p.s(cpsInit)))
         rttiMarkers.add(extract(p.s(cpsStmts)))
+    # not reached through the hot code reloading runtime: it is static, and
+    # the type info that refers to it is in the same library
+    result = markerName
     return
 
   m.s[cfsProcHeaders].addDeclWithVisibility(StaticProc):

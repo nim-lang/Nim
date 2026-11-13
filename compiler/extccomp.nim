@@ -698,7 +698,13 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
 
 proc cfileHashFile*(conf: ConfigRef; cfile: AbsoluteFile): AbsoluteFile =
   ## Where the footprint of the last compile of `cfile` is kept.
-  toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
+  if cfile.splitFile.dir == getNimcacheDir(conf):
+    # a file generated into the nimcache is unique there by its name; its
+    # mangled path from the project repeats the nimcache's, which under the
+    # IC cache's nested directories is longer than Windows allows
+    result = AbsoluteFile(cfile.string & ".sha1")
+  else:
+    result = toGeneratedFile(conf, conf.mangleModuleName(cfile).AbsoluteFile, "sha1")
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
@@ -1100,11 +1106,18 @@ proc callCCompiler*(conf: ConfigRef) =
         execCmdsInParallel(conf, cmds, prettyCb)
         for lib in linkedLibs:
           moveFile(lib.linked.string, lib.target.string)
-        # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
-        if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
-          let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
-          let src = conf.hcrLinkTargetName(mainObjFile, true)
-          let dst = conf.prepareToWriteOutput
+        # copy the resulting main file from the nimcache folder to its
+        # originally intended destination. A cached one is the running program
+        # when it reloads itself, which stays in place; but the destination
+        # can hold the program of another nimcache, which loads that one's
+        # libraries
+        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
+        let src = conf.hcrLinkTargetName(mainObjFile, true)
+        let dst = conf.prepareToWriteOutput
+        if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags or
+            not fileExists(dst.string) or
+            getFileSize(src.string) != getFileSize(dst.string) or
+            not sameFileContent(src.string, dst.string):
           copyFileWithPermissions(src.string, dst.string)
     else:
       for x in conf.toCompile:

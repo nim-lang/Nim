@@ -124,6 +124,16 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
                                   getTestSpecTarget()).parseCmdLine
       testSpec r, t
 
+    # the same, with the program built by the IC backend; once per memory
+    # manager, as each build takes long
+    if "-d:release" notin options:
+      var ict = makeTest("tests/dll/nimhcr_ic.nim",
+                         options & " --threads:off --ic:on --hotCodeReloading:on" & rpath, cat)
+      let iccache = nimcacheDir(ict.name, ict.options, getTestSpecTarget())
+      ict.testArgs = prepareTestCmd(ict.spec.getCmd, ict.name, ict.options, iccache,
+                                    getTestSpecTarget()).parseCmdLine
+      testSpec r, ict
+
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
@@ -590,14 +600,18 @@ proc changedPaths(prev, cur: Table[string, string]): seq[string] =
   for k in prev.keys:
     if k notin cur: result.add k
 
-proc isProvenance(path: string): bool =
+proc isProvenance(path, before, after: string): bool =
   ## Build-provenance sidecars that legitimately differ between a fresh build and
   ## an edit-accumulated one (they record build history, not codegen). Excluded
   ## only from the cross-build clean==incremental comparison — a *no-op* edit must
   ## still leave even these untouched. The backend build file lists the
   ## body dependencies the previous run discovered (`.bodydeps`), which a clean
-  ## build has not seen yet.
-  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
+  ## build has not seen yet. The link arguments end with the stamp of the
+  ## program the link wrote; the lines before it must still agree.
+  if path == "ic_link_args.txt":
+    result = before[0 .. before.rfind('\n')] == after[0 .. after.rfind('\n')]
+  else:
+    result = path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether
@@ -870,7 +884,7 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
           let unusedShared = p notin cleanSnap and
             (p.startsWith("parsed" & DirSep) or p.parentDir == activePrefix / "sem")
           if not (inactiveConfig or inactiveBackend or inactiveMain or unusedShared or
-              isProvenance(p)):
+              isProvenance(p, snap.getOrDefault(p), cleanSnap.getOrDefault(p))):
             diff.add p
         if diff.len != 0:
           mmRaise(reOutputsDiffer, "clean cache == incremental cache",

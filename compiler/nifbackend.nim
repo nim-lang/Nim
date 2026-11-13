@@ -903,11 +903,17 @@ proc generateMergeStage(g: ModuleGraph) =
     for artifact in walkFiles(nimcache / ("*" & icCFileExt(g.config) & ".nif")):
       files.add artifact
   sort files
-  let decision = computeMergeDecision(files)
+  var decision = computeMergeDecision(files)
   if decision.broken:
     rawMessage(g.config, errGenerated,
       "per-module backend merge: a .c.nif artifact is missing or unparsable")
     return
+  if g.config.hcrOn:
+    # With hot code reloading every module is linked into a library of its
+    # own, so a definition one translation unit drops for another's copy is
+    # missing from its library: each keeps the definitions it emitted. That
+    # includes the bodies its `DatInit` registers with `hcrRegisterProc`.
+    decision.owners.clear()
   writeMergeDecision(nimcache / MergeDecisionFile, decision)
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icMerge] artifacts: " & $files.len &
@@ -916,6 +922,15 @@ proc generateMergeStage(g: ModuleGraph) =
 
 proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
                    isMain: bool; decision: MergeDecision)
+
+proc moduleCFile(g: ModuleGraph; cfilename: AbsoluteFile): string =
+  ## The `.c` the `emit` stage writes for the module named `cfilename`: its
+  ## source path for the main module, its NIF suffix for every other one.
+  changeFileExt(completeCfilePath(g.config,
+    mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
+
+proc mainCFile(g: ModuleGraph; mainFileIdx: FileIndex): string =
+  moduleCFile(g, AbsoluteFile toFullPath(g.config, mainFileIdx))
 
 proc addCFileWithParts(g: ModuleGraph; cpath, nimname: string) =
   ## Hands a module's `.c` to the C compiler, and the extra C files `emit`
@@ -950,6 +965,9 @@ proc cPartBytes(conf: ConfigRef): int =
   if conf.cppCustomNamespace.len > 0:
     # the namespace opened in the declarations closes after the init procs,
     # which only the first file has
+    result = 0
+  if conf.hcrOn:
+    # with hot code reloading every C file is linked into a binary of its own
     result = 0
 
 proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
@@ -996,11 +1014,9 @@ proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
                    isMain: bool; decision: MergeDecision) =
   ## Render ONE batch member's final `.c` from its `.c.nif` and the batch's
   ## merge decision.
-  let cfilename =
-    if isMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
-    else: AbsoluteFile member
-  let cfile = changeFileExt(completeCfilePath(g.config,
-    mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
+  let cfile =
+    if isMain: mainCFile(g, mainFileIdx)
+    else: moduleCFile(g, AbsoluteFile member)
   let artifact = cfile & ".nif"
   if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
@@ -1084,12 +1100,16 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       cfiles.add artifact[0 ..< artifact.len - ".nif".len]
   sort cfiles
 
+  # `callCCompiler` takes the last file for the main module's: with hot code
+  # reloading it links that one into the program and every other into a library.
+  let mainC = mainCFile(g, mainFileIdx)
   var addedCFiles = initHashSet[string]()
+  addedCFiles.incl extractFilename(mainC)
   for cpath in cfiles:
     # Only modules that are their own cg/emit target produced a `.c`; the rest
     # had their code emit-everywhere'd into the targets, so there is nothing to
     # compile for them.
-    if not fileExists(cpath): continue
+    if cpath == mainC or not fileExists(cpath): continue
     addedCFiles.incl extractFilename(cpath)
     # The directives this module recorded (`{.passL: "-lm".}` etc.); without
     # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
@@ -1123,6 +1143,9 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         if not fileExists(cfile.string): continue
         applyBackendActions(g, cfile.string)
         addCFileWithParts(g, cfile.string, cbase)
+  if fileExists(mainC):
+    applyBackendActions(g, mainC)
+    addCFileWithParts(g, mainC, splitFile(mainC).name)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)
 

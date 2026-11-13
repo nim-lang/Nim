@@ -1299,6 +1299,17 @@ when not defined(nimKochBootstrap):
     # relationship is invisible for NIF-served modules.
     for incPath in result.includes:
       g.addIncludeDep(fileIdx, fileInfoIdx(g.config, AbsoluteFile incPath))
+    # Hot code reloading lists every module's imports in its library
+    # (`cgen.registerModuleToMain`); a from-source compile records them as sem
+    # imports (`importPipelineModule`). A backend process does no sem, so take
+    # them from the NIF. Backend only: under `nim m` the table is this
+    # process's own sem result and is written out as `.s.deps`.
+    if g.config.hcrOn and g.config.cmd == cmdNifC:
+      for dep in result.deps:
+        var isKnownFile = false
+        let depIdx = registerNifSuffix(g.config, dep.string, isKnownFile)
+        let deps = addr g.importDeps.mgetOrPut(fileIdx, @[])
+        if depIdx notin deps[]: deps[].add depIdx
 
     # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
     # consumer's `genericCacheGet` finds the instance and SKIPS re-running

@@ -582,33 +582,33 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
     c.md5Final(result.MD5Digest)
     graph.symBodyHashes[sym.id] = result
 
+proc sigName(s: PSym; currentModule: string; sig: SigHash; counter: int): Rope =
+  result = rope($sig)
+  if counter != 0:
+    result.add "_" & rope(counter+1)
+  # this minor hack is necessary to make tests/collections/thashes compile.
+  # The inlined hash function's original module is ambiguous so we end up
+  # generating duplicate names otherwise:
+  if s.kind in routineKinds and s.typ != nil and s.typ.callConv == ccInline:
+    result.add rope(currentModule)
+
 proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]; conf: ConfigRef): Rope =
-  if s.kind in routineKinds and s.typ != nil:
-    # signatures for exported routines are reliable enough to
-    # produce a unique name and this means produced C++ is more stable regarding
-    # Nim changes:
-    let sig = hashProc(s, conf)
-    result = rope($sig)
-    #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
-    let counter = sigCollisions.getOrDefault(sig)
-    #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
-    #  echo "counter ", counter, " ", s.id
-    if counter != 0:
-      result.add "_" & rope(counter+1)
-    # this minor hack is necessary to make tests/collections/thashes compile.
-    # The inlined hash function's original module is ambiguous so we end up
-    # generating duplicate names otherwise:
-    if s.typ.callConv == ccInline:
-      result.add rope(currentModule)
-    sigCollisions.inc(sig)
-  else:
-    let sig = hashNonProc(s)
-    result = rope($sig)
-    let counter = sigCollisions.getOrDefault(sig)
-    if counter != 0:
-      result.add "_" & rope(counter+1)
-    sigCollisions.inc(sig)
+  # signatures for exported routines are reliable enough to
+  # produce a unique name and this means produced C++ is more stable regarding
+  # Nim changes:
+  let sig = sigHash(s, conf)
+  #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
+  let counter = sigCollisions.getOrDefault(sig)
+  #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
+  #  echo "counter ", counter, " ", s.id
+  result = sigName(s, currentModule, sig, counter)
+  sigCollisions.inc(sig)
+
+proc idOrSig*(s: PSym, currentModule: string; conf: ConfigRef): Rope =
+  ## Like the other `idOrSig` without counting collisions, for names that are
+  ## unique in the whole program already.
+  result = sigName(s, currentModule, sigHash(s, conf), 0)
 
 proc hashLayout(c: var MD5Context; t: PType; conf: ConfigRef; seen: var IntSet)
 
