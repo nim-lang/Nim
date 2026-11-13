@@ -124,13 +124,15 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
                                   getTestSpecTarget()).parseCmdLine
       testSpec r, t
 
-    # the same, with the program built by the IC backend
-    var ict = makeTest("tests/dll/nimhcr_ic.nim",
-                       options & " --threads:off --ic:on --hotCodeReloading:on" & rpath, cat)
-    let iccache = nimcacheDir(ict.name, ict.options, getTestSpecTarget())
-    ict.testArgs = prepareTestCmd(ict.spec.getCmd, ict.name, ict.options, iccache,
-                                  getTestSpecTarget()).parseCmdLine
-    testSpec r, ict
+    # the same, with the program built by the IC backend; once per memory
+    # manager, as each build takes long
+    if "-d:release" notin options:
+      var ict = makeTest("tests/dll/nimhcr_ic.nim",
+                         options & " --threads:off --ic:on --hotCodeReloading:on" & rpath, cat)
+      let iccache = nimcacheDir(ict.name, ict.options, getTestSpecTarget())
+      ict.testArgs = prepareTestCmd(ict.spec.getCmd, ict.name, ict.options, iccache,
+                                    getTestSpecTarget()).parseCmdLine
+      testSpec r, ict
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
