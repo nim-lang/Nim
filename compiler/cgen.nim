@@ -435,8 +435,7 @@ proc stdlibModule(g: BModuleList, path: RelativeFile): BModule =
   ## when the program does not use it. Compared by module suffix: the
   ## per-module backend names a module loaded from its NIF by its suffix.
   result = nil
-  let suffix = moduleSuffix((g.config.libpath / path).string,
-                            cast[seq[string]](g.config.searchPaths))
+  let suffix = moduleSuffix((g.config.libpath / path).string, [])
   for m in g.mods:
     if m != nil and modname(m.module, g.config) == suffix:
       return m
