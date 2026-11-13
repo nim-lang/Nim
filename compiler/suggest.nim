@@ -833,7 +833,6 @@ proc suggestModuleNames(c: PContext, n: PNode) =
     var suggest = Suggest(
       section: ideSug,
       qualifiedPath: @[path],
-      name: addr path,
       filePath: path,
       line: n.info.line.int,
       column: n.info.col.int,
@@ -844,6 +843,7 @@ proc suggestModuleNames(c: PContext, n: PNode) =
              else: PrefixMatch.None,
       symkind: byte skModule
     )
+    suggest.name = addr suggest.qualifiedPath[0]
     suggestions.add(suggest)
 
   let importCtx = extractImportContextFromAst(n, c.config.m.trackPos.col)
