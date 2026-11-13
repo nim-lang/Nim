@@ -2267,7 +2267,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         return
       # `nim ns`: a module that fails, such as a broken `--nsRoot`, must not keep
       # unrelated modules from being built.
-      let keepGoing = if conf.cmd == cmdNs: " --keep-going" else: ""
+      let keepGoing = if conf.cmd == cmdNs: " --keepgoing" else: ""
       let cmd = quoteShell(nifmake) & " run" & parallel & keepGoing & " " &
         quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
