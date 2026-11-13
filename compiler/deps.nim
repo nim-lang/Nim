@@ -59,6 +59,7 @@ type
     implicitNodeIds: seq[int] # node IDs of `--import`ed modules (conf.implicitImports);
                               # every ordinary module implicitly imports these, so each
                               # gets a dependency edge on them, exactly like system.nim
+    nsRootIds: seq[int] # `nim ns`: node IDs of the `--nsRoot` modules; unknown files support
     scanningMain: bool # currently scanning the project main module's deps;
                        # makes `when isMainModule` conditions evaluate true
                        # only there (every other module is imported)
@@ -155,6 +156,11 @@ proc findNifmake(): string =
   result = nimDir / "nifmake"
   if not fileExists(result):
     result = findExe("nifmake")
+
+proc projectError(c: DepContext; msg: string) =
+  ## An error in the project. `nim ns` keeps going: nimsuggest2 reports those.
+  if c.config.cmd == cmdNs: localError(c.config, unknownLineInfo, msg)
+  else: rawMessage(c.config, errGenerated, msg)
 
 proc runNifler(c: DepContext; nimFile: string): bool =
   ## Run nifler deps on a file if needed. Returns true on success.
@@ -625,7 +631,7 @@ proc readDepsFile(c: var DepContext; pair: FilePair; current: Node) =
   # `current.id == 0` is the project main (rootNode); restored on exit so the
   # flag is correct for each parent frame between its child recursions.
   let prevScanningMain = c.scanningMain
-  c.scanningMain = current.id == 0
+  c.scanningMain = current.id == 0 and c.config.cmd != cmdNs
   defer: c.scanningMain = prevScanningMain
 
   var s = nifstreams.open(depsPath)
@@ -808,8 +814,9 @@ proc includerSbifs*(conf: ConfigRef; targetFile: AbsoluteFile): seq[string] =
 proc traverseDeps(c: var DepContext; pair: FilePair; current: Node) =
   ## Process a module: run nifler and read deps
   if not runNifler(c, pair.nimFile):
-    rawMessage(c.config, errGenerated, "nifler failed for: " & pair.nimFile)
-    return
+    c.projectError("nifler failed for: " & pair.nimFile)
+    # `nim ns` keeps the imports of the module's last version that parsed.
+    if c.config.cmd != cmdNs or not fileExists(c.depsFile(pair)): return
   readDepsFile(c, pair, current)
 
 proc importPathsOf(n: PNode; res: var seq[string]) =
@@ -947,7 +954,7 @@ proc pruneDeadSpeculative(c: var DepContext) =
   let n = c.nodes.len
   if n == 0: return
 
-  var roots = @[0]
+  var roots = @[0] & c.nsRootIds
   if c.systemNodeId >= 0: roots.add c.systemNodeId
   for i in c.implicitNodeIds: roots.add i
 
@@ -984,7 +991,7 @@ proc pruneDeadSpeculative(c: var DepContext) =
   for i in 0 ..< n:
     if hard[i] and c.nodes[i].missingHardImport.len > 0 and
        not isCompilesProbe(c, c.nodes[i], c.nodes[i].missingHardImport):
-      rawMessage(c.config, errGenerated,
+      c.projectError(
         c.nodes[i].files[0].nimFile & ": cannot open file: " &
         c.nodes[i].missingHardImport)
       reported = true
@@ -1076,6 +1083,7 @@ proc selectMainSemanticModules(c: DepContext) =
   ## An import cycle containing main is compiled together with its main role.
   ## Keep the whole group separate from imported versions shared by other programs.
   c.config.icMainModules = @[]
+  if c.config.cmd == cmdNs: return
   for comp in computeSCCs(c):
     if 0 in comp:
       for i in comp: c.config.icMainModules.add c.nodes[i].files[0].modname
@@ -1169,7 +1177,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "incremental", "ic", "symbolfiles", "genbif",
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
     "icsemdir", "icmainsemdir", "icmainmodule",
-    "icbackendstage", "icbackendmodule", "ismainmodule",
+    "icbackendstage", "icbackendmodule", "ismainmodule", "nsroot",
     "help", "h", "fullhelp", "version", "v", "advanced"]
   var positionalArgs = 0
   for a in commandLineParams():
@@ -1337,7 +1345,7 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
     # The root module (node 0) is the program's real entry point; mark it so
     # `isMainModule` resolves to true only for it (every module otherwise gets
     # `sfMainModule` for NIF writing under `nim m`).
-    if members[0] == 0:
+    if members[0] == 0 and c.config.cmd != cmdNs:
       b.addStrLit "--isMainModule:on"
       b.addStrLit "--nimcache:" & c.config.icMainSemDir.string
     # For a real cycle, tell the compiler which modules form the group so it
@@ -2008,6 +2016,43 @@ proc allSemmed(c: DepContext): bool =
   result = true
   for _ in unsemmed(c): return false
 
+proc failedToBuild(c: DepContext; node: Node): bool =
+  ## Whether the module's rule failed: its `.edges.bif` stamp is missing or
+  ## older than its source or one of the files it includes.
+  let stamp = c.edgesFile(node.files[0])
+  if not fileExists(stamp): return true
+  let written = getLastModificationTime(stamp)
+  for f in node.files:
+    if fileExists(f.nimFile) and written < getLastModificationTime(f.nimFile):
+      return true
+  false
+
+proc reportToNimsuggest(c: DepContext; cacheDir: string; started: Time) =
+  ## `nim ns`: writes the project's `nsReportName` in `cacheDir`, one line each
+  ## for where the semantic NIFs are, the precompiled config, every module this
+  ## run built (`icmodule:`), failed to build (`icfailed:`) or could not check
+  ## (`icdeferred:`), so nimsuggest2 loads only NIFs nifmake built, the files
+  ## each of those modules includes (`icinclude:`, after the module) and the
+  ## `--nsRoot` modules (`icroot:`), so the next run builds them again. Its
+  ## modification time is when this run started: a source newer than it changed
+  ## after this run read it.
+  var lines = @["icsemdir:" & c.config.icSemDir.string,
+    "icconfig:" & c.config.icPreparsedConfig]
+  for node in c.nodes:
+    let kind =
+      if node.deferred: "icdeferred:"
+      elif c.failedToBuild(node): "icfailed:"
+      else: "icmodule:"
+    lines.add kind & node.files[0].nimFile
+    for i in 1 ..< node.files.len:
+      lines.add "icinclude:" & node.files[i].nimFile
+  for root in c.config.nsRoots:
+    if fileExists(root): lines.add "icroot:" & root
+  let report = cacheDir / nsReportName(c.config.projectFull.string)
+  writeFile(report & ".tmp", lines.join("\n"))
+  setLastModificationTime(report & ".tmp", started)
+  moveFile(report & ".tmp", report)
+
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
   ## IDE queries) it runs only Phase 1 — the incremental nifler + `nim m`
@@ -2015,6 +2060,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## backend (`nim nifc` -> C -> link), which a goto-def / find-usages scan does
   ## not need.
   when not defined(nimKochBootstrap):
+    let started = getTime()
     let nifler = findNifler()
     if nifler.len == 0:
       rawMessage(conf, errGenerated, "nifler tool not found. Install nimony or add nifler to PATH.")
@@ -2136,6 +2182,22 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     # Process dependencies
     traverseDeps(c, rootPair, rootNode)
+    # `nim ns`: the other roots are built like the project file, as ordinary
+    # modules nothing imports.
+    for root in conf.nsRoots:
+      if not fileExists(root): continue
+      let pair = c.toPair(root)
+      var id = c.processedModules.getOrDefault(pair.modname, -1)
+      if id == -1:
+        let node = Node(files: @[pair], id: c.nodes.len)
+        if c.systemNodeId >= 0: node.deps.add c.systemNodeId
+        if getsImplicitImports(c, pair.nimFile):
+          for impId in c.implicitNodeIds: node.deps.add impId
+        c.nodes.add node
+        c.processedModules[pair.modname] = node.id
+        id = node.id
+        traverseDeps(c, pair, node)
+      c.nsRootIds.add id
     selectMainSemanticModules(c)
 
     # Cached imports belong to this configuration, including when returning to
@@ -2203,7 +2265,11 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
           rawMessage(conf, hintSuccess, "generated: " & backendFile)
           rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
         return
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
+      # `nim ns`: a module that fails, such as a broken `--nsRoot`, must not keep
+      # unrelated modules from being built.
+      let keepGoing = if conf.cmd == cmdNs: " --keepgoing" else: ""
+      let cmd = quoteShell(nifmake) & " run" & parallel & keepGoing & " " &
+        quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       # A child that met an import no rule produced yet records it in its
@@ -2242,7 +2308,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         var names: seq[string] = @[]
         for m in unsemmed(c): names.add m
         names.sort()
-        rawMessage(conf, errGenerated,
+        c.projectError(
           "ic: modules stopped for imports discovered during sem, but " &
           "rescheduling made no progress: " & names.join(", "))
         break
@@ -2260,6 +2326,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         # exit code is derived from `errorCounter`.
         inc conf.errorCounter
         break
+
+    if conf.cmd == cmdNs: c.reportToNimsuggest(cacheDir, started)
 
     # Phase 2 — backend (whole-program `nim nifc`), run once over the now-final
     # graph. Kept a separate nifmake run so backend rebuilds are decided purely

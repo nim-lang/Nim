@@ -3305,6 +3305,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
                        localSyms: var Table[string, PSym]) =
   ## Loads a symbol definition. The cursor must be positioned AT the opening
   ## `(sd` TagLit; `into` consumes the whole sdef including its closing `)`.
+  s.infoImpl = c.infos.oldLineInfo(n.info, cursorPool(n))
   n.into:
     expect n, SymbolDef
     # ignore the symbol's name, we have already used it to create this PSym instance!
@@ -3445,7 +3446,6 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   extractLocalSymsFromTree(c, scanCursor, c.mods[symsModule].suffix, localSyms)
 
   # Now parse the symbol definition with all local symbols pre-registered
-  s.infoImpl = c.infos.oldLineInfo(n.info, cursorPool(n))
   # The `##` doc comment (if any) rides as a NIF comment on the sym def token;
   # capture it before advancing, then restore it onto the loaded AST so that
   # suggest's `extractDocComment` (findDocComment on `s.ast`) finds it.
