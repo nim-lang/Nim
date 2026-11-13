@@ -100,6 +100,20 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       else:
         declarePureEnumField(c, e)
     return prev
+  if n[1].kind == nkSym and n[1].sym.kind == skEnumField and
+      n[1].sym.typ != nil and n[1].sym.typ.sym != nil:
+    # the enum type as `getType` describes it, its fields are the symbols of
+    # an existing enum: that enum is meant, a new one would steal its fields
+    # (#14119)
+    let existing = n[1].sym.typ
+    var same = existing.n != nil and existing.n.len == n.len-1
+    if same:
+      for i in 1..<n.len:
+        if n[i].kind != nkSym or n[i].sym != existing.n[i-1].sym:
+          same = false
+          break
+    if same:
+      return semTypeNode(c, newSymNode(existing.sym, n.info), prev)
   var
     counter, x: BiggestInt = 0
     e: PSym = nil
@@ -1786,6 +1800,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         elif typ.kind == tyStatic:
           def = semConstExpr(c, def)
           def = fitNode(c, typ, def, def.info)
+      if def.referencesAnotherParam(getCurrOwner(c)):
+        # again: `fitNode` can wrap it into a conversion (#14587)
+        def.flags.incl nfDefaultRefsParam
 
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
