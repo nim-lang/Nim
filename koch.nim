@@ -20,8 +20,6 @@ const
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
-    # TODO: back to nim-lang/nimony once `nifmake --keep-going` is merged; this
-    # is the `nifmake_keep_going2` branch of a fork, which `nim ns` needs.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
@@ -190,7 +188,7 @@ proc bundleChecksums(latest: bool) =
   cloneDependency(distDir, "https://github.com/nim-lang/checksums.git", checksumsCommit, allowBundled = true)
 
   let nimonyCommit = if latest: "HEAD" else: NimonyStableCommit
-  cloneDependency(distDir, NimonyRepo, nimonyCommit, allowBundled = true)
+  cloneDependency(distDir, "https://github.com/nim-lang/nimony.git", nimonyCommit, allowBundled = true)
 
   # These are host tools: their build must not be affected by whatever
   # `nim.cfg`/`config.nims` happens to live above the Nim checkout. Projects that
