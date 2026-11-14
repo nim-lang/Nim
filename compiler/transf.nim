@@ -1185,6 +1185,13 @@ const
   derefLeavesKinds = {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr,
                       nkCaseStmt, nkTryStmt, nkPragmaBlock}
 
+proc isViewConstruct(n: PNode): bool {.inline.} =
+  ## An expression-based control flow construct of type ``var T``/``lent T``.
+  ## Not ``ref``/``ptr``: dereferencing those yields a location, pushing the
+  ## deref into the leaves would turn the construct into a copy.
+  n.kind in derefLeavesKinds and n.typ != nil and
+    n.typ.kind in {tyVar, tyLent}
+
 proc derefLeaves(n: PNode; typ: PType): PNode =
   ## Turns ``deref(construct)`` of an expression-based control flow construct
   ## into ``construct`` of type ``T`` with ``deref(leaf)`` for every leaf
@@ -1291,19 +1298,20 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
     result = transformCall(c, n)
   of nkAddr, nkHiddenAddr:
     if n[0].kind in {nkDerefExpr, nkHiddenDeref} and
-        n[0][0].kind in derefLeavesKinds and
+        isViewConstruct(n[0][0]) and
         n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       # addr(deref(construct)) --> construct; cancel the pair before
       # `derefLeaves` could push the deref into the leaves:
-      result = transform(c, n[0][0])
-      if result == n[0][0]: result = shallowCopy(result)
+      let e = transform(c, n[0][0])
+      result = copyNode(e)
+      for it in e: result.add it
       result.typ = n.typ
     else:
       result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref}, isAddr = true)
   of nkDerefExpr:
     result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenDeref:
-    if n[0].kind in derefLeavesKinds:
+    if isViewConstruct(n[0]):
       # Watch out to not deref the pointer too late, see `derefLeaves`:
       result = transform(c, derefLeaves(n[0], n.typ))
     else:
