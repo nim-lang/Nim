@@ -31,10 +31,10 @@ proc isCompileTimeOnlyNode*(n: PNode): bool {.inline.} =
   n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
 
 proc isInertValue*(n: PNode): bool =
-  ## Evaluating `n` reads no location and cannot raise: literals, `default(T)`
-  ## and value constructors built from them. Such a field value needs no
-  ## temporary in `dest = Constr(...)`; it can be constructed in place even
-  ## after `dest` was destroyed (bug #26707).
+  ## Evaluating `n` reads no location and cannot raise: literals, `default(T)`,
+  ## `zeroDefault(T)` and value constructors built from them. Such a field
+  ## value needs no temporary in `dest = Constr(...)`; it can be constructed in
+  ## place even after `dest` was destroyed (bugs #26707, #26711).
   case n.kind
   of nkCharLit..nkNilLit: result = true
   of nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
@@ -46,7 +46,7 @@ proc isInertValue*(n: PNode): bool =
       if not isInertValue(it): return false
     result = true
   of nkCallKinds:
-    result = n[0].kind == nkSym and n[0].sym.magic == mDefault
+    result = n[0].kind == nkSym and n[0].sym.magic in {mDefault, mZeroDefault}
   else:
     result = n.isCompileTimeOnlyNode
 
