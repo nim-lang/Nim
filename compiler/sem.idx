@@ -1,0 +1,33 @@
+nimTitle	sem	sem.html	module sem		0
+nim	commonTypeBegin	sem.html#commonTypeBegin.t	template commonTypeBegin(): PType		197
+nim	commonType	sem.html#commonType,PContext,PType,PType	proc commonType(c: PContext; x, y: PType): PType		199
+nim	commonType	sem.html#commonType,PContext,PType,PNode	proc commonType(c: PContext; x: PType; y: PNode): PType		295
+nim	newSymG	sem.html#newSymG,TSymKind,PNode,PContext	proc newSymG(kind: TSymKind; n: PNode; c: PContext): PSym		305
+nim	pushProcCon	sem.html#pushProcCon,PContext,PSym	proc pushProcCon(c: PContext; owner: PSym)		31
+nim	notFoundError	sem.html#notFoundError,PContext,PNode,CandidateErrors	proc notFoundError(c: PContext; n: PNode; errors: CandidateErrors)		505
+nim	instGenericConvertersArg	sem.html#instGenericConvertersArg,PContext,PNode,TCandidate	proc instGenericConvertersArg(c: PContext; a: PNode; x: TCandidate)		704
+nim	instGenericConvertersSons	sem.html#instGenericConvertersSons,PContext,PNode,TCandidate	proc instGenericConvertersSons(c: PContext; n: PNode; x: TCandidate)		723
+nim	markConvertersUsed	sem.html#markConvertersUsed,PContext,PNode	proc markConvertersUsed(c: PContext; n: PNode)		729
+nim	isRecursiveType	sem.html#isRecursiveType,PType	proc isRecursiveType(t: PType): bool		390
+nim	drainBodyTasks	sem.html#drainBodyTasks,PContext	proc drainBodyTasks(c: PContext)		2776
+nim	flushBodiesBeforeTopLevelStmt	sem.html#flushBodiesBeforeTopLevelStmt,PContext,PNode	proc flushBodiesBeforeTopLevelStmt(c: PContext; stmt: PNode)		2796
+nim	drainBeforeModulePass	sem.html#drainBeforeModulePass,PContext	proc drainBeforeModulePass(c: PContext)		2820
+nim	tyUserDefinedGenerics	sem.html#tyUserDefinedGenerics	const tyUserDefinedGenerics		158
+nim	tyMagicGenerics	sem.html#tyMagicGenerics	const tyMagicGenerics		161
+nim	tyGenericLike	sem.html#tyGenericLike	const tyGenericLike		163
+nim	preparePContext	sem.html#preparePContext,ModuleGraph,PSym,IdGenerator	proc preparePContext(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PContext		857
+nim	semWithPContext	sem.html#semWithPContext,PContext,PNode	proc semWithPContext(c: PContext; n: PNode): PNode		994
+nim	cpHeaderPragmas	sem.html#cpHeaderPragmas	CyclePhase.cpHeaderPragmas		1015
+nim	cpImports	sem.html#cpImports	CyclePhase.cpImports		1015
+nim	cpTypesLeft	sem.html#cpTypesLeft	CyclePhase.cpTypesLeft		1015
+nim	cpTypesRight	sem.html#cpTypesRight	CyclePhase.cpTypesRight		1015
+nim	cpTypesFinal	sem.html#cpTypesFinal	CyclePhase.cpTypesFinal		1015
+nim	cpUnnamedImports	sem.html#cpUnnamedImports	CyclePhase.cpUnnamedImports		1015
+nim	cpDecls	sem.html#cpDecls	CyclePhase.cpDecls		1015
+nim	cpExports	sem.html#cpExports	CyclePhase.cpExports		1015
+nim	cpFromImports	sem.html#cpFromImports	CyclePhase.cpFromImports		1015
+nim	CyclePhase	sem.html#CyclePhase	enum CyclePhase		1015
+nim	demandCycleBody	sem.html#demandCycleBody,seq[PContext],PSym,bool	proc demandCycleBody(group: seq[PContext]; prc: PSym; forEffects: bool): bool		1038
+nim	semCyclePhase	sem.html#semCyclePhase,PContext,PNode,CyclePhase	proc semCyclePhase(c: PContext; n: PNode; phase: CyclePhase)		1290
+nim	closePContext	sem.html#closePContext,ModuleGraph,PContext,PNode	proc closePContext(graph: ModuleGraph; c: PContext; n: PNode): PNode		1309
+nimgrp	commontype	sem.html#commonType-procs-all	proc		199

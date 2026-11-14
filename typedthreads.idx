@@ -1,0 +1,12 @@
+nimTitle	typedthreads	typedthreads.html	module std/typedthreads		0
+nim	running	typedthreads.html#running,Thread[TArg]	proc running[TArg](t: Thread[TArg]): bool		154
+nim	handle	typedthreads.html#handle,Thread[TArg]	proc handle[TArg](t: Thread[TArg]): SysThread		158
+nim	joinThread	typedthreads.html#joinThread,Thread[TArg]	proc joinThread[TArg](t: Thread[TArg])		189
+nim	joinThreads	typedthreads.html#joinThreads,varargs[Thread[TArg]]	proc joinThreads[TArg](t: varargs[Thread[TArg]])		193
+nim	createThread	typedthreads.html#createThread,Thread[TArg],proc(TArg),TArg	proc createThread[TArg](t: var Thread[TArg]; tp: proc (arg: TArg) {.thread, nimcall.};\n                   param: TArg)		263
+nim	pinToCpu	typedthreads.html#pinToCpu,Thread[Arg],Natural	proc pinToCpu[Arg](t: var Thread[Arg]; cpu: Natural)		294
+nim	createThread	typedthreads.html#createThread,Thread[void],proc)	proc createThread(t: var Thread[void]; tp: proc () {.thread, nimcall.})		305
+heading	Examples	typedthreads.html#examples	 Examples		0
+idx	CPU	typedthreads.html#cpu_1	Examples		0
+idx	affinity	typedthreads.html#affinity_1	Examples		0
+nimgrp	createthread	typedthreads.html#createThread-procs-all	proc		263

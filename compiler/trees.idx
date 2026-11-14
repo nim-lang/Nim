@@ -1,0 +1,23 @@
+nimTitle	trees	trees.html	module trees		0
+nim	cyclicTree	trees.html#cyclicTree,PNode	proc cyclicTree(n: PNode): bool		26
+nim	exprStructuralEquivalent	trees.html#exprStructuralEquivalent,PNode,PNode	proc exprStructuralEquivalent(a, b: PNode; strictSymEquality = false;\n                         ignoreIntLitWidth = false): bool		39
+nim	sameTree	trees.html#sameTree,PNode,PNode	proc sameTree(a, b: PNode): bool		77
+nim	getMagic	trees.html#getMagic,PNode	proc getMagic(op: PNode): TMagic		101
+nim	isConstExpr	trees.html#isConstExpr,PNode	proc isConstExpr(n: PNode): bool		111
+nim	isCaseObj	trees.html#isCaseObj,PNode	proc isCaseObj(n: PNode): bool		115
+nim	isDeepConstExpr	trees.html#isDeepConstExpr,PNode	proc isDeepConstExpr(n: PNode; preventInheritance = false): bool		121
+nim	isRange	trees.html#isRange,PNode	proc isRange(n: PNode): bool		146
+nim	whichPragma	trees.html#whichPragma,PNode	proc whichPragma(n: PNode): TSpecialWord		159
+nim	isNoSideEffectPragma	trees.html#isNoSideEffectPragma,PNode	proc isNoSideEffectPragma(n: PNode): bool		178
+nim	findPragma	trees.html#findPragma,PNode,TSpecialWord	proc findPragma(n: PNode; which: TSpecialWord): PNode		184
+nim	effectSpec	trees.html#effectSpec,PNode,TSpecialWord	proc effectSpec(n: PNode; effectType: TSpecialWord): PNode		191
+nim	propSpec	trees.html#propSpec,PNode,TSpecialWord	proc propSpec(n: PNode; effectType: TSpecialWord): PNode		202
+nim	flattenStmts	trees.html#flattenStmts,PNode	proc flattenStmts(n: PNode): PNode		215
+nim	extractRange	trees.html#extractRange,TNodeKind,PNode,int,int	proc extractRange(k: TNodeKind; n: PNode; a, b: int): PNode		221
+nim	getRoot	trees.html#getRoot,PNode	proc getRoot(n: PNode): PSym		225
+nim	isCursor	trees.html#isCursor,PNode	proc isCursor(n: PNode): bool		245
+nim	stupidStmtListExpr	trees.html#stupidStmtListExpr,PNode	proc stupidStmtListExpr(n: PNode): bool		256
+nim	dontInlineConstant	trees.html#dontInlineConstant,PNode,PNode	proc dontInlineConstant(orig, cnst: PNode): bool		261
+nim	isRunnableExamples	trees.html#isRunnableExamples,PNode	proc isRunnableExamples(n: PNode): bool		267
+nim	skipAddr	trees.html#skipAddr,PNode	proc skipAddr(n: PNode): PNode		272
+nim	getPotentialWrites	trees.html#getPotentialWrites,PNode,bool,seq[PNode]	proc getPotentialWrites(n: PNode; mutate: bool; result: var seq[PNode])		275

@@ -1,0 +1,15 @@
+nimTitle	locks	locks.html	module std/locks		0
+nim	Lock	locks.html#Lock	type Lock		24
+nim	Cond	locks.html#Cond	type Cond		26
+nim	`$`	locks.html#$,SysLockObj	proc `$`(lock: Lock): string		39
+nim	initLock	locks.html#initLock,SysLockObj	proc initLock(lock: var Lock)		43
+nim	deinitLock	locks.html#deinitLock,SysLockObj	proc deinitLock(lock: Lock)		48
+nim	tryAcquire	locks.html#tryAcquire,SysLockObj	proc tryAcquire(lock: var Lock): bool		52
+nim	acquire	locks.html#acquire,SysLockObj	proc acquire(lock: var Lock)		56
+nim	release	locks.html#release,SysLockObj	proc release(lock: var Lock)		61
+nim	initCond	locks.html#initCond,SysCondObj	proc initCond(cond: var Cond)		67
+nim	deinitCond	locks.html#deinitCond,SysCondObj	proc deinitCond(cond: Cond)		71
+nim	wait	locks.html#wait,SysCondObj,SysLockObj	proc wait(cond: var Cond; lock: var Lock)		75
+nim	signal	locks.html#signal,SysCondObj	proc signal(cond: var Cond)		79
+nim	broadcast	locks.html#broadcast,SysCondObj	proc broadcast(cond: var Cond)		83
+nim	withLock	locks.html#withLock.t,SysLockObj,untyped	template withLock(a: Lock; body: untyped)		88

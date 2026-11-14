@@ -1,0 +1,30 @@
+nimTitle	cnif	cnif.html	module cnif		0
+nim	CnifSymStart	cnif.html#CnifSymStart	const CnifSymStart		48
+nim	CnifSymEnd	cnif.html#CnifSymEnd	const CnifSymEnd		49
+nim	CnifDefStart	cnif.html#CnifDefStart	const CnifDefStart		50
+nim	CnifDefSep	cnif.html#CnifDefSep	const CnifDefSep		51
+nim	CnifDefEnd	cnif.html#CnifDefEnd	const CnifDefEnd		52
+nim	markCName	cnif.html#markCName,string	proc markCName(name: string): string		54
+nim	hasCnifMarks	cnif.html#hasCnifMarks,string	proc hasCnifMarks(s: string): bool		57
+nim	stripCnifMarks	cnif.html#stripCnifMarks,string	proc stripCnifMarks(s: string): string		62
+nim	CnifVersion	cnif.html#CnifVersion	const CnifVersion		80
+nim	cnifDefDirective	cnif.html#cnifDefDirective,string,string,string	proc cnifDefDirective(name, flags, nifName: string): string		92
+nim	cnifEndDefs	cnif.html#cnifEndDefs	proc cnifEndDefs(): string		95
+nim	cnifProcsSection	cnif.html#cnifProcsSection	proc cnifProcsSection(): string		98
+nim	writeCnifArtifact	cnif.html#writeCnifArtifact,string,string,openArray[tuple[string,string]],string,string,string,openArray[string],string	proc writeCnifArtifact(code: string; outfile: string; initRequired = false;\n                  datInitRequired = false;\n                  dataDefs: openArray[tuple[cname, nifname: string]] = [];\n                  semmedNif = ""; moduleBase = ""; globalDtor = "";\n                  implDeps: openArray[string] = []; extensionLoaders = "")		104
+nim	renderMarkedC	cnif.html#renderMarkedC,string,HashSet[string],int	proc renderMarkedC(code: string; live: HashSet[string]; dropped: var int): string		239
+nim	CnifHeads	cnif.html#CnifHeads	object CnifHeads		276
+nim	readCnifHeads	cnif.html#readCnifHeads,string	proc readCnifHeads(f: string): CnifHeads		294
+nim	CnifLiveness	cnif.html#CnifLiveness	object CnifLiveness		418
+nim	computeLiveFromCArtifacts	cnif.html#computeLiveFromCArtifacts,openArray[string]	proc computeLiveFromCArtifacts(files: openArray[string]): CnifLiveness		424
+nim	MergeDecision	cnif.html#MergeDecision	object MergeDecision		524
+nim	computeMergeDecision	cnif.html#computeMergeDecision,openArray[string]	proc computeMergeDecision(files: openArray[string]): MergeDecision		538
+nim	MergeDecisionFile	cnif.html#MergeDecisionFile	const MergeDecisionFile		643
+nim	LoweredBarrierFile	cnif.html#LoweredBarrierFile	const LoweredBarrierFile		644
+nim	CPartsExt	cnif.html#CPartsExt	const CPartsExt		652
+nim	cPartFile	cnif.html#cPartFile,string,int	proc cPartFile(cfile: string; k: int): string		657
+nim	LiveModulesFile	cnif.html#LiveModulesFile	const LiveModulesFile		662
+nim	writeMergeDecision	cnif.html#writeMergeDecision,string,MergeDecision	proc writeMergeDecision(outfile: string; d: MergeDecision)		671
+nim	readMergeDecision	cnif.html#readMergeDecision,string	proc readMergeDecision(f: string): MergeDecision		692
+nim	renderCPartsFromArtifact	cnif.html#renderCPartsFromArtifact,string,MergeDecision,string,int,int	proc renderCPartsFromArtifact(artifact: string; d: MergeDecision; ownerId: string;\n                         dropped: var int; partBytes = 0): seq[string]		855
+nim	renderCFromArtifact	cnif.html#renderCFromArtifact,string,MergeDecision,string,int	proc renderCFromArtifact(artifact: string; d: MergeDecision; ownerId: string;\n                    dropped: var int): string		906
