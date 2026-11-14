@@ -1763,9 +1763,18 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   of nkRaiseStmt:
     result = InitRequired
   of nkChckRangeF, nkChckRange64, nkChckRange:
-    # TODO: more checks might need to be covered like overflow, indexDefect etc.
+    # TODO: more checks might need to be covered like overflow etc.
     # bug #22852
     result = InitRequired
+  of nkBracketExpr:
+    if optBoundsCheck in p.config.options and n.len > 0 and n[0].typ != nil and
+        skipTypes(n[0].typ, abstractVarRange).kind in
+          {tyArray, tySequence, tyString, tyOpenArray, tyVarargs}:
+      # an index check leaves the proc by raising before 'result' is written
+      result = InitRequired
+    else:
+      for it in sons(n):
+        allPathsInBranch(it)
   else:
     for it in sons(n):
       allPathsInBranch(it)
