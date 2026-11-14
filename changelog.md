@@ -3,6 +3,12 @@
 
 ## Changes affecting backward compatibility
 
+- An assignment `dest = p()` where `p` returns a big value and raises an
+  exception no longer leaves a partially written or zeroed `dest` behind when
+  `dest` is observable after the exception (a global, a location accessed
+  through a pointer or `var` parameter, or a local assigned inside a `try` statement).
+  The `ObservableStores` warning is not emitted anymore.
+
 - Solaris and illumos are now separate targets (`--os:solaris` and
   `--os:illumos`). Both define `sunos`, `posix`, and `unix`; illumos no longer
   defines `solaris`. Use `defined(sunos)` for code shared by both systems.
