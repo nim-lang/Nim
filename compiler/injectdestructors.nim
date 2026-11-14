@@ -992,8 +992,6 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
   if n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv} and n.len == 2 and
       checkOwnedClosure(c, n):
     return p(n[1], c, s, mode, tmpFlags, inReturn)
-  if isDerefOfLentConstruct(n):
-    return p(derefLeaves(n[0], n.typ), c, s, mode, tmpFlags, inReturn)
   if n.kind in {nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt} and not isEmptyType(n.typ):
     # Like Nimony's xelim: a single destination for the whole construct that
     # every branch assigns to directly. A temporary per branch would be copied
