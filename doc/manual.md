@@ -1784,6 +1784,14 @@ trailing comma:
 
 In fact, a trailing comma is allowed for every tuple construction.
 
+Tuples are structural types: the fields alone define the identity of a tuple
+type, so `type A = tuple[x: int]` and `type B = tuple[x: int]` are the same
+type. Pragmas that change how a type is represented or what it is, such as
+`packed`, `bycopy`, `byref` or `importc`, are not supported on tuple types: two
+tuple types with the same fields but different pragmas would still be a single
+type, and the behaviour of the program is not defined. Use an `object` type if
+such a pragma is needed.
+
 The implementation aligns the fields for the best access performance. The alignment
 is compatible with the way the C compiler does it.
 
@@ -4743,8 +4751,12 @@ Let `T`'s be `p`'s return type. NRVO applies for `T`
 if `sizeof(T) >= N` (where `N` is implementation dependent),
 in other words, it applies for "big" structures.
 
-If `p` can raise an exception, NRVO applies regardless. This can produce
-observable differences in behavior:
+If `p` can raise an exception and `dest` can be observed after the
+exception has been raised (for example because `dest` is a global variable,
+a location accessed through a pointer or `var` parameter, or a local variable
+when the assignment is inside a `try` statement), NRVO is not applied:
+the result is computed into a temporary and only copied to `dest` if `p`
+returned normally. Thus `dest` keeps its old value:
 
   ```nim
   type
@@ -4757,25 +4769,17 @@ observable differences in behavior:
 
   proc main =
     var x: BigT
+    x[0] = 42
     try:
       x = p(8)
     except ValueError:
-      doAssert x == [0, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0]
+      doAssert x[0] == 42
 
   main()
   ```
 
-
-The compiler can produce a warning in these cases, however this behavior is
-turned off by default. It can be enabled for a section of code via the
-`warning[ObservableStores]` and `push`/`pop` pragmas. Take the above code
-as an example:
-
-  ```nim
-  {.push warning[ObservableStores]: on.}
-  main()
-  {.pop.}
-  ```
+Defects are not considered for this analysis; a store interrupted by a
+`Defect` can still be observable.
 
 Overloading of the subscript operator
 -------------------------------------
@@ -9127,7 +9131,7 @@ is available and a literal dollar sign must be written as ``$$``.
 Bycopy pragma
 -------------
 
-The `bycopy` pragma can be applied to an object or tuple type or a proc param. It instructs the compiler to pass the type by value to procs:
+The `bycopy` pragma can be applied to an object type or a proc param. It instructs the compiler to pass the type by value to procs:
 
   ```nim
   type
@@ -9143,7 +9147,7 @@ Notice params marked as `byref` takes precedence over types marked as `bycopy`.
 Byref pragma
 ------------
 
-The `byref` pragma can be applied to an object or tuple type or a proc param.
+The `byref` pragma can be applied to an object type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
 if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
@@ -9231,7 +9235,8 @@ should scan unions conservatively.
 
 Packed pragma
 -------------
-The `packed` pragma can be applied to any `object` type. It ensures
+The `packed` pragma can be applied to any `object` type, but not to a tuple type
+(see [Tuples and object types](#types-tuples-and-object-types)). It ensures
 that the fields of an object are packed back-to-back in memory. It is useful
 to store packets or messages from/to network or hardware drivers, and for
 interoperability with C. Combining packed pragma with inheritance is not

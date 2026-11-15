@@ -163,6 +163,52 @@ jobs:
           nimInternalInstallDepsWindows
           echo_run echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
+      # ccache: the C compiler's output is kept in the GitHub Actions cache. A copy (or link)
+      # of ccache named like the compiler is put in front of PATH, so Nim calls `gcc`/`clang`
+      # as usual and goes through ccache. Only devel pushes save the cache; PRs read it.
+      # Removing these `ccache:` steps turns it off; nothing else depends on them.
+      # To run a job without it, add `CCACHE_DISABLE: '1'` to the job's `env`.
+      - name: 'ccache: install'
+        if: runner.environment == 'github-hosted' && matrix.buildOnly != 'true'
+        run: |
+          set -e
+          # 4.12 or later: older versions hash `-march=native` as written, so an object built
+          # for one runner's CPU is reused on another (tests/arc/thard_alignment.nim: SIGILL).
+          v=4.14.3
+          url=https://github.com/ccache/ccache/releases/download/v$v
+          bin="$RUNNER_TEMP/ccache-bin"
+          mkdir -p "$bin" "$RUNNER_TEMP/ccache"
+          case "$RUNNER_OS" in
+            Linux)
+              curl -fsSL "$url/ccache-$v-linux-x86_64-glibc.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+              cp "$RUNNER_TEMP/ccache-$v-linux-x86_64-glibc/ccache" "$bin/"
+              for c in gcc g++ cc c++; do ln -s ccache "$bin/$c"; done ;;
+            macOS)
+              curl -fsSL "$url/ccache-$v-darwin.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+              cp "$RUNNER_TEMP/ccache-$v-darwin/ccache" "$bin/"
+              for c in clang clang++ cc c++; do ln -s ccache "$bin/$c"; done ;;
+            Windows)
+              curl -fsSL -o "$RUNNER_TEMP/ccache.zip" "$url/ccache-$v-windows-x86_64.zip"
+              7z x "$RUNNER_TEMP/ccache.zip" -o"$RUNNER_TEMP" -y > /dev/null
+              cp "$RUNNER_TEMP/ccache-$v-windows-x86_64/ccache.exe" "$bin/"
+              for c in gcc g++; do cp "$bin/ccache.exe" "$bin/$c.exe"; done ;;
+          esac
+          export CCACHE_DIR="$RUNNER_TEMP/ccache"  # also for --max-size below
+          echo "$bin" >> "$GITHUB_PATH"
+          echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
+          # the runner image changes; compare the compiler by content, not by its mtime
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+          "$bin/ccache" --max-size=2G
+          "$bin/ccache" --version | head -1
+
+      - name: 'ccache: restore'
+        if: runner.environment == 'github-hosted' && matrix.buildOnly != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-${{ matrix.name }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.name }}-
+
       - name: 'Add build binaries to PATH'
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
@@ -185,3 +231,15 @@ jobs:
           . ci/funs.sh
           echo_run nim c koch
           echo_run ./koch boot -d:release
+
+      - name: 'ccache: statistics'
+        if: always() && runner.environment == 'github-hosted' && matrix.buildOnly != 'true'
+        run: ccache --show-stats
+
+      # Only pushes to devel save, so PRs never add to the repository's 10 GB of cache.
+      - name: 'ccache: save'
+        if: always() && runner.environment == 'github-hosted' && matrix.buildOnly != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/devel'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-${{ matrix.name }}-${{ github.sha }}
