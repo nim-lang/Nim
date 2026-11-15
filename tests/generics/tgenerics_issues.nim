@@ -961,6 +961,15 @@ block: # bug #26401
   echo Base[int]().field.hasCustomPragma(marker)
   echo Alias().field.hasCustomPragma(marker)
 
+block: # bug #19923
+
+  type Test[S: static[Natural]] = object
+
+  proc run(self: Test, idx: 0..(self.S * 8)) = discard
+  #       This causes segfault ^^^^^^^^^^^^
+  proc run(self: Test, a: array[self.S * 8, int]) = discard
+  #                And this too ^^^^^^^^^^
+
 # bug #16105
 # a converter is only allowed at top level, so this stays at the end of the
 # file, where the generic converter cannot affect any other case
