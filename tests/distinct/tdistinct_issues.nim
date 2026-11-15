@@ -79,3 +79,21 @@ block: # bug #13517
   static:
     doAssert MyUint64.high is MyUint64
     doAssert MyUint64.high == 18446744073709551615'u64
+
+block: # bug #23031
+
+  type
+    DisInt = distinct int
+
+  proc `[]`[N: static int](a: array[N, int]; i: DisInt): int =
+    a[i.int]
+
+  proc `[]`[N: static int](a: var array[N, int]; i: DisInt): var int =
+    a[i.int]
+
+  var
+    a = [1, 2]
+    i = 1.DisInt
+  doAssert a[i] == 2
+  a[i] += 3
+  doAssert a[i] == 5

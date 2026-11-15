@@ -987,6 +987,14 @@ block: # #14646: generic objects that refer to themselves behind a pointer, a
   b.item = "x"
   d.y.add Derived[int]()
   doAssert a.item == 1 and b.item == "x" and c.next == nil and d.y.len == 1 and f.items[0] == nil
+block: # bug #19923
+
+  type Test[S: static[Natural]] = object
+
+  proc run(self: Test, idx: 0..(self.S * 8)) = discard
+  #       This causes segfault ^^^^^^^^^^^^
+  proc run(self: Test, a: array[self.S * 8, int]) = discard
+  #                And this too ^^^^^^^^^^
 
 # bug #16105
 # a converter is only allowed at top level, so this stays at the end of the

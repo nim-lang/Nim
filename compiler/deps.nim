@@ -48,7 +48,7 @@ type
 
   DepContext = object
     config: ConfigRef
-    linkArgsFile: string # root-level input: the config/project/output last selected
+    linkArgsFile: string # the cache/project/output and program the link last wrote
     argsFile: string     # effective settings, stable within the configuration directory
     backendDir: string  # outputs for this backend and entry point
     nifler: string
@@ -155,6 +155,13 @@ proc findNifmake(): string =
   result = nimDir / "nifmake"
   if not fileExists(result):
     result = findExe("nifmake")
+
+proc programStamp(file: string): string =
+  ## Modification time and size of `file`; empty when it does not exist.
+  if not fileExists(file): return ""
+  let info = getFileInfo(file)
+  result = $info.lastWriteTime.toUnix & "." & $info.lastWriteTime.nanosecond &
+    " " & $info.size
 
 proc runNifler(c: DepContext; nimFile: string): bool =
   ## Run nifler deps on a file if needed. Returns true on success.
@@ -1896,7 +1903,6 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     # Forward the resolved target so it writes exactly `exeFile` (`--out`'s
     # path splits back into outDir+outFile in the child).
     b.addStrLit "--out:" & exeFile
-  inputStr c.linkArgsFile
   for i in 0 ..< c.nodes.len:
     if live[i]:
       inputStr cFiles[i]
@@ -2074,14 +2080,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     let argsFile = configSignatureFile(c)
     if not fileExists(argsFile): writeFile(argsFile, signature)
 
-    # The executable can live outside the selected cache and may have been
-    # overwritten by another configuration or entry point. Only the link rule
-    # needs this changing input; every module keeps its cached outputs.
-    if not frontendOnly:
-      let linkArgs = c.backendDir & "\n" & projectFile & "\n" &
-        conf.absOutFile.string & "\n"
-      if not fileExists(c.linkArgsFile) or readFile(c.linkArgsFile) != linkArgs:
-        writeFile(c.linkArgsFile, linkArgs)
+    let linkArgs = c.backendDir & "\n" & projectFile & "\n" &
+      conf.absOutFile.string & "\n"
 
     # Create root node for main project file
     let rootPair = c.toPair(projectFile)
@@ -2267,6 +2267,16 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # An IDE query (`frontendOnly`) stops after Phase 1: the `.s.bif` it scans
     # are all produced by the frontend; codegen + link would be wasted work.
     if frontendOk and not frontendOnly:
+      # The executable can live outside the selected cache and may have been
+      # overwritten by another configuration, entry point or nimcache, leaving
+      # a program newer than every input of the link rule. When it is not the
+      # one recorded as this link's, remove it: a missing output makes nifmake
+      # run the rule, and every module keeps its cached outputs.
+      let exe = conf.absOutFile.string
+      if not fileExists(c.linkArgsFile) or
+          readFile(c.linkArgsFile) != linkArgs & programStamp(exe):
+        if not tryRemoveFile(exe):
+          rawMessage(conf, errGenerated, "cannot remove the program to relink: " & exe)
       let backendFile = generateBackendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & backendFile)
       let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)
@@ -2276,5 +2286,9 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         rawMessage(conf, hintExecuting,
           "nifmake reported backend failures (exit code " & $exitCode & ")")
         inc conf.errorCounter
+      else:
+        let linked = linkArgs & programStamp(exe)
+        if not fileExists(c.linkArgsFile) or readFile(c.linkArgsFile) != linked:
+          writeFile(c.linkArgsFile, linked)
   else:
     rawMessage(conf, errGenerated, "nim ic not available in bootstrap build")

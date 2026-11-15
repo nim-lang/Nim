@@ -19,6 +19,8 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions, aliasanalysis, dfa, wordrecg
 
+from aliases import isInertValue
+
 import std/[strtabs, tables, strutils, intsets]
 
 when defined(nimPreviewSlimSystem):
@@ -241,14 +243,17 @@ proc vmManagesItself(c: Con; op: PSym; t: PType): bool {.inline.} =
     optSeqDestructors notin c.graph.config.globalOptions and
     tfHasAsgn notin t.flags
 
-proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
-  var op = getAttachedOp(c.graph, t, kind)
-  if op == nil or op.ast.isGenericRoutine:
+proc findOp(c: Con; t: PType; kind: TTypeAttachedOp): PSym =
+  result = getAttachedOp(c.graph, t, kind)
+  if result == nil or result.ast.isGenericRoutine:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, c.graph.config, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
-      op = getAttachedOp(c.graph, canon, kind)
+      result = getAttachedOp(c.graph, canon, kind)
+
+proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
+  var op = findOp(c, t, kind)
   if vmManagesItself(c, op, t):
     op = nil
   if (op == nil or op.ast.isGenericRoutine) and c.graph.vmInjecting:
@@ -329,7 +334,10 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
     result = newTree(nkFastAsgn, dest, ri)
   else:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    let op = getAttachedOp(c.graph, t, attachedSink)
+    # like `genOp`, fall back to the canonical type: a structurally equal
+    # duplicate of `t` may not have its own hooks (bug #26680). Without the
+    # `=sink` the fallback below destroys `dest` before `ri` is evaluated.
+    let op = findOp(c, t, attachedSink)
     if op != nil and sfOverridden notin op.flags and ri.kind == nkObjConstr and
         t.kind == tyObject and sameType(t, ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})):
       # `=sink(dest, T(f: v))` would construct the (potentially huge) object
@@ -341,8 +349,9 @@ proc genSink(c: var Con; s: var Scope; dest, ri: PNode; flags: set[MoveOrCopyFla
       constr.add ri[0]
       for i in 1..<ri.len:
         let it = ri[i]
-        if it.kind == nkExprColonExpr and it[1].kind notin {nkCharLit..nkNilLit} and
-            not (it[1].typ != nil and it[1].typ.isCompileTimeOnly):
+        # an inert value like `default(T)` is constructed in place: a
+        # temporary for a huge field overflows the stack (bug #26707)
+        if it.kind == nkExprColonExpr and not isInertValue(it[1]):
           let tmp = c.getTemp(s, it[1].typ, it[1].info, needsInit = false)
           result.add newTree(nkFastAsgn, tmp, it[1])
           let field = shallowCopy(it)
@@ -1005,8 +1014,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       result.add moveOrCopy(tmp, n, c, s, {IsDecl})
     else:
       # every branch assigns to it or leaves the construct and there is no
-      # destructor to run on it:
-      tmp.sym.incl sfNoInit
+      # destructor to run on it. With refc a type can have GC'ed memory
+      # without having a destructor; a callee resets such a result before it
+      # writes to it, so the temporary must not be garbage (bug #26566):
+      if not containsManagedMemory(n.typ):
+        tmp.sym.incl sfNoInit
       result.add distributeAsgn(nkFastAsgn, tmp, n, c, s)
     result.add p(tmp, c, s, mode)
   elif n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkIfStmt,

@@ -1895,25 +1895,6 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField: PNode;
   else:
     expr(p, val, tmp2)
 
-proc mentionsSym(n: PNode; s: PSym): bool =
-  # `typeof(x)` in `typeof(x)(f: v)` does not read `x` (bug #26417):
-  if n.isCompileTimeOnlyNode: return false
-  if n.kind == nkSym: return n.sym == s
-  for i in 0..<n.safeLen:
-    if mentionsSym(n[i], s): return true
-  result = false
-
-proc constrAliasFlags(dest, constr: PNode): set[PartFlag] =
-  ## The common `dest = Constr(...)` where `dest` is `x` or `x[]` (a `var`
-  ## parameter or a `ref`) and `x` is not mentioned by the constructor needs no reverse
-  ## check: it would treat every read of a value whose type can be part of
-  ## `dest`'s type as an alias and produce a needless temporary (bug #26274).
-  let x = if dest != nil and dest.kind in {nkHiddenDeref, nkDerefExpr}: dest[0] else: dest
-  if x != nil and x.kind == nkSym and not mentionsSym(constr, x.sym):
-    result = {pfStructural}
-  else:
-    result = {pfStructural, pfBidirectional}
-
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
@@ -1944,7 +1925,11 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # evaluated into field sized temporaries first instead of constructing the
   # whole (potentially huge) object in a temporary (bug #26417).
   var hoisted: seq[TLoc] = @[]
-  if not useTemp and isPartOf(d.lode, e, constrAliasFlags(d.lode, e)) != arNo:
+  # The reverse check (`pfBidirectional`) is required: a field value can read
+  # the destination through a call, a closure or another `var` parameter, or
+  # raise after the destination was already overwritten (bug #26687). Since
+  # the values are hoisted into field sized temporaries, it is cheap.
+  if not useTemp and isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo:
     for it in sonsFrom(e, 1):
       if it.firstSon.typ.skipTypes(abstractVar).kind in {tyOpenArray, tyVarargs}:
         useTemp = true
@@ -1952,7 +1937,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     if not useTemp:
       for it in sonsFrom(e, 1):
         let val = it.secondSon
-        if nfPreventCg in it.flags or val.kind in nkLiterals or val.isCompileTimeOnlyNode:
+        if nfPreventCg in it.flags or isInertValue(val):
           hoisted.add default(TLoc)
         else:
           var v = getTemp(p, val.typ)
@@ -3159,6 +3144,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       # - in the case of hot code-reloading we generate function pointers instead
       #   of forward declarations and in C++ it is an error to redefine a global
       let wasDeclared = containsOrIncl(p.module.declaredProtos, prc.id)
+      if wasDeclared and p.hcrOn:
+        # The other order: the proc behind the magic was declared first (by a
+        # `cgsym` of its own), so the genCall must not declare it again.
+        p.module.declaredProtos.incl opr.id
       # Make the function behind the magic get actually generated - this will
       # not lead to a forward declaration! The genCall will lead to one.
       cgsym(p.module, $opr.loc.snippet)
