@@ -1014,8 +1014,11 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode; tmpFlags = {sfSing
       result.add moveOrCopy(tmp, n, c, s, {IsDecl})
     else:
       # every branch assigns to it or leaves the construct and there is no
-      # destructor to run on it:
-      tmp.sym.incl sfNoInit
+      # destructor to run on it. With refc a type can have GC'ed memory
+      # without having a destructor; a callee resets such a result before it
+      # writes to it, so the temporary must not be garbage (bug #26566):
+      if not containsManagedMemory(n.typ):
+        tmp.sym.incl sfNoInit
       result.add distributeAsgn(nkFastAsgn, tmp, n, c, s)
     result.add p(tmp, c, s, mode)
   elif n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkIfStmt,
