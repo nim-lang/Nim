@@ -83,8 +83,10 @@ proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
     var
       a = Color(0xff_00_ff)
       b = Color(0x00_ff_cc)
-    assert extractRGB(a) == (r: 255, g: 0, b: 255)
-    assert extractRGB(b) == (r: 0, g: 255, b: 204)
+    type
+      Col = range[0..255]
+    assert extractRGB(a) == (r: 255.Col, g: 0.Col, b: 255.Col)
+    assert extractRGB(b) == (r: 0.Col, g: 255.Col, b: 204.Col)
     echo extractRGB(a)
     echo typeof(extractRGB(a))
     echo extractRGB(b)
