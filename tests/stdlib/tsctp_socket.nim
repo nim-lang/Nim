@@ -15,11 +15,9 @@ import net
 
 proc test() =
   # IPv4 SCTP
-  newSocket(AF_INET, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(1900), "0.0.0.0")
-  newSocket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP).bindAddr(Port(1901))
+  newSocket(AF_INET, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(2900), "0.0.0.0")
 
   # IPv6 SCTP
-  newSocket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(1902), "::")
-  newSocket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP).bindAddr(Port(1903))
+  newSocket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(2902), "::")
 
 test()
