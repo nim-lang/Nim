@@ -1166,10 +1166,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         extccomp.addCompileOption(c.config, s)
         recordPragma(c, it, "passc", s)
       of wLocalPassc:
-        assert sym != nil and sym.kind == skModule
+        # inside a routine the option still belongs to the module's C file
+        let m = sym.getModule()
         let s = expectStrLit(c, it)
-        appendToModule(sym, n)
-        extccomp.addLocalCompileOption(c.config, s, toFullPathConsiderDirty(c.config, sym.info.fileIndex))
+        appendToModule(m, n)
+        extccomp.addLocalCompileOption(c.config, s, toFullPathConsiderDirty(c.config, m.info.fileIndex))
         recordPragma(c, it, "localpassc", s)
       of wPush:
         processPush(c, n, i + 1)
