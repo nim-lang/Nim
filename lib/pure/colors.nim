@@ -32,13 +32,13 @@ template extract(a: Color, r, g, b: untyped) =
   var g = a.int shr 8 and 0xff
   var b = a.int and 0xff
 
-template rawRGB(r, g, b: int): Color =
+template rawRgb(r, g, b: int): Color =
   Color(r shl 16 or g shl 8 or b)
 
 template colorOp(op): Color =
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
-  rawRGB(op(ar, br), op(ag, bg), op(ab, bb))
+  rawRgb(op(ar, br), op(ag, bg), op(ab, bb))
 
 proc satPlus(a, b: int): int {.inline.} =
   result = a +% b
@@ -76,7 +76,7 @@ proc `-`*(a, b: Color): Color =
 
   colorOp(satMinus)
 
-proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
+proc extractRgb*(a: Color): tuple[r, g, b: range[0..255]] =
   ## Extracts the red/green/blue components of the color `a`.
   ##
   runnableExamples:
@@ -85,12 +85,12 @@ proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
       b = Color(0x00_ff_cc)
     type
       Col = range[0..255]
-    assert extractRGB(a) == (r: 255.Col, g: 0.Col, b: 255.Col)
-    assert extractRGB(b) == (r: 0.Col, g: 255.Col, b: 204.Col)
-    echo extractRGB(a)
-    echo typeof(extractRGB(a))
-    echo extractRGB(b)
-    echo typeof(extractRGB(b))
+    assert extractRgb(a) == (r: 255.Col, g: 0.Col, b: 255.Col)
+    assert extractRgb(b) == (r: 0.Col, g: 255.Col, b: 204.Col)
+    echo extractRgb(a)
+    echo typeof(extractRgb(a))
+    echo extractRgb(b)
+    echo typeof(extractRgb(b))
   result = default(tuple[r, g, b: range[0..255]])
   result.r = a.int shr 16 and 0xff
   result.g = a.int shr 8 and 0xff
@@ -113,7 +113,7 @@ proc intensity*(a: Color, f: float): Color =
   if r >% 255: r = 255
   if g >% 255: g = 255
   if b >% 255: b = 255
-  result = rawRGB(r, g, b)
+  result = rawRgb(r, g, b)
 
 template mix*(a, b: Color, fn: untyped): untyped =
   ## Uses `fn` to mix the colors `a` and `b`.
@@ -142,7 +142,7 @@ template mix*(a, b: Color, fn: untyped): untyped =
 
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
-  rawRGB(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
+  rawRgb(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
 
 
 const
@@ -515,4 +515,4 @@ proc rgb*(r, g, b: range[0..255]): Color =
   runnableExamples:
     assert rgb(0, 255, 128) == Color(0x00_ff_80)
 
-  result = rawRGB(r, g, b)
+  result = rawRgb(r, g, b)
