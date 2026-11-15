@@ -206,6 +206,7 @@ var IPPROTO_ICMPV6* {.importc: "IPPROTO_ICMPV6", header: "<sys/socket.h>".}: cin
 var IPPROTO_RAW* {.importc: "IPPROTO_RAW", header: "<sys/socket.h>".}: cint
 var IPPROTO_TCP* {.importc: "IPPROTO_TCP", header: "<sys/socket.h>".}: cint
 var IPPROTO_UDP* {.importc: "IPPROTO_UDP", header: "<sys/socket.h>".}: cint
+var IPPROTO_SCTP* {.importc: "IPPROTO_SCTP", header: "<sys/socket.h>".}: cint
 var INADDR_ANY* {.importc: "INADDR_ANY", header: "<sys/socket.h>".}: InAddrScalar
 var INADDR_LOOPBACK* {.importc: "INADDR_LOOPBACK", header: "<sys/socket.h>".}: InAddrScalar
 var INADDR_BROADCAST* {.importc: "INADDR_BROADCAST", header: "<sys/socket.h>".}: InAddrScalar

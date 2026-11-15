@@ -19,6 +19,7 @@ when defined(windows):
     toInt(IPPROTO_IPV6) == 41
     toInt(IPPROTO_ICMPV6) == 58
     toInt(IPPROTO_RAW) == 20
+    toInt(IPPROTO_SCTP) == 132
 
     # no changes to enum value
     ord(IPPROTO_TCP) == 6
@@ -28,3 +29,4 @@ when defined(windows):
     ord(IPPROTO_RAW) == 20
     ord(IPPROTO_ICMP) == 21
     ord(IPPROTO_ICMPV6) == 22
+    ord(IPPROTO_SCTP) == 132
