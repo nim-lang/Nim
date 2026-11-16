@@ -366,6 +366,20 @@ elif not usesThreadLocalAllocator:
 proc isObjDisplayCheck(source: PNimTypeV2, targetDepth: int16, token: uint32): bool {.compilerRtl, inl.} =
   result = targetDepth <= source.depth and source.display[targetDepth] == token
 
+proc isObjAsgnSlicing(source, dest: PNimTypeV2): bool {.compilerRtl, inl.} =
+  # `source` is the dynamic type of the assigned object; static typing ensures
+  # it is `dest` or a subtype of it, so a deeper `source` means the assignment
+  # would slice the object (bug #7002). Comparing depths instead of the
+  # pointers keeps working when a type info is duplicated across DLLs.
+  # `source` is nil for an object that was never initialized (bug #16706).
+  when nimvm:
+    result = false # the VM has no type headers
+  else:
+    result = source != nil and source.depth != dest.depth
+
+proc raiseObjectAssignmentError() {.compilerproc, noinline.} =
+  sysFatal(ObjectAssignmentDefect, "invalid object assignment")
+
 when defined(gcDestructors):
   proc nimGetVTable(p: pointer, index: int): pointer
         {.compilerRtl, inl, raises: [].} =

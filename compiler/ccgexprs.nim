@@ -338,6 +338,19 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc; flags: TAssignmentFlags) =
 template cgCall(p: BProc, name: string, args: varargs[untyped]): untyped =
   cCall(cgsymValue(p.module, name), args)
 
+proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope; result: var Snippet; enforceV1 = false)
+
+proc genObjAsgnCheck(p: BProc, dest: PType, src: TLoc) =
+  # bug #7002: the counterpart of the check in the lifted hooks, for the
+  # objects that are assigned without calling a hook.
+  var nilCheck: Rope = ""
+  var r: Snippet = ""
+  rdMType(p, src, nilCheck, r)
+  let ti = genTypeInfoV2(p.module, dest, src.lode.info)
+  p.s(cpsStmts).addSingleIfStmt(cgCall(p, "isObjAsgnSlicing", r, ti)):
+    p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "raiseObjectAssignmentError"))
+    raiseInstr(p, p.s(cpsStmts))
+
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
   # the assignment operation in C.
@@ -411,6 +424,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if ty.isImportedCppType:
       simpleAsgn(p.s(cpsStmts), dest, src)
     elif not isObjLackingTypeField(ty):
+      if optTinyRtti in p.config.globalOptions and optObjCheck in p.options:
+        genObjAsgnCheck(p, ty, src)
       genGenericAsgn(p, dest, src, flags)
     elif containsGarbageCollectedRef(ty):
       if ty.baseClass.isNil and asgnComplexity(ty.n) <= 4 and

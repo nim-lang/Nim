@@ -1401,6 +1401,19 @@ proc genTypeFieldCopy(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   yy.typ = xx.typ
   body.add newAsgnStmt(xx, yy)
 
+proc genObjAsgnCheck(c: var TLiftCtx; t: PType; body, y: PNode) =
+  # bug #7002: like refc's `genericAssign`, reject a source whose dynamic type
+  # is a subtype of `t`. Done first, before the destination is modified; the
+  # `return` hands the error to the caller under `--exceptions:goto`.
+  let src = genBuiltin(c, mAccessTypeField, "accessTypeField", y)
+  src.typ = getSysType(c.g, c.info, tyPointer)
+  let dest = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, c.info, t))
+  dest.typ = src.typ
+  body.add genIf(c, callCodegenProc(c.g, "isObjAsgnSlicing", c.info, src, dest),
+    newTree(nkStmtList, callCodegenProc(c.g, "raiseObjectAssignmentError", c.info),
+      newTreeI(nkReturnStmt, c.info, newNodeI(nkEmpty, c.info))))
+  c.canRaise = true
+
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
   if typ.kind == tyDistinct:
@@ -1462,6 +1475,10 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     of tyString:
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:
+      if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDup} and
+          not isObjLackingTypeField(skipped) and
+          optTinyRtti in g.config.globalOptions and optObjCheck in g.config.options:
+        genObjAsgnCheck(a, skipped, result.ast[bodyPos], src)
       fillBody(a, typ, result.ast[bodyPos], d, src)
       if tk == tyObject and a.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup} and not isObjLackingTypeField(skipped):
         # bug #19205: Do not forget to also copy the hidden type field:
