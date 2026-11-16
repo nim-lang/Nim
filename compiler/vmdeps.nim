@@ -307,7 +307,14 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
   of tyError: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
-    result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
+    # the child made by `newConstraint` only stands for its kind: it has no
+    # children and no node (see `typeRel`), so map it by its name instead of
+    # as a declared type of that kind
+    result = newNodeX(nkBracketExpr)
+    result.add atomicType("builtinTypeClass", mNone)
+    # preferDesc: the kind's name, also when the type class has an alias name
+    result.add mapTypeToBracketX(cache, typeToString(t, preferDesc), mNone,
+                                 t.elementType, info, idgen, inst)
   of tyUserTypeClass, tyUserTypeClassInst:
     if t.isResolvedUserTypeClass:
       result = mapTypeToAst(t.last, info)
