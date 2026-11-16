@@ -22,6 +22,9 @@ const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t.elementType.kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
+  elif t.kind == tyObject and tfFromGeneric in t.flags and holdsItselfByValue(t):
+    # #14646; non-generic objects are reported by `checkConstructedType`
+    localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
 
 proc typeClassContains*(t, x: PType; depth = 0): bool =
   ## does the type class `t` (`A | B`, `A and B`, `not A`) contain `x` as

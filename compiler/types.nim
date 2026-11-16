@@ -1673,6 +1673,45 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       processPragmaAndCallConvMismatch(msg, a, b, conf)
     localError(conf, info, msg)
 
+proc holdsItselfByValue(t: PType; onPath, done: var IntSet): bool
+
+proc recordHoldsItselfByValue(n: PNode; onPath, done: var IntSet): bool =
+  result = false
+  case n.kind
+  of nkSym: result = holdsItselfByValue(n.sym.typ, onPath, done)
+  of nkRecList, nkRecCase, nkOfBranch, nkElse:
+    for it in n:
+      if recordHoldsItselfByValue(it, onPath, done): return true
+  else: discard
+
+proc holdsItselfByValue(t: PType; onPath, done: var IntSet): bool =
+  ## is there a cycle among the types that a value of `t` contains in place:
+  ## the fields and the base of objects, the fields of tuples and the
+  ## elements of arrays? `ref`, `ptr`, `seq` and so on end the walk.
+  result = false
+  if t == nil: return
+  case t.kind
+  of tyObject, tyTuple, tyArray:
+    if onPath.contains(t.id): return true
+    if done.containsOrIncl(t.id): return false
+    onPath.incl t.id
+    case t.kind
+    of tyObject:
+      if t.baseClass != nil: result = holdsItselfByValue(t.baseClass, onPath, done)
+      if not result and t.n != nil:
+        result = recordHoldsItselfByValue(t.n, onPath, done)
+    of tyTuple:
+      for a in t.kids:
+        if holdsItselfByValue(a, onPath, done):
+          result = true
+          break
+    else:
+      result = holdsItselfByValue(t.elementType, onPath, done)
+    onPath.excl t.id
+  of tyGenericInst, tyAlias, tyDistinct, tySink, tyOwned:
+    result = holdsItselfByValue(t.skipModifier, onPath, done)
+  else: discard
+
 proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
   if t == nil:
     return false
@@ -1716,6 +1755,14 @@ proc isRecursiveStructuralType(t: PType, cycleDetector: var IntSet): bool =
 proc isRecursiveStructuralType*(t: PType): bool =
   var cycleDetector = initIntSet()
   isRecursiveStructuralType(t, cycleDetector)
+
+proc holdsItselfByValue*(t: PType): bool =
+  ## Does a value of `t` contain itself? Unlike the size computation
+  ## (`szIllegalRecursion`) this caches nothing, so it can be asked of a type
+  ## whose fields may refer to objects that are still being built.
+  var onPath = initIntSet()
+  var done = initIntSet()
+  holdsItselfByValue(t, onPath, done)
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
