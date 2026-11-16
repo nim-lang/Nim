@@ -53,47 +53,45 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
     if n.kind == nkSym:
       logCanRaise(n.sym, result)
 
-proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
-  proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
-    result = false
-    var n = le
-    while true:
-      # do NOT follow nkHiddenDeref here!
-      case n.kind
-      of nkSym:
-        # we don't own the location so it escapes:
-        if n.sym.owner != p.prc:
-          return true
-        elif inTryStmt and n.sym.kind != skTemp:
-          # it is also an observable store if the location is used
-          # in 'except' or 'finally' or after the 'try' statement that
-          # caught the exception. Compiler temporaries are not observable,
-          # see bug #25919.
-          return true
-        return false
-      of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
-          nkCheckedFieldExpr:
-        n = n.firstSon
-      of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-        n = n.secondSon
-      else:
-        # cannot analyse the location; assume the worst
+proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
+  ## Whether the location `le` can be observed by a callee or after an
+  ## exception: a global, a location we do not own, a location reached
+  ## through a pointer, or (if `inTryStmt`) a local inside a 'try' statement.
+  result = false
+  var n = le
+  while true:
+    # do NOT follow nkHiddenDeref here!
+    case n.kind
+    of nkSym:
+      # we don't own the location so it escapes:
+      if n.sym.owner != p.prc:
         return true
+      elif inTryStmt and n.sym.kind != skTemp:
+        # it is also an observable store if the location is used
+        # in 'except' or 'finally' or after the 'try' statement that
+        # caught the exception. Compiler temporaries are not observable,
+        # see bug #25919.
+        return true
+      return false
+    of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
+        nkCheckedFieldExpr:
+      n = n.firstSon
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      n = n.secondSon
+    else:
+      # cannot analyse the location; assume the worst
+      return true
 
+proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   result = false
   if le != nil:
     for r in sonsFrom(ri, 1):
       if isPartOf(le, r, {pfStructural}) != arNo: return true
-    # bug #26699: if the call can raise and the location is observable
-    # after the raise (a global, a location reached through a pointer or
-    # a local inside a 'try' statement), the callee must not write into
-    # it directly: it would leave a partially written (or zeroed) value
-    # behind. Use a temporary then. We use the weaker 'canRaise' here
-    # (it ignores Defects) in order to not pessimize too much code.
+    # we use the weaker 'canRaise' here in order to prevent too many
+    # annoying warnings, see #14514
     if canRaise(ri.firstSon) and
-        locationEscapes(p, le, p.nestedTryStmts.len > 0 or
-                               p.withinTryWithExcept > 0):
-      return true
+        locationEscapes(p, le, p.nestedTryStmts.len > 0):
+      message(p.config, le.info, warnObservableStores, $le)
   # bug #19613 prevent dangerous aliasing too:
   if dest != nil and dest != le:
     for r in sonsFrom(ri, 1):
@@ -149,8 +147,6 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         result.finishCallBuilder(call)
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(result))
-        flushStrSyncs(p, mark)
-        if canRaise: raiseExit(p)
       else:
         var tmp: TLoc = getResultTemp(p, ri, typ.returnType)
         let ratmp = addrLoc(p.config, tmp)
@@ -159,10 +155,9 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         result.finishCallBuilder(call)
         p.s(cpsStmts).addStmt():
           p.s(cpsStmts).add(extract(result))
-        flushStrSyncs(p, mark)
-        # bug #26699: do not copy the temporary back if the call raised:
-        if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {}) # no need for deep copying
+      flushStrSyncs(p, mark)
+      if canRaise: raiseExit(p)
     else:
       result.finishCallBuilder(call)
       if p.module.compileToCpp:

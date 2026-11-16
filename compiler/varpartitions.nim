@@ -972,6 +972,17 @@ proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]
     let params = s.typ.n
     for i in 1..<params.len:
       registerParam(result, params[i])
+    # lambda lifting adds the environment parameter to `s.ast[paramsPos]`,
+    # which is not `s.typ.n` unless the routine header was copied with it
+    # (`transf`); a mutation through it has to reach the partitions too.
+    # `getEnvParam` is not usable here: importing `lambdalifting` makes an
+    # import cycle, so ask `isClosureEnvParam`.
+    if s.ast.safeLen > paramsPos and s.ast[paramsPos].kind == nkFormalParams and
+        s.ast[paramsPos] != s.typ.n:
+      let formal = s.ast[paramsPos]
+      if formal.len > 1 and formal.lastSon.kind == nkSym and
+          isClosureEnvParam(s.typ, formal.lastSon.sym):
+        registerParam(result, formal.lastSon)
     if resultPos < s.ast.safeLen:
       registerResult(result, s.ast[resultPos])
 

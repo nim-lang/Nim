@@ -3,12 +3,6 @@
 
 ## Changes affecting backward compatibility
 
-- An assignment `dest = p()` where `p` returns a big value and raises an
-  exception no longer leaves a partially written or zeroed `dest` behind when
-  `dest` is observable after the exception (a global, a location accessed
-  through a pointer or `var` parameter, or a local assigned inside a `try` statement).
-  The `ObservableStores` warning is not emitted anymore.
-
 - Solaris and illumos are now separate targets (`--os:solaris` and
   `--os:illumos`). Both define `sunos`, `posix`, and `unix`; illumos no longer
   defines `solaris`. Use `defined(sunos)` for code shared by both systems.
@@ -85,6 +79,13 @@ parameter and result types, not just their source-level shape. Use
 - `std/net` and `std/asyncnet` now also check the certificate host name on
   Windows. Before, the check was skipped there because `X509_check_host` was
   imported from the wrong DLL (libssl instead of libcrypto).
+
+- With `--mm:arc` and `--mm:orc`, a variable of a nested scope at module level
+  that a routine declared in that scope names (a closure, for example) is now
+  destroyed at the end of the program instead of at the end of the scope.
+  Before, the routine read freed memory once the scope had ended. Other
+  variables of the scope are destroyed with the scope as before.
+
 
 ## Standard library additions and changes
 

@@ -315,3 +315,45 @@ block: # bug #22881
   template test[I, T](a: array[I, T]) =
     static: doAssert $typeof(a) == "array[1..2, int]"
   test([1: 4, 2: 5])
+
+block: # bug #15896
+
+  template declare(body: untyped) =
+    if true:
+      body
+    else:
+      body
+
+  iterator search(): int {.closure.} =
+    yield 11
+
+  iterator walk(): int =
+    declare():
+      yield 0
+
+  template process(iter: untyped) =
+    for x in iter:
+      discard x
+
+  for _ in walk():
+    process(search())
+
+  # the second example, from a comment on the issue: a closure iterator that yields
+  # a tuple, unpacked in a for loop (was: internal error: expr(nkVarTuple))
+  iterator walkPairs(): (int, int) {.closure.} =
+    yield (0, 1)
+
+  for (x0, _) in walkPairs():
+    discard x0
+
+block: # bug #23491
+
+  template test() =
+    when false:
+      proc procname(param {.inject.}: int) =
+        discard param
+    else:
+      proc procname(param: int) =
+        discard param
+
+  test()
