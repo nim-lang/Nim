@@ -14,10 +14,11 @@ import net
 ## Test for net.bindAddr with SCTP
 
 proc test() =
-  # IPv4 SCTP
-  newSocket(AF_INET, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(2900), "0.0.0.0")
+  when defined(unix) or defined(linux):
+    # IPv4 SCTP
+    newSocket(AF_INET, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(2900), "0.0.0.0")
 
-  # IPv6 SCTP
-  newSocket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(2902), "::")
+    # IPv6 SCTP
+    newSocket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP).bindAddr(Port(2902), "::")
 
 test()
