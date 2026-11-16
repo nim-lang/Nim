@@ -2291,6 +2291,10 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   if containsGenericType(f):
     if not m.matchedErrorType:
       result.typ = getInstantiatedType(c, arg, m, f).skipTypes({tySink})
+      if arg.kind == nkNilLit and containsGenericType(result.typ):
+        # `nil` does not bind `T` in `ptr T`; keep the callee's `T` so that
+        # `matches` can type it once a later argument has bound it (#23534)
+        result.typ = f.skipTypes({tySink})
     else:
       result.typ = errorType(c)
   else:
@@ -3346,6 +3350,12 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
             put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
+    else:
+      let arg = m.call[formal.position + 1]
+      if arg != nil and arg.kind == nkHiddenSubConv and arg[1].kind == nkNilLit and
+          containsGenericType(arg.typ):
+        # see `implicitConv`
+        arg.typ = getInstantiatedType(c, arg[1], m, arg.typ)
 
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
