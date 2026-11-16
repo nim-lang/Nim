@@ -907,6 +907,12 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     # can happen for 'nim check':
     if i >= ff.n.len: return result
     var formal = ff.n[i].sym
+    if formal.typ.kind == tyStatic and arg.typ != nil and
+        arg.typ.kind == tyStatic and arg.typ.n != nil:
+      # a `static` parameter stands for the value that was computed at
+      # compile time, not for a runtime temporary of type `static T` (#13791)
+      newC.mapping[formal.itemId] = transform(c, arg.typ.n)
+      continue
     let pa = putArgInto(arg, formal.typ, borrowedIterResult and i == 1)
     case pa
     of paDirectMapping:

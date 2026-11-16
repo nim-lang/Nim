@@ -598,6 +598,17 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
           if givenType == nil and value.kind == nkSym and value.sym.typ != nil:
             givenType = value.sym.typ
           put(paramTypes, param.typ, givenType)
+        for i in 1..<min(s.typ.n.len, call.len):
+          # `static` parameters can be used in the return type as well (#14566)
+          let param = s.typ.n[i].sym
+          if param.typ.kind == tyStatic and param.typ.n == nil and
+              call[i].typ != nil and call[i].kind in nkLiterals:
+            var value = call[i]
+            if value.typ.kind == tyStatic and value.typ.n != nil:
+              value = value.typ.n
+            let st = newTypeS(tyStatic, c, son = value.typ)
+            st.n = value
+            put(paramTypes, param.typ, st)
 
         retType = generateTypeInstance(c, paramTypes,
                                        macroResult.info, retType)

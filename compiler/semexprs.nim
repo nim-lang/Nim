@@ -476,6 +476,10 @@ proc semConv(c: PContext, n: PNode; flags: TExprFlags = {}, expectedType: PType 
   else: discard
 
   maybeLiftType(targetType, c, n[0].info)
+  if targetType.skipTypes({tyAlias, tyGenericInst}).kind == tyVar:
+    # `type V = var T; V(x)` converts to `T`: a conversion that keeps the
+    # l-value is mutable if `x` is (#14482)
+    targetType = targetType.skipTypes({tyAlias, tyGenericInst}).elementType
 
   if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n[1], nil).skipTypes({tyTypeDesc})
@@ -2162,6 +2166,11 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       a = semExprWithType(c, a, {efLValue})
   else:
     a = semExprWithType(c, a, {efLValue})
+  if a.kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr} and
+      a.typ != nil and a.typ.kind == tyVar:
+    # a `var T` field of a tuple like `(var int, var int)` is assigned
+    # through (#14552):
+    a = newDeref(a)
   n[0] = a
   # a = b # both are vars, means: a[] = b[]
   # a = b # b no 'var T' means: a = addr(b)
@@ -3024,6 +3033,14 @@ proc checkPar(c: PContext; n: PNode): TParKind =
           localError(c.config, n[i].info, errNamedExprNotAllowed)
           return paNone
 
+proc checkTupleElemType(c: PContext; n: PNode) =
+  ## an `openArray` cannot be stored in a tuple unless views are enabled
+  ## (#13766)
+  if n.typ != nil and views notin c.features and
+      n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind in {tyOpenArray, tyVarargs}:
+    localError(c.config, n.info, "invalid type: '" & typeToString(n.typ) &
+      "' in this context: tuple")
+
 proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   result = newNodeI(nkTupleConstr, n.info)
   var expected: PType = nil
@@ -3044,6 +3061,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedType
     # can check if field name matches expected type here
     let expectedElemType = if expected != nil: expected[i] else: nil
     n[i][1] = semExprWithType(c, n[i][1], {}, expectedElemType)
+    checkTupleElemType(c, n[i][1])
     if n[i][1].typ != nil and n[i][1].typ.kind == tyFromExpr:
       isGeneric = true
     elif expectedElemType != nil and
@@ -3107,6 +3125,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
       # ignore matching error, full tuple will be matched later which may call converter, see #24609
       if conversion != nil:
         n[i] = conversion
+    checkTupleElemType(c, n[i])
     addSonSkipIntLit(typ, n[i].typ.skipTypes({tySink}), c.idgen)
   if isGeneric:
     for i in 0..<result.len:

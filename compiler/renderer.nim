@@ -760,25 +760,37 @@ proc atom(g: TSrcGen; n: PNode): string =
   of nkUInt16Lit: result = ulitAux(g, n, n.intVal, 2) & "\'u16"
   of nkUInt32Lit: result = ulitAux(g, n, n.intVal, 4) & "\'u32"
   of nkUInt64Lit: result = ulitAux(g, n, n.intVal, 8) & "\'u64"
-  of nkFloatLit:
-    if n.flags * {nfBase2, nfBase8, nfBase16} == {}: result = $(n.floatVal)
-    else: result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[] , 8)
-  of nkFloat32Lit:
-    if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
-      result = $n.floatVal & "\'f32"
+  of nkFloatLit..nkFloat128Lit:
+    if n.floatVal != n.floatVal or n.floatVal == Inf or n.floatVal == NegInf:
+      # `inf` and `nan` have no literal syntax, but their bit patterns have
+      # (#14598):
+      if n.kind == nkFloat32Lit:
+        f = n.floatVal.float32
+        result = "0x" & toHex((cast[ptr int32](addr(f)))[], 8) & "\'f32"
+      else:
+        result = "0x" & toHex((cast[ptr int64](addr(n.floatVal)))[], 16) & "\'f64"
     else:
-      f = n.floatVal.float32
-      result = litAux(g, n, (cast[ptr int32](addr(f)))[], 4) & "\'f32"
-  of nkFloat64Lit:
-    if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
-      result = $n.floatVal & "\'f64"
-    else:
-      result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f64"
-  of nkFloat128Lit:
-    if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
-      result = $n.floatVal & "\'f128"
-    else:
-      result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f128"
+      case n.kind
+      of nkFloatLit:
+        if n.flags * {nfBase2, nfBase8, nfBase16} == {}: result = $(n.floatVal)
+        else: result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[] , 8)
+      of nkFloat32Lit:
+        if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
+          result = $n.floatVal & "\'f32"
+        else:
+          f = n.floatVal.float32
+          result = litAux(g, n, (cast[ptr int32](addr(f)))[], 4) & "\'f32"
+      of nkFloat64Lit:
+        if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
+          result = $n.floatVal & "\'f64"
+        else:
+          result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f64"
+      of nkFloat128Lit:
+        if n.flags * {nfBase2, nfBase8, nfBase16} == {}:
+          result = $n.floatVal & "\'f128"
+        else:
+          result = litAux(g, n, (cast[ptr int64](addr(n.floatVal)))[], 8) & "\'f128"
+      else: result = ""
   of nkNilLit: result = "nil"
   of nkType:
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
