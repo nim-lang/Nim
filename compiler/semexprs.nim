@@ -1027,7 +1027,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n[0])
     for i in 1..<n.len:
-      let a = getConstExpr(c.module, n[i], c.idgen, c.graph)
+      var a = getConstExpr(c.module, n[i], c.idgen, c.graph)
+      if a == nil and n[i].typ != nil and n[i].typ.kind == tyTypeDesc:
+        a = n[i]
       if a == nil: return n
       call.add(a)
 
