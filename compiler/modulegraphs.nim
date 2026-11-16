@@ -916,8 +916,7 @@ when not defined(nimKochBootstrap):
       let m = todo.pop()
       if seen.containsOrIncl(m.int32): continue
       let deps = semanticFile(g.config, cachedModuleSuffix(g.config, m), ".s.deps.bif").string
-      if not fileExists(deps): continue
-      for dep in collectBifStrLits(deps):
+      for dep in loadSemDeps(deps).imports:
         let depIdx = fileInfoIdx(g.config, AbsoluteFile dep)
         if depIdx == module: return true
         todo.add depIdx
@@ -928,7 +927,9 @@ when not defined(nimKochBootstrap):
     ## are read. A NIF is stale when an import is stale or was compiled from
     ## source, or when an import changed after it was written: its interface,
     ## or its bodies when this module used them at compile time (the
-    ## `.edges.bif`, as for nifmake).
+    ## `.edges.bif`, as for nifmake), or when a file it read with `staticRead`
+    ## changed after it was written. Those files are not modules: only their
+    ## modification time matters.
     if g.icFromSource.contains(fileIdx.int): return true
     let k = fileIdx.int32
     g.icStale.withValue(k, known):
@@ -940,7 +941,8 @@ when not defined(nimKochBootstrap):
     result = src notin g.icVerified or not fileExists(stamp)
     if not result:
       let written = getLastModificationTime(stamp)
-      for dep in collectBifStrLits(semanticFile(g.config, suffix, ".s.deps.bif").string):
+      let semDeps = loadSemDeps(semanticFile(g.config, suffix, ".s.deps.bif").string)
+      for dep in semDeps.imports:
         let depIdx = fileInfoIdx(g.config, AbsoluteFile dep)
         g.icStaleImporters.mgetOrPut(depIdx.int32, @[]).add k
         let depIface = semanticFile(g.config, cachedModuleSuffix(g.config, depIdx),
@@ -950,6 +952,11 @@ when not defined(nimKochBootstrap):
               not g.importsTransitively(depIdx, fileIdx)):
           result = true
           break
+      if not result:
+        for slurped in semDeps.slurps:
+          if not fileExists(slurped) or written < getLastModificationTime(slurped):
+            result = true
+            break
       if not result:
         for implDep in collectBifStrLits(stamp):
           let depImpl = semanticFile(g.config, implDep, ".impl.bif").string
