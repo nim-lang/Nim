@@ -15,6 +15,30 @@ from std/algorithm import binarySearch
 type
   Color* = distinct uint32 ## A color stored as RGBA, e.g. `0xff00ccff`.
 
+proc r*(c: Color): uint8 =
+  (uint32(c) shr 24).uint8
+
+proc g*(c: Color): uint8 =
+  (uint32(c) shr 16).uint8
+
+proc b*(c: Color): uint8 =
+  (uint32(c) shr 8).uint8
+
+proc a*(c: Color): uint8 =
+  c.uint8
+
+proc `r=`*(c: var Color, value: uint8) =
+  c = Color((uint32(c) and 0x00ffffff'u32) or (value.uint32 shl 24))
+
+proc `g=`*(c: var Color, value: uint8) =
+  c = Color((uint32(c) and 0xff00ffff'u32) or (value.uint32 shl 16))
+
+proc `b=`*(c: var Color, value: uint8) =
+  c = Color((uint32(c) and 0xffff00ff'u32) or (value.uint32 shl 8))
+
+proc `a=`*(c: var Color, value: uint8) =
+  c = Color((uint32(c) and 0xffffff00'u32) or value.uint32)
+
 proc `==`*(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
@@ -37,17 +61,17 @@ template rawRgba(r, g, b, a: uint8): Color =
   Color(r.uint32 shl 24 or g.uint32 shl 16 or b.uint32 shl 8 or a.uint32)
 
 template colorOp(op): Color =
-  extract(a, ar, ag, ab, aa)
-  extract(b, br, bg, bb, ba)
-  rawRgba(op(ar, br), op(ag, bg), op(ab, bb), op(aa, ba))
+  extract(c1, c1r, c1g, c1b, c1a)
+  extract(c2, c2r, c2g, c2b, c2a)
+  rawRgba(op(c1r, c2r), op(c1g, c2g), op(c1b, c2b), op(c1a, c2a))
 
-proc satPlus(a, b: uint8): uint8 {.inline.} =
-  result = uint8(min(a.int + b.int, 255))
+proc satPlus(c1, c2: uint8): uint8 {.inline.} =
+  result = uint8(min(c1.int + c2.int, 255))
 
-proc satMinus(a, b: uint8): uint8 {.inline.} =
-  result = uint8(max(a.int - b.int, 0))
+proc satMinus(c1, c2: uint8): uint8 {.inline.} =
+  result = uint8(max(c1.int - c2.int, 0))
 
-proc `+`*(a, b: Color): Color =
+proc `+`*(c1, c2: Color): Color =
   ## Adds two colors.
   ##
   ## This uses saturated arithmetic, so that each color
@@ -61,7 +85,7 @@ proc `+`*(a, b: Color): Color =
 
   colorOp(satPlus)
 
-proc `-`*(a, b: Color): Color =
+proc `-`*(c1, c2: Color): Color =
   ## Subtracts two colors.
   ##
   ## This uses saturated arithmetic, so that each color
