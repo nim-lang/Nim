@@ -1895,45 +1895,6 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField: PNode;
   else:
     expr(p, val, tmp2)
 
-proc mayCallOrRaise(p: BProc; n: PNode): bool =
-  ## Whether evaluating `n` can run code that reads a location it does not
-  ## mention (a call that is not a side effect free routine) or can raise.
-  ## Defects are ignored here, like for `preventNrvo`.
-  case n.kind
-  of nkCallKinds:
-    let fn = n.firstSon
-    if fn.kind == nkSym and fn.sym.magic != mNone:
-      # magics do not run user code that could read the destination
-      discard
-    elif fn.kind == nkSym and sfNoSideEffect in fn.sym.flags and
-        not canRaiseDisp(p, fn):
-      discard
-    else:
-      return true
-  of nkRaiseStmt:
-    return true
-  of nkSym, nkEmpty, nkType, nkNilLit, nkCharLit..nkUInt64Lit,
-      nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit, nkLambdaKinds,
-      nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef, nkIteratorDef,
-      nkMacroDef, nkTemplateDef:
-    return false
-  else:
-    discard
-  result = false
-  for it in sons(n):
-    if mayCallOrRaise(p, it): return true
-
-proc constrObservesDest(p: BProc; dest: PNode; values: PNode; first: int): bool =
-  ## bug #26712: `dest = Constr(...)` is constructed in place. That is only
-  ## correct if no constructor value can read `dest` through a call or raise
-  ## after `dest` was partially overwritten while `dest` is observable.
-  if dest == nil: return false
-  result = false
-  for i in first..<values.len:
-    if mayCallOrRaise(p, values[i]):
-      return locationEscapes(p, dest, p.nestedTryStmts.len > 0 or
-                                      p.withinTryWithExcept > 0)
-
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
@@ -1968,8 +1929,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # the destination through a call, a closure or another `var` parameter, or
   # raise after the destination was already overwritten (bug #26687). Since
   # the values are hoisted into field sized temporaries, it is cheap.
-  if not useTemp and (isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo or
-                     constrObservesDest(p, d.lode, e, 1)):
+  if not useTemp and isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo:
     for it in sonsFrom(e, 1):
       if it.firstSon.typ.skipTypes(abstractVar).kind in {tyOpenArray, tyVarargs}:
         useTemp = true
@@ -2033,9 +1993,8 @@ proc lhsDoesAlias(a, b: PNode): bool =
 proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   var tmp: TLoc = default(TLoc)
-  # bug #668, bug #26712
-  let doesAlias = d.k != locNone and (lhsDoesAlias(d.lode, n) or
-                                     constrObservesDest(p, d.lode, n, 0))
+  # bug #668
+  let doesAlias = lhsDoesAlias(d.lode, n)
   let dest = if doesAlias: addr(tmp) else: addr(d)
   if doesAlias:
     tmp = getTemp(p, n.typ)
@@ -3332,8 +3291,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
 
     var tmp: TLoc = default(TLoc)
     # bug #16331
-    let doesAlias = d.k != locNone and (lhsDoesAlias(d.lode, n) or
-                                       constrObservesDest(p, d.lode, n, 0))
+    let doesAlias = lhsDoesAlias(d.lode, n)
     let dest = if doesAlias: addr(tmp) else: addr(d)
     if doesAlias:
       tmp = getTemp(p, n.typ)
@@ -3394,29 +3352,12 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
 proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
-    # bug #26712: if an element reads the destination (`a = [a[1], a[0]]`)
-    # or a call could read it or raise while it is observable, the elements
-    # are evaluated into element sized temporaries first.
-    var hoisted: seq[TLoc] = @[]
-    if d.k == locNone:
-      d = getTemp(p, n.typ)
-    elif d.lode != nil and (isPartOf(d.lode, n, {pfStructural}) != arNo or
-                            constrObservesDest(p, d.lode, n, 0)):
-      for ni in sons(n):
-        if isInertValue(ni):
-          hoisted.add default(TLoc)
-        else:
-          var v = getTemp(p, ni.typ)
-          expr(p, ni, v)
-          hoisted.add v
+    if d.k == locNone: d = getTemp(p, n.typ)
     for i, ni in isons(n):
       arr = initLoc(locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       let lit = cIntLiteral(i)
       arr.snippet = subscript(rdLoc(d), lit)
-      if hoisted.len > 0 and hoisted[i].k != locNone:
-        genAssignment(p, arr, hoisted[i], {})
-      else:
-        expr(p, ni, arr)
+      expr(p, ni, arr)
 
 proc genComplexConst(p: BProc, sym: PSym, d: var TLoc) =
   requestConstImpl(p, sym)
