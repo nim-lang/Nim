@@ -102,6 +102,7 @@ type
     warnSystemRangeConversion = "SystemRangeConversion",
     warnInvalidCmpOp = "InvalidCmpOp",
     warnImplicitCyclicImport = "ImplicitCyclicImport",
+    warnTupleTypePragma = "TupleTypePragma",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -214,6 +215,7 @@ const
     warnSystemRangeConversion: "implicit range conversion $1",
     warnInvalidCmpOp: "$1",
     warnImplicitCyclicImport: "$1",
+    warnTupleTypePragma: "the '$1' pragma is not supported for tuple types: equal tuple types would disagree on the representation; use an object type instead; this will become a compile time error in the future",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",

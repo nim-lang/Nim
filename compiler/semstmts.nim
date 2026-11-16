@@ -2049,6 +2049,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     # compute the type's size and check for illegal recursions:
     if a[0].kind == nkPragmaExpr:
       let pragmas = a[0][1]
+      let isTuple = s.typ != nil and s.typ.skipTypes({tyGenericBody}).kind == tyTuple
       for i in 0 ..< pragmas.len:
         if pragmas[i].kind == nkExprColonExpr and
             pragmas[i][0].kind == nkIdent and
@@ -2057,6 +2058,14 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
             # EventType* {.size: sizeof(uint32).} = enum
             # AtomicFlag* {.importc: "atomic_flag", header: "<stdatomic.h>", size: 1.} = object
             localError(c.config, pragmas[i].info, "size pragma only allowed for enum types and imported types")
+        elif isTuple:
+          # tuple types are structural: a pragma that changes how the type is
+          # laid out, passed or declared would apply to only some of the equal
+          # types. `final` and `pure` are not listed: they change neither.
+          let k = whichPragma(pragmas[i])
+          if k in {wPacked, wByCopy, wByRef, wUnion, wImportc, wImportCpp,
+                   wImportObjC, wImportJs, wHeader, wNodecl}:
+            message(c.config, pragmas[i].info, warnTupleTypePragma, $k)
 
     if a[1].kind == nkEmpty and s.typ != nil and
         s.typ.kind in {tyOr, tyAnd, tyNot} and typeClassContains(s.typ, s.typ):

@@ -16,7 +16,7 @@ block: # issue #20514
 
 block: # issue #20937
   type
-    Vec3[T: SomeNumber] {.bycopy.} = tuple[x, y, z: T]
+    Vec3[T: SomeNumber] = tuple[x, y, z: T]
 
   func volume[T](v: Vec3[T]): T =
     when T is SomeUnsignedInt:
