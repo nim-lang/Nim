@@ -1,5 +1,5 @@
 discard """
-  matrix: "--verbosity:0 --os:standalone --mm:none; --verbosity:0 --os:standalone --mm:arc --threads:off -d:sizeOverflow"
+  matrix: "--verbosity:0 --os:standalone --mm:none; --verbosity:0 --os:standalone --mm:arc --threads:off -d:sizeOverflow; --verbosity:0 --os:standalone --mm:arc --threads:off -d:outOfMem"
   outputsub: "PANIC: "
 """
 
@@ -10,6 +10,9 @@ discard """
 when defined(sizeOverflow):
   # the payload size computations are checked
   var s = newStringOfCap(high(int))
+  discard s
+elif defined(outOfMem) and sizeof(int) == 8:
+  var s = newStringOfCap(high(int) div 2)
   discard s
 else:
   # bug #21195
