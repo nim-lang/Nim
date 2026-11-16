@@ -94,7 +94,7 @@ proc extractRgba*(c: Color): tuple[r, g, b, a: uint8] =
   result.a = uint8(c.uint32 and 0xff)
 
 proc intensity*(c: Color, f: float): Color =
-  ## Returns `a` with intensity `f`. `f` must be a float from 0.0 (completely
+  ## Returns `c` with intensity `f`. `f` must be a float from 0.0 (completely
   ## dark) to 1.0 (full color intensity).
   ##
   runnableExamples:
@@ -514,3 +514,20 @@ proc rgba*(r, g, b, a: uint8): Color =
     assert rgba(0, 255, 128, 0) == Color(0x00_ff_80_00)
 
   result = rawRgba(r, g, b, a)
+
+proc opacity*(c: Color, f: float): Color =
+  ## Returns `c` with opacity `f`. `f` must be a float from 0.0 (completely
+  ## transparent) to 1.0 (completely opaque).
+  ##
+  runnableExamples:
+    var
+      a = Color(0xff_00_ff_ff)
+      b = Color(0x00_42_cc_80)
+    assert a.opacity(0.5) == Color(0xff_00_ff_80)
+    assert b.opacity(0.5) == Color(0x00_42_cc_80)
+    
+  if f < 0.0 or f > 1.0:
+    raise newException(ValueError, "Opacity factor must be between 0.0 and 1.0")
+
+  let alpha = uint32(round(255.0 * f))
+  result = Color((c.uint32 and 0xffffff00'u32) or alpha)
