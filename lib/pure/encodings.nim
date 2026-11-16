@@ -374,7 +374,7 @@ when defined(windows):
                                 dwFlags = 0'i32,
                                 lpMultiByteStr = cstring(s),
                                 cbMultiByte = cint(s.len),
-                                lpWideCharStr = cstring(result),
+                                lpWideCharStr = cast[cstring](beginStore(result, result.len)),
                                 cchWideChar = cint(cap))
     if m == 0:
       # try again; ask for capacity:
@@ -390,7 +390,7 @@ when defined(windows):
                               dwFlags = 0'i32,
                               lpMultiByteStr = cstring(s),
                               cbMultiByte = cint(s.len),
-                              lpWideCharStr = cstring(result),
+                              lpWideCharStr = cast[cstring](beginStore(result, result.len)),
                               cchWideChar = cint(cap))
       if m == 0: raiseOSError(osLastError())
       setLen(result, m*2)
@@ -408,7 +408,7 @@ when defined(windows):
                                 dwFlags = 0'i32,
                                 lpWideCharStr = cstring(s),
                                 cchWideChar = cint(charCount),
-                                lpMultiByteStr = cstring(result),
+                                lpMultiByteStr = cast[cstring](beginStore(result, result.len)),
                                 cbMultiByte = cap.cint)
     if m == 0:
       # try again; ask for capacity:
@@ -424,7 +424,7 @@ when defined(windows):
                               dwFlags = 0'i32,
                               lpWideCharStr = cstring(s),
                               cchWideChar = cint(charCount),
-                              lpMultiByteStr = cstring(result),
+                              lpMultiByteStr = cast[cstring](beginStore(result, result.len)),
                               cbMultiByte = cap.cint)
       if m == 0: raiseOSError(osLastError())
       setLen(result, m)
@@ -468,7 +468,7 @@ else:
     var inLen = csize_t len(s)
     var outLen = csize_t len(result)
     var src = cstring(s)
-    var dst = cstring(result)
+    var dst = cast[cstring](beginStore(result, result.len))
     var iconvres: csize_t = csize_t(0)
     while inLen > 0:
       iconvres = iconv(c, addr src, addr inLen, addr dst, addr outLen)
@@ -493,22 +493,20 @@ else:
           inLen = csize_t len(s)
           outLen = csize_t len(result)
           src = cstring(s)
-          dst = cstring(result)
+          dst = cast[cstring](beginStore(result, result.len))
         else:
           raiseOSError(lerr.OSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is
     # not '\0'
     discard iconv(c, nil, nil, addr dst, addr outLen)
     if iconvres == high(csize_t) and errno == E2BIG:
-      var offset = cast[int](dst) - cast[int](cstring(result))
-      setLen(result, len(result) + inLen.int * 2 + 5)
+      let offset = len(result) - outLen.int
       # 5 is minimally one utf-8 char
-      dst = cast[cstring](cast[int](cstring(result)) + offset)
+      dst = cast[cstring](beginStore(result, len(result) + inLen.int * 2 + 5, offset))
       outLen = csize_t(len(result) - offset)
       discard iconv(c, nil, nil, addr dst, addr outLen)
     # trim output buffer
     setLen(result, len(result) - outLen.int)
-    # we wrote into `result` via raw pointers: sync the SSO inline cache
     endStore(result)
 
 proc convert*(s: string, destEncoding = "UTF-8",
