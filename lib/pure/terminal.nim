@@ -728,20 +728,20 @@ template ansiForegroundColorCode*(fg: static[ForegroundColor],
   ansiStyleCode(fg.int + bright.int * 60)
 
 proc ansiForegroundColorCode*(color: Color): string =
-  let rgb = extractRGB(color)
+  let rgb = extractRgba(color)
   result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
 
 template ansiForegroundColorCode*(color: static[Color]): string =
-  const rgb = extractRGB(color)
+  const rgb = extractRgba(color)
   # no usage of `fmt`, see issue #7632
   (static("$1$2;$3;$4m" % [$fgPrefix, $(rgb.r), $(rgb.g), $(rgb.b)]))
 
 proc ansiBackgroundColorCode*(color: Color): string =
-  let rgb = extractRGB(color)
+  let rgb = extractRgba(color)
   result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
 
 template ansiBackgroundColorCode*(color: static[Color]): string =
-  const rgb = extractRGB(color)
+  const rgb = extractRgba(color)
   # no usage of `fmt`, see issue #7632
   (static("$1$2;$3;$4m" % [$bgPrefix, $(rgb.r), $(rgb.g), $(rgb.b)]))
 
