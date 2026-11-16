@@ -398,6 +398,7 @@ when defined(windows):
       setLen(result, m*2)
     else:
       assert(false) # cannot happen
+    endStore(result)
 
   proc convertFromWideString(codePage: CodePage, s: string): string =
     let charCount = s.len div 2
@@ -431,6 +432,7 @@ when defined(windows):
       setLen(result, m)
     else:
       assert(false) # cannot happen
+    endStore(result)
 
   proc convertWin(codePageFrom: CodePage, codePageTo: CodePage,
       s: string): string =
@@ -506,6 +508,8 @@ else:
       discard iconv(c, nil, nil, addr dst, addr outLen)
     # trim output buffer
     setLen(result, len(result) - outLen.int)
+    # we wrote into `result` via raw pointers: sync the SSO inline cache
+    endStore(result)
 
 proc convert*(s: string, destEncoding = "UTF-8",
                          srcEncoding = "CP1252"): string =
