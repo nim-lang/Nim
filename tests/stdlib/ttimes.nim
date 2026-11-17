@@ -662,6 +662,13 @@ block: # ttimes
     doAssert initDuration(milliseconds = -500).inMilliseconds == -500
     doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999
 
+  block: # fseconds
+    doAssert initDuration(seconds = 1, milliseconds = 500).fseconds == 1.5
+    doAssert initDuration(milliseconds = -500).fseconds == -0.5
+    doAssert initDuration(nanoseconds = -1).fseconds < 0.0
+    doAssert initDuration(nanoseconds = -1).fseconds > -2e-9
+    doAssert initDuration(seconds = -1, nanoseconds = 1).fseconds > -1.0
+
   block: # getIsoWeekAndYear
     doAssert getIsoWeekAndYear(initDateTime(04, mNov, 2019, 00, 00, 00)) == (isoweek: 45.IsoWeekRange, isoyear: 2019.IsoYear)
     doAssert initDateTime(dMon, 45, 2019.IsoYear, 00, 00, 00) == initDateTime(04, mNov, 2019, 00, 00, 00)
