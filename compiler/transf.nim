@@ -996,7 +996,7 @@ proc transformCase(c: PTransf, n: PNode): PNode =
     result.add(elseBranch)
   elif result.lastSon.kind != nkElse and not (
       skipTypes(n[0].typ, abstractVarRange).kind in
-        {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt64}):
+        {tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt..tyUInt64}):
     # fix a stupid code gen bug by normalizing:
     var elseBranch = newTransNode(nkElse, n.info, 1)
     elseBranch[0] = newTransNode(nkNilLit, n.info, 0)
