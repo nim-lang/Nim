@@ -1,6 +1,10 @@
 discard """
-  cmd: '''nim c --mm:arc $file'''
-  errormsg: "'=wasMoved' is not available for type <Game>; routine: main"
+  cmd: '''nim c --mm:arc --errorMax:0 $file'''
+  errormsg: "'=wasMoved' is not available for type <Holder>; routine: main2"
+  nimout: '''
+twasmoved_error.nim(38, 12) Error: '=wasMoved' is not available for type <Game>; routine: main
+twasmoved_error.nim(47, 12) Error: '=wasMoved' is not available for type <Holder>; routine: main2
+'''
 """
 
 # bug #19291
@@ -34,4 +38,14 @@ proc main =
   var g2 = g
   echo "hello"
 
+# an object that contains such a type cannot be moved either
+type Holder = object
+  g: Game
+
+proc main2 =
+  var h: Holder
+  var h2 = h
+  echo "hello"
+
 main()
+main2()

@@ -548,6 +548,11 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
         op = instantiateGeneric(c, op, t, t.typeInst)
         setAttachedOp(c.g, c.idgen.module, t, attachedWasMoved, op)
 
+      if sfError in op.flags:
+        # like `=copy` and `=sink`: an aggregate cannot be moved if a
+        # field cannot be reset after the move
+        ensureMutable c.fn
+        incl c.fn.flagsImpl, sfError
       #markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
       body.add genWasMovedCall(c, op, x)
