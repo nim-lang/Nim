@@ -328,7 +328,12 @@ func cosh*[T](z: Complex[T]): Complex[T] =
 
 func arccosh*[T](z: Complex[T]): Complex[T] =
   ## Returns the inverse hyperbolic cosine of `z`.
-  result = ln(z + sqrt(z*z - T(1.0)))
+  ##
+  ## The result lies on the principal branch: its real part is non-negative.
+  # The factored form is what C99 F.10.2.2 recommends. Writing it as
+  # ``sqrt(z*z - 1)`` picks sqrt's branch for the product instead, which
+  # puts the result on the wrong branch whenever ``z.re < 0``.
+  result = ln(z + sqrt(z - T(1.0)) * sqrt(z + T(1.0)))
 
 func tanh*[T](z: Complex[T]): Complex[T] =
   ## Returns the hyperbolic tangent of `z`.
