@@ -64,6 +64,16 @@ type
     CoDistinct
     CoHashTypeInsideNode
 
+proc tupleElemFlags(t: PType; flags: set[ConsiderFlag]): set[ConsiderFlag] {.inline.} =
+  ## Tuples ignore ranges (See tests/ccgbugs/tuple_canon.nim) but that only matters
+  ## for direct fields. If its inside another type (e.g. `seq[range[1..2]]`) then
+  ## we must treat it as a different type or else we get C code errors
+  if skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned,
+                   tyInferred} + tyUserTypeClasses).kind == tyRange:
+    flags + {CoIgnoreRange}
+  else:
+    flags
+
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: ConfigRef)
 proc hashSym(c: var MD5Context, s: PSym) =
   if sfAnon in s.flags or s.kind == skGenericParam:
@@ -329,10 +339,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]; conf: Confi
         assert(t.n[i].kind == nkSym)
         c &= t.n[i].sym.name.s
         c &= ':'
-        c.hashType(t.n[i].sym.typ, flags+{CoIgnoreRange}, conf)
+        c.hashType(t.n[i].sym.typ, tupleElemFlags(t.n[i].sym.typ, flags), conf)
         c &= ','
     else:
-      for a in t.kids: c.hashType a, flags+{CoIgnoreRange}, conf
+      for a in t.kids:
+        c.hashType a, tupleElemFlags(a, flags), conf
   of tyRange:
     if {CoIgnoreRange, CoIgnoreRangeInArray} * flags == {}:
       c &= char(t.kind)
