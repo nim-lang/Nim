@@ -2501,7 +2501,10 @@ proc setupMacroParam(c: PCtx; x: PNode; typ: PType; dest: Address) =
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
     n.flags.incl nfIsRef
-    n.typ = x.typ
+    if x.typ != nil and x.typ.skipTypes(abstractInst).kind notin {tyVarargs, tyOpenArray}:
+      # keep the array type of a `varargs` container, else it ends up as an
+      # openArray in the macro's output (#12738)
+      n.typ = x.typ
     # the caller owns the handle, see `releaseMacroParam`:
     st[int64](dest, nodeHandle(c.mem, n))
 
