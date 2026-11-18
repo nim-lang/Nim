@@ -1096,6 +1096,44 @@ proc symForVar(c: PContext, n: PNode): PSym =
   if n.kind == nkPragmaExpr:
     pragma(c, result, n[1], forVarPragmas)
 
+proc semForVarTuple(c: PContext, n: PNode, tupType: PType,
+                    wrapKind: TTypeKind, varIsPtr: bool) =
+  ## Declares the loop variables of the (possibly nested) tuple pattern `n`.
+  ## `wrapKind` is `tyVar` or `tyLent` if the variables are views into the
+  ## iterated tuple.
+  let tup = tupType.skipTypes({tyGenericInst, tyAlias, tySink})
+  if tup.kind != tyTuple:
+    localError(c.config, n.info, errTupleUnpackingTupleExpected %
+        [typeToString(tupType, preferDesc)])
+    return
+  if n.len-1 != tup.len:
+    localError(c.config, n.info, errWrongNumberOfVariables)
+    return
+  for i in 0..<n.len-1:
+    if n[i].kind == nkVarTuple:
+      # a nested pattern comes with a (empty) value slot from the parser,
+      # remove it so that it has the same shape as the outer pattern:
+      if n[i].len > 1 and n[i][^1].kind == nkEmpty:
+        delSon(n[i], n[i].len-1)
+      let elem = tup[i]
+      if elem.kind in {tyVar, tyLent}:
+        semForVarTuple(c, n[i], elem.skipTypes({tyVar, tyLent}), elem.kind, false)
+      else:
+        semForVarTuple(c, n[i], elem, wrapKind, varIsPtr)
+    else:
+      var v = symForVar(c, n[i])
+      if getCurrOwner(c).kind == skModule: incl(v, sfGlobal)
+      if wrapKind in {tyVar, tyLent}:
+        v.typ = newTypeS(wrapKind, c)
+        v.typ.add tup[i]
+        if varIsPtr:
+          v.typ.incl tfVarIsPtr
+      else:
+        v.typ = tup[i]
+      n[i] = newSymNode(v)
+      if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
+      elif v.owner == nil: setOwner(v, getCurrOwner(c))
+
 proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   let iterBase = n[^2].typ
@@ -1119,21 +1157,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
               [typeToString(n[1].typ, preferDesc)])
         elif n[0].len-1 != iterAfterVarLent.len:
           return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
-
-        for i in 0..<n[0].len-1:
-          var v = symForVar(c, n[0][i])
-          if getCurrOwner(c).kind == skModule: incl(v, sfGlobal)
-          case iter.kind
-          of tyVar, tyLent:
-            v.typ = newTypeS(iter.kind, c)
-            v.typ.add iterAfterVarLent[i]
-            if tfVarIsPtr in iter.flags:
-              v.typ.incl tfVarIsPtr
-          else:
-            v.typ = iter[i]
-          n[0][i] = newSymNode(v)
-          if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
-          elif v.owner == nil: setOwner(v, getCurrOwner(c))
+        semForVarTuple(c, n[0], iterAfterVarLent, iter.kind, tfVarIsPtr in iter.flags)
       else:
         var v = symForVar(c, n[0])
         if getCurrOwner(c).kind == skModule: incl(v, sfGlobal)
@@ -1161,22 +1185,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           iter[i] = iter[i].skipTypes({tyLent})
         else: discard
 
-        if n[i].len-1 != iter[i].len:
-          localError(c.config, n[i].info, errWrongNumberOfVariables)
-        for j in 0..<n[i].len-1:
-          var v = symForVar(c, n[i][j])
-          if getCurrOwner(c).kind == skModule: incl(v, sfGlobal)
-          if mutable:
-            v.typ = newTypeS(tyVar, c)
-            v.typ.add iter[i][j]
-          elif isLent:
-            v.typ = newTypeS(tyLent, c)
-            v.typ.add iter[i][j]
-          else:
-            v.typ = iter[i][j]
-          n[i][j] = newSymNode(v)
-          if not isDiscardUnderscore(v): addDecl(c, v)
-          elif v.owner == nil: setOwner(v, getCurrOwner(c))
+        semForVarTuple(c, n[i], iter[i],
+          if mutable: tyVar elif isLent: tyLent else: tyNone, false)
       else:
         var v = symForVar(c, n[i])
         if getCurrOwner(c).kind == skModule: incl(v, sfGlobal)
