@@ -319,18 +319,6 @@ proc checkBinary(p: Parser) {.inline.} =
 const
   CmpPrec = 5 # what `getPrecedence` gives the comparison operators (`==`, `<`, `in`, `is`, ...)
 
-proc checkNotOperand(p: Parser, lhs: PNode) =
-  ## Check if the left operand `lhs` (an `nkPrefix`) of the current comparison
-  ## operator is a `not` expression: `not a == b` is `(not a) == b`.
-  ## `not(a) == b`, with no space before the parenthesis, reads as the call it
-  ## looks like; `not (a) == b` does not, and both parse to the same tree, so
-  ## the parenthesis's position tells them apart.
-  # a keyword's identifier id is its token's offset from `tkSymbol` (`lexer.getSymbol`)
-  if lhs[0].kind == nkIdent and lhs[0].ident.id == ord(tkNot) - ord(tkSymbol) and
-      not (lhs[1].kind == nkPar and lhs[1].info.line == lhs[0].info.line and
-        lhs[1].info.col == lhs[0].info.col + len("not")):
-    parMessage(p, warnNotCmp, p.tok.ident.s)
-
 #| module = complexOrSimpleStmt ^* (';' / IND{=})
 #|
 #| comma = ',' COMMENT?
@@ -982,8 +970,6 @@ proc parseOperators(p: var Parser, headNode: PNode,
   # progress guaranteed
   while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
     checkBinary(p)
-    if opPrec == CmpPrec and result.kind == nkPrefix:
-      checkNotOperand(p, result)
     let leftAssoc = ord(not isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
@@ -1400,11 +1386,17 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     # Note 'sigil like' operators are currently not reflected in the grammar
     # and should be removed for Nim 2.0, I don't think anybody uses them.
     let isSigil = isSigilLike(p.tok)
+    let startsWithNot = p.tok.tokType == tkNot
     result = newNodeP(nkPrefix, p)
     var a = newIdentNodeP(p.tok.ident, p)
     result.add(a)
     getTok(p)
     optInd(p, a)
+    # `not(a) == b` reads as the call it looks like, `not (a) == b` does not;
+    # both parse to the same tree, so the lexer's spacing is the only difference
+    let isCall = p.tok.tokType == tkParLe and tsLeading notin p.tok.spacing
+    # `not not a == b`: the inner `primary` warns, so the outer one does not
+    let operandIsNot = p.tok.tokType == tkNot
     const identOrLiteralKinds = tkBuiltInMagics + {tkSymbol, tkAccent, tkNil,
       tkIntLit..tkCustomLit, tkCast, tkOut, tkParLe, tkBracketLe, tkCurlyLe}
     if isSigil and p.tok.tokType in identOrLiteralKinds:
@@ -1413,6 +1405,12 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
       result = primarySuffix(p, result, baseInd, mode)
     else:
       result.add(primary(p, pmNormal))
+      # `not a == b` is `(not a) == b`: the current token is the operator
+      if startsWithNot and not operandIsNot and
+          not (isCall and result.secondSon.kind == nkPar) and
+          getPrecedence(p.tok) == CmpPrec and p.tok.indent < 0 and
+          not isUnary(p.tok):
+        parMessage(p, warnNotCmp, p.tok.ident.s)
     return
 
   case p.tok.tokType

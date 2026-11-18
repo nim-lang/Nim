@@ -2,14 +2,16 @@ discard """
   matrix: "--hints:off --warning:UnusedImport:off"
   nimoutFull: true
   nimout: '''
-tprecedence.nim(83, 17) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
-tprecedence.nim(84, 17) Warning: `not` binds tighter than '!=': `not a != b` is `(not a) != b`; use parentheses to make the meaning explicit [NotCmp]
-tprecedence.nim(85, 17) Warning: `not` binds tighter than '<': `not a < b` is `(not a) < b`; use parentheses to make the meaning explicit [NotCmp]
-tprecedence.nim(86, 17) Warning: `not` binds tighter than '<=': `not a <= b` is `(not a) <= b`; use parentheses to make the meaning explicit [NotCmp]
-tprecedence.nim(87, 17) Warning: `not` binds tighter than '>': `not a > b` is `(not a) > b`; use parentheses to make the meaning explicit [NotCmp]
-tprecedence.nim(88, 17) Warning: `not` binds tighter than '>=': `not a >= b` is `(not a) >= b`; use parentheses to make the meaning explicit [NotCmp]
-tprecedence.nim(89, 17) Warning: `not` binds tighter than 'in': `not a in b` is `(not a) in b`; use parentheses to make the meaning explicit [NotCmp]
-tprecedence.nim(90, 19) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(85, 17) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(86, 17) Warning: `not` binds tighter than '!=': `not a != b` is `(not a) != b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(87, 17) Warning: `not` binds tighter than '<': `not a < b` is `(not a) < b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(88, 17) Warning: `not` binds tighter than '<=': `not a <= b` is `(not a) <= b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(89, 17) Warning: `not` binds tighter than '>': `not a > b` is `(not a) > b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(90, 17) Warning: `not` binds tighter than '>=': `not a >= b` is `(not a) >= b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(91, 17) Warning: `not` binds tighter than 'in': `not a in b` is `(not a) in b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(92, 19) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(93, 21) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
+tprecedence.nim(94, 21) Warning: `not` binds tighter than '==': `not a == b` is `(not a) == b`; use parentheses to make the meaning explicit [NotCmp]
 '''
   output: '''holla
 true
@@ -88,6 +90,8 @@ block:
   discard not x >= n
   discard not x in s
   discard not (x) == n
+  discard not not x == n # one warning, from the inner `not`
+  discard 1 + not x == n # `not` takes only `x`, as in `not x == n`
 
   # no warning: the meaning is explicit or there is no comparison
   discard not (x == n)
