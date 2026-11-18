@@ -1033,10 +1033,14 @@ elif not defined(useNimRtl):
     data.options = options
 
     when useProcessAuxSpawn:
+      # `startProcessAuxSpawn` changes to `workingDir` for the spawn; the
+      # parent's directory is restored whether or not the spawn succeeds.
       var currentDir = getCurrentDir()
-      pid = startProcessAuxSpawn(data)
-      if workingDir.len > 0:
-        setCurrentDir(currentDir)
+      try:
+        pid = startProcessAuxSpawn(data)
+      finally:
+        if workingDir.len > 0:
+          setCurrentDir(currentDir)
     else:
       pid = startProcessAuxFork(data)
 
