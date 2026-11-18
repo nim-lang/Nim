@@ -15,6 +15,8 @@ when defined(nimPreviewSlimSystem):
   import std/objectdollar # for StackTraceEntry
   import std/assertions
 
+const asyncTracebacks {.define.} = not defined(release)
+
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
   CallbackFunc = proc () {.closure, gcsafe.}
@@ -336,7 +338,7 @@ proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
     dec i
 
 proc injectStacktrace[T](future: Future[T]) =
-  when not defined(release):
+  when asyncTracebacks:
     const header = "\nAsync traceback:\n"
 
     var exceptionMsg = future.error.msg
