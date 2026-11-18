@@ -278,6 +278,10 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- The error for a missing lifetime hook (`=copy`, `=sink`, `=dup`, `=wasMoved`) that
+  is marked `{.error.}` now ends with the text of `{.error: "msg".}` when there
+  is one, like the error for a routine does.
+
 - Hot code reloading no longer keeps a global variable's memory when the
   global's type changed: the old memory was read with the new layout. Such a
   reload now stops the program with a message naming the global.

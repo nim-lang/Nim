@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'=dup' is not available for type <Foo>, which is inferred from unavailable '=copy'; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(51, 31); routine: preventThis"
+  errormsg: "'=dup' is not available for type <Foo>, which is inferred from unavailable '=copy'; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(51, 31); routine: preventThis; Foo can only be moved"
   file: "tprevent_assign2.nim"
   line: 49
 """
@@ -9,7 +9,7 @@ type
     x: int
 
 proc `=destroy`(f: var Foo) = f.x = 0
-proc `=copy`(a: var Foo; b: Foo) {.error.} # = a.x = b.x
+proc `=copy`(a: var Foo; b: Foo) {.error: "Foo can only be moved".} # = a.x = b.x
 
 proc `=sink`(a: var Foo; b: Foo) = a.x = b.x
 

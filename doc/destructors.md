@@ -236,8 +236,9 @@ that otherwise would lead to a copy is prevented at compile-time. This looks lik
   proc `=copy`(dest: var T; source: T) {.error.}
   ```
 
-but a custom error message (e.g., `{.error: "custom error".}`) will not be emitted
-by the compiler. Notice that there is no `=` before the `{.error.}` pragma.
+With `{.error: "custom error".}` the text is appended to the compiler's error
+message when the hook that carries the pragma is needed. Notice that there is
+no `=` before the `{.error.}` pragma.
 
 
 `=trace` hook
