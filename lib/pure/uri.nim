@@ -330,11 +330,9 @@ func parseUri*(uri: string): Uri =
   result = initUri()
   parseUri(uri, result)
 
-
-  
-func removeDotSegments(path: string): string =
+func removeDotSegments*(path: string): string =
   ## Collapses `..` and `.` in `path` according to http://tools.ietf.org/html/rfc3986#section-5.2.4
-  ## NOTE: Operates on paths, not URLs.
+  ## NOTE: Operates on paths only, not URIs.
 
   runnableExamples:
     assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7//"
@@ -350,8 +348,9 @@ func removeDotSegments(path: string): string =
 
   # Single allocation up front for the output path
   result = newStringOfCap(l)
-  var i = 0
   
+  var i = 0
+
   while i < l:
     let remaining = l - i
 
@@ -363,9 +362,7 @@ func removeDotSegments(path: string): string =
       if remaining >= 2 and path[i+1] == '/':
         i += 2
         continue
-      if remaining == 1:
-        break
-      if remaining == 2 and path[i+1] == '.':
+      if remaining == 1 or remaining == 2 and path[i+1] == '.':
         break
 
     # 1B & 1C. Handle prefix/isolated "/./", "/.", "/../", "/.."
@@ -374,7 +371,7 @@ func removeDotSegments(path: string): string =
       if remaining >= 2 and path[i+1] == '.':
         # Path segment is exactly "/." or prefix "/./"
         if remaining == 2:
-          if result.len == 0 or result[^1] != '/': result.add('/')
+          result.add('/')
           break
         if path[i+2] == '/':
           i += 2 # Skip the '/.' but preserve the trailing '/'
@@ -385,14 +382,12 @@ func removeDotSegments(path: string): string =
           if remaining == 3:
             # Pop last segment from output buffer
             let lastSlash = result.rfind('/')
-            if lastSlash != -1: result.setLen(lastSlash)
-            else: result.setLen(0)
-            if result.len == 0 or result[^1] != '/': result.add('/')
+            result.setLen(max(0, lastSlash))
+            result.add('/')
             break
           if path[i+3] == '/':
             let lastSlash = result.rfind('/')
-            if lastSlash != -1: result.setLen(lastSlash)
-            else: result.setLen(0)
+            result.setLen(max(0, lastSlash))
             i += 3 # Skip the '/..' but preserve the trailing '/'
             continue
 
@@ -405,11 +400,12 @@ func removeDotSegments(path: string): string =
     if nextSlash != -1:
       endIdx = nextSlash
     else:
-      endIdx = l    
+      endIdx = l
     
     # Fast bulk slice copy rather than single-character looping
     result.add(path[i ..< endIdx])
     i = endIdx
+
 
 func merge(base, reference: Uri): string =
   # http://tools.ietf.org/html/rfc3986#section-5.2.3
