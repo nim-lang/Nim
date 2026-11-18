@@ -1,3 +1,5 @@
+{.push stackTrace: off.}
+
 include system/inclrtl
 
 const hasSharedHeap* = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
@@ -176,3 +178,5 @@ type
       rawStack*: pointer
 
 proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
+
+{.pop.}

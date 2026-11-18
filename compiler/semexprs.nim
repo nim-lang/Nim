@@ -568,6 +568,12 @@ proc semCast(c: PContext, n: PNode): PNode =
     return errorNode(c, n)
   if tfHasMeta in targetType.flags:
     localError(c.config, n[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
+  if c.inGenericContext == 0 and castedExpr.kind == nkSym and
+      castedExpr.sym.kind in routineKinds and
+      isGenericRoutine(castedExpr.sym) and sfFromGeneric notin castedExpr.sym.flags:
+    # (#12765)
+    localError(c.config, n[1].info, errProcHasNoConcreteType % castedExpr.renderTree)
+    return errorNode(c, n)
   if not isCastable(c, targetType, castedExpr.typ, n.info):
     localError(c.config, n.info, "expression cannot be cast to '$1'" % $targetType)
   result = newNodeI(nkCast, n.info)
@@ -658,7 +664,10 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
-    res = typeRel(m, t2, t1) >= isSubtype # isNone
+    if t2.kind == tyBuiltInTypeClass and t2.last.kind == tyVar:
+      res = t1.kind == tyVar # `x is var` (#9443)
+    else:
+      res = typeRel(m, t2, t1) >= isSubtype # isNone
     # `res = sameType(t1, t2)` would be wrong, e.g. for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
@@ -678,6 +687,10 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n[2].kind notin {nkStrLit..nkTripleStrLit}:
     let t2 = semTypeNode(c, n[2], nil)
     n[2] = newNodeIT(nkType, n[2].info, t2)
+    if n[1].kind == nkHiddenDeref and (t2.kind == tyVar or
+        (t2.kind == tyBuiltInTypeClass and t2.last.kind == tyVar)):
+      # `x is var` asks for the `var` of `x` (#9443)
+      n[1] = n[1][0]
     if t2.kind == tyStatic:
       let evaluated = tryConstExpr(c, n[1])
       if evaluated != nil:
@@ -1259,6 +1272,12 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
 
+proc isObjConstrSyntax(n: PNode): bool =
+  ## `Branch()` or `Branch(field: value, ...)`.
+  result = true
+  for i in 1..<n.len:
+    if n[i].kind != nkExprColonExpr: return false
+
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
@@ -1544,6 +1563,9 @@ proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
   of tyUserTypeClasses:
     if t.isResolvedUserTypeClass:
       result = readTypeParameter(c, t, i, n.info)
+      if result == nil and t.len > 0 and t.last.kind == tyGenericInst:
+        # a generic param of the type that matched the concept (#9006)
+        result = readTypeParameter(c, t.last, i, n.info)
     elif c.inGenericContext > 0:
       result = semGenericStmt(c, n)
       result.typ = makeTypeFromExpr(c, copyTree(result))
@@ -1718,7 +1740,16 @@ proc dotTransformation(c: PContext, n: PNode, initialDerefs: int): PNode =
     # undo the derefs for overload resolution
     for _ in initialDerefs ..< currentDerefs:
       root = root[0]
+  # an operand that was resolved to a concrete type must not be semchecked
+  # again by overload resolution: that is not idempotent and can turn a `var`
+  # argument into a by-value one (#26521). `copyTree` does not keep `nfSem`.
+  # Symchoices etc. still need to be resolved (and reported as ambiguous).
+  # `tyIterable` is only the speculative `efWantIterable` typing of the LHS,
+  # the call itself must decide what it wants (#26547):
+  let keepSem = nfSem in root.flags and root.kind notin nkSymChoices and
+    root.typ != nil and root.typ.kind notin {tyNone, tyError, tyFromExpr, tyIterable}
   root = copyTree(root)
+  if keepSem: root.flags.incl nfSem
   if isSymChoice(n[1]) or
       # generics usually leave field names as symchoices, but not types
       (n[1].kind == nkSym and n[1].sym.kind == skType):
@@ -1794,6 +1825,10 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags, afterOverloading = f
   n[0] = semExprWithType(c, n[0], {efNoEvaluateGeneric, efAllowSymChoice})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+  if arr.isResolvedUserTypeClass:
+    # the type that matched the concept (#9289)
+    arr = arr.last.skipTypes({tyGenericInst, tyUserTypeClassInst, tyOwned,
+                              tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
     if arr.base.kind == tyNone:
       result = n
@@ -2165,6 +2200,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ.setReturnType rhsTyp
+          if rhsTyp.kind == tyTypeDesc and c.p.owner.kind in {skProc, skFunc}:
+            # returns a type, only usable at compile time (#8301)
+            incl(c.p.owner, sfCompileTime)
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
     borrowCheck(c, n, lhs, rhs)
@@ -3088,6 +3126,18 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
 
 include semobjconstr
 
+proc semBranchCall(c: PContext; n: PNode; branches: seq[PSym];
+                   flags: TExprFlags; expectedType: PType): PNode =
+  ## `Branch()` and `Branch(field: value)` construct a sum type, any other
+  ## call of a branch name is an ordinary call.
+  if not isObjConstrSyntax(n):
+    let nOrig = n.copyTree
+    result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags, expectedType)
+    if result == nil: result = errorNode(c, n)
+    else: result = afterCallActions(c, result, nOrig, flags, expectedType)
+  else:
+    result = semSumTypeConstr(c, n, branches, flags, expectedType)
+
 proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
   inc(c.p.nestedBlockCounter)
@@ -3582,13 +3632,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
         elif s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skProc, skFunc, skMethod, skConverter, skIterator:
-        if s.magic == mNone: result = semDirectOp(c, n, flags, expectedType)
+        # an imported overload of `addr` must take part in overload
+        # resolution (#4007):
+        if s.magic == mNone or (s.magic == mAddr and c.isAmbiguous):
+          result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skEnumField:
-        # `Branch()` or `Branch(field: value)` of a sum type:
         let branches = sumTypeBranchCandidates(c, n[0])
         if branches.len > 0:
-          result = semSumTypeConstr(c, n, branches, flags, expectedType)
+          result = semBranchCall(c, n, branches, flags, expectedType)
         else:
           result = semIndirectOp(c, n, flags, expectedType)
       else:
@@ -3598,6 +3650,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags, expectedType)
+    elif isSymChoice(n[0]) and sumTypeBranchCandidates(c, n[0]).len > 0:
+      # an ambiguous branch name bound by a template:
+      result = semBranchCall(c, n, sumTypeBranchCandidates(c, n[0]), flags, expectedType)
     elif isSymChoice(n[0]):
       let b = asBracketExpr(c, n)
       if b != nil:

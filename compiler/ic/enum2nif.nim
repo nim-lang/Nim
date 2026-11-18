@@ -885,6 +885,7 @@ proc toNifTag*(s: TMagic): string =
   of mNodeId: "nodeid"
   of mPrivateAccess: "privateaccess"
   of mZeroDefault: "zerodefault"
+  of mSymCustomPragmas: "symcustompragmas"
 
 
 proc parse*(t: typedesc[TMagic]; s: string): TMagic =
@@ -1167,6 +1168,7 @@ proc parse*(t: typedesc[TMagic]; s: string): TMagic =
   of "nodeid": mNodeId
   of "privateaccess": mPrivateAccess
   of "zerodefault": mZeroDefault
+  of "symcustompragmas": mSymCustomPragmas
   else: mNone
 
 

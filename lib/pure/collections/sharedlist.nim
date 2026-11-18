@@ -13,7 +13,7 @@
 
 {.deprecated.}
 
-{.push stackTrace: off.}
+{.push stackTrace: off, checks: off.}
 
 import
   std/locks

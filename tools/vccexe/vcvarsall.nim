@@ -27,6 +27,10 @@ type
     vccarchX64Arm = "x64_arm", ## VCC cross-compilation tools using x64 VCC for compilation against the ARM architecture.
     vccarchX64Arm64 = "x64_arm64" ## VCC cross-compilation tools using x64 VCC for compilation against the ARM (64-bit) architecture.
 
+    vccarchArm = "arm", ## VCC for compilation against the ARM architecture.
+
+    vccarchArm64 = "arm64" ## VCC for compilation against the ARM (64-bit) architecture.
+
   VccPlatformType* = enum ## The VCC platform type of the compile target
     vccplatEmpty = "", ## Default (i.e. Desktop) Platfor Type
     vccplatStore = "store", ## Windows Store Application

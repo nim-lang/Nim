@@ -417,6 +417,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
             # its parameters (collapsing distinct closure types onto one key).
             let ps = params[i].sym
             if ps.state == Partial and c.sl != nil: c.sl(ps)
+            if isClosureEnvParam(t, ps): continue
             c.typeKey(ps.typImpl, flags, conf)
           else:
             c.typeKey(params[i].typField, flags, conf)

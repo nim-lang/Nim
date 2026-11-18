@@ -524,7 +524,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
     elif e.kind == nkSym and (e.typ.kind == tyStatic or e.typ.kind == tyTypeDesc):
       if e.typ.kind == tyStatic:
-        if e.sym.ast != nil:
+        if e.sym.ast != nil and e.sym.kind != skGenericParam:
+          # the `ast` of a generic param is only its default value (#9942)
           return semArrayIndex(c, e.sym.ast)
         if e.typ.skipModifier.kind != tyGenericParam and not isOrdinalType(e.typ.skipModifier):
           let info = if n.safeLen > 1: n[1].info else: n.info
@@ -686,6 +687,15 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
   else:
     result = newSymG(kind, n, c)
 
+proc customPragmasOf(n: PNode): PNode =
+  ## the custom pragmas of the checked pragma section `n`, or nil
+  result = nil
+  for it in n:
+    let callee = if it.kind in nkPragmaCallKinds and it.len > 0: it[0] else: it
+    if callee.kind == nkSym and sfCustomPragma in callee.sym.flags:
+      if result == nil: result = newNodeI(nkPragma, n.info)
+      result.add it
+
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags, fromTopLevel = false): PSym =
   if n.kind == nkPragmaExpr:
@@ -695,7 +705,11 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     of skType:
       # process pragmas later, because result.typ has not been set yet
       discard
-    of skField: pragma(c, result, n[1], fieldPragmas)
+    of skField:
+      pragma(c, result, n[1], fieldPragmas)
+      # kept on the symbol so that the instances of a generic object type
+      # have them with the generic params replaced:
+      result.customPragmas = customPragmasOf(n[1])
     of skVar:   pragma(c, result, n[1], varPragmas)
     of skLet:   pragma(c, result, n[1], letPragmas)
     of skConst: pragma(c, result, n[1], constPragmas)
@@ -892,6 +906,17 @@ proc addSumTypeBranchNames(c: PContext; scope: PScope; enumType: PType) =
   for f in enumType.n:
     addInterfaceOverloadableSymAt(c, scope, f.sym)
 
+proc inheritsFromSumType(t: PType): bool =
+  ## The base types have an empty `case` section already.
+  result = false
+  var b = t.baseClass
+  while b != nil:
+    b = b.skipTypes(skipPtrs)
+    if b.kind == tyGenericInvocation: b = b.genericHead.last
+    if b.kind != tyObject: break
+    if tfSumType in b.flags: return true
+    b = b.baseClass
+
 proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                     father: PNode, rectype: PType, hasCaseFields: bool) =
   ## Lowers `case` / `of A, B: fields` / `of C: fields` to a case object
@@ -902,7 +927,7 @@ proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   if owner.kind != skType:
     localError(c.config, n.info, "a sum type must be declared in a type section")
     return
-  if tfSumType in rectype.flags:
+  if tfSumType in rectype.flags or inheritsFromSumType(rectype):
     localError(c.config, n.info, "only one empty `case` section is allowed in an object type")
     return
   if hasCaseFields:
@@ -1203,6 +1228,25 @@ proc tryAddInheritedFields(c: PContext, check: var IntSet, pos: var int,
   else:
     result = true
 
+proc checkUncheckedArrayLast(c: PContext; n: PNode) =
+  ## an `UncheckedArray` field becomes a C flexible array member, it must
+  ## be the last field (#9275)
+  var last: PNode = nil
+  proc walk(c: PContext; n: PNode; last: var PNode) =
+    case n.kind
+    of nkRecList:
+      for it in n: walk(c, it, last)
+    of nkSym, nkRecCase:
+      if last != nil:
+        localError(c.config, last.info,
+          "an 'UncheckedArray' field must be the last field of an object")
+        last = nil
+      if n.kind == nkSym and n.sym.typ != nil and
+          n.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind == tyUncheckedArray:
+        last = n
+    else: discard
+  walk(c, n, last)
+
 proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   result = nil
   if n.len == 0:
@@ -1270,6 +1314,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType
       return newType(tyError, c.idgen, result.owner)
 
   semRecordNodeAux(c, n[2], check, pos, result.n, result)
+  if result.sym == nil or sfImportc notin result.sym.flags:
+    checkUncheckedArrayLast(c, result.n)
   if n[0].kind != nkEmpty:
     # dummy symbol for `pragma`:
     var s = newSymS(skType, newIdentNode(getIdent(c.cache, "dummy"), n.info), c)
@@ -1373,7 +1419,11 @@ proc findEnforcedStaticType(t: PType): PType =
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro:
     let staticType = findEnforcedStaticType(param.typ)
-    if staticType != nil:
+    if param.kind == skResult:
+      # already a NimNode (see `maybeAddResult`); a copy would differ from
+      # the routine's result symbol that `return` and injectdestructors use:
+      addDecl(c, param)
+    elif staticType != nil:
       var a = copySym(param, c.idgen)
       a.typ = staticType.base
       addDecl(c, a)
@@ -1576,7 +1626,17 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                           allowMetaTypes = true)
       result = recurse(expanded, true)
 
-  of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
+  of tyCompositeTypeClass:
+    if anon and paramType.base.kind == tyGenericBody:
+      # `b: distinct Table` after `a: Table`: here `Table` names the implicit
+      # generic param of `a` whose `auto` arguments are bound already, so
+      # lift the generic body again to get a fresh set of them (bug #1385)
+      result = recurse(paramType.base, true)
+    else:
+      result = addImplicitGeneric(c,
+          copyType(paramType, c.idgen, getCurrOwner(c)), paramTypId,
+          info, genericParams, paramName)
+  of tyUserTypeClasses, tyBuiltInTypeClass,
      tyAnd, tyOr, tyNot, tyConcept:
     result = addImplicitGeneric(c,
         copyType(paramType, c.idgen, getCurrOwner(c)), paramTypId,
@@ -1716,7 +1776,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
-        if not containsGenericType(typ):
+        if typ.kind == tyForward and def.kind == nkNilLit:
+          # `nil` for a type that is still being defined, like
+          # `T = ref object of RootRef; p: proc (x: T = nil)` (#6615)
+          def.typ = typ
+        elif not containsGenericType(typ):
           # check type compatibility between def.typ and typ:
           def = fitNode(c, typ, def, def.info)
         elif typ.kind == tyStatic:
@@ -1815,6 +1879,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             #echo "came here for ", typeToString(r)
             r.incl tfRetType
         r = skipIntLit(r, c.idgen)
+        if isType and kind == skProc and r.kind in {tyVar, tyLent} and
+            tfVarIsPtr notin r.flags:
+          # A procedure that returns a view through 'result' returns a pointer
+          # in C++ (see `asgnToResultVar`); the type of its values must agree
+          # so that a proc can be passed where this type is expected (#25870).
+          if r.state == Sealed: r = copyType(r, c.idgen, r.owner)
+          r.incl tfVarIsPtr
         if kind == skIterator:
           # see tchainediterators
           # in cases like iterator foo(it: iterator): typeof(it)
@@ -2049,7 +2120,12 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
     result = n.typ.base
     # fix types constructed by macros/template:
     if prev != nil and prev.kind != tyGenericBody and prev.sym != nil:
-      if result.sym.isNil:
+      if result.kind == tyGenericInst:
+        # a generic instance has no symbol of its own but is shared via the
+        # instantiation cache, so it must not be renamed. Alias it instead,
+        # as `semTypeOf` does (bugs #26400, #26412):
+        fixupTypeOf(c, prev, result)
+      elif result.sym.isNil:
         # Behold! you're witnessing enormous power yielded
         # by macros. Only macros can summon unnamed types
         # and cast spell upon AST. Here we need to give
@@ -2635,6 +2711,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
   of nkSym:
     let s = getGenSym(c, n.sym)
+    if s.kind == skGenericParam and s.typ != nil and
+        s.typ.kind == tyGenericParam and s.typ.len == 0 and
+        tfWildcard in s.typ.flags:
+      # a generic param passed as a symbol, for example created by
+      # `genSym(nskGenericParam)` (#4939); see `semTypeIdent`
+      s.transitionGenericParamToType()
+      s.typ.excl tfWildcard
     if s.typ != nil and (s.kind == skType or s.typ.kind == tyTypeDesc):
       var t =
         if s.kind == skType:
@@ -2800,8 +2883,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyIterable, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
+    # its hooks count the VM's handle, see `liftdestructors.nimNodeOp`:
     incl m.typ, tfTriggersCompileTime
-    incl m.typ, tfCheckedForDestructor
   of mException: discard
   of mBuiltinType:
     case m.name.s
@@ -2838,6 +2921,12 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
 
       if constraint.kind != nkEmpty:
         typ = semTypeNode(c, constraint, nil)
+        if typ.kind in {tySet, tyArray, tySequence, tyUncheckedArray} and
+            typ.elementType.kind == tyNone:
+          # a bare `seq` etc. is the type class of all seqs, it must not share
+          # the generic param of the magic type between constraints (#8435);
+          # see `typeSectionFinalPass`
+          typ = newTypeS(tyBuiltInTypeClass, c, newTypeS(typ.kind, c))
         if typ.kind != tyStatic or typ.len == 0:
           if typ.kind == tyTypeDesc:
             if typ.elementType.kind == tyNone:
@@ -2850,7 +2939,11 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         def = semConstExpr(c, def)
         if typ == nil:
           if def.typ.kind != tyTypeDesc:
-            typ = newTypeS(tyStatic, c, def.typ)
+            # not `static[int literal(3)]`, see #9942
+            typ = newTypeS(tyStatic, c, def.typ.skipIntLit(c.idgen))
+            typ.incl tfHasStatic
+            if not containsGenericType(def.typ):
+              def = fitNode(c, typ, def, def.info)
         else:
           # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
           # from manyloc/named_argument_bug/triengine:

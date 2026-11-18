@@ -67,36 +67,6 @@ proc symAddr*(lib: LibHandle, name: cstring): pointer {.gcsafe.}
   ## Retrieves the address of a procedure/variable from `lib`. Returns nil
   ## if the symbol could not be found.
 
-proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
-  ## Retrieves the address of a procedure/variable from `lib`. Raises
-  ## `LibraryError` if the symbol could not be found.
-  result = symAddr(lib, name)
-  if result == nil: raiseInvalidLibrary(name)
-
-proc libCandidates*(s: string, dest: var seq[string]) =
-  ## Given a library name pattern `s`, write possible library names to `dest`.
-  var le = strutils.find(s, '(')
-  var ri = strutils.find(s, ')', le+1)
-  if le >= 0 and ri > le:
-    var prefix = substr(s, 0, le - 1)
-    var suffix = substr(s, ri + 1)
-    for middle in split(substr(s, le + 1, ri - 1), '|'):
-      libCandidates(prefix & middle & suffix, dest)
-  else:
-    add(dest, s)
-
-proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
-  ## Loads a library with name matching `pattern`, similar to what the `dynlib`
-  ## pragma does. Returns nil if the library could not be loaded.
-  ##
-  ## .. warning:: this proc uses the GC and so cannot be used to load the GC.
-  result = default(LibHandle)
-  var candidates = newSeq[string]()
-  libCandidates(pattern, candidates)
-  for c in candidates:
-    result = loadLib(c, globalSymbols)
-    if not result.isNil: break
-
 when defined(posix) and not defined(nintendoswitch):
   #
   # =========================================================================
@@ -194,3 +164,33 @@ elif defined(windows) or defined(dos):
 
 else:
   {.error: "no implementation for dynlib".}
+
+proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
+  ## Retrieves the address of a procedure/variable from `lib`. Raises
+  ## `LibraryError` if the symbol could not be found.
+  result = symAddr(lib, name)
+  if result == nil: raiseInvalidLibrary(name)
+
+proc libCandidates*(s: string, dest: var seq[string]) {.raises: [].} =
+  ## Given a library name pattern `s`, write possible library names to `dest`.
+  var le = strutils.find(s, '(')
+  var ri = strutils.find(s, ')', le+1)
+  if le >= 0 and ri > le:
+    var prefix = substr(s, 0, le - 1)
+    var suffix = substr(s, ri + 1)
+    for middle in split(substr(s, le + 1, ri - 1), '|'):
+      libCandidates(prefix & middle & suffix, dest)
+  else:
+    add(dest, s)
+
+proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
+  ## Loads a library with name matching `pattern`, similar to what the `dynlib`
+  ## pragma does. Returns nil if the library could not be loaded.
+  ##
+  ## .. warning:: this proc uses the GC and so cannot be used to load the GC.
+  result = default(LibHandle)
+  var candidates = newSeq[string]()
+  libCandidates(pattern, candidates)
+  for c in candidates:
+    result = loadLib(c, globalSymbols)
+    if not result.isNil: break

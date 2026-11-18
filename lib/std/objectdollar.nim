@@ -1,5 +1,7 @@
 ## This module implements a generic `$` operator to convert objects to strings.
 
+{.push checks: off.}
+
 import std/private/miscdollars
 
 proc `$`*[T: object](x: T): string =
@@ -11,3 +13,5 @@ proc `$`*[T: object](x: T): string =
     let x = Foo(a: 23, b: 45)
     assert $x == "(a: 23, b: 45)"
   tupleObjectDollar(result, x)
+
+{.pop.}

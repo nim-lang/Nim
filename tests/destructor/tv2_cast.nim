@@ -10,9 +10,7 @@ destroying O1'''
 var
   data
   :tmpD
-data = cast[string](encode(cast[seq[byte]](
-  :tmpD = newString(100)
-  :tmpD)))
+data = cast[string](encode(cast[seq[byte]]((:tmpD = newString(100); :tmpD))))
 `=destroy`(:tmpD)
 `=destroy`(data)
 -- end of expandArc ------------------------

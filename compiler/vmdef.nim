@@ -191,6 +191,8 @@ type
     opcSamePayload, # regs[A] = payload(regs[B]) == payload(regs[C])
     opcSeqCopyPayload, # setLen(seq at regs[A], len(seq at regs[B])) and copy the bits of all elements
     opcMakeUnique,  # copy-on-write: the string at regs[A] gets its own payload if it shares a literal
+    opcRetainCStr,  # regs[A] is a cstring: mark the payload it points into immutable so
+                    # the bytes stay valid for the whole VM run (StrlitFlag)
     opcUnshare,     # the strings and seqs in the value at regs[A] of type W get their own
                     # payloads; value semantics for the old runtime (--mm:refc)
     opcDestroyValue,# `=destroy` for the value at regs[A] of type W that has no hooks
@@ -201,6 +203,8 @@ type
     # refs and objects:
     opcNewRef,      # regs[A] = a new zeroed ref cell; W = size | align shl 32
     opcIncRef,      # incRef(regs[A]) unless nil
+    opcNodeIncRef,  # counts the NimNode handle regs[A]
+    opcNodeDecRef,  # releases the NimNode handle regs[A]
     opcDecRefIsLast,# regs[A] = decRefIsLast(regs[B]); false for nil
     opcDisposeRef,  # frees the ref cell regs[A]; B is the alignment of the object
     opcDynDestructor, # calls `=destroy` for the dynamic type of the ref cell regs[A], then frees it
@@ -275,6 +279,7 @@ type
     opcTypeTrait,
     opcSymOwner,
     opcSymIsInstantiationOf,
+    opcSymCustomPragmas,
     opcNBindSym,    # regs[A] = copyTree(node regs[B])
     opcNDynBindSym, # regs[A] = dynamic bindSym; the arguments start at B, W indexes `callShapes`
     opcNChild,
@@ -364,6 +369,7 @@ type
     shape*: ptr CallShape
     currentException*: Address
     currentLineInfo*: TLineInfo
+    tos*: PStackFrame
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx

@@ -1090,6 +1090,13 @@ proc docOfSym(sym: PSym): string =
   return ""
 
 proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
+  # A non-field sym reached from inside a reclist (e.g. a field type's `sym`, a
+  # type alias whose owner routine body uses the very fields being written) is
+  # not part of that reclist: field uses in it must not claim the reclist's
+  # field defs, otherwise the owning type's own entry degrades to a `SymUse`
+  # and loads as an owner-less stub (#26489).
+  let savedReclist = w.inTypeReclist
+  if sym.kindImpl != skField: w.inTypeReclist = 0
   dest.addParLe sdefTag, nifLineInfoWithComment(w.infos, sym.infoImpl, docOfSym(sym))
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   # The index visibility marker is still used by tooling and interface
@@ -1114,6 +1121,7 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
       writeSym(w, dest, sym.guardImpl)
       dest.addIntLit sym.bitsizeImpl
       dest.addIntLit sym.alignmentImpl
+      writeNode(w, dest, sym.customPragmasImpl)
     else:
       discard
 
@@ -1175,6 +1183,7 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
   else:
     dest.addDotToken
   dest.addParRi
+  w.inTypeReclist = savedReclist
 
 
 proc shouldWriteSymDef(w: var Writer; sym: PSym): bool {.inline.} =
@@ -2128,7 +2137,7 @@ proc writeIfaceCookie(config: ConfigRef; thisModule: int32; flat: seq[CookieTok]
   let groupSuffixes = icGroupSuffixes(config)
   for dep in c.depSuffixes:
     if dep == selfSuffix or dep in groupSuffixes: continue
-    let depIface = toGeneratedFile(config, AbsoluteFile(dep), ".iface.bif").string
+    let depIface = semanticFile(config, dep, ".iface.bif").string
     s.update "|"
     s.update dep
     s.update ":"
@@ -2858,7 +2867,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
     var modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".t.bif")).string
     let lowered = useLowered and fileExists(modFile)
     if not lowered:
-      modFile = (getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string
+      modFile = semanticFile(conf, suffix, ".s.bif").string
     if not fileExists(modFile):
       raiseAssert "NIF file not found for module suffix '" & suffix & "': " & modFile &
         ". This can happen when loading a module from NIF that references another module " &
@@ -2890,7 +2899,7 @@ proc ensureSemBuf(c: var DecodeContext; module: FileIndex) =
   let m = c.mods[module]
   if m.semTried: return
   m.semTried = true
-  let semFile = (getNimcacheDir(c.infos.config) / RelativeFile(m.suffix & ".s.bif")).string
+  let semFile = semanticFile(c.infos.config, m.suffix, ".s.bif").string
   if not fileExists(semFile): return
   var sm = icbif.load(semFile)
   prof pBifLoads
@@ -3326,6 +3335,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
         s.guardImpl = loadSymStub(c, n, thisModule, localSyms)
         loadField s.bitsizeImpl
         loadField s.alignmentImpl
+        s.customPragmasImpl = loadNode(c, n, thisModule, localSyms)
       else:
         discard
 
@@ -3445,17 +3455,20 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   if uint32(docId) != 0'u32 and s.astImpl != nil and nodeCommentWriter != nil:
     nodeCommentWriter(s.astImpl, docPool.strings[docId])
 
-proc lookupField(n: PNode; name: PIdent): PSym =
-  ## `astalgo.lookupInRecord`, which ast2nif cannot import.
+proc lookupField(n: PNode; name: PIdent; position: int): PSym =
+  ## `astalgo.lookupInRecord`, which ast2nif cannot import. The position
+  ## matters for closure envs, whose fields can share a name.
   result = nil
   if n == nil: return
   case n.kind
   of nkRecList, nkRecCase, nkOfBranch, nkElse:
     for child in n.sons:
-      result = lookupField(child, name)
+      result = lookupField(child, name, position)
       if result != nil: return
   of nkSym:
-    if n.sym.kindImpl == skField and n.sym.name.id == name.id: result = n.sym
+    if n.sym.kindImpl == skField and n.sym.name.id == name.id and
+        n.sym.positionImpl == position:
+      result = n.sym
   else: discard
 
 proc recordType(c: var DecodeContext; t: PType): PType =
@@ -3485,9 +3498,10 @@ proc loadFieldUse(c: var DecodeContext; symAsStr: string; thisModule: string;
   ## owner it falls back to a stub.
   var t = c.recordType(owner)
   if t != nil:
-    let name = stubKindAndName(c.cache, parseSymName(symAsStr).name)[1]
+    let parsed = parseSymName(symAsStr)
+    let name = stubKindAndName(c.cache, parsed.name)[1]
     while t != nil:
-      result = lookupField(t.nImpl, name)
+      result = lookupField(t.nImpl, name, parsed.count)
       if result != nil: return
       t = if t.kind == tyObject and t.sonsImpl.len > 0: c.recordType(t.sonsImpl[0])
           else: nil
@@ -4007,7 +4021,7 @@ proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
   ## Build the full interface independently, on demand. Appending private
   ## symbols to the public table would lose the full interface's own order.
   let conf = c.infos.config
-  if fileExists((getNimcacheDir(conf) / RelativeFile(suffix & ".s.bif")).string):
+  if fileExists(semanticFile(conf, suffix, ".s.bif").string):
     let module = moduleId(c, suffix, {})
     if not c.mods.hasKey(module): return false
     interfHidden = loadInterface(c, module, true, resolveModule)
@@ -4079,7 +4093,7 @@ proc toNifFilename*(conf: ConfigRef; f: FileIndex): string =
     let t = toGeneratedFile(conf, AbsoluteFile(suffix), ".t.bif").string
     if fileExists(t):
       return t
-  result = toGeneratedFile(conf, AbsoluteFile(suffix), ".s.bif").string
+  result = semanticFile(conf, suffix, ".s.bif").string
 
 proc resolveSym(c: var DecodeContext; symAsStr: string; alsoConsiderPrivate: bool): PSym =
   result = c.syms.getOrDefault(symAsStr)[0]
@@ -4166,6 +4180,9 @@ type
       ## generic instances this module created; modulegraphs.nim rebuilds
       ## `procInstCache` from them so a consumer reuses the instance instead of
       ## re-instantiating it in its own (operator-blind) module scope.
+    offeredNames*: seq[tuple[generic, inst: string]]
+      ## backend only: the NIF names of `genericOffers`, unresolved; the
+      ## `lower` stage writes them back into the `.t.bif`
     typeOffers*: seq[tuple[generic: PSym; inst: PType]]
       ## generic TYPE instances this module created; modulegraphs.nim rebuilds
       ## `typeInstCache` from them so a consumer reuses the baked instance
@@ -4208,11 +4225,9 @@ proc scanIncludeGraph*(config: ConfigRef): seq[tuple[includer: string; includes:
   ## includes me?" without NIF-loading that module — so the includer can be
   ## *source*-compiled (modules that `include` files are never served from NIF).
   result = @[]
-  let dir = getNimcacheDir(config)
-  if not dirExists(dir.string): return
   # The primary module artifacts are `<suffix>.s.bif` (the sidecars are
   # `.iface.nif`/`.impl.nif`/`.edges.nif`/`.s.deps.nif`, which this glob excludes).
-  for f in walkFiles((dir / RelativeFile"*.s.bif").string):
+  for f in semanticFiles(config):
     var m = bif.load(f)
     var includer = ""
     var includes: seq[string] = @[]
@@ -4441,7 +4456,21 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         # either (`writeLoweredModule` writes what was loaded), which is fine:
         # its only readers are backend stages.
         if c.infos.config.cmd == cmdNifC:
-          skip cur
+          # The backend keeps only the instance's NAME: a home module's `cg`
+          # emits exactly the instances it offers, and every other demander
+          # just prototypes them (`cgen.homeEmitsInstance`). No sym or type is
+          # resolved, so this neither loads anything nor shifts load order.
+          var names: array[2, string] = ["", ""]
+          cur.into:
+            var idx = 0
+            while cur.hasMore:
+              if cur.kind == Symbol and idx < 2:
+                names[idx] = symName(cur)
+                if parseSymName(names[idx]).module.len == 0: names[idx].add suffix
+                inc idx
+              skip cur
+          if names[1].len > 0:
+            result.offeredNames.add (names[0], names[1])
           continue
         # (offer <genericSym> <instSym> <genericParamsCount> <type>...) — resolve
         # to PSyms/PTypes; modulegraphs registers them into `procInstCache`.
@@ -4714,6 +4743,13 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
     for ct in off.concreteTypes:
       # Canonical name, see `writeNifModule`'s copy of this loop.
       w.deps.addSymUse pool.syms.getOrIncl(nifTypeName(w, ct)), NoLineInfo
+    w.deps.addParRi
+  # The backend loads offers by name only (see `ttOffer`); carry those names
+  # so `cg` still knows which instances this module is home to.
+  for off in precomp.offeredNames:
+    w.deps.addParLe offerTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(off.generic), NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(off.inst), NoLineInfo
     w.deps.addParRi
   for off in precomp.typeOffers:
     w.deps.addParLe typeOfferTag, NoLineInfo

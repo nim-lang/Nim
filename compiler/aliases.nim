@@ -25,10 +25,30 @@ type
     pfStructural    ## use structural prefix-chain detection and tree-walk
     pfBidirectional ## also check reverse direction per field in nkObjConstr
 
-proc isCompileTimeOnlyNode(n: PNode): bool {.inline.} =
+proc isCompileTimeOnlyNode*(n: PNode): bool {.inline.} =
   ## `typeof` and typedesc/static values describe types at compile time; they
   ## do not read the runtime location that alias analysis is protecting.
   n.kind == nkTypeOfExpr or (n.typ != nil and n.typ.isCompileTimeOnly)
+
+proc isInertValue*(n: PNode): bool =
+  ## Evaluating `n` reads no location and cannot raise: literals, `default(T)`,
+  ## `zeroDefault(T)` and value constructors built from them. Such a field
+  ## value needs no temporary in `dest = Constr(...)`; it can be constructed in
+  ## place even after `dest` was destroyed (bugs #26707, #26711).
+  case n.kind
+  of nkCharLit..nkNilLit: result = true
+  of nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
+    result = isInertValue(n[1])
+  of nkCurly, nkRange, nkBracket, nkPar, nkTupleConstr, nkObjConstr:
+    # a `ref` constructor allocates, which can raise
+    if n.typ != nil and n.typ.skipTypes(abstractInst).kind == tyRef: return false
+    for it in sonsFrom(n, ord(n.kind == nkObjConstr)):
+      if not isInertValue(it): return false
+    result = true
+  of nkCallKinds:
+    result = n[0].kind == nkSym and n[0].sym.magic in {mDefault, mZeroDefault}
+  else:
+    result = n.isCompileTimeOnlyNode
 
 func sameLocation(a, b: PNode): bool =
   template sameConstIndex(a, b: PNode): bool =
@@ -245,7 +265,11 @@ proc isPartOf*(a, b: PNode; flags: set[PartFlag] = {}): TAnalysisResult =
     of DerefKinds:
       # a* !<| b[] iff
       result = arNo
-      if isPartOf(a.typ, b.typ) != arNo:
+      if a.kind == nkSym and a.sym.kind == skTemp and sfGlobal notin a.sym.flags:
+        # a compiler introduced temporary is a local whose address is not
+        # taken, it cannot live behind a pointer
+        discard
+      elif isPartOf(a.typ, b.typ) != arNo:
         result = isPartOf(a, b[0], flags)
         if result == arNo: result = arMaybe
 

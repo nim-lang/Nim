@@ -567,6 +567,21 @@ proc getNewLocation(lastURL: Uri, headers: HttpHeaders): Uri =
   else:
     result = parsedLocation
 
+proc checkLineSafe(s, what: string) =
+  ## Raises `ValueError` if `s` could end the line it is placed in, which
+  ## would let it inject headers or whole requests.
+  if s.contains({'\c', '\L', '\0'}):
+    raise newException(ValueError, what & " contains a newline or NUL character")
+
+const headerNameChars = {'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.',
+                         '^', '_', '`', '|', '~', '0'..'9', 'a'..'z', 'A'..'Z'}
+  ## The `tchar` set of RFC 9110, section 5.6.2.
+
+proc checkHeaderName(s: string) =
+  ## Raises `ValueError` unless `s` is a valid RFC 9110 field name (a token).
+  if s.len == 0 or not s.allCharsInSet(headerNameChars):
+    raise newException(ValueError, "invalid header name: " & s.escape)
+
 proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeaders,
                      proxy: Proxy): string =
   # GET
@@ -585,11 +600,16 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     if requestUrl.scheme == "https": modifiedUrl.scheme = ""
     result.add($modifiedUrl)
 
+  # The request target comes from a `Uri` whose fields can contain anything.
+  checkLineSafe(result, "url")
+
   # HTTP/1.1\c\l
   result.add(" HTTP/1.1" & httpNewLine)
 
   # Host header.
   if not headers.hasKey("Host"):
+    checkLineSafe(requestUrl.hostname, "url hostname")
+    checkLineSafe(requestUrl.port, "url port")
     if requestUrl.port == "":
       add(result, "Host: " & requestUrl.hostname & httpNewLine)
     else:
@@ -605,6 +625,8 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod, headers: HttpHeade
     add(result, "Proxy-Authorization: Basic " & auth & httpNewLine)
 
   for key, val in headers:
+    checkHeaderName(key)
+    checkLineSafe(val, "value of header '" & key & "'")
     add(result, key & ": " & val & httpNewLine)
 
   add(result, httpNewLine)
@@ -640,13 +662,18 @@ type
     else:
       bodyStream: Stream
     getBody: bool         ## When `false`, the body is never read in requestAux.
+    maxBodySize*: int     ## Maximum number of body bytes to accept from a
+                          ## response; `-1` means no limit. A response with a
+                          ## larger body raises `ProtocolError`.
+    bodyLen: int          ## Body bytes received so far for the current response.
 
 type
   HttpClient* = HttpClientBase[Socket]
 
 proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                     sslContext = getDefaultSSL(), proxy: Proxy = nil,
-                    timeout = -1, headers = newHttpHeaders()): HttpClient =
+                    timeout = -1, headers = newHttpHeaders(),
+                    maxBodySize = -1): HttpClient =
   ## Creates a new HttpClient instance.
   ##
   ## `userAgent` specifies the user agent that will be used when making
@@ -665,6 +692,10 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## `TimeoutError` is raised.
   ##
   ## `headers` specifies the HTTP Headers.
+  ##
+  ## `maxBodySize` limits how many bytes of a response body are accepted;
+  ## a larger body raises `ProtocolError`. The default `-1` means no limit,
+  ## so set it when talking to servers you do not trust.
   runnableExamples:
     import std/strutils
 
@@ -681,6 +712,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   result.onProgressChanged = nil
   result.bodyStream = newStringStream()
   result.getBody = true
+  result.maxBodySize = maxBodySize
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -689,7 +721,8 @@ type
 
 proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                          sslContext = getDefaultSSL(), proxy: Proxy = nil,
-                         headers = newHttpHeaders()): AsyncHttpClient =
+                         headers = newHttpHeaders(),
+                         maxBodySize = -1): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
   ## `userAgent` specifies the user agent that will be used when making
@@ -704,6 +737,10 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## connections.
   ##
   ## `headers` specifies the HTTP Headers.
+  ##
+  ## `maxBodySize` limits how many bytes of a response body are accepted;
+  ## a larger body raises `ProtocolError`. The default `-1` means no limit,
+  ## so set it when talking to servers you do not trust.
   runnableExamples:
     import std/[asyncdispatch, strutils]
 
@@ -724,6 +761,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   result.onProgressChanged = nil
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
   result.getBody = true
+  result.maxBodySize = maxBodySize
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -760,6 +798,12 @@ proc reportProgress(client: HttpClient | AsyncHttpClient,
       client.oneSecondProgress = 0
       client.lastProgressReport = getMonoTime()
 
+proc checkBodySize(client: HttpClient | AsyncHttpClient, extra: int) =
+  if client.maxBodySize >= 0 and extra > client.maxBodySize - client.bodyLen:
+    client.close()
+    httpError("Response body exceeds the limit of " & $client.maxBodySize &
+              " bytes")
+
 proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
               keep: bool): Future[int] {.multisync.} =
   ## Ensures that all the data requested is read and returned.
@@ -780,6 +824,8 @@ proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
 
     readLen.inc(data.len)
     if keep:
+      checkBodySize(client, data.len)
+      client.bodyLen.inc(data.len)
       await client.bodyStream.write(data)
 
     await reportProgress(client, data.len)
@@ -795,6 +841,8 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
     while i < chunkSizeStr.len:
+      if chunkSizeStr[i] in HexDigits and chunkSize > high(int) shr 4:
+        httpError("Invalid chunk size: " & chunkSizeStr)
       case chunkSizeStr[i]
       of '0'..'9':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
@@ -812,6 +860,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     if chunkSize <= 0:
       discard await recvFull(client, 2, client.timeout, false) # Skip \c\L
       break
+    checkBodySize(client, chunkSize)
     var bytesRead = await recvFull(client, chunkSize, client.timeout, true)
     if bytesRead != chunkSize:
       httpError("Server terminated connection prematurely")
@@ -830,6 +879,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
   client.contentProgress = 0
   client.oneSecondProgress = 0
   client.lastProgressReport = MonoTime()
+  client.bodyLen = 0
 
   when client is AsyncHttpClient:
     assert(not client.bodyStream.finished)
@@ -843,6 +893,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseInt()
       client.contentTotal = length
+      checkBodySize(client, length)
       if length > 0:
         let recvLen = await client.recvFull(length, client.timeout, true)
         if recvLen == 0:
@@ -898,6 +949,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.close()
       break
     if line == httpNewLine:
+      if parsedStatus and result.code.is1xx and result.code != Http101:
+        # An informational response (e.g. 100 Continue, 103 Early Hints) has
+        # no body and comes before the final response, which follows it on
+        # the same connection: skip it (RFC 9110, section 15.2).
+        parsedStatus = false
+        lastHeaderName = ""
+        result.headers = newHttpHeaders()
+        continue
       fullyRead = true
       break
     if not parsedStatus:
@@ -924,12 +983,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
         # Check if it's a multiline header value, if so, append to the header we're currently parsing
         # This works because a line with a header must start with the header name without any leading space
         # See https://datatracker.ietf.org/doc/html/rfc7230, section 3.2 and 3.2.4
-        # Multiline headers are deprecated in the spec, but it's better to parse them than crash
+        # Multiline headers are deprecated in the spec, but it's better to parse them than crash.
+        # A user agent replaces each line break of such a value with spaces
+        # (RFC 9112, section 5.2).
         if lastHeaderName == "":
           # Some extra unparsable lines in the HTTP output - we ignore them
           discard
         else:
-          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add "\n" & line
+          result.headers.table[result.headers.toCaseInsensitive(lastHeaderName)][^1].add " " & line.strip(trailing = false)
       else:
         var name = ""
         var le = parseUntil(line, name, ':', linei)
@@ -1145,11 +1206,25 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
   for k, vs in override.table:
     result[k] = vs
 
+proc sameOrigin(a, b: Uri): bool =
+  ## Whether `a` and `b` have the same scheme, host and port.
+  proc effectivePort(u: Uri): string =
+    if u.port != "": u.port
+    elif cmpIgnoreCase(u.scheme, "https") == 0: "443"
+    elif cmpIgnoreCase(u.scheme, "http") == 0: "80"
+    else: ""
+  result = cmpIgnoreCase(a.scheme, b.scheme) == 0 and
+    cmpIgnoreCase(a.hostname, b.hostname) == 0 and
+    effectivePort(a) == effectivePort(b)
+
 proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
                 httpMethod: HttpMethod, body = "", headers: HttpHeaders = nil,
-                multipart: MultipartData = nil): Future[Response | AsyncResponse]
+                multipart: MultipartData = nil,
+                dropCredentials = false): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
+  # `dropCredentials` removes the headers that must not be sent to
+  # another origin than the one the request was originally made to.
   if url.scheme == "":
     raise newException(ValueError, "No uri scheme supplied.")
 
@@ -1177,6 +1252,10 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
         newHeaders["Content-Length"] = $body.len
       elif httpMethod notin {HttpGet, HttpHead}:
         newHeaders["Content-Length"] = "0"
+
+  if dropCredentials:
+    for key in ["Authorization", "Cookie", "Host"]:
+      newHeaders.del(key)
 
   if not newHeaders.hasKey("user-agent") and client.userAgent.len > 0:
     newHeaders["User-Agent"] = client.userAgent
@@ -1220,10 +1299,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ## connection can be closed by using the `close` procedure.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in `client.maxRedirects`.
+  ## specified in `client.maxRedirects`. Once a redirect leads to another
+  ## origin (scheme, host or port), the `Authorization`, `Cookie` and `Host`
+  ## headers are not sent anymore, neither those of `headers` nor those of
+  ## `client.headers`.
   ##
   ## You need to make sure that the `url` doesn't contain any newline
-  ## characters. Failing to do so will raise `AssertionDefect`.
+  ## characters. Failing to do so will raise `AssertionDefect` for a string
+  ## `url` and `ValueError` for a `Uri`. A header name or value that contains
+  ## a newline or NUL character raises `ValueError` too.
   ##
   ## `headers` are HTTP headers that override the `client.headers` for
   ## this specific request only and will not be persisted.
@@ -1260,6 +1344,12 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
 
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
+  # The redirects below must not modify the caller's `headers`.
+  var headers = if headers.isNil: nil else: override(headers, nil)
+  var multipart = multipart
+  # Once a redirect left the origin of `url`, credentials are not sent
+  # anymore, not even when a later redirect leads back.
+  var crossedOrigin = false
   var lastURL = url
   for i in 1..client.maxRedirects:
     let statusCode = result.code
@@ -1281,6 +1371,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
         redirectMethod = httpMethod
       # The body is stripped away
       redirectBody = ""
+      multipart = nil
       # Delete any header value associated with the body
       if not headers.isNil():
         headers.del("Content-Length")
@@ -1294,19 +1385,14 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
       # Unreachable
       raiseAssert "unreachable"
 
-    # Check if the redirection is to the same domain or a sub-domain (foo.com
-    # -> sub.foo.com)
-    if redirectTo.hostname != lastURL.hostname and
-      not redirectTo.hostname.endsWith("." & lastURL.hostname):
-      # Perform some cleanup of the header values
-      if headers != nil:
-        # Delete the Host header
-        headers.del("Host")
-        # Do not send any sensitive info to a unknown host
-        headers.del("Authorization")
+    # Do not send any sensitive info to another host, not even to a
+    # sub-domain, nor over a different scheme or port. This covers the
+    # credentials in `client.headers` too.
+    if not sameOrigin(redirectTo, url):
+      crossedOrigin = true
 
     result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
-                                     headers, multipart)
+                                     headers, multipart, crossedOrigin)
     lastURL = redirectTo
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =

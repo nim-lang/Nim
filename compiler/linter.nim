@@ -84,7 +84,9 @@ proc differ*(line: string, a, b: int, x: string): string =
   result = ""
   if not substrEq(line, a, b, x):
     let y = line[a..b]
-    if cmpIgnoreStyle(y, x) == 0:
+    # Nim identifiers compare case-sensitively on their first character:
+    # `cmd` is not a misspelled `Cmd` but a different identifier (#26464)
+    if y.len > 0 and x.len > 0 and y[0] == x[0] and cmpIgnoreStyle(y, x) == 0:
       result = y
 
 proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =

@@ -59,6 +59,7 @@ type
     flags: TransformFlags
     graph: ModuleGraph
     idgen: IdGenerator
+    callee: PNode # the callee being transformed, see `methodAsValue`
 
 proc newTransNode(a: PNode): PNode {.inline.} =
   result = shallowCopy(a)
@@ -146,8 +147,21 @@ proc resolveBorrowedRoutineSym(c: PTransf; s: PSym; info: TLineInfo): PSym =
     result = nil
     internalError(c.graph.config, info, "wrong AST for borrowed symbol")
 
+proc methodAsValue(c: PTransf, n: PNode): PNode =
+  ## A base method that is not called but used as a proc value must
+  ## dispatch too (#4320); calls are handled by `methodCall`.
+  result = nil
+  let s = n.sym
+  if n != c.callee and sfDispatcher notin s.flags:
+    let disp = getDispatcher(s)
+    if disp != nil and sameType(disp.typ, s.typ):
+      result = newSymNode(disp, n.info)
+
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
+  if s.kind == skMethod:
+    let disp = methodAsValue(c, n)
+    if disp != nil: return disp
   if s.typ != nil and s.typ.callConv == ccClosure:
     if s.kind in routineKinds:
       discard transformBody(c.graph, c.idgen, s, {useCache}+c.flags)
@@ -372,8 +386,13 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     # (bug #2604). We need to patch this environment here too:
     let a = n[1]
     if a.kind == nkSym:
-      n[1] = transformSymAux(c, a)
-    return n
+      # do not patch `n` in place: the loop body that contains it is
+      # duplicated for every `yield` of an inline iterator (#6269)
+      result = newTransNode(n)
+      result[0] = n[0]
+      result[1] = transformSymAux(c, a)
+    else:
+      result = n
   of nkLambdaKinds, nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef: # todo optimize nosideeffects?
     result = newTransNode(n)
     let oldProc = n[namePos].sym
@@ -599,6 +618,9 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   # numeric types need range checks:
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n[1].typ, abstractVarRange)
+  while source.isResolvedUserTypeClass:
+    # the type that matched the concept (#10506)
+    source = skipTypes(source.last, abstractVarRange)
   case dest.kind
   of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
     # we don't include uint and uint64 here as these are no ordinal types ;-)
@@ -1057,10 +1079,12 @@ proc transformCall(c: PTransf, n: PNode): PNode =
     result = n
   elif magic == mProcCall:
     # but do not change to its dispatcher:
+    c.callee = n[1][0]
     result = transformSons(c, n[1])
   elif magic == mStrToStr:
     result = transform(c, n[1])
   else:
+    c.callee = n[0]
     let s = transformSons(c, n)
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:
@@ -1157,14 +1181,53 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
-proc transformDerefBlock(c: PTransf, n: PNode): PNode =
-  # We transform (block: x)[] to (block: x[])
-  let e0 = n[0]
-  result = shallowCopy(e0)
-  result.typ = n.typ
-  for i in 0 ..< e0.len - 1:
-    result[i] = e0[i]
-  result[e0.len-1] = newTreeIT(nkHiddenDeref, n.info, n.typ, e0[e0.len-1])
+const
+  derefLeavesKinds = {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr,
+                      nkCaseStmt, nkTryStmt, nkPragmaBlock}
+
+proc isViewConstruct(n: PNode): bool {.inline.} =
+  ## An expression-based control flow construct of type ``var T``/``lent T``.
+  ## Not ``ref``/``ptr``: dereferencing those yields a location, pushing the
+  ## deref into the leaves would turn the construct into a copy.
+  n.kind in derefLeavesKinds and n.typ != nil and
+    n.typ.kind in {tyVar, tyLent}
+
+proc derefLeaves(n: PNode; typ: PType): PNode =
+  ## Turns ``deref(construct)`` of an expression-based control flow construct
+  ## into ``construct`` of type ``T`` with ``deref(leaf)`` for every leaf
+  ## expression. Dereferencing the construct as a whole happens too late: a
+  ## borrowed leaf can outlive what it borrows from, for example a temporary
+  ## of the branch or a location that a ``defer`` frees (bugs #20107, #21540,
+  ## #26567). Every later pass (closure iterators, injectdestructors) then
+  ## sees an ordinary construct whose leaves are copied.
+  if n.typ == nil or isEmptyType(n.typ) or n.typ.kind == tyTyped:
+    # a branch that does not produce a value ('raise', 'return' etc.)
+    return n
+  case n.kind
+  of nkStmtListExpr, nkStmtList, nkBlockExpr, nkBlockStmt, nkPragmaBlock:
+    result = shallowCopy(n)
+    for i in 0..<n.len-1: result[i] = n[i]
+    result[^1] = derefLeaves(n[^1], typ)
+    result.typ = typ
+  of nkIfExpr, nkIfStmt, nkCaseStmt, nkTryStmt:
+    result = shallowCopy(n)
+    for i in 0..<n.len:
+      let it = n[i]
+      if n.kind == nkCaseStmt and i == 0:
+        result[i] = it
+      elif n.kind == nkTryStmt and i == 0:
+        result[i] = derefLeaves(it, typ)
+      elif it.kind in {nkElifBranch, nkElifExpr, nkElse, nkElseExpr,
+                       nkOfBranch, nkExceptBranch}:
+        let b = shallowCopy(it)
+        for j in 0..<it.len-1: b[j] = it[j]
+        b[^1] = derefLeaves(it[^1], typ)
+        result[i] = b
+      else:
+        result[i] = it
+    result.typ = typ
+  else:
+    result = newTreeIT(nkHiddenDeref, n.info, typ, n)
 
 proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
   when false:
@@ -1234,14 +1297,23 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
   of nkCallKinds:
     result = transformCall(c, n)
   of nkAddr, nkHiddenAddr:
-    result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref}, isAddr = true)
+    if n[0].kind in {nkDerefExpr, nkHiddenDeref} and
+        isViewConstruct(n[0][0]) and
+        n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+      # addr(deref(construct)) --> construct; cancel the pair before
+      # `derefLeaves` could push the deref into the leaves:
+      let e = transform(c, n[0][0])
+      result = copyNode(e)
+      for it in e: result.add it
+      result.typ = n.typ
+    else:
+      result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref}, isAddr = true)
   of nkDerefExpr:
     result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenDeref:
-    if n[0].kind in {nkBlockExpr, nkBlockStmt}:
-      # bug #20107 bug #21540. Watch out to not deref the pointer too late.
-      let e = transformDerefBlock(c, n)
-      result = transformBlock(c, e)
+    if isViewConstruct(n[0]):
+      # Watch out to not deref the pointer too late, see `derefLeaves`:
+      result = transform(c, derefLeaves(n[0], n.typ))
     else:
       result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
@@ -1386,6 +1458,18 @@ template liftDefer(c, root) =
 
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flags: TransformFlags): PNode =
   assert prc.kind in routineKinds
+
+  # The body of `prc` may still be deferred: by `--deferBodies:on`
+  # (doc/parallel_compiler.md §2.3 / §4.6 step 2) or by the declaration phase
+  # of a cycle group (`import m {.cyclic.}`). This is the single gate every
+  # consumer of a semmed body passes through, the VM compiling a routine that
+  # a constant expression or a signature (`array[f(), int]`) calls included.
+  # Nil, hence free, in every other build.
+  if prc.transformedBody == nil:
+    if g.demandCycleBody != nil:
+      discard g.demandCycleBody(prc, false)
+    if g.demandRoutineBody != nil:
+      g.demandRoutineBody(prc)
 
   if prc.transformedBody != nil:
     result = prc.transformedBody

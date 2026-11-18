@@ -197,6 +197,17 @@ block stripTests:
   doAssert(strip("\u2000") == "")
   doAssert(strip("a\u2000") == "a")
 
+  # bug #26415: malformed UTF-8 at the end must not read out of bounds
+  doAssert(strip("a\xE2") == "a\xE2")
+  doAssert(strip("\xF0") == "\xF0")
+  doAssert(strip("\xE2\x82") == "\xE2\x82")
+  doAssert(strip("a\xE2\x82 ") == "a\xE2\x82")
+  doAssert(strip("\x80") == "\x80")
+  doAssert(strip(" \x80\x80 ") == "\x80\x80")
+  doAssert(strip("x\xF0\x9F\x98\x80") == "x\xF0\x9F\x98\x80")
+  doAssert(strip("\xF0\x9F\x98\x80 ") == "\xF0\x9F\x98\x80")
+  doAssert(strip("\u00e9\xA9", leading = false, runes = ["\u00e9".asRune]) == "\u00e9\xA9")
+
   # bug #19846
   block:
     # check against unicode whose utf8 byteLen > 2
@@ -243,3 +254,30 @@ block: # bug #17768
 
   doAssert s1.runeSubStr(0, -1) == "abcde"
   doAssert s2.runeSubStr(0, -1) == "abcdé"
+
+block: # split does not read past a truncated sequence at the end
+  doAssert split("a\xE2") == @["a\xE2"]
+  doAssert split("a b\xF0\x9F") == @["a", "b\xF0\x9F"]
+  doAssert split("a;\xE2", ";".runeAt(0)) == @["a", "\xE2"]
+
+block: # bug #23619
+  doAssert splitWhitespace("  foo \t bar  baz  ") == @["foo", "bar", "baz"]
+  doAssert splitWhitespace("añyóng\u3000\u2003hÃllo") == @["añyóng", "hÃllo"]
+  doAssert splitWhitespace("") == newSeq[string]()
+  doAssert splitWhitespace(" \t\u3000") == newSeq[string]()
+  doAssert splitWhitespace("one") == @["one"]
+  # a truncated sequence at the end is kept, not read past
+  doAssert splitWhitespace("a \xE2") == @["a", "\xE2"]
+
+block: # bug #26591
+  # a lone continuation byte is a rune of its own, like `runeAt` yields
+  doAssert lastRune("\x82", 0) == ("\x82".runeAt(0), 1)
+  doAssert lastRune("\x82\xA3", 1) == ("\x82\xA3".runeAt(1), 1)
+  doAssert lastRune("\xA3\x82\x8F", 2) == ("\xA3\x82\x8F".runeAt(2), 1)
+  # a truncated sequence at the end is kept, not read past
+  doAssert runeStrAtPos("a\xE2", 1) == "\xE2"
+  doAssert runeStrAtPos("\xE2", 0) == "\xE2"
+  doAssert runeStrAtPos("a\xF0\x9F", 1) == "\xF0\x9F"
+  # valid input is unaffected
+  doAssert lastRune("añyóng", 7) == ("g".runeAt(0), 1)
+  doAssert runeStrAtPos("Hänsel  ««: 10,00€", 17) == "€"

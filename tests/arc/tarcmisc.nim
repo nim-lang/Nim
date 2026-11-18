@@ -981,3 +981,15 @@ block: # bug #26025, the propagation has to reach the indirect owners too
   doAssert not supportsCopyMem(Outer)
   doAssert not supportsCopyMem(Reader)
   doAssert not supportsCopyMem(AsTuple)
+
+block: # bug #25910
+  type
+    Key = distinct Val
+    Box = ref object
+      s: seq[Key]
+    Val = object
+      h: Box
+  proc sinkIt(k: sink Key) = discard
+  proc put(v: Val) =
+    sinkIt(Key(v))
+  put(Val())

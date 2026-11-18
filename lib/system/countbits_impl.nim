@@ -9,6 +9,8 @@
 
 ## Contains the used algorithms for counting bits.
 
+{.push checks: off.}
+
 from std/private/bitops_utils import forwardImpl, castToUnsigned
 
 const useBuiltins* = not defined(noIntrinsicsBitOpts)
@@ -85,3 +87,5 @@ func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
     else:
       when sizeof(x) <= 4: result = countBitsImpl(x.uint32)
       else: result = countBitsImpl(x.uint64)
+
+{.pop.}

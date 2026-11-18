@@ -259,6 +259,9 @@ proc mangleName(m: BModule, s: PSym): Rope =
           x.add("HEX" & toHex(ord(c), 2))
         inc i
       result = rope(x)
+    if s.kind == skField and sfCapturedLocal in s.flags:
+      # captured locals may share a name, see `lowerings.addField`
+      result.add "_" & $s.position
     # From ES5 on reserved words can be used as object field names
     if s.kind != skField:
       if m.config.hcrOn:
@@ -574,16 +577,23 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
   gen(p, n[1], x)
   gen(p, n[2], y)
   let size = n[1].typ.skipTypes(abstractRange).size
+  # Math.imul is needed for 32-bit multiplication, as the exact product can
+  # exceed the 53-bit integer precision of a JS number
+  let mul32 = size == 4 and op == "*"
   when reassign:
     let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
     if size == 8 and optJsBigInt64 in p.config.globalOptions:
       r.res = "$1 = BigInt.asUintN(64, ($4 $2 $3))" % [a, rope op, y.rdLoc, tmp]
+    elif mul32:
+      r.res = "$1 = (Math.imul($4, $3) >>> 0)" % [a, rope op, y.rdLoc, tmp]
     else:
       let trimmer = unsignedTrimmer(size)
       r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
   else:
     if size == 8 and optJsBigInt64 in p.config.globalOptions:
       r.res = "BigInt.asUintN(64, ($1 $2 $3))" % [x.rdLoc, rope op, y.rdLoc]
+    elif mul32:
+      r.res = "(Math.imul($1, $3) >>> 0)" % [x.rdLoc, rope op, y.rdLoc]
     else:
       let trimmer = unsignedTrimmer(size)
       r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]

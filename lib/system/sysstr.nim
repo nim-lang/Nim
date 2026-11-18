@@ -256,7 +256,9 @@ proc setLengthStrUninit(s: var string, newlen: Natural) {.nodestroy.} =
       str = rawNewStringNoInit(n)
       str.data[n] = '\0'
       str.len = n
-      s = cast[string](str)
+      # not `s = cast[string](str)`: a string assignment copies `str` and
+      # loses its spare capacity, making repeated growth quadratic (bug #26440)
+      unsureAsgnRef(cast[PPointer](addr s), str)
   else:
     if n > str.space:
       let sp = max(resize(str.space), n)
@@ -264,7 +266,7 @@ proc setLengthStrUninit(s: var string, newlen: Natural) {.nodestroy.} =
       copyMem(addr str.data[0], unsafeAddr s[0], s.len)
       str.data[n] = '\0'
       str.len = n
-      s = cast[string](str)
+      unsureAsgnRef(cast[PPointer](addr s), str)
     elif n != s.len:
       str.data[n] = '\0'
       str.len = n

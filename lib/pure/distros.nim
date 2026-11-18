@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the basics for Linux distribution ("distro")
+## This module implements the basics for operating system distribution ("distro")
 ## detection and the OS's native package manager. Its primary purpose is to
 ## produce output for Nimble packages, like:
 ##
@@ -26,7 +26,7 @@
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
-from std/strutils import contains, toLowerAscii
+from std/strutils import contains, toLowerAscii, startsWith
 
 when not defined(nimscript):
   from std/osproc import execProcess
@@ -132,8 +132,12 @@ type
     DragonFlyBSD
 
     Haiku
-    Illumos
+    Illumos                     ## some version of illumos
 
+    OpenIndiana
+    OmniOS
+    SmartOS
+    Tribblix
 
 const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
@@ -142,7 +146,7 @@ const
 
 # we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
-var unameRes, osReleaseIDRes, releaseRes, hostnamectlRes: string
+var unameRes, osReleaseIDRes, releaseRes, hostnamectlRes, unameVRes: string
 
 template cmdRelease(cmd, cache): untyped =
   if cache.len == 0:
@@ -153,6 +157,7 @@ template uname(): untyped = cmdRelease("uname -a", unameRes)
 template osReleaseID(): untyped = cmdRelease("cat /etc/os-release | grep ^ID=", osReleaseIDRes)
 template release(): untyped = cmdRelease("lsb_release -d", releaseRes)
 template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
+template unameV(): untyped = toLowerAscii(cmdRelease("uname -v", unameVRes))
 
 proc detectOsWithAllCmd(d: Distribution): bool =
   let dd = toLowerAscii($d)
@@ -167,13 +172,30 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
   of Distribution.BSD: result = defined(bsd)
+  of Distribution.FreeBSD: result = defined(freebsd)
+  of Distribution.NetBSD: result = defined(netbsd)
+  of Distribution.OpenBSD: result = defined(openbsd)
+  of Distribution.DragonflyBSD: result = defined(dragonfly)
   of Distribution.Solaris: result = defined(solaris)
   of Distribution.Illumos: result = defined(illumos)
+  of Distribution.Haiku: result = defined(haiku)
   else:
     when defined(bsd):
       case d
-      of Distribution.FreeBSD, Distribution.NetBSD, Distribution.OpenBSD:
-        result = $d in uname()
+      of Distribution.GhostBSD:
+        result = "GhostBSD" in uname()
+      else:
+        result = false
+    elif defined(illumos):
+      case d
+      of Distribution.OpenIndiana:
+        result = unameV().startsWith("oi_")
+      of Distribution.OmniOS:
+        result = unameV().startsWith("omnios-")
+      of Distribution.SmartOS:
+        result = unameV().startsWith("joyent_")
+      of Distribution.Tribblix:
+        result = unameV().startsWith("tribblix-")
       else:
         result = false
     elif defined(linux):
@@ -197,8 +219,6 @@ proc detectOsImpl(d: Distribution): bool =
         result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
       of Distribution.GoboLinux:
         result = "-Gobo " in uname()
-      of Distribution.Haiku:
-        result = defined(haiku)
       else:
         result = detectOsWithAllCmd(d)
     else:
@@ -213,10 +233,17 @@ template detectOs*(d: untyped): bool =
 when not defined(nimble):
   var foreignDeps*: seq[string] = @[]  ## Registered foreign deps.
 
+when defined(sunos):
+  const rootCmdPrefix = "pfexec "
+elif defined(openbsd):
+  const rootCmdPrefix = "doas "
+else:
+  const rootCmdPrefix = "sudo "
+
 proc foreignCmd*(cmd: string; requiresSudo = false) =
   ## Registers a foreign command to the internal list of commands
   ## that can be queried later.
-  let c = (if requiresSudo: "sudo " else: "") & cmd
+  let c = (if requiresSudo: rootCmdPrefix else: "") & cmd
   when defined(nimble):
     nimscriptapi.foreignDeps.add(c)
   else:
@@ -228,8 +255,17 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
   let p = foreignPackageName
   when defined(windows):
     result = ("choco install " & p, false)
-  elif defined(bsd):
-    result = ("ports install " & p, true)
+  elif defined(illumos):
+    if detectOs(Tribblix):
+      result = ("zap install TRIB" & p, true)
+    elif detectOs(SmartOS):
+      result = ("pkgin install " & p, true)
+    else:
+      result = ("pkg install " & p, true)
+  elif defined(solaris) or defined(freebsd) or defined(dragonfly):
+    result = ("pkg install " & p, true)
+  elif defined(openbsd) or defined(netbsd):
+    result = ("pkg_add " & p, true)
   elif defined(linux):
     if detectOs(Ubuntu) or detectOs(Elementary) or detectOs(Debian) or
         detectOs(KNOPPIX) or detectOs(SteamOS):
@@ -250,10 +286,6 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("netpkg install " & p, true)
     elif detectOs(NixOS):
       result = ("nix-env -i " & p, false)
-    elif detectOs(Solaris) or detectOs(Illumos) or detectOs(FreeBSD):
-      result = ("pkg install " & p, true)
-    elif detectOs(NetBSD) or detectOs(OpenBSD):
-      result = ("pkg_add " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)
     elif detectOs(ArchLinux) or detectOs(Manjaro) or detectOs(Artix):

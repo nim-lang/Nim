@@ -309,6 +309,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     if typ.elementType.kind == tyGenericParam:
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
+    elif lengthOrd(conf, typ.elementType) > toInt128(MaxSetElements):
+      # an error is reported elsewhere (#8141)
+      typ.size = szUnknownSize
+      typ.align = szUnknownSize
     else:
       let length = toInt64(lengthOrd(conf, typ.elementType))
       if length <= 8:

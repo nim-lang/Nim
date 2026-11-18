@@ -266,11 +266,9 @@ proc icWarmupCache(cmdTemplate, filename, options: string, target: TTarget,
 
 proc prefillIcCache(warmup, nimcache: string) =
   ## Seed a test's empty cache from the shared warm one. Only the artifacts that
-  ## do NOT depend on which program is being built are copied: the frontend NIFs
-  ## and cookies, plus the per-module `lower`/`cg` outputs. The `.c`/`.o` are
-  ## deliberately left out — the merge decision (who owns each emit-everywhere
-  ## definition) is whole-program, so those get re-rendered for every program
-  ## anyway and copying them is pure I/O.
+  ## do NOT depend on which program is being built are copied: shared parsed
+  ## files, imported-module semantics and their shared CacheCounter allocations.
+  ## Main-role semantics and all backend outputs belong to the warmup program.
   ##
   ## Mtimes are preserved, and that is load-bearing: nifmake decides staleness by
   ## output-mtime > input-mtime, so stamping every prefilled file with "now"
@@ -279,18 +277,22 @@ proc prefillIcCache(warmup, nimcache: string) =
   if warmup.len == 0 or not dirExists(warmup): return
   if dirExists(nimcache): return          # the test already has its own cache
   const wanted = [".p.nif", ".p.deps.nif", ".deps.nif", ".s.bif", ".iface.bif",
-                  ".impl.bif", ".edges.bif", ".s.deps.bif", ".t.bif",
-                  ".c.nif", ".cpp.nif"]
+                  ".impl.bif", ".edges.bif", ".s.deps.bif"]
   try:
     createDir(nimcache)
-    for path in walkFiles(warmup / "*"):
+    for path in walkDirRec(warmup):
       let name = path.extractFilename
+      let relative = path.relativePath(warmup)
       var take = name == "ic.version" or name == "ic_build_args.txt"
-      if not take:
+      let shared = relative.startsWith("parsed" & DirSep) or
+        (relative.startsWith("configs" & DirSep) and path.parentDir.extractFilename == "sem")
+      if shared:
+        if name == "ic.counters": take = true
         for ext in wanted:
           if name.endsWith(ext): take = true; break
       if not take: continue
-      let dst = nimcache / name
+      let dst = nimcache / relative
+      createDir(dst.parentDir)
       copyFile(path, dst)
       try: setLastModificationTime(dst, getLastModificationTime(path))
       except OSError, IOError: discard

@@ -8,6 +8,9 @@ on:
       - 'version-2-0'
       - 'version-1-6'
       - 'version-1-2'
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -21,12 +24,16 @@ jobs:
         os: [ubuntu-latest, macos-latest]
         batch: ["0_3", "1_3", "2_3"] # list of `index_num`
         include:
+          # ubuntu-latest is Ubuntu 26.04, which has no libpcre3; run on the
+          # same image as ci_main.yml without renaming the jobs
           - os: ubuntu-latest
+            image: ubuntu-24.04
             cpu: amd64
           - os: macos-latest
+            image: macos-latest
             cpu: arm64
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.image }}
     timeout-minutes: 60 # refs bug #18178
     env:
       NIM_TEST_PACKAGES: "1"
@@ -75,6 +82,51 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
+      - name: 'Build and test package source cache'
+        run: |
+          nim c -d:release --out:"$RUNNER_TEMP/package_source_cache" ci/package_source_cache.nim
+          nim c -r --out:"$RUNNER_TEMP/test_package_source_cache" ci/test_package_source_cache.nim "$RUNNER_TEMP/package_source_cache"
+
+      - name: 'Package source cache key'
+        id: source-key
+        env:
+          SCOPE: package-sources-v2-${{ runner.os }}-${{ runner.arch }}-${{ matrix.batch }}
+          INPUTS: ${{ hashFiles('testament/important_packages.nim', 'testament/packagebatches.nim', 'testament/categories.nim', 'koch.nim', 'ci/package_source_cache.nim', 'ci/test_package_source_cache.nim', '.github/workflows/ci_packages.yml') }}
+        run: |
+          echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
+          echo "revision=$SCOPE-$INPUTS" >> "$GITHUB_OUTPUT"
+
+      - name: 'Restore package sources'
+        id: source-cache
+        uses: actions/cache/restore@v6
+        continue-on-error: true
+        with:
+          path: ${{ runner.temp }}/package-sources
+          # Never save this lookup key: a matching old exact key would hide a
+          # newer scheduled/manual snapshot because Actions caches are immutable.
+          key: ${{ steps.source-key.outputs.revision }}-lookup-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ steps.source-key.outputs.revision }}-snapshot-
+            ${{ steps.source-key.outputs.scope }}-
+
+      - name: 'Use package sources'
+        id: source-setup
+        continue-on-error: true
+        env:
+          # PRs only consume mirrors. Existing devel matrix jobs populate new
+          # snapshots when the package list/tooling changes, or on a refresh.
+          NIM_CI_GIT_POPULATE: ${{ github.repository == 'nim-lang/Nim' && github.ref == 'refs/heads/devel' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(steps.source-cache.outputs.cache-matched-key, format('{0}-snapshot-', steps.source-key.outputs.revision)))) }}
+        run: |
+          "$RUNNER_TEMP/package_source_cache" setup "$RUNNER_TEMP/package-sources" "$RUNNER_TEMP/package-source-session"
+
       - name: 'koch, Run CI'
         shell: bash
         run: . ci/funs.sh && nimInternalBuildKochAndRunCI
+
+      - name: 'Save package sources'
+        if: success() && steps.source-setup.outputs.populate == 'true'
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: ${{ runner.temp }}/package-sources
+          key: ${{ steps.source-key.outputs.revision }}-snapshot-${{ github.run_id }}-${{ github.run_attempt }}

@@ -123,7 +123,7 @@ discard """
 
 const
   upName* = ":up" # field name for the 'up' reference
-  paramName* = ":envP"
+  paramName* = closureEnvParamName
   envName* = ":env"
 
 proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PType =
@@ -335,6 +335,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
 type
   DetectionPass = object
     processed, capturedVars: IntSet
+    capturedMacroParams: seq[PSym] # a macro body uses copies of its params
     ownerToType: Table[int, PType]
     somethingToDo: bool
     inTypeOf: bool
@@ -521,7 +522,10 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       # variable 's' is actually captured:
       if interestingVar(s):
         if not c.capturedVars.contains(s.id):
-          if not c.inTypeOf: c.capturedVars.incl(s.id)
+          if not c.inTypeOf:
+            c.capturedVars.incl(s.id)
+            if s.kind == skParam and s.owner.kind == skMacro:
+              c.capturedMacroParams.add s
           let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
           #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
           discard addField(obj, s, c.graph.cache, c.idgen)
@@ -670,7 +674,14 @@ proc rawClosureCreation(owner: PSym;
 
     # add assignment statements for captured parameters:
     for i in 1..<owner.typ.n.len:
-      let local = owner.typ.n[i].sym
+      var local = owner.typ.n[i].sym
+      if owner.kind == skMacro:
+        # the body refers to the copy of the param that `addParamOrResult`
+        # created for it (#3855):
+        for p in d.capturedMacroParams:
+          if p.owner == owner and p.position == local.position:
+            local = p
+            break
       if local.id in d.capturedVars:
         let fieldAccess = indirectAccess(env, local, env.info)
         # add ``env.param = param``

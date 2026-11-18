@@ -69,3 +69,23 @@ except:
   discard
 
 doAssert: getCurrentException() == nil
+
+import asyncdispatch
+
+block: # bug #14713
+  proc raises(fail: bool) {.async.} =
+    if fail:
+      raise newException(Exception, "something bad happened")
+  proc reraises() {.async.} =
+    try:
+      await raises(true)
+    except Exception as e:
+      raise e
+  var caught = false
+  proc catches() =
+    try:
+      asyncCheck reraises()
+    except:
+      caught = true
+  catches()
+  doAssert caught

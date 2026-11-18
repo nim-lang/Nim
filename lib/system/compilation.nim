@@ -6,11 +6,11 @@ const
     ##   ```
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 3
+  NimMinor* {.intdefine.}: int = 4
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 1
+  NimPatch* {.intdefine.}: int = 3
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
@@ -207,7 +207,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##   ```
 
 proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
-                                                              exitCode: int] {.noinit.} =
+                                                              exitCode: int] {.noinit, compileTime.} =
   ## Similar to `gorge <#gorge,string,string,string>`_ but also returns the
   ## precious exit code.
   discard

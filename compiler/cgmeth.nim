@@ -64,7 +64,7 @@ proc methodCall*(n: PNode; conf: ConfigRef): PNode =
     localError(conf, n.info, "'" & $result[0] & "' lacks a dispatcher")
 
 type
-  MethodResult = enum No, Invalid, Yes
+  MethodResult = enum No, Invalid, Yes, VarRefSubtype
 
 proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   result = No
@@ -77,10 +77,14 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
     inc i
     var aa = x
     var bb = y
+    var isVar = false
+    var varRef = false # `var ref T`: not covariant
     while true:
       aa = skipTypes(aa, {tyGenericInst, tyAlias})
       bb = skipTypes(bb, {tyGenericInst, tyAlias})
       if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef, tyLent, tySink}:
+        if isVar and aa.kind in {tyPtr, tyRef}: varRef = true
+        isVar = aa.kind == tyVar
         aa = aa.elementType
         bb = bb.elementType
       else:
@@ -90,6 +94,8 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
         result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject and (i == 1 or multiMethods):
       let diff = inheritanceDiff(bb, aa)
+      if diff < 0 and varRef:
+        return VarRefSubtype
       if diff < 0:
         if result != Invalid:
           result = Yes
@@ -195,6 +201,14 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
     of No: discard
     of Invalid:
       if witness.isNil: witness = g.methods[i].methods[0]
+    of VarRefSubtype:
+      # there is no subtype relation between `var ref Base` and
+      # `var ref Derived` (#4312)
+      localError(g.config, s.info, "method '" & s.name.s &
+        "' cannot override the method defined here: " &
+        g.config$g.methods[i].methods[0].info &
+        "; a 'var ref' parameter cannot be refined to a subtype")
+      return
   # create a new dispatcher:
   # stores the id and the position
   if s.typ.firstParamType.skipTypes(skipPtrs).bindingId notin g.bucketTable:

@@ -10,7 +10,7 @@
 import ast, types, msgs, options, idents, lineinfos
 from pathutils import AbsoluteFile
 
-import std/os
+import std/[os, tables]
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
@@ -24,13 +24,22 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
     discard conf.fileInfoIdx(AbsoluteFile filename)
+    if module != nil:
+      # `nim ic` must rebuild the module when the slurped file changes (#26614).
+      let deps = addr conf.slurpedFiles.mgetOrPut(module.position.int32, @[])
+      if filename notin deps[]: deps[].add filename
     appendToModule(module, newTreeI(nkIncludeStmt, info, newStrNode(nkStrLit, filename)))
   except IOError:
     localError(conf, info, "cannot open file: " & file)
     result = ""
 
+proc atomicTypeX(s: PSym; t: PType; info: TLineInfo): PNode
+
 proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                  idgen: IdGenerator): PNode =
+  if m != mNone and t.sym != nil and t.sym.magic == m:
+    # use the builtin's symbol so that `int.getType == int.getType` (#5109)
+    return atomicTypeX(t.sym, t, info)
   let sym = newSym(skType, getIdent(cache, name), idgen, t.owner, info)
   sym.magic = m
   sym.typ = t
@@ -166,6 +175,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result = mapTypeToAstR(t.typeBodyImpl, info)
     else:
       result = mapTypeToAst(t.typeBodyImpl, info)
+      # keep original type info for getType calls on the output node (bug #26574):
+      result.typ = t
   of tyAlias:
     result = mapTypeToAstX(cache, t.skipModifier, info, idgen, inst, allowRecursion, skipAlias = skipAlias)
   of tyOrdinal:

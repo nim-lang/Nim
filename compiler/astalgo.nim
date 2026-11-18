@@ -68,6 +68,7 @@ template mdbg*: bool {.deprecated.} =
 # ---------------------------------------------------------------------------
 
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
+proc lookupInRecord*(n: PNode, field: PSym): PSym
 
 # ------------- table[int, int] ---------------------------------------------
 const
@@ -155,6 +156,24 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
   of nkSym:
     if n.sym.name.id == field.id: result = n.sym
   else: return nil
+
+proc lookupInRecord(n: PNode, field: PSym): PSym =
+  ## Finds the field of `n` that corresponds to `field`, which can belong to a
+  ## copy of the record (generic instantiation). Fields are matched by name,
+  ## except closure env fields, which can share a name (see `sfCapturedLocal`)
+  ## and are matched by position too.
+  if sfCapturedLocal notin field.flags:
+    return lookupInRecord(n, field.name)
+  result = nil
+  case n.kind
+  of nkRecList:
+    for i in 0..<n.len:
+      result = lookupInRecord(n[i], field)
+      if result != nil: return
+  of nkSym:
+    if n.sym.name.id == field.name.id and n.sym.position == field.position:
+      result = n.sym
+  else: discard
 
 const SumTypeDiscriminatorName* = "`kind"
   ## no identifier can contain a backtick, so user code cannot name it

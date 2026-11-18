@@ -178,8 +178,11 @@ proc storeValue*(vc: ValueConv; dest: Address; n: PNode; t: PType; inConst: bool
   let t = skipForLayout(t)
   let conf = vc.conf
   if isNimNodeType(t):
-    # a `nil` NimNode is the handle 0:
-    if n.kind != nkNilLit: st[int64](dest, nodeHandle(vc.mem[], n))
+    # a `nil` NimNode is the handle 0. The memory owns the handle, unless it
+    # is constant memory, which is never freed:
+    if n.kind != nkNilLit:
+      st[int64](dest, if inConst: pinnedNodeHandle(vc.mem[], n)
+                      else: nodeHandle(vc.mem[], n))
     return
   case t.kind
   of tyBool, tyChar, tyEnum, tyInt..tyInt64, tyUInt..tyUInt64:
@@ -305,10 +308,11 @@ proc storeValue*(vc: ValueConv; dest: Address; n: PNode; t: PType; inConst: bool
       valueError(vc, n.info, "VM: cannot store a closure with an environment")
   of tyTypeDesc:
     # typedesc values are NimNodes of kind nkType
+    # (these have no destructors, so their handles are pinned):
     let x = if n.kind == nkType: n else: newNodeIT(nkType, n.info, n.typ)
-    st[int64](dest, nodeHandle(vc.mem[], x))
+    st[int64](dest, pinnedNodeHandle(vc.mem[], x))
   of tyUntyped, tyTyped:
-    st[int64](dest, nodeHandle(vc.mem[], n))
+    st[int64](dest, pinnedNodeHandle(vc.mem[], n))
   of tyVoid, tyEmpty:
     discard
   else:
@@ -532,10 +536,11 @@ proc loadValue(L: var Loader; src: Address; t: PType): PNode =
       fnNode = newIntNode(nkIntLit, cast[BiggestInt](a))
       fnNode.typ = t
       fnNode.info = L.info
-    if s.callConv == ccClosure:
+    let env = if s.callConv == ccClosure: ld[int64](src +! ClosureEnvOffset)
+              else: 0
+    if s.callConv == ccClosure and (a != 0 or env != 0):
       result = newNodeIT(nkTupleConstr, L.info, t)
       result.add fnNode
-      let env = ld[int64](src +! ClosureEnvOffset)
       if env == 0:
         result.add newNodeIT(nkNilLit, L.info, L.vc.nilType)
       else:

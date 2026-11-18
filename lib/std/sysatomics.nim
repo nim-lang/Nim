@@ -16,69 +16,83 @@ when defined(nimPreviewSlimSystem):
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang) or defined(nintendoswitch)
+const hasGccAtomics = someGcc or defined(tcc)
 const someVcc = defined(vcc) or defined(clang_cl)
 
 type
   AtomType* = SomeNumber|pointer|ptr|char|bool
     ## Type Class representing valid types for use with atomic procs
 
-when someGcc:
+when hasGccAtomics:
+  when defined(tcc):
+    {.pragma: atomicBuiltin, header: "<stdatomic.h>", nodecl.}
+  else:
+    {.pragma: atomicBuiltin, nodecl.}
+
+  const
+    storeN = when defined(tcc): "atomic_store_explicit" else: "__atomic_store_n"
+    exchangeN = when defined(tcc): "atomic_exchange_explicit" else: "__atomic_exchange_n"
+    testAndSet = when defined(tcc): "atomic_flag_test_and_set_explicit" else: "__atomic_test_and_set"
+    clear = when defined(tcc): "atomic_flag_clear_explicit" else: "__atomic_clear"
+    alwaysLockFree = when defined(tcc): "__atomic_is_lock_free" else: "__atomic_always_lock_free"
+    signalFence = when defined(tcc): "(atomic_signal_fence)" else: "__atomic_signal_fence"
+
   type AtomMemModel* = distinct cint
 
-  var ATOMIC_RELAXED* {.importc: "__ATOMIC_RELAXED", nodecl.}: AtomMemModel
+  var ATOMIC_RELAXED* {.importc: "__ATOMIC_RELAXED", atomicBuiltin.}: AtomMemModel
     ## No barriers or synchronization.
-  var ATOMIC_CONSUME* {.importc: "__ATOMIC_CONSUME", nodecl.}: AtomMemModel
+  var ATOMIC_CONSUME* {.importc: "__ATOMIC_CONSUME", atomicBuiltin.}: AtomMemModel
     ## Data dependency only for both barrier and
     ## synchronization with another thread.
-  var ATOMIC_ACQUIRE* {.importc: "__ATOMIC_ACQUIRE", nodecl.}: AtomMemModel
+  var ATOMIC_ACQUIRE* {.importc: "__ATOMIC_ACQUIRE", atomicBuiltin.}: AtomMemModel
     ## Barrier to hoisting of code and synchronizes with
     ## release (or stronger)
     ## semantic stores from another thread.
-  var ATOMIC_RELEASE* {.importc: "__ATOMIC_RELEASE", nodecl.}: AtomMemModel
+  var ATOMIC_RELEASE* {.importc: "__ATOMIC_RELEASE", atomicBuiltin.}: AtomMemModel
     ## Barrier to sinking of code and synchronizes with
     ## acquire (or stronger)
     ## semantic loads from another thread.
-  var ATOMIC_ACQ_REL* {.importc: "__ATOMIC_ACQ_REL", nodecl.}: AtomMemModel
+  var ATOMIC_ACQ_REL* {.importc: "__ATOMIC_ACQ_REL", atomicBuiltin.}: AtomMemModel
     ## Full barrier in both directions and synchronizes
     ## with acquire loads
     ## and release stores in another thread.
-  var ATOMIC_SEQ_CST* {.importc: "__ATOMIC_SEQ_CST", nodecl.}: AtomMemModel
+  var ATOMIC_SEQ_CST* {.importc: "__ATOMIC_SEQ_CST", atomicBuiltin.}: AtomMemModel
     ## Full barrier in both directions and synchronizes
     ## with acquire loads
     ## and release stores in all threads.
 
   proc atomicLoadN*[T: AtomType](p: ptr T, mem: AtomMemModel): T {.
-    importc: "__atomic_load_n", nodecl.}
+    importc: "__atomic_load_n", atomicBuiltin.}
     ## This proc implements an atomic load operation. It returns the contents at p.
     ## ATOMIC_RELAXED, ATOMIC_SEQ_CST, ATOMIC_ACQUIRE, ATOMIC_CONSUME.
 
   proc atomicLoad*[T: AtomType](p, ret: ptr T, mem: AtomMemModel) {.
-    importc: "__atomic_load", nodecl.}
+    importc: "__atomic_load", atomicBuiltin.}
     ## This is the generic version of an atomic load. It returns the contents at p in ret.
 
   proc atomicStoreN*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel) {.
-    importc: "__atomic_store_n", nodecl.}
+    importc: storeN, atomicBuiltin.}
     ## This proc implements an atomic store operation. It writes val at p.
     ## ATOMIC_RELAXED, ATOMIC_SEQ_CST, and ATOMIC_RELEASE.
 
   proc atomicStore*[T: AtomType](p, val: ptr T, mem: AtomMemModel) {.
-    importc: "__atomic_store", nodecl.}
+    importc: "__atomic_store", atomicBuiltin.}
     ## This is the generic version of an atomic store. It stores the value of val at p
 
   proc atomicExchangeN*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_exchange_n", nodecl.}
+    importc: exchangeN, atomicBuiltin.}
     ## This proc implements an atomic exchange operation. It writes val at p,
     ## and returns the previous contents at p.
     ## ATOMIC_RELAXED, ATOMIC_SEQ_CST, ATOMIC_ACQUIRE, ATOMIC_RELEASE, ATOMIC_ACQ_REL
 
   proc atomicExchange*[T: AtomType](p, val, ret: ptr T, mem: AtomMemModel) {.
-    importc: "__atomic_exchange", nodecl.}
+    importc: "__atomic_exchange", atomicBuiltin.}
     ## This is the generic version of an atomic exchange. It stores the contents at val at p.
     ## The original value at p is copied into ret.
 
   proc atomicCompareExchangeN*[T: AtomType](p, expected: ptr T, desired: T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.
-    importc: "__atomic_compare_exchange_n", nodecl.}
+    importc: "__atomic_compare_exchange_n", atomicBuiltin.}
     ## This proc implements an atomic compare and exchange operation. This compares the
     ## contents at p with the contents at expected and if equal, writes desired at p.
     ## If they are not equal, the current contents at p is written into expected.
@@ -94,73 +108,74 @@ when someGcc:
 
   proc atomicCompareExchange*[T: AtomType](p, expected, desired: ptr T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.
-    importc: "__atomic_compare_exchange", nodecl.}
+    importc: "__atomic_compare_exchange", atomicBuiltin.}
     ## This proc implements the generic version of atomic_compare_exchange.
     ## The proc is virtually identical to atomic_compare_exchange_n, except the desired
     ## value is also a pointer.
 
   ## Perform the operation return the new value, all memory models are valid
   proc atomicAddFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_add_fetch", nodecl.}
+    importc: "__atomic_add_fetch", atomicBuiltin.}
   proc atomicSubFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_sub_fetch", nodecl.}
+    importc: "__atomic_sub_fetch", atomicBuiltin.}
   proc atomicOrFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_or_fetch", nodecl.}
+    importc: "__atomic_or_fetch", atomicBuiltin.}
   proc atomicAndFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_and_fetch", nodecl.}
+    importc: "__atomic_and_fetch", atomicBuiltin.}
   proc atomicXorFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_xor_fetch", nodecl.}
+    importc: "__atomic_xor_fetch", atomicBuiltin.}
   proc atomicNandFetch*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_nand_fetch", nodecl.}
+    importc: "__atomic_nand_fetch", atomicBuiltin.}
 
   ## Perform the operation return the old value, all memory models are valid
   proc atomicFetchAdd*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_fetch_add", nodecl.}
+    importc: "__atomic_fetch_add", atomicBuiltin.}
   proc atomicFetchSub*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_fetch_sub", nodecl.}
+    importc: "__atomic_fetch_sub", atomicBuiltin.}
   proc atomicFetchOr*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_fetch_or", nodecl.}
+    importc: "__atomic_fetch_or", atomicBuiltin.}
   proc atomicFetchAnd*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_fetch_and", nodecl.}
+    importc: "__atomic_fetch_and", atomicBuiltin.}
   proc atomicFetchXor*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_fetch_xor", nodecl.}
+    importc: "__atomic_fetch_xor", atomicBuiltin.}
   proc atomicFetchNand*[T: AtomType](p: ptr T, val: T, mem: AtomMemModel): T {.
-    importc: "__atomic_fetch_nand", nodecl.}
+    importc: "__atomic_fetch_nand", atomicBuiltin.}
 
   proc atomicTestAndSet*(p: pointer, mem: AtomMemModel): bool {.
-    importc: "__atomic_test_and_set", nodecl.}
+    importc: testAndSet, atomicBuiltin.}
     ## This built-in function performs an atomic test-and-set operation on the byte at p.
     ## The byte is set to some implementation defined nonzero "set" value and the return
     ## value is true if and only if the previous contents were "set".
     ## All memory models are valid.
 
   proc atomicClear*(p: pointer, mem: AtomMemModel) {.
-    importc: "__atomic_clear", nodecl.}
+    importc: clear, atomicBuiltin.}
     ## This built-in function performs an atomic clear operation at p.
     ## After the operation, at p contains 0.
     ## ATOMIC_RELAXED, ATOMIC_SEQ_CST, ATOMIC_RELEASE
 
   proc atomicThreadFence*(mem: AtomMemModel) {.
-    importc: "__atomic_thread_fence", nodecl.}
+    importc: "__atomic_thread_fence", atomicBuiltin.}
     ## This built-in function acts as a synchronization fence between threads based
     ## on the specified memory model. All memory orders are valid.
 
   proc atomicSignalFence*(mem: AtomMemModel) {.
-    importc: "__atomic_signal_fence", nodecl.}
+    importc: signalFence, atomicBuiltin.}
     ## This built-in function acts as a synchronization fence between a thread and
     ## signal handlers based in the same thread. All memory orders are valid.
 
   proc atomicAlwaysLockFree*(size: int, p: pointer): bool {.
-    importc: "__atomic_always_lock_free", nodecl.}
+    importc: alwaysLockFree, atomicBuiltin.}
     ## This built-in function returns true if objects of size bytes always generate
     ## lock free atomic instructions for the target architecture. size must resolve
     ## to a compile-time constant and the result also resolves to a compile-time constant.
+    ## TCC evaluates this query at runtime.
     ## ptr is an optional pointer to the object that may be used to determine alignment.
     ## A value of 0 indicates typical alignment should be used. The compiler may also
     ## ignore this parameter.
 
   proc atomicIsLockFree*(size: int, p: pointer): bool {.
-    importc: "__atomic_is_lock_free", nodecl.}
+    importc: "__atomic_is_lock_free", atomicBuiltin.}
     ## This built-in function returns true if objects of size bytes always generate
     ## lock free atomic instructions for the target architecture. If it is not known
     ## to be lock free a call is made to a runtime routine named __atomic_is_lock_free.
@@ -266,7 +281,7 @@ else:
 
 proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
   ## Atomically increments the integer by some `x`. It returns the new value.
-  when someGcc and hasThreadSupport:
+  when hasGccAtomics and hasThreadSupport:
     result = atomicAddFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
   elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
@@ -277,7 +292,7 @@ proc atomicInc*(memLoc: var int, x: int = 1): int {.inline, discardable, raises:
 
 proc atomicDec*(memLoc: var int, x: int = 1): int {.inline, discardable, raises: [], tags: [].} =
   ## Atomically decrements the integer by some `x`. It returns the new value.
-  when someGcc and hasThreadSupport:
+  when hasGccAtomics and hasThreadSupport:
     when declared(atomicSubFetch):
       result = atomicSubFetch(memLoc.addr, x, ATOMIC_SEQ_CST)
     else:
@@ -303,45 +318,6 @@ when someVcc:
     else:
       {.error: "invalid CAS instruction".}
 
-elif defined(tcc):
-  when defined(amd64):
-    {.emit:"""
-static int __tcc_cas(int *ptr, int oldVal, int newVal)
-{
-    unsigned char ret;
-    __asm__ __volatile__ (
-            "  lock\n"
-            "  cmpxchgq %2,%1\n"
-            "  sete %0\n"
-            : "=q" (ret), "=m" (*ptr)
-            : "r" (newVal), "m" (*ptr), "a" (oldVal)
-            : "memory");
-
-    return ret;
-}
-""".}
-  else:
-    #assert sizeof(int) == 4
-    {.emit:"""
-static int __tcc_cas(int *ptr, int oldVal, int newVal)
-{
-    unsigned char ret;
-    __asm__ __volatile__ (
-            "  lock\n"
-            "  cmpxchgl %2,%1\n"
-            "  sete %0\n"
-            : "=q" (ret), "=m" (*ptr)
-            : "r" (newVal), "m" (*ptr), "a" (oldVal)
-            : "memory");
-
-    return ret;
-}
-""".}
-
-  proc tcc_cas(p: ptr int; oldValue, newValue: int): bool
-    {.importc: "__tcc_cas", nodecl.}
-  proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
-    tcc_cas(cast[ptr int](p), cast[int](oldValue), cast[int](newValue))
 elif declared(atomicCompareExchangeN):
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     atomicCompareExchangeN(p, oldValue.unsafeAddr, newValue, false, ATOMIC_SEQ_CST, ATOMIC_SEQ_CST)
