@@ -45,6 +45,13 @@ block: # the async incarnation from the issue
   waitFor amain()
   doAssert not hasPendingOperations()
   setGlobalDispatcher(nil)
+  # the dispatcher can stay rooted by a stale stack reference until the
+  # stack region is overwritten, and some memory managers defer the final
+  # destruction by one collection cycle
+  proc churn(n: int) =
+    if n > 0: churn(n - 1)
+  GC_fullCollect()
+  churn(1000)
   GC_fullCollect()
 
 let stats = getAllocStats()
