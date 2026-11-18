@@ -312,6 +312,11 @@ parameter and result types, not just their source-level shape. Use
   to dispatch before; `std/logging` works with it now. A thread-local
   variable keeps its value, for each thread, when its module is reloaded.
 
+- A new parser warning, `NotCmp`, reports `not` as the left operand of a
+  comparison: `not a == b` is `(not a) == b`, which for an integer `a`
+  compares its bitwise complement. The meaning of the code does not change;
+  adding parentheses silences the warning.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.
