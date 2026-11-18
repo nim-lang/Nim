@@ -203,7 +203,7 @@ jobs:
 
       - name: 'ccache: restore'
         if: runner.environment == 'github-hosted' && matrix.buildOnly != 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/ccache
           key: ccache-${{ matrix.name }}-${{ github.sha }}
@@ -239,7 +239,7 @@ jobs:
       # Only pushes to devel save, so PRs never add to the repository's 10 GB of cache.
       - name: 'ccache: save'
         if: always() && runner.environment == 'github-hosted' && matrix.buildOnly != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/devel'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/ccache
           key: ccache-${{ matrix.name }}-${{ github.sha }}
