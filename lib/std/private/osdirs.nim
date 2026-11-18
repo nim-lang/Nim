@@ -190,11 +190,11 @@ iterator walkDir*(dir: string; relative = false, checkDir = false,
   ## * `walkDirRec iterator`_
 
   when nimvm:
-    for k, v in items(staticWalkDir(dir, relative)):
+    for k, v in items(staticWalkDir(dir, relative, checkDir)):
       yield (k, v)
   else:
     when weirdTarget:
-      for k, v in items(staticWalkDir(dir, relative)):
+      for k, v in items(staticWalkDir(dir, relative, checkDir)):
         yield (k, v)
     elif defined(windows):
       var f: WIN32_FIND_DATA
