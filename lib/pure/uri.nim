@@ -329,7 +329,7 @@ func parseUri*(uri: string): Uri =
   result = initUri()
   parseUri(uri, result)
 
-func removeDotSegments*(path: string): string =
+func removeDotSegments(path: string): string =
   ## Collapses `..` and `.` in `path` according to http://tools.ietf.org/html/rfc3986#section-5.2.4
   ## NOTE: Operates on paths only, not URIs.
 
