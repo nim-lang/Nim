@@ -60,7 +60,8 @@ proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
 when not defined(js) and not defined(nimscript):
   block: # bug #18533
     var thr: Thread[void]
-    proc threadFunc {.thread.} = putEnv("foo", "fooVal2")
+    proc threadFunc {.thread.} =
+      try: putEnv("foo", "fooVal2") except: raiseAssert "putenv failed"
 
     putEnv("foo", "fooVal1")
     doAssert getEnv("foo") == "fooVal1"
