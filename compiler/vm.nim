@@ -129,6 +129,18 @@ proc readCString(c: PCtx; p: Address): string =
     result.add ch
     q = q +! 1
 
+proc retainCStr(c: PCtx; p: Address): bool =
+  ## makes the payload the cstring `p` points into immutable so the bytes stay
+  ## valid for the whole VM run: with `StrlitFlag` set the VM never reuses,
+  ## grows or frees the payload (see `reserve`, `freePayload`), and copies of
+  ## the string share it instead of duplicating it.
+  if p == 0: return true
+  let hdr = p -! PayloadDataOffset
+  if not canWrite(c.mem, hdr, 8): return true   # const memory: already immutable
+  if isLiteralPayload(hdr): return true
+  st[int64](hdr, ld[int64](hdr) or StrlitFlag)
+  result = true
+
 proc regToNode(c: PCtx; a: Address; t: PType; info: TLineInfo): PNode =
   ## turns a value in register format into an AST
   let vc = valueConv(c)
@@ -1347,6 +1359,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       let s = rAdr(ra)
       checkWrite(s, 16)
       ensure reserve(c, s, ldInt(s), 1, 1, true)
+    of opcRetainCStr:
+      # A cstring stored in VM-owned storage must stay valid even after the VM
+      # recycles the payload it points into. Mark that payload immutable
+      # (StrlitFlag): the VM then never reuses, grows or frees it, and copies of
+      # the string share it instead of duplicating it. Zero copy, no allocation.
+      # Pointers into const memory (string literals, the shared empty cstring)
+      # are immutable already and wild pointers are left alone.
+      ensure retainCStr(c, rAdr(ra))
 
     # ----------------------------- refs and objects
     of opcNewRef:

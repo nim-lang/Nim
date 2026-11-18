@@ -129,7 +129,14 @@ proc fillBackendName(m: BModule; s: PSym) =
         result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
-      result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
+      if m.config.cmd == cmdNifC:
+        # The per-module backend's names are unique in the whole program
+        # already, and every `cg` process names the routines it meets in its
+        # own order: counting signature collisions would give the owner and a
+        # caller of the same routine different names.
+        result.add(idOrSig(s, m.module.name.s.mangle, m.config))
+      else:
+        result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
     backendEnsureMutable s
     if m.config.cmd == cmdNifC:
       # mark the name so the cnif artifact writer can turn every occurrence
@@ -1240,7 +1247,12 @@ proc finishTypeDescriptions(m: BModule) =
   m.typeStack.setLen 0
 
 proc isReloadable(m: BModule; prc: PSym): bool =
-  return m.hcrOn and sfNonReloadable notin prc.flags
+  # an imported C function is called by its name: no module registers it with
+  # the runtime, unless it is loaded from a dynlib. A magic is imported under
+  # the name of a compilerproc instead (see mNewString in genMagicExpr)
+  return m.hcrOn and sfNonReloadable notin prc.flags and
+    (sfImportc notin prc.flags or lfDynamicLib in prc.loc.flags or
+      prc.magic != mNone)
 
 proc isNonReloadable(m: BModule; prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
@@ -1362,6 +1374,9 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   else:
     let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
     result.add runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
+    if asPtr:
+      # a variable, as `addProcVar` above
+      result.addLineEnd(";")
 
 
 # ------------------ type info generation -------------------------------------

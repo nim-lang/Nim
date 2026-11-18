@@ -544,9 +544,10 @@ when defined(windows) or defined(nimdoc):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
               retFuture.complete("")
             else:
-              var data = newString(bytesCount)
+              var data = ""
               assert bytesCount <= size
-              copyMem(addr data[0], addr dataBuf.buf[0], bytesCount)
+              copyMem(beginStore(data, bytesCount), addr dataBuf.buf[0], bytesCount)
+              endStore(data)
               retFuture.complete($data)
           else:
             if flags.isDisconnectionError(errcode):
@@ -574,9 +575,10 @@ when defined(windows) or defined(nimdoc):
     elif ret == 0:
       # Request completed immediately.
       if bytesReceived != 0:
-        var data = newString(bytesReceived)
+        var data = ""
         assert bytesReceived <= size
-        copyMem(addr data[0], addr dataBuf.buf[0], bytesReceived)
+        copyMem(beginStore(data, bytesReceived), addr dataBuf.buf[0], bytesReceived)
+        endStore(data)
         retFuture.complete($data)
       else:
         if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
@@ -1487,8 +1489,9 @@ else:
 
     proc cb(sock: AsyncFD): bool =
       result = true
-      let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
+      let res = recv(sock.SocketHandle, beginStore(readBuffer, readBuffer.len), size.cint,
                      flags.toOSFlags())
+      endStore(readBuffer)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EINTR and lastError.int32 != EWOULDBLOCK and

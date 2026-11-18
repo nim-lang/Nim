@@ -260,8 +260,9 @@ when defineSsl:
       raiseSslHandleError()
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
-      var data = newString(len)
-      let read = bioRead(socket.bioOut, cast[cstring](addr data[0]), len)
+      var data = ""
+      let read = bioRead(socket.bioOut, cast[cstring](beginStore(data, len)), len)
+      endStore(data)
       assert read != 0
       if read < 0:
         raiseSSLError()
@@ -483,7 +484,8 @@ proc recv*(socket: AsyncSocket, size: int,
           break
 
       let chunk = min(socket.bufLen-socket.currPos, size-read)
-      copyMem(addr(result[read]), addr(socket.buffer[socket.currPos]), chunk)
+      copyMem(beginStore(result, result.len, read), addr(socket.buffer[socket.currPos]), chunk)
+      endStore(result)
       read.inc(chunk)
       socket.currPos.inc(chunk)
 
@@ -492,8 +494,9 @@ proc recv*(socket: AsyncSocket, size: int,
       socket.currPos = originalBufPos
     result.setLen(read)
   else:
-    result = newString(size)
-    let read = readInto(addr result[0], size, socket, flags)
+    result = ""
+    let read = readInto(beginStore(result, size), size, socket, flags)
+    endStore(result)
     result.setLen(read)
 
 proc send*(socket: AsyncSocket, buf: pointer, size: int,

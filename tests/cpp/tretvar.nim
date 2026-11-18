@@ -37,3 +37,11 @@ var val = make_unique_str("test1")
 echo val.c_str()
 val.setChar(0, 'x')
 echo val.c_str()
+
+block: # bug #25870
+  proc testVarRet(x: var int): var int = x
+  proc testProcTypeParam(prc: proc (x: var int): var int {.nimcall.}) =
+    var x = 123
+    prc(x) = 321
+    doAssert x == 321
+  testProcTypeParam(testVarRet)

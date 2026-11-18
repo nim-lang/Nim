@@ -246,14 +246,14 @@ proc effectProblem(f, a: PType; result: var string; c: PContext) =
         result.add "\n  The `.raises` requirements differ. Annotate the " &
             "proc with {.raises: [].} to get extended error information."
       of efTagsDiffer:
-        result.add "\n  The `.tags` requirements differ."
+        result.addUnlistedEffect(f, a, c.config)
       of efTagsUnknown:
         result.add "\n  The `.tags` requirements differ. Annotate the " &
             "proc with {.tags: [].} to get extended error information."
       of efEffectsDelayed:
         result.add "\n  The `.effectsOf` annotations differ."
       of efTagsIllegal:
-        result.add "\n  The `.forbids` requirements caught an illegal tag."
+        result.addForbiddenEffect(f, a, c.config)
       when defined(drnim):
         if not c.graph.compatibleProps(c.graph, f, a):
           result.add "\n  The `.requires` or `.ensures` properties are incompatible."

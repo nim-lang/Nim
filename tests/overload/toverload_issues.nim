@@ -198,3 +198,27 @@ doAssert foo(@[1,2,3]) == "foo: seq[int]"
 doAssert foo(@["WER"]) == "foo: seq[T]"
 doAssert foo(MySeq[int]()) == "foo: MySeq[int]"
 doAssert foo(MySeq[string]()) == "foo: MySeq[T]"
+
+block: # bug #13549
+  proc foo[T](x: T): string = "a"
+  proc foo[T: tuple](x: T): string = "b"
+  doAssert foo((1, 2, 3)) == "b"
+  type Obj = object
+  proc foo(x: object): string = "c"
+  doAssert foo(Obj()) == "c"
+
+import options, streams
+
+block: # bug #16321
+  proc storeBin(s: Stream; x: bool) =
+    write(s, $x)
+  proc storeBin[T](s: Stream; o: Option[T]) =
+    let isSome = isSome(o)
+    storeBin(s, isSome)
+    if isSome:
+      storeBin(s, get(o))
+  proc storeBin[T: object|tuple](s: Stream; o: T) =
+    write(s, "bug")
+  var s = newStringStream()
+  s.storeBin(none(bool))
+  doAssert s.data == "false"

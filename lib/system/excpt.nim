@@ -544,7 +544,7 @@ proc reraiseException() {.compilerRtl.} =
     else:
       raiseExceptionAux(currException)
 
-proc threadTrouble() {.raises: [], gcsafe.} =
+proc threadTrouble() {.rtl, raises: [], gcsafe.} =
   try:
     if currException != nil: reportUnhandledError(currException)
   except:
@@ -632,9 +632,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
       {.emit: "#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
       {.emit: "#endif".}
-    except Exception:
-      msg = currException.getStackTrace() & "Error: unhandled exception: " &
-        currException.msg & " [" & cstrToStrBuiltin(currException.name) & "]"
+    except Exception as e:
+      msg = e.getStackTrace() & "Error: unhandled exception: " &
+        e.msg & " [" & cstrToStrBuiltin(e.name) & "]"
     except StdException as e:
       msg = "Error: unhandled cpp exception: " & cstrToStrBuiltin(e.what())
     except:

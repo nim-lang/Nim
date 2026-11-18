@@ -486,3 +486,21 @@ block: # bug #25725
     proc p(s: int) =
       let s = s; discard n
     p(0)
+
+block: # bug #12944
+  # proc that creates an iterator
+  proc test2(a: seq[int]): iterator: int =
+    iterator itseq: int {.closure.} =
+      for i in a:
+        yield i
+    return itseq
+  let foo = test2(@[1, 2, 3])
+  var c: seq[int]
+  for x in foo():
+    c.add x
+  doAssert c == @[1, 2, 3]
+  var d: seq[int]
+  # used to not iterate, because the iterator was not called
+  for x in test2(@[4, 5, 6])():
+    d.add x
+  doAssert d == @[4, 5, 6]

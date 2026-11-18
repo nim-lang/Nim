@@ -191,6 +191,8 @@ type
     opcSamePayload, # regs[A] = payload(regs[B]) == payload(regs[C])
     opcSeqCopyPayload, # setLen(seq at regs[A], len(seq at regs[B])) and copy the bits of all elements
     opcMakeUnique,  # copy-on-write: the string at regs[A] gets its own payload if it shares a literal
+    opcRetainCStr,  # regs[A] is a cstring: mark the payload it points into immutable so
+                    # the bytes stay valid for the whole VM run (StrlitFlag)
     opcUnshare,     # the strings and seqs in the value at regs[A] of type W get their own
                     # payloads; value semantics for the old runtime (--mm:refc)
     opcDestroyValue,# `=destroy` for the value at regs[A] of type W that has no hooks

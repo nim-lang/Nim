@@ -13,7 +13,14 @@
 
 template isLiteral(s): bool = (s.p == nil) or (s.p.cap and strlitFlag) == strlitFlag
 
-template contentSize(cap): int = cap + 1 + sizeof(NimStrPayloadBase)
+proc contentSize(cap: int): int {.inline.} =
+  ## `cap + 1 + sizeof(NimStrPayloadBase)`; checked even under
+  ## `--overflowChecks:off` as a wrapped around result means a too small
+  ## block that is then written to. Callers must not compute `cap` with
+  ## wrapping arithmetic: signed overflow is undefined behavior in C.
+  if cap < 0 or cap > high(int) - 1 - sizeof(NimStrPayloadBase):
+    nimSizeOverflow()
+  result = cap + 1 + sizeof(NimStrPayloadBase)
 
 template frees(s) =
   if not isLiteral(s):
@@ -49,10 +56,12 @@ template reallocPayload0(p: pointer; oldLen, newLen: int): ptr NimStrPayload =
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
   elif old <= high(int16): result = old * 2
+  elif old > high(int) - old div 2: result = high(int) # saturate; the size check reports it
   else: result = old div 2 + old # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addLen: int) {.compilerRtl.} =
-  let newLen = s.len + addLen
+  var newLen: int
+  if nimAddInt(s.len, addLen, addr newLen): nimSizeOverflow()
   if isLiteral(s):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
