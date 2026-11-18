@@ -1798,6 +1798,9 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
   for r in items(real):
     block search:
       var forbidden = false
+      # an effect broader than a forbidden one may be that one: such code is
+      # not valid either, but only a warning so that existing code compiles
+      var parentOf: PNode = nil
       for s in 0..<spec.len:
         if effectPredicate(g, spec[s], r):
           if isForbids:
@@ -1805,7 +1808,9 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
             break
           used.incl(s)
           break search
-      if isForbids and not forbidden:
+        if isForbids and parentOf == nil and isParentEffect(g.excType(r), spec[s].typ):
+          parentOf = spec[s]
+      if isForbids and not forbidden and parentOf == nil:
         break search
       # XXX call graph analysis would be nice here!
       var rr = if r.kind == nkRaiseStmt: r[0] else: r
@@ -1816,8 +1821,14 @@ proc checkRaisesSpec(g: ModuleGraph; emitWarnings: bool; spec, real: PNode, msg:
         message(g.config, spec.info, hintUser, ".forbids spec declared here")
         for hop in effectOrigin(r):
           message(g.config, hop.info, hintUser, "effect propagated from here")
-        message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
-                renderTree(rr) & " " & msg & typeToString(r.typ))
+        if forbidden:
+          message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
+                  renderTree(rr) & " " & msg & typeToString(r.typ))
+        else:
+          message(g.config, r.info, warnEffect,
+                  "$1 may have the effect $2 forbidden by `.forbids: $3`: its effect $4 is a parent of $2" %
+                  [(if rr.kind in nkCallKinds: renderTree(rr) else: "this call"),
+                   typeToString(parentOf.typ), renderTree(spec), typeToString(r.typ)])
       else:
         pushInfoContext(g.config, spec.info)
         message(g.config, r.info, if emitWarnings: warnEffect else: errGenerated,
