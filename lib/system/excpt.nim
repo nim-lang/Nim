@@ -159,6 +159,31 @@ proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
   #showErrorMessage2 "B"
 
+proc nimCurrentExceptionRaw(): pointer {.compilerRtl, inl.} =
+  result = cast[pointer](currException)
+
+proc nimCatchException(prev: pointer) {.compilerRtl, inl.} =
+  # setjmp based exceptions: `prev` is the current exception from when the
+  # `try` statement was entered. An exception that escaped from an `except` or
+  # `finally` section leaves the exception that section handled on the chain;
+  # drop it (bug #26583).
+  if currException != nil:
+    currException.up = cast[ref Exception](prev)
+
+proc nimLeaveExcept(handled: pointer; foreign: bool) {.compilerRtl.} =
+  # An exception escapes from the `except` section that handled `handled`;
+  # drop `handled` from the chain unless it is re-raised (bug #26583).
+  # `foreign` means the escaping exception is not a Nim exception.
+  if cast[pointer](currException) == handled:
+    if foreign: currException = currException.up
+  else:
+    var it {.cursor.} = currException
+    while it != nil:
+      if cast[pointer](it.up) == handled:
+        it.up = it.up.up
+        break
+      it = it.up
+
 proc closureIterSetExc(e: ref Exception) {.compilerRtl, inl.} =
   currException = e
 
@@ -496,6 +521,10 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
     if e != currException:
       pushCurrentException(e)
+    else:
+      when defined(gcDestructors):
+        # the reference `e` owns is not consumed by the exception chain
+        GC_unref(e)
     {.emit: "throw `e`;".}
   elif quirkyExceptions or gotoBasedExceptions:
     pushCurrentException(e)
