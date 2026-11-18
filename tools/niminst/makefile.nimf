@@ -17,7 +17,13 @@ endif
 target := ?{"$(binDir)/" & toLowerAscii(c.name)}
 
 
-ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
+## get CPU arch from GCC instead of using `uname -m` as GCC target CPU arch can be different from uname.
+## see #25296
+## it should also get OS from GCC so that csource can be build with more GCC for cross compilation.
+## but parsing OS name from `gcc -dumpmachine` is hard:
+## https://wiki.osdev.org/Target_Triplet
+ucpu := $(shell sh -c '"$(CC)" -dumpmachine | sed "s/-.*//" | tr "[:upper:]" "[:lower:]"')
+##ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
 ifeq ($(OS),Windows_NT)
   uos := windows
 else
