@@ -79,7 +79,7 @@ block:
 block:
   let x = 3
   let n = 1
-  let s = @[1, 2]
+  let s = [1, 2]
   discard not x == n
   discard not x != n
   discard not x < n
