@@ -12,7 +12,8 @@
 # from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
-import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths
+import ropes, platform, condsyms, options, msgs, lineinfos, pathutils, modulepaths,
+  shellfreeexec
 
 import std/[os, osproc, streams, sequtils, times, strtabs, json, jsonutils, sugar, parseutils, algorithm]
 
@@ -439,7 +440,8 @@ proc addExternalFileToLink*(conf: ConfigRef; filename: AbsoluteFile) =
 
 proc execWithEcho(conf: ConfigRef; cmd: string, msg = hintExecuting): int =
   rawMessage(conf, msg, if msg == hintLinking and not(optListCmd in conf.globalOptions or conf.verbosity > 1): "" else: cmd)
-  result = execCmd(cmd)
+  # Without the shell when the command needs none (see `shellfreeexec`).
+  result = execCommand(cmd)
 
 proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
   if execWithEcho(conf, cmd, msg) != 0:
@@ -589,7 +591,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
     var exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if exe.len == 0: exe = CC[conf.cCompiler].compilerExe
     # NOTE: should we need the full version, use -dumpfullversion
-    let (s, exitCode) = try: execCmdEx(exe & " -dumpversion") except IOError, OSError, ValueError: ("", 1)
+    let (s, exitCode) = try: execCommandEx(exe & " -dumpversion") except IOError, OSError, ValueError: ("", 1)
     if exitCode == 0:
       var major: int = 0
       discard parseInt(s, major)
@@ -929,7 +931,9 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
           cmds[i])
   else:
     tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
-      res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+      # Without the shell for each command that needs none (see
+      # `shellfreeexec`).
+      res = execCommandsInParallel(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
                             conf.numberOfProcessors, prettyCb, afterRunEvent=runCb)
   if res != 0:
     if conf.numberOfProcessors <= 1:
