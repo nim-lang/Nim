@@ -3,6 +3,13 @@
 
 ## Changes affecting backward compatibility
 
+- With the C and C++ backends, a conversion from a float type to a signed
+  integer type is now range checked under `--rangeChecks:on`: a value whose
+  truncation does not fit the target type, NaN and the infinities raise a
+  `RangeDefect` instead of producing an undefined result. Previously
+  `int8(300.0)` silently wrapped to 44 and `int(1e19)` depended on the CPU.
+  Unsigned conversions remain unchecked.
+
 - Solaris and illumos are now separate targets (`--os:solaris` and
   `--os:illumos`). Both define `sunos`, `posix`, and `unix`; illumos no longer
   defines `solaris`. Use `defined(sunos)` for code shared by both systems.
