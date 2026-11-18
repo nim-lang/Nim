@@ -243,7 +243,17 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     # the alias to its base type.
     maybeImported(c, t.symImpl, conf)
     c.typeKey t.skipModifierB, flags, conf
-  of tySink, tyUserTypeClasses, tyInferred:
+  of tyUserTypeClass:
+    # The last son of an unbound concept is its `candidateTypeSlot`, a tyAlias
+    # that sigmatch overwrites with whatever type is currently being matched.
+    # That is transient match state, not identity, and it can point back at
+    # the concept itself (matching `C` against `var C` while ranking
+    # overloads), so following it recursed forever (#26740). Key the concept
+    # by its symbol instead.
+    withTree c.m, toNifTag(t.kind):
+      if t.symImpl != nil: c.symKey(t.symImpl, conf)
+      else: c.treeKey(t.nImpl, {}, conf)
+  of tySink, tyUserTypeClassInst, tyInferred:
     c.typeKey t.skipModifierB, flags, conf
   of tyOwned:
     if CoConsiderOwned in flags:
