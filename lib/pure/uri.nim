@@ -331,7 +331,7 @@ func parseUri*(uri: string): Uri =
 
 func removeDotSegments(path: string): string =
   ## Collapses `..` and `.` in `path` according to http://tools.ietf.org/html/rfc3986#section-5.2.4
-  ## NOTE: Operates on paths only, not URIs.
+  ## NOTE: Operates on paths, not URIs.
 
   runnableExamples:
     assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7//"
@@ -342,16 +342,15 @@ func removeDotSegments(path: string): string =
     assert removeDotSegments("a//../b") == "a/b"
     assert removeDotSegments("a/b/c//") == "a/b/c//"
     
-  let l = path.len
-  if l == 0: return ""
+
+  if path.len == 0: return ""
 
   # Single allocation up front for the output path
-  result = newStringOfCap(l)
+  result = newStringOfCap(path.len)
   
   var i = 0
-
-  while i < l:
-    let remaining = l - i
+  while i < path.len:
+    let remaining = path.len - i
 
     # 1A & 1D. Handle prefix/isolated "../", "./", "..", "."
     if path[i] == '.':
@@ -370,7 +369,7 @@ func removeDotSegments(path: string): string =
       if remaining >= 2 and path[i+1] == '.':
         # Path segment is exactly "/." or prefix "/./"
         if remaining == 2:
-          result.add('/')
+          result.add '/'
           break
         if path[i+2] == '/':
           i += 2 # Skip the '/.' but preserve the trailing '/'
@@ -381,29 +380,23 @@ func removeDotSegments(path: string): string =
           if remaining == 3:
             # Pop last segment from output buffer
             let lastSlash = result.rfind('/')
-            result.setLen(max(0, lastSlash))
-            result.add('/')
+            result.setLen(max(0, lastSlash)) #pop last segment
+            result.add '/'
             break
           if path[i+3] == '/':
             let lastSlash = result.rfind('/')
-            result.setLen(max(0, lastSlash))
+            result.setLen(max(0, lastSlash)) #pop last segment
             i += 3 # Skip the '/..' but preserve the trailing '/'
             continue
 
     # 1E. Move the first path segment from input to output using optimized bulk copies
-    var endIdx = i
-    if path[endIdx] == '/':
-      inc(endIdx)
-      
-    let nextSlash = path.find('/', endIdx)
-    if nextSlash != -1:
-      endIdx = nextSlash
-    else:
-      endIdx = l
-    
+    let nextSlash = path.find('/', i + ord(path[i] == '/'))
+    let endIdx = if nextSlash < 0: path.len else: nextSlash
+
     # Fast bulk slice copy rather than single-character looping
-    result.add(path[i ..< endIdx])
+    result.add path[i ..< endIdx]
     i = endIdx
+
 
 
 func merge(base, reference: Uri): string =
