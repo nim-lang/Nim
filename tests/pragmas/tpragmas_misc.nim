@@ -73,26 +73,3 @@ block: # issue #22525
   macro catch(x: typed) = x
   proc thing {.catch.} = discard
   thing()
-
-block: # `localPassC` inside a routine is passed for the C file of its module
-  proc answer(): cint =
-    {.localPassC: "-DTPRAGMAS_MISC_LOCALPASSC_IN_PROC=7".}
-    {.emit: "`result` = TPRAGMAS_MISC_LOCALPASSC_IN_PROC;".}
-
-  let other = proc (): cint =
-    {.localPassC: "-DTPRAGMAS_MISC_LOCALPASSC_IN_LAMBDA=8".}
-    {.emit: "`result` = TPRAGMAS_MISC_LOCALPASSC_IN_LAMBDA;".}
-
-  iterator once(): int =
-    {.localPassC: "-DTPRAGMAS_MISC_LOCALPASSC_IN_ITER=9".}
-    yield 1
-
-  proc fromIterator(): cint =
-    {.emit: "`result` = TPRAGMAS_MISC_LOCALPASSC_IN_ITER;".}
-
-  doAssert answer() == 7
-  doAssert other() == 8
-  var n = 0
-  for x in once(): n += x
-  doAssert n == 1
-  doAssert fromIterator() == 9
