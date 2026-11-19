@@ -200,6 +200,10 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cyclecollector"
   test "trace_globals"
   test "tfinalizers"
+  # these carry their own `matrix`/`cmd`:
+  run "tmove_case_object", ""
+  run "tdisable_orc", ""
+  run "tregionleak", ""
 
 # ------------------------- threading tests -----------------------------------
 
