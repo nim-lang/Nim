@@ -26,7 +26,7 @@ const HighestSuggestProtocolVersion = 4
 const Usage = """
 Nimsuggest2 - nimsuggest answering every command from the NIFs `nim ns` builds
 Usage:
-  nimsuggest2 [options] projectfile.nim
+  nimsuggest2 [options] projectfile.nim [projectfile.nim ...]
 
 Options:
   --autobind              automatically binds into a free port
@@ -50,6 +50,9 @@ are supported.
 var
   gLogging = defined(logging)
   gRoot = InvalidFileIdx # the module a one-shot command compiles
+  gProjects: seq[string] # the project files on the command line; the first is the main one
+  gProject = "" # the project answering the query (see `queryProject`)
+  gCacheDir = "" # the nimcache every project is built into
   gNsModules: HashSet[string] # the project's modules, as `nim ns` reported them
   gNsIncluders: Table[string, string] # included file -> the module including it
   gParallelBuild = "" # `--parallelBuild`'s value, passed on to `nim ns`
@@ -334,6 +337,362 @@ proc outline2(graph: ModuleGraph; n: PNode; module: string; owners: var seq[stri
     for child in n:
       graph.outline2(child, module, owners, inRoutine or n.kind in {nkLambda, nkDo})
 
+proc useNsReport(graph: ModuleGraph; output: string) =
+  let conf = graph.config
+  var module = ""
+  for line in output.splitLines:
+    if line.startsWith("icsemdir:"):
+      conf.icSemDir = AbsoluteDir(line.substr("icsemdir:".len))
+    elif line.startsWith("icmodule:"):
+      module = line.substr("icmodule:".len)
+      graph.icVerify(module)
+      gNsModules.incl module
+    elif line.startsWith("icfailed:"):
+      module = line.substr("icfailed:".len)
+      gNsModules.incl module
+    elif line.startsWith("icdeferred:"):
+      module = line.substr("icdeferred:".len)
+      gNsModules.incl module
+    elif line.startsWith("icinclude:"):
+      gNsIncluders[line.substr("icinclude:".len)] = module
+
+proc nsReport(conf: ConfigRef): string =
+  ## Where `nim ns` leaves its report (see `useNsReport`).
+  getNimcacheDir(conf).string / nsReportName(conf.projectFull.string)
+
+iterator reportedFiles(report: string): string =
+  ## The modules and include files `nim ns` read
+  for line in readFile(report).splitLines:
+    let i = line.find(':')
+    if i > 0 and line.substr(0, i) in ["icmodule:", "icfailed:", "icdeferred:", "icinclude:"]:
+      yield line.substr(i + 1)
+
+proc changedSince(report: string): bool =
+  ## Whether a module or include file `nim ns` read was saved after that run
+  ## started, which is the report's modification time.
+  result = false
+  let seen = getLastModificationTime(report)
+  for f in reportedFiles(report):
+    if fileExists(f) and getLastModificationTime(f) > seen: return true
+
+proc reaches(report, file: string): bool =
+  ## Whether `nim ns` built `file`, or a module including it, for the project
+  ## of `report`.
+  result = false
+  if fileExists(report):
+    for f in reportedFiles(report):
+      if f == file: return true
+
+proc nsRoots(report: string): seq[string] =
+  ## The modules besides the project `nim ns` built as roots (`--nsRoot`).
+  ## For unknown files support.
+  result = @[]
+  if fileExists(report):
+    for line in readFile(report).splitLines:
+      if line.startsWith("icroot:"): result.add line.substr("icroot:".len)
+
+proc runNimNs(cache, project: string; roots: seq[string]) =
+  ## Brings the NIFs of `project` and of `roots` and its report up to date
+  ## with `nim ns`, which builds them with `project`'s own config into
+  ## `cache`. Modules that fail to compile there are compiled from source by
+  ## the queries; not being able to run `nim ns` is an error.
+  let nim = getAppDir() / addFileExt("nim", ExeExt)
+  var args = @[nim, "ns", "--define:nimsuggest", "--nimcache:" & cache]
+  for root in roots: args.add "--nsRoot:" & root
+  if gParallelBuild.len > 0: args.add "--parallelBuild:" & gParallelBuild
+  let cmd = quoteShellCommand(args & project)
+  template fail(msg: string) =
+    stderr.writeLine "nimsuggest2: nim ns: " & msg
+    quit 1
+  var output = ""
+  var exitCode = -1
+  benchmark "nim ns":
+    try:
+      (output, exitCode) = execCmdEx(cmd, workingDir = project.parentDir)
+    except OSError as e:
+      fail "cannot run " & cmd & ": " & e.msg
+  myLog "nim ns: " & cmd & " exit code: " & $exitCode
+  if exitCode != 0: myLog output
+  let format = cache / "ic.version"
+  if not fileExists(format) or readFile(format) != icFormatVersion:
+    fail nim & " writes NIFs in another format than nimsuggest2 reads (" &
+      icFormatVersion & "): is it from the same build?\n" & output
+  if not fileExists(cache / nsReportName(project)):
+    fail cmd & " wrote no report: is " & nim &
+      " from the same build as nimsuggest2?\n" & output
+
+proc isStale(report: string): bool =
+  ## Whether `nim ns` must run again for the project of `report`: there is
+  ## no report, a file it read changed since, or its config changed.
+  if not fileExists(report) or changedSince(report): return true
+  for line in readFile(report).splitLines:
+    if line.startsWith("icconfig:") and line.len > "icconfig:".len:
+      return sourcesChanged(line.substr("icconfig:".len))
+  false
+
+proc otherProjectsOccurrences(conf: ConfigRef; name: string): seq[TLineInfo] =
+  ## Where `name` is used in the modules that only the other projects build,
+  ## read from their NIFs. A symbol has the same NIF name in every project.
+  ## Stale projects are built again first.
+  result = @[]
+  var seen = gNsModules
+  for project in gProjects:
+    if project == gProject: continue
+    let report = gCacheDir / nsReportName(project)
+    if isStale(report): runNimNs(gCacheDir, project, nsRoots(report))
+    var semDir = ""
+    for line in readFile(report).splitLines:
+      if line.startsWith("icsemdir:"):
+        semDir = line.substr("icsemdir:".len)
+      elif line.startsWith("icmodule:"):
+        let module = line.substr("icmodule:".len)
+        if semDir.len > 0 and not seen.containsOrIncl(module):
+          result.add ideOccurrences(conf,
+            semDir / moduleSuffix(module, []) & ".s.bif", name)
+
+type Query = object
+  opc: string
+  cmd: IdeCmd
+  file, dirty: string
+  line, col: int
+  tag: string
+
+proc parseQuery(cmd: string; conf: ConfigRef): Query =
+  ## Parses a command like nimsuggest's `execCmd` does; `cmd` is `ideNone`
+  ## for an unknown command.
+  result = Query(col: -1)
+  var i = parseIdent(cmd, result.opc, 0)
+  result.opc = result.opc.normalize
+  result.cmd =
+    case result.opc
+    of "sug": ideSug
+    of "con": ideCon
+    of "def": ideDef
+    of "use": ideUse
+    of "dus": ideDus
+    of "chk": ideChk
+    of "highlight": ideHighlight
+    of "known": ideKnown
+    of "project": ideProject
+    of "changed": ideChanged
+    of "globalsymbols": ideGlobalSymbols
+    of "declaration": ideDeclaration
+    of "expand": ideExpand
+    of "chkfile": ideChkFile
+    of "recompile": ideRecompile
+    of "type": ideType
+    of "inlayhints": ideInlayHints
+    of "outline2": ideOutline2
+    else: ideNone
+  i += skipWhitespace(cmd, i)
+  if i < cmd.len and cmd[i] in {'0'..'9'}:
+    result.file = string conf.projectFull
+  else:
+    i = parseQuoted(cmd, result.file, i)
+    if i < cmd.len and cmd[i] == ';':
+      i = parseQuoted(cmd, result.dirty, i+1)
+    i += skipWhile(cmd, seps, i)
+  i += parseInt(cmd, result.line, i)
+  i += skipWhile(cmd, seps, i)
+  i += parseInt(cmd, result.col, i)
+  result.tag = substr(cmd, i)
+
+const SourceIdentChars = IdentChars + {'\x80'..'\xFF'}
+
+proc sourceLine(src: var Table[FileIndex, seq[string]]; conf: ConfigRef;
+                fileIdx: FileIndex; line: int): string =
+  if fileIdx notin src:
+    src[fileIdx] =
+      try: readFile(toFullPath(conf, fileIdx)).splitLines
+      except IOError: @[]
+  let lines = src[fileIdx]
+  result = if line in 1..lines.len: lines[line - 1] else: ""
+
+proc identAround(text: string; col: int): tuple[ident: string, start: int] =
+  ## The identifier of `text` that `col` is in.
+  if col < 0 or col >= text.len or text[col] notin SourceIdentChars: return ("", col)
+  var a = col
+  while a > 0 and text[a - 1] in SourceIdentChars: dec a
+  var b = col
+  while b < text.len and text[b] in SourceIdentChars: inc b
+  result = (text.substr(a, b - 1), a)
+
+proc symAtPos(graph: ModuleGraph; n: PNode; target: TLineInfo; ident: string): PSym =
+  ## The symbol named `ident` that `n` has at `target`.
+  result = nil
+  if n == nil: return
+  if n.kind == nkSym:
+    if n.info.fileIndex == target.fileIndex and n.info.line == target.line and
+        n.info.col <= target.col and target.col <= n.info.col + ident.len and
+        cmpIgnoreStyle(n.sym.name.s, ident) == 0:
+      result = n.sym
+    return
+  if nfLazyBody in n.flags and forceLazyBodyHook != nil: forceLazyBodyHook(n)
+  for i in 0..<n.safeLen:
+    result = graph.symAtPos(n[i], target, ident)
+    if result != nil: return
+
+proc nifOccurrences(conf: ConfigRef; name, ident, skipNif: string): seq[TLineInfo] =
+  ## Where `name` is used, read from the NIFs of every module of every project
+  ## except `skipNif`. Keeps only the positions where the source has `ident`.
+  result = @[]
+  var infos: seq[TLineInfo] = @[]
+  for m in gNsModules:
+    let nif = toNifFilename(conf, fileInfoIdx(conf, AbsoluteFile m))
+    if nif != skipNif: infos.add ideOccurrences(conf, nif, name)
+  infos.add otherProjectsOccurrences(conf, name)
+  var src = initTable[FileIndex, seq[string]]()
+  for info in infos:
+    let (id, start) = identAround(src.sourceLine(conf, info.fileIndex, info.line.int), info.col)
+    if start == info.col and cmpIgnoreStyle(id, ident) == 0: result.add info
+
+proc answerFromNif(graph: ModuleGraph; q: Query): bool =
+  ## Answers `highlight`, `def`, `use` and `dus` about a saved file whose NIF
+  ## is fresh from the NIFs, without compiling or loading the import closure:
+  ## the loader opens the NIFs the symbols need. False when they cannot.
+  ## A field's NIF name is only its name and position, so a `highlight` of one
+  ## also lists the same-named field at that position of another type.
+  let conf = graph.config
+  let cmd = q.cmd
+  if cmd notin {ideHighlight, ideDef, ideUse, ideDus} or q.dirty.len > 0 or
+      graph.icNifIsStale(gRoot):
+    return false
+  var src = initTable[FileIndex, seq[string]]()
+  let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
+  let ident = identAround(src.sourceLine(conf, fileIdx, q.line), q.col).ident
+  if ident.len == 0: return false
+  let target = newLineInfo(fileIdx, q.line, q.col)
+  let bif = toNifFilename(conf, gRoot)
+  let at = ideSymAt(conf, bif, target, ident)
+  if at.name.len == 0 or (cmd in {ideUse, ideDus} and isFieldNifName(at.name)):
+    return false
+  var sym = resolveHookSym(ast.program, at.name)
+  if sym == nil:
+    for r in at.routines:
+      let owner = resolveHookSym(ast.program, r)
+      if owner != nil and owner.kind in routineKinds:
+        sym = graph.symAtPos(owner.ast, target, ident)
+        if sym != nil: break
+  if sym == nil or cmpIgnoreStyle(sym.name.s, ident) != 0: return false
+  myLog fmt "answering {q.opc} from NIF: {at.name}"
+
+  var infos = @[sym.info]
+  if cmd != ideDef:
+    infos.add ideOccurrences(conf, bif, at.name)
+  if cmd in {ideUse, ideDus}:
+    for m in gNsModules:
+      let other = toNifFilename(conf, fileInfoIdx(conf, AbsoluteFile m))
+      if other != bif: infos.add ideOccurrences(conf, other, at.name)
+    infos.add otherProjectsOccurrences(conf, at.name)
+  var found: seq[TLineInfo] = @[]
+  for info in infos:
+    if cmd == ideHighlight and info.fileIndex != fileIdx: continue
+    let (id, start) = identAround(src.sourceLine(conf, info.fileIndex, info.line.int), info.col)
+    if start == info.col and cmpIgnoreStyle(id, sym.name.s) == 0 and
+        not found.anyIt(it.exactEquals(info)):
+      found.add info
+  if found.len == 0: return false
+  found.sort(proc (a, b: TLineInfo): int =
+    cmp((a.fileIndex.int32, a.line, a.col), (b.fileIndex.int32, b.line, b.col)))
+  conf.ideCmd = cmd
+  for info in found:
+    graph.suggestResult(sym, info)
+  result = true
+
+proc isKnown(graph: ModuleGraph; fileIdx: FileIndex): bool =
+  ## Whether `nim ns` built `fileIdx`, or a module including it.
+  let path = toFullPath(graph.config, fileIdx)
+  path in gNsModules or path in gNsIncluders or graph.inclToMod.hasKey(fileIdx)
+
+proc registerIncluder(graph: ModuleGraph; fileIdx: FileIndex) =
+  ## Registers the module `nim ns` reported as including `fileIdx`, if any.
+  let conf = graph.config
+  let includer = gNsIncluders.getOrDefault(toFullPath(conf, fileIdx))
+  if includer.len > 0:
+    graph.addIncludeDep(fileInfoIdx(conf, AbsoluteFile includer), fileIdx)
+
+proc moduleOf(graph: ModuleGraph; file: string): FileIndex =
+  ## `file`, or the module including it.
+  let conf = graph.config
+  let fileIdx = fileInfoIdx(conf, AbsoluteFile file)
+  if not graph.isIcVerified(toFullPath(conf, fileIdx)) and
+      graph.needsIncludeScan(fileIdx):
+    graph.registerIncluder(fileIdx)
+  result = if graph.inclToMod.hasKey(fileIdx): graph.parentModule(fileIdx) else: fileIdx
+
+proc queryRoot(graph: ModuleGraph; q: Query): FileIndex =
+  ## The module a command compiles: the project's main file for the commands
+  ## about the whole project (`chk`, `globalSymbols`, `recompile`) or when it
+  ## names no file; otherwise the file it names or the module including it.
+  if q.cmd in {ideChk, ideGlobalSymbols, ideRecompile} or q.file.len == 0:
+    result = fileInfoIdx(graph.config, graph.config.projectFull)
+  else:
+    result = graph.moduleOf(q.file)
+
+proc processCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
+  var p = parseopt.initOptParser(cmd)
+  while true:
+    parseopt.next(p)
+    case p.kind
+    of cmdEnd: break
+    of cmdLongOption, cmdShortOption:
+      case p.key.normalize
+      of "help", "h":
+        stdout.writeLine(Usage)
+        quit()
+      of "one-shot", "autobind", "port", "address", "clientprocessid",
+          "v1", "v2", "v3", "v4":
+        discard
+      of "debug": incl(conf.globalOptions, optIdeDebug)
+      of "info":
+        case p.val.normalize
+        of "protocolver":
+          stdout.writeLine(HighestSuggestProtocolVersion)
+          quit 0
+        of "nimver":
+          stdout.writeLine(system.NimVersion)
+          quit 0
+        of "capabilities":
+          stdout.writeLine(Capabilities.join(" "))
+          quit 0
+        else:
+          processSwitch(pass, p, conf)
+      of "log": gLogging = true
+      of "maxresults":
+        conf.suggestMaxResults = parseInt(p.val)
+      of "parallelbuild":
+        processSwitch(pass, p, conf)
+        gParallelBuild = p.val
+      else: processSwitch(pass, p, conf)
+    of cmdArgument:
+      if pass == passCmd1:
+        let a = unixToNativePath(p.key)
+        var project = a
+        if dirExists(a) and not fileExists(a.addFileExt("nim")):
+          project = findProjectNimFile(conf, a)
+          if project.len == 0: project = a
+        gProjects.add project
+        if gProjects.len == 1: conf.projectName = project
+
+proc queryProject(conf: ConfigRef; q: Query; cache: string): string =
+  ## Picks the project whose config is used to answer the query:
+  ## - the first project that imports or includes the queried file;
+  ## - otherwise, the project closest to the file, ie: in the same folder or the nearest parent folder;
+  ## - otherwise, or when the query names no file, the main project.
+  result = gProjects[0]
+  if q.cmd in {ideGlobalSymbols, ideRecompile} or q.file.len == 0: return
+  let file =
+    try: canonicalizePath(conf, AbsoluteFile q.file).string
+    except OSError: return
+  for project in gProjects:
+    if reaches(cache / nsReportName(project), file): return project
+  var depth = -1
+  for project in gProjects:
+    let dir = project.parentDir
+    if dir.len > depth and file.isRelativeTo(dir):
+      result = project
+      depth = dir.len
+
 proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
             line, col: int; tag: string) =
   let conf = graph.config
@@ -359,8 +718,20 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
       for s in graph.suggestSymbolsIter:
         if symbols.anyIt(s.sym.symbolEqual(it.sym)):
           res.add(s)
-      for s in res.deduplicateSymInfoPair():
+      res = res.deduplicateSymInfoPair()
+      for s in res:
         graph.suggestResult(s.sym, s.info)
+      # The other modules are loaded from their NIFs, so their uses are not
+      # in `suggestSymbols`: read them from the NIFs.
+      let rootNif = toNifFilename(conf, gRoot)
+      var names = initHashSet[string]()
+      for s in symbols:
+        let name = globalName(s.sym, conf)
+        if s.sym.kind == skField or names.containsOrIncl(name): continue
+        for info in nifOccurrences(conf, name, s.sym.name.s, rootNif):
+          if not res.anyIt(it.info.exactEquals(info)):
+            res.add SymInfoPair(sym: s.sym, info: info)
+            graph.suggestResult(s.sym, info)
   of ideHighlight:
     let sym = graph.findSymData(newLineInfo(fileIndex, line, col))
     if not sym.isNil:
@@ -458,294 +829,18 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
   else:
     discard
 
-proc useNsReport(graph: ModuleGraph; output: string) =
-  let conf = graph.config
-  var module = ""
-  for line in output.splitLines:
-    if line.startsWith("icsemdir:"):
-      conf.icSemDir = AbsoluteDir(line.substr("icsemdir:".len))
-    elif line.startsWith("icmodule:"):
-      module = line.substr("icmodule:".len)
-      graph.icVerify(module)
-      gNsModules.incl module
-    elif line.startsWith("icfailed:"):
-      module = line.substr("icfailed:".len)
-      gNsModules.incl module
-    elif line.startsWith("icdeferred:"):
-      module = line.substr("icdeferred:".len)
-      gNsModules.incl module
-    elif line.startsWith("icinclude:"):
-      gNsIncluders[line.substr("icinclude:".len)] = module
-
-proc nsReport(conf: ConfigRef): string =
-  ## Where `nim ns` leaves its report (see `useNsReport`).
-  getNimcacheDir(conf).string / nsReportName(conf.projectFull.string)
-
-proc changedSince(report: string): bool =
-  ## Whether a module or include file `nim ns` read was saved after that run
-  ## started, which is the report's modification time.
-  result = false
-  let seen = getLastModificationTime(report)
-  for line in readFile(report).splitLines:
-    let i = line.find(':')
-    if i > 0 and line.substr(0, i) in ["icmodule:", "icfailed:", "icdeferred:", "icinclude:"]:
-      let f = line.substr(i + 1)
-      if fileExists(f) and getLastModificationTime(f) > seen: return true
-
-proc nsRoots(report: string): seq[string] =
-  ## The modules besides the project `nim ns` built as roots (`--nsRoot`).
-  ## For unknown files support.
-  result = @[]
-  if fileExists(report):
-    for line in readFile(report).splitLines:
-      if line.startsWith("icroot:"): result.add line.substr("icroot:".len)
-
-proc runNimNs(graph: ModuleGraph; roots: seq[string]) =
-  ## Brings the NIFs of the project and of `roots` and `nsReport` up to date
-  ## with `nim ns`. Modules that fail to compile there are compiled from source
-  ## by the queries; not being able to run `nim ns` is an error.
-  let conf = graph.config
-  let nim = getAppDir() / addFileExt("nim", ExeExt)
-  let cache = getNimcacheDir(conf).string
-  var args = @[nim, "ns", "--define:nimsuggest", "--nimcache:" & cache]
-  for root in roots: args.add "--nsRoot:" & root
-  if gParallelBuild.len > 0: args.add "--parallelBuild:" & gParallelBuild
-  let cmd = quoteShellCommand(args & conf.projectFull.string)
-  template fail(msg: string) =
-    stderr.writeLine "nimsuggest2: nim ns: " & msg
-    quit 1
-  var output = ""
-  var exitCode = -1
-  benchmark "nim ns":
-    try:
-      (output, exitCode) = execCmdEx(cmd, workingDir = conf.projectPath.string)
-    except OSError as e:
-      fail "cannot run " & cmd & ": " & e.msg
-  myLog "nim ns: " & cmd & " exit code: " & $exitCode
-  if exitCode != 0: myLog output
-  let format = cache / "ic.version"
-  if not fileExists(format) or readFile(format) != icFormatVersion:
-    fail nim & " writes NIFs in another format than nimsuggest2 reads (" &
-      icFormatVersion & "): is it from the same build?\n" & output
-  if not fileExists(nsReport(conf)):
-    fail cmd & " wrote no report: is " & nim &
-      " from the same build as nimsuggest2?\n" & output
-
-type Query = object
-  opc: string
-  cmd: IdeCmd
-  file, dirty: string
-  line, col: int
-  tag: string
-
-proc parseQuery(cmd: string; conf: ConfigRef): Query =
-  ## Parses a command like nimsuggest's `execCmd` does; `cmd` is `ideNone`
-  ## for an unknown command.
-  result = Query(col: -1)
-  var i = parseIdent(cmd, result.opc, 0)
-  result.opc = result.opc.normalize
-  result.cmd =
-    case result.opc
-    of "sug": ideSug
-    of "con": ideCon
-    of "def": ideDef
-    of "use": ideUse
-    of "dus": ideDus
-    of "chk": ideChk
-    of "highlight": ideHighlight
-    of "known": ideKnown
-    of "project": ideProject
-    of "changed": ideChanged
-    of "globalsymbols": ideGlobalSymbols
-    of "declaration": ideDeclaration
-    of "expand": ideExpand
-    of "chkfile": ideChkFile
-    of "recompile": ideRecompile
-    of "type": ideType
-    of "inlayhints": ideInlayHints
-    of "outline2": ideOutline2
-    else: ideNone
-  i += skipWhitespace(cmd, i)
-  if i < cmd.len and cmd[i] in {'0'..'9'}:
-    result.file = string conf.projectFull
-  else:
-    i = parseQuoted(cmd, result.file, i)
-    if i < cmd.len and cmd[i] == ';':
-      i = parseQuoted(cmd, result.dirty, i+1)
-    i += skipWhile(cmd, seps, i)
-  i += parseInt(cmd, result.line, i)
-  i += skipWhile(cmd, seps, i)
-  i += parseInt(cmd, result.col, i)
-  result.tag = substr(cmd, i)
-
-const SourceIdentChars = IdentChars + {'\x80'..'\xFF'}
-
-proc sourceLine(src: var Table[FileIndex, seq[string]]; conf: ConfigRef;
-                fileIdx: FileIndex; line: int): string =
-  if fileIdx notin src:
-    src[fileIdx] =
-      try: readFile(toFullPath(conf, fileIdx)).splitLines
-      except IOError: @[]
-  let lines = src[fileIdx]
-  result = if line in 1..lines.len: lines[line - 1] else: ""
-
-proc identAround(text: string; col: int): tuple[ident: string, start: int] =
-  ## The identifier of `text` that `col` is in.
-  if col < 0 or col >= text.len or text[col] notin SourceIdentChars: return ("", col)
-  var a = col
-  while a > 0 and text[a - 1] in SourceIdentChars: dec a
-  var b = col
-  while b < text.len and text[b] in SourceIdentChars: inc b
-  result = (text.substr(a, b - 1), a)
-
-proc symAtPos(graph: ModuleGraph; n: PNode; target: TLineInfo; ident: string): PSym =
-  ## The symbol named `ident` that `n` has at `target`.
-  result = nil
-  if n == nil: return
-  if n.kind == nkSym:
-    if n.info.fileIndex == target.fileIndex and n.info.line == target.line and
-        n.info.col <= target.col and target.col <= n.info.col + ident.len and
-        cmpIgnoreStyle(n.sym.name.s, ident) == 0:
-      result = n.sym
-    return
-  if nfLazyBody in n.flags and forceLazyBodyHook != nil: forceLazyBodyHook(n)
-  for i in 0..<n.safeLen:
-    result = graph.symAtPos(n[i], target, ident)
-    if result != nil: return
-
-proc answerFromNif(graph: ModuleGraph; q: Query): bool =
-  ## Answers `highlight`, `def`, `use` and `dus` about a saved file whose NIF
-  ## is fresh from the NIFs, without compiling or loading the import closure:
-  ## the loader opens the NIFs the symbols need. False when they cannot.
-  ## A field's NIF name is only its name and position, so a `highlight` of one
-  ## also lists the same-named field at that position of another type.
-  let conf = graph.config
-  let cmd = q.cmd
-  if cmd notin {ideHighlight, ideDef, ideUse, ideDus} or q.dirty.len > 0 or
-      graph.icNifIsStale(gRoot):
-    return false
-  var src = initTable[FileIndex, seq[string]]()
-  let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
-  let ident = identAround(src.sourceLine(conf, fileIdx, q.line), q.col).ident
-  if ident.len == 0: return false
-  let target = newLineInfo(fileIdx, q.line, q.col)
-  let bif = toNifFilename(conf, gRoot)
-  let at = ideSymAt(conf, bif, target, ident)
-  if at.name.len == 0 or (cmd in {ideUse, ideDus} and isFieldNifName(at.name)):
-    return false
-  var sym = resolveHookSym(ast.program, at.name)
-  if sym == nil:
-    for r in at.routines:
-      let owner = resolveHookSym(ast.program, r)
-      if owner != nil and owner.kind in routineKinds:
-        sym = graph.symAtPos(owner.ast, target, ident)
-        if sym != nil: break
-  if sym == nil or cmpIgnoreStyle(sym.name.s, ident) != 0: return false
-  myLog fmt "answering {q.opc} from NIF: {at.name}"
-
-  var infos = @[sym.info]
-  if cmd != ideDef:
-    infos.add ideOccurrences(conf, bif, at.name)
-  if cmd in {ideUse, ideDus}:
-    for m in gNsModules:
-      let other = toNifFilename(conf, fileInfoIdx(conf, AbsoluteFile m))
-      if other != bif: infos.add ideOccurrences(conf, other, at.name)
-  var found: seq[TLineInfo] = @[]
-  for info in infos:
-    if cmd == ideHighlight and info.fileIndex != fileIdx: continue
-    let (id, start) = identAround(src.sourceLine(conf, info.fileIndex, info.line.int), info.col)
-    if start == info.col and cmpIgnoreStyle(id, sym.name.s) == 0 and
-        not found.anyIt(it.exactEquals(info)):
-      found.add info
-  if found.len == 0: return false
-  found.sort(proc (a, b: TLineInfo): int =
-    cmp((a.fileIndex.int32, a.line, a.col), (b.fileIndex.int32, b.line, b.col)))
-  conf.ideCmd = cmd
-  for info in found:
-    graph.suggestResult(sym, info)
-  result = true
-
-proc isKnown(graph: ModuleGraph; fileIdx: FileIndex): bool =
-  ## Whether `nim ns` built `fileIdx`, or a module including it.
-  let path = toFullPath(graph.config, fileIdx)
-  path in gNsModules or path in gNsIncluders or graph.inclToMod.hasKey(fileIdx)
-
-proc registerIncluder(graph: ModuleGraph; fileIdx: FileIndex) =
-  ## Registers the module `nim ns` reported as including `fileIdx`, if any.
-  let conf = graph.config
-  let includer = gNsIncluders.getOrDefault(toFullPath(conf, fileIdx))
-  if includer.len > 0:
-    graph.addIncludeDep(fileInfoIdx(conf, AbsoluteFile includer), fileIdx)
-
-proc moduleOf(graph: ModuleGraph; file: string): FileIndex =
-  ## `file`, or the module including it.
-  let conf = graph.config
-  let fileIdx = fileInfoIdx(conf, AbsoluteFile file)
-  if not graph.isIcVerified(toFullPath(conf, fileIdx)) and
-      graph.needsIncludeScan(fileIdx):
-    graph.registerIncluder(fileIdx)
-  result = if graph.inclToMod.hasKey(fileIdx): graph.parentModule(fileIdx) else: fileIdx
-
-proc queryRoot(graph: ModuleGraph; q: Query): FileIndex =
-  ## The module a command compiles: the project's main file for the commands
-  ## about the whole project (`chk`, `globalSymbols`, `recompile`) or when it
-  ## names no file; otherwise the file it names or the module including it.
-  if q.cmd in {ideChk, ideGlobalSymbols, ideRecompile} or q.file.len == 0:
-    result = fileInfoIdx(graph.config, graph.config.projectFull)
-  else:
-    result = graph.moduleOf(q.file)
-
-proc processCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
-  var p = parseopt.initOptParser(cmd)
-  while true:
-    parseopt.next(p)
-    case p.kind
-    of cmdEnd: break
-    of cmdLongOption, cmdShortOption:
-      case p.key.normalize
-      of "help", "h":
-        stdout.writeLine(Usage)
-        quit()
-      of "one-shot", "autobind", "port", "address", "clientprocessid",
-          "v1", "v2", "v3", "v4":
-        discard
-      of "debug": incl(conf.globalOptions, optIdeDebug)
-      of "info":
-        case p.val.normalize
-        of "protocolver":
-          stdout.writeLine(HighestSuggestProtocolVersion)
-          quit 0
-        of "nimver":
-          stdout.writeLine(system.NimVersion)
-          quit 0
-        of "capabilities":
-          stdout.writeLine(Capabilities.join(" "))
-          quit 0
-        else:
-          processSwitch(pass, p, conf)
-      of "log": gLogging = true
-      of "maxresults":
-        conf.suggestMaxResults = parseInt(p.val)
-      of "parallelbuild":
-        processSwitch(pass, p, conf)
-        gParallelBuild = p.val
-      else: processSwitch(pass, p, conf)
-    of cmdArgument:
-      let a = unixToNativePath(p.key)
-      if dirExists(a) and not fileExists(a.addFileExt("nim")):
-        conf.projectName = findProjectNimFile(conf, a)
-        if conf.projectName.len == 0: conf.projectName = a
-      else:
-        conf.projectName = a
-
 proc oneShot*() =
   ## `nimsuggest2 --one-shot`: answers the command read from stdin and exits.
   ## Every module is loaded from the NIFs `nim ns` left in the nimcache, then
   ## the module the command names is compiled from source like an import: no
-  ## module is the main module. `changed` runs `nim ns`, and so does any
-  ## command once a file it read was saved after its last run (a branch switch,
-  ## an edit outside the editor) or the config changed. A command about a file
-  ## `nim ns` did not build makes the file one of its roots and runs it.
+  ## module is the main module. Each project file is built by a `nim ns` of its
+  ## own, with its config, into the main project's nimcache; a command loads
+  ## the config and NIFs of the project `queryProject` picks. `changed` runs
+  ## `nim ns` for that project (for all of them when it names no file), and so
+  ## does any command once a file it read was saved after its last run (a
+  ## branch switch, an edit outside the editor) or the config changed. A
+  ## command about a file `nim ns` did not build makes the file one of its
+  ## roots and runs it.
   let
     cache = newIdentCache()
     conf = newConfigRef()
@@ -754,19 +849,41 @@ proc oneShot*() =
   self.initDefinesProg(conf, "nimsuggest")
   self.processCmdLineAndProjectPath(conf)
   conf.ideActive = true
-  # A config that moves the nimcache would have to be evaluated to find the
-  # report and replay its precompiled config instead, so the nimcache it moves
-  # to is noted in the one without config (`moved`), which a report left there
-  # from before the move must not shadow.
+  if gProjects.len == 0:
+    quit "nimsuggest2: no project file"
+  for project in gProjects.mitems:
+    project = addFileExt(project, NimExt)
+    try: project = canonicalizePath(conf, AbsoluteFile project).string
+    except OSError: quit "cannot find file: " & project
+  gProjects = gProjects.deduplicate
+  let main = gProjects[0]
+  conf.setFromProjectName(main)
+  # The report is needed before loading the config, but a config can set
+  # `--nimcache`, and the report is in that nimcache. So, once a config is
+  # loaded, the nimcache it sets is written to a file (`moved`) in the
+  # default nimcache, and read here. That nimcache is checked first, so an
+  # old report left in the default nimcache is not used.
+  # Only the main project's config can set the nimcache; the other projects
+  # are built into the main one.
   let cmdLineCache = getNimcacheDir(conf).string
-  let moved = cmdLineCache /
-    nsReportName(conf.projectFull.string).changeFileExt("nimcache")
+  let moved = cmdLineCache / nsReportName(main).changeFileExt("nimcache")
   let movedTo =
     try: readFile(moved)
     except IOError: ""
-  let preReport =
-    if movedTo.len > 0: movedTo / nsReportName(conf.projectFull.string)
-    else: nsReport(conf)
+  let preCache = if movedTo.len > 0: movedTo else: cmdLineCache
+
+  let line = stdin.readLine()
+  myLog "one-shot: " & line
+  let q = parseQuery(line, conf)
+  # A project without a report could reach the file the query names.
+  for other in gProjects:
+    if other != main and not fileExists(preCache / nsReportName(other)):
+      runNimNs(preCache, other, @[])
+  let project = queryProject(conf, q, preCache)
+  if project != main:
+    conf.setFromProjectName(project)
+    conf.nimcacheDir = AbsoluteDir preCache
+  let preReport = preCache / nsReportName(project)
   var configChanged = false
   if fileExists(preReport):
     for line in readFile(preReport).splitLines:
@@ -778,6 +895,9 @@ proc oneShot*() =
   conf.prefixDir = conf.getPrefixDir()
   let graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph): quit 1
+  if project != main:
+    # Whatever nimcache its config names, `nim ns` was told the main one.
+    conf.nimcacheDir = AbsoluteDir preCache
   if conf.selectedGC == gcUnselected and
       conf.backend != backendJs and optWasNimscript notin conf.globalOptions:
     initOrcDefines(conf)
@@ -793,25 +913,29 @@ proc oneShot*() =
   add(conf.searchPaths, conf.libpath)
 
   let cacheDir = getNimcacheDir(conf).string
-  let moveTo = if cacheDir == cmdLineCache: "" else: cacheDir
-  if moveTo != movedTo:
-    try:
-      if moveTo.len == 0:
-        removeFile(moved)
-      else:
-        createDir(cmdLineCache)
-        writeFile(moved, moveTo)
-    except OSError, IOError:
-      myLog "cannot update " & moved & ": " & getCurrentExceptionMsg()
+  gProject = project
+  gCacheDir = cacheDir
+  if project == main:
+    let moveTo = if cacheDir == cmdLineCache: "" else: cacheDir
+    if moveTo != movedTo:
+      try:
+        if moveTo.len == 0:
+          removeFile(moved)
+        else:
+          createDir(cmdLineCache)
+          writeFile(moved, moveTo)
+      except OSError, IOError:
+        myLog "cannot update " & moved & ": " & getCurrentExceptionMsg()
 
-  let line = stdin.readLine()
-  myLog "one-shot: " & line
-  let q = parseQuery(line, conf)
   let report = nsReport(conf)
   var roots = nsRoots(report)
-  if q.cmd == ideChanged or configChanged or not fileExists(report) or
+  if q.cmd == ideChanged and q.file.len == 0:
+    for other in gProjects:
+      if other != project: runNimNs(cacheDir, other, nsRoots(cacheDir / nsReportName(other)))
+    runNimNs(cacheDir, project, roots)
+  elif q.cmd == ideChanged or configChanged or not fileExists(report) or
       changedSince(report):
-    runNimNs(graph, roots)
+    runNimNs(cacheDir, project, roots)
   useNsReport(graph, readFile(report))
   case q.opc
   of "changed", "recompile", "quit":
@@ -831,7 +955,7 @@ proc oneShot*() =
     let fileIdx = fileInfoIdx(conf, AbsoluteFile q.file)
     if not graph.isKnown(fileIdx):
       roots.add toFullPath(conf, fileIdx)
-      runNimNs(graph, roots)
+      runNimNs(cacheDir, project, roots)
       useNsReport(graph, readFile(report))
 
   conf.setErrorMaxHighMaybe

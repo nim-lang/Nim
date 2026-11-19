@@ -69,7 +69,8 @@ proc parseTest(filename: string; epcMode=false): Test =
       elif x.startsWith("$nimsuggest2"):
         doAssert nimsug2.fileExists, nimsug2
         result.oneShot = true
-        result.cmd = x % ["nimsuggest2", nimsug2, "file", filename, "lib", libpath]
+        result.cmd = x % ["nimsuggest2", nimsug2, "file", filename, "lib", libpath,
+          "path", tpath]
       elif x.startsWith("$nimsuggest"):
         result.cmd = x % ["nimsuggest", nimsug, "file", filename, "lib", libpath]
       elif x.startsWith("!"):
