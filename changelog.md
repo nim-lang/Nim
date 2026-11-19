@@ -196,6 +196,12 @@ parameter and result types, not just their source-level shape. Use
   (e.g. ``[^\n]``) raise `EInvalidPeg` instead of `IndexDefect`. An empty
   capture `{}` with no previous capture is now a no-op instead of
   underflowing the matcher's capture array.
+- `std/complex.arccosh` now returns the principal branch, whose real part is
+  non-negative. Previously inputs with a negative real part could return a
+  value from the opposite branch: `arccosh(complex64(-2.0, 0.0))` returned
+  `(-1.3169..., 3.1415...)` instead of `(1.3169..., 3.1415...)`, and
+  `arccosh(complex64(-2.0, 0.5))` negated both components. Fixes
+  [#26744](https://github.com/nim-lang/Nim/issues/26744).
 
 ## Language changes
 

@@ -117,3 +117,14 @@ doAssert localA.im is float32
 block: # bug #24666
   let z = complex64(1, 2)
   doAssert fmt"{z}" == "(1.0, 2.0)"
+
+block: # bug #26744
+  # arccosh must return the principal branch, whose real part is non-negative
+  doAssert arccosh(complex64(-2.0, 0.0)) =~ complex64(1.3169578969248166, 3.141592653589793)
+  doAssert arccosh(complex64(-2.0, 0.5)) =~ complex64(1.3618009008578458, 2.863838397032079)
+  doAssert arccosh(complex64(-2.0, -1.0)) =~ complex64(1.4693517443681852, -2.6342363503726487)
+  doAssert arccosh(complex64(-2.0, 2.0)) =~ complex64(1.7343245214879666, 2.3250454714929427)
+  doAssert arccosh(complex(0.5, 0.0)) =~ complex(0.0, 1.0471975511965979)
+  for re in [-2.0, -1.0, -0.5]:
+    for im in [-2.0, -0.5, 0.0, 0.5, 2.0]:
+      doAssert arccosh(complex64(re, im)).re >= 0.0
