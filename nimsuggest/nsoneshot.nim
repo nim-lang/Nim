@@ -532,6 +532,34 @@ proc symAtPos(graph: ModuleGraph; n: PNode; target: TLineInfo; ident: string): P
     result = graph.symAtPos(n[i], target, ident)
     if result != nil: return
 
+proc sameField(conf: ConfigRef; a, b: PSym): bool =
+  ## Whether `a` and `b` are the same object field. The root module is
+  ## compiled from source, so its own fields are other symbols than the ones
+  ## loaded from its NIF: those are compared by their type's name.
+  a == b or (a.name.id == b.name.id and a.position == b.position and
+    a.owner != nil and b.owner != nil and a.owner.kind == skType and
+    b.owner.kind == skType and globalName(a.owner, conf) == globalName(b.owner, conf))
+
+proc fieldUses(graph: ModuleGraph; field: PSym; skipNif: string): seq[TLineInfo] =
+  ## Where the project's modules except `skipNif` use the object field
+  ## `field`, and its definition. Its NIF name is shared by the same-named
+  ## field at that position of every type, so each use is checked by loading
+  ## the routine it is in; a use outside any routine is left out.
+  let conf = graph.config
+  result = @[field.info]
+  let name = fieldNifName(field)
+  for m in gNsModules:
+    let nif = toNifFilename(conf, fileInfoIdx(conf, AbsoluteFile m))
+    if nif == skipNif: continue
+    for occ in ideUsesInRoutines(conf, nif, name):
+      for r in occ.routines:
+        let owner = resolveHookSym(ast.program, r)
+        if owner != nil and owner.kind in routineKinds:
+          let s = graph.symAtPos(owner.ast, occ.info, field.name.s)
+          if s != nil:
+            if sameField(conf, s, field): result.add occ.info
+            break
+
 proc nifOccurrences(conf: ConfigRef; name, ident, skipNif: string): seq[TLineInfo] =
   ## Where `name` is used, read from the NIFs of every module of every project
   ## except `skipNif`. Keeps only the positions where the source has `ident`.
@@ -726,9 +754,15 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
       let rootNif = toNifFilename(conf, gRoot)
       var names = initHashSet[string]()
       for s in symbols:
-        let name = globalName(s.sym, conf)
-        if s.sym.kind == skField or names.containsOrIncl(name): continue
-        for info in nifOccurrences(conf, name, s.sym.name.s, rootNif):
+        let infos =
+          if s.sym.kind == skField:
+            if names.containsOrIncl(fieldNifName(s.sym)): continue
+            graph.fieldUses(s.sym, rootNif)
+          else:
+            let name = globalName(s.sym, conf)
+            if names.containsOrIncl(name): continue
+            nifOccurrences(conf, name, s.sym.name.s, rootNif)
+        for info in infos:
           if not res.anyIt(it.info.exactEquals(info)):
             res.add SymInfoPair(sym: s.sym, info: info)
             graph.suggestResult(s.sym, info)

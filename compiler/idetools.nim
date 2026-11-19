@@ -388,3 +388,47 @@ proc ideOccurrences*(conf: ConfigRef; bif, name: string): seq[TLineInfo] =
   while c.hasMore:
     collectOccurrences(c, conf, targetSym, targetName, NoNifLineInfo, result)
   c.endRead()
+
+type
+  IdeOccurrence* = object
+    info*: TLineInfo
+    routines*: seq[string]  ## like `IdeSymAt.routines`
+
+proc collectRoutineOccurrences(c: var Cursor; conf: ConfigRef; targetSym: SymId;
+                               targetName: string; parent: NifLineInfo;
+                               routines: var seq[string]; res: var seq[IdeOccurrence]) =
+  let li = ownInfo(c, parent)
+  case c.kind
+  of TagLit:
+    let isRoutine = c.tags.tagName(cursorTagId(c)) in routineTags
+    if isRoutine: routines.add ""
+    c.into:
+      while c.hasMore:
+        collectRoutineOccurrences(c, conf, targetSym, targetName, li, routines, res)
+    if isRoutine: discard routines.pop()
+  of Symbol:
+    if routines.len > 0 and routines[^1].len == 0: routines[^1] = symName(c)
+    if li.isValid and symMatches(c):
+      var occ = IdeOccurrence(info: toLineInfo(conf, c, li))
+      for i in countdown(routines.high, 0):
+        if routines[i].len > 0: occ.routines.add routines[i]
+      res.add occ
+    inc c
+  else:
+    inc c
+
+proc ideUsesInRoutines*(conf: ConfigRef; bif, name: string): seq[IdeOccurrence] =
+  ## Where `bif` uses `name`, each with the routines it is in, so the caller
+  ## can load the routine and check which symbol the use is: an object
+  ## field's NIF name is shared by the same-named field at that position of
+  ## every type.
+  result = @[]
+  if not fileExists(bif) or not containsSym(bif, name): return
+  var m = load(bif)
+  if m.buf.len == 0: return
+  let targetSym = findSym(m.buf.pool, name)
+  var routines: seq[string] = @[]
+  var c = m.buf.beginRead()
+  while c.hasMore:
+    collectRoutineOccurrences(c, conf, targetSym, name, NoNifLineInfo, routines, result)
+  c.endRead()

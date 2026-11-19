@@ -443,6 +443,13 @@ proc stripFieldMarker(rawName: string): string {.inline.} =
   else:
     rawName[0 ..< rawName.len - FieldMarker.len]
 
+proc fieldNifName*(field: PSym): string =
+  ## The NIF name `toNifSymName` gives the object field `field`.
+  result = field.name.s
+  result.add (if sfCursor in field.flagsImpl: CursorFieldMarker else: FieldMarker)
+  result.add '.'
+  result.addInt field.positionImpl
+
 proc isFieldNifName*(name: string): bool {.inline.} =
   ## True for an object field's local NIF name `<ident>`f.<disamb>` (see
   ## `FieldMarker`): no module suffix, marker on the ident.
