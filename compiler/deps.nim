@@ -558,8 +558,9 @@ proc whenMarkerHolds(c: DepContext; s: var Stream): CondVal =
     result = condAnd(result, evalCondExpr(c, s, t))
 
 proc readDefine(c: var DepContext; s: var Stream; current: Node) =
-  ## `(define (when ...)? name (kind) "defineName" default)`, written by nifler
-  ## for a module-level `{.booldefine/intdefine/strdefine.}` const. Mirrors
+  ## `(define (when ...)? name (kind "defineName"?) default)`, written by
+  ## nifler for a module-level `{.booldefine/intdefine/strdefine.}` const; the
+  ## define name is the const's own unless the pragma gives one. Mirrors
   ## semfold.foldDefine: a `-d:defineName=value` override wins over the
   ## literal default. Consumes the node including its `)`.
   var t = next(s)
@@ -575,10 +576,13 @@ proc readDefine(c: var DepContext; s: var Stream; current: Node) =
       if depth > 0: t = next(s)
     return
   let name = pool.strings[t.litId]
-  let kindTag = next(s)
-  let kind = if kindTag.kind == ParLe: pool.tags[kindTag.tagId] else: ""
-  if kindTag.kind == ParLe: discard next(s) # ParRi of `(booldefine)`
-  let defineName = pool.strings[next(s).litId]
+  let kind = pool.tags[next(s).tagId]
+  var defineName = name
+  t = next(s)
+  if t.kind == StringLit:
+    defineName = pool.strings[t.litId]
+    t = next(s)
+  # `t` is the ParRi of `(booldefine ...)`
   let default = next(s)
   discard next(s) # ParRi
   if cond == cvFalse: return
