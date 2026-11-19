@@ -39,6 +39,12 @@ proc otherTest(x: int) =
   ]#
   y = 3
 
+proc uninitialized() =
+  var x: var int #[tt.Error
+      ^ cannot borrow from <empty>, it is not a path expression; see https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm-path-expressions for details
+  ]#
+  discard x
+
 proc main() =
   let words = split("asdf 231")
   for i, x in words:
