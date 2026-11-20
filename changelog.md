@@ -278,6 +278,12 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- The new switch `--reportLargeStackObjects:N` makes the C/C++ backends report
+  every local variable or compiler temporary that occupies at least `N` bytes
+  of stack space, via the new warning `LargeStackObject`. Combined with
+  `--warningAsError:LargeStackObject` it turns an accidental stack copy of a
+  huge object into a compile error.
+
 - Hot code reloading no longer keeps a global variable's memory when the
   global's type changed: the old memory was read with the new layout. Such a
   reload now stops the program with a message naming the global.
