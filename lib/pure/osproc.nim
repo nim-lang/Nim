@@ -343,19 +343,32 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1", raises: [].} =
 when not defined(nimHasEffectsOf):
   {.pragma: effectsOf.}
 
-proc execProcesses*(cmds: openArray[string],
-    options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
-    beforeRunEvent: proc(idx: int) = nil,
-    afterRunEvent: proc(idx: int, p: Process) = nil):
-  int {.rtl, extern: "nosp$1",
-        raises: [ValueError, OSError, IOError],
+proc startQueuedCommand(cmd: string; options: set[ProcessOption]):
+    owned(Process) {.raises: [OSError, IOError], tags: [ExecIOEffect,
+    ReadEnvEffect, RootEffect].} =
+  ## A command line of `execProcesses`, run by the system shell.
+  startProcess(cmd, options = options + {poEvalCommand})
+
+proc startQueuedCommand(argv: seq[string]; options: set[ProcessOption]):
+    owned(Process) {.raises: [ValueError, OSError, IOError],
+    tags: [ExecIOEffect, ReadEnvEffect, RootEffect].} =
+  ## An argv of `execArgvProcesses`: `argv[0]` is the program, started with
+  ## the rest as its arguments and no shell.
+  if argv.len == 0:
+    raise newException(ValueError, "execArgvProcesses: an empty command")
+  startProcess(argv[0], args = argv.toOpenArray(1, argv.high),
+    options = options - {poEvalCommand})
+
+proc execProcessesImpl[T: string|seq[string]](cmds: openArray[T],
+    options: set[ProcessOption], n: int,
+    beforeRunEvent: proc(idx: int),
+    afterRunEvent: proc(idx: int, p: Process)):
+  int {.raises: [ValueError, OSError, IOError],
         tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
         effectsOf: [beforeRunEvent, afterRunEvent].} =
-  ## Executes the commands `cmds` in parallel.
-  ## Creates `n` processes that execute in parallel.
-  ##
-  ## The highest (absolute) return value of all processes is returned.
-  ## Runs `beforeRunEvent` before running each command.
+  ## The scheduler shared by `execProcesses` (command lines, through the
+  ## shell) and `execArgvProcesses` (argvs, without one); only how one
+  ## command is started differs (`startQueuedCommand`).
   result = 0
   assert n > 0
   if n > 1:
@@ -373,7 +386,7 @@ proc execProcesses*(cmds: openArray[string],
     while i < m:
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      q[i] = startProcess(cmds[i], options = options + {poEvalCommand})
+      q[i] = startQueuedCommand(cmds[i], options)
       idxs[i] = i
       when defined(windows):
         w[i] = q[i].fProcessHandle
@@ -437,8 +450,7 @@ proc execProcesses*(cmds: openArray[string],
         close(q[rexit])
         if i < len(cmds):
           if beforeRunEvent != nil: beforeRunEvent(i)
-          q[rexit] = startProcess(cmds[i],
-                                  options = options + {poEvalCommand})
+          q[rexit] = startQueuedCommand(cmds[i], options)
           idxs[rexit] = i
           when defined(windows):
             w[rexit] = q[rexit].fProcessHandle
@@ -457,10 +469,43 @@ proc execProcesses*(cmds: openArray[string],
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      var p = startProcess(cmds[i], options = options + {poEvalCommand})
+      var p = startQueuedCommand(cmds[i], options)
       result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
+
+proc execProcesses*(cmds: openArray[string],
+    options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
+    beforeRunEvent: proc(idx: int) = nil,
+    afterRunEvent: proc(idx: int, p: Process) = nil):
+  int {.rtl, extern: "nosp$1",
+        raises: [ValueError, OSError, IOError],
+        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
+        effectsOf: [beforeRunEvent, afterRunEvent].} =
+  ## Executes the commands `cmds` in parallel.
+  ## Creates `n` processes that execute in parallel.
+  ##
+  ## Each command is a command line for the system shell (`poEvalCommand`
+  ## is always added). See `execArgvProcesses` to run argvs without one.
+  ##
+  ## The highest (absolute) return value of all processes is returned.
+  ## Runs `beforeRunEvent` before running each command.
+  execProcessesImpl(cmds, options, n, beforeRunEvent, afterRunEvent)
+
+proc execArgvProcesses*(cmds: openArray[seq[string]],
+    options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
+    beforeRunEvent: proc(idx: int) = nil,
+    afterRunEvent: proc(idx: int, p: Process) = nil):
+  int {.raises: [ValueError, OSError, IOError],
+        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect],
+        effectsOf: [beforeRunEvent, afterRunEvent].} =
+  ## Like `execProcesses`, but each command is an argv run WITHOUT a shell:
+  ## `cmds[i][0]` is the program (searched for on `PATH` when `options`
+  ## holds `poUsePath`) and the rest are its arguments, passed as they are.
+  ## `poEvalCommand` is ignored. An empty argv raises `ValueError`; a
+  ## program that cannot be started raises `OSError`, where the shell of
+  ## `execProcesses` would have reported exit code 127.
+  execProcessesImpl(cmds, options, n, beforeRunEvent, afterRunEvent)
 
 iterator lines*(p: Process, keepNewLines = false): string {.since: (1, 3), raises: [OSError, IOError, ValueError], tags: [ReadIOEffect, TimeEffect].} =
   ## Convenience iterator for working with `startProcess` to read data from a
@@ -1033,10 +1078,14 @@ elif not defined(useNimRtl):
     data.options = options
 
     when useProcessAuxSpawn:
+      # `startProcessAuxSpawn` changes to `workingDir` for the spawn; the
+      # parent's directory is restored whether or not the spawn succeeds.
       var currentDir = getCurrentDir()
-      pid = startProcessAuxSpawn(data)
-      if workingDir.len > 0:
-        setCurrentDir(currentDir)
+      try:
+        pid = startProcessAuxSpawn(data)
+      finally:
+        if workingDir.len > 0:
+          setCurrentDir(currentDir)
     else:
       pid = startProcessAuxFork(data)
 
