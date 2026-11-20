@@ -88,3 +88,28 @@ type
 
 static:
   doAssert Foo is int
+
+block: # a declaration inside typeof in expression position stays inside typeof
+  var x = default(typeof((let n = 2; n)))
+  let n = "declared after typeof"
+  doAssert x == 0
+  doAssert n == "declared after typeof"
+
+block: # the same in a type section and in a declaration, where typeof is not an argument
+  type T = typeof((let n = 2; n))
+  var v: typeof((let m = 2; m))
+  let n = "declared after the typeof"
+  let m = "declared after the typeof"
+  doAssert T is int
+  doAssert v == 0
+  doAssert n == m
+
+block: # the name is not visible after typeof either
+  discard default(typeof((let leaked = 2; leaked)))
+  doAssert not compiles(leaked)
+
+block: # a typeof that fails inside compiles does not leave its scope open
+  doAssert not compiles(default(typeof((let m = 2; m + undeclaredName))))
+  doAssert not compiles(m)
+  let m = "declared after the failed typeof"
+  doAssert m == "declared after the failed typeof"
