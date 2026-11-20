@@ -503,7 +503,7 @@ proc sourceLine(src: var Table[FileIndex, seq[string]]; conf: ConfigRef;
                 fileIdx: FileIndex; line: int): string =
   if fileIdx notin src:
     src[fileIdx] =
-      try: readFile(toFullPath(conf, fileIdx)).splitLines
+      try: readFile(toFullPathConsiderDirty(conf, fileIdx).string).splitLines
       except IOError: @[]
   let lines = src[fileIdx]
   result = if line in 1..lines.len: lines[line - 1] else: ""
@@ -516,6 +516,20 @@ proc identAround(text: string; col: int): tuple[ident: string, start: int] =
   var b = col
   while b < text.len and text[b] in SourceIdentChars: inc b
   result = (text.substr(a, b - 1), a)
+
+proc writtenAt(src: var Table[FileIndex, seq[string]]; conf: ConfigRef;
+               info: TLineInfo; ident: string): bool =
+  ## Whether the source has `ident` at `info`. Code a macro or a generic
+  ## produces has the positions of its own source, so a use in it can be at a
+  ## `quote do:` or a `fieldPairs` loop variable, where a rename must not edit.
+  let text = src.sourceLine(conf, info.fileIndex, info.line.int)
+  var col = info.col.int
+  if col in 0..<text.len and text[col] == '`': inc col
+  if ident.len > 0 and ident[0] in SourceIdentChars:
+    let (id, start) = identAround(text, col)
+    result = start == col and cmpIgnoreStyle(id, ident) == 0
+  else:
+    result = col >= 0 and text.continuesWith(ident, col)
 
 proc symAtPos(graph: ModuleGraph; n: PNode; target: TLineInfo; ident: string): PSym =
   ## The symbol named `ident` that `n` has at `target`.
@@ -560,19 +574,14 @@ proc fieldUses(graph: ModuleGraph; field: PSym; skipNif: string): seq[TLineInfo]
             if sameField(conf, s, field): result.add occ.info
             break
 
-proc nifOccurrences(conf: ConfigRef; name, ident, skipNif: string): seq[TLineInfo] =
+proc nifOccurrences(conf: ConfigRef; name, skipNif: string): seq[TLineInfo] =
   ## Where `name` is used, read from the NIFs of every module of every project
-  ## except `skipNif`. Keeps only the positions where the source has `ident`.
+  ## except `skipNif`.
   result = @[]
-  var infos: seq[TLineInfo] = @[]
   for m in gNsModules:
     let nif = toNifFilename(conf, fileInfoIdx(conf, AbsoluteFile m))
-    if nif != skipNif: infos.add ideOccurrences(conf, nif, name)
-  infos.add otherProjectsOccurrences(conf, name)
-  var src = initTable[FileIndex, seq[string]]()
-  for info in infos:
-    let (id, start) = identAround(src.sourceLine(conf, info.fileIndex, info.line.int), info.col)
-    if start == info.col and cmpIgnoreStyle(id, ident) == 0: result.add info
+    if nif != skipNif: result.add ideOccurrences(conf, nif, name)
+  result.add otherProjectsOccurrences(conf, name)
 
 proc answerFromNif(graph: ModuleGraph; q: Query): bool =
   ## Answers `highlight`, `def`, `use` and `dus` about a saved file whose NIF
@@ -615,9 +624,7 @@ proc answerFromNif(graph: ModuleGraph; q: Query): bool =
   var found: seq[TLineInfo] = @[]
   for info in infos:
     if cmd == ideHighlight and info.fileIndex != fileIdx: continue
-    let (id, start) = identAround(src.sourceLine(conf, info.fileIndex, info.line.int), info.col)
-    if start == info.col and cmpIgnoreStyle(id, sym.name.s) == 0 and
-        not found.anyIt(it.exactEquals(info)):
+    if src.writtenAt(conf, info, sym.name.s) and not found.anyIt(it.exactEquals(info)):
       found.add info
   if found.len == 0: return false
   found.sort(proc (a, b: TLineInfo): int =
@@ -747,8 +754,6 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
         if symbols.anyIt(s.sym.symbolEqual(it.sym)):
           res.add(s)
       res = res.deduplicateSymInfoPair()
-      for s in res:
-        graph.suggestResult(s.sym, s.info)
       # The other modules are loaded from their NIFs, so their uses are not
       # in `suggestSymbols`: read them from the NIFs.
       let rootNif = toNifFilename(conf, gRoot)
@@ -761,11 +766,14 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
           else:
             let name = globalName(s.sym, conf)
             if names.containsOrIncl(name): continue
-            nifOccurrences(conf, name, s.sym.name.s, rootNif)
+            nifOccurrences(conf, name, rootNif)
         for info in infos:
           if not res.anyIt(it.info.exactEquals(info)):
             res.add SymInfoPair(sym: s.sym, info: info)
-            graph.suggestResult(s.sym, info)
+      var src = initTable[FileIndex, seq[string]]()
+      for s in res:
+        if src.writtenAt(conf, s.info, s.sym.name.s):
+          graph.suggestResult(s.sym, s.info)
   of ideHighlight:
     let sym = graph.findSymData(newLineInfo(fileIndex, line, col))
     if not sym.isNil:

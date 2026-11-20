@@ -97,7 +97,12 @@ proc semConstrField(c: PContext, flags: TExprFlags,
     if initValue != nil:
       initValue = fitNodeConsiderViewType(c, field.typ, initValue, assignment.info)
     initValue.flags.incl nfSkipFieldChecking
-    assignment[0] = newSymNode(field)
+    # At the field's name in the constructor, not at its declaration: this is
+    # a use of the field.
+    let fieldInfo = assignment[0].info
+    assignment[0] = newSymNode(field, fieldInfo)
+    when defined(nimsuggest):
+      suggestSym(c.graph, fieldInfo, field, c.graph.usageSym, isDecl = false)
     assignment[1] = initValue
     assignment.flags.incl nfSem
     result = initValue
