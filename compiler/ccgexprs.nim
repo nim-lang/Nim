@@ -1928,6 +1928,17 @@ proc constrObservesDest(p: BProc; dest: PNode; values: PNode; first: int): bool 
   ## correct if no constructor value can read `dest` through a call or raise
   ## after `dest` was partially overwritten while `dest` is observable.
   if dest == nil: return false
+  # `dest` is the `lode` of the destination. For destinations the code
+  # generator synthesizes - constructor fields and collection elements -
+  # `lode` is the produced value node (or `nkEmpty` for temporaries), not a
+  # location. Such a destination is part of a fresh temporary or of a
+  # destination that was already proven unobservable, so the values cannot
+  # read it; `locationEscapes` would only assume the worst here (bug #26767).
+  var d = dest
+  while d.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}:
+    d = d.secondSon
+  if d.kind in {nkEmpty, nkObjConstr, nkBracket, nkTupleConstr, nkPar}:
+    return false
   result = false
   for i in first..<values.len:
     if mayCallOrRaise(p, values[i]):
