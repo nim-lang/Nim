@@ -8051,7 +8051,8 @@ at compile-time will error with "'sizeof' requires '.importc' types to be
 Compile pragma
 --------------
 The `compile` pragma can be used to compile and link a C/C++ source file
-with the project:
+with the project. Like `link`, `passc`, `passl` and `localPassC`, it acts on the
+whole module and is an error inside a routine:
 
 This pragma can take three forms. The first is a simple file input:
   ```Nim
