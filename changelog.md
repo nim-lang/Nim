@@ -317,6 +317,11 @@ parameter and result types, not just their source-level shape. Use
   compares its bitwise complement. The meaning of the code does not change;
   adding parentheses silences the warning.
 
+- The pragmas `compile`, `link`, `passC`, `passL` and `localPassC` act on the
+  whole module, so the compiler now rejects them inside a routine with an error
+  that says so. Before, `localPassC` there stopped a compiler built with
+  assertions, and the others were accepted. Move the pragma to module level.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.
