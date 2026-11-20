@@ -3611,7 +3611,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
-    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil:
+    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil and s.magic == mNone:
       # a gensym'ed routine that was never declared, bug #15097
       localError(c.config, n[0].info, "attempting to call undeclared routine: '" & s.name.s & "'")
       return errorNode(c, n)
