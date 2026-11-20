@@ -1082,6 +1082,7 @@ proc strip*(s: openArray[char], leading = true, trailing = true,
     doAssert a.strip == "áñyóng"
     doAssert a.strip(leading = false) == "\táñyóng"
     doAssert a.strip(trailing = false) == "áñyóng   "
+    doAssert "  ".strip(leading = false) == ""
 
   var
     sI = 0          ## starting index into string ``s``
@@ -1111,6 +1112,9 @@ proc strip*(s: openArray[char], leading = true, trailing = true,
         eI = xI - 1
         break
       dec(i)
+    if i < 0:
+      # every rune was strippable, so the scan ran off the start of ``s``
+      eI = sI - 1
   let newLen = eI - sI + 1
   result = newStringOfCap(newLen)
   if newLen > 0:
@@ -1507,6 +1511,7 @@ proc strip*(s: string, leading = true, trailing = true,
     doAssert a.strip == "áñyóng"
     doAssert a.strip(leading = false) == "\táñyóng"
     doAssert a.strip(trailing = false) == "áñyóng   "
+    doAssert "  ".strip(leading = false) == ""
   strip(toOa(s), leading, trailing, runes)
 
 
