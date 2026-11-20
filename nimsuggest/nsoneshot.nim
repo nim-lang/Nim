@@ -408,7 +408,7 @@ proc runNimNs(cache, project: string; roots: seq[string]) =
   var exitCode = -1
   benchmark "nim ns":
     try:
-      (output, exitCode) = execCmdEx(cmd, workingDir = project.parentDir)
+      (output, exitCode) = execCmdEx(cmd)
     except OSError as e:
       fail "cannot run " & cmd & ": " & e.msg
   myLog "nim ns: " & cmd & " exit code: " & $exitCode
