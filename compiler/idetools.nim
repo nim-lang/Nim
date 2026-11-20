@@ -314,6 +314,22 @@ proc atTarget(conf: ConfigRef; c: Cursor; li: NifLineInfo; target: TLineInfo; le
     target.col.int <= li.col.int + len and
     fileInfoIdx(conf, AbsoluteFile poolFile(pool(c), li.file)) == target.fileIndex
 
+const routineNamePos = 2
+  ## A routine node is written `(proc <flags> <type> <name> ...)`: the type
+  ## comes first and can be a type symbol, so the name is the third child.
+
+proc routineName(c: Cursor): string =
+  ## The routine's name at its name position: a symbol, or `(ht <type>
+  ## <symbol>)` when the name node's type differs from the symbol's.
+  result = ""
+  if c.kind in {Symbol, SymbolDef}:
+    result = symName(c)
+  elif c.kind == TagLit and c.tags.tagName(cursorTagId(c)) == hiddenTypeTagName:
+    var d = c
+    inc d
+    skip d
+    if d.kind in {Symbol, SymbolDef}: result = symName(d)
+
 proc collectSymAt(c: var Cursor; conf: ConfigRef; target: TLineInfo; ident: string;
                   parent: NifLineInfo; routines: var seq[string]; res: var IdeSymAt) =
   let li = ownInfo(c, parent)
@@ -325,16 +341,16 @@ proc collectSymAt(c: var Cursor; conf: ConfigRef; target: TLineInfo; ident: stri
       atTarget(conf, c, parent, target, ident.len))
     if isRoutine: routines.add ""
     c.into:
-      var first = true
+      var i = 0
       while c.hasMore:
-        if first and defHere and c.kind == SymbolDef and res.name.len == 0 and
+        if i == 0 and defHere and c.kind == SymbolDef and res.name.len == 0 and
             identMatches(symName(c), ident):
           hit(res, symName(c), routines)
-        first = false
+        if isRoutine and i == routineNamePos: routines[^1] = routineName(c)
+        inc i
         collectSymAt(c, conf, target, ident, li, routines, res)
     if isRoutine: discard routines.pop()
   of Symbol:
-    if routines.len > 0 and routines[^1].len == 0: routines[^1] = symName(c)
     if res.name.len == 0 and atTarget(conf, c, li, target, ident.len):
       let name = symName(c)
       if identMatches(name, ident): hit(res, name, routines)
@@ -403,11 +419,13 @@ proc collectRoutineOccurrences(c: var Cursor; conf: ConfigRef; targetSym: SymId;
     let isRoutine = c.tags.tagName(cursorTagId(c)) in routineTags
     if isRoutine: routines.add ""
     c.into:
+      var i = 0
       while c.hasMore:
+        if isRoutine and i == routineNamePos: routines[^1] = routineName(c)
+        inc i
         collectRoutineOccurrences(c, conf, targetSym, targetName, li, routines, res)
     if isRoutine: discard routines.pop()
   of Symbol:
-    if routines.len > 0 and routines[^1].len == 0: routines[^1] = symName(c)
     if li.isValid and symMatches(c):
       var occ = IdeOccurrence(info: toLineInfo(conf, c, li))
       for i in countdown(routines.high, 0):
