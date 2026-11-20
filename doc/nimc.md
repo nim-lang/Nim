@@ -609,11 +609,14 @@ ensure that proper stack traces are given if the program crashes or some uncaugh
 
 LineTrace option
 ----------------
-The `--lineTrace`:option: option implies the `stackTrace`:option: option.
-If turned on,
-the generated C contains code to ensure that proper stack traces with line
-number information are given if the program crashes or an uncaught exception
-is raised.
+If the `--lineTrace`:option: option is turned on, the stack traces that the
+`--stackTrace`:option: option produces contain line number information.
+`--lineTrace`:option: does not turn `--stackTrace`:option: on: without it there
+is no stack trace to add the line numbers to.
+
+Both options are on by default. `-d:release`:option: and `-d:danger`:option:
+turn both off, so a release build needs
+`--stackTrace:on --lineTrace:on`:option: for stack traces with line numbers.
 
 
 DynlibOverride
