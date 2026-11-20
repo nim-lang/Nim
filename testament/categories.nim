@@ -164,6 +164,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cyclecollector"
   test "trace_globals"
   test "tfinalizers"
+  test "tmove_case_object"
+  test "tdisable_orc"
+  test "tregionleak"
 
 # ------------------------- threading tests -----------------------------------
 
