@@ -1,0 +1,54 @@
+nimTitle	cgi	cgi.html	module std/cgi		0
+nim	xmlEncode	cgi.html#xmlEncode,string	proc xmlEncode(s: string): string		47
+nim	CgiError	cgi.html#CgiError	object CgiError		58
+nim	methodNone	cgi.html#methodNone	RequestMethod.methodNone		59
+nim	methodPost	cgi.html#methodPost	RequestMethod.methodPost		59
+nim	methodGet	cgi.html#methodGet	RequestMethod.methodGet		59
+nim	RequestMethod	cgi.html#RequestMethod	enum RequestMethod		59
+nim	cgiError	cgi.html#cgiError,string	proc cgiError(msg: string)		64
+nim	decodeData	cgi.html#decodeData.i,string	iterator decodeData(data: string): tuple[key, value: string]		90
+nim	decodeData	cgi.html#decodeData.i,set[RequestMethod]	iterator decodeData(allowedMethods: set[RequestMethod] = {methodNone, methodPost,\n    methodGet}): tuple[key, value: string]		96
+nim	readData	cgi.html#readData,set[RequestMethod]	proc readData(allowedMethods: set[RequestMethod] = {methodNone, methodPost, methodGet}): StringTableRef		105
+nim	readData	cgi.html#readData,string	proc readData(data: string): StringTableRef		113
+nim	validateData	cgi.html#validateData,StringTableRef,varargs[string]	proc validateData(data: StringTableRef; validKeys: varargs[string])		119
+nim	getContentLength	cgi.html#getContentLength	proc getContentLength(): string		126
+nim	getContentType	cgi.html#getContentType	proc getContentType(): string		130
+nim	getDocumentRoot	cgi.html#getDocumentRoot	proc getDocumentRoot(): string		134
+nim	getGatewayInterface	cgi.html#getGatewayInterface	proc getGatewayInterface(): string		138
+nim	getHttpAccept	cgi.html#getHttpAccept	proc getHttpAccept(): string		142
+nim	getHttpAcceptCharset	cgi.html#getHttpAcceptCharset	proc getHttpAcceptCharset(): string		146
+nim	getHttpAcceptEncoding	cgi.html#getHttpAcceptEncoding	proc getHttpAcceptEncoding(): string		150
+nim	getHttpAcceptLanguage	cgi.html#getHttpAcceptLanguage	proc getHttpAcceptLanguage(): string		154
+nim	getHttpConnection	cgi.html#getHttpConnection	proc getHttpConnection(): string		158
+nim	getHttpCookie	cgi.html#getHttpCookie	proc getHttpCookie(): string		162
+nim	getHttpHost	cgi.html#getHttpHost	proc getHttpHost(): string		166
+nim	getHttpReferer	cgi.html#getHttpReferer	proc getHttpReferer(): string		170
+nim	getHttpUserAgent	cgi.html#getHttpUserAgent	proc getHttpUserAgent(): string		174
+nim	getPathInfo	cgi.html#getPathInfo	proc getPathInfo(): string		178
+nim	getPathTranslated	cgi.html#getPathTranslated	proc getPathTranslated(): string		182
+nim	getQueryString	cgi.html#getQueryString	proc getQueryString(): string		186
+nim	getRemoteAddr	cgi.html#getRemoteAddr	proc getRemoteAddr(): string		190
+nim	getRemoteHost	cgi.html#getRemoteHost	proc getRemoteHost(): string		194
+nim	getRemoteIdent	cgi.html#getRemoteIdent	proc getRemoteIdent(): string		198
+nim	getRemotePort	cgi.html#getRemotePort	proc getRemotePort(): string		202
+nim	getRemoteUser	cgi.html#getRemoteUser	proc getRemoteUser(): string		206
+nim	getRequestMethod	cgi.html#getRequestMethod	proc getRequestMethod(): string		210
+nim	getRequestURI	cgi.html#getRequestURI	proc getRequestURI(): string		214
+nim	getScriptFilename	cgi.html#getScriptFilename	proc getScriptFilename(): string		218
+nim	getScriptName	cgi.html#getScriptName	proc getScriptName(): string		222
+nim	getServerAddr	cgi.html#getServerAddr	proc getServerAddr(): string		226
+nim	getServerAdmin	cgi.html#getServerAdmin	proc getServerAdmin(): string		230
+nim	getServerName	cgi.html#getServerName	proc getServerName(): string		234
+nim	getServerPort	cgi.html#getServerPort	proc getServerPort(): string		238
+nim	getServerProtocol	cgi.html#getServerProtocol	proc getServerProtocol(): string		242
+nim	getServerSignature	cgi.html#getServerSignature	proc getServerSignature(): string		246
+nim	getServerSoftware	cgi.html#getServerSoftware	proc getServerSoftware(): string		250
+nim	setTestData	cgi.html#setTestData,varargs[string]	proc setTestData(keysvalues: varargs[string])		254
+nim	writeContentType	cgi.html#writeContentType	proc writeContentType()		272
+nim	writeErrorMessage	cgi.html#writeErrorMessage,string	proc writeErrorMessage(data: string)		290
+nim	setStackTraceStdout	cgi.html#setStackTraceStdout	proc setStackTraceStdout()		302
+nim	setCookie	cgi.html#setCookie,string,string	proc setCookie(name, value: string)		306
+nim	getCookie	cgi.html#getCookie,string	proc getCookie(name: string): string		313
+nim	existsCookie	cgi.html#existsCookie,string	proc existsCookie(name: string): bool		318
+nimgrp	readdata	cgi.html#readData-procs-all	proc		105
+nimgrp	decodedata	cgi.html#decodeData-iterators-all	iterator		90

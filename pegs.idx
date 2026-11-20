@@ -1,0 +1,136 @@
+nimTitle	pegs	pegs.html	module std/pegs		0
+nim	MaxSubpatterns	pegs.html#MaxSubpatterns	const MaxSubpatterns		36
+nim	pkEmpty	pegs.html#pkEmpty	PegKind.pkEmpty		40
+nim	pkAny	pegs.html#pkAny	PegKind.pkAny		40
+nim	pkAnyRune	pegs.html#pkAnyRune	PegKind.pkAnyRune		40
+nim	pkNewLine	pegs.html#pkNewLine	PegKind.pkNewLine		40
+nim	pkLetter	pegs.html#pkLetter	PegKind.pkLetter		40
+nim	pkLower	pegs.html#pkLower	PegKind.pkLower		40
+nim	pkUpper	pegs.html#pkUpper	PegKind.pkUpper		40
+nim	pkTitle	pegs.html#pkTitle	PegKind.pkTitle		40
+nim	pkWhitespace	pegs.html#pkWhitespace	PegKind.pkWhitespace		40
+nim	pkTerminal	pegs.html#pkTerminal	PegKind.pkTerminal		40
+nim	pkTerminalIgnoreCase	pegs.html#pkTerminalIgnoreCase	PegKind.pkTerminalIgnoreCase		40
+nim	pkTerminalIgnoreStyle	pegs.html#pkTerminalIgnoreStyle	PegKind.pkTerminalIgnoreStyle		40
+nim	pkChar	pegs.html#pkChar	PegKind.pkChar		40
+nim	pkCharChoice	pegs.html#pkCharChoice	PegKind.pkCharChoice		40
+nim	pkNonTerminal	pegs.html#pkNonTerminal	PegKind.pkNonTerminal		40
+nim	pkSequence	pegs.html#pkSequence	PegKind.pkSequence		40
+nim	pkOrderedChoice	pegs.html#pkOrderedChoice	PegKind.pkOrderedChoice		40
+nim	pkGreedyRep	pegs.html#pkGreedyRep	PegKind.pkGreedyRep		40
+nim	pkGreedyRepChar	pegs.html#pkGreedyRepChar	PegKind.pkGreedyRepChar		40
+nim	pkGreedyRepSet	pegs.html#pkGreedyRepSet	PegKind.pkGreedyRepSet		40
+nim	pkGreedyAny	pegs.html#pkGreedyAny	PegKind.pkGreedyAny		40
+nim	pkOption	pegs.html#pkOption	PegKind.pkOption		40
+nim	pkAndPredicate	pegs.html#pkAndPredicate	PegKind.pkAndPredicate		40
+nim	pkNotPredicate	pegs.html#pkNotPredicate	PegKind.pkNotPredicate		40
+nim	pkCapture	pegs.html#pkCapture	PegKind.pkCapture		40
+nim	pkBackRef	pegs.html#pkBackRef	PegKind.pkBackRef		40
+nim	pkBackRefIgnoreCase	pegs.html#pkBackRefIgnoreCase	PegKind.pkBackRefIgnoreCase		40
+nim	pkBackRefIgnoreStyle	pegs.html#pkBackRefIgnoreStyle	PegKind.pkBackRefIgnoreStyle		40
+nim	pkSearch	pegs.html#pkSearch	PegKind.pkSearch		40
+nim	pkCapturedSearch	pegs.html#pkCapturedSearch	PegKind.pkCapturedSearch		40
+nim	pkRule	pegs.html#pkRule	PegKind.pkRule		40
+nim	pkList	pegs.html#pkList	PegKind.pkList		40
+nim	pkStartAnchor	pegs.html#pkStartAnchor	PegKind.pkStartAnchor		40
+nim	PegKind	pegs.html#PegKind	enum PegKind		40
+nim	ntDeclared	pegs.html#ntDeclared	NonTerminalFlag.ntDeclared		75
+nim	ntUsed	pegs.html#ntUsed	NonTerminalFlag.ntUsed		75
+nim	NonTerminalFlag	pegs.html#NonTerminalFlag	enum NonTerminalFlag		75
+nim	Peg	pegs.html#Peg	object Peg		83
+nim	NonTerminal	pegs.html#NonTerminal	type NonTerminal		92
+nim	kind	pegs.html#kind,Peg	proc kind(p: Peg): PegKind		94
+nim	term	pegs.html#term,Peg	proc term(p: Peg): string		97
+nim	ch	pegs.html#ch,Peg	proc ch(p: Peg): char		101
+nim	charChoice	pegs.html#charChoice,Peg	proc charChoice(p: Peg): ref set[char]		105
+nim	nt	pegs.html#nt,Peg	proc nt(p: Peg): NonTerminal		109
+nim	index	pegs.html#index,Peg	proc index(p: Peg): range[-20 .. 20 - 1]		113
+nim	items	pegs.html#items.i,Peg	iterator items(p: Peg): Peg		117
+nim	pairs	pegs.html#pairs.i,Peg	iterator pairs(p: Peg): (int, Peg)		122
+nim	name	pegs.html#name,NonTerminal	proc name(nt: NonTerminal): string		127
+nim	line	pegs.html#line,NonTerminal	proc line(nt: NonTerminal): int		131
+nim	col	pegs.html#col,NonTerminal	proc col(nt: NonTerminal): int		135
+nim	flags	pegs.html#flags,NonTerminal	proc flags(nt: NonTerminal): set[NonTerminalFlag]		139
+nim	rule	pegs.html#rule,NonTerminal	proc rule(nt: NonTerminal): Peg		143
+nim	term	pegs.html#term,string	proc term(t: string): Peg		147
+nim	termIgnoreCase	pegs.html#termIgnoreCase,string	proc termIgnoreCase(t: string): Peg		154
+nim	termIgnoreStyle	pegs.html#termIgnoreStyle,string	proc termIgnoreStyle(t: string): Peg		159
+nim	term	pegs.html#term,char	proc term(t: char): Peg		164
+nim	charSet	pegs.html#charSet,set[char]	proc charSet(s: set[char]): Peg		169
+nim	`/`	pegs.html#/,varargs[Peg]	proc `/`(a: varargs[Peg]): Peg		203
+nim	sequence	pegs.html#sequence,varargs[Peg]	proc sequence(a: varargs[Peg]): Peg		220
+nim	`?`	pegs.html#?,Peg	proc `?`(a: Peg): Peg		225
+nim	`*`	pegs.html#*,Peg	proc `*`(a: Peg): Peg		235
+nim	`!*`	pegs.html#!*,Peg	proc `!*`(a: Peg): Peg		250
+nim	`!*\`	pegs.html#!*\,Peg	proc `!*\`(a: Peg): Peg		254
+nim	`+`	pegs.html#+,Peg	proc `+`(a: Peg): Peg		259
+nim	`&`	pegs.html#&,Peg	proc `&`(a: Peg): Peg		263
+nim	`!`	pegs.html#!,Peg	proc `!`(a: Peg): Peg		267
+nim	any	pegs.html#any	proc any(): Peg		271
+nim	anyRune	pegs.html#anyRune	proc anyRune(): Peg		275
+nim	newLine	pegs.html#newLine	proc newLine(): Peg		279
+nim	unicodeLetter	pegs.html#unicodeLetter	proc unicodeLetter(): Peg		283
+nim	unicodeLower	pegs.html#unicodeLower	proc unicodeLower(): Peg		287
+nim	unicodeUpper	pegs.html#unicodeUpper	proc unicodeUpper(): Peg		291
+nim	unicodeTitle	pegs.html#unicodeTitle	proc unicodeTitle(): Peg		295
+nim	unicodeWhitespace	pegs.html#unicodeWhitespace	proc unicodeWhitespace(): Peg		299
+nim	startAnchor	pegs.html#startAnchor	proc startAnchor(): Peg		304
+nim	endAnchor	pegs.html#endAnchor	proc endAnchor(): Peg		308
+nim	capture	pegs.html#capture,Peg	proc capture(a: Peg = Peg(kind: pkEmpty)): Peg		312
+nim	backref	pegs.html#backref,range[],bool	proc backref(index: range[1 .. MaxSubpatterns]; reverse: bool = false): Peg		316
+nim	backrefIgnoreCase	pegs.html#backrefIgnoreCase,range[],bool	proc backrefIgnoreCase(index: range[1 .. MaxSubpatterns]; reverse: bool = false): Peg		323
+nim	backrefIgnoreStyle	pegs.html#backrefIgnoreStyle,range[],bool	proc backrefIgnoreStyle(index: range[1 .. MaxSubpatterns]; reverse: bool = false): Peg		330
+nim	nonterminal	pegs.html#nonterminal,NonTerminal	proc nonterminal(n: NonTerminal): Peg		353
+nim	newNonTerminal	pegs.html#newNonTerminal,string,int,int	proc newNonTerminal(name: string; line, column: int): NonTerminal		363
+nim	letters	pegs.html#letters.t	template letters(): Peg		368
+nim	digits	pegs.html#digits.t	template digits(): Peg		372
+nim	whitespace	pegs.html#whitespace.t	template whitespace(): Peg		376
+nim	identChars	pegs.html#identChars.t	template identChars(): Peg		380
+nim	identStartChars	pegs.html#identStartChars.t	template identStartChars(): Peg		384
+nim	ident	pegs.html#ident.t	template ident(): Peg		388
+nim	natural	pegs.html#natural.t	template natural(): Peg		393
+nim	`$`	pegs.html#$,Peg	proc `$`(r: Peg): string		531
+nim	Captures	pegs.html#Captures	object Captures		539
+nim	bounds	pegs.html#bounds,Captures,range[]	proc bounds(c: Captures; i: range[0 .. 20 - 1]): tuple[first, last: int]		544
+nim	rawMatch	pegs.html#rawMatch,string,Peg,int,Captures	proc rawMatch(s: string; p: Peg; start: int; c: var Captures): int		876
+nim	eventParser	pegs.html#eventParser.t,untyped,untyped	template eventParser(pegAst, handlers: untyped): (proc (s: string): int)		962
+nim	matchLen	pegs.html#matchLen,string,Peg,openArray[string],int	proc matchLen(s: string; pattern: Peg; matches: var openArray[string]; start = 0): int		1091
+nim	matchLen	pegs.html#matchLen,string,Peg,int	proc matchLen(s: string; pattern: Peg; start = 0): int		1101
+nim	match	pegs.html#match,string,Peg,openArray[string],int	proc match(s: string; pattern: Peg; matches: var openArray[string]; start = 0): bool		1110
+nim	match	pegs.html#match,string,Peg,int	proc match(s: string; pattern: Peg; start = 0): bool		1118
+nim	find	pegs.html#find,string,Peg,openArray[string],int	proc find(s: string; pattern: Peg; matches: var openArray[string]; start = 0): int		1124
+nim	findBounds	pegs.html#findBounds,string,Peg,openArray[string],int	proc findBounds(s: string; pattern: Peg; matches: var openArray[string]; start = 0): tuple[\n    first, last: int]		1138
+nim	find	pegs.html#find,string,Peg,int	proc find(s: string; pattern: Peg; start = 0): int		1154
+nim	findAll	pegs.html#findAll.i,string,Peg,int	iterator findAll(s: string; pattern: Peg; start = 0): string		1163
+nim	findAll	pegs.html#findAll,string,Peg,int	proc findAll(s: string; pattern: Peg; start = 0): seq[string]		1176
+nim	`=~`	pegs.html#=~.t,string,Peg	template `=~`(s: string; pattern: Peg): bool		1183
+nim	contains	pegs.html#contains,string,Peg,int	proc contains(s: string; pattern: Peg; start = 0): bool		1207
+nim	contains	pegs.html#contains,string,Peg,openArray[string],int	proc contains(s: string; pattern: Peg; matches: var openArray[string]; start = 0): bool		1212
+nim	startsWith	pegs.html#startsWith,string,Peg,int	proc startsWith(s: string; prefix: Peg; start = 0): bool		1217
+nim	endsWith	pegs.html#endsWith,string,Peg,int	proc endsWith(s: string; suffix: Peg; start = 0): bool		1222
+nim	replacef	pegs.html#replacef,string,Peg,string	proc replacef(s: string; sub: Peg; by: string): string		1230
+nim	replace	pegs.html#replace,string,Peg,string	proc replace(s: string; sub: Peg; by = ""): string		1260
+nim	parallelReplace	pegs.html#parallelReplace,string,varargs[tuple[Peg,string]]	proc parallelReplace(s: string; subs: varargs[tuple[pattern: Peg, repl: string]]): string		1277
+nim	replace	pegs.html#replace,string,Peg,proc(int,int,openArray[string])	proc replace(s: string; sub: Peg; cb: proc (match: int; cnt: int;\n                                       caps: openArray[string]): string {.gcsafe.}): string		1304
+nim	transformFile	pegs.html#transformFile,string,string,varargs[tuple[Peg,string]]	proc transformFile(infile, outfile: string;\n              subs: varargs[tuple[pattern: Peg, repl: string]])		1349
+nim	split	pegs.html#split.i,string,Peg	iterator split(s: string; sep: Peg): string		1361
+nim	split	pegs.html#split,string,Peg	proc split(s: string; sep: Peg): seq[string]		1397
+nim	EInvalidPeg	pegs.html#EInvalidPeg	object EInvalidPeg		1829
+nim	parsePeg	pegs.html#parsePeg,string,string,int,int	proc parsePeg(pattern: string; filename = "pattern"; line = 1; col = 0): Peg		2058
+nim	peg	pegs.html#peg,string	proc peg(pattern: string): Peg		2073
+nim	escapePeg	pegs.html#escapePeg,string	proc escapePeg(s: string): string		2080
+heading	PEG syntax and semantics	pegs.html#peg-syntax-and-semantics	 PEG syntax and semantics		0
+heading	Built-in macros	pegs.html#peg-syntax-and-semantics-builtminusin-macros	  Built-in macros		0
+heading	Supported PEG grammar	pegs.html#peg-syntax-and-semantics-supported-peg-grammar	  Supported PEG grammar		0
+heading	Examples	pegs.html#peg-syntax-and-semantics-examples	  Examples		0
+heading	PEG vs regular expression	pegs.html#peg-syntax-and-semantics-peg-vs-regular-expression	  PEG vs regular expression		0
+heading	PEG construction	pegs.html#peg-syntax-and-semantics-peg-construction	  PEG construction		0
+idx	any rune	pegs.html#any-rune_1	PEG construction		0
+idx	newline	pegs.html#newline_1	PEG construction		0
+idx	any character	pegs.html#any-character_1	PEG construction		0
+nimgrp	replace	pegs.html#replace-procs-all	proc		1260
+nimgrp	match	pegs.html#match-procs-all	proc		1110
+nimgrp	find	pegs.html#find-procs-all	proc		1124
+nimgrp	contains	pegs.html#contains-procs-all	proc		1207
+nimgrp	term	pegs.html#term-procs-all	proc		97
+nimgrp	matchlen	pegs.html#matchLen-procs-all	proc		1091

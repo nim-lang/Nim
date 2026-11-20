@@ -1,0 +1,46 @@
+nimTitle	nre2	nre2.html	module std/nre2		0
+nim	Regex	nre2.html#Regex	type Regex		52
+nim	RegexMatch	nre2.html#RegexMatch	object RegexMatch		64
+nim	Captures	nre2.html#Captures	type Captures		99
+nim	CaptureBounds	nre2.html#CaptureBounds	type CaptureBounds		100
+nim	captureCount	nre2.html#captureCount,Regex2	proc captureCount(pattern: Regex): int		102
+nim	captureNameId	nre2.html#captureNameId,Regex2	proc captureNameId(pattern: Regex): Table[string, int]		105
+nim	captureBounds	nre2.html#captureBounds,RegexMatch	proc captureBounds(match: RegexMatch): CaptureBounds		110
+nim	captures	nre2.html#captures,RegexMatch	proc captures(match: RegexMatch): Captures		113
+nim	contains	nre2.html#contains,,int	proc contains(match: Captures or CaptureBounds; i: int): bool		116
+nim	len	nre2.html#len	proc len(match: Captures or CaptureBounds): int		119
+nim	`[]`	nre2.html#[],CaptureBounds,int	proc `[]`(match: CaptureBounds; i: int): HSlice[int, int]		123
+nim	`[]`	nre2.html#[],CaptureBounds,string	proc `[]`(match: CaptureBounds; name: string): HSlice[int, int]		126
+nim	`[]`	nre2.html#[],Captures,int	proc `[]`(match: Captures; i: int): string		131
+nim	`[]`	nre2.html#[],Captures,string	proc `[]`(match: Captures; name: string): string		134
+nim	match	nre2.html#match,RegexMatch	proc match(match: RegexMatch): string		137
+nim	matchBounds	nre2.html#matchBounds,RegexMatch	proc matchBounds(match: RegexMatch): HSlice[int, int]		140
+nim	contains	nre2.html#contains,,string	proc contains(match: CaptureBounds or Captures; name: string): bool		143
+nim	toTable	nre2.html#toTable,Captures	proc toTable(match: Captures): Table[string, string]		147
+nim	toTable	nre2.html#toTable,CaptureBounds	proc toTable(match: CaptureBounds): Table[string, HSlice[int, int]]		154
+nim	items	nre2.html#items.i,CaptureBounds	iterator items(match: CaptureBounds; default = none(HSlice[int, int])): Option[\n    HSlice[int, int]]		161
+nim	items	nre2.html#items.i,Captures	iterator items(match: Captures; default = none(string)): Option[string]		165
+nim	toSeq	nre2.html#toSeq,CaptureBounds	proc toSeq(match: CaptureBounds; default = none(HSlice[int, int])): seq[\n    Option[HSlice[int, int]]]		169
+nim	toSeq	nre2.html#toSeq,Captures,Option[string]	proc toSeq(match: Captures; default: Option[string] = none(string)): seq[\n    Option[string]]		174
+nim	`$`	nre2.html#$,RegexMatch	proc `$`(match: RegexMatch): string		179
+nim	re	nre2.html#re,staticstring,staticRegexFlags	proc re(pattern: static string; flags: static RegexFlags = {}): static[Regex2]		182
+nim	re	nre2.html#re,string,RegexFlags	proc re(pattern: string; flags: RegexFlags = {}): Regex		186
+nim	match	nre2.html#match,string,Regex2,int	proc match(str: string; pattern: Regex; start = 0; endpos = int.high): Option[\n    RegexMatch]		190
+nim	findIter	nre2.html#findIter.i,string,Regex2,int	iterator findIter(str: string; pattern: Regex; start = 0; endpos = int.high): RegexMatch		213
+nim	find	nre2.html#find,string,Regex2,int	proc find(str: string; pattern: Regex; start = 0; endpos = int.high): Option[\n    RegexMatch]		233
+nim	findAll	nre2.html#findAll,string,Regex2,int	proc findAll(str: string; pattern: Regex; start = 0; endpos = int.high): seq[string]		260
+nim	contains	nre2.html#contains,string,Regex2,int	proc contains(str: string; pattern: Regex; start = 0; endpos = int.high): bool		265
+nim	split	nre2.html#split,string,Regex2,int,int	proc split(str: string; pattern: Regex; maxSplit = -1; start = 0): seq[string]		276
+nim	replace	nre2.html#replace,string,Regex2,proc(RegexMatch)	proc replace(str: string; pattern: Regex; subproc: proc (match: RegexMatch): string): string		297
+nim	replace	nre2.html#replace,string,Regex2,proc(string)	proc replace(str: string; pattern: Regex; subproc: proc (match: string): string): string		328
+nim	replace	nre2.html#replace,string,Regex2,string	proc replace(str: string; pattern: Regex; sub: string): string		335
+nim	escapeRe	nre2.html#escapeRe,string	proc escapeRe(str: string): string		338
+heading	What is NRE2?	nre2.html#what-is-nre2qmark	 What is NRE2?		0
+nimgrp	totable	nre2.html#toTable-procs-all	proc		147
+nimgrp	replace	nre2.html#replace-procs-all	proc		297
+nimgrp	contains	nre2.html#contains-procs-all	proc		116
+nimgrp	[]	nre2.html#[]-procs-all	proc		123
+nimgrp	re	nre2.html#re-procs-all	proc		182
+nimgrp	toseq	nre2.html#toSeq-procs-all	proc		169
+nimgrp	match	nre2.html#match-procs-all	proc		137
+nimgrp	items	nre2.html#items-iterators-all	iterator		161

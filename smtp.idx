@@ -1,0 +1,50 @@
+nimTitle	smtp	smtp.html	module src/smtp		0
+nim	Message	smtp.html#Message	object Message		57
+nim	Email	smtp.html#Email	object Email		67
+nim	ReplyError	smtp.html#ReplyError	object ReplyError		71
+nim	Smtp	smtp.html#Smtp	type Smtp		78
+nim	AsyncSmtp	smtp.html#AsyncSmtp	type AsyncSmtp		79
+nim	sender	smtp.html#sender,Message	proc sender(msg: Message): Email		83
+nim	recipients	smtp.html#recipients,Message	proc recipients(msg: Message): seq[Email]		86
+nim	createEmail	smtp.html#createEmail,string,string	proc createEmail(address: string; name: string = ""): Email		98
+nim	createMessage	smtp.html#createMessage,string,string,T,seq[T],seq[T],seq[T],seq[T],openArray[tuple[string,string]]	proc createMessage[T: Email | string](mSubject, mBody: string; sender: T;\n                                 mTo: seq[T] = @[]; mCc: seq[T] = @[];\n                                 mBcc: seq[T] = @[]; mReplyTo: seq[T] = @[];\n    otherHeaders: openArray[tuple[name, value: string]] = @[]): Message		120
+nim	createMessage	smtp.html#createMessage,string,string,seq[string],seq[string],openArray[tuple[string,string]]	proc createMessage(mSubject, mBody: string; mTo, mCc: seq[string];\n              otherHeaders: openArray[tuple[name, value: string]]): Message		151
+nim	createMessage	smtp.html#createMessage,string,string,seq[string],seq[string]	proc createMessage(mSubject, mBody: string; mTo, mCc: seq[string] = @[]): Message		170
+nim	`$`	smtp.html#$,Email	proc `$`(email: Email): string		186
+nim	`$`	smtp.html#$,Message	proc `$`(msg: Message): string		196
+nim	debugSend	smtp.html#debugSend,AsyncSmtp,string	proc debugSend(smtp: AsyncSmtp; cmd: string): owned(Future[void])		218
+nim	debugSend	smtp.html#debugSend,Smtp,string	proc debugSend(smtp: Smtp; cmd: string)		218
+nim	debugRecv	smtp.html#debugRecv,AsyncSmtp	proc debugRecv(smtp: AsyncSmtp): Future[string]		233
+nim	debugRecv	smtp.html#debugRecv,Smtp	proc debugRecv(smtp: Smtp): string		233
+nim	newSmtp	smtp.html#newSmtp,SslContext	proc newSmtp(useSsl = false; debug = false; sslContext: SslContext = nil): Smtp		267
+nim	newAsyncSmtp	smtp.html#newAsyncSmtp,SslContext	proc newAsyncSmtp(useSsl = false; debug = false; sslContext: SslContext = nil): AsyncSmtp		281
+nim	checkReply	smtp.html#checkReply,AsyncSmtp,string	proc checkReply(smtp: AsyncSmtp; reply: string): owned(Future[void])		302
+nim	checkReply	smtp.html#checkReply,Smtp,string	proc checkReply(smtp: Smtp; reply: string)		302
+nim	helo	smtp.html#helo,AsyncSmtp	proc helo(smtp: AsyncSmtp): owned(Future[void])		316
+nim	helo	smtp.html#helo,Smtp	proc helo(smtp: Smtp)		316
+nim	ehlo	smtp.html#ehlo,AsyncSmtp	proc ehlo(smtp: AsyncSmtp): Future[bool]		335
+nim	ehlo	smtp.html#ehlo,Smtp	proc ehlo(smtp: Smtp): bool		335
+nim	connect	smtp.html#connect,AsyncSmtp,string,Port	proc connect(smtp: AsyncSmtp; address: string; port: Port): owned(Future[void])		340
+nim	connect	smtp.html#connect,Smtp,string,Port	proc connect(smtp: Smtp; address: string; port: Port)		340
+nim	startTls	smtp.html#startTls,AsyncSmtp,SslContext	proc startTls(smtp: AsyncSmtp; sslContext: SslContext = nil): owned(Future[void])		350
+nim	startTls	smtp.html#startTls,Smtp,SslContext	proc startTls(smtp: Smtp; sslContext: SslContext = nil)		350
+nim	auth	smtp.html#auth,AsyncSmtp,string,string	proc auth(smtp: AsyncSmtp; username, password: string): owned(Future[void])		366
+nim	auth	smtp.html#auth,Smtp,string,string	proc auth(smtp: Smtp; username, password: string)		366
+nim	sendMail	smtp.html#sendMail,AsyncSmtp,string,seq[string],string	proc sendMail(smtp: AsyncSmtp; fromAddr: string; toAddrs: seq[string]; msg: string): owned(\n    Future[void])		381
+nim	sendMail	smtp.html#sendMail,Smtp,string,seq[string],string	proc sendMail(smtp: Smtp; fromAddr: string; toAddrs: seq[string]; msg: string)		383
+nim	sendMail	smtp.html#sendMail,AsyncSmtp,Message	proc sendMail(smtp: AsyncSmtp; msg: Message): owned(Future[void])		408
+nim	sendMail	smtp.html#sendMail,Smtp,Message	proc sendMail(smtp: Smtp; msg: Message)		408
+nim	close	smtp.html#close,AsyncSmtp	proc close(smtp: AsyncSmtp): owned(Future[void])		420
+nim	close	smtp.html#close,Smtp	proc close(smtp: Smtp)		420
+nimgrp	checkreply	smtp.html#checkReply-procs-all	proc		302
+nimgrp	helo	smtp.html#helo-procs-all	proc		316
+nimgrp	close	smtp.html#close-procs-all	proc		420
+nimgrp	createmessage	smtp.html#createMessage-procs-all	proc		120
+nimgrp	$	smtp.html#$-procs-all	proc		186
+nimgrp	connect	smtp.html#connect-procs-all	proc		340
+nimgrp	starttls	smtp.html#startTls-procs-all	proc		350
+nimgrp	sendmail	smtp.html#sendMail-procs-all	proc		381
+nimgrp	debugrecv	smtp.html#debugRecv-procs-all	proc		233
+nimgrp	auth	smtp.html#auth-procs-all	proc		366
+nimgrp	debugsend	smtp.html#debugSend-procs-all	proc		218
+nimgrp	ehlo	smtp.html#ehlo-procs-all	proc		335
