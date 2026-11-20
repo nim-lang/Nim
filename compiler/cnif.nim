@@ -39,6 +39,9 @@
 ##   \4 \31 P \5                      start of the procs section: what
 ##                                    precedes it declares, what follows
 ##                                    defines (see `renderCPartsFromArtifact`)
+##   \6 name \3                       an invisible use of `name`: a liveness
+##                                    edge without C text, for references the
+##                                    C text makes by a name it cannot mark
 
 import std / [tables, sets, os, assertions, syncio, algorithm, hashes, strutils]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse, stringviews]
@@ -50,13 +53,33 @@ const
   CnifDefStart* = '\4'
   CnifDefSep* = '\31'   # same separator char as cgen's postprocess directives
   CnifDefEnd* = '\5'
+  CnifUseStart* = '\6'
+
+proc cnifUse*(name: string): string {.inline.} =
+  ## An invisible use of `name`: inside a definition it is a liveness edge,
+  ## at the top level a root. It renders to no C text at all.
+  CnifUseStart & name & CnifSymEnd
+
+proc cnifUsesOf*(s: string): string =
+  ## The marked names of the C snippet `s` as invisible uses: what makes a
+  ## definition depend on code that it does not contain itself.
+  result = ""
+  var i = 0
+  while i < s.len:
+    if s[i] == CnifSymStart:
+      let e = s.find(CnifSymEnd, i+1)
+      if e < 0: break
+      result.add cnifUse(s.substr(i+1, e-1))
+      i = e + 1
+    else:
+      inc i
 
 proc markCName*(name: string): string {.inline.} =
   CnifSymStart & name & CnifSymEnd
 
 proc hasCnifMarks*(s: string): bool =
   for c in s:
-    if c in {CnifSymStart, CnifSymEnd, CnifDefStart}: return true
+    if c in {CnifSymStart, CnifSymEnd, CnifDefStart, CnifUseStart}: return true
   false
 
 proc stripCnifMarks*(s: string): string =
@@ -72,12 +95,15 @@ proc stripCnifMarks*(s: string): string =
     of CnifDefStart:
       while i < s.len and s[i] != CnifDefEnd: inc i
       inc i # skip CnifDefEnd
+    of CnifUseStart:
+      while i < s.len and s[i] != CnifSymEnd: inc i
+      inc i # skip CnifSymEnd
     else:
       result.add s[i]
       inc i
 
 const
-  CnifVersion* = "7"
+  CnifVersion* = "8"
     ## Artifact format version, stored in the meta head. Artifacts written
     ## by an older compiler lack the NIF names and the cref group the
     ## def-retention check needs (v2), the cdeps group the fine-grained
@@ -85,7 +111,9 @@ const
     ## RTTI references the typeinfo flavor of the def-retention check
     ## needs (v4), or the global-destructor name the main module's `cg`
     ## calls at teardown (v5), or deferred dynlib loader indices (v6), or the
-    ## `(cprocs)` section marker that splitting a big module needs (v7);
+    ## `(cprocs)` section marker that splitting a big module needs (v7), or
+    ## the `(cuse)` invisible uses and the compilerprocs that are no longer
+    ## roots by themselves (v8);
     ## `readCnifHeads` reports them as invalid so
     ## their TUs simply regenerate once.
 
@@ -133,6 +161,14 @@ proc writeCnifArtifact*(code: string; outfile: string;
     while i < code.len:
       case code[i]
       of CnifSymStart:
+        inc i
+        var name = ""
+        while i < code.len and code[i] != CnifSymEnd:
+          name.add code[i]
+          inc i
+        inc i
+        uses.incl name
+      of CnifUseStart:
         inc i
         var name = ""
         while i < code.len and code[i] != CnifSymEnd:
@@ -199,6 +235,16 @@ proc writeCnifArtifact*(code: string; outfile: string;
           inc i
         inc i # skip CnifSymEnd
         b.addSymbol name, ""
+      of CnifUseStart:
+        flushRaw()
+        inc i
+        var name = ""
+        while i < code.len and code[i] != CnifSymEnd:
+          name.add code[i]
+          inc i
+        inc i # skip CnifSymEnd
+        b.withTree "cuse":
+          b.addSymbol name, ""
       of CnifDefStart:
         flushRaw()
         inc i
@@ -249,6 +295,9 @@ proc renderMarkedC*(code: string; live: HashSet[string]; dropped: var int): stri
     case code[i]
     of CnifSymStart, CnifSymEnd:
       inc i
+    of CnifUseStart:
+      while i < code.len and code[i] != CnifSymEnd: inc i
+      inc i # skip CnifSymEnd
     of CnifDefStart:
       var payload = ""
       inc i
@@ -442,6 +491,7 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
   let crefTag = tags.registerTag("cref")
   let cdepsTag = tags.registerTag("cdeps")
   let metaTag = tags.registerTag("meta")
+  let cuseTag = tags.registerTag("cuse")
   var uses = initTable[string, HashSet[string]]()
   var roots = initHashSet[string]()
   var defs = initHashSet[string]()
@@ -482,8 +532,10 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
                 flagsSeen = true
                 for ch in name:
                   # 'd' marks a data definition (const/RTTI): never DCE'd, so it
-                  # is a root whose body keeps its referenced procs live
-                  if ch in {'x', 'c', 'm', 'd'}:
+                  # is a root whose body keeps its referenced procs live. A
+                  # compilerproc ('c') is not a root: it is live when used,
+                  # like in whole-program codegen
+                  if ch in {'x', 'm', 'd'}:
                     roots.incl owner
                     break
               else:
@@ -492,6 +544,14 @@ proc computeLiveFromCArtifacts*(files: openArray[string]): CnifLiveness =
             of DotToken:
               flagsSeen = true # empty flags field
               inc c
+            of TagLit:
+              if c.cursorTagId == cuseTag:
+                c.loopInto:
+                  if c.kind in {Symbol, Ident}:
+                    uses.mgetOrPut(owner, initHashSet[string]()).incl symOrIdentName(c)
+                  inc c
+              else:
+                skip c
             else:
               skip c
         else:
@@ -557,6 +617,7 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
   let crefTag = tags.registerTag("cref")
   let cdepsTag = tags.registerTag("cdeps")
   let metaTag = tags.registerTag("meta")
+  let cuseTag = tags.registerTag("cuse")
   var uses = initTable[string, HashSet[string]]()
   var roots = initHashSet[string]()
   var defs = initHashSet[string]()
@@ -596,7 +657,8 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
               if not flagsSeen:
                 flagsSeen = true
                 for ch in name:
-                  if ch in {'x', 'c', 'm'}: roots.incl ownerName
+                  # a compilerproc ('c') is no root: live when used
+                  if ch in {'x', 'm'}: roots.incl ownerName
                   # 'u' = unique proc (DCE'd), 'd' = data (never DCE'd, hence a
                   # root); both need a single owner across the emit-everywhere
                   # processes
@@ -610,6 +672,15 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
             of DotToken:
               flagsSeen = true # empty flags field
               inc c
+            of TagLit:
+              if c.cursorTagId == cuseTag:
+                # invisible uses (`cnifUse`): edges without C text
+                c.loopInto:
+                  if c.kind in {Symbol, Ident}:
+                    uses.mgetOrPut(ownerName, initHashSet[string]()).incl symOrIdentName(c)
+                  inc c
+              else:
+                skip c
             else:
               skip c
           if needsOwner and ownerName.len > 0:
@@ -629,13 +700,26 @@ proc computeMergeDecision*(files: openArray[string]): MergeDecision =
     endRead(c)
   var work = newSeqOfCap[string](roots.len)
   for r in roots: work.add r
+  when defined(icWhyLive):
+    var parent = initTable[string, string]()
   while work.len > 0:
     let s = work.pop()
     if not result.live.containsOrIncl(s):
       if uses.hasKey(s):
         for dep in uses[s]:
           if dep notin result.live:
+            when defined(icWhyLive):
+              if dep notin parent: parent[dep] = s
             work.add dep
+  when defined(icWhyLive):
+    for q in getEnv("IC_WHY_LIVE").split(','):
+      var x = q
+      var chain = x
+      while parent.hasKey(x):
+        x = parent[x]
+        chain.add " <- " & x
+      if x in roots: chain.add " [root]"
+      stderr.writeLine "[whylive] ", chain
   result.defs = defs.len
   for d in defs:
     if d in result.live: inc result.liveDefs
@@ -834,6 +918,8 @@ proc readCPieces(artifact: string; d: MergeDecision; ownerId: string;
             if not p.keep: inc dropped
             state = 3
             inc c
+          elif c.kind == TagLit: # `(cuse)`: no C text
+            skip c
           else: # body tokens
             if p.keep:
               if c.kind == StrLit: p.text.add strVal(c)
