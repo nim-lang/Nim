@@ -83,3 +83,23 @@ block:
     not compiles(1.map2(fn3))
     1.map2(fn4) == """(1, "fn4")"""
     1.map2(fn5) == """(1, "fn5")"""
+
+block: # getType on the built-in type classes; `object` and `enum` crashed the compiler
+  macro reprs(t: typed): string =
+    newLit(t.getType.repr & " | " & t.getTypeInst.repr & " | " & t.getTypeImpl.repr)
+
+  doAssert reprs(object) == "typeDesc[builtinTypeClass[object[]]] | typeDesc[builtinTypeClass[object[]]] | typeDesc[builtinTypeClass[object[]]]"
+  doAssert reprs(enum) == "typeDesc[builtinTypeClass[enum[]]] | typeDesc[builtinTypeClass[enum[]]] | typeDesc[builtinTypeClass[enum[]]]"
+  doAssert reprs(ptr) == "typeDesc[builtinTypeClass[ptr[]]] | typeDesc[builtinTypeClass[ptr[]]] | typeDesc[builtinTypeClass[ptr[]]]"
+  doAssert reprs(ref) == "typeDesc[builtinTypeClass[ref[]]] | typeDesc[builtinTypeClass[ref[]]] | typeDesc[builtinTypeClass[ref[]]]"
+  doAssert reprs(var) == "typeDesc[builtinTypeClass[var[]]] | typeDesc[builtinTypeClass[var[]]] | typeDesc[builtinTypeClass[var[]]]"
+  doAssert reprs(distinct) == "typeDesc[builtinTypeClass[distinct[]]] | typeDesc[builtinTypeClass[distinct[]]] | typeDesc[builtinTypeClass[distinct[]]]"
+  doAssert reprs(proc) == "typeDesc[builtinTypeClass[proc[]]] | typeDesc[builtinTypeClass[proc[]]] | typeDesc[builtinTypeClass[proc[]]]"
+  doAssert reprs(tuple) == "typeDesc[builtinTypeClass[tuple[]]] | typeDesc[builtinTypeClass[tuple[]]] | typeDesc[builtinTypeClass[tuple[]]]"
+  type
+    AnyRef = ref
+    AnyDistinct = distinct
+  doAssert reprs(AnyRef) == "typeDesc[builtinTypeClass[ref[]]] | typeDesc[AnyRef] | typeDesc[AnyRef]"
+  doAssert reprs(AnyDistinct) == "typeDesc[builtinTypeClass[distinct[]]] | typeDesc[AnyDistinct] | typeDesc[AnyDistinct]"
+  macro typeLisp(t: typed): string = newLit(t.getType.lispRepr)
+  doAssert typeLisp(SomeOrdinal) == """(BracketExpr (Sym "typeDesc") (BracketExpr (Sym "or") (Sym "int") (Sym "int8") (Sym "int16") (Sym "int32") (Sym "int64") (Sym "bool") (BracketExpr (Sym "builtinTypeClass") (BracketExpr (Sym "enum"))) (Sym "uint") (Sym "uint8") (Sym "uint16") (Sym "uint32") (Sym "uint64")))"""

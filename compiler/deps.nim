@@ -576,8 +576,11 @@ proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
         result = left
       else:
         let prefix = if left.len == 1: left[0] else: ""
+        # `import a/../b` lexes `/../` as ONE operator; join with it verbatim
+        # like `modulepaths.getModuleName` does, not with a plain `/` (#26741).
+        let sep = if op.len > 0 and op[0] == '/': op else: "/"
         for r in right:
-          if prefix.len > 0: result.add prefix & "/" & r
+          if prefix.len > 0: result.add prefix & sep & r
           else: result.add r
       if t.kind == ParRi: t = next(s)  # skip closing ')'
     elif tag == "prefix":
