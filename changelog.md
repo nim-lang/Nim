@@ -3,6 +3,8 @@
 
 ## Changes affecting backward compatibility
 
+- `-d:nimPreviewJsonutilsHoleyEnum` becomes the default, `jsonutils` now can serialize/deserialize
+  holey enums as regular enums (via `ord`) instead of as strings.
 - Solaris and illumos are now separate targets (`--os:solaris` and
   `--os:illumos`). Both define `sunos`, `posix`, and `unix`; illumos no longer
   defines `solaris`. Use `defined(sunos)` for code shared by both systems.
