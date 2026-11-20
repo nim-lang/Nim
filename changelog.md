@@ -327,6 +327,10 @@ parameter and result types, not just their source-level shape. Use
 - Added `--raw` flag when generating JSON docs to not render markup.
 - Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
 - Added `--styleCheck:warning` flag to treat style check violations as warnings.
+- `nim ic` shows a single `[NN%]` progress line (frontend 0..50%, backend
+  51..100%, ending in `[100%] done`) instead of the per-module `.` and `CC:`
+  output when stdout is a terminal and `--verbosity` is 1 (the default).
+  Warnings and errors are still shown.
 
 ## Documentation changes
 
