@@ -23,7 +23,7 @@ import std / tables
 import
   options, ast, astalgo, trees, msgs,
   idents, renderer, types, semfold, magicsys, cgmeth, parampatterns,
-  lowerings, liftlocals,
+  lowerings, liftlocals, aliases,
   modulegraphs, lineinfos
 
 when defined(nimPreviewSlimSystem):
@@ -413,10 +413,57 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PNode =
     for i in 0..<n.len:
       result[i] = introduceNewLocalVars(c, n[i])
 
+proc readsThroughDest(dest, ri: PNode; withSeqs: bool): bool =
+  ## Does the location `ri` live behind a pointer (a `ref`, `ptr`, seq or
+  ## string buffer) that is stored inside `dest`? Then the assignment
+  ## `dest = ri` can free or overwrite `ri` while it is being copied (bug #26773).
+  ## With destructors the seq case is already handled by
+  ## `injectdestructors`: the element is moved out of the seq first.
+  result = false
+  var it = ri
+  while true:
+    case it.kind
+    of nkDotExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv:
+      it = it[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      it = it[1]
+    of nkBracketExpr, nkDerefExpr, nkHiddenDeref:
+      if it.len == 0: return false
+      let base = it[0]
+      if base.typ != nil and base.typ.skipTypes(abstractInst).kind in
+          (if it.kind != nkBracketExpr: {tyRef, tyPtr}
+           elif withSeqs: {tySequence, tyString}
+           else: {}) and
+          isPartOf(base, dest) != arNo:
+        return true
+      it = base
+    else:
+      return false
+
 proc transformAsgn(c: PTransf, n: PNode): PNode =
   let rhs = n[1]
 
   if rhs.kind != nkTupleConstr:
+    if rhs.typ != nil and
+        rhs.typ.skipTypes(abstractInst).kind notin {tyRef, tyProc, tyString, tySequence} and
+        containsManagedMemory(rhs.typ) and
+        readsThroughDest(n[0], rhs, optSeqDestructors notin c.graph.config.globalOptions):
+      # `x = x.next[]`: copy the value into a temporary first, assigning it
+      # to `x` could destroy the memory it is read from.
+      let tmp = newTemp(c, rhs.typ, rhs.info)
+      let letSection = newTransNode(nkLetSection, n.info, 1)
+      let def = newTransNode(nkIdentDefs, rhs.info, 3)
+      def[0] = tmp
+      def[1] = newNodeI(nkEmpty, rhs.info)
+      def[2] = transform(c, rhs)
+      letSection[0] = def
+      let asgnNode = newTransNode(nkAsgn, n.info, 2)
+      asgnNode[0] = transform(c, n[0])
+      asgnNode[1] = tmp
+      result = newTransNode(nkStmtList, n.info, 2)
+      result[0] = letSection
+      result[1] = asgnNode
+      return
     return transformSons(c, n)
 
   # Unpack the tuple assignment into N temporary variables and then pack them
