@@ -288,6 +288,9 @@ parameter and result types, not just their source-level shape. Use
   global's type changed: the old memory was read with the new layout. Such a
   reload now stops the program with a message naming the global.
 
+- Hot code reloading does the same for a `{.threadvar.}` whose type changed:
+  the slot kept for a thread was read with the new layout.
+
 - Hot code reloading works on Linux on arm64 with glibc; before, it was
   limited to musl there and the HCR runtime did not compile.
 

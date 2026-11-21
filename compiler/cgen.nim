@@ -1090,7 +1090,8 @@ proc useHcrThreadVar(m: BModule, s: PSym) =
   if lfIndirect notin s.loc.flags:
     backendEnsureMutable s
     s.locImpl.snippet = cCast(ptrType(typ), cCall("hcrGetThreadVar",
-      getModuleDllPath(m, s), makeCString(s.loc.snippet), cSizeof(typ)))
+      getModuleDllPath(m, s), makeCString(s.loc.snippet), cSizeof(typ),
+      makeCString($hashTypeLayout(s.loc.t, m.config))))
     incl(s, lfIndirect)
 
 proc genGlobalVarDecl(res: var Builder, p: BProc; n: PNode; td: Snippet;
