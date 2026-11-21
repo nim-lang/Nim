@@ -539,6 +539,8 @@ type
     errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
     maxCallDepthVM*: int ## VM: max call depth
+    largeStackObjectSize*: BiggestInt ## C backend: report stack objects of at
+      ## least this many bytes; 0 = disabled
     isVmTrace*: bool
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
