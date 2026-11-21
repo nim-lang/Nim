@@ -92,3 +92,11 @@ echo rawProc(closureFirst()) == rawProc(closureFromOther())
 #!STEP expect: true false\n1 2 1\ntrue 1\ntrue\n1 2\n123 abc 456\ntrue\ntrue true\n1 2 3\nfalse\ntrue
 #!STEP
 #!STEP noop
+
+# A shared lowering worker can mint distinct backend symbols with equal item
+# numbers in different modules. Every serialized hook parameter still needs a
+# definition, including when the same hook is reached by several batch members.
+#!FLAGS -d:icBatchSize:4
+#!STEP
+#!STEP
+#!STEP noop
