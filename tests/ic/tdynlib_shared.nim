@@ -18,6 +18,8 @@ when defined(windows):
   const libcName = "msvcrt.dll"
 elif defined(macosx):
   const libcName = "libSystem.dylib"
+elif defined(freebsd):
+  const libcName = "libc.so.7"
 else:
   const libcName = "libc.so.6"
 

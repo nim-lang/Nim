@@ -84,30 +84,16 @@ proc ownerModule(m: BModule; s: PSym): BModule =
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
-    # Per-module backend codegen. `m.g.icEmitted` is the set of modules THIS
-    # process writes a TU for, so it — not the identity of whichever TU happened
-    # to demand `s` — decides where the definition goes:
-    #
-    # * owner in `icEmitted`: this process is writing that module's TU, so the
-    #   definition belongs in it and nowhere else. That is the ordinary
-    #   whole-program routing below, and honouring it is what lets one process
-    #   emit SEVERAL modules without their definitions collapsing into the first
-    #   TU to ask for them. With the set at its current size of one, the owner
-    #   IS `m` and this returns exactly what the old unconditional `return m`
-    #   did — the point of the branch is that it stops being a special case.
-    #
-    # * owner elsewhere: the module is not written in this process, so the
-    #   definition has nowhere else to go and is emitted here as well
-    #   (emit-everywhere). The process that owns it emits it too; `merge` keeps
-    #   one per C name and turns the rest into prototypes, which already live in
-    #   the unmarked protos section.
-    #
-    # `getModule` walks the owner chain and yields nil if it never reaches a
-    # module (backend-minted symbols can be parented outside one), which is a
-    # definition with no owning TU: emit it here.
-    let ms = getModule(s)
-    if ms != nil and ms.kind == skModule and m.g.icEmitted.contains(ms.position):
-      return ownerModule(m, s)
+    # Route a definition to its module when this worker writes that module's
+    # translation unit. Otherwise emit it in the demanding TU; merge deduplicates
+    # those copies across workers.
+    # A generic instance's owner chain reaches the generic's declaring module,
+    # while its persisted ItemId names the module that instantiated and offers
+    # it. Route by that identity, matching emitsBodyInThisModule and the seeder.
+    # Routing to the declaration's TU can mark it declared there without either
+    # TU emitting its body when both modules share a batch.
+    if m.g.icEmitted.contains(s.itemId.module):
+      return m.g.mods[s.itemId.module]
     return m
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
@@ -2134,11 +2120,9 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     # the owner is another member of this process's batch. Mirrored rather than
     # called, because `findPendingModule` creates a `BModule` on demand and a
     # prototype has no business doing that.
-    let owner = getModule(sym)
     let emittedByABatchSibling =
-      owner != nil and owner.kind == skModule and
-      owner.position != m.module.position and
-      m.g.icEmitted.contains(owner.position)
+      sym.itemId.module != m.module.position and
+      m.g.icEmitted.contains(sym.itemId.module)
     if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg" and
         not emittedByABatchSibling:
       # This TU emits the DEFINITION itself: `symInDynamicLib` follows this call
