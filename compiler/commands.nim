@@ -1099,6 +1099,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     discard parseSaturatedNatural(arg, value)
     if value <= 0: localError(conf, info, "maxCallDepthVM must be a positive integer greater than zero")
     conf.maxCallDepthVM = value
+  of "reportlargestackobjects":
+    expectArg(conf, switch, arg, pass, info)
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    if value <= 0: localError(conf, info, "reportLargeStackObjects must be a positive integer greater than zero")
+    conf.largeStackObjectSize = value
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.

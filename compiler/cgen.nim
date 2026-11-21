@@ -967,7 +967,22 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
       backendEnsureMutable v
       constructLoc(p, v.locImpl)
 
+proc reportLargeStackObject(p: BProc; t: PType; what: string; info: TLineInfo) =
+  ## `--reportLargeStackObjects:N`: C locals of N bytes or more are reported,
+  ## they easily overflow the stack, see bug #26417 and bug #26767.
+  let limit = p.config.largeStackObjectSize
+  if limit > 0:
+    let size = getSize(p.config, t)
+    if size >= limit:
+      let info = if info.fileIndex != InvalidFileIdx: info
+                 elif p.prc != nil: p.prc.info
+                 else: p.module.module.info
+      message(p.config, info, warnLargeStackObject,
+        what & " of type '" & typeToString(t) & "' occupies " & $size &
+        " bytes of stack space")
+
 proc declTemp(p: BProc, t: PType): TLoc =
+  reportLargeStackObject(p, t, "temporary", p.currLineInfo)
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -983,14 +998,6 @@ proc declTemp(p: BProc, t: PType): TLoc =
 proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = declTemp(p, t)
   constructLoc(p, result, not needsInit)
-  when false:
-    # XXX Introduce a compiler switch in order to detect these easily.
-    if getSize(p.config, t) > 1024 * 1024:
-      if p.prc != nil:
-        echo "ENORMOUS TEMPORARY! ", p.config $ p.prc.info
-      else:
-        echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
-      writeStackTrace()
 
 proc calleeInitsResult(p: BProc; ri: PNode; t: PType): bool =
   ## A result that does not fit into a C return value is passed as a hidden
@@ -1010,6 +1017,7 @@ proc getResultTemp(p: BProc; ri: PNode; t: PType): TLoc =
     result = getTemp(p, t, needsInit=true)
 
 proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
+  reportLargeStackObject(p, t, "temporary", p.currLineInfo)
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -1046,6 +1054,7 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
     p.sigConflicts.inc(s.name.s.mangle)
 
   genCLineDir(res, p, n.info, p.config)
+  reportLargeStackObject(p, s.typ, "local variable '" & s.name.s & "'", n.info)
 
   res.addVar(p.module, s,
     name = s.loc.snippet,
