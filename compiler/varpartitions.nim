@@ -898,7 +898,11 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     if n[0].kind == nkSym:
       let vid = variableId(c, n[0].sym)
       if vid >= 0:
-        if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id):
+        # `it = it.next` is fine for pointers, but for a value type like an
+        # object `x = tmp` where `tmp` borrows from `x.next[]` destroys what
+        # `tmp` points to while it is copied (bug #26773):
+        if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id) and
+            n[0].sym.typ.skipTypes(abstractInst).kind notin {tyObject, tyTuple, tyArray}:
           c.s[vid].reassignedTo = n[1].sym.id
           if c.inConditional > 0 and c.inLoop > 0:
             # bug #22200: live ranges with loops and conditionals are too
