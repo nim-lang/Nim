@@ -614,7 +614,9 @@ proc isProvenance(path, before, after: string): bool =
   if path == "ic_link_args.txt":
     result = before[0 .. before.rfind('\n')] == after[0 .. after.rfind('\n')]
   else:
-    result = path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
+    result = path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif") or
+      (path.startsWith("modules" & DirSep) and path.endsWith(".variant")) or
+      (path.startsWith("snapshots" & DirSep) and path.endsWith(".cfg.nif"))
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether

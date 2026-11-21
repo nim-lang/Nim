@@ -48,23 +48,20 @@ import vmconv, vmmarshal
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
-template oscommonop(op) {.dirty.} =
-  registerCallback(c, "stdlib.oscommon." & astToStr(op), `op Wrapper`)
+template hostCallback(name, op: untyped) {.dirty.} =
+  registerCallback c, name & astToStr(op), proc(a: VmArgs) =
+    a.ctx.config.requireLocalConfig()
+    `op Wrapper`(a)
 
-template osdirsop(op) {.dirty.} =
-  registerCallback(c, "stdlib.osdirs." & astToStr(op), `op Wrapper`)
-
-template envvarsop(op) {.dirty.} =
-  registerCallback(c, "stdlib.envvars." & astToStr(op), `op Wrapper`)
-
-template timesop(op) {.dirty.} =
-  registerCallback(c, "stdlib.times." & astToStr(op), `op Wrapper`)
+template oscommonop(op) {.dirty.} = hostCallback("stdlib.oscommon.", op)
+template osdirsop(op) {.dirty.} = hostCallback("stdlib.osdirs.", op)
+template envvarsop(op) {.dirty.} = hostCallback("stdlib.envvars.", op)
+template timesop(op) {.dirty.} = hostCallback("stdlib.times.", op)
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
-template ioop(op) {.dirty.} =
-  registerCallback(c, "stdlib.syncio." & astToStr(op), `op Wrapper`)
+template ioop(op) {.dirty.} = hostCallback("stdlib.syncio.", op)
 
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
@@ -151,7 +148,7 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
 
 from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
-proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
+proc querySettingImpl*(conf: ConfigRef, switch: BiggestInt): string =
   {.push warning[Deprecated]:off.}
   case SingleValueSetting(switch)
   of arguments: result = conf.arguments
@@ -172,7 +169,7 @@ proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
   of mm: result = $conf.selectedGC
   {.pop.}
 
-proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
+proc querySettingSeqImpl*(conf: ConfigRef, switch: BiggestInt): seq[string] =
   template copySeq(field: untyped): untyped =
     result = @[]
     for i in field: result.add i.string
@@ -193,6 +190,7 @@ proc registerAdditionalOps*(c: PCtx) =
 
   template wrapIterator(fqname: string, iter: untyped) =
     registerCallback c, fqname, proc(a: VmArgs) =
+      a.ctx.config.requireLocalConfig()
       setResult(a, toLit(toSeq(iter)))
 
 
@@ -202,6 +200,8 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult a, ret.toLit
 
   proc getProjectPathWrapper(a: VmArgs) =
+    if c.config.recordingConfig:
+      c.config.observeConfig(crSetting, $ord(projectPath), "", c.config.projectPath.string)
     setResult a, c.config.projectPath.string
 
   wrap1fMath(sqrt)
@@ -266,15 +266,24 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     systemop raiseDefect
     registerCallback c, "stdlib.staticos.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+      a.ctx.config.requireLocalConfig()
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     registerCallback c, "stdlib.staticos.staticDirExists", proc (a: VmArgs) {.nimcall.} =
+      a.ctx.config.requireLocalConfig()
       setResult(a, dirExists(getString(a, 0)))
     registerCallback c, "stdlib.staticos.staticFileExists", proc (a: VmArgs) {.nimcall.} =
+      a.ctx.config.requireLocalConfig()
       setResult(a, fileExists(getString(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
-      setResult(a, querySettingImpl(c.config, getInt(a, 0)))
+      let setting = getInt(a, 0)
+      let value = querySettingImpl(c.config, setting)
+      if c.config.recordingConfig: c.config.observeConfig(crSetting, $setting, "", value)
+      setResult(a, value)
     registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
-      setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
+      let setting = getInt(a, 0)
+      let values = querySettingSeqImpl(c.config, setting)
+      if c.config.recordingConfig: c.config.observeConfig(crSettingSeq, $setting, "", $values)
+      setResult(a, values)
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"
@@ -283,6 +292,7 @@ proc registerAdditionalOps*(c: PCtx) =
   macrosop getProjectPath
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
+    a.ctx.config.requireLocalConfig()
     setResult(a, getAppFilename())
 
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
@@ -351,11 +361,14 @@ proc registerAdditionalOps*(c: PCtx) =
     ## Note that `staticExec` can already do equal amount of damage so it's more
     ## of a semantic issue than a security issue.
     registerCallback c, "stdlib.ospaths2.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
+      a.ctx.config.requireLocalConfig()
       setResult(a, getCurrentDir())
     registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
+      a.ctx.config.requireLocalConfig()
       let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
     registerCallback c, "stdlib.times.getTimeImpl", proc (a: VmArgs) =
+      a.ctx.config.requireLocalConfig()
       let obj = a.getNode(0).typ.n
       setResult(a, times.getTime().toTimeLit(c, obj, a.currentLineInfo))
 

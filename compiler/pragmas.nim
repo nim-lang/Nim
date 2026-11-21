@@ -530,12 +530,14 @@ proc processDefine(c: PContext, n: PNode, sym: PSym) =
   if sym != nil and sym.kind == skConst:
     processDefineConst(c, n, sym, mGenericDefine)
   elif (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
+    c.config.requireLocalConfig()
     defineSymbol(c.config.symbols, n[1].ident.s)
   else:
     invalidPragma(c, n)
 
 proc processUndef(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
+    c.config.requireLocalConfig()
     undefSymbol(c.config.symbols, n[1].ident.s)
   else:
     invalidPragma(c, n)
@@ -552,6 +554,7 @@ proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
       if result.isEmpty: result = AbsoluteFile s
 
 proc processCompile(c: PContext, n: PNode) =
+  c.config.requireLocalConfig()
   ## This pragma can take two forms. The first is a simple file input:
   ##     {.compile: "file.c".}
   ## The second is a tuple where the second arg is the output name strutils formatter:
@@ -609,6 +612,7 @@ proc processCompile(c: PContext, n: PNode) =
     docompile(c, it, found, obj, customArgs)
 
 proc processLink(c: PContext, n: PNode) =
+  c.config.requireLocalConfig()
   let found = relativeFile(c, n, CC[c.config.cCompiler].objExt)
   extccomp.addExternalFileToLink(c.config, found)
   recordPragma(c, n, "link", found.string)

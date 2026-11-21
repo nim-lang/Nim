@@ -18,6 +18,7 @@ import ast, idents, syntaxes
 
 import nifstreams
 import "../dist/nimony/src/lib" / [bitabs, nifreader, nifbuilder]
+from icconfig import lockIcCache
 import icmodnames
 import icnifcore
 from ic/replayer import BackendActionsExt, BodyDepsExt
@@ -50,6 +51,7 @@ type
     config: ConfigRef
     linkArgsFile: string # the cache/project/output and program the link last wrote
     argsFile: string     # effective settings, stable within the configuration directory
+    variantsDir: string
     backendDir: string  # outputs for this backend and entry point
     nifler: string
     nodes: seq[Node]
@@ -67,7 +69,8 @@ type
                        # recorded as speculative (see pruneDeadSpeculative)
 
 proc toPair(c: DepContext; f: string): FilePair =
-  FilePair(nimFile: f, modname: moduleSuffix(f, cast[seq[string]](c.config.searchPaths)))
+  let path = c.config.canonicalInputPath(f)
+  FilePair(nimFile: path, modname: moduleSuffix(path, []))
 
 proc depsFile(c: DepContext; f: FilePair): string =
   getParsedCacheDir(c.config).string / f.modname & ".deps.nif"
@@ -753,12 +756,12 @@ proc collectIncludeNames(depsPath: string; names: var seq[string]) =
     else: discard
     t = next(s)
 
-proc entryStemBase(roots: seq[string]; name: string): (string, string) =
+proc entryStemBase(conf: ConfigRef; roots: seq[string]; name: string): (string, string) =
   ## Resolve include entry `name` to (deps-stem, base-name); ("","") if unfound.
   for r in roots:
     let p = r / name.addFileExt("nim")
     if fileExists(p):
-      return (moduleSuffix(p, []), splitFile(p).name)
+      return (moduleSuffix(conf.canonicalInputPath(p), []), splitFile(p).name)
   result = ("", "")
 
 proc includerSbifs*(conf: ConfigRef; targetFile: AbsoluteFile): seq[string] =
@@ -793,7 +796,7 @@ proc includerSbifs*(conf: ConfigRef; targetFile: AbsoluteFile): seq[string] =
     var names: seq[string] = @[]
     collectIncludeNames(depsPath, names)
     for n in names:
-      let (childStem, childBase) = entryStemBase(roots, n)
+      let (childStem, childBase) = entryStemBase(conf, roots, n)
       if childBase.len == 0: continue
       includedBy.mgetOrPut(childBase, @[]).add ownerStem
       stemBase[childStem] = childBase          # this child's stem -> its base name
@@ -1178,7 +1181,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "nimcache", "out", "o", "outdir", "usenimcache", "run", "r",
     "incremental", "ic", "symbolfiles", "genbif",
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
-    "icsemdir", "icmainsemdir", "icmainmodule",
+    "icsemdir", "icmainsemdir", "icmainmodule", "icvariants", "path", "p",
     "icbackendstage", "icbackendmodule", "ismainmodule",
     "help", "h", "fullhelp", "version", "v", "advanced"]
   var positionalArgs = 0
@@ -1194,49 +1197,42 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     while i < a.len and a[i] notin {':', '='}:
       name.add a[i]
       inc i
-    if normalize(name) notin notForwarded and a notin result:
+    if normalize(name) notin notForwarded:
       result.add a
 
-proc isSearchPathArg(arg: string): bool =
-  let first = if arg.startsWith("--"): 2 else: 1
-  let sep = arg.find({':', '='}, first)
-  result = sep >= first and normalize(arg[first ..< sep]) in ["path", "p"]
+proc configSignature(c: DepContext; forwarded: seq[string]; perModule = false): string =
+  ## The active build includes the complete configuration. Modules can look up
+  ## other builds with the same base and validate their own define/path reads.
+  ## Work from decoded settings, including those replayed from config.nims.
+  proc projected(sw, arg: string): bool =
+    # specialDefine mutates compiler options. icNoIfaceGate changes rule outputs.
+    if sw.normalize notin ["d", "define", "u", "undef"]: return false
+    let sep = arg.find({':', '='})
+    let name = (if sep < 0: arg else: arg[0..<sep]).normalize
+    name.len > 0 and name notin ["release", "danger", "quick", "nimquirky", "icnoifacegate"]
 
-proc configSignature(c: DepContext; forwardedArgs: seq[string]): string =
-  ## Effective settings choose a semantic/backend subdirectory. Paths identifying
-  ## the project/config snapshot do not affect its contents; resolved search paths
-  ## and the snapshot's effective settings do. Preserve lookup and switch order.
-  var content = ""
-  var seenPaths = initHashSet[string]()
-  for p in c.config.searchPaths:
-    if not seenPaths.containsOrIncl(p.string):
-      content.add "--path:" & p.string & "\n"
-  for a in forwardedArgs:
-    if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:") or
-        isSearchPathArg(a):
-      continue
-    content.add a & "\n"
-  if c.config.icPreparsedConfig.len > 0 and fileExists(c.config.icPreparsedConfig):
-    # Hash effective config settings, excluding the cache location and source
-    # file list. Different config.nims files can resolve to identical settings;
-    # their paths are only metadata for deciding when to refresh the snapshot.
-    # Search paths (including command-line paths) are already fingerprinted
-    # above in lookup order, keeping only their first occurrence. NimScript
-    # config chains can append redundant library paths; these do not change
-    # the effective settings. Keep other settings and switch order in the hash.
-    var normalized = ""
-    try:
-      for line in lines(c.config.icPreparsedConfig):
-        let entry = line.strip
-        if entry.startsWith("(nimcache ") or entry.startsWith("(sources ") or
-            entry == "(sources)" or entry.startsWith("(searchpaths ") or
-            entry == "(searchpaths)": continue
-        normalized.add line
-        normalized.add '\n'
-    except IOError, OSError:
-      normalized = c.config.icPreparsedConfig
-    content.add "config:" & $secureHash(normalized) & "\n"
-  result = content
+  var args: seq[string] = @[]
+  for a in forwarded:
+    if a.startsWith("--icproject:") or a.startsWith("--icPreparsedConfig:"): continue
+    let first = if a.startsWith("--"): 2 else: 1
+    let sep = a.find({':', '='}, first)
+    if perModule and sep >= first and projected(a[first..<sep], a[sep+1..^1]): continue
+    args.add a
+  var switches: seq[(string, string)] = @[]
+  for (sw, arg) in c.config.icConfigSwitches:
+    if not perModule or not projected(sw, arg): switches.add (sw, arg)
+  var cpp: seq[string] = @[]
+  for d in c.config.cppDefines: cpp.add d
+  cpp.sort()
+  var paths: seq[string] = @[]
+  if not perModule:
+    for p in c.config.searchPaths: paths.add p.string
+  # Escape sequence elements, including newlines in define values. Retain
+  # argument boundaries and precedence in both signatures.
+  result = $(args, switches, cpp, paths, c.config.lazyPaths, c.config.nimblePaths,
+             c.config.libpath.string, c.config.options,
+             c.config.globalOptions - harmlessOptions, c.config.features,
+             c.config.target.targetCPU, c.config.target.targetOS)
 
 proc configSignatureFile(c: DepContext): string =
   c.argsFile
@@ -1279,11 +1275,12 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
   b.addSymbolDef "nim_m"
   b.addStrLit getAppFilename()
   b.addStrLit "m"
+  b.addStrLit "--icVariants:" & c.variantsDir
   b.addStrLit "--nimcache:" & nimcache
   for a in semanticArgs(c.config): b.addStrLit a
   # Add search paths
-  for p in c.config.searchPaths:
-    b.addStrLit "--path:" & p.string
+  for i in countdown(c.config.searchPaths.high, 0):
+    b.addStrLit "--path:" & c.config.searchPaths[i].string
   for a in forwardedArgs:
     b.addStrLit a
   b.addTree "args"
@@ -1442,6 +1439,8 @@ proc generateFrontendBuildFile(c: DepContext; forwardedArgs: seq[string]): strin
       b.addTree "output"
       b.addStrLit c.semmedFile(c.nodes[m].files[0])
       b.endTree()
+      b.withTree "output":
+        b.addStrLit c.semDepsFile(c.nodes[m].files[0])
       if ifaceGate:
         b.addTree "output"
         b.addStrLit c.ifaceFile(c.nodes[m].files[0])
@@ -1671,8 +1670,8 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
   b.addStrLit "nifc"
   b.addStrLit "--nimcache:" & nimcache
   for a in semanticArgs(c.config): b.addStrLit a
-  for p in c.config.searchPaths:
-    b.addStrLit "--path:" & p.string
+  for i in countdown(c.config.searchPaths.high, 0):
+    b.addStrLit "--path:" & c.config.searchPaths[i].string
   for a in forwardedArgs:
     b.addStrLit a
   b.addTree "args"
@@ -1955,7 +1954,26 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
     inc nextNode
     # A deferred module was not semmed by the last round.
     if c.nodes[ni].deferred: continue
-    let deps = semDeps(c, c.nodes[ni].files[0])
+    let pair = c.nodes[ni].files[0]
+    let deps = semDeps(c, pair)
+    if (not afterRound or ni >= scheduledNodes) and deps.exists and
+        fileExists(c.semmedFile(pair)):
+      # Adding an older file earlier in the path can redirect even a generated
+      # import. No input mtime need change. Drop the stale discovery evidence
+      # before it can schedule a branch which will no longer be taken.
+      let savedPaths = c.config.lazyPaths
+      var changed = (deps.projectPath.len > 0 and deps.projectPath != c.config.projectPath.string) or
+        (deps.invocation.len > 0 and deps.invocation !=
+          invocationContext(c.config.projectFull.string, c.config.icPreparsedConfig))
+      for (query, path) in deps.lookups:
+        if c.config.resolveConfigPath(query) != path:
+          changed = true
+          break
+      c.config.lazyPaths = savedPaths
+      if changed:
+        removeFile(c.semmedFile(pair))
+        removeFile(c.semDepsFile(pair))
+        continue
     let confirmed = (afterRound and ni < scheduledNodes) or
       semDepsAreCurrent(c.nodes[ni], deps)
     if confirmed and c.nodes[ni].specDeps.len > 0 and
@@ -2043,14 +2061,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # Create nimcache directory; start from a clean one when its format
     # stamp is absent or outdated (see `icFormatVersion`)
     let cacheDir = getNimcacheDir(conf).string
-    createDir(cacheDir)
-    let versionFile = cacheDir & "/ic.version"
-    let stamp = if fileExists(versionFile): readFile(versionFile) else: ""
-    if stamp != icFormatVersion:
-      removeDir(cacheDir)
-      createDir(cacheDir)
-      writeFile(versionFile, icFormatVersion)
-
+    let lock = lockIcCache(cacheDir)
+    defer: close(lock)
     var c = DepContext(
       config: conf,
       linkArgsFile: cacheDir / "ic_link_args.txt",
@@ -2063,6 +2075,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
 
     let forwardedArgs = computeForwardedArgs(c)
     let signature = configSignature(c, forwardedArgs)
+    c.variantsDir = cacheDir / "modules" / $secureHash(configSignature(c, forwardedArgs, perModule = true))
     # Like Nimony, share source scans and imported semantics, while keeping each
     # program's backend outputs separate. Only the driver knows the config key;
     # children receive concrete input directories and an ordinary --nimcache.

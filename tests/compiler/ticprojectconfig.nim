@@ -68,7 +68,8 @@ try:
     """
 static: echo "shared module semchecked"
 const sharedValue {.intdefine.} = 42
-proc value*(): int = sharedValue
+const selectedValue = sharedValue
+proc value*(): int = selectedValue
 """,
   )
   writeFile(
@@ -206,7 +207,7 @@ echo orphanValue()
   for kind, file in walkDir(cache):
     if kind == pcFile:
       doAssert file.endsWith(".cfg.nif") or file.endsWith(".cfg.nif.args") or
-        file.extractFilename in ["ic.version", "ic_build_args.txt", "ic_link_args.txt"], file
+        file.extractFilename in ["ic.lock", "ic.version", "ic_build_args.txt", "ic_link_args.txt"], file
   let cached = artifacts(selected)
   build("examples/other.nim", "other 42", reuseShared = true)
   assertUnchanged(selected, cached)
@@ -332,13 +333,21 @@ when isMainModule: echo roleA, " ", roleB
   doAssert semanticCache() == beforeRerun
   build("demos/main.nim", "example 42")
 
-  # Distinct paths and lookup order still distinguish configurations.
+  # Adding or reordering a path which satisfies no lookup reuses shared.
   let demoConfig = dir / "demos" / "config.nims"
   let originalConfig = readFile(demoConfig)
   writeFile(demoConfig, originalConfig & "\nswitch(\"path\", \"../extra\")\n")
-  build("demos/main.nim", "example 42", rebuildShared = true)
+  build("demos/main.nim", "example 42", reuseShared = true)
   writeFile(demoConfig, "switch(\"path\", \"../extra\")\n" & originalConfig)
-  build("demos/main.nim", "example 42", rebuildShared = true)
+  build("demos/main.nim", "example 42", reuseShared = true)
+
+  # A shadowing file must change the importer even when both providers are
+  # already compiled and older than its current BIF.
+  writeFile(dir / "extra" / "shared.nim", "proc value*(): int = 99\n")
+  writeFile(demoConfig, originalConfig & "\nswitch(\"path\", \"../extra\")\n")
+  build("demos/main.nim", "example 99")
+  writeFile(demoConfig, "switch(\"path\", \"../extra\")\n" & originalConfig)
+  build("demos/main.nim", "example 42", reuseShared = true)
 
   # Ordered switches can override earlier values and must affect the signature.
   writeFile(demoConfig, originalConfig & "\n" &
@@ -348,7 +357,7 @@ when isMainModule: echo roleA, " ", roleB
   writeFile(demoConfig, originalConfig & "\n" &
     "switch(\"define\", \"sharedValue:44\")\n" &
     "switch(\"define\", \"sharedValue:43\")\n")
-  build("demos/main.nim", "example 43", rebuildShared = true)
+  build("demos/main.nim", "example 43", reuseShared = true)
   # Config validation must work even when interface cookies are disabled.
   build("examples/later.nim", "43", options = @["-d:icNoIfaceGate"])
 finally:

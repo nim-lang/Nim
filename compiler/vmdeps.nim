@@ -7,20 +7,23 @@
 #    distribution, for details about the copyright.
 #
 
+import "../dist/checksums/src/checksums" / sha1
 import ast, types, msgs, options, idents, lineinfos
 from pathutils import AbsoluteFile
 
-import std/[os, tables]
+import std/tables
 
 when defined(nimPreviewSlimSystem):
   import std/syncio
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
-    var filename = parentDir(toFullPath(conf, info)) / file
-    if not fileExists(filename):
-      filename = findFile(conf, file).string
+    let filename = resolveSlurp(conf, file, toFullPath(conf, info))
     result = readFile(filename)
+    if conf.groupReads != nil:
+      let hash = $secureHash(result)
+      if conf.icSourceInputs.mgetOrPut(filename, hash) != hash:
+        conf.requireLocalConfig()
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
     discard conf.fileInfoIdx(AbsoluteFile filename)

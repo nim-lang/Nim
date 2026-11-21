@@ -7,6 +7,8 @@ The cache uses Nimony-style subdirectories to share work at each stage:
 ```text
 nimcache/
   parsed/                              # source/dependency scans shared across settings
+  modules/<base settings hash>/         # per-group config variants and validation inputs
+  snapshots/                           # immutable config replay during a build
   configs/<effective settings hash>/
     sem/                               # imported-module semantics
       main/<entry-point suffix>/       # main module and its import cycle
@@ -15,8 +17,9 @@ nimcache/
 
 Only the driver computes the configuration hash. Children receive concrete
 semantic input directories and use `--nimcache` for their outputs. Equivalent
-settings share imported semantics; changing settings preserves the previous
-configuration for reuse. The main module's import cycle is kept separate because
+settings share imported semantics. A different configuration can reuse a
+semantic module after validating its observed defines, file lookups and
+dependencies. The main module's import cycle is kept separate because
 `isMainModule` can change those modules' semantics. Project configuration
 snapshots remain in the cache root.
 

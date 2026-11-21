@@ -22,9 +22,12 @@
 ## plain Nim values (config, ids, string lists), so it can coexist with the
 ## still-old-API `ast2nif.nim` during the migration.
 
+import "../dist/checksums/src/checksums" / sha1
 import std / [syncio, algorithm, tables]
 from std / os import removeFile, moveFile, getFileInfo
 import std / times
+from std/compilesettings import SingleValueSetting, MultipleValueSetting
+from std/strutils import contains, toLowerAscii
 import options, pathutils, typekeys
 import "../dist/nimony/src/lib" / [nifcore, nifcoreparse, nifreader, bif]
 
@@ -65,6 +68,33 @@ proc addUIntLit*(b: var IcBuilder; v: uint64) {.inline.} = b.buf.addUIntLit(v)
 proc addFloatLit*(b: var IcBuilder; v: float64) {.inline.} = b.buf.addFloatLit(v)
 proc addCharLit*(b: var IcBuilder; c: char) {.inline.} = b.buf.addCharLit(c)
 proc addDotToken*(b: var IcBuilder) {.inline.} = b.buf.addDotToken()
+
+proc sortedReads(reads: ConfigReads): seq[ConfigQuery] =
+  result = @[]
+  for q in reads.values.keys: result.add q
+  result.sort()
+
+proc configReadHash*(reads: ConfigReads): string =
+  ## Separate the identity of the observed inputs from the execution order
+  ## needed to reproduce lazy-path promotion when validating a candidate.
+  var state = newSha1State()
+  for q in sortedReads(reads):
+    state.update $(q.kind, q.name, q.origin, reads.values[q])
+  result = $SecureHash(state.finalize())
+
+proc writeConfigReads*(b: var IcBuilder; reads: ConfigReads) =
+  b.openTag "configreads"
+  b.addStrLit configReadHash(reads)
+  if reads.localOnly:
+    b.openTag "localonly"
+    b.closeTag()
+  for query in sortedReads(reads):
+    b.openTag($query.kind)
+    b.addStrLit query.name
+    b.addStrLit query.origin
+    b.addStrLit reads.values[query]
+    b.closeTag()
+  b.closeTag()
 
 proc lineInfo*(b: var IcBuilder; file: string; line, col: int32; comment = "") =
   ## Attach line info (+ optional `#comment#`) to the head just emitted. No-op
@@ -242,6 +272,8 @@ type
     ## A `.s.deps` sidecar written by `writeSemDeps`.
     exists*: bool                ## false: no sidecar (module not semmed yet)
     written*: Time               ## the sidecar's mtime
+    projectPath*, invocation*: string # only for modules observing these values
+    lookups*: seq[tuple[query: ConfigQuery, path: string]]
     imports*: seq[string]        ## the module's direct imports
     slurps*: seq[string]         ## files it read via `staticRead`/`slurp`
 
@@ -268,7 +300,24 @@ proc loadSemDeps*(path: string): SemDeps =
         result.imports.add strVal(c)
         inc c
       of TagLit:
-        if m.buf.tags.tagName(c.cursorTagId) == "slurps":
+        let tag = m.buf.tags.tagName(c.cursorTagId)
+        if tag in ["projectdir", "invocation"]:
+          c.into:
+            while c.hasMore:
+              if c.kind == StrLit:
+                if tag == "projectdir": result.projectPath = strVal(c)
+                else: result.invocation = strVal(c)
+              skip c
+        elif tag in ["crModule", "crFile", "crSlurp"]:
+          var fields: seq[string] = @[]
+          c.into:
+            while c.hasMore:
+              if c.kind == StrLit: fields.add strVal(c)
+              skip c
+          if fields.len == 3:
+            let kind = if tag == "crModule": crModule elif tag == "crFile": crFile else: crSlurp
+            result.lookups.add ((kind, fields[0], fields[1]), fields[2])
+        elif tag == "slurps":
           c.into:
             while c.hasMore:
               if c.kind == StrLit: result.slurps.add strVal(c)
@@ -278,7 +327,10 @@ proc loadSemDeps*(path: string): SemDeps =
       else:
         skip c
 
-proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]) =
+proc invocationContext*(project, snapshot: string): string =
+  $(project, snapshot)
+
+proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]; complete = true) =
   ## Stage 1 spike: the nifcore port of `ast2nif.writeSemDeps`. Serializes the
   ## module's resolved direct imports as `(semdeps "path" ... (slurps "file" ...))`.
   ## The `slurps` section lists the files `staticRead`/`slurp` read while semming
@@ -295,6 +347,31 @@ proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string
   dest.openTag "semdeps"
   for p in paths:
     dest.addStrLit p
+  if complete and config.moduleReads != nil:
+    var projectDir = false
+    var invocation = false
+    for query in config.moduleReads.order:
+      if query.kind == crSetting and query.name == $ord(SingleValueSetting.projectPath) or
+          query.kind == crPathSub and ("projectpath" in query.name.toLowerAscii or "projectdir" in query.name.toLowerAscii):
+        projectDir = true
+      if query.kind == crSetting and query.name == $ord(SingleValueSetting.commandLine) or
+          query.kind == crSettingSeq and query.name == $ord(MultipleValueSetting.commandArgs):
+        invocation = true
+      if query.kind in {crModule, crFile, crSlurp}:
+        let value = config.moduleReads.values[query]
+        dest.openTag($query.kind)
+        dest.addStrLit query.name
+        dest.addStrLit query.origin
+        dest.addStrLit value
+        dest.closeTag()
+    if projectDir:
+      dest.openTag "projectdir"
+      dest.addStrLit config.projectPath.string
+      dest.closeTag()
+    if invocation:
+      dest.openTag "invocation"
+      dest.addStrLit invocationContext(config.icProject, config.icPreparsedConfig)
+      dest.closeTag()
   if slurps.len > 0:
     dest.openTag "slurps"
     for f in slurps:

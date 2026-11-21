@@ -337,6 +337,9 @@ proc cyclicImportTargets(c: PContext; n: PNode): seq[FileIndex] =
   ## The modules that `n`'s top-level `import m {.cyclic.}` statements refer to.
   ## Only these are considered for a cycle group; an `import` produced by a
   ## macro or nested in a `when` is checked in order like any other statement.
+  let previousReads = c.config.moduleReads
+  c.config.moduleReads = c.moduleReads
+  defer: c.config.moduleReads = previousReads
   result = @[]
   for it in n:
     case it.kind
@@ -393,6 +396,9 @@ proc parseModuleFile(graph: ModuleGraph; fileIdx: FileIndex): PNode =
 proc openCycleMember(graph: ModuleGraph; fileIdx: FileIndex; fromModule: PSym): CycleMember =
   ## Like the start of `processPipelineModuleImpl`: the module of a cycle group
   ## gets its context and backend, but sem only runs once the whole group is known.
+  let previousReads = graph.config.moduleReads
+  if previousReads != nil: graph.config.moduleReads = ConfigReads()
+  defer: graph.config.moduleReads = previousReads
   let module = newModule(graph, fileIdx)
   if fileIdx == graph.config.projectMainIdx2: module.incl sfMainModule
   onProcessing(graph, fileIdx, "import", fromModule = fromModule)
@@ -471,6 +477,9 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   template withMember(m: var CycleMember; body: untyped) =
     # the owner stack is shared by all contexts and the last opened member
     # is on top of it:
+    let previousReads = graph.config.moduleReads
+    graph.config.moduleReads = m.ctx.moduleReads
+    defer: graph.config.moduleReads = previousReads
     pushOwner(m.ctx, m.module)
     graph.config.options = m.options
     graph.config.notes = m.notes
@@ -598,6 +607,11 @@ proc processPipelineModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator
   ## outermost activation is the whole frontend and nested modules are folded
   ## into it. Under `--ic:on` each `nim m` process compiles one module and the
   ## outermost activation is that module — which is the row §1.2 tabulates.
+  let previous = graph.config.moduleReads
+  if graph.config.cmd == cmdM or optGenBif in graph.config.globalOptions or
+      optCompress in graph.config.globalOptions:
+    graph.config.moduleReads = ConfigReads()
+  defer: graph.config.moduleReads = previous
   timedOutermost(tSemModule):
     result = processPipelineModuleImpl(graph, module, idgen, stream)
 
@@ -713,9 +727,14 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
             # the frontend. The same happens for an import the scanner deferred
             # because its `when` guard was undecidable before sem.
             for importer, deps in graph.importDeps.pairs:
+              # Loaded BIFs populate importDeps too. Only a module's own
+              # worker can publish its dependencies and configuration reads.
+              if graph.config.icProject.len > 0 and importer != graph.config.projectMainIdx and
+                  toFullPath(graph.config, importer) notin graph.config.icGroup:
+                continue
               var paths: seq[string] = @[]
               for f in deps: paths.add toFullPath(graph.config, f)
-              writeSemDeps(graph.config, importer.int32, paths)
+              writeSemDeps(graph.config, importer.int32, paths, complete = false)
             if graph.config.icProject.len > 0:
               # Run by the `nim ic` driver: this process cannot finish sem
               # without the import, but the import is recorded now, so the
