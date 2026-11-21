@@ -438,6 +438,22 @@ when defined(createNimHcr):
     # generic). The slot is handed out now and filled when the owner registers.
     return procSlot($module, $name)
 
+  proc layoutChanged(oldSize: int, oldKey: cstring, size: int, key: cstring): bool =
+    ## Whether the memory kept from before, laid out for the old type, does not
+    ## fit the type the new code asks for. The compiler's layout hash is "" for
+    ## the runtime's own globals, whose size may change.
+    oldKey.len > 0 and (oldSize != size or oldKey != key)
+
+  proc stopForChangedLayout(kind, module, name: string,
+                            oldSize, size: int) {.noreturn.} =
+    ## The new code would read the memory with the new layout. Not an
+    ## exception: the reload has already started and its state cannot be
+    ## handed back.
+    stderr.writeLine "hot code reloading: the type of ", kind, " '", name,
+      "' in module '", module, "' changed (size ", oldSize, " -> ", size,
+      "); reloading cannot keep its value, restart the program"
+    quit(QuitFailure)
+
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
                           size: Natural,
@@ -457,14 +473,8 @@ when defined(createNimHcr):
 
     modules[module].globals.withValue(name, global):
       trace "    update global: ", name
-      if global.typeKey.len > 0 and (global.size != size or global.typeKey != typeKey):
-        # The memory kept from before was laid out for the old type; the new
-        # code would read it with the new layout. Not an exception: the reload
-        # has already started and its state cannot be handed back.
-        stderr.writeLine "hot code reloading: the type of global '", name,
-          "' in module '", module, "' changed (size ", global.size, " -> ", size,
-          "); reloading cannot keep its value, restart the program"
-        quit(QuitFailure)
+      if layoutChanged(global.size, cstring global.typeKey, size, cstring typeKey):
+        stopForChangedLayout("global", module, name, global.size, size)
       outPtr[] = global.p
       global.gen = generation
       global.markerProc = gcMarker
