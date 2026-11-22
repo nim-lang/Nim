@@ -127,6 +127,7 @@ type
 
   BModuleList* = ref object of RootObj
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Builder
+    dynLibExternalNames*: Table[pointer, Rope] # original names before backend rewriting
     icExtensionLoaders*: array['0'..'9', seq[string]]
     mapping*: Rope             # the generated mapping file (if requested)
     mods*: seq[BModule]     # list of all compiled modules

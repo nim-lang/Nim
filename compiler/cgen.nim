@@ -1417,10 +1417,18 @@ proc addDynLibVar(m: BModule; sym: PSym; typ: Snippet) =
   else:
     m.s[cfsVars].addVar(name = sym.loc.snippet, typ = typ)
 
+proc dynLibExternalName(m: BModule, sym: PSym): Rope =
+  # Symbols are shared by translation units in a batch. Their backend name is
+  # rewritten to the pointer name after the first unit generates the import.
+  let key = cast[pointer](sym)
+  if key notin m.g.dynLibExternalNames:
+    m.g.dynLibExternalNames[key] = sym.loc.snippet
+  result = m.g.dynLibExternalNames[key]
+
 proc symInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   let isCall = isGetProcAddr(lib)
-  var extname = sym.loc.snippet
+  let extname = dynLibExternalName(m, sym)
   let libName = if not isCall: loadDynamicLib(m, lib) else: ""
   var tmp = mangleDynLibProc(m, sym)
   let deferredIc = m.config.cmd == cmdNifC and isDeferredDynlib(sym)
@@ -1481,7 +1489,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
 
 proc varInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
-  var extname = sym.loc.snippet
+  let extname = dynLibExternalName(m, sym)
   let libName = loadDynamicLib(m, lib)
   incl(sym, lfIndirect)
   var tmp = mangleDynLibProc(m, sym)
