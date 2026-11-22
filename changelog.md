@@ -278,6 +278,12 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- The new switch `--reportLargeStackObjects:N` makes the C/C++ backends report
+  every local variable or compiler temporary that occupies at least `N` bytes
+  of stack space, via the new warning `LargeStackObject`. Combined with
+  `--warningAsError:LargeStackObject` it turns an accidental stack copy of a
+  huge object into a compile error.
+
 - Hot code reloading no longer keeps a global variable's memory when the
   global's type changed: the old memory was read with the new layout. Such a
   reload now stops the program with a message naming the global.
@@ -327,6 +333,10 @@ parameter and result types, not just their source-level shape. Use
 - Added `--raw` flag when generating JSON docs to not render markup.
 - Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
 - Added `--styleCheck:warning` flag to treat style check violations as warnings.
+- `nim ic` shows a single `[NN%]` progress line (frontend 0..50%, backend
+  51..100%, ending in `[100%] done`) instead of the per-module `.` and `CC:`
+  output when stdout is a terminal and `--verbosity` is 1 (the default).
+  Warnings and errors are still shown.
 
 ## Documentation changes
 

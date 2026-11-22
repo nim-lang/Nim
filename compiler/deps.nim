@@ -11,6 +11,7 @@
 ## This enables incremental and parallel compilation using the `m` switch.
 
 import std / [os, tables, sets, times, osproc, algorithm, strtabs, strutils, syncio]
+from std / terminal import isatty
 from "../dist/checksums/src/checksums/sha1" import secureHash, secureHashFile, `$`
 import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
@@ -2116,6 +2117,30 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     )
 
     let forwardedArgs = computeForwardedArgs(c)
+
+    # Progress: like Nimony, nifmake draws one `[NN%]` line for the whole
+    # build. The frontend owns 0..50%, the backend 51..100% and its run
+    # (`--done`) closes the line with `[100%] done`. A discovery round after
+    # the first one re-runs only the few modules that stopped for a macro
+    # generated import; it stays at 50% so the bar never goes backwards.
+    # Only on a terminal at the default verbosity (`--verbosity:2+` wants to
+    # see each command) and not for `nim track`, an IDE query. While the bar
+    # is up, the driver's own per-round hints and the children's per-module
+    # hints are silenced, see `IcProgressEnv`.
+    let progress = not frontendOnly and conf.verbosity == 1 and
+      optHints in conf.options and isatty(stdout) and findNifmake().len > 0
+    const frontendHi = 50
+    let backendProgress = if progress: " --done:51,100" else: ""
+    let savedNotes = (conf.notes, conf.mainPackageNotes, conf.foreignPackageNotes)
+    if progress:
+      putEnv(IcProgressEnv, "1")
+      setNoteDefaults(conf, hintSuccess, false)
+      setNoteDefaults(conf, hintExecuting, false)
+    defer:
+      if progress:
+        delEnv(IcProgressEnv)
+        (conf.notes, conf.mainPackageNotes, conf.foreignPackageNotes) = savedNotes
+
     let signature = configSignature(c, forwardedArgs)
     let base = $secureHash(configSignature(c, forwardedArgs, perModule = true))
     c.variantsDir = cacheDir / "modules" / base
@@ -2249,6 +2274,7 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # How many modules were still unsemmed after the previous round that
     # discovered nothing; see the rescheduling below.
     var lastPending = high(int)
+    var round = 0
     while true:
       let buildFile = generateFrontendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & buildFile)
@@ -2265,7 +2291,13 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
           rawMessage(conf, hintSuccess, "generated: " & backendFile)
           rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
         return
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
+      let frontendLo = if round == 0: 0 else: frontendHi
+      let frontendProgress =
+        if progress: " --progress:" & $frontendLo & ":" & $frontendHi
+        else: ""
+      inc round
+      let cmd = quoteShell(nifmake) & " run" & parallel & frontendProgress & " " &
+        quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       # A child that met an import no rule produced yet records it in its
@@ -2350,7 +2382,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         writeFile(marker & ".tmp", view)
         moveFile(marker & ".tmp", marker)
       rawMessage(conf, hintSuccess, "generated: " & backendFile)
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)
+      let cmd = quoteShell(nifmake) & " run" & parallel & backendProgress & " " &
+        quoteShell(backendFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       if exitCode != 0:
