@@ -12,6 +12,7 @@ template processTest(t, x: untyped) =
 
 when not defined(windows):
   import os, posix, nativesockets
+  import std/[monotimes, times]
 
   when ioselSupportedPlatform:
     import osproc
@@ -59,10 +60,20 @@ when not defined(windows):
 
     freeAddrInfo(aiList)
 
-    # make sure both sockets are selected
-    var nevs = 0
-    while nevs < 2:
-      nevs += selector.select(100).len
+    # A writable client can be returned repeatedly before the listener is ready.
+    var listenerReady, clientReady: bool
+    let deadline = getMonoTime() + initDuration(seconds = 2)
+    while not (listenerReady and clientReady):
+      let remaining = (deadline - getMonoTime()).inMilliseconds
+      assert remaining > 0, "timed out waiting for socket readiness"
+      for key in selector.select(int(remaining)):
+        if key.fd == server_socket.int and Event.Read in key.events:
+          listenerReady = true
+        if key.fd == client_socket.int and Event.Write in key.events:
+          clientReady = true
+    let connectError = getSockOptInt(client_socket, int(SOL_SOCKET), int(SO_ERROR))
+    if connectError != 0:
+      raiseOSError(OSErrorCode(connectError))
 
     var sockAddress: SockAddr
     var addrLen = sizeof(sockAddress).Socklen
