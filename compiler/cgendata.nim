@@ -173,6 +173,7 @@ type
     cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
+    dynLibNames*: Table[pointer, Rope] # library handles local to this C module
     typeCache*: TypeCache     # cache the generated types
     typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
                               # would be ideal but for some reason enums

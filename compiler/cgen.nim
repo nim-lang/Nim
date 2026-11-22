@@ -1316,13 +1316,12 @@ proc isGetProcAddr(lib: PLib): bool =
   result = n.kind in nkCallKinds and n.typ != nil and
     n.typ.kind in {tyPointer, tyProc}
 
-proc loadDynamicLib(m: BModule, lib: PLib) =
+proc loadDynamicLib(m: BModule, lib: PLib): Rope =
   assert(lib != nil)
-  if not lib.generated:
-    lib.generated = true
+  let key = cast[pointer](lib)
+  if key notin m.dynLibNames:
     var tmp = getTempName(m)
-    assert(lib.name == "")
-    lib.name = tmp # BUGFIX: cgsym has awful side-effects
+    m.dynLibNames[key] = tmp # Record before cgsym, which has side effects
     let loadFn = cgsymValue(m, "nimLoadLibrary")
     let loadErrorFn = cgsymValue(m, "nimLoadLibraryError")
     m.s[cfsVars].addVar(Global, name = tmp, typ = CPointer)
@@ -1371,7 +1370,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       m.s[cfsDynLibInit].addSingleIfStmt(cOp(Not, tmp)):
         m.s[cfsDynLibInit].addCallStmt(loadErrorFn, rd)
 
-  if lib.name == "": internalError(m.config, "loadDynamicLib")
+  result = m.dynLibNames[key]
 
 proc isDeferredDynlib(sym: PSym): bool =
   result = false
@@ -1422,7 +1421,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   let isCall = isGetProcAddr(lib)
   var extname = sym.loc.snippet
-  if not isCall: loadDynamicLib(m, lib)
+  let libName = if not isCall: loadDynamicLib(m, lib) else: ""
   var tmp = mangleDynLibProc(m, sym)
   let deferredIc = m.config.cmd == cmdNifC and isDeferredDynlib(sym)
   backendEnsureMutable sym
@@ -1467,7 +1466,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     m.s[cfsDynLibInit].addAssignment(tmp,
       cCast(getTypeDesc(m, sym.typ, dkVar),
         cCall(fn,
-          lib.name,
+          libName,
           makeCString($extname))))
   let typ = getTypeDesc(m, sym.loc.t, dkVar)
   if deferredIc:
@@ -1483,7 +1482,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
 proc varInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   var extname = sym.loc.snippet
-  loadDynamicLib(m, lib)
+  let libName = loadDynamicLib(m, lib)
   incl(sym, lfIndirect)
   var tmp = mangleDynLibProc(m, sym)
   backendEnsureMutable sym
@@ -1495,7 +1494,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   m.s[cfsDynLibInit].addAssignment(tmp,
     cCast(t,
       cCall(fn,
-        lib.name,
+        libName,
         makeCString($extname))))
   addDynLibVar(m, sym, t)
 
