@@ -20,7 +20,7 @@ when not defined(windows):
   writeLine(stdout, u.release)
   writeLine(stdout, u.machine)
 
-  when not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
+  when declared(posix.mq_open):
     block:
       type Message = object
         value: int
