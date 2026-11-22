@@ -6,7 +6,7 @@ import std/[assertions, os, osproc, strutils, tables, tempfiles, times]
 from "../../compiler/icmodnames" import moduleSuffix
 
 const nim = getCurrentCompilerExe()
-let dir = createTempDir("nim_ic_backend_config_", "")
+let dir = expandFilename(createTempDir("nim_ic_backend_config_", ""))
 let cache = dir / "cache"
 let exe = dir / "app".addFileExt(ExeExt)
 let src = dir / "main.nim"

@@ -8,7 +8,7 @@ import "../../dist/nimony/src/lib/nifcore"
 from "../../dist/nimony/src/lib/bif" import load
 
 const nim = getCurrentCompilerExe()
-let dir = createTempDir("nim_ic_module_config_", "")
+let dir = expandFilename(createTempDir("nim_ic_module_config_", ""))
 let cache = dir / "cache"
 let src = dir / "main.nim"
 let exe = dir / "app".addFileExt(ExeExt)
