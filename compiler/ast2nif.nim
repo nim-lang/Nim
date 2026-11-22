@@ -275,7 +275,7 @@ type
                          # so two `@bk` types sharing an item but differing in kind (e.g. `int`
                          # and `typedesc[int]`, both item 12) are DISTINCT defs — keying by item
                          # alone deduped the second to a dangling `SymUse` (`symbol has no offset`).
-    emittedBackendSyms: HashSet[int32]   # backend-local sym items already def'd this module
+    emittedBackendSyms: HashSet[(string, int32)] # (name, serialized disambiguator)
     lowering: bool  # serializing the `lower` stage's whole-module `.t.nif`
     emittedFieldSyms: HashSet[ItemId]    # lowering: derived env-field syms already def'd
     inTypeReclist: int   # >0 while writing a type's OWN reclist: fields must be SELF-CONTAINED
@@ -1225,7 +1225,9 @@ proc writeSym(w: var Writer; dest: var IcBuilder; sym: PSym) =
   elif sym.itemId.isBackendMinted:
     # Process-local backend sym (closure env field / hidden `:env` param): emit a
     # MODULE-LOCAL `@bk` def the first time, reference it after. Per-Writer dedup.
-    if not w.emittedBackendSyms.containsOrIncl(sym.itemId.item):
+    # Different batch members can reuse item numbers. Match the name written
+    # by toNifSymName, including a hook's content-derived disambiguator.
+    if not w.emittedBackendSyms.containsOrIncl((sym.name.s, backendMintedDisamb(sym))):
       writeSymDef(w, dest, sym)
     else:
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
@@ -1262,7 +1264,8 @@ proc writeSymNode(w: var Writer; dest: var IcBuilder; n: PNode; sym: PSym) =
   let isField = sym.kindImpl == skField
   let wantDef =
     if isField: fieldDefHere(w, sym)  # def only inside the owning reclist (see fieldDefHere)
-    elif sym.itemId.isBackendMinted: not w.emittedBackendSyms.containsOrIncl(sym.itemId.item)
+    elif sym.itemId.isBackendMinted:
+      not w.emittedBackendSyms.containsOrIncl((sym.name.s, backendMintedDisamb(sym)))
     else: shouldWriteSymDef(w, sym)
   if wantDef:
     if not sym.itemId.isBackendMinted and not isField: sym.state = Sealed
