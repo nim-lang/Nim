@@ -168,7 +168,7 @@ proc repr*[T](x: ref T | ptr T): string {.noSideEffect, raises: [].} =
   if isNil(x): return "nil"
   when isIncompleteStruct(T):
     # An opaque foreign struct cannot be passed by value.
-    result = repr(cast[pointer](x))
+    result = $typeof(x) & "()"
   elif T is object:
     result = $typeof(x)
     reprObject(result, x[])

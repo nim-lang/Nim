@@ -49,8 +49,8 @@ var a: File
 echo repr a
 
 # bug #18355
-doAssert repr(stdout) == repr(cast[pointer](stdout))
-doAssert repr((file: stdout)) == "(file: " & repr(cast[pointer](stdout)) & ")"
+doAssert repr(stdout) == $typeof(stdout) & "()"
+doAssert repr((file: stdout)) == "(file: " & $typeof(stdout) & "())"
 
 # bug 13872
 
