@@ -45,9 +45,12 @@ proc semanticCache(): Table[string, Time] =
 proc activeCache(): string =
   cache / "configs" / $secureHash(readFile(cache / "ic_build_args.txt"))
 
+proc activeBackend(): string =
+  readFile(cache / "ic_link_args.txt").splitLines[0]
+
 proc artifacts(path: string): Table[string, Time] =
   for file in walkDirRec(path):
-    if not file.endsWith(".build.nif"):
+    if not file.endsWith(".build.nif") and file.extractFilename != "link.reads":
       result[file] = getLastModificationTime(file)
 
 proc assertUnchanged(path: string; before: Table[string, Time]) =
@@ -200,6 +203,7 @@ echo orphanValue()
   for file in walkDirRec(selected):
     doAssert not file.endsWith(".p.nif"), file
     if file.endsWith(".s.bif"): inc semmed
+  for file in walkDirRec(activeBackend()):
     if file.endsWith(".t.bif"): inc lowered
     if file.endsWith(".nim.c"): inc generated
     if file.endsWith(".o"): inc objects
@@ -217,7 +221,7 @@ echo orphanValue()
   build("tests/main.nim", "tests 42", reuseShared = true)
   build("examples/main.nim", "example 42", reuseShared = true)
   assertUnchanged(selected, cached)
-  let exampleBackend = artifacts(activeCache() / "backend")
+  let exampleBackend = artifacts(activeBackend().parentDir)
 
   # Equivalent settings can select different entry points while overwriting the
   # same executable. Returning to either program must relink its cached code.
@@ -225,9 +229,9 @@ echo orphanValue()
   for file, modified in exampleBackend:
     doAssert getLastModificationTime(file) == modified, file & " was rebuilt"
   build("examples/main.nim", "example 42", reuseShared = true)
-  let bothBackends = artifacts(activeCache() / "backend")
+  let bothBackends = artifacts(activeBackend().parentDir)
   build("examples/second.nim", "second 42", reuseShared = true)
-  assertUnchanged(activeCache() / "backend", bothBackends)
+  assertUnchanged(activeBackend().parentDir, bothBackends)
   let secondProgram = readFile(binary)
   let otherOutput = dir / "otherprog".addFileExt(ExeExt)
   build("examples/main.nim", "example 42", reuseShared = true, output = otherOutput)

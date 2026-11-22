@@ -2446,7 +2446,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # text `.s.nif` twin — writing two files per module only slows the build; debug
   # a `.bif` via `tools/bif2nif`). Re-homed into a private fresh pool
   # so the file holds only THIS module's literals.
-  storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath))
+  storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath),
+                 if config.cmd == cmdM and config.icVariants.len > 0: bifPath & ".sha1" else: "")
   if not isDefined(config, "icNoIfaceGate"):
     var flat = flattenForCookie(dest)
     let ifaceHex = writeIfaceCookie(config, thisModule, flat)

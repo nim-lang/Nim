@@ -111,8 +111,11 @@ proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
 
   # Note: We encode ".." specially as "@d" to avoid issues with changeFileExt
   # which would misinterpret ".." as "name.ext" and strip the second part.
-  prefix & best.multiReplace(
+  result = prefix & best.multiReplace(
     {"..": "@d", $os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
+
+  if conf.cmd == cmdNifC and conf.recordingConfig:
+    conf.observeConfig(crMangledPath, path.string, "", result)
 
 proc demangleModuleName*(path: string): string =
   ## Demangle a relative module path.

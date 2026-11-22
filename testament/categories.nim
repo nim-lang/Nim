@@ -882,7 +882,7 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         for p in changedPaths(snap, cleanSnap):
           let inactiveConfig = p.startsWith("configs" & DirSep) and
             not p.startsWith(activePrefix)
-          let inactiveBackend = p.startsWith(activePrefix / "backend" & DirSep) and
+          let inactiveBackend = p.startsWith("backends" & DirSep) and
             not p.startsWith(backendPrefix)
           let inactiveMain = p.startsWith(activePrefix / "sem" / "main" & DirSep) and
             not p.startsWith(mainPrefix)

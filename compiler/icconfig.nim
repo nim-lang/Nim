@@ -44,6 +44,14 @@ const
     ## by an older compiler rejects a stale artifact and falls back to normal
     ## config loading instead of replaying a format it cannot parse.
 
+proc backendReadFile*(dir, stage: string; members: openArray[string]): string =
+  # A batch can omit its siblings from its discovered body dependencies.
+  # Changing its membership/order must produce a new rule output.
+  let key = if members.len == 0: ""
+            elif members.len == 1: members[0] & "."
+            else: $secureHash($members) & "."
+  dir / (key & stage & ".reads")
+
 proc writeIcConfig*(conf: ConfigRef; outfile: string) =
   ## Serialise the resolved config (the config-file switches recorded during
   ## `loadConfigs`, the resolved `cppDefines`/`searchPaths`, the nimcache dir, and

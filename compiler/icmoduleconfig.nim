@@ -13,7 +13,9 @@ import "../dist/checksums/src/checksums" / sha1
 import std/[algorithm, intsets, json, os, sets, strtabs, strutils, syncio, tables, times]
 from std/compilesettings import SingleValueSetting, MultipleValueSetting
 import options, pathutils, modulegraphs, typekeys, icmodnames
+from icconfig import backendReadFile
 from icnifcore import configReadHash
+from modulepaths import mangleModuleName
 from vm import querySettingImpl, querySettingSeqImpl
 
 type
@@ -53,18 +55,30 @@ proc outputFiles(conf: ConfigRef; members: seq[string]): seq[string] =
   let gates = not conf.isDefined("icNoIfaceGate")
   for suffix in members:
     result.add suffix & ".s.bif"
+    result.add suffix & ".s.bif.sha1"
     result.add suffix & ".s.deps.bif"
     if gates:
       for ext in [".iface.bif", ".impl.bif", ".edges.bif"]: result.add suffix & ext
 
+proc linkInputs(conf: ConfigRef): string =
+  # Config and command-line --compile/--link are processed before the stage.
+  # In particular, --path can change which external C file --compile found.
+  var files: seq[(string, string, string)] = @[]
+  for f in conf.toCompile: files.add (f.cname.string, f.obj.string, f.customArgs)
+  $(files, conf.externalToLink)
+
 proc matches(conf: ConfigRef; q: Observation): bool =
   let value = case q.kind
+    of crCompileDate: options.getDateStr()
+    of crCompileTime: options.getClockStr()
+    of crLinkInputs: linkInputs(conf)
     of crDefined: $conf.isDefined(q.name)
     of crValue:
       if not conf.symbols.hasKey(q.name): return false
       conf.symbols[q.name]
     of crModule, crFile, crSlurp: conf.resolveConfigPath((q.kind, q.name, q.origin))
     of crPathSub: conf.pathSubs(q.name, q.origin)
+    of crMangledPath: conf.mangleModuleName(AbsoluteFile(q.name))
     of crRelativePath: conf.getRelativePathFromConfigPath(AbsoluteFile(q.name), q.origin == "true").string
     of crSetting:
       let n = parseInt(q.name)
@@ -76,6 +90,59 @@ proc matches(conf: ConfigRef; q: Observation): bool =
       $querySettingSeqImpl(conf, n)
   result = value == q.value
 
+proc backendReadFile(conf: ConfigRef): string =
+  backendReadFile(conf.getNimcacheDir.string, conf.icBackendStage, conf.icBackendModules)
+
+proc startBackendReads*(conf: ConfigRef) =
+  # A missing output makes nifmake retry even if the process was interrupted
+  # after updating a subset of its artifacts.
+  removeFile(conf.backendReadFile)
+  conf.moduleReads = ConfigReads()
+  if conf.icBackendStage == "link": conf.observeConfig(crLinkInputs, "", "", linkInputs(conf))
+
+proc observations(reads: ConfigReads): seq[Observation] =
+  result = @[]
+  for q in reads.order:
+    result.add Observation(kind: q.kind, name: q.name, origin: q.origin, value: reads.values[q])
+
+proc checkedRecord(body: string): string =
+  $secureHash(body) & "\n" & body
+
+proc readRecord(file: string): string =
+  let bytes = readFile(file)
+  if bytes.len <= 40 or bytes[40] != '\n': return ""
+  result = bytes[41..^1]
+  if $secureHash(result) != bytes[0..<40]: result.setLen(0)
+
+proc finishBackendReads*(conf: ConfigRef) =
+  let reads = conf.moduleReads
+  conf.moduleReads = nil
+  if conf.errorCounter != 0: return
+  let body = $(%observations(reads))
+  let record = if reads.localOnly: "local" else: checkedRecord(body)
+  let file = conf.backendReadFile
+  writeFile(file & ".tmp", record)
+  moveFile(file & ".tmp", file)
+
+proc validateBackendReads*(conf: ConfigRef) =
+  # Runs under nifc's own replayed configuration, including its compiler/OS
+  # defines. Delete only mismatched outputs before nifmake inspects mtimes.
+  for file in walkFiles(conf.getNimcacheDir.string / "*.reads"):
+    let savedPaths = conf.lazyPaths
+    var valid = false
+    try:
+      let body = readRecord(file)
+      if body.len > 0:
+        valid = true
+        for q in parseJson(body).to(seq[Observation]):
+          if not matches(conf, q):
+            valid = false
+            break
+    except CatchableError:
+      valid = false
+    finally: conf.lazyPaths = savedPaths
+    if not valid: removeFile(file)
+
 proc digest(path: string): string = $secureHashFile(path)
 
 proc dependencyFile(conf: ConfigRef; name: string): string =
@@ -84,11 +151,8 @@ proc dependencyFile(conf: ConfigRef; name: string): string =
   conf.semanticFile(name[0..<i], name[i..^1]).string
 
 proc restore(conf: ConfigRef; manifest: string; outputs: seq[string]): bool =
-  let bytes = readFile(manifest)
-  let split = bytes.find('\n')
-  if split != 40: return false
-  let body = bytes[split+1..^1]
-  if $secureHash(body) != bytes[0..<split]: return false
+  let body = readRecord(manifest)
+  if body.len == 0: return false
   let v = parseJson(body).to(Variant)
   if v.outputs.len != outputs.len or v.sources.len == 0: return false
   # findFile can promote a lazy path. Probe using the original lookup order
@@ -103,11 +167,9 @@ proc restore(conf: ConfigRef; manifest: string; outputs: seq[string]): bool =
     if digest(conf.dependencyFile(f.name)) != f.digest: return false
   let dest = conf.getNimcacheDir.string
   if v.directory == dest: return false
-  # Hard-link immutable semantic BIFs into a cold backend view. For an
-  # existing backend or a full-BIF dependency edge, a recovered output must
-  # have a fresh timestamp so a newer consumer cannot silently stay stale.
-  let linkBifs = not conf.isDefined("icNoIfaceGate") and
-    not dirExists(conf.icSemDir.string.parentDir / "backend")
+  # Backend freshness uses semantic content fingerprints. Full-BIF edges
+  # within the frontend itself still need a fresh timestamp on recovery.
+  let linkBifs = not conf.isDefined("icNoIfaceGate")
   # Stage and check every output before publishing the group.
   var staged: seq[string] = @[]
   defer:
@@ -153,10 +215,7 @@ proc publishModuleConfig*(graph: ModuleGraph) =
     let group = members(conf)
     let dir = groupDirectory(conf)
     var v = Variant(directory: conf.getNimcacheDir.string)
-    for query in reads.order:
-      let value = reads.values[query]
-      v.queries.add Observation(kind: query.kind, name: query.name,
-                                origin: query.origin, value: value)
+    v.queries = observations(reads)
     for path, hash in conf.icSourceInputs:
       v.sources.add Input(name: path, digest: hash)
     var needsImpl = initHashSet[string]()
@@ -177,7 +236,7 @@ proc publishModuleConfig*(graph: ModuleGraph) =
     let tmp = file & ".tmp." & $getCurrentProcessId()
     try:
       let body = $(%v)
-      let record = $secureHash(body) & "\n" & body
+      let record = checkedRecord(body)
       if fileExists(file) and readFile(file) == record: return
       writeFile(tmp, record)
       moveFile(tmp, file)

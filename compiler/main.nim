@@ -149,8 +149,13 @@ proc commandNifC(graph: ModuleGraph) =
     if not extccomp.ccHasSaneOverflow(conf):
       conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-    # Use the NIF backend to generate C code
+    if conf.icBackendStage == "validate":
+      validateBackendReads(conf)
+      return
+    let trace = not conf.icSemDir.isEmpty and conf.icBackendStage in ["lower", "cg", "merge", "emit", "link"]
+    if trace: startBackendReads(conf)
     nifbackend.generateCode(graph, conf.projectMainIdx)
+    if trace: finishBackendReads(conf)
   else:
     rawMessage(graph.config, errGenerated, "NIF backend not available during bootstrap build")
 

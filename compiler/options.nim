@@ -30,7 +30,8 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "53"
+  icFormatVersion* = "54"
+    ## v54: shared backend workspaces and per-stage configuration inputs.
     ## v53: semantic BIFs record module configuration observations.
     ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
@@ -423,7 +424,7 @@ type
 
   ConfigReadKind* = enum
     crDefined, crValue, crModule, crFile, crSlurp, crPathSub, crRelativePath, crSetting,
-    crSettingSeq
+    crSettingSeq, crMangledPath, crLinkInputs, crCompileDate, crCompileTime
   ConfigQuery* = tuple[kind: ConfigReadKind, name, origin: string]
   ConfigReads* = ref object
     values*: OrderedTable[ConfigQuery, string]

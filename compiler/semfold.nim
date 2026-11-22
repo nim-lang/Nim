@@ -614,11 +614,13 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
                      else: sfMainModule in m.flags
         result = newIntNodeT(toInt128(ord(isMain)), n, idgen, g)
       of mCompileDate:
-        g.config.requireLocalConfig()
-        result = newStrNodeT(getDateStr(), n, g)
+        let date = getDateStr()
+        if g.config.recordingConfig: g.config.observeConfig(crCompileDate, "", "", date)
+        result = newStrNodeT(date, n, g)
       of mCompileTime:
-        g.config.requireLocalConfig()
-        result = newStrNodeT(getClockStr(), n, g)
+        let time = getClockStr()
+        if g.config.recordingConfig: g.config.observeConfig(crCompileTime, "", "", time)
+        result = newStrNodeT(time, n, g)
       of mCpuEndian: result = newIntNodeT(toInt128(ord(CPU[g.config.target.targetCPU].endian)), n, idgen, g)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.targetOS].name), n, g)
       of mHostCPU: result = newStrNodeT(platform.CPU[g.config.target.targetCPU].name.toLowerAscii, n, g)

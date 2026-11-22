@@ -12,7 +12,7 @@ nimcache/
   configs/<effective settings hash>/
     sem/                               # imported-module semantics
       main/<entry-point suffix>/       # main module and its import cycle
-    backend/<backend>/<entry-point suffix>/
+  backends/<base settings hash>/<backend>/<entry-point suffix>/
 ```
 
 Only the driver computes the configuration hash. Children receive concrete
@@ -26,8 +26,14 @@ snapshots remain in the cache root.
 The metamorphic clean-cache comparison checks the active program's outputs and
 shared files required by the clean build. No-op checks cover every cached file.
 
-Switching configurations, entry points, or output paths invalidates the final
-link so an executable outside the cache is restored from the selected artifacts.
+Backend workspaces are isolated by base settings, backend and entry point. Stage
+workers validate their configuration reads before checking freshness. An invalid
+or local-only record causes its stage to run again. Semantic BIF and interface content
+fingerprints detect a changed semantic view, including restored views. Stage
+inputs include lowered modules and body dependencies, generated artifacts and
+merge decisions. The link rule also tracks compile/link actions and external
+inputs. Switching configurations, entry points, or output paths can invalidate
+the final link so the selected executable is restored outside the cache.
 
 ## The metamorphic tests are expensive, and look hung when they are not
 

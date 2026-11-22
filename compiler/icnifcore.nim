@@ -24,7 +24,7 @@
 
 import "../dist/checksums/src/checksums" / sha1
 import std / [syncio, algorithm, tables]
-from std / os import removeFile, moveFile, getFileInfo
+from std / os import removeFile, moveFile, getFileInfo, fileExists
 import std / times
 from std/compilesettings import SingleValueSetting, MultipleValueSetting
 from std/strutils import contains, toLowerAscii
@@ -147,7 +147,7 @@ proc storeBif*(b: var IcBuilder; path: string; dottedSuffix: string) =
   var fresh = freshModuleCopy(b)
   bif.store(fresh, path, dottedSuffix)
 
-proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
+proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string; digestFile = "") =
   ## Content-stable `bif` write — the binary analogue of `writeFileStable`'s
   ## `onlyIfChanged`: only replace `path` when the encoded bytes differ, so an
   ## unchanged sidecar keeps its mtime and nifmake prunes the dependent rebuild
@@ -164,7 +164,15 @@ proc storeBifStable*(b: var IcBuilder; path: string; dottedSuffix: string) =
   if newBytes == oldBytes:
     removeFile(tmp)
   else:
+    if digestFile.len != 0: removeFile(digestFile)
     moveFile(tmp, path)
+  # The IC frontend declares the digest as an output too. Removing it before
+  # replacing the BIF keeps a killed writer from publishing a stale digest.
+  if digestFile.len != 0:
+    let digest = $secureHash(newBytes)
+    if not fileExists(digestFile) or readFile(digestFile) != digest:
+      writeFile(digestFile & ".tmp", digest)
+      moveFile(digestFile & ".tmp", digestFile)
 
 # --- subtree splicing (shared pool, so a raw subtree copy is exact) ----------
 
