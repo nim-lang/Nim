@@ -717,6 +717,12 @@ proc deps(c: var Partitions; dest, src: PNode) =
               elif c.s[srcid].reassignedTo != 0 and c.s[srcid].reassignedTo != d.sym.id:
                 when explainCursors: echo "D not a cursor ", d.sym, " reassignedTo ", c.s[srcid].reassignedTo
                 c.s[vid].flags.incl preventCursor
+              elif c.s[srcid].reassignedTo == d.sym.id and src.kind == nkDerefExpr:
+                # `let tmp = x.next[]; x = tmp`: unlike `it = it.next` the
+                # cursor would borrow the object that only `x` keeps alive
+                # and `x = tmp` would free it while copying it (bug #26773):
+                when explainCursors: echo "E not a cursor ", d.sym
+                c.s[vid].flags.incl preventCursor
 
 
 proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
