@@ -61,6 +61,16 @@ Advanced command-line switches are:
 
 .. include:: rstcommon.rst
 
+Checking a project
+------------------
+
+`nim check` parses and type checks the project and reports every error it
+finds; it does not stop at the first one. So that it stays fast enough for
+editors and other tools that run it often, it does not run the passes that
+prepare the code for a backend. Errors that only those passes report are not
+shown by `nim check`, for example a copy of a type whose `=copy` hook is
+`{.error.}`, and some index checks on constants. `nim c` reports them.
+
 List of warnings
 ----------------
 
