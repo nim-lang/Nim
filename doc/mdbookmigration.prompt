@@ -13,7 +13,8 @@ Markdown (`.md`) files into a static documentation site, using `SUMMARY.md` for
 structure/navigation. It supports:
 
 - `.. include::` with `:code:` (syntax-highlighted code inclusion),
-  `:start-after:`/`:end-before:` (selective inclusion), and `:literal:` (plain).
+  `:start-after:`/`:end-before:` (selective inclusion),
+  `:hide-lines-starting-with:` (drop marker lines), and `:literal:` (plain).
 - `.. admonition::` (and the shorthand `.. note::`, `.. warning::`,
   `.. important::`).
 - `.. title::` for page titles.
@@ -58,6 +59,7 @@ Replace mdBook's `{{#include PATH}}` and `{{#shiftinclude auto:PATH:NAME}}` with
   .. include:: PATH
      :start-after: #ANCHOR: NAME
      :end-before: #ANCHOR_END: NAME
+     :hide-lines-starting-with: #ANCHOR
      :code:
   ```
 
@@ -68,6 +70,14 @@ Notes:
 - The `#ANCHOR:` / `#ANCHOR_END:` markers must exist in the source `.nim`
   files. Normalize them to `#ANCHOR:` (no space after `#`) — a space after `#`
   is interpreted as a Markdown heading.
+- **Always add `:hide-lines-starting-with: #ANCHOR` to selective inclusions.**
+  `:start-after:` and `:end-before:` only cut the text around the markers; the
+  marker lines themselves stay in the output. Since both markers start with
+  `#ANCHOR`, this one option hides them. Without it the rendered listing shows
+  stray `#ANCHOR: NAME` / `#ANCHOR_END: NAME` comments.
+- `:hide-lines-starting-with:` matches a line *prefix*, so `#ANCHOR` covers
+  both `#ANCHOR:` and `#ANCHOR_END:`. It is applied before `:start-after:` and
+  `:end-before:` search the text, so the markers remain usable as anchors.
 - Include paths are resolved **relative to each `.md` file's own directory**
   (not the book root). Adjust `../` counts accordingly.
 - Remove the surrounding ` ```nim ` fences — `.. include::` is a block
