@@ -7887,6 +7887,25 @@ the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
 
 
+goto pragma
+-----------
+The `goto` pragma marks a state variable for a `case` in the C-like backends.
+Initializing or assigning a literal state jumps to its branch. Each branch
+should jump to another state or exit to avoid falling through.
+
+```nim
+proc run() =
+  var state {.goto.}: range[0..1] = 0
+  while true:
+    case state
+    of 0:
+      state = 1
+    of 1:
+      break
+
+run()
+```
+
 immediate pragma
 ----------------
 
