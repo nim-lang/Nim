@@ -200,6 +200,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cyclecollector"
   test "trace_globals"
   test "tfinalizers"
+  # `tseqfinalizer` asserts refc-specific element counts; its spec `matrix:`
+  # pins the `--mm:refc` legs, so a single `run` covers both.
+  run "tseqfinalizer", ""
   test "tmove_case_object"
   test "tdisable_orc"
   test "tregionleak"
