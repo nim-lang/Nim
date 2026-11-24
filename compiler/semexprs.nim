@@ -1940,9 +1940,36 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #fixAbstractType(c, result)
     #analyseIfAddressTakenInCall(c, result)
 
+proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode
+
+proc takeBranchesAddr(c: PContext, n: PNode; ptrType: PType): PNode =
+  ## `lent` of an `if`/`case` expression: the address is taken of every
+  ## branch, so the construct produces a pointer. Taking the address of the
+  ## construct itself would view a temporary that holds a copy of the selected
+  ## branch, and that temporary is destroyed before the view is used
+  ## (bug #26789). `isAssignable` has checked that every branch is lentable.
+  proc leaf(c: PContext; it: PNode; ptrType: PType): PNode =
+    case it.kind
+    of nkStmtListExpr, nkStmtList:
+      result = it
+      it[^1] = leaf(c, it[^1], ptrType)
+      it.typ = ptrType
+    of nkIfExpr, nkIfStmt, nkCaseStmt:
+      result = takeBranchesAddr(c, it, ptrType)
+    else:
+      result = takeImplicitAddr(c, it, true)
+  result = n
+  for i in (if n.kind == nkCaseStmt: 1 else: 0) ..< n.len:
+    n[i][^1] = leaf(c, n[i][^1], ptrType)
+  result.typ = ptrType
+
 proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   # See RFC #7373, calls returning 'var T' are assumed to
   # return a view into the first argument (if there is one):
+  if isLent and n.kind in {nkIfExpr, nkIfStmt, nkCaseStmt} and
+      n.typ != nil and n.typ.kind notin {tyVar, tyLent} and
+      isAssignable(c, n) == arLentValue:
+    return takeBranchesAddr(c, n, makePtrType(c, n.typ))
   let root = exprRoot(n)
   if root != nil and root.owner == c.p.owner:
     template url: string = "var_t_return.html".createDocLink
