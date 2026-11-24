@@ -1055,6 +1055,13 @@ include ccgthreadvars
 
 proc varInDynamicLib(m: BModule, sym: PSym)
 
+proc setDynLibSymbolName(m: BModule; sym: PSym; name: Rope): Rope =
+  # Multiple translation units can share this symbol. Save the import name
+  # before replacing it with the generated pointer name, even for declarations.
+  result = m.g.dynLibExternalNames.mgetOrPut(sym.itemId, sym.loc.snippet)
+  backendEnsureMutable sym
+  sym.locImpl.snippet = name
+
 proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
   return m.hcrOn and {sfThread, sfGlobal} * s.flags == {sfGlobal} and
       ({lfNoDecl, lfHeader} * s.loc.flags == {})
@@ -1136,8 +1143,7 @@ proc assignGlobalVar(p: BProc; n: PNode; value: Rope) =
     if q != nil and not containsOrIncl(q.declaredThings, s.id):
       varInDynamicLib(q, s)
     else:
-      backendEnsureMutable s
-      s.locImpl.snippet = mangleDynLibProc(p.module, s)
+      discard setDynLibSymbolName(p.module, s, mangleDynLibProc(p.module, s))
     if value != "":
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
@@ -1318,59 +1324,62 @@ proc isGetProcAddr(lib: PLib): bool =
 
 proc loadDynamicLib(m: BModule, lib: PLib): Rope =
   assert(lib != nil)
-  let key = cast[pointer](lib)
-  if key notin m.dynLibNames:
-    var tmp = getTempName(m)
-    m.dynLibNames[key] = tmp # Record before cgsym, which has side effects
-    let loadFn = cgsymValue(m, "nimLoadLibrary")
-    let loadErrorFn = cgsymValue(m, "nimLoadLibraryError")
-    m.s[cfsVars].addVar(Global, name = tmp, typ = CPointer)
-    if lib.path.kind in {nkStrLit..nkTripleStrLit}:
-      var s: TStringSeq = @[]
-      libCandidates(lib.path.strVal, s)
-      rawMessage(m.config, hintDependency, lib.path.strVal)
-      let last = high(s)
-      for i in 0..last:
-        inc(m.labels)
-        template doLoad(j: int) =
-          let n = newStrNode(nkStrLit, s[j])
-          n.info = lib.path.info
-          m.s[cfsDynLibInit].addAssignmentWithValue(tmp):
-            var call: CallBuilder
-            m.s[cfsDynLibInit].addCall(call, loadFn):
-              m.s[cfsDynLibInit].addArgument(call):
-                genStringLiteral(m, n, m.s[cfsDynLibInit])
-        if i == 0:
-          doLoad(i)
-        m.s[cfsDynLibInit].addSingleIfStmt(cOp(Not, tmp)):
-          if i == last:
-            m.s[cfsDynLibInit].addStmt():
-              var call: CallBuilder
-              m.s[cfsDynLibInit].addCall(call, loadErrorFn):
-                m.s[cfsDynLibInit].addArgument(call):
-                  genStringLiteral(m, lib.path, m.s[cfsDynLibInit])
-          else:
-            doLoad(i + 1)
+  for entry in m.dynLibHandles:
+    if entry.lib == lib:
+      return entry.name
 
-    else:
-      var p = newProc(nil, m)
-      p.options.excl optStackTrace
-      p.flags.incl nimErrorFlagDisabled
-      var dest: TLoc = initLoc(locTemp, lib.path, OnStack)
-      dest.snippet = getTempName(m)
-      m.s[cfsDynLibInit].addVar(name = rdLoc(dest), typ = getTypeDesc(m, lib.path.typ, dkVar))
-      expr(p, lib.path, dest)
-
-      m.s[cfsVars].add(extract(p.s(cpsLocals)))
-      m.s[cfsDynLibInit].add(extract(p.s(cpsInit)))
-      m.s[cfsDynLibInit].add(extract(p.s(cpsStmts)))
-      let rd = rdLoc(dest)
-      m.s[cfsDynLibInit].addAssignment(tmp,
-        cCall(loadFn, rd))
+  let tmp = getTempName(m)
+  # Code generation can recursively request the same library.
+  m.dynLibHandles.add (lib, tmp)
+  let loadFn = cgsymValue(m, "nimLoadLibrary")
+  let loadErrorFn = cgsymValue(m, "nimLoadLibraryError")
+  m.s[cfsVars].addVar(Global, name = tmp, typ = CPointer)
+  if lib.path.kind in {nkStrLit..nkTripleStrLit}:
+    var s: TStringSeq = @[]
+    libCandidates(lib.path.strVal, s)
+    rawMessage(m.config, hintDependency, lib.path.strVal)
+    let last = high(s)
+    for i in 0..last:
+      inc(m.labels)
+      template doLoad(j: int) =
+        let n = newStrNode(nkStrLit, s[j])
+        n.info = lib.path.info
+        m.s[cfsDynLibInit].addAssignmentWithValue(tmp):
+          var call: CallBuilder
+          m.s[cfsDynLibInit].addCall(call, loadFn):
+            m.s[cfsDynLibInit].addArgument(call):
+              genStringLiteral(m, n, m.s[cfsDynLibInit])
+      if i == 0:
+        doLoad(i)
       m.s[cfsDynLibInit].addSingleIfStmt(cOp(Not, tmp)):
-        m.s[cfsDynLibInit].addCallStmt(loadErrorFn, rd)
+        if i == last:
+          m.s[cfsDynLibInit].addStmt():
+            var call: CallBuilder
+            m.s[cfsDynLibInit].addCall(call, loadErrorFn):
+              m.s[cfsDynLibInit].addArgument(call):
+                genStringLiteral(m, lib.path, m.s[cfsDynLibInit])
+        else:
+          doLoad(i + 1)
 
-  result = m.dynLibNames[key]
+  else:
+    var p = newProc(nil, m)
+    p.options.excl optStackTrace
+    p.flags.incl nimErrorFlagDisabled
+    var dest: TLoc = initLoc(locTemp, lib.path, OnStack)
+    dest.snippet = getTempName(m)
+    m.s[cfsDynLibInit].addVar(name = rdLoc(dest), typ = getTypeDesc(m, lib.path.typ, dkVar))
+    expr(p, lib.path, dest)
+
+    m.s[cfsVars].add(extract(p.s(cpsLocals)))
+    m.s[cfsDynLibInit].add(extract(p.s(cpsInit)))
+    m.s[cfsDynLibInit].add(extract(p.s(cpsStmts)))
+    let rd = rdLoc(dest)
+    m.s[cfsDynLibInit].addAssignment(tmp,
+      cCall(loadFn, rd))
+    m.s[cfsDynLibInit].addSingleIfStmt(cOp(Not, tmp)):
+      m.s[cfsDynLibInit].addCallStmt(loadErrorFn, rd)
+
+  result = tmp
 
 proc isDeferredDynlib(sym: PSym): bool =
   result = false
@@ -1384,7 +1393,6 @@ proc mangleDynLibProc(m: BModule; sym: PSym): Rope =
   # we have to build this as a single rope in order not to trip the
   # optimization in genInfixCall, see test tests/cpp/t8241.nim
   if sfCompilerProc in sym.flags:
-    # NOTE: sym.loc.snippet is the external name!
     result = rope(sym.name.s)
   elif m.config.cmd == cmdNifC and isDeferredDynlib(sym):
     # Process-local symbol IDs can alias unrelated imports in another TU.
@@ -1417,23 +1425,13 @@ proc addDynLibVar(m: BModule; sym: PSym; typ: Snippet) =
   else:
     m.s[cfsVars].addVar(name = sym.loc.snippet, typ = typ)
 
-proc dynLibExternalName(m: BModule, sym: PSym): Rope =
-  # Symbols are shared by translation units in a batch. Their backend name is
-  # rewritten to the pointer name after the first unit generates the import.
-  let key = cast[pointer](sym)
-  if key notin m.g.dynLibExternalNames:
-    m.g.dynLibExternalNames[key] = sym.loc.snippet
-  result = m.g.dynLibExternalNames[key]
-
 proc symInDynamicLib(m: BModule, sym: PSym) =
-  var lib = sym.annex
+  let lib = sym.annex
   let isCall = isGetProcAddr(lib)
-  let extname = dynLibExternalName(m, sym)
   let libName = if not isCall: loadDynamicLib(m, lib) else: ""
-  var tmp = mangleDynLibProc(m, sym)
+  let tmp = mangleDynLibProc(m, sym)
   let deferredIc = m.config.cmd == cmdNifC and isDeferredDynlib(sym)
-  backendEnsureMutable sym
-  sym.locImpl.snippet = tmp             # from now on we only need the internal name
+  let extname = setDynLibSymbolName(m, sym, tmp)
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
   if isCall:
@@ -1488,13 +1486,10 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     addDynLibVar(m, sym, typ)
 
 proc varInDynamicLib(m: BModule, sym: PSym) =
-  var lib = sym.annex
-  let extname = dynLibExternalName(m, sym)
-  let libName = loadDynamicLib(m, lib)
+  let libName = loadDynamicLib(m, sym.annex)
   incl(sym, lfIndirect)
-  var tmp = mangleDynLibProc(m, sym)
-  backendEnsureMutable sym
-  sym.locImpl.snippet = tmp             # from now on we only need the internal name
+  let tmp = mangleDynLibProc(m, sym)
+  let extname = setDynLibSymbolName(m, sym, tmp)
   inc(m.labels, 2)
   let t = ptrType(getTypeDesc(m, sym.typ, dkVar))
   # cgsym has side effects, do it first:
@@ -1507,8 +1502,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   addDynLibVar(m, sym, t)
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
-  backendEnsureMutable sym
-  sym.locImpl.snippet = mangleDynLibProc(m, sym)
+  discard setDynLibSymbolName(m, sym, mangleDynLibProc(m, sym))
   sym.typ.sym = nil           # generate a new name
 
 proc cgsymImpl(m: BModule; sym: PSym) {.inline.} =
@@ -2856,9 +2850,8 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
   assert prc != nil
   fillProcLoc(m, son(prc.ast, namePos))
 
-  var tmp = mangleDynLibProc(m, prc)
-  backendEnsureMutable prc
-  prc.locImpl.snippet = tmp
+  let tmp = mangleDynLibProc(m, prc)
+  discard setDynLibSymbolName(m, prc, tmp)
   prc.typ.sym = nil
 
   if not containsOrIncl(m.declaredThings, prc.id):

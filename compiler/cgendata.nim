@@ -127,7 +127,7 @@ type
 
   BModuleList* = ref object of RootObj
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Builder
-    dynLibExternalNames*: Table[pointer, Rope] # original names before backend rewriting
+    dynLibExternalNames*: Table[ItemId, Rope] # import names shared across C modules
     icExtensionLoaders*: array['0'..'9', seq[string]]
     mapping*: Rope             # the generated mapping file (if requested)
     mods*: seq[BModule]     # list of all compiled modules
@@ -174,7 +174,7 @@ type
     cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
-    dynLibNames*: Table[pointer, Rope] # library handles local to this C module
+    dynLibHandles*: seq[tuple[lib: PLib, name: Rope]]
     typeCache*: TypeCache     # cache the generated types
     typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
                               # would be ideal but for some reason enums
