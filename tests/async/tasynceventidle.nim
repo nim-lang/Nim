@@ -12,5 +12,5 @@ block:
     doAssert false, "unregistered callback")
   ev.unregister()
   ev.close()
-  retireAll()
+  doAssert not hasPendingOperations()
   checkDestroyed(destroyed, 1)

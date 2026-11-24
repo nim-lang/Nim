@@ -8,16 +8,14 @@ discard """
 import std/asyncdispatch
 import masynceventlifetime
 
-block: # Idle cancellation releases its callback after native retirement.
+block: # Idle cancellation releases its callback immediately without polling.
   var destroyed = 0
   let ev = newAsyncEvent()
   watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
     doAssert false, "unregistered callback")
   ev.unregister()
   ev.close()
-  when defined(windows):
-    doAssert hasPendingOperations()
-  retireAll()
+  doAssert not hasPendingOperations()
   checkDestroyed(destroyed, 1)
 
 when defined(windows):
@@ -73,18 +71,17 @@ when defined(windows):
     retireAll()
     checkDestroyed(destroyed, 1)
 
-  block: # Native retirement does not free a callback still on the stack.
+  block: # Closing inside a live callback does not free it while still on the stack.
     var destroyed = 0
     let ev = newAsyncEvent()
     watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
       ev.close()
-      putPacket(takePacket()) # Await and consume the retirement packet only.
-      poll(0)
+      doAssert hasPendingOperations() # Current completion is still in-flight.
       checkDestroyed(destroyed, 0)
       false)
     queuePackets(ev, 1)
     poll(0)
-    retireAll()
+    doAssert not hasPendingOperations()
     checkDestroyed(destroyed, 1)
 
   for count in [1, 8]:
@@ -196,14 +193,13 @@ when defined(windows):
       retireAll()
       checkDestroyed(destroyed, 1)
 
-  block: # close also cancels a still-registered event.
+  block: # close also cancels a still-registered idle event immediately.
     var destroyed = 0
     let ev = newAsyncEvent()
     watch(ev, addr destroyed, proc(fd: AsyncFD): bool =
       doAssert false, "closed callback")
     ev.close()
-    doAssert hasPendingOperations()
-    retireAll()
+    doAssert not hasPendingOperations()
     checkDestroyed(destroyed, 1)
 
   block: # Retirement remains pollable after the last live handle is removed.

@@ -8,9 +8,9 @@
   `ValueError` without changing the event. `trigger` remains thread-safe.
   `close` automatically unregisters a registered event using its owning
   dispatcher, even if the thread's global dispatcher has been replaced.
-  Native cancellation is non-blocking; retirement remains pending dispatcher
-  work until native callbacks and queued notifications have completed. If
-  cancellation fails, `close` raises and leaves the event open for retry.
+  Queued notifications already posted to the IOCP remain pollable until
+  drained. If cancellation fails, `close` raises and leaves the event open
+  for retry.
 
 - Solaris and illumos are now separate targets (`--os:solaris` and
   `--os:illumos`). Both define `sunos`, `posix`, and `unix`; illumos no longer
