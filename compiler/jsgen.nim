@@ -1554,6 +1554,9 @@ proc genSymAddr(p: PProc, n: PNode, typ: PType, r: var TCompRes) =
   if s.loc.snippet == "": internalError(p.config, n.info, "genAddr: 3")
   case s.kind
   of skParam:
+    # `resExpr`: the address can be a branch of an `if` that produces a view
+    # (bug #26789), whose value `moveInto` only moves if it has a kind
+    r.kind = resExpr
     r.res = s.loc.snippet
     r.address = ""
     r.typ = etyNone
