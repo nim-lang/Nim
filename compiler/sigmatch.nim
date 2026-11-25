@@ -2388,7 +2388,7 @@ proc convertLiteral(kind: TNodeKind, c: PContext, m: TCandidate; n: PNode, newTy
   return implicitConv(kind, newType, n, m, c)
 
 proc isLValue(c: PContext; n: PNode, isOutParam = false): bool {.inline.} =
-  let aa = isAssignable(nil, n)
+  let aa = isAssignable(nil, n, forVar = true)
   case aa
   of arLValue, arLocalLValue, arStrange:
     result = true

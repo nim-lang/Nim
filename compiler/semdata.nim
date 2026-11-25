@@ -786,7 +786,8 @@ proc isSsoStringIndex*(conf: ConfigRef; n: PNode): bool =
       n[0].typ.skipTypes(abstractVar + abstractInst - {tyTypeDesc}).kind == tyString
 
 proc isAssignable(c: PContext, n: PNode): TAssignableResult =
-  result = parampatterns.isAssignable(c.p.owner, n)
+  # only used for arguments of `var` parameters
+  result = parampatterns.isAssignable(c.p.owner, n, forVar = true)
 
 proc newHiddenAddrTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
   if n.kind == nkHiddenDeref and not (c.config.backend == backendCpp or
