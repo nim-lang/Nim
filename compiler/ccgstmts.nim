@@ -504,7 +504,13 @@ proc genClosureVar(p: BProc, a: PNode) =
   if immediateAsgn:
     loadInto(p, a.firstSon, son(a, 2), v)
   elif sfNoInit notin a.firstSon.secondSon.sym.flags:
-    constructLoc(p, v)
+    if optSeqDestructors notin p.config.globalOptions and
+        v.t.skipTypes(abstractInst).kind notin {tyVar, tyLent}:
+      # refc: the env field can still hold the refs of a previous loop
+      # iteration, it is not a fresh location (#26706)
+      resetLoc(p, v)
+    else:
+      constructLoc(p, v)
 
 proc genVarStmt(p: BProc, n: PNode) =
   for it in sons(n):
