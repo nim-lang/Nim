@@ -354,6 +354,12 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode; result: var Builder) =
         result.add(cIfExpr(dataFieldAccessor(p, t.snippet), dataField(p, t.snippet), NimNil))
         result.addArgumentSeparator()
         result.add(lt)
+      elif a.lode.kind in {nkStrLit..nkTripleStrLit} and a.lode.strVal.len == 0:
+        # do not produce `nil->data` that is never evaluated, it upsets
+        # clang's UBSan (#26549):
+        result.add(NimNil)
+        result.addArgumentSeparator()
+        result.addIntValue(0)
       else:
         let ra = a.rdLoc
         let la = lenExpr(p, a)
