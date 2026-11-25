@@ -37,7 +37,7 @@ else:
   proc c_wgetenv(varname: ptr wchar_t): ptr wchar_t {.importc: "_wgetenv", header: "<stdlib.h>".}
 
   var errno {.importc, header: "<errno.h>".}: cint
-  var genviron {.importc: "_environ".}: ptr ptr char
+  var genviron {.importc: "_environ", header: "<stdlib.h>".}: ptr ptr char
     # xxx `ptr UncheckedArray[WideCString]` did not work
 
   proc wcstombs(wcstr: ptr char, mbstr: ptr wchar_t, count: csize_t): csize_t {.importc, header: "<stdlib.h>".}

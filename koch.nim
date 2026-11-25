@@ -11,12 +11,12 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
-  NimbleStableCommit = "c154494a838ed9a0bc8daf8ff81f83fbe509980a"    # 0.26.1
-  AtlasStableCommit = "aa6fb162006f3015aa84c4305e15cb4d230f5ad6"     # 0.14.7
+  NimbleStableCommit = "d208ed8bf5dce7f2bb9841a43659b82b8152a6c5"    # 0.28.0
+  AtlasStableCommit = "fa19ace5c5d176d0e19f9b6ad08239ce2ceea676"     # 0.16.4
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "668edddcaa5651051e7683a38a04f31fba778f35" # unversioned \
+  NimonyStableCommit = "95afaa04c950bca65dd34054e39aba68956b14ff" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
@@ -29,6 +29,7 @@ const
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
+
 when not defined(windows):
   const
     Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
@@ -398,11 +399,6 @@ proc boot(args: string, skipIntegrityCheck: bool) =
     installDeps("libffi")
 
   let nimStart = findStartNim().quoteShell()
-  # Old bootstrap compilers identify illumos as Solaris and cannot accept
-  # --os:illumos. Switch targets only after building the first new compiler.
-  let bootIllumos = when defined(sunos):
-                      execCmdEx("uname -o 2>/dev/null").output.strip.toLowerAscii == "illumos"
-                    else: false
   let times = 2 - ord(skipIntegrityCheck)
   for i in 0..times:
     let defaultCommand = if useCpp: "cpp" else: "c"
@@ -424,9 +420,6 @@ proc boot(args: string, skipIntegrityCheck: bool) =
       let version = ret.output.splitLines[0]
       if version.startsWith "Nim Compiler Version 0.20.0":
         extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
-
-    if i > 0 and bootIllumos:
-      extraOption.add " --os:illumos"
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.

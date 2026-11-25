@@ -1736,7 +1736,23 @@ when not defined(nimIcIntegrityChecks):
   import system/exceptions
   export exceptions
 
+when notJSnotNims:
+  # we cannot compile this with stack tracing or overflow checks on
+  # as it would recurse endlessly!
+  {.push stackTrace: off, profiler: off, checks: off.}
+  include "system/integerprims"
+  {.pop.}
+
 when notJSnotNims and defined(nimSeqsV2):
+  proc nimSizeOverflow() {.noinline, noreturn.} =
+    # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code
+    # generator assumes never raise, so under `--exceptions:goto` the raise
+    # would be ignored and execution would continue with the bogus size.
+    # A string or seq that cannot even be measured can never be allocated
+    # either, so handle it like an out of memory situation.
+    cstderr.rawWrite("fatal error: string or seq size overflows the address space\n")
+    rawQuit(1)
+
   when defined(nimsso):
     include "system/strs_v3"
   else:
@@ -2383,12 +2399,12 @@ when notJSnotNims and hostOS != "standalone":
     # C codegen only uses it in a borrowed way:
     result = currException
 
-  proc getCurrentExceptionMsg*(): string {.inline, gcsafe.} =
+  proc getCurrentExceptionMsg*(): string {.rtl, inl, gcsafe.} =
     ## Retrieves the error message that was attached to the current
     ## exception; if there is none, `""` is returned.
     return if currException == nil: "" else: currException.msg
 
-  proc setCurrentException*(exc: ref Exception) {.inline, gcsafe.} =
+  proc setCurrentException*(exc: ref Exception) {.rtl, inl, gcsafe.} =
     ## Sets the current exception.
     ##
     ## .. warning:: Only use this if you know what you are doing.

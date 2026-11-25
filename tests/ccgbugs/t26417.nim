@@ -1,6 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc"
-  ccodecheck: "\\i !@('tyObject_Big' [a-zA-Z0-9_]* \\s+ 'T' [0-9]+ '_;')"
+  matrix: "--mm:refc --reportLargeStackObjects:1000000 --warningAsError:LargeStackObject; --mm:orc --reportLargeStackObjects:1000000 --warningAsError:LargeStackObject"
   output: '''
 1
 2

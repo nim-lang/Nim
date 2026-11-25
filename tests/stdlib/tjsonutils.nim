@@ -71,7 +71,7 @@ template fn() =
     testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
 
   block: # StringTable
-    testRoundtrip({"name": "John", "city": "Monaco"}.newStringTable): """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
+    testRoundtrip({"name": "John", "city": "Monaco"}.newStringTable): """{"mode":"modeCaseSensitive","table":{"name":"John","city":"Monaco"}}"""
 
   block: # complex example
     let t = {"z": "Z", "y": "Y"}.newStringTable
@@ -79,7 +79,7 @@ template fn() =
       a1: string
     let a = (1.1, "fo", 'x', @[10,11], [true, false], [t,newStringTable()], [0'i8,3'i8], -4'i16, (foo: 0.5'f32, bar: A(a1: "abc"), bar2: A.default, cstring1: "foo", cstring2: "", cstring3: cstring(nil)))
     testRoundtrip(a):
-      """[1.1,"fo",120,[10,11],[true,false],[{"mode":"modeCaseSensitive","table":{"y":"Y","z":"Z"}},{"mode":"modeCaseSensitive","table":{}}],[0,3],-4,{"foo":0.5,"bar":{"a1":"abc"},"bar2":null,"cstring1":"foo","cstring2":"","cstring3":null}]"""
+      """[1.1,"fo",120,[10,11],[true,false],[{"mode":"modeCaseSensitive","table":{"z":"Z","y":"Y"}},{"mode":"modeCaseSensitive","table":{}}],[0,3],-4,{"foo":0.5,"bar":{"a1":"abc"},"bar2":null,"cstring1":"foo","cstring2":"","cstring3":null}]"""
 
   block:
     # edge case when user defined `==` doesn't handle `nil` well, e.g.:

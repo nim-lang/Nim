@@ -41,6 +41,8 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     let discField = dotField(accessor, disc.loc.snippet)
+    var oldCode = p.s(cpsStmts)
+    var hasCode = false
     p.s(cpsStmts).addSwitchStmt(discField):
       for branch in sonsFrom(n, 1):
         assert branch.kind in {nkOfBranch, nkElse}
@@ -51,8 +53,14 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
           else:
             p.s(cpsStmts).addCaseElse(caseBuilder)
         do:
+          let oldLen = p.s(cpsStmts).buf.len
           genTraverseProc(c, accessor, lastSon(branch), typ)
+          if p.s(cpsStmts).buf.len != oldLen: hasCode = true
           p.s(cpsStmts).addBreak()
+    if not hasCode:
+      # no branch contains GC'ed memory: do not read the discriminator at all,
+      # it might be uninitialized (#26539)
+      p.s(cpsStmts) = oldCode
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
@@ -181,6 +189,9 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
         rttiMarkers.add(extract(p.s(cpsLocals)))
         rttiMarkers.add(extract(p.s(cpsInit)))
         rttiMarkers.add(extract(p.s(cpsStmts)))
+    # not reached through the hot code reloading runtime: it is static, and
+    # the type info that refers to it is in the same library
+    result = markerName
     return
 
   m.s[cfsProcHeaders].addDeclWithVisibility(StaticProc):

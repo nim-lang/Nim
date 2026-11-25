@@ -91,7 +91,7 @@ type
 
 const
   growthFactor = 2
-  startSize = 64
+  startSize = 8
 
 proc mode*(t: StringTableRef): StringTableMode {.inline.} = t.mode
 

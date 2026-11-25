@@ -110,3 +110,35 @@ block: # bug #23936
     var f = 0.0
     doAssert "1.0".parsePyFloat(f) == 3
     doAssert f == 1.0
+
+block: # huge exponents must not overflow the exponent accumulator
+  proc check(s: string, expected: BiggestFloat) =
+    var f = 1234.0
+    doAssert parseBiggestFloat(s, f) == s.len, s
+    doAssert f == expected, s & " -> " & $f
+
+  proc testHugeExponents() =
+    check "1e18446744073709551617", Inf    # 2^64 + 1
+    check "-1e18446744073709551617", -Inf
+    check "1e-18446744073709551617", 0.0
+    check "5e18446744073709551616", Inf    # 2^64
+    check "1e9223372036854775808", Inf     # 2^63
+    check "1e-9223372036854775808", 0.0
+    check "1e4294967297", Inf              # 2^32 + 1
+    check "1e99999999999999999999999", Inf
+    check "0e99999999999999999999999", 0.0
+    check "1e0000000000000000000000002", 100.0
+
+  testHugeExponents()
+  static: testHugeExponents()
+
+block: # an exponent sign at the very end must not read past the input
+  proc testTruncatedExponent() =
+    for src in ["1e+5", "1e-5", "1E+5"]:
+      var f = 0.0
+      doAssert parseBiggestFloat(src.toOpenArray(0, 2), f) == 0, src
+      doAssert parseBiggestFloat(src[0..2], f) == 0, src
+      doAssert parseBiggestFloat(src, f) == 4, src
+
+  testTruncatedExponent()
+  static: testTruncatedExponent()

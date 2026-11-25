@@ -109,3 +109,33 @@ block: # bug #26337
   let it = raw
   doAssert it() == 1
   doAssert it() == 2
+
+block: # bug #25321
+  var p1: proc() {.closure.}
+  var p2: proc() {.closure.}
+  var p3: proc() {.closure.}
+  var seen: seq[string]
+
+  proc makeClosure(): proc(i: int) =
+    var arr = @[0, 0, 0]
+    var p = proc(i: int) =
+      if i == 0:
+        p1 = proc() =
+          arr[0] = 1
+          seen.add $arr
+      elif i == 1:
+        p2 = proc() =
+          arr[1] = 2
+          seen.add $arr
+        p3 = proc() =
+          arr[2] = 3
+          seen.add $arr
+    return p
+
+  var dostuff = makeClosure()
+  dostuff(0) # define p1
+  dostuff(1) # define p2, p3
+  p1()
+  p2()
+  p3() # segfaulted if p3 is assigned in the 'elif' block
+  doAssert seen == @["@[1, 0, 0]", "@[1, 2, 0]", "@[1, 2, 3]"]

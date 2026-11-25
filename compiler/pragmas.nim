@@ -58,6 +58,9 @@ const
     wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wExperimental, wDoctype, wThis, wUsed, wInvariant, wAssume, wAssert}
+  moduleWidePragmas* = {wCompile, wLink, wPassl, wPassc, wLocalPassc}
+    ## pragmas that act on the module's C compilation or on the link;
+    ## only valid as a statement of the module itself, not inside a routine
   stmtPragmasTopLevel* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
     wStyleChecks, wAssertions,
@@ -829,7 +832,7 @@ proc semCustomPragma(c: PContext, n: PNode, sym: PSym): PNode =
 
   result = r
   # Transform the nkCall node back to its original form if possible
-  if n.kind == nkIdent and r.len == 1:
+  if n.kind in nkIdentKinds and r.len == 1:
     # pragma() -> pragma
     result = result[0]
   elif n.kind == nkExprColonExpr and r.len == 2:
@@ -897,7 +900,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
   else:
     let k = whichKeyword(ident)
-    if k in validPragmas:
+    if k in moduleWidePragmas and k in validPragmas and
+        sym != nil and sym.kind != skModule:
+      localError(c.config, it.info, "the '" & ident.s &
+        "' pragma applies to the whole module and must be at module level, not inside a routine")
+    elif k in validPragmas:
       checkPragmaUse(c, key.info, k, ident.s, (if sym != nil: sym else: c.module))
       case k
       of wExportc, wExportCpp:

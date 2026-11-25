@@ -22,6 +22,7 @@ from expanddefaults import caseObjDefaultBranch
 from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions
 from ic/replayer import localTargetOptions
 from typekeys import modname
+from icmodnames import moduleSuffix
 from std/algorithm import sort
 import cnif
 
@@ -272,6 +273,43 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
   ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
   sfFromGeneric notin s.flags and isSeedableRoutine(s, modPos, exportcOnly)
 
+proc lowersInlineIterator*(s: PSym; modPos: int; g: ModuleGraph): bool =
+  ## A concrete, non-generic INLINE iterator declared by the module at `modPos`.
+  ## It is never emitted (every `for` expands it at its call site), but it is a
+  ## lambda-lifting FRAME of its own: `transformFor` splices the iterator's
+  ## lifted body, and that lift is what rewrites its nested closures to go
+  ## through the iterator's environment. The `lower` stage of the declaring
+  ## module performs this lift, exactly once, so the nested routines are
+  ## serialized lowered and the expansion sites only splice. Without it the
+  ## first expanding consumer would have to mutate a foreign module's nested
+  ## routine — a cross-module side effect no per-module backend can honour.
+  ##
+  ## Deliberately independent of use: the declaration site has no way to know
+  ## whether some importer expands the iterator. An illegal capture in such an
+  ## iterator is therefore reported at its declaration under `--ic:on`, not only
+  ## at its first expansion.
+  ##
+  ## A generic INSTANCE qualifies in its HOME, the module that minted and
+  ## OFFERS it (see `homeEmitsInstance`): every importer reuses that very
+  ## symbol, so its lift belongs to the home's `lower` stage just as a plain
+  ## iterator's belongs to its declaring module. Otherwise each expanding `cg`
+  ## process would lift the shared instance on its own, and the lowered nested
+  ## routines and their `:env` would agree only by the accident of deterministic
+  ## re-derivation. Offered instances are the concrete ones; an instance that is
+  ## not offered (minted inside a `compiles()` probe, for example) is reused by
+  ## nobody and stays with the expanding process.
+  s.itemId.module == modPos and
+  s.kind == skIterator and s.typ != nil and s.typ.callConv != ccClosure and
+  (sfFromGeneric notin s.flags or
+   (sfGeneratedOp notin s.flags and not isBackendMinted(s.itemId) and
+    globalName(s, g.config) in g.icOfferedInstances)) and
+  s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
+  s.magic == mNone and
+  {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+  not signatureHasMetaType(s.typ) and
+  s.ast != nil and s.ast.safeLen > bodyPos and
+  son(s.ast, genericParamsPos).kind == nkEmpty
+
 proc homeEmitsInstance*(s: PSym; modPos: int; g: ModuleGraph;
                         exportcOnly = false): bool =
   ## Whether the `cg` of the module at `modPos` emits the generic instance `s`
@@ -429,11 +467,14 @@ proc getModuleDllPath(m: BModule): Rope =
   let filename = strutils.`%`(platform.OS[m.g.config.target.targetOS].dllFrmt, [name & ext])
   result = makeCString(dir.string & "/" & filename)
 
-proc stdlibModule(g: BModuleList, name: string): BModule =
-  ## The module `name` of the standard library, nil when the program does not use it.
+proc stdlibModule(g: BModuleList, path: RelativeFile): BModule =
+  ## The module of the standard library at `path` (relative to `lib`), nil
+  ## when the program does not use it. Compared by module suffix: the
+  ## per-module backend names a module loaded from its NIF by its suffix.
   result = nil
+  let suffix = moduleSuffix((g.config.libpath / path).string, [])
   for m in g.mods:
-    if m != nil and m.module.name.s == name and belongsToStdlib(g.graph, m.module):
+    if m != nil and modname(m.module, g.config) == suffix:
       return m
 
 proc getModuleDllPath(m: BModule, module: int): Rope =
@@ -926,7 +967,22 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
       backendEnsureMutable v
       constructLoc(p, v.locImpl)
 
+proc reportLargeStackObject(p: BProc; t: PType; what: string; info: TLineInfo) =
+  ## `--reportLargeStackObjects:N`: C locals of N bytes or more are reported,
+  ## they easily overflow the stack, see bug #26417 and bug #26767.
+  let limit = p.config.largeStackObjectSize
+  if limit > 0:
+    let size = getSize(p.config, t)
+    if size >= limit:
+      let info = if info.fileIndex != InvalidFileIdx: info
+                 elif p.prc != nil: p.prc.info
+                 else: p.module.module.info
+      message(p.config, info, warnLargeStackObject,
+        what & " of type '" & typeToString(t) & "' occupies " & $size &
+        " bytes of stack space")
+
 proc declTemp(p: BProc, t: PType): TLoc =
+  reportLargeStackObject(p, t, "temporary", p.currLineInfo)
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -942,14 +998,6 @@ proc declTemp(p: BProc, t: PType): TLoc =
 proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = declTemp(p, t)
   constructLoc(p, result, not needsInit)
-  when false:
-    # XXX Introduce a compiler switch in order to detect these easily.
-    if getSize(p.config, t) > 1024 * 1024:
-      if p.prc != nil:
-        echo "ENORMOUS TEMPORARY! ", p.config $ p.prc.info
-      else:
-        echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
-      writeStackTrace()
 
 proc calleeInitsResult(p: BProc; ri: PNode; t: PType): bool =
   ## A result that does not fit into a C return value is passed as a hidden
@@ -969,6 +1017,7 @@ proc getResultTemp(p: BProc; ri: PNode; t: PType): TLoc =
     result = getTemp(p, t, needsInit=true)
 
 proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
+  reportLargeStackObject(p, t, "temporary", p.currLineInfo)
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -1005,6 +1054,7 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
     p.sigConflicts.inc(s.name.s.mangle)
 
   genCLineDir(res, p, n.info, p.config)
+  reportLargeStackObject(p, s.typ, "local variable '" & s.name.s & "'", n.info)
 
   res.addVar(p.module, s,
     name = s.loc.snippet,
@@ -1726,9 +1776,18 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   of nkRaiseStmt:
     result = InitRequired
   of nkChckRangeF, nkChckRange64, nkChckRange:
-    # TODO: more checks might need to be covered like overflow, indexDefect etc.
+    # TODO: more checks might need to be covered like overflow etc.
     # bug #22852
     result = InitRequired
+  of nkBracketExpr:
+    if optBoundsCheck in p.config.options and n.len > 0 and n[0].typ != nil and
+        skipTypes(n[0].typ, abstractVarRange).kind in
+          {tyArray, tySequence, tyString, tyOpenArray, tyVarargs}:
+      # an index check leaves the proc by raising before 'result' is written
+      result = InitRequired
+    else:
+      for it in sons(n):
+        allPathsInBranch(it)
   else:
     for it in sons(n):
       allPathsInBranch(it)
@@ -1926,6 +1985,21 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   icProfStart(tGenBody)
   genProcBody(p, procBody)
+  # bug #26661: a 'finally' that only calls procs which cannot raise does not
+  # save and clear the error flag (see `genTryGoto`), so such a proc, e.g. a
+  # `=destroy` hook reached through a lifted seq destructor, runs with the flag
+  # already set while an exception propagates. An 'except' branch in it would
+  # take that exception for one raised in its own 'try' body. So these procs
+  # hide the flag while they run and give it back on exit.
+  let hideErrorFlag = p.config.exc == excGoto and sfPure notin prc.flags and
+      (sfNeverRaises in prc.flags or sfOverridden in prc.flags or
+       raisesNothing(effectsOf(prc.typ))) and
+      nimErrorFlagDeclared in p.flags and hasExceptBranch(procBody)
+  if hideErrorFlag:
+    p.blocks[0].sections[cpsLocals].addVar(kind = Local,
+      name = "oldNimErrProc_", typ = NimBool)
+    p.blocks[0].sections[cpsInit].addAssignment("oldNimErrProc_", cDeref("nimErr_"))
+    p.blocks[0].sections[cpsInit].addAssignment(cDeref("nimErr_"), NimFalse)
   if resultCleanup != nil:
     let body = move(p.s(cpsStmts).buf)
     p.s(cpsStmts).addLineEndIndent("try {")
@@ -1979,6 +2053,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         else:
           generatedProc.add(extract(p.s(cpsInit)))
           generatedProc.add(extract(p.s(cpsStmts)))
+        if hideErrorFlag:
+          generatedProc.addSingleIfStmt("oldNimErrProc_"):
+            generatedProc.addAssignment(cDeref("nimErr_"), NimTrue)
         if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
         generatedProc.add(returnStmt)
   if m.config.cmd == cmdNifC:
@@ -2180,9 +2257,12 @@ proc genProcLvl2(m: BModule, prc: PSym) =
     fillProcLoc(q, son(prc.ast, namePos))
     # generate a getProc call to initialize the pointer for this
     # externally-to-the-current-module defined proc, also important
-    # to do the declaredProtos check before the call to genProcPrototype
+    # to do the declaredProtos check before the call to genProcPrototype.
+    # Under IC `q` can be `m` while the body is still emitted elsewhere: by
+    # its owner's `cg` (see `emitsBodyInThisModule`).
     if isReloadable(m, prc) and prc.id notin m.declaredProtos and
-      q != nil and not sameModules(q.module, m.module):
+      q != nil and not (sameModules(q.module, m.module) and
+                        emitsBodyInThisModule(q, prc)):
       m.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
         cCast(getProcTypeCast(m, prc),
           cCall("hcrGetProc",
@@ -2221,6 +2301,13 @@ proc genProc(m: BModule, prc: PSym) =
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
     fillProcLoc(m, son(prc.ast, namePos))
+    if prc.itemId.module != m.module.position and prc.typ.callConv != ccInline and
+        sfImportc notin prc.flags and m.config.cmd != cmdNifC:
+      # the body is generated later in the module that declares `prc`, but
+      # this module uses it already: that happens when the implementation
+      # of a forward declared routine of another module of a cycle group
+      # (`import m {.cyclic.}`) is not checked yet:
+      genProcPrototype(m, prc)
   else:
     genProcLvl2(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
@@ -2661,7 +2748,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       # EDIT: indeed, this hack, in combination with another un-necessary one
       # (`makeCString` was doing line wrap of string litterals) was root cause for
       # bug #16265.
-      let cmdLineModule = stdlibModule(g, "cmdline")
+      let cmdLineModule = stdlibModule(g, RelativeFile"std/cmdline.nim")
       if cmdLineModule != nil:
         let cmdLineModulePath = getModuleDllPath(cmdLineModule)
         g.mainDatInit.addCallStmt("hcrAddModule", cmdLineModulePath)
@@ -2673,12 +2760,14 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
           cmdLineModulePath,
           "\"cmdCount\"",
           cSizeof(cmdCountTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_count")))
         g.mainDatInit.addCallStmt("hcrRegisterGlobal",
           cmdLineModulePath,
           "\"cmdLine\"",
           cSizeof(cmdLineTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_line")))
         g.mainDatInit.addAssignment(cDeref("cmd_count"), "cmdCount")
@@ -2717,8 +2806,12 @@ proc registerReusedModuleToMain*(g: BModuleList; m: BModule;
                                 initRequired, datInitRequired: bool) =
   ## `registerModuleToMain` for a module whose cached translation unit is
   ## reused: the init/datInit presence comes from the artifact's meta head
-  ## instead of the (never generated) sections. Mirrors the non-hcr path of
-  ## `registerModuleToMain` — reuse is disabled when hcr is on.
+  ## instead of the (never generated) sections. Mirrors `registerModuleToMain`.
+  if m.hcrOn:
+    # As in `registerModuleToMain`: with hot code reloading the program only
+    # calls `hcrInit`, which initializes each module through its own library.
+    # The module's translation unit already carries what that needs.
+    return
   let
     init = m.getInitName
     datInit = m.getDatInitName
@@ -2809,6 +2902,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         '"' & m.typeNodesName & '_' & $m.typeNodes & '"',
         cOp(Mul, NimInt, cSizeof("TNimNode"), cIntValue(m.typeNodes)),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr(m.typeNodesName)))
     else:
@@ -2825,6 +2919,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         "\"module_initialized_\"",
         cIntValue(1),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr("nim_hcr_dummy_"))))
 
@@ -3344,6 +3439,11 @@ proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
   ## the heads (like it already does for init/datInit) and calls them.
   result = ""
   if graph.globalDestructors.len == 0: return
+  if m.hcrOn:
+    # globals are not destroyed with hot code reloading; see
+    # `finalCodegenActions`
+    graph.globalDestructors.setLen 0
+    return
   var body = newNodeI(nkStmtList, m.module.info)
   for i in countdown(high(graph.globalDestructors), 0):
     body.add graph.globalDestructors[i]
