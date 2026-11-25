@@ -4164,6 +4164,25 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
       if sfCompilerProc in sym.flagsImpl:
         return sym
 
+proc nifSymsNamed*(c: var DecodeContext; module: FileIndex; ident: string): seq[PSym] =
+  ## The symbols called `ident` that `module`'s NIF indexes, loaded; none
+  ## when it has no NIF.
+  result = @[]
+  let suffix = moduleSuffix(c.infos.config, module)
+  if not fileExists(semanticFile(c.infos.config, suffix, ".s.bif").string): return
+  let m = c.mods[moduleId(c, suffix)]
+  let prefix = ident & "."
+  var names: seq[string] = @[]
+  for key, _ in m.index.pairs(m.buf):
+    if key.len > prefix.len and key.startsWith(prefix) and parseSymName(key).name == ident:
+      names.add key
+  # the loads below can grow `c.mods`, so resolve after the iteration
+  for name in names:
+    let sym = resolveSym(c, name, true)
+    if sym != nil:
+      loadSym(c, sym)
+      result.add sym
+
 proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; cur: var Cursor;
                kind: LogEntryKind; op: TTypeAttachedOp; module: int) =
   ## Step 2 phase 2: read one `(rep* "key" sym)` from the resident-buffer cursor.

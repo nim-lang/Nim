@@ -20,7 +20,7 @@ when not defined(nimcore):
 
 import compiler / [options, commands, modules, msgs, pipelines, sigmatch, ast, idents,
   modulegraphs, prefixmatches, lineinfos, cmdlinehelper, pathutils, condsyms,
-  syntaxes, suggestsymdb, lexer, ast2nif, idetools, icconfig, icmodnames]
+  syntaxes, suggestsymdb, lexer, ast2nif, idetools, icconfig, icmodnames, types]
 
 const HighestSuggestProtocolVersion = 4
 const Usage = """
@@ -588,6 +588,40 @@ proc nifOccurrences(conf: ConfigRef; name, skipNif: string): seq[TLineInfo] =
     if nif != skipNif: result.add ideOccurrences(conf, nif, name)
   result.add otherProjectsOccurrences(conf, name)
 
+proc signature(s: PSym): string =
+  ## What tells overloads apart: the kind, and the parameter and return types
+  ## (or the type), by name, so that a symbol compiled from source and its
+  ## NIF version compare equal.
+  result = $s.kind
+  let t = s.typ
+  if t == nil: return
+  if t.kind == tyProc and t.n != nil:
+    for i in 1 ..< t.n.len:
+      result.add ',' & typeToString(t.n[i].typ, preferModuleInfo)
+    result.add "->"
+    if t.returnType != nil: result.add typeToString(t.returnType, preferModuleInfo)
+  else:
+    result.add ':' & typeToString(t, preferModuleInfo)
+
+proc nifNameOf(graph: ModuleGraph; s: PSym): string =
+  ## The name the NIFs of the other modules give `s`. A module compiled from
+  ## source numbers its symbols (`foo.1`) in the order of the source it was
+  ## compiled from, which need not be the one its NIF was written from (an
+  ## unsaved buffer or a stale NIF that adds or moves an overload): then it is
+  ## the name of the symbol of its NIF with the same name, kind and
+  ## signature. Empty when there is no such symbol, or several.
+  let conf = graph.config
+  result = globalName(s, conf)
+  let module = FileIndex(s.itemId.module)
+  if s.owner == nil or s.owner.kind != skModule or not graph.icNifIsStale(module):
+    return
+  let sig = signature(s)
+  result = ""
+  for nifSym in nifSymsNamed(ast.program, module, s.name.s):
+    if signature(nifSym) == sig:
+      if result.len > 0: return ""
+      result = globalName(nifSym, conf)
+
 proc answerFromNif(graph: ModuleGraph; q: Query): bool =
   ## Answers `highlight`, `def`, `use` and `dus` about a saved file whose NIF
   ## is fresh from the NIFs, without compiling or loading the import closure:
@@ -768,8 +802,8 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
             if names.containsOrIncl(fieldNifName(s.sym)): continue
             graph.fieldUses(s.sym, rootNif)
           else:
-            let name = globalName(s.sym, conf)
-            if names.containsOrIncl(name): continue
+            let name = graph.nifNameOf(s.sym)
+            if name.len == 0 or names.containsOrIncl(name): continue
             nifOccurrences(conf, name, rootNif)
         for info in infos:
           if not res.anyIt(it.info.exactEquals(info)):
