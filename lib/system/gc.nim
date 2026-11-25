@@ -142,6 +142,7 @@ type
     stat: GcStat
     marked: CellSet
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
+    removedRoots: CellSeq # GC_unref'ed roots not yet removed from `additionalRoots`
     when hasThreadSupport:
       toDispose: SharedList[pointer]
     gcThreadId: int
@@ -253,17 +254,48 @@ proc decRef(c: PCell) {.inline.} =
     rtlAddZCT(c)
   logCell("decRef", c)
 
-proc nimGCunref(p: pointer) {.compilerproc.} =
-  let cell = usrToCell(p)
-  var L = gch.additionalRoots.len-1
-  var i = L
+template lessAddr(a, b: PCell): bool = cast[uint](a) < cast[uint](b)
+
+proc siftDown(d: PCellArray; start, n: int) =
+  var root = start
+  while 2*root+1 < n:
+    var child = 2*root+1
+    if child+1 < n and lessAddr(d[child], d[child+1]): inc child
+    if not lessAddr(d[root], d[child]): break
+    swap(d[root], d[child])
+    root = child
+
+proc sortCells(d: PCellArray; n: int) =
+  # heapsort by address
+  for start in countdown(n div 2 - 1, 0): siftDown(d, start, n)
+  for last in countdown(n-1, 1):
+    swap(d[0], d[last])
+    siftDown(d, 0, last)
+
+proc removeRoots(gch: var GcHeap) =
+  ## Removes the `removedRoots` from the `additionalRoots` (as multisets).
+  sortCells(gch.additionalRoots.d, gch.additionalRoots.len)
+  sortCells(gch.removedRoots.d, gch.removedRoots.len)
+  let r = gch.removedRoots.d
   let d = gch.additionalRoots.d
-  while i >= 0:
-    if d[i] == cell:
-      d[i] = d[L]
-      dec gch.additionalRoots.len
-      break
-    dec(i)
+  var j = 0
+  var k = 0
+  for i in 0 ..< gch.additionalRoots.len:
+    let c = d[i]
+    while j < gch.removedRoots.len and lessAddr(r[j], c): inc j
+    if j < gch.removedRoots.len and r[j] == c:
+      inc j
+    else:
+      d[k] = c
+      inc k
+  gch.additionalRoots.len = k
+  gch.removedRoots.len = 0
+
+proc nimGCunref(p: pointer) {.compilerproc.} =
+  # removing the cell from `additionalRoots` right away would require a linear
+  # search, so it is deferred and done in batches instead:
+  add(gch.removedRoots, usrToCell(p))
+  if gch.removedRoots.len *% 2 >= gch.additionalRoots.len: removeRoots(gch)
   decRef(usrToCell(p))
 
 include gc_common
@@ -327,6 +359,7 @@ proc initGC() =
     init(gch.decStack)
     init(gch.marked)
     init(gch.additionalRoots)
+    init(gch.removedRoots)
     when hasThreadSupport:
       init(gch.toDispose)
     gch.gcThreadId = atomicInc(gHeapidGenerator) - 1
@@ -636,6 +669,7 @@ proc markGlobals(gch: var GcHeap) {.raises: [].} =
   if gch.gcThreadId == 0:
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
+  if gch.removedRoots.len > 0: removeRoots(gch)
   let d = gch.additionalRoots.d
   for i in 0 .. gch.additionalRoots.len-1: markS(gch, d[i])
 
