@@ -7889,21 +7889,34 @@ extension the pragma is simply ignored.
 
 goto pragma
 -----------
-The `goto` pragma marks a state variable for a `case` in the C-like backends.
-Initializing or assigning a literal state jumps to its branch. Each branch
-should jump to another state or exit to avoid falling through.
+The `goto` pragma marks an ordinal state variable for a `case` in the C-like
+backends. Its initializer and each assignment to it must name a constant state
+and jump immediately to the matching branch. Initialize shared variables before
+the marked declaration. A branch that neither jumps nor exits falls through.
 
 ```nim
-proc run() =
-  var state {.goto.}: range[0..1] = 0
-  while true:
-    case state
-    of 0:
-      state = 1
-    of 1:
-      break
+proc unescape(s: string): string =
+  type State = enum scan, escaped, copyChar
+  var i = 0
+  var state {.goto.} = scan
 
-run()
+  case state
+  of scan:
+    if i == s.len: return
+    if s[i] == '\\':
+      inc i
+      state = escaped
+    state = copyChar
+  of escaped:
+    if i == s.len:
+      raise newException(ValueError, "trailing backslash")
+    state = copyChar
+  of copyChar:
+    result.add s[i]
+    inc i
+    state = scan
+
+doAssert unescape(r"one\,two") == "one,two"
 ```
 
 immediate pragma
