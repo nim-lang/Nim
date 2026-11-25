@@ -116,8 +116,10 @@ when defined(gcDestructors):
   proc allocThreadStorage(size: int): pointer =
     result = c_malloc(csize_t size)
     zeroMem(result, size)
+  proc deallocThreadStorage(p: pointer) = c_free(p)
 else:
   template allocThreadStorage(size: untyped): untyped = allocShared0(size)
+  template deallocThreadStorage(p: pointer) = deallocShared(p)
 
 #const globalsSlot = ThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
@@ -210,6 +212,12 @@ when false:
       deallocThreadStorage(t.core)
       t.core = nil
 
+proc undoCreateThread[TArg](t: var Thread[TArg]) =
+  # the thread could not be started: it is not running and owns no storage
+  t.dataFn = nil
+  deallocThreadStorage(t.core)
+  t.core = nil
+
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
@@ -228,6 +236,7 @@ when hostOS == "windows":
     t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
+      undoCreateThread(t)
       raise newException(ResourceExhaustedError, "cannot create thread")
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
@@ -287,9 +296,14 @@ else:
     when not defined(ios):
       # This fails on iOS
       doAssert(setstacksizeResult == 0)
-    if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
-      raise newException(ResourceExhaustedError, "cannot create thread")
+    let createResult = pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t))
     doAssert pthread_attr_destroy(a) == 0
+    if createResult != 0:
+      when hasAllocStack:
+        deallocThreadStorage(t.rawStack)
+        t.rawStack = nil
+      undoCreateThread(t)
+      raise newException(ResourceExhaustedError, "cannot create thread")
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.
