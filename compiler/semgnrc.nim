@@ -515,6 +515,16 @@ proc semGenericStmt(c: PContext, n: PNode,
     closeScope(c)
   of nkForStmt, nkParForStmt:
     openScope(c)
+    if n[^2].kind in {nkIdent, nkAccQuoted, nkSym, nkBracket, nkCurly, nkPar,
+        nkTupleConstr} + nkLiterals and n.len in {3, 4} and
+        n.kind == nkForStmt:
+      # not an iterator call: make the implicit `items`/`pairs` call explicit
+      # so that it binds the overloads visible here, like `[]` above (#25685):
+      let call = newNodeI(nkCall, n[^2].info)
+      call.add newIdentNode(getIdent(c.cache,
+        if n.len == 3: "items" else: "pairs"), n[^2].info)
+      call.add n[^2]
+      n[^2] = call
     n[^2] = semGenericStmt(c, n[^2], flags, ctx)
     for i in 0..<n.len - 2:
       if (n[i].kind == nkVarTuple):
