@@ -20,6 +20,11 @@ const
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
+    # Commit from 2026-09-11 -- nifmake names the command that failed. Its
+    # parallel path marked every child `Finished` whatever the exit code was,
+    # so a build that fanned out left the crash in the log and the command that
+    # produced it nowhere: a Windows CI `nim ic` run reported a bare SIGSEGV
+    # with no way to tell whether the child was `nifler` or `nim m`.
 
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"

@@ -804,8 +804,6 @@ proc compilePipelineSystemModule*(graph: ModuleGraph) =
     graph.withinSystem = false
 
 proc compilePipelineProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
-  ## Under `ideNsNifs` (nimsuggest2's one-shot) `projectFileIdx` is compiled the
-  ## way an import of the main module is compiled: no module is the main module.
   connectPipelineCallbacks(graph)
   let conf = graph.config
   let asMain = not conf.ideNsNifs
