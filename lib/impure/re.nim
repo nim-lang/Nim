@@ -138,9 +138,9 @@ proc bufSubstr(b: cstring, sPos, ePos: int): string {.inline.} =
   ## Return a Nim string built from a slice of a cstring buffer.
   ## Don't assume cstring is '\0' terminated
   let sz = ePos - sPos
-  result = newString(sz+1)
-  copyMem(addr(result[0]), unsafeAddr(b[sPos]), sz)
-  result.setLen(sz)
+  result = ""
+  copyMem(beginStore(result, sz), unsafeAddr(b[sPos]), sz)
+  endStore(result)
 
 proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
                  start, bufSize, flags: cint): cint =
@@ -443,8 +443,9 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
     let a = rawMatches[0]
     let b = rawMatches[1]
     if a == b and a == i: break
-    var str = newString(b-a)
-    copyMem(str[0].addr, unsafeAddr(buf[a]), b-a)
+    var str = ""
+    copyMem(beginStore(str, b-a), unsafeAddr(buf[a]), b-a)
+    endStore(str)
     yield str
     i = b
 

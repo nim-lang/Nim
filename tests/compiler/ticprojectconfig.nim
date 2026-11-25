@@ -56,9 +56,9 @@ proc assertUnchanged(path: string; before: Table[string, Time]) =
   for file, modified in before:
     doAssert after.getOrDefault(file) == modified, file & " was rebuilt"
 
-proc configSnapshots(): Table[string, Time] =
+proc configSnapshots(): Table[string, string] =
   for file in walkFiles(cache / "ic_config_*.cfg.nif"):
-    result[file] = getLastModificationTime(file)
+    result[file] = readFile(file)
 
 try:
   for subdir in ["src", "tests", "examples", "demos", "extra"]:
@@ -205,7 +205,7 @@ echo orphanValue()
   doAssert parsed > 0 and semmed > 0 and lowered > 0 and generated > 0 and objects > 0
   for kind, file in walkDir(cache):
     if kind == pcFile:
-      doAssert file.endsWith(".cfg.nif") or
+      doAssert file.endsWith(".cfg.nif") or file.endsWith(".cfg.nif.args") or
         file.extractFilename in ["ic.version", "ic_build_args.txt", "ic_link_args.txt"], file
   let cached = artifacts(selected)
   build("examples/other.nim", "other 42", reuseShared = true)
@@ -227,8 +227,13 @@ echo orphanValue()
   let bothBackends = artifacts(activeCache() / "backend")
   build("examples/second.nim", "second 42", reuseShared = true)
   assertUnchanged(activeCache() / "backend", bothBackends)
+  let secondProgram = readFile(binary)
   let otherOutput = dir / "otherprog".addFileExt(ExeExt)
   build("examples/main.nim", "example 42", reuseShared = true, output = otherOutput)
+  build("examples/main.nim", "example 42", reuseShared = true)
+  # So can a program this cache did not link, as a build with another nimcache
+  # leaves: this cache's link arguments are unchanged and the program is newer.
+  writeFile(binary, secondProgram)
   build("examples/main.nim", "example 42", reuseShared = true)
 
   # A module's main role and imported role must coexist under identical settings.

@@ -221,8 +221,9 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   else:
     var bufLen = 1024
     while true:
-      result = newString(bufLen)
-      let len = readlink(symlinkPath.cstring, result.cstring, bufLen)
+      result = ""
+      let len = readlink(symlinkPath.cstring, cast[cstring](beginStore(result, bufLen)), bufLen)
+      endStore(result)
       if len < 0:
         raiseOSError(osLastError(), symlinkPath)
       if len < bufLen:

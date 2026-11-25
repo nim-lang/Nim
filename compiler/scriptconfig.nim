@@ -196,6 +196,9 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    idgen: IdGenerator;
                    freshDefines=true; conf: ConfigRef, stream: PLLStream) =
+  # Scripts can change the working directory and filesystem while the compiler
+  # is running. Their lookups are uncached; discard the preceding snapshot too.
+  defer: conf.resetPathCache()
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
 

@@ -279,6 +279,25 @@ proc addTempDeclToIdents(c: PContext; n: PNode; kind: TSymKind; inCall: bool) =
     for s in n:
       addTempDeclToIdents(c, s, kind, inCall)
 
+proc declareSumTypeBranches(c: PContext; n: PNode) =
+  ## Like the fields of an enum, the branch names of a sum type are known
+  ## in the scope of the type section.
+  case n.kind
+  of nkObjectTy:
+    if n.len == 3: declareSumTypeBranches(c, n[2])
+  of nkRefTy, nkPtrTy:
+    if n.len == 1: declareSumTypeBranches(c, n[0])
+  of nkRecList:
+    for it in n: declareSumTypeBranches(c, it)
+  of nkRecCase:
+    if n.len > 0 and n[0].kind == nkIdentDefs and n[0].len > 0 and n[0][0].kind == nkEmpty:
+      for i in 1..<n.len:
+        if n[i].kind == nkOfBranch:
+          for j in 0..<n[i].len-1:
+            if n[i][j].kind in {nkIdent, nkAccQuoted}:
+              addDecl(c, newSymS(skUnknown, getIdentNode(c, n[i][j]), c))
+  else: discard
+
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
   result = n
@@ -552,6 +571,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkTypeDef): illFormedAst(a, c.config)
       checkSonsLen(a, 3, c.config)
+      declareSumTypeBranches(c, a[2])
       if a[1].kind != nkEmpty:
         openScope(c)
         a[1] = semGenericStmt(c, a[1], flags, ctx)
@@ -606,11 +626,22 @@ proc semGenericStmt(c: PContext, n: PNode,
         illFormedAst(a, c.config)
   of nkRecCase:
     checkSonsLen(n[0], 3, c.config)
-    n[0][^2] = semGenericStmt(c, n[0][^2], flags+{withinTypeDesc}, ctx)
-    n[0][^1] = semGenericStmt(c, n[0][^1], flags, ctx)
-    addTempDecl(c, getIdentNode(c, n[0][0]), skField)
+    let isSumType = n[0][0].kind == nkEmpty
+    if not isSumType:
+      n[0][^2] = semGenericStmt(c, n[0][^2], flags+{withinTypeDesc}, ctx)
+      n[0][^1] = semGenericStmt(c, n[0][^1], flags, ctx)
+      addTempDecl(c, getIdentNode(c, n[0][0]), skField)
     for i in 1..<n.len:
-      n[i] = semGenericStmt(c, n[i], flags, ctx)
+      let b = n[i]
+      if b.kind notin {nkOfBranch, nkElse}: illFormedAst(b, c.config)
+      if not isSumType:
+        # the branch names of a sum type are declared by the type
+        for j in 0..<b.len-1:
+          b[j] = semGenericStmt(c, b[j], flags, ctx)
+      # the fields, possibly a single `nkIdentDefs`:
+      let fields = if b[^1].kind == nkRecList: b[^1] else: newTree(nkRecList, b[^1])
+      discard semGenericStmt(c, fields, flags, ctx)
+      if b[^1].kind != nkRecList: b[^1] = fields[0]
   of nkFormalParams:
     checkMinSonsLen(n, 1, c.config)
     for i in 1..<n.len:

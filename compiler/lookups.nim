@@ -117,7 +117,7 @@ proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; n
     let b =
       case im.mode
       of importAll: true
-      of importSet: result.id in im.imported
+      of importSet: result.id in im.imported or name.id in im.importedNames
       of importExcept: name.id notin im.exceptSet
     if b and not containsOrIncl(marked, result.id):
       return result
@@ -133,7 +133,8 @@ proc nextIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule;
       if not containsOrIncl(marked, result.id):
         return result
     of importSet:
-      if result.id in im.imported and not containsOrIncl(marked, result.id):
+      if (result.id in im.imported or result.name.id in im.importedNames) and
+          not containsOrIncl(marked, result.id):
         return result
     of importExcept:
       if result.name.id notin im.exceptSet and not containsOrIncl(marked, result.id):

@@ -186,6 +186,17 @@ block stripTests:
   doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo")
   doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
 
+  # bug #26761: with leading = false an all-strippable string must still
+  # become empty; the trailing scan exhausted without a stop index
+  doAssert(strip("  ", leading = false) == "")
+  doAssert(strip("", leading = false) == "")
+  doAssert(strip("a  ", leading = false) == "a")
+  doAssert(strip("  a", leading = false) == "  a")
+  doAssert(strip("  a  ", leading = false) == "  a")
+  doAssert(strip("\u00A0\u00A0", leading = false) == "")
+  doAssert(strip("\u3000x\u3000", leading = false) == "\u3000x")
+  doAssert(strip("ss", leading = false, runes = ['s'.Rune]) == "")
+
   block:
     let stripTestRunes = ["«".asRune, "»".asRune]
     doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")
@@ -268,3 +279,16 @@ block: # bug #23619
   doAssert splitWhitespace("one") == @["one"]
   # a truncated sequence at the end is kept, not read past
   doAssert splitWhitespace("a \xE2") == @["a", "\xE2"]
+
+block: # bug #26591
+  # a lone continuation byte is a rune of its own, like `runeAt` yields
+  doAssert lastRune("\x82", 0) == ("\x82".runeAt(0), 1)
+  doAssert lastRune("\x82\xA3", 1) == ("\x82\xA3".runeAt(1), 1)
+  doAssert lastRune("\xA3\x82\x8F", 2) == ("\xA3\x82\x8F".runeAt(2), 1)
+  # a truncated sequence at the end is kept, not read past
+  doAssert runeStrAtPos("a\xE2", 1) == "\xE2"
+  doAssert runeStrAtPos("\xE2", 0) == "\xE2"
+  doAssert runeStrAtPos("a\xF0\x9F", 1) == "\xF0\x9F"
+  # valid input is unaffected
+  doAssert lastRune("añyóng", 7) == ("g".runeAt(0), 1)
+  doAssert runeStrAtPos("Hänsel  ««: 10,00€", 17) == "€"

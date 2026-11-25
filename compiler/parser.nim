@@ -316,6 +316,9 @@ proc checkBinary(p: Parser) {.inline.} =
     if p.tok.spacing == {tsTrailing}:
       parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
+const
+  CmpPrec = 5 # what `getPrecedence` gives the comparison operators (`==`, `<`, `in`, `is`, ...)
+
 #| module = complexOrSimpleStmt ^* (';' / IND{=})
 #|
 #| comma = ',' COMMENT?
@@ -1383,11 +1386,17 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     # Note 'sigil like' operators are currently not reflected in the grammar
     # and should be removed for Nim 2.0, I don't think anybody uses them.
     let isSigil = isSigilLike(p.tok)
+    let startsWithNot = p.tok.tokType == tkNot
     result = newNodeP(nkPrefix, p)
     var a = newIdentNodeP(p.tok.ident, p)
     result.add(a)
     getTok(p)
     optInd(p, a)
+    # `not(a) == b` reads as the call it looks like, `not (a) == b` does not;
+    # both parse to the same tree, so the lexer's spacing is the only difference
+    let isCall = p.tok.tokType == tkParLe and tsLeading notin p.tok.spacing
+    # `not not a == b`: the inner `primary` warns, so the outer one does not
+    let operandIsNot = p.tok.tokType == tkNot
     const identOrLiteralKinds = tkBuiltInMagics + {tkSymbol, tkAccent, tkNil,
       tkIntLit..tkCustomLit, tkCast, tkOut, tkParLe, tkBracketLe, tkCurlyLe}
     if isSigil and p.tok.tokType in identOrLiteralKinds:
@@ -1396,6 +1405,12 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
       result = primarySuffix(p, result, baseInd, mode)
     else:
       result.add(primary(p, pmNormal))
+      # `not a == b` is `(not a) == b`: the current token is the operator
+      if startsWithNot and not operandIsNot and
+          not (isCall and result.secondSon.kind == nkPar) and
+          getPrecedence(p.tok) == CmpPrec and p.tok.indent < 0 and
+          not isUnary(p.tok):
+        parMessage(p, warnNotCmp, p.tok.ident.s)
     return
 
   case p.tok.tokType

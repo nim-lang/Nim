@@ -181,6 +181,10 @@ Advanced options:
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --maxLoopIterationsVM:N   set max iterations for all VM loops
   --maxCallDepthVM:N        set max call depth in the VM
+  --reportLargeStackObjects:N
+                            C backend: warn about every local variable or
+                            temporary that occupies at least N bytes of
+                            stack space (warning `LargeStackObject`)
   --experimental:$1
                             enable experimental language feature
   --legacy:$2

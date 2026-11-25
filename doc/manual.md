@@ -797,6 +797,9 @@ Precedence
 
 Unary operators always bind stronger than any binary
 operator: `$a + b` is `($a) + b` and not `$(a + b)`.
+This includes the comparisons: `not a == b` is `(not a) == b`. The compiler
+warns about this form unless parentheses make the meaning explicit (warning
+`NotCmp`).
 
 If a unary operator's first character is `@` it is a `sigil-like`:idx:
 operator which binds stronger than a `primarySuffix`: `@x.abc` is parsed
@@ -1784,6 +1787,14 @@ trailing comma:
 
 In fact, a trailing comma is allowed for every tuple construction.
 
+Tuples are structural types: the fields alone define the identity of a tuple
+type, so `type A = tuple[x: int]` and `type B = tuple[x: int]` are the same
+type. Pragmas that change how a type is represented or what it is, such as
+`packed`, `bycopy`, `byref` or `importc`, are not supported on tuple types: two
+tuple types with the same fields but different pragmas would still be a single
+type, and the behaviour of the program is not defined. Use an `object` type if
+such a pragma is needed.
+
 The implementation aligns the fields for the best access performance. The alignment
 is compatible with the way the C compiler does it.
 
@@ -2065,6 +2076,10 @@ let c = Opt[float](None())    # a type conversion provides the expected type
 If a branch name belongs to several sum types, the expected type, a type
 conversion or a module qualifier (`module.Branch(...)`) selects one.
 
+`Branch()` and `Branch(field: value, ...)` always construct. Any other call
+of a branch name, like `Branch(x)` or `a Branch b` for a branch named by an
+operator, is an ordinary call of a routine of that name.
+
 
 ### Pattern matching
 
@@ -2096,8 +2111,11 @@ assert eval(AddOpr(a: Value(val: 40), b: Value(val: 2))) == 42
   of the declaration so that they share their fields.
 - The `case` must cover all branches or have an `else` branch.
 
-A binding is not a copy but a view of the field: if the matched value is
-mutable, assigning to the binding changes the field.
+If the matched expression is a mutable location, a binding is not a copy but
+a view of the field: assigning to the binding changes the field. Like other
+views, such a binding cannot be captured by a closure or escape its routine.
+Otherwise the fields are bound by value and the bindings cannot be assigned
+to.
 
 ```nim test
 type
@@ -7209,13 +7227,19 @@ The modules connected by such imports form a *cycle group* that is checked
 together, phase by phase; every phase runs for all modules of the group before
 the next one starts:
 
-1. The imports of every module.
-2. The type sections of every module.
+1. The imports of every module, preceded by the pragma statements before
+   the first import of every module (like `{.deprecated.}`). A `when`
+   statement that only imports modules belongs to the imports.
+2. The type sections of every module. The statements that precede a type
+   section and declare something the module's types use, like a constant,
+   a template or a user defined pragma, are checked first, in their order;
+   so a type section can refer to them as it could outside of a group.
 3. The *leading declarations* of every module: the routines, constants and
    pragmas up to the first statement of a different kind (like a `var`
    section, a `when` statement or a call). The bodies of these routines are
    checked later, so they can refer to the declarations of all modules in the
-   group.
+   group. The `export` statements among the leading declarations run after
+   the leading declarations of every module.
 4. The remaining statements, module by module, in the order an ordinary
    recursive import would check them. This also determines the order in which
    the modules' top-level code runs.
@@ -8288,7 +8312,8 @@ at compile-time will error with "'sizeof' requires '.importc' types to be
 Compile pragma
 --------------
 The `compile` pragma can be used to compile and link a C/C++ source file
-with the project:
+with the project. Like `link`, `passc`, `passl` and `localPassC`, it acts on the
+whole module and is an error inside a routine:
 
 This pragma can take three forms. The first is a simple file input:
   ```Nim
@@ -9114,7 +9139,7 @@ is available and a literal dollar sign must be written as ``$$``.
 Bycopy pragma
 -------------
 
-The `bycopy` pragma can be applied to an object or tuple type or a proc param. It instructs the compiler to pass the type by value to procs:
+The `bycopy` pragma can be applied to an object type or a proc param. It instructs the compiler to pass the type by value to procs:
 
   ```nim
   type
@@ -9130,7 +9155,7 @@ Notice params marked as `byref` takes precedence over types marked as `bycopy`.
 Byref pragma
 ------------
 
-The `byref` pragma can be applied to an object or tuple type or a proc param.
+The `byref` pragma can be applied to an object type or a proc param.
 When applied to a type it instructs the compiler to pass the type by reference
 (hidden pointer) to procs. When applied to a param it will take precedence, even
 if the type was marked as `bycopy`. When an `importc` type has a `byref` pragma or
@@ -9218,7 +9243,8 @@ should scan unions conservatively.
 
 Packed pragma
 -------------
-The `packed` pragma can be applied to any `object` type. It ensures
+The `packed` pragma can be applied to any `object` type, but not to a tuple type
+(see [Tuples and object types](#types-tuples-and-object-types)). It ensures
 that the fields of an object are packed back-to-back in memory. It is useful
 to store packets or messages from/to network or hardware drivers, and for
 interoperability with C. Combining packed pragma with inheritance is not

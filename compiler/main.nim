@@ -164,7 +164,10 @@ proc commandCompileToC(graph: ModuleGraph) =
   # optHotCodeReloading is mostly broken in general
   # optUseNimcache requires changes to how command lines are hashed to avoid rebuild detection errors
   # optGenStaticLib isn't supported by the JSON build script machinery
-  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache, optGenStaticLib} * conf.globalOptions == {optSpawnCodegen}:
+  # a project read from stdin has been read already; the subprocess would find
+  # stdin empty
+  if {optSpawnCodegen, optCompileOnly, optHotCodeReloading, optUseNimcache, optGenStaticLib} * conf.globalOptions == {optSpawnCodegen} and
+      not conf.projectIsStdin:
     extccomp.spawnCodegenSubprocess(conf)
     return # Subprocess handled everything; skip in-process compilation
 
@@ -460,6 +463,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
   of cmdM:
+    quietForIcProgress(conf)
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
     setUseIc(true)
@@ -472,6 +476,7 @@ proc mainCommand*(graph: ModuleGraph) =
     timed tStage: commandCheck(graph)
     releaseSharedCounters()
   of cmdNifC:
+    quietForIcProgress(conf)
     setUseIc(true)
     excl conf.features, Feature.vtables
     # Generate C code from NIF files

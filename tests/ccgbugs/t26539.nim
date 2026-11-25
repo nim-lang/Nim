@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc --passC:-fsanitize=undefined --passC:-fno-sanitize-recover=undefined --passL:-fsanitize=undefined"
+  matrix: "--mm:refc --passC:-fsanitize=undefined --passC:-fsanitize-undefined-trap-on-error --passL:-fsanitize=undefined --passL:-fsanitize-undefined-trap-on-error"
   disabled: "windows"
   output: "ok"
 """

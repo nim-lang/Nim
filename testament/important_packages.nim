@@ -86,7 +86,7 @@ pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jblindsay/kdtree"
 # temp fix: until https://github.com/elijahr/lockfree/pull/3
-pkg "lockfreequeues", "git fetch origin && git checkout -B fix/typestates-cap origin/fix/typestates-cap; nimble test -l", "https://github.com/Graveflo/lockfreequeues"
+pkg "lockfreequeues"
 pkg "loopfusion"
 pkg "macroutils"
 pkg "manu"

@@ -8,6 +8,8 @@ impl 2 called
 asd
 Foo
 Bar
+Seq works
+seq works
 '''
 joinable: false
 """
@@ -166,3 +168,19 @@ block: # issue #24203
   b(seq[int])
   b((int, int))
   b(typeof (0, 0))
+
+block: # bug #19170
+  type Seq[U] = seq[U]
+  proc foo(s: typedesc[seq]) = echo "seq works"
+  proc foo(s: typedesc[Seq]) = echo "Seq works"
+  Seq.foo
+  seq.foo
+
+block: # bug #25518
+  type IorB = int or bool
+
+  proc passInt(i: int): int = i
+
+  proc usePassInt(f: proc (_: IorB): int, ib: IorB): int = f(ib)
+
+  doAssert usePassInt(passInt, 42) == 42

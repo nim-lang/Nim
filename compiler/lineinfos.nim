@@ -102,6 +102,8 @@ type
     warnSystemRangeConversion = "SystemRangeConversion",
     warnInvalidCmpOp = "InvalidCmpOp",
     warnImplicitCyclicImport = "ImplicitCyclicImport",
+    warnNotCmp = "NotCmp",
+    warnLargeStackObject = "LargeStackObject",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -214,6 +216,8 @@ const
     warnSystemRangeConversion: "implicit range conversion $1",
     warnInvalidCmpOp: "$1",
     warnImplicitCyclicImport: "$1",
+    warnNotCmp: "`not` binds tighter than '$1': `not a $1 b` is `(not a) $1 b`; use parentheses to make the meaning explicit",
+    warnLargeStackObject: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",

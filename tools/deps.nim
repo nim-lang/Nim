@@ -36,10 +36,11 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
     let oldDir = getCurrentDir()
     setCurrentDir(destDir)
     try:
-      let checkoutCmd = fmt"git checkout -q {commit}"
+      let checkoutCmd = fmt"git checkout -q {commit.quoteShell}"
       if tryexec(checkoutCmd) != 0:
-        execRetry "git fetch -q"
-        exec checkoutCmd
+        # A pinned commit may not be reachable from the default fetch refs.
+        execRetry fmt"git fetch -q origin {commit.quoteShell}"
+        exec "git checkout -q FETCH_HEAD"
     finally:
       setCurrentDir(oldDir)
   elif allowBundled:

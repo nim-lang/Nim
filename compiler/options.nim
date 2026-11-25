@@ -9,7 +9,7 @@
 
 import
   lineinfos, platform,
-  prefixmatches, pathutils, nimpaths
+  prefixmatches, pathutils, nimpaths, pathcache
 
 import std/[tables, os, strutils, strtabs, sets]
 from std/terminal import isatty
@@ -82,7 +82,7 @@ type                          # please make sure we have under 32 options
     optOptimizeSpeed, optOptimizeSize,
     optStackTrace, # stack tracing support
     optStackTraceMsgs, # enable custom runtime msgs via `setFrameMsg`
-    optLineTrace,             # line tracing support (includes stack tracing)
+    optLineTrace,             # line numbers in the stack trace of optStackTrace
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
     optProfiler,              # profiler turned on
@@ -483,6 +483,12 @@ type
                               # `nim icconfig` process (see `cmdIcConfig`).
     icConfigOut*: string      # under `nim icconfig`: the path to write the
                               # precompiled config artifact to (set via `--o`).
+    slurpedFiles*: Table[int32, seq[string]]
+                              # under `nim m`: per module (keyed by its
+                              # position), the files `staticRead`/`slurp` read
+                              # while compiling it. Written to the module's
+                              # `.slurps.bif` sidecar so `nim ic` rebuilds the
+                              # module when such a file changes (#26614).
     icConfigSwitches*: seq[tuple[switch, arg: string]]
                               # the config-file (`passPP`) switches applied while
                               # loading config, in order. Recorded by every nim
@@ -533,6 +539,8 @@ type
     errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
     maxCallDepthVM*: int ## VM: max call depth
+    largeStackObjectSize*: BiggestInt ## C backend: report stack objects of at
+      ## least this many bytes; 0 = disabled
     isVmTrace*: bool
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
@@ -546,6 +554,7 @@ type
     outDir*: AbsoluteDir
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
+    pathCache: PathCache
     dllOverrides*, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
@@ -620,6 +629,22 @@ proc setNoteDefaults*(conf: ConfigRef, note: TNoteKind, enabled = true) =
     conf.mainPackageNotes.op note
     conf.foreignPackageNotes.op note
   if enabled: fun(incl) else: fun(excl)
+
+const
+  IcProgressEnv* = "NIM_IC_PROGRESS"
+    ## Set by the `nim ic` driver while `nifmake` draws its progress bar. The
+    ## `nim m`/`nim nifc` children then do not print the per-module noise
+    ## (`.` per module, `CC: x.nim`) that would tear the bar apart. An
+    ## environment variable and not a switch: switches are part of the child
+    ## command lines and thus of the build files and the configuration key,
+    ## so a terminal and a redirected build would not share a cache.
+
+proc quietForIcProgress*(conf: ConfigRef) =
+  ## See `IcProgressEnv`. Warnings and errors are kept.
+  if getEnv(IcProgressEnv).len > 0:
+    for n in [hintProcessing, hintCC, hintLinking, hintExecuting, hintSuccessX,
+              hintConf, hintSuccess]:
+      setNoteDefaults(conf, n, false)
 
 proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
   # see also `prepareConfigNotes` which sets notes
@@ -922,6 +947,7 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
         result = binParent
     else:
       result = binParent
+    conf.prefixDir = result
 
 proc setDefaultLibpath*(conf: ConfigRef) =
   # set default value (can be overwritten):
@@ -939,8 +965,35 @@ proc setDefaultLibpath*(conf: ConfigRef) =
         fileExists(parentNimLibPath / "system.nim"):
       conf.libpath = AbsoluteDir parentNimLibPath
 
+proc resetPathCache*(conf: ConfigRef) =
+  ## Start a fresh filesystem snapshot after evaluating configuration scripts.
+  conf.pathCache.reset()
+
+proc pathCacheEnabled(conf: ConfigRef): bool =
+  conf.cmd notin {cmdNone, cmdNimscript} and not conf.ideActive and
+    optWithinConfigSystem notin conf.globalOptions
+
+proc getCurrentDir*(conf: ConfigRef): string =
+  ## Use one working-directory lookup during a compilation, preserving config
+  ## scripts' and IDE sessions' ability to change it.
+  if conf.pathCacheEnabled:
+    conf.pathCache.getCurrentDir()
+  else:
+    os.getCurrentDir()
+
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  result = AbsoluteFile path.string.expandFilename
+  if conf.pathCacheEnabled:
+    AbsoluteFile conf.pathCache.expandFilename(path.string)
+  else:
+    AbsoluteFile path.string.expandFilename
+
+proc relativeTo*(conf: ConfigRef; fullPath: AbsoluteFile; base: AbsoluteDir;
+                 sep = DirSep): RelativeFile =
+  ## Convert compiler paths without repeatedly querying the working directory.
+  if conf.pathCacheEnabled:
+    RelativeFile conf.pathCache.relativePath(fullPath.string, base.string, sep)
+  else:
+    relativeTo(fullPath, base, sep)
 
 proc setFromProjectName*(conf: ConfigRef; projectName: string) =
   try:
@@ -948,7 +1001,7 @@ proc setFromProjectName*(conf: ConfigRef; projectName: string) =
   except OSError:
     conf.projectFull = AbsoluteFile projectName
   let p = splitFile(conf.projectFull)
-  let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
+  let dir = if p.dir.isEmpty: AbsoluteDir conf.getCurrentDir() else: p.dir
   try:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
   except OSError:

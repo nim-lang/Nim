@@ -106,11 +106,13 @@ type
     icOfferedInstances*: HashSet[string] # backend: NIF names of the generic
                                   # instances some loaded module `(offer)`s
                                   # (see `cgen.homeEmitsInstance`)
-    icQualIfaces*: IntSet         # module positions whose interface tables were
-                                  # populated ONLY for qualified access through a
-                                  # module re-export (`import x; export x`); the
-                                  # Iface.module stays nil so a later direct
-                                  # import still takes the full load path
+    icQualModules: Table[int, seq[PSym]] # module positions whose interface
+                                  # tables were populated for qualified access
+                                  # through a module re-export (`import x;
+                                  # export x`), and the module symbol made for
+                                  # each name the module is re-exported as; the
+                                  # symbols are not registered, so a later
+                                  # direct import still takes the full load path
     vmInjecting*: bool            # the VM injects destructors: hooks that
                                   # are missing are not lifted (that could
                                   # conflict with hooks declared later)
@@ -193,11 +195,14 @@ type
                                   # (`genIcModuleDestroyGlobals`), already in
                                   # call order; only the main module's `cg`
                                   # fills this, from the `.c.nif` meta heads
-    demandCycleBody*: proc (prc: PSym) {.closure.}
+    demandCycleBody*: proc (prc: PSym; forEffects: bool): bool {.closure.}
       ## set while a cycle group (`import m {.cyclic.}`) is checked: effect
       ## tracking asks for the deferred body of a routine of the group before it
-      ## falls back to the pessimistic assumptions about a routine without
-      ## effects.
+      ## uses the routine's effects. Returns true if the body is still being
+      ## checked, i.e. the call is a recursion via the modules of the group and
+      ## the routine's effects are incomplete. With `forEffects` it is also true,
+      ## without running the body, for a routine with a forward declaration
+      ## that follows the body of its module that is being checked.
     demandRoutineBody*: proc (prc: PSym) {.closure.}
       ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
       ## is needed NOW". A deferred unit's body is unsemmed until the module's
@@ -852,9 +857,9 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
   var rel = ""
   if path.string.startsWith(conf.libpath.string):
     isLib = true
-    rel = relativeTo(path, conf.libpath).string
+    rel = conf.relativeTo(path, conf.libpath).string
   else:
-    rel = relativeTo(path, conf.projectPath).string
+    rel = conf.relativeTo(path, conf.projectPath).string
 
   if not isLib and not belongsToProjectPackage(conf, m):
     # special handlings for nimble packages
@@ -1213,13 +1218,17 @@ when not defined(nimKochBootstrap):
         g.ifaces[fIdx.int].module.name.s == mname:
       # properly registered already (directly imported earlier): reuse it
       return g.ifaces[fIdx.int].module
+    g.icQualModules.withValue(fIdx.int, aliases):
+      for m in aliases[]:
+        if m.name.s == mname: return m
+    let firstAlias = not g.icQualModules.hasKey(fIdx.int)
     result = PSym(kindImpl: skModule, itemId: itemId(int32(fIdx), 0'i32),
                   name: getIdent(g.cache, mname),
                   infoImpl: newLineInfo(fIdx, 1, 1),
                   positionImpl: int(fIdx))
     setOwner(result, getPackage(g.config, g.cache, fIdx))
-    if g.ifaces[fIdx.int].module == nil and
-        not g.icQualIfaces.containsOrIncl(fIdx.int):
+    g.icQualModules.mgetOrPut(fIdx.int, @[]).add result
+    if firstAlias and g.ifaces[fIdx.int].module == nil:
       var interf = initStrTable()
       var interfHidden = initStrTable()
       let precomp = loadNifModule(ast.program, ModuleSuffix(msuffix),
@@ -1290,6 +1299,17 @@ when not defined(nimKochBootstrap):
     # relationship is invisible for NIF-served modules.
     for incPath in result.includes:
       g.addIncludeDep(fileIdx, fileInfoIdx(g.config, AbsoluteFile incPath))
+    # Hot code reloading lists every module's imports in its library
+    # (`cgen.registerModuleToMain`); a from-source compile records them as sem
+    # imports (`importPipelineModule`). A backend process does no sem, so take
+    # them from the NIF. Backend only: under `nim m` the table is this
+    # process's own sem result and is written out as `.s.deps`.
+    if g.config.hcrOn and g.config.cmd == cmdNifC:
+      for dep in result.deps:
+        var isKnownFile = false
+        let depIdx = registerNifSuffix(g.config, dep.string, isKnownFile)
+        let deps = addr g.importDeps.mgetOrPut(fileIdx, @[])
+        if depIdx notin deps[]: deps[].add depIdx
 
     # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
     # consumer's `genericCacheGet` finds the instance and SKIPS re-running

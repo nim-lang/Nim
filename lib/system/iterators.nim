@@ -205,15 +205,28 @@ iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
     unCheckedInc(i)
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
+template strMutLoop(a: var string; body: untyped) =
+  ## `--strings:sso`: the yielded `var char` of a long string points into its
+  ## heap data, so the inline prefix must be resynced afterwards (#26613),
+  ## also when the loop is left via `break` or an exception.
+  when defined(nimsso):
+    try:
+      body
+    finally:
+      endStore(a)
+  else:
+    body
+
 iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   ## `a[index]` can be modified.
   var i = 0
   let L = len(a)
-  while i < L:
-    yield (i, a[i])
-    unCheckedInc(i)
-    assert(len(a) == L, "the length of the string changed while iterating over it")
+  strMutLoop(a):
+    while i < L:
+      yield (i, a[i])
+      unCheckedInc(i)
+      assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
@@ -275,10 +288,11 @@ iterator mitems*(a: var string): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = 0
   let L = len(a)
-  while i < L:
-    yield a[i]
-    unCheckedInc(i)
-    assert(len(a) == L, "the length of the string changed while iterating over it")
+  strMutLoop(a):
+    while i < L:
+      yield a[i]
+      unCheckedInc(i)
+      assert(len(a) == L, "the length of the string changed while iterating over it")
 
 
 iterator fields*[T: tuple|object](x: T): RootObj {.
