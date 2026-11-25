@@ -11,11 +11,11 @@ discard """
 $nimsuggest2 $file $path/ns2projects/tests/mns2projall.nim
 >changed
 >use $file:8:9
-use;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;8;;8;;""
 def;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;*/ns2projects/mns2projlib.nim;;1;;5;;""
 use;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;*/ns2projects/tests/mns2projall.nim;;3;;8;;""
+use;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;8;;8;;""
 >use $file;$file:8:9
-use;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;8;;8;;""
 def;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;*/ns2projects/mns2projlib.nim;;1;;5;;""
 use;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;*/ns2projects/tests/mns2projall.nim;;3;;8;;""
+use;;skProc;;mns2projlib.fromLib;;proc (): int{.noSideEffect, gcsafe, raises: <inferred> [].};;$file;;8;;8;;""
 """

@@ -16,16 +16,16 @@ discard """
 $nimsuggest2 $file
 >changed $file
 >use $file:13:10
-use;;skField;;mns2fieldlib.Point.x;;int;;$file;;13;;10;;""
 def;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fieldlib.nim;;3;;4;;""
-use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;8;;45;;""
+use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fieldlib.nim;;7;;32;;""
 use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;3;;34;;""
 use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;6;;24;;""
-use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fieldlib.nim;;7;;32;;""
+use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;8;;45;;""
+use;;skField;;mns2fieldlib.Point.x;;int;;$file;;13;;10;;""
 >use $path/mns2fieldlib.nim:3:4
 def;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fieldlib.nim;;3;;4;;""
 use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fieldlib.nim;;7;;32;;""
-use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;8;;45;;""
 use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;3;;34;;""
 use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;6;;24;;""
+use;;skField;;mns2fieldlib.Point.x;;int;;*/mns2fielduse.nim;;8;;45;;""
 """

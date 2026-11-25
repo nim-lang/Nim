@@ -531,6 +531,11 @@ proc writtenAt(src: var Table[FileIndex, seq[string]]; conf: ConfigRef;
   else:
     result = col >= 0 and text.continuesWith(ident, col)
 
+proc cmpPosition(conf: ConfigRef; a, b: TLineInfo): int =
+  ## By file path, then line and column
+  result = cmp(toFullPath(conf, a.fileIndex), toFullPath(conf, b.fileIndex))
+  if result == 0: result = cmp((a.line, a.col), (b.line, b.col))
+
 proc symAtPos(graph: ModuleGraph; n: PNode; target: TLineInfo; ident: string): PSym =
   ## The symbol named `ident` that `n` has at `target`.
   result = nil
@@ -627,8 +632,7 @@ proc answerFromNif(graph: ModuleGraph; q: Query): bool =
     if src.writtenAt(conf, info, sym.name.s) and not found.anyIt(it.exactEquals(info)):
       found.add info
   if found.len == 0: return false
-  found.sort(proc (a, b: TLineInfo): int =
-    cmp((a.fileIndex.int32, a.line, a.col), (b.fileIndex.int32, b.line, b.col)))
+  found.sort(proc (a, b: TLineInfo): int = cmpPosition(conf, a, b))
   conf.ideCmd = cmd
   for info in found:
     graph.suggestResult(sym, info)
@@ -770,6 +774,7 @@ proc answer(graph: ModuleGraph; cmd: IdeCmd; file: string; fileIndex: FileIndex;
         for info in infos:
           if not res.anyIt(it.info.exactEquals(info)):
             res.add SymInfoPair(sym: s.sym, info: info)
+      res.sort(proc (a, b: SymInfoPair): int = cmpPosition(conf, a.info, b.info))
       var src = initTable[FileIndex, seq[string]]()
       for s in res:
         if src.writtenAt(conf, s.info, s.sym.name.s):
