@@ -3023,7 +3023,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mAsgn:
     let kind = if e.firstSon.sym.name.s == "=sink": nkSinkAsgn else: nkAsgn
-    let lhs = e.secondSon.skipHiddenAddr
+    let arg = e.secondSon
+    var lhs = arg.skipHiddenAddr
+    if lhs == arg and arg.typ != nil and
+        arg.typ.skipTypes(abstractInst).kind in {tyVar, tyLent}:
+      # the argument is already an address (e.g. a `var T` parameter that is
+      # passed on), so we need to dereference it (bug #26772):
+      lhs = newDeref(arg)
     let n = newTreeI(kind, e.info, lhs, son(e, 2))
     n.typ = e.typ
     cow(p, son(e, 2))
