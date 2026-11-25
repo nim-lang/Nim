@@ -11,11 +11,12 @@
 
 const
   # examples of possible values for repos: Head, ea82b54
+  NimbleStableCommit = "d208ed8bf5dce7f2bb9841a43659b82b8152a6c5"    # 0.28.0
   AtlasStableCommit = "fa19ace5c5d176d0e19f9b6ad08239ce2ceea676"     # 0.16.4
   ChecksumsStableCommit = "5c132cd332cce5d64a0da9ac3e4c9664313dccb4" # 0.2.2
   SatStableCommit = "9d52513b3c68bfb929dbd687d4fb2836cfee6936"
 
-  NimonyStableCommit = "668edddcaa5651051e7683a38a04f31fba778f35" # unversioned \
+  NimonyStableCommit = "95afaa04c950bca65dd34054e39aba68956b14ff" # unversioned \
     # Note that Nimony uses Nim as a git submodule but we don't want to install
     # Nimony's dependency to Nim as we are Nim. So a `git clone` without --recursive
     # is **required** here.
@@ -28,13 +29,6 @@ const
   # examples of possible values for fusion: #head, #ea82b54, 1.2.3
   FusionStableHash = "#562467452b32cb7a97410ea177f083e6d8405734"
   HeadHash = "#head"
-
-# Nimble 0.26.2 lacks illumos support; use a supporting commit on illumos.
-# Remove this override once the common Nimble pin includes illumos support.
-when defined(illumos):
-  const NimbleStableCommit = "302a71139254b43b1488d65de111b6734d1a7490"
-else:
-  const NimbleStableCommit = "5798d2385808f6593afe77e4c36250c6ec63e53c"    # 0.26.2
 
 when not defined(windows):
   const

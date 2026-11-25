@@ -82,7 +82,7 @@ type                          # please make sure we have under 32 options
     optOptimizeSpeed, optOptimizeSize,
     optStackTrace, # stack tracing support
     optStackTraceMsgs, # enable custom runtime msgs via `setFrameMsg`
-    optLineTrace,             # line tracing support (includes stack tracing)
+    optLineTrace,             # line numbers in the stack trace of optStackTrace
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
     optProfiler,              # profiler turned on
@@ -539,6 +539,8 @@ type
     errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
     maxCallDepthVM*: int ## VM: max call depth
+    largeStackObjectSize*: BiggestInt ## C backend: report stack objects of at
+      ## least this many bytes; 0 = disabled
     isVmTrace*: bool
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
@@ -627,6 +629,22 @@ proc setNoteDefaults*(conf: ConfigRef, note: TNoteKind, enabled = true) =
     conf.mainPackageNotes.op note
     conf.foreignPackageNotes.op note
   if enabled: fun(incl) else: fun(excl)
+
+const
+  IcProgressEnv* = "NIM_IC_PROGRESS"
+    ## Set by the `nim ic` driver while `nifmake` draws its progress bar. The
+    ## `nim m`/`nim nifc` children then do not print the per-module noise
+    ## (`.` per module, `CC: x.nim`) that would tear the bar apart. An
+    ## environment variable and not a switch: switches are part of the child
+    ## command lines and thus of the build files and the configuration key,
+    ## so a terminal and a redirected build would not share a cache.
+
+proc quietForIcProgress*(conf: ConfigRef) =
+  ## See `IcProgressEnv`. Warnings and errors are kept.
+  if getEnv(IcProgressEnv).len > 0:
+    for n in [hintProcessing, hintCC, hintLinking, hintExecuting, hintSuccessX,
+              hintConf, hintSuccess]:
+      setNoteDefaults(conf, n, false)
 
 proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
   # see also `prepareConfigNotes` which sets notes

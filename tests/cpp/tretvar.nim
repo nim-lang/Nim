@@ -45,3 +45,13 @@ block: # bug #25870
     prc(x) = 321
     doAssert x == 321
   testProcTypeParam(testVarRet)
+
+block: # bug #25863
+  proc testLentRet(x: seq[string]): lent string = x[0]
+
+  proc testProcTypeParam(prc: proc (x: seq[string]): lent string {.nimcall.}) =
+    var x = @["foo"]
+    let y = prc(x)
+    doAssert y == "foo"
+
+  testProcTypeParam(testLentRet)

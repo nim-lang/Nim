@@ -115,3 +115,25 @@ block t3038:
       data: Data[T]
     SubSubType = ref object of SubType[int]
     SubSubSubType = ref object of SubSubType
+
+block: # bug #15542
+  type
+    State = enum
+      NUM, NO, BOOL
+
+    Multitype = object
+      case state: State
+      of NUM:
+        num: float
+      of BOOL:
+        boo: bool
+      else: discard
+
+  var a, c: Multitype
+
+  a = Multitype(state: NUM, num: 1.0)
+  c = Multitype(state: NUM, num: 2.0)
+  # the discriminant of c changes while a.num > c.num is evaluated
+  c = Multitype(state: BOOL, boo: a.num > c.num)
+  doAssert c.state == BOOL
+  doAssert not c.boo
