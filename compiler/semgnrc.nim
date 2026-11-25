@@ -268,6 +268,12 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         if x.sym.kind in {skTemplate, skMacro}:
           isMacro = true
           break
+    else:
+      # a routine declared in the generic body itself is not known yet, it
+      # can be a template:
+      var amb = false
+      let s = searchInScopes(c, ident, amb)
+      isMacro = s != nil and s.kind == skUnknown
 
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
@@ -391,7 +397,11 @@ proc semGenericStmt(c: PContext, n: PNode,
         # we need to put the ``c`` in ``t(c)`` in a mixin context to prevent
         # the famous "undeclared identifier: it" bug:
         mixinContext = true
-      of skUnknown, skParam:
+      of skUnknown:
+        # Leave it as an identifier. It is declared in the generic body itself
+        # and can be a template, so its arguments are in a mixin context:
+        mixinContext = true
+      of skParam:
         # Leave it as an identifier.
         discard
       of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
