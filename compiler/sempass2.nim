@@ -2016,8 +2016,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
     let useWarning = s.name.s == "=destroy"
+    # the spec of a generic covers all of its instances; a single instance
+    # that does not raise a listed exception does not make it superfluous:
     checkRaisesSpec(g, useWarning, raisesSpec, t.exc, "can raise an unlisted exception: ",
-                    hints=on, subtypeRelation, hintsArg=s.ast[0], unknownRaises = t.unknownRaises)
+                    hints = sfFromGeneric notin s.flags, subtypeRelation, hintsArg=s.ast[0], unknownRaises = t.unknownRaises)
     # after the check, use the formal spec:
     effects[exceptionEffects] = raisesSpec
   else:
