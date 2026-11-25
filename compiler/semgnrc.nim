@@ -260,6 +260,14 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags,
           isAmbiguous = ambig, fromDotExpr = true)
         result = newDot(result, syms)
+    elif n.kind == nkSym:
+      # already bound, for example by `quote`, the symbols need not be in scope:
+      isMacro = n.sym.kind in {skTemplate, skMacro}
+    elif n.kind in nkSymChoices:
+      for x in n:
+        if x.sym.kind in {skTemplate, skMacro}:
+          isMacro = true
+          break
 
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
