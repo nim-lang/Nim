@@ -357,6 +357,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add renderNotLValue(nArg)
           candidates.add "' is immutable, not 'var'"
           candidates.add "\n"
+          let hint = notLValueHint(nArg)
+          if hint.len > 0:
+            candidates.add "  " & hint
+            candidates.add "\n"
         of kTypeMismatch:
           doAssert nArg != nil
           if nArg.kind in nkSymChoices:
@@ -442,6 +446,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           if err.firstMismatch.kind == kVarNeeded:
             candidates.add renderNotLValue(nArg)
             candidates.add "' is immutable, not 'var'"
+            let hint = notLValueHint(nArg)
+            if hint.len > 0:
+              candidates.add "\n  " & hint
           else:
             candidates.add renderTree(nArg)
             candidates.add "' is of type: "
