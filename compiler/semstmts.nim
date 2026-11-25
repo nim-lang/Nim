@@ -111,7 +111,10 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = c.enforceVoidContext
   elif efInTypeof in flags:
     result.typ = n[1].typ
-  elif implicitlyDiscardable(n[1]):
+  elif not isEmptyType(n[1].typ) and implicitlyDiscardable(n[1]):
+    # only a body that produces a value needs to be marked as discarded; marking
+    # a `break` body would turn the loop into a void context when it is sem'checked
+    # again (typed macro arguments), see #26487
     result[1].typ = c.enforceVoidContext
 
 proc semProc(c: PContext, n: PNode): PNode
