@@ -88,6 +88,8 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   elif (c.p.nestedLoopCounter <= 0) and ((c.p.nestedBlockCounter <= 0) or n.kind == nkContinueStmt):
     localError(c.config, n.info, errInvalidControlFlowX %
                renderTree(n, {renderNoComments}))
+  elif n.kind == nkContinueStmt and c.p.inFieldsLoop:
+    localError(c.config, n.info, "'continue' not supported in a 'fields' loop")
 
 proc semAsm(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
@@ -103,8 +105,11 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
   inc(c.p.nestedLoopCounter)
   let oldBreakInLoop = c.p.breakInLoop
   c.p.breakInLoop = true
+  let oldInFieldsLoop = c.p.inFieldsLoop
+  c.p.inFieldsLoop = false
   n[1] = semStmt(c, n[1], flags)
   c.p.breakInLoop = oldBreakInLoop
+  c.p.inFieldsLoop = oldInFieldsLoop
   dec(c.p.nestedLoopCounter)
   closeScope(c)
   if n[1].typ == c.enforceVoidContext:
@@ -1198,12 +1203,15 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   inc(c.p.nestedLoopCounter)
   let oldBreakInLoop = c.p.breakInLoop
   c.p.breakInLoop = true
+  let oldInFieldsLoop = c.p.inFieldsLoop
+  c.p.inFieldsLoop = false
   openScope(c)
   n[^1] = semExprBranch(c, n[^1], flags)
   if efInTypeof notin flags:
     discardCheck(c, n[^1], flags)
   closeScope(c)
   c.p.breakInLoop = oldBreakInLoop
+  c.p.inFieldsLoop = oldInFieldsLoop
   dec(c.p.nestedLoopCounter)
 
 proc implicitIterator(c: PContext, it: string, arg: PNode, flags: TExprFlags): PNode =
