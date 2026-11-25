@@ -179,7 +179,6 @@ template addStructInitializer(builder: var Builder, constr: out StructInitialize
 
 proc addField(obj: var Builder; name, typ: Snippet; isFlexArray: bool = false; initializer: Snippet = "") =
   ## adds a field inside a struct/union type
-  obj.add('\t')
   obj.add(typ)
   obj.add(" ")
   obj.add(name)
@@ -191,7 +190,6 @@ proc addField(obj: var Builder; name, typ: Snippet; isFlexArray: bool = false; i
 
 proc addArrayField(obj: var Builder; name, elementType: Snippet; len: int; initializer: Snippet = "") =
   ## adds an array field inside a struct/union type
-  obj.add('\t')
   obj.add(elementType)
   obj.add(" ")
   obj.add(name)
@@ -204,7 +202,6 @@ proc addArrayField(obj: var Builder; name, elementType: Snippet; len: int; initi
 
 proc addField(obj: var Builder; field: PSym; name, typ: Snippet; isFlexArray: bool = false; initializer: Snippet = "") =
   ## adds an field inside a struct/union type, based on an `skField` symbol
-  obj.add('\t')
   if field.alignment > 0:
     obj.add("NIM_ALIGN(")
     obj.addIntValue(field.alignment)
@@ -262,8 +259,7 @@ proc startSimpleStruct(obj: var Builder; m: BModule; name: string; baseType: Sni
   if result.baseKind == bcCppInherit:
     obj.add(" : public ")
     obj.add(baseType)
-  obj.add(" ")
-  obj.add("{\n")
+  obj.addLineEndIndent(" {")
   result.preFieldsLen = obj.buf.len
   if result.baseKind == bcSupField:
     obj.addField(name = "Sup", typ = baseType)
@@ -273,9 +269,9 @@ proc finishSimpleStruct(obj: var Builder; m: BModule; info: StructBuilderInfo) =
     # no fields were added, add dummy field
     obj.addField(name = "dummy", typ = CChar)
   if info.named:
-    obj.add("};\n")
+    obj.addLineEndDedent("};")
   else:
-    obj.add("}")
+    obj.addDedent("}")
 
 template addSimpleStruct(obj: var Builder; m: BModule; name: string; baseType: Snippet; body: typed) =
   ## builds a struct type not based on a Nim type with fields according to `body`,
@@ -318,8 +314,7 @@ proc startStruct(obj: var Builder; m: BModule; t: PType; name: string; baseType:
   if result.baseKind == bcCppInherit:
     obj.add(" : public ")
     obj.add(baseType)
-  obj.add(" ")
-  obj.add("{\n")
+  obj.addLineEndIndent(" {")
   result.preFieldsLen = obj.buf.len
   case result.baseKind
   of bcNone:
@@ -345,9 +340,9 @@ proc finishStruct(obj: var Builder; m: BModule; t: PType; info: StructBuilderInf
     # no fields were added, add dummy field
     obj.addField(name = "dummy", typ = CChar)
   if info.named:
-    obj.add("};\n")
+    obj.addLineEndDedent("};")
   else:
-    obj.add("}")
+    obj.addDedent("}")
   if tfPacked in t.flags and hasAttribute notin CC[m.config.cCompiler].props:
     obj.add("#pragma pack(pop)\n")
 
@@ -360,16 +355,16 @@ template addStruct(obj: var Builder; m: BModule; typ: PType; name: string; baseT
 
 template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; fieldName: string, body: typed) =
   ## adds a field with a `struct { ... }` type, building the fields according to `body`
-  obj.add('\t')
   if tfPacked in parentTyp.flags:
     if hasAttribute in CC[m.config.cCompiler].props:
-      obj.add("struct __attribute__((__packed__)) {\n")
+      obj.addLineEndIndent("struct __attribute__((__packed__)) {")
     else:
-      obj.add("#pragma pack(push, 1)\nstruct {")
+      obj.add("#pragma pack(push, 1)\n")
+      obj.addLineEndIndent("struct {")
   else:
-    obj.add("struct {\n")
+    obj.addLineEndIndent("struct {")
   body
-  obj.add("} ")
+  obj.addDedent("} ")
   obj.add(fieldName)
   obj.add(";\n")
   if tfPacked in parentTyp.flags and hasAttribute notin CC[m.config.cCompiler].props:
@@ -377,15 +372,15 @@ template addFieldWithStructType(obj: var Builder; m: BModule; parentTyp: PType; 
 
 template addAnonUnion(obj: var Builder; body: typed) =
   ## adds an anonymous union i.e. `union { ... };` with fields according to `body`
-  obj.add "union{\n"
+  obj.addLineEndIndent("union {")
   body
-  obj.add("};\n")
+  obj.addLineEndDedent("};")
 
 template addUnionType(obj: var Builder; body: typed) =
   ## adds a union type i.e. `union { ... }` with fields according to `body`
-  obj.add "union{\n"
+  obj.addLineEndIndent("union {")
   body
-  obj.add("}")
+  obj.addDedent("}")
 
 type DeclVisibility = enum
   None

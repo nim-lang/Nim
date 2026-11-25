@@ -52,8 +52,6 @@ proc addCallStmt(builder: var Builder, callee: Snippet, args: varargs[Snippet]) 
   builder.addStmt():
     builder.addCall(callee, args)
 
-# XXX blocks need indent tracker in `Builder` object
-
 template addSingleIfStmt(builder: var Builder, cond: Snippet, body: typed) =
   builder.add("if (")
   builder.add(cond)
@@ -169,7 +167,7 @@ template addSingleSwitchCase(builder: var Builder, val: Snippet, body: typed) =
   builder.add(val)
   builder.addLineEndIndent(":")
   body
-  builder.addLineEndDedent("")
+  dec builder.indents
 
 type
   SwitchCaseState = enum
@@ -183,7 +181,7 @@ proc addCase(builder: var Builder, info: var SwitchCaseBuilder, val: Snippet) =
     info.state = Of
   builder.add("case ")
   builder.add(val)
-  builder.addLineEndIndent(":")
+  builder.addLineEnd(":")
 
 proc addCaseRange(builder: var Builder, info: var SwitchCaseBuilder, first, last: Snippet) =
   if info.state != Of:
@@ -193,24 +191,25 @@ proc addCaseRange(builder: var Builder, info: var SwitchCaseBuilder, first, last
   builder.add(first)
   builder.add(" ... ")
   builder.add(last)
-  builder.addLineEndIndent(":")
+  builder.addLineEnd(":")
 
 proc addCaseElse(builder: var Builder, info: var SwitchCaseBuilder) =
   assert info.state == None
   info.state = Else
-  builder.addLineEndIndent("default:")
+  builder.addLineEnd("default:")
 
 template addSwitchCase(builder: var Builder, info: out SwitchCaseBuilder, caseBody, body: typed) =
   info = SwitchCaseBuilder(state: None)
   caseBody
   info.state = Finished
+  inc builder.indents
   body
-  builder.addLineEndDedent("")
+  dec builder.indents
 
 template addSwitchElse(builder: var Builder, body: typed) =
   builder.addLineEndIndent("default:")
   body
-  builder.addLineEndDedent("")
+  dec builder.indents
 
 proc addBreak(builder: var Builder) =
   builder.addLineEnd("break;")

@@ -73,8 +73,9 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     var L = parseInt(getEnv("CONTENT_LENGTH"))
     if L == 0:
       return ""
-    result = newString(L)
-    if readBuffer(stdin, addr(result[0]), L) != L:
+    let bytes = readBuffer(stdin, beginStore(result, L), L)
+    endStore(result)
+    if bytes != L:
       cgiError("cannot read from stdin")
   of "GET":
     if methodGet notin allowedMethods:

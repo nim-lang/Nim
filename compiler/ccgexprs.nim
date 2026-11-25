@@ -991,7 +991,8 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e.firstSon.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
     var a: TLoc = initLocExpr(p, e.firstSon)
-    putIntoDest(p, d, e, cAddr(a.snippet), a.storage)
+    # an indirect loc (a global or threadvar under HCR) already is the address
+    putIntoDest(p, d, e, if lfIndirect in a.flags: a.snippet else: cAddr(a.snippet), a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
   elif mapType(p.config, e.firstSon.typ, mapTypeChooser(e.firstSon) == skParam) == ctArray or isCppRef(p, e.typ):
     expr(p, e.firstSon, d)
@@ -1894,24 +1895,47 @@ proc genFieldObjConstr(p: BProc; ty: PType; useTemp, isRef: bool; nField: PNode;
   else:
     expr(p, val, tmp2)
 
-proc mentionsSym(n: PNode; s: PSym): bool =
-  # `typeof(x)` in `typeof(x)(f: v)` does not read `x` (bug #26417):
-  if n.isCompileTimeOnlyNode: return false
-  if n.kind == nkSym: return n.sym == s
-  for i in 0..<n.safeLen:
-    if mentionsSym(n[i], s): return true
-  result = false
-
-proc constrAliasFlags(dest, constr: PNode): set[PartFlag] =
-  ## The common `dest = Constr(...)` where `dest` is `x` or `x[]` (a `var`
-  ## parameter or a `ref`) and `x` is not mentioned by the constructor needs no reverse
-  ## check: it would treat every read of a value whose type can be part of
-  ## `dest`'s type as an alias and produce a needless temporary (bug #26274).
-  let x = if dest != nil and dest.kind in {nkHiddenDeref, nkDerefExpr}: dest[0] else: dest
-  if x != nil and x.kind == nkSym and not mentionsSym(constr, x.sym):
-    result = {pfStructural}
+proc mayCallOrRaise(p: BProc; n: PNode): bool =
+  ## Whether evaluating `n` can run code that reads a location it does not
+  ## mention (a call that is not a side effect free routine) or can raise.
+  ## Defects are ignored here, like for `preventNrvo`.
+  case n.kind
+  of nkCallKinds:
+    let fn = n.firstSon
+    if fn.kind == nkSym and fn.sym.magic != mNone:
+      # magics do not run user code that could read the destination
+      discard
+    elif fn.kind == nkSym and sfNoSideEffect in fn.sym.flags and
+        not canRaiseDisp(p, fn):
+      discard
+    else:
+      return true
+  of nkRaiseStmt:
+    return true
+  of nkSym, nkEmpty, nkType, nkNilLit, nkCharLit..nkUInt64Lit,
+      nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit, nkLambdaKinds,
+      nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef, nkIteratorDef,
+      nkMacroDef, nkTemplateDef:
+    return false
   else:
-    result = {pfStructural, pfBidirectional}
+    discard
+  result = false
+  for it in sons(n):
+    if mayCallOrRaise(p, it): return true
+
+proc constrObservesDest(p: BProc; d: TLoc; values: PNode; first: int): bool =
+  ## bug #26712: `dest = Constr(...)` is constructed in place. That is only
+  ## correct if no constructor value can read `dest` through a call or raise
+  ## after `dest` was partially overwritten while `dest` is observable.
+  ## A compiler temporary (or a field of one, like the fresh object of a
+  ## `(ref T)(...)` constructor) is not observable (bug #26767); note that
+  ## for these `d.lode` is not the location but the constructed value.
+  if d.lode == nil or d.k == locTemp: return false
+  result = false
+  for i in first..<values.len:
+    if mayCallOrRaise(p, values[i]):
+      return locationEscapes(p, d.lode, p.nestedTryStmts.len > 0 or
+                                        p.withinTryWithExcept > 0)
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
@@ -1943,7 +1967,12 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # evaluated into field sized temporaries first instead of constructing the
   # whole (potentially huge) object in a temporary (bug #26417).
   var hoisted: seq[TLoc] = @[]
-  if not useTemp and isPartOf(d.lode, e, constrAliasFlags(d.lode, e)) != arNo:
+  # The reverse check (`pfBidirectional`) is required: a field value can read
+  # the destination through a call, a closure or another `var` parameter, or
+  # raise after the destination was already overwritten (bug #26687). Since
+  # the values are hoisted into field sized temporaries, it is cheap.
+  if not useTemp and (isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo or
+                     constrObservesDest(p, d, e, 1)):
     for it in sonsFrom(e, 1):
       if it.firstSon.typ.skipTypes(abstractVar).kind in {tyOpenArray, tyVarargs}:
         useTemp = true
@@ -1951,7 +1980,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     if not useTemp:
       for it in sonsFrom(e, 1):
         let val = it.secondSon
-        if nfPreventCg in it.flags or val.kind in nkLiterals or val.isCompileTimeOnlyNode:
+        if nfPreventCg in it.flags or isInertValue(val):
           hoisted.add default(TLoc)
         else:
           var v = getTemp(p, val.typ)
@@ -2007,8 +2036,9 @@ proc lhsDoesAlias(a, b: PNode): bool =
 proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   var tmp: TLoc = default(TLoc)
-  # bug #668
-  let doesAlias = lhsDoesAlias(d.lode, n)
+  # bug #668, bug #26712
+  let doesAlias = d.k != locNone and (lhsDoesAlias(d.lode, n) or
+                                     constrObservesDest(p, d, n, 0))
   let dest = if doesAlias: addr(tmp) else: addr(d)
   if doesAlias:
     tmp = getTemp(p, n.typ)
@@ -2967,6 +2997,7 @@ proc genDestroy(p: BProc; n: PNode) =
     discard "ignore calls to the default destructor"
 
 proc genSlice(p: BProc; e: PNode; d: var TLoc) =
+  let mark = p.strSyncs.len
   let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.elementType,
     prepareForMutation = e.secondSon.kind == nkHiddenDeref and
                          e.secondSon.typ.skipTypes(abstractInst).kind == tyString and
@@ -2975,6 +3006,7 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
   let dest = rdLoc(d)
   p.s(cpsStmts).addFieldAssignment(dest, "Field0", x)
   p.s(cpsStmts).addFieldAssignment(dest, "Field1", y)
+  p.strSyncs.setLen(mark) # not a call argument: nothing to resync
   when false:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       "'toOpenArray' is only valid within a call expression")
@@ -2991,7 +3023,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mAsgn:
     let kind = if e.firstSon.sym.name.s == "=sink": nkSinkAsgn else: nkAsgn
-    let lhs = e.secondSon.skipHiddenAddr
+    let arg = e.secondSon
+    var lhs = arg.skipHiddenAddr
+    if lhs == arg and arg.typ != nil and
+        arg.typ.skipTypes(abstractInst).kind in {tyVar, tyLent}:
+      # the argument is already an address (e.g. a `var T` parameter that is
+      # passed on), so we need to dereference it (bug #26772):
+      lhs = newDeref(arg)
     let n = newTreeI(kind, e.info, lhs, son(e, 2))
     n.typ = e.typ
     cow(p, son(e, 2))
@@ -3156,6 +3194,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       # - in the case of hot code-reloading we generate function pointers instead
       #   of forward declarations and in C++ it is an error to redefine a global
       let wasDeclared = containsOrIncl(p.module.declaredProtos, prc.id)
+      if wasDeclared and p.hcrOn:
+        # The other order: the proc behind the magic was declared first (by a
+        # `cgsym` of its own), so the genCall must not declare it again.
+        p.module.declaredProtos.incl opr.id
       # Make the function behind the magic get actually generated - this will
       # not lead to a forward declaration! The genCall will lead to one.
       cgsym(p.module, $opr.loc.snippet)
@@ -3163,7 +3205,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       if not wasDeclared and p.hcrOn:
         let name = mangleDynLibProc(p.module, prc)
         let rt = getTypeDesc(p.module, prc.loc.t)
-        p.module.s[cfsDynLibInit].add('\t')
         p.module.s[cfsDynLibInit].addAssignmentWithValue(name):
           p.module.s[cfsDynLibInit].addCast(rt):
             p.module.s[cfsDynLibInit].addCall("hcrGetProc",
@@ -3300,7 +3341,8 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
 
     var tmp: TLoc = default(TLoc)
     # bug #16331
-    let doesAlias = lhsDoesAlias(d.lode, n)
+    let doesAlias = d.k != locNone and (lhsDoesAlias(d.lode, n) or
+                                       constrObservesDest(p, d, n, 0))
     let dest = if doesAlias: addr(tmp) else: addr(d)
     if doesAlias:
       tmp = getTemp(p, n.typ)
@@ -3361,12 +3403,29 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
 proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
-    if d.k == locNone: d = getTemp(p, n.typ)
+    # bug #26712: if an element reads the destination (`a = [a[1], a[0]]`)
+    # or a call could read it or raise while it is observable, the elements
+    # are evaluated into element sized temporaries first.
+    var hoisted: seq[TLoc] = @[]
+    if d.k == locNone:
+      d = getTemp(p, n.typ)
+    elif d.lode != nil and (isPartOf(d.lode, n, {pfStructural}) != arNo or
+                            constrObservesDest(p, d, n, 0)):
+      for ni in sons(n):
+        if isInertValue(ni):
+          hoisted.add default(TLoc)
+        else:
+          var v = getTemp(p, ni.typ)
+          expr(p, ni, v)
+          hoisted.add v
     for i, ni in isons(n):
       arr = initLoc(locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       let lit = cIntLiteral(i)
       arr.snippet = subscript(rdLoc(d), lit)
-      expr(p, ni, arr)
+      if hoisted.len > 0 and hoisted[i].k != locNone:
+        genAssignment(p, arr, hoisted[i], {})
+      else:
+        expr(p, ni, arr)
 
 proc genComplexConst(p: BProc, sym: PSym, d: var TLoc) =
   requestConstImpl(p, sym)
@@ -3538,7 +3597,6 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
   if m.hcrOn:
     m.s[cfsVars].addVar(kind = Global, name = sym.loc.snippet,
       typ = ptrType(getTypeDesc(m, sym.loc.t, dkVar)))
-    m.initProc.procSec(cpsLocals).add('\t')
     m.initProc.procSec(cpsLocals).addAssignmentWithValue(sym.loc.snippet):
       m.initProc.procSec(cpsLocals).addCast(ptrType(getTypeDesc(m, sym.loc.t, dkVar))):
         m.initProc.procSec(cpsLocals).addCall("hcrGetGlobal",
@@ -3583,7 +3641,6 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
     q.s[cfsVars].addVar(kind = Global, name = sym.loc.snippet,
       typ = ptrType(getTypeDesc(q, sym.loc.t, dkVar)))
     # register it (but ignore the boolean result of hcrRegisterGlobal)
-    q.initProc.procSec(cpsLocals).add('\t')
     q.initProc.procSec(cpsLocals).addStmt():
       var registerCall: CallBuilder
       q.initProc.procSec(cpsLocals).addCall(registerCall, "hcrRegisterGlobal"):
@@ -3594,13 +3651,14 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
         q.initProc.procSec(cpsLocals).addArgument(registerCall):
           q.initProc.procSec(cpsLocals).addSizeof(rdLoc(sym.loc))
         q.initProc.procSec(cpsLocals).addArgument(registerCall):
+          q.initProc.procSec(cpsLocals).add(makeCString($hashTypeLayout(sym.loc.t, q.config)))
+        q.initProc.procSec(cpsLocals).addArgument(registerCall):
           q.initProc.procSec(cpsLocals).add(CNil)
         q.initProc.procSec(cpsLocals).addArgument(registerCall):
           q.initProc.procSec(cpsLocals).addCast(ptrType(CPointer)):
             q.initProc.procSec(cpsLocals).add(cAddr(sym.loc.snippet))
     # always copy over the contents of the actual constant with the _const
     # suffix ==> this means that the constant is reloadable & updatable!
-    q.initProc.procSec(cpsLocals).add('\t')
     q.initProc.procSec(cpsLocals).addStmt():
       var copyCall: CallBuilder
       q.initProc.procSec(cpsLocals).addCall(copyCall, cgsymValue(q, "nimCopyMem")):
@@ -3634,6 +3692,16 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if delayedCodegen(p.module) or {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
+        if p.hcrOn and sfDispatcher in sym.flags and
+            sfMainModule notin p.module.module.flags and
+            sym.id notin p.module.declaredProtos:
+          # The main module defines the dispatcher and registers it with the
+          # HCR runtime; this module gets the pointer from there.
+          p.module.s[cfsDynLibInit].addAssignment(sym.loc.snippet,
+            cCast(getTypeDesc(p.module, sym.loc.t),
+              cCall("hcrGetProc",
+                getModuleDllPath(p.module, sym),
+                '"' & sym.loc.snippet & '"')))
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
@@ -3699,7 +3767,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
         internalError p.config, n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
-      if sfThread in sym.flags:
+      if sfThread in sym.flags and not treatThreadVarDifferentlyForHCR(p.module, sym):
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars(p.config):
           putIntoDest(p, d, sym.loc.lode, derefField("NimTV_", sym.loc.snippet))
@@ -3845,6 +3913,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       p.s(cpsStmts).addDiscard(a.snippet)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt:
+    cgsym(p.module, "Exception")
     case p.config.exc
     of excGoto:
       genTryGoto(p, n, d)

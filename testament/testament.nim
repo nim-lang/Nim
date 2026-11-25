@@ -23,6 +23,9 @@ from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
 
 import ../dist/checksums/src/checksums/md5
+import std/tempfiles
+when not defined(windows):
+  from std/posix import Pid, SIGKILL, kill
 
 proc trimUnitSep(x: var string) =
   let L = x.len
@@ -161,6 +164,54 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir: string = "
       result.exitCode = peekExitCode(p)
       if result.exitCode != -1: break
   close(p)
+
+proc killProcessTree(pid: int) =
+  ## Kills `pid` and all its descendants (a shell, `nimble`, `nim`, the test
+  ## executable, ...). The descendants are listed before anything is killed,
+  ## because killing a parent first would reparent them out of reach.
+  when defined(windows):
+    let (outp, code) = execCmdEx("taskkill /F /T /PID " & $pid)
+    if code != 0:
+      stderr.writeLine "testament: taskkill failed (" & $code & "): " & outp
+  else:
+    var pids = @[pid]
+    var i = 0
+    while i < pids.len:
+      let (outp, code) = execCmdEx("pgrep -P " & $pids[i])
+      if code notin {0, 1}: # 1 means "no child"
+        stderr.writeLine "testament: pgrep failed (" & $code & "): " & outp
+      for line in outp.splitLines:
+        if line.strip.len > 0:
+          pids.add parseInt(line.strip)
+      inc i
+    for p in pids:
+      discard kill(Pid(p), SIGKILL)
+
+proc execCmdExTimeout(command: string, workingDir: string, timeout: float): tuple[
+                      output: string, exitCode: int, timedOut: bool] =
+  ## Like `execCmdEx`, but kills the command and all its descendants after
+  ## `timeout` seconds. The output is collected in a file, so that the child
+  ## never blocks on a full pipe while we wait for it.
+  let (tmp, tmpPath) = createTempFile("testament_", ".log")
+  tmp.close()
+  defer: removeFile(tmpPath)
+  result = ("", -1, false)
+  let deadline = epochTime() + timeout
+  var p = startProcess("(" & command & ") > " & quoteShell(tmpPath) & " 2>&1",
+                       workingDir = workingDir,
+                       options = {poUsePath, poEvalCommand})
+  close inputStream(p) # EOF on stdin instead of blocking forever
+  while true:
+    result.exitCode = peekExitCode(p)
+    if result.exitCode != -1: break
+    if epochTime() >= deadline:
+      result.timedOut = true
+      killProcessTree(processID(p))
+      result.exitCode = waitForExit(p)
+      break
+    sleep(50)
+  close(p)
+  result.output = readFile(tmpPath)
 
 proc nimcacheDir(filename, options: string, target: TTarget,
                  extraOptions = ""): string =

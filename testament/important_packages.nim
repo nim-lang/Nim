@@ -85,6 +85,7 @@ pkg "json_serialization"
 pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jblindsay/kdtree"
+# temp fix: until https://github.com/elijahr/lockfree/pull/3
 pkg "lockfreequeues"
 pkg "loopfusion"
 pkg "macroutils"

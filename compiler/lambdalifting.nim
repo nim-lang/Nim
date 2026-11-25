@@ -123,7 +123,7 @@ discard """
 
 const
   upName* = ":up" # field name for the 'up' reference
-  paramName* = ":envP"
+  paramName* = closureEnvParamName
   envName* = ":env"
 
 proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PType =

@@ -1932,7 +1932,7 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = -1): int {.
   ## * `initSkipTable func<#initSkipTable,string>`_
   ## * `initSkipTable func<#initSkipTable,SkipTable,string>`_
   let
-    last = if last < 0: s.high else: last
+    last = if last < 0: s.high else: min(last, s.high)
     subLast = sub.len - 1
 
   if subLast == -1:
@@ -1973,7 +1973,7 @@ func find*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
   ## * `rfind func<#rfind,string,char,Natural,int>`_
   ## * `replace func<#replace,string,char,char>`_
   result = -1
-  let last = if last < 0: s.high else: last
+  let last = if last < 0: s.high else: min(last, s.high)
 
   template findImpl =
     for i in int(start)..last:
@@ -2006,7 +2006,7 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
   ## * `rfind func<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   result = -1
-  let last = if last < 0: s.high else: last
+  let last = if last < 0: s.high else: min(last, s.high)
   for i in int(start)..last:
     if s[i] in chars:
       return i
@@ -2382,30 +2382,25 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   ## if `s` contains a number.
   runnableExamples:
     doAssert insertSep("1000000") == "1_000_000"
-  result = newStringOfCap(s.len)
-  let hasPrefix = isDigit(s[s.low]) == false
-  var idx: int = 0
-  if hasPrefix:
-    result.add s[s.low]
-    for i in (s.low + 1)..s.high:
-      idx = i
-      if not isDigit(s[i]):
-        result.add s[i]
-      else:
-        break
-  let partsLen = s.len - idx
-  var L = (partsLen-1) div digits + partsLen
-  result.setLen(L + idx)
-  var j = 0
-  dec(L)
-  for i in countdown(partsLen-1, 0):
-    if j == digits:
-      result[L + idx] = sep
-      dec(L)
-      j = 0
-    result[L + idx] = s[i + idx]
-    inc(j)
-    dec(L)
+    doAssert insertSep("-1000000", ',') == "-1,000,000"
+    doAssert insertSep("SGVsbG8gV29ybGQ=", ' ', 4) == "SGVs bG8g V29y bGQ="
+  # A sign or a currency symbol in front of a number is not grouped: the
+  # leading non-digits are a prefix only if all the characters after them
+  # are digits.
+  var prefixLen = 0
+  while prefixLen < s.len and not isDigit(s[prefixLen]):
+    inc prefixLen
+  for i in prefixLen..<s.len:
+    if not isDigit(s[i]):
+      prefixLen = 0
+      break
+  if prefixLen == s.len: prefixLen = 0
+  let partsLen = s.len - prefixLen
+  result = newStringOfCap(s.len + partsLen div digits)
+  for i in 0..<s.len:
+    if i > prefixLen and (s.len - i) mod digits == 0:
+      result.add sep
+    result.add s[i]
 
 func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
     extern: "nsuEscape".} =

@@ -130,7 +130,6 @@ batchable: false
 #       import) the whole command line for compilation changes - for example:
 #         winlean.nim: {.passc: "-DWIN32_LEAN_AND_MEAN".}
 #   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
-#   - everything thread-local related
 # - tests
 #   - add a new travis build matrix entry which builds everything with HCR enabled
 #     - currently building with useNimRtl is problematic - lots of problems...
@@ -157,12 +156,9 @@ batchable: false
 #     - in a non-reloadable part (the main binary) that call the function pointers
 #     - parameter passing/forwarding - how? use the same trampoline jumping?
 #     - extracting the dependencies for these stubs/proxies will be hard...
-# - changing memory layout of types - detecting this..?
-#   - implement with registerType() call to HCR runtime...?
-#     - and checking if a previously registered type matches
-#   - issue an error
-#     - or let the user handle this by transferring the state properly
-#       - perhaps in the before/afterCodeReload handlers
+# - changing memory layout of types: a global whose type layout changed stops
+#   the reload with a message (hcrRegisterGlobal compares the compiler's layout
+#   hash). Transferring the state to the new layout is still not supported.
 # - implement executeOnReload for global vars too - not just statements (and document!)
 # - cleanup at shutdown - freeing all globals
 # - fallback mechanism if the program crashes (the program should detect crashes
@@ -220,6 +216,8 @@ when defined(createNimHcr):
     {.error: "This file has to be compiled as a library!".}
 
   import std/[os, tables, sets, times, strutils, reservedmem, dynlib]
+  when defined(nimPreviewSlimSystem):
+    import std/syncio
 
   template trace(args: varargs[untyped]) =
     when defined(testNimHcr) or defined(traceHcr):
@@ -236,11 +234,15 @@ when defined(createNimHcr):
   {.pragma: nimhcr, compilerproc, exportc, dynlib.}
 
   const
-    Arm64Jumps = hostCPU == "arm64" and (defined(musl) or defined(macosx))
+    Arm64Jumps = hostCPU == "arm64" and (defined(linux) or defined(macosx))
     JitJumpTable = defined(macosx) and hostCPU == "arm64"
       ## macOS on arm64 refuses memory that is writable and executable unless
       ## it was mapped with `MAP_JIT`, and then a thread has it either
       ## writable or executable, never both.
+
+  when hostCPU notin ["i386", "amd64"] and not Arm64Jumps and not defined(nimdoc):
+    {.error: "hot code reloading has no jump table for " & hostCPU & " on " &
+      hostOS.}
   type
     ShortJumpInstruction {.packed.} = object
       opcode: byte
@@ -361,6 +363,9 @@ when defined(createNimHcr):
       p: pointer
       markerProc: HcrGcMarkerProc
       gen: int
+      size: int
+      typeKey: string ## The compiler's hash of the global's type layout; "" for
+                      ## the runtime's own globals, whose size may change.
 
     ModuleDesc = object
       procs: Table[string, ProcSym]
@@ -369,6 +374,7 @@ when defined(createNimHcr):
       handle: LibHandle
       hash: string
       gen: int
+      loadedIn: int # the generation whose reload loaded the library
       lastModification: Time
       handlers: seq[tuple[isBefore: bool, cb: proc () {.nimcall.}]]
 
@@ -377,6 +383,7 @@ when defined(createNimHcr):
     result.globals = initTable[string, GlobalVarSym]()
     result.handle = nil
     result.gen = -1
+    result.loadedIn = -1
     result.lastModification = low(Time)
 
   # the global state necessary for traversing and reloading the module import tree
@@ -385,6 +392,8 @@ when defined(createNimHcr):
   var system: string
   var mainDatInit: HcrModuleInitializer
   var generation = 0
+  # true while the `afterCodeReload` handlers of a reload run
+  var runningAfterHandlers = false
 
   # necessary for queries such as "has module X changed" - contains all but the main module
   var hashToModuleMap = initTable[string, string]()
@@ -432,6 +441,7 @@ when defined(createNimHcr):
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
                           size: Natural,
+                          typeKey: cstring,
                           gcMarker: HcrGcMarkerProc,
                           outPtr: ptr pointer): bool {.nimhcr.} =
     trace "  register global: ", module.sanitize, " ", name
@@ -443,9 +453,18 @@ when defined(createNimHcr):
     # to void*& since the casting yields an rvalue and references bind only to lvalues.
     let name = $name
     let module = $module
+    let typeKey = $typeKey
 
     modules[module].globals.withValue(name, global):
       trace "    update global: ", name
+      if global.typeKey.len > 0 and (global.size != size or global.typeKey != typeKey):
+        # The memory kept from before was laid out for the old type; the new
+        # code would read it with the new layout. Not an exception: the reload
+        # has already started and its state cannot be handed back.
+        stderr.writeLine "hot code reloading: the type of global '", name,
+          "' in module '", module, "' changed (size ", global.size, " -> ", size,
+          "); reloading cannot keep its value, restart the program"
+        quit(QuitFailure)
       outPtr[] = global.p
       global.gen = generation
       global.markerProc = gcMarker
@@ -454,12 +473,92 @@ when defined(createNimHcr):
       outPtr[] = alloc0(size)
       modules[module].globals[name] = GlobalVarSym(p: outPtr[],
                                                    gen: generation,
-                                                   markerProc: gcMarker)
+                                                   markerProc: gcMarker,
+                                                   size: size,
+                                                   typeKey: typeKey)
       return true
 
   proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get global: ", module.sanitize, " ", name
     return modules[$module].globals[$name].p
+
+  # Threadvars live here and not in the library of their module, as globals
+  # do: a reload replaces that library. Each thread has its own list of slots,
+  # found through a key that is made when this library is loaded, before the
+  # program starts a thread. This library may be built with --threads:off,
+  # so the slots come from C's allocator and not from Nim's, which would be
+  # shared between threads without a lock.
+  type
+    ThreadVarSlot = object
+      next: ptr ThreadVarSlot
+      data: pointer
+      key: cstring # "module" & '\0' & "name", owned by the slot
+
+  proc c_calloc(n, size: csize_t): pointer {.importc: "calloc", header: "<stdlib.h>".}
+  proc c_free(p: pointer) {.importc: "free", header: "<stdlib.h>".}
+  proc c_memcmp(a, b: pointer, size: csize_t): cint {.importc: "memcmp", header: "<string.h>".}
+
+  proc freeThreadVarSlots(first: pointer) {.noconv.} =
+    ## At the end of a thread: its slots go, and what they hold is not
+    ## destroyed, as a threadvar is not destroyed at the end of a thread
+    ## without HCR either.
+    var slot = cast[ptr ThreadVarSlot](first)
+    while slot != nil:
+      let next = slot.next
+      c_free(slot.data)
+      c_free(slot.key)
+      c_free(slot)
+      slot = next
+
+  when defined(windows):
+    proc FlsAlloc(callback: proc (data: pointer) {.stdcall.}): uint32 {.
+      importc, stdcall, dynlib: "kernel32".}
+    proc FlsGetValue(index: uint32): pointer {.importc, stdcall, dynlib: "kernel32".}
+    proc FlsSetValue(index: uint32, data: pointer): int32 {.importc, stdcall, dynlib: "kernel32".}
+    proc freeAtThreadEnd(first: pointer) {.stdcall.} = freeThreadVarSlots(first)
+    let threadVarsKey = FlsAlloc(freeAtThreadEnd)
+    doAssert threadVarsKey != 0xFFFF_FFFF'u32, "FlsAlloc failed"
+    template firstSlot(): pointer = FlsGetValue(threadVarsKey)
+    template setFirstSlot(slot: pointer) = discard FlsSetValue(threadVarsKey, slot)
+  else:
+    when not defined(macosx):
+      {.passl: "-pthread".}
+    type PthreadKey {.importc: "pthread_key_t", header: "<pthread.h>".} = object
+    proc pthread_key_create(key: ptr PthreadKey,
+                            destructor: proc (data: pointer) {.noconv.}): cint {.
+      importc, header: "<pthread.h>".}
+    proc pthread_getspecific(key: PthreadKey): pointer {.importc, header: "<pthread.h>".}
+    proc pthread_setspecific(key: PthreadKey, data: pointer): cint {.
+      importc, header: "<pthread.h>".}
+    var threadVarsKey: PthreadKey
+    doAssert pthread_key_create(addr threadVarsKey, freeThreadVarSlots) == 0,
+      "pthread_key_create failed"
+    template firstSlot(): pointer = pthread_getspecific(threadVarsKey)
+    template setFirstSlot(slot: pointer) =
+      doAssert pthread_setspecific(threadVarsKey, slot) == 0, "pthread_setspecific failed"
+
+  proc hcrGetThreadVar*(module: cstring, name: cstring, size: int): pointer {.nimhcr.} =
+    ## The slot of the calling thread for the threadvar `name` of `module`,
+    ## `size` bytes made zero on first use.
+    let keyLen = module.len + 1 + name.len + 1
+    var slot = cast[ptr ThreadVarSlot](firstSlot())
+    while slot != nil:
+      if slot.key.len == module.len and
+          c_memcmp(slot.key, module, csize_t(module.len)) == 0 and
+          c_memcmp(addr slot.key[module.len + 1], name, csize_t(name.len + 1)) == 0:
+        return slot.data
+      slot = slot.next
+    trace "  new threadvar slot: ", module.sanitize, " ", name
+    slot = cast[ptr ThreadVarSlot](c_calloc(1, csize_t(sizeof(ThreadVarSlot))))
+    doAssert slot != nil, "out of memory"
+    slot.data = c_calloc(1, csize_t(max(size, 1)))
+    slot.key = cast[cstring](c_calloc(1, csize_t(keyLen)))
+    doAssert slot.data != nil and slot.key != nil, "out of memory"
+    copyMem(slot.key, module, module.len)
+    copyMem(addr slot.key[module.len + 1], name, name.len)
+    slot.next = cast[ptr ThreadVarSlot](firstSlot())
+    setFirstSlot(slot)
+    return slot.data
 
   proc getListOfModules(cstringArray: ptr pointer): seq[string] =
     var curr = cast[ptr cstring](cstringArray)
@@ -519,6 +618,7 @@ when defined(createNimHcr):
     assert lib != nil
     modules[name].handle = lib
     modules[name].gen = generation
+    modules[name].loadedIn = generation
     modules[name].lastModification = getLastModificationTime(name)
 
     # update the list of imports by the module
@@ -620,13 +720,20 @@ when defined(createNimHcr):
     # the next module to be inited will be the root
     currentModule = root
 
+  proc isNewerOnDisk(module: string): bool =
+    modules[module].lastModification < getLastModificationTime(module)
+
   proc hcrHasModuleChanged*(moduleHash: string): bool {.nimhcr.} =
+    ## Before a reload, whether the module's library was rebuilt. In the
+    ## `afterCodeReload` handlers, whether that reload loaded it: by then the
+    ## library on disk is the loaded one.
     let module = hashToModuleMap[moduleHash]
-    return modules[module].lastModification < getLastModificationTime(module)
+    return isNewerOnDisk(module) or
+      (runningAfterHandlers and modules[module].loadedIn == generation)
 
   proc hcrReloadNeeded*(): bool {.nimhcr.} =
-    for hash, _ in hashToModuleMap:
-      if hcrHasModuleChanged(hash):
+    for _, module in hashToModuleMap:
+      if isNewerOnDisk(module):
         return true
     return false
 
@@ -677,7 +784,11 @@ when defined(createNimHcr):
 
     # execute the after reload handlers
     traversedHandlerModules.clear()
-    recursiveExecuteHandlers(false, root)
+    runningAfterHandlers = true
+    try:
+      recursiveExecuteHandlers(false, root)
+    finally:
+      runningAfterHandlers = false
 
     # collecting no longer referenced modules - based on their generation
     cleanup modules:
@@ -720,8 +831,11 @@ elif defined(hotcodereloading) or defined(testNimHcr):
     proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.}
 
     proc hcrRegisterGlobal*(module: cstring, name: cstring, size: Natural,
-                            gcMarker: HcrGcMarkerProc, outPtr: ptr pointer): bool {.nimhcr.}
+                            typeKey: cstring, gcMarker: HcrGcMarkerProc,
+                            outPtr: ptr pointer): bool {.nimhcr.}
     proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
+
+    proc hcrGetThreadVar*(module: cstring, name: cstring, size: int): pointer {.nimhcr.}
 
     proc hcrInit*(moduleList: ptr pointer,
                   main, sys: cstring,

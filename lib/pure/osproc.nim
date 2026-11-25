@@ -143,6 +143,11 @@ proc startProcess*(command: string, workingDir: string = "",
   ## feature different escaping rules, so try to avoid this kind of shell
   ## invocation if possible as it leads to non portable software.
   ##
+  ## On Windows, `.bat` and `.cmd` files are run by `cmd.exe`, which reparses
+  ## the command line and cannot receive arbitrary arguments safely. For such a
+  ## `command`, ``OSError`` is raised if an argument contains one of
+  ## ``& | < > ^ % ! "`` or a line break.
+  ##
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``OSError`` is raised in case of an error.
   ##
@@ -584,6 +589,24 @@ when defined(windows) and not defined(useNimRtl):
       result.add(' ')
       result.add(quoteShell(args[i]))
 
+  proc isBatchFile(command: string): bool =
+    # CreateProcess runs .bat/.cmd files via `cmd.exe /c`; Windows ignores
+    # trailing dots and spaces in file names.
+    var last = command.len
+    while last > 0 and command[last-1] in {'.', ' '}: dec last
+    let s = command.substr(0, last-1).toLowerAscii
+    result = s.endsWith(".bat") or s.endsWith(".cmd")
+
+  proc checkBatchArgs(command: string, args: openArray[string]) =
+    # cmd.exe parses the command line with its own rules which `quoteShell`
+    # cannot express (see CVE-2024-24576), so refuse anything it would interpret.
+    const unsafe = {'&', '|', '<', '>', '^', '%', '!', '"', '\r', '\n', '\0'}
+    for a in args:
+      if a.find(unsafe) >= 0:
+        raise newException(OSError,
+          "argument cannot be passed safely to batch file '" & command &
+          "': " & a)
+
   proc buildEnv(env: StringTableRef): tuple[str: cstring, len: int] =
     var L = 0
     for key, val in pairs(env): inc(L, key.len + val.len + 2)
@@ -673,6 +696,8 @@ when defined(windows) and not defined(useNimRtl):
       procInfo: PROCESS_INFORMATION
       success: int
       hi, ho, he: Handle
+    if poEvalCommand notin options and isBatchFile(command):
+      checkBatchArgs(command, args)
     new(result)
     result.options = options
     result.exitFlag = true

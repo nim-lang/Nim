@@ -544,7 +544,7 @@ proc reraiseException() {.compilerRtl.} =
     else:
       raiseExceptionAux(currException)
 
-proc threadTrouble() {.raises: [], gcsafe.} =
+proc threadTrouble() {.rtl, raises: [], gcsafe.} =
   try:
     if currException != nil: reportUnhandledError(currException)
   except:
@@ -632,9 +632,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
       {.emit: "#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
       {.emit: "#endif".}
-    except Exception:
-      msg = currException.getStackTrace() & "Error: unhandled exception: " &
-        currException.msg & " [" & cstrToStrBuiltin(currException.name) & "]"
+    except Exception as e:
+      msg = e.getStackTrace() & "Error: unhandled exception: " &
+        e.msg & " [" & cstrToStrBuiltin(e.name) & "]"
     except StdException as e:
       msg = "Error: unhandled cpp exception: " & cstrToStrBuiltin(e.what())
     except:
@@ -693,8 +693,11 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     # during memory allocation, we'll also (likely) see a crash and corrupt the
     # memory allocator - less frequently than on windows but still.
     # However, since we're about to go down anyway, YOLO.
+    # Not with Boehm: it calls `abort` while holding its allocator lock (on a
+    # bad `GC_free`), and `GC_disable` and the allocation below wait for that
+    # lock forever, so only the message is written.
 
-    when hasSomeStackTrace:
+    when hasSomeStackTrace and not defined(boehmgc):
       when not usesDestructors: GC_disable()
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)

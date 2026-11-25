@@ -171,7 +171,8 @@ proc generateCodeForModule(g: ModuleGraph; precomp: PrecompiledModule) =
     let modPos = precomp.module.position
     let exportcOnly = seedsOnlyExportcRoutines(g.config)
     for s in moduleSymbolStubs(ast.program, FileIndex modPos):
-      if ownsRuntimeRoutine(s, modPos, exportcOnly):
+      if ownsRuntimeRoutine(s, modPos, exportcOnly) or
+          homeEmitsInstance(s, modPos, g, exportcOnly):
         requestProcDef(bmod, s)
 
 proc loadBackendModules(g: ModuleGraph; mainFileIdx: FileIndex):
@@ -549,6 +550,14 @@ proc lowerOneModule(g: ModuleGraph; target: PrecompiledModule;
       # module-indexed nested closure serializes its lifted (capture-rewritten,
       # destructor-injected) body.
       setNestedClosureBodies(g, tb.idgen, s.transformedBody, s, seenNested)
+    elif lowersInlineIterator(s, modPos, g):
+      # Lambda-lift the inline iterator as its own frame (see
+      # `lowersInlineIterator`). Destructors are NOT injected into the iterator
+      # body: it is spliced into each consumer, whose injection covers it. Its
+      # nested routines are separate routines and are injected here.
+      if icReuseSemLowering(g.config) and s.transformedBody != nil: continue
+      s.transformedBody = transformBody(g, tb.idgen, s, {})
+      setNestedClosureBodies(g, tb.idgen, s.transformedBody, s, seenNested)
   # Collect the hooks this stage lifted, and transform each hook ROUTINE's body
   # too (it is itself lowered into NIFC). The hooks' `(sd)` + transformed body go
   # into the `.t.nif`; `cg` re-attaches them so `injectDestructorCalls` resolves
@@ -894,11 +903,17 @@ proc generateMergeStage(g: ModuleGraph) =
     for artifact in walkFiles(nimcache / ("*" & icCFileExt(g.config) & ".nif")):
       files.add artifact
   sort files
-  let decision = computeMergeDecision(files)
+  var decision = computeMergeDecision(files)
   if decision.broken:
     rawMessage(g.config, errGenerated,
       "per-module backend merge: a .c.nif artifact is missing or unparsable")
     return
+  if g.config.hcrOn:
+    # With hot code reloading every module is linked into a library of its
+    # own, so a definition one translation unit drops for another's copy is
+    # missing from its library: each keeps the definitions it emitted. That
+    # includes the bodies its `DatInit` registers with `hcrRegisterProc`.
+    decision.owners.clear()
   writeMergeDecision(nimcache / MergeDecisionFile, decision)
   if isDefined(g.config, "icDceCheck"):
     stderr.writeLine "[icMerge] artifacts: " & $files.len &
@@ -907,6 +922,15 @@ proc generateMergeStage(g: ModuleGraph) =
 
 proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
                    isMain: bool; decision: MergeDecision)
+
+proc moduleCFile(g: ModuleGraph; cfilename: AbsoluteFile): string =
+  ## The `.c` the `emit` stage writes for the module named `cfilename`: its
+  ## source path for the main module, its NIF suffix for every other one.
+  changeFileExt(completeCfilePath(g.config,
+    mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
+
+proc mainCFile(g: ModuleGraph; mainFileIdx: FileIndex): string =
+  moduleCFile(g, AbsoluteFile toFullPath(g.config, mainFileIdx))
 
 proc addCFileWithParts(g: ModuleGraph; cpath, nimname: string) =
   ## Hands a module's `.c` to the C compiler, and the extra C files `emit`
@@ -929,14 +953,21 @@ proc cPartBytes(conf: ConfigRef): int =
   ## 0 disables splitting. `-d:icCPartBytes:N` overrides. Measured on a cold
   ## `-d:release` IC build of the compiler, 32 cores: unsplit 35.9s, 1 MB parts
   ## 30.6s (2 modules split), 500 KB 27.9s, 300 KB 25.1s (18 modules, 70 extra
-  ## files), 200 KB 25.0s.
-  result = 300_000
+  ## files), 200 KB 25.0s. But small parts make gcc inline far more (the
+  ## inline budget scales with the TU size) and repeat the DWARF types per
+  ## TU: Nimbus (refc, debug, 6 jobs) with 300 KB parts = 503 MB binary, cold
+  ## 404s, main-module edit 61s; 1 MB parts = 373 MB, 384s, 54s; unsplit =
+  ## 342 MB, 377s, 86s.
+  result = 1_000_000
   if isDefined(conf, "icCPartBytes"):
     try: result = parseInt(conf.symbols["icCPartBytes"])
     except ValueError: discard
   if conf.cppCustomNamespace.len > 0:
     # the namespace opened in the declarations closes after the init procs,
     # which only the first file has
+    result = 0
+  if conf.hcrOn:
+    # with hot code reloading every C file is linked into a binary of its own
     result = 0
 
 proc generateEmitStage(g: ModuleGraph; mainFileIdx: FileIndex) =
@@ -983,11 +1014,9 @@ proc emitOneModule(g: ModuleGraph; mainFileIdx: FileIndex; member: string;
                    isMain: bool; decision: MergeDecision) =
   ## Render ONE batch member's final `.c` from its `.c.nif` and the batch's
   ## merge decision.
-  let cfilename =
-    if isMain: AbsoluteFile toFullPath(g.config, mainFileIdx)
-    else: AbsoluteFile member
-  let cfile = changeFileExt(completeCfilePath(g.config,
-    mangleModuleName(g.config, cfilename).AbsoluteFile), icCFileExt(g.config)).string
+  let cfile =
+    if isMain: mainCFile(g, mainFileIdx)
+    else: moduleCFile(g, AbsoluteFile member)
   let artifact = cfile & ".nif"
   if not fileExists(artifact):
     rawMessage(g.config, errGenerated,
@@ -1071,12 +1100,16 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
       cfiles.add artifact[0 ..< artifact.len - ".nif".len]
   sort cfiles
 
+  # `callCCompiler` takes the last file for the main module's: with hot code
+  # reloading it links that one into the program and every other into a library.
+  let mainC = mainCFile(g, mainFileIdx)
   var addedCFiles = initHashSet[string]()
+  addedCFiles.incl extractFilename(mainC)
   for cpath in cfiles:
     # Only modules that are their own cg/emit target produced a `.c`; the rest
     # had their code emit-everywhere'd into the targets, so there is nothing to
     # compile for them.
-    if not fileExists(cpath): continue
+    if cpath == mainC or not fileExists(cpath): continue
     addedCFiles.incl extractFilename(cpath)
     # The directives this module recorded (`{.passL: "-lm".}` etc.); without
     # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
@@ -1110,6 +1143,9 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
         if not fileExists(cfile.string): continue
         applyBackendActions(g, cfile.string)
         addCFileWithParts(g, cfile.string, cbase)
+  if fileExists(mainC):
+    applyBackendActions(g, mainC)
+    addCFileWithParts(g, mainC, splitFile(mainC).name)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)
 

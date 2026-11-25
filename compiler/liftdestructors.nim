@@ -33,6 +33,8 @@ type
     c: PContext # c can be nil, then we are called from lambdalifting!
     idgen: IdGenerator
     ownedEdge: bool # filling the body for an `owned` location (RFC #575)
+    freshBranch: bool # wasMoved: resetting a just selected branch whose bytes
+                      # are left over from another branch (bug #26519)
 
 template destructor*(t: PType): PSym = getAttachedOp(c.g, t, attachedDestructor)
 template assignment*(t: PType): PSym = getAttachedOp(c.g, t, attachedAsgn)
@@ -207,32 +209,45 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool, 
       c.filterDiscriminator = nil # we have found the case part, proceed as normal
 
     # we need to generate a case statement:
-    var caseStmt = newNodeI(nkCaseStmt, c.info)
-    # XXX generate 'if' that checks same branches
-    # generate selector:
-    var access = dotField(x, n[0].sym)
-    caseStmt.add(access)
-    var emptyBranches = 0
-    # copy the branches over, but replace the fields with the for loop body:
-    for i in 1..<n.len:
-      var branch = copyTree(n[i])
-      branch[^1] = newNodeI(nkStmtList, c.info)
+    proc genCaseStmt(c: var TLiftCtx; n, x, y: PNode; enforceDefaultOp: bool;
+                     emptyBranches: var int): PNode {.nimcall.} =
+      result = newNodeI(nkCaseStmt, c.info)
+      # XXX generate 'if' that checks same branches
+      # generate selector:
+      result.add dotField(x, n[0].sym)
+      # copy the branches over, but replace the fields with the for loop body:
+      for i in 1..<n.len:
+        var branch = copyTree(n[i])
+        branch[^1] = newNodeI(nkStmtList, c.info)
 
-      fillBodyObj(c, n[i].lastSon, branch[^1], x, y,
-                  enforceDefaultOp = localEnforceDefaultOp, enforceWasMoved = c.kind == attachedAsgn)
-      if branch[^1].len == 0: inc emptyBranches
-      caseStmt.add(branch)
-    if emptyBranches != n.len-1:
-      body.add(caseStmt)
+        fillBodyObj(c, n[i].lastSon, branch[^1], x, y,
+                    enforceDefaultOp = enforceDefaultOp, enforceWasMoved = c.kind == attachedAsgn)
+        if branch[^1].len == 0: inc emptyBranches
+        result.add(branch)
+
+    var emptyBranches = 0
+    if not c.freshBranch:
+      # in a fresh branch the selector is garbage: it must not be read before
+      # it is reset below
+      let caseStmt = genCaseStmt(c, n, x, y, localEnforceDefaultOp, emptyBranches)
+      if emptyBranches != n.len-1:
+        body.add(caseStmt)
 
     if c.kind in {attachedDestructor, attachedWasMoved}:
       # destructor/wasMoved for selector is done after case stmt
       fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
-    if c.kind == attachedWasMoved and emptyBranches != n.len-1:
+    if c.kind == attachedWasMoved:
       # the reset selector now selects a different branch whose fields
       # overlap the old ones: reset them too, the old branch's hooks
-      # need not have cleared every byte
-      body.add copyTree(caseStmt)
+      # need not have cleared every byte. The nested selectors of that branch
+      # are leftover bytes too, so they are reset before they are read:
+      let prevFresh = c.freshBranch
+      c.freshBranch = true
+      var freshEmpty = 0
+      let freshCase = genCaseStmt(c, n, x, y, localEnforceDefaultOp, freshEmpty)
+      if freshEmpty != n.len-1:
+        body.add freshCase
+      c.freshBranch = prevFresh
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
     # destroys in reverse order #24719
@@ -779,7 +794,14 @@ proc cyclicType*(g: ModuleGraph, t: PType): bool =
     result = b.kind == tyRef and types.canFormAcycle(g, b.elementType)
   else: result = false
 
-proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+proc whenNimvm(c: var TLiftCtx; vmBranch, nativeBranch: PNode): PNode =
+  ## `when nimvm: vmBranch else: nativeBranch`
+  result = newNodeI(nkWhenStmt, c.info)
+  result.flags.incl nfLL
+  result.add newTree(nkElifBranch, newSymNode(getSysSym(c.g, c.info, "nimvm")), vmBranch)
+  result.add newTree(nkElse, nativeBranch)
+
+proc atomicRefOp(c: var TLiftCtx; t: PType; outerBody, x, y: PNode) =
   #[ bug #15753 is really subtle. Usually the classical write barrier for reference
   counting looks like this::
 
@@ -829,7 +851,14 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   # that avoids cycles at compile time avoid the collector entirely at run
   # time. `canFormAcycle` is the same predicate ccgtypes.nim:1903 uses to set
   # the descriptor's acyclic flag, so codegen and runtime cannot disagree.
-  if c.g.config.selectedGC == gcYrc and types.canFormAcycle(c.g, elemType):
+  #
+  # The VM has neither threads nor a collector and cannot run the YRC barrier
+  # (#26579), so the barrier is put into the runtime branch of a `when nimvm`
+  # whose VM branch is the ORC-style code generated below.
+  var body = outerBody
+  var yrcBarrier: PNode = nil
+  if c.g.config.selectedGC == gcYrc and types.canFormAcycle(c.g, elemType) and
+      c.kind in {attachedAsgn, attachedDup, attachedSink}:
     let desc =
       if isFinal(elemType):
         let ti = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
@@ -837,14 +866,9 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         ti
       else:
         newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
-    case c.kind
-    of attachedAsgn, attachedDup:
-      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, x), y, desc)
-      return
-    of attachedSink:
-      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, x), y, desc)
-      return
-    else: discard # fall through for destructor, trace, wasMoved
+    let barrier = if c.kind == attachedSink: "nimSinkYrc" else: "nimAsgnYrc"
+    yrcBarrier = callCodegenProc(c.g, barrier, c.info, genAddr(c, x), y, desc)
+    body = newNodeI(nkStmtList, c.info)
 
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc} and types.canFormAcycle(c.g, elemType)
 
@@ -930,7 +954,10 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, y, callCodegenProc(c.g,
           "nimIncRef", c.info, y))
 
-proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  if yrcBarrier != nil:
+    outerBody.add whenNimvm(c, body, yrcBarrier)
+
+proc atomicClosureOp(c: var TLiftCtx; t: PType; outerBody, x, y: PNode) =
   ## Closures are really like refs except they always use a virtual destructor
   ## and we need to do the refcounting only on the ref field which we call 'xenv':
   let xenv = genBuiltin(c, mAccessEnv, "accessEnv", x)
@@ -938,22 +965,20 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   # Closures are (fnPtr, env) pairs. nimAsgnYrc/nimSinkYrc handle the env pointer
   # (atomic store + buffered inc/dec). We also need newAsgnStmt to copy the fnPtr.
-  if c.g.config.selectedGC == gcYrc:
+  # As for refs, the VM gets the ORC-style code generated below (#26579).
+  var body = outerBody
+  var yrcBarrier: PNode = nil
+  if c.g.config.selectedGC == gcYrc and c.kind in {attachedAsgn, attachedDup, attachedSink}:
     let nilDesc = newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
     let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
     yenv.typ = getSysType(c.g, c.info, tyPointer)
-    case c.kind
-    of attachedAsgn, attachedDup:
-      # nimAsgnYrc: save old env, atomic store new env, inc new env, dec old env
-      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
-      # Raw struct copy to also update the function pointer (env write is redundant but benign)
-      body.add newAsgnStmt(x, y)
-      return
-    of attachedSink:
-      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
-      body.add newAsgnStmt(x, y)
-      return
-    else: discard # fall through for destructor, trace, wasMoved
+    # nimAsgnYrc: save old env, atomic store new env, inc new env, dec old env
+    let barrier = if c.kind == attachedSink: "nimSinkYrc" else: "nimAsgnYrc"
+    yrcBarrier = newNodeI(nkStmtList, c.info)
+    yrcBarrier.add callCodegenProc(c.g, barrier, c.info, genAddr(c, xenv), yenv, nilDesc)
+    # Raw struct copy to also update the function pointer (env write is redundant but benign)
+    yrcBarrier.add newAsgnStmt(x, y)
+    body = newNodeI(nkStmtList, c.info)
 
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc}
   let tmp =
@@ -1005,6 +1030,9 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv, c.idgen), y)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+
+  if yrcBarrier != nil:
+    outerBody.add whenNimvm(c, body, yrcBarrier)
 
 proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -1120,11 +1148,35 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace: discard
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
 
+proc nimNodeOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  ## NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
+  ## time; the VM represents them as reference counted handles. `GC_ref` and
+  ## `GC_unref` of a NimNode count its handle.
+  case c.kind
+  of attachedAsgn, attachedDeepCopy:
+    # count first: `x` and `y` can be the same handle
+    body.add genBuiltin(c, mGCref, "GC_ref", y)
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+    body.add newAsgnStmt(x, y)
+  of attachedSink:
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+    body.add newAsgnStmt(x, y)
+  of attachedDup:
+    body.add genBuiltin(c, mGCref, "GC_ref", y)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genBuiltin(c, mGCunref, "GC_unref", x)
+  of attachedWasMoved, attachedTrace:
+    defaultOp(c, t, body, x, y)
+
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if isNimNodeType(t):
-    # NimNodes (and the deprecated NimIdent, NimSym) only exist at compile
-    # time; the VM represents them as handles, there is nothing to count:
-    defaultOp(c, t, body, x, y)
+    if optSeqDestructors in c.g.config.globalOptions:
+      nimNodeOp(c, t, body, x, y)
+    else:
+      # --mm:refc, JS: the VM counts NimNodes like it manages strings and
+      # seqs, without hooks, see `vmlayout.hasPayloads`:
+      defaultOp(c, t, body, x, y)
     return
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
@@ -1194,7 +1246,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       discard considerUserDefinedOp(c, t, body, x, y)
     elif tfHasAsgn in t.flags:
       # seqs with elements using custom hooks in refc
-      if c.kind in {attachedAsgn, attachedSink, attachedDeepCopy}:
+      if c.kind in {attachedAsgn, attachedSink, attachedDeepCopy, attachedDup}:
         body.add newSeqCall(c, x, y)
       if c.kind == attachedWasMoved:
         body.add genBuiltin(c, mWasMoved, "wasMoved", x)
@@ -1553,3 +1605,12 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     # on a possibly-`Sealed` foreign type (it used to write `flagsImpl` behind
     # the accessor's back precisely to dodge the seal assert).
     orig.inclDerived {tfHasAsgn}
+
+proc liftNimNodeHooks*(g: ModuleGraph; c: PContext; info: TLineInfo; idgen: IdGenerator) =
+  ## The hooks of NimNode count the VM's handles. Every routine that uses
+  ## NimNodes must see them, also a routine that only passes on its
+  ## parameters, so they are lifted before such routines are checked, not on
+  ## demand.
+  let nn = systemModuleSym(g, getIdent(g.cache, "NimNode"))
+  if nn != nil and nn.kind == skType and nn.typ != nil:
+    createTypeBoundOps(g, c, nn.typ, info, idgen)

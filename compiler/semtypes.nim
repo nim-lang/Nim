@@ -687,6 +687,15 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
   else:
     result = newSymG(kind, n, c)
 
+proc customPragmasOf(n: PNode): PNode =
+  ## the custom pragmas of the checked pragma section `n`, or nil
+  result = nil
+  for it in n:
+    let callee = if it.kind in nkPragmaCallKinds and it.len > 0: it[0] else: it
+    if callee.kind == nkSym and sfCustomPragma in callee.sym.flags:
+      if result == nil: result = newNodeI(nkPragma, n.info)
+      result.add it
+
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags, fromTopLevel = false): PSym =
   if n.kind == nkPragmaExpr:
@@ -696,7 +705,11 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     of skType:
       # process pragmas later, because result.typ has not been set yet
       discard
-    of skField: pragma(c, result, n[1], fieldPragmas)
+    of skField:
+      pragma(c, result, n[1], fieldPragmas)
+      # kept on the symbol so that the instances of a generic object type
+      # have them with the generic params replaced:
+      result.customPragmas = customPragmasOf(n[1])
     of skVar:   pragma(c, result, n[1], varPragmas)
     of skLet:   pragma(c, result, n[1], letPragmas)
     of skConst: pragma(c, result, n[1], constPragmas)
@@ -893,6 +906,17 @@ proc addSumTypeBranchNames(c: PContext; scope: PScope; enumType: PType) =
   for f in enumType.n:
     addInterfaceOverloadableSymAt(c, scope, f.sym)
 
+proc inheritsFromSumType(t: PType): bool =
+  ## The base types have an empty `case` section already.
+  result = false
+  var b = t.baseClass
+  while b != nil:
+    b = b.skipTypes(skipPtrs)
+    if b.kind == tyGenericInvocation: b = b.genericHead.last
+    if b.kind != tyObject: break
+    if tfSumType in b.flags: return true
+    b = b.baseClass
+
 proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                     father: PNode, rectype: PType, hasCaseFields: bool) =
   ## Lowers `case` / `of A, B: fields` / `of C: fields` to a case object
@@ -903,7 +927,7 @@ proc semSumTypeCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   if owner.kind != skType:
     localError(c.config, n.info, "a sum type must be declared in a type section")
     return
-  if tfSumType in rectype.flags:
+  if tfSumType in rectype.flags or inheritsFromSumType(rectype):
     localError(c.config, n.info, "only one empty `case` section is allowed in an object type")
     return
   if hasCaseFields:
@@ -1395,7 +1419,11 @@ proc findEnforcedStaticType(t: PType): PType =
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro:
     let staticType = findEnforcedStaticType(param.typ)
-    if staticType != nil:
+    if param.kind == skResult:
+      # already a NimNode (see `maybeAddResult`); a copy would differ from
+      # the routine's result symbol that `return` and injectdestructors use:
+      addDecl(c, param)
+    elif staticType != nil:
       var a = copySym(param, c.idgen)
       a.typ = staticType.base
       addDecl(c, a)
@@ -1851,6 +1879,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             #echo "came here for ", typeToString(r)
             r.incl tfRetType
         r = skipIntLit(r, c.idgen)
+        if isType and kind == skProc and r.kind in {tyVar, tyLent} and
+            tfVarIsPtr notin r.flags:
+          # A procedure that returns a view through 'result' returns a pointer
+          # in C++ (see `asgnToResultVar`); the type of its values must agree
+          # so that a proc can be passed where this type is expected (#25870).
+          if r.state == Sealed: r = copyType(r, c.idgen, r.owner)
+          r.incl tfVarIsPtr
         if kind == skIterator:
           # see tchainediterators
           # in cases like iterator foo(it: iterator): typeof(it)
@@ -2848,8 +2883,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyIterable, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
+    # its hooks count the VM's handle, see `liftdestructors.nimNodeOp`:
     incl m.typ, tfTriggersCompileTime
-    incl m.typ, tfCheckedForDestructor
   of mException: discard
   of mBuiltinType:
     case m.name.s

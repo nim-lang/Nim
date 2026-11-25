@@ -116,10 +116,20 @@ template inlinePtr(s: SmallString): ptr UncheckedArray[char] =
 template inlinePtrOf(p: ptr SmallString): ptr UncheckedArray[char] =
   cast[ptr UncheckedArray[char]](cast[uint](p) + 1'u)
 
+proc longSize(cap: int): int {.inline.} =
+  ## `LongStringDataOffset + cap + 1`; checked even under
+  ## `--overflowChecks:off` as a wrapped around result means a too small
+  ## block that is then written to. Callers must not compute `cap` with
+  ## wrapping arithmetic: signed overflow is undefined behavior in C.
+  if cap < 0 or cap > high(int) - 1 - LongStringDataOffset:
+    nimSizeOverflow()
+  result = LongStringDataOffset + cap + 1
+
 proc resize(old: int): int {.inline.} =
   ## Capacity growth factor shared with seqs_v2.nim.
   if old <= 0: result = 4
   elif old <= high(int16): result = old * 2
+  elif old > high(int) - old div 2: result = high(int) # saturate; the size check reports it
   else: result = old div 2 + old
 
 # No Nim lifecycle hooks: the compiler calls the compilerRtl procs directly
@@ -142,7 +152,7 @@ proc ensureUniqueLong(s: var SmallString; oldLen, newLen: int) =
     # Only grow capacity when actually needed; pure COW copies (newLen <= cap)
     # preserve the existing capacity to avoid exponential growth via repeated COW.
     let newCap = if newLen > cap: max(newLen, resize(cap)) else: cap
-    let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+    let p = cast[ptr LongString](alloc(longSize(newCap)))
     p.rc = 1
     p.fullLen = newLen
     p.capImpl = newCap
@@ -308,8 +318,8 @@ proc add(s: var SmallString; c: char) =
       setSSLen(s, newLen)
     else:
       # transition from medium (slen == PayloadSize) to long
-      let cap = newLen * 2
-      let p = cast[ptr LongString](alloc(LongStringDataOffset + cap + 1))
+      let cap = resize(newLen)
+      let p = cast[ptr LongString](alloc(longSize(cap)))
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = cap
@@ -340,8 +350,8 @@ proc add(s: var SmallString; t: SmallString) =
       setSSLen(s, newLen)
     else:
       # transition to long
-      let cap = newLen * 2
-      let p = cast[ptr LongString](alloc(LongStringDataOffset + cap + 1))
+      let cap = resize(newLen)
+      let p = cast[ptr LongString](alloc(longSize(cap)))
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = cap
@@ -373,7 +383,7 @@ proc prepareAddLong(s: var SmallString; newLen: int) =
   else:
     let oldLen = s.more.fullLen
     let newCap = max(newLen, resize(cap))
-    let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+    let p = cast[ptr LongString](alloc(longSize(newCap)))
     p.rc = 1
     p.fullLen = oldLen  # logical length unchanged — caller sets it after writing data
     p.capImpl = newCap
@@ -388,12 +398,13 @@ proc prepareAdd(s: var SmallString; addLen: int) {.compilerRtl.} =
   ## Ensure s has room for addLen more characters without changing its length.
   let slen = ssLen(s)
   let curLen = if slen > PayloadSize: s.more.fullLen else: slen
-  let newLen = curLen + addLen
+  var newLen: int
+  if nimAddInt(curLen, addLen, addr newLen): nimSizeOverflow()
   if slen <= PayloadSize:
     if newLen > PayloadSize:
       # transition to long: allocate, copy existing data
-      let newCap = newLen * 2
-      let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+      let newCap = resize(newLen)
+      let p = cast[ptr LongString](alloc(longSize(newCap)))
       p.rc = 1
       p.fullLen = curLen
       p.capImpl = newCap
@@ -439,7 +450,7 @@ proc toNimStr(str: cstring; len: int): SmallString {.compilerproc.} =
     # Bytes past inl[len] in `bytes` must be zero for SWAR. `result` is zero-initialized,
     # and copyMem only fills bytes 0..len-1 of inl; bytes len..6 remain zero.
   else:
-    let p = cast[ptr LongString](alloc(LongStringDataOffset + len + 1))
+    let p = cast[ptr LongString](alloc(longSize(len)))
     p.rc = 1
     p.fullLen = len
     p.capImpl = len
@@ -473,7 +484,7 @@ proc rawNewString(space: int): SmallString {.compilerproc.} =
   if space <= PayloadSize:
     discard  # inline capacity is always available; nothing to pre-allocate
   else:
-    let p = cast[ptr LongString](alloc(LongStringDataOffset + space + 1))
+    let p = cast[ptr LongString](alloc(longSize(space)))
     p.rc = 1
     p.fullLen = 0
     p.capImpl = space
@@ -489,7 +500,7 @@ proc mnewString(len: int): SmallString {.compilerproc.} =
     # bytes field is zero-initialized (result starts at 0); inline chars are already 0.
     # Null terminator at inlinePtr(result)[len] is also 0 — fine for SWAR invariant.
   else:
-    let p = cast[ptr LongString](alloc0(LongStringDataOffset + len + 1))
+    let p = cast[ptr LongString](alloc0(longSize(len)))
     p.rc = 1
     p.fullLen = len
     p.capImpl = len
@@ -522,7 +533,7 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: bool) =
           # Still too long for inline: detach into a fresh unique heap block
           # rather than overflowing the inline overlay.
           let old = s.more
-          let p = cast[ptr LongString](alloc(LongStringDataOffset + newLen + 1))
+          let p = cast[ptr LongString](alloc(longSize(newLen)))
           p.rc = 1
           p.fullLen = newLen
           p.capImpl = newLen
@@ -607,9 +618,9 @@ proc setLengthStr(s: var SmallString; newLen: int; zeroing: bool) =
       let newCap = resize(newLen)
       let p = if zeroing:
           # bytes [curLen..newLen] and p.data[newLen] zeroed by alloc0
-          cast[ptr LongString](alloc0(LongStringDataOffset + newCap + 1))
+          cast[ptr LongString](alloc0(longSize(newCap)))
         else:
-          let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+          let p = cast[ptr LongString](alloc(longSize(newCap)))
           p.data[newLen] = '\0'
           p
       p.rc = 1
@@ -649,7 +660,7 @@ proc nimPrepareStrMutationImpl(s: var SmallString) =
   # Called when s holds a static (slen=StaticSlen) LongString block. COW: allocate fresh copy.
   let old = s.more
   let oldLen = old.fullLen
-  let p = cast[ptr LongString](alloc(LongStringDataOffset + oldLen + 1))
+  let p = cast[ptr LongString](alloc(longSize(oldLen)))
   p.rc = 1
   p.fullLen = oldLen
   p.capImpl = oldLen
@@ -754,7 +765,7 @@ proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char
     elif slen <= PayloadSize:
       # Inline/medium → long.
       let newCap = resize(newLen)
-      let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+      let p = cast[ptr LongString](alloc(longSize(newCap)))
       p.rc = 1
       p.fullLen = newLen
       p.capImpl = newCap
@@ -771,7 +782,10 @@ proc beginStore*(s: var string; newLen: int; start = 0): ptr UncheckedArray[char
 
 proc endStore*(s: var string) {.inline, noSideEffect, raises: [], tags: [].} =
   ## Syncs the inline cache after bulk writes via `beginStore`. No-op for short/medium strings.
-  {.cast(noSideEffect).}: completeStore(cast[ptr SmallString](addr s)[])
+  when nimvm:
+    discard "VM strings have no inline cache"
+  else:
+    {.cast(noSideEffect).}: completeStore(cast[ptr SmallString](addr s)[])
 
 proc rawDataImpl(ss: ptr SmallString; start: int): ptr UncheckedArray[char] {.inline, noSideEffect, raises: [].} =
   let slen = ssLen(ss[])
@@ -800,7 +814,7 @@ proc readRawDataStable*(s: var string; start = 0): ptr UncheckedArray[char] {.in
     # Promote inline/medium to a long heap block so the payload lives at a
     # stable address. Mirrors the short/medium -> long transition in `add`.
     let newCap = max(slen, resize(slen))
-    let p = cast[ptr LongString](alloc(LongStringDataOffset + newCap + 1))
+    let p = cast[ptr LongString](alloc(longSize(newCap)))
     p.rc = 1
     p.fullLen = slen
     p.capImpl = newCap
