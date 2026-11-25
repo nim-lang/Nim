@@ -737,6 +737,28 @@ proc getUpForIter(g: ModuleGraph; owner, iterOwner: PSym, expectedUpTyp: PType):
     res = rawIndirectAccess(res, upField, p.info)
   res
 
+proc iterEnvUpInit(envNode: PNode; iter, owner: PSym; d: var DetectionPass;
+                   c: var LiftingPass; info: TLineInfo): PNode =
+  ## `envNode` denotes the environment of the closure iterator `iter`. If the
+  ## env has an `:up` field, produce the assignment initializing it with the
+  ## enclosing routine's env; `nil` when there is no `:up` field.
+  result = nil
+  let upField = lookupInRecord(envNode.typ.skipTypes({tyOwned, tyRef, tyPtr}).n,
+                               getIdent(d.graph.cache, upName))
+  if upField == nil: return
+  let expectedUpTyp = upField.typ.skipTypes({tyOwned, tyRef, tyPtr})
+  let iterOwner = iter.skipGenericOwner
+  let u = if iterOwner == owner: setupEnvVar(iterOwner, d, c, info)
+          else: getUpForIter(d.graph, owner, iterOwner, expectedUpTyp)
+  if u != nil and u.typ.skipTypes({tyOwned, tyRef, tyPtr}) == expectedUpTyp:
+    result = newAsgnStmt(rawIndirectAccess(envNode, upField, info), u, info)
+    # See the identical call in `rawClosureCreation`: the up-field's ops must
+    # exist by the time this assignment is destructor-injected.
+    if u.typ != nil and u.typ.kind == tyRef and u.typ.elementType != nil:
+      createTypeBoundOpsLL(d.graph, u.typ, info, d.idgen, owner)
+  else:
+    localError(d.graph.config, info, "internal error: cannot create up reference for iter")
+
 proc closureCreationForIter(owner: PSym, iter: PNode;
                             d: var DetectionPass; c: var LiftingPass): PNode =
   result = newNodeIT(nkStmtListExpr, iter.info, iter.sym.typ)
@@ -757,20 +779,9 @@ proc closureCreationForIter(owner: PSym, iter: PNode;
   result.add genCreateEnv(vnode)
   createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, d.idgen, iterOwner)
 
-  let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
-  if upField != nil:
-    let expectedUpTyp = upField.typ.skipTypes({tyOwned, tyRef, tyPtr})
-    let u = if iterOwner == owner: setupEnvVar(iterOwner, d, c, iter.info)
-            else: getUpForIter(d.graph, owner, iterOwner, expectedUpTyp)
-    if u != nil and u.typ.skipTypes({tyOwned, tyRef, tyPtr}) == expectedUpTyp:
-      result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
-                 u, iter.info))
-      # See the identical call in `rawClosureCreation`: the up-field's ops must
-      # exist by the time this assignment is destructor-injected.
-      if u.typ != nil and u.typ.kind == tyRef and u.typ.elementType != nil:
-        createTypeBoundOpsLL(d.graph, u.typ, iter.info, d.idgen, owner)
-    else:
-      localError(d.graph.config, iter.info, "internal error: cannot create up reference for iter")
+  let upInit = iterEnvUpInit(vnode, iter.sym, owner, d, c, iter.info)
+  if upInit != nil:
+    result.add upInit
   result.add makeClosure(d.graph, d.idgen, iter.sym, vnode, iter.info)
 
 proc accessViaEnvVar(n: PNode; owner: PSym; d: var DetectionPass;
@@ -791,6 +802,22 @@ proc getStateField*(g: ModuleGraph; owner: PSym): PSym =
 
 proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
                       c: var LiftingPass): PNode
+
+proc transformInnerProcBody(s: PSym; d: var DetectionPass; c: var LiftingPass;
+                            info: TLineInfo) =
+  ## Run the lifting pass over the inner routine `s` and store the result as
+  ## its `transformedBody` (once; `c.processed` deduplicates).
+  if not c.processed.containsOrIncl(s.id):
+    let oldInContainer = c.inContainer
+    c.inContainer = 0
+    var body = transformBody(d.graph, d.idgen, s, {})
+    body = liftCapturedVars(body, s, d, c)
+    if c.envVars.getOrDefault(s.id).isNil:
+      s.transformedBody = body
+    else:
+      s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c, info), body)
+      finishClosureCreation(s, d, c, info, s.transformedBody)
+    c.inContainer = oldInContainer
 
 proc symToClosure(n: PNode; owner: PSym; d: var DetectionPass;
                   c: var LiftingPass): PNode =
@@ -827,19 +854,9 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
   of nkSym:
     let s = n.sym
     if isInnerProc(s):
-      if not c.processed.containsOrIncl(s.id):
-        #if s.name.s == "temp":
-        #  echo renderTree(s.getBody, {renderIds})
-        let oldInContainer = c.inContainer
-        c.inContainer = 0
-        var body = transformBody(d.graph, d.idgen, s, {})
-        body = liftCapturedVars(body, s, d, c)
-        if c.envVars.getOrDefault(s.id).isNil:
-          s.transformedBody = body
-        else:
-          s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
-          finishClosureCreation(s, d, c, n.info, s.transformedBody)
-        c.inContainer = oldInContainer
+      #if s.name.s == "temp":
+      #  echo renderTree(s.getBody, {renderIds})
+      transformInnerProcBody(s, d, c, n.info)
 
       if s.typ.callConv == ccClosure:
         result = symToClosure(n, owner, d, c)
@@ -882,6 +899,27 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
       n[0][1] = liftCapturedVars(n[0][1], owner, d, c)
     else:
       n[0] = liftCapturedVars(n[0], owner, d, c)
+  of nkAsgn:
+    for i in 0..<n.len:
+      n[i] = liftCapturedVars(n[i], owner, d, c)
+    # `liftForLoop`/`liftIterSym` create the closure iterator's environment
+    # (`env = new Env[iter]`) while a body is transformed for the detection
+    # pass -- inner routines are lifted only together with their *owner*, so
+    # at that point the lambda lift is a no-op and the env's `:up` field is
+    # left uninitialized (bug #26805). Catch such env creations here and
+    # belatedly initialize `:up`.
+    if n.len == 2 and n[0].typ != nil and n[1].kind == nkObjConstr:
+      let obj = n[0].typ.skipTypes({tyOwned, tyRef, tyPtr})
+      if obj.kind == tyObject and obj.owner != nil and isInnerProc(obj.owner) and
+          obj.owner.isIterator and
+          lookupInRecord(obj.n, getIdent(d.graph.cache, upName)) != nil:
+        # the iterator's own body is lifted the same way a symbolic reference
+        # would have lifted it (e.g. captured vars in its body, bug #26805's
+        # `args_p0` variant):
+        transformInnerProcBody(obj.owner, d, c, n.info)
+        let upInit = iterEnvUpInit(copyTree(n[0]), obj.owner, owner, d, c, n.info)
+        if upInit != nil:
+          result = newTree(nkStmtList, n, upInit)
   of nkTypeOfExpr:
     result = n
   else:
