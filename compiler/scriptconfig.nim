@@ -165,9 +165,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     conf.currentConfigDir = vthisDir
     processSwitch(a.getString 0, a.getString 1, passPP, module.info, conf)
   cbconf hintImpl:
+    # not through `processSwitch`, so record it into the stream the
+    # precompiled config replays (see `icconfig`)
+    conf.icConfigSwitches.add ("hint", a.getString 0)
     processSpecificNote(a.getString 0, wHint, passPP, module.info,
       a.getString 1, conf)
   cbconf warningImpl:
+    conf.icConfigSwitches.add ("warning", a.getString 0)
     processSpecificNote(a.getString 0, wWarning, passPP, module.info,
       a.getString 1, conf)
   cbconf patchFile:
