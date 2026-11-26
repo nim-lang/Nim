@@ -33,11 +33,11 @@
 
 import options, commands, lineinfos, pathutils, msgs
 from icmodnames import moduleSuffix
-import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils]
+import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils, strtabs]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
 
 const
-  IcConfigVersion* = "4"
+  IcConfigVersion* = "5"
     ## Artifact format version. Bump on any layout change here so a child built
     ## by an older compiler rejects a stale artifact and falls back to normal
     ## config loading instead of replaying a format it cannot parse.
@@ -86,6 +86,16 @@ proc writeIcConfig*(conf: ConfigRef; outfile: string) =
     b.withTree "nimblepaths":
       for p in conf.nimblePaths:
         b.addStrLit p.string
+    b.withTree "patches":
+      # `patchFile` in NimScript (`conf.moduleOverrides`) is not a switch either.
+      var keys: seq[string] = @[]
+      for k, _ in pairs(conf.moduleOverrides): keys.add k
+      sort keys
+      for k in keys:
+        b.addTree "pf"
+        b.addStrLit k
+        b.addStrLit conf.moduleOverrides[k]
+        b.endTree()
     b.withTree "switches":
       for sw in conf.icConfigSwitches:
         b.addTree "sw"
@@ -113,6 +123,8 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
     nimbleTag = tags.registerTag("nimblepaths")
     switchesTag = tags.registerTag("switches")
     swTag = tags.registerTag("sw")
+    patchesTag = tags.registerTag("patches")
+    pfTag = tags.registerTag("pf")
   var buf = parseFromFile(infile, 1000, pool, tags)
   var c = beginRead(buf)
   if c.kind != TagLit or c.cursorTagId != stmtsTag:
@@ -147,6 +159,19 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
         # Replay does not need the source list; it exists only for
         # `sourcesChanged`. Skip the whole section.
         skip c
+      elif c.cursorTagId == patchesTag:
+        c.loopInto:
+          if c.kind == TagLit and c.cursorTagId == pfTag:
+            var parts: seq[string] = @[]
+            c.loopInto:
+              if c.kind == StrLit:
+                parts.add strVal(c)
+                inc c
+              else:
+                skip c
+            if parts.len == 2: conf.moduleOverrides[parts[0]] = parts[1]
+          else:
+            skip c
       elif c.cursorTagId == cppTag:
         c.loopInto:
           if c.kind == StrLit:
