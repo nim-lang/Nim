@@ -379,3 +379,96 @@ block:
       discard parseJson(a)
     except JsonParsingError:
       doAssert getCurrentExceptionMsg().contains("] expected")
+
+block: # getStr, getInt, getBiggestInt, getFloat, getBool, getFields, getElems:
+       # the value of a node of the matching kind, `default` for any other kind and for nil
+  let nilNode: JsonNode = nil
+
+  doAssert newJString("a").getStr("d") == "a"
+  doAssert newJInt(1).getStr("d") == "d"
+  doAssert nilNode.getStr("d") == "d"
+  doAssert newJString("a").getStr == "a"
+  doAssert nilNode.getStr == ""
+
+  doAssert newJInt(5).getInt(7) == 5
+  doAssert newJString("x").getInt(7) == 7
+  doAssert newJFloat(1.5).getInt(7) == 7
+  doAssert nilNode.getInt(7) == 7
+  doAssert nilNode.getInt == 0
+
+  doAssert newJInt(5).getBiggestInt(7) == 5
+  doAssert newJString("x").getBiggestInt(7) == 7
+  doAssert newJFloat(1.5).getBiggestInt(7) == 7
+  doAssert nilNode.getBiggestInt(7) == 7
+  doAssert nilNode.getBiggestInt == 0
+
+  doAssert newJFloat(1.5).getFloat(9.5) == 1.5
+  doAssert newJInt(2).getFloat(9.5) == 2.0 # a JInt is a valid float value
+  doAssert newJString("x").getFloat(9.5) == 9.5
+  doAssert newJBool(true).getFloat(9.5) == 9.5
+  doAssert nilNode.getFloat(9.5) == 9.5
+  doAssert nilNode.getFloat == 0.0
+
+  doAssert newJBool(true).getBool(false)
+  doAssert not newJBool(false).getBool(true)
+  doAssert newJInt(1).getBool(true)
+  doAssert not newJInt(1).getBool(false)
+  doAssert nilNode.getBool(true)
+  doAssert not nilNode.getBool
+
+  let obj = %*{"a": 1, "b": 2}
+  doAssert obj.getFields.len == 2
+  doAssert obj.getFields["a"].getInt == 1
+  doAssert newJArray().getFields.len == 0
+  doAssert newJString("x").getFields(obj.fields).len == 2
+  doAssert nilNode.getFields(obj.fields).len == 2
+  doAssert nilNode.getFields.len == 0
+
+  let arr = %*[1, 2, 3]
+  doAssert arr.getElems.len == 3
+  doAssert arr.getElems[2].getInt == 3
+  doAssert newJObject().getElems.len == 0
+  doAssert newJString("x").getElems(@[newJInt(9)]).len == 1
+  doAssert nilNode.getElems(@[newJInt(9)]).len == 1
+  doAssert nilNode.getElems.len == 0
+
+block: # `hasKey`, `contains` on an object and on an array, `delete`
+  let obj = %*{"a": 1, "b": nil}
+  doAssert obj.hasKey("a")
+  doAssert obj.hasKey("b")
+  doAssert not obj.hasKey("c")
+  doAssert "a" in obj
+  doAssert "c" notin obj
+  let arr = %*[1, "x", nil]
+  doAssert newJInt(1) in arr
+  doAssert newJString("x") in arr
+  doAssert newJNull() in arr
+  doAssert newJInt(2) notin arr
+  doAssert newJString("1") notin arr
+  obj.delete("a")
+  doAssert not obj.hasKey("a")
+  doAssert obj.hasKey("b")
+  doAssert obj.len == 1
+  doAssertRaises(KeyError): obj.delete("a")
+  doAssert obj.len == 1
+
+block: # `{}` with several indexes: out of range, a non-array in between, nil; `{}=` creates the path
+  let j = %*[[1, 2], [3]]
+  doAssert j{0}.len == 2
+  doAssert j{0, 1}.getInt == 2
+  doAssert j{1, 0}.getInt == 3
+  doAssert j{2}.isNil
+  doAssert j{0, 2}.isNil
+  doAssert j{0, 0, 0}.isNil # `1` is not an array
+  doAssert j{5, 0}.isNil
+  doAssert newJObject(){0}.isNil
+  doAssert newJString("x"){0}.isNil
+  let nilNode: JsonNode = nil
+  doAssert nilNode{0}.isNil
+  let o = newJObject()
+  o{"a", "b"} = newJInt(1)
+  doAssert $o == """{"a":{"b":1}}"""
+  o{"a", "c"} = newJInt(2)
+  doAssert $o == """{"a":{"b":1,"c":2}}"""
+  o{"x", "y", "z"} = newJInt(3)
+  doAssert $o == """{"a":{"b":1,"c":2},"x":{"y":{"z":3}}}"""
