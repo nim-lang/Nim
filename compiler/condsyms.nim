@@ -13,6 +13,7 @@ import
   std/strtabs
 
 from options import Feature
+from nversion import VersionAsString
 from lineinfos import hintMin, hintMax, warnMin, warnMax
 
 proc defineSymbol*(symbols: StringTableRef; symbol: string, value: string = "true") =
@@ -126,6 +127,8 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCastPragmaBlocks")
   defineSymbol("nimHasDeclaredLocs")
   defineSymbol("nimHasJsBigIntBackend")
+  symbols["nimVersion"] = VersionAsString
+    # was `switch("define", "nimVersion:" & NimVersion)` in config/config.nims
   defineSymbol("nimHasWarningAsError")
   defineSymbol("nimHasHintAsError")
   defineSymbol("nimHasSpellSuggest")
