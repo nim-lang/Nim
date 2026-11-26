@@ -487,3 +487,43 @@ block: # parseJson rejects a non-string key and a token that cannot start a valu
     doAssertRaises(JsonParsingError): discard parseJson("{1: 2}")
     for s in ["]", "}", ",", ":", ""]:
       doAssertRaises(JsonParsingError): discard parseJson(s)
+
+block: # `pretty`: nested containers, empty containers, the indent width
+  let j = parseJson("""{"a": [1, {"b": true}], "c": {}, "d": [], "e": "x"}""")
+  doAssert j.pretty == """{
+  "a": [
+    1,
+    {
+      "b": true
+    }
+  ],
+  "c": {},
+  "d": [],
+  "e": "x"
+}"""
+  doAssert j.pretty(4) == """{
+    "a": [
+        1,
+        {
+            "b": true
+        }
+    ],
+    "c": {},
+    "d": [],
+    "e": "x"
+}"""
+  doAssert newJArray().pretty == "[]"
+  doAssert parseJson("[1, 2]").pretty == "[\n  1,\n  2\n]"
+  doAssert parseJson("""[1.5, null, false, "s"]""").pretty == "[\n  1.5,\n  null,\n  false,\n  \"s\"\n]"
+
+block: # escapeJson of the control characters, quotes and backslashes; `copy` is deep
+  doAssert escapeJson("a\"b\\c") == "\"a\\\"b\\\\c\""
+  doAssert escapeJson("\b\f\t\r\n") == "\"\\b\\f\\t\\r\\n\""
+  doAssert escapeJson("\v") == "\"\\u000b\""
+  let a = %*[[1], {"k": [2]}]
+  let b = a.copy
+  doAssert a == b
+  b[0].add(%3)
+  b[1]["k"].add(%4)
+  doAssert a == %*[[1], {"k": [2]}]
+  doAssert b == %*[[1, 3], {"k": [2, 4]}]
