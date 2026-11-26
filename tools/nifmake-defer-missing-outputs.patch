@@ -1,0 +1,114 @@
+diff --git a/src/nifmake/nifmake.nim b/src/nifmake/nifmake.nim
+index bfe14359..7cd758f3 100644
+--- a/src/nifmake/nifmake.nim
++++ b/src/nifmake/nifmake.nim
+@@ -608,11 +608,19 @@ proc runDag(dag: var Dag; opt: set[CliOption]; profile: ptr ProfileData = nil;
+   var aborted = false
+   let execStart = if profile != nil: getMonoTime() else: MonoTime()
+
++  # A discovery client may intentionally finish a rule without producing all
++  # of its outputs. Such a node releases no consumers in this invocation.
++  let deferCommand = getEnv("NIFMAKE_DEFER_MISSING_OUTPUTS")
++  var deferred = newSeq[bool](if deferCommand.len > 0: dag.nodes.len else: 0)
+   while sched.done < sortedNodes.len:
+     # Dispatch everything that fits.
+     while not aborted and pool.len < jobs and sched.ready.len > 0:
+       let nodeId = sched.takeReady()
+       let node = addr dag.nodes[nodeId]
++      if deferred.len > 0 and node.deps.anyIt(deferred[it]):
++        deferred[nodeId] = true
++        sched.complete nodeId
++        continue
+       if Force in opt or Rerun in opt or needsRebuild(sc, node[]):
+         if Verbose in opt:
+           echo "Building: ", node.outputs.join(", ")
+@@ -651,6 +659,8 @@ proc runDag(dag: var Dag; opt: set[CliOption]; profile: ptr ProfileData = nil;
+     prog.draw job.label
+     if exitCode == 0:
+       if Force in opt: touchOutputs(dag.nodes[job.nodeId], opt)
++      if job.cmdName == deferCommand:
++        deferred[job.nodeId] = dag.nodes[job.nodeId].outputs.anyIt(not vfsExists(it))
+       sc.invalidate dag.nodes[job.nodeId]
+       sched.complete job.nodeId
+     else:
+diff --git a/tests/nifmake/setup.nim b/tests/nifmake/setup.nim
+index 635396ff..a09f7e2d 100644
+--- a/tests/nifmake/setup.nim
++++ b/tests/nifmake/setup.nim
+@@ -2,7 +2,8 @@
+ ## after it. `nimony` puts `--base:<dir>` in front of the rest of nifmake's
+ ## command line, and the directory is empty when the project is a bare file
+ ## name; a parser that takes the next word as the value loses it.
+-import std / [os, osproc, strutils]
++import std / [assertions, os, osproc, strtabs, strutils, tempfiles]
++import ../../src/lib/nifbuilder
+
+ proc arg(name: string): string =
+   let prefix = "--" & name & ":"
+@@ -10,8 +11,17 @@ proc arg(name: string): string =
+     if p.startsWith(prefix): return p[prefix.len .. ^1]
+   result = ""
+
++let worker = arg("worker")
++if worker.len > 0:
++  if worker == "discover":
++    writeFile("sidecar", "discovered dependency\n")
++    if fileExists("available"): writeFile("artifact", "ready\n")
++  else:
++    writeFile(worker, "done\n")
++  quit(0)
++
+ let bindir = if arg("bindir").len > 0: arg("bindir") else: "bin"
+-let nifmake = (bindir / "nifmake".addFileExt(ExeExt)).quoteShell
++let nifmake = absolutePath(bindir / "nifmake".addFileExt(ExeExt)).quoteShell
+
+ let (expected, _) = execCmdEx(nifmake & " version")
+ let (actual, _) = execCmdEx(nifmake & " --base: version")
+@@ -20,3 +30,47 @@ if actual == expected:
+ else:
+   quit "FAILURE: `nifmake --base: version` did not print what `nifmake version` " &
+        "prints; got: " & actual.splitLines[0]
++
++proc runDiscovery(parallel, deferMissing: bool) =
++  let dir = createTempDir("nifmake_discovery_", "")
++  defer: removeDir(dir)
++  let path = dir / "build.nif"
++  var b = nifbuilder.open(path)
++  b.addHeader("test", "nifmake")
++  b.addTree "stmts"
++  for name in ["discover", "consumer", "descendant", "independent"]:
++    b.withTree "cmd":
++      b.addSymbolDef name
++      b.addStrLit getAppFilename()
++      b.addStrLit "--worker:" & name
++  for name in ["discover", "consumer", "descendant", "independent"]:
++    b.withTree "do":
++      b.addIdent name
++      if name in ["consumer", "descendant"]:
++        b.withTree "input":
++          b.addStrLit(if name == "consumer": "artifact" else: "consumer")
++      b.withTree "output":
++        b.addStrLit(if name == "discover": "sidecar" else: name)
++      if name == "discover":
++        b.withTree "output":
++          b.addStrLit "artifact"
++  b.endTree()
++  b.close()
++  let env = newStringTable(modeCaseSensitive)
++  for key, value in envPairs(): env[key] = value
++  env["NIFMAKE_DEFER_MISSING_OUTPUTS"] = if deferMissing: "discover" else: ""
++  let command = nifmake & " run " & (if parallel: "--parallel:2 " else: "") & path.quoteShell
++  let first = execCmdEx(command, env = env, workingDir = dir)
++  doAssert first.exitCode == 0, first.output
++  doAssert fileExists(dir / "sidecar") and fileExists(dir / "independent")
++  doAssert fileExists(dir / "consumer") == not deferMissing
++  doAssert fileExists(dir / "descendant") == not deferMissing
++  writeFile(dir / "available", "ready\n")
++  let second = execCmdEx(command, env = env, workingDir = dir)
++  doAssert second.exitCode == 0, second.output
++  doAssert fileExists(dir / "artifact") and fileExists(dir / "descendant")
++
++for parallel in [false, true]:
++  for deferMissing in [false, true]:
++    runDiscovery(parallel, deferMissing)
++echo "nifmake: discovery defers descendants and preserves independent work"

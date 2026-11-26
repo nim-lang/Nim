@@ -1513,13 +1513,10 @@ proc backendBatchSize(conf: ConfigRef; liveCount: int): int =
   ## closure load (measured on a 67-module program: 7.6 ms of process startup
   ## and ~10 ms of closure loading per child, against 3.5 ms of actual codegen).
   ##
-  ## `-d:icBatchSize:N` pins it. The default is 1 — the plumbing is in place but
-  ## the policy is not yet validated. `-d:icBatchSize:0` means "one batch per
-  ## job", which is the shape a tuned default will take: enough batches to keep
-  ## every core busy and no more, since a batch beyond that only buys
-  ## amortisation at the price of parallelism.
-  if not isDefined(conf, "icBatchSize"): return 1
-  result = intDefine(conf, "icBatchSize", 1)
+  ## Four-module codegen batches amortise dependency loading. Lowering keeps
+  ## separate workers by default (see backendBatches). `-d:icBatchSize:1`
+  ## restores per-module workers; 0 makes one batch per job.
+  result = intDefine(conf, "icBatchSize", 4)
   if result == 0:
     let jobs =
       if isDefined(conf, "icNoParallel"): 1
@@ -1545,7 +1542,7 @@ proc emitBatches(c: DepContext; live: seq[bool];
       if live[i]: all.add i
     result = if all.len > 0: @[all] else: @[]
 
-proc backendBatches(c: DepContext; live: seq[bool]): seq[seq[int]] =
+proc backendBatches(c: DepContext; live: seq[bool]; lowering = false): seq[seq[int]] =
   ## Partition the live non-main nodes into batches of node indices. The main
   ## module is never in one: it loads the whole program, so batching it with
   ## anything defeats the memory bound the per-module split exists to give.
@@ -1558,7 +1555,12 @@ proc backendBatches(c: DepContext; live: seq[bool]): seq[seq[int]] =
   var liveIdx: seq[int] = @[]
   for i in 0 ..< c.nodes.len:
     if live[i] and c.nodes[i].id != 0: liveIdx.add i
-  let size = backendBatchSize(c.config, liveIdx.len)
+  # A consumer's lowering can mutate an iterator shared with another member.
+  # Keep lowering isolated until its capture diagnostics are independent of
+  # that order (tinlineiterunusedcapture). Codegen can share closure loading
+  # independently. icBatchSize retains the experimental whole-pipeline override.
+  let size = if lowering and not isDefined(c.config, "icBatchSize"): 1
+             else: backendBatchSize(c.config, liveIdx.len)
   result = @[]
   var i = 0
   while i < liveIdx.len:
@@ -1731,7 +1733,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       acc.add c.nodes[idx].files[0].modname
     acc
 
-  for batch in batches:
+  for batch in backendBatches(c, live, lowering = true):
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
@@ -2214,6 +2216,12 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       else: " --parallel"
 
     # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.
+    # A sem worker can discover an import and exit successfully without producing
+    # its BIF. Schedulers supporting deferred outputs withhold its descendants
+    # for this round. Older nifmake versions still converge via allSemmed.
+    let frontEnv = newStringTable(modeCaseSensitive)
+    for key, value in envPairs(): frontEnv[key] = value
+    frontEnv["NIFMAKE_DEFER_MISSING_OUTPUTS"] = "nim_m"
     var frontendOk = false
     # How many modules were still unsemmed after the previous round that
     # discovered nothing; see the rescheduling below.
@@ -2240,7 +2248,11 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       let cmd = quoteShell(nifmake) & " run" & parallel & frontendProgress & " " &
         quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
-      let exitCode = execShellCmd(cmd)
+      var args = @["run"]
+      if parallel.len > 0: args.add parallel.strip
+      args.add buildFile
+      let child = startProcess(nifmake, args = args, env = frontEnv, options = {poParentStreams})
+      let exitCode = try: waitForExit(child) finally: close(child)
       # A child that met an import no rule produced yet records it in its
       # `.s.deps`, removes its own NIF and exits successfully (see
       # `pipelines.compilePipelineModule`), so a clean exit is not enough.
