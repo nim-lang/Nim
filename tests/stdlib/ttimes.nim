@@ -866,3 +866,157 @@ block: # ttimes
     let east12 = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(-12, -1, -1)) # UTC+12:01:01
     check east12.format("zz") == "+12"
     check east12.format("zzzz") == "+12:01:01"
+
+  block: # parse: numeric patterns of one or two digits and of exactly two digits
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    check p("5/4/2012", "d/M/yyyy").monthday == 5
+    check p("05/04/2012", "d/M/yyyy").monthday == 5
+    check p("31/12/2012", "d/M/yyyy").monthday == 31
+    check p("31/12/2012", "d/M/yyyy").month == mDec
+    check p("05/04/2012", "dd/MM/yyyy").month == mApr
+    check p("12:34:56", "H:m:s").hour == 12
+    check p("0:0:0", "H:m:s").hour == 0
+    check p("23:59:59", "H:m:s").second == 59
+    check p("23:59:59", "HH:mm:ss").minute == 59
+    check p("07:08:09", "hh:mm:ss").hour == 7
+    check p("5.123", "s.fff").nanosecond == 123_000_000
+    check p("5.123456", "s.ffffff").nanosecond == 123_456_000
+    check p("5.123456789", "s.fffffffff").nanosecond == 123_456_789
+    check p("5.001", "s.fff").nanosecond == 1_000_000
+    # a pattern of two digits needs both digits
+    check not parses("5/04/2012", "dd/MM/yyyy")
+    check not parses("05/4/2012", "dd/MM/yyyy")
+    check not parses("5:00:00", "HH:mm:ss")
+    check not parses("05:0:00", "HH:mm:ss")
+    check not parses("05:00:0", "HH:mm:ss")
+    check not parses("5:00:00", "hh:mm:ss")
+    # more than two digits are too many
+    check not parses("123/04/2012", "d/M/yyyy")
+    check not parses("1/004/2012", "d/M/yyyy")
+    check not parses("123:00:00", "H:m:s")
+    # the ranges
+    check not parses("0/4/2012", "d/M/yyyy")
+    check not parses("32/4/2012", "d/M/yyyy")
+    check not parses("00/04/2012", "dd/MM/yyyy")
+    check not parses("1/0/2012", "d/M/yyyy")
+    check not parses("1/13/2012", "d/M/yyyy")
+    check not parses("01/00/2012", "dd/MM/yyyy")
+    check not parses("01/13/2012", "dd/MM/yyyy")
+    check not parses("24:00:00", "H:m:s")
+    check not parses("24:00:00", "HH:mm:ss")
+    check not parses("00:60:00", "HH:mm:ss")
+    check not parses("0:60:0", "H:m:s")
+    check parses("00:00:60", "HH:mm:ss") # a leap second
+    check parses("0:0:60", "H:m:s")
+    check not parses("00:00:61", "HH:mm:ss")
+    check not parses("0:0:61", "H:m:s")
+    # a fraction of a second has exactly as many digits as the pattern
+    check not parses("5.12", "s.fff")
+    check not parses("5.1234", "s.fff")
+    check not parses("5.12345", "s.ffffff")
+    check not parses("5.12345678", "s.fffffffff")
+
+  block: # parse: names, am/pm and the era
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    check p("Sep 2012", "MMM yyyy").month == mSep
+    check p("December 2012", "MMMM yyyy").month == mDec
+    check p("Jan 2012", "MMM yyyy").month == mJan
+    check p("Mon 2012-04-02", "ddd yyyy-MM-dd").weekday == dMon
+    check p("Saturday 2012-04-07", "dddd yyyy-MM-dd").weekday == dSat
+    check not parses("Foo 2012", "MMM yyyy")
+    check not parses("Foobar 2012", "MMMM yyyy")
+    check not parses("Foo 2012-04-02", "ddd yyyy-MM-dd")
+    check not parses("Foobar 2012-04-02", "dddd yyyy-MM-dd")
+    check p("5:30P", "h:mmt").hour == 17
+    check p("5:30A", "h:mmt").hour == 5
+    check p("5:30PM", "h:mmtt").hour == 17
+    check p("5:30AM", "h:mmtt").hour == 5
+    check p("11:30AM", "h:mmtt").hour == 11
+    check p("11:30PM", "h:mmtt").hour == 23
+    check not parses("5:30X", "h:mmt")
+    check not parses("5:30XM", "h:mmtt")
+    check not parses("5:30P", "h:mmtt")
+    check p("0024 AD", "yyyy g").year == 24
+    check p("0024 BC", "yyyy g").year == -23
+    check not parses("0024 XX", "yyyy g")
+    check not parses("0024 A", "yyyy g")
+
+  block: # parse: the year patterns
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    check p("2012", "yyyy").year == 2012
+    check p("0024", "yyyy").year == 24
+    check p("+12345", "yyyy").year == 12345
+    check p("12345", "YYYY").year == 12345
+    check p("24", "YYYY").year == 24
+    check p("1", "YYYY").year == 1
+    check p("2012", "uuuu").year == 2012
+    check p("-0023", "uuuu").year == -23
+    check p("+12345", "uuuu").year == 12345
+    check p("24", "UUUU").year == 24
+    check p("-23", "UUUU").year == -23
+    check p("12345", "UUUU").year == 12345
+    check p("12", "yy").year mod 100 == 12
+    check p("12", "yy").year div 100 == now().year div 100
+    # yyyy is positive and at least four digits
+    check not parses("012", "yyyy")
+    check not parses("0000", "yyyy")
+    check not parses("-0023", "yyyy")
+    check not parses("1", "yyyy")
+    check not parses("0", "YYYY")
+    check not parses("012", "uuuu")
+    check not parses("1", "yy")
+    check not parses("123", "yy")
+
+  block: # parse: the timezone offset patterns
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    const f = "yyyy-MM-dd HH:mm:ss "
+    const s = "2012-04-02 12:00:00 "
+    # UTC+07:30:45 is 07:30:45 ahead of UTC
+    check p(s & "+7", f & "z").hour == 5
+    check p(s & "+07", f & "zz").hour == 5
+    check p(s & "-5", f & "z").hour == 17
+    check p(s & "-05", f & "zz").hour == 17
+    check p(s & "+07:30", f & "zzz").minute == 30
+    check p(s & "+07:30", f & "zzz").hour == 4
+    check p(s & "-07:30", f & "zzz").hour == 19
+    check p(s & "+0730", f & "ZZZ").hour == 4
+    check p(s & "+07:30:45", f & "zzzz").second == 15
+    check p(s & "+07:30:45", f & "zzzz").minute == 29
+    check p(s & "+073045", f & "ZZZZ").hour == 4
+    check p(s & "-073045", f & "ZZZZ").second == 45
+    check p(s & "Z", f & "z").hour == 12
+    check p(s & "Z", f & "zzzz").hour == 12
+    check not parses(s & "07", f & "z") # no sign
+    check not parses(s & "+007", f & "zz") # three digits
+    check not parses(s & "+7", f & "zz") # one digit
+    check not parses(s & "+07-30", f & "zzz") # no colon
+    check not parses(s & "+0730", f & "zzz") # no colon
+    check not parses(s & "+07:3", f & "zzz")
+    check not parses(s & "+07:30", f & "ZZZ") # a colon
+    check not parses(s & "+07:30-45", f & "zzzz")
+    check not parses(s & "+07:3045", f & "zzzz")
+    check not parses(s & "+0730:45", f & "zzzz")
