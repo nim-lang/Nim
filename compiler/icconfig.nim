@@ -156,9 +156,16 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
           else:
             skip c
       elif c.cursorTagId == sourcesTag:
-        # Replay does not need the source list; it exists only for
-        # `sourcesChanged`. Skip the whole section.
-        skip c
+        # The files the producer read. A replay reads none of them, but
+        # `conf.configFiles` is part of the build state (`extccomp`) and of
+        # the `Hint: used config file` output, which must not depend on
+        # whether the config came from the artifact.
+        c.loopInto:
+          if c.kind == StrLit:
+            conf.configFiles.add AbsoluteFile(strVal(c))
+            inc c
+          else:
+            skip c
       elif c.cursorTagId == patchesTag:
         c.loopInto:
           if c.kind == TagLit and c.cursorTagId == pfTag:

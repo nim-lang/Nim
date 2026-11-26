@@ -255,6 +255,11 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   # fall through to a normal parse (this is also the path the `nim icconfig`
   # producer itself takes, since it runs with no `icPreparsedConfig`).
   if conf.icPreparsedConfig.len > 0 and applyIcConfig(conf, conf.icPreparsedConfig):
+    if conf.icProject.len == 0:
+      # not an IC child: say which config files the artifact stands for, as a
+      # normal load would (`showHintConf` below)
+      for filename in conf.configFiles:
+        rawMessage(conf, hintConf, filename.string)
     return
   template readConfigFile(path) =
     let configPath = path
