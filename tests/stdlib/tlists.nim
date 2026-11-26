@@ -285,6 +285,28 @@ template main =
 
     list.add(6)
 
+  block: # bug #26808: `remove` must not read `n` after freeing it
+    var list = [1, 2, 3].toDoublyLinkedList
+    list.remove(list.head)
+    doAssert list.toSeq == @[2, 3]
+    list.remove(list.tail)
+    doAssert list.toSeq == @[2]
+    list.add 7
+    list.remove(list.head.next)
+    doAssert list.toSeq == @[2]
+    list.remove(list.head)
+    doAssert list.toSeq == @[]
+
+    var c = [0, 1, 2].toDoublyLinkedList
+    c.addMoved(c) # cycle
+    c.remove(c.head)
+    doAssert c.head.value == 1 and c.tail.value == 2 and c.tail.next == c.head
+
+    var sc = [1, 2].toSinglyLinkedList
+    sc.addMoved(sc) # cycle
+    sc.remove(sc.head)
+    doAssert sc.head.value == 2 and sc.head.next == sc.head
+
 static: main()
 main()
 
