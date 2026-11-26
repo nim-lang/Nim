@@ -1020,3 +1020,46 @@ block: # ttimes
     check not parses(s & "+07:30-45", f & "zzzz")
     check not parses(s & "+07:3045", f & "zzzz")
     check not parses(s & "+0730:45", f & "zzzz")
+
+  block: # $ of Duration and TimeInterval: no part, one, two and several parts
+    check $initDuration() == "0 nanoseconds"
+    check $initDuration(nanoseconds = 1) == "1 nanosecond"
+    check $initDuration(seconds = 1) == "1 second"
+    check $initDuration(seconds = 2) == "2 seconds"
+    check $initDuration(hours = 1, minutes = 1) == "1 hour and 1 minute"
+    check $initDuration(days = 1, hours = 2, minutes = 3) ==
+      "1 day, 2 hours, and 3 minutes"
+    check $initDuration(weeks = 2, days = 1, hours = 1, minutes = 1) ==
+      "2 weeks, 1 day, 1 hour, and 1 minute"
+    check $initDuration(milliseconds = -1500) ==
+      "-1 second and -500 milliseconds"
+    # the value is -0.999999999 seconds: every part has the sign of the value
+    check $initDuration(seconds = -1, nanoseconds = 1) ==
+      "-999 milliseconds, -999 microseconds, and -999 nanoseconds"
+    check $initDuration(seconds = 1, nanoseconds = -1) ==
+      "999 milliseconds, 999 microseconds, and 999 nanoseconds"
+    var dp = toParts(initDuration(seconds = -1, nanoseconds = 1))
+    check dp[Seconds] == 0
+    check dp[Milliseconds] == -999
+    check dp[Microseconds] == -999
+    check dp[Nanoseconds] == -999
+    check $initTimeInterval() == "0 nanoseconds"
+    check $initTimeInterval(months = 1) == "1 month"
+    check $initTimeInterval(years = 1, nanoseconds = 123) ==
+      "1 year and 123 nanoseconds"
+    let ti = initTimeInterval(nanoseconds = 1, microseconds = 2, milliseconds = 3,
+        seconds = 4, minutes = 5, hours = 6, days = 7, weeks = 8, months = 9,
+        years = 10)
+    let tp = toParts(ti)
+    check tp[Nanoseconds] == 1
+    check tp[Microseconds] == 2
+    check tp[Milliseconds] == 3
+    check tp[Seconds] == 4
+    check tp[Minutes] == 5
+    check tp[Hours] == 6
+    check tp[Days] == 7
+    check tp[Weeks] == 8
+    check tp[Months] == 9
+    check tp[Years] == 10
+    check $ti == "10 years, 9 months, 8 weeks, 7 days, 6 hours, 5 minutes, " &
+      "4 seconds, 3 milliseconds, 2 microseconds, and 1 nanosecond"
