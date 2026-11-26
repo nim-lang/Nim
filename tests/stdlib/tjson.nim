@@ -472,3 +472,18 @@ block: # `{}` with several indexes: out of range, a non-array in between, nil; `
   doAssert $o == """{"a":{"b":1,"c":2}}"""
   o{"x", "y", "z"} = newJInt(3)
   doAssert $o == """{"a":{"b":1,"c":2},"x":{"y":{"z":3}}}"""
+
+block: # parseJson nests as deep as DepthLimit allows
+  when not defined(js):
+    template nested(n: int): string = "[".repeat(n) & "]".repeat(n)
+    doAssert parseJson(nested(1001)).kind == JArray
+    doAssertRaises(JsonParsingError): discard parseJson(nested(1002))
+    template nestedObj(n: int): string = "{\"a\":".repeat(n) & "1" & "}".repeat(n)
+    doAssert parseJson(nestedObj(1001)).kind == JObject
+    doAssertRaises(JsonParsingError): discard parseJson(nestedObj(1002))
+
+block: # parseJson rejects a non-string key and a token that cannot start a value
+  when not defined(js):
+    doAssertRaises(JsonParsingError): discard parseJson("{1: 2}")
+    for s in ["]", "}", ",", ":", ""]:
+      doAssertRaises(JsonParsingError): discard parseJson(s)
