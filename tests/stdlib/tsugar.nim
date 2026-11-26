@@ -272,6 +272,24 @@ template main() =
         discard collect(newSeq, for i in 1..3: i)
       foo()
 
+    block: # a declaration before the last statement of the body, bug #19287
+      let a = collect:
+        let n = 2
+        n
+      doAssert a == @[2]
+
+      let b = collect(newSeq):
+        let m = 2
+        for i in 1..3:
+          m * i
+      doAssert b == @[2, 4, 6]
+
+      let c = collect(initHashSet()):
+        var o = 5
+        for i in 1..3:
+          {o + i}
+      doAssert c == [6, 7, 8].toHashSet
+
   block: # dump
     # symbols in templates are gensym'd
     let
