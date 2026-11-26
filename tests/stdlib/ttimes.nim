@@ -1063,3 +1063,59 @@ block: # ttimes
     check tp[Years] == 10
     check $ti == "10 years, 9 months, 8 weeks, 7 days, 6 hours, 5 minutes, " &
       "4 seconds, 3 milliseconds, 2 microseconds, and 1 nanosecond"
+
+  block: # between: `a + between(a, b) == b`, `between(b, a) == -between(a, b)`, one sign
+    const dates = [(2015, mMar, 25), (2016, mFeb, 29), (2016, mMar, 1),
+      (2017, mJan, 1), (2017, mJan, 31), (2017, mMar, 31), (2017, mApr, 30),
+      (2017, mDec, 31), (2018, mJan, 1), (2020, mFeb, 29), (2021, mFeb, 28)]
+    const clocks = [(0, 0, 0), (12, 30, 15), (23, 59, 59)]
+    for (y1, mo1, d1) in dates:
+      for (h1, mi1, s1) in clocks:
+        for (y2, mo2, d2) in dates:
+          for (h2, mi2, s2) in clocks:
+            let a = dateTime(y1, mo1, d1, h1, mi1, s1, 0, utc())
+            let b = dateTime(y2, mo2, d2, h2, mi2, s2, 0, utc())
+            let ti = between(a, b)
+            if b >= a:
+              check a + ti == b
+            check between(b, a) == -ti
+            var parts = toParts(ti)
+            for unit in Nanoseconds .. Years:
+              if b >= a:
+                check parts[unit] >= 0
+              else:
+                check parts[unit] <= 0
+    # different timezones: the same as between the two in UTC
+    let a = dateTime(2017, mJan, 31, 23, 0, 0, 0, staticTz(-2))
+    let b = dateTime(2017, mMar, 1, 1, 0, 0, 0, staticTz(4))
+    check between(a, b) == between(a.utc, b.utc)
+    check between(b, a) == between(b.utc, a.utc)
+
+  block: # getDayOfYear and the date of a unix time over the whole proleptic Gregorian calendar
+    for year in [1900, 1999, 2000, 2001, 2004, 2100]:
+      var expected = 0
+      for month in mJan .. mDec:
+        let days = getDaysInMonth(month, year)
+        check getDayOfYear(1, month, year) == expected
+        check getDayOfYear(1, month, year) ==
+          dateTime(year, month, 1, 0, 0, 0, 0, utc()).yearday
+        check getDayOfYear(days, month, year) == expected + days - 1
+        expected.inc days
+      check expected == (if isLeapYear(year): 366 else: 365)
+    check fromUnix(0).utc.format("yyyy-MM-dd") == "1970-01-01"
+    check fromUnix(-86400).utc.format("yyyy-MM-dd") == "1969-12-31"
+    check fromUnix(951782400).utc.format("yyyy-MM-dd") == "2000-02-29"
+    check fromUnix(951868800).utc.format("yyyy-MM-dd") == "2000-03-01"
+    check fromUnix(4107456000).utc.format("yyyy-MM-dd") == "2100-02-28"
+    check fromUnix(4107542400).utc.format("yyyy-MM-dd") == "2100-03-01"
+    check fromUnix(-2203977600).utc.format("yyyy-MM-dd") == "1900-02-28"
+    check fromUnix(-2203891200).utc.format("yyyy-MM-dd") == "1900-03-01"
+    for year in [-401, -400, -100, -1, 0, 1, 4, 100, 399, 400, 401, 1600, 1899,
+                 1900, 1999, 2000, 2099, 2100, 2399, 2400, 4000]:
+      for month in mJan .. mDec:
+        for monthday in [1, getDaysInMonth(month, year)]:
+          let back = fromUnix(
+            dateTime(year, month, monthday, 0, 0, 0, 0, utc()).toTime.toUnix).utc
+          check back.year == year
+          check back.month == month
+          check back.monthday == monthday
