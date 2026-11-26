@@ -1227,8 +1227,14 @@ proc configSignature(c: DepContext; forwardedArgs: seq[string]): string =
     # the effective settings. Keep other settings and switch order in the hash.
     var normalized = ""
     try:
+      var inProbes = false
       for line in lines(c.config.icPreparsedConfig):
         let entry = line.strip
+        # `probes`, like `sources`, only decides when to refresh the snapshot.
+        # It spans several lines; a top-level section starts at one space.
+        if line.startsWith(" (") and not line.startsWith("  "):
+          inProbes = entry.startsWith("(probes")
+        if inProbes: continue
         if entry.startsWith("(nimcache ") or entry.startsWith("(sources ") or
             entry == "(sources)" or entry.startsWith("(searchpaths ") or
             entry == "(searchpaths)": continue

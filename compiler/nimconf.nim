@@ -267,6 +267,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     setConfigVar(conf, "selfDir", conf.currentConfigDir)
     if readConfigFile(configPath, cache, conf):
       conf.configFiles.add(configPath)
+    else:
+      conf.icConfigProbes.add ("file", configPath.string, "0")
 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
@@ -278,6 +280,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     if s != nil:
       conf.configFiles.add(p)
       runNimScript(cache, p, idgen, freshDefines = false, conf, s)
+    else:
+      conf.icConfigProbes.add ("file", p.string, "0")
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))

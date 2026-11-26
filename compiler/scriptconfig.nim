@@ -43,6 +43,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   var errorMsg: string
   var vthisDir = scriptName.splitFile.dir
 
+  template volatileInput(what: string) =
+    # The script changed the process or the file system, or read something that
+    # cannot be asked again cheaply: a replay would not reproduce that, so the
+    # artifact must never be reused (`icconfig.probeChanged`).
+    conf.icConfigProbes.add ("volatile", what, "")
+
   template cbconf(name, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
@@ -63,71 +69,97 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
   cbos listFilesImpl:
+    conf.icConfigProbes.add ("volatile", "listFiles", "")
     listDirs(a, {pcFile, pcLinkToFile})
   cbos listDirsImpl:
+    conf.icConfigProbes.add ("volatile", "listDirs", "")
     listDirs(a, {pcDir})
   cbos removeDir:
+    volatileInput "removeDir"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
       os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
+    volatileInput "removeFile"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
       os.removeFile getString(a, 0)
   cbos createDir:
+    volatileInput "createDir"
     os.createDir getString(a, 0)
 
   result.registerCallback "stdlib.system.getError",
     proc (a: VmArgs) = setResult(a, errorMsg)
 
   cbos setCurrentDir:
+    volatileInput "setCurrentDir"
     os.setCurrentDir getString(a, 0)
   cbos getCurrentDir:
     setResult(a, os.getCurrentDir())
   cbos moveFile:
+    volatileInput "moveFile"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
       os.moveFile(getString(a, 0), getString(a, 1))
   cbos moveDir:
+    volatileInput "moveDir"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
       os.moveDir(getString(a, 0), getString(a, 1))
   cbos copyFile:
+    volatileInput "copyFile"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
       os.copyFile(getString(a, 0), getString(a, 1))
   cbos copyDir:
+    volatileInput "copyDir"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
       os.copyDir(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
+    conf.icConfigProbes.add ("volatile", "getLastModificationTime", "")
     setResult(a, getLastModificationTime(getString(a, 0)).toUnix)
   cbos findExe:
+    conf.icConfigProbes.add ("volatile", "findExe", "")
     setResult(a, os.findExe(getString(a, 0)))
 
   cbos rawExec:
+    conf.icConfigProbes.add ("volatile", "rawExec", "")
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
       setResult(a, osproc.execCmd getString(a, 0))
 
+  proc probeEnv(name: string) =
+    # What the script saw of the environment is an input of the config; see
+    # `options.icConfigProbes`.
+    conf.icConfigProbes.add ("env", name,
+      if os.existsEnv(name): os.getEnv(name) else: "\0")
   cbconf getEnv:
+    probeEnv(a.getString 0)
     setResult(a, os.getEnv(a.getString 0, a.getString 1))
   cbconf existsEnv:
+    probeEnv(a.getString 0)
     setResult(a, os.existsEnv(a.getString 0))
   cbconf putEnv:
+    volatileInput "putEnv"
     os.putEnv(a.getString 0, a.getString 1)
   cbconf delEnv:
+    volatileInput "delEnv"
     os.delEnv(a.getString 0)
   cbconf dirExists:
+    conf.icConfigProbes.add ("dir", a.getString 0,
+      if os.dirExists(a.getString 0): "1" else: "0")
     setResult(a, os.dirExists(a.getString 0))
   cbconf fileExists:
+    conf.icConfigProbes.add ("file", a.getString 0,
+      if os.fileExists(a.getString 0): "1" else: "0")
     setResult(a, os.fileExists(a.getString 0))
 
   cbconf projectName:
@@ -187,11 +219,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
+    volatileInput "stdinReadLine"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       setResult(a, "")
     else:
       setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
+    volatileInput "stdinReadAll"
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       setResult(a, "")
     else:

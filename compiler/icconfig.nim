@@ -35,12 +35,18 @@ import options, commands, lineinfos, pathutils, msgs
 from icmodnames import moduleSuffix
 import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils, strtabs]
 import "../dist/nimony/src/lib" / [nifbuilder, nifcoreparse]
+import ../dist/checksums/src/checksums/sha1
 
 const
-  IcConfigVersion* = "5"
+  IcConfigVersion* = "6"
     ## Artifact format version. Bump on any layout change here so a child built
     ## by an older compiler rejects a stale artifact and falls back to normal
     ## config loading instead of replaying a format it cannot parse.
+
+proc fileHash(path: string): string =
+  ## The text of a config file, as far as a later run can tell whether it changed.
+  try: result = $secureHashFile(path)
+  except IOError, OSError: result = ""
 
 proc writeIcConfig*(conf: ConfigRef; outfile: string) =
   ## Serialise the resolved config (the config-file switches recorded during
@@ -56,6 +62,7 @@ proc writeIcConfig*(conf: ConfigRef; outfile: string) =
       # (see `sourcesChanged`).
       for f in conf.configFiles:
         b.addStrLit f.string
+        b.addStrLit fileHash(f.string)
     b.withTree "nimcache":
       # Resolved build nimcache. Recorded (unlike the path-search switches) so the
       # driver, which replays this artifact instead of parsing `nim.cfg`, still
@@ -95,6 +102,16 @@ proc writeIcConfig*(conf: ConfigRef; outfile: string) =
         b.addTree "pf"
         b.addStrLit k
         b.addStrLit conf.moduleOverrides[k]
+        b.endTree()
+    b.withTree "probes":
+      # Inputs the config files and NimScript looked at besides their own text
+      # (is there a `config.nims` in that directory? what does `getEnv "X"`
+      # return?). A later run re-checks them in `sourcesChanged`.
+      for pr in conf.icConfigProbes:
+        b.addTree "pr"
+        b.addStrLit pr.kind
+        b.addStrLit pr.key
+        b.addStrLit pr.val
         b.endTree()
     b.withTree "switches":
       for sw in conf.icConfigSwitches:
@@ -160,9 +177,12 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
         # `conf.configFiles` is part of the build state (`extccomp`) and of
         # the `Hint: used config file` output, which must not depend on
         # whether the config came from the artifact.
+        var idx = 0
         c.loopInto:
           if c.kind == StrLit:
-            conf.configFiles.add AbsoluteFile(strVal(c))
+            # path, hash, path, hash ...
+            if idx mod 2 == 0: conf.configFiles.add AbsoluteFile(strVal(c))
+            inc idx
             inc c
           else:
             skip c
@@ -232,6 +252,16 @@ proc applyIcConfig*(conf: ConfigRef; infile: string): bool =
   endRead(c)
   result = sawMeta and version == IcConfigVersion
 
+const EnvAbsent* = "\0"
+
+proc probeChanged(kind, key, val: string): bool =
+  ## Re-ask a recorded probe; true when the answer is not the recorded one.
+  case kind
+  of "file": result = (if fileExists(key): "1" else: "0") != val
+  of "dir": result = (if dirExists(key): "1" else: "0") != val
+  of "env": result = (if existsEnv(key): getEnv(key) else: EnvAbsent) != val
+  else: result = true # "volatile" and anything unknown: cannot be vouched for
+
 proc sourcesChanged*(configFile: string): bool =
   ## True when the precompiled config at `configFile` is missing, malformed,
   ## written by an incompatible version, or any recorded config *source* file is
@@ -246,6 +276,8 @@ proc sourcesChanged*(configFile: string): bool =
     stmtsTag = tags.registerTag("stmts")
     metaTag = tags.registerTag("meta")
     sourcesTag = tags.registerTag("sources")
+    probesTag = tags.registerTag("probes")
+    prTag = tags.registerTag("pr")
   var buf = parseFromFile(configFile, 1000, pool, tags)
   var c = beginRead(buf)
   if c.kind != TagLit or c.cursorTagId != stmtsTag:
@@ -261,12 +293,35 @@ proc sourcesChanged*(configFile: string): bool =
           inc c
         else:
           skip c
+    elif c.kind == TagLit and c.cursorTagId == probesTag:
+      c.loopInto:
+        if c.kind == TagLit and c.cursorTagId == prTag:
+          var parts: seq[string] = @[]
+          c.loopInto:
+            if c.kind == StrLit:
+              parts.add strVal(c)
+              inc c
+            else:
+              skip c
+          if parts.len == 3 and probeChanged(parts[0], parts[1], parts[2]):
+            depsChanged = true
+        else:
+          skip c
     elif c.kind == TagLit and c.cursorTagId == sourcesTag:
+      var idx = 0
+      var dep = ""
       c.loopInto:
         if c.kind == StrLit:
-          let dep = strVal(c)
-          if not fileExists(dep) or getLastModificationTime(dep) >= modtime:
+          if idx mod 2 == 0:
+            dep = strVal(c)
+            # newer than the artifact: edited while it was being made, or since
+            if not fileExists(dep) or getLastModificationTime(dep) >= modtime:
+              depsChanged = true
+          elif fileHash(dep) != strVal(c):
+            # a different text under an older (or equal) time stamp: `cp -p`,
+            # `tar x`, `git checkout` of an older revision
             depsChanged = true
+          inc idx
           inc c
         else:
           skip c
@@ -304,12 +359,18 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # produced — `commandIc` performs the same check later, but by then the artifact
   # would already live in the cache and the wipe would delete it.
   createDir(cacheDir)
-  let versionFile = cacheDir / "ic.version"
-  let stamp = if fileExists(versionFile): readFile(versionFile) else: ""
-  if stamp != icFormatVersion:
-    removeDir(cacheDir)
-    createDir(cacheDir)
-    writeFile(versionFile, icFormatVersion)
+  # The producer re-runs the ORIGINAL command (only `--icConfigOut` is added),
+  # so that `getCommand()`, `-d:` and everything else a config file can look at
+  # is what the real run sees. `nim ic`/`track` keep their own `icconfig`
+  # command: their producer never needed to see `ic`.
+  let isIc = conf.cmd in {cmdIc, cmdTrack} or isIcDriver(conf)
+  if isIc:
+    let versionFile = cacheDir / "ic.version"
+    let stamp = if fileExists(versionFile): readFile(versionFile) else: ""
+    if stamp != icFormatVersion:
+      removeDir(cacheDir)
+      createDir(cacheDir)
+      writeFile(versionFile, icFormatVersion)
   # Projects in the same nimcache can load different config.nims chains or
   # project-specific .cfg files. Keep their snapshots separate; the build
   # signature still compares effective settings so equivalent configs can
@@ -324,7 +385,8 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # producer, even when they look like compiler switches. Only `nim track`
   # accepts compiler switches after the project; move those before it.
   # The producer re-reads `nim.cfg` itself.
-  var pargs = @["icconfig", "--icConfigOut:" & outPath]
+  var pargs = @["--icConfigOut:" & outPath]
+  if isIc: pargs.insert "icconfig", 0
   # The command token is dropped below, so `nim cpp --ic:on` would hand the
   # producer a C-backend config: name the backend explicitly. (`nim ic
   # --backend:cpp` already carries the switch; the duplicate is harmless.)
@@ -348,6 +410,7 @@ proc ensureIcConfig*(conf: ConfigRef) =
       pargs.add a
     elif not droppedCmd:
       droppedCmd = true  # drop the original command token (`ic`/`track`)
+      if not isIc: pargs.add a # ... but a non-IC command is kept
     else:
       rest.add a
       if conf.cmd != cmdTrack: break # everything after the project is a program argument
@@ -359,20 +422,34 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # different `--out:` does not alter the artifact's content (and with it the
   # config signature that selects the semantic cache directory).
   let argsPath = outPath & ".args"
-  let argsContent = pargs.join("\n")
+  # The compiler binary is part of the key too: `config.nims` reads `NimVersion`
+  # and `defined(nimHasX)`, which change when the compiler is rebuilt.
+  let exe = getAppFilename()
+  let argsContent = pargs.join("\n") & "\n--exe:" & exe & ":" &
+    $getFileSize(exe) & ":" & $getLastModificationTime(exe).toUnix &
+    "\n--cwd:" & getCurrentDir() # relative paths a config file probes
   let argsChanged = not fileExists(argsPath) or readFile(argsPath) != argsContent
   if not fileExists(outPath) or argsChanged or sourcesChanged(outPath):
     createDir(cacheDir)
     let started = getTime()
-    let p = startProcess(getAppFilename(), args = pargs,
+    # Written beside the artifact and renamed into place: two processes that find
+    # it stale at the same time (an IDE and a shell) must never see a half-written
+    # file, and `argsContent` above names the final path, not this one.
+    let tmpPath = outPath & "." & $getCurrentProcessId() & ".tmp"
+    var spawnArgs = pargs
+    for a in spawnArgs.mitems:
+      if a == "--icConfigOut:" & outPath: a = "--icConfigOut:" & tmpPath
+    let p = startProcess(getAppFilename(), args = spawnArgs,
                          options = {poStdErrToStdOut})
     let outp = p.outputStream.readAll()
     let code = p.waitForExit()
     p.close()
-    if code != 0 or not fileExists(outPath):
+    if code != 0 or not fileExists(tmpPath):
+      removeFile(tmpPath)
       rawMessage(conf, errGenerated,
         "failed to produce precompiled config (exit code " & $code & "):\n" & outp)
       return
+    moveFile(tmpPath, outPath)
     writeFile(argsPath, argsContent)
     setLastModificationTime(outPath, started)
   conf.icPreparsedConfig = outPath
