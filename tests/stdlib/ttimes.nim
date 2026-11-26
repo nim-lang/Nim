@@ -796,3 +796,73 @@ block: # ttimes
       check dt.year == 2024
       check dt.month == mJul
       check dt.monthday == 21
+
+  block: # format: h, hh, H, HH, t and tt over the 24 hours of a day
+    for hour in 0 .. 23:
+      let dt = dateTime(2012, mApr, 2, hour, 5, 0, 0, utc())
+      let h12 = (hour + 11) mod 12 + 1 # 12 at midnight and at noon, then 1 .. 11
+      check dt.format("h") == $h12
+      check dt.format("hh") == (if h12 < 10: "0" & $h12 else: $h12)
+      check dt.format("H") == $hour
+      check dt.format("HH") == (if hour < 10: "0" & $hour else: $hour)
+      check dt.format("t") == (if hour < 12: "A" else: "P")
+      check dt.format("tt") == (if hour < 12: "AM" else: "PM")
+
+  block: # format: the year patterns and the era
+    template fmt(y: int, p: string): string =
+      dateTime(y, mJan, 1, 0, 0, 0, 0, utc()).format(p)
+    # 24 AD
+    check fmt(24, "yyyy") == "0024"
+    check fmt(24, "YYYY") == "24"
+    check fmt(24, "uuuu") == "0024"
+    check fmt(24, "UUUU") == "24"
+    check fmt(24, "yy") == "24"
+    check fmt(24, "g") == "AD"
+    # 24 BC is the year -23
+    check fmt(-23, "YYYY") == "24"
+    check fmt(-23, "uuuu") == "-0023"
+    check fmt(-23, "UUUU") == "-23"
+    check fmt(-23, "g") == "BC"
+    # 1 BC is the year 0, 1 AD is the year 1
+    check fmt(0, "YYYY") == "1"
+    check fmt(0, "uuuu") == "0000"
+    check fmt(0, "UUUU") == "0"
+    check fmt(0, "g") == "BC"
+    check fmt(1, "YYYY") == "1"
+    check fmt(1, "yyyy") == "0001"
+    check fmt(1, "g") == "AD"
+    # more than four digits
+    check fmt(9999, "yyyy") == "9999"
+    check fmt(9999, "uuuu") == "9999"
+    check fmt(10000, "yyyy") == "+10000"
+    check fmt(10000, "uuuu") == "+10000"
+    check fmt(12345, "YYYY") == "12345"
+    check fmt(12345, "UUUU") == "12345"
+    # the last two digits
+    check fmt(2012, "yy") == "12"
+    check fmt(2100, "yy") == "00"
+    check fmt(2105, "yy") == "05"
+
+  block: # format: the timezone offset patterns
+    let east7 = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(-7)) # UTC+07:00
+    check east7.format("z") == "+7"
+    check east7.format("zz") == "+07"
+    check east7.format("zzz") == "+07:00"
+    check east7.format("ZZZ") == "+0700"
+    check east7.format("zzzz") == "+07:00:00"
+    check east7.format("ZZZZ") == "+070000"
+    let west5 = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(5)) # UTC-05:00
+    check west5.format("z") == "-5"
+    check west5.format("zz") == "-05"
+    check west5.format("zzz") == "-05:00"
+    check west5.format("ZZZ") == "-0500"
+    check west5.format("zzzz") == "-05:00:00"
+    check west5.format("ZZZZ") == "-050000"
+    let odd = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(-5, -30, -15)) # UTC+05:30:15
+    check odd.format("zzz") == "+05:30"
+    check odd.format("ZZZ") == "+0530"
+    check odd.format("zzzz") == "+05:30:15"
+    check odd.format("ZZZZ") == "+053015"
+    let east12 = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(-12, -1, -1)) # UTC+12:01:01
+    check east12.format("zz") == "+12"
+    check east12.format("zzzz") == "+12:01:01"
