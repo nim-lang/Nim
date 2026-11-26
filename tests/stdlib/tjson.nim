@@ -527,3 +527,48 @@ block: # escapeJson of the control characters, quotes and backslashes; `copy` is
   b[1]["k"].add(%4)
   doAssert a == %*[[1], {"k": [2]}]
   doAssert b == %*[[1, 3], {"k": [2, 4]}]
+
+block: # `[]` with a BackwardsIndex and with a slice
+  let arr = %[0, 1, 2, 3, 4, 5]
+  doAssert arr[^1] == %5
+  doAssert arr[^2] == %4
+  doAssert arr[^6] == %0
+  doAssert arr[2 .. 4] == %[2, 3, 4]
+  doAssert arr[2 ..^ 2] == %[2, 3, 4]
+  doAssert arr[^4 ..^ 2] == %[2, 3, 4]
+  doAssert arr[0 .. 0] == %[0]
+  doAssert arr[0 ..< 3] == %[0, 1, 2]
+  doAssert arr[3 .. 2] == newJArray()
+
+block: # `==`: nil, nodes of different kinds, arrays, objects
+  let nilNode: JsonNode = nil
+  doAssert nilNode == nilNode
+  doAssert nilNode != newJNull()
+  doAssert newJNull() != nilNode
+  doAssert newJNull() == newJNull()
+  doAssert newJInt(1) != newJString("1")
+  doAssert newJInt(1) != newJFloat(1.0)
+  doAssert newJString("a") == newJString("a")
+  doAssert newJString("a") != newJString("b")
+  doAssert newJInt(1) == newJInt(1)
+  doAssert newJInt(1) != newJInt(2)
+  doAssert newJFloat(1.5) == newJFloat(1.5)
+  doAssert newJFloat(1.5) != newJFloat(2.5)
+  doAssert newJBool(true) == newJBool(true)
+  doAssert newJBool(true) != newJBool(false)
+  doAssert %*[1, 2] == %*[1, 2]
+  doAssert %*[1, 2] != %*[2, 1]
+  doAssert %*[1, 2] != %*[1]
+  doAssert %*{"a": 1, "b": 2} == %*{"b": 2, "a": 1} # the order of the keys does not matter
+  doAssert %*{"a": 1, "b": 2} != %*{"a": 1, "b": 3}
+  doAssert %*{"a": 1, "b": 2} != %*{"a": 1}
+  doAssert %*{"a": 1, "b": 2} != %*{"a": 1, "c": 2}
+
+block: # `%` of an unsigned integer: a JInt up to high(int), a raw number above; `%*{}`
+  when not defined(js):
+    doAssert (%(cast[uint](int.high))).kind == JInt
+    doAssert $(%(cast[uint](int.high) + 1)) == "9223372036854775808"
+    doAssert (%(cast[BiggestUInt](BiggestInt.high))).kind == JInt
+    doAssert $(%(cast[BiggestUInt](BiggestInt.high) + 1)) == "9223372036854775808"
+  doAssert (%*{}).kind == JObject
+  doAssert $(%*{}) == "{}"
