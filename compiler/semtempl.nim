@@ -183,6 +183,22 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   incl(result.flagsImpl, {sfGenSym, sfShadowed})
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
+  if (n.kind == nkPragmaExpr and n.len >= 2 and n[1].kind == nkPragma):
+    # the pragmas can refer to template parameters (#26469):
+    let pragmaNode = n[1]
+    for i in 0..<pragmaNode.len:
+      let ni = pragmaNode[i]
+      # see D20210801T100514
+      var found = false
+      if ni.kind == nkIdent:
+        for a in templatePragmas:
+          if ni.ident.id == ord(a):
+            found = true
+            break
+      if not found:
+        openScope(c)
+        pragmaNode[i] = semTemplBody(c, pragmaNode[i])
+        closeScope(c)
   # locals default to 'gensym', fields default to 'inject':
   if (n.kind == nkPragmaExpr and symBinding(n[1]) == spInject) or
       k == skField:
@@ -193,21 +209,6 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       if k != skField:
         c.toInject.incl(considerQuotedIdent(c.c, ident).id)
   else:
-    if (n.kind == nkPragmaExpr and n.len >= 2 and n[1].kind == nkPragma):
-      let pragmaNode = n[1]
-      for i in 0..<pragmaNode.len:
-        let ni = pragmaNode[i]
-        # see D20210801T100514
-        var found = false
-        if ni.kind == nkIdent:
-          for a in templatePragmas:
-            if ni.ident.id == ord(a):
-              found = true
-              break
-        if not found:
-          openScope(c)
-          pragmaNode[i] = semTemplBody(c, pragmaNode[i])
-          closeScope(c)
     let (ident, hasParam) = getIdentReplaceParams(c, n)
     if not hasParam:
       if n.kind == nkIdent and n.ident.id in c.toInject:
