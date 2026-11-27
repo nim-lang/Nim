@@ -330,7 +330,7 @@ TypeDef
     Baz {.expectedAst(typeAst).} = object
       x: string
 
-  static: doAssert Baz.x is string
+  static: doAssert typeof(Baz.x) is string
 
   const procAst = """
 ProcDef
