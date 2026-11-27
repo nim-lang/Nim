@@ -334,6 +334,7 @@ when defined(windows) or defined(nimdoc):
     PDispatcher* = ref object of PDispatcherBase
       ioPort: Handle
       handles*: HashSet[AsyncFD] # Export handles so that an external library can register them.
+      retiredEvents: int # Registrations whose queued notifications still need polling.
 
     CustomObj = object of OVERLAPPED
       data*: CompletionData
@@ -347,17 +348,22 @@ when defined(windows) or defined(nimdoc):
       handleFd: AsyncFD
       waitFd: Handle
       ovl: owned CustomRef
-      # Notifications posted by the native wait thread but not yet consumed
-      # by the dispatcher. Incremented on every post, decremented on every
-      # consume; the registration context is released only once the last
-      # queued notification is consumed after removal.
-      outstanding: int
     PostCallbackDataPtr = ptr PostCallbackData
+
+    EventRegistration = object
+      ioPort: Handle
+      fd: AsyncFD
+      waiter: Handle
+      completion: CustomRef
+      owner: PDispatcher
+      threadId: DWORD
+      outstanding: int # Atomic; counts posted event notifications.
+      active: bool # Accessed only by the owning thread.
+    EventRegistrationPtr = ptr EventRegistration
 
     AsyncEventImpl = object
       hEvent: Handle
-      hWaiter: Handle
-      pcd: PostCallbackDataPtr
+      registration: EventRegistrationPtr
     AsyncEvent* = ptr AsyncEventImpl
 
     Callback* = proc (fd: AsyncFD): bool {.closure, gcsafe.}
@@ -412,11 +418,13 @@ when defined(windows) or defined(nimdoc):
   proc hasPendingOperations*(): bool =
     ## Returns `true` if the global dispatcher has pending operations.
     let p = getGlobalDispatcher()
-    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0 or
+      p.retiredEvents != 0
 
   proc runOnce(timeout: int): bool =
     let p = getGlobalDispatcher()
-    if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
+    if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0 and
+        p.retiredEvents == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
@@ -441,36 +449,29 @@ when defined(windows) or defined(nimdoc):
 
     # https://stackoverflow.com/a/12277264/492186
     # TODO: https://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
-    if res:
+    if res or customOverlapped != nil:
+      let cbErr = if res: OSErrorCode(-1) else: osLastError()
       # This is useful for ensuring the reliability of the overlapped struct.
       assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
 
-      customOverlapped.data.cb(customOverlapped.data.fd,
-          lpNumberOfBytesTransferred, OSErrorCode(-1))
-
-      # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
-      # so we need to dispose our `cb` environment, because it is not needed
-      # anymore.
-      if customOverlapped.data.cell.data != nil:
-        system.dispose(customOverlapped.data.cell)
-
-      when not defined(gcDestructors):
-        GC_unref(customOverlapped)
-    else:
-      let errCode = osLastError()
-      if customOverlapped != nil:
-        assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
+      try:
         customOverlapped.data.cb(customOverlapped.data.fd,
-            lpNumberOfBytesTransferred, errCode)
+            lpNumberOfBytesTransferred, cbErr)
+      finally:
+        # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
+        # so we need to dispose our `cb` environment, because it is not needed
+        # anymore.
         if customOverlapped.data.cell.data != nil:
           system.dispose(customOverlapped.data.cell)
+
         when not defined(gcDestructors):
           GC_unref(customOverlapped)
-      else:
-        if errCode.int32 == WAIT_TIMEOUT:
-          # Timed out
-          result = false
-        else: raiseOSError(errCode)
+    else:
+      let errCode = osLastError()
+      if errCode.int32 == WAIT_TIMEOUT:
+        # Timed out
+        result = false
+      else: raiseOSError(errCode)
 
     processCallbacksAndTimers(p, result)
 
@@ -504,11 +505,11 @@ when defined(windows) or defined(nimdoc):
     close(dummySock)
 
   proc newCustom*(): CustomRef =
-    result = CustomRef() # 0
-    GC_ref(result) # 1  prevent destructor from doing a premature free.
-    # destructor of newCustom's caller --> 0. This means
-    # Windows holds a ref for us with RC == 0 (single owner).
-    # This is passed back to us in the IO completion port.
+    ## Allocates a completion with an extra reference for raw IOCP submission.
+    ## The returned value also has ordinary Nim ownership. The extra reference
+    ## must be transferred to a consumed packet or released separately.
+    result = CustomRef()
+    GC_ref(result)
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): owned(Future[string]) =
@@ -904,12 +905,6 @@ when defined(windows) or defined(nimdoc):
   proc waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL) {.stdcall.} =
     var p = cast[PostCallbackDataPtr](param)
-    # Count the post before queueing it: every queued notification is
-    # consumed exactly once, and the count keeps the registration context
-    # alive until the last consume after removal. Only an atomic operation
-    # is safe here; this runs on a native wait thread with no Nim heap
-    # access. Compiler builtins need no DLL import.
-    discard atomicInc(p.outstanding)
     discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
                                        ULONG_PTR(p.handleFd),
                                        cast[pointer](p.ovl))
@@ -1122,79 +1117,129 @@ when defined(windows) or defined(nimdoc):
 
     registerWaitableHandle(p, hProcess, flags, pcd, INFINITE, proccb)
 
+  proc releaseRegistration(reg: EventRegistrationPtr) =
+    # Shared registration memory is not scanned by tracing collectors. ARC,
+    # ORC and YRC use the field's ordinary ownership instead of an extra root.
+    when not defined(gcDestructors):
+      if reg.completion != nil:
+        GC_unref(reg.completion)
+      if reg.owner != nil:
+        GC_unref(reg.owner)
+    reset(reg.completion)
+    reset(reg.owner)
+    deallocShared(reg)
+
+  {.push stackTrace: off.}
+  proc postEvent(param: pointer, timedOut: WINBOOL) {.stdcall.} =
+    let reg = cast[EventRegistrationPtr](param)
+    discard atomicInc(reg.outstanding)
+    if not postQueuedCompletionStatus(reg.ioPort, timedOut.DWORD,
+        ULONG_PTR(reg.fd), cast[pointer](reg.completion)):
+      discard atomicDec(reg.outstanding)
+  {.pop.}
+
   proc newAsyncEvent*(): AsyncEvent =
-    ## Creates a new thread-safe `AsyncEvent` object.
+    ## Creates a new `AsyncEvent` object.
     ##
-    ## New `AsyncEvent` object is not automatically registered with
-    ## dispatcher like `AsyncSocket`.
+    ## `trigger` may be called from any thread. Registration, unregistration
+    ## and closing a registered event belong to the registering thread.
+    ## The event is not automatically registered with a dispatcher.
     var sa = SECURITY_ATTRIBUTES(
       nLength: sizeof(SECURITY_ATTRIBUTES).cint,
       bInheritHandle: 1
     )
-    var event = createEvent(addr(sa), 0'i32, 0'i32, nil)
-    if event == INVALID_HANDLE_VALUE:
+    let event = createEvent(addr(sa), 0'i32, 0'i32, nil)
+    if event == 0:
       raiseOSError(osLastError())
     result = cast[AsyncEvent](allocShared0(sizeof(AsyncEventImpl)))
     result.hEvent = event
 
   proc trigger*(ev: AsyncEvent) =
-    ## Set event `ev` to signaled state.
+    ## Sets event `ev` to signaled state. May be called from any thread while
+    ## the event remains open; callers must synchronize against closing it.
     if setEvent(ev.hEvent) == 0:
       raiseOSError(osLastError())
 
   proc unregister*(ev: AsyncEvent) =
-    ## Unregisters event `ev`.
-    doAssert(ev.hWaiter != 0, "Event is not registered in the queue!")
-    let p = getGlobalDispatcher()
-    p.handles.excl(AsyncFD(ev.hEvent))
-    if unregisterWait(ev.hWaiter) == 0:
-      let err = osLastError()
-      if err.int32 != ERROR_IO_PENDING:
-        raiseOSError(err)
-    ev.hWaiter = 0
+    ## Unregisters event `ev`. Queued notifications no longer invoke its callback.
+    ## Call this on the thread that registered the event.
+    ## Raises `ValueError` off the registering thread, without changing `ev`.
+    let reg = ev.registration
+    doAssert(reg != nil, "Event is not registered!")
+    if winlean.getCurrentThreadId() != reg.threadId:
+      raise newException(ValueError, "event belongs to another thread")
 
-  proc close*(ev: AsyncEvent) =
-    ## Closes event `ev`.
-    let res = closeHandle(ev.hEvent)
-    deallocShared(cast[pointer](ev))
-    if res == 0:
+    # `postEvent` only runs an atomic update and `PostQueuedCompletionStatus`,
+    # never acquiring Nim locks or waiting on this thread. Join any in-flight
+    # `postEvent` so `reg.outstanding` is final and no producer remains.
+    if unregisterWaitEx(reg.waiter, INVALID_HANDLE_VALUE) == 0:
+      # Keep the event and registration intact so the caller can retry.
       raiseOSError(osLastError())
 
+    reg.active = false
+    ev.registration = nil
+    reg.owner.handles.excl(reg.fd)
+    if atomicLoadN(addr reg.outstanding, ATOMIC_ACQUIRE) == 0:
+      releaseRegistration(reg)
+    else:
+      inc reg.owner.retiredEvents
+
+  proc close*(ev: AsyncEvent) =
+    ## Unregisters and closes event `ev`. A registered event must be closed
+    ## on its registering thread. An unregistered event has no dispatcher
+    ## dependency. If cancellation fails, the event remains open for retry;
+    ## closing a handle with an uncanceled native wait would be unsafe.
+    if ev.registration != nil:
+      unregister(ev)
+    let res = closeHandle(ev.hEvent)
+    let error = if res == 0: osLastError() else: OSErrorCode(0)
+    deallocShared(ev)
+    if res == 0:
+      raiseOSError(error)
+
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
-    ## Registers callback `cb` to be called when `ev` will be signaled
-    doAssert(ev.hWaiter == 0, "Event is already registered in the queue!")
+    ## Registers callback `cb` to be called when `ev` is signaled. Subsequent
+    ## unregistration and registered close must use this thread, even if its
+    ## global dispatcher is replaced.
+    doAssert(ev.registration == nil, "Event is already registered!")
+    let owner = getGlobalDispatcher()
+    let reg = cast[EventRegistrationPtr](
+      allocShared0(sizeof(EventRegistration)))
+    reg.owner = owner
+    when not defined(gcDestructors):
+      GC_ref(reg.owner)
+    reg.ioPort = owner.ioPort
+    reg.fd = AsyncFD(ev.hEvent)
+    reg.threadId = winlean.getCurrentThreadId()
+    reg.active = true
 
-    let p = getGlobalDispatcher()
-    let hEvent = ev.hEvent
-
-    var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    var flags = WT_EXECUTEINWAITTHREAD.DWORD
-
-    proc eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
-      # `poll()` disposes `pcd.ovl` after every call of this proc, but each
-      # notification the wait thread posted carries the same pointer. Take a
-      # reference and protect the callback environment again for every
-      # notification consumed, so the next queued notification finds `pcd.ovl`
-      # alive.
-      GC_ref(pcd.ovl)
-      pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
-      # Notifications posted before `unregister(ev)` (or before a newer
-      # registration replaced this one) are still queued: they are stale and
-      # must not call `cb`.
-      if ev.hWaiter == pcd.waitFd:
-        # `cb` may call `unregister(ev)` itself, which is why we check again.
-        if cb(fd) and ev.hWaiter == pcd.waitFd:
+    proc eventcb(fd: AsyncFD, bytes: DWORD, error: OSErrorCode) =
+      GC_ref(reg.completion) # The reference consumed by runOnce.
+      try:
+        if reg.active and cb(fd) and reg.active:
           unregister(ev)
-      # `pcd` is shared with the wait thread and with every queued
-      # notification, so it is released once, by the last queued notification
-      # consumed after removal. While registered, more notifications may still
-      # be posted, so it stays alive even when none are outstanding.
-      if atomicDec(pcd.outstanding) == 0 and ev.hWaiter != pcd.waitFd:
-        GC_unref(pcd.ovl)
-        deallocShared(cast[pointer](pcd))
+      finally:
+        if atomicDec(reg.outstanding) == 0 and not reg.active:
+          dec reg.owner.retiredEvents
+          releaseRegistration(reg)
 
-    registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
-    ev.hWaiter = pcd.waitFd
+    # Unlike registerWaitableHandle's per-dispatch submission references,
+    # event packets share one registration-owned completion.
+    # ForeignCell stays empty: tracing collectors root the whole completion.
+    var ol = CustomRef()
+    ol.data.fd = reg.fd
+    ol.data.cb = eventcb
+    when not defined(gcDestructors):
+      GC_ref(ol)
+    reg.completion = move ol
+    if not registerWaitForSingleObject(addr reg.waiter, ev.hEvent,
+        cast[WAITORTIMERCALLBACK](postEvent), reg, INFINITE,
+        WT_EXECUTEINWAITTHREAD.DWORD):
+      let error = osLastError()
+      releaseRegistration(reg)
+      raiseOSError(error)
+    ev.registration = reg
+    owner.handles.incl(reg.fd)
 
   initAll()
 else:
