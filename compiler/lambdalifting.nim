@@ -1034,7 +1034,16 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
   # static binding?
   var env: PSym = nil
   let op = call[0]
-  if op.kind == nkSym and op.sym.isIterator:
+  # bug #26805: a closure iterator nested in some routine can capture that
+  # routine's variables; its environment then needs an up reference that only
+  # the lifting pass of 'owner' can provide. For an 'owner' that is another
+  # inner routine this for loop is transformed before that pass ran (via
+  # 'transformBody' from 'detectCapturedVars', possibly even before the
+  # iterator's captures are known), so leave the closure creation to
+  # 'liftCapturedVars' by binding the iterator to a temporary.
+  let deferCreation = op.kind == nkSym and op.sym.isIterator and
+                      isInnerProc(op.sym) and op.sym.skipGenericOwner != owner
+  if op.kind == nkSym and op.sym.isIterator and not deferCreation:
     # createClosure()
     let iter = op.sym
 
@@ -1057,7 +1066,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
       for i in 0..<op.len-1:
         result.add op[i]
 
-  elif op.kind != nkSym: # might have side effects
+  elif op.kind != nkSym or deferCreation: # might have side effects
     # bug #25046
     # create a temp for the closure
     # var :closureTemp
