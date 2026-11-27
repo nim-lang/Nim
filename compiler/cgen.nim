@@ -2387,8 +2387,14 @@ proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
       result.add "/* Command for C compiler: assembled by the link stage\L" &
                  "   from every module's recorded C directives. */\L"
     else:
+      # The nimcache is where this file and its object live, so its location
+      # says nothing about how the file is compiled. Spelling it out would
+      # make the text, and with it every compiler cache keyed on the text,
+      # depend on where the cache directory is. The rest of the command stays,
+      # as a changed command has to recompile (see `shouldRecompile`).
+      let nimcache = getNimcacheDir(conf).string & DirSep
       result.add ("/* Command for C compiler:$n   $1 */$N") %
-          [rope(getCompileCFileCmd(conf, cfile))]
+          [rope(getCompileCFileCmd(conf, cfile).replace(nimcache, "$nimcache" & DirSep))]
 
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   var res = newBuilder(getCopyright(conf, cfile))
