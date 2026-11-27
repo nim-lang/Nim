@@ -120,7 +120,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   # so `loadConfigs` replays it instead of re-parsing the `nim.cfg` chain — the
   # driver runs on the exact same config its children will. See icconfig.nim.
   when not defined(nimKochBootstrap):
-    if conf.cmd in {cmdIc, cmdTrack} or isIcDriver(conf):
+    if conf.cmd in {cmdIc, cmdTrack, cmdNs} or isIcDriver(conf):
       ensureIcConfig(conf)
 
   var graph = newModuleGraph(cache, conf)
@@ -134,7 +134,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if conf.selectedGC == gcUnselected:
     if conf.backend in {backendC, backendCpp, backendObjc} or
         (conf.cmd in cmdDocLike and conf.backend != backendJs) or
-        conf.cmd in {cmdGendepend, cmdNifC, cmdIc, cmdM, cmdTrack}:
+        conf.cmd in {cmdGendepend, cmdNifC, cmdIc, cmdM, cmdTrack, cmdNs}:
       initOrcDefines(conf)
 
   if conf.selectedStrings == stringSso and

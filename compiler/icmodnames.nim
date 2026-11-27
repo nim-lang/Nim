@@ -53,3 +53,8 @@ proc moduleSuffix*(path: string; searchPaths: openArray[string]): string =
   while id > 0'u32:
     result.add Base36[int(id mod 36'u32)]
     id = id div 36'u32
+
+proc nsReportName*(projectFull: string): string =
+  ## `nim ns`'s report to nimsuggest2 about the project `projectFull`. Named
+  ## after it, as projects can share a nimcache.
+  "nimsuggest_" & moduleSuffix(projectFull, []) & ".txt"

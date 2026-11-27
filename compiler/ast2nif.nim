@@ -443,6 +443,13 @@ proc stripFieldMarker(rawName: string): string {.inline.} =
   else:
     rawName[0 ..< rawName.len - FieldMarker.len]
 
+proc fieldNifName*(field: PSym): string =
+  ## The NIF name `toNifSymName` gives the object field `field`.
+  result = field.name.s
+  result.add (if sfCursor in field.flagsImpl: CursorFieldMarker else: FieldMarker)
+  result.add '.'
+  result.addInt field.positionImpl
+
 proc isFieldNifName*(name: string): bool {.inline.} =
   ## True for an object field's local NIF name `<ident>`f.<disamb>` (see
   ## `FieldMarker`): no module suffix, marker on the ident.
@@ -3308,6 +3315,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
                        localSyms: var Table[string, PSym]) =
   ## Loads a symbol definition. The cursor must be positioned AT the opening
   ## `(sd` TagLit; `into` consumes the whole sdef including its closing `)`.
+  s.infoImpl = c.infos.oldLineInfo(n.info, cursorPool(n))
   n.into:
     expect n, SymbolDef
     # ignore the symbol's name, we have already used it to create this PSym instance!
@@ -3448,7 +3456,6 @@ proc loadSym*(c: var DecodeContext; s: PSym) =
   extractLocalSymsFromTree(c, scanCursor, c.mods[symsModule].suffix, localSyms)
 
   # Now parse the symbol definition with all local symbols pre-registered
-  s.infoImpl = c.infos.oldLineInfo(n.info, cursorPool(n))
   # The `##` doc comment (if any) rides as a NIF comment on the sym def token;
   # capture it before advancing, then restore it onto the loaded AST so that
   # suggest's `extractDocComment` (findDocComment on `s.ast`) finds it.
@@ -4153,6 +4160,25 @@ proc tryResolveCompilerProc*(c: var DecodeContext; name: string; moduleFileIdx: 
       loadSym(c, sym)
       if sfCompilerProc in sym.flagsImpl:
         return sym
+
+proc nifSymsNamed*(c: var DecodeContext; module: FileIndex; ident: string): seq[PSym] =
+  ## The symbols called `ident` that `module`'s NIF indexes, loaded; none
+  ## when it has no NIF.
+  result = @[]
+  let suffix = moduleSuffix(c.infos.config, module)
+  if not fileExists(semanticFile(c.infos.config, suffix, ".s.bif").string): return
+  let m = c.mods[moduleId(c, suffix)]
+  let prefix = ident & "."
+  var names: seq[string] = @[]
+  for key, _ in m.index.pairs(m.buf):
+    if key.len > prefix.len and key.startsWith(prefix) and parseSymName(key).name == ident:
+      names.add key
+  # the loads below can grow `c.mods`, so resolve after the iteration
+  for name in names:
+    let sym = resolveSym(c, name, true)
+    if sym != nil:
+      loadSym(c, sym)
+      result.add sym
 
 proc loadLogOp(c: var DecodeContext; logOps: var seq[LogEntry]; cur: var Cursor;
                kind: LogEntryKind; op: TTypeAttachedOp; module: int) =
