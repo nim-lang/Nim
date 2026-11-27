@@ -185,9 +185,15 @@ echo orphanValue()
     if project == "src/main.nim":
       let snapshots = configSnapshots()
       doAssert snapshots.len == 1
-      for spelling in ["src/./main.nim", "src/../src/main.nim", "src/main"]:
+      var spellings = @["src/./main.nim", "src/../src/main.nim", "src/main"]
+      when defined(posix):
+        # A directory reached through a symbolic link, like `/var` on macOS: the
+        # config probes of `<project>.nims` must not follow the spelling.
+        createSymlink(dir / "src", dir / "srclink")
+        spellings.add ["srclink/main.nim", "srclink/main"]
+      for spelling in spellings:
         build(spelling, expected, reuseShared = true)
-        doAssert configSnapshots() == snapshots
+        doAssert configSnapshots() == snapshots, spelling
   doAssert configSnapshots().len == 4
 
   # Parsing is shared across settings; semantic/backend outputs use the selected

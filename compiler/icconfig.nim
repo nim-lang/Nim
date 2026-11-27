@@ -414,6 +414,13 @@ proc ensureIcConfig*(conf: ConfigRef) =
     else:
       rest.add a
       if conf.cmd != cmdTrack: break # everything after the project is a program argument
+  # Name the project the way the artifact is named: canonical, with its
+  # extension. A spelling the file system cannot resolve (`src/main`, whose
+  # `src/main.nim` exists) would otherwise stay as typed in the producer, and
+  # the `probes` it records for `<project>.nims` and `<project>.nim.cfg` would
+  # follow that spelling (`/var/...` where the others say `/private/var/...`).
+  # One snapshot name must have one content.
+  if rest.len > 0: rest[0] = conf.projectFull.string
   for a in rest: pargs.add a
   # The config also depends on the command line: `config.nims` can read
   # `-d:` values (`const mode {.strdefine.}`) and branch on them. Remember the
