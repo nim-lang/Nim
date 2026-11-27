@@ -56,7 +56,9 @@ const g {.intdefine.} = 0
 static: echo "g=", g
 """)
   writeFile(dir / "xdg" / "nim" / "config.nims", "switch(\"define\", \"g=7\")\n")
-  putEnv("XDG_CONFIG_HOME", dir / "xdg")
+  # `getConfigDir` (nimconf.getUserConfigPath) reads %APPDATA% on Windows and
+  # $XDG_CONFIG_HOME elsewhere.
+  putEnv(when defined(windows): "APPDATA" else: "XDG_CONFIG_HOME", dir / "xdg")
   let user = run("check", "--hints:off", "g.nim")
   doAssert "g=7" in user.output, user.output
 finally:
