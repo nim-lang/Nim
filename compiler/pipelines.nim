@@ -659,8 +659,34 @@ proc finalizeLoadedModules(graph: ModuleGraph) =
         replayList.add n
     if replayList.len > 0:
       replayStateChanges(m, graph, replayList)
+      if graph.suggestMode:
+        for n in replayList: graph.macroCacheLog.add((m, n))
     initLoadedCompileTimeGlobals(graph, m, topLevel)
   graph.pendingNifInit.setLen 0
+
+proc resetMacroCacheFor(graph: ModuleGraph; module: PSym) =
+  ## nimsuggest recompiles a dirty module in place: undo the macrocache
+  ## mutations it performed last time, otherwise e.g. a `CacheTable` put
+  ## of the same key fails with "key already exists".
+  when not defined(nimKochBootstrap):
+    if graph.vm != nil:
+      var diff = move PCtx(graph.vm).vmstateDiff
+      for it in diff:
+        if it[0] != module: PCtx(graph.vm).vmstateDiff.add it
+  var touched = false
+  var replayList = newNodeI(nkStmtList, module.info)
+  var log = move graph.macroCacheLog
+  for it in log:
+    if it.module == module:
+      touched = true
+    else:
+      graph.macroCacheLog.add it
+      replayList.add it.action
+  if touched:
+    graph.cacheSeqs.clear()
+    graph.cacheCounters.clear()
+    graph.cacheTables.clear()
+    replayStateChanges(module, graph, replayList)
 
 proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags; fromModule: PSym = nil): PSym =
   var flags = flags
@@ -766,6 +792,7 @@ proc compilePipelineModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymF
       partialInitModule(result, graph, fileIdx, filename)
   elif graph.isDirty(result):
     result.excl sfDirty
+    resetMacroCacheFor(graph, result)
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil
