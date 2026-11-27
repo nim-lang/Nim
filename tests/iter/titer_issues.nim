@@ -239,6 +239,17 @@ block t2023_objiter:
   var o = init()
   echo(o.iter())
 
+  block: # bug #25591
+    iterator h(): int =
+      let n = 0
+      (proc() = discard n)()
+      yield 0
+
+    proc a() =
+      iterator m(): int {.closure.} = (for _ in h(): discard)
+      let _ = m
+
+    a()
 
 block:
   # bug #13739
