@@ -539,6 +539,11 @@ proc processPipelineModuleImpl(graph: ModuleGraph; module: PSym; idgen: IdGenera
   else:
     s = stream
     graph.interactive = stream.kind == llsStdIn
+
+  when defined(nimsuggest):
+    let filename = toFullPathConsiderDirty(graph.config, fileIdx).string
+    msgs.setHash(graph.config, fileIdx, $sha1.secureHashFile(filename))
+
   var topLevelStmts = newTopLevelStmts(graph, module)
   while true:
     syntaxes.openParser(p, fileIdx, s, graph.cache, graph.config)
