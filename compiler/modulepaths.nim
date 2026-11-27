@@ -91,15 +91,15 @@ proc mangleModuleName*(conf: ConfigRef; path: AbsoluteFile): string =
   ##
   ## Example:
   ## `foo-#head/../bar` becomes `@foo-@hhead@s..@sbar`
-  var best = relativeTo(path, conf.projectPath).string
+  var best = conf.relativeTo(path, conf.projectPath).string
   var selectedBase = FromProject
   for x in conf.searchPaths:
-    let other = relativeTo(path, x).string
+    let other = conf.relativeTo(path, x).string
     if other.len < best.len:
       best = other
       selectedBase = FromSearchPath
   for x in conf.nimblePaths:
-    let other = relativeTo(path, x).string
+    let other = conf.relativeTo(path, x).string
     if other.len < best.len:
       best = other
       selectedBase = FromNimblePath

@@ -234,6 +234,7 @@ else:
 
   proc getCursorPos*(): tuple [x, y: int] {.raises: [ValueError, IOError].} =
     ## Returns cursor position (x, y)
+    ## (0,0) is the upper left of the screen, as in `setCursorPos`.
     ## writes to stdout and expects the terminal to respond via stdin
     var
       xStr = ""
@@ -272,7 +273,7 @@ else:
       # restore previous terminal mode
       discard fd.tcSetAttr(TCSADRAIN, addr oldMode)
 
-    return (parseInt(xStr), parseInt(yStr))
+    return (parseInt(xStr) - 1, parseInt(yStr) - 1)
 
   proc terminalWidthIoctl*(fds: openArray[int]): int =
     ## Returns terminal width from first fd that supports the ioctl.

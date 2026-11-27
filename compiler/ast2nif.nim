@@ -275,7 +275,7 @@ type
                          # so two `@bk` types sharing an item but differing in kind (e.g. `int`
                          # and `typedesc[int]`, both item 12) are DISTINCT defs — keying by item
                          # alone deduped the second to a dangling `SymUse` (`symbol has no offset`).
-    emittedBackendSyms: HashSet[int32]   # backend-local sym items already def'd this module
+    emittedBackendSyms: HashSet[(string, int32)] # (name, serialized disambiguator)
     lowering: bool  # serializing the `lower` stage's whole-module `.t.nif`
     emittedFieldSyms: HashSet[ItemId]    # lowering: derived env-field syms already def'd
     inTypeReclist: int   # >0 while writing a type's OWN reclist: fields must be SELF-CONTAINED
@@ -1090,6 +1090,13 @@ proc docOfSym(sym: PSym): string =
   return ""
 
 proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
+  # A non-field sym reached from inside a reclist (e.g. a field type's `sym`, a
+  # type alias whose owner routine body uses the very fields being written) is
+  # not part of that reclist: field uses in it must not claim the reclist's
+  # field defs, otherwise the owning type's own entry degrades to a `SymUse`
+  # and loads as an owner-less stub (#26489).
+  let savedReclist = w.inTypeReclist
+  if sym.kindImpl != skField: w.inTypeReclist = 0
   dest.addParLe sdefTag, nifLineInfoWithComment(w.infos, sym.infoImpl, docOfSym(sym))
   dest.addSymDef pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
   # The index visibility marker is still used by tooling and interface
@@ -1114,6 +1121,7 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
       writeSym(w, dest, sym.guardImpl)
       dest.addIntLit sym.bitsizeImpl
       dest.addIntLit sym.alignmentImpl
+      writeNode(w, dest, sym.customPragmasImpl)
     else:
       discard
 
@@ -1175,6 +1183,7 @@ proc writeSymDef(w: var Writer; dest: var IcBuilder; sym: PSym) =
   else:
     dest.addDotToken
   dest.addParRi
+  w.inTypeReclist = savedReclist
 
 
 proc shouldWriteSymDef(w: var Writer; sym: PSym): bool {.inline.} =
@@ -1216,7 +1225,9 @@ proc writeSym(w: var Writer; dest: var IcBuilder; sym: PSym) =
   elif sym.itemId.isBackendMinted:
     # Process-local backend sym (closure env field / hidden `:env` param): emit a
     # MODULE-LOCAL `@bk` def the first time, reference it after. Per-Writer dedup.
-    if not w.emittedBackendSyms.containsOrIncl(sym.itemId.item):
+    # Different batch members can reuse item numbers. Match the name written
+    # by toNifSymName, including a hook's content-derived disambiguator.
+    if not w.emittedBackendSyms.containsOrIncl((sym.name.s, backendMintedDisamb(sym))):
       writeSymDef(w, dest, sym)
     else:
       dest.addSymUse pool.syms.getOrIncl(w.toNifSymName(sym)), NoLineInfo
@@ -1253,7 +1264,8 @@ proc writeSymNode(w: var Writer; dest: var IcBuilder; n: PNode; sym: PSym) =
   let isField = sym.kindImpl == skField
   let wantDef =
     if isField: fieldDefHere(w, sym)  # def only inside the owning reclist (see fieldDefHere)
-    elif sym.itemId.isBackendMinted: not w.emittedBackendSyms.containsOrIncl(sym.itemId.item)
+    elif sym.itemId.isBackendMinted:
+      not w.emittedBackendSyms.containsOrIncl((sym.name.s, backendMintedDisamb(sym)))
     else: shouldWriteSymDef(w, sym)
   if wantDef:
     if not sym.itemId.isBackendMinted and not isField: sym.state = Sealed
@@ -3326,6 +3338,7 @@ proc loadSymFromCursor(c: var DecodeContext; s: PSym; n: var Cursor; thisModule:
         s.guardImpl = loadSymStub(c, n, thisModule, localSyms)
         loadField s.bitsizeImpl
         loadField s.alignmentImpl
+        s.customPragmasImpl = loadNode(c, n, thisModule, localSyms)
       else:
         discard
 
@@ -4005,19 +4018,16 @@ proc loadInterface(c: var DecodeContext; module: FileIndex; hidden: bool;
           prof pIfaceExported
         strTableAdd(result, sym)
 
-proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
-                           interfHidden: var TStrTable;
-                           resolveModule: ModuleResolver): bool {.discardable.} =
-  ## Build the full interface independently, on demand. Appending private
-  ## symbols to the public table would lose the full interface's own order.
-  let conf = c.infos.config
-  if fileExists(semanticFile(conf, suffix, ".s.bif").string):
-    let module = moduleId(c, suffix, {})
-    if not c.mods.hasKey(module): return false
-    interfHidden = loadInterface(c, module, true, resolveModule)
-    result = true
-  else:
-    result = false
+proc buildStoredInterface*(c: var DecodeContext; suffix: string; hidden: bool;
+                           tab: var TStrTable; resolveModule: ModuleResolver): bool =
+  ## Reopen the module by suffix: its graph and decoder indexes can differ.
+  result = false
+  if fileExists(semanticFile(c.infos.config, suffix, ".s.bif").string):
+    let module = moduleId(c, suffix)
+    if c.mods.hasKey(module):
+      timed tInterfTables:
+        tab = loadInterface(c, module, hidden, resolveModule)
+      result = true
 
 proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
   ## Stubs for every non-type symbol serialized in `module`'s NIF index. The
@@ -4170,6 +4180,9 @@ type
       ## generic instances this module created; modulegraphs.nim rebuilds
       ## `procInstCache` from them so a consumer reuses the instance instead of
       ## re-instantiating it in its own (operator-blind) module scope.
+    offeredNames*: seq[tuple[generic, inst: string]]
+      ## backend only: the NIF names of `genericOffers`, unresolved; the
+      ## `lower` stage writes them back into the `.t.bif`
     typeOffers*: seq[tuple[generic: PSym; inst: PType]]
       ## generic TYPE instances this module created; modulegraphs.nim rebuilds
       ## `typeInstCache` from them so a consumer reuses the baked instance
@@ -4443,7 +4456,21 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
         # either (`writeLoweredModule` writes what was loaded), which is fine:
         # its only readers are backend stages.
         if c.infos.config.cmd == cmdNifC:
-          skip cur
+          # The backend keeps only the instance's NAME: a home module's `cg`
+          # emits exactly the instances it offers, and every other demander
+          # just prototypes them (`cgen.homeEmitsInstance`). No sym or type is
+          # resolved, so this neither loads anything nor shifts load order.
+          var names: array[2, string] = ["", ""]
+          cur.into:
+            var idx = 0
+            while cur.hasMore:
+              if cur.kind == Symbol and idx < 2:
+                names[idx] = symName(cur)
+                if parseSymName(names[idx]).module.len == 0: names[idx].add suffix
+                inc idx
+              skip cur
+          if names[1].len > 0:
+            result.offeredNames.add (names[0], names[1])
           continue
         # (offer <genericSym> <instSym> <genericParamsCount> <type>...) — resolve
         # to PSyms/PTypes; modulegraphs registers them into `procInstCache`.
@@ -4716,6 +4743,13 @@ proc writeLoweredModule*(c: var DecodeContext; config: ConfigRef;
     for ct in off.concreteTypes:
       # Canonical name, see `writeNifModule`'s copy of this loop.
       w.deps.addSymUse pool.syms.getOrIncl(nifTypeName(w, ct)), NoLineInfo
+    w.deps.addParRi
+  # The backend loads offers by name only (see `ttOffer`); carry those names
+  # so `cg` still knows which instances this module is home to.
+  for off in precomp.offeredNames:
+    w.deps.addParLe offerTag, NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(off.generic), NoLineInfo
+    w.deps.addSymUse pool.syms.getOrIncl(off.inst), NoLineInfo
     w.deps.addParRi
   for off in precomp.typeOffers:
     w.deps.addParLe typeOfferTag, NoLineInfo

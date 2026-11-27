@@ -129,6 +129,18 @@ proc readCString(c: PCtx; p: Address): string =
     result.add ch
     q = q +! 1
 
+proc retainCStr(c: PCtx; p: Address): bool =
+  ## makes the payload the cstring `p` points into immutable so the bytes stay
+  ## valid for the whole VM run: with `StrlitFlag` set the VM never reuses,
+  ## grows or frees the payload (see `reserve`, `freePayload`), and copies of
+  ## the string share it instead of duplicating it.
+  if p == 0: return true
+  let hdr = p -! PayloadDataOffset
+  if not canWrite(c.mem, hdr, 8): return true   # const memory: already immutable
+  if isLiteralPayload(hdr): return true
+  st[int64](hdr, ld[int64](hdr) or StrlitFlag)
+  result = true
+
 proc regToNode(c: PCtx; a: Address; t: PType; info: TLineInfo): PNode =
   ## turns a value in register format into an AST
   let vc = valueConv(c)
@@ -370,7 +382,8 @@ proc payloadParts(c: PCtx; a: Address; t: PType): seq[(Address, PType)] =
   case t.kind
   of tyArray:
     let et = t.elementType
-    if skipForLayout(et).kind in {tyString, tySequence, tyArray, tyTuple, tyObject}:
+    if skipForLayout(et).kind in {tyString, tySequence, tyArray, tyTuple, tyObject} or
+        isNimNodeType(skipForLayout(et)):
       let esize = vmSizeOf(c.layouts, c.config, et)
       for i in 0..<toInt(lengthOrd(c.config, t)):
         result.add (a +! i*esize, et)
@@ -385,9 +398,14 @@ proc payloadParts(c: PCtx; a: Address; t: PType): seq[(Address, PType)] =
   else: discard
 
 proc unshare(c: PCtx; a: Address; t: PType): bool =
-  ## gives the strings and seqs of the value at `a` their own payloads.
+  ## gives the strings and seqs of the value at `a` their own payloads and
+  ## counts its NimNodes.
   result = true
   let t = skipForLayout(t)
+  if isNimNodeType(t):
+    if not canRead(c.mem, a, 8): return false
+    incNodeRef(c.mem, ld[int64](a))
+    return
   case t.kind
   of tyString:
     if not canWrite(c.mem, a, 16): return false
@@ -426,9 +444,13 @@ proc unshare(c: PCtx; a: Address; t: PType): bool =
 
 proc destroyValue(c: PCtx; a: Address; t: PType): bool =
   ## `=destroy` for a value without hooks: frees the payloads of its
-  ## strings and seqs.
+  ## strings and seqs and releases its NimNodes.
   result = true
   let t = skipForLayout(t)
+  if isNimNodeType(t):
+    if not canRead(c.mem, a, 8): return false
+    decNodeRef(c.mem, ld[int64](a))
+    return
   case t.kind
   of tyString:
     result = freePayload(c, a)
@@ -465,6 +487,13 @@ proc asgnValue(c: PCtx; dest, src: Address; t: PType; isSink: bool): bool =
     result = unshare(c, tmp, t) and destroyValue(c, dest, t)
     copyMem(toPtr(dest), toPtr(tmp), size)
     discard heapDealloc(c.mem, tmp)
+
+proc destroyReg(c: PCtx; a: Address; t: PType) =
+  ## releases the value in register format at `a` that the host owns: the
+  ## arguments and the result of a call from the compiler into the VM.
+  if t == nil or isEmptyType(t) or not hasPayloads(t): return
+  let p = if isBig(c.layouts, c.config, t): ld[Address](a) else: a
+  if p != 0: discard destroyValue(c, p, t)
 
 proc dynamicType(c: PCtx; objAddr: Address): PType =
   ## the type stored in the header of an inheritable object
@@ -1330,6 +1359,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       let s = rAdr(ra)
       checkWrite(s, 16)
       ensure reserve(c, s, ldInt(s), 1, 1, true)
+    of opcRetainCStr:
+      # A cstring stored in VM-owned storage must stay valid even after the VM
+      # recycles the payload it points into. Mark that payload immutable
+      # (StrlitFlag): the VM then never reuses, grows or frees it, and copies of
+      # the string share it instead of duplicating it. Zero copy, no allocation.
+      # Pointers into const memory (string literals, the shared empty cstring)
+      # are immutable already and wild pointers are left alone.
+      ensure retainCStr(c, rAdr(ra))
 
     # ----------------------------- refs and objects
     of opcNewRef:
@@ -1340,6 +1377,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       if p != 0:
         checkWrite(p -! RefHeaderSize, RefHeaderSize)
         incRef(p)
+    of opcNodeIncRef, opcNodeDecRef:
+      when defined(nimVmNodeRcCheck):
+        try:
+          if instr.opcode == opcNodeIncRef: incNodeRef(c.mem, rInt(ra))
+          else: decNodeRef(c.mem, rInt(ra))
+        except AssertionDefect as e:
+          stackTrace(c, tos, pc, e.msg & " at pc " & $pc)
+      else:
+        if instr.opcode == opcNodeIncRef: incNodeRef(c.mem, rInt(ra))
+        else: decNodeRef(c.mem, rInt(ra))
     of opcDecRefIsLast:
       let p = rAdr(instr.regB)
       if p == 0:
@@ -1464,7 +1511,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
             VmArgs(ctxp: cast[pointer](c), args: slotAddr(rb + 2 + shape.resultSlots),
                    res: slotAddr(rb + 2), shape: addr shape,
                    currentException: c.currentExceptionA,
-                   currentLineInfo: c.debug[pc]))
+                   currentLineInfo: c.debug[pc], tos: tos))
         except IOError, OSError:
           # a host proc like `readFile` failed; report it like an unhandled
           # VM exception instead of crashing the compiler (#22558, #24530)
@@ -1726,6 +1773,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         setNode(ra, n)
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
+    of opcSymCustomPragmas:
+      let a = node(instr.regB)
+      if a != nil and a.kind == nkSym:
+        let p = if a.sym.kind == skField and a.sym.customPragmas != nil:
+                  copyTree(a.sym.customPragmas)
+                else: newNode(nkPragma)
+        p.flags.incl nfIsRef
+        setNode(ra, p)
+      else:
+        stackTrace(c, tos, pc, "node is not a symbol")
     of opcSymIsInstantiationOf:
       let a = node(instr.regB)
       let b = node(instr.regC)
@@ -1746,7 +1803,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
         VmArgs(ctxp: cast[pointer](c), args: slotAddr(instr.regB),
                res: slotAddr(ra), shape: addr shape,
                currentException: c.currentExceptionA,
-               currentLineInfo: c.debug[pc]))
+               currentLineInfo: c.debug[pc], tos: tos))
       let n = node(ra)
       if n != nil: n.flags.incl nfIsRef
     of opcNChild:
@@ -1949,12 +2006,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
-      setNode(ra, newNode(nkEmpty))
       if error.len > 0:
         c.errorFlag = error
+        setNode(ra, newNode(nkEmpty))
       elif ast.len != 1:
         c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
           "expected expression, but got multiple statements")
+        setNode(ra, newNode(nkEmpty))
       else:
         setNode(ra, ast[0])
     of opcParseStmtToAst, opcParseStmtToAstFile:
@@ -2286,8 +2344,11 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       let ret = sym.typ.returnType
       if ret != nil and not isEmptyType(ret) and a != 0:
         result = regToNode(c, a, ret, sym.info)
+        destroyReg(c, a, ret)
       else:
         result = newNodeI(nkEmpty, sym.info)
+      for i in 0..<sym.typ.paramsLen:
+        destroyReg(c, firstParam +! shape.paramOffsets[i], shape.paramTypes[i])
       c.mem.popFrames(tos.mark)
   else:
     result = nil
@@ -2395,6 +2456,7 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
     result = newNodeI(nkEmpty, n.info)
   else:
     result = regToNode(c, a, n.typ, n.info)
+    if n.typ.kind != tyTypeDesc and not defined(nimVmNoInject): destroyReg(c, a, n.typ)
   c.mem.popFrames(tos.mark)
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
@@ -2440,7 +2502,14 @@ proc setupMacroParam(c: PCtx; x: PNode; typ: PType; dest: Address) =
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
     n.flags.incl nfIsRef
     n.typ = x.typ
+    # the caller owns the handle, see `releaseMacroParam`:
     st[int64](dest, nodeHandle(c.mem, n))
+
+proc releaseMacroParam(c: PCtx; typ: PType; dest: Address) =
+  if typ.kind == tyStatic:
+    destroyReg(c, dest, typ.base)
+  else:
+    decNodeRef(c.mem, ld[int64](dest))
 
 proc unshareTree(n: PNode; seen: var IntSet): PNode =
   ## The old VM copied a NimNode from the macro's input whenever it was
@@ -2508,6 +2577,15 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
                  " generic parameter(s)")
   let a = rawExecute(c, start.pc, tos)
   result = if a != 0: getNode(c.mem, ld[int64](a)) else: nil
+  if a != 0: decNodeRef(c.mem, ld[int64](a))
+  for i, param in paramTypes(sym.typ):
+    let idx = i-FirstParamAt
+    releaseMacroParam(c, param, firstParam +! shape.paramOffsets[idx])
+  for i in 0..<gp.len:
+    let idx = sym.typ.signatureLen + i
+    if idx < n.len and i < start.genericParamSlots.len:
+      releaseMacroParam(c, gp[i].sym.typ,
+                        tos.fp +! int(start.genericParamSlots[i]) * SlotSize)
   c.mem.popFrames(tos.mark)
   if result == nil:
     if a != 0:

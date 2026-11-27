@@ -229,6 +229,18 @@ block: # ttimes
   block: # incorrect inputs: second
     parseTestExcp("2018-02-19 16:30:0", "yyyy-MM-dd hh:mm:ss")
 
+  block: # bug #26408; out of range minute/second raises TimeParseError
+    for (s, f) in [("2024-01-01 10:60:00", "yyyy-MM-dd HH:mm:ss"),
+                   ("2024-01-01 10:99:00", "yyyy-MM-dd HH:mm:ss"),
+                   ("2024-01-01 10:00:61", "yyyy-MM-dd HH:mm:ss"),
+                   ("2024-01-01 10:00:99", "yyyy-MM-dd HH:mm:ss"),
+                   ("2024-01-01 10:60:00", "yyyy-MM-dd H:m:s"),
+                   ("2024-01-01 10:00:61", "yyyy-MM-dd H:m:s")]:
+      expect TimeParseError:
+        discard s.parse(f, utc())
+    check $parse("2024-01-01 10:59:00", "yyyy-MM-dd HH:mm:ss", utc()) ==
+      "2024-01-01T10:59:00Z"
+
   block: # incorrect inputs: timezone (z)
     parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss z")
 

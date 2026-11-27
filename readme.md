@@ -49,7 +49,7 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources_v3``][csources-v3-repo] repository.
+[``nim-lang/csources_v4``][csources-v4-repo] repository.
 
 Next, to build from source you will need:
 
@@ -221,7 +221,7 @@ Copyright © 2006-2026 Andreas Rumpf, all rights reserved.
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
 [csources-repo-deprecated]: https://github.com/nim-lang/csources
-[csources-v3-repo]: https://github.com/nim-lang/csources_v3
+[csources-v4-repo]: https://github.com/nim-lang/csources_v4
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square

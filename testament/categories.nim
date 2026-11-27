@@ -80,6 +80,14 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     defer: putEnv(libpathenv, libpath)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
+  if "refc" notin options:
+    # with refc, a thread of a program that uses nimrtl does not set up its
+    # GC heap either, and hangs on its first allocation; not fixed yet
+    testSpec r, makeTest("tests/dll/nimrtl_threads.nim", options & " --threads:on" & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimrtl_thread_exception.nim", options & " --threads:on" & rpath, cat)
+    if "boehm" notin options:
+      # Boehm's GC has no setupForeignThreadGc
+      testSpec r, makeTest("tests/dll/nimrtl_foreign_thread.nim", options & " --threads:on" & rpath, cat)
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & " --threads:off" & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & " --threads:off" & rpath, cat)
 
@@ -87,6 +95,14 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # hcr tests
 
     testSpec r, makeTest("tests/dll/nimhcr_basic.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_methods.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_global_ref.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_threadvar.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_logging.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_async.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_exception_msg.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_unhandled.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
+    testSpec r, makeTest("tests/dll/nimhcr_compile.nim", options & " --threads:off --forceBuild --hotCodeReloading:on " & rpath, cat)
 
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
@@ -96,6 +112,27 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
                                 hcri.options, nimcache, getTestSpecTarget())
     hcri.testArgs = cmd.parseCmdLine
     testSpec r, hcri
+
+    # a reload that changes the type of a global must stop instead of reading
+    # the kept memory with the new layout; these rebuild themselves like
+    # nimhcr_integration
+    for name in ["nimhcr_layout", "nimhcr_layout_order"]:
+      var t = makeTest("tests/dll/" & name & ".nim",
+                       options & " --threads:off --forceBuild --hotCodeReloading:on" & rpath, cat)
+      let tcache = nimcacheDir(t.name, t.options, getTestSpecTarget())
+      t.testArgs = prepareTestCmd(t.spec.getCmd, t.name, t.options, tcache,
+                                  getTestSpecTarget()).parseCmdLine
+      testSpec r, t
+
+    # the same, with the program built by the IC backend; once per memory
+    # manager, as each build takes long
+    if "-d:release" notin options:
+      var ict = makeTest("tests/dll/nimhcr_ic.nim",
+                         options & " --threads:off --ic:on --hotCodeReloading:on" & rpath, cat)
+      let iccache = nimcacheDir(ict.name, ict.options, getTestSpecTarget())
+      ict.testArgs = prepareTestCmd(ict.spec.getCmd, ict.name, ict.options, iccache,
+                                    getTestSpecTarget()).parseCmdLine
+      testSpec r, ict
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
@@ -140,6 +177,8 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
       run filename, " -d:release --gc:boehm"
 
   testLegacyGc "gctest"
+  when not defined(windows) and not defined(android) and not defined(osx):
+    run "tboehm_signal", " --gc:boehm"
 
   test "foreign_thr"
   test "gcemscripten"
@@ -161,6 +200,12 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cyclecollector"
   test "trace_globals"
   test "tfinalizers"
+  # `tseqfinalizer` asserts refc-specific element counts; its spec `matrix:`
+  # pins the `--mm:refc` legs, so a single `run` covers both.
+  run "tseqfinalizer", ""
+  test "tmove_case_object"
+  test "tdisable_orc"
+  test "tregionleak"
 
 # ------------------------- threading tests -----------------------------------
 
@@ -424,6 +469,11 @@ proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
 
 import std/private/gitutils
 
+const packageTimeout = 15.0 * 60
+  ## Seconds that the clone, the install and the test commands of one package may
+  ## take together. A package that hangs is killed and reported as `reTimeout`
+  ## instead of blocking the whole batch until the CI job is cancelled.
+
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
   let nimbleExe = findExe("nimble")
   doAssert nimbleExe != "", "Cannot run nimble tests: Nimble binary not found."
@@ -439,13 +489,20 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       inc r.total
       var test = makeSupTest(pkg.name, "", cat, "[$#/$#] " % [$i, $pkgs.len])
       let buildPath = packagesDir / pkg.name
+      let deadline = test.startTime + packageTimeout
       template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
         var outp: string = ""
+        var timedOut = false
         let ok = retryCall(maxRetry = maxRetries, backoffDuration = 10.0):
           var status: int
           echo "[$#] $#" % [pkg.name, cmd]
-          (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
-          status == QuitSuccess
+          (outp, status, timedOut) = execCmdExTimeout(cmd, workingDir2, deadline - epochTime())
+          status == QuitSuccess or timedOut # do not retry a command that hung
+        if timedOut:
+          r.finishTest(test, targetC, "", "", cmd & "\n" & outp &
+            "\nTimed out: the package was not done after $# seconds; the command and its child processes were killed" %
+            $int(packageTimeout), reTimeout)
+          continue
         if not ok:
           r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed)
           continue
@@ -528,7 +585,8 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 # that is not IC-against-IC; without it a consistently wrong IC passes
 # everything. `#!DELETE <file>` removes a module, `#!FLAGS <switches>` changes
 # the compiler switches from that point on, and `fails: <text>` asserts that
-# BOTH compilers reject the program with that text.
+# BOTH compilers reject the program with that text (with `no-oracle`: only
+# `nim ic`, for a deliberate IC-only rejection).
 
 type MetamorphicError = object of CatchableError
   resultKind: TResultEnum
@@ -560,14 +618,18 @@ proc changedPaths(prev, cur: Table[string, string]): seq[string] =
   for k in prev.keys:
     if k notin cur: result.add k
 
-proc isProvenance(path: string): bool =
+proc isProvenance(path, before, after: string): bool =
   ## Build-provenance sidecars that legitimately differ between a fresh build and
   ## an edit-accumulated one (they record build history, not codegen). Excluded
   ## only from the cross-build clean==incremental comparison — a *no-op* edit must
   ## still leave even these untouched. The backend build file lists the
   ## body dependencies the previous run discovered (`.bodydeps`), which a clean
-  ## build has not seen yet.
-  path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
+  ## build has not seen yet. The link arguments end with the stamp of the
+  ## program the link wrote; the lines before it must still agree.
+  if path == "ic_link_args.txt":
+    result = before[0 .. before.rfind('\n')] == after[0 .. after.rfind('\n')]
+  else:
+    result = path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether
@@ -742,14 +804,17 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         if want.len > 0 and want notin cout:
           mmRaise(reOutputsDiffer, want, where & ": error text did not contain it:\n" & cout)
         # The oracle must reject it too, else the test is asserting an IC-only
-        # error rather than a real one.
-        let (_, refOut, refCode) = compileRef()
-        if refCode == 0:
-          mmRaise(reBuildFailed, "`nim c` to fail too",
-            where & ": `nim ic` failed but `nim c` accepted the program:\n" & cout)
-        if want.len > 0 and want notin refOut:
-          mmRaise(reOutputsDiffer, want,
-            where & ": `nim c` failed differently:\n" & refOut)
+        # error rather than a real one. `no-oracle` declares exactly that: a
+        # deliberate IC-only rejection (e.g. an unused inline iterator's illegal
+        # capture, which `nim c` only diagnoses on expansion).
+        if "no-oracle" notin attrs:
+          let (_, refOut, refCode) = compileRef()
+          if refCode == 0:
+            mmRaise(reBuildFailed, "`nim c` to fail too",
+              where & ": `nim ic` failed but `nim c` accepted the program:\n" & cout)
+          if want.len > 0 and want notin refOut:
+            mmRaise(reOutputsDiffer, want,
+              where & ": `nim c` failed differently:\n" & refOut)
         prevSnap = snapshotDir(nc)
         prevBin = ""
         continue
@@ -837,7 +902,7 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
           let unusedShared = p notin cleanSnap and
             (p.startsWith("parsed" & DirSep) or p.parentDir == activePrefix / "sem")
           if not (inactiveConfig or inactiveBackend or inactiveMain or unusedShared or
-              isProvenance(p)):
+              isProvenance(p, snap.getOrDefault(p), cleanSnap.getOrDefault(p))):
             diff.add p
         if diff.len != 0:
           mmRaise(reOutputsDiffer, "clean cache == incremental cache",

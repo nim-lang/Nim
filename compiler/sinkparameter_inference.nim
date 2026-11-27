@@ -22,7 +22,7 @@ proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNod
   case arg.kind
   of nkSym:
     if arg.sym.kind == skParam and
-        arg.sym.owner == owner and
+        arg.sym.owner == owner and owner.kind != skMacro and
         owner.typ != nil and owner.typ.kind == tyProc and
         arg.sym.typ.hasDestructor and
         arg.sym.typ.kind notin {tyVar, tySink, tyOwned}:

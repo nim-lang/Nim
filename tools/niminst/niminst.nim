@@ -545,7 +545,7 @@ proc srcdist(c: var ConfigData) =
       if dirExists(dir): removeDir(dir)
       createDir(dir)
       var cmd = ("$# compile -f --incremental:off --d:nimKochBootstrap --compileonly " &
-                 "--gen_mapping --cc:gcc --skipUserCfg" &
+                 "--mergeableCcode --gen_mapping --cc:gcc --skipUserCfg" &
                  " --os:$# --cpu:$# $# $#") %
                  [findNim(), osname, cpuname, c.nimArgs, c.mainfile]
       echo(cmd)

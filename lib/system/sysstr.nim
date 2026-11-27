@@ -28,6 +28,18 @@ proc resize(old: int): int {.inline.} =
   elif old < 65536: result = old * 2
   else: result = old div 2 + old # for large arrays * 3/2 is better
 
+template withGCDisabled(body: untyped): untyped =
+  ## Runs `body`, which may allocate, with the garbage collector locked so
+  ## that no collection cycle - and therefore no user finalizer - can run
+  ## while a seq/string growth operation is replacing the payload. A
+  ## finalizer that appends to the same seq/string would otherwise have its
+  ## changes silently overwritten (issue #26782).
+  when not defined(nimSeqsV2): GC_disable()
+  try:
+    body
+  finally:
+    when not defined(nimSeqsV2): GC_enable()
+
 when declared(allocAtomic):
   template allocStr(size: untyped): untyped =
     cast[NimString](allocAtomic(size))
@@ -189,14 +201,16 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
   ## Prepares `dest` for appending up to `addlen` new bytes.
   ## .. warning:: Does not update `len`!
   if dest == nil:
-    return rawNewString(addlen)
+    withGCDisabled:
+      return rawNewString(addlen)
   let futureLen = dest.len + addlen
   if futureLen <= dest.space:
     result = dest
   else: # slow path:
     # growth strategy: next `resize` step or exact `futureLen` if jumping over
     let sp = max(resize(dest.space), futureLen)
-    result = rawNewStringNoInit(sp)
+    withGCDisabled:
+      result = rawNewStringNoInit(sp)
     result.len = dest.len
     # newFutureLen > space => addlen is never zero, copy terminating null anyway
     copyMem(addr(result.data), addr(dest.data), dest.len + 1)
@@ -209,13 +223,15 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 proc addChar(s: NimString, c: char): NimString =
   # is compilerproc! used in `ccgexprs.nim`
   if s == nil:
-    result = rawNewStringNoInit(1)
+    withGCDisabled:
+      result = rawNewStringNoInit(1)
     result.len = 0
   else:
     result = s
     if s.len >= s.space: # len.inc would overflow (`>` just in case)
       let sp = resize(s.space)
-      result = rawNewStringNoInit(sp)
+      withGCDisabled:
+        result = rawNewStringNoInit(sp)
       copyMem(addr(result.data), addr(s.data), s.len)
       result.len = s.len
   result.appendChar(c)
@@ -234,12 +250,16 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   ## Negative `newLen` is bound to zero.
   let n = max(newLen, 0)
   if s == nil: # early return check
-    return if n == 0: s else: mnewString(n) # sets everything required
+    if n == 0: return s
+    else:
+      withGCDisabled:
+        return mnewString(n) # sets everything required
   if n <= s.space:
     result = s # len and null-byte still need updating
   else:
     let sp = max(resize(s.space), n)
-    result = rawNewStringNoInit(sp) # len and null-byte not set
+    withGCDisabled:
+      result = rawNewStringNoInit(sp) # len and null-byte not set
     copyMem(addr(result.data), addr(s.data), s.len)
     zeroMem(addr result.data[s.len], n - s.len)
   result.len = n
@@ -253,7 +273,8 @@ proc setLengthStrUninit(s: var string, newlen: Natural) {.nodestroy.} =
   if str == nil:
     if n == 0: return
     else:
-      str = rawNewStringNoInit(n)
+      withGCDisabled:
+        str = rawNewStringNoInit(n)
       str.data[n] = '\0'
       str.len = n
       # not `s = cast[string](str)`: a string assignment copies `str` and
@@ -262,7 +283,8 @@ proc setLengthStrUninit(s: var string, newlen: Natural) {.nodestroy.} =
   else:
     if n > str.space:
       let sp = max(resize(str.space), n)
-      str = rawNewStringNoInit(sp)
+      withGCDisabled:
+        str = rawNewStringNoInit(sp)
       copyMem(addr str.data[0], unsafeAddr s[0], s.len)
       str.data[n] = '\0'
       str.len = n
@@ -284,19 +306,22 @@ proc incrSeq(seq: PGenericSeq, elemSize, elemAlign: int): PGenericSeq {.compiler
   result = seq
   if result.len >= result.space:
     let r = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, elemAlign) + elemSize * r))
+    withGCDisabled:
+      result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, elemAlign) + elemSize * r))
     result.reserved = r
   inc(result.len)
 
 proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
   if s == nil:
-    result = cast[PGenericSeq](newSeq(typ, 1))
+    withGCDisabled:
+      result = cast[PGenericSeq](newSeq(typ, 1))
     result.len = 0
   else:
     result = s
     if result.len >= result.space:
       let r = resize(result.space)
-      result = cast[PGenericSeq](newSeq(typ, r))
+      withGCDisabled:
+        result = cast[PGenericSeq](newSeq(typ, r))
       result.len = s.len
       copyMem(dataPointer(result, typ.base.align), dataPointer(s, typ.base.align), s.len * typ.base.size)
       # since we steal the content from 's', it's crucial to set s's len to 0.
@@ -315,9 +340,11 @@ proc extendCapacityRaw(src: PGenericSeq; typ: PNimType;
   ## Capacity always increases to at least next `resize` step.
   let newCap = max(resize(src.space), newLen)
   when doInit:
-    result = cast[PGenericSeq](newSeq(typ, newCap))
+    withGCDisabled:
+      result = cast[PGenericSeq](newSeq(typ, newCap))
   else:
-    result = cast[PGenericSeq](newSeqUninitRaw(typ, newCap))
+    withGCDisabled:
+      result = cast[PGenericSeq](newSeqUninitRaw(typ, newCap))
   copyMem(dataPointer(result, elemAlign), dataPointer(src, elemAlign), src.len * elemSize)
   # since we steal the content from 's', it's crucial to set s's len to 0.
   src.len = 0
@@ -353,9 +380,11 @@ template setLengthSeqImpl(s: PGenericSeq, typ: PNimType, newLen: int; isTrivial:
     if newLen == 0: return s
     else:
       when doInit:
-        return cast[PGenericSeq](newSeq(typ, newLen)) # newSeq zeroes!
+        withGCDisabled:
+          return cast[PGenericSeq](newSeq(typ, newLen)) # newSeq zeroes!
       else:
-        return cast[PGenericSeq](newSeqUninitRaw(typ, newLen))
+        withGCDisabled:
+          return cast[PGenericSeq](newSeqUninitRaw(typ, newLen))
   else:
     let elemSize = typ.base.size
     let elemAlign = typ.base.align

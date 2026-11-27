@@ -12,31 +12,61 @@ template newBuilder*(s: string): Builder =
 proc extract*(builder: Builder): Snippet =
   builder.buf
 
+# Indentation is relative: `indents` only applies to the lines of `buf`, and
+# a multi-line snippet that is added to a builder (typically the extracted
+# contents of another builder, like a nested block's statements) has its lines
+# shifted by the indentation of the builder it is added to. Indentation is
+# written lazily when the first character of a line is added, so that empty
+# lines carry no trailing whitespace and `indents` can still change after a
+# newline has been added. Preprocessor lines always start in column 0.
+
+proc addIndentation(builder: var Builder) {.inline.} =
+  var i = builder.buf.len
+  let newLen = i + builder.indents
+  builder.buf.setLen(newLen)
+  while i < newLen:
+    builder.buf[i] = '\t'
+    inc i
+
+template atLineStart*(builder: Builder): bool =
+  builder.buf.len == 0 or builder.buf[^1] == '\n'
+
 proc add*(builder: var Builder, s: string) =
-  builder.buf.add(s)
+  if builder.indents <= 0:
+    builder.buf.add(s)
+  else:
+    var i = 0
+    while i < s.len:
+      if s[i] notin {'\n', '#'} and builder.atLineStart:
+        builder.addIndentation()
+      var e = i
+      while e < s.len and s[e] != '\n': inc e
+      if e < s.len: inc e # include the newline
+      let oldLen = builder.buf.len
+      builder.buf.setLen(oldLen + e - i)
+      copyMem(addr builder.buf[oldLen], unsafeAddr s[i], e - i)
+      i = e
 
 proc add*(builder: var Builder, s: char) =
+  if builder.indents > 0 and s notin {'\n', '#'} and builder.atLineStart:
+    builder.addIndentation()
   builder.buf.add(s)
 
 proc addNewline*(builder: var Builder) =
-  builder.add('\n')
-  for i in 0 ..< builder.indents:
-    builder.add('\t')
+  builder.buf.add('\n')
 
 proc addLineEnd*(builder: var Builder, s: string) =
   builder.add(s)
   builder.addNewline()
 
 proc addLineEndIndent*(builder: var Builder, s: string) =
-  inc builder.indents
   builder.add(s)
   builder.addNewline()
+  inc builder.indents
 
 proc addDedent*(builder: var Builder, s: string) =
-  if builder.buf.len > 0 and builder.buf[^1] == '\t':
-    builder.buf.setLen(builder.buf.len - 1)
-  builder.add(s)
   dec builder.indents
+  builder.add(s)
 
 proc addLineEndDedent*(builder: var Builder, s: string) =
   builder.addDedent(s)

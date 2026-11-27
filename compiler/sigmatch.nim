@@ -795,7 +795,17 @@ proc procParamTypeRel(c: var TCandidate; f, a: PType): TTypeRelation =
     # Ensure types that are semantically equal also match at the backend level.
     # E.g. reject assigning proc(csize_t) to proc(uint) since these map to
     # different C types (size_t vs unsigned long long).
-    let fCheck = concreteType(c, f)
+    var fInst = f
+    if containsGenericType(f):
+      # typeRel's generic invocation shortcut (see the XXX in typeRel) reports
+      # isEqual for formals like `seq[Box[T]]`, so compare against the
+      # instantiated formal.
+      fInst =
+        if c.call != nil: generateTypeInstance(c.c, c.bindings, c.call.info, f)
+        else: nil
+      if fInst != nil and containsGenericType(fInst):
+        fInst = nil
+    let fCheck = if fInst != nil: concreteType(c, fInst) else: nil
     let aCheck = concreteType(c, a)
     # Note that `result` is equal; now check whether they have the same
     # backend type.
@@ -1203,6 +1213,17 @@ when false:
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
 
+proc varElemMismatch(ff, aa: PType): bool =
+  ## An element `var T` is a pointer, `T` is the value itself: `seq[var T]`
+  ## must not match `seq[T]` and vice versa (#26058). A generic parameter
+  ## can still bind to `var T`.
+  if ff.kind in {tyVar, tyLent}:
+    result = aa.kind != ff.kind
+  elif aa.kind in {tyVar, tyLent}:
+    result = ff.kind notin {tyGenericParam, tyAnything} + tyTypeClasses
+  else:
+    result = false
+
 proc typeRel(c: var TCandidate, f, aOrig: PType,
              flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -1473,6 +1494,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
       if f.indexType.kind != tyGenericParam and aa.kind == tyEmpty:
         result = isGeneric
+      elif varElemMismatch(ff, aa):
+        return isNone
       else:
         result = typeRel(c, ff, aa, flags)
       if result < isGeneric:
@@ -1541,6 +1564,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if a.kind == f.kind:
       if (f[0].kind != tyGenericParam) and (a.elementType.kind == tyEmpty):
         result = isSubtype
+      elif varElemMismatch(f[0], a.elementType):
+        result = isNone
       else:
         let ff = f[0]
         let aa = a.elementType
@@ -2097,7 +2122,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if result != isNone and f.n != nil:
             var r = tryResolvingStaticExpr(c, f.n)
             if r == nil: r = f.n
-            if not exprStructuralEquivalent(r, aOrig.n) and
+            if not exprStructuralEquivalent(r, aOrig.n, ignoreIntLitWidth = true) and
                 not (aOrig.n != nil and aOrig.n.kind == nkIntLit and
                   inferStaticParam(c, r, aOrig.n.intVal)):
               result = isNone
@@ -2140,7 +2165,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if aOrig.kind == tyStatic:
         result = typeRel(c, prev.last, a, flags)
         if result != isNone and prev.n != nil:
-          if not exprStructuralEquivalent(prev.n, aOrig.n):
+          if not exprStructuralEquivalent(prev.n, aOrig.n, ignoreIntLitWidth = true):
             result = isNone
       else: result = isNone
     else:
@@ -2217,13 +2242,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyStatic:
       result = typeRel(c, reevaluated.base, a, flags)
       if result != isNone and reevaluated.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n,
+                                        ignoreIntLitWidth = true):
           result = isNone
     else:
       # bug #14136: other types are just like 'tyStatic' here:
       result = typeRel(c, reevaluated, a, flags)
       if result != isNone and reevaluated.n != nil:
-        if not exprStructuralEquivalent(aOrig.n, reevaluated.n):
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.n,
+                                        ignoreIntLitWidth = true):
           result = isNone
   of tyNone:
     if a.kind == tyNone: result = isEqual
@@ -2453,8 +2480,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         result = newDeref(result)
       if toOpenArray:
         result = implicitConv(nkHiddenStdConv, f, result, m, c)
-
-      inc(m.convMatches)
+      else:
+        inc(m.convMatches)
       if not m.genericConverter:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
@@ -3271,7 +3298,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
-  for f in 1..<m.callee.n.len:
+  let firstFormal = if m.callee.kind != tyGenericBody: 1 else: 0
+  for f in firstFormal..<m.callee.n.len:
     let formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:

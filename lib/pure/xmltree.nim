@@ -743,12 +743,18 @@ proc addImpl(result: var string, n: XmlNode, indent = 0, indWidth = 2,
   proc addEscapedAttr(result: var string, s: string) =
     # `addEscaped` alternative with less escaped characters.
     # Only to be used for escaping attribute values enclosed in double quotes!
+    # A parser replaces a literal tab, line feed or carriage return in an
+    # attribute value with a space (XML 1.0, section 3.3.3), so these are
+    # written as character references.
     for c in items(s):
       case c
       of '<': result.add("&lt;")
       of '>': result.add("&gt;")
       of '&': result.add("&amp;")
       of '"': result.add("&quot;")
+      of '\t': result.add("&#9;")
+      of '\n': result.add("&#10;")
+      of '\r': result.add("&#13;")
       else: result.add(c)
 
   if n == nil: return
@@ -778,11 +784,14 @@ proc addImpl(result: var string, n: XmlNode, indent = 0, indWidth = 2,
       result.add(" />")
       return
 
+    # The indentation stops growing at `maxIndent` columns: otherwise the
+    # output would be quadratic in the nesting depth.
+    const maxIndent = 80
     let
       indentNext = if n.noWhitespace():
                      indent
                    else:
-                     indent+indWidth
+                     min(indent+indWidth, max(indent, maxIndent))
     result.add('>')
     var lastNodeIsText = false
     for i in 0 ..< n.len:
@@ -815,6 +824,9 @@ proc addImpl(result: var string, n: XmlNode, indent = 0, indWidth = 2,
 proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
           addNewLines = true) {.inline.} =
   ## Adds the textual representation of `n` to string `result`.
+  ##
+  ## Nested elements are indented by `indWidth` more columns per level,
+  ## up to 80 columns.
   runnableExamples:
     var
       a = newElement("firstTag")

@@ -376,8 +376,10 @@ proc elemSize*(c: var LayoutCache; conf: ConfigRef; t: PType): int =
     layoutError(conf, t, "not an array type")
 
 proc hasPayloads(t: PType; marker: var IntSet): bool =
-  ## does a value of type `t` contain strings or seqs (not behind a pointer)?
+  ## does a value of type `t` contain strings, seqs or NimNodes (not behind a
+  ## pointer)? The VM manages these, also when they have no hooks.
   let t = skipForLayout(t)
+  if isNimNodeType(t): return true
   case t.kind
   of tyString, tySequence: true
   of tyArray: hasPayloads(t.elementType, marker)

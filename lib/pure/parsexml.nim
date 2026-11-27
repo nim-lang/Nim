@@ -186,7 +186,7 @@ type
     errAttributeValueExpected ## non-empty attribute value expected
 
   ParserState = enum
-    stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
+    stateStart, stateNormal, stateCharData, stateAttr, stateEmptyElementTag, stateError
 
   XmlParseOption* = enum ## options for the XML parser
     reportWhitespace,    ## report whitespace
@@ -439,21 +439,28 @@ proc parseEntity(my: var XmlParser, dest: var string) =
   var pos = my.bufpos+1
   my.kind = xmlCharData
   if my.buf[pos] == '#':
+    const maxCodePoint = 0x10FFFF
     var r: int = 0
     inc(pos)
     if my.buf[pos] == 'x':
       inc(pos)
       while true:
+        var d: int
         case my.buf[pos]
-        of '0'..'9': r = (r shl 4) or (ord(my.buf[pos]) - ord('0'))
-        of 'a'..'f': r = (r shl 4) or (ord(my.buf[pos]) - ord('a') + 10)
-        of 'A'..'F': r = (r shl 4) or (ord(my.buf[pos]) - ord('A') + 10)
+        of '0'..'9': d = ord(my.buf[pos]) - ord('0')
+        of 'a'..'f': d = ord(my.buf[pos]) - ord('a') + 10
+        of 'A'..'F': d = ord(my.buf[pos]) - ord('A') + 10
         else: break
+        # saturate so that overlong numbers cannot overflow
+        if r <= maxCodePoint: r = (r shl 4) or d
         inc(pos)
     else:
       while my.buf[pos] in {'0'..'9'}:
-        r = r * 10 + (ord(my.buf[pos]) - ord('0'))
+        if r <= maxCodePoint: r = r * 10 + (ord(my.buf[pos]) - ord('0'))
         inc(pos)
+    if r > maxCodePoint or (r >= 0xD800 and r <= 0xDFFF):
+      # not a Unicode scalar value: use the replacement character
+      r = 0xFFFD
     add(dest, toUTF8(Rune(r)))
   elif my.buf[pos] == 'l' and my.buf[pos+1] == 't' and my.buf[pos+2] == ';':
     add(dest, '<')
@@ -550,7 +557,7 @@ proc parseSpecial(my: var XmlParser) =
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      add(my.b, '/')
+      add(my.a, '/')
     else:
       add(my.a, my.buf[pos])
       inc(pos)
@@ -647,6 +654,9 @@ proc parseAttribute(my: var XmlParser) =
         pos = lexbase.handleLF(my, pos)
         pendingSpace = true
       of '/':
+        if pendingSpace:
+          add(my.b, ' ')
+          pendingSpace = false
         pos = lexbase.handleRefillChar(my, pos)
         add(my.b, '/')
       else:
@@ -682,7 +692,10 @@ proc parseAttribute(my: var XmlParser) =
     # error corrections: guess what was meant
     while my.buf[pos] != '>' and my.buf[pos] > ' ':
       add(my.b, my.buf[pos])
-      inc pos
+      if my.buf[pos] == '/':
+        pos = lexbase.handleRefillChar(my, pos)
+      else:
+        inc pos
   my.bufpos = pos
   parseWhitespace(my, skip = true)
 
@@ -743,28 +756,39 @@ proc rawGetTok(my: var XmlParser) =
 
 proc getTok(my: var XmlParser) =
   while true:
-    let lastKind = my.kind
     rawGetTok(my)
     case my.kind
     of xmlComment:
       if my.options.contains(reportComments): break
     of xmlWhitespace:
-      if my.options.contains(reportWhitespace) or lastKind in {xmlCharData,
-          xmlComment, xmlEntity}:
-        break
+      # whitespace within character data is part of it, otherwise it only
+      # separates markup (bug #25462)
+      if my.options.contains(reportWhitespace) or my.state == stateCharData: break
     else: break
+
+proc trackCharData(my: var XmlParser) =
+  ## the parser is within character data when the last token, whitespace and
+  ## comments aside, was character data or an entity reference: a comment
+  ## interrupts character data but does not end it
+  if my.state in {stateNormal, stateCharData}:
+    case my.kind
+    of xmlCharData, xmlEntity: my.state = stateCharData
+    of xmlComment, xmlWhitespace: discard
+    else: my.state = stateNormal
 
 proc next*(my: var XmlParser) =
   ## retrieves the first/next event. This controls the parser.
   case my.state
-  of stateNormal:
+  of stateNormal, stateCharData:
     getTok(my)
+    trackCharData(my)
   of stateStart:
     my.state = stateNormal
     getTok(my)
     if my.kind == xmlPI and my.a == "xml":
       # just skip the first ``<?xml >`` processing instruction
       getTok(my)
+    trackCharData(my)
   of stateAttr:
     # parse an attribute key-value pair:
     if my.buf[my.bufpos] == '>':

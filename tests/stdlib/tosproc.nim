@@ -318,6 +318,20 @@ else: # main driver
       doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
       doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
 
+  when defined(windows):
+    block: # cmd.exe argument injection via batch files (CVE-2024-24576 class)
+      let bat = getTempDir() / "tosproc_batbadbut.bat"
+      writeFile(bat, "@echo off\r\necho %~1\r\n")
+      for cmd in [bat, bat & ". ", bat.changeFileExt("BAT")]:
+        for arg in ["a&echo INJECTED", "50%", "x\"&echo INJECTED&\"", "a\nb"]:
+          doAssertRaises(OSError):
+            discard startProcess(cmd, args = [arg])
+      var p = startProcess(bat, args = ["hello world"], options = {})
+      doAssert p.outputStream.readAll.strip == "hello world"
+      doAssert waitForExit(p) == 0
+      close(p)
+      removeFile(bat)
+
   block: # bug #17749
     let output = compileNimProg("-d:case_testfile4", "D20210417T011153")
     var p = startProcess(output, dir)

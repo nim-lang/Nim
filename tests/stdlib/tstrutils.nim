@@ -343,6 +343,17 @@ template main() =
       doAssert "abcd".find("bc", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=2, last=last) == -1
 
+    block: # bug #26541: `last` beyond `s.high` is clamped, no IndexDefect
+      let s = "ABC0DEF1111GHGH"
+      doAssert s.len == 15
+      doAssert s.find("ZZ", 0, s.len) == -1
+      doAssert s.find("ZZ", 0, s.len + 5) == -1
+      doAssert s.find('Z', 0, s.len) == -1
+      doAssert s.find({'Z'}, 0, s.len) == -1
+      doAssert s.find('\0', 0, s.len) == -1
+      doAssert s.find("GH", 0, s.len + 5) == 11
+      doAssert s.find("HGH", 0, s.len + 5) == 12
+
   block: # rfind
     doAssert "0123456789ABCDEFGAH".rfind('A') == 17
     doAssert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
@@ -549,6 +560,14 @@ template main() =
     doAssert(insertSep($232) == "232")
     doAssert(insertSep($12345, ',') == "12,345")
     doAssert(insertSep($0) == "0")
+    doAssert(insertSep("-1000000", ',') == "-1,000,000")
+    doAssert(insertSep("+123456") == "+123_456")
+    doAssert(insertSep("USD 1000000") == "USD 1_000_000")
+    doAssert(insertSep("") == "")
+    doAssert(insertSep("-") == "-")
+    # bug #24788: a string that is not a number is grouped as a whole
+    doAssert(insertSep("SGVsbG8gV29ybGQ=", ' ', 4) == "SGVs bG8g V29y bGQ=")
+    doAssert(insertSep("abcd") == "a_bcd")
 
   block: # repeat, spaces
     doAssert(' '.repeat(8) == "        ")

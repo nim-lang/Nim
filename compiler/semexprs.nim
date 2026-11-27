@@ -1027,7 +1027,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n[0])
     for i in 1..<n.len:
-      let a = getConstExpr(c.module, n[i], c.idgen, c.graph)
+      var a = getConstExpr(c.module, n[i], c.idgen, c.graph)
+      if a == nil and n[i].typ != nil and n[i].typ.kind == tyTypeDesc:
+        a = n[i]
       if a == nil: return n
       call.add(a)
 
@@ -1271,6 +1273,12 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType
   else:
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
+
+proc isObjConstrSyntax(n: PNode): bool =
+  ## `Branch()` or `Branch(field: value, ...)`.
+  result = true
+  for i in 1..<n.len:
+    if n[i].kind != nkExprColonExpr: return false
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags; expectedType: PType = nil): PNode =
   # this seems to be a hotspot in the compiler!
@@ -1734,7 +1742,16 @@ proc dotTransformation(c: PContext, n: PNode, initialDerefs: int): PNode =
     # undo the derefs for overload resolution
     for _ in initialDerefs ..< currentDerefs:
       root = root[0]
+  # an operand that was resolved to a concrete type must not be semchecked
+  # again by overload resolution: that is not idempotent and can turn a `var`
+  # argument into a by-value one (#26521). `copyTree` does not keep `nfSem`.
+  # Symchoices etc. still need to be resolved (and reported as ambiguous).
+  # `tyIterable` is only the speculative `efWantIterable` typing of the LHS,
+  # the call itself must decide what it wants (#26547):
+  let keepSem = nfSem in root.flags and root.kind notin nkSymChoices and
+    root.typ != nil and root.typ.kind notin {tyNone, tyError, tyFromExpr, tyIterable}
   root = copyTree(root)
+  if keepSem: root.flags.incl nfSem
   if isSymChoice(n[1]) or
       # generics usually leave field names as symchoices, but not types
       (n[1].kind == nkSym and n[1].sym.kind == skType):
@@ -1925,9 +1942,36 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #fixAbstractType(c, result)
     #analyseIfAddressTakenInCall(c, result)
 
+proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode
+
+proc takeBranchesAddr(c: PContext, n: PNode; ptrType: PType): PNode =
+  ## `lent` of an `if`/`case` expression: the address is taken of every
+  ## branch, so the construct produces a pointer. Taking the address of the
+  ## construct itself would view a temporary that holds a copy of the selected
+  ## branch, and that temporary is destroyed before the view is used
+  ## (bug #26789). `isAssignable` has checked that every branch is lentable.
+  proc leaf(c: PContext; it: PNode; ptrType: PType): PNode =
+    case it.kind
+    of nkStmtListExpr, nkStmtList:
+      result = it
+      it[^1] = leaf(c, it[^1], ptrType)
+      it.typ = ptrType
+    of nkIfExpr, nkIfStmt, nkCaseStmt:
+      result = takeBranchesAddr(c, it, ptrType)
+    else:
+      result = takeImplicitAddr(c, it, true)
+  result = n
+  for i in (if n.kind == nkCaseStmt: 1 else: 0) ..< n.len:
+    n[i][^1] = leaf(c, n[i][^1], ptrType)
+  result.typ = ptrType
+
 proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   # See RFC #7373, calls returning 'var T' are assumed to
   # return a view into the first argument (if there is one):
+  if isLent and n.kind in {nkIfExpr, nkIfStmt, nkCaseStmt} and
+      n.typ != nil and n.typ.kind notin {tyVar, tyLent} and
+      isAssignable(c, n) == arLentValue:
+    return takeBranchesAddr(c, n, makePtrType(c, n.typ))
   let root = exprRoot(n)
   if root != nil and root.owner == c.p.owner:
     template url: string = "var_t_return.html".createDocLink
@@ -3111,6 +3155,18 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags; expectedT
 
 include semobjconstr
 
+proc semBranchCall(c: PContext; n: PNode; branches: seq[PSym];
+                   flags: TExprFlags; expectedType: PType): PNode =
+  ## `Branch()` and `Branch(field: value)` construct a sum type, any other
+  ## call of a branch name is an ordinary call.
+  if not isObjConstrSyntax(n):
+    let nOrig = n.copyTree
+    result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags, expectedType)
+    if result == nil: result = errorNode(c, n)
+    else: result = afterCallActions(c, result, nOrig, flags, expectedType)
+  else:
+    result = semSumTypeConstr(c, n, branches, flags, expectedType)
+
 proc semBlock(c: PContext, n: PNode; flags: TExprFlags; expectedType: PType = nil): PNode =
   result = n
   inc(c.p.nestedBlockCounter)
@@ -3584,7 +3640,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
-    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil:
+    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil and s.magic == mNone:
       # a gensym'ed routine that was never declared, bug #15097
       localError(c.config, n[0].info, "attempting to call undeclared routine: '" & s.name.s & "'")
       return errorNode(c, n)
@@ -3611,10 +3667,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
           result = semDirectOp(c, n, flags, expectedType)
         else: result = semMagic(c, n, s, flags, expectedType)
       of skEnumField:
-        # `Branch()` or `Branch(field: value)` of a sum type:
         let branches = sumTypeBranchCandidates(c, n[0])
         if branches.len > 0:
-          result = semSumTypeConstr(c, n, branches, flags, expectedType)
+          result = semBranchCall(c, n, branches, flags, expectedType)
         else:
           result = semIndirectOp(c, n, flags, expectedType)
       else:
@@ -3624,6 +3679,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
       result = semDirectOp(c, n, flags, expectedType)
     elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags, expectedType)
+    elif isSymChoice(n[0]) and sumTypeBranchCandidates(c, n[0]).len > 0:
+      # an ambiguous branch name bound by a template:
+      result = semBranchCall(c, n, sumTypeBranchCandidates(c, n[0]), flags, expectedType)
     elif isSymChoice(n[0]):
       let b = asBracketExpr(c, n)
       if b != nil:

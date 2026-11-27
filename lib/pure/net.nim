@@ -406,6 +406,9 @@ proc parseIPv6Address(addressStr: string): IpAddress =
       separatorValid = false
       break
     elif c in strutils.HexDigits:
+      if i - currentGroupStart >= 4:
+        raise newException(ValueError,
+          "Invalid IP Address. A group consists of more than 4 hexadecimal digits")
       if c in strutils.Digits: # Normal digit
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('0'))
       elif c >= 'a' and c <= 'f': # Lower case hex
@@ -834,8 +837,13 @@ when defineSsl:
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
-    when not defined(nimDisableCertificateValidation) and not defined(windows):
+    ## If `hostname` is an IP address, the certificate must list that address
+    ## as an IP SAN.
+    ## Does nothing when the context does not verify the peer.
+    when not defined(nimDisableCertificateValidation):
       assert socket.isSsl
+      if SSL_get_verify_mode(socket.sslHandle) == SSL_VERIFY_NONE:
+        return
       try:
         let certificate = socket.sslHandle.SSL_get_peer_certificate()
         if certificate.isNil:
@@ -843,8 +851,12 @@ when defineSsl:
 
         const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
         # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
-        let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-          X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+        let match =
+          if isIpAddress(hostname):
+            certificate.X509_check_ip_asc(hostname.cstring, 0)
+          else:
+            certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+              X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
         # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
         X509_free(certificate)
         if match != 1:
@@ -877,9 +889,8 @@ when defineSsl:
       ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      when not defined(nimDisableCertificateValidation) and not defined(windows):
-        # FIXME: this should be skipped on CVerifyNone
-        if hostname.len > 0 and not isIpAddress(hostname):
+      when not defined(nimDisableCertificateValidation):
+        if hostname.len > 0:
           socket.checkCertName(hostname)
     of handshakeAsServer:
       ErrClearError()
@@ -1519,12 +1530,13 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ## within the time specified a TimeoutError exception will be raised.
   ##
   ## .. warning:: Only the `SafeDisconn` flag is currently supported.
-  data.setLen(size)
+  let buf = beginStore(data, size)
   result =
     if timeout == -1:
-      recv(socket, cstring(data), size)
+      recv(socket, buf, size)
     else:
-      recv(socket, cstring(data), size, timeout)
+      recv(socket, buf, size, timeout)
+  endStore(data)
   if result < 0:
     data.setLen(0)
     let lastError = getSocketError(socket)
@@ -1673,8 +1685,9 @@ proc recvFrom*[T: string | IpAddress](socket: Socket, data: var string, length: 
   ##   function will make no effort to return it.
   template adaptRecvFromToDomain(sockAddress: untyped, domain: Domain) =
     var addrLen = SockLen(sizeof(sockAddress))
-    result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
+    result = recvfrom(socket.fd, cast[cstring](beginStore(data, data.len)), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+    endStore(data)
 
     if result != -1:
       data.setLen(result)
@@ -1965,7 +1978,7 @@ proc `$`*(address: IpAddress): string =
         var word: uint16 = (cast[uint16](address.address_v6[i*2])) shl 8
         word = word or cast[uint16](address.address_v6[i*2+1])
 
-        if biggestZeroCount != 0 and # Check if group is in skip group
+        if biggestZeroCount > 1 and # Check if group is in skip group
           (i >= biggestZeroStart and i < (biggestZeroStart + biggestZeroCount)):
           if i == biggestZeroStart: # skip start
             result.add("::")
@@ -2086,9 +2099,8 @@ proc connect*(socket: Socket, address: string,
       ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      when not defined(nimDisableCertificateValidation) and not defined(windows):
-        if not isIpAddress(address):
-          socket.checkCertName(address)
+      when not defined(nimDisableCertificateValidation):
+        socket.checkCertName(address)
 
 proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
@@ -2155,8 +2167,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
         let ret = SSL_connect(socket.sslHandle)
         socketError(socket, ret)
         when not defined(nimDisableCertificateValidation):
-          if not isIpAddress(address):
-            socket.checkCertName(address)
+          socket.checkCertName(address)
   socket.fd.setBlocking(true)
 
 proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =

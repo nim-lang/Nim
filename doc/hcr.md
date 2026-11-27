@@ -12,6 +12,9 @@ When a module is reloaded, any newly added global variables will be
 initialized, but all other top-level code appearing in the module won't
 be re-executed and the state of all existing global variables will be
 preserved.
+A thread-local variable (`{.threadvar.}`) is preserved in the same way,
+with one value for each thread: its storage belongs to the HCR runtime and
+not to the library of its module, and any module can read and write it.
 
 
 Basic workflow
@@ -232,7 +235,9 @@ is a suitable place for implementing a program loop capable of calling
 `performCodeReload`.
 
 Please note that reloading won't be possible when any of the type definitions
-in the program has been changed. When closure iterators are used (directly or
+in the program has been changed. When the type of a global variable changed,
+the reload stops the program with a message naming the global, since the
+memory kept for it was laid out for the old type. When closure iterators are used (directly or
 through async code), the reloaded definitions will affect only newly created
 instances. Existing iterator instances will execute their original code to
 completion.
@@ -262,10 +267,16 @@ Outside this table:
 
 - `--mm:arc`:option: uses the same code as `orc` and is known to work on
   macOS, but no test runs it.
-- Programs that use threads are not tested.
-- The jump table is implemented for x86, x86-64, and for arm64 on macOS and
-  on musl. Other combinations (arm64 on glibc among them) have no
-  implementation.
+- Programs that use threads are not tested, apart from one test that keeps
+  thread-local variables of two threads apart across a reload with
+  `--mm:orc --threads:on`:option:.
+- Linux (glibc) on arm64 uses the same jump table as Linux (musl) on arm64
+  and passes `tests/dll`, but no CI job runs it.
+- The jump table is implemented for x86, x86-64, and for arm64 on Linux and
+  macOS. Other combinations have no implementation, and the HCR runtime does
+  not compile for them.
+- Nim does not detect musl by itself: on musl, pass `-d:musl`:option:.
+  Without it, a reload can go on running the old code of a module.
 - The tests are disabled on OpenBSD and NetBSD, and are not run with
   `--mm:boehm`:option:.
 

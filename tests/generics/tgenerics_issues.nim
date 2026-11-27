@@ -27,6 +27,16 @@ H:1:0.1
 (foo: none(seq[Foo]), s: "")
 (foo: some(@[(a: "world", bar: none(Bar))]), s: "hello,")
 @[(a: "hey", bar: none(Bar))]
+-128 .. 127
+-32768 .. 32767
+-2147483648 .. 2147483647
+-9223372036854775808 .. 9223372036854775807
+SomeFloat
+SomeFloat
+SomeFloat
+SomeFloat
+true
+true
 '''
 joinable: false
 """
@@ -914,3 +924,132 @@ block: # issue #25005
   var v: RpcResponse[string]
   testit(v)
 
+
+block: # bug #22806
+  proc printRange[T: Ordinal]()
+  proc printIntRanges() =
+    printRange[int8]()
+    printRange[int16]()
+    printRange[int32]()
+    printRange[int64]()
+  proc printRange[T: Ordinal]() =
+    echo low(T) .. high(T)
+  printIntRanges()
+
+block: # bug #25166
+  type Obj = ref object of RootObj
+  proc foo(s: Obj, x: SomeFloat) = echo "SomeFloat"
+  template foo(s: Obj, x: auto) = echo "auto"
+  foo(Obj(), 1.23)
+  proc bar[T: SomeFloat](s: Obj, x: T) = echo "SomeFloat"
+  proc bar[T](s: Obj, x: T) = echo "any"
+  bar(Obj(), 1.23)
+  proc baz[T: SomeFloat](x: T, s: Obj) = echo "SomeFloat"
+  proc baz[T](x: T, s: Obj) = echo "any"
+  baz(1.23, Obj())
+  type Obj2 = ref object
+  proc quz[T: SomeFloat](s: Obj2, x: T) = echo "SomeFloat"
+  proc quz[T](s: Obj2, x: T) = echo "any"
+  quz(Obj2(), 1.23)
+
+block: # bug #26401
+  template marker() {.pragma.}
+  type
+    Base[T] = object
+      field {.marker.}: T
+    Alias = Base[int]
+  echo Base[int]().field.hasCustomPragma(marker)
+  echo Alias().field.hasCustomPragma(marker)
+
+block: # bug #19923
+
+  type Test[S: static[Natural]] = object
+
+  proc run(self: Test, idx: 0..(self.S * 8)) = discard
+  #       This causes segfault ^^^^^^^^^^^^
+  proc run(self: Test, a: array[self.S * 8, int]) = discard
+  #                And this too ^^^^^^^^^^
+
+block: # bug #7219
+  type IntArray[N: static[int]] = array[N, int]
+
+  proc append2[N: static[int]](x: IntArray[N]): IntArray[N+1] =
+    for i, n in x:
+      result[i] = n * 2
+    result[high(result)] = 10
+
+  var v4: IntArray[3] = [1, 2, 3]
+  var v5 = append2(v4)
+  var v6 = append2(v5)
+  doAssert v5.len == 4
+  doAssert v6.len == 5
+  doAssert v6 == [4, 8, 12, 20, 10]
+
+  type Int[N: static[int]] = range[N..N]
+  proc inc[N: static[int]](x: Int[N]): Int[N+1] = N+1
+  proc newInt(n: static[int]): Int[n] = n
+
+  var w1 = newInt(4)
+  var w2 = inc(w1)
+  var w3 = inc(w2)
+  doAssert w3 == 6
+
+block: # bug #15721
+  proc fn(a = 4, b: seq[string] or tuple[] = ()) = discard
+  fn(1)
+  fn(1, @[""])
+  var a: seq[string] = @[]
+  fn(1, a)
+  fn(1, seq[string](@[]))
+  fn(1, @[])
+
+  proc fn2(a = 4, b: set[uint8] or tuple[] = ()) = discard
+  fn2(1)
+  fn2(1, {1'u8})
+  var s: set[uint8] = {}
+  fn2(1, s)
+  fn2(1, set[uint8]({}))
+  fn2(1, {})
+
+block: # bug #16757
+  type
+    Foo = ref object
+      x: string
+    Bar = ref object
+      y: string
+
+  proc foo[T: ref object](): T
+
+  let f: Foo = foo[Foo]()
+
+  proc foo[T: ref object](): T =
+    result = cast[T](Bar())
+
+  doAssert f != nil
+
+block: # bug #17840
+  proc someProc[T](a: T, b: (when T is int: float64 else: int32)) = discard
+
+  doAssert not compiles(someProc(100, 300'i32))
+  doAssert compiles(someProc(100, 300'f64))
+  doAssert compiles(someProc(300'f, 300'i32))
+
+block: # bug #24446
+  type
+    ConnectionRequest = ref object of RootObj
+    ConnectionStrBool = distinct bool
+    ConnectionSetRequest = ref object of ConnectionRequestT[ConnectionStrBool]
+    ConnectionRequestT[T] = ref object of ConnectionRequest
+  var hit = ""
+  proc execute(req: ConnectionRequestT[bool]) = hit = "bool"
+  proc execute(req: ConnectionRequestT[ConnectionStrBool]) = hit = "str"
+  ConnectionSetRequest().execute()
+  doAssert hit == "str"
+
+# bug #16105
+# a converter is only allowed at top level, so this stays at the end of the
+# file, where the generic converter cannot affect any other case
+type Foo16105[T] = object
+  field: T
+converter toFoo16105[T](x: T): Foo16105[T] = Foo16105[T](field: x)
+doAssert $Foo16105(3) == "(field: 3)"

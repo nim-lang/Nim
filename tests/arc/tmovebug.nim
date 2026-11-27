@@ -107,6 +107,7 @@ sink
 (children: @[])
 destroy
 copy
+sink
 destroy
 (f: 1)
 destroy
@@ -742,7 +743,8 @@ proc `=copy`(x: var List, y: List) = echo "copy"
 
 proc partToWholeUnownedRef =
   var t = List(next: new List)
-  t = t.next[] # Copy because t.next is not an owned ref, and thus t.next[] cannot be moved
+  t = t.next[] # Copy because t.next is not an owned ref, and thus t.next[] cannot be moved;
+               # the copy goes into a temporary that is then sunk into `t` (bug #26773)
 
 partToWholeUnownedRef()
 

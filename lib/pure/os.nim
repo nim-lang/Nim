@@ -259,12 +259,14 @@ when supportedSystem:
             while followSymlinks: # doubles as if here
               if x.symlinkExists:
                 var r = newString(maxSymlinkLen)
-                var len = readlink(x.cstring, r.cstring, maxSymlinkLen)
+                var len = readlink(x.cstring, cast[cstring](beginStore(r, r.len)), maxSymlinkLen)
+                endStore(r)
                 if len < 0:
                   raiseOSError(osLastError(), exe)
                 if len > maxSymlinkLen:
                   r = newString(len+1)
-                  len = readlink(x.cstring, r.cstring, len)
+                  len = readlink(x.cstring, cast[cstring](beginStore(r, r.len)), len)
+                  endStore(r)
                 setLen(r, len)
                 if isAbsolute(r):
                   x = r
@@ -549,8 +551,8 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
     if res < 0:
       return ""
 
-    result.setLen(pathLength)
-    res = sysctl(addr req[0], 4, addr result[0], addr pathLength, nil, 0)
+    res = sysctl(addr req[0], 4, beginStore(result, pathLength.int), addr pathLength, nil, 0)
+    endStore(result)
 
     if res < 0:
       return ""
@@ -561,10 +563,12 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
 when not weirdTarget and (defined(linux) or defined(sunos) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(maxSymlinkLen)
-    var len = readlink(procPath, result.cstring, maxSymlinkLen)
+    var len = readlink(procPath, cast[cstring](beginStore(result, result.len)), maxSymlinkLen)
+    endStore(result)
     if len > maxSymlinkLen:
       result = newString(len+1)
-      len = readlink(procPath, result.cstring, len)
+      len = readlink(procPath, cast[cstring](beginStore(result, result.len)), len)
+      endStore(result)
     if len < 0: # error in readlink
       len = 0
     setLen(result, len)

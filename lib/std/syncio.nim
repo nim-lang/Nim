@@ -348,9 +348,19 @@ proc readChar*(f: File): char {.tags: [ReadIOEffect].} =
     raiseEOF()
   result = char(x)
 
-proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
-  ## Flushes `f`'s buffer.
-  discard c_fflush(f)
+when defined(nimPreviewCheckedFlush) and not defined(nimscript):
+  proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
+    ## Flushes `f`'s buffer.
+    ##
+    ## Raises an IO exception if the buffered data cannot be written.
+    if c_fflush(f) != 0:
+      let err = errno
+      c_clearerr(f)
+      raiseEIO("errno: " & $err & " `" & $strerror(err) & "`")
+else:
+  proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
+    ## Flushes `f`'s buffer.
+    discard c_fflush(f)
 
 proc getFileHandle*(f: File): FileHandle =
   ## Returns the file handle of the file `f`. This is only useful for
@@ -450,8 +460,16 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
           if msgbuf != nil:
             localFree(cast[pointer](msgbuf))
         raiseEIO("error: " & $error & " `" & errorMsg & "`")
-      # input always ends with "\r\n"
-      numberOfCharsRead -= 2
+      # An interrupted read (for example Ctrl+C with a Ctrl+C hook installed)
+      # can succeed while reading zero characters
+      if numberOfCharsRead <= 0:
+        line.setLen(0)
+        return false
+      # strip line ending if present, '\n' then '\r'
+      if buffer[numberOfCharsRead - 1].uint16 == 10'u16:
+        dec numberOfCharsRead
+      if numberOfCharsRead > 0 and buffer[numberOfCharsRead - 1].uint16 == 13'u16:
+        dec numberOfCharsRead
       # handle Ctrl+Z as EOF
       for i in 0..<numberOfCharsRead:
         if buffer[i].uint16 == 26: #Ctrl+Z

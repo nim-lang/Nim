@@ -65,10 +65,10 @@ proc `-`*(x: int64): int64 {.magic: "UnaryMinusI64", noSideEffect.}
 proc `not`*(x: int): int {.magic: "BitnotI", noSideEffect.} =
   ## Computes the `bitwise complement` of the integer `x`.
   runnableExamples:
-    assert not 0'u8 == 255
-    assert not 0'i8 == -1
-    assert not 1000'u16 == 64535
-    assert not 1000'i16 == -1001
+    assert (not 0'u8) == 255
+    assert (not 0'i8) == -1
+    assert (not 1000'u16) == 64535
+    assert (not 1000'i16) == -1001
 proc `not`*(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
