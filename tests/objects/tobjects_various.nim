@@ -104,7 +104,11 @@ block t7244:
     Bar = ref object of Foo
 
   proc test(foo: var Foo) = discard
-  proc test(bar: var Bar) = test(Foo(bar))
+  proc test(bar: var Bar) =
+    # `test(Foo(bar))` is rejected since #26775: the callee could store a
+    # `Foo` that is not a `Bar` into `bar`
+    var foo = Foo(bar)
+    test(foo)
 
 
 import std/macros

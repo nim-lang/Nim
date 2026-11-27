@@ -166,12 +166,21 @@ block: # rangeBase
   doAssert foo(z) == "ranged(a..z of char) char(g)"
   {.pop.}
 
-  # works only with #24037:
+  # #24037 made 'bar(rangeBase(toChange))' mutate 'toChange'; since #26775 a
+  # conversion involving a range type is not an l-value:
   var toChange: range[0..3] = 1
   proc bar[T: int and not range](y: var T) =
     inc y
   doAssert not compiles(bar(toChange))
-  bar(rangeBase(toChange))
+  # since #26775 'rangeBase(toChange)' is a conversion involving a range type,
+  # so it does not keep the l-value either: 'bar' could store a value
+  # outside of the range into 'toChange'
+  doAssert not compiles(bar(rangeBase(toChange)))
+  var tmp = rangeBase(toChange)
+  bar(tmp)
+  doAssert tmp == 2
+  doAssert toChange == 1
+  toChange = typeof(toChange)(tmp)
   doAssert toChange == 2
 
 block: # tupleLen

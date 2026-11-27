@@ -216,13 +216,30 @@ proc exprRoot*(n: PNode; allowCalls = true): PSym =
     else:
       break
 
-proc isAssignable*(owner: PSym, n: PNode): TAssignableResult
+proc isAssignable*(owner: PSym, n: PNode; forVar = false): TAssignableResult
+
+proc sameValueSet(a, b: PType): bool =
+  ## Whether both types accept the same values, ignoring `distinct`. A callee
+  ## that stores through a conversion of an l-value must not be able to leave
+  ## the original with a value its own type excludes, so a range type is only
+  ## the same as an identical range, also as a tuple element.
+  let x = skipTypes(a, abstractInst)
+  let y = skipTypes(b, abstractInst)
+  if x.kind == tyTuple and y.kind == tyTuple:
+    result = sameTupleLengths(x, y)
+    if result:
+      for _, xe, ye in tupleTypePairs(x, y):
+        if not sameValueSet(xe, ye): return false
+  else:
+    result = compareTypes(x, y, dcEqIgnoreDistinct)
 
 proc isLentableBranch(owner: PSym, n: PNode): bool =
   result = isAssignable(owner, n) in {arLentValue, arAddressableConst, arLentValue}
 
-proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
-  ## 'owner' can be nil!
+proc isAssignable*(owner: PSym, n: PNode; forVar = false): TAssignableResult =
+  ## 'owner' can be nil! With `forVar` the answer is about passing `n` to a
+  ## `var` parameter, where the callee can store any value of the parameter's
+  ## type, which is stricter than assigning to `n` for some conversions.
   result = arNone
   case n.kind
   of nkEmpty:
@@ -253,7 +270,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     elif t.kind == tyLent:
       result = arAddressableConst
     else:
-      result = isAssignable(owner, n[0])
+      result = isAssignable(owner, n[0], forVar)
     if result != arNone and n[1].kind == nkSym and
         sfDiscriminant in n[1].sym.flags:
       result = arDiscriminant
@@ -264,16 +281,27 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     elif t.kind == tyLent:
       result = arAddressableConst
     else:
-      result = isAssignable(owner, n[0])
+      result = isAssignable(owner, n[0], forVar)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    # Object and tuple conversions are still addressable, so we skip them
+    # Object conversions are still addressable, so we skip them. For a `var`
+    # parameter a `ref` or `ptr` object is not: viewing a child as its parent
+    # would let the callee store a parent object into the variable of the
+    # child; it keeps the l-value only when the types are the same modulo
+    # `distinct`. Assigning to such a conversion stays valid (see
+    # tests/ccgbugs/tlvalueconv.nim).
     # XXX why is 'tyOpenArray' allowed here?
-    if skipTypes(n.typ, abstractPtrs-{tyTypeDesc}).kind in
-        {tyOpenArray, tyTuple, tyObject}:
-      result = isAssignable(owner, n[1])
-    elif compareTypes(n.typ, n[1].typ, dcEqIgnoreDistinct, {IgnoreRangeShallow}):
-      # types that are equal modulo distinction preserve l-value:
-      result = isAssignable(owner, n[1])
+    let k = skipTypes(n.typ, abstractPtrs-{tyTypeDesc}).kind
+    let isIndirect = skipTypes(n.typ, abstractVar-{tyTypeDesc}).kind in {tyRef, tyPtr}
+    if k in {tyOpenArray, tyObject} and not (forVar and isIndirect):
+      result = isAssignable(owner, n[1], forVar)
+    elif k == tyTuple:
+      # a tuple of ranges viewed as a tuple of integers is not addressable
+      if sameValueSet(n.typ, n[1].typ):
+        result = isAssignable(owner, n[1], forVar)
+    elif compareTypes(n.typ, n[1].typ, dcEqIgnoreDistinct):
+      # types that are equal modulo distinction preserve l-value; range types
+      # do not, as writing through the other type bypasses the range check:
+      result = isAssignable(owner, n[1], forVar)
   of nkHiddenDeref:
     let n0 = n[0]
     if n0.typ.kind == tyLent:
@@ -286,7 +314,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   of nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = isAssignable(owner, n[0])
+    result = isAssignable(owner, n[0], forVar)
   of nkCallKinds:
     let m = getMagic(n)
     if m == mSlice:
@@ -295,9 +323,9 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
       if n[1].typ.kind == tyPtr:
         result = arLValue
       else:
-        result = isAssignable(owner, n[1])
+        result = isAssignable(owner, n[1], forVar)
     elif m == mArrGet:
-      result = isAssignable(owner, n[1])
+      result = isAssignable(owner, n[1], forVar)
     elif n.typ != nil:
       case n.typ.kind
       of tyVar: result = arLValue
@@ -305,7 +333,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
       else: discard
   of nkStmtList, nkStmtListExpr:
     if n.typ != nil:
-      result = isAssignable(owner, n.lastSon)
+      result = isAssignable(owner, n.lastSon, forVar)
   of nkVarTy:
     # XXX: The fact that this is here is a bit of a hack.
     # The goal is to allow the use of checks such as "foo(var T)"

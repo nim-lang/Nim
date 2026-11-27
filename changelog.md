@@ -86,6 +86,19 @@ parameter and result types, not just their source-level shape. Use
   Before, the routine read freed memory once the scope had ended. Other
   variables of the scope are destroyed with the scope as before.
 
+- A conversion involving a range type no longer keeps the l-value of its
+  operand, so it cannot be passed to a `var` parameter: `inc int(r)` and
+  `proc p(x: var int)` called with `int(r)` for `r: range[0..5]` are errors,
+  and so is the same for a tuple whose element types differ by a range type.
+  Before, the callee could store a value the range excludes without a range
+  check. Conversions between a `distinct` type and its base type are unchanged.
+
+- A conversion of a `ref` or `ptr` object to its parent type no longer keeps the
+  l-value of its operand, so it cannot be passed to a `var` parameter. Before,
+  `proc p(x: var Parent)` called with `Parent(child)` could store a parent object
+  into the variable of a `Child` and make later reads of its fields unsafe. Object
+  (not reference) conversions are unchanged.
+
 
 ## Standard library additions and changes
 

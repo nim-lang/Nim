@@ -780,13 +780,24 @@ proc renderNotLValue*(n: PNode): string =
   elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
+proc notLValueHint*(n: PNode): string =
+  ## Extra line for an argument that is rejected for a `var` parameter because
+  ## it is a conversion: not every conversion keeps the l-value of its operand.
+  let n = if n.kind == nkHiddenDeref: n[0] else: n
+  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv} and n.len == 2:
+    result = "the conversion does not keep the l-value of '" & $n[1] &
+      "'; copy it into a local variable, pass that and assign it back"
+  else:
+    result = ""
+
 proc isSsoStringIndex*(conf: ConfigRef; n: PNode): bool =
   result = conf.usesSso() and n.kind == nkBracketExpr and n.len >= 1 and
       n[0].typ != nil and
       n[0].typ.skipTypes(abstractVar + abstractInst - {tyTypeDesc}).kind == tyString
 
 proc isAssignable(c: PContext, n: PNode): TAssignableResult =
-  result = parampatterns.isAssignable(c.p.owner, n)
+  # only used for arguments of `var` parameters
+  result = parampatterns.isAssignable(c.p.owner, n, forVar = true)
 
 proc newHiddenAddrTaken(c: PContext, n: PNode, isOutParam: bool): PNode =
   if n.kind == nkHiddenDeref and not (c.config.backend == backendCpp or
