@@ -2308,6 +2308,12 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
   result.incl tfHasStatic
 
 proc semTypeOfImpl(c: PContext; n: PNode): PNode =
+  # Names declared inside `typeof` belong to the typeof, whichever way it is
+  # reached: `semMagic.semTypeOf` (also for `typeof` in a type section, which
+  # `semTypeNode` sends to `semTypeExpr`) or `semTypeOf2`. `defer` closes the
+  # scope also when `compiles` unwinds through here.
+  openScope(c)
+  defer: closeScope(c)
   var m = BiggestInt 1 # typeOfIter
   var modifierMode = BiggestInt 0 # CompatibleTypeModifiers
   type
@@ -2377,9 +2383,7 @@ proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   fixupTypeOf(c, prev, result)
 
 proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
-  openScope(c)
   let ex = semTypeOfImpl(c, n)
-  closeScope(c)
   result = ex.typ
   if result.kind == tyFromExpr:
     result.incl tfNonConstExpr
