@@ -1489,7 +1489,9 @@ proc genWhile(c: PCtx; n: PNode) =
 
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
   let oldRegisterCount = c.prc.regInfo.len
-  withBlock(n[0].sym):
+  # an unlabeled block survives in an untransformed const value that failed to
+  # evaluate (error recovery); an unlabeled `break` targets the innermost block:
+  withBlock(if n[0].kind == nkSym: n[0].sym else: nil):
     c.gen(n[1], dest)
 
   # the locals of the block are dead now:

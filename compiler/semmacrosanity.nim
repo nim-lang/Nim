@@ -164,6 +164,10 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef; producedClosure: var boo
   of nkCharLit..nkUInt64Lit:
     if x.kind in {tyInt..tyUInt64, tyBool, tyChar, tyEnum}:
       n.typ = t
+    elif nfIsPtr in n.flags:
+      # the VM's address of a compile-time location is meaningless elsewhere:
+      globalError(conf, n.info, "cannot produce a compile-time value of type '" &
+        typeToString(t) & "' that is not nil")
     else:
       globalError(conf, n.info, "integer literal must have some int type")
   of nkStrLit..nkTripleStrLit:

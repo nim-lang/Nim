@@ -92,6 +92,7 @@ proc hookAux(st: StackTrace, costs: int) =
       if profileData[h].st == st:
         # wow, same entry found:
         inc profileData[h].total, costs
+        when withThreads: release profilingLock
         return
       if profileData[minIdx].total < profileData[h].total:
         minIdx = h

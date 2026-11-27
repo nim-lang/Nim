@@ -260,6 +260,20 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags,
           isAmbiguous = ambig, fromDotExpr = true)
         result = newDot(result, syms)
+    elif n.kind == nkSym:
+      # already bound, for example by `quote`, the symbols need not be in scope:
+      isMacro = n.sym.kind in {skTemplate, skMacro}
+    elif n.kind in nkSymChoices:
+      for x in n:
+        if x.sym.kind in {skTemplate, skMacro}:
+          isMacro = true
+          break
+    else:
+      # a routine declared in the generic body itself is not known yet, it
+      # can be a template:
+      var amb = false
+      let s = searchInScopes(c, ident, amb)
+      isMacro = s != nil and s.kind == skUnknown
 
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
@@ -383,7 +397,11 @@ proc semGenericStmt(c: PContext, n: PNode,
         # we need to put the ``c`` in ``t(c)`` in a mixin context to prevent
         # the famous "undeclared identifier: it" bug:
         mixinContext = true
-      of skUnknown, skParam:
+      of skUnknown:
+        # Leave it as an identifier. It is declared in the generic body itself
+        # and can be a template, so its arguments are in a mixin context:
+        mixinContext = true
+      of skParam:
         # Leave it as an identifier.
         discard
       of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
@@ -497,6 +515,16 @@ proc semGenericStmt(c: PContext, n: PNode,
     closeScope(c)
   of nkForStmt, nkParForStmt:
     openScope(c)
+    if n[^2].kind in {nkIdent, nkAccQuoted, nkSym, nkBracket, nkCurly, nkPar,
+        nkTupleConstr} + nkLiterals and n.len in {3, 4} and
+        n.kind == nkForStmt:
+      # not an iterator call: make the implicit `items`/`pairs` call explicit
+      # so that it binds the overloads visible here, like `[]` above (#25685):
+      let call = newNodeI(nkCall, n[^2].info)
+      call.add newIdentNode(getIdent(c.cache,
+        if n.len == 3: "items" else: "pairs"), n[^2].info)
+      call.add n[^2]
+      n[^2] = call
     n[^2] = semGenericStmt(c, n[^2], flags, ctx)
     for i in 0..<n.len - 2:
       if (n[i].kind == nkVarTuple):

@@ -111,6 +111,7 @@ when not (defined(cpu16) or defined(cpu8)):
       #assert(ord(s[i+1]) shr 6 == 0b10)
       if i <= L - 2:
         result = (ord(s[i]) and (ones(5))) shl 6 or (ord(s[i+1]) and ones(6))
+        if result < 0x80: result = UNI_REPL # overlong encoding
         when doInc: inc(i, 2)
       else:
         result = UNI_REPL
@@ -122,6 +123,7 @@ when not (defined(cpu16) or defined(cpu8)):
         result = (ord(s[i]) and ones(4)) shl 12 or
                 (ord(s[i+1]) and ones(6)) shl 6 or
                 (ord(s[i+2]) and ones(6))
+        if result < 0x800: result = UNI_REPL # overlong encoding
         when doInc: inc(i, 3)
       else:
         result = UNI_REPL
@@ -135,6 +137,7 @@ when not (defined(cpu16) or defined(cpu8)):
                 (ord(s[i+1]) and ones(6)) shl 12 or
                 (ord(s[i+2]) and ones(6)) shl 6 or
                 (ord(s[i+3]) and ones(6))
+        if result < 0x10000: result = UNI_REPL # overlong encoding
         when doInc: inc(i, 4)
       else:
         result = UNI_REPL

@@ -150,3 +150,19 @@ block: # issue #24338 with object
   k()
   doAssert innerCount == 2
   doAssert outerCount == -2
+
+block: # #26485: `continue` of a loop nested in a fields loop is fine
+  type O = object
+    a, b: int
+  var s = 0
+  for name, v in fieldPairs(O(a: 1, b: 2)):
+    var i = 0
+    while i < 3:
+      inc i
+      if i == 2: continue
+      s += v
+  for v in fields((1, 2)):
+    for j in 0..2:
+      if j == 1: continue
+      s += v
+  doAssert s == 12

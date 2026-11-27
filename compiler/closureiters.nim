@@ -1051,6 +1051,10 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     result[0] = ctx.transformClosureIteratorBody(result[0], gotoOut)
 
   of nkElifBranch, nkElifExpr, nkOfBranch:
+    if n.kind != nkOfBranch:
+      # Yields in the condition have already been lowered out, but it can
+      # still contain a `break` or `return` that must leave the state machine.
+      result[0] = ctx.transformBreaksAndReturns(result[0])
     result[^1] = addGotoOut(result[^1], gotoOut)
     result[^1] = ctx.transformClosureIteratorBody(result[^1], gotoOut)
 
@@ -1086,7 +1090,6 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
 
     let ifNode = newNodeI(nkIfStmt, n.info)
     let elifBranch = newNodeI(nkElifBranch, n.info)
-    elifBranch.add(n[0])
     let gotoBegin = newNodeI(nkGotoState, n.info)
     gotoBegin.add(enterLabel)
     result = gotoBegin
@@ -1094,6 +1097,8 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
     var body = addGotoOut(n[1], gotoBegin)
 
     ctx.finallyPathStack.add(FinallyTarget(n: n, label: gotoOut[0]))
+    # a `break` in the condition leaves this loop, like in the body
+    elifBranch.add(ctx.transformBreaksAndReturns(n[0]))
     body = ctx.transformClosureIteratorBody(body, gotoBegin)
     discard ctx.finallyPathStack.pop()
 

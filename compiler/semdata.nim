@@ -38,6 +38,7 @@ type
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
     breakInLoop*: bool        # whether we are in a loop without block
+    inFieldsLoop*: bool       # whether the innermost loop is a 'fields' loop
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: SymMapping

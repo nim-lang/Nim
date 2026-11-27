@@ -1594,6 +1594,21 @@ proc extractTypeImpl(n: NimNode): NimNode =
   else: error("Invalid node to retrieve type implementation of: " & $n.kind)
 
 
+proc typeDefImpl(typeSym: NimNode): NimNode =
+  ## the type definition of `typeSym`; an alias without pragmas of its own
+  ## like `Alias = Gen[int]` or `RefAlias = Ref` is resolved to the aliased
+  ## type's definition as it shares its pragmas.
+  result = getImpl(typeSym)
+  while result.kind == nnkTypeDef and result[0].kind != nnkPragmaExpr:
+    let rhs = result[2]
+    if rhs.kind == nnkSym and rhs.symKind == nskType:
+      result = getImpl(rhs)
+    elif rhs.kind == nnkBracketExpr and rhs[0].kind == nnkSym and
+        rhs[0].symKind == nskType:
+      result = getImpl(rhs[0])
+    else:
+      break
+
 proc customPragmaNode(n: NimNode): NimNode =
   result = nil
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkType, nnkCheckedFieldExpr})
@@ -1603,7 +1618,7 @@ proc customPragmaNode(n: NimNode): NimNode =
   if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
     return typ[1][1]
   elif typ.typeKind == ntyTypeDesc:
-    let impl = getImpl(
+    let impl = typeDefImpl(
       if kind(typ[1]) == nnkBracketExpr: typ[1][0]
       else: typ[1]
     )
@@ -1621,7 +1636,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     elif impl.kind in {nnkIdentDefs, nnkConstDef} and impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
     else:
-      let timpl = getImpl(if typ.kind == nnkBracketExpr: typ[0] else: typ)
+      let timpl = typeDefImpl(if typ.kind == nnkBracketExpr: typ[0] else: typ)
       if timpl.len>0 and timpl[0].len>1:
         return timpl[0][1]
       else:

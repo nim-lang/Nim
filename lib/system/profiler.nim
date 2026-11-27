@@ -63,6 +63,9 @@ var
   profilingRequestedHook*: proc (): bool {.nimcall, gcsafe.}
     ## set this variable to provide a procedure that implements a profiler in
     ## user space. See the `nimprof` module for a reference implementation.
+  inProfilerHook {.threadvar.}: bool
+    ## the hook can call code that is itself profiled, it must not be
+    ## re-entered then
 
 when defined(memProfiler):
   type
@@ -74,9 +77,12 @@ when defined(memProfiler):
       ## user space. See the `nimprof` module for a reference implementation.
 
   proc callProfilerHook(hook: MemProfilerHook, requestedSize: int) =
+    if inProfilerHook: return
+    inProfilerHook = true
     var st: StackTrace
     captureStackTrace(framePtr, st)
     hook(st, requestedSize)
+    inProfilerHook = false
 
   proc nimProfile(requestedSize: int) =
     if not isNil(profilingRequestedHook) and profilingRequestedHook():
@@ -91,9 +97,12 @@ else:
     # 'noinline' so that 'nimProfile' does not perform the stack allocation
     # in the common case.
     when not defined(nimdoc):
+      if inProfilerHook: return
+      inProfilerHook = true
       var st: StackTrace
       captureStackTrace(framePtr, st)
       hook(st)
+      inProfilerHook = false
 
   proc nimProfile() =
     ## This is invoked by the compiler in every loop and on every proc entry!

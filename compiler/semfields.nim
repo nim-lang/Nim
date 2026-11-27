@@ -60,9 +60,6 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
           result.add(newSymNode(c.field, n.info))
         break
   else:
-    if n.kind == nkContinueStmt:
-      localError(c.c.config, n.info,
-                 "'continue' not supported in a 'fields' loop")
     result = shallowCopy(n)
     for i in 0..<n.len:
       result[i] = instFieldLoopBody(c, n[i], forLoop)
@@ -150,6 +147,8 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   inc(c.p.nestedLoopCounter)
   let oldBreakInLoop = c.p.breakInLoop
   c.p.breakInLoop = true
+  let oldInFieldsLoop = c.p.inFieldsLoop
+  c.p.inFieldsLoop = true
   if tupleTypeA.kind == tyTuple:
     var loopBody = n[^1]
     for i in 0..<tupleTypeA.len:
@@ -175,6 +174,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       if t.baseClass == nil: break
       t = skipTypes(t.baseClass, skipPtrs)
   c.p.breakInLoop = oldBreakInLoop
+  c.p.inFieldsLoop = oldInFieldsLoop
   dec(c.p.nestedLoopCounter)
   # for TR macros this 'while true: ...; break' loop is pretty bad, so
   # we avoid it now if we can:
