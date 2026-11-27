@@ -559,3 +559,21 @@ block: # bug #23567
     proc impl(): NimNode = arg
     impl()
   doAssert foo(11) == 11
+
+block: # bug #12241
+  proc blarg(x: NimNode, mask: uint32): NimNode =
+    doAssert x.kind != nnkNilLit
+
+  macro dispatchARMInstr(instrVar: uint32): untyped =
+    doAssert instrVar.kind == nnkUInt32Lit
+
+    proc addInstr(name: string, body: NimNode) =
+      let
+        variables = nnkLetSection.newNimNode()
+      variables.add(newIdentDefs(ident("hallo"), ident"uint32", blarg(instrVar, 0xFF00FF'u32)))
+
+    addInstr("Undefined", newEmptyNode())
+
+    result = newStmtList()
+
+  dispatchARMInstr 0'u32

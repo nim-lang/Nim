@@ -1027,7 +1027,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n[0])
     for i in 1..<n.len:
-      let a = getConstExpr(c.module, n[i], c.idgen, c.graph)
+      var a = getConstExpr(c.module, n[i], c.idgen, c.graph)
+      if a == nil and n[i].typ != nil and n[i].typ.kind == tyTypeDesc:
+        a = n[i]
       if a == nil: return n
       call.add(a)
 
@@ -1940,9 +1942,36 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #fixAbstractType(c, result)
     #analyseIfAddressTakenInCall(c, result)
 
+proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode
+
+proc takeBranchesAddr(c: PContext, n: PNode; ptrType: PType): PNode =
+  ## `lent` of an `if`/`case` expression: the address is taken of every
+  ## branch, so the construct produces a pointer. Taking the address of the
+  ## construct itself would view a temporary that holds a copy of the selected
+  ## branch, and that temporary is destroyed before the view is used
+  ## (bug #26789). `isAssignable` has checked that every branch is lentable.
+  proc leaf(c: PContext; it: PNode; ptrType: PType): PNode =
+    case it.kind
+    of nkStmtListExpr, nkStmtList:
+      result = it
+      it[^1] = leaf(c, it[^1], ptrType)
+      it.typ = ptrType
+    of nkIfExpr, nkIfStmt, nkCaseStmt:
+      result = takeBranchesAddr(c, it, ptrType)
+    else:
+      result = takeImplicitAddr(c, it, true)
+  result = n
+  for i in (if n.kind == nkCaseStmt: 1 else: 0) ..< n.len:
+    n[i][^1] = leaf(c, n[i][^1], ptrType)
+  result.typ = ptrType
+
 proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   # See RFC #7373, calls returning 'var T' are assumed to
   # return a view into the first argument (if there is one):
+  if isLent and n.kind in {nkIfExpr, nkIfStmt, nkCaseStmt} and
+      n.typ != nil and n.typ.kind notin {tyVar, tyLent} and
+      isAssignable(c, n) == arLentValue:
+    return takeBranchesAddr(c, n, makePtrType(c, n.typ))
   let root = exprRoot(n)
   if root != nil and root.owner == c.p.owner:
     template url: string = "var_t_return.html".createDocLink
@@ -3611,7 +3640,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}, expectedType: PType 
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
-    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil:
+    if s != nil and s.kind in routineKinds and s.typ == nil and s.ast == nil and s.magic == mNone:
       # a gensym'ed routine that was never declared, bug #15097
       localError(c.config, n[0].info, "attempting to call undeclared routine: '" & s.name.s & "'")
       return errorNode(c, n)

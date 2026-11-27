@@ -907,3 +907,12 @@ block: # bug #25437
     doCompute(cast[ptr UncheckedArray[int]](unsafeAddr a[0]), a.len)
   const x = [1, 2, 3]
   static: doAssert compute(x) == @[0, 1, 2] # works without `static`
+
+block: # bug #14939
+  var
+    table1 {.compileTime.}, table2 {.compileTime.}: Table[string, string]
+
+  static:
+    table1["foo"] = "bar"
+    table2["foo"] = "bar" # was: nil address in tables.nim
+    doAssert table2["foo"] == "bar"

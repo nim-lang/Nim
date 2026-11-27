@@ -175,3 +175,12 @@ block: # bug #19170
   proc foo(s: typedesc[Seq]) = echo "Seq works"
   Seq.foo
   seq.foo
+
+block: # bug #25518
+  type IorB = int or bool
+
+  proc passInt(i: int): int = i
+
+  proc usePassInt(f: proc (_: IorB): int, ib: IorB): int = f(ib)
+
+  doAssert usePassInt(passInt, 42) == 42

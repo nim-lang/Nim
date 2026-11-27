@@ -103,6 +103,8 @@ type
     warnInvalidCmpOp = "InvalidCmpOp",
     warnImplicitCyclicImport = "ImplicitCyclicImport",
     warnTupleTypePragma = "TupleTypePragma",
+    warnNotCmp = "NotCmp",
+    warnLargeStackObject = "LargeStackObject",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -216,6 +218,8 @@ const
     warnInvalidCmpOp: "$1",
     warnImplicitCyclicImport: "$1",
     warnTupleTypePragma: "the '$1' pragma is not supported for tuple types: equal tuple types would disagree on the representation; use an object type instead; this will become a compile time error in the future",
+    warnNotCmp: "`not` binds tighter than '$1': `not a $1 b` is `(not a) $1 b`; use parentheses to make the meaning explicit",
+    warnLargeStackObject: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",

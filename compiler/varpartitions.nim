@@ -583,7 +583,11 @@ proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
 
   let s = pathExpr(src, c.owner)
   if s == nil:
-    localError(c.g.config, src.info, "cannot borrow from " & src.toString & ", it is not a path expression; " & url)
+    # An empty `src` means the view variable has no initializer, so there is no
+    # expression to point at; the declaration of `dest` is the user's code that
+    # is wrong.
+    let info = if src.kind == nkEmpty: dest.info else: src.info
+    localError(c.g.config, info, "cannot borrow from " & src.toString & ", it is not a path expression; " & url)
   elif s.kind == nkSym:
     if dest.kind == skResult:
       if s.sym.kind != skParam or s.sym.position != 0:
@@ -712,6 +716,12 @@ proc deps(c: var Partitions; dest, src: PNode) =
                 c.s[vid].flags.incl preventCursor
               elif c.s[srcid].reassignedTo != 0 and c.s[srcid].reassignedTo != d.sym.id:
                 when explainCursors: echo "D not a cursor ", d.sym, " reassignedTo ", c.s[srcid].reassignedTo
+                c.s[vid].flags.incl preventCursor
+              elif c.s[srcid].reassignedTo == d.sym.id and src.kind == nkDerefExpr:
+                # `let tmp = x.next[]; x = tmp`: unlike `it = it.next` the
+                # cursor would borrow the object that only `x` keeps alive
+                # and `x = tmp` would free it while copying it (bug #26773):
+                when explainCursors: echo "E not a cursor ", d.sym
                 c.s[vid].flags.incl preventCursor
 
 
@@ -972,6 +982,17 @@ proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]
     let params = s.typ.n
     for i in 1..<params.len:
       registerParam(result, params[i])
+    # lambda lifting adds the environment parameter to `s.ast[paramsPos]`,
+    # which is not `s.typ.n` unless the routine header was copied with it
+    # (`transf`); a mutation through it has to reach the partitions too.
+    # `getEnvParam` is not usable here: importing `lambdalifting` makes an
+    # import cycle, so ask `isClosureEnvParam`.
+    if s.ast.safeLen > paramsPos and s.ast[paramsPos].kind == nkFormalParams and
+        s.ast[paramsPos] != s.typ.n:
+      let formal = s.ast[paramsPos]
+      if formal.len > 1 and formal.lastSon.kind == nkSym and
+          isClosureEnvParam(s.typ, formal.lastSon.sym):
+        registerParam(result, formal.lastSon)
     if resultPos < s.ast.safeLen:
       registerResult(result, s.ast[resultPos])
 

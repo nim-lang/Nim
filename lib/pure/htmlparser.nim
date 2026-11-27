@@ -1901,7 +1901,8 @@ const
     ## Elements nested deeper become siblings instead, like in browsers.
     ## This can be set on the command line via `-d:htmlMaxDepth=N`.
 
-proc parse(x: var XmlParser, errors: var seq[string]; depth: int): XmlNode {.gcsafe.}
+proc parse(x: var XmlParser, errors: var seq[string]; depth: int): XmlNode {.gcsafe,
+  raises: [IOError, OSError, ValueError].}
 
 proc expected(x: var XmlParser, n: XmlNode): string =
   result = errorMsg(x, "</" & n.tag & "> expected")

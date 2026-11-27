@@ -70,3 +70,16 @@ block:
 # bug #1788
 
 echo "hello" & char(ord(' ')) & "world"
+
+# bug #17583
+
+{.push raises: [Defect].}
+
+include "system/inclrtl"
+
+{.pop.}
+
+proc foo* =
+  raise newException(CatchableError, "boo!")
+
+{.push raises: [Defect].}
