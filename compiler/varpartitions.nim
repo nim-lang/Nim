@@ -583,7 +583,11 @@ proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
 
   let s = pathExpr(src, c.owner)
   if s == nil:
-    localError(c.g.config, src.info, "cannot borrow from " & src.toString & ", it is not a path expression; " & url)
+    # An empty `src` means the view variable has no initializer, so there is no
+    # expression to point at; the declaration of `dest` is the user's code that
+    # is wrong.
+    let info = if src.kind == nkEmpty: dest.info else: src.info
+    localError(c.g.config, info, "cannot borrow from " & src.toString & ", it is not a path expression; " & url)
   elif s.kind == nkSym:
     if dest.kind == skResult:
       if s.sym.kind != skParam or s.sym.position != 0:
@@ -712,6 +716,12 @@ proc deps(c: var Partitions; dest, src: PNode) =
                 c.s[vid].flags.incl preventCursor
               elif c.s[srcid].reassignedTo != 0 and c.s[srcid].reassignedTo != d.sym.id:
                 when explainCursors: echo "D not a cursor ", d.sym, " reassignedTo ", c.s[srcid].reassignedTo
+                c.s[vid].flags.incl preventCursor
+              elif c.s[srcid].reassignedTo == d.sym.id and src.kind == nkDerefExpr:
+                # `let tmp = x.next[]; x = tmp`: unlike `it = it.next` the
+                # cursor would borrow the object that only `x` keeps alive
+                # and `x = tmp` would free it while copying it (bug #26773):
+                when explainCursors: echo "E not a cursor ", d.sym
                 c.s[vid].flags.incl preventCursor
 
 

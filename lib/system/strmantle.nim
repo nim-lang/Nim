@@ -173,10 +173,13 @@ proc nimParseBiggestFloat(s: openArray[char], number: var BiggestFloat,
         expSign = -1
 
       inc(i)
-    if s[i] notin {'0'..'9'}:
+    if i >= s.len or s[i] notin {'0'..'9'}:
       return 0
     while i < s.len and s[i] in {'0'..'9'}:
-      exponent = exponent * 10 + (ord(s[i]) - ord('0'))
+      # saturate instead of overflowing; anything this large is already
+      # far outside the range of a float and handled by the check below.
+      if exponent < 100_000_000:
+        exponent = exponent * 10 + (ord(s[i]) - ord('0'))
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
 

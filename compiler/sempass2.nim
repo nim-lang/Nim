@@ -1892,7 +1892,7 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
     let raisesSpec = effectSpec(n, wRaises)
     if not isNil(raisesSpec):
       effects[exceptionEffects] = raisesSpec
-    elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
+    elif s != nil and (s.magic != mNone or (sfImportc in s.flags and (sfExportc notin s.flags or sfCompilerProc in s.flags))):
       effects[exceptionEffects] = newNodeI(nkArgList, effects.info)
 
     let forbidsSpec = effectSpec(n, wForbids)
@@ -1904,12 +1904,12 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
       # Leaving this as nil would mean "unknown tags", which later widens
       # indirect calls to `RootEffect`.
       effects[tagEffects] = newNodeI(nkArgList, effects.info)
-    elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
+    elif s != nil and (s.magic != mNone or (sfImportc in s.flags and (sfExportc notin s.flags or sfCompilerProc in s.flags))):
       effects[tagEffects] = newNodeI(nkArgList, effects.info)
 
     if not isNil(forbidsSpec):
       effects[forbiddenEffects] = forbidsSpec
-    elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
+    elif s != nil and (s.magic != mNone or (sfImportc in s.flags and (sfExportc notin s.flags or sfCompilerProc in s.flags))):
       effects[forbiddenEffects] = newNodeI(nkArgList, effects.info)
 
     let requiresSpec = propSpec(n, wRequires)

@@ -200,6 +200,12 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cyclecollector"
   test "trace_globals"
   test "tfinalizers"
+  # `tseqfinalizer` asserts refc-specific element counts; its spec `matrix:`
+  # pins the `--mm:refc` legs, so a single `run` covers both.
+  run "tseqfinalizer", ""
+  test "tmove_case_object"
+  test "tdisable_orc"
+  test "tregionleak"
 
 # ------------------------- threading tests -----------------------------------
 
@@ -463,6 +469,11 @@ proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
 
 import std/private/gitutils
 
+const packageTimeout = 15.0 * 60
+  ## Seconds that the clone, the install and the test commands of one package may
+  ## take together. A package that hangs is killed and reported as `reTimeout`
+  ## instead of blocking the whole batch until the CI job is cancelled.
+
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
   let nimbleExe = findExe("nimble")
   doAssert nimbleExe != "", "Cannot run nimble tests: Nimble binary not found."
@@ -478,13 +489,20 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       inc r.total
       var test = makeSupTest(pkg.name, "", cat, "[$#/$#] " % [$i, $pkgs.len])
       let buildPath = packagesDir / pkg.name
+      let deadline = test.startTime + packageTimeout
       template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
         var outp: string = ""
+        var timedOut = false
         let ok = retryCall(maxRetry = maxRetries, backoffDuration = 10.0):
           var status: int
           echo "[$#] $#" % [pkg.name, cmd]
-          (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
-          status == QuitSuccess
+          (outp, status, timedOut) = execCmdExTimeout(cmd, workingDir2, deadline - epochTime())
+          status == QuitSuccess or timedOut # do not retry a command that hung
+        if timedOut:
+          r.finishTest(test, targetC, "", "", cmd & "\n" & outp &
+            "\nTimed out: the package was not done after $# seconds; the command and its child processes were killed" %
+            $int(packageTimeout), reTimeout)
+          continue
         if not ok:
           r.finishTest(test, targetC, "", "", cmd & "\n" & outp, reFailed)
           continue

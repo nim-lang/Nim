@@ -1923,16 +1923,19 @@ proc mayCallOrRaise(p: BProc; n: PNode): bool =
   for it in sons(n):
     if mayCallOrRaise(p, it): return true
 
-proc constrObservesDest(p: BProc; dest: PNode; values: PNode; first: int): bool =
+proc constrObservesDest(p: BProc; d: TLoc; values: PNode; first: int): bool =
   ## bug #26712: `dest = Constr(...)` is constructed in place. That is only
   ## correct if no constructor value can read `dest` through a call or raise
   ## after `dest` was partially overwritten while `dest` is observable.
-  if dest == nil: return false
+  ## A compiler temporary (or a field of one, like the fresh object of a
+  ## `(ref T)(...)` constructor) is not observable (bug #26767); note that
+  ## for these `d.lode` is not the location but the constructed value.
+  if d.lode == nil or d.k == locTemp: return false
   result = false
   for i in first..<values.len:
     if mayCallOrRaise(p, values[i]):
-      return locationEscapes(p, dest, p.nestedTryStmts.len > 0 or
-                                      p.withinTryWithExcept > 0)
+      return locationEscapes(p, d.lode, p.nestedTryStmts.len > 0 or
+                                        p.withinTryWithExcept > 0)
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # inheritance in C++ does not allow struct initialization so
@@ -1969,7 +1972,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # raise after the destination was already overwritten (bug #26687). Since
   # the values are hoisted into field sized temporaries, it is cheap.
   if not useTemp and (isPartOf(d.lode, e, {pfStructural, pfBidirectional}) != arNo or
-                     constrObservesDest(p, d.lode, e, 1)):
+                     constrObservesDest(p, d, e, 1)):
     for it in sonsFrom(e, 1):
       if it.firstSon.typ.skipTypes(abstractVar).kind in {tyOpenArray, tyVarargs}:
         useTemp = true
@@ -2035,7 +2038,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   var tmp: TLoc = default(TLoc)
   # bug #668, bug #26712
   let doesAlias = d.k != locNone and (lhsDoesAlias(d.lode, n) or
-                                     constrObservesDest(p, d.lode, n, 0))
+                                     constrObservesDest(p, d, n, 0))
   let dest = if doesAlias: addr(tmp) else: addr(d)
   if doesAlias:
     tmp = getTemp(p, n.typ)
@@ -3020,7 +3023,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mAsgn:
     let kind = if e.firstSon.sym.name.s == "=sink": nkSinkAsgn else: nkAsgn
-    let lhs = e.secondSon.skipHiddenAddr
+    let arg = e.secondSon
+    var lhs = arg.skipHiddenAddr
+    if lhs == arg and arg.typ != nil and
+        arg.typ.skipTypes(abstractInst).kind in {tyVar, tyLent}:
+      # the argument is already an address (e.g. a `var T` parameter that is
+      # passed on), so we need to dereference it (bug #26772):
+      lhs = newDeref(arg)
     let n = newTreeI(kind, e.info, lhs, son(e, 2))
     n.typ = e.typ
     cow(p, son(e, 2))
@@ -3333,7 +3342,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     var tmp: TLoc = default(TLoc)
     # bug #16331
     let doesAlias = d.k != locNone and (lhsDoesAlias(d.lode, n) or
-                                       constrObservesDest(p, d.lode, n, 0))
+                                       constrObservesDest(p, d, n, 0))
     let dest = if doesAlias: addr(tmp) else: addr(d)
     if doesAlias:
       tmp = getTemp(p, n.typ)
@@ -3401,7 +3410,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
     if d.k == locNone:
       d = getTemp(p, n.typ)
     elif d.lode != nil and (isPartOf(d.lode, n, {pfStructural}) != arNo or
-                            constrObservesDest(p, d.lode, n, 0)):
+                            constrObservesDest(p, d, n, 0)):
       for ni in sons(n):
         if isInertValue(ni):
           hoisted.add default(TLoc)

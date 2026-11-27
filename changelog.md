@@ -278,6 +278,11 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- The new switch `--reportLargeStackObjects:N` makes the C/C++ backends report
+  every local variable or compiler temporary that occupies at least `N` bytes
+  of stack space, via the new warning `LargeStackObject`. Combined with
+  `--warningAsError:LargeStackObject` it turns an accidental stack copy of a
+  huge object into a compile error.
 - The error for a missing lifetime hook (`=copy`, `=sink`, `=dup`, `=wasMoved`) that
   is marked `{.error.}` now ends with the text of `{.error: "msg".}` when there
   is one, like the error for a routine does.
@@ -321,11 +326,20 @@ parameter and result types, not just their source-level shape. Use
   compares its bitwise complement. The meaning of the code does not change;
   adding parentheses silences the warning.
 
+- The pragmas `compile`, `link`, `passC`, `passL` and `localPassC` act on the
+  whole module, so the compiler now rejects them inside a routine with an error
+  that says so. Before, `localPassC` there stopped a compiler built with
+  assertions, and the others were accepted. Move the pragma to module level.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.
 - Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
 - Added `--styleCheck:warning` flag to treat style check violations as warnings.
+- `nim ic` shows a single `[NN%]` progress line (frontend 0..50%, backend
+  51..100%, ending in `[100%] done`) instead of the per-module `.` and `CC:`
+  output when stdout is a terminal and `--verbosity` is 1 (the default).
+  Warnings and errors are still shown.
 
 ## Documentation changes
 

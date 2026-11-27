@@ -553,7 +553,7 @@ proc isCapturedVar(n: PNode): bool =
   if root != nil: result = root.name.s[0] == ':'
   else: result = false
 
-proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
+proc passCopyToSink(n: PNode; c: var Con; s: var Scope; hint = true): PNode =
   let nTyp = n.typ.skipTypes(tyUserTypeClasses)
   if not hasDestructorOrAsgn(c, nTyp):
     # Non-managed (plain-old-data) type: no ownership transfer is needed.
@@ -591,7 +591,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
     m.add p(n, c, s, normal)
     c.finishCopy(m, n, {}, isFromSink = true)
     result.add m
-  if isLValue(n) and not isCapturedVar(n) and nTyp.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
+  if hint and isLValue(n) and not isCapturedVar(n) and nTyp.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
     message(c.graph.config, n.info, hintPerformance,
       ("passing '$1' to a sink parameter introduces an implicit copy; " &
       "if possible, rearrange your program's control flow to prevent it") % $n)
@@ -1585,6 +1585,12 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, flags: set[MoveOrCopy
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(s, dest, ri, flags)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      elif ri2.kind == nkDerefExpr and IsDecl notin flags and c.inEnsureMove == 0 and isEnsureMove == 0:
+        # `x = x.next[]`: the source can be kept alive only by `dest`, so
+        # `=copy(dest, src)` could free it while it copies it field by
+        # field. Copy into a temporary first: `=sink(dest, =dup(src))`
+        # (bug #26773).
+        result = c.genSink(s, dest, passCopyToSink(ri, c, s, hint = false), flags)
       else:
         inc c.inEnsureMove, isEnsureMove
         result = c.genCopy(dest, ri, flags)
