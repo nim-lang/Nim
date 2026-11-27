@@ -2462,12 +2462,16 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       s.ast[pragmasPos].add newTree(nkExprColonExpr,
           newIdentNode(c.cache.getIdent("raises"),  s.info), newNodeI(nkBracket, s.info))
   of "deepcopy", "=deepcopy":
-    if s.typ.len == 2 and
-        s.typ.firstParamType.skipTypes(abstractInst).kind in {tyRef, tyPtr} and
+    # `SomeObj[T]` for `SomeObj[T] = ref object` is a `ref` too (#14573):
+    var pt = if s.typ.len == 2: s.typ.firstParamType.skipTypes(abstractInst) else: nil
+    if pt != nil and pt.kind == tyGenericInvocation and
+        pt.genericHead.kind == tyGenericBody:
+      pt = pt.genericHead.typeBodyImpl.skipTypes(abstractInst)
+    if pt != nil and pt.kind in {tyRef, tyPtr} and
         sameType(s.typ.firstParamType, s.typ.returnType):
       # Note: we store the deepCopy in the base of the pointer to mitigate
       # the problem that pointers are structural types:
-      var t = s.typ.firstParamType.skipTypes(abstractInst).elementType.skipTypes(abstractInst)
+      var t = pt.elementType.skipTypes(abstractInst)
       while true:
         if t.kind == tyGenericBody: t = t.typeBodyImpl
         elif t.kind == tyGenericInvocation: t = t.genericHead
@@ -2926,7 +2930,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     incl(s.typ, tfNoSideEffect)
 
   var (proto, comesFromShadowScope) =
-      if isAnon: (nil, false)
+      # a gensym'ed routine is not in a scope, a routine of the same name
+      # that is found there is not its forward declaration (#13973):
+      if isAnon or sfGenSym in s.flags: (nil, false)
       else: searchForProc(c, declarationScope, s)
   if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we

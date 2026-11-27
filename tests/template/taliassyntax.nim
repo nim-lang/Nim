@@ -42,7 +42,7 @@ block: # type alias
   doAssert generic[string]() == "string"
   doAssert generic[seq[int]]() == "seq[int]"
   doAssert generic[seq[Int2]]() == "seq[int]"
-  discard generic[123]()
+  doAssert not compiles(generic[123]()) # a value is not a type (#13906)
   proc genericStatic[X; T: static[X]](): string =
     template U: untyped = T
     result = $U
