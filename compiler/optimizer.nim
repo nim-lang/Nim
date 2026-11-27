@@ -121,7 +121,13 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
       let s = n[0].sym
       let name = s.name.s.normalize
       if name == "=wasmoved":
-        b.wasMovedLocs.add n
+        # Only a whole local is tracked: a mention of it in between is a use
+        # (the `nkSym` case). A path (`o.f`, `a[i]`, `p[]`) can be used without
+        # being mentioned as such, and a global by any call.
+        let target = n[1].skipHiddenAddr
+        if target.kind == nkSym and sfGlobal notin target.sym.flags and
+            target.sym.kind in {skVar, skLet, skTemp, skParam, skResult, skForVar}:
+          b.wasMovedLocs.add n
         special = true
       elif name == "=destroy":
         if c.inFinally > 0 and (b.hasReturn or b.hasBreak):
