@@ -320,24 +320,46 @@ proc withoutCyclicPragma(n: PNode; cyclic: var bool): PNode =
   else:
     result = n
 
+proc cyclicImportTarget(c: PContext; x: PNode; result: var seq[FileIndex]) =
+  var x = x
+  var cyclic = false
+  if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and
+      x[0].ident.s == "as":
+    discard withoutCyclicPragma(x[2], cyclic) # `m as alias {.cyclic.}`
+    x = x[1] # `m {.cyclic.} as alias`
+  let path = withoutCyclicPragma(x, cyclic)
+  if cyclic:
+    let f = checkModuleName(c.config, path, doLocalError = false)
+    if f != InvalidFileIdx and f != c.module.fileIdx:
+      result.add f
+
 proc cyclicImportTargets(c: PContext; n: PNode): seq[FileIndex] =
   ## The modules that `n`'s top-level `import m {.cyclic.}` statements refer to.
   ## Only these are considered for a cycle group; an `import` produced by a
   ## macro or nested in a `when` is checked in order like any other statement.
   result = @[]
   for it in n:
-    if it.kind != nkImportStmt: continue
-    for x in it:
-      var x = x
-      if x.kind == nkInfix and x.len == 3 and x[0].kind == nkIdent and
-          x[0].ident.s == "as":
-        x = x[1] # `m {.cyclic.} as alias`
-      var cyclic = false
-      let path = withoutCyclicPragma(x, cyclic)
-      if cyclic:
-        let f = checkModuleName(c.config, path, doLocalError = false)
-        if f != InvalidFileIdx and f != c.module.fileIdx:
-          result.add f
+    case it.kind
+    of nkImportStmt:
+      for x in it:
+        if x.kind in {nkInfix, nkPrefix} and x[^1].kind == nkBracket:
+          # `dir/[a {.cyclic.}, b as c]`, see `importer.evalImport`:
+          var imp = copyNode(x)
+          for i in 0..<x.len-1: imp.add x[i]
+          imp.add newNode(nkEmpty)
+          for y in x[^1]:
+            if y.kind == nkInfix and y.len == 3 and y[0].kind == nkIdent and
+                y[0].ident.s == "as":
+              imp[^1] = y[1]
+              cyclicImportTarget(c, newTreeI(nkInfix, y.info, y[0], imp, y[2]), result)
+            else:
+              imp[^1] = y
+              cyclicImportTarget(c, imp, result)
+        else:
+          cyclicImportTarget(c, x, result)
+    of nkFromStmt, nkImportExceptStmt:
+      if it.len > 0: cyclicImportTarget(c, it[0], result)
+    else: discard
 
 type
   CycleMember = object
@@ -348,6 +370,9 @@ type
     code: PNode
     topLevelStmts: PNode
     options: TOptions
+    notes, warningAsErrors: TNoteKinds
+      # like `options`: the module's `{.warning[X]: off.}` and the like
+      # survive the phases of the other modules
 
 proc parseModuleFile(graph: ModuleGraph; fileIdx: FileIndex): PNode =
   result = newNodeI(nkStmtList, newLineInfo(fileIdx, 1, 1))
@@ -391,6 +416,8 @@ proc openCycleMember(graph: ModuleGraph; fileIdx: FileIndex; fromModule: PSym): 
   prePass(result.ctx, result.code)
   if sfReorder in module.flags or codeReordering in graph.config.features:
     result.code = reorder(graph, result.code, module)
+  result.notes = graph.config.notes
+  result.warningAsErrors = graph.config.warningAsErrors
 
 proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   ## `root` contains `import m {.cyclic.}` statements: it and the modules that
@@ -400,26 +427,61 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
   ## recursive import would finish them: the root comes last and its
   ## remaining statements are returned to the caller.
   var members = @[move root]
+  members[0].notes = graph.config.notes
+  members[0].warningAsErrors = graph.config.warningAsErrors
   let rootIdx = members[0].module.fileIdx
   graph.cycleGroups[rootIdx] = rootIdx
+  var memberIdx = initTable[FileIndex, int]()
+  memberIdx[rootIdx] = 0
+  var imports: seq[seq[int]] = @[] # the members a member imports, in order
+  # the import chain from the root to a member, for the import stack
+  # (`importer.myImportModule` reports import cycles with it):
+  var importChain: seq[seq[FileIndex]] = @[@[]]
   var i = 0
   while i < members.len:
+    imports.add @[]
     for f in cyclicImportTargets(members[i].ctx, members[i].code):
+      let k = memberIdx.getOrDefault(f, -1)
+      if k >= 0:
+        imports[i].add k
       # a module that exists already is not part of this group; it is
       # imported like any other module, and so is a precompiled one:
-      if graph.getModule(f) == nil and not loadsFromNif(graph, f):
+      elif graph.getModule(f) == nil and not loadsFromNif(graph, f):
         graph.cycleGroups[f] = rootIdx
+        memberIdx[f] = members.len
+        imports[i].add members.len
+        importChain.add importChain[i] & f
+        graph.importStack.add importChain[^1]
         members.add openCycleMember(graph, f, members[i].module)
+        graph.importStack.setLen(graph.importStack.len - importChain[^1].len)
     inc i
+
+  # the order in which a recursive import would finish the modules: depth
+  # first, a module after the modules it imports; the root comes last.
+  var finishOrder: seq[int] = @[]
+  var visited = newSeq[bool](members.len)
+  proc visit(k: int; imports: seq[seq[int]]; visited: var seq[bool];
+             finishOrder: var seq[int]) =
+    visited[k] = true
+    for j in imports[k]:
+      if not visited[j]: visit(j, imports, visited, finishOrder)
+    finishOrder.add k
+  visit(0, imports, visited, finishOrder)
 
   template withMember(m: var CycleMember; body: untyped) =
     # the owner stack is shared by all contexts and the last opened member
     # is on top of it:
     pushOwner(m.ctx, m.module)
-    prepareConfigNotes(graph, m.module)
     graph.config.options = m.options
+    graph.config.notes = m.notes
+    graph.config.warningAsErrors = m.warningAsErrors
+    let chain = importChain[memberIdx[m.module.fileIdx]]
+    graph.importStack.add chain
     body
+    graph.importStack.setLen(graph.importStack.len - chain.len)
     m.options = graph.config.options
+    m.notes = graph.config.notes
+    m.warningAsErrors = graph.config.warningAsErrors
     popOwner(m.ctx)
 
   var ctxs: seq[PContext] = @[]
@@ -428,15 +490,17 @@ proc semCycleGroup(graph: ModuleGraph; root: var CycleMember): PNode =
     for p in members:
       if p.ctx != m.ctx: m.ctx.cyclePartners.add p.ctx
   let prevDemand = graph.demandCycleBody
-  graph.demandCycleBody = proc (prc: PSym) = demandCycleBody(ctxs, prc)
+  graph.demandCycleBody = proc (prc: PSym; forEffects: bool): bool =
+    demandCycleBody(ctxs, prc, forEffects)
 
-  for phase in [cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
-                cpUnnamedImports, cpDecls, cpUnnamedImports]:
+  for phase in [cpHeaderPragmas, cpImports, cpTypesLeft, cpTypesRight, cpTypesFinal,
+                cpUnnamedImports, cpDecls, cpExports, cpUnnamedImports, cpFromImports]:
     for m in mitems(members):
       withMember m:
         semCyclePhase(m.ctx, m.code, phase)
 
-  for k in countdown(members.high, 1):
+  for k in finishOrder:
+    if k == 0: continue # the root's statements are returned to the caller
     let m = addr members[k]
     withMember m[]:
       let semNode = semWithPContext(m.ctx, m.code)

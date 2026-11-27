@@ -31,6 +31,12 @@ type
     initConflict # Fields from different branches have been initialized
 
 
+proc enumFieldByPosition(t: PType; pos: BiggestInt): PSym =
+  result = nil
+  if t != nil and t.n != nil:
+    for e in t.n:
+      if e.kind == nkSym and e.sym.position == pos: return e.sym
+
 proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
                         flags: TExprFlags): tuple[status: InitStatus, defaults: seq[PNode]]
 
@@ -251,10 +257,23 @@ proc semConstructFields(c: PContext, n: PNode, constrCtx: var ObjConstrContext,
       template badDiscriminatorError =
         if c.inUncheckedAssignSection == 0:
           let fields = fieldsPresentInBranch(selectedBranch)
-          localError(c.config, constrCtx.initExpr.info,
-            ("cannot prove that it's safe to initialize $1 with " &
-            "the runtime value for the discriminator '$2' ") %
-            [fields, discriminator.sym.name.s])
+          if isSumTypeDiscriminator(discriminator.sym):
+            var names = ""
+            let b = n[selectedBranch]
+            for j in 0..<b.len-1:
+              if b[j].kind in nkCharLit..nkUInt64Lit:
+                let e = enumFieldByPosition(discriminator.sym.typ, b[j].intVal)
+                if e != nil:
+                  if names.len > 0: names.add " or "
+                  names.add "'" & e.name.s & "'"
+            localError(c.config, constrCtx.initExpr.info,
+              ("the fields $1 belong to a branch of a sum type; " &
+              "construct it with the branch name $2") % [fields, names])
+          else:
+            localError(c.config, constrCtx.initExpr.info,
+              ("cannot prove that it's safe to initialize $1 with " &
+              "the runtime value for the discriminator '$2' ") %
+              [fields, discriminator.sym.name.s])
         mergeInitStatus(result.status, initNone)
 
       template wrongBranchError(i) =
@@ -530,7 +549,7 @@ proc inferSumTypeInstance(c: PContext; n: PNode; owner: PSym): PType =
   inst.add newSymNode(owner, n[0].info)
   for i in 0..<body.kidsLen-1:
     let b = m.bindings.lookup(body[i])
-    if b == nil:
+    if b == nil or b.kind in {tyNil, tyEmpty} or isEmptyContainer(b):
       localError(c.config, n.info,
         "cannot infer generic type for sum type constructor; " &
         "use a type conversion: " & owner.name.s & "[...](...)")

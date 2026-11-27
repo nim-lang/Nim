@@ -10,6 +10,7 @@ when not disableSSLTesting():
     localhostCert = "tests/stdlib/thttpclient_ssl_cert.pem" # CN=localhost
     localhostKey = "tests/stdlib/thttpclient_ssl_key.pem"
     wrongCert = "tests/stdlib/tasyncnet_ssl_wrong_cert.pem" # CN=wrong.example
+    ipCert = "tests/stdlib/tasyncnet_ssl_ip_cert.pem" # IP SAN 127.0.0.1
 
   proc serveOnce(server: AsyncSocket, ctx: SslContext) {.async.} =
     try:
@@ -75,8 +76,22 @@ when not disableSSLTesting():
   block mismatched_certificate_wrap_connected:
     doAssert rejected(viaWrapConnected(trusting(localhostCert), "wrong.example"))
 
-  block ip_address_is_not_checked:
-    doAssert waitFor(viaConnect(trusting(localhostCert), localhostCert, localhostKey, "127.0.0.1")) == "hello"
+  block ip_address_not_in_certificate:
+    # a certificate for "localhost" is not valid for the address 127.0.0.1
+    doAssert rejected(viaConnect(trusting(localhostCert), localhostCert, localhostKey, "127.0.0.1"))
+
+  block ip_address_in_certificate:
+    doAssert waitFor(viaConnect(trusting(ipCert), ipCert, ipCert, "127.0.0.1")) == "hello"
+
+  block ip_address_other_certificate:
+    doAssert rejected(viaConnect(trusting(wrongCert), wrongCert, wrongCert, "127.0.0.1"))
+
+  block ip_address_wrap_connected:
+    doAssert rejected(viaWrapConnected(trusting(localhostCert), "127.0.0.1"))
+
+  block ip_address_verify_none:
+    let ctx = newContext(verifyMode = CVerifyNone)
+    doAssert waitFor(viaConnect(ctx, localhostCert, localhostKey, "127.0.0.1")) == "hello"
 
   block mismatched_certificate_wrap_connected_verify_none:
     let ctx = newContext(verifyMode = CVerifyNone)

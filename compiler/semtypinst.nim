@@ -300,6 +300,17 @@ proc instCustomPragmas(cl: var TReplTypeVars, n: PNode): PNode =
     else:
       result.add it
 
+proc resetTypeTestPath(n: PNode): bool =
+  # `mIs` is resolved during semantic checking. Reset cached types along the
+  # path so nested type tests are checked again after generic substitution.
+  result = n.kind in nkCallKinds and n[0].kind == nkSym and
+    n[0].sym.magic == mIs
+  for i in ord(n.kind in nkCallKinds)..<n.safeLen:
+    result = resetTypeTestPath(n[i]) or result
+  if result:
+    n.typ = nil
+    n.flags.excl nfSem
+
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PType = nil): PNode =
   if n == nil: return
   result = copyNode(n)
@@ -359,6 +370,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0; expectedType: PT
         checkSonsLen(it, 2, cl.c.config)
         var cond = prepareNode(cl, it[0])
         if not cond.hasValuelessStatics:
+          discard resetTypeTestPath(cond)
           var e = cl.c.semConstExpr(cl.c, cond)
           if e.kind != nkIntLit:
             internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
@@ -502,8 +514,17 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var substituted = false
   for i in FirstGenericParamAt..<t.kidsLen:
     var x = t[i]
-    if x.kind in {tyGenericParam}:
-      x = lookupTypeVar(cl, x)
+    if x.kind == tyGenericParam or (x.kind == tyStatic and x.n == nil):
+      # an unresolved `static` parameter such as `n` in `B[n]` must be
+      # substituted too, otherwise the cache lookup below is skipped and
+      # every instantiation creates a new `B[3]` (bug #26680):
+      if x.kind == tyStatic:
+        x = cl.typeMap.lookup(x)
+        # only a binding to a known value; `n` can also be bound to its
+        # base type here (implicit generics like `dot(a: TVector)`):
+        if x != nil and not (x.kind == tyStatic and x.n != nil): x = nil
+      else:
+        x = lookupTypeVar(cl, x)
       if x != nil:
         if header == t: header = instCopyType(cl, t)
         header[i] = x

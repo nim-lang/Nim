@@ -223,8 +223,13 @@ when defineSsl:
         if certificate.isNil:
           raiseSSLError("No SSL certificate found.")
         const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-        let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-          X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+        let match =
+          if isIpAddress(hostname):
+            # an IP address must be listed as an IP SAN
+            certificate.X509_check_ip_asc(hostname.cstring, 0)
+          else:
+            certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+              X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
         X509_free(certificate)
         if match != 1:
           raiseSSLError("SSL Certificate check failed.")
@@ -255,8 +260,9 @@ when defineSsl:
       raiseSslHandleError()
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
-      var data = newString(len)
-      let read = bioRead(socket.bioOut, cast[cstring](addr data[0]), len)
+      var data = ""
+      let read = bioRead(socket.bioOut, cast[cstring](beginStore(data, len)), len)
+      endStore(data)
       assert read != 0
       if read < 0:
         raiseSSLError()
@@ -359,8 +365,9 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
       if not isIpAddress(address):
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
+        # RFC 6066 does not allow IP addresses as SNI host names.
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
-        socket.sslVerifyHost = address
+      socket.sslVerifyHost = address
 
       sslSetConnectState(socket.sslHandle)
       await finishHandshake(socket, {SocketFlag.SafeDisconn})
@@ -477,7 +484,8 @@ proc recv*(socket: AsyncSocket, size: int,
           break
 
       let chunk = min(socket.bufLen-socket.currPos, size-read)
-      copyMem(addr(result[read]), addr(socket.buffer[socket.currPos]), chunk)
+      copyMem(beginStore(result, result.len, read), addr(socket.buffer[socket.currPos]), chunk)
+      endStore(result)
       read.inc(chunk)
       socket.currPos.inc(chunk)
 
@@ -486,8 +494,9 @@ proc recv*(socket: AsyncSocket, size: int,
       socket.currPos = originalBufPos
     result.setLen(read)
   else:
-    result = newString(size)
-    let read = readInto(addr result[0], size, socket, flags)
+    result = ""
+    let read = readInto(beginStore(result, size), size, socket, flags)
+    endStore(result)
     result.setLen(read)
 
 proc send*(socket: AsyncSocket, buf: pointer, size: int,
@@ -838,10 +847,12 @@ when defineSsl:
 
     case handshake
     of handshakeAsClient:
-      if hostname.len > 0 and not isIpAddress(hostname):
-        # Set the SNI address for this connection. This call can fail if
-        # we're not using TLSv1+.
-        discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
+      if hostname.len > 0:
+        if not isIpAddress(hostname):
+          # Set the SNI address for this connection. This call can fail if
+          # we're not using TLSv1+.
+          # RFC 6066 does not allow IP addresses as SNI host names.
+          discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
         socket.sslVerifyHost = hostname
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:

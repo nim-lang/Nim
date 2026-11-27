@@ -956,6 +956,8 @@ const
   nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkFloatLiterals* = {nkFloatLit..nkFloat128Lit}
+  nkSignedIntLiterals* = {nkIntLit..nkInt64Lit}
+  nkUnsignedIntLiterals* = {nkUIntLit..nkUInt64Lit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   routineDefs* = declarativeDefs + {nkMacroDef, nkTemplateDef}

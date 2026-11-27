@@ -875,7 +875,9 @@ when not defined(nimscript) and supportedSystem:
       var bufsize = 1024 # should be enough
       result = newString(bufsize)
       while true:
-        if getcwd(result.cstring, bufsize) != nil:
+        let ok = getcwd(cast[cstring](beginStore(result, result.len)), bufsize) != nil
+        endStore(result)
+        if ok:
           setLen(result, c_strlen(result.cstring))
           break
         else:

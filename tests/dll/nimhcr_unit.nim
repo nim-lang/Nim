@@ -90,11 +90,11 @@ macro carryOutTests(callingConv: untyped): untyped =
 
   result = quote do:
     var `g1`: pointer = nil
-    if hcrRegisterGlobal("dummy_module", `globalName`, sizeof(int), nil, addr `g1`):
+    if hcrRegisterGlobal("dummy_module", `globalName`, sizeof(int), "int", nil, addr `g1`):
       cast[ptr int](`g1`)[] = 10
 
     var `g2`: pointer = nil
-    if hcrRegisterGlobal("dummy_module", `globalName`, sizeof(int), nil, addr `g2`):
+    if hcrRegisterGlobal("dummy_module", `globalName`, sizeof(int), "int", nil, addr `g2`):
       cast[ptr int](`g2`)[] = 20
 
     doAssert `g1` == `g2` and cast[ptr int](`g1`)[] == 10

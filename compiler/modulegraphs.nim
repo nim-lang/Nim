@@ -36,8 +36,9 @@ type
     pureEnums*: seq[PSym]
     interf: TStrTable
     interfHidden: TStrTable
+    publicPending: bool ## Backend imports build the public table on lookup.
     hiddenPending: bool ## The full interface is built from its ordered BIF
-                        ## record on first use by `ensureHiddenIface`.
+                        ## record on first use by `prepareInterface`.
     uniqueName*: Rope
 
   Operators* = object
@@ -106,11 +107,13 @@ type
     icOfferedInstances*: HashSet[string] # backend: NIF names of the generic
                                   # instances some loaded module `(offer)`s
                                   # (see `cgen.homeEmitsInstance`)
-    icQualIfaces*: IntSet         # module positions whose interface tables were
-                                  # populated ONLY for qualified access through a
-                                  # module re-export (`import x; export x`); the
-                                  # Iface.module stays nil so a later direct
-                                  # import still takes the full load path
+    icQualModules: Table[int, seq[PSym]] # module positions whose interface
+                                  # tables were populated for qualified access
+                                  # through a module re-export (`import x;
+                                  # export x`), and the module symbol made for
+                                  # each name the module is re-exported as; the
+                                  # symbols are not registered, so a later
+                                  # direct import still takes the full load path
     vmInjecting*: bool            # the VM injects destructors: hooks that
                                   # are missing are not lifted (that could
                                   # conflict with hooks declared later)
@@ -193,11 +196,14 @@ type
                                   # (`genIcModuleDestroyGlobals`), already in
                                   # call order; only the main module's `cg`
                                   # fills this, from the `.c.nif` meta heads
-    demandCycleBody*: proc (prc: PSym) {.closure.}
+    demandCycleBody*: proc (prc: PSym; forEffects: bool): bool {.closure.}
       ## set while a cycle group (`import m {.cyclic.}`) is checked: effect
       ## tracking asks for the deferred body of a routine of the group before it
-      ## falls back to the pessimistic assumptions about a routine without
-      ## effects.
+      ## uses the routine's effects. Returns true if the body is still being
+      ## checked, i.e. the call is a recursion via the modules of the group and
+      ## the routine's effects are incomplete. With `forEffects` it is also true,
+      ## without running the body, for a routine with a forward declaration
+      ## that follows the body of its module that is being checked.
     demandRoutineBody*: proc (prc: PSym) {.closure.}
       ## `--deferBodies:on` (doc/parallel_compiler.md §2.3 / §4.6): "this body
       ## is needed NOW". A deferred unit's body is unsemmed until the module's
@@ -301,28 +307,23 @@ when not defined(nimKochBootstrap):
     result = proc(name, suffix: string): PSym =
       materializeReexportedModule(g, name, suffix)
 
-proc ensureHiddenIface(g: ModuleGraph; pos: int) =
-  ## Materialise a loaded module's full interface the first time anything
-  ## asks for it. Every READ of `interfHidden` goes through `interfSelect`, so
-  ## guarding those sites is complete.
-  if g.config.cmd == cmdM:
+proc prepareInterface(g: ModuleGraph; pos: int; hidden: bool) =
+  if hidden and g.config.cmd == cmdM:
     # Private declarations and their order are outside the public fingerprint.
-    # Record every consumer, including those reusing an already-built table.
     g.icImplDeps.incl pos
-  if g.ifaces[pos].hiddenPending:
-    when not defined(nimKochBootstrap):
-      # By SUFFIX: `c.mods` and `g.ifaces` use different FileIndexes for the
-      # same module (see `buildHiddenInterface`). Into a LOCAL table, because
-      # loading symbols can grow `g.ifaces` and a `var` alias into it would then
-      # point at the freed buffer. Cleared only on success, so an import whose
-      # `.s.bif` does not exist yet is retried rather than written off.
-      var tab = g.ifaces[pos].interfHidden
-      if buildHiddenInterface(ast.program,
-                              cachedModuleSuffix(g.config, FileIndex pos), tab, moduleResolver(g)):
-        g.ifaces[pos].interfHidden = tab
-        g.ifaces[pos].hiddenPending = false
-    else:
-      g.ifaces[pos].hiddenPending = false
+  when not defined(nimKochBootstrap):
+    if (if hidden: g.ifaces[pos].hiddenPending else: g.ifaces[pos].publicPending):
+      # Resolving module aliases can grow g.ifaces. Build into a local before
+      # assigning the table, and keep it pending if the BIF is unavailable.
+      var tab = default(TStrTable)
+      if buildStoredInterface(ast.program, cachedModuleSuffix(g.config, FileIndex pos),
+                              hidden, tab, moduleResolver(g)):
+        if hidden:
+          g.ifaces[pos].interfHidden = move tab
+          g.ifaces[pos].hiddenPending = false
+        else:
+          g.ifaces[pos].interf = move tab
+          g.ifaces[pos].publicPending = false
 
 template interfSelect(iface: Iface, importHidden: bool): TStrTable =
   var ret = iface.interf.addr # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
@@ -359,7 +360,7 @@ proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent):
   assert m.kind == skModule
   mi.modIndex = m.position
   mi.importHidden = optImportHidden in m.options
-  if mi.importHidden: ensureHiddenIface(g, mi.modIndex)
+  prepareInterface(g, mi.modIndex, mi.importHidden)
   result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
@@ -367,7 +368,7 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   let importHidden = optImportHidden in m.options
-  if importHidden: ensureHiddenIface(g, m.position)
+  prepareInterface(g, m.position, importHidden)
   for s in g.ifaces[m.position].interfSelect(importHidden).data:
     if s != nil:
       yield s
@@ -377,7 +378,7 @@ proc orderedInterface*(g: ModuleGraph; m: PSym; hidden = false): seq[PSym] =
   ## Re-exporting must not depend on physical hash-table slots: a loaded table
   ## can have a different layout while preserving every identifier's order.
   result = @[]
-  if hidden: ensureHiddenIface(g, m.position)
+  prepareInterface(g, m.position, hidden)
   let tab = if hidden: addr semtabAll(g, m) else: addr semtab(g, m)
   var seen = initHashSet[int]()
   var names: seq[PIdent] = @[]
@@ -406,6 +407,7 @@ proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
   ## which is why `--ic:on` could not compile anything that reached
   ## `std/tempfiles` — `initRand()` was undeclared in the importer.
   result = @[]
+  prepareInterface(g, m.position, false)
   for s in g.ifaces[m.position].interf.data:
     if s != nil and s.kind != skModule and sfExported notin s.flags and
         s.itemId.module == m.position:
@@ -413,12 +415,12 @@ proc reexportedLocalSyms*(g: ModuleGraph; m: PSym): seq[ItemId] =
 
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options
-  if importHidden: ensureHiddenIface(g, m.position)
+  prepareInterface(g, m.position, importHidden)
   result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
 
 proc someSymAmb*(g: ModuleGraph; m: PSym; name: PIdent; amb: var bool): PSym =
   let importHidden = optImportHidden in m.options
-  if importHidden: ensureHiddenIface(g, m.position)
+  prepareInterface(g, m.position, importHidden)
   var ti: TIdentIter = default(TIdentIter)
   result = initIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden), name)
   if result != nil and nextIdentIter(ti, g.ifaces[m.position].interfSelect(importHidden)) != nil:
@@ -852,9 +854,9 @@ proc uniqueModuleName*(conf: ConfigRef; m: PSym; path: AbsoluteFile): string =
   var rel = ""
   if path.string.startsWith(conf.libpath.string):
     isLib = true
-    rel = relativeTo(path, conf.libpath).string
+    rel = conf.relativeTo(path, conf.libpath).string
   else:
-    rel = relativeTo(path, conf.projectPath).string
+    rel = conf.relativeTo(path, conf.projectPath).string
 
   if not isLib and not belongsToProjectPackage(conf, m):
     # special handlings for nimble packages
@@ -1213,13 +1215,17 @@ when not defined(nimKochBootstrap):
         g.ifaces[fIdx.int].module.name.s == mname:
       # properly registered already (directly imported earlier): reuse it
       return g.ifaces[fIdx.int].module
+    g.icQualModules.withValue(fIdx.int, aliases):
+      for m in aliases[]:
+        if m.name.s == mname: return m
+    let firstAlias = not g.icQualModules.hasKey(fIdx.int)
     result = PSym(kindImpl: skModule, itemId: itemId(int32(fIdx), 0'i32),
                   name: getIdent(g.cache, mname),
                   infoImpl: newLineInfo(fIdx, 1, 1),
                   positionImpl: int(fIdx))
     setOwner(result, getPackage(g.config, g.cache, fIdx))
-    if g.ifaces[fIdx.int].module == nil and
-        not g.icQualIfaces.containsOrIncl(fIdx.int):
+    g.icQualModules.mgetOrPut(fIdx.int, @[]).add result
+    if firstAlias and g.ifaces[fIdx.int].module == nil:
       var interf = initStrTable()
       var interfHidden = initStrTable()
       let precomp = loadNifModule(ast.program, ModuleSuffix(msuffix),
@@ -1274,10 +1280,13 @@ when not defined(nimKochBootstrap):
     # loading finishes so no var argument points into a reallocated sequence.
     var interf = initStrTable()
     var interfHidden = initStrTable()
-    result = loadNifModule(ast.program, fileIdx, interf, interfHidden, flags, moduleResolver(g))
+    let lazyPublic = g.config.cmd == cmdNifC and AlwaysLoadInterface notin flags
+    let loadFlags = if lazyPublic: flags + {SkipInterfaceTables} else: flags
+    result = loadNifModule(ast.program, fileIdx, interf, interfHidden, loadFlags, moduleResolver(g))
+    g.ifaces[fileIdx.int].publicPending = lazyPublic
     g.ifaces[fileIdx.int].interf = move interf
     g.ifaces[fileIdx.int].interfHidden = move interfHidden
-    # The full interface stays lazy until `ensureHiddenIface` is asked for it.
+    # The full interface stays lazy until `prepareInterface` is asked for it.
     g.ifaces[fileIdx.int].hiddenPending = true
     result.module = m
     # Restore the module symbol's persisted flags (see ast2nif `(modflags)`);
@@ -1290,6 +1299,17 @@ when not defined(nimKochBootstrap):
     # relationship is invisible for NIF-served modules.
     for incPath in result.includes:
       g.addIncludeDep(fileIdx, fileInfoIdx(g.config, AbsoluteFile incPath))
+    # Hot code reloading lists every module's imports in its library
+    # (`cgen.registerModuleToMain`); a from-source compile records them as sem
+    # imports (`importPipelineModule`). A backend process does no sem, so take
+    # them from the NIF. Backend only: under `nim m` the table is this
+    # process's own sem result and is written out as `.s.deps`.
+    if g.config.hcrOn and g.config.cmd == cmdNifC:
+      for dep in result.deps:
+        var isKnownFile = false
+        let depIdx = registerNifSuffix(g.config, dep.string, isKnownFile)
+        let deps = addr g.importDeps.mgetOrPut(fileIdx, @[])
+        if depIdx notin deps[]: deps[].add depIdx
 
     # Rebuild `procInstCache` from this module's generic-instance OFFERS so a
     # consumer's `genericCacheGet` finds the instance and SKIPS re-running

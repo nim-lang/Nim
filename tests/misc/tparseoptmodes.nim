@@ -506,3 +506,9 @@ block:
   proc expected(m: CliMode): seq[Opt] =
     @[(cmdLongOption, "offset", "-10")]
   check("numerical option: long option negative", res, expected)
+
+block: # control characters in a command line string do not hang the parser
+  var p = initOptParser("-a \1 --b:\2 x\0y")
+  let res = toSeq(p.getopt())
+  doAssert res.len == 4, $res
+  doAssert res[1] == (cmdArgument, "\1", "")

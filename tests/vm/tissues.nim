@@ -74,3 +74,22 @@ static:
     doAssert a.ha1 == 12
     doAssert a2.ha1 == 12 # fails
   fn()
+
+block: # bug #11285
+  proc unique: int =
+    var id {.global.} = 0
+    result = id
+    id += 1
+  const x = unique()
+  const y = unique()
+  let z = unique()
+  let w = unique()
+  doAssert (x, y, z, w) == (0, 1, 0, 1)
+
+block: # bug #16737
+  type ProcType = proc()
+  const a: ProcType = proc() = discard
+  const arr: array[8, ProcType] = [a, a, a, a, a, a, a, a]
+  for i in 0..<arr.len:
+    doAssert not arr[i].isNil, $i
+  doAssert not arr[7].isNil # with constant index

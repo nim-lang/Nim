@@ -12,15 +12,15 @@
 ## Code specialization instead of the old, incredibly slow 'genericReset'
 ## implementation.
 
-proc specializeResetT(p: BProc, accessor: Rope, typ: PType)
+proc specializeResetT(p: BProc, accessor: Rope, typ: PType; zeroedLater = false)
 
 proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
-                     typ: PType) =
+                     typ: PType; zeroedLater: bool) =
   if n == nil: return
   case n.kind
   of nkRecList:
     for it in sons(n):
-      specializeResetN(p, accessor, it, typ)
+      specializeResetN(p, accessor, it, typ, zeroedLater)
   of nkRecCase:
     if (n.firstSon.kind != nkSym): internalError(p.config, n.info, "specializeResetN")
     let disc = n.firstSon.sym
@@ -38,34 +38,43 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
           else:
             p.s(cpsStmts).addCaseElse(caseBuilder)
         do:
-          specializeResetN(p, accessor, lastSon(branch), typ)
+          specializeResetN(p, accessor, lastSon(branch), typ, zeroedLater)
           p.s(cpsStmts).addBreak()
-    specializeResetT(p, discField, disc.loc.t)
+    specializeResetT(p, discField, disc.loc.t, zeroedLater)
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
     if field.loc.snippet == "": fillObjectFields(p.module, typ)
     if field.loc.t == nil:
       internalError(p.config, n.info, "specializeResetN()")
-    specializeResetT(p, dotField(accessor, field.loc.snippet), field.loc.t)
+    specializeResetT(p, dotField(accessor, field.loc.snippet), field.loc.t, zeroedLater)
   else: internalError(p.config, n.info, "specializeResetN()")
 
-proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
+proc specializeResetT(p: BProc, accessor: Rope, typ: PType; zeroedLater = false) =
+  ## `zeroedLater` means the enclosing case object is cleared with `nimZeroMem`
+  ## afterwards, so only the GC'd parts need to be released here.
   if typ == nil: return
+  if zeroedLater and not containsGarbageCollectedRef(typ): return
 
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
      tySink, tyOwned:
-    specializeResetT(p, accessor, skipModifier(typ))
+    specializeResetT(p, accessor, skipModifier(typ), zeroedLater)
   of tyArray:
+    if not containsGarbageCollectedRef(typ):
+      p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "nimZeroMem"),
+        cCast(CPointer, cAddr(accessor)),
+        cSizeof(getTypeDesc(p.module, typ)))
+      return
     let arraySize = lengthOrd(p.config, typ.indexType)
     var i: TLoc = getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt))
     p.s(cpsStmts).addForRangeExclusive(i.snippet, cIntValue(0), cIntValue(arraySize)):
-      specializeResetT(p, subscript(accessor, i.snippet), typ.elementType)
+      specializeResetT(p, subscript(accessor, i.snippet), typ.elementType, zeroedLater)
   of tyObject:
     var x = typ.baseClass
     if x != nil: x = x.skipTypes(skipPtrs)
-    specializeResetT(p, accessor.parentObj(p.module), x)
+    let wiped = zeroedLater or (typ.n != nil and isCaseObj(typ.n))
+    specializeResetT(p, accessor.parentObj(p.module), x, wiped)
     if typ.n != nil:
       if typ.sym != nil and sfImportc in typ.sym.flags:
         # imported C struct, nimZeroMem
@@ -73,8 +82,8 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
           cCast(ptrType(CPointer), cAddr(accessor)),
           cSizeof(getTypeDesc(p.module, typ)))
       else:
-        specializeResetN(p, accessor, typ.n, typ)
-        if isCaseObj(typ.n):
+        specializeResetN(p, accessor, typ.n, typ, wiped)
+        if isCaseObj(typ.n) and not zeroedLater:
           # The active branch was released above. Clear the complete object so
           # stale bytes from overlapping branches cannot be traced by the GC.
           # type
@@ -94,7 +103,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
   of tyTuple:
     let typ = getUniqueType(typ)
     for i, a in typ.ikids:
-      specializeResetT(p, dotField(accessor, "Field" & $i), a)
+      specializeResetT(p, dotField(accessor, "Field" & $i), a, zeroedLater)
 
   of tyString, tyRef, tySequence:
     p.s(cpsStmts).addCallStmt(cgsymValue(p.module, "unsureAsgnRef"),

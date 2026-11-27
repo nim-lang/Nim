@@ -229,3 +229,15 @@ method y(_: U) {.base.} =
 proc foo =
   var s = U()
   y(s)
+
+block: # bug #18342
+  block correct:
+    var point = (x: 10, y: 4)
+    point = (x: point.y, y: - point.x)
+    doAssert point == (x: 4, y: -10)
+  block wrong:
+    var point = (x: 10, y: 4)
+    point =
+      if true: (x: point.y, y: - point.x)
+      else: point
+    doAssert point == (x: 4, y: -10)

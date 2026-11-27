@@ -11,6 +11,9 @@
 
 include hashcommon
 
+# a wider import breaks downstream projects
+from std/typetraits import supportsCopyMem
+
 const
   defaultInitialSize* = 32
 
@@ -93,6 +96,21 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge, val)
   else: result = true
 
+template resetImpl(kv) =
+  {.push warning[UnsafeDefault]:off.}
+  # Avoid zeroing things unless the type is non-trivial (ie has a meaningful
+  # destructor)
+  # TODO this is still inefficient in at least two ways:
+  #      * supportsCopyMem is a blunt tool for finding candidate types
+  #      * we don't really need to reset everything, ie an object with a ref field
+  #        only needs to reset the ref field and not anything else
+  bind supportsCopyMem
+  when not supportsCopyMem(typeof(kv.key)):
+    reset(kv.key)
+  when not supportsCopyMem(typeof(kv.val)):
+    reset(kv.val)
+  {.pop.}
+
 # delImplIdx is KnuthV3 Algo6.4R adapted to i=i+1 (from i=i-1) which has come to
 # be called "back shift delete".  It shifts elements in the collision cluster of
 # a victim backward to make things as-if the victim were never inserted in the
@@ -132,10 +150,7 @@ template delImplIdx(t, i, makeEmpty, cellEmpty, cellHash) =
         var j = i         # The correctness of this depends on (h+1) in nextTry
         var r = j         # though may be adaptable to other simple sequences.
         makeEmpty(i)                     # mark current EMPTY
-        {.push warning[UnsafeDefault]:off.}
-        reset(t.data[i].key)
-        reset(t.data[i].val)
-        {.pop.}
+        resetImpl(t.data[i])
         while true:
           i = (i + 1) and msk            # increment mod table size
           if cellEmpty(i):               # end of collision cluster; So all done
@@ -165,11 +180,10 @@ template delImplNoHCode(makeEmpty, cellEmpty, cellHash) {.dirty.} =
 template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
+      if t.data[i].hcode == 0:
+        continue
       t.data[i].hcode = 0
-    {.push warning[UnsafeDefault]:off.}
-    reset(t.data[i].key)
-    reset(t.data[i].val)
-    {.pop.}
+    resetImpl(t.data[i])
   t.counter = 0
 
 template ctAnd(a, b): bool =

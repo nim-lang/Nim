@@ -180,6 +180,7 @@ proc genVarTuple(p: BProc, n: PNode) =
           getModuleDllPath(p.module, n.firstSon.sym),
           '"' & curr.loc.snippet & '"',
           cSizeof(rc),
+          makeCString($hashTypeLayout(curr.loc.t, p.config)),
           curr.tp,
           cCast(ptrType(CPointer), cAddr(curr.loc.snippet))))
 
@@ -455,6 +456,7 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
       getModuleDllPath(p.module, v),
       '"' & v.loc.snippet & '"',
       cSizeof(rv),
+      makeCString($hashTypeLayout(v.loc.t, p.config)),
       traverseProc,
       cCast(ptrType(CPointer), cAddr(v.loc.snippet)))
     # nothing special left to do later on - let's avoid closing and reopening blocks
@@ -471,6 +473,7 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
         getModuleDllPath(p.module, v),
         '"' & v.loc.snippet & '"',
         cSizeof(rdLoc(v.loc)),
+        makeCString($hashTypeLayout(v.loc.t, p.config)),
         traverseProc,
         cCast(ptrType(CPointer), cAddr(v.loc.snippet))))
   if value.kind != nkEmpty and valueAsRope.len == 0:
@@ -1851,6 +1854,10 @@ proc genAsmStmt(p: BProc, t: PNode) =
   if p.prc == nil:
     # top level asm statement?
     p.module.s[cfsProcHeaders].add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
+  elif hasGnuAsm in CC[p.config.cCompiler].props:
+    # `asm` inside a proc is meant to run where it stands; `volatile` keeps
+    # the C compiler from merging, hoisting or dropping it (bug #26649)
+    p.s(cpsStmts).add runtimeFormat("__asm__ __volatile__($1);$n", [s])
   else:
     p.s(cpsStmts).add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
 
@@ -1952,6 +1959,14 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
 proc genStmts(p: BProc, t: PNode) =
   var a: TLoc = default(TLoc)
 
+  if t.kind == nkSym and t.sym.kind in routineKinds and
+      t.sym.skipGenericOwner.kind != skModule:
+    # IC serializes the definition of an inner routine as a bare `nkSym`
+    # statement. Like the `nkProcDef` case of `expr` (#411), do not generate it
+    # here: lambda lifting leaves an unused inner routine untransformed, so its
+    # body can still name locals that now live in a closure environment (#26742).
+    # A used inner routine is generated at its use site instead.
+    return
   let isPush = p.config.hasHint(hintExtendedContext)
   if isPush: pushInfoContext(p.config, t.info)
   expr(p, t, a)

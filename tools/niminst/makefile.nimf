@@ -129,8 +129,16 @@ endif
 ifeq ($(ucpu),sparc64)
   mycpu = sparc64
 endif
-ifeq ($(ucpu),sun)
+ifneq ($(filter sun sun4u sun4v,$(ucpu)),)
   mycpu = sparc
+  ifneq ($(filter solaris illumos,$(myos)),)
+    bits := $(shell isainfo -b)
+    ifeq ($(bits),64)
+      mycpu = sparc64
+      CFLAGS += -m64
+      LDFLAGS += -m64
+    endif
+  endif
 endif
 ifeq ($(ucpu),ppc64le)
   mycpu = powerpc64el
@@ -183,10 +191,7 @@ endif
 ifeq ($(ucpu),armv8l)
   mycpu = arm
 endif
-ifeq ($(ucpu),aarch64)
-  mycpu = arm64
-endif
-ifeq ($(ucpu),arm64)
+ifneq ($(filter aarch64 arm64 armv8,$(ucpu)),)
   mycpu = arm64
 endif
 ifeq ($(ucpu),riscv64)

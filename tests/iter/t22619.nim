@@ -52,12 +52,8 @@ block:
 
   var numDestroy = 0
 
-  when defined(gcRefc):
-    proc `=destroy`(x: var Value) =
-      inc numDestroy
-  else:
-    proc `=destroy`(x: Value) =
-      inc numDestroy
+  proc `=destroy`(x: Value) =
+    inc numDestroy
 
   iterator iter(s: seq[Value]): int {.closure.} =
     # because it is used across yields, `s2` is lifted into the iterator's

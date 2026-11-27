@@ -31,7 +31,10 @@ proc nimLoadLibraryError(path: string) =
       cstderr.rawWrite(badExe)
     when defined(guiapp):
       # Because console output is not shown in GUI apps, display the error as a
-      # message box instead:
+      # message box instead. Declared here because system.nim includes this
+      # file before excpt.nim, which declares it at the top level too.
+      proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
+        header: "<windows.h>", nodecl.}
       var
         msg: array[1000, char]
         msgLeft = msg.len - 1 # leave (at least) one for nullchar

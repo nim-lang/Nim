@@ -183,6 +183,14 @@ case $ucpu in
     mycpu="amd64" ;;
   *sparc*|*sun* )
     mycpu="sparc"
+    if [ "$myos" = "solaris" ] || [ "$myos" = "illumos" ] ; then
+      bits=`isainfo -b`
+      if [ "$bits" = "64" ] ; then
+        mycpu="sparc64"
+        COMP_FLAGS="$COMP_FLAGS -m64"
+        LINK_FLAGS="$LINK_FLAGS -m64"
+      fi
+    fi
     if [ "$myos" = "linux" ] ; then
       if [ "$(getconf LONG_BIT)" = "64" ]; then
         mycpu="sparc64"
@@ -234,7 +242,7 @@ case $ucpu in
     ;;
   *alpha* )
     mycpu="alpha" ;;
-  *aarch64*|*arm64* )
+  *aarch64*|*arm64*|armv8 )
     mycpu="arm64" ;;
   *arm*|*armv6l*|*armv7l*|*armv8l* )
     mycpu="arm" ;;

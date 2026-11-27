@@ -103,6 +103,8 @@ type
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
     withinBlockLeaveActions*: int # complex to explain
+    strSyncs*: seq[Rope]      # `--strings:sso`: strings passed as `var openArray`
+                              # to the call being generated; see `flushStrSyncs`
     hcrGuardedBody*: PNode    # the body of a 'try' that wraps a module's
                               # statements; each gets its own HCR init guard
     sigConflicts*: CountTable[string]
@@ -125,6 +127,7 @@ type
 
   BModuleList* = ref object of RootObj
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Builder
+    dynLibExternalNames*: Table[ItemId, Rope] # import names shared across C modules
     icExtensionLoaders*: array['0'..'9', seq[string]]
     mapping*: Rope             # the generated mapping file (if requested)
     mods*: seq[BModule]     # list of all compiled modules
@@ -171,6 +174,7 @@ type
     cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
+    dynLibHandles*: seq[tuple[lib: PLib, name: Rope]]
     typeCache*: TypeCache     # cache the generated types
     typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
                               # would be ideal but for some reason enums
