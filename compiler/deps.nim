@@ -1095,6 +1095,7 @@ proc selectMainSemanticModules(c: DepContext) =
 proc semanticArgs(conf: ConfigRef): seq[string] =
   result = @["--icSemDir:" & conf.icSemDir.string,
              "--icMainSemDir:" & conf.icMainSemDir.string]
+  if conf.icBifLinks: result.add "--icBifLinks"
   for suffix in conf.icMainModules:
     result.add "--icMainModule:" & suffix
 
@@ -1179,7 +1180,7 @@ proc computeForwardedArgs(c: DepContext): seq[string] =
     "nimcache", "out", "o", "outdir", "usenimcache", "run", "r",
     "incremental", "ic", "symbolfiles", "genbif",
     "icproject", "icpreparsedconfig", "icconfigout", "icgroup",
-    "icsemdir", "icmainsemdir", "icmainmodule",
+    "icsemdir", "icmainsemdir", "icmainmodule", "icbiflinks",
     "icbackendstage", "icbackendmodule", "ismainmodule",
     "help", "h", "fullhelp", "version", "v", "advanced"]
   var positionalArgs = 0
@@ -2098,6 +2099,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       writeFile(activeSignature, signature)
     let configDir = cacheDir / "configs" / $secureHash(signature)
     let mainSuffix = moduleSuffix(projectFile, cast[seq[string]](conf.searchPaths))
+    when not defined(windows):
+      conf.icBifLinks = isDefined(conf, "icBifDedup")
     conf.icParsedDir = AbsoluteDir(cacheDir / "parsed")
     conf.icSemDir = AbsoluteDir(configDir / "sem")
     conf.icMainSemDir = AbsoluteDir(configDir / "sem" / "main" / mainSuffix)
@@ -2196,6 +2199,16 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         "precompiled config missing: " & conf.icPreparsedConfig)
       return
     let nifmake = findNifmake()
+    when not defined(windows):
+      if conf.icBifLinks:
+        if nifmake.len == 0:
+          rawMessage(conf, errGenerated, "icBifDedup requires Nim's link-aware nifmake")
+          return
+        let (output, exitCode) = execCmdEx(quoteShell(nifmake) & " --nimBifLinksSupport")
+        if exitCode != 0 or output.strip != "nim-bif-links-v1":
+          rawMessage(conf, errGenerated,
+            "icBifDedup requires the updated nifmake; rebuild Nim's tools with koch")
+          return
     # Build the per-module rules concurrently: nifmake fans out all commands at
     # each DAG depth via execProcesses (defaults to all cores). Cold builds are
     # otherwise serial (one child at a time) and leave the machine idle. An
