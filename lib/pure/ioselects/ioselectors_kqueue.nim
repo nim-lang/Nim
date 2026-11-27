@@ -318,8 +318,11 @@ proc registerSignal*[T](s: Selector[T], signal: int,
   discard sigemptyset(omask)
   discard sigaddset(nmask, cint(signal))
   blockSignals(nmask, omask)
-  # to be compatible with linux semantic we need to "eat" signals
-  posix.signal(cint(signal), SIG_IGN)
+  # to be compatible with linux semantic we need to "eat" signals.
+  # Not SIGCHLD: its default action already discards it, and an ignored
+  # SIGCHLD makes the kernel reap every child, so `waitpid` fails (bug #25649).
+  if signal != SIGCHLD:
+    posix.signal(cint(signal), SIG_IGN)
 
   modifyKQueue(s, signal.uint, EVFILT_SIGNAL, EV_ADD, 0, 0,
                cast[pointer](fdi))
