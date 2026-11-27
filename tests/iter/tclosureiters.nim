@@ -15,8 +15,8 @@ discard """
 7 7
 9 9
 0
-0
-0
+1
+2
 0
 1
 2
@@ -76,7 +76,7 @@ iterator take[T](it: iterator (): T, numToTake: int): T {.closure.} =
     yield x
     inc i
 
-# gives wrong reasult (3 times 0)
+# used to give the wrong result (3 times 0), see #12848
 for x in infinite.take(3):
   echo x
 

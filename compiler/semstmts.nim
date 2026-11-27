@@ -1300,7 +1300,12 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   n[^2] = semExprNoDeref(c, n[^2], iteratorFlags + {efWantIterator})
   var call = n[^2]
 
+  var prefix: PNode = nil
   if call.kind == nkStmtListExpr and (isTrivalStmtExpr(call) or (call.lastSon.kind in nkCallKinds and call.lastSon[0].sym.kind == skIterator)):
+    if not isTrivalStmtExpr(call):
+      # `for x in (a; it()): body` runs `a` before the loop (#12805):
+      prefix = newNodeI(nkStmtList, call.info)
+      for i in 0..<call.len-1: prefix.add call[i]
     call = call.lastSon
     n[^2] = call
   let isCallExpr = call.kind in nkCallKinds
@@ -1333,6 +1338,10 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   elif efInTypeof in flags:
     result.typ = result.lastSon.typ
   closeScope(c)
+  if prefix != nil:
+    prefix.add result
+    prefix.typ = result.typ
+    result = prefix
 
 proc sumTypeObject(t: PType): PType =
   ## The object type of the sum type `t`, seen through `var`, `ref`, etc.

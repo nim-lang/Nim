@@ -1432,7 +1432,9 @@ proc compatibleEffects*(formal, actual: PType): EffectsCompat =
 
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
-  result = t.kind in {tyTypeDesc, tyStatic, tyGenericParam}
+  result = t.kind in {tyTypeDesc, tyStatic, tyGenericParam} or
+    # a `varargs[typedesc]` parameter holds types only (#13317):
+    (t.kind in {tyVarargs, tyOpenArray} and t.elementType.kind == tyTypeDesc)
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true

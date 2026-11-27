@@ -15,6 +15,26 @@ import
 
 import std/strutils
 
+proc sameGenericConstraints(a, b: PSym): bool =
+  ## `proc p[T: int]` and `proc p[T: float]` are different overloads (#12787)
+  let ga = a.ast[genericParamsPos]
+  let gb = b.ast[genericParamsPos]
+  if ga.kind != nkGenericParams or gb.kind != nkGenericParams:
+    return ga.kind == gb.kind
+  if ga.len != gb.len: return false
+  result = true
+  for i in 0..<ga.len:
+    if ga[i].kind != nkSym or gb[i].kind != nkSym: continue
+    let ta = ga[i].sym.typ
+    let tb = gb[i].sym.typ
+    if ta == nil or tb == nil or ta.kind != tyGenericParam or tb.kind != tyGenericParam:
+      continue
+    if ta.genericParamHasConstraints != tb.genericParamHasConstraints:
+      return false
+    if ta.genericParamHasConstraints and
+        not sameType(ta.genericConstraint, tb.genericConstraint):
+      return false
+
 proc searchForProcAux(c: PContext, scope: PScope, fn: PSym): PSym =
   const flags = {ExactGenericParams, ExactTypeDescValues,
                  ExactConstraints, IgnoreCC}
@@ -31,6 +51,10 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym): PSym =
           localError(c.config, fn.info, message)
         return
       of paramsIncompatible:
+        if result.ast != nil and fn.ast != nil and
+            not sameGenericConstraints(result, fn):
+          result = nextIdentIter(it, scope.symbols)
+          continue
         localError(c.config, fn.info, "overloaded '$1' leads to ambiguous calls" % fn.name.s)
         return
       of paramsNotEqual:
