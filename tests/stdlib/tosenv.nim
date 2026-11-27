@@ -61,7 +61,9 @@ when not defined(js) and not defined(nimscript):
     import std/typedthreads
   block: # bug #18533
     var thr: Thread[void]
-    proc threadFunc {.thread.} = putEnv("foo", "fooVal2")
+    proc threadFunc {.thread.} =
+      try: putEnv("foo", "fooVal2")
+      except ValueError: raiseAssert "putEnv failed"
 
     putEnv("foo", "fooVal1")
     doAssert getEnv("foo") == "fooVal1"
