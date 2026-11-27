@@ -22,7 +22,7 @@ import
 
 import vtables
 import icprof
-import std/[strtabs, math, tables, intsets, strutils, packedsets]
+import std/[strtabs, math, tables, intsets, strutils, packedsets, hashes]
 
 when not defined(leanCompiler):
   import spawn

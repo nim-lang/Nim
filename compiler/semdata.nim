@@ -738,10 +738,10 @@ template addExport*(c: PContext; s: PSym) =
   addExport(c.graph, c.module, s)
 
 proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
-  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add inst
+  c.graph.addProcInst(s, inst)
 
 proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
-  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add inst
+  c.graph.addTypeInst(s, inst)
 
 proc sealRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:

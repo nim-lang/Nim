@@ -89,7 +89,7 @@ proc sameInstantiation(a, b: TInstantiation): bool =
 proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
   result = nil
-  for inst in procInstCacheItems(g, genericSym):
+  for inst in procInstCandidates(g, genericSym, entry):
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
@@ -118,7 +118,14 @@ proc genericCacheGetFromBindings(g: ModuleGraph; genericSym: PSym,
                                  pt: LayeredIdTable; id: CompilesId;
                                  module: PSym): PSym =
   result = nil
-  for inst in procInstCacheItems(g, genericSym):
+  # same set of keys as the snapshot `generateInstance` takes:
+  var keys: seq[ItemId] = @[]
+  var h: Hash = 0
+  for key, _ in pt.pairs:
+    if key notin keys:
+      keys.add key
+      h = h +% bindingHash(key, lookupById(pt, key))
+  for inst in procBindingCandidates(g, genericSym, h):
     if inst.sym != nil and inst.sym.itemId.module == module.position and
         (inst.compilesId == 0 or inst.compilesId == id) and
         sameBindingSnapshot(pt, inst):
