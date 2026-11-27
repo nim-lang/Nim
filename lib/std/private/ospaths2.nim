@@ -388,7 +388,7 @@ proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   let path = path.normalizePath
   let base = base.normalizePath
   let ret = relativePath(path, base)
-  result = path.len > 0 and not ret.startsWith ".."
+  result = path.len > 0 and not ret.isAbsolute and not ret.startsWith ".."
 
 proc parentDirPos(path: string): int =
   var q = 1
