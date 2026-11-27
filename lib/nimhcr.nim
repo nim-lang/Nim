@@ -156,9 +156,10 @@ batchable: false
 #     - in a non-reloadable part (the main binary) that call the function pointers
 #     - parameter passing/forwarding - how? use the same trampoline jumping?
 #     - extracting the dependencies for these stubs/proxies will be hard...
-# - changing memory layout of types: a global whose type layout changed stops
-#   the reload with a message (hcrRegisterGlobal compares the compiler's layout
-#   hash). Transferring the state to the new layout is still not supported.
+# - changing memory layout of types: a global or a threadvar whose type layout
+#   changed stops the reload with a message (hcrRegisterGlobal and
+#   hcrGetThreadVar compare the compiler's layout hash). Transferring the state
+#   to the new layout is still not supported.
 # - implement executeOnReload for global vars too - not just statements (and document!)
 # - cleanup at shutdown - freeing all globals
 # - fallback mechanism if the program crashes (the program should detect crashes
@@ -438,6 +439,22 @@ when defined(createNimHcr):
     # generic). The slot is handed out now and filled when the owner registers.
     return procSlot($module, $name)
 
+  proc layoutChanged(oldSize: int, oldKey: cstring, size: int, key: cstring): bool =
+    ## Whether the memory kept from before, laid out for the old type, does not
+    ## fit the type the new code asks for. The compiler's layout hash is "" for
+    ## the runtime's own globals, whose size may change.
+    oldKey.len > 0 and (oldSize != size or oldKey != key)
+
+  proc stopForChangedLayout(kind, module, name: string,
+                            oldSize, size: int) {.noreturn.} =
+    ## The new code would read the memory with the new layout. Not an
+    ## exception: the reload has already started and its state cannot be
+    ## handed back.
+    stderr.writeLine "hot code reloading: the type of ", kind, " '", name,
+      "' in module '", module, "' changed (size ", oldSize, " -> ", size,
+      "); reloading cannot keep its value, restart the program"
+    quit(QuitFailure)
+
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
                           size: Natural,
@@ -457,14 +474,8 @@ when defined(createNimHcr):
 
     modules[module].globals.withValue(name, global):
       trace "    update global: ", name
-      if global.typeKey.len > 0 and (global.size != size or global.typeKey != typeKey):
-        # The memory kept from before was laid out for the old type; the new
-        # code would read it with the new layout. Not an exception: the reload
-        # has already started and its state cannot be handed back.
-        stderr.writeLine "hot code reloading: the type of global '", name,
-          "' in module '", module, "' changed (size ", global.size, " -> ", size,
-          "); reloading cannot keep its value, restart the program"
-        quit(QuitFailure)
+      if layoutChanged(global.size, cstring global.typeKey, size, cstring typeKey):
+        stopForChangedLayout("global", module, name, global.size, size)
       outPtr[] = global.p
       global.gen = generation
       global.markerProc = gcMarker
@@ -493,6 +504,8 @@ when defined(createNimHcr):
       next: ptr ThreadVarSlot
       data: pointer
       key: cstring # "module" & '\0' & "name", owned by the slot
+      size: int
+      typeKey: cstring # the compiler's hash of the type's layout, owned by the slot
 
   proc c_calloc(n, size: csize_t): pointer {.importc: "calloc", header: "<stdlib.h>".}
   proc c_free(p: pointer) {.importc: "free", header: "<stdlib.h>".}
@@ -507,6 +520,7 @@ when defined(createNimHcr):
       let next = slot.next
       c_free(slot.data)
       c_free(slot.key)
+      c_free(slot.typeKey)
       c_free(slot)
       slot = next
 
@@ -537,15 +551,20 @@ when defined(createNimHcr):
     template setFirstSlot(slot: pointer) =
       doAssert pthread_setspecific(threadVarsKey, slot) == 0, "pthread_setspecific failed"
 
-  proc hcrGetThreadVar*(module: cstring, name: cstring, size: int): pointer {.nimhcr.} =
+  proc hcrGetThreadVar*(module: cstring, name: cstring, size: int,
+                        typeKey: cstring): pointer {.nimhcr.} =
     ## The slot of the calling thread for the threadvar `name` of `module`,
-    ## `size` bytes made zero on first use.
+    ## `size` bytes made zero on first use. A slot kept from before a reload
+    ## was laid out for the old type: like a global, it stops the program when
+    ## the layout `typeKey` stands for is not the same.
     let keyLen = module.len + 1 + name.len + 1
     var slot = cast[ptr ThreadVarSlot](firstSlot())
     while slot != nil:
       if slot.key.len == module.len and
           c_memcmp(slot.key, module, csize_t(module.len)) == 0 and
           c_memcmp(addr slot.key[module.len + 1], name, csize_t(name.len + 1)) == 0:
+        if layoutChanged(slot.size, slot.typeKey, size, typeKey):
+          stopForChangedLayout("threadvar", $module, $name, slot.size, size)
         return slot.data
       slot = slot.next
     trace "  new threadvar slot: ", module.sanitize, " ", name
@@ -553,9 +572,12 @@ when defined(createNimHcr):
     doAssert slot != nil, "out of memory"
     slot.data = c_calloc(1, csize_t(max(size, 1)))
     slot.key = cast[cstring](c_calloc(1, csize_t(keyLen)))
-    doAssert slot.data != nil and slot.key != nil, "out of memory"
+    slot.typeKey = cast[cstring](c_calloc(1, csize_t(typeKey.len + 1)))
+    doAssert slot.data != nil and slot.key != nil and slot.typeKey != nil, "out of memory"
     copyMem(slot.key, module, module.len)
     copyMem(addr slot.key[module.len + 1], name, name.len)
+    copyMem(slot.typeKey, typeKey, typeKey.len)
+    slot.size = size
     slot.next = cast[ptr ThreadVarSlot](firstSlot())
     setFirstSlot(slot)
     return slot.data
@@ -835,7 +857,8 @@ elif defined(hotcodereloading) or defined(testNimHcr):
                             outPtr: ptr pointer): bool {.nimhcr.}
     proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
 
-    proc hcrGetThreadVar*(module: cstring, name: cstring, size: int): pointer {.nimhcr.}
+    proc hcrGetThreadVar*(module: cstring, name: cstring, size: int,
+                          typeKey: cstring): pointer {.nimhcr.}
 
     proc hcrInit*(moduleList: ptr pointer,
                   main, sys: cstring,
