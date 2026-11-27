@@ -6,6 +6,7 @@ try   OKAY: v=[1234567890] body=[ok:1234567890]
 if    OKAY: v=[1234567890] body=[ok:1234567890]
 case  OKAY: v=[1234567890] body=[ok:1234567890]
 while OKAY: v=[1234567890] body=[ok:1234567890]
+7 8 9
 '''
 """
 
@@ -72,3 +73,24 @@ tryTest("try  ")
 ifTest("if   ")
 caseTest("case ")
 whileTest("while")
+
+# a variable must not become a cursor of a location that a closure mutates
+# through its environment
+
+block closureEnv:
+  type
+    Chunk = object
+      bytes: seq[byte]
+
+  proc main =
+    var items = @[Chunk(bytes: @[7'u8, 8, 9]), Chunk(bytes: @[5'u8])]
+    let take = proc (a, b: int): seq[byte] =
+      var next = items[0]
+      items.delete(0)
+      let filler = @[42'u8, 42, 42]
+      doAssert filler.len == 3
+      result = next.bytes
+    let got = take(1, 2)
+    echo got[0], " ", got[1], " ", got[2]
+
+  main()

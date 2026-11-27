@@ -1615,6 +1615,7 @@ proc getStrOrChar*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
+  of nkNilLit: result = "" # e.g. `$cstring(nil)` folds like `getStr`
   else:
     raiseRecoverableError("cannot extract string from invalid AST node")
     #doAssert false, "getStrOrChar"

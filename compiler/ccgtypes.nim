@@ -129,7 +129,14 @@ proc fillBackendName(m: BModule; s: PSym) =
         result.add mangleProcNameExt(m.g.graph, s)
     if m.hcrOn:
       result.add '_'
-      result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
+      if m.config.cmd == cmdNifC:
+        # The per-module backend's names are unique in the whole program
+        # already, and every `cg` process names the routines it meets in its
+        # own order: counting signature collisions would give the owner and a
+        # caller of the same routine different names.
+        result.add(idOrSig(s, m.module.name.s.mangle, m.config))
+      else:
+        result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts, m.config))
     backendEnsureMutable s
     if m.config.cmd == cmdNifC:
       # mark the name so the cnif artifact writer can turn every occurrence
@@ -1367,6 +1374,9 @@ proc genProcHeader(m: BModule; prc: PSym; result: var Builder; visibility: var D
   else:
     let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
     result.add runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
+    if asPtr:
+      # a variable, as `addProcVar` above
+      result.addLineEnd(";")
 
 
 # ------------------ type info generation -------------------------------------
@@ -2142,8 +2152,12 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   if result != "":
     return prefixTI(result)
 
+  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
+  # Independently built HCR modules each keep their RTTI in their own DLL
+  # namespace. A batch is transient and must not affect where they find it.
+  let shareMarker = not (perModuleCg and m.hcrOn)
   let marker = m.g.typeInfoMarkerV2.getOrDefault(sig)
-  if marker.str != "":
+  if shareMarker and marker.str != "":
     cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", marker.str, marker.owner)
     # also store in local type section:
@@ -2159,7 +2173,6 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
   # owner by the merge stage). The owner-routing below would instead push the
   # definition into the owner module's *unwritten* backend module (discarded in
   # this process) and emit only an extern here, leaving the symbol undefined.
-  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
   if not perModuleCg and owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     # make sure the type info is created in the owner module
     discard genTypeInfoV2(m.g.mods[owner], origType, info)
@@ -2168,7 +2181,7 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
     declareNimType(m, "TNimTypeV2", result, owner)
     return prefixTI(result)
 
-  m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
+  m.g.typeInfoMarkerV2[sig] = (str: result, owner: m.module.position.int32)
   if m.compileToCpp or m.hcrOn:
     genTypeInfoV2OldImpl(m, t, origType, result, info)
   else:
@@ -2297,8 +2310,12 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   if result != "":
     return prefixTI(result)
 
+  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
+  # Independently built HCR modules each keep their RTTI in their own DLL
+  # namespace. A batch is transient and must not affect where they find it.
+  let shareMarker = not (perModuleCg and m.hcrOn)
   let marker = m.g.typeInfoMarker.getOrDefault(sig)
-  if marker.str != "":
+  if shareMarker and marker.str != "":
     when defined(icDbgRefc):
       if "catchableerror" in marker.str:
         echo "[icNti] ", marker.str, " in mod=", m.module.name.s,
@@ -2336,7 +2353,6 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   # module (discarded in this process) and emit only an extern here, leaving the
   # symbol undefined at link — the refc `NTI*` undefined-reference bug. (V2 got
   # this gate in 8e0dd4bfb; V1, only reached under `--mm:refc`, was missed.)
-  let perModuleCg = m.config.cmd == cmdNifC and m.config.icBackendStage == "cg"
   if not perModuleCg and owner != m.module.position and myModuleOpenForCodegen(m, FileIndex owner):
     dbgNti "extern:ownerRouted"
     # make sure the type info is created in the owner module

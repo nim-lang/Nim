@@ -1341,6 +1341,19 @@ proc genStoreValue(c: PCtx; loc: var Loc; value: PNode) =
     c.freeTemp(tmp)
     c.freeLoc(keep)
     c.freeLoc(loc)
+  elif loc.typ != nil and loc.typ.skipTypes(abstractInst).kind == tyCstring and
+      value.kind == nkStringToCString:
+    # A cstring assigned to VM-owned storage is a raw pointer into the payload
+    # of the string it was converted from, and the VM recycles that payload as
+    # soon as the register is written again. Retain it: `opcRetainCStr` marks
+    # the payload immutable, which keeps the bytes (and every cstring pointing
+    # at them) alive for the whole VM run. Zero copy, no allocation, and a
+    # conversion that is only used transiently (e.g. `cast[int](s.cstring)`)
+    # is unaffected, so payload recycling still works.
+    let tmp = c.genx(value)
+    c.gABC(value, opcRetainCStr, tmp, 0, 0)
+    storeLoc(c, value, loc, tmp)
+    c.freeTemp(tmp)
   elif loc.typ != nil and loc.typ.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs} and
       value.typ != nil and
       value.typ.skipTypes(abstractInst+{tySink}).kind notin {tyOpenArray, tyVarargs}:

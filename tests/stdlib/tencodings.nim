@@ -1,5 +1,5 @@
 discard """
-  matrix: "--mm:refc; --mm:orc"
+  matrix: "--mm:refc; --mm:orc; --mm:orc --strings:sso"
 """
 
 import std/encodings
@@ -159,3 +159,17 @@ block: # stateless encodings keep working when the output buffer grows
     euc.add "\xA4\xA2"
     expected.add "あ"
   doAssert convert(euc, "UTF-8", "EUC-JP") == expected
+
+block: # bug #26734; results written via raw pointers must compare equal under --strings:sso
+  let want = "abcdefghijklmno"
+  let got = convert(want, "UTF-8", "ISO-8859-1")
+  doAssert got.len == want.len
+  doAssert got == want
+  doAssert cmp(got, want) == 0
+  doAssert convert("caf\xE9 au lait, s'il vous pla\xEEt", "UTF-8", "ISO-8859-1") ==
+    "café au lait, s'il vous plaît"
+  for n in [7, 8, 14, 15, 16, 30, 100]:
+    let s = newString(n)
+    var x = s
+    for i in 0 ..< n: x[i] = 'x'
+    doAssert convert(x, "UTF-8", "ISO-8859-1") == x

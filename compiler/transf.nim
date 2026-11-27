@@ -1181,14 +1181,53 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
     else:
       result = n
 
-proc transformDerefBlock(c: PTransf, n: PNode): PNode =
-  # We transform (block: x)[] to (block: x[])
-  let e0 = n[0]
-  result = shallowCopy(e0)
-  result.typ = n.typ
-  for i in 0 ..< e0.len - 1:
-    result[i] = e0[i]
-  result[e0.len-1] = newTreeIT(nkHiddenDeref, n.info, n.typ, e0[e0.len-1])
+const
+  derefLeavesKinds = {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr,
+                      nkCaseStmt, nkTryStmt, nkPragmaBlock}
+
+proc isViewConstruct(n: PNode): bool {.inline.} =
+  ## An expression-based control flow construct of type ``var T``/``lent T``.
+  ## Not ``ref``/``ptr``: dereferencing those yields a location, pushing the
+  ## deref into the leaves would turn the construct into a copy.
+  n.kind in derefLeavesKinds and n.typ != nil and
+    n.typ.kind in {tyVar, tyLent}
+
+proc derefLeaves(n: PNode; typ: PType): PNode =
+  ## Turns ``deref(construct)`` of an expression-based control flow construct
+  ## into ``construct`` of type ``T`` with ``deref(leaf)`` for every leaf
+  ## expression. Dereferencing the construct as a whole happens too late: a
+  ## borrowed leaf can outlive what it borrows from, for example a temporary
+  ## of the branch or a location that a ``defer`` frees (bugs #20107, #21540,
+  ## #26567). Every later pass (closure iterators, injectdestructors) then
+  ## sees an ordinary construct whose leaves are copied.
+  if n.typ == nil or isEmptyType(n.typ) or n.typ.kind == tyTyped:
+    # a branch that does not produce a value ('raise', 'return' etc.)
+    return n
+  case n.kind
+  of nkStmtListExpr, nkStmtList, nkBlockExpr, nkBlockStmt, nkPragmaBlock:
+    result = shallowCopy(n)
+    for i in 0..<n.len-1: result[i] = n[i]
+    result[^1] = derefLeaves(n[^1], typ)
+    result.typ = typ
+  of nkIfExpr, nkIfStmt, nkCaseStmt, nkTryStmt:
+    result = shallowCopy(n)
+    for i in 0..<n.len:
+      let it = n[i]
+      if n.kind == nkCaseStmt and i == 0:
+        result[i] = it
+      elif n.kind == nkTryStmt and i == 0:
+        result[i] = derefLeaves(it, typ)
+      elif it.kind in {nkElifBranch, nkElifExpr, nkElse, nkElseExpr,
+                       nkOfBranch, nkExceptBranch}:
+        let b = shallowCopy(it)
+        for j in 0..<it.len-1: b[j] = it[j]
+        b[^1] = derefLeaves(it[^1], typ)
+        result[i] = b
+      else:
+        result[i] = it
+    result.typ = typ
+  else:
+    result = newTreeIT(nkHiddenDeref, n.info, typ, n)
 
 proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
   when false:
@@ -1258,14 +1297,23 @@ proc transform(c: PTransf, n: PNode, noConstFold = false): PNode =
   of nkCallKinds:
     result = transformCall(c, n)
   of nkAddr, nkHiddenAddr:
-    result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref}, isAddr = true)
+    if n[0].kind in {nkDerefExpr, nkHiddenDeref} and
+        isViewConstruct(n[0][0]) and
+        n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+      # addr(deref(construct)) --> construct; cancel the pair before
+      # `derefLeaves` could push the deref into the leaves:
+      let e = transform(c, n[0][0])
+      result = copyNode(e)
+      for it in e: result.add it
+      result.typ = n.typ
+    else:
+      result = transformAddrDeref(c, n, {nkDerefExpr, nkHiddenDeref}, isAddr = true)
   of nkDerefExpr:
     result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenDeref:
-    if n[0].kind in {nkBlockExpr, nkBlockStmt}:
-      # bug #20107 bug #21540. Watch out to not deref the pointer too late.
-      let e = transformDerefBlock(c, n)
-      result = transformBlock(c, e)
+    if isViewConstruct(n[0]):
+      # Watch out to not deref the pointer too late, see `derefLeaves`:
+      result = transform(c, derefLeaves(n[0], n.typ))
     else:
       result = transformAddrDeref(c, n, {nkAddr, nkHiddenAddr})
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:

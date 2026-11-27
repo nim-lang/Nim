@@ -343,6 +343,17 @@ template main() =
       doAssert "abcd".find("bc", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=2, last=last) == -1
 
+    block: # bug #26541: `last` beyond `s.high` is clamped, no IndexDefect
+      let s = "ABC0DEF1111GHGH"
+      doAssert s.len == 15
+      doAssert s.find("ZZ", 0, s.len) == -1
+      doAssert s.find("ZZ", 0, s.len + 5) == -1
+      doAssert s.find('Z', 0, s.len) == -1
+      doAssert s.find({'Z'}, 0, s.len) == -1
+      doAssert s.find('\0', 0, s.len) == -1
+      doAssert s.find("GH", 0, s.len + 5) == 11
+      doAssert s.find("HGH", 0, s.len + 5) == 12
+
   block: # rfind
     doAssert "0123456789ABCDEFGAH".rfind('A') == 17
     doAssert "0123456789ABCDEFGAH".rfind('A', last=13) == 10

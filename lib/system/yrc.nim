@@ -998,10 +998,11 @@ proc releasePending(all = false) =
       freeBatch(b)
       {.assume: i < gPendingLen and gPendingLen <= YrcMaxPending.} # freeBatch leaves gPending alone
       # keep the entries in park order; rotate the emptied buffers to the end
+      let last = gPendingLen - 1 # a store to `gPending` is a store to a global
       let done = gPending[i]
-      for k in i ..< gPendingLen - 1:
+      for k in i ..< last:
         gPending[k] = gPending[k + 1]
-      gPending[gPendingLen - 1] = done
+      gPending[last] = done
       dec gPendingLen
     else:
       inc i
@@ -1657,13 +1658,14 @@ proc startCollection(minRoots, keepBelow: int; slice: var CellSeq[Cell];
       adoptOrphans()
     else:
       {.assume: slot < ParSlots and gParSlots <= ParSlots.} # a free slot in play, or the new one
+      let parSlots = gParSlots # the stores to the globals below leave it alone
       gTagCounter = (gTagCounter +% 1) and int64(epochBase - 1)  # tags below the stamp namespace
       if gTagCounter == 0: gTagCounter = 1
       gCtx.tag = gTagCounter
       gCtx.slot = slot
       gCtx.epochStamp = epochStamp(atomicLoadN(addr gEpoch, ATOMIC_RELAXED))
       var othersActive = false
-      for sl in 0 ..< gParSlots:
+      for sl in 0 ..< parSlots:
         if sl != slot and atomicLoadN(addr gActiveTags[sl], ATOMIC_RELAXED) != 0:
           othersActive = true
       gCtx.amSolo = not othersActive
@@ -1866,7 +1868,8 @@ proc releaseCollectorScratch() =
   deinit(gTraceBuf)
   deinit(gFreeBuf)
   {.assume: 0 <= gPendingLen.}
-  for i in gPendingLen ..< YrcMaxPending:  # only the empty entries
+  let firstEmpty = gPendingLen # `deinit` is a call that leaves it alone
+  for i in firstEmpty ..< YrcMaxPending:  # only the empty entries
     deinit(gPending[i].cells)
     deinit(gPending[i].watch)
   deinit(gCap.recs)

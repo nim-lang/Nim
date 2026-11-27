@@ -1628,7 +1628,7 @@ else:
 proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
   ## Provides access to the compiler's instantiation stack line information
-  ## of a template.
+  ## of a template. Set `fullPaths` to `true` to get an absolute filename.
   ##
   ## While similar to the `caller info`:idx: of other languages, it is determined
   ## at compile time.
