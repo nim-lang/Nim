@@ -48,6 +48,10 @@ import os
 var a: File
 echo repr a
 
+# bug #18355
+doAssert repr(stdout) == $typeof(stdout) & "()"
+doAssert repr((file: stdout)) == "(file: " & $typeof(stdout) & "())"
+
 # bug 13872
 
 echo repr(2'u16)

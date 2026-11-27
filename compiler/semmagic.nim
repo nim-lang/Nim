@@ -239,6 +239,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(toInt128(ord(types.canFormAcycle(c.graph, operand))), traitCall, c.idgen, c.graph)
   of "hasDefaultValue":
     result = newIntNodeT(toInt128(ord(not operand.requiresInit)), traitCall, c.idgen, c.graph)
+  of "isIncompleteStruct":
+    let cond = tfIncompleteStruct in operand.skipTypes(abstractInst).flags
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.idgen, c.graph)
   of "hasNonZeroDefault":
     # true if `default(T)` is not the all-zero bit pattern (field default values)
     let cond = defaultNodeField(c, traitCall[1], operand, false) != nil

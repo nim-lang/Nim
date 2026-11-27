@@ -12,6 +12,11 @@ proc distinctBase(T: typedesc, recursive: static bool = true): typedesc {.magic:
 proc rangeBase(T: typedesc): typedesc {.magic: "TypeTrait".}
   # skip one level of range; return the base type of a range type
 
+when defined(nimHasIncompleteStructTrait):
+  proc isIncompleteStruct(T: typedesc): bool {.magic: "TypeTrait".}
+else:
+  template isIncompleteStruct(T: typedesc): bool = false
+
 proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
 template dollarAlias(T: typedesc) =
@@ -161,7 +166,10 @@ proc repr*[T: tuple|object](x: T): string {.noSideEffect, raises: [].} =
 
 proc repr*[T](x: ref T | ptr T): string {.noSideEffect, raises: [].} =
   if isNil(x): return "nil"
-  when T is object:
+  when isIncompleteStruct(T):
+    # An opaque foreign struct cannot be passed by value.
+    result = $typeof(x) & "()"
+  elif T is object:
     result = $typeof(x)
     reprObject(result, x[])
   else:
