@@ -303,8 +303,8 @@ when (NimMajor, NimMinor) >= (1, 3) or not defined(js):
         if readBytes == 0:
           break
         let prevLen = result.len
-        result.setLen(prevLen + readBytes)
-        copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+        copyMem(beginStore(result, prevLen + readBytes, prevLen), addr(buffer[0]), readBytes)
+        endStore(result)
         if readBytes < bufferSize:
           break
 
@@ -949,7 +949,8 @@ proc readStrPrivate(s: Stream, length: int, str: var string) =
     when defined(js):
       L = readData(s, addr(str), length)
     else:
-      L = readData(s, cstring(str), length)
+      L = readData(s, beginStore(str, len(str)), length)
+      endStore(str)
   if L != len(str): setLen(str, L)
 
 proc readStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =
@@ -975,7 +976,8 @@ proc peekStrPrivate(s: Stream, length: int, str: var string) =
   when defined(js):
     let L = peekData(s, addr(str), length)
   else:
-    let L = peekData(s, cstring(str), length)
+    let L = peekData(s, beginStore(str, len(str)), length)
+    endStore(str)
   if L != len(str): setLen(str, L)
 
 proc peekStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =

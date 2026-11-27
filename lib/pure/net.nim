@@ -406,6 +406,9 @@ proc parseIPv6Address(addressStr: string): IpAddress =
       separatorValid = false
       break
     elif c in strutils.HexDigits:
+      if i - currentGroupStart >= 4:
+        raise newException(ValueError,
+          "Invalid IP Address. A group consists of more than 4 hexadecimal digits")
       if c in strutils.Digits: # Normal digit
         currentShort = (currentShort shl 4) + cast[uint32](ord(c) - ord('0'))
       elif c >= 'a' and c <= 'f': # Lower case hex
@@ -1527,12 +1530,13 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ## within the time specified a TimeoutError exception will be raised.
   ##
   ## .. warning:: Only the `SafeDisconn` flag is currently supported.
-  data.setLen(size)
+  let buf = beginStore(data, size)
   result =
     if timeout == -1:
-      recv(socket, cstring(data), size)
+      recv(socket, buf, size)
     else:
-      recv(socket, cstring(data), size, timeout)
+      recv(socket, buf, size, timeout)
+  endStore(data)
   if result < 0:
     data.setLen(0)
     let lastError = getSocketError(socket)
@@ -1681,8 +1685,9 @@ proc recvFrom*[T: string | IpAddress](socket: Socket, data: var string, length: 
   ##   function will make no effort to return it.
   template adaptRecvFromToDomain(sockAddress: untyped, domain: Domain) =
     var addrLen = SockLen(sizeof(sockAddress))
-    result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
+    result = recvfrom(socket.fd, cast[cstring](beginStore(data, data.len)), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+    endStore(data)
 
     if result != -1:
       data.setLen(result)
@@ -1973,7 +1978,7 @@ proc `$`*(address: IpAddress): string =
         var word: uint16 = (cast[uint16](address.address_v6[i*2])) shl 8
         word = word or cast[uint16](address.address_v6[i*2+1])
 
-        if biggestZeroCount != 0 and # Check if group is in skip group
+        if biggestZeroCount > 1 and # Check if group is in skip group
           (i >= biggestZeroStart and i < (biggestZeroStart + biggestZeroCount)):
           if i == biggestZeroStart: # skip start
             result.add("::")

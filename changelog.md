@@ -80,9 +80,30 @@ parameter and result types, not just their source-level shape. Use
   Windows. Before, the check was skipped there because `X509_check_host` was
   imported from the wrong DLL (libssl instead of libcrypto).
 
+- With `--mm:arc` and `--mm:orc`, a variable of a nested scope at module level
+  that a routine declared in that scope names (a closure, for example) is now
+  destroyed at the end of the program instead of at the end of the scope.
+  Before, the routine read freed memory once the scope had ended. Other
+  variables of the scope are destroyed with the scope as before.
+
+
 ## Standard library additions and changes
 
 [//]: # "Additions:"
+
+- On Windows, `osproc.startProcess` now raises `OSError` when `command` is a
+  `.bat` or `.cmd` file and an argument contains a character that `cmd.exe`
+  would interpret (``& | < > ^ % ! "`` or a line break). Previously such
+  arguments allowed command injection (the "BatBadBut" issue, CVE-2024-24576).
+
+- `httpclient.newHttpClient` and `newAsyncHttpClient` accept a `maxBodySize`
+  parameter (also settable as the `maxBodySize` field). A response whose body
+  exceeds it raises `ProtocolError`, which keeps a hostile server from making
+  the client buffer an unbounded body. The default `-1` means no limit.
+
+- `httpclient` now rejects header names that are not RFC 9110 tokens (for
+  example names containing `:`, spaces or control characters) with
+  `ValueError` instead of sending a malformed header line.
 
 - Added `system.readRawDataStable`, a companion to `readRawData` that returns a
   raw `ptr UncheckedArray[char]` into a string's character data which stays valid
@@ -143,6 +164,10 @@ parameter and result types, not just their source-level shape. Use
 - `min`, `max`, and `sequtils`' `minIndex`, `maxIndex` and `minmax` for `openArray`s now accept a comparison function.
 - `system.substr` implementation now uses `copymem` (wrapped C `memcpy`) for copying data, if available at compilation.
 - `system.newStringUninit` is now considered free of side-effects allowing it to be used with `--experimental:strictFuncs`.
+- `xmlparser.parseXml` and `xmlparser.loadXml` no longer have the effect `Exception`;
+  they raise `XmlError`, `IOError`, `OSError` and `ValueError`.
+- `htmlparser.parseHtml` and `htmlparser.loadHtml` no longer have the effect
+  `Exception`; they raise `IOError`, `OSError` and `ValueError`.
 - `os.moveFile`, `os.copyFileWithPermissions` and `os.copyDirWithPermissions`
   no longer have the effect `Exception`; they raise `OSError` and `IOError`.
 - `dynlib.loadLibPattern` and `dynlib.checkedSymAddr` no longer have the
@@ -253,6 +278,18 @@ parameter and result types, not just their source-level shape. Use
 
 ## Compiler changes
 
+- The new switch `--reportLargeStackObjects:N` makes the C/C++ backends report
+  every local variable or compiler temporary that occupies at least `N` bytes
+  of stack space, via the new warning `LargeStackObject`. Combined with
+  `--warningAsError:LargeStackObject` it turns an accidental stack copy of a
+  huge object into a compile error.
+
+- Hot code reloading no longer keeps a global variable's memory when the
+  global's type changed: the old memory was read with the new layout. Such a
+  reload now stops the program with a message naming the global.
+
+- Hot code reloading works on Linux on arm64 with glibc; before, it was
+  limited to musl there and the HCR runtime did not compile.
 - The new switch `--compileTime:restricted` limits what compiling a project
   can do: compile-time code runs only the command lines given with
   `--staticExecWhitelist:"<command line>"`, reads only below the project, `--path`,
@@ -289,11 +326,25 @@ parameter and result types, not just their source-level shape. Use
   to dispatch before; `std/logging` works with it now. A thread-local
   variable keeps its value, for each thread, when its module is reloaded.
 
+- A new parser warning, `NotCmp`, reports `not` as the left operand of a
+  comparison: `not a == b` is `(not a) == b`, which for an integer `a`
+  compares its bitwise complement. The meaning of the code does not change;
+  adding parentheses silences the warning.
+
+- The pragmas `compile`, `link`, `passC`, `passL` and `localPassC` act on the
+  whole module, so the compiler now rejects them inside a routine with an error
+  that says so. Before, `localPassC` there stopped a compiler built with
+  assertions, and the others were accepted. Move the pragma to module level.
+
 ## Tool changes
 
 - Added `--raw` flag when generating JSON docs to not render markup.
 - Added `--stdinfile` flag to name of the file used when running program from stdin (defaults to `stdinfile.nim`)
 - Added `--styleCheck:warning` flag to treat style check violations as warnings.
+- `nim ic` shows a single `[NN%]` progress line (frontend 0..50%, backend
+  51..100%, ending in `[100%] done`) instead of the per-module `.` and `CC:`
+  output when stdout is a terminal and `--verbosity` is 1 (the default).
+  Warnings and errors are still shown.
 
 ## Documentation changes
 

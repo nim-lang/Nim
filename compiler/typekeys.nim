@@ -86,7 +86,7 @@ proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
       tmp
 
     let owner = forceLoaded(s.ownerFieldImpl)
-    let it =
+    var it =
       if s.kindImpl == skModule:
         s
       elif s.kindImpl in skProcKinds and sfFromGeneric in s.flagsImpl and
@@ -94,6 +94,14 @@ proc symKey(c: var Context; s: PSym; conf: ConfigRef) =
         forceLoaded(owner.ownerFieldImpl)
       else:
         owner
+    if s.kindImpl == skType:
+      # A type declared inside a routine is owned by the routine, not the
+      # module. `disamb` only tells apart the types of one module, so without
+      # the module two modules' proc-local `type Level = object` were both
+      # `Level.0.`: one `seq[Level]` got the other's `=destroy` (incompatible
+      # argument in the C code).
+      while it != nil and it.kindImpl != skModule:
+        it = forceLoaded(it.ownerFieldImpl)
     if it != nil and it.kindImpl == skModule:
       name.add '.'
       name.add modname(it, conf)
@@ -243,7 +251,17 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
     # the alias to its base type.
     maybeImported(c, t.symImpl, conf)
     c.typeKey t.skipModifierB, flags, conf
-  of tySink, tyUserTypeClasses, tyInferred:
+  of tyUserTypeClass:
+    # The last son of an unbound concept is its `candidateTypeSlot`, a tyAlias
+    # that sigmatch overwrites with whatever type is currently being matched.
+    # That is transient match state, not identity, and it can point back at
+    # the concept itself (matching `C` against `var C` while ranking
+    # overloads), so following it recursed forever (#26740). Key the concept
+    # by its symbol instead.
+    withTree c.m, toNifTag(t.kind):
+      if t.symImpl != nil: c.symKey(t.symImpl, conf)
+      else: c.treeKey(t.nImpl, {}, conf)
+  of tySink, tyUserTypeClassInst, tyInferred:
     c.typeKey t.skipModifierB, flags, conf
   of tyOwned:
     if CoConsiderOwned in flags:

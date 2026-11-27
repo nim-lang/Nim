@@ -1879,6 +1879,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             #echo "came here for ", typeToString(r)
             r.incl tfRetType
         r = skipIntLit(r, c.idgen)
+        if isType and kind == skProc and r.kind in {tyVar, tyLent} and
+            tfVarIsPtr notin r.flags:
+          # A procedure that returns a view through 'result' returns a pointer
+          # in C++ (see `asgnToResultVar`); the type of its values must agree
+          # so that a proc can be passed where this type is expected (#25870).
+          if r.state == Sealed: r = copyType(r, c.idgen, r.owner)
+          r.incl tfVarIsPtr
         if kind == skIterator:
           # see tchainediterators
           # in cases like iterator foo(it: iterator): typeof(it)
@@ -2301,6 +2308,12 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
   result.incl tfHasStatic
 
 proc semTypeOfImpl(c: PContext; n: PNode): PNode =
+  # Names declared inside `typeof` belong to the typeof, whichever way it is
+  # reached: `semMagic.semTypeOf` (also for `typeof` in a type section, which
+  # `semTypeNode` sends to `semTypeExpr`) or `semTypeOf2`. `defer` closes the
+  # scope also when `compiles` unwinds through here.
+  openScope(c)
+  defer: closeScope(c)
   var m = BiggestInt 1 # typeOfIter
   var modifierMode = BiggestInt 0 # CompatibleTypeModifiers
   type
@@ -2370,9 +2383,7 @@ proc semTypeOf(c: PContext; n: PNode; prev: PType): PType =
   fixupTypeOf(c, prev, result)
 
 proc semTypeOf2(c: PContext; n: PNode; prev: PType): PType =
-  openScope(c)
   let ex = semTypeOfImpl(c, n)
-  closeScope(c)
   result = ex.typ
   if result.kind == tyFromExpr:
     result.incl tfNonConstExpr

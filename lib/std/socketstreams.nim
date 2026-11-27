@@ -110,7 +110,8 @@ proc rsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
   var s = ReadSocketStream(s)
   result = slice.b + 1 - slice.a
   if result > 0:
-    result = s.rsReadData(buffer[slice.a].addr, result)
+    result = s.rsReadData(beginStore(buffer, buffer.len, slice.a), result)
+    endStore(buffer)
     inc(s.pos, result)
   else:
     result = 0

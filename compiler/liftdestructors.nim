@@ -794,7 +794,14 @@ proc cyclicType*(g: ModuleGraph, t: PType): bool =
     result = b.kind == tyRef and types.canFormAcycle(g, b.elementType)
   else: result = false
 
-proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+proc whenNimvm(c: var TLiftCtx; vmBranch, nativeBranch: PNode): PNode =
+  ## `when nimvm: vmBranch else: nativeBranch`
+  result = newNodeI(nkWhenStmt, c.info)
+  result.flags.incl nfLL
+  result.add newTree(nkElifBranch, newSymNode(getSysSym(c.g, c.info, "nimvm")), vmBranch)
+  result.add newTree(nkElse, nativeBranch)
+
+proc atomicRefOp(c: var TLiftCtx; t: PType; outerBody, x, y: PNode) =
   #[ bug #15753 is really subtle. Usually the classical write barrier for reference
   counting looks like this::
 
@@ -844,7 +851,14 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   # that avoids cycles at compile time avoid the collector entirely at run
   # time. `canFormAcycle` is the same predicate ccgtypes.nim:1903 uses to set
   # the descriptor's acyclic flag, so codegen and runtime cannot disagree.
-  if c.g.config.selectedGC == gcYrc and types.canFormAcycle(c.g, elemType):
+  #
+  # The VM has neither threads nor a collector and cannot run the YRC barrier
+  # (#26579), so the barrier is put into the runtime branch of a `when nimvm`
+  # whose VM branch is the ORC-style code generated below.
+  var body = outerBody
+  var yrcBarrier: PNode = nil
+  if c.g.config.selectedGC == gcYrc and types.canFormAcycle(c.g, elemType) and
+      c.kind in {attachedAsgn, attachedDup, attachedSink}:
     let desc =
       if isFinal(elemType):
         let ti = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
@@ -852,14 +866,9 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         ti
       else:
         newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
-    case c.kind
-    of attachedAsgn, attachedDup:
-      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, x), y, desc)
-      return
-    of attachedSink:
-      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, x), y, desc)
-      return
-    else: discard # fall through for destructor, trace, wasMoved
+    let barrier = if c.kind == attachedSink: "nimSinkYrc" else: "nimAsgnYrc"
+    yrcBarrier = callCodegenProc(c.g, barrier, c.info, genAddr(c, x), y, desc)
+    body = newNodeI(nkStmtList, c.info)
 
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc} and types.canFormAcycle(c.g, elemType)
 
@@ -945,7 +954,10 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, y, callCodegenProc(c.g,
           "nimIncRef", c.info, y))
 
-proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  if yrcBarrier != nil:
+    outerBody.add whenNimvm(c, body, yrcBarrier)
+
+proc atomicClosureOp(c: var TLiftCtx; t: PType; outerBody, x, y: PNode) =
   ## Closures are really like refs except they always use a virtual destructor
   ## and we need to do the refcounting only on the ref field which we call 'xenv':
   let xenv = genBuiltin(c, mAccessEnv, "accessEnv", x)
@@ -953,22 +965,20 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   # Closures are (fnPtr, env) pairs. nimAsgnYrc/nimSinkYrc handle the env pointer
   # (atomic store + buffered inc/dec). We also need newAsgnStmt to copy the fnPtr.
-  if c.g.config.selectedGC == gcYrc:
+  # As for refs, the VM gets the ORC-style code generated below (#26579).
+  var body = outerBody
+  var yrcBarrier: PNode = nil
+  if c.g.config.selectedGC == gcYrc and c.kind in {attachedAsgn, attachedDup, attachedSink}:
     let nilDesc = newNodeIT(nkNilLit, c.info, getSysType(c.g, c.info, tyPointer))
     let yenv = genBuiltin(c, mAccessEnv, "accessEnv", y)
     yenv.typ = getSysType(c.g, c.info, tyPointer)
-    case c.kind
-    of attachedAsgn, attachedDup:
-      # nimAsgnYrc: save old env, atomic store new env, inc new env, dec old env
-      body.add callCodegenProc(c.g, "nimAsgnYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
-      # Raw struct copy to also update the function pointer (env write is redundant but benign)
-      body.add newAsgnStmt(x, y)
-      return
-    of attachedSink:
-      body.add callCodegenProc(c.g, "nimSinkYrc", c.info, genAddr(c, xenv), yenv, nilDesc)
-      body.add newAsgnStmt(x, y)
-      return
-    else: discard # fall through for destructor, trace, wasMoved
+    # nimAsgnYrc: save old env, atomic store new env, inc new env, dec old env
+    let barrier = if c.kind == attachedSink: "nimSinkYrc" else: "nimAsgnYrc"
+    yrcBarrier = newNodeI(nkStmtList, c.info)
+    yrcBarrier.add callCodegenProc(c.g, barrier, c.info, genAddr(c, xenv), yenv, nilDesc)
+    # Raw struct copy to also update the function pointer (env write is redundant but benign)
+    yrcBarrier.add newAsgnStmt(x, y)
+    body = newNodeI(nkStmtList, c.info)
 
   let isCyclic = c.g.config.selectedGC in {gcOrc, gcYrc}
   let tmp =
@@ -1020,6 +1030,9 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv, c.idgen), y)
   of attachedWasMoved: body.add genBuiltin(c, mWasMoved, "wasMoved", x)
+
+  if yrcBarrier != nil:
+    outerBody.add whenNimvm(c, body, yrcBarrier)
 
 proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind

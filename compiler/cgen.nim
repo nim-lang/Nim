@@ -22,6 +22,7 @@ from expanddefaults import caseObjDefaultBranch
 from ast2nif import globalName, toNifFilename, icNifTypeName, loadedReplayActions
 from ic/replayer import localTargetOptions
 from typekeys import modname
+from icmodnames import moduleSuffix
 from std/algorithm import sort
 import cnif
 
@@ -83,30 +84,16 @@ proc ownerModule(m: BModule; s: PSym): BModule =
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg":
-    # Per-module backend codegen. `m.g.icEmitted` is the set of modules THIS
-    # process writes a TU for, so it — not the identity of whichever TU happened
-    # to demand `s` — decides where the definition goes:
-    #
-    # * owner in `icEmitted`: this process is writing that module's TU, so the
-    #   definition belongs in it and nowhere else. That is the ordinary
-    #   whole-program routing below, and honouring it is what lets one process
-    #   emit SEVERAL modules without their definitions collapsing into the first
-    #   TU to ask for them. With the set at its current size of one, the owner
-    #   IS `m` and this returns exactly what the old unconditional `return m`
-    #   did — the point of the branch is that it stops being a special case.
-    #
-    # * owner elsewhere: the module is not written in this process, so the
-    #   definition has nowhere else to go and is emitted here as well
-    #   (emit-everywhere). The process that owns it emits it too; `merge` keeps
-    #   one per C name and turns the rest into prototypes, which already live in
-    #   the unmarked protos section.
-    #
-    # `getModule` walks the owner chain and yields nil if it never reaches a
-    # module (backend-minted symbols can be parented outside one), which is a
-    # definition with no owning TU: emit it here.
-    let ms = getModule(s)
-    if ms != nil and ms.kind == skModule and m.g.icEmitted.contains(ms.position):
-      return ownerModule(m, s)
+    # Route a definition to its module when this worker writes that module's
+    # translation unit. Otherwise emit it in the demanding TU; merge deduplicates
+    # those copies across workers.
+    # A generic instance's owner chain reaches the generic's declaring module,
+    # while its persisted ItemId names the module that instantiated and offers
+    # it. Route by that identity, matching emitsBodyInThisModule and the seeder.
+    # Routing to the declaration's TU can mark it declared there without either
+    # TU emitting its body when both modules share a batch.
+    if m.g.icEmitted.contains(s.itemId.module):
+      return m.g.mods[s.itemId.module]
     return m
   if m.config.symbolFiles == v2Sf or optCompress in m.config.globalOptions:
     let ms = s.itemId.module  #getModule(s)
@@ -272,6 +259,43 @@ proc ownsRuntimeRoutine*(s: PSym; modPos: int; exportcOnly = false): bool =
   ## and crashes `transformBody` (empty-`namePos` lambda, nil-typed const-fold).
   sfFromGeneric notin s.flags and isSeedableRoutine(s, modPos, exportcOnly)
 
+proc lowersInlineIterator*(s: PSym; modPos: int; g: ModuleGraph): bool =
+  ## A concrete, non-generic INLINE iterator declared by the module at `modPos`.
+  ## It is never emitted (every `for` expands it at its call site), but it is a
+  ## lambda-lifting FRAME of its own: `transformFor` splices the iterator's
+  ## lifted body, and that lift is what rewrites its nested closures to go
+  ## through the iterator's environment. The `lower` stage of the declaring
+  ## module performs this lift, exactly once, so the nested routines are
+  ## serialized lowered and the expansion sites only splice. Without it the
+  ## first expanding consumer would have to mutate a foreign module's nested
+  ## routine — a cross-module side effect no per-module backend can honour.
+  ##
+  ## Deliberately independent of use: the declaration site has no way to know
+  ## whether some importer expands the iterator. An illegal capture in such an
+  ## iterator is therefore reported at its declaration under `--ic:on`, not only
+  ## at its first expansion.
+  ##
+  ## A generic INSTANCE qualifies in its HOME, the module that minted and
+  ## OFFERS it (see `homeEmitsInstance`): every importer reuses that very
+  ## symbol, so its lift belongs to the home's `lower` stage just as a plain
+  ## iterator's belongs to its declaring module. Otherwise each expanding `cg`
+  ## process would lift the shared instance on its own, and the lowered nested
+  ## routines and their `:env` would agree only by the accident of deterministic
+  ## re-derivation. Offered instances are the concrete ones; an instance that is
+  ## not offered (minted inside a `compiles()` probe, for example) is reused by
+  ## nobody and stays with the expanding process.
+  s.itemId.module == modPos and
+  s.kind == skIterator and s.typ != nil and s.typ.callConv != ccClosure and
+  (sfFromGeneric notin s.flags or
+   (sfGeneratedOp notin s.flags and not isBackendMinted(s.itemId) and
+    globalName(s, g.config) in g.icOfferedInstances)) and
+  s.skipGenericOwner != nil and s.skipGenericOwner.kind == skModule and
+  s.magic == mNone and
+  {sfForward, sfImportc, sfCompileTime, sfError} * s.flags == {} and
+  not signatureHasMetaType(s.typ) and
+  s.ast != nil and s.ast.safeLen > bodyPos and
+  son(s.ast, genericParamsPos).kind == nkEmpty
+
 proc homeEmitsInstance*(s: PSym; modPos: int; g: ModuleGraph;
                         exportcOnly = false): bool =
   ## Whether the `cg` of the module at `modPos` emits the generic instance `s`
@@ -429,11 +453,14 @@ proc getModuleDllPath(m: BModule): Rope =
   let filename = strutils.`%`(platform.OS[m.g.config.target.targetOS].dllFrmt, [name & ext])
   result = makeCString(dir.string & "/" & filename)
 
-proc stdlibModule(g: BModuleList, name: string): BModule =
-  ## The module `name` of the standard library, nil when the program does not use it.
+proc stdlibModule(g: BModuleList, path: RelativeFile): BModule =
+  ## The module of the standard library at `path` (relative to `lib`), nil
+  ## when the program does not use it. Compared by module suffix: the
+  ## per-module backend names a module loaded from its NIF by its suffix.
   result = nil
+  let suffix = moduleSuffix((g.config.libpath / path).string, [])
   for m in g.mods:
-    if m != nil and m.module.name.s == name and belongsToStdlib(g.graph, m.module):
+    if m != nil and modname(m.module, g.config) == suffix:
       return m
 
 proc getModuleDllPath(m: BModule, module: int): Rope =
@@ -926,7 +953,22 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
       backendEnsureMutable v
       constructLoc(p, v.locImpl)
 
+proc reportLargeStackObject(p: BProc; t: PType; what: string; info: TLineInfo) =
+  ## `--reportLargeStackObjects:N`: C locals of N bytes or more are reported,
+  ## they easily overflow the stack, see bug #26417 and bug #26767.
+  let limit = p.config.largeStackObjectSize
+  if limit > 0:
+    let size = getSize(p.config, t)
+    if size >= limit:
+      let info = if info.fileIndex != InvalidFileIdx: info
+                 elif p.prc != nil: p.prc.info
+                 else: p.module.module.info
+      message(p.config, info, warnLargeStackObject,
+        what & " of type '" & typeToString(t) & "' occupies " & $size &
+        " bytes of stack space")
+
 proc declTemp(p: BProc, t: PType): TLoc =
+  reportLargeStackObject(p, t, "temporary", p.currLineInfo)
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -942,14 +984,6 @@ proc declTemp(p: BProc, t: PType): TLoc =
 proc getTemp(p: BProc, t: PType, needsInit=false): TLoc =
   result = declTemp(p, t)
   constructLoc(p, result, not needsInit)
-  when false:
-    # XXX Introduce a compiler switch in order to detect these easily.
-    if getSize(p.config, t) > 1024 * 1024:
-      if p.prc != nil:
-        echo "ENORMOUS TEMPORARY! ", p.config $ p.prc.info
-      else:
-        echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
-      writeStackTrace()
 
 proc calleeInitsResult(p: BProc; ri: PNode; t: PType): bool =
   ## A result that does not fit into a C return value is passed as a hidden
@@ -969,6 +1003,7 @@ proc getResultTemp(p: BProc; ri: PNode; t: PType): TLoc =
     result = getTemp(p, t, needsInit=true)
 
 proc getTempCpp(p: BProc, t: PType, value: Rope): TLoc =
+  reportLargeStackObject(p, t, "temporary", p.currLineInfo)
   inc(p.labels)
   result = TLoc(snippet: "T" & rope(p.labels) & "_", k: locTemp, lode: lodeTyp t,
                 storage: OnStack, flags: {})
@@ -1005,6 +1040,7 @@ proc localVarDecl(res: var Builder, p: BProc; n: PNode,
     p.sigConflicts.inc(s.name.s.mangle)
 
   genCLineDir(res, p, n.info, p.config)
+  reportLargeStackObject(p, s.typ, "local variable '" & s.name.s & "'", n.info)
 
   res.addVar(p.module, s,
     name = s.loc.snippet,
@@ -1027,6 +1063,13 @@ proc assignLocalVar(p: BProc; n: PNode) =
 include ccgthreadvars
 
 proc varInDynamicLib(m: BModule, sym: PSym)
+
+proc setDynLibSymbolName(m: BModule; sym: PSym; name: Rope): Rope =
+  # Multiple translation units can share this symbol. Save the import name
+  # before replacing it with the generated pointer name, even for declarations.
+  result = m.g.dynLibExternalNames.mgetOrPut(sym.itemId, sym.loc.snippet)
+  backendEnsureMutable sym
+  sym.locImpl.snippet = name
 
 proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
   return m.hcrOn and {sfThread, sfGlobal} * s.flags == {sfGlobal} and
@@ -1109,8 +1152,7 @@ proc assignGlobalVar(p: BProc; n: PNode; value: Rope) =
     if q != nil and not containsOrIncl(q.declaredThings, s.id):
       varInDynamicLib(q, s)
     else:
-      backendEnsureMutable s
-      s.locImpl.snippet = mangleDynLibProc(p.module, s)
+      discard setDynLibSymbolName(p.module, s, mangleDynLibProc(p.module, s))
     if value != "":
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
@@ -1289,62 +1331,64 @@ proc isGetProcAddr(lib: PLib): bool =
   result = n.kind in nkCallKinds and n.typ != nil and
     n.typ.kind in {tyPointer, tyProc}
 
-proc loadDynamicLib(m: BModule, lib: PLib) =
+proc loadDynamicLib(m: BModule, lib: PLib): Rope =
   assert(lib != nil)
-  if not lib.generated:
-    lib.generated = true
-    var tmp = getTempName(m)
-    assert(lib.name == "")
-    lib.name = tmp # BUGFIX: cgsym has awful side-effects
-    let loadFn = cgsymValue(m, "nimLoadLibrary")
-    let loadErrorFn = cgsymValue(m, "nimLoadLibraryError")
-    m.s[cfsVars].addVar(Global, name = tmp, typ = CPointer)
-    if lib.path.kind in {nkStrLit..nkTripleStrLit}:
-      var s: TStringSeq = @[]
-      libCandidates(lib.path.strVal, s)
-      rawMessage(m.config, hintDependency, lib.path.strVal)
-      let last = high(s)
-      for i in 0..last:
-        inc(m.labels)
-        template doLoad(j: int) =
-          let n = newStrNode(nkStrLit, s[j])
-          n.info = lib.path.info
-          m.s[cfsDynLibInit].addAssignmentWithValue(tmp):
-            var call: CallBuilder
-            m.s[cfsDynLibInit].addCall(call, loadFn):
-              m.s[cfsDynLibInit].addArgument(call):
-                genStringLiteral(m, n, m.s[cfsDynLibInit])
-        if i == 0:
-          doLoad(i)
-        m.s[cfsDynLibInit].addSingleIfStmt(cOp(Not, tmp)):
-          if i == last:
-            m.s[cfsDynLibInit].addStmt():
-              var call: CallBuilder
-              m.s[cfsDynLibInit].addCall(call, loadErrorFn):
-                m.s[cfsDynLibInit].addArgument(call):
-                  genStringLiteral(m, lib.path, m.s[cfsDynLibInit])
-          else:
-            doLoad(i + 1)
+  for entry in m.dynLibHandles:
+    if entry.lib == lib:
+      return entry.name
 
-    else:
-      var p = newProc(nil, m)
-      p.options.excl optStackTrace
-      p.flags.incl nimErrorFlagDisabled
-      var dest: TLoc = initLoc(locTemp, lib.path, OnStack)
-      dest.snippet = getTempName(m)
-      m.s[cfsDynLibInit].addVar(name = rdLoc(dest), typ = getTypeDesc(m, lib.path.typ, dkVar))
-      expr(p, lib.path, dest)
-
-      m.s[cfsVars].add(extract(p.s(cpsLocals)))
-      m.s[cfsDynLibInit].add(extract(p.s(cpsInit)))
-      m.s[cfsDynLibInit].add(extract(p.s(cpsStmts)))
-      let rd = rdLoc(dest)
-      m.s[cfsDynLibInit].addAssignment(tmp,
-        cCall(loadFn, rd))
+  let tmp = getTempName(m)
+  # Code generation can recursively request the same library.
+  m.dynLibHandles.add (lib, tmp)
+  let loadFn = cgsymValue(m, "nimLoadLibrary")
+  let loadErrorFn = cgsymValue(m, "nimLoadLibraryError")
+  m.s[cfsVars].addVar(Global, name = tmp, typ = CPointer)
+  if lib.path.kind in {nkStrLit..nkTripleStrLit}:
+    var s: TStringSeq = @[]
+    libCandidates(lib.path.strVal, s)
+    rawMessage(m.config, hintDependency, lib.path.strVal)
+    let last = high(s)
+    for i in 0..last:
+      inc(m.labels)
+      template doLoad(j: int) =
+        let n = newStrNode(nkStrLit, s[j])
+        n.info = lib.path.info
+        m.s[cfsDynLibInit].addAssignmentWithValue(tmp):
+          var call: CallBuilder
+          m.s[cfsDynLibInit].addCall(call, loadFn):
+            m.s[cfsDynLibInit].addArgument(call):
+              genStringLiteral(m, n, m.s[cfsDynLibInit])
+      if i == 0:
+        doLoad(i)
       m.s[cfsDynLibInit].addSingleIfStmt(cOp(Not, tmp)):
-        m.s[cfsDynLibInit].addCallStmt(loadErrorFn, rd)
+        if i == last:
+          m.s[cfsDynLibInit].addStmt():
+            var call: CallBuilder
+            m.s[cfsDynLibInit].addCall(call, loadErrorFn):
+              m.s[cfsDynLibInit].addArgument(call):
+                genStringLiteral(m, lib.path, m.s[cfsDynLibInit])
+        else:
+          doLoad(i + 1)
 
-  if lib.name == "": internalError(m.config, "loadDynamicLib")
+  else:
+    var p = newProc(nil, m)
+    p.options.excl optStackTrace
+    p.flags.incl nimErrorFlagDisabled
+    var dest: TLoc = initLoc(locTemp, lib.path, OnStack)
+    dest.snippet = getTempName(m)
+    m.s[cfsDynLibInit].addVar(name = rdLoc(dest), typ = getTypeDesc(m, lib.path.typ, dkVar))
+    expr(p, lib.path, dest)
+
+    m.s[cfsVars].add(extract(p.s(cpsLocals)))
+    m.s[cfsDynLibInit].add(extract(p.s(cpsInit)))
+    m.s[cfsDynLibInit].add(extract(p.s(cpsStmts)))
+    let rd = rdLoc(dest)
+    m.s[cfsDynLibInit].addAssignment(tmp,
+      cCall(loadFn, rd))
+    m.s[cfsDynLibInit].addSingleIfStmt(cOp(Not, tmp)):
+      m.s[cfsDynLibInit].addCallStmt(loadErrorFn, rd)
+
+  result = tmp
 
 proc isDeferredDynlib(sym: PSym): bool =
   result = false
@@ -1358,7 +1402,6 @@ proc mangleDynLibProc(m: BModule; sym: PSym): Rope =
   # we have to build this as a single rope in order not to trip the
   # optimization in genInfixCall, see test tests/cpp/t8241.nim
   if sfCompilerProc in sym.flags:
-    # NOTE: sym.loc.snippet is the external name!
     result = rope(sym.name.s)
   elif m.config.cmd == cmdNifC and isDeferredDynlib(sym):
     # Process-local symbol IDs can alias unrelated imports in another TU.
@@ -1392,14 +1435,12 @@ proc addDynLibVar(m: BModule; sym: PSym; typ: Snippet) =
     m.s[cfsVars].addVar(name = sym.loc.snippet, typ = typ)
 
 proc symInDynamicLib(m: BModule, sym: PSym) =
-  var lib = sym.annex
+  let lib = sym.annex
   let isCall = isGetProcAddr(lib)
-  var extname = sym.loc.snippet
-  if not isCall: loadDynamicLib(m, lib)
-  var tmp = mangleDynLibProc(m, sym)
+  let libName = if not isCall: loadDynamicLib(m, lib) else: ""
+  let tmp = mangleDynLibProc(m, sym)
   let deferredIc = m.config.cmd == cmdNifC and isDeferredDynlib(sym)
-  backendEnsureMutable sym
-  sym.locImpl.snippet = tmp             # from now on we only need the internal name
+  let extname = setDynLibSymbolName(m, sym, tmp)
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
   if isCall:
@@ -1440,7 +1481,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     m.s[cfsDynLibInit].addAssignment(tmp,
       cCast(getTypeDesc(m, sym.typ, dkVar),
         cCall(fn,
-          lib.name,
+          libName,
           makeCString($extname))))
   let typ = getTypeDesc(m, sym.loc.t, dkVar)
   if deferredIc:
@@ -1454,13 +1495,10 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     addDynLibVar(m, sym, typ)
 
 proc varInDynamicLib(m: BModule, sym: PSym) =
-  var lib = sym.annex
-  var extname = sym.loc.snippet
-  loadDynamicLib(m, lib)
+  let libName = loadDynamicLib(m, sym.annex)
   incl(sym, lfIndirect)
-  var tmp = mangleDynLibProc(m, sym)
-  backendEnsureMutable sym
-  sym.locImpl.snippet = tmp             # from now on we only need the internal name
+  let tmp = mangleDynLibProc(m, sym)
+  let extname = setDynLibSymbolName(m, sym, tmp)
   inc(m.labels, 2)
   let t = ptrType(getTypeDesc(m, sym.typ, dkVar))
   # cgsym has side effects, do it first:
@@ -1468,13 +1506,12 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   m.s[cfsDynLibInit].addAssignment(tmp,
     cCast(t,
       cCall(fn,
-        lib.name,
+        libName,
         makeCString($extname))))
   addDynLibVar(m, sym, t)
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
-  backendEnsureMutable sym
-  sym.locImpl.snippet = mangleDynLibProc(m, sym)
+  discard setDynLibSymbolName(m, sym, mangleDynLibProc(m, sym))
   sym.typ.sym = nil           # generate a new name
 
 proc cgsymImpl(m: BModule; sym: PSym) {.inline.} =
@@ -1726,9 +1763,18 @@ proc allPathsAsgnResult(p: BProc; n: PNode): InitResultEnum =
   of nkRaiseStmt:
     result = InitRequired
   of nkChckRangeF, nkChckRange64, nkChckRange:
-    # TODO: more checks might need to be covered like overflow, indexDefect etc.
+    # TODO: more checks might need to be covered like overflow etc.
     # bug #22852
     result = InitRequired
+  of nkBracketExpr:
+    if optBoundsCheck in p.config.options and n.len > 0 and n[0].typ != nil and
+        skipTypes(n[0].typ, abstractVarRange).kind in
+          {tyArray, tySequence, tyString, tyOpenArray, tyVarargs}:
+      # an index check leaves the proc by raising before 'result' is written
+      result = InitRequired
+    else:
+      for it in sons(n):
+        allPathsInBranch(it)
   else:
     for it in sons(n):
       allPathsInBranch(it)
@@ -1926,6 +1972,21 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   icProfStart(tGenBody)
   genProcBody(p, procBody)
+  # bug #26661: a 'finally' that only calls procs which cannot raise does not
+  # save and clear the error flag (see `genTryGoto`), so such a proc, e.g. a
+  # `=destroy` hook reached through a lifted seq destructor, runs with the flag
+  # already set while an exception propagates. An 'except' branch in it would
+  # take that exception for one raised in its own 'try' body. So these procs
+  # hide the flag while they run and give it back on exit.
+  let hideErrorFlag = p.config.exc == excGoto and sfPure notin prc.flags and
+      (sfNeverRaises in prc.flags or sfOverridden in prc.flags or
+       raisesNothing(effectsOf(prc.typ))) and
+      nimErrorFlagDeclared in p.flags and hasExceptBranch(procBody)
+  if hideErrorFlag:
+    p.blocks[0].sections[cpsLocals].addVar(kind = Local,
+      name = "oldNimErrProc_", typ = NimBool)
+    p.blocks[0].sections[cpsInit].addAssignment("oldNimErrProc_", cDeref("nimErr_"))
+    p.blocks[0].sections[cpsInit].addAssignment(cDeref("nimErr_"), NimFalse)
   if resultCleanup != nil:
     let body = move(p.s(cpsStmts).buf)
     p.s(cpsStmts).addLineEndIndent("try {")
@@ -1979,6 +2040,9 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
         else:
           generatedProc.add(extract(p.s(cpsInit)))
           generatedProc.add(extract(p.s(cpsStmts)))
+        if hideErrorFlag:
+          generatedProc.addSingleIfStmt("oldNimErrProc_"):
+            generatedProc.addAssignment(cDeref("nimErr_"), NimTrue)
         if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
         generatedProc.add(returnStmt)
   if m.config.cmd == cmdNifC:
@@ -2066,11 +2130,9 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     # the owner is another member of this process's batch. Mirrored rather than
     # called, because `findPendingModule` creates a `BModule` on demand and a
     # prototype has no business doing that.
-    let owner = getModule(sym)
     let emittedByABatchSibling =
-      owner != nil and owner.kind == skModule and
-      owner.position != m.module.position and
-      m.g.icEmitted.contains(owner.position)
+      sym.itemId.module != m.module.position and
+      m.g.icEmitted.contains(sym.itemId.module)
     if m.config.cmd == cmdNifC and m.config.icBackendStage == "cg" and
         not emittedByABatchSibling:
       # This TU emits the DEFINITION itself: `symInDynamicLib` follows this call
@@ -2180,9 +2242,12 @@ proc genProcLvl2(m: BModule, prc: PSym) =
     fillProcLoc(q, son(prc.ast, namePos))
     # generate a getProc call to initialize the pointer for this
     # externally-to-the-current-module defined proc, also important
-    # to do the declaredProtos check before the call to genProcPrototype
+    # to do the declaredProtos check before the call to genProcPrototype.
+    # Under IC `q` can be `m` while the body is still emitted elsewhere: by
+    # its owner's `cg` (see `emitsBodyInThisModule`).
     if isReloadable(m, prc) and prc.id notin m.declaredProtos and
-      q != nil and not sameModules(q.module, m.module):
+      q != nil and not (sameModules(q.module, m.module) and
+                        emitsBodyInThisModule(q, prc)):
       m.s[cfsDynLibInit].addAssignment(prc.loc.snippet,
         cCast(getProcTypeCast(m, prc),
           cCall("hcrGetProc",
@@ -2668,7 +2733,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       # EDIT: indeed, this hack, in combination with another un-necessary one
       # (`makeCString` was doing line wrap of string litterals) was root cause for
       # bug #16265.
-      let cmdLineModule = stdlibModule(g, "cmdline")
+      let cmdLineModule = stdlibModule(g, RelativeFile"std/cmdline.nim")
       if cmdLineModule != nil:
         let cmdLineModulePath = getModuleDllPath(cmdLineModule)
         g.mainDatInit.addCallStmt("hcrAddModule", cmdLineModulePath)
@@ -2680,12 +2745,14 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
           cmdLineModulePath,
           "\"cmdCount\"",
           cSizeof(cmdCountTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_count")))
         g.mainDatInit.addCallStmt("hcrRegisterGlobal",
           cmdLineModulePath,
           "\"cmdLine\"",
           cSizeof(cmdLineTyp),
+          makeCString(""),
           CNil,
           cCast(ptrType(CPointer), cAddr("cmd_line")))
         g.mainDatInit.addAssignment(cDeref("cmd_count"), "cmdCount")
@@ -2724,8 +2791,12 @@ proc registerReusedModuleToMain*(g: BModuleList; m: BModule;
                                 initRequired, datInitRequired: bool) =
   ## `registerModuleToMain` for a module whose cached translation unit is
   ## reused: the init/datInit presence comes from the artifact's meta head
-  ## instead of the (never generated) sections. Mirrors the non-hcr path of
-  ## `registerModuleToMain` — reuse is disabled when hcr is on.
+  ## instead of the (never generated) sections. Mirrors `registerModuleToMain`.
+  if m.hcrOn:
+    # As in `registerModuleToMain`: with hot code reloading the program only
+    # calls `hcrInit`, which initializes each module through its own library.
+    # The module's translation unit already carries what that needs.
+    return
   let
     init = m.getInitName
     datInit = m.getDatInitName
@@ -2788,9 +2859,8 @@ proc hcrGetProcLoadCode(builder: var Builder, m: BModule, sym, prefix, handle, g
   assert prc != nil
   fillProcLoc(m, son(prc.ast, namePos))
 
-  var tmp = mangleDynLibProc(m, prc)
-  backendEnsureMutable prc
-  prc.locImpl.snippet = tmp
+  let tmp = mangleDynLibProc(m, prc)
+  discard setDynLibSymbolName(m, prc, tmp)
   prc.typ.sym = nil
 
   if not containsOrIncl(m.declaredThings, prc.id):
@@ -2816,6 +2886,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         '"' & m.typeNodesName & '_' & $m.typeNodes & '"',
         cOp(Mul, NimInt, cSizeof("TNimNode"), cIntValue(m.typeNodes)),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr(m.typeNodesName)))
     else:
@@ -2832,6 +2903,7 @@ proc genInitCode(m: BModule) =
         getModuleDllPath(m, m.module),
         "\"module_initialized_\"",
         cIntValue(1),
+        makeCString(""),
         CNil,
         cCast(ptrType(CPointer), cAddr("nim_hcr_dummy_"))))
 
@@ -3351,6 +3423,11 @@ proc genIcModuleDestroyGlobals*(graph: ModuleGraph; m: BModule): string =
   ## the heads (like it already does for init/datInit) and calls them.
   result = ""
   if graph.globalDestructors.len == 0: return
+  if m.hcrOn:
+    # globals are not destroyed with hot code reloading; see
+    # `finalCodegenActions`
+    graph.globalDestructors.setLen 0
+    return
   var body = newNodeI(nkStmtList, m.module.info)
   for i in countdown(high(graph.globalDestructors), 0):
     body.add graph.globalDestructors[i]

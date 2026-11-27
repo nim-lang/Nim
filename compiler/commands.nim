@@ -393,7 +393,7 @@ proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
   let p = if os.isAbsolute(path) or '$' in path:
             path
           elif notRelativeToProj:
-            getCurrentDir() / path
+            conf.getCurrentDir() / path
           else:
             conf.projectPath.string / path
   try:
@@ -419,11 +419,11 @@ proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir
 const
   errInvalidNumber = "$1 is not a valid number"
 
-proc makeAbsolute(s: string): AbsoluteFile =
+proc makeAbsolute(conf: ConfigRef; s: string): AbsoluteFile =
   if isAbsolute(s):
     AbsoluteFile pathnorm.normalizePath(s)
   else:
-    AbsoluteFile pathnorm.normalizePath(os.getCurrentDir() / s)
+    AbsoluteFile pathnorm.normalizePath(conf.getCurrentDir() / s)
 
 proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
                      info: TLineInfo) =
@@ -435,13 +435,13 @@ proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
   if parseUtils.parseInt(column, col) <= 0:
     localError(conf, info, errInvalidNumber % column)
 
-  let a = makeAbsolute(file)
+  let a = makeAbsolute(conf, file)
   if dirty == "":
     conf.m.trackPos = newLineInfo(conf, a, ln, col)
   else:
     let dirtyOriginalIdx = fileInfoIdx(conf, a)
     if dirtyOriginalIdx.int32 >= 0:
-      msgs.setDirtyFile(conf, dirtyOriginalIdx, makeAbsolute(dirty))
+      msgs.setDirtyFile(conf, dirtyOriginalIdx, makeAbsolute(conf, dirty))
     conf.m.trackPos = newLineInfo(dirtyOriginalIdx, ln, col)
 
 proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
@@ -474,7 +474,7 @@ proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, in
 
 template handleStdinOrCmdInput =
   conf.projectFull = conf.projectName.AbsoluteFile
-  conf.projectPath = AbsoluteDir getCurrentDir()
+  conf.projectPath = AbsoluteDir conf.getCurrentDir()
   if conf.outDir.isEmpty:
     conf.outDir = getNimcacheDir(conf)
 
@@ -606,23 +606,31 @@ proc unregisterArcOrc*(conf: ConfigRef) =
   excl conf.globalOptions, optSeqDestructors
   excl conf.globalOptions, optTinyRtti
 
+proc unregisterNonArcMms(conf: ConfigRef) =
+  undefSymbol(conf.symbols, "boehmgc")
+  undefSymbol(conf.symbols, "gcrefc")
+  undefSymbol(conf.symbols, "gcmarkandsweep")
+  undefSymbol(conf.symbols, "gchooks")
+  undefSymbol(conf.symbols, "gogc")
+  undefSymbol(conf.symbols, "nogc")
+  undefSymbol(conf.symbols, "gcregions")
+
 proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
                 info: TLineInfo; conf: ConfigRef) =
   if conf.backend == backendJs: return # for: bug #16033
   expectArg(conf, switch, arg, pass, info)
   if pass in {passCmd2, passPP}:
+    unregisterArcOrc(conf)
+    unregisterNonArcMms(conf)
     case arg.normalize
     of "boehm":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcBoehm
       defineSymbol(conf.symbols, "boehmgc")
       incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
     of "refc":
-      unregisterArcOrc(conf)
       defineSymbol(conf.symbols, "gcrefc")
       conf.selectedGC = gcRefc
     of "markandsweep":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
     of "destructors", "arc":
@@ -653,15 +661,12 @@ proc processMemoryManagementOption(switch, arg: string, pass: TCmdLinePass,
       if pass in {passCmd2, passPP}:
         defineSymbol(conf.symbols, "nimSeqsV2")
     of "go":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcGo
       defineSymbol(conf.symbols, "gogc")
     of "none":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcNone
       defineSymbol(conf.symbols, "nogc")
     of "stack", "regions":
-      unregisterArcOrc(conf)
       conf.selectedGC = gcRegions
       defineSymbol(conf.symbols, "gcregions")
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
@@ -1112,6 +1117,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     discard parseSaturatedNatural(arg, value)
     if value <= 0: localError(conf, info, "maxCallDepthVM must be a positive integer greater than zero")
     conf.maxCallDepthVM = value
+  of "reportlargestackobjects":
+    expectArg(conf, switch, arg, pass, info)
+    var value: int = 0
+    discard parseSaturatedNatural(arg, value)
+    if value <= 0: localError(conf, info, "reportLargeStackObjects must be a positive integer greater than zero")
+    conf.largeStackObjectSize = value
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.
@@ -1124,7 +1135,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "stdinfile":
     expectArg(conf, switch, arg, pass, info)
     conf.stdinFile = if os.isAbsolute(arg): AbsoluteFile(arg)
-                     else: AbsoluteFile(getCurrentDir() / arg)
+                     else: AbsoluteFile(conf.getCurrentDir() / arg)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
