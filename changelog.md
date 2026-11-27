@@ -86,6 +86,16 @@ parameter and result types, not just their source-level shape. Use
   Before, the routine read freed memory once the scope had ended. Other
   variables of the scope are destroyed with the scope as before.
 
+- An object that has a field whose type declares `=wasMoved` with `{.error.}` can
+  no longer be moved either, like it already could not be copied if the field
+  declared `=copy` or `=sink` with `{.error.}`.
+
+- `Thread[T]` can no longer be moved: returning a `Thread`, or an object that
+  contains one, from a routine, or assigning it, is now a compile-time error.
+  Before, the running thread kept pointing at the object it was started on, which
+  was zeroed by the move. Declare the `Thread` where it is started, as a global,
+  a local or a field of an object that is not moved, and pass it by `var` or `ptr`.
+
 
 ## Standard library additions and changes
 

@@ -16,6 +16,15 @@ When creating a thread, you can pass arguments to it. As Nim's garbage collector
 `ref` and other variables managed by the garbage collector between threads is not supported.
 Use global variables to do so, or pointers.
 
+A `Thread` cannot be copied or moved: once `createThread` has started it, the
+running thread refers to the `Thread` object by its address, so the object must stay
+where it was created. Declare it as a global, as a local variable or as a field of an
+object that is not itself moved, and pass it by `var` or `ptr` if another routine has to
+start or join it. Returning a `Thread` (or an object that contains one) from a routine is
+therefore not supported, and neither is growing a `seq` of threads after a thread was
+started: the compiler rejects the copies and moves it can see, but a `seq` that grows
+moves its elements without telling it.
+
 Memory allocated using [`sharedAlloc`](./system.html#allocShared.t%2CNatural) can be used and shared between threads.
 
 To communicate between threads, consider using [channels](./system.html#Channel)

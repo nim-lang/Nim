@@ -239,6 +239,10 @@ that otherwise would lead to a copy is prevented at compile-time. This looks lik
 but a custom error message (e.g., `{.error: "custom error".}`) will not be emitted
 by the compiler. Notice that there is no `=` before the `{.error.}` pragma.
 
+`=sink` and `=wasMoved` can be marked in the same way. A type that has a field whose
+`=wasMoved` is an error cannot be moved either, because the move could not reset the
+field in the moved-from object.
+
 
 `=trace` hook
 -------------

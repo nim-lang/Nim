@@ -14,17 +14,19 @@ proc handleThreadFunc(arg: ThreadFuncArgs[int]){.thread.} =
   var output = fn()
   callback(output)
 
-proc `@||->`*[T](fn: proc(): T {.thread.},
-                 callback: proc(val: T){.thread.}): Thread[ThreadFuncArgs[T]] =
-  var thr: Thread[ThreadFuncArgs[T]]
+# A `Thread` cannot be moved, so the caller owns it and passes it by `var`.
+proc startThreadFunc*[T](thr: var Thread[ThreadFuncArgs[T]],
+                         fn: proc(): T {.thread.},
+                         callback: proc(val: T){.thread.}) =
   var args: ThreadFuncArgs[T]
   args.a = fn
   args.b = callback
   createThread(thr, handleThreadFunc, args)
-  return thr
 
-proc `||->`*[T](fn: proc(): T{.thread.}, callback: proc(val: T){.thread.}) =
-  discard fn @||-> callback
+proc runThreadFunc*[T](fn: proc(): T{.thread.}, callback: proc(val: T){.thread.}) =
+  var thr: Thread[ThreadFuncArgs[T]]
+  startThreadFunc(thr, fn, callback)
+  joinThread(thr)
 
 when true:
   import os
@@ -33,7 +35,8 @@ when true:
   proc callbackFunc(val: int) {.thread.} =
     echo($(val))
 
-  var thr = (testFunc @||-> callbackFunc)
+  var thr: Thread[ThreadFuncArgs[int]]
+  startThreadFunc(thr, testFunc, callbackFunc)
   echo("test")
   joinThread(thr)
   os.sleep(3000)

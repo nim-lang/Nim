@@ -177,6 +177,12 @@ type
     when hasAllocStack:
       rawStack*: pointer
 
+# The thread refers to the `Thread` object by address, so it can neither be
+# copied nor moved (#26726). Every move resets its source with `=wasMoved`, so
+# marking it rejects the move of a `Thread` and of an object that contains one.
+# `=sink` is not marked: closure environments (async procs, closure iterators)
+# initialise a `Thread` local with it without moving anything.
 proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
+proc `=wasMoved`*[TArg](x: var Thread[TArg]) {.error.}
 
 {.pop.}
