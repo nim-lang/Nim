@@ -22,3 +22,13 @@ proc test() =
   doAssert x.value <= 2.3
 
 test()
+# methods of a non-ref object; the dispatcher crashed the compiler for C++
+type
+  ValueBase = object of RootObj
+  ValueDerived = object of ValueBase
+
+method name(x: ValueBase): string {.base.} = "base"
+method name(x: ValueDerived): string = "derived"
+
+doAssert name(ValueBase()) == "base"
+doAssert name(ValueDerived()) == "derived"

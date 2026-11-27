@@ -20,7 +20,9 @@ proc dispatch(x: Base, params: ...) =
   var nTyp = base.typ.n[1].sym.typ
   var dispatchObject = newSymNode(base.typ.n[1].sym)
   if nTyp.kind == tyObject:
-    dispatchObject = newTree(nkAddr, dispatchObject)
+    # typed: the C++ backend reads the type of an `addr` (`isCppRef`)
+    dispatchObject = newTreeIT(nkAddr, base.info, getSysType(g, unknownLineInfo, tyPointer),
+      dispatchObject)
   else:
     if g.config.backend != backendCpp: # TODO: maybe handle ptr?
       if nTyp.kind == tyVar and nTyp.skipTypes({tyVar}).kind != tyObject:
