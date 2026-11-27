@@ -463,6 +463,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       rawMessage(conf, errGenerated, "nim track not available in bootstrap build")
   of cmdM:
+    quietForIcProgress(conf)
     # cmdM uses NIF files, not ROD files
     graph.config.symbolFiles = disabledSf
     setUseIc(true)
@@ -475,6 +476,7 @@ proc mainCommand*(graph: ModuleGraph) =
     timed tStage: commandCheck(graph)
     releaseSharedCounters()
   of cmdNifC:
+    quietForIcProgress(conf)
     setUseIc(true)
     excl conf.features, Feature.vtables
     # Generate C code from NIF files

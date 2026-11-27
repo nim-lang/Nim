@@ -371,7 +371,7 @@ when hasSpawnH:
                                  header: "<spawn.h>", final, pure.} = object
 
 
-when not defined(macos) and not defined(macosx): # freebsd
+when not (defined(macos) or defined(macosx) or defined(openbsd)):
   type
     Mqd* {.importc: "mqd_t", header: "<mqueue.h>", final, pure.} = object
     MqAttr* {.importc: "struct mq_attr",

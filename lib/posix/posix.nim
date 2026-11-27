@@ -274,7 +274,8 @@ proc setlocale*(a1: cint, a2: cstring): cstring {.
 proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
 
-when not (defined(nintendoswitch) or defined(macos) or defined(macosx)):
+when not (defined(nintendoswitch) or defined(macos) or defined(macosx) or
+          defined(openbsd)):
   proc mq_notify*(mqdes: Mqd, event: ptr SigEvent): cint {.
     importc, header: "<mqueue.h>".}
 

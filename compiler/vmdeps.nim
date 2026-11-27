@@ -76,7 +76,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
 proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkSym:
     result = newNodeI(nkIdentDefs, n.info)
-    result.add n  # name
+    result.add copyNode(n)  # name
     result.add mapTypeToAstX(cache, n.sym.typ, n.info, idgen, true, false)  # type
     if n.sym.ast != nil:
       result.add copyTree(n.sym.ast)
@@ -104,7 +104,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     newNodeIT(kind, if t.n.isNil: info else: t.n.info, t)
   template newIdentDefs(n,t): untyped =
     var id = newNodeX(nkIdentDefs)
-    id.add n  # name
+    id.add copyNode(n)  # name
     id.add mapTypeToAst(t, info)  # type
     if n.sym.ast != nil:
       id.add copyTree(n.sym.ast)
@@ -316,7 +316,14 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
   of tyError: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
-    result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
+    # the child made by `newConstraint` only stands for its kind: it has no
+    # children and no node (see `typeRel`), so map it by its name instead of
+    # as a declared type of that kind
+    result = newNodeX(nkBracketExpr)
+    result.add atomicType("builtinTypeClass", mNone)
+    # preferDesc: the kind's name, also when the type class has an alias name
+    result.add mapTypeToBracketX(cache, typeToString(t, preferDesc), mNone,
+                                 t.elementType, info, idgen, inst)
   of tyUserTypeClass, tyUserTypeClassInst:
     if t.isResolvedUserTypeClass:
       result = mapTypeToAst(t.last, info)

@@ -186,6 +186,17 @@ block stripTests:
   doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo")
   doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
 
+  # bug #26761: with leading = false an all-strippable string must still
+  # become empty; the trailing scan exhausted without a stop index
+  doAssert(strip("  ", leading = false) == "")
+  doAssert(strip("", leading = false) == "")
+  doAssert(strip("a  ", leading = false) == "a")
+  doAssert(strip("  a", leading = false) == "  a")
+  doAssert(strip("  a  ", leading = false) == "  a")
+  doAssert(strip("\u00A0\u00A0", leading = false) == "")
+  doAssert(strip("\u3000x\u3000", leading = false) == "\u3000x")
+  doAssert(strip("ss", leading = false, runes = ['s'.Rune]) == "")
+
   block:
     let stripTestRunes = ["«".asRune, "»".asRune]
     doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")

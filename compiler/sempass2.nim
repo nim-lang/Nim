@@ -78,6 +78,8 @@ type
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
+    written: seq[int] # locals written on *some* path so far; unlike `init`
+                      # this is the union of the branches at a merge
     scopes: Table[int, int] # maps var-id to its scope (see also `currentBlock`).
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -299,7 +301,12 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
                 ))
         return
     a.init.add s.id
-    if a.scopes.getOrDefault(s.id) == a.currentBlock:
+    # A write on a path that does not reach here as an initialization (as
+    # in `if cond: x = a` followed by `x = b`) still leaves a value in `x`
+    # that must be destroyed, so it is not a first write (bug #26725).
+    let written = s.id in a.written
+    if not written: a.written.add s.id
+    if not written and a.scopes.getOrDefault(s.id) == a.currentBlock:
       #[ Consider this case:
 
       var x: T
@@ -918,6 +925,14 @@ proc addIdToIntersection(tracked: PEffects, inter: var TIntersection, resCounter
     for i in oldState..<tracked.init.len:
       addToIntersection(inter, tracked.init[i], hasBreaksBlock)
 
+proc collectWritten(tracked: PEffects; oldWritten: int; acc: var seq[int]) =
+  ## Branches of an `if`/`case` are mutually exclusive: a write in one branch
+  ## does not happen before a write in a sibling branch. So every branch starts
+  ## with the `written` state from before the statement and the union of the
+  ## branches is the state afterwards.
+  for i in oldWritten..<tracked.written.len: acc.add tracked.written[i]
+  setLen(tracked.written, oldWritten)
+
 template hasResultSym(s: PSym): bool =
   s != nil and s.kind in {skProc, skFunc, skConverter, skMethod} and
     not isEmptyType(s.typ.returnType)
@@ -936,6 +951,8 @@ proc trackCase(tracked: PEffects, n: PNode) =
   let hasResult = hasResultSym(tracked.owner)
   let resSym = if hasResult: tracked.owner.ast[resultPos].sym else: nil
   var resCounter = 0
+  let oldWritten = tracked.written.len
+  var branchWrites: seq[int] = @[]
 
   for i in 1..<n.len:
     let branch = n[i]
@@ -949,7 +966,9 @@ proc trackCase(tracked: PEffects, n: PNode) =
     if hasBreaksBlock == bsNone:
       inc toCover
     addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resSym, hasResult)
+    collectWritten(tracked, oldWritten, branchWrites)
 
+  tracked.written.add branchWrites
   setLen(tracked.init, oldState)
   if not stringCase or lastSon(n).kind == nkElse:
     if hasResult and resCounter == n.len-1:
@@ -973,11 +992,14 @@ proc trackIf(tracked: PEffects, n: PNode) =
 
   var inter: TIntersection = @[]
   var toCover = 0
+  var oldWritten = tracked.written.len
+  var branchWrites: seq[int] = @[]
   track(tracked, n[0][1])
   let hasBreaksBlock = breaksBlock(n[0][1])
   if hasBreaksBlock == bsNone:
     inc toCover
   addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resSym, hasResult)
+  collectWritten(tracked, oldWritten, branchWrites)
 
   for i in 1..<n.len:
     let branch = n[i]
@@ -987,13 +1009,18 @@ proc trackIf(tracked: PEffects, n: PNode) =
     if branch.len > 1:
       addFact(tracked.guards, branch[0])
     setLen(tracked.init, oldState)
-    for i in 0..<branch.len:
-      track(tracked, branch[i])
+    if branch.len > 1:
+      track(tracked, branch[0])
+      # an `elif` condition runs before all the following branches:
+      oldWritten = tracked.written.len
+    track(tracked, branch.lastSon)
     let hasBreaksBlock = breaksBlock(branch.lastSon)
     if hasBreaksBlock == bsNone:
       inc toCover
     addIdToIntersection(tracked, inter, resCounter, hasBreaksBlock, oldState, resSym, hasResult)
+    collectWritten(tracked, oldWritten, branchWrites)
 
+  tracked.written.add branchWrites
   setLen(tracked.init, oldState)
   if lastSon(n).len == 1:
     if hasResult and resCounter == n.len:
@@ -1876,7 +1903,7 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
     let raisesSpec = effectSpec(n, wRaises)
     if not isNil(raisesSpec):
       effects[exceptionEffects] = raisesSpec
-    elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
+    elif s != nil and (s.magic != mNone or (sfImportc in s.flags and (sfExportc notin s.flags or sfCompilerProc in s.flags))):
       effects[exceptionEffects] = newNodeI(nkArgList, effects.info)
 
     let forbidsSpec = effectSpec(n, wForbids)
@@ -1888,12 +1915,12 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode; s: PSym = nil) =
       # Leaving this as nil would mean "unknown tags", which later widens
       # indirect calls to `RootEffect`.
       effects[tagEffects] = newNodeI(nkArgList, effects.info)
-    elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
+    elif s != nil and (s.magic != mNone or (sfImportc in s.flags and (sfExportc notin s.flags or sfCompilerProc in s.flags))):
       effects[tagEffects] = newNodeI(nkArgList, effects.info)
 
     if not isNil(forbidsSpec):
       effects[forbiddenEffects] = forbidsSpec
-    elif s != nil and (s.magic != mNone or {sfImportc, sfExportc} * s.flags == {sfImportc}):
+    elif s != nil and (s.magic != mNone or (sfImportc in s.flags and (sfExportc notin s.flags or sfCompilerProc in s.flags))):
       effects[forbiddenEffects] = newNodeI(nkArgList, effects.info)
 
     let requiresSpec = propSpec(n, wRequires)
@@ -1922,7 +1949,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; c: PContext): TEffects
 
   result = TEffects(exc: effects[exceptionEffects], tags: effects[tagEffects],
             forbids: effects[forbiddenEffects], owner: s, ownerModule: s.getModule,
-            init: @[], locked: @[], graph: g, config: g.config, c: c,
+            init: @[], written: @[], locked: @[], graph: g, config: g.config, c: c,
             currentBlock: 1, optionsStack: @[(g.config.options, g.config.notes)]
   )
   result.guards.s = @[]

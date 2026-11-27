@@ -53,31 +53,36 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
     if n.kind == nkSym:
       logCanRaise(n.sym, result)
 
-proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
-  proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
-    result = false
-    var n = le
-    while true:
-      # do NOT follow nkHiddenDeref here!
-      case n.kind
-      of nkSym:
-        # we don't own the location so it escapes:
-        if n.sym.owner != p.prc:
-          return true
-        elif inTryStmt and sfUsedInFinallyOrExcept in n.sym.flags:
-          # it is also an observable store if the location is used
-          # in 'except' or 'finally'
-          return true
-        return false
-      of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
-          nkCheckedFieldExpr:
-        n = n.firstSon
-      of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-        n = n.secondSon
-      else:
-        # cannot analyse the location; assume the worst
+proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
+  ## Whether the location `le` can be observed by a callee or after an
+  ## exception: a global, a location we do not own, a location reached
+  ## through a pointer, or (if `inTryStmt`) a local inside a 'try' statement.
+  result = false
+  var n = le
+  while true:
+    # do NOT follow nkHiddenDeref here!
+    case n.kind
+    of nkSym:
+      # we don't own the location so it escapes:
+      if n.sym.owner != p.prc:
         return true
+      elif inTryStmt and n.sym.kind != skTemp:
+        # it is also an observable store if the location is used
+        # in 'except' or 'finally' or after the 'try' statement that
+        # caught the exception. Compiler temporaries are not observable,
+        # see bug #25919.
+        return true
+      return false
+    of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
+        nkCheckedFieldExpr:
+      n = n.firstSon
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      n = n.secondSon
+    else:
+      # cannot analyse the location; assume the worst
+      return true
 
+proc preventNrvo(p: BProc; dest, le, ri: PNode): bool =
   result = false
   if le != nil:
     for r in sonsFrom(ri, 1):

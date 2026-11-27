@@ -11,6 +11,7 @@
 ## This enables incremental and parallel compilation using the `m` switch.
 
 import std / [os, tables, sets, times, osproc, algorithm, strtabs, strutils, syncio]
+from std / terminal import isatty
 from std/sha1 import secureHash, `$`
 import options, msgs, lineinfos, pathutils, condsyms,
   modulepaths, extccomp, cnif, platform
@@ -48,7 +49,7 @@ type
 
   DepContext = object
     config: ConfigRef
-    linkArgsFile: string # root-level input: the config/project/output last selected
+    linkArgsFile: string # the cache/project/output and program the link last wrote
     argsFile: string     # effective settings, stable within the configuration directory
     backendDir: string  # outputs for this backend and entry point
     nifler: string
@@ -155,6 +156,13 @@ proc findNifmake(): string =
   result = nimDir / "nifmake"
   if not fileExists(result):
     result = findExe("nifmake")
+
+proc programStamp(file: string): string =
+  ## Modification time and size of `file`; empty when it does not exist.
+  if not fileExists(file): return ""
+  let info = getFileInfo(file)
+  result = $info.lastWriteTime.toUnix & "." & $info.lastWriteTime.nanosecond &
+    " " & $info.size
 
 proc runNifler(c: DepContext; nimFile: string): bool =
   ## Run nifler deps on a file if needed. Returns true on success.
@@ -320,6 +328,13 @@ proc processImport(c: var DepContext; importPath: string; current: Node; origin:
         if impId != newNode.id: newNode.deps.add impId
     c.processedModules[pair.modname] = newNode.id
     c.nodes.add newNode
+    # The guard belongs to current -> newNode. Imports inside the new module
+    # have their own guards; carrying this depth into them would make even
+    # unconditional dependencies speculative and discover chains one hop per
+    # frontend round. Includes keep the depth because they share this module.
+    let previousSpeculation = c.speculating
+    c.speculating = 0
+    defer: c.speculating = previousSpeculation
     traverseDeps(c, pair, newNode)
   else:
     # Already processed - just add dependency
@@ -413,6 +428,13 @@ proc constIdentValue(c: DepContext; ident: string): string =
   of "hostCPU": result = toLowerAscii(platform.CPU[c.config.target.targetCPU].name)
   of "buildOS": result = toLowerAscii(platform.OS[c.config.target.hostOS].name)
   of "buildCPU": result = toLowerAscii(platform.CPU[c.config.target.hostCPU].name)
+  of "appType":
+    # semfold.getAppType
+    result =
+      if optGenDynLib in c.config.globalOptions: "lib"
+      elif optGenStaticLib in c.config.globalOptions: "staticlib"
+      elif optGenGuiApp in c.config.globalOptions: "gui"
+      else: "console"
   else: result = ""
 
 proc readOperandValue(c: DepContext; s: var Stream): string =
@@ -555,8 +577,11 @@ proc parseImportPath(s: var Stream; t: var PackedToken): seq[string] =
         result = left
       else:
         let prefix = if left.len == 1: left[0] else: ""
+        # `import a/../b` lexes `/../` as ONE operator; join with it verbatim
+        # like `modulepaths.getModuleName` does, not with a plain `/` (#26741).
+        let sep = if op.len > 0 and op[0] == '/': op else: "/"
         for r in right:
-          if prefix.len > 0: result.add prefix & "/" & r
+          if prefix.len > 0: result.add prefix & sep & r
           else: result.add r
       if t.kind == ParRi: t = next(s)  # skip closing ')'
     elif tag == "prefix":
@@ -1488,13 +1513,10 @@ proc backendBatchSize(conf: ConfigRef; liveCount: int): int =
   ## closure load (measured on a 67-module program: 7.6 ms of process startup
   ## and ~10 ms of closure loading per child, against 3.5 ms of actual codegen).
   ##
-  ## `-d:icBatchSize:N` pins it. The default is 1 — the plumbing is in place but
-  ## the policy is not yet validated. `-d:icBatchSize:0` means "one batch per
-  ## job", which is the shape a tuned default will take: enough batches to keep
-  ## every core busy and no more, since a batch beyond that only buys
-  ## amortisation at the price of parallelism.
-  if not isDefined(conf, "icBatchSize"): return 1
-  result = intDefine(conf, "icBatchSize", 1)
+  ## Four-module codegen batches amortise dependency loading. Lowering keeps
+  ## separate workers by default (see backendBatches). `-d:icBatchSize:1`
+  ## restores per-module workers; 0 makes one batch per job.
+  result = intDefine(conf, "icBatchSize", 4)
   if result == 0:
     let jobs =
       if isDefined(conf, "icNoParallel"): 1
@@ -1520,7 +1542,7 @@ proc emitBatches(c: DepContext; live: seq[bool];
       if live[i]: all.add i
     result = if all.len > 0: @[all] else: @[]
 
-proc backendBatches(c: DepContext; live: seq[bool]): seq[seq[int]] =
+proc backendBatches(c: DepContext; live: seq[bool]; lowering = false): seq[seq[int]] =
   ## Partition the live non-main nodes into batches of node indices. The main
   ## module is never in one: it loads the whole program, so batching it with
   ## anything defeats the memory bound the per-module split exists to give.
@@ -1533,7 +1555,12 @@ proc backendBatches(c: DepContext; live: seq[bool]): seq[seq[int]] =
   var liveIdx: seq[int] = @[]
   for i in 0 ..< c.nodes.len:
     if live[i] and c.nodes[i].id != 0: liveIdx.add i
-  let size = backendBatchSize(c.config, liveIdx.len)
+  # A consumer's lowering can mutate an iterator shared with another member.
+  # Keep lowering isolated until its capture diagnostics are independent of
+  # that order (tinlineiterunusedcapture). Codegen can share closure loading
+  # independently. icBatchSize retains the experimental whole-pipeline override.
+  let size = if lowering and not isDefined(c.config, "icBatchSize"): 1
+             else: backendBatchSize(c.config, liveIdx.len)
   result = @[]
   var i = 0
   while i < liveIdx.len:
@@ -1706,7 +1733,7 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
       acc.add c.nodes[idx].files[0].modname
     acc
 
-  for batch in batches:
+  for batch in backendBatches(c, live, lowering = true):
     b.addTree "do"
     b.addIdent "nim_nifc"
     b.withTree "args":
@@ -1882,7 +1909,6 @@ proc generateBackendBuildFile(c: DepContext; forwardedArgs: seq[string]): string
     # Forward the resolved target so it writes exactly `exeFile` (`--out`'s
     # path splits back into outDir+outFile in the child).
     b.addStrLit "--out:" & exeFile
-  inputStr c.linkArgsFile
   for i in 0 ..< c.nodes.len:
     if live[i]:
       inputStr cFiles[i]
@@ -1935,6 +1961,30 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
     let deps = semDeps(c, c.nodes[ni].files[0])
     let confirmed = (afterRound and ni < scheduledNodes) or
       semDepsAreCurrent(c.nodes[ni], deps)
+    if confirmed and c.nodes[ni].specDeps.len > 0 and
+        fileExists(c.semmedFile(c.nodes[ni].files[0])):
+      # Sem finished, so the sidecar is the module's complete import set: a
+      # speculative edge it does not list sits behind a guard that was false.
+      # Keeping it can fold the import into this module's cycle group, whose
+      # `nim m` then never compiles it -- every other importer waits forever
+      # (`when defined(windows) and appType == "console": import exitprocs`
+      # in syncio put exitprocs and locks into system's group).
+      var real = initHashSet[int]()
+      for p in deps.imports:
+        real.incl c.processedModules.getOrDefault(c.toPair(p).modname, -1)
+      var i = 0
+      while i < c.nodes[ni].specDeps.len:
+        let d = c.nodes[ni].specDeps[i]
+        if d in real:
+          inc i
+        else:
+          c.nodes[ni].specDeps.delete i
+          c.nodes[ni].deps.delete c.nodes[ni].deps.find(d)
+          # Only a scheduled module that is still missing needs the regrouped
+          # graph; a deferred one was in no group.
+          if not c.nodes[d].deferred and
+              not fileExists(c.semmedFile(c.nodes[d].files[0])):
+            madeProgress = true
     for p in deps.imports:
       let pair = c.toPair(p)
       var idx = c.processedModules.getOrDefault(pair.modname, -1)
@@ -1959,12 +2009,16 @@ proc deriveFromSemDeps(c: var DepContext; afterRound: bool): bool =
         if not confirmed: dec c.speculating
   result = madeProgress
 
+iterator unsemmed(c: DepContext): string =
+  ## The scheduled modules still lacking their semmed NIF.
+  for node in c.nodes:
+    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
+      yield node.files[0].modname
+
 proc allSemmed(c: DepContext): bool =
   ## Whether every scheduled module has its semmed NIF.
   result = true
-  for node in c.nodes:
-    if not node.deferred and not fileExists(c.semmedFile(node.files[0])):
-      return false
+  for _ in unsemmed(c): return false
 
 proc commandIc*(conf: ConfigRef; frontendOnly = false) =
   ## Main entry point for `nim ic`. With `frontendOnly` (used by `nim track` for
@@ -2011,6 +2065,30 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     )
 
     let forwardedArgs = computeForwardedArgs(c)
+
+    # Progress: like Nimony, nifmake draws one `[NN%]` line for the whole
+    # build. The frontend owns 0..50%, the backend 51..100% and its run
+    # (`--done`) closes the line with `[100%] done`. A discovery round after
+    # the first one re-runs only the few modules that stopped for a macro
+    # generated import; it stays at 50% so the bar never goes backwards.
+    # Only on a terminal at the default verbosity (`--verbosity:2+` wants to
+    # see each command) and not for `nim track`, an IDE query. While the bar
+    # is up, the driver's own per-round hints and the children's per-module
+    # hints are silenced, see `IcProgressEnv`.
+    let progress = not frontendOnly and conf.verbosity == 1 and
+      optHints in conf.options and isatty(stdout) and findNifmake().len > 0
+    const frontendHi = 50
+    let backendProgress = if progress: " --done:51,100" else: ""
+    let savedNotes = (conf.notes, conf.mainPackageNotes, conf.foreignPackageNotes)
+    if progress:
+      putEnv(IcProgressEnv, "1")
+      setNoteDefaults(conf, hintSuccess, false)
+      setNoteDefaults(conf, hintExecuting, false)
+    defer:
+      if progress:
+        delEnv(IcProgressEnv)
+        (conf.notes, conf.mainPackageNotes, conf.foreignPackageNotes) = savedNotes
+
     let signature = configSignature(c, forwardedArgs)
     # Like Nimony, share source scans and imported semantics, while keeping each
     # program's backend outputs separate. Only the driver knows the config key;
@@ -2032,14 +2110,8 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     let argsFile = configSignatureFile(c)
     if not fileExists(argsFile): writeFile(argsFile, signature)
 
-    # The executable can live outside the selected cache and may have been
-    # overwritten by another configuration or entry point. Only the link rule
-    # needs this changing input; every module keeps its cached outputs.
-    if not frontendOnly:
-      let linkArgs = c.backendDir & "\n" & projectFile & "\n" &
-        conf.absOutFile.string & "\n"
-      if not fileExists(c.linkArgsFile) or readFile(c.linkArgsFile) != linkArgs:
-        writeFile(c.linkArgsFile, linkArgs)
+    let linkArgs = c.backendDir & "\n" & projectFile & "\n" &
+      conf.absOutFile.string & "\n"
 
     # Create root node for main project file
     let rootPair = c.toPair(projectFile)
@@ -2144,7 +2216,17 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
       else: " --parallel"
 
     # Phase 1 — frontend (nifler + `nim m`), run to a discovery fixpoint.
+    # A sem worker can discover an import and exit successfully without producing
+    # its BIF. Schedulers supporting deferred outputs withhold its descendants
+    # for this round. Older nifmake versions still converge via allSemmed.
+    let frontEnv = newStringTable(modeCaseSensitive)
+    for key, value in envPairs(): frontEnv[key] = value
+    frontEnv["NIFMAKE_DEFER_MISSING_OUTPUTS"] = "nim_m"
     var frontendOk = false
+    # How many modules were still unsemmed after the previous round that
+    # discovered nothing; see the rescheduling below.
+    var lastPending = high(int)
+    var round = 0
     while true:
       let buildFile = generateFrontendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & buildFile)
@@ -2158,9 +2240,19 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
           rawMessage(conf, hintSuccess, "generated: " & backendFile)
           rawMessage(conf, hintSuccess, "run:" & " nifmake run" & parallel & " " & backendFile)
         return
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(buildFile)
+      let frontendLo = if round == 0: 0 else: frontendHi
+      let frontendProgress =
+        if progress: " --progress:" & $frontendLo & ":" & $frontendHi
+        else: ""
+      inc round
+      let cmd = quoteShell(nifmake) & " run" & parallel & frontendProgress & " " &
+        quoteShell(buildFile)
       rawMessage(conf, hintExecuting, cmd)
-      let exitCode = execShellCmd(cmd)
+      var args = @["run"]
+      if parallel.len > 0: args.add parallel.strip
+      args.add buildFile
+      let child = startProcess(nifmake, args = args, env = frontEnv, options = {poParentStreams})
+      let exitCode = try: waitForExit(child) finally: close(child)
       # A child that met an import no rule produced yet records it in its
       # `.s.deps`, removes its own NIF and exits successfully (see
       # `pipelines.compilePipelineModule`), so a clean exit is not enough.
@@ -2181,10 +2273,25 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
         frontendOk = true
         break
       if not discovered and exitCode == 0:
-        # Only the deferred-import stops happened, and they taught us nothing.
+        # Only the deferred-import stops happened, and they taught us nothing
+        # new about the graph. That is not necessarily an error: a module can
+        # stop for an import whose node and edge already exist but whose NIF
+        # was missing when the module ran (e.g. the import stopped in the same
+        # round, or it is loaded transitively through another module's NIF).
+        # Just run the round again: nifmake reruns exactly the rules whose
+        # semmed NIF is missing. Only give up when a round leaves at least as
+        # many modules unsemmed as the previous one, so this terminates.
+        var pending = 0
+        for _ in unsemmed(c): inc pending
+        if pending < lastPending:
+          lastPending = pending
+          continue
+        var names: seq[string] = @[]
+        for m in unsemmed(c): names.add m
+        names.sort()
         rawMessage(conf, errGenerated,
           "ic: modules stopped for imports discovered during sem, but " &
-          "rescheduling found no new dependency")
+          "rescheduling made no progress: " & names.join(", "))
         break
       if not discovered:
         # The children have already printed the real diagnostics. Adding an
@@ -2207,14 +2314,29 @@ proc commandIc*(conf: ConfigRef; frontendOnly = false) =
     # An IDE query (`frontendOnly`) stops after Phase 1: the `.s.bif` it scans
     # are all produced by the frontend; codegen + link would be wasted work.
     if frontendOk and not frontendOnly:
+      # The executable can live outside the selected cache and may have been
+      # overwritten by another configuration, entry point or nimcache, leaving
+      # a program newer than every input of the link rule. When it is not the
+      # one recorded as this link's, remove it: a missing output makes nifmake
+      # run the rule, and every module keeps its cached outputs.
+      let exe = conf.absOutFile.string
+      if not fileExists(c.linkArgsFile) or
+          readFile(c.linkArgsFile) != linkArgs & programStamp(exe):
+        if not tryRemoveFile(exe):
+          rawMessage(conf, errGenerated, "cannot remove the program to relink: " & exe)
       let backendFile = generateBackendBuildFile(c, forwardedArgs)
       rawMessage(conf, hintSuccess, "generated: " & backendFile)
-      let cmd = quoteShell(nifmake) & " run" & parallel & " " & quoteShell(backendFile)
+      let cmd = quoteShell(nifmake) & " run" & parallel & backendProgress & " " &
+        quoteShell(backendFile)
       rawMessage(conf, hintExecuting, cmd)
       let exitCode = execShellCmd(cmd)
       if exitCode != 0:
         rawMessage(conf, hintExecuting,
           "nifmake reported backend failures (exit code " & $exitCode & ")")
         inc conf.errorCounter
+      else:
+        let linked = linkArgs & programStamp(exe)
+        if not fileExists(c.linkArgsFile) or readFile(c.linkArgsFile) != linked:
+          writeFile(c.linkArgsFile, linked)
   else:
     rawMessage(conf, errGenerated, "nim ic not available in bootstrap build")
