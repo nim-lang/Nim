@@ -796,3 +796,326 @@ block: # ttimes
       check dt.year == 2024
       check dt.month == mJul
       check dt.monthday == 21
+
+  block: # format: h, hh, H, HH, t and tt over the 24 hours of a day
+    for hour in 0 .. 23:
+      let dt = dateTime(2012, mApr, 2, hour, 5, 0, 0, utc())
+      let h12 = (hour + 11) mod 12 + 1 # 12 at midnight and at noon, then 1 .. 11
+      check dt.format("h") == $h12
+      check dt.format("hh") == (if h12 < 10: "0" & $h12 else: $h12)
+      check dt.format("H") == $hour
+      check dt.format("HH") == (if hour < 10: "0" & $hour else: $hour)
+      check dt.format("t") == (if hour < 12: "A" else: "P")
+      check dt.format("tt") == (if hour < 12: "AM" else: "PM")
+
+  block: # format: the year patterns and the era
+    template fmt(y: int, p: string): string =
+      dateTime(y, mJan, 1, 0, 0, 0, 0, utc()).format(p)
+    # 24 AD
+    check fmt(24, "yyyy") == "0024"
+    check fmt(24, "YYYY") == "24"
+    check fmt(24, "uuuu") == "0024"
+    check fmt(24, "UUUU") == "24"
+    check fmt(24, "yy") == "24"
+    check fmt(24, "g") == "AD"
+    # 24 BC is the year -23
+    check fmt(-23, "YYYY") == "24"
+    check fmt(-23, "uuuu") == "-0023"
+    check fmt(-23, "UUUU") == "-23"
+    check fmt(-23, "g") == "BC"
+    # 1 BC is the year 0, 1 AD is the year 1
+    check fmt(0, "YYYY") == "1"
+    check fmt(0, "uuuu") == "0000"
+    check fmt(0, "UUUU") == "0"
+    check fmt(0, "g") == "BC"
+    check fmt(1, "YYYY") == "1"
+    check fmt(1, "yyyy") == "0001"
+    check fmt(1, "g") == "AD"
+    # more than four digits
+    check fmt(9999, "yyyy") == "9999"
+    check fmt(9999, "uuuu") == "9999"
+    check fmt(10000, "yyyy") == "+10000"
+    check fmt(10000, "uuuu") == "+10000"
+    check fmt(12345, "YYYY") == "12345"
+    check fmt(12345, "UUUU") == "12345"
+    # the last two digits
+    check fmt(2012, "yy") == "12"
+    check fmt(2100, "yy") == "00"
+    check fmt(2105, "yy") == "05"
+
+  block: # format: the timezone offset patterns
+    let east7 = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(-7)) # UTC+07:00
+    check east7.format("z") == "+7"
+    check east7.format("zz") == "+07"
+    check east7.format("zzz") == "+07:00"
+    check east7.format("ZZZ") == "+0700"
+    check east7.format("zzzz") == "+07:00:00"
+    check east7.format("ZZZZ") == "+070000"
+    let west5 = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(5)) # UTC-05:00
+    check west5.format("z") == "-5"
+    check west5.format("zz") == "-05"
+    check west5.format("zzz") == "-05:00"
+    check west5.format("ZZZ") == "-0500"
+    check west5.format("zzzz") == "-05:00:00"
+    check west5.format("ZZZZ") == "-050000"
+    let odd = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(-5, -30, -15)) # UTC+05:30:15
+    check odd.format("zzz") == "+05:30"
+    check odd.format("ZZZ") == "+0530"
+    check odd.format("zzzz") == "+05:30:15"
+    check odd.format("ZZZZ") == "+053015"
+    let east12 = dateTime(2012, mApr, 2, 12, 0, 0, 0, staticTz(-12, -1, -1)) # UTC+12:01:01
+    check east12.format("zz") == "+12"
+    check east12.format("zzzz") == "+12:01:01"
+
+  block: # parse: numeric patterns of one or two digits and of exactly two digits
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    check p("5/4/2012", "d/M/yyyy").monthday == 5
+    check p("05/04/2012", "d/M/yyyy").monthday == 5
+    check p("31/12/2012", "d/M/yyyy").monthday == 31
+    check p("31/12/2012", "d/M/yyyy").month == mDec
+    check p("05/04/2012", "dd/MM/yyyy").month == mApr
+    check p("12:34:56", "H:m:s").hour == 12
+    check p("0:0:0", "H:m:s").hour == 0
+    check p("23:59:59", "H:m:s").second == 59
+    check p("23:59:59", "HH:mm:ss").minute == 59
+    check p("07:08:09", "hh:mm:ss").hour == 7
+    check p("5.123", "s.fff").nanosecond == 123_000_000
+    check p("5.123456", "s.ffffff").nanosecond == 123_456_000
+    check p("5.123456789", "s.fffffffff").nanosecond == 123_456_789
+    check p("5.001", "s.fff").nanosecond == 1_000_000
+    # a pattern of two digits needs both digits
+    check not parses("5/04/2012", "dd/MM/yyyy")
+    check not parses("05/4/2012", "dd/MM/yyyy")
+    check not parses("5:00:00", "HH:mm:ss")
+    check not parses("05:0:00", "HH:mm:ss")
+    check not parses("05:00:0", "HH:mm:ss")
+    check not parses("5:00:00", "hh:mm:ss")
+    # more than two digits are too many
+    check not parses("123/04/2012", "d/M/yyyy")
+    check not parses("1/004/2012", "d/M/yyyy")
+    check not parses("123:00:00", "H:m:s")
+    # the ranges
+    check not parses("0/4/2012", "d/M/yyyy")
+    check not parses("32/4/2012", "d/M/yyyy")
+    check not parses("00/04/2012", "dd/MM/yyyy")
+    check not parses("1/0/2012", "d/M/yyyy")
+    check not parses("1/13/2012", "d/M/yyyy")
+    check not parses("01/00/2012", "dd/MM/yyyy")
+    check not parses("01/13/2012", "dd/MM/yyyy")
+    check not parses("24:00:00", "H:m:s")
+    check not parses("24:00:00", "HH:mm:ss")
+    check not parses("00:60:00", "HH:mm:ss")
+    check not parses("0:60:0", "H:m:s")
+    check parses("00:00:60", "HH:mm:ss") # a leap second
+    check parses("0:0:60", "H:m:s")
+    check not parses("00:00:61", "HH:mm:ss")
+    check not parses("0:0:61", "H:m:s")
+    # a fraction of a second has exactly as many digits as the pattern
+    check not parses("5.12", "s.fff")
+    check not parses("5.1234", "s.fff")
+    check not parses("5.12345", "s.ffffff")
+    check not parses("5.12345678", "s.fffffffff")
+
+  block: # parse: names, am/pm and the era
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    check p("Sep 2012", "MMM yyyy").month == mSep
+    check p("December 2012", "MMMM yyyy").month == mDec
+    check p("Jan 2012", "MMM yyyy").month == mJan
+    check p("Mon 2012-04-02", "ddd yyyy-MM-dd").weekday == dMon
+    check p("Saturday 2012-04-07", "dddd yyyy-MM-dd").weekday == dSat
+    check not parses("Foo 2012", "MMM yyyy")
+    check not parses("Foobar 2012", "MMMM yyyy")
+    check not parses("Foo 2012-04-02", "ddd yyyy-MM-dd")
+    check not parses("Foobar 2012-04-02", "dddd yyyy-MM-dd")
+    check p("5:30P", "h:mmt").hour == 17
+    check p("5:30A", "h:mmt").hour == 5
+    check p("5:30PM", "h:mmtt").hour == 17
+    check p("5:30AM", "h:mmtt").hour == 5
+    check p("11:30AM", "h:mmtt").hour == 11
+    check p("11:30PM", "h:mmtt").hour == 23
+    check not parses("5:30X", "h:mmt")
+    check not parses("5:30XM", "h:mmtt")
+    check not parses("5:30P", "h:mmtt")
+    check p("0024 AD", "yyyy g").year == 24
+    check p("0024 BC", "yyyy g").year == -23
+    check not parses("0024 XX", "yyyy g")
+    check not parses("0024 A", "yyyy g")
+
+  block: # parse: the year patterns
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    check p("2012", "yyyy").year == 2012
+    check p("0024", "yyyy").year == 24
+    check p("+12345", "yyyy").year == 12345
+    check p("12345", "YYYY").year == 12345
+    check p("24", "YYYY").year == 24
+    check p("1", "YYYY").year == 1
+    check p("2012", "uuuu").year == 2012
+    check p("-0023", "uuuu").year == -23
+    check p("+12345", "uuuu").year == 12345
+    check p("24", "UUUU").year == 24
+    check p("-23", "UUUU").year == -23
+    check p("12345", "UUUU").year == 12345
+    check p("12", "yy").year mod 100 == 12
+    check p("12", "yy").year div 100 == now().year div 100
+    # yyyy is positive and at least four digits
+    check not parses("012", "yyyy")
+    check not parses("0000", "yyyy")
+    check not parses("-0023", "yyyy")
+    check not parses("1", "yyyy")
+    check not parses("0", "YYYY")
+    check not parses("012", "uuuu")
+    check not parses("1", "yy")
+    check not parses("123", "yy")
+
+  block: # parse: the timezone offset patterns
+    template p(s, f: string): DateTime = parse(s, f, utc())
+    proc parses(s, f: string): bool =
+      try:
+        discard parse(s, f, utc())
+        true
+      except ValueError:
+        false
+    const f = "yyyy-MM-dd HH:mm:ss "
+    const s = "2012-04-02 12:00:00 "
+    # UTC+07:30:45 is 07:30:45 ahead of UTC
+    check p(s & "+7", f & "z").hour == 5
+    check p(s & "+07", f & "zz").hour == 5
+    check p(s & "-5", f & "z").hour == 17
+    check p(s & "-05", f & "zz").hour == 17
+    check p(s & "+07:30", f & "zzz").minute == 30
+    check p(s & "+07:30", f & "zzz").hour == 4
+    check p(s & "-07:30", f & "zzz").hour == 19
+    check p(s & "+0730", f & "ZZZ").hour == 4
+    check p(s & "+07:30:45", f & "zzzz").second == 15
+    check p(s & "+07:30:45", f & "zzzz").minute == 29
+    check p(s & "+073045", f & "ZZZZ").hour == 4
+    check p(s & "-073045", f & "ZZZZ").second == 45
+    check p(s & "Z", f & "z").hour == 12
+    check p(s & "Z", f & "zzzz").hour == 12
+    check not parses(s & "07", f & "z") # no sign
+    check not parses(s & "+007", f & "zz") # three digits
+    check not parses(s & "+7", f & "zz") # one digit
+    check not parses(s & "+07-30", f & "zzz") # no colon
+    check not parses(s & "+0730", f & "zzz") # no colon
+    check not parses(s & "+07:3", f & "zzz")
+    check not parses(s & "+07:30", f & "ZZZ") # a colon
+    check not parses(s & "+07:30-45", f & "zzzz")
+    check not parses(s & "+07:3045", f & "zzzz")
+    check not parses(s & "+0730:45", f & "zzzz")
+
+  block: # $ of Duration and TimeInterval: no part, one, two and several parts
+    check $initDuration() == "0 nanoseconds"
+    check $initDuration(nanoseconds = 1) == "1 nanosecond"
+    check $initDuration(seconds = 1) == "1 second"
+    check $initDuration(seconds = 2) == "2 seconds"
+    check $initDuration(hours = 1, minutes = 1) == "1 hour and 1 minute"
+    check $initDuration(days = 1, hours = 2, minutes = 3) ==
+      "1 day, 2 hours, and 3 minutes"
+    check $initDuration(weeks = 2, days = 1, hours = 1, minutes = 1) ==
+      "2 weeks, 1 day, 1 hour, and 1 minute"
+    check $initDuration(milliseconds = -1500) ==
+      "-1 second and -500 milliseconds"
+    # the value is -0.999999999 seconds: every part has the sign of the value
+    check $initDuration(seconds = -1, nanoseconds = 1) ==
+      "-999 milliseconds, -999 microseconds, and -999 nanoseconds"
+    check $initDuration(seconds = 1, nanoseconds = -1) ==
+      "999 milliseconds, 999 microseconds, and 999 nanoseconds"
+    var dp = toParts(initDuration(seconds = -1, nanoseconds = 1))
+    check dp[Seconds] == 0
+    check dp[Milliseconds] == -999
+    check dp[Microseconds] == -999
+    check dp[Nanoseconds] == -999
+    check $initTimeInterval() == "0 nanoseconds"
+    check $initTimeInterval(months = 1) == "1 month"
+    check $initTimeInterval(years = 1, nanoseconds = 123) ==
+      "1 year and 123 nanoseconds"
+    let ti = initTimeInterval(nanoseconds = 1, microseconds = 2, milliseconds = 3,
+        seconds = 4, minutes = 5, hours = 6, days = 7, weeks = 8, months = 9,
+        years = 10)
+    let tp = toParts(ti)
+    check tp[Nanoseconds] == 1
+    check tp[Microseconds] == 2
+    check tp[Milliseconds] == 3
+    check tp[Seconds] == 4
+    check tp[Minutes] == 5
+    check tp[Hours] == 6
+    check tp[Days] == 7
+    check tp[Weeks] == 8
+    check tp[Months] == 9
+    check tp[Years] == 10
+    check $ti == "10 years, 9 months, 8 weeks, 7 days, 6 hours, 5 minutes, " &
+      "4 seconds, 3 milliseconds, 2 microseconds, and 1 nanosecond"
+
+  block: # between: `a + between(a, b) == b`, `between(b, a) == -between(a, b)`, one sign
+    const dates = [(2015, mMar, 25), (2016, mFeb, 29), (2016, mMar, 1),
+      (2017, mJan, 1), (2017, mJan, 31), (2017, mMar, 31), (2017, mApr, 30),
+      (2017, mDec, 31), (2018, mJan, 1), (2020, mFeb, 29), (2021, mFeb, 28)]
+    const clocks = [(0, 0, 0), (12, 30, 15), (23, 59, 59)]
+    for (y1, mo1, d1) in dates:
+      for (h1, mi1, s1) in clocks:
+        for (y2, mo2, d2) in dates:
+          for (h2, mi2, s2) in clocks:
+            let a = dateTime(y1, mo1, d1, h1, mi1, s1, 0, utc())
+            let b = dateTime(y2, mo2, d2, h2, mi2, s2, 0, utc())
+            let ti = between(a, b)
+            if b >= a:
+              check a + ti == b
+            check between(b, a) == -ti
+            var parts = toParts(ti)
+            for unit in Nanoseconds .. Years:
+              if b >= a:
+                check parts[unit] >= 0
+              else:
+                check parts[unit] <= 0
+    # different timezones: the same as between the two in UTC
+    let a = dateTime(2017, mJan, 31, 23, 0, 0, 0, staticTz(-2))
+    let b = dateTime(2017, mMar, 1, 1, 0, 0, 0, staticTz(4))
+    check between(a, b) == between(a.utc, b.utc)
+    check between(b, a) == between(b.utc, a.utc)
+
+  block: # getDayOfYear and the date of a unix time over the whole proleptic Gregorian calendar
+    for year in [1900, 1999, 2000, 2001, 2004, 2100]:
+      var expected = 0
+      for month in mJan .. mDec:
+        let days = getDaysInMonth(month, year)
+        check getDayOfYear(1, month, year) == expected
+        check getDayOfYear(1, month, year) ==
+          dateTime(year, month, 1, 0, 0, 0, 0, utc()).yearday
+        check getDayOfYear(days, month, year) == expected + days - 1
+        expected.inc days
+      check expected == (if isLeapYear(year): 366 else: 365)
+    check fromUnix(0).utc.format("yyyy-MM-dd") == "1970-01-01"
+    check fromUnix(-86400).utc.format("yyyy-MM-dd") == "1969-12-31"
+    check fromUnix(951782400).utc.format("yyyy-MM-dd") == "2000-02-29"
+    check fromUnix(951868800).utc.format("yyyy-MM-dd") == "2000-03-01"
+    check fromUnix(4107456000).utc.format("yyyy-MM-dd") == "2100-02-28"
+    check fromUnix(4107542400).utc.format("yyyy-MM-dd") == "2100-03-01"
+    check fromUnix(-2203977600).utc.format("yyyy-MM-dd") == "1900-02-28"
+    check fromUnix(-2203891200).utc.format("yyyy-MM-dd") == "1900-03-01"
+    for year in [-401, -400, -100, -1, 0, 1, 4, 100, 399, 400, 401, 1600, 1899,
+                 1900, 1999, 2000, 2099, 2100, 2399, 2400, 4000]:
+      for month in mJan .. mDec:
+        for monthday in [1, getDaysInMonth(month, year)]:
+          let back = fromUnix(
+            dateTime(year, month, monthday, 0, 0, 0, 0, utc()).toTime.toUnix).utc
+          check back.year == year
+          check back.month == month
+          check back.monthday == monthday
