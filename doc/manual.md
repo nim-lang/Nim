@@ -7903,6 +7903,38 @@ the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
 
 
+goto pragma
+-----------
+The `goto` pragma marks an ordinal state variable for a `case` in the C-like
+backends. Its initializer and each assignment to it must name a constant state
+and jump immediately to the matching branch. Initialize shared variables before
+the marked declaration. A branch that neither jumps nor exits falls through.
+
+```nim
+proc unescape(s: string): string =
+  type State = enum scan, escaped, copyChar
+  var i = 0
+  var state {.goto.} = scan
+
+  case state
+  of scan:
+    if i == s.len: return
+    if s[i] == '\\':
+      inc i
+      state = escaped
+    state = copyChar
+  of escaped:
+    if i == s.len:
+      raise newException(ValueError, "trailing backslash")
+    state = copyChar
+  of copyChar:
+    result.add s[i]
+    inc i
+    state = scan
+
+doAssert unescape(r"one\,two") == "one,two"
+```
+
 immediate pragma
 ----------------
 
