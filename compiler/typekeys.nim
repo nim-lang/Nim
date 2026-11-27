@@ -148,6 +148,14 @@ proc skipGenericAlias(t: PType): PType =
   if result.isGenericAlias:
     result = result.skipModifierB.skipTypesB({tyAlias})
 
+proc tupleElemFlagsB(t: PType, flags: set[ConsiderFlag]): set[ConsiderFlag] {.inline.} =
+  ## See sighashes.tupleElemFlags
+  if skipTypesB(t, {tyGenericInst, tyAlias, tySink, tyOwned,
+                    tyInferred} + tyUserTypeClasses).kind == tyRange:
+    flags + {CoIgnoreRange}
+  else:
+    flags
+
 proc maybeImported(c: var Context; s: PSym; conf: ConfigRef) {.inline.} =
   # A lazy stub may not yet have its importc/exportc flags. Those flags are part
   # of the backend identity for aliases, so load the symbol before testing them.
@@ -389,7 +397,8 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
           withTree c.m, "kv":
             assert(t.nImpl[i].kind == nkSym)
             c.symKey(t.nImpl[i].sym, conf)
-            c.typeKey(t.nImpl[i].sym.typImpl, flags+{CoIgnoreRange}, conf)
+            c.typeKey(t.nImpl[i].sym.typImpl,
+                tupleElemFlagsB(t.nImpl[i].sym.typImpl, flags), conf)
       else:
         # ALL sons are tuple fields (son 0 included — unlike tyProc, where
         # son 0 is the return type). Starting at 1 dropped the first field,
@@ -397,7 +406,7 @@ proc typeKey(c: var Context; t: PType; flags: set[ConsiderFlag]; conf: ConfigRef
         # onto one key, so hook lookup called the wrong `=destroy`/`=sink`
         # (incompatible-argument C errors). Mirrors sighashes' `for a in t.kids`.
         for i in 0..<t.sonsImpl.len:
-          c.typeKey t.sonsImpl[i], flags+{CoIgnoreRange}, conf
+          c.typeKey t.sonsImpl[i], tupleElemFlagsB(t.sonsImpl[i], flags), conf
   of tyRange:
     if t.sonsImpl.len == 0:
       # bare `range` typeclass: no base type, key the kind alone
