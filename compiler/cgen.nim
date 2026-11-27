@@ -1525,6 +1525,15 @@ proc cgsym(m: BModule, name: string) =
   let sym = magicsys.getCompilerProc(m.g.graph, name)
   if sym != nil:
     cgsymImpl m, sym
+    if m.config.cmd == cmdNifC and sym.kind in routineKinds:
+      # The caller writes `name` into the C text itself, unmarked: the merge
+      # stage cannot see that use, so it is recorded explicitly. Uses
+      # through `cgsymValue` (and `#name` in `ropecg`) carry the marked name.
+      # Inside a proc (or RTTI init) it is an invisible use of that definition.
+      let r = stripCnifMarks(sym.loc.snippet)
+      if m.icProcDepth > 0:
+        if r notin m.icProcUses: m.icProcUses.add r
+      elif r notin m.icCgsymRoots: m.icCgsymRoots.add r
   else:
     rawMessage(m.config, errGenerated, "system module needs: " & name)
 
@@ -1820,7 +1829,7 @@ proc resultDestructorCpp(p: BProc; prc: PSym; res: PSym; procBody: PNode): PNode
         arg = newTreeIT(nkHiddenAddr, res.info, makePtrType(res.typ, p.module.idgen), arg)
       result = newTreeI(nkCall, res.info, newSymNode(op), arg)
 
-proc genProcLvl3*(m: BModule, prc: PSym) =
+proc genProcLvl3Impl(m: BModule, prc: PSym) =
   if m.config.cmd == cmdNifC:
     fillBackendName(m, prc)
     if (prc.disamb and (InstanceDisambBit or HookDisambBit)) != 0'i32 and
@@ -2052,7 +2061,12 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
     # cfsProcs emitters (NimMain block, trav markers, ...) never end up
     # inside a definition's span.
     var defFlags = ""
-    if sfExportc in prc.flags or sfConstructor in prc.flags: defFlags.add 'x'
+    # A compilerproc is `exportc` only to fix its C name: like in whole-program
+    # codegen it is generated when used, so it is no root (unless exported
+    # from a library).
+    if (sfExportc in prc.flags and sfCompilerProc notin prc.flags) or
+        sfConstructor in prc.flags or lfExportLib in prc.loc.flags:
+      defFlags.add 'x'
     if sfCompilerProc in prc.flags: defFlags.add 'c'
     if prc.kind == skMethod or sfDispatcher in prc.flags: defFlags.add 'm'
     if (prc.typ == nil or prc.typ.callConv != ccInline) and
@@ -2081,6 +2095,7 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
       if sfCppMember * prc.flags != {}: icNifName(m, prc)
       else: stripCnifMarks(prc.loc.snippet)
     m.s[cfsProcs].add(cnifDefDirective(defName, defFlags, icNifName(m, prc)))
+    for u in m.icProcUses: m.s[cfsProcs].add(cnifUse(u))
     let pushed = icTargetPush(m, prc)
     m.s[cfsProcs].add(extract(generatedProc))
     if pushed: icTargetPop(m)
@@ -2098,6 +2113,17 @@ proc genProcLvl3*(m: BModule, prc: PSym) =
           getModuleDllPath(m, prc),
           '"' & prc.loc.snippet & '"',
           cCast(CPointer, prc.loc.snippet & "_actual"))
+
+proc genProcLvl3*(m: BModule, prc: PSym) =
+  if m.config.cmd == cmdNifC:
+    # collect the compilerprocs `cgsym` demands by name for this proc's text
+    var saved = move m.icProcUses
+    inc m.icProcDepth
+    genProcLvl3Impl(m, prc)
+    dec m.icProcDepth
+    swap m.icProcUses, saved
+  else:
+    genProcLvl3Impl(m, prc)
 
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
@@ -3108,6 +3134,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     # close the definitions section: the init procs that follow belong to
     # the artifact's top level (always-run code, hence liveness roots)
     res.add(cnifEndDefs())
+    for r in m.icCgsymRoots: res.add(cnifUse(r))
 
   if m.s[cfsInitProc].buf.len > 0:
     moduleIsEmpty = false

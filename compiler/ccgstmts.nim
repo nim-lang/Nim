@@ -1897,7 +1897,10 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
-  discard genTypeInfoV1(p.module, t, a.lode.info)
+  let ti = genTypeInfoV1(p.module, t, a.lode.info)
+  if p.config.cmd == cmdNifC:
+    # the discriminator table below is filled by the type info's init
+    p.s(cpsStmts).add(cnifUsesOf(ti))
   if not containsOrIncl(p.module.declaredThings, field.id):
     p.module.s[cfsVars].addDeclWithVisibility(Extern):
       discriminatorTableDecl(p.module, t, field, p.module.s[cfsVars])

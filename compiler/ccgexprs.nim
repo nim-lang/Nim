@@ -3603,9 +3603,10 @@ proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
           getModuleDllPath(q, sym),
           '"' & sym.loc.snippet & '"')
   else:
+    # unmarked: a name at the artifact's top level would be a liveness root
     var headerDecl = newBuilder("")
     headerDecl.addDeclWithVisibility(Extern):
-      headerDecl.addVar(kind = Local, name = sym.loc.snippet,
+      headerDecl.addVar(kind = Local, name = stripCnifMarks(sym.loc.snippet),
         typ = constType(getTypeDesc(m, sym.loc.t, dkVar)))
     m.s[cfsData].add(extract(headerDecl))
     if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
@@ -3623,14 +3624,16 @@ proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
     # Each `cg` process that demands this const emits its definition
     # (emit-everywhere). Always declare it first (the data analogue of a proc
     # prototype) so a TU whose copy the merge stage drops still has a valid
-    # declaration; wrap the definition as a droppable `'d'` unit the merge
-    # stage assigns to a single owner.
+    # declaration; wrap the definition as a droppable `'u'` unit the merge
+    # stage assigns to a single owner. It is no root (its uses are marked)
+    # unless C code may name it.
     let cname = stripCnifMarks(actualConstName)
     var decl = newBuilder("")
     decl.addDeclWithVisibility(Extern):
-      decl.addVar(kind = Local, name = actualConstName, typ = td)
+      decl.addVar(kind = Local, name = cname, typ = td)
     q.s[cfsData].add(extract(decl))
-    q.s[cfsData].add(cnifDefDirective(cname, "d", icNifName(q, sym)))
+    q.s[cfsData].add(cnifDefDirective(cname,
+      if sfExportc in sym.flags: "d" else: "u", icNifName(q, sym)))
     q.s[cfsData].add(extract(data))
     q.s[cfsData].add(cnifEndDefs())
     q.icDataDefs.add (cname, icNifName(q, sym))

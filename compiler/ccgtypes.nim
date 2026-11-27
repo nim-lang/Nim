@@ -144,6 +144,17 @@ proc fillBackendName(m: BModule; s: PSym) =
       s.locImpl.snippet = markCName(result)
     else:
       s.locImpl.snippet = result
+  elif m.config.cmd == cmdNifC and not m.hcrOn and s.kind in routineKinds and
+      sfImportc notin s.flags and
+      (sfExportc notin s.flags or sfCompilerProc in s.flags) and
+      not hasCnifMarks(s.loc.snippet) and
+      allCharsInSet(s.loc.snippet, IdentChars):
+    # A C name from an `extern:` pragma (most of the stdlib's `rtl` procs) or
+    # of a compilerproc is set at sem time. Mark it too: otherwise the merge
+    # stage's liveness walk cannot see its uses and has to keep every such
+    # proc, used or not.
+    backendEnsureMutable s
+    s.locImpl.snippet = markCName(s.loc.snippet)
 
 proc fillParamName(m: BModule; s: PSym) =
   if s.loc.snippet == "":
@@ -1464,12 +1475,13 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
       # `cg` process emits this type info's tentative definition. Declare it
       # `extern` first (the data analogue of a proc prototype) so a TU whose copy
       # the merge stage drops still has a valid declaration; wrap the definition
-      # as a droppable `'d'` unit the merge stage assigns to a single owner so
+      # as a droppable `'u'` unit the merge stage assigns to a single owner so
       # exactly one external-linkage tentative definition survives (preserving
-      # the RTTI pointer identity refc relies on).
+      # the RTTI pointer identity refc relies on). Unlike `'d'` it is no root:
+      # its uses are marked (`rttiRef`), so it lives only if something does.
       m.s[cfsStrData].addDeclWithVisibility(Extern):
         m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
-      m.s[cfsStrData].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+      m.s[cfsStrData].add(cnifDefDirective(name, "u", icNifName(m, origType)))
       m.s[cfsStrData].addDeclWithVisibility(Private):
         m.s[cfsStrData].addVar(kind = Local, name = name, typ = "TNimType")
       m.s[cfsStrData].add(cnifEndDefs())
@@ -1766,6 +1778,15 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   m.s[cfsTypeInit3].addFieldAssignmentWithValue(result, "deepcopy"):
     m.s[cfsTypeInit3].add(cCast(pt, s.loc.snippet))
 
+proc rttiRef(m: BModule; name: Snippet): Snippet =
+  ## A reference to the type info `name`. In the per-module backend it is
+  ## cnif-marked: the type info is a DCE'd unit, live only when used.
+  if m.config.cmd == cmdNifC and not m.hcrOn and name.startsWith("NTI") and
+      allCharsInSet(name, IdentChars):
+    markCName(name)
+  else:
+    name
+
 proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
   let nr = rope(name)
   if m.hcrOn:
@@ -1779,13 +1800,11 @@ proc declareNimType(m: BModule; name: string; str: Rope, module: int) =
           m.s[cfsTypeInit1].addArgument(hcrGlobal):
             m.s[cfsTypeInit1].add("\"" & str & "\"")
   else:
-    # cnif-mark the name: this extern declaration is the reference the
-    # def-retention check consults when the defining TU regenerates and
-    # the typeinfo cannot be re-demanded (type vanished) — the referencing
-    # TU must lose its reuse then instead of producing a link error
-    let declName = if m.config.cmd == cmdNifC: markCName(str) else: str
+    # NOT cnif-marked: a name at the artifact's top level is a liveness root.
+    # The uses are marked instead (`rttiRef`), which also makes them the
+    # references the def-retention check consults.
     m.s[cfsStrData].addDeclWithVisibility(Extern):
-      m.s[cfsStrData].addVar(kind = Local, name = declName, typ = nr)
+      m.s[cfsStrData].addVar(kind = Local, name = str, typ = nr)
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var it = t
@@ -2047,7 +2066,12 @@ proc genTypeInfoV2OldImpl(m: BModule; t, origType: PType, tiName: Rope; info: TL
   m.s[cfsTypeInit3].add extract(typeEntry)
 
   if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
-    discard genTypeInfoV1(m, t, info)
+    let v1 = genTypeInfoV1(m, t, info)
+    if m.config.cmd == cmdNifC and not m.hcrOn:
+      # see `genTypeInfoV2Impl`
+      m.s[cfsVars].add(cnifDefDirective(tiName, "d", ""))
+      m.s[cfsVars].add(cnifUsesOf(v1))
+      m.s[cfsVars].add(cnifEndDefs())
 
 proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineInfo) =
   cgsym(m, "TNimTypeV2")
@@ -2121,14 +2145,22 @@ proc genTypeInfoV2Impl(m: BModule; t, origType: PType, name: Rope; info: TLineIn
           typeEntry.addField(typeInit, name = "flags"):
             typeEntry.addIntValue(flags)
   if m.config.cmd == cmdNifC:
-    m.s[cfsVars].add(cnifDefDirective(name, "d", icNifName(m, origType)))
+    # 'u', not 'd': no root, its uses are marked (`rttiRef`) and it keeps the
+    # hooks it points to alive only while it is live itself
+    m.s[cfsVars].add(cnifDefDirective(name, "u", icNifName(m, origType)))
     m.s[cfsVars].add extract(typeEntry)
     m.s[cfsVars].add(cnifEndDefs())
   else:
     m.s[cfsVars].add extract(typeEntry)
 
   if t.kind == tyObject and t.baseClass != nil and optEnableDeepCopy in m.config.globalOptions:
-    discard genTypeInfoV1(m, t, info)
+    let v1 = genTypeInfoV1(m, t, info)
+    if m.config.cmd == cmdNifC:
+      # deepCopy reaches the V1 info through this one's `typeInfoV1` field,
+      # which the V1 info's init sets: depend on it
+      m.s[cfsVars].add(cnifDefDirective(name, "u", ""))
+      m.s[cfsVars].add(cnifUsesOf(v1))
+      m.s[cfsVars].add(cnifEndDefs())
 
 proc myModuleOpenForCodegen(m: BModule; idx: FileIndex): bool {.inline.} =
   if moduleOpenForCodegen(m.g.graph, idx):
@@ -2145,7 +2177,7 @@ proc genTypeInfoV2(m: BModule; t: PType; info: TLineInfo): Rope =
     if m.hcrOn:
       wrapPar(x)
     else:
-      cAddr(x)
+      cAddr(rttiRef(m, x))
 
   let sig = hashType(origType, m.config)
   result = m.typeInfoMarkerV2.getOrDefault(sig)
@@ -2232,6 +2264,7 @@ type
     markers: Builder
     typeNodes: int
     typeNodesName: Rope
+    procUses: seq[string] # the enclosing definition's `icProcUses`
 
 proc beginRttiInit(m: BModule; scope: var RttiInitScope) =
   ## The per-module backend emits V1 type info everywhere it is demanded, and
@@ -2250,6 +2283,12 @@ proc beginRttiInit(m: BModule; scope: var RttiInitScope) =
   scope.typeNodesName = m.typeNodesName
   m.typeNodes = 0
   m.typeNodesName = getTempName(m)
+  inc m.rttiInitDepth
+  scope.procUses = move m.icProcUses
+  inc m.icProcDepth
+
+proc emitRttiInit(m: BModule; name: Rope; markers: Snippet; body: var Builder;
+                  uses: seq[string])
 
 proc endRttiInit(m: BModule; scope: var RttiInitScope; name: Rope) =
   ## Wraps the init code gathered since `beginRttiInit` into `<name>_init`,
@@ -2268,8 +2307,16 @@ proc endRttiInit(m: BModule; scope: var RttiInitScope; name: Rope) =
     swap(m.s[s], scope.sections[s])
   m.typeNodes = scope.typeNodes
   m.typeNodesName = scope.typeNodesName
-  if body.buf.len == 0: return
+  dec m.rttiInitDepth
+  let uses = move m.icProcUses
+  m.icProcUses = move scope.procUses
+  dec m.icProcDepth
+  if body.buf.len > 0: emitRttiInit(m, name, markers, body, uses)
+  if m.rttiInitDepth == 0 and m.rttiInitCalls.buf.len > 0:
+    m.s[cfsTypeInit3].add(extract(m.rttiInitCalls))
 
+proc emitRttiInit(m: BModule; name: Rope; markers: Snippet; body: var Builder;
+                  uses: seq[string]) =
   let initName = name & "_init"
   var header = newBuilder("")
   header.addDeclWithVisibility(Private):
@@ -2277,10 +2324,14 @@ proc endRttiInit(m: BModule; scope: var RttiInitScope; name: Rope) =
   let proto = extract(header)
   m.s[cfsProcHeaders].add(proto)
   m.s[cfsProcHeaders].finishProcHeaderAsProto()
-  # 'd': a liveness root kept by its owner only; 'u': a unique proc body, so a
-  # split module may move it into any of its C files. The prototype comes
-  # first so the unit starts like a proc, and the markers precede their use.
-  m.s[cfsProcs].add(cnifDefDirective(initName, "ud", ""))
+  # 'u': a unique proc body, so a split module may move it into any of its C
+  # files. It is no root: it lives while its type info does (see the call
+  # below). The prototype comes first so the unit starts like a proc, and the
+  # markers precede their use. The invisible use keeps the type info alive
+  # with the init that writes it.
+  m.s[cfsProcs].add(cnifDefDirective(initName, "u", ""))
+  m.s[cfsProcs].add(cnifUse(name))
+  for u in uses: m.s[cfsProcs].add(cnifUse(u))
   m.s[cfsProcs].add(proto)
   m.s[cfsProcs].finishProcHeaderAsProto()
   m.s[cfsProcs].add(markers)
@@ -2293,7 +2344,21 @@ proc endRttiInit(m: BModule; scope: var RttiInitScope; name: Rope) =
     m.s[cfsProcs].addAssignment("nimRttiDone", NimTrue)
     m.s[cfsProcs].add(extract(body))
   m.s[cfsProcs].add(cnifEndDefs())
-  m.s[cfsTypeInit3].addCallStmt(initName)
+  if m.rttiInitDepth > 0:
+    # built for an enclosing type info: its init runs this one first
+    m.s[cfsTypeInit3].addCallStmt(markCName(initName))
+  # The DatInit call belongs to the type info: a unit of the same name, so the
+  # init runs if and only if the type info is live (and only in its owner;
+  # every DatInit runs before any module's init code). A nested type info gets
+  # its own call too, as it can outlive the enclosing one.
+  var call = newBuilder("")
+  call.add(cnifDefDirective(name, "u", ""))
+  call.addCallStmt(markCName(initName))
+  call.add(cnifEndDefs())
+  if m.rttiInitDepth > 0:
+    m.rttiInitCalls.add(extract(call))
+  else:
+    m.s[cfsTypeInit3].add(extract(call))
 
 proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
   let origType = t
@@ -2303,7 +2368,7 @@ proc genTypeInfoV1(m: BModule; t: PType; info: TLineInfo): Rope =
     if m.hcrOn:
       wrapPar(x)
     else:
-      cAddr(x)
+      cAddr(rttiRef(m, x))
 
   let sig = hashType(origType, m.config)
   result = m.typeInfoMarker.getOrDefault(sig)

@@ -222,6 +222,15 @@ type
                               # recorded in the cnif artifact so a later run
                               # can reuse the TU and re-demand definitions
                               # that cached TUs still reference
+    icCgsymRoots*: seq[string] # per-module backend: the routines `cgsym`
+                              # demanded by NAME. Their C text names them
+                              # verbatim, out of reach of the cnif marks, so
+                              # they become liveness roots of the module.
+    icProcUses*: seq[string]  # the same for the proc being generated:
+                              # invisible uses of its definition
+    icProcDepth*: int         # nesting of procs (and RTTI inits) being built
+    rttiInitDepth*: int       # nesting of V1 RTTI init procs being built
+    rttiInitCalls*: Builder   # their DatInit calls, flushed by the outermost
     hasTopLevelEmit*: bool    # a top-level `{.emit.}` wrote user C text into
                               # a file section: `emit` must not split the
                               # module, its text may define anything
