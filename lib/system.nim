@@ -1744,14 +1744,19 @@ when notJSnotNims:
   {.pop.}
 
 when notJSnotNims and defined(nimSeqsV2):
-  proc nimSizeOverflow() {.noinline, noreturn.} =
-    # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code
-    # generator assumes never raise, so under `--exceptions:goto` the raise
-    # would be ignored and execution would continue with the bogus size.
-    # A string or seq that cannot even be measured can never be allocated
-    # either, so handle it like an out of memory situation.
-    cstderr.rawWrite("fatal error: string or seq size overflows the address space\n")
-    rawQuit(1)
+  when hostOS == "standalone":
+    # No libc here: this ends in the `panic` of the program's `panicoverride`,
+    # like `sysFatal`. It is defined after `system/fatal` is included.
+    proc nimSizeOverflow() {.noinline, noreturn, raises: [], tags: [], gcsafe.}
+  else:
+    proc nimSizeOverflow() {.noinline, noreturn.} =
+      # Not an `OverflowDefect`: the callers are `.compilerproc`s which the code
+      # generator assumes never raise, so under `--exceptions:goto` the raise
+      # would be ignored and execution would continue with the bogus size.
+      # A string or seq that cannot even be measured can never be allocated
+      # either, so handle it like an out of memory situation.
+      cstderr.rawWrite("fatal error: string or seq size overflows the address space\n")
+      rawQuit(1)
 
   when defined(nimsso):
     include "system/strs_v3"
@@ -1877,6 +1882,11 @@ when not defined(nimscript):
 
 when not declared(sysFatal):
   include "system/fatal"
+
+when notJSnotNims and defined(nimSeqsV2) and hostOS == "standalone":
+  proc nimSizeOverflow() =
+    # `sysFatal` does not raise under `--os:standalone`, it ends in `panic`
+    sysFatal(OverflowDefect, "string or seq size overflows the address space")
 
 proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", gcsafe, sideEffect.}
   ## Writes and flushes the parameters to the standard output.
