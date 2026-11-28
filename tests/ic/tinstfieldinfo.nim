@@ -3,8 +3,7 @@ discard """
 """
 
 # The fields of a generic instance loaded from another module's NIF must keep
-# their line info, as under `nim c` (stew's `recordFields` matches fields to
-# their definitions by it).
+# their line info, as under `nim c`
 
 import std/[macros, os], minstfieldinfobox, minstfieldinfoinst
 
