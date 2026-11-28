@@ -33,7 +33,7 @@
 # included from sigmatch.nim
 
 import prefixmatches, suggestsymdb
-from wordrecg import wDeprecated, wError, wAddr, wYield
+from wordrecg import wDeprecated, wAddr, wYield
 
 import std/[algorithm, sets, parseutils, os]
 
@@ -677,17 +677,14 @@ proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   message(conf, info, warnDeprecated, name & " is deprecated")
 
 proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
-  let pragmaNode = extractPragma(s)
   template bail(prefix: string) =
     localError(conf, info, "$1usage of '$2' is an {.error.} defined at $3" %
       [prefix, s.name.s, toFileLineCol(conf, s.ast.info)])
-  if pragmaNode != nil:
-    for it in pragmaNode:
-      if whichPragma(it) == wError and it.safeLen == 2 and
-          it[1].kind in {nkStrLit..nkTripleStrLit}:
-        bail(it[1].strVal & "; ")
-        return
-  bail("")
+  let msg = errorPragmaMessage(s)
+  if msg.len > 0:
+    bail(msg & "; ")
+  else:
+    bail("")
 
 proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
   var module = s

@@ -27,7 +27,8 @@ when defined(nimPreviewSlimSystem):
   import std/assertions
 
 from vmlayout import hasPayloads
-from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites
+from trees import exprStructuralEquivalent, getRoot, isCursor, whichPragma, getPotentialWrites,
+  errorPragmaMessage
 
 type
   Con = object
@@ -200,7 +201,8 @@ template isFullyUnpackedTuple(n: PNode): bool =
   (n.kind == nkSym and n.sym.kind == skTemp and
    n.sym.typ.kind == tyTuple and sfCursor notin n.sym.flags)
 
-proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFromCopy = false) =
+proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; op: PSym;
+                         inferredFromCopy = false) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
   if inferredFromCopy:
     m.add ", which is inferred from unavailable '=copy'"
@@ -221,6 +223,12 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string; inferredFr
       m.add " a 'sink' parameter"
   m.add "; routine: "
   m.add c.owner.name.s
+  if op != nil:
+    # `proc `=copy`(...) {.error: "msg".}`
+    let userMsg = errorPragmaMessage(op)
+    if userMsg.len > 0:
+      m.add "; "
+      m.add userMsg
   #m.add "\n\n"
   #m.add renderTree(c.body, {renderIds})
   localError(c.graph.config, ri.info, errGenerated, m)
@@ -298,10 +306,10 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
       echo "destructor is ", op.id, " ", op.ast
   if sfError in op.flags:
     if ri != nil:
-      checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
+      checkForErrorPragma(c, t, ri, AttachedOpToStr[kind], op = op)
     else:
       # uses the lineinfos of `dest` is `ri` is not available
-      checkForErrorPragma(c, t, dest, AttachedOpToStr[kind])
+      checkForErrorPragma(c, t, dest, AttachedOpToStr[kind], op = op)
   c.genOp(op, dest)
 
 proc genDestroy(c: var Con; dest: PNode): PNode =
@@ -430,9 +438,9 @@ proc genCopy(c: var Con; dest, ri: PNode; flags: set[MoveOrCopyFlag]): PNode =
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
     if IsExplicitSink in flags:
-      c.checkForErrorPragma(t, ri, "=sink")
+      c.checkForErrorPragma(t, ri, "=sink", op = getAttachedOp(c.graph, t, attachedSink))
     else:
-      c.checkForErrorPragma(t, ri, "=copy")
+      c.checkForErrorPragma(t, ri, "=copy", op = getAttachedOp(c.graph, t, attachedAsgn))
   let a = if IsExplicitSink in flags: attachedSink else: attachedAsgn
   result = c.genCopyNoCheck(dest, ri, a)
   assert ri.typ != nil
@@ -478,7 +486,7 @@ proc genWasMoved(c: var Con, n: PNode): PNode =
   let op = getAttachedOp(c.graph, n.typ, attachedWasMoved)
   if op != nil:
     if sfError in op.flags:
-      c.checkForErrorPragma(n.typ, n, "=wasMoved")
+      c.checkForErrorPragma(n.typ, n, "=wasMoved", op = op)
     result = genOp(c, op, n)
   else:
     result = newNodeI(nkCall, n.info)
@@ -561,12 +569,12 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope; hint = true): PNode =
   let op = getAttachedOp(c.graph, typ, attachedDup)
   if op != nil and tfHasOwned notin typ.flags and not vmManagesItself(c, op, typ):
     if sfError in op.flags:
-      c.checkForErrorPragma(nTyp, n, "=dup")
+      c.checkForErrorPragma(nTyp, n, "=dup", op = op)
     else:
       let copyOp = getAttachedOp(c.graph, typ, attachedAsgn)
       if copyOp != nil and sfError in copyOp.flags and
          sfOverridden notin op.flags:
-        c.checkForErrorPragma(nTyp, n, "=dup", inferredFromCopy = true)
+        c.checkForErrorPragma(nTyp, n, "=dup", inferredFromCopy = true, op = copyOp)
 
     let src = p(n, c, s, normal)
     var newCall = newTreeIT(nkCall, src.info, src.typ,

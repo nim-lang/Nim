@@ -283,6 +283,9 @@ parameter and result types, not just their source-level shape. Use
   of stack space, via the new warning `LargeStackObject`. Combined with
   `--warningAsError:LargeStackObject` it turns an accidental stack copy of a
   huge object into a compile error.
+- The error for a missing lifetime hook (`=copy`, `=sink`, `=dup`, `=wasMoved`) that
+  is marked `{.error.}` now ends with the text of `{.error: "msg".}` when there
+  is one, like the error for a routine does.
 
 - Hot code reloading no longer keeps a global variable's memory when the
   global's type changed: the old memory was read with the new layout. Such a

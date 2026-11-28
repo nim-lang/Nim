@@ -181,6 +181,18 @@ proc isNoSideEffectPragma*(n: PNode): bool =
     k = whichPragma(n[1])
   result = k == wNoSideEffect
 
+proc errorPragmaMessage*(s: PSym): string =
+  ## The text of `{.error: "msg".}` on the routine or type `s`, or "" if
+  ## it has none.
+  result = ""
+  let pragmas = extractPragma(s)
+  if pragmas != nil:
+    for it in pragmas:
+      if whichPragma(it) == wError and it.safeLen == 2 and
+          it[1].kind in {nkStrLit..nkTripleStrLit}:
+        result = it[1].strVal
+        break
+
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
   result = nil
   if n.kind == nkPragma:
