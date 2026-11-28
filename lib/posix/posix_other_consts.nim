@@ -316,6 +316,7 @@ var IPPROTO_ICMPV6* {.importc: "IPPROTO_ICMPV6", header: "<netinet/in.h>".}: cin
 var IPPROTO_RAW* {.importc: "IPPROTO_RAW", header: "<netinet/in.h>".}: cint
 var IPPROTO_TCP* {.importc: "IPPROTO_TCP", header: "<netinet/in.h>".}: cint
 var IPPROTO_UDP* {.importc: "IPPROTO_UDP", header: "<netinet/in.h>".}: cint
+var IPPROTO_SCTP* {.importc: "IPPROTO_SCTP", header: "<netinet/in.h>".}: cint
 var INADDR_ANY* {.importc: "INADDR_ANY", header: "<netinet/in.h>".}: InAddrScalar
 var INADDR_LOOPBACK* {.importc: "INADDR_LOOPBACK", header: "<netinet/in.h>".}: InAddrScalar
 var INADDR_BROADCAST* {.importc: "INADDR_BROADCAST", header: "<netinet/in.h>".}: InAddrScalar

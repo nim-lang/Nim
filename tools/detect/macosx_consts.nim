@@ -573,6 +573,7 @@ const
   IPPROTO_RAW* = cint(255)
   IPPROTO_TCP* = cint(6)
   IPPROTO_UDP* = cint(17)
+  IPPROTO_SCTP* = cint(6)
   INADDR_ANY* = cint(0)
   INADDR_BROADCAST* = cint(-1)
   INET_ADDRSTRLEN* = cint(16)

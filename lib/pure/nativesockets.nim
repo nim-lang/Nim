@@ -75,14 +75,15 @@ type
     SOCK_RAW = 3,      ## raw protocols atop the network layer.
     SOCK_SEQPACKET = 5 ## reliable sequenced packet service
 
-  Protocol* = enum    ## third argument to `socket` proc
-    IPPROTO_TCP = 6,  ## Transmission control protocol.
-    IPPROTO_UDP = 17, ## User datagram protocol.
-    IPPROTO_IP,       ## Internet protocol.
-    IPPROTO_IPV6,     ## Internet Protocol Version 6.
-    IPPROTO_RAW,      ## Raw IP Packets Protocol. Unsupported on Windows.
-    IPPROTO_ICMP      ## Internet Control message protocol.
-    IPPROTO_ICMPV6    ## Internet Control message protocol for IPv6.
+  Protocol* = enum       ## third argument to `socket` proc
+    IPPROTO_TCP = 6,     ## Transmission control protocol.
+    IPPROTO_UDP = 17,    ## User datagram protocol.
+    IPPROTO_IP,          ## Internet protocol.
+    IPPROTO_IPV6,        ## Internet Protocol Version 6.
+    IPPROTO_RAW,         ## Raw IP Packets Protocol. Unsupported on Windows.
+    IPPROTO_ICMP,        ## Internet Control message protocol.
+    IPPROTO_ICMPV6 = 22, ## Internet Control message protocol for IPv6.
+    IPPROTO_SCTP = 132   ## Stream Control Transmission Protocol.
 
   Servent* = object ## information about a service
     name*: string
@@ -169,6 +170,7 @@ when not useWinVersion:
     of IPPROTO_RAW: result = posix.IPPROTO_RAW
     of IPPROTO_ICMP: result = posix.IPPROTO_ICMP
     of IPPROTO_ICMPV6: result = posix.IPPROTO_ICMPV6
+    of IPPROTO_SCTP: result = posix.IPPROTO_SCTP
 
 else:
   proc toInt(domain: Domain): cint =
@@ -199,12 +201,14 @@ else:
       result = 41.cint
     of IPPROTO_ICMPV6:
       result = 58.cint
+    of IPPROTO_SCTP:
+      result = 132.cint
     else:
       result = cint(ord(p))
 
 proc toSockType*(protocol: Protocol): SockType =
   result = case protocol
-  of IPPROTO_TCP:
+  of IPPROTO_TCP, IPPROTO_SCTP:
     SOCK_STREAM
   of IPPROTO_UDP:
     SOCK_DGRAM
