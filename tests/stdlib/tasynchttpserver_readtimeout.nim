@@ -3,7 +3,7 @@ discard """
   joinable: false
 """
 
-import std/[asyncdispatch, asyncnet, assertions, strutils, monotimes, times]
+import std/[asyncdispatch, asyncnet, assertions, heapqueue, strutils, monotimes, times]
 import asynchttpserver
 
 # Real HTTP requests on an ephemeral loopback port. Every client-side wait is
@@ -204,6 +204,28 @@ block: # without a readTimeout a stalled request is waited for, as before
     doAssert status.startsWith("HTTP/1.1 200"), "got: " & status
     doAssert body == "ok"
   waitFor patient()
+
+block: # a request read in time leaves no timer of its time limit in the event loop
+  proc noTimerLeft() {.async.} =
+    # Far longer than anything the test waits for, so a timer that is due
+    # after `farOff` can only be a time limit of the server.
+    const longTimeout = 60_000
+    const farOff = 10_000
+    let server = startServer(longTimeout)
+    defer: server.close()
+    let client = await connectTo(server, okHandler)
+    defer: client.close()
+    for i in 1 .. 10:
+      await client.send("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      let (status, _) = await readResponse(client)
+      doAssert status.startsWith("HTTP/1.1 200"), "request " & $i & " got: " & status
+    let after = getMonoTime() + initDuration(milliseconds = farOff)
+    let timers = getGlobalDispatcher().timers
+    var left = 0
+    for i in 0 ..< timers.len:
+      if timers[i].finishAt > after: inc left
+    doAssert left == 0, $left & " timers of " & $longTimeout & "ms are left in the event loop"
+  waitFor noTimerLeft()
 
 block: # the abandoned reads settle without disturbing the event loop
   # Everything above left pending reads behind on closed sockets. Let them run.
