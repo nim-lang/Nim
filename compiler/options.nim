@@ -12,6 +12,7 @@ import
   prefixmatches, pathutils, nimpaths, pathcache
 
 import std/[tables, os, strutils, strtabs, sets]
+from std/compilesettings import SingleValueSetting
 from std/terminal import isatty
 from std/times import utc, fromUnix, local, getTime, format, DateTime
 from std/private/globs import nativeToUnixPath
@@ -29,7 +30,9 @@ const
 
   nimEnableCovariance* = defined(nimEnableCovariance)
 
-  icFormatVersion* = "52"
+  icFormatVersion* = "54"
+    ## v54: shared backend workspaces and per-stage configuration inputs.
+    ## v53: semantic BIFs record module configuration observations.
     ## v51: the lowered `.t.bif` carries its module's `(offer)` names.
     ## v49: shared parsing, configuration semantics, and per-entry-point backend caches.
     ## v48: track implementation dependencies for reused generic type instances.
@@ -419,6 +422,17 @@ type
     mfmStd ## standard Nim style: `file(line, col)`
     mfmGcc ## GCC/Emacs style: `file:line:col:`
 
+  ConfigReadKind* = enum
+    crDefined, crValue, crModule, crFile, crSlurp, crPathSub, crRelativePath, crSetting,
+    crSettingSeq, crMangledPath, crLinkInputs, crCompileDate, crCompileTime
+  ConfigQuery* = tuple[kind: ConfigReadKind, name, origin: string]
+  ConfigReads* = ref object
+    values*: OrderedTable[ConfigQuery, string]
+    # Replay path lookups in execution order, including repeated searches.
+    # resolving a nimble package promotes its directory in lazyPaths.
+    order*: seq[ConfigQuery]
+    localOnly*: bool
+
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -458,6 +472,10 @@ type
     symbolFiles*: SymbolFilesOption
     ic*: bool # whether ic is enabled
     icParsedDir*: AbsoluteDir # shared source/dependency scans, selected by the IC driver
+    icVariants*: string       # compatible semantic variants for this group
+    groupReads*, moduleReads*: ConfigReads
+    icSourceInputs*: Table[string, string] # hashes of the bytes parsed or slurped
+    icLoadedModules*: HashSet[string] # external BIFs read by this semantic group
     icSemDir*: AbsoluteDir    # imported-module semantics for the effective configuration
     icMainSemDir*: AbsoluteDir # semantics for this entry point's import-cycle group
     icMainModules*: seq[string] # module suffixes whose semantics live in icMainSemDir
@@ -808,6 +826,24 @@ proc newPartialConfigRef*(): ConfigRef =
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
 
+template recordingConfig*(conf: ConfigRef): bool =
+  conf.groupReads != nil or conf.moduleReads != nil
+
+proc observeConfig*(conf: ConfigRef; kind: ConfigReadKind; name, origin, value: string) =
+  let query: ConfigQuery = (kind, name, origin)
+  for reads in [conf.groupReads, conf.moduleReads]:
+    if reads != nil:
+      # A repeated lookup can differ after a source pragma or a lazy-path
+      # promotion. Such a trace cannot be replayed as independent queries.
+      if query notin reads.values or kind in {crFile, crModule, crSlurp}:
+        reads.order.add query
+      let previous = reads.values.mgetOrPut(query, value)
+      if previous != value: reads.localOnly = true
+
+proc requireLocalConfig*(conf: ConfigRef) =
+  for reads in [conf.groupReads, conf.moduleReads]:
+    if reads != nil: reads.localOnly = true
+
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
     result = true
@@ -860,6 +896,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osSolaris, osIllumos, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: result = false
+  if conf.recordingConfig:
+    conf.observeConfig(crDefined, symbol.normalize, "", $result)
 
 template quitOrRaise*(conf: ConfigRef, msg = "") =
   # xxx in future work, consider whether to also intercept `msgQuit` calls
@@ -987,6 +1025,13 @@ proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   else:
     AbsoluteFile path.string.expandFilename
 
+proc canonicalInputPath*(conf: ConfigRef; path: string): string =
+  ## Match fileInfoIdx's identity for resolved inputs, including symlinked
+  ## modules. A failed lookup or a missing override must stay distinguishable.
+  if path.len == 0: return ""
+  try: result = conf.canonicalizePath(AbsoluteFile path).string
+  except OSError: result = path
+
 proc relativeTo*(conf: ConfigRef; fullPath: AbsoluteFile; base: AbsoluteDir;
                  sep = DirSep): RelativeFile =
   ## Convert compiler paths without repeatedly querying the working directory.
@@ -1107,6 +1152,8 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "projectpath", conf.projectPath.string,
     "projectdir", conf.projectPath.string,
     "nimcache", getNimcacheDir(conf).string]).expandTilde
+  if conf.recordingConfig and ('$' in p or p.startsWith('~')):
+    conf.observeConfig(crPathSub, p, config, result)
 
 iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   let pl = p.toLowerAscii
@@ -1176,6 +1223,9 @@ const
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   result = RelativeFile("")
+  defer:
+    if conf.recordingConfig:
+      conf.observeConfig(crRelativePath, f.string, $isTitle, result.string)
   let f = $f
   if isTitle:
     for dir in stdlibDirs:
@@ -1190,7 +1240,7 @@ proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = 
   search(conf.searchPaths)
   search(conf.lazyPaths)
 
-proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
+proc resolveFile(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
     result = if f.fileExists: AbsoluteFile(f) else: AbsoluteFile""
   else:
@@ -1203,12 +1253,17 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
           result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
   patchModule(conf)
 
+proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
+  result = resolveFile(conf, f, suppressStdlib)
+  if conf.recordingConfig:
+    conf.observeConfig(crFile, f, $suppressStdlib, conf.canonicalInputPath(result.string))
+
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
   var m = addFileExt(modulename, NimExt)
   var hasRelativeDot = false
   if m.startsWith(pkgPrefix):
-    result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
+    result = resolveFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
     if m.startsWith(stdPrefix):
       result = AbsoluteFile("")
@@ -1226,8 +1281,23 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
         hasRelativeDot = true
 
     if not fileExists(result) and not hasRelativeDot:
-      result = findFile(conf, m)
+      result = resolveFile(conf, m)
   patchModule(conf)
+  if conf.recordingConfig:
+    conf.observeConfig(crModule, modulename, currentModule, conf.canonicalInputPath(result.string))
+
+proc resolveSlurp*(conf: ConfigRef; file, origin: string): string =
+  result = parentDir(origin) / file
+  if not fileExists(result): result = resolveFile(conf, file).string
+  if conf.recordingConfig: conf.observeConfig(crSlurp, file, origin, conf.canonicalInputPath(result))
+
+proc resolveConfigPath*(conf: ConfigRef; q: ConfigQuery): string =
+  let path = case q.kind
+    of crModule: conf.findModule(q.name, q.origin).string
+    of crFile: conf.findFile(q.name, q.origin == "true").string
+    of crSlurp: conf.resolveSlurp(q.name, q.origin)
+    else: raiseAssert "expected a file lookup"
+  result = conf.canonicalInputPath(path)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
@@ -1281,6 +1351,8 @@ proc canonicalImportAux*(conf: ConfigRef, file: AbsoluteFile): string =
     if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
       ret = relPath
   if ret.isEmpty:
+    if conf.recordingConfig:
+      conf.observeConfig(crSetting, $ord(SingleValueSetting.projectPath), "", conf.projectPath.string)
     ret = relativeTo(file, conf.projectPath)
   result = ret.string
 

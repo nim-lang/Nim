@@ -1552,6 +1552,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): Address =
       when hasFFI:
         let site = int(wImm())
         let area = slotAddr(instr.regB)
+        c.config.requireLocalConfig()
         callForeign(c.config, c.ffiSites[site], area, area, c.debug[pc])
       else:
         globalError(c.config, c.debug[pc], "VM is not allowed to 'importc' without --experimental:compiletimeFFI")

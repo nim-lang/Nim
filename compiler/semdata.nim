@@ -148,6 +148,7 @@ type
       # enforceVoidContext != nil
     voidType*: PType # for typeof(stmt)
     module*: PSym              # the module sym belonging to the context
+    moduleReads*: ConfigReads     # also used while checking a deferred body
     currentScope*: PScope      # current scope
     moduleScope*: PScope       # scope for modules
     imports*: seq[ImportedModule] # scope for all imported symbols
@@ -431,6 +432,7 @@ proc popOptionEntry*(c: PContext) =
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result = PContext(
     optionStack: @[newOptionEntry(graph.config)],
+    moduleReads: graph.config.moduleReads,
     libs: @[],
     module: module,
     friendModules: @[module],

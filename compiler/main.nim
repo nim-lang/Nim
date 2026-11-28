@@ -34,6 +34,7 @@ from icconfig import produceIcConfig, ensureIcConfig
 from ic/sharedcounters import releaseSharedCounters
 
 when not defined(nimKochBootstrap):
+  import icmoduleconfig
   import nifbackend
   import deps
   import idetools
@@ -99,7 +100,13 @@ proc commandCheck(graph: ModuleGraph) =
   elif conf.backend == backendJs:
     setTarget(conf.target, osJS, cpuJS)
   setPipeLinePass(graph, SemPass)
+  when not defined(nimKochBootstrap):
+    if conf.cmd == cmdM and conf.icVariants.len > 0:
+      if restoreModuleConfig(conf): return
+      conf.groupReads = ConfigReads()
   compilePipelineProject(graph)
+  when not defined(nimKochBootstrap):
+    if conf.groupReads != nil: publishModuleConfig(graph)
 
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; ext: string) =
@@ -142,8 +149,13 @@ proc commandNifC(graph: ModuleGraph) =
     if not extccomp.ccHasSaneOverflow(conf):
       conf.symbols.defineSymbol("nimEmulateOverflowChecks")
 
-    # Use the NIF backend to generate C code
+    if conf.icBackendStage == "validate":
+      validateBackendReads(conf)
+      return
+    let trace = not conf.icSemDir.isEmpty and conf.icBackendStage in ["lower", "cg", "merge", "emit", "link"]
+    if trace: startBackendReads(conf)
     nifbackend.generateCode(graph, conf.projectMainIdx)
+    if trace: finishBackendReads(conf)
   else:
     rawMessage(graph.config, errGenerated, "NIF backend not available during bootstrap build")
 

@@ -943,10 +943,9 @@ proc addCFileWithParts(g: ModuleGraph; cpath, nimname: string) =
       if sp > 0: files.add line[0 ..< sp]
   for f in files:
     let cfile = AbsoluteFile f
-    var cf = Cfile(nimname: nimname, cname: cfile,
+    g.config.toCompile.add Cfile(nimname: nimname, cname: cfile,
                    obj: completeCfilePath(g.config, toObjFile(g.config, cfile)),
                    flags: {})
-    addExternalFileToCompile(g.config, cf)
 
 proc cPartBytes(conf: ConfigRef): int =
   ## Target size of the proc bodies per C file when `emit` splits a big module;
@@ -960,7 +959,9 @@ proc cPartBytes(conf: ConfigRef): int =
   ## 342 MB, 377s, 86s.
   result = 1_000_000
   if isDefined(conf, "icCPartBytes"):
-    try: result = parseInt(conf.symbols["icCPartBytes"])
+    let value = conf.symbols["icCPartBytes"]
+    if conf.recordingConfig: conf.observeConfig(crValue, "iccpartbytes", "", value)
+    try: result = parseInt(value)
     except ValueError: discard
   if conf.cppCustomNamespace.len > 0:
     # the namespace opened in the declarations closes after the init procs,
@@ -1111,14 +1112,7 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
     # compile for them.
     if cpath == mainC or not fileExists(cpath): continue
     addedCFiles.incl extractFilename(cpath)
-    # The directives this module recorded (`{.passL: "-lm".}` etc.); without
-    # them math's `-lm` is lost -> undefined `floor`/`pow`/… at link.
     applyBackendActions(g, cpath)
-    # `addExternalFileToCompile` (not `addFileToCompile`) gates each `.c` on its
-    # SHA1 footprint: an unchanged `.c` keeps its `.o` and is flagged Cached, so
-    # `callCCompiler` skips its compile but still links the existing object. This
-    # is what makes a localized edit recompile only the handful of `.c`s the
-    # `emit` stage actually rewrote, instead of every object every time.
     addCFileWithParts(g, cpath, splitFile(cpath).name)
 
   # deps.nim's static scanner can keep a CONDITIONALLY-imported module as a build
@@ -1146,6 +1140,12 @@ proc generateLinkStage(g: ModuleGraph; mainFileIdx: FileIndex) =
   if fileExists(mainC):
     applyBackendActions(g, mainC)
     addCFileWithParts(g, mainC, splitFile(mainC).name)
+
+  # Global passC and cppDefine directives can come from the last module.
+  # Determine every object's footprint using the same full command that will
+  # actually compile it, even when only another module's directives changed.
+  for cf in mitems(g.config.toCompile):
+    extccomp.prepareExternalFileToCompile(g.config, cf)
   if g.config.cmd != cmdTcc:
     extccomp.callCCompiler(g.config)
 
@@ -1163,6 +1163,7 @@ proc generateCode*(g: ModuleGraph; mainFileIdx: FileIndex) =
     # The ordering barrier between `lower` and `cg`; see `LoweredBarrierFile`.
     let barrier = getNimcacheDir(g.config).string / LoweredBarrierFile
     if not fileExists(barrier): writeFile(barrier, "")
+    writeFile(barrier & ".stamp", "") # freshness proof without waking codegen
     return
   elif g.config.icBackendStage == "merge":
     timed tStage:

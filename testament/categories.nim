@@ -629,7 +629,9 @@ proc isProvenance(path, before, after: string): bool =
   if path == "ic_link_args.txt":
     result = before[0 .. before.rfind('\n')] == after[0 .. after.rfind('\n')]
   else:
-    result = path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif")
+    result = path.endsWith(".frontend.build.nif") or path.endsWith(".backend.build.nif") or
+      (path.startsWith("modules" & DirSep) and path.endsWith(".variant")) or
+      (path.startsWith("snapshots" & DirSep) and path.endsWith(".cfg.nif"))
 
 proc stableBinary(path: string): string =
   ## Contents of a linked executable past its header region, for comparing whether
@@ -895,7 +897,7 @@ proc runMetamorphicIcTest(r: var TResults; file: string; cat: Category; options:
         for p in changedPaths(snap, cleanSnap):
           let inactiveConfig = p.startsWith("configs" & DirSep) and
             not p.startsWith(activePrefix)
-          let inactiveBackend = p.startsWith(activePrefix / "backend" & DirSep) and
+          let inactiveBackend = p.startsWith("backends" & DirSep) and
             not p.startsWith(backendPrefix)
           let inactiveMain = p.startsWith(activePrefix / "sem" / "main" & DirSep) and
             not p.startsWith(mainPrefix)

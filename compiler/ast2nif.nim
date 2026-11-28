@@ -2162,7 +2162,13 @@ proc writeImplCookie(config: ConfigRef; thisModule: int32; flat: seq[CookieTok];
   ## body change is exactly what NeedsImpl dependents must see.
   let selfSuffix = modname(thisModule, config)
   var s = newSha1State()
-  for t in flat:
+  var i = 0
+  while i < flat.len:
+    let t = flat[i]
+    if t.kind == ckParLe and t.tag == "configreads":
+      i = nextTree(flat, i)
+      continue
+    inc i
     if t.kind in {ckSym, ckSymDef}:
       s.update(if t.kind == ckSymDef: " :" else: " ")
       s.update t.name
@@ -2203,7 +2209,7 @@ proc writeEdgesFile(config: ConfigRef; thisModule: int32; implDeps: seq[int]) =
   # edit was reverted). Nimony's analog is its always-written `.s.bif`.
   storeBif(b, path, "." & extractModuleSuffix(path))
 
-proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]) =
+proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string]; complete = true) =
   ## The module's REAL direct imports as `nim m` sem resolved them — static
   ## plus any a macro generated — recorded as full source paths. `nim ic` reads
   ## this `.s.deps.nif` to re-derive the build graph: imports the static scanner
@@ -2214,7 +2220,7 @@ proc writeSemDeps*(config: ConfigRef; thisModule: int32; importPaths: seq[string
   ## Ported to nifcore: delegates to `icnifcore.writeSemDeps` (Stage 1 of the
   ## NIF-stack migration; see doc/ic_nifcore_port.md). Output is byte-identical
   ## to the previous `nifstreams` writer.
-  icnifcore.writeSemDeps(config, thisModule, importPaths)
+  icnifcore.writeSemDeps(config, thisModule, importPaths, complete)
 
 proc writeInterface(w: var Writer; dest: var IcBuilder; syms: openArray[PSym];
                     hidden: bool) =
@@ -2413,6 +2419,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
         if restoresWrittenState(config): w.writtenSyms.add s
         writeSymDef w, dest, s
 
+  if config.moduleReads != nil:
+    dest.writeConfigReads(config.moduleReads)
   dest.addParRi()
 
   # Nimsuggest and normal code generation reuse these symbols/types as live,
@@ -2441,7 +2449,8 @@ proc writeNifModule*(config: ConfigRef; thisModule: int32; n: PNode;
   # text `.s.nif` twin — writing two files per module only slows the build; debug
   # a `.bif` via `tools/bif2nif`). Re-homed into a private fresh pool
   # so the file holds only THIS module's literals.
-  storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath))
+  storeBifStable(dest, bifPath, "." & extractModuleSuffix(bifPath),
+                 if config.cmd == cmdM and config.icVariants.len > 0: bifPath & ".sha1" else: "")
   if not isDefined(config, "icNoIfaceGate"):
     var flat = flattenForCookie(dest)
     let ifaceHex = writeIfaceCookie(config, thisModule, flat)
@@ -2876,6 +2885,7 @@ proc moduleId(c: var DecodeContext; suffix: string; flags: set[LoadFlag] = {}): 
         ". This can happen when loading a module from NIF that references another module " &
         "whose NIF file hasn't been written yet."
     icProfStart(tBifLoad)
+    if conf.groupReads != nil: conf.icLoadedModules.incl suffix
     var m = icbif.load(modFile)
     prof pBifLoads
     icProfStop(tBifLoad)
@@ -4292,7 +4302,7 @@ type
     ## `implementation`) sit at the END of the chain so the average node walked
     ## all of it — 1.46M nodes on a 68-module build. Resolved once per tag id
     ## instead, and the chain becomes a `case`.
-    ttOther, ttReplay, ttUnusedId, ttModFlags,
+    ttOther, ttReplay, ttUnusedId, ttModFlags, ttConfigReads,
     ttRepConverter, ttRepDestroy, ttRepWasMoved, ttRepCopy, ttRepSink, ttRepDup,
     ttRepTrace, ttRepDeepCopy, ttRepEnumToStr, ttRepMethod, ttRepPureEnum,
     ttRepCppMember, ttExport, ttInclude, ttImport, ttOffer, ttTOffer,
@@ -4331,6 +4341,7 @@ proc classifyTopTag(name: string): TopTag =
   of "expansion": ttExpansion
   of "interface", "hiddeninterface": ttInterface
   of "sig": ttSig
+  of "configreads": ttConfigReads
   of "implementation": ttImplementation
   else:
     if name == letSectionTag: ttLetSection
@@ -4400,6 +4411,8 @@ proc processTopLevel(c: var DecodeContext; cur: var Cursor; flags: set[LoadFlag]
             result.moduleFlags = int32 intVal(cur)
             skip cur
           while cur.hasMore: skip cur
+      of ttConfigReads:
+        skip cur
       of ttInterface:
         skip cur # Loaded directly, in order, only when the interface is needed.
       of ttRepConverter:

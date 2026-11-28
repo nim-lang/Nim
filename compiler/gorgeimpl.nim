@@ -29,6 +29,7 @@ proc readOutput(p: Process): (string, int) =
   result[1] = p.waitForExit
 
 proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (string, int) =
+  conf.requireLocalConfig()
   let workingDir = parentDir(toFullPath(conf, info))
   result = ("", 0)
   if cache.len > 0:

@@ -26,41 +26,8 @@
 ## ordered by import order.
 
 import std/[algorithm, os, strutils, tables, syncio, assertions]
-import ../[options, pathutils]
-
-when defined(windows):
-  import std/winlean
-
-  proc lockFileEx(hFile: Handle; flags, reserved, lowLen, highLen: int32;
-                  overlapped: ptr OVERLAPPED): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "LockFileEx".}
-  proc unlockFileEx(hFile: Handle; reserved, lowLen, highLen: int32;
-                    overlapped: ptr OVERLAPPED): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "UnlockFileEx".}
-  const LockfileExclusiveLock = 2'i32
-else:
-  proc flock(fd: cint; op: cint): cint {.importc, header: "<sys/file.h>".}
-  var LockEx {.importc: "LOCK_EX", header: "<sys/file.h>".}: cint
-  var LockUn {.importc: "LOCK_UN", header: "<sys/file.h>".}: cint
-  var Eintr {.importc: "EINTR", header: "<errno.h>".}: cint
-
-proc lockExclusive(f: File) =
-  when defined(windows):
-    var ov = default(OVERLAPPED)
-    if lockFileEx(Handle(getOsFileHandle(f)), LockfileExclusiveLock, 0, 1, 0,
-                  addr ov) == 0:
-      raiseOSError(osLastError())
-  else:
-    while flock(getOsFileHandle(f), LockEx) != 0:
-      let err = osLastError()
-      if err != OSErrorCode(Eintr): raiseOSError(err)
-
-proc unlock(f: File) =
-  when defined(windows):
-    var ov = default(OVERLAPPED)
-    discard unlockFileEx(Handle(getOsFileHandle(f)), 0, 1, 0, addr ov)
-  else:
-    discard flock(getOsFileHandle(f), LockUn)
+import ../options
+import filelocks
 
 type
   Segment = tuple[start, len: BiggestInt]
@@ -128,6 +95,7 @@ proc usesSharedCounters*(conf: ConfigRef): bool {.inline.} =
   conf.cmd == cmdM and not conf.ideActive
 
 proc acquire(conf: ConfigRef) =
+  conf.requireLocalConfig()
   if held != nil: return
   let path = counterFile(conf)
   createDir(parentDir(path))

@@ -723,7 +723,7 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       f.writeLine($currentHash)
       close(f)
 
-proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
+proc prepareExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
   # we want to generate the hash file unconditionally
   let extFileChanged = externalFileChanged(conf, c)
   # A matching source hash does not prove that the object belongs to it. A
@@ -733,9 +733,16 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
       not extFileChanged and os.fileNewer(c.obj.string, c.cname.string):
     c.flags.incl CfileFlag.Cached
   else:
+    c.flags.excl CfileFlag.Cached
     # make sure Nim keeps recompiling the external file on reruns
     # if compilation is not successful
     discard tryRemoveFile(c.obj.string)
+
+proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
+  # IC workers can register the same external file in parallel. Only the link
+  # worker has all modules' compile options and owns the object and its hash.
+  if conf.cmd != cmdNifC and (conf.cmd != cmdM or conf.icSemDir.isEmpty):
+    prepareExternalFileToCompile(conf, c)
   conf.toCompile.add(c)
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =

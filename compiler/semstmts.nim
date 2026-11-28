@@ -2680,6 +2680,9 @@ proc runBodyTask(c: PContext; idx: int) =
   ## Re-attaches one unit's positional state, sems it, and detaches again.
   ## Re-entrant: a unit's body can demand another unit (a nested `const`), and
   ## the saved-and-restored locals here are what makes that nest correctly.
+  let previousReads = c.config.moduleReads
+  c.config.moduleReads = c.moduleReads
+  defer: c.config.moduleReads = previousReads
   if c.bodyTasks[idx].state != btPending: return
   c.bodyTasks[idx].state = btRunning
   let

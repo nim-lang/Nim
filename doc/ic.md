@@ -67,14 +67,54 @@ under the nimcache directory:
 | ---- | -------- | ------- |
 | ``<s>.p.nif`` | nifler | parsed AST (syntactic) |
 | ``<s>.deps.nif`` | nifler | **static** import list (syntactic `import`s) |
-| ``<s>.s.deps.nif`` | `nim m` | **real** post-sem imports (incl. macro-generated); see *Discovery* |
-| ``<s>.nif`` | `nim m` | semmed module (symbols resolved, typed) |
-| ``<s>.iface.nif`` | `nim m` | **iface cookie**: hash of the importer-visible surface |
-| ``<s>.impl.nif`` | `nim m` | **impl cookie**: hash of the entire content (bodies included) |
-| ``<s>.edges.nif`` | `nim m` | **NeedsImpl edges**: modules whose bodies this sem consumed |
+| ``<s>.s.deps.bif`` | `nim m` | **real** post-sem imports (incl. macro-generated); see *Discovery* |
+| ``<s>.s.bif`` | `nim m` | semmed module, including configuration reads |
+| ``<s>.s.bif.sha1`` | `nim m` | digest of the serialized semantic BIF used by the IC driver |
+| ``<s>.iface.bif`` | `nim m` | **iface cookie**: hash of the importer-visible surface |
+| ``<s>.impl.bif`` | `nim m` | **impl cookie**: hash of the entire content (bodies included) |
+| ``<s>.edges.bif`` | `nim m` | **NeedsImpl edges**: modules whose bodies this sem consumed |
 | ``<s>.c.nif`` | `nim nifc` | the C text as a NIF, with def/ref markers for DCE & dedup |
-| ``ic_config.cfg.nif`` | driver | precompiled config replayed by every child (`icconfig.nim`) |
+| ``<s>.semhash`` | driver | semantic BIF and interface fingerprints used by backend rules |
+| ``*.reads`` | `nim nifc` | configuration observations for one backend stage and its batch of modules |
+| ``snapshots/<hash>.cfg.nif`` | driver | precompiled config replayed by every child (`icconfig.nim`) |
 | ``ic.version`` | driver | format stamp; a mismatch wipes the cache (`icFormatVersion`) |
+
+Module configuration inputs
+===========================
+
+A semantic `<suffix>.s.bif` contains a `configreads` record with a digest and
+the configuration queries made while checking the module. Regular
+`--genBif:on` builds write the record too. A `defined(feature)` query records
+presence, including absence. Folding a `strdefine`, `intdefine`, `booldefine`
+or typed `define` also records the selected value under its effective name.
+Queries made by includes and expanded templates belong to the module being
+checked. File lookups record the requested name, its origin and the resolved
+file, including an empty result for a failed lookup.
+
+When a build selects a new configuration, its semantic workers look for
+previously compiled modules in the same nimcache. A worker compares the
+recorded queries against its own resolved configuration. Adding an unused
+define or a search directory that satisfies no lookup can reuse the module.
+Changing a selected file, including supplying a previously missing optional
+import, invalidates the consumer. Code that explicitly queries the list of
+search paths observes its ordering. The driver also checks recorded file
+lookups before trusting a warm module's import list.
+
+The `modules/` index groups candidates by the remaining compiler settings,
+the module or import cycle, and its observed configuration. The worker checks
+source/include and static-read contents, dependency cookies and the complete
+set of output artifacts before installing a candidate. Cycles reuse as a
+unit. The active configuration keeps a consistent view of the selected BIFs
+and sidecars. On filesystems with hard-link support, views can share semantic
+BIFs when interface gating is enabled.
+
+Defines that change compiler options, such as `release` and `danger`, also
+affect the base settings. Operations with external or mutable compile-time
+state, such as `staticExec`, source define mutations and shared macro-cache
+counters, use the ordinary configuration-specific semantic build. Backend
+stages record their own reads. For example, changing `-d:icCPartBytes` can
+rerun C emission while reusing the module's semantic BIF, lowered BIF and
+code-generation output.
 
 NIF symbols and ownership
 =========================
@@ -217,6 +257,23 @@ into ``<s>.s.deps.nif``; a child that fails on a not-yet-built import flushes it
 before erroring. The driver re-derives the graph from those sidecars — adding the
 missing node + the importer→import edge — and reruns to a fixpoint. (This replaced
 an earlier `icmissing.txt` side channel.)
+
+Backend workspaces are isolated by base settings, backend and entry point, and
+can be revisited by different effective configurations. Each live module has a
+content fingerprint derived from its semantic BIF and interface. A changed
+fingerprint invalidates lowering even when an older semantic view is restored.
+Lowering uses semantic fingerprints. Code generation uses lowered modules and
+recorded body dependencies. Merge uses live generated artifacts, and emit uses
+those artifacts and the merge decision. When switching views, a `nifc` worker replays the
+recorded queries before checking freshness. A missing, damaged or mismatched
+record forces its stage to run again. A stage that reads `CompileDate` can
+reuse its output while the date matches. A stage with an observation the
+worker cannot replay runs again on a view switch. A batch shares one record
+across its members.
+
+Linking tracks generated C, split-file manifests, recorded per-module compile
+and link actions, external inputs, and the output target. Configuration or
+output changes can require relinking even when earlier stages are reusable.
 
 The backend: per-module `nifc` stages
 =====================================

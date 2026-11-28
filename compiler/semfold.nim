@@ -524,6 +524,8 @@ proc foldDefine(m, s: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
             name = it[1].strVal
   if isDefined(g.config, name):
     let str = g.config.symbols[name]
+    if g.config.recordingConfig:
+      g.config.observeConfig(crValue, name.normalize, "", str)
     case s.magic
     of mIntDefine:
       try:
@@ -611,8 +613,14 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
                        g.config.isMainModule and m.position == g.config.projectMainIdx.int
                      else: sfMainModule in m.flags
         result = newIntNodeT(toInt128(ord(isMain)), n, idgen, g)
-      of mCompileDate: result = newStrNodeT(getDateStr(), n, g)
-      of mCompileTime: result = newStrNodeT(getClockStr(), n, g)
+      of mCompileDate:
+        let date = getDateStr()
+        if g.config.recordingConfig: g.config.observeConfig(crCompileDate, "", "", date)
+        result = newStrNodeT(date, n, g)
+      of mCompileTime:
+        let time = getClockStr()
+        if g.config.recordingConfig: g.config.observeConfig(crCompileTime, "", "", time)
+        result = newStrNodeT(time, n, g)
       of mCpuEndian: result = newIntNodeT(toInt128(ord(CPU[g.config.target.targetCPU].endian)), n, idgen, g)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.targetOS].name), n, g)
       of mHostCPU: result = newStrNodeT(platform.CPU[g.config.target.targetCPU].name.toLowerAscii, n, g)

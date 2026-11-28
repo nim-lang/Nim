@@ -9,11 +9,12 @@
 
 ## Implements the dispatcher for the different parsers.
 
+import "../dist/checksums/src/checksums" / sha1
 import
   llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
-import std/strutils
+import std/[strutils, tables]
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions]
 
@@ -43,7 +44,9 @@ proc containsShebang(s: string, i: int): bool =
 proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache;
                config: ConfigRef): PNode =
   result = newNode(nkEmpty)
-  var s = llStreamOpen(filename, fmRead)
+  var s = if config.groupReads != nil and inputStream.kind == llsString:
+            llStreamOpen(inputStream.s)
+          else: llStreamOpen(filename, fmRead)
   if s != nil:
     var line = newStringOfCap(80)
     discard llStreamReadLine(s, line)
@@ -120,6 +123,17 @@ proc openParser*(p: var Parser, fileIdx: FileIndex, inputstream: PLLStream;
                   cache: IdentCache; config: ConfigRef) =
   assert config != nil
   let filename = toFullPathConsiderDirty(config, fileIdx)
+  var inputstream = inputstream
+  if config.groupReads != nil:
+    if inputstream.kind == llsStdIn:
+      config.requireLocalConfig()
+    else:
+      let bytes = llStreamReadAll(inputstream)
+      llStreamClose(inputstream)
+      let hash = $secureHash(bytes)
+      if config.icSourceInputs.mgetOrPut(filename.string, hash) != hash:
+        config.requireLocalConfig()
+      inputstream = llStreamOpen(bytes)
   var pipe = parsePipe(filename, inputstream, cache, config)
   p.lex.config = config
   let s = if pipe != nil: evalPipe(p, pipe, filename, inputstream)

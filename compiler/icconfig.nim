@@ -31,6 +31,8 @@
 ## `--path` arguments; replaying their raw, config-dir-relative arguments here
 ## would misresolve.
 
+import "../dist/checksums/src/checksums" / sha1
+import ic/filelocks
 import options, commands, lineinfos, pathutils, msgs
 from icmodnames import moduleSuffix
 import std/[algorithm, os, sets, osproc, times, streams, syncio, strutils]
@@ -41,6 +43,14 @@ const
     ## Artifact format version. Bump on any layout change here so a child built
     ## by an older compiler rejects a stale artifact and falls back to normal
     ## config loading instead of replaying a format it cannot parse.
+
+proc backendReadFile*(dir, stage: string; members: openArray[string]): string =
+  # A batch can omit its siblings from its discovered body dependencies.
+  # Changing its membership/order must produce a new rule output.
+  let key = if members.len == 0: ""
+            elif members.len == 1: members[0] & "."
+            else: $secureHash($members) & "."
+  dir / (key & stage & ".reads")
 
 proc writeIcConfig*(conf: ConfigRef; outfile: string) =
   ## Serialise the resolved config (the config-file switches recorded during
@@ -254,6 +264,26 @@ proc produceIcConfig*(conf: ConfigRef) =
   createDir(parentDir(outPath))
   writeIcConfig(conf, outPath)
 
+proc lockIcCache*(cacheDir: string): File =
+  ## Acquire the cache and check its format under the same lock. Keep the lock
+  ## file across format upgrades so drivers waiting on its inode stay serialized.
+  createDir(cacheDir)
+  let lockPath = cacheDir / "ic.lock"
+  result = open(lockPath, fmAppend)
+  try:
+    lockExclusive(result)
+    let version = cacheDir / "ic.version"
+    if not fileExists(version) or readFile(version) != icFormatVersion:
+      for kind, path in walkDir(cacheDir):
+        if cmpPaths(path, lockPath) == 0: continue
+        case kind
+        of pcDir: removeDir(path)
+        of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
+      writeFile(version, icFormatVersion)
+  except:
+    close(result)
+    raise
+
 proc ensureIcConfig*(conf: ConfigRef) =
   ## Driver-side (`cmdIc`). Make sure an up-to-date precompiled config exists,
   ## (re)producing it in a *separate* process when missing or stale, then point
@@ -271,13 +301,8 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # (see `icFormatVersion`). This must happen HERE, before the config artifact is
   # produced — `commandIc` performs the same check later, but by then the artifact
   # would already live in the cache and the wipe would delete it.
-  createDir(cacheDir)
-  let versionFile = cacheDir / "ic.version"
-  let stamp = if fileExists(versionFile): readFile(versionFile) else: ""
-  if stamp != icFormatVersion:
-    removeDir(cacheDir)
-    createDir(cacheDir)
-    writeFile(versionFile, icFormatVersion)
+  let lock = lockIcCache(cacheDir)
+  defer: close(lock)
   # Projects in the same nimcache can load different config.nims chains or
   # project-specific .cfg files. Keep their snapshots separate; the build
   # signature still compares effective settings so equivalent configs can
@@ -327,7 +352,7 @@ proc ensureIcConfig*(conf: ConfigRef) =
   # different `--out:` does not alter the artifact's content (and with it the
   # config signature that selects the semantic cache directory).
   let argsPath = outPath & ".args"
-  let argsContent = pargs.join("\n")
+  let argsContent = $pargs
   let argsChanged = not fileExists(argsPath) or readFile(argsPath) != argsContent
   if not fileExists(outPath) or argsChanged or sourcesChanged(outPath):
     createDir(cacheDir)
@@ -343,4 +368,14 @@ proc ensureIcConfig*(conf: ConfigRef) =
       return
     writeFile(argsPath, argsContent)
     setLastModificationTime(outPath, started)
-  conf.icPreparsedConfig = outPath
+  # Another driver may next configure the same project with different flags.
+  # Release the config lock only after obtaining an immutable replay snapshot.
+  # The build can use a different cache root selected by this very snapshot.
+  let snapshotDir = cacheDir / "snapshots"
+  let contents = readFile(outPath)
+  let snapshot = snapshotDir / ($secureHash(contents) & ".cfg.nif")
+  if not fileExists(snapshot):
+    createDir(snapshotDir)
+    writeFile(snapshot & ".tmp", contents)
+    moveFile(snapshot & ".tmp", snapshot)
+  conf.icPreparsedConfig = snapshot

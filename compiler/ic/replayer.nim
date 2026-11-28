@@ -37,9 +37,8 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
   ## a 3.7s whole-program graph load, per link, purely to recover a handful of
   ## strings and the modules' `.c` paths. The producing `cg` process already has
   ## them in hand, so it writes them down instead and `link` reads them back
-  ## (`applyBackendActions`). Written unconditionally, even when empty: it is a
-  ## declared nifmake output of the `cg` rule, and a missing output re-fires the
-  ## rule for ever.
+  ## (`applyBackendActions`). The file is a link input. Preserve its timestamp
+  ## when a codegen pass produces the same directives.
   ##
   ## `localpassc` applies to the module's C file, which the sidecar belongs to,
   ## so it needs no path of its own.
@@ -58,7 +57,8 @@ proc writeBackendActions*(g: ModuleGraph; module: PSym; list: PNode;
         of "localpassc":
           content.add "localpassc\t" & n[1].strVal & "\n"
         else: discard
-  writeFile(cfile & BackendActionsExt, content)
+  let path = cfile & BackendActionsExt
+  if not fileExists(path) or readFile(path) != content: writeFile(path, content)
 
 proc targetOptions*(passc: string): string =
   ## The `#pragma GCC target` option list for the ISA switches (`-mavx2`,
@@ -81,6 +81,13 @@ proc localTargetOptions*(list: openArray[PNode]): string =
         if result.len > 0: result.add ','
         result.add t
 
+iterator externalBackendInputs*(cfile: string): string =
+  let path = cfile & BackendActionsExt
+  if fileExists(path):
+    for line in lines(path):
+      let f = line.split('\t')
+      if f.len >= 2 and f[0] in ["compile", "link"]: yield f[1]
+
 proc applyBackendActions*(g: ModuleGraph; cfile: string) =
   ## Apply the C directives recorded for the C file `cfile` (see
   ## `writeBackendActions`). The `link` stage's replacement for loading that
@@ -94,10 +101,8 @@ proc applyBackendActions*(g: ModuleGraph; cfile: string) =
     of "compile":
       if f.len == 4:
         let cname = AbsoluteFile f[1]
-        var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
-                       obj: AbsoluteFile f[2],
-                       flags: {CfileFlag.External}, customArgs: f[3])
-        extccomp.addExternalFileToCompile(g.config, cf)
+        g.config.toCompile.add Cfile(nimname: splitFile(cname).name, cname: cname,
+          obj: AbsoluteFile f[2], flags: {CfileFlag.External}, customArgs: f[3])
     of "link":
       if f.len == 2: extccomp.addExternalFileToLink(g.config, AbsoluteFile f[1])
     of "passl":
