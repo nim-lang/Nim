@@ -436,6 +436,13 @@ proc main() =
     check &"{16:#X}", "0x10"
     check &"{16:^#7X}", " 0x10  "
     check &"{16:^+#7X}", " +0x10 "
+    # centering when the number is at least as wide as the field
+    check &"{12345:^}", "12345"
+    check &"{12345:^4}", "12345"
+    check &"{12345:*^5}", "12345"
+    check &"{-1:^1}", "-1"
+    check &"{16:^#X}", "0x10"
+    check &"{16'u8:^1}", "16"
 
     # Hex tests
     check &"{0:x}", "0"

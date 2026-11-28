@@ -420,14 +420,13 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
   if spec.align == '<':
     for i in result.len..<spec.minimumWidth:
       result.add(spec.fill)
-  else:
+  elif spec.minimumWidth > result.len:
     let toFill = spec.minimumWidth - result.len
     if spec.align == '^':
       let half = toFill div 2
       result = repeat(spec.fill, half) & result & repeat(spec.fill, toFill - half)
     else:
-      if toFill > 0:
-        result = repeat(spec.fill, toFill) & result
+      result = repeat(spec.fill, toFill) & result
 
 proc parseStandardFormatSpecifier*(s: string; start = 0;
                                    ignoreUnknownSuffix = false): StandardFormatSpecifier =
