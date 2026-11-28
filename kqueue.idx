@@ -1,0 +1,36 @@
+nimTitle	kqueue	kqueue.html	module std/kqueue		0
+nim	EV_ADD	kqueue.html#EV_ADD	const EV_ADD		59
+nim	EV_DELETE	kqueue.html#EV_DELETE	const EV_DELETE		61
+nim	EV_ENABLE	kqueue.html#EV_ENABLE	const EV_ENABLE		62
+nim	EV_DISABLE	kqueue.html#EV_DISABLE	const EV_DISABLE		63
+nim	EV_ONESHOT	kqueue.html#EV_ONESHOT	const EV_ONESHOT		67
+nim	EV_CLEAR	kqueue.html#EV_CLEAR	const EV_CLEAR		68
+nim	EV_RECEIPT	kqueue.html#EV_RECEIPT	const EV_RECEIPT		69
+nim	EV_DISPATCH	kqueue.html#EV_DISPATCH	const EV_DISPATCH		70
+nim	EV_SYSFLAGS	kqueue.html#EV_SYSFLAGS	const EV_SYSFLAGS		72
+nim	EV_DROP	kqueue.html#EV_DROP	const EV_DROP		73
+nim	EV_FLAG1	kqueue.html#EV_FLAG1	const EV_FLAG1		74
+nim	EV_EOF	kqueue.html#EV_EOF	const EV_EOF		78
+nim	EV_ERROR	kqueue.html#EV_ERROR	const EV_ERROR		79
+nim	EV_NODATA	kqueue.html#EV_NODATA	const EV_NODATA		80
+nim	NOTE_LOWAT	kqueue.html#NOTE_LOWAT	const NOTE_LOWAT		105
+nim	NOTE_DELETE	kqueue.html#NOTE_DELETE	const NOTE_DELETE		109
+nim	NOTE_WRITE	kqueue.html#NOTE_WRITE	const NOTE_WRITE		110
+nim	NOTE_EXTEND	kqueue.html#NOTE_EXTEND	const NOTE_EXTEND		111
+nim	NOTE_ATTRIB	kqueue.html#NOTE_ATTRIB	const NOTE_ATTRIB		112
+nim	NOTE_LINK	kqueue.html#NOTE_LINK	const NOTE_LINK		113
+nim	NOTE_RENAME	kqueue.html#NOTE_RENAME	const NOTE_RENAME		114
+nim	NOTE_REVOKE	kqueue.html#NOTE_REVOKE	const NOTE_REVOKE		115
+nim	NOTE_EXIT	kqueue.html#NOTE_EXIT	const NOTE_EXIT		119
+nim	NOTE_FORK	kqueue.html#NOTE_FORK	const NOTE_FORK		120
+nim	NOTE_EXEC	kqueue.html#NOTE_EXEC	const NOTE_EXEC		121
+nim	NOTE_PCTRLMASK	kqueue.html#NOTE_PCTRLMASK	const NOTE_PCTRLMASK		122
+nim	NOTE_PDATAMASK	kqueue.html#NOTE_PDATAMASK	const NOTE_PDATAMASK		123
+nim	NOTE_TRACK	kqueue.html#NOTE_TRACK	const NOTE_TRACK		127
+nim	NOTE_TRACKERR	kqueue.html#NOTE_TRACKERR	const NOTE_TRACKERR		128
+nim	NOTE_CHILD	kqueue.html#NOTE_CHILD	const NOTE_CHILD		129
+nim	NOTE_MSECONDS	kqueue.html#NOTE_MSECONDS	const NOTE_MSECONDS		142
+nim	KEvent	kqueue.html#KEvent	object KEvent		150
+nim	kqueue	kqueue.html#kqueue	proc kqueue(): cint		158
+nim	kevent	kqueue.html#kevent,cint,ptr.KEvent,cint,ptr.KEvent,cint,ptr.Timespec	proc kevent(kqFD: cint; changelist: ptr KEvent; nchanges: cint;\n       eventlist: ptr KEvent; nevents: cint; timeout: ptr Timespec): cint		161
+nim	EV_SET	kqueue.html#EV_SET,ptr.KEvent,uint,cshort,cushort,cuint,int,pointer	proc EV_SET(event: ptr KEvent; ident: uint; filter: cshort; flags: cushort;\n       fflags: cuint; data: int; udata: pointer)		167

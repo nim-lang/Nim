@@ -1,0 +1,6 @@
+nimTitle	pathcache	pathcache.html	module pathcache		0
+nim	PathCache	pathcache.html#PathCache	object PathCache		16
+nim	reset	pathcache.html#reset,PathCache	proc reset(cache: var PathCache)		20
+nim	getCurrentDir	pathcache.html#getCurrentDir,PathCache	proc getCurrentDir(cache: var PathCache): string		24
+nim	expandFilename	pathcache.html#expandFilename,PathCache,string	proc expandFilename(cache: var PathCache; path: string): string		30
+nim	relativePath	pathcache.html#relativePath,PathCache,string,string	proc relativePath(cache: var PathCache; path, base: string; sep = DirSep): string		41

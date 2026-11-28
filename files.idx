@@ -1,0 +1,11 @@
+nimTitle	files	files.html	module std/files		0
+nim	getFilePermissions	files.html#getFilePermissions,Path	proc getFilePermissions(filename: Path): set[FilePermission]		17
+nim	setFilePermissions	files.html#setFilePermissions,Path,set[FilePermission]	proc setFilePermissions(filename: Path; permissions: set[FilePermission];\n                   followSymlinks = true)		28
+nim	fileExists	files.html#fileExists,Path	proc fileExists(filename: Path): bool		47
+nim	tryRemoveFile	files.html#tryRemoveFile,Path	proc tryRemoveFile(file: Path): bool		53
+nim	removeFile	files.html#removeFile,Path	proc removeFile(file: Path)		65
+nim	moveFile	files.html#moveFile,Path,Path	proc moveFile(source, dest: Path)		79
+nim	copyFile	files.html#copyFile,Path,Path,int	proc copyFile(source, dest: Path; options = cfSymlinkFollow; bufferSize = 16384)		96
+nim	copyFileWithPermissions	files.html#copyFileWithPermissions,Path,Path	proc copyFileWithPermissions(source, dest: Path; ignorePermissionErrors = true;\n                        options = cfSymlinkFollow)		129
+nim	copyFileToDir	files.html#copyFileToDir,Path,Path,int	proc copyFileToDir(source, dir: Path; options = cfSymlinkFollow; bufferSize = 16384)		156
+idx	rename files	files.html#rename-files_1	Module files		0

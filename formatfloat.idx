@@ -1,0 +1,10 @@
+nimTitle	formatfloat	formatfloat.html	module std/formatfloat		0
+nim	writeFloatToBufferRoundtrip	formatfloat.html#writeFloatToBufferRoundtrip,array[,char],BiggestFloat	proc writeFloatToBufferRoundtrip(buf: var array[65, char]; value: BiggestFloat): int		33
+nim	writeFloatToBufferRoundtrip	formatfloat.html#writeFloatToBufferRoundtrip,array[,char],float32	proc writeFloatToBufferRoundtrip(buf: var array[65, char]; value: float32): int		41
+nim	writeFloatToBufferSprintf	formatfloat.html#writeFloatToBufferSprintf,array[,char],BiggestFloat	proc writeFloatToBufferSprintf(buf: var array[65, char]; value: BiggestFloat): int		54
+nim	writeFloatToBuffer	formatfloat.html#writeFloatToBuffer,array[,char],	proc writeFloatToBuffer(buf: var array[65, char]; value: BiggestFloat | float32): int		88
+nim	addFloatRoundtrip	formatfloat.html#addFloatRoundtrip,string,	proc addFloatRoundtrip(result: var string; x: float | float32)		94
+nim	addFloatSprintf	formatfloat.html#addFloatSprintf,string,float	proc addFloatSprintf(result: var string; x: float)		102
+nim	addFloat	formatfloat.html#addFloat,string,	proc addFloat(result: var string; x: float | float32)		132
+nim	`$`	formatfloat.html#$	proc `$`(x: float | float32): string		152
+nimgrp	writefloattobufferroundtrip	formatfloat.html#writeFloatToBufferRoundtrip-procs-all	proc		33

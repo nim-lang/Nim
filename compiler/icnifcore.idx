@@ -1,0 +1,44 @@
+nimTitle	icnifcore	icnifcore.html	module icnifcore		0
+nim	icPool	icnifcore.html#icPool	let icPool		36
+nim	icTags	icnifcore.html#icTags	let icTags		37
+nim	createIcBuf	icnifcore.html#createIcBuf,int	proc createIcBuf(cap = 16): TokenBuf		39
+nim	tagId	icnifcore.html#tagId,string	proc tagId(s: string): TagId		43
+nim	IcBuilder	icnifcore.html#IcBuilder	object IcBuilder		48
+nim	newIcBuilder	icnifcore.html#newIcBuilder,int	proc newIcBuilder(cap = 16): IcBuilder		55
+nim	openTag	icnifcore.html#openTag,IcBuilder,string	proc openTag(b: var IcBuilder; tag: string)		57
+nim	closeTag	icnifcore.html#closeTag,IcBuilder	proc closeTag(b: var IcBuilder)		58
+nim	addSymUse	icnifcore.html#addSymUse,IcBuilder,string	proc addSymUse(b: var IcBuilder; s: string)		59
+nim	addSymDef	icnifcore.html#addSymDef,IcBuilder,string	proc addSymDef(b: var IcBuilder; s: string)		60
+nim	addIdent	icnifcore.html#addIdent,IcBuilder,string	proc addIdent(b: var IcBuilder; s: string)		61
+nim	addStrLit	icnifcore.html#addStrLit,IcBuilder,string	proc addStrLit(b: var IcBuilder; s: string)		62
+nim	addIntLit	icnifcore.html#addIntLit,IcBuilder,int64	proc addIntLit(b: var IcBuilder; v: int64)		63
+nim	addUIntLit	icnifcore.html#addUIntLit,IcBuilder,uint64	proc addUIntLit(b: var IcBuilder; v: uint64)		64
+nim	addFloatLit	icnifcore.html#addFloatLit,IcBuilder,float64	proc addFloatLit(b: var IcBuilder; v: float64)		65
+nim	addCharLit	icnifcore.html#addCharLit,IcBuilder,char	proc addCharLit(b: var IcBuilder; c: char)		66
+nim	addDotToken	icnifcore.html#addDotToken,IcBuilder	proc addDotToken(b: var IcBuilder)		67
+nim	lineInfo	icnifcore.html#lineInfo,IcBuilder,string,int32,int32,string	proc lineInfo(b: var IcBuilder; file: string; line, col: int32; comment = "")		69
+nim	writeFileStable	icnifcore.html#writeFileStable,TokenBuf,string	proc writeFileStable(b: var TokenBuf; path: string; onlyIfChanged = false)		79
+nim	writeStable	icnifcore.html#writeStable,IcBuilder,string	proc writeStable(b: var IcBuilder; path: string; onlyIfChanged = false)		93
+nim	cursorPool	icnifcore.html#cursorPool,Cursor	proc cursorPool(c: Cursor): Pool		96
+nim	storeBif	icnifcore.html#storeBif,IcBuilder,string,string	proc storeBif(b: var IcBuilder; path: string; dottedSuffix: string)		115
+nim	storeBifStable	icnifcore.html#storeBifStable,IcBuilder,string,string	proc storeBifStable(b: var IcBuilder; path: string; dottedSuffix: string)		120
+nim	addAll	icnifcore.html#addAll,IcBuilder,IcBuilder	proc addAll(dest: var IcBuilder; src: var IcBuilder)		141
+nim	addStmtsBody	icnifcore.html#addStmtsBody,IcBuilder,IcBuilder	proc addStmtsBody(dest: var IcBuilder; src: var IcBuilder)		149
+nim	ckParLe	icnifcore.html#ckParLe	CookieKind.ckParLe		168
+nim	ckParRi	icnifcore.html#ckParRi	CookieKind.ckParRi		168
+nim	ckSym	icnifcore.html#ckSym	CookieKind.ckSym		168
+nim	ckSymDef	icnifcore.html#ckSymDef	CookieKind.ckSymDef		168
+nim	ckIdent	icnifcore.html#ckIdent	CookieKind.ckIdent		168
+nim	ckStr	icnifcore.html#ckStr	CookieKind.ckStr		168
+nim	ckInt	icnifcore.html#ckInt	CookieKind.ckInt		168
+nim	ckUInt	icnifcore.html#ckUInt	CookieKind.ckUInt		168
+nim	ckFloat	icnifcore.html#ckFloat	CookieKind.ckFloat		168
+nim	ckChar	icnifcore.html#ckChar	CookieKind.ckChar		168
+nim	ckDot	icnifcore.html#ckDot	CookieKind.ckDot		168
+nim	CookieKind	icnifcore.html#CookieKind	enum CookieKind		168
+nim	CookieTok	icnifcore.html#CookieTok	object CookieTok		170
+nim	flattenForCookie	icnifcore.html#flattenForCookie,IcBuilder	proc flattenForCookie(b: var IcBuilder): seq[CookieTok]		212
+nim	collectBifStrLits	icnifcore.html#collectBifStrLits,string	proc collectBifStrLits(path: string): seq[string]		218
+nim	SemDeps	icnifcore.html#SemDeps	object SemDeps		241
+nim	loadSemDeps	icnifcore.html#loadSemDeps,string	proc loadSemDeps(path: string): SemDeps		248
+nim	writeSemDeps	icnifcore.html#writeSemDeps,ConfigRef,int32,seq[string]	proc writeSemDeps(config: ConfigRef; thisModule: int32; importPaths: seq[string])		281
