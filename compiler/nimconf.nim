@@ -286,15 +286,19 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     if cfg == DefaultConfig:
       runNimScriptIfExists(getUserConfigPath(DefaultConfigNims))
 
+  # `--compileTime:restricted` reads no configuration from the project or the
+  # directories above it: `nim.cfg` runs commands too (`gcc.exe`, `@putenv`).
+  # Only the system and user configuration and the command line are trusted.
+  let restricted = conf.compileTimeMode == ctmRestricted
   let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
-  if optSkipParentConfigFiles notin conf.globalOptions:
+  if optSkipParentConfigFiles notin conf.globalOptions and not restricted:
     for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
       readConfigFile(AbsoluteDir(dir) / cfg)
 
       if cfg == DefaultConfig:
         runNimScriptIfExists(AbsoluteDir(dir) / DefaultConfigNims)
 
-  if optSkipProjConfigFile notin conf.globalOptions:
+  if optSkipProjConfigFile notin conf.globalOptions and not restricted:
     readConfigFile(pd / cfg)
     if cfg == DefaultConfig:
       runNimScriptIfExists(pd / DefaultConfigNims)
@@ -319,10 +323,10 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   if not conf.ideActive and conf.cmd notin {cmdCheck, cmdDump}:
     if conf.cmd == cmdNimscript:
       runNimScriptIfExists(conf.projectFull, isMain = true)
-    else:
+    elif not restricted or scriptIsProj:
       runNimScriptIfExists(scriptFile, isMain = true)
   else:
-    if not scriptIsProj:
+    if not scriptIsProj and not restricted:
       runNimScriptIfExists(scriptFile, isMain = true)
     else:
       # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
