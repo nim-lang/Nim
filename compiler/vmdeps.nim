@@ -76,7 +76,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
 proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkSym:
     result = newNodeI(nkIdentDefs, n.info)
-    result.add n  # name
+    result.add copyNode(n)  # name
     result.add mapTypeToAstX(cache, n.sym.typ, n.info, idgen, true, false)  # type
     if n.sym.ast != nil:
       result.add copyTree(n.sym.ast)
@@ -104,7 +104,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     newNodeIT(kind, if t.n.isNil: info else: t.n.info, t)
   template newIdentDefs(n,t): untyped =
     var id = newNodeX(nkIdentDefs)
-    id.add n  # name
+    id.add copyNode(n)  # name
     id.add mapTypeToAst(t, info)  # type
     if n.sym.ast != nil:
       id.add copyTree(n.sym.ast)

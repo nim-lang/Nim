@@ -4018,19 +4018,16 @@ proc loadInterface(c: var DecodeContext; module: FileIndex; hidden: bool;
           prof pIfaceExported
         strTableAdd(result, sym)
 
-proc buildHiddenInterface*(c: var DecodeContext; suffix: string;
-                           interfHidden: var TStrTable;
-                           resolveModule: ModuleResolver): bool {.discardable.} =
-  ## Build the full interface independently, on demand. Appending private
-  ## symbols to the public table would lose the full interface's own order.
-  let conf = c.infos.config
-  if fileExists(semanticFile(conf, suffix, ".s.bif").string):
-    let module = moduleId(c, suffix, {})
-    if not c.mods.hasKey(module): return false
-    interfHidden = loadInterface(c, module, true, resolveModule)
-    result = true
-  else:
-    result = false
+proc buildStoredInterface*(c: var DecodeContext; suffix: string; hidden: bool;
+                           tab: var TStrTable; resolveModule: ModuleResolver): bool =
+  ## Reopen the module by suffix: its graph and decoder indexes can differ.
+  result = false
+  if fileExists(semanticFile(c.infos.config, suffix, ".s.bif").string):
+    let module = moduleId(c, suffix)
+    if c.mods.hasKey(module):
+      timed tInterfTables:
+        tab = loadInterface(c, module, hidden, resolveModule)
+      result = true
 
 proc moduleSymbolStubs*(c: var DecodeContext; module: FileIndex): seq[PSym] =
   ## Stubs for every non-type symbol serialized in `module`'s NIF index. The

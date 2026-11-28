@@ -7148,6 +7148,22 @@ passing `typeOfProc` as the second argument to `typeof`:
   assert typeof("a b c".split, typeOfProc) is seq[string]
   ```
 
+The operand of `typeof` is checked in a scope of its own, wherever the `typeof`
+stands: a name declared inside it is not visible after the `typeof`. This
+holds for `typeof` in an expression as well as for one in a type section or
+a parameter list, so the name can be declared again:
+
+  ```nim  test = "nim c $1"
+  var x = default(typeof((let n = 2; n))) # `n` is local to `typeof`
+  let n = "declared after the typeof"
+  assert x == 0
+  assert n == "declared after the typeof"
+  ```
+
+This is a special case of `typeof`: a statement list expression such as
+`(let n = 2; n)` does not open a scope anywhere else, and the operands of other
+builtins that only look at a type, such as `sizeof`, do not get one either.
+
 
 
 Modules
@@ -7886,6 +7902,38 @@ As the example shows, `computedGoto` is mostly useful for interpreters. If
 the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
 
+
+goto pragma
+-----------
+The `goto` pragma marks an ordinal state variable for a `case` in the C-like
+backends. Its initializer and each assignment to it must name a constant state
+and jump immediately to the matching branch. Initialize shared variables before
+the marked declaration. A branch that neither jumps nor exits falls through.
+
+```nim
+proc unescape(s: string): string =
+  type State = enum scan, escaped, copyChar
+  var i = 0
+  var state {.goto.} = scan
+
+  case state
+  of scan:
+    if i == s.len: return
+    if s[i] == '\\':
+      inc i
+      state = escaped
+    state = copyChar
+  of escaped:
+    if i == s.len:
+      raise newException(ValueError, "trailing backslash")
+    state = copyChar
+  of copyChar:
+    result.add s[i]
+    inc i
+    state = scan
+
+doAssert unescape(r"one\,two") == "one,two"
+```
 
 immediate pragma
 ----------------

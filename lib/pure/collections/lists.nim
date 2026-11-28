@@ -711,11 +711,12 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.disc
     assert s == [2, 2, 2, 2]
 
   if n == L.head:
-    L.head = n.next
-    if L.tail.next == n:
-      L.tail.next = L.head # restore cycle
+    # `L.head = n.next` can free `n` and thus `L.tail` (bug #26808):
     if L.tail == n:
       L.tail = nil # reset tail if we removed the last node
+    elif L.tail.next == n:
+      L.tail.next = n.next # restore cycle; `L.head` keeps `n` alive
+    L.head = n.next
   else:
     var prev {.cursor.} = L.head
     while prev.next != n and prev.next != nil:
@@ -749,10 +750,16 @@ proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
         ai
     assert s == [2, 2, 2, 2]
 
+  # `n` can alias `L.head` or `n.prev.next`, the only owners of the node:
+  # overwriting them can free `n`, so `n` must not be dereferenced
+  # afterwards (bug #26808).
   if n == L.tail: L.tail = n.prev
-  if n == L.head: L.head = n.next
   if n.next != nil: n.next.prev = n.prev
-  if n.prev != nil: n.prev.next = n.next
+  if n == L.head:
+    if n.prev != nil: n.prev.next = n.next # cyclic: `L.head` keeps `n` alive
+    L.head = n.next
+  elif n.prev != nil:
+    n.prev.next = n.next
 
 
 

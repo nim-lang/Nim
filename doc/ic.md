@@ -648,3 +648,7 @@ iterator (say, a nested closure capturing a `var` parameter) is an error at
 its declaration under `--ic:on`, even when nothing expands the iterator. The
 classic backend only diagnoses it on expansion; that laziness is an artifact of
 when it happens to transform, not specified behaviour.
+
+For measured cold-build stage timings, process counts, and dependency-loading
+profiles on a large application, see the [Kosmo cold IC build
+experiment](ic-cold-build-kosmo.md).

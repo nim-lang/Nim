@@ -75,15 +75,19 @@ proc run(count: int; visibility: Visibility) =
       publicInterface = publicSyms, hiddenInterface = hiddenSyms)
 
     # Each independent decoder must reconstruct the same order from disk.
-    for _ in 0..1:
+    for lazy in [false, true]:
       var decoder = createDecodeContext(conf, cache)
       var exported = initStrTable()
       var hidden = initStrTable()
-      discard loadNifModule(decoder, file, exported, hidden)
+      let flags = if lazy: {SkipInterfaceTables} else: {}
+      discard loadNifModule(decoder, file, exported, hidden, flags)
+      if lazy:
+        doAssert exported.counter == 0
+        doAssert buildStoredInterface(decoder, cachedModuleSuffix(conf, file), false, exported, nil)
       for i, name in names:
         doAssert ids(exported, name) == expectedPublic[i], $visibility & ": " & $count
       doAssert hidden.counter == 0 # hidden symbols are still lazy
-      doAssert buildHiddenInterface(decoder, cachedModuleSuffix(conf, file), hidden, nil)
+      doAssert buildStoredInterface(decoder, cachedModuleSuffix(conf, file), true, hidden, nil)
       for i, name in names:
         doAssert ids(hidden, name) == expectedHidden[i], $visibility & ": " & $count
         doAssert ids(exported, name) == expectedPublic[i]
