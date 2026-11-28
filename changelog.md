@@ -327,6 +327,12 @@ parameter and result types, not just their source-level shape. Use
   whole module, so the compiler now rejects them inside a routine with an error
   that says so. Before, `localPassC` there stopped a compiler built with
   assertions, and the others were accepted. Move the pragma to module level.
+- The new warning `TupleTypePragma` reports the pragmas `packed`, `bycopy`,
+  `byref`, `union`, `importc`, `importcpp`, `importobjc`, `importjs`, `header`
+  and `nodecl` on a tuple type. Tuple types are structural, so such a pragma
+  applies to only some of the equal tuple types, which then disagree on the
+  representation. Use an object type instead. The warning will become an
+  error in the future.
 
 ## Tool changes
 
