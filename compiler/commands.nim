@@ -1017,6 +1017,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # config loading can replay it instead of re-parsing the `nim.cfg` chain.
     expectArg(conf, switch, arg, pass, info)
     conf.icPreparsedConfig = arg
+  of "precompiledconfig":
+    # Read in `passCmd1`, before `loadConfigs` (see `nim.nim`): whether this
+    # process should replay the precompiled config instead of loading the config
+    # files itself. Only the command line can say so; a config file cannot.
+    expectArg(conf, switch, arg, pass, info)
+    if pass == passCmd1:
+      case arg.normalize
+      of "on": conf.precompiledConfig = true
+      of "off": conf.precompiledConfig = false
+      else: localError(conf, info, "invalid option for --precompiledConfig: " & arg)
   of "icconfigout":
     # `nim icconfig` only: where to write the precompiled config artifact (see
     # options.icConfigOut). The `nim ic` driver spawns the producer with this.

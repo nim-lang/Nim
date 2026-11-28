@@ -489,6 +489,16 @@ type
                               # while compiling it. Written to the module's
                               # `.slurps.bif` sidecar so `nim ic` rebuilds the
                               # module when such a file changes (#26614).
+    precompiledConfig*: bool  # `--precompiledConfig:on`: any command (not only the
+                              # `nim ic` driver) loads its configuration through the
+                              # precompiled-config artifact (see `ensureIcConfig`).
+    icConfigProbes*: seq[tuple[kind, key, val: string]]
+                              # what the config files/NimScript looked at while
+                              # loading: `kind` is "file" (existence, "1"/"0"),
+                              # "env" (value, "\0" when unset) or "volatile" (an
+                              # input that cannot be re-checked cheaply). Serialised
+                              # into the artifact so a later run can tell whether it
+                              # would load the same config.
     icConfigSwitches*: seq[tuple[switch, arg: string]]
                               # the config-file (`passPP`) switches applied while
                               # loading config, in order. Recorded by every nim

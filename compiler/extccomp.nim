@@ -1312,6 +1312,12 @@ proc spawnCodegenSubprocess*(conf: ConfigRef) =
   # We also disable the conf hint since it would otherwise show twice as the
   # config files get parsed by both processes.
   var subArgs = @["--compileOnly", "--hint[Conf]:off"]
+  # The child replays the very config this process replayed (see
+  # `icconfig.ensureIcConfig`); left alone it would find its own arguments
+  # different (`--compileOnly`), produce another artifact and make the two
+  # disagree about what the config said.
+  if conf.icPreparsedConfig.len > 0:
+    subArgs.add "--icPreparsedConfig:" & conf.icPreparsedConfig
   var projectFileAdded = false
   var commandAdded = false
   for a in os.commandLineParams():

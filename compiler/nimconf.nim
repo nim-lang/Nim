@@ -255,6 +255,11 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   # fall through to a normal parse (this is also the path the `nim icconfig`
   # producer itself takes, since it runs with no `icPreparsedConfig`).
   if conf.icPreparsedConfig.len > 0 and applyIcConfig(conf, conf.icPreparsedConfig):
+    if conf.icProject.len == 0:
+      # not an IC child: say which config files the artifact stands for, as a
+      # normal load would (`showHintConf` below)
+      for filename in conf.configFiles:
+        rawMessage(conf, hintConf, filename.string)
     return
   template readConfigFile(path) =
     let configPath = path
@@ -262,6 +267,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     setConfigVar(conf, "selfDir", conf.currentConfigDir)
     if readConfigFile(configPath, cache, conf):
       conf.configFiles.add(configPath)
+    else:
+      conf.icConfigProbes.add ("file", configPath.string, "0")
 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
@@ -273,6 +280,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     if s != nil:
       conf.configFiles.add(p)
       runNimScript(cache, p, idgen, freshDefines = false, conf, s)
+    else:
+      conf.icConfigProbes.add ("file", p.string, "0")
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))

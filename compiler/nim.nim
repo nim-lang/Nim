@@ -29,7 +29,7 @@ import
   pathutils, modulegraphs
 
 from ast2nif import registerNifAstTags
-from icconfig import ensureIcConfig
+from icconfig import ensureIcConfig, produceIcConfig
 
 from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
@@ -120,12 +120,23 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   # so `loadConfigs` replays it instead of re-parsing the `nim.cfg` chain — the
   # driver runs on the exact same config its children will. See icconfig.nim.
   when not defined(nimKochBootstrap):
-    if conf.cmd in {cmdIc, cmdTrack} or isIcDriver(conf):
+    if conf.cmd in {cmdIc, cmdTrack} or isIcDriver(conf) or
+        (conf.precompiledConfig and conf.icConfigOut.len == 0 and
+         conf.icPreparsedConfig.len == 0):
       ensureIcConfig(conf)
 
   var graph = newModuleGraph(cache, conf)
   if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     return
+
+  when not defined(nimKochBootstrap):
+    if conf.icConfigOut.len > 0 and conf.cmd != cmdIcConfig:
+      # the config producer of a non-IC command (see `ensureIcConfig`): it was
+      # started with the original command so that `getCommand()` and every
+      # `when defined(...)` in the config files see what the real run sees;
+      # all it does is write the resolved config.
+      produceIcConfig(conf)
+      return
 
   if conf.cmd == cmdCheck and optWasNimscript notin conf.globalOptions and
        conf.backend == backendInvalid:
