@@ -327,6 +327,12 @@ parameter and result types, not just their source-level shape. Use
   whole module, so the compiler now rejects them inside a routine with an error
   that says so. Before, `localPassC` there stopped a compiler built with
   assertions, and the others were accepted. Move the pragma to module level.
+- A proc with `.forbids` now warns (`Effect`) when its body has an effect that
+  is a parent of a forbidden one, such as `RootEffect` from a call through a
+  proc variable or a method under `{.forbids: [MyEffect].}`: the call may have
+  the forbidden effect. It is a warning so that such code keeps compiling;
+  assigning that proc to a proc type with the same `.forbids` was already an
+  error.
 
 ## Tool changes
 
