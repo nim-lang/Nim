@@ -174,13 +174,14 @@ proc genVarTuple(p: BProc, n: PNode) =
       initializer = NimFalse)
     for curr in hcrGlobals:
       let rc = rdLoc(curr.loc)
+      let name = '"' & curr.loc.snippet & '"'
       p.s(cpsLocals).addInPlaceOp(BitOr, NimBool,
         hcrCond,
         cCall("hcrRegisterGlobal",
           getModuleDllPath(p.module, n.firstSon.sym),
-          '"' & curr.loc.snippet & '"',
+          name,
           cSizeof(rc),
-          makeCString($hashTypeLayout(curr.loc.t, p.config)),
+          hcrLayoutKey(p.module, n.firstSon.sym, curr.loc.t, name, cSizeof(rc)),
           curr.tp,
           cCast(ptrType(CPointer), cAddr(curr.loc.snippet))))
 
@@ -452,11 +453,12 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
     # put it in the locals section - mainly because of loops which
     # use the var in a call to resetLoc() in the statements section
     let rv = rdLoc(v.loc)
+    let name = '"' & v.loc.snippet & '"'
     targetProc.s(cpsLocals).addCallStmt("hcrRegisterGlobal",
       getModuleDllPath(p.module, v),
-      '"' & v.loc.snippet & '"',
+      name,
       cSizeof(rv),
-      makeCString($hashTypeLayout(v.loc.t, p.config)),
+      hcrLayoutKey(p.module, v, v.loc.t, name, cSizeof(rv)),
       traverseProc,
       cCast(ptrType(CPointer), cAddr(v.loc.snippet)))
     # nothing special left to do later on - let's avoid closing and reopening blocks
@@ -469,11 +471,12 @@ proc genSingleVar(p: BProc, v: PSym; vn: PNode; value: PNode) =
   if forHcr:
     startBlockWith(targetProc):
       hcrInit = initIfStmt(targetProc.s(cpsStmts))
+      let name = '"' & v.loc.snippet & '"'
       initElifBranch(targetProc.s(cpsStmts), hcrInit, cCall("hcrRegisterGlobal",
         getModuleDllPath(p.module, v),
-        '"' & v.loc.snippet & '"',
+        name,
         cSizeof(rdLoc(v.loc)),
-        makeCString($hashTypeLayout(v.loc.t, p.config)),
+        hcrLayoutKey(p.module, v, v.loc.t, name, cSizeof(rdLoc(v.loc))),
         traverseProc,
         cCast(ptrType(CPointer), cAddr(v.loc.snippet))))
   if value.kind != nkEmpty and valueAsRope.len == 0:

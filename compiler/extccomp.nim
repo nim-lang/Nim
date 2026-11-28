@@ -1118,7 +1118,12 @@ proc callCCompiler*(conf: ConfigRef) =
             not fileExists(dst.string) or
             getFileSize(src.string) != getFileSize(dst.string) or
             not sameFileContent(src.string, dst.string):
-          copyFileWithPermissions(src.string, dst.string)
+          # the program may be running and rebuilding itself, and Linux refuses
+          # to write to a running executable: the copy replaces it instead, like
+          # the libraries above
+          let copied = dst.string & ".tmp"
+          copyFileWithPermissions(src.string, copied)
+          moveFile(copied, dst.string)
     else:
       for x in conf.toCompile:
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
