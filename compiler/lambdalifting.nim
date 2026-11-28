@@ -214,6 +214,26 @@ proc isInnerProc*(s: PSym): bool =
   else:
     result = false
 
+proc collectDeclSym(d: PNode; s: var IntSet) =
+  ## `d` is a symbol in a declaration position (a `let`/`var`/for variable,
+  ## a tuple unpacking or a pragma-wrapped declaration); remember it as being
+  ## declared inside the body currently analysed.
+  case d.kind
+  of nkSym:
+    s.incl d.sym.id
+  of nkPragmaExpr:
+    if d.len > 0: collectDeclSym(d[0], s)
+  of nkPostfix:
+    if d.len > 1: collectDeclSym(d[1], s)
+  of nkVarTuple:
+    # standalone tuple declarations have the shape
+    # `names.., type (or Empty), value` while tuples in `for` statements
+    # end in a trailing `Empty`
+    let m = if d[^1].kind == nkEmpty: d.len-1 else: d.len-2
+    for i in 0..<m: collectDeclSym(d[i], s)
+  else:
+    discard
+
 proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   # Bugfix: unfortunately we cannot use 'nkFastAsgn' here as that would
   # mean to be able to capture string literals which have no GC header.
@@ -334,7 +354,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
 
 type
   DetectionPass = object
-    processed, capturedVars: IntSet
+    processed, capturedVars, declaredSyms: IntSet
     capturedMacroParams: seq[PSym] # a macro body uses copies of its params
     ownerToType: Table[int, PType]
     somethingToDo: bool
@@ -344,7 +364,8 @@ type
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym; idgen: IdGenerator): DetectionPass =
   result = DetectionPass(processed: toIntSet([fn.id]),
-    capturedVars: initIntSet(), ownerToType: initTable[int, PType](),
+    capturedVars: initIntSet(), declaredSyms: initIntSet(),
+    ownerToType: initTable[int, PType](),
     graph: g, idgen: idgen
   )
 
@@ -494,10 +515,22 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
         let body = transformBody(c.graph, c.idgen, s, {useCache})
+        let saved = c.declaredSyms
+        c.declaredSyms = initIntSet()
         detectCapturedVars(body, s, c)
+        c.declaredSyms = saved
     let ow = s.skipGenericOwner
     let innerClosure = innerProc and s.typ.callConv == ccClosure and (not s.isIterator or iterEnvHasUpField(c.graph, s))
-    let interested = interestingVar(s)
+    # A variable declared inside this very body is a local of `owner`, no
+    # matter which routine owns the symbol: code spliced into `owner` -- e.g.
+    # a parameter default value declaring a local, which is copied into the
+    # call site keeping the callee's symbols (bug #26770), or template/macro
+    # expansions -- can carry declarations of another routine's locals. These
+    # cannot be upvalues: `transf` emits them as ordinary locals of `owner`.
+    # Symbols merely *referenced* but declared elsewhere still take the
+    # capture path (and the "environment misses" error when the owner is not
+    # an enclosing routine), e.g. an un-captured local of a macro.
+    let interested = interestingVar(s) and s.id notin c.declaredSyms
     if ow == owner:
       if owner.isIterator:
         c.somethingToDo = true
@@ -560,8 +593,28 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       detectCapturedVars(n[namePos], owner, c)
   of nkReturnStmt:
     detectCapturedVars(n[0], owner, c)
+  of nkVarSection, nkLetSection, nkConstSection:
+    for son in n:
+      if son.kind == nkSym:
+        # can happen for NIF-loaded code; a bare symbol child of a section
+        # is a declaration
+        c.declaredSyms.incl son.sym.id
+      else:
+        detectCapturedVars(son, owner, c)
   of nkIdentDefs:
+    for i in 0..<n.len-2:
+      collectDeclSym(n[i], c.declaredSyms)
     detectCapturedVars(n[^1], owner, c)
+  of nkVarTuple:
+    for i in 0..<n.len-2:
+      collectDeclSym(n[i], c.declaredSyms)
+    for i in 0..<n.len:
+      detectCapturedVars(n[i], owner, c)
+  of nkForStmt, nkParForStmt:
+    for i in 0..<n.len-2:
+      collectDeclSym(n[i], c.declaredSyms)
+    for i in 0..<n.len:
+      detectCapturedVars(n[i], owner, c)
   else:
     if n.isCallExpr and n[0].isTypeOf:
       c.inTypeOf = true
